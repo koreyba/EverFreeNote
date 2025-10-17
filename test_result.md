@@ -330,11 +330,9 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Google OAuth authentication flow"
-    - "Create note endpoint"
-    - "Get notes with search endpoint"
-    - "Update note endpoint"
-    - "Delete note endpoint"
+    - "Frontend authentication integration"
+    - "Frontend notes CRUD operations"
+    - "Frontend search functionality"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
