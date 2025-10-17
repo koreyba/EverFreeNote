@@ -36,6 +36,8 @@ export default function App() {
         setUser(session?.user || null)
         if (session?.user) {
           fetchNotes()
+        } else {
+          setNotes([])
         }
       }
     )
@@ -52,18 +54,38 @@ export default function App() {
 
   const fetchNotes = async (search = '') => {
     try {
-      const searchParam = search ? `?search=${encodeURIComponent(search)}` : ''
-      const response = await fetch(`/api/notes${searchParam}`)
-      
-      if (response.status === 401) {
-        handleSignOut()
+      let query = supabase
+        .from('notes')
+        .select('*')
+        .order('updated_at', { ascending: false })
+
+      // Search functionality
+      if (search) {
+        const searchLower = search.toLowerCase()
+        query = query.or(`title.ilike.%${searchLower}%,description.ilike.%${searchLower}%`)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error fetching notes:', error)
         return
       }
-      
-      if (response.ok) {
-        const data = await response.json()
-        setNotes(data)
+
+      // Additional tag filtering
+      let filteredData = data
+      if (search) {
+        filteredData = data.filter(note => {
+          const titleMatch = note.title.toLowerCase().includes(search.toLowerCase())
+          const descMatch = note.description.toLowerCase().includes(search.toLowerCase())
+          const tagMatch = note.tags?.some(tag => 
+            tag.toLowerCase().includes(search.toLowerCase())
+          )
+          return titleMatch || descMatch || tagMatch
+        })
       }
+
+      setNotes(filteredData)
     } catch (error) {
       console.error('Error fetching notes:', error)
     }
@@ -76,13 +98,15 @@ export default function App() {
 
   const handleSignInWithGoogle = async () => {
     try {
-      const response = await fetch('/api/auth/signin/google', {
-        method: 'POST',
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       })
-      
-      if (response.ok) {
-        const { url } = await response.json()
-        window.location.href = url
+
+      if (error) {
+        console.error('Error signing in:', error)
       }
     } catch (error) {
       console.error('Error signing in:', error)
@@ -91,7 +115,7 @@ export default function App() {
 
   const handleSignOut = async () => {
     try {
-      await fetch('/api/auth/signout', { method: 'POST' })
+      await supabase.auth.signOut()
       setUser(null)
       setNotes([])
       setSelectedNote(null)
@@ -130,34 +154,44 @@ export default function App() {
         .filter(tag => tag.length > 0)
 
       const noteData = {
-        title: editForm.title,
-        description: editForm.description,
+        title: editForm.title.trim(),
+        description: editForm.description.trim(),
         tags,
+        updated_at: new Date().toISOString(),
       }
 
-      let response
       if (selectedNote) {
         // Update existing note
-        response = await fetch(`/api/notes/${selectedNote.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(noteData),
-        })
+        const { error } = await supabase
+          .from('notes')
+          .update(noteData)
+          .eq('id', selectedNote.id)
+
+        if (error) {
+          console.error('Error updating note:', error)
+          alert('Failed to update note')
+          return
+        }
       } else {
         // Create new note
-        response = await fetch('/api/notes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(noteData),
-        })
+        const { error } = await supabase
+          .from('notes')
+          .insert({
+            ...noteData,
+            user_id: user.id,
+          })
+
+        if (error) {
+          console.error('Error creating note:', error)
+          alert('Failed to create note')
+          return
+        }
       }
 
-      if (response.ok) {
-        await fetchNotes(searchQuery)
-        setIsEditing(false)
-        setSelectedNote(null)
-        setEditForm({ title: '', description: '', tags: '' })
-      }
+      await fetchNotes(searchQuery)
+      setIsEditing(false)
+      setSelectedNote(null)
+      setEditForm({ title: '', description: '', tags: '' })
     } catch (error) {
       console.error('Error saving note:', error)
     } finally {
@@ -169,16 +203,21 @@ export default function App() {
     if (!confirm('Are you sure you want to delete this note?')) return
 
     try {
-      const response = await fetch(`/api/notes/${noteId}`, {
-        method: 'DELETE',
-      })
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', noteId)
 
-      if (response.ok) {
-        await fetchNotes(searchQuery)
-        if (selectedNote?.id === noteId) {
-          setSelectedNote(null)
-          setIsEditing(false)
-        }
+      if (error) {
+        console.error('Error deleting note:', error)
+        alert('Failed to delete note')
+        return
+      }
+
+      await fetchNotes(searchQuery)
+      if (selectedNote?.id === noteId) {
+        setSelectedNote(null)
+        setIsEditing(false)
       }
     } catch (error) {
       console.error('Error deleting note:', error)
