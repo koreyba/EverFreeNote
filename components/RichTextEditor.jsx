@@ -41,7 +41,6 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import FontFamily from '@tiptap/extension-font-family'
 
-import Heading from '@tiptap/extension-heading'
 import { FontSize } from '../extensions/FontSize'
 
 const MenuBar = ({ editor }) => {
