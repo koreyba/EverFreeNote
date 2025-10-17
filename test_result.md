@@ -137,27 +137,33 @@ backend:
   
   - task: "User sign-out endpoint"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented POST /api/auth/signout endpoint. Need to test sign-out flow."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Sign-out endpoint working correctly. Returns success message and properly handles Supabase sign-out. CORS headers present."
   
   - task: "Get current user endpoint"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented GET /api/auth/user endpoint to retrieve authenticated user. Need to test."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Get current user endpoint working perfectly. Returns null for unauthenticated users as expected. Proper error handling and CORS headers."
   
   - task: "Create note endpoint"
     implemented: true
