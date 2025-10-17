@@ -42,7 +42,7 @@ import { Color } from '@tiptap/extension-color'
 import FontFamily from '@tiptap/extension-font-family'
 
 import Heading from '@tiptap/extension-heading'
-// import { FontSize } from '../extensions/FontSize'
+import { FontSize } from '../extensions/FontSize'
 
 const MenuBar = ({ editor }) => {
   if (!editor) {
@@ -77,14 +77,17 @@ const MenuBar = ({ editor }) => {
           {fontFamilies.map(font => <SelectItem key={font} value={font} className="text-xs">{font}</SelectItem>)}
         </SelectContent>
       </Select>
-{/* <Select onValueChange={(value) => editor.chain().focus().setFontSize(`${value}pt`).run()} defaultValue={fontSizes[1]}> */}
+
+      <Select onValueChange={(value) => editor.chain().focus().setFontSize(`${value}pt`).run()} defaultValue={fontSizes[1]}>
         <SelectTrigger className="w-[70px] text-xs h-8">
           <SelectValue placeholder="Font Size" />
         </SelectTrigger>
         <SelectContent>
           {fontSizes.map(size => <SelectItem key={size} value={size} className="text-xs">{size} pt</SelectItem>)}
         </SelectContent>
-      {/* </Select> */}<Button variant={editor.isActive('heading', { level: 1 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}><Heading1 className="w-4 h-4" /></Button>
+      </Select>
+
+      <Button variant={editor.isActive('heading', { level: 1 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}><Heading1 className="w-4 h-4" /></Button>
       <Button variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}><Heading2 className="w-4 h-4" /></Button>
       <Button variant={editor.isActive('heading', { level: 3 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}><Heading3 className="w-4 h-4" /></Button>
 
@@ -126,8 +129,7 @@ const RichTextEditor = ({ content, onChange }) => {
       TextStyle,
       Color,
       FontFamily,
-//      FontSize,
-
+      FontSize,
     ],
     content: content,
     onUpdate: ({ editor }) => {
