@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'lucide-react'
+import InteractiveTag from '@/components/InteractiveTag'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -224,6 +225,47 @@ export default function App() {
     }
   }
 
+  const handleRemoveTagFromNote = async (noteId, tagToRemove) => {
+    try {
+      // Find the note to get current tags
+      const noteToUpdate = notes.find(note => note.id === noteId)
+      if (!noteToUpdate || !noteToUpdate.tags) return
+
+      // Remove the tag from the tags array
+      const updatedTags = noteToUpdate.tags.filter(tag => tag !== tagToRemove)
+
+      // Update the note in database
+      const { error } = await supabase
+        .from('notes')
+        .update({
+          tags: updatedTags,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', noteId)
+
+      if (error) {
+        console.error('Error removing tag from note:', error)
+        alert('Failed to remove tag')
+        return
+      }
+
+      // Update local state
+      await fetchNotes(searchQuery)
+
+      // Update selectedNote if it's the current note
+      if (selectedNote?.id === noteId) {
+        setSelectedNote({
+          ...selectedNote,
+          tags: updatedTags,
+          updated_at: new Date().toISOString()
+        })
+      }
+    } catch (error) {
+      console.error('Error removing tag from note:', error)
+      alert('Failed to remove tag')
+    }
+  }
+
   const handleSelectNote = (note) => {
     setSelectedNote(note)
     setIsEditing(false)
@@ -349,9 +391,12 @@ export default function App() {
                   {note.tags && note.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {note.tags.slice(0, 3).map((tag, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
+                        <InteractiveTag
+                          key={index}
+                          tag={tag}
+                          showIcon={false}
+                          className="text-xs px-2 py-0.5"
+                        />
                       ))}
                     </div>
                   )}
@@ -505,10 +550,11 @@ export default function App() {
                 {selectedNote.tags && selectedNote.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-6">
                     {selectedNote.tags.map((tag, index) => (
-                      <Badge key={index} variant="secondary">
-                        <Tag className="w-3 h-3 mr-1" />
-                        {tag}
-                      </Badge>
+                      <InteractiveTag
+                        key={index}
+                        tag={tag}
+                        onRemove={(tagToRemove) => handleRemoveTagFromNote(selectedNote.id, tagToRemove)}
+                      />
                     ))}
                   </div>
                 )}
