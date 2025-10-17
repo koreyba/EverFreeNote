@@ -4,11 +4,26 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import dynamic from 'next/dynamic'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'lucide-react'
 import InteractiveTag from '@/components/InteractiveTag'
+
+const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), {
+  ssr: false,
+  loading: () => (
+    <div className="border rounded-lg p-4 bg-gray-50 text-gray-500">Loading editor...</div>
+  ),
+})
+
+const stripHtml = (html = '') => html.replace(/<[^>]+>/g, '')
+const toDisplayHtml = (content = '') => {
+  const trimmed = content?.trim()
+  if (!trimmed) return ''
+  const hasTags = /<[^>]+>/.test(trimmed)
+  return hasTags ? trimmed : trimmed.replace(/\n/g, '<br />')
+}
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -88,7 +103,9 @@ export default function App() {
       if (search) {
         filteredData = filteredData.filter(note => {
           const titleMatch = note.title.toLowerCase().includes(search.toLowerCase())
-          const descMatch = note.description.toLowerCase().includes(search.toLowerCase())
+          const descMatch = stripHtml(note.description || '')
+            .toLowerCase()
+            .includes(search.toLowerCase())
           const tagMatch = note.tags?.some(tag => 
             tag.toLowerCase().includes(search.toLowerCase())
           )
@@ -160,13 +177,15 @@ export default function App() {
     setIsEditing(true)
     setEditForm({
       title: note.title,
-      description: note.description,
+      description: note.description || '',
       tags: note.tags?.join(', ') || '',
     })
   }
 
   const handleSaveNote = async () => {
-    if (!editForm.title.trim() || !editForm.description.trim()) {
+    const plainDescription = stripHtml(editForm.description).trim()
+
+    if (!editForm.title.trim() || !plainDescription) {
       alert('Please fill in title and description')
       return
     }
@@ -180,7 +199,7 @@ export default function App() {
 
       const noteData = {
         title: editForm.title.trim(),
-        description: editForm.description.trim(),
+        description: editForm.description,
         tags,
         updated_at: new Date().toISOString(),
       }
@@ -428,7 +447,7 @@ export default function App() {
                 >
                   <h3 className="font-semibold text-gray-800 truncate">{note.title}</h3>
                   <p className="text-sm text-gray-600 truncate mt-1">
-                    {note.description}
+                    {stripHtml(note.description || '')}
                   </p>
                   {note.tags && note.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
@@ -545,13 +564,11 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <Textarea
-                    placeholder="Start writing your note..."
+                  <RichTextEditor
                     value={editForm.description}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, description: e.target.value })
+                    onChange={(value) =>
+                      setEditForm({ ...editForm, description: value })
                     }
-                    className="min-h-[400px] text-base border-none focus-visible:ring-0 px-0 resize-none"
                   />
                 </div>
               </div>
@@ -603,11 +620,12 @@ export default function App() {
                   </div>
                 )}
                 
-                <div className="prose prose-lg max-w-none">
-                  <p className="text-gray-700 whitespace-pre-wrap">
-                    {selectedNote.description}
-                  </p>
-                </div>
+                <div
+                  className="prose prose-lg max-w-none text-gray-700"
+                  dangerouslySetInnerHTML={{
+                    __html: toDisplayHtml(selectedNote.description || ''),
+                  }}
+                />
                 
                 <div className="mt-8 pt-4 border-t border-gray-200 text-sm text-gray-500">
                   <p>Created: {new Date(selectedNote.created_at).toLocaleString()}</p>
