@@ -1,45 +1,494 @@
 'use client'
 
-import { useEffect } from "react";
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'lucide-react'
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await fetch('/api/');
-      const data = await response.json();
-      console.log(data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+export default function App() {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [notes, setNotes] = useState([])
+  const [selectedNote, setSelectedNote] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({ title: '', description: '', tags: '' })
+  const [saving, setSaving] = useState(false)
+  
+  const supabase = createClient()
 
+  // Check authentication status
   useEffect(() => {
-    helloWorldApi();
-  }, []);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setUser(session?.user || null)
+      setLoading(false)
+    }
+
+    checkAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user || null)
+        if (session?.user) {
+          fetchNotes()
+        }
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Fetch notes when user is authenticated
+  useEffect(() => {
+    if (user) {
+      fetchNotes()
+    }
+  }, [user])
+
+  const fetchNotes = async (search = '') => {
+    try {
+      const searchParam = search ? `?search=${encodeURIComponent(search)}` : ''
+      const response = await fetch(`/api/notes${searchParam}`)
+      
+      if (response.status === 401) {
+        handleSignOut()
+        return
+      }
+      
+      if (response.ok) {
+        const data = await response.json()
+        setNotes(data)
+      }
+    } catch (error) {
+      console.error('Error fetching notes:', error)
+    }
+  }
+
+  const handleSearch = (query) => {
+    setSearchQuery(query)
+    fetchNotes(query)
+  }
+
+  const handleSignInWithGoogle = async () => {
+    try {
+      const response = await fetch('/api/auth/signin/google', {
+        method: 'POST',
+      })
+      
+      if (response.ok) {
+        const { url } = await response.json()
+        window.location.href = url
+      }
+    } catch (error) {
+      console.error('Error signing in:', error)
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await fetch('/api/auth/signout', { method: 'POST' })
+      setUser(null)
+      setNotes([])
+      setSelectedNote(null)
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
+  const handleCreateNote = () => {
+    setSelectedNote(null)
+    setIsEditing(true)
+    setEditForm({ title: '', description: '', tags: '' })
+  }
+
+  const handleEditNote = (note) => {
+    setSelectedNote(note)
+    setIsEditing(true)
+    setEditForm({
+      title: note.title,
+      description: note.description,
+      tags: note.tags?.join(', ') || '',
+    })
+  }
+
+  const handleSaveNote = async () => {
+    if (!editForm.title.trim() || !editForm.description.trim()) {
+      alert('Please fill in title and description')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const tags = editForm.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0)
+
+      const noteData = {
+        title: editForm.title,
+        description: editForm.description,
+        tags,
+      }
+
+      let response
+      if (selectedNote) {
+        // Update existing note
+        response = await fetch(`/api/notes/${selectedNote.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(noteData),
+        })
+      } else {
+        // Create new note
+        response = await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(noteData),
+        })
+      }
+
+      if (response.ok) {
+        await fetchNotes(searchQuery)
+        setIsEditing(false)
+        setSelectedNote(null)
+        setEditForm({ title: '', description: '', tags: '' })
+      }
+    } catch (error) {
+      console.error('Error saving note:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteNote = async (noteId) => {
+    if (!confirm('Are you sure you want to delete this note?')) return
+
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        await fetchNotes(searchQuery)
+        if (selectedNote?.id === noteId) {
+          setSelectedNote(null)
+          setIsEditing(false)
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting note:', error)
+    }
+  }
+
+  const handleSelectNote = (note) => {
+    setSelectedNote(note)
+    setIsEditing(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+        <Card className="w-full max-w-md shadow-lg">
+          <CardHeader className="text-center space-y-2">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-green-100 rounded-full">
+                <BookOpen className="w-10 h-10 text-green-600" />
+              </div>
+            </div>
+            <CardTitle className="text-3xl font-bold text-gray-800">EverFreeNote</CardTitle>
+            <CardDescription className="text-base">
+              Your personal note-taking companion. Secure, simple, and synced.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              onClick={handleSignInWithGoogle}
+              className="w-full h-12 text-base bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm"
+            >
+              <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                />
+              </svg>
+              Continue with Google
+            </Button>
+            <p className="text-xs text-center text-gray-500">
+              By continuing, you agree to our Terms of Service and Privacy Policy
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" alt="Emergent" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
+      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-6 h-6 text-green-600" />
+              <h1 className="text-xl font-bold text-gray-800">EverFreeNote</h1>
+            </div>
+          </div>
+          
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search notes..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
 
-function App() {
-  return (
-    <div className="App">
-      <Home />
+        {/* New Note Button */}
+        <div className="p-4 border-b border-gray-200">
+          <Button
+            onClick={handleCreateNote}
+            className="w-full bg-green-600 hover:bg-green-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Note
+          </Button>
+        </div>
+
+        {/* Notes List */}
+        <div className="flex-1 overflow-y-auto">
+          {notes.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <p>No notes yet</p>
+              <p className="text-sm mt-2">Create your first note to get started!</p>
+            </div>
+          ) : (
+            <div className="space-y-1 p-2">
+              {notes.map((note) => (
+                <div
+                  key={note.id}
+                  onClick={() => handleSelectNote(note)}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                    selectedNote?.id === note.id
+                      ? 'bg-green-50 border border-green-200'
+                      : 'hover:bg-gray-50 border border-transparent'
+                  }`}
+                >
+                  <h3 className="font-semibold text-gray-800 truncate">{note.title}</h3>
+                  <p className="text-sm text-gray-600 truncate mt-1">
+                    {note.description}
+                  </p>
+                  {note.tags && note.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {note.tags.slice(0, 3).map((tag, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-400 mt-2">
+                    {new Date(note.updated_at).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* User Profile */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <span className="text-sm font-semibold text-green-600">
+                  {user.email?.[0]?.toUpperCase()}
+                </span>
+              </div>
+              <span className="text-sm text-gray-700 truncate">{user.email}</span>
+            </div>
+            <Button
+              onClick={handleSignOut}
+              variant="ghost"
+              size="sm"
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {!selectedNote && !isEditing ? (
+          <div className="flex-1 flex items-center justify-center text-gray-400">
+            <div className="text-center">
+              <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <p className="text-lg">Select a note or create a new one</p>
+            </div>
+          </div>
+        ) : isEditing ? (
+          <div className="flex-1 flex flex-col">
+            {/* Editor Header */}
+            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-800">
+                {selectedNote ? 'Edit Note' : 'New Note'}
+              </h2>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setIsEditing(false)
+                    if (!selectedNote) {
+                      setEditForm({ title: '', description: '', tags: '' })
+                    }
+                  }}
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveNote}
+                  disabled={saving}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save'
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Editor Form */}
+            <div className="flex-1 overflow-y-auto p-6 bg-white">
+              <div className="max-w-4xl mx-auto space-y-4">
+                <div>
+                  <Input
+                    type="text"
+                    placeholder="Note title"
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                    className="text-2xl font-bold border-none focus-visible:ring-0 px-0"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                    <Tag className="w-4 h-4" />
+                    <span>Tags (comma-separated)</span>
+                  </div>
+                  <Input
+                    type="text"
+                    placeholder="work, personal, ideas"
+                    value={editForm.tags}
+                    onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Textarea
+                    placeholder="Start writing your note..."
+                    value={editForm.description}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, description: e.target.value })
+                    }
+                    className="min-h-[400px] text-base border-none focus-visible:ring-0 px-0 resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col">
+            {/* Note View Header */}
+            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-800">{selectedNote.title}</h2>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleEditNote(selectedNote)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+                <Button
+                  onClick={() => handleDeleteNote(selectedNote.id)}
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+
+            {/* Note Content */}
+            <div className="flex-1 overflow-y-auto p-6 bg-white">
+              <div className="max-w-4xl mx-auto">
+                <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                  {selectedNote.title}
+                </h1>
+                
+                {selectedNote.tags && selectedNote.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {selectedNote.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary">
+                        <Tag className="w-3 h-3 mr-1" />
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="prose prose-lg max-w-none">
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {selectedNote.description}
+                  </p>
+                </div>
+                
+                <div className="mt-8 pt-4 border-t border-gray-200 text-sm text-gray-500">
+                  <p>Created: {new Date(selectedNote.created_at).toLocaleString()}</p>
+                  <p>Updated: {new Date(selectedNote.updated_at).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }
-
-export default App;
