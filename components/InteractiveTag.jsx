@@ -1,18 +1,18 @@
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Tag, X } from 'lucide-react'
 
-export default function InteractiveTag({ tag, onRemove, showIcon = true, className = '' }) {
-  const router = useRouter()
+export default function InteractiveTag({ tag, onRemove, onClick, showIcon = true, className = '' }) {
   const [isHovered, setIsHovered] = useState(false)
 
   const handleTagClick = (e) => {
     // Prevent navigation if clicking on remove button
     if (e.target.closest('.remove-tag')) return
 
-    // Navigate to tag page
-    router.push(`/tags/${encodeURIComponent(tag)}`)
+    // Call the onClick handler if provided
+    if (onClick) {
+      onClick(tag)
+    }
   }
 
   const handleRemoveClick = (e) => {
