@@ -3,6 +3,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  trailingSlash: true,
   webpack(config, { dev }) {
     if (dev) {
       // Reduce CPU/memory from file watching

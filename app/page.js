@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'lucide-react'
+import InteractiveTag from '@/components/InteractiveTag'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -18,6 +19,7 @@ export default function App() {
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({ title: '', description: '', tags: '' })
   const [saving, setSaving] = useState(false)
+  const [filterByTag, setFilterByTag] = useState(null)
   
   const supabase = createClient()
 
@@ -52,7 +54,7 @@ export default function App() {
     }
   }, [user])
 
-  const fetchNotes = async (search = '') => {
+  const fetchNotes = async (search = '', tagFilter = null) => {
     try {
       let query = supabase
         .from('notes')
@@ -72,10 +74,19 @@ export default function App() {
         return
       }
 
-      // Additional tag filtering
+      // Additional filtering
       let filteredData = data
+      
+      // Filter by tag
+      if (tagFilter) {
+        filteredData = filteredData.filter(note => 
+          note.tags && note.tags.includes(tagFilter)
+        )
+      }
+      
+      // Filter by search
       if (search) {
-        filteredData = data.filter(note => {
+        filteredData = filteredData.filter(note => {
           const titleMatch = note.title.toLowerCase().includes(search.toLowerCase())
           const descMatch = note.description.toLowerCase().includes(search.toLowerCase())
           const tagMatch = note.tags?.some(tag => 
@@ -93,7 +104,21 @@ export default function App() {
 
   const handleSearch = (query) => {
     setSearchQuery(query)
-    fetchNotes(query)
+    fetchNotes(query, filterByTag)
+  }
+
+  const handleTagClick = (tag) => {
+    setFilterByTag(tag)
+    setSearchQuery('')
+    fetchNotes('', tag)
+    setSelectedNote(null)
+    setIsEditing(false)
+  }
+
+  const handleClearTagFilter = () => {
+    setFilterByTag(null)
+    setSearchQuery('')
+    fetchNotes('', null)
   }
 
   const handleSignInWithGoogle = async () => {
@@ -188,7 +213,7 @@ export default function App() {
         }
       }
 
-      await fetchNotes(searchQuery)
+      await fetchNotes(searchQuery, filterByTag)
       setIsEditing(false)
       setSelectedNote(null)
       setEditForm({ title: '', description: '', tags: '' })
@@ -214,13 +239,54 @@ export default function App() {
         return
       }
 
-      await fetchNotes(searchQuery)
+      await fetchNotes(searchQuery, filterByTag)
       if (selectedNote?.id === noteId) {
         setSelectedNote(null)
         setIsEditing(false)
       }
     } catch (error) {
       console.error('Error deleting note:', error)
+    }
+  }
+
+  const handleRemoveTagFromNote = async (noteId, tagToRemove) => {
+    try {
+      // Find the note to get current tags
+      const noteToUpdate = notes.find(note => note.id === noteId)
+      if (!noteToUpdate || !noteToUpdate.tags) return
+
+      // Remove the tag from the tags array
+      const updatedTags = noteToUpdate.tags.filter(tag => tag !== tagToRemove)
+
+      // Update the note in database
+      const { error } = await supabase
+        .from('notes')
+        .update({
+          tags: updatedTags,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', noteId)
+
+      if (error) {
+        console.error('Error removing tag from note:', error)
+        alert('Failed to remove tag')
+        return
+      }
+
+      // Update local state
+      await fetchNotes(searchQuery, filterByTag)
+
+      // Update selectedNote if it's the current note
+      if (selectedNote?.id === noteId) {
+        setSelectedNote({
+          ...selectedNote,
+          tags: updatedTags,
+          updated_at: new Date().toISOString()
+        })
+      }
+    } catch (error) {
+      console.error('Error removing tag from note:', error)
+      alert('Failed to remove tag')
     }
   }
 
@@ -298,13 +364,31 @@ export default function App() {
               <h1 className="text-xl font-bold text-gray-800">EverFreeNote</h1>
             </div>
           </div>
+
+          {/* Tag Filter Badge */}
+          {filterByTag && (
+            <div className="mb-3 flex items-center gap-2">
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                <Tag className="w-3 h-3 mr-1" />
+                {filterByTag}
+              </Badge>
+              <Button
+                onClick={handleClearTagFilter}
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs"
+              >
+                Clear filter
+              </Button>
+            </div>
+          )}
           
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               type="text"
-              placeholder="Search notes..."
+              placeholder={filterByTag ? `Search in "${filterByTag}" notes...` : "Search notes..."}
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               className="pl-10"
@@ -349,9 +433,13 @@ export default function App() {
                   {note.tags && note.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {note.tags.slice(0, 3).map((tag, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
+                        <InteractiveTag
+                          key={index}
+                          tag={tag}
+                          onClick={handleTagClick}
+                          showIcon={false}
+                          className="text-xs px-2 py-0.5"
+                        />
                       ))}
                     </div>
                   )}
@@ -505,10 +593,12 @@ export default function App() {
                 {selectedNote.tags && selectedNote.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-6">
                     {selectedNote.tags.map((tag, index) => (
-                      <Badge key={index} variant="secondary">
-                        <Tag className="w-3 h-3 mr-1" />
-                        {tag}
-                      </Badge>
+                      <InteractiveTag
+                        key={index}
+                        tag={tag}
+                        onClick={handleTagClick}
+                        onRemove={(tagToRemove) => handleRemoveTagFromNote(selectedNote.id, tagToRemove)}
+                      />
                     ))}
                   </div>
                 )}
