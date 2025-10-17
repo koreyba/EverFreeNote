@@ -41,7 +41,7 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import FontFamily from '@tiptap/extension-font-family'
 
-import Heading from '@tiptap/extension-heading'
+// import Heading from '@tiptap/extension-heading'
 // import { FontSize } from '../extensions/FontSize'
 
 const MenuBar = ({ editor }) => {
@@ -126,7 +126,18 @@ const RichTextEditor = ({ content, onChange }) => {
       TextStyle,
       Color,
       FontFamily,
-//      FontSize,
+      //      FontSize,
+      // Heading.configure({
+      //   levels: [1, 2, 3],
+      // }).extend({
+      //   addKeyboardShortcuts() {
+      //     return {
+      //       'Mod-Alt-1': () => this.editor.commands.toggleHeading({ level: 1 }),
+      //       'Mod-Alt-2': () => this.editor.commands.toggleHeading({ level: 2 }),
+      //       'Mod-Alt-3': () => this.editor.commands.toggleHeading({ level: 3 }),
+      //     }
+      //   },
+      // }),
 
     ],
     content: content,
