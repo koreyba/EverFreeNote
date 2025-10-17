@@ -139,3 +139,14 @@ code {
     @apply bg-background text-foreground;
     }
 }
+
+
+/* Rich Text Editor styles */
+.ProseMirror {
+  min-height: 200px;
+}
+
+.ProseMirror-focused {
+    outline: none;
+}
+

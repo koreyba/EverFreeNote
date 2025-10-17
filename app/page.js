@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import RichTextEditor from '@/components/RichTextEditor'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'lucide-react'
@@ -545,13 +545,11 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <Textarea
-                    placeholder="Start writing your note..."
-                    value={editForm.description}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, description: e.target.value })
+                  <RichTextEditor
+                    content={editForm.description}
+                    onChange={(html) =>
+                      setEditForm({ ...editForm, description: html })
                     }
-                    className="min-h-[400px] text-base border-none focus-visible:ring-0 px-0 resize-none"
                   />
                 </div>
               </div>
@@ -604,9 +602,10 @@ export default function App() {
                 )}
                 
                 <div className="prose prose-lg max-w-none">
-                  <p className="text-gray-700 whitespace-pre-wrap">
-                    {selectedNote.description}
-                  </p>
+                  <div
+                    className="prose prose-lg max-w-none"
+                    dangerouslySetInnerHTML={{ __html: selectedNote.description }}
+                  />
                 </div>
                 
                 <div className="mt-8 pt-4 border-t border-gray-200 text-sm text-gray-500">
