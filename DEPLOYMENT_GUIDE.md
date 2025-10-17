@@ -2,7 +2,13 @@
 
 ## 📦 What's Included
 
-This package contains the complete EverFreeNote application ready for deployment to Cloudflare Pages.
+This package contains the complete EverFreeNote application - a **Single Page Application (SPA)** optimized for Cloudflare Pages.
+
+### Architecture:
+- ✅ **Client-Side Only** - No server-side code required
+- ✅ **Direct Supabase Integration** - All operations from browser
+- ✅ **Static Export** - Fully static HTML/CSS/JS
+- ✅ **Fast & Scalable** - Optimized for edge deployment
 
 ### Key Features Implemented:
 - ✅ Google OAuth Authentication via Supabase
@@ -72,10 +78,11 @@ git push -u origin main
 3. Click **Connect to Git**
 4. Select your repository
 5. Configure build settings:
-   - **Framework preset:** Next.js
-   - **Build command:** `npm run build`
-   - **Build output directory:** `.next`
-   - **Node version:** 18 or higher
+   - **Production branch:** `main`
+   - **Framework preset:** Next.js (Static HTML Export)
+   - **Build command:** `npm run build` or `yarn build`
+   - **Build output directory:** `out`
+   - **Node version:** `20` (or 18+)
 
 #### Step 4: Add Environment Variables
 In Cloudflare Pages project settings:
@@ -84,7 +91,7 @@ In Cloudflare Pages project settings:
   ```
   NEXT_PUBLIC_SUPABASE_URL = https://pmlloiywmuglbjkhrggo.supabase.co
   NEXT_PUBLIC_SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtbGxvaXl3bXVnbGJqa2hyZ2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTM5ODksImV4cCI6MjA3NTc4OTk4OX0.w0nQ2o4V2I35NujqOTgAfE3QSU1nYIJqTsTSCGT6UDw
-  NODE_VERSION = 18
+  NODE_VERSION = 20
   ```
 
 #### Step 5: Deploy
@@ -114,7 +121,7 @@ npm run build
 
 #### Step 4: Deploy
 ```bash
-wrangler pages deploy .next --project-name=everfreenote
+wrangler pages deploy out --project-name=everfreenote
 ```
 
 #### Step 5: Set Environment Variables
@@ -160,20 +167,21 @@ Make sure Google OAuth is enabled in Supabase:
 ```
 everfreenote/
 ├── app/
-│   ├── api/[[...path]]/route.js  # Backend API routes
 │   ├── auth/callback/page.js     # OAuth callback handler
-│   ├── page.js                   # Main application UI
+│   ├── page.js                   # Main application UI (SPA)
 │   ├── layout.js                 # Root layout
 │   └── globals.css               # Global styles
 ├── lib/
 │   └── supabase/
-│       ├── client.js             # Supabase browser client
-│       └── server.js             # Supabase server client
+│       └── client.js             # Supabase browser client
 ├── components/ui/                # Shadcn UI components
 ├── package.json                  # Dependencies
+├── next.config.js               # Next.js config (static export)
 ├── tailwind.config.js           # Tailwind configuration
 └── .env                         # Environment variables
 ```
+
+**Note:** This is a pure client-side application. All database operations are performed directly from the browser to Supabase using their JavaScript SDK.
 
 ---
 
@@ -270,21 +278,23 @@ RLS policies ensure users can only access their own notes.
 
 ---
 
-## 📝 API Endpoints
+## 📝 Data Operations
 
-### Authentication
-- `POST /api/auth/signin/google` - Initiate Google OAuth
-- `POST /api/auth/signout` - Sign out user
-- `GET /api/auth/user` - Get current user
+All operations are performed **directly from the browser** to Supabase:
 
-### Notes
-- `POST /api/notes` - Create note
-- `GET /api/notes` - Get all user notes
-- `GET /api/notes?search=query` - Search notes
-- `PUT /api/notes/:id` - Update note
-- `DELETE /api/notes/:id` - Delete note
+### Authentication (via Supabase SDK)
+- `supabase.auth.signInWithOAuth()` - Google OAuth login
+- `supabase.auth.signOut()` - Sign out user
+- `supabase.auth.getSession()` - Get current session
 
-All note endpoints require authentication.
+### Notes (via Supabase SDK)
+- `supabase.from('notes').insert()` - Create note
+- `supabase.from('notes').select()` - Get all user notes
+- `supabase.from('notes').select().or()` - Search notes
+- `supabase.from('notes').update()` - Update note
+- `supabase.from('notes').delete()` - Delete note
+
+All operations are protected by **Row-Level Security (RLS)** in Supabase, ensuring users can only access their own data.
 
 ---
 
@@ -297,10 +307,12 @@ Edit `tailwind.config.js` to customize the color scheme.
 The main UI is in `app/page.js` - it's a single-file component for easy customization.
 
 ### Add Features
-- File attachments: Use Supabase Storage
+- File attachments: Use Supabase Storage (works from browser)
 - Rich text editor: Add TipTap or Quill
 - Notebooks: Add a parent category system
 - Sharing: Implement RLS policies for shared access
+- Real-time collaboration: Use Supabase Realtime subscriptions
+- Mobile apps: Use the same Supabase backend with React Native/Flutter
 
 ---
 
