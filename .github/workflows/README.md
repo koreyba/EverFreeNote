@@ -74,7 +74,7 @@ gh workflow run e2e.yml -f branch=feature/my-branch
 1. ✅ Checkout кода
 2. ✅ Установка Node.js 18
 3. ✅ Установка зависимостей (`npm ci`)
-4. ✅ Установка Supabase CLI
+4. ✅ Установка Supabase CLI (`supabase/setup-cli@v1`)
 5. ✅ Запуск Supabase
 6. ✅ Запуск Next.js dev server
 7. ✅ Запуск компонентных тестов
@@ -85,7 +85,7 @@ gh workflow run e2e.yml -f branch=feature/my-branch
 1. ✅ Checkout кода (выбранная ветка)
 2. ✅ Установка Node.js 18
 3. ✅ Установка зависимостей (`npm ci`)
-4. ✅ Установка Supabase CLI
+4. ✅ Установка Supabase CLI (`supabase/setup-cli@v1`)
 5. ✅ Запуск Supabase (применение миграций)
 6. ✅ Настройка переменных окружения
 7. ✅ Запуск Next.js dev server

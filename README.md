@@ -17,6 +17,8 @@
 - **[🎯 Testing Strategy](.github/TESTING_STRATEGY.md)** — When to run which tests
 - **[🏗️ Architecture Guide](./docs/ARCHITECTURE.md)** ⭐ — Required reading for developers
 - **[🚀 Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** — How to deploy to Cloudflare Pages
+- **[⚙️ Cloudflare Environment Setup](CLOUDFLARE_ENV_SETUP.md)** — Fix production environment variables
+- **[🔐 Google OAuth Setup](GOOGLE_OAUTH_SETUP.md)** — Configure Google authentication
 - **[⚙️ GitHub Actions Details](/.github/workflows/README.md)** — Technical CI/CD documentation
 - **[🗺️ Roadmap](./docs/roadmap.md)** — Product vision and feature roadmap
 
