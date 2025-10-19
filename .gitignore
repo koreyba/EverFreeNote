@@ -33,6 +33,18 @@ dist
 # Environment files (comprehensive coverage)
 *token.json*
 *credentials.json*
+.env
+.env.local
+.env*.local
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+supabase-data/
+
+# Cypress
+cypress/screenshots/
+cypress/videos/
 
 # Logs and debug files
 npm-debug.log*
