@@ -29,6 +29,11 @@ Cypress.Commands.add('createNote', (title, content = '') => {
   cy.contains('Note created successfully').should('be.visible')
 })
 
+// For component testing
+import { mount } from '@cypress/react18'
+
+Cypress.Commands.add('mount', mount)
+
 // Custom command for rich text editor testing
 Cypress.Commands.add('typeInRichEditor', (content) => {
   cy.get('.ql-editor').clear().type(content)
