@@ -54,22 +54,22 @@ const MenuBar = ({ editor }) => {
 
   return (
     <div className="flex flex-wrap items-center gap-1 p-2 border-b border-gray-200">
-      <Button variant={editor.isActive('bold') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleBold().run()}><Bold className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('italic') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleItalic().run()}><Italic className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('underline') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleUnderline().run()}><UnderlineIcon className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('strike') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('highlight') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleHighlight().run()}><Highlighter className="w-4 h-4" /></Button>
+      <Button data-cy="bold-button" variant={editor.isActive('bold') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleBold().run()}><Bold className="w-4 h-4" /></Button>
+      <Button data-cy="italic-button" variant={editor.isActive('italic') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleItalic().run()}><Italic className="w-4 h-4" /></Button>
+      <Button data-cy="underline-button" variant={editor.isActive('underline') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleUnderline().run()}><UnderlineIcon className="w-4 h-4" /></Button>
+      <Button data-cy="strike-button" variant={editor.isActive('strike') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough className="w-4 h-4" /></Button>
+      <Button data-cy="highlight-button" variant={editor.isActive('highlight') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleHighlight().run()}><Highlighter className="w-4 h-4" /></Button>
 
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm"><Palette className="w-4 h-4" /></Button>
+          <Button data-cy="color-button" variant="ghost" size="sm"><Palette className="w-4 h-4" /></Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0">
-          <TwitterPicker color={editor.getAttributes('textStyle').color} onChange={(color) => editor.chain().focus().setColor(color.hex).run()} />
+          <TwitterPicker data-cy="color-picker" color={editor.getAttributes('textStyle').color} onChange={(color) => editor.chain().focus().setColor(color.hex).run()} />
         </PopoverContent>
       </Popover>
 
-      <Select onValueChange={(value) => editor.chain().focus().setFontFamily(value).run()} defaultValue={fontFamilies[0]}>
+      <Select data-cy="font-family-select" onValueChange={(value) => editor.chain().focus().setFontFamily(value).run()} defaultValue={fontFamilies[0]}>
         <SelectTrigger className="w-[120px] text-xs h-8">
           <SelectValue placeholder="Font Family" />
         </SelectTrigger>
@@ -78,7 +78,7 @@ const MenuBar = ({ editor }) => {
         </SelectContent>
       </Select>
 
-      <Select onValueChange={(value) => editor.chain().focus().setFontSize(`${value}pt`).run()} defaultValue={fontSizes[1]}>
+      <Select data-cy="font-size-select" onValueChange={(value) => editor.chain().focus().setFontSize(`${value}pt`).run()} defaultValue={fontSizes[1]}>
         <SelectTrigger className="w-[70px] text-xs h-8">
           <SelectValue placeholder="Font Size" />
         </SelectTrigger>
@@ -87,25 +87,25 @@ const MenuBar = ({ editor }) => {
         </SelectContent>
       </Select>
 
-      <Button variant={editor.isActive('heading', { level: 1 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setHeading({ level: 1 }).run()}><Heading1 className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setHeading({ level: 2 }).run()}><Heading2 className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('heading', { level: 3 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setHeading({ level: 3 }).run()}><Heading3 className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('paragraph') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setParagraph().run()}>P</Button>
+      <Button data-cy="h1-button" variant={editor.isActive('heading', { level: 1 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setHeading({ level: 1 }).run()}><Heading1 className="w-4 h-4" /></Button>
+      <Button data-cy="h2-button" variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setHeading({ level: 2 }).run()}><Heading2 className="w-4 h-4" /></Button>
+      <Button data-cy="h3-button" variant={editor.isActive('heading', { level: 3 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setHeading({ level: 3 }).run()}><Heading3 className="w-4 h-4" /></Button>
+      <Button data-cy="paragraph-button" variant={editor.isActive('paragraph') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setParagraph().run()}>P</Button>
 
-      <Button variant={editor.isActive('bulletList') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleBulletList().run()}><List className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('orderedList') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleOrderedList().run()}><ListOrdered className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('taskList') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleTaskList().run()}><CheckSquare className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('link') ? 'secondary' : 'ghost'} size="sm" onClick={() => { const url = window.prompt('URL'); if (url) { editor.chain().focus().setLink({ href: url }).run() } }}><Link2 className="w-4 h-4" /></Button>
+      <Button data-cy="bullet-list-button" variant={editor.isActive('bulletList') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleBulletList().run()}><List className="w-4 h-4" /></Button>
+      <Button data-cy="ordered-list-button" variant={editor.isActive('orderedList') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleOrderedList().run()}><ListOrdered className="w-4 h-4" /></Button>
+      <Button data-cy="task-list-button" variant={editor.isActive('taskList') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleTaskList().run()}><CheckSquare className="w-4 h-4" /></Button>
+      <Button data-cy="link-button" variant={editor.isActive('link') ? 'secondary' : 'ghost'} size="sm" onClick={() => { const url = window.prompt('URL'); if (url) { editor.chain().focus().setLink({ href: url }).run() } }}><Link2 className="w-4 h-4" /></Button>
 
-      <Button variant={editor.isActive({ textAlign: 'left' }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setTextAlign('left').run()}><AlignLeft className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive({ textAlign: 'center' }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setTextAlign('center').run()}><AlignCenter className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive({ textAlign: 'right' }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setTextAlign('right').run()}><AlignRight className="w-4 h-4" /></Button>
+      <Button data-cy="align-left-button" variant={editor.isActive({ textAlign: 'left' }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setTextAlign('left').run()}><AlignLeft className="w-4 h-4" /></Button>
+      <Button data-cy="align-center-button" variant={editor.isActive({ textAlign: 'center' }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setTextAlign('center').run()}><AlignCenter className="w-4 h-4" /></Button>
+      <Button data-cy="align-right-button" variant={editor.isActive({ textAlign: 'right' }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setTextAlign('right').run()}><AlignRight className="w-4 h-4" /></Button>
 
-      <Button size="sm" onClick={() => editor.chain().focus().sinkListItem('listItem').run()} disabled={!editor.can().sinkListItem('listItem')}><Indent className="w-4 h-4" /></Button>
-      <Button size="sm" onClick={() => editor.chain().focus().liftListItem('listItem').run()} disabled={!editor.can().liftListItem('listItem')}><Outdent className="w-4 h-4" /></Button>
+      <Button data-cy="indent-button" size="sm" onClick={() => editor.chain().focus().sinkListItem('listItem').run()} disabled={!editor.can().sinkListItem('listItem')}><Indent className="w-4 h-4" /></Button>
+      <Button data-cy="outdent-button" size="sm" onClick={() => editor.chain().focus().liftListItem('listItem').run()} disabled={!editor.can().liftListItem('listItem')}><Outdent className="w-4 h-4" /></Button>
 
-      <Button variant={editor.isActive('superscript') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleSuperscript().run()}><SuperscriptIcon className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('subscript') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleSubscript().run()}><SubscriptIcon className="w-4 h-4" /></Button>
+      <Button data-cy="superscript-button" variant={editor.isActive('superscript') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleSuperscript().run()}><SuperscriptIcon className="w-4 h-4" /></Button>
+      <Button data-cy="subscript-button" variant={editor.isActive('subscript') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleSubscript().run()}><SubscriptIcon className="w-4 h-4" /></Button>
     </div>
   )
 }
@@ -149,7 +149,7 @@ const RichTextEditor = ({ content, onChange }) => {
   return (
     <div className="border border-gray-200 rounded-md">
       <MenuBar editor={editor} />
-      <EditorContent editor={editor} />
+      <EditorContent data-cy="editor-content" editor={editor} />
     </div>
   )
 }
