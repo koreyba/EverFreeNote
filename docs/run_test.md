@@ -351,6 +351,13 @@ gh workflow run e2e.yml
 gh workflow run e2e.yml --ref feature/my-branch
 ```
 
+### Technical Details
+
+**Supabase CLI Installation:**
+- Uses official `supabase/setup-cli@v1` action
+- Automatically installs latest version
+- No need for `npm install -g supabase` (deprecated)
+
 ### CI Environment
 - **Runner**: `ubuntu-latest`
 - **Node**: `18`
