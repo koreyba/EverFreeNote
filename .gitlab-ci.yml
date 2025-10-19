@@ -1,0 +1,61 @@
+image: node:18
+
+stages:
+  - test
+
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
+
+test:
+  stage: test
+  services:
+    - docker:24-dind
+  before_script:
+    # Install Docker CLI
+    - apt-get update && apt-get install -y docker.io
+    # Install dependencies
+    - npm ci
+    # Install Supabase CLI globally
+    - npm install -g supabase
+    # Start Supabase local stack
+    - supabase start
+    # Extract keys from supabase status
+    - export NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+    - export NEXT_PUBLIC_SUPABASE_ANON_KEY=$(supabase status | grep 'anon key' | cut -d':' -f2 | xargs)
+    - export SUPABASE_SERVICE_ROLE_KEY=$(supabase status | grep 'service_role key' | cut -d':' -f2 | xargs)
+    # Display environment info
+    - echo "Supabase URL:" $NEXT_PUBLIC_SUPABASE_URL
+    - echo "Supabase services started successfully"
+  script:
+    # Start Next.js dev server in background
+    - npm run dev &
+    - DEV_PID=$!
+    # Wait for dev server to start
+    - sleep 15
+    # Check if dev server is running
+    - curl -f http://localhost:3000 || (echo "Dev server failed to start" && exit 1)
+    # Run all tests
+    - npm run test:all
+  after_script:
+    # Stop Supabase services
+    - supabase stop || true
+    # Kill dev server if still running
+    - kill $DEV_PID || true
+  artifacts:
+    when: always
+    paths:
+      - cypress/screenshots/
+      - cypress/videos/
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - develop
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+      - .npm/
+

@@ -18,23 +18,39 @@
 
 ### Prerequisites
 - Node.js 18+
-- Supabase account
+- Docker Desktop (for local development)
+- Supabase account (for production)
 
-### Installation
+### Local Development
 
 ```bash
 # Install dependencies
 npm install
 
-# Configure environment
-cp .env .env.local
-# Edit .env.local with your Supabase credentials
+# Start local Supabase stack (PostgreSQL + Auth + API + Studio)
+npm run db:start
+
+# Configure environment (use default local keys)
+cp .env.local.example .env.local
 
 # Run development server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
+
+**Supabase Studio**: [http://localhost:54323](http://localhost:54323)
+
+### Test Users
+- `skip-auth@example.com` / `testpassword123`
+- `test@example.com` / `testpassword123`
+
+### Stop Services
+```bash
+npm run db:stop
+```
+
+See [docs/run_test.md](./docs/run_test.md) for detailed setup and testing instructions.
 
 ---
 
