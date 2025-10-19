@@ -30,28 +30,8 @@ export default function App() {
   // Check authentication status
   useEffect(() => {
     const checkAuth = async () => {
-      // First check if we have a test user stored
-      const testUser = localStorage.getItem('testUser')
-      if (testUser) {
-        try {
-          const parsedUser = JSON.parse(testUser)
-          // Ensure we have the correct UUID for test users
-          if (parsedUser.id === 'test-user-id-12345' || parsedUser.id === '550e8400-e29b-41d4-a716-446655440000') {
-            parsedUser.id = 'ec926a90-88b8-4d91-8b68-9ed3f5cca522' // Update to real Supabase UUID
-            localStorage.setItem('testUser', JSON.stringify(parsedUser))
-          }
-          if (parsedUser.email === 'skip-auth@example.com' && parsedUser.id === '550e8400-e29b-41d4-a716-446655440001') {
-            parsedUser.id = 'e0b6eca0-9e4d-4214-b76c-4db8b54fa2a2' // Update to real Supabase UUID
-            localStorage.setItem('testUser', JSON.stringify(parsedUser))
-          }
-          setUser(parsedUser)
-          setLoading(false)
-          return
-        } catch (error) {
-          console.error('Error parsing test user:', error)
-          localStorage.removeItem('testUser')
-        }
-      }
+      // Clean up legacy test user storage
+      localStorage.removeItem('testUser')
 
       // Check for real Supabase session
       const { data: { session } } = await supabase.auth.getSession()
@@ -63,12 +43,6 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // Don't override test user with Supabase session
-        const testUser = localStorage.getItem('testUser')
-        if (testUser) {
-          return
-        }
-
         setUser(session?.user || null)
         if (session?.user) {
           fetchNotes()
@@ -174,55 +148,72 @@ export default function App() {
     }
   }
 
-  const handleTestLogin = () => {
-    // Create a mock user for testing with valid UUID
-    const testUser = {
-      id: 'ec926a90-88b8-4d91-8b68-9ed3f5cca522', // Real Supabase UUID
-      email: 'test@example.com',
-      user_metadata: {
-        full_name: 'Test User'
+  const handleTestLogin = async () => {
+    try {
+      setLoading(true)
+      
+      // Sign in with real Supabase authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'test@example.com',
+        password: 'testpassword123'
+      })
+
+      if (error) {
+        console.error('Test login error:', error)
+        toast.error('Failed to login as test user: ' + error.message)
+        setLoading(false)
+        return
       }
+
+      if (data?.user) {
+        setUser(data.user)
+        toast.success('Logged in as test user!')
+      }
+    } catch (error) {
+      console.error('Test login exception:', error)
+      toast.error('Failed to login as test user')
+    } finally {
+      setLoading(false)
     }
-
-    // Set user state directly (bypassing Supabase auth for testing)
-    setUser(testUser)
-    setLoading(false)
-
-    // Store test user in localStorage to persist across page refreshes
-    localStorage.setItem('testUser', JSON.stringify(testUser))
-
-    toast.success('Logged in as test user!')
   }
 
-  const handleSkipAuth = () => {
-    // Skip authentication entirely for quick testing
-    const skipUser = {
-      id: 'e0b6eca0-9e4d-4214-b76c-4db8b54fa2a2', // Real Supabase UUID
-      email: 'skip-auth@example.com',
-      user_metadata: {
-        full_name: 'Skip Auth User'
+  const handleSkipAuth = async () => {
+    try {
+      setLoading(true)
+      
+      // Sign in with real Supabase authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'skip-auth@example.com',
+        password: 'testpassword123'
+      })
+
+      if (error) {
+        console.error('Skip auth login error:', error)
+        toast.error('Failed to login as skip-auth user: ' + error.message)
+        setLoading(false)
+        return
       }
+
+      if (data?.user) {
+        setUser(data.user)
+        toast.success('Logged in as skip-auth user!')
+      }
+    } catch (error) {
+      console.error('Skip auth login exception:', error)
+      toast.error('Failed to login as skip-auth user')
+    } finally {
+      setLoading(false)
     }
-
-    setUser(skipUser)
-    setLoading(false)
-
-    toast.success('Authentication skipped for testing!')
   }
 
   const handleSignOut = async () => {
     try {
-      // Check if we're using test user
-      const testUser = localStorage.getItem('testUser')
-      if (testUser) {
-        localStorage.removeItem('testUser')
-        setUser(null)
-        setNotes([])
-        setSelectedNote(null)
-        return
-      }
-
+      // Always use Supabase signOut for all users
       await supabase.auth.signOut()
+      
+      // Clean up local storage (legacy)
+      localStorage.removeItem('testUser')
+      
       setUser(null)
       setNotes([])
       setSelectedNote(null)
