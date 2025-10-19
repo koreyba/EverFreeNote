@@ -41,6 +41,7 @@
         "@radix-ui/react-tooltip": "^1.2.7",
         "@supabase/ssr": "^0.7.0",
         "@supabase/supabase-js": "^2.75.0",
+        "@tailwindcss/typography": "^0.5.19",
         "@tanstack/react-table": "^8.21.3",
         "@tiptap/extension-color": "^3.7.2",
         "@tiptap/extension-font-family": "^3.7.2",

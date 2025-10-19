@@ -42,6 +42,7 @@ import { Color } from '@tiptap/extension-color'
 import FontFamily from '@tiptap/extension-font-family'
 
 import { FontSize } from '../extensions/FontSize'
+import Heading from '@tiptap/extension-heading'
 
 const MenuBar = ({ editor }) => {
   if (!editor) {
@@ -86,9 +87,10 @@ const MenuBar = ({ editor }) => {
         </SelectContent>
       </Select>
 
-      <Button variant={editor.isActive('heading', { level: 1 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}><Heading1 className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}><Heading2 className="w-4 h-4" /></Button>
-      <Button variant={editor.isActive('heading', { level: 3 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}><Heading3 className="w-4 h-4" /></Button>
+      <Button variant={editor.isActive('heading', { level: 1 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setHeading({ level: 1 }).run()}><Heading1 className="w-4 h-4" /></Button>
+      <Button variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setHeading({ level: 2 }).run()}><Heading2 className="w-4 h-4" /></Button>
+      <Button variant={editor.isActive('heading', { level: 3 }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setHeading({ level: 3 }).run()}><Heading3 className="w-4 h-4" /></Button>
+      <Button variant={editor.isActive('paragraph') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setParagraph().run()}>P</Button>
 
       <Button variant={editor.isActive('bulletList') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleBulletList().run()}><List className="w-4 h-4" /></Button>
       <Button variant={editor.isActive('orderedList') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleOrderedList().run()}><ListOrdered className="w-4 h-4" /></Button>
@@ -113,9 +115,12 @@ const RichTextEditor = ({ content, onChange }) => {
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
+        bulletList: {},
+        orderedList: {},
+        listItem: {},
+      }),
+      Heading.configure({
+        levels: [1, 2, 3],
       }),
       Underline,
       Highlight.configure({ multicolor: true }),
