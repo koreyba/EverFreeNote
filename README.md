@@ -1,6 +1,7 @@
 # 🌿 EverFreeNote
 
-[![Component Tests](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/test.yml/badge.svg)](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/test.yml)
+[![Build](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/build.yml/badge.svg)](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/build.yml)
+[![Component Tests](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/component-tests.yml/badge.svg)](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/component-tests.yml)
 [![E2E Tests](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/e2e.yml/badge.svg)](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/e2e.yml)
 
 > Modern note-taking application built with Next.js and Supabase

@@ -1,12 +1,7 @@
-name: E2E Tests (Manual)
+name: E2E Tests
 
 on:
   workflow_dispatch:  # Ручной запуск
-    inputs:
-      branch:
-        description: 'Branch to test (leave empty for current)'
-        required: false
-        default: ''
 
 jobs:
   test-e2e:
@@ -16,8 +11,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -59,7 +52,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-test-screenshots-${{ github.run_id }}
+          name: e2e-test-screenshots-${{ github.sha }}
           path: cypress/screenshots/
           retention-days: 7
 
@@ -67,7 +60,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-test-videos-${{ github.run_id }}
+          name: e2e-test-videos-${{ github.sha }}
           path: cypress/videos/
           retention-days: 7
 
