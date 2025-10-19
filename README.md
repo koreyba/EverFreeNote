@@ -1,5 +1,9 @@
 # 🌿 EverFreeNote
 
+[![Build](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/build.yml/badge.svg)](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/build.yml)
+[![Component Tests](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/component-tests.yml/badge.svg)](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/component-tests.yml)
+[![E2E Tests](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/e2e.yml/badge.svg)](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/e2e.yml)
+
 > Modern note-taking application built with Next.js and Supabase
 
 **Simple. Secure. Synced.**
@@ -8,9 +12,17 @@
 
 ## 📚 Documentation
 
-- **[Architecture Guide](./docs/ARCHITECTURE.md)** ⭐ — Required reading for developers
-- **[Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** — How to deploy to Cloudflare Pages
-- **[Roadmap](./docs/roadmap.md)** — Product vision and feature roadmap
+- **[⚡ Quick Start](QUICKSTART.md)** — Get started in 3 commands
+- **[✅ GitHub Actions Setup](GITHUB_ACTIONS_SETUP.md)** — CI/CD is ready! Learn how to use it
+- **[🔧 GitHub MCP Server Setup](GITHUB_MCP_SETUP.md)** — Connect Cursor to GitHub via MCP
+- **[🧪 Testing Guide](docs/run_test.md)** — Complete guide for running tests locally and in CI
+- **[🎯 Testing Strategy](.github/TESTING_STRATEGY.md)** — When to run which tests
+- **[🏗️ Architecture Guide](./docs/ARCHITECTURE.md)** ⭐ — Required reading for developers
+- **[🚀 Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** — How to deploy to Cloudflare Pages
+- **[⚙️ Cloudflare Environment Setup](CLOUDFLARE_ENV_SETUP.md)** — Fix production environment variables
+- **[🔐 Google OAuth Setup](GOOGLE_OAUTH_SETUP.md)** — Configure Google authentication
+- **[⚙️ GitHub Actions Details](/.github/workflows/README.md)** — Technical CI/CD documentation
+- **[🗺️ Roadmap](./docs/roadmap.md)** — Product vision and feature roadmap
 
 ---
 
