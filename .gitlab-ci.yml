@@ -8,7 +8,8 @@ variables:
   DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: overlay2
 
-test:
+# Общий шаблон для всех тестов
+.test_template: &test_template
   stage: test
   services:
     - docker:24-dind
@@ -28,7 +29,6 @@ test:
     # Display environment info
     - echo "Supabase URL:" $NEXT_PUBLIC_SUPABASE_URL
     - echo "Supabase services started successfully"
-  script:
     # Start Next.js dev server in background
     - npm run dev &
     - DEV_PID=$!
@@ -36,19 +36,11 @@ test:
     - sleep 15
     # Check if dev server is running
     - curl -f http://localhost:3000 || (echo "Dev server failed to start" && exit 1)
-    # Run all tests
-    - npm run test:all
   after_script:
     # Stop Supabase services
     - supabase stop || true
     # Kill dev server if still running
     - kill $DEV_PID || true
-  artifacts:
-    when: always
-    paths:
-      - cypress/screenshots/
-      - cypress/videos/
-    expire_in: 1 week
   only:
     - merge_requests
     - main
@@ -59,3 +51,31 @@ test:
       - node_modules/
       - .npm/
 
+# Component тесты (быстрые, UI компоненты)
+test:component:
+  <<: *test_template
+  script:
+    - echo "Running component tests..."
+    - npm run test:component
+  artifacts:
+    when: on_failure
+    paths:
+      - cypress/screenshots/
+    expire_in: 1 week
+    reports:
+      junit: cypress/results/component-*.xml
+
+# E2E тесты (медленные, полные сценарии)
+test:e2e:
+  <<: *test_template
+  script:
+    - echo "Running E2E tests..."
+    - npm run test:e2e
+  artifacts:
+    when: on_failure
+    paths:
+      - cypress/screenshots/
+      - cypress/videos/
+    expire_in: 1 week
+    reports:
+      junit: cypress/results/e2e-*.xml
