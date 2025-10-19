@@ -307,43 +307,117 @@ npx supabase logs
 
 ---
 
-## 5. GitLab CI Integration
+## 5. GitHub Actions Integration
 
-The project includes `.gitlab-ci.yml` for automated testing in GitLab CI/CD.
+The project uses 2 separate workflows:
 
-### How It Works
-1. GitLab runner starts with Node.js 18 image
-2. Docker-in-Docker service is started
-3. Dependencies are installed
-4. Supabase CLI is installed globally
-5. Supabase local stack is started
-6. Environment variables are extracted from `supabase status`
-7. Next.js dev server is started in background
-8. All tests are executed
-9. Supabase is stopped in cleanup
+### `test.yml` - Component Tests (Automatic)
+
+**Triggers:**
+- Push to **any** branch
+- Pull Request to **any** branch
+
+**What it does:**
+- Runs 60 component tests
+- Fast (~2-3 minutes)
+- Catches UI bugs immediately
+
+### `e2e.yml` - E2E Tests (Manual)
+
+**Triggers:**
+- Manual dispatch only (GitHub UI or CLI)
+- Can select any branch
+
+**What it does:**
+- Runs 7 E2E tests
+- Slower (~3-4 minutes)
+- Tests full user flows (auth, CRUD, search)
+
+### How to Run E2E Tests Manually
+
+**Via GitHub UI:**
+1. Go to **Actions** tab
+2. Select **"E2E Tests (Manual)"** workflow
+3. Click **"Run workflow"**
+4. (Optional) Specify branch or leave empty for current
+5. Click green **"Run workflow"** button
+
+**Via GitHub CLI:**
+```bash
+# Current branch
+gh workflow run e2e.yml
+
+# Specific branch
+gh workflow run e2e.yml --ref feature/my-branch
+```
+
+### Technical Details
+
+**Supabase CLI Installation:**
+- Uses official `supabase/setup-cli@v1` action
+- Automatically installs latest version
+- No need for `npm install -g supabase` (deprecated)
 
 ### CI Environment
-- **Image**: `node:18`
-- **Services**: `docker:24-dind`
+- **Runner**: `ubuntu-latest`
+- **Node**: `18`
 - **Supabase**: Full local stack (same as local development)
-- **Tests**: Component + E2E tests
 - **Artifacts**: Screenshots and videos (on failure)
 
-### Triggering CI
-Tests run automatically on:
-- Merge requests
-- Pushes to `main` branch
-- Pushes to `develop` branch
-
 ### Viewing Results
-1. Go to your GitLab project
-2. Navigate to **CI/CD** → **Pipelines**
-3. Click on the pipeline to see job details
+1. Go to your GitHub repository
+2. Navigate to **Actions** tab
+3. Click on the workflow run to see job details
 4. Download artifacts (screenshots/videos) if tests failed
 
 ---
 
-## 6. Cleanup
+## 6. GitHub Actions Workflow Details
+
+### Two Separate Workflows
+
+```
+Component Tests (test.yml)     E2E Tests (e2e.yml)
+├─ Automatic on push           ├─ Manual trigger only
+├─ Fast (~2-3 min)             ├─ Slower (~3-4 min)
+├─ 60 tests                    ├─ 7 tests
+└─ UI components               └─ Full user flows
+```
+
+**Why separate?**
+- Component tests are fast → run automatically
+- E2E tests are slow → run when needed
+
+### When to Run E2E Tests
+
+✅ **Run E2E when:**
+- Before merging to `main`
+- After auth changes
+- After CRUD operation changes
+- Before release
+
+❌ **Don't run E2E:**
+- On every commit (too slow)
+- For documentation changes
+- For minor UI tweaks
+
+### Viewing Logs
+
+1. GitHub → Actions → Select workflow run
+2. Click on job name
+3. Expand steps to view logs
+4. Download artifacts if tests failed
+
+### Artifacts on Failure
+
+- **Component tests**: Screenshots only
+- **E2E tests**: Screenshots + Videos
+- **Retention**: 7 days
+- **Download**: Actions → Run → Artifacts
+
+---
+
+## 7. Cleanup
 
 ### Stop Services
 ```bash
