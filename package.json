@@ -91,6 +91,7 @@
         "zod": "^3.25.67"
     },
     "devDependencies": {
+        "@cypress/react18": "^2.0.1",
         "@testing-library/cypress": "^10.1.0",
         "autoprefixer": "^10.4.19",
         "cypress": "^15.5.0",

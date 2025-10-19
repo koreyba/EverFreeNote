@@ -25,6 +25,7 @@ export default function InteractiveTag({ tag, onRemove, onClick, showIcon = true
   return (
     <Badge
       variant="secondary"
+      data-cy="interactive-tag"
       className={`cursor-pointer transition-all duration-200 hover:bg-green-100 hover:text-green-800 group relative ${className}`}
       onClick={handleTagClick}
       onMouseEnter={() => setIsHovered(true)}
