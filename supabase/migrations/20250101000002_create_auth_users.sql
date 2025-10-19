@@ -153,39 +153,5 @@ WHERE NOT EXISTS (
     SELECT 1 FROM auth.users WHERE email = 'skip-auth@example.com'
 );
 
--- Create corresponding records in public.users table
-INSERT INTO public.users (id, email, created_at)
-VALUES 
-    ('550e8400-e29b-41d4-a716-446655440000', 'test@example.com', NOW()),
-    ('550e8400-e29b-41d4-a716-446655440001', 'skip-auth@example.com', NOW())
-ON CONFLICT (id) DO NOTHING;
-
--- Create identity records for email authentication
-INSERT INTO auth.identities (
-    id,
-    user_id,
-    identity_data,
-    provider,
-    last_sign_in_at,
-    created_at,
-    updated_at
-) VALUES 
-    (
-        '550e8400-e29b-41d4-a716-446655440000',
-        '550e8400-e29b-41d4-a716-446655440000',
-        format('{"sub":"%s","email":"%s"}', '550e8400-e29b-41d4-a716-446655440000', 'test@example.com')::jsonb,
-        'email',
-        NOW(),
-        NOW(),
-        NOW()
-    ),
-    (
-        '550e8400-e29b-41d4-a716-446655440001',
-        '550e8400-e29b-41d4-a716-446655440001',
-        format('{"sub":"%s","email":"%s"}', '550e8400-e29b-41d4-a716-446655440001', 'skip-auth@example.com')::jsonb,
-        'email',
-        NOW(),
-        NOW(),
-        NOW()
-    )
-ON CONFLICT (id, provider) DO NOTHING;
+-- Note: auth.identities will be created automatically by Supabase Auth
+-- when users first sign in. No need to manually create them.
