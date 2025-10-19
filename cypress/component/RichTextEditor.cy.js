@@ -1,0 +1,265 @@
+import React from 'react'
+import RichTextEditor from '../../components/RichTextEditor'
+
+describe('RichTextEditor Component', () => {
+  it('renders with all toolbar buttons and editor area', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    // Монтируем RichTextEditor с пустым контентом
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Проверяем что все кнопки тулбара отображаются
+    cy.get('[data-cy="bold-button"]').should('be.visible')
+    cy.get('[data-cy="italic-button"]').should('be.visible')
+    cy.get('[data-cy="underline-button"]').should('be.visible')
+    cy.get('[data-cy="strike-button"]').should('be.visible')
+    cy.get('[data-cy="highlight-button"]').should('be.visible')
+
+    cy.get('[data-cy="color-button"]').should('be.visible')
+    // TODO: Селекты shadcn/ui сложно тестировать в component тестах
+    // cy.get('[data-cy="font-family-select"]').should('be.visible')
+    // cy.get('[data-cy="font-size-select"]').should('be.visible')
+
+    cy.get('[data-cy="h1-button"]').should('be.visible')
+    cy.get('[data-cy="h2-button"]').should('be.visible')
+    cy.get('[data-cy="h3-button"]').should('be.visible')
+    cy.get('[data-cy="paragraph-button"]').should('be.visible')
+
+    cy.get('[data-cy="bullet-list-button"]').should('be.visible')
+    cy.get('[data-cy="ordered-list-button"]').should('be.visible')
+    cy.get('[data-cy="task-list-button"]').should('be.visible')
+    cy.get('[data-cy="link-button"]').should('be.visible')
+
+    cy.get('[data-cy="align-left-button"]').should('be.visible')
+    cy.get('[data-cy="align-center-button"]').should('be.visible')
+    cy.get('[data-cy="align-right-button"]').should('be.visible')
+
+    cy.get('[data-cy="indent-button"]').should('be.visible')
+    cy.get('[data-cy="outdent-button"]').should('be.visible')
+
+    cy.get('[data-cy="superscript-button"]').should('be.visible')
+    cy.get('[data-cy="subscript-button"]').should('be.visible')
+
+    // Проверяем что область редактора отображается
+    cy.get('[data-cy="editor-content"]').should('be.visible')
+
+    // Проверяем что onChange не вызывался при рендеринге
+    cy.get('@onChangeSpy').should('not.have.been.called')
+  })
+
+  it('renders with initial content', () => {
+    const initialContent = '<p>Hello World</p>'
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content={initialContent}
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Проверяем что контент отображается в редакторе
+    cy.get('[data-cy="editor-content"]').should('contain', 'Hello World')
+
+    // Проверяем что onChange не вызывался при рендеринге
+    cy.get('@onChangeSpy').should('not.have.been.called')
+  })
+
+  it('calls onChange when typing in editor', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Кликаем в область редактора и вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Test content')
+
+    // Проверяем что onChange был вызван с правильным HTML
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').should('have.been.calledWith', '<p>Test content</p>')
+  })
+
+  it('applies bold formatting', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Hello World')
+
+    // Выделяем текст и применяем жирный
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="bold-button"]').click()
+
+    // Проверяем что onChange был вызван с жирным текстом
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').should('have.been.calledWith', '<p><strong>Hello World</strong></p>')
+  })
+
+  it('applies italic formatting', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Hello World')
+
+    // Выделяем текст и применяем курсив
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="italic-button"]').click()
+
+    // Проверяем что onChange был вызван с курсивным текстом
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').should('have.been.calledWith', '<p><em>Hello World</em></p>')
+  })
+
+  it('applies underline formatting', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Hello World')
+
+    // Выделяем текст и применяем подчеркивание
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="underline-button"]').click()
+
+    // Проверяем что onChange был вызван с подчеркнутым текстом
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').should('have.been.calledWith', '<p><u>Hello World</u></p>')
+  })
+
+  it('applies strikethrough formatting', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Hello World')
+
+    // Выделяем текст и применяем зачеркивание
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="strike-button"]').click()
+
+    // Проверяем что onChange был вызван с зачеркнутым текстом
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').should('have.been.calledWith', '<p><s>Hello World</s></p>')
+  })
+
+  it('applies highlight formatting', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Hello World')
+
+    // Выделяем текст и применяем выделение
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="highlight-button"]').click()
+
+    // Проверяем что onChange был вызван с выделенным текстом
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').should('have.been.calledWith', '<p><mark>Hello World</mark></p>')
+  })
+
+  // TODO: Тест заголовков требует дополнительной настройки TipTap поведения
+  // it('applies heading levels', () => {
+  //   const onChangeSpy = cy.spy().as('onChangeSpy')
+  //
+  //   cy.mount(
+  //     <RichTextEditor
+  //       content=""
+  //       onChange={onChangeSpy}
+  //     />
+  //   )
+  //
+  //   // Кликаем на H1 кнопку сначала
+  //   cy.get('[data-cy="h1-button"]').click()
+  //
+  //   // Теперь вводим текст - он должен пойти в H1
+  //   cy.get('[data-cy="editor-content"]').click()
+  //   cy.get('[data-cy="editor-content"]').type('Heading 1')
+  //
+  //   // Проверяем что onChange был вызван с H1 (с учетом того что может быть пустой параграф)
+  //   cy.get('@onChangeSpy').should('have.been.called')
+  //   cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<h1>Heading 1</h1>')
+  //
+  //   // Меняем на H2 - выделяем весь контент
+  //   cy.get('[data-cy="editor-content"]').type('{selectall}')
+  //   cy.get('[data-cy="h2-button"]').click()
+  //
+  //   cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<h2>Heading 1</h2>')
+  //
+  //   // Меняем на H3
+  //   cy.get('[data-cy="editor-content"]').type('{selectall}')
+  //   cy.get('[data-cy="h3-button"]').click()
+  //
+  //   cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<h3>Heading 1</h3>')
+  //
+  //   // Возвращаем к параграфу
+  //   cy.get('[data-cy="editor-content"]').type('{selectall}')
+  //   cy.get('[data-cy="paragraph-button"]').click()
+  //
+  //   cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<p>Heading 1</p>')
+  // })
+
+  it('renders all basic formatting buttons', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Проверяем что основные кнопки форматирования отображаются
+    cy.get('[data-cy="bold-button"]').should('be.visible')
+    cy.get('[data-cy="italic-button"]').should('be.visible')
+    cy.get('[data-cy="underline-button"]').should('be.visible')
+    cy.get('[data-cy="strike-button"]').should('be.visible')
+    cy.get('[data-cy="highlight-button"]').should('be.visible')
+  })
+})
