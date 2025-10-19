@@ -262,4 +262,165 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="strike-button"]').should('be.visible')
     cy.get('[data-cy="highlight-button"]').should('be.visible')
   })
+
+  it('creates bullet lists using TipTap TaskList extension', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('First item')
+
+    // Выделяем и применяем маркированный список
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="bullet-list-button"]').click()
+
+    // Проверяем что список создан
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<ul>')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<li>')
+  })
+
+  it('creates ordered lists using TipTap OrderedList extension', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('First item')
+
+    // Выделяем и применяем нумерованный список
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="ordered-list-button"]').click()
+
+    // Проверяем что нумерованный список создан
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<ol>')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<li>')
+  })
+
+  it('creates task lists using TipTap TaskList extension', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Task item')
+
+    // Выделяем и применяем список задач
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="task-list-button"]').click()
+
+    // Проверяем что список задач создан
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<ul')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', 'data-type="taskList"')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', 'data-type="taskItem"')
+  })
+
+  it('applies text alignment using TipTap TextAlign extension', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Centered text')
+
+    // Выделяем и применяем выравнивание по центру
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="align-center-button"]').click()
+
+    // Проверяем что выравнивание применено
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', 'text-align: center')
+  })
+
+  it('renders superscript and subscript buttons using TipTap extensions', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Проверяем что кнопки superscript и subscript отображаются
+    cy.get('[data-cy="superscript-button"]').should('be.visible')
+    cy.get('[data-cy="subscript-button"]').should('be.visible')
+
+    // Проверяем что они кликабельны
+    cy.get('[data-cy="superscript-button"]').should('not.be.disabled')
+    cy.get('[data-cy="subscript-button"]').should('not.be.disabled')
+  })
+
+  it('applies underline using TipTap Underline extension', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Underlined text')
+
+    // Выделяем и применяем подчеркивание
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="underline-button"]').click()
+
+    // Проверяем что подчеркивание применено
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<u>Underlined text</u>')
+  })
+
+  it('applies highlight using TipTap Highlight extension', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Вводим текст
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Highlighted text')
+
+    // Выделяем и применяем выделение
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="highlight-button"]').click()
+
+    // Проверяем что выделение применено
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<mark>Highlighted text</mark>')
+  })
 })
