@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import RichTextEditor from '@/components/RichTextEditor'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'lucide-react'
 import InteractiveTag from '@/components/InteractiveTag'
+import { toast } from 'sonner'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -20,12 +22,18 @@ export default function App() {
   const [editForm, setEditForm] = useState({ title: '', description: '', tags: '' })
   const [saving, setSaving] = useState(false)
   const [filterByTag, setFilterByTag] = useState(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [noteToDelete, setNoteToDelete] = useState(null)
   
   const supabase = createClient()
 
   // Check authentication status
   useEffect(() => {
     const checkAuth = async () => {
+      // Clean up legacy test user storage
+      localStorage.removeItem('testUser')
+
+      // Check for real Supabase session
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user || null)
       setLoading(false)
@@ -71,6 +79,7 @@ export default function App() {
 
       if (error) {
         console.error('Error fetching notes:', error)
+        toast.error('Failed to load notes: ' + error.message)
         return
       }
 
@@ -99,6 +108,7 @@ export default function App() {
       setNotes(filteredData)
     } catch (error) {
       console.error('Error fetching notes:', error)
+      toast.error('An unexpected error occurred while loading notes')
     }
   }
 
@@ -138,9 +148,72 @@ export default function App() {
     }
   }
 
+  const handleTestLogin = async () => {
+    try {
+      setLoading(true)
+      
+      // Sign in with real Supabase authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'test@example.com',
+        password: 'testpassword123'
+      })
+
+      if (error) {
+        console.error('Test login error:', error)
+        toast.error('Failed to login as test user: ' + error.message)
+        setLoading(false)
+        return
+      }
+
+      if (data?.user) {
+        setUser(data.user)
+        toast.success('Logged in as test user!')
+      }
+    } catch (error) {
+      console.error('Test login exception:', error)
+      toast.error('Failed to login as test user')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSkipAuth = async () => {
+    try {
+      setLoading(true)
+      
+      // Sign in with real Supabase authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'skip-auth@example.com',
+        password: 'testpassword123'
+      })
+
+      if (error) {
+        console.error('Skip auth login error:', error)
+        toast.error('Failed to login as skip-auth user: ' + error.message)
+        setLoading(false)
+        return
+      }
+
+      if (data?.user) {
+        setUser(data.user)
+        toast.success('Logged in as skip-auth user!')
+      }
+    } catch (error) {
+      console.error('Skip auth login exception:', error)
+      toast.error('Failed to login as skip-auth user')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSignOut = async () => {
     try {
+      // Always use Supabase signOut for all users
       await supabase.auth.signOut()
+      
+      // Clean up local storage (legacy)
+      localStorage.removeItem('testUser')
+      
       setUser(null)
       setNotes([])
       setSelectedNote(null)
@@ -166,11 +239,6 @@ export default function App() {
   }
 
   const handleSaveNote = async () => {
-    if (!editForm.title.trim() || !editForm.description.trim()) {
-      alert('Please fill in title and description')
-      return
-    }
-
     setSaving(true)
     try {
       const tags = editForm.tags
@@ -179,7 +247,7 @@ export default function App() {
         .filter(tag => tag.length > 0)
 
       const noteData = {
-        title: editForm.title.trim(),
+        title: editForm.title.trim() || 'Untitled',
         description: editForm.description.trim(),
         tags,
         updated_at: new Date().toISOString(),
@@ -194,9 +262,11 @@ export default function App() {
 
         if (error) {
           console.error('Error updating note:', error)
-          alert('Failed to update note')
+          toast.error('Failed to update note: ' + error.message)
           return
         }
+
+        toast.success('Note updated successfully')
       } else {
         // Create new note
         const { error } = await supabase
@@ -208,9 +278,11 @@ export default function App() {
 
         if (error) {
           console.error('Error creating note:', error)
-          alert('Failed to create note')
+          toast.error('Failed to create note: ' + error.message)
           return
         }
+
+        toast.success('Note created successfully')
       }
 
       await fetchNotes(searchQuery, filterByTag)
@@ -219,33 +291,44 @@ export default function App() {
       setEditForm({ title: '', description: '', tags: '' })
     } catch (error) {
       console.error('Error saving note:', error)
+      toast.error('An unexpected error occurred while saving the note')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDeleteNote = async (noteId) => {
-    if (!confirm('Are you sure you want to delete this note?')) return
+  const handleDeleteNote = (note) => {
+    setNoteToDelete(note)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDeleteNote = async () => {
+    if (!noteToDelete) return
 
     try {
       const { error } = await supabase
         .from('notes')
         .delete()
-        .eq('id', noteId)
+        .eq('id', noteToDelete.id)
 
       if (error) {
         console.error('Error deleting note:', error)
-        alert('Failed to delete note')
+        toast.error('Failed to delete note: ' + error.message)
         return
       }
 
+      toast.success('Note deleted successfully')
       await fetchNotes(searchQuery, filterByTag)
-      if (selectedNote?.id === noteId) {
+      if (selectedNote?.id === noteToDelete.id) {
         setSelectedNote(null)
         setIsEditing(false)
       }
     } catch (error) {
       console.error('Error deleting note:', error)
+      toast.error('An unexpected error occurred while deleting the note')
+    } finally {
+      setDeleteDialogOpen(false)
+      setNoteToDelete(null)
     }
   }
 
@@ -269,7 +352,7 @@ export default function App() {
 
       if (error) {
         console.error('Error removing tag from note:', error)
-        alert('Failed to remove tag')
+        toast.error('Failed to remove tag: ' + error.message)
         return
       }
 
@@ -286,7 +369,7 @@ export default function App() {
       }
     } catch (error) {
       console.error('Error removing tag from note:', error)
-      alert('Failed to remove tag')
+      toast.error('An unexpected error occurred while removing the tag')
     }
   }
 
@@ -343,6 +426,33 @@ export default function App() {
               </svg>
               Continue with Google
             </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or test the app</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Button
+                onClick={handleTestLogin}
+                variant="outline"
+                className="w-full h-10 text-sm border-orange-200 text-orange-700 hover:bg-orange-50"
+              >
+                🧪 Test Login (Persistent)
+              </Button>
+              <Button
+                onClick={handleSkipAuth}
+                variant="outline"
+                className="w-full h-10 text-sm border-blue-200 text-blue-700 hover:bg-blue-50"
+              >
+                🚀 Skip Authentication (Quick Test)
+              </Button>
+            </div>
+
             <p className="text-xs text-center text-gray-500">
               By continuing, you agree to our Terms of Service and Privacy Policy
             </p>
@@ -545,13 +655,11 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <Textarea
-                    placeholder="Start writing your note..."
-                    value={editForm.description}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, description: e.target.value })
+                  <RichTextEditor
+                    content={editForm.description}
+                    onChange={(html) =>
+                      setEditForm({ ...editForm, description: html })
                     }
-                    className="min-h-[400px] text-base border-none focus-visible:ring-0 px-0 resize-none"
                   />
                 </div>
               </div>
@@ -572,7 +680,7 @@ export default function App() {
                   Edit
                 </Button>
                 <Button
-                  onClick={() => handleDeleteNote(selectedNote.id)}
+                  onClick={() => handleDeleteNote(selectedNote)}
                   variant="outline"
                   size="sm"
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -604,9 +712,10 @@ export default function App() {
                 )}
                 
                 <div className="prose prose-lg max-w-none">
-                  <p className="text-gray-700 whitespace-pre-wrap">
-                    {selectedNote.description}
-                  </p>
+                  <div
+                    className="prose prose-lg max-w-none"
+                    dangerouslySetInnerHTML={{ __html: selectedNote.description }}
+                  />
                 </div>
                 
                 <div className="mt-8 pt-4 border-t border-gray-200 text-sm text-gray-500">
@@ -617,6 +726,24 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Note</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{noteToDelete?.title}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteNote} className="bg-red-600 hover:bg-red-700">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
