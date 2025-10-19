@@ -1,0 +1,77 @@
+name: E2E Tests (Manual)
+
+on:
+  workflow_dispatch:  # Ручной запуск
+    inputs:
+      branch:
+        description: 'Branch to test (leave empty for current)'
+        required: false
+        default: ''
+
+jobs:
+  test-e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Set environment variables
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(supabase status | grep 'anon key' | cut -d':' -f2 | xargs)" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status | grep 'service_role key' | cut -d':' -f2 | xargs)" >> $GITHUB_ENV
+
+      - name: Start Next.js dev server
+        run: |
+          npm run dev &
+          echo "DEV_PID=$!" >> $GITHUB_ENV
+          sleep 15
+
+      - name: Wait for app to be ready
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-screenshots-${{ github.run_id }}
+          path: cypress/screenshots/
+          retention-days: 7
+
+      - name: Upload videos on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-videos-${{ github.run_id }}
+          path: cypress/videos/
+          retention-days: 7
+
+      - name: Stop services
+        if: always()
+        run: |
+          supabase stop || true
+          kill $DEV_PID || true
+
