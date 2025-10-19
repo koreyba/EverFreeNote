@@ -1,4 +1,5 @@
 import './globals.css'
+import { Toaster } from '@/components/ui/sonner'
 
 export const metadata = {
   title: 'EverFreeNote - Your Personal Note-Taking App',
@@ -10,6 +11,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         {children}
+        <Toaster />
       </body>
     </html>
   )

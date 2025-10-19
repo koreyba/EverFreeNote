@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input'
 import RichTextEditor from '@/components/RichTextEditor'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'lucide-react'
 import InteractiveTag from '@/components/InteractiveTag'
+import { toast } from 'sonner'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -20,12 +22,38 @@ export default function App() {
   const [editForm, setEditForm] = useState({ title: '', description: '', tags: '' })
   const [saving, setSaving] = useState(false)
   const [filterByTag, setFilterByTag] = useState(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [noteToDelete, setNoteToDelete] = useState(null)
   
   const supabase = createClient()
 
   // Check authentication status
   useEffect(() => {
     const checkAuth = async () => {
+      // First check if we have a test user stored
+      const testUser = localStorage.getItem('testUser')
+      if (testUser) {
+        try {
+          const parsedUser = JSON.parse(testUser)
+          // Ensure we have the correct UUID for test users
+          if (parsedUser.id === 'test-user-id-12345' || parsedUser.id === '550e8400-e29b-41d4-a716-446655440000') {
+            parsedUser.id = 'ec926a90-88b8-4d91-8b68-9ed3f5cca522' // Update to real Supabase UUID
+            localStorage.setItem('testUser', JSON.stringify(parsedUser))
+          }
+          if (parsedUser.email === 'skip-auth@example.com' && parsedUser.id === '550e8400-e29b-41d4-a716-446655440001') {
+            parsedUser.id = 'e0b6eca0-9e4d-4214-b76c-4db8b54fa2a2' // Update to real Supabase UUID
+            localStorage.setItem('testUser', JSON.stringify(parsedUser))
+          }
+          setUser(parsedUser)
+          setLoading(false)
+          return
+        } catch (error) {
+          console.error('Error parsing test user:', error)
+          localStorage.removeItem('testUser')
+        }
+      }
+
+      // Check for real Supabase session
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user || null)
       setLoading(false)
@@ -35,6 +63,12 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Don't override test user with Supabase session
+        const testUser = localStorage.getItem('testUser')
+        if (testUser) {
+          return
+        }
+
         setUser(session?.user || null)
         if (session?.user) {
           fetchNotes()
@@ -71,6 +105,7 @@ export default function App() {
 
       if (error) {
         console.error('Error fetching notes:', error)
+        toast.error('Failed to load notes: ' + error.message)
         return
       }
 
@@ -99,6 +134,7 @@ export default function App() {
       setNotes(filteredData)
     } catch (error) {
       console.error('Error fetching notes:', error)
+      toast.error('An unexpected error occurred while loading notes')
     }
   }
 
@@ -138,8 +174,54 @@ export default function App() {
     }
   }
 
+  const handleTestLogin = () => {
+    // Create a mock user for testing with valid UUID
+    const testUser = {
+      id: 'ec926a90-88b8-4d91-8b68-9ed3f5cca522', // Real Supabase UUID
+      email: 'test@example.com',
+      user_metadata: {
+        full_name: 'Test User'
+      }
+    }
+
+    // Set user state directly (bypassing Supabase auth for testing)
+    setUser(testUser)
+    setLoading(false)
+
+    // Store test user in localStorage to persist across page refreshes
+    localStorage.setItem('testUser', JSON.stringify(testUser))
+
+    toast.success('Logged in as test user!')
+  }
+
+  const handleSkipAuth = () => {
+    // Skip authentication entirely for quick testing
+    const skipUser = {
+      id: 'e0b6eca0-9e4d-4214-b76c-4db8b54fa2a2', // Real Supabase UUID
+      email: 'skip-auth@example.com',
+      user_metadata: {
+        full_name: 'Skip Auth User'
+      }
+    }
+
+    setUser(skipUser)
+    setLoading(false)
+
+    toast.success('Authentication skipped for testing!')
+  }
+
   const handleSignOut = async () => {
     try {
+      // Check if we're using test user
+      const testUser = localStorage.getItem('testUser')
+      if (testUser) {
+        localStorage.removeItem('testUser')
+        setUser(null)
+        setNotes([])
+        setSelectedNote(null)
+        return
+      }
+
       await supabase.auth.signOut()
       setUser(null)
       setNotes([])
@@ -166,11 +248,6 @@ export default function App() {
   }
 
   const handleSaveNote = async () => {
-    if (!editForm.title.trim() || !editForm.description.trim()) {
-      alert('Please fill in title and description')
-      return
-    }
-
     setSaving(true)
     try {
       const tags = editForm.tags
@@ -179,7 +256,7 @@ export default function App() {
         .filter(tag => tag.length > 0)
 
       const noteData = {
-        title: editForm.title.trim(),
+        title: editForm.title.trim() || 'Untitled',
         description: editForm.description.trim(),
         tags,
         updated_at: new Date().toISOString(),
@@ -194,9 +271,11 @@ export default function App() {
 
         if (error) {
           console.error('Error updating note:', error)
-          alert('Failed to update note')
+          toast.error('Failed to update note: ' + error.message)
           return
         }
+
+        toast.success('Note updated successfully')
       } else {
         // Create new note
         const { error } = await supabase
@@ -208,9 +287,11 @@ export default function App() {
 
         if (error) {
           console.error('Error creating note:', error)
-          alert('Failed to create note')
+          toast.error('Failed to create note: ' + error.message)
           return
         }
+
+        toast.success('Note created successfully')
       }
 
       await fetchNotes(searchQuery, filterByTag)
@@ -219,33 +300,44 @@ export default function App() {
       setEditForm({ title: '', description: '', tags: '' })
     } catch (error) {
       console.error('Error saving note:', error)
+      toast.error('An unexpected error occurred while saving the note')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDeleteNote = async (noteId) => {
-    if (!confirm('Are you sure you want to delete this note?')) return
+  const handleDeleteNote = (note) => {
+    setNoteToDelete(note)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDeleteNote = async () => {
+    if (!noteToDelete) return
 
     try {
       const { error } = await supabase
         .from('notes')
         .delete()
-        .eq('id', noteId)
+        .eq('id', noteToDelete.id)
 
       if (error) {
         console.error('Error deleting note:', error)
-        alert('Failed to delete note')
+        toast.error('Failed to delete note: ' + error.message)
         return
       }
 
+      toast.success('Note deleted successfully')
       await fetchNotes(searchQuery, filterByTag)
-      if (selectedNote?.id === noteId) {
+      if (selectedNote?.id === noteToDelete.id) {
         setSelectedNote(null)
         setIsEditing(false)
       }
     } catch (error) {
       console.error('Error deleting note:', error)
+      toast.error('An unexpected error occurred while deleting the note')
+    } finally {
+      setDeleteDialogOpen(false)
+      setNoteToDelete(null)
     }
   }
 
@@ -269,7 +361,7 @@ export default function App() {
 
       if (error) {
         console.error('Error removing tag from note:', error)
-        alert('Failed to remove tag')
+        toast.error('Failed to remove tag: ' + error.message)
         return
       }
 
@@ -286,7 +378,7 @@ export default function App() {
       }
     } catch (error) {
       console.error('Error removing tag from note:', error)
-      alert('Failed to remove tag')
+      toast.error('An unexpected error occurred while removing the tag')
     }
   }
 
@@ -343,6 +435,33 @@ export default function App() {
               </svg>
               Continue with Google
             </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or test the app</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Button
+                onClick={handleTestLogin}
+                variant="outline"
+                className="w-full h-10 text-sm border-orange-200 text-orange-700 hover:bg-orange-50"
+              >
+                🧪 Test Login (Persistent)
+              </Button>
+              <Button
+                onClick={handleSkipAuth}
+                variant="outline"
+                className="w-full h-10 text-sm border-blue-200 text-blue-700 hover:bg-blue-50"
+              >
+                🚀 Skip Authentication (Quick Test)
+              </Button>
+            </div>
+
             <p className="text-xs text-center text-gray-500">
               By continuing, you agree to our Terms of Service and Privacy Policy
             </p>
@@ -570,7 +689,7 @@ export default function App() {
                   Edit
                 </Button>
                 <Button
-                  onClick={() => handleDeleteNote(selectedNote.id)}
+                  onClick={() => handleDeleteNote(selectedNote)}
                   variant="outline"
                   size="sm"
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -616,6 +735,24 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Note</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{noteToDelete?.title}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteNote} className="bg-red-600 hover:bg-red-700">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
