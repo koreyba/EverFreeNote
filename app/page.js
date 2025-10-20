@@ -12,6 +12,7 @@ import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'luc
 import InteractiveTag from '@/components/InteractiveTag'
 import AuthForm from '@/components/AuthForm'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { ImportButton } from '@/components/ImportButton'
 import { toast } from 'sonner'
 
 export default function App() {
@@ -465,7 +466,7 @@ export default function App() {
         </div>
 
         {/* New Note Button */}
-        <div className="p-4 border-b">
+        <div className="p-4 border-b space-y-2">
           <Button
             onClick={handleCreateNote}
             className="w-full"
@@ -473,6 +474,7 @@ export default function App() {
             <Plus className="w-4 h-4 mr-2" />
             New Note
           </Button>
+          <ImportButton onImportComplete={fetchNotes} />
         </div>
 
         {/* Notes List */}

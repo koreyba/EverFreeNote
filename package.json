@@ -62,6 +62,7 @@
         "@tiptap/extension-font-family": "^3.7.2",
         "@tiptap/extension-heading": "^3.7.2",
         "@tiptap/extension-highlight": "^3.7.2",
+        "@tiptap/extension-image": "^3.7.2",
         "@tiptap/extension-link": "^3.7.2",
         "@tiptap/extension-subscript": "^3.7.2",
         "@tiptap/extension-superscript": "^3.7.2",
