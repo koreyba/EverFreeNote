@@ -11,6 +11,7 @@ import Subscript from '@tiptap/extension-subscript'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import Link from '@tiptap/extension-link'
+import Image from '@tiptap/extension-image'
 import { Button } from '@/components/ui/button'
 import {
   Underline as UnderlineIcon,
@@ -32,7 +33,8 @@ import {
   Heading1,
   Heading2,
   Heading3,
-  Palette
+  Palette,
+  ImageIcon
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TwitterPicker } from 'react-color'
@@ -51,6 +53,13 @@ const MenuBar = ({ editor }) => {
 
   const fontFamilies = ['Sans Serif', 'Serif', 'Monospace', 'Cursive'];
   const fontSizes = ['12', '15', '18', '24', '30', '36'];
+
+  const addImage = () => {
+    const url = window.prompt('Image URL:')
+    if (url) {
+      editor.chain().focus().setImage({ src: url }).run()
+    }
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-1 p-2 border-b bg-muted/30">
@@ -96,6 +105,7 @@ const MenuBar = ({ editor }) => {
       <Button data-cy="ordered-list-button" variant={editor.isActive('orderedList') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleOrderedList().run()}><ListOrdered className="w-4 h-4" /></Button>
       <Button data-cy="task-list-button" variant={editor.isActive('taskList') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleTaskList().run()}><CheckSquare className="w-4 h-4" /></Button>
       <Button data-cy="link-button" variant={editor.isActive('link') ? 'secondary' : 'ghost'} size="sm" onClick={() => { const url = window.prompt('URL'); if (url) { editor.chain().focus().setLink({ href: url }).run() } }}><Link2 className="w-4 h-4" /></Button>
+      <Button data-cy="image-button" variant={editor.isActive('image') ? 'secondary' : 'ghost'} size="sm" onClick={addImage}><ImageIcon className="w-4 h-4" /></Button>
 
       <Button data-cy="align-left-button" variant={editor.isActive({ textAlign: 'left' }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setTextAlign('left').run()}><AlignLeft className="w-4 h-4" /></Button>
       <Button data-cy="align-center-button" variant={editor.isActive({ textAlign: 'center' }) ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().setTextAlign('center').run()}><AlignCenter className="w-4 h-4" /></Button>
@@ -130,6 +140,10 @@ const RichTextEditor = ({ content, onChange }) => {
       TaskList,
       TaskItem.configure({ nested: true }),
       Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
+      Image.configure({
+        inline: true,
+        allowBase64: true,
+      }),
       TextStyle,
       Color,
       FontFamily,
