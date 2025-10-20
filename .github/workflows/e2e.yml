@@ -18,13 +18,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Cypress system dependencies
+      - name: Install dependencies for Chrome
         run: |
-          apt-get update
-          apt-get install -y libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libnss3 libxss1 libasound2 libxtst6 xauth xvfb
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgtk-3-0 libnss3 libasound2 libgbm1
 
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
@@ -34,24 +31,26 @@ jobs:
       - name: Start Supabase
         run: supabase start
 
-      - name: Set environment variables
+      - name: Create .env.local file
         run: |
-          echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321" >> $GITHUB_ENV
-          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(supabase status | grep 'anon key' | cut -d':' -f2 | xargs)" >> $GITHUB_ENV
-          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status | grep 'service_role key' | cut -d':' -f2 | xargs)" >> $GITHUB_ENV
+          ANON_KEY=$(supabase status | grep 'Publishable key' | awk '{print $3}')
+          SERVICE_KEY=$(supabase status | grep 'Secret key' | awk '{print $3}')
+          echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321" > .env.local
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> .env.local
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_KEY" >> .env.local
+          cat .env.local
 
-      - name: Start Next.js dev server
-        run: |
-          npm run dev &
-          echo "DEV_PID=$!" >> $GITHUB_ENV
-          sleep 15
-
-      - name: Wait for app to be ready
-        run: |
-          timeout 30 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
-
-      - name: Run E2E tests
-        run: npm run test:e2e
+      - name: Run Cypress E2E tests
+        uses: cypress-io/github-action@v6
+        with:
+          start: npm run dev
+          wait-on: 'http://localhost:3000'
+          wait-on-timeout: 120
+          spec: 'cypress/e2e/**/*.cy.js'
+          browser: chrome
+          headless: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
 
       - name: Upload screenshots on failure
         if: failure()
@@ -73,5 +72,4 @@ jobs:
         if: always()
         run: |
           supabase stop || true
-          kill $DEV_PID || true
 
