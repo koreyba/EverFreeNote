@@ -15,13 +15,20 @@ export function ImportButton({ onImportComplete }) {
   const [importing, setImporting] = useState(false)
 
   const handleImportClick = () => {
+    console.log('Import button clicked')
     fileInputRef.current?.click()
+    console.log('File picker triggered')
   }
 
   const handleFileSelect = async (event) => {
+    console.log('File select triggered', event.target.files)
     const files = Array.from(event.target.files || [])
-    if (files.length === 0) return
+    if (files.length === 0) {
+      console.log('No files selected')
+      return
+    }
 
+    console.log('Starting import of', files.length, 'files')
     setImporting(true)
     let successCount = 0
     let errorCount = 0
@@ -107,11 +114,12 @@ export function ImportButton({ onImportComplete }) {
       </Button>
       <input
         type="file"
-        accept=".enex"
+        accept=".enex,application/xml,text/xml"
         multiple
         ref={fileInputRef}
         onChange={handleFileSelect}
         style={{ display: 'none' }}
+        aria-label="Select .enex files to import"
       />
     </>
   )
