@@ -12,12 +12,44 @@ import { createClient } from '@/lib/supabase/client'
 
 export function ImportButton({ onImportComplete }) {
   const fileInputRef = useRef(null)
+  const dropZoneRef = useRef(null)
   const [importing, setImporting] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
 
   const handleImportClick = () => {
     console.log('Import button clicked')
     fileInputRef.current?.click()
     console.log('File picker triggered')
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = async (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length === 0) return
+
+    // Create a fake event object for handleFileSelect
+    const fakeEvent = {
+      target: {
+        files: files
+      }
+    }
+    
+    await handleFileSelect(fakeEvent)
   }
 
   const handleFileSelect = async (event) => {
@@ -109,7 +141,13 @@ export function ImportButton({ onImportComplete }) {
   }
 
   return (
-    <>
+    <div
+      ref={dropZoneRef}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`relative ${isDragging ? 'ring-2 ring-primary ring-offset-2 rounded-md' : ''}`}
+    >
       <Button
         onClick={handleImportClick}
         disabled={importing}
@@ -117,7 +155,7 @@ export function ImportButton({ onImportComplete }) {
         className="w-full"
       >
         <Upload className="w-4 h-4 mr-2" />
-        {importing ? 'Importing...' : 'Import from Evernote'}
+        {importing ? 'Importing...' : isDragging ? 'Drop files here' : 'Import from Evernote'}
       </Button>
       <input
         type="file"
@@ -127,7 +165,12 @@ export function ImportButton({ onImportComplete }) {
         style={{ display: 'none' }}
         aria-label="Select .enex files to import"
       />
-    </>
+      {isDragging && (
+        <div className="absolute inset-0 bg-primary/10 rounded-md pointer-events-none flex items-center justify-center">
+          <p className="text-sm font-medium">Drop .enex files here</p>
+        </div>
+      )}
+    </div>
   )
 }
 
