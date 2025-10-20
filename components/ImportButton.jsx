@@ -28,6 +28,13 @@ export function ImportButton({ onImportComplete }) {
       return
     }
 
+    // Validate file extensions
+    const invalidFiles = files.filter(file => !file.name.toLowerCase().endsWith('.enex'))
+    if (invalidFiles.length > 0) {
+      toast.error(`Please select only .enex files. Invalid: ${invalidFiles.map(f => f.name).join(', ')}`)
+      return
+    }
+
     console.log('Starting import of', files.length, 'files')
     setImporting(true)
     let successCount = 0
@@ -114,7 +121,6 @@ export function ImportButton({ onImportComplete }) {
       </Button>
       <input
         type="file"
-        accept=".enex,application/xml,text/xml"
         multiple
         ref={fileInputRef}
         onChange={handleFileSelect}
