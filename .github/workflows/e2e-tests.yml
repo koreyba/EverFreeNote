@@ -8,6 +8,10 @@ on:
         required: true
         type: string
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   setup:
     runs-on: ubuntu-latest
