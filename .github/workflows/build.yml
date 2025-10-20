@@ -42,4 +42,5 @@ jobs:
           echo "Artifact ID: build-${{ github.run_id }}"
           echo "Run ID: ${{ github.run_id }}"
           echo "SHA: ${{ github.sha }}"
+          echo "For Act local testing, use: build-${{ github.run_id }}"
 
