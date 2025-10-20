@@ -22,11 +22,16 @@ jobs:
           node-version: '20'
           cache: 'npm'
       
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.build_id }}
-          path: ./out
+      - name: Download build artifact via GitHub API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Extract run_id from build_id (format: build-123456)
+          RUN_ID="${{ inputs.build_id }}"
+          RUN_ID="${RUN_ID#build-}"
+          
+          echo "Downloading artifact from run $RUN_ID"
+          gh run download $RUN_ID -n ${{ inputs.build_id }} -D ./out
       
       - name: Validate artifact
         run: |
