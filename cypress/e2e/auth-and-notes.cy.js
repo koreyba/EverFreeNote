@@ -62,8 +62,8 @@ describe('EverFreeNote Application', () => {
     cy.contains('My Rich Text Note').should('be.visible')
 
     // Редактируем заметку
-    cy.contains('Edit').click()
-    cy.get('input[placeholder="Note title"]').clear().type('Updated Rich Text Note')
+    cy.contains('button', 'Edit').click()
+    cy.get('input[placeholder="Note title"]', { timeout: 10000 }).should('be.visible').clear().type('Updated Rich Text Note')
     cy.get('input[placeholder="work, personal, ideas"]').clear().type('updated, test')
 
     // Сохраняем изменения
