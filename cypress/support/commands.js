@@ -30,7 +30,7 @@ Cypress.Commands.add('createNote', (title, content = '') => {
 })
 
 // For component testing
-import { mount } from 'cypress/react18'
+import { mount } from 'cypress/react'
 
 Cypress.Commands.add('mount', mount)
 
