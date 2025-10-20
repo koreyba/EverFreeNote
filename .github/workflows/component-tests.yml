@@ -1,0 +1,87 @@
+name: Component Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: 'Build artifact ID (e.g., build-123456789)'
+        required: true
+        type: string
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.build_id }}
+          path: ./out
+      
+      - name: Validate artifact
+        run: |
+          if [ ! -d "./out" ] || [ -z "$(ls -A ./out)" ]; then
+            echo "Error: Artifact is empty or missing"
+            exit 1
+          fi
+          echo "Artifact validated successfully"
+          ls -la ./out
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Cache environment
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ./out
+            ./node_modules
+            ~/.cache/Cypress
+          key: component-env-${{ github.run_id }}-${{ github.run_attempt }}
+
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Restore cached environment
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ./out
+            ./node_modules
+            ~/.cache/Cypress
+          key: component-env-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
+      
+      - name: Run component tests
+        run: npm run test:component
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: component-test-results-${{ github.run_id }}
+          path: |
+            cypress/screenshots
+            cypress/videos
+          retention-days: 30
+

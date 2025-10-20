@@ -1,0 +1,137 @@
+name: E2E Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: 'Build artifact ID (e.g., build-123456789)'
+        required: true
+        type: string
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.build_id }}
+          path: ./out
+      
+      - name: Validate artifact
+        run: |
+          if [ ! -d "./out" ] || [ -z "$(ls -A ./out)" ]; then
+            echo "Error: Artifact is empty or missing"
+            exit 1
+          fi
+          echo "Artifact validated successfully"
+          ls -la ./out
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      
+      - name: Start Supabase
+        run: |
+          npx supabase start
+          npx supabase status
+      
+      - name: Wait for Supabase
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:54321/rest/v1/ 2>/dev/null; do echo "Waiting for Supabase..."; sleep 2; done'
+          echo "Supabase is ready"
+      
+      - name: Get Supabase environment
+        id: supabase-env
+        run: |
+          SUPABASE_URL=$(npx supabase status | grep "API URL" | awk '{print $3}')
+          SUPABASE_ANON_KEY=$(npx supabase status | grep "anon key" | awk '{print $3}')
+          echo "SUPABASE_URL=$SUPABASE_URL" >> $GITHUB_OUTPUT
+          echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> $GITHUB_OUTPUT
+      
+      - name: Cache environment
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ./out
+            ./node_modules
+            ~/.cache/Cypress
+          key: e2e-env-${{ github.run_id }}-${{ github.run_attempt }}
+    
+    outputs:
+      supabase-url: ${{ steps.supabase-env.outputs.SUPABASE_URL }}
+      supabase-anon-key: ${{ steps.supabase-env.outputs.SUPABASE_ANON_KEY }}
+
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Restore cached environment
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ./out
+            ./node_modules
+            ~/.cache/Cypress
+          key: e2e-env-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
+      
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      
+      - name: Start Supabase
+        run: |
+          npx supabase start
+          npx supabase status
+      
+      - name: Start Next.js server
+        run: |
+          npx serve ./out -l 3000 &
+          sleep 5
+          curl -f http://localhost:3000 || (echo "Server failed to start" && exit 1)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ needs.setup.outputs.supabase-url }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ needs.setup.outputs.supabase-anon-key }}
+      
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ needs.setup.outputs.supabase-url }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ needs.setup.outputs.supabase-anon-key }}
+          CYPRESS_BASE_URL: http://localhost:3000
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results-${{ github.run_id }}
+          path: |
+            cypress/screenshots
+            cypress/videos
+          retention-days: 30
+

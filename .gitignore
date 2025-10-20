@@ -46,6 +46,11 @@ supabase-data/
 cypress/screenshots/
 cypress/videos/
 
+# GitHub Actions Act
+.github/act-secrets
+/tmp/artifacts
+.act/
+
 # Logs and debug files
 npm-debug.log*
 yarn-debug.log*

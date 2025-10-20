@@ -13,15 +13,13 @@
 ## 📚 Documentation
 
 - **[⚡ Quick Start](QUICKSTART.md)** — Get started in 3 commands
-- **[✅ GitHub Actions Setup](GITHUB_ACTIONS_SETUP.md)** — CI/CD is ready! All workflows run manually
+- **[🔄 GitHub Actions Pipelines](docs/GITHUB_ACTIONS_PIPELINES.md)** ⭐ — CI/CD pipelines & local testing with Act
 - **[🔧 GitHub MCP Server Setup](GITHUB_MCP_SETUP.md)** — Connect Cursor to GitHub via MCP
 - **[🧪 Testing Guide](docs/run_test.md)** — Complete guide for running tests locally and in CI
-- **[🎯 Testing Strategy](.github/TESTING_STRATEGY.md)** — When to run which tests
 - **[🏗️ Architecture Guide](./docs/ARCHITECTURE.md)** ⭐ — Required reading for developers
 - **[🚀 Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** — How to deploy to Cloudflare Pages
 - **[⚙️ Cloudflare Environment Setup](CLOUDFLARE_ENV_SETUP.md)** — Fix production environment variables
 - **[🔐 Google OAuth Setup](GOOGLE_OAUTH_SETUP.md)** — Configure Google authentication
-- **[⚙️ GitHub Actions Details](/.github/workflows/README.md)** — Technical CI/CD documentation
 - **[🗺️ Roadmap](./docs/roadmap.md)** — Product vision and feature roadmap
 
 ---
