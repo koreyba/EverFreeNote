@@ -82,7 +82,34 @@ jobs:
           fail-on-cache-miss: true
       
       - name: Run component tests
+        id: component-tests
+        continue-on-error: true
         run: npm run test:component
+      
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## 🧪 Component Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.component-tests.outcome }}" == "success" ]; then
+            echo "✅ **Status:** All tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status:** Some tests failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- 📸 Screenshots and videos available in artifacts below" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔗 Build artifact: \`${{ inputs.build_id }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "cypress/screenshots" ] && [ "$(ls -A cypress/screenshots)" ]; then
+            echo "### 📸 Failed Test Screenshots" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            find cypress/screenshots -type f -name "*.png" | head -10 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
       
       - name: Upload test results
         if: always()

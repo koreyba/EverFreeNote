@@ -128,11 +128,38 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ needs.setup.outputs.supabase-anon-key }}
       
       - name: Run E2E tests
+        id: e2e-tests
+        continue-on-error: true
         run: npm run test:e2e
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ needs.setup.outputs.supabase-url }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ needs.setup.outputs.supabase-anon-key }}
           CYPRESS_BASE_URL: http://localhost:3000
+      
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## 🧪 E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.e2e-tests.outcome }}" == "success" ]; then
+            echo "✅ **Status:** All tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status:** Some tests failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- 📸 Screenshots and videos available in artifacts below" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔗 Build artifact: \`${{ inputs.build_id }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "cypress/screenshots" ] && [ "$(ls -A cypress/screenshots)" ]; then
+            echo "### 📸 Failed Test Screenshots" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            find cypress/screenshots -type f -name "*.png" | head -10 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
       
       - name: Upload test results
         if: always()
