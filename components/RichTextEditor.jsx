@@ -53,7 +53,7 @@ const MenuBar = ({ editor }) => {
   const fontSizes = ['12', '15', '18', '24', '30', '36'];
 
   return (
-    <div className="flex flex-wrap items-center gap-1 p-2 border-b border-gray-200">
+    <div className="flex flex-wrap items-center gap-1 p-2 border-b bg-muted/30">
       <Button data-cy="bold-button" variant={editor.isActive('bold') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleBold().run()}><Bold className="w-4 h-4" /></Button>
       <Button data-cy="italic-button" variant={editor.isActive('italic') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleItalic().run()}><Italic className="w-4 h-4" /></Button>
       <Button data-cy="underline-button" variant={editor.isActive('underline') ? 'secondary' : 'ghost'} size="sm" onClick={() => editor.chain().focus().toggleUnderline().run()}><UnderlineIcon className="w-4 h-4" /></Button>
@@ -141,15 +141,15 @@ const RichTextEditor = ({ content, onChange }) => {
     },
     editorProps: {
       attributes: {
-        class: 'prose dark:prose-invert prose-sm sm:prose-base lg:prose-lg xl:prose-2xl m-5 focus:outline-none',
+        class: 'prose prose-neutral dark:prose-invert prose-sm sm:prose-base lg:prose-lg xl:prose-2xl m-5 focus:outline-none max-w-none',
       },
     },
   })
 
   return (
-    <div className="border border-gray-200 rounded-md">
+    <div className="border rounded-md bg-background">
       <MenuBar editor={editor} />
-      <EditorContent data-cy="editor-content" editor={editor} />
+      <EditorContent data-cy="editor-content" editor={editor} className="min-h-[200px]" />
     </div>
   )
 }

@@ -26,7 +26,7 @@ export default function InteractiveTag({ tag, onRemove, onClick, showIcon = true
     <Badge
       variant="secondary"
       data-cy="interactive-tag"
-      className={`cursor-pointer transition-all duration-200 hover:bg-green-100 hover:text-green-800 group relative ${className}`}
+      className={`cursor-pointer transition-all duration-200 hover:bg-accent hover:text-accent-foreground group relative ${className}`}
       onClick={handleTagClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -38,7 +38,7 @@ export default function InteractiveTag({ tag, onRemove, onClick, showIcon = true
         <button
           className={`remove-tag ml-2 p-0.5 rounded-full transition-opacity duration-200 ${
             isHovered ? 'opacity-100' : 'opacity-0'
-          } hover:bg-red-100 hover:text-red-600`}
+          } hover:bg-destructive/20 hover:text-destructive`}
           onClick={handleRemoveClick}
           title={`Remove tag "${tag}"`}
         >

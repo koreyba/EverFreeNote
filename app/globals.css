@@ -57,24 +57,27 @@ code {
 
 @theme {
   --color-background: oklch(100% 0 0);
-  --color-foreground: oklch(15.93% 0.0283 285.82);
+  --color-foreground: oklch(20% 0.01 256);
   --color-card: oklch(100% 0 0);
-  --color-card-foreground: oklch(15.93% 0.0283 285.82);
+  --color-card-foreground: oklch(20% 0.01 256);
   --color-popover: oklch(100% 0 0);
-  --color-popover-foreground: oklch(15.93% 0.0283 285.82);
-  --color-primary: oklch(25.35% 0.0352 285.88);
-  --color-primary-foreground: oklch(98.04% 0.0058 264.54);
-  --color-secondary: oklch(96.1% 0.0058 264.54);
-  --color-secondary-foreground: oklch(25.35% 0.0352 285.88);
-  --color-muted: oklch(96.1% 0.0058 264.54);
-  --color-muted-foreground: oklch(54.12% 0.0162 256.85);
-  --color-accent: oklch(96.1% 0.0058 264.54);
-  --color-accent-foreground: oklch(25.35% 0.0352 285.88);
-  --color-destructive: oklch(62.8% 0.2576 29.23);
-  --color-destructive-foreground: oklch(98.04% 0.0058 264.54);
-  --color-border: oklch(91.4% 0.0116 256.85);
-  --color-input: oklch(91.4% 0.0116 256.85);
-  --color-ring: oklch(15.93% 0.0283 285.82);
+  --color-popover-foreground: oklch(20% 0.01 256);
+  /* Primary - Evernote green */
+  --color-primary: oklch(55% 0.15 145);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(96% 0.005 145);
+  --color-secondary-foreground: oklch(30% 0.05 145);
+  --color-muted: oklch(96% 0.005 256);
+  --color-muted-foreground: oklch(50% 0.01 256);
+  /* Accent - light green for hover states */
+  --color-accent: oklch(96% 0.02 145);
+  --color-accent-foreground: oklch(30% 0.05 145);
+  --color-destructive: oklch(55% 0.22 29);
+  --color-destructive-foreground: oklch(100% 0 0);
+  --color-border: oklch(90% 0.005 256);
+  --color-input: oklch(90% 0.005 256);
+  /* Ring - green for focus states */
+  --color-ring: oklch(55% 0.15 145);
   --color-chart-1: oklch(69.75% 0.1403 50.58);
   --color-chart-2: oklch(54.89% 0.0982 200.08);
   --color-chart-3: oklch(38.04% 0.0682 220.15);
@@ -82,16 +85,17 @@ code {
   --color-chart-5: oklch(76.07% 0.1682 41.23);
   --radius: 0.5rem;
   --color-sidebar-background: oklch(98% 0 0);
-  --color-sidebar-foreground: oklch(39.75% 0.0116 256.85);
-  --color-sidebar-primary: oklch(22.35% 0.0283 285.82);
-  --color-sidebar-primary-foreground: oklch(98% 0 0);
-  --color-sidebar-accent: oklch(95.9% 0.0058 264.54);
-  --color-sidebar-accent-foreground: oklch(22.35% 0.0283 285.82);
-  --color-sidebar-border: oklch(91% 0.0116 256.85);
-  --color-sidebar-ring: oklch(69.75% 0.1682 264.54);
+  --color-sidebar-foreground: oklch(35% 0.01 256);
+  --color-sidebar-primary: oklch(55% 0.15 145);
+  --color-sidebar-primary-foreground: oklch(100% 0 0);
+  --color-sidebar-accent: oklch(96% 0.02 145);
+  --color-sidebar-accent-foreground: oklch(30% 0.05 145);
+  --color-sidebar-border: oklch(90% 0.005 256);
+  --color-sidebar-ring: oklch(55% 0.15 145);
 }
 
-@theme dark {
+/* Dark theme - override CSS variables */
+.dark {
   --color-background: oklch(15.93% 0.0283 285.82);
   --color-foreground: oklch(98.04% 0.0058 264.54);
   --color-card: oklch(15.93% 0.0283 285.82);
@@ -195,10 +199,19 @@ body {
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
-  color: #adb5bd;
+  color: var(--color-muted-foreground);
   content: attr(data-placeholder);
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* Ensure text is visible in editor */
+.ProseMirror {
+  color: var(--color-foreground);
+}
+
+.ProseMirror p {
+  color: var(--color-foreground);
 }
 

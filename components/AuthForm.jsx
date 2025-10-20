@@ -51,10 +51,10 @@ export default function AuthForm({ onTestLogin, onSkipAuth, onGoogleAuth }) {
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-gray-300" />
+            <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span data-cy="auth-divider" className="px-2 bg-white text-gray-500">Or test the app</span>
+            <span data-cy="auth-divider" className="px-2 bg-card text-muted-foreground">Or test the app</span>
           </div>
         </div>
 
@@ -63,7 +63,7 @@ export default function AuthForm({ onTestLogin, onSkipAuth, onGoogleAuth }) {
             data-cy="test-login-button"
             onClick={handleTestLogin}
             variant="outline"
-            className="w-full h-10 text-sm border-orange-200 text-orange-700 hover:bg-orange-50"
+            className="w-full h-10 text-sm hover:bg-accent hover:text-accent-foreground"
             disabled={loading}
           >
             🧪 Test Login (Persistent)
@@ -72,7 +72,7 @@ export default function AuthForm({ onTestLogin, onSkipAuth, onGoogleAuth }) {
             data-cy="skip-auth-button"
             onClick={handleSkipAuth}
             variant="outline"
-            className="w-full h-10 text-sm border-blue-200 text-blue-700 hover:bg-blue-50"
+            className="w-full h-10 text-sm hover:bg-accent hover:text-accent-foreground"
             disabled={loading}
           >
             🚀 Skip Authentication (Quick Test)

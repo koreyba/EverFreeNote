@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'lucide-react'
 import InteractiveTag from '@/components/InteractiveTag'
 import AuthForm from '@/components/AuthForm'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { toast } from 'sonner'
 
 export default function App() {
@@ -381,23 +382,23 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-muted/30 to-accent/20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-muted/30 to-accent/20">
         <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="text-center space-y-2">
             <div className="flex justify-center mb-4">
-              <div className="p-3 bg-green-100 rounded-full">
-                <BookOpen className="w-10 h-10 text-green-600" />
+              <div className="p-3 bg-accent rounded-full">
+                <BookOpen className="w-10 h-10 text-primary" />
               </div>
             </div>
-            <CardTitle className="text-3xl font-bold text-gray-800">EverFreeNote</CardTitle>
+            <CardTitle className="text-3xl font-bold">EverFreeNote</CardTitle>
             <CardDescription className="text-base">
               Your personal note-taking companion. Secure, simple, and synced.
             </CardDescription>
@@ -419,22 +420,23 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-muted/20">
       {/* Sidebar */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-80 bg-card border-r flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-green-600" />
-              <h1 className="text-xl font-bold text-gray-800">EverFreeNote</h1>
+              <BookOpen className="w-6 h-6 text-primary" />
+              <h1 className="text-xl font-bold">EverFreeNote</h1>
             </div>
+            <ThemeToggle />
           </div>
 
           {/* Tag Filter Badge */}
           {filterByTag && (
             <div className="mb-3 flex items-center gap-2">
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              <Badge variant="outline" className="bg-accent text-accent-foreground">
                 <Tag className="w-3 h-3 mr-1" />
                 {filterByTag}
               </Badge>
@@ -463,10 +465,10 @@ export default function App() {
         </div>
 
         {/* New Note Button */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b">
           <Button
             onClick={handleCreateNote}
-            className="w-full bg-green-600 hover:bg-green-700"
+            className="w-full"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Note
@@ -476,7 +478,7 @@ export default function App() {
         {/* Notes List */}
         <div className="flex-1 overflow-y-auto">
           {notes.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-muted-foreground">
               <p>No notes yet</p>
               <p className="text-sm mt-2">Create your first note to get started!</p>
             </div>
@@ -488,12 +490,12 @@ export default function App() {
                   onClick={() => handleSelectNote(note)}
                   className={`p-3 rounded-lg cursor-pointer transition-colors ${
                     selectedNote?.id === note.id
-                      ? 'bg-green-50 border border-green-200'
-                      : 'hover:bg-gray-50 border border-transparent'
+                      ? 'bg-accent border'
+                      : 'hover:bg-muted/50 border border-transparent'
                   }`}
                 >
-                  <h3 className="font-semibold text-gray-800 truncate">{note.title}</h3>
-                  <p className="text-sm text-gray-600 truncate mt-1">
+                  <h3 className="font-semibold truncate">{note.title}</h3>
+                  <p className="text-sm text-muted-foreground truncate mt-1">
                     {note.description}
                   </p>
                   {note.tags && note.tags.length > 0 && (
@@ -509,7 +511,7 @@ export default function App() {
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     {new Date(note.updated_at).toLocaleDateString()}
                   </p>
                 </div>
@@ -519,21 +521,20 @@ export default function App() {
         </div>
 
         {/* User Profile */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <span className="text-sm font-semibold text-green-600">
+              <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
+                <span className="text-sm font-semibold text-accent-foreground">
                   {user.email?.[0]?.toUpperCase()}
                 </span>
               </div>
-              <span className="text-sm text-gray-700 truncate">{user.email}</span>
+              <span className="text-sm truncate">{user.email}</span>
             </div>
             <Button
               onClick={handleSignOut}
               variant="ghost"
               size="sm"
-              className="text-gray-500 hover:text-gray-700"
             >
               <LogOut className="w-4 h-4" />
             </Button>
@@ -544,7 +545,7 @@ export default function App() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {!selectedNote && !isEditing ? (
-          <div className="flex-1 flex items-center justify-center text-gray-400">
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <p className="text-lg">Select a note or create a new one</p>
@@ -553,8 +554,8 @@ export default function App() {
         ) : isEditing ? (
           <div className="flex-1 flex flex-col">
             {/* Editor Header */}
-            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-800">
+            <div className="p-4 border-b bg-card flex items-center justify-between">
+              <h2 className="text-lg font-semibold">
                 {selectedNote ? 'Edit Note' : 'New Note'}
               </h2>
               <div className="flex gap-2">
@@ -572,7 +573,6 @@ export default function App() {
                 <Button
                   onClick={handleSaveNote}
                   disabled={saving}
-                  className="bg-green-600 hover:bg-green-700"
                 >
                   {saving ? (
                     <>
@@ -587,7 +587,7 @@ export default function App() {
             </div>
 
             {/* Editor Form */}
-            <div className="flex-1 overflow-y-auto p-6 bg-white">
+            <div className="flex-1 overflow-y-auto p-6 bg-card">
               <div className="max-w-4xl mx-auto space-y-4">
                 <div>
                   <Input
@@ -599,7 +599,7 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                     <Tag className="w-4 h-4" />
                     <span>Tags (comma-separated)</span>
                   </div>
@@ -624,8 +624,8 @@ export default function App() {
         ) : (
           <div className="flex-1 flex flex-col">
             {/* Note View Header */}
-            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-800">{selectedNote.title}</h2>
+            <div className="p-4 border-b bg-card flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{selectedNote.title}</h2>
               <div className="flex gap-2">
                 <Button
                   onClick={() => handleEditNote(selectedNote)}
@@ -648,9 +648,9 @@ export default function App() {
             </div>
 
             {/* Note Content */}
-            <div className="flex-1 overflow-y-auto p-6 bg-white">
+            <div className="flex-1 overflow-y-auto p-6 bg-card">
               <div className="max-w-4xl mx-auto">
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                <h1 className="text-3xl font-bold mb-4">
                   {selectedNote.title}
                 </h1>
                 
@@ -674,7 +674,7 @@ export default function App() {
                   />
                 </div>
                 
-                <div className="mt-8 pt-4 border-t border-gray-200 text-sm text-gray-500">
+                <div className="mt-8 pt-4 border-t text-sm text-muted-foreground">
                   <p>Created: {new Date(selectedNote.created_at).toLocaleString()}</p>
                   <p>Updated: {new Date(selectedNote.updated_at).toLocaleString()}</p>
                 </div>
