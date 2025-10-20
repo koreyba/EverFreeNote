@@ -1,9 +1,10 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Upload } from 'lucide-react'
 import { toast } from 'sonner'
+import { ImportDialog } from '@/components/ImportDialog'
 import { EnexParser } from '@/lib/enex/parser'
 import { ContentConverter } from '@/lib/enex/converter'
 import { ImageProcessor } from '@/lib/enex/image-processor'
@@ -11,63 +12,15 @@ import { NoteCreator } from '@/lib/enex/note-creator'
 import { createClient } from '@/lib/supabase/client'
 
 export function ImportButton({ onImportComplete }) {
-  const fileInputRef = useRef(null)
-  const dropZoneRef = useRef(null)
   const [importing, setImporting] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   const handleImportClick = () => {
-    console.log('Import button clicked')
-    fileInputRef.current?.click()
-    console.log('File picker triggered')
+    setDialogOpen(true)
   }
 
-  const handleDragOver = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(true)
-  }
-
-  const handleDragLeave = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-  }
-
-  const handleDrop = async (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-
-    const files = Array.from(e.dataTransfer.files)
-    if (files.length === 0) return
-
-    // Create a fake event object for handleFileSelect
-    const fakeEvent = {
-      target: {
-        files: files
-      }
-    }
-    
-    await handleFileSelect(fakeEvent)
-  }
-
-  const handleFileSelect = async (event) => {
-    console.log('File select triggered', event.target.files)
-    const files = Array.from(event.target.files || [])
-    if (files.length === 0) {
-      console.log('No files selected')
-      return
-    }
-
-    // Validate file extensions
-    const invalidFiles = files.filter(file => !file.name.toLowerCase().endsWith('.enex'))
-    if (invalidFiles.length > 0) {
-      toast.error(`Please select only .enex files. Invalid: ${invalidFiles.map(f => f.name).join(', ')}`)
-      return
-    }
-
-    console.log('Starting import of', files.length, 'files')
+  const handleImport = async (files, settings) => {
+    console.log('Starting import of', files.length, 'files with settings:', settings)
     setImporting(true)
     let successCount = 0
     let errorCount = 0
@@ -106,7 +59,8 @@ export function ImportButton({ onImportComplete }) {
                   ...note,
                   content: convertedContent
                 },
-                user.id
+                user.id,
+                settings.duplicateStrategy
               )
 
               successCount++
@@ -134,20 +88,11 @@ export function ImportButton({ onImportComplete }) {
       toast.error(`Import failed: ${error.message}`)
     } finally {
       setImporting(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     }
   }
 
   return (
-    <div
-      ref={dropZoneRef}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={`relative ${isDragging ? 'ring-2 ring-primary ring-offset-2 rounded-md' : ''}`}
-    >
+    <>
       <Button
         onClick={handleImportClick}
         disabled={importing}
@@ -155,22 +100,14 @@ export function ImportButton({ onImportComplete }) {
         className="w-full"
       >
         <Upload className="w-4 h-4 mr-2" />
-        {importing ? 'Importing...' : isDragging ? 'Drop files here' : 'Import from Evernote'}
+        {importing ? 'Importing...' : 'Import from Evernote'}
       </Button>
-      <input
-        type="file"
-        multiple
-        ref={fileInputRef}
-        onChange={handleFileSelect}
-        style={{ display: 'none' }}
-        aria-label="Select .enex files to import"
+      <ImportDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onImport={handleImport}
       />
-      {isDragging && (
-        <div className="absolute inset-0 bg-primary/10 rounded-md pointer-events-none flex items-center justify-center">
-          <p className="text-sm font-medium">Drop .enex files here</p>
-        </div>
-      )}
-    </div>
+    </>
   )
 }
 
