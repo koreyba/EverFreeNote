@@ -13,7 +13,7 @@
 ## 📚 Documentation
 
 - **[⚡ Quick Start](QUICKSTART.md)** — Get started in 3 commands
-- **[✅ GitHub Actions Setup](GITHUB_ACTIONS_SETUP.md)** — CI/CD is ready! Learn how to use it
+- **[✅ GitHub Actions Setup](GITHUB_ACTIONS_SETUP.md)** — CI/CD is ready! All workflows run manually
 - **[🔧 GitHub MCP Server Setup](GITHUB_MCP_SETUP.md)** — Connect Cursor to GitHub via MCP
 - **[🧪 Testing Guide](docs/run_test.md)** — Complete guide for running tests locally and in CI
 - **[🎯 Testing Strategy](.github/TESTING_STRATEGY.md)** — When to run which tests
