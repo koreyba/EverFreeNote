@@ -31,6 +31,7 @@ export function ImportButton({ onImportComplete }) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         toast.error('You must be logged in to import notes')
+        setImporting(false)
         return
       }
 
