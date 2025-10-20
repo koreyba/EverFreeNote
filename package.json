@@ -19,7 +19,11 @@
         "test": "cypress run",
         "test:e2e": "cypress run --spec 'cypress/e2e/**/*.cy.js'",
         "test:component": "cypress run --component --spec 'cypress/component/**/*.cy.js'",
-        "test:all": "npm run test:component && npm run test:e2e"
+        "test:all": "npm run test:component && npm run test:e2e",
+        "act:list": "act -l",
+        "act:build": "act -W .github/workflows/build.yml",
+        "act:e2e": "act -W .github/workflows/e2e-tests.yml",
+        "act:component": "act -W .github/workflows/component-tests.yml"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.2.2",
