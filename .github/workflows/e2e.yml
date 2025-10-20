@@ -51,6 +51,7 @@ jobs:
           headless: true
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NODE_OPTIONS: --import tsx
 
       - name: Upload screenshots on failure
         if: failure()
