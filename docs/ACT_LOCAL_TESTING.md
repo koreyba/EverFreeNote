@@ -35,8 +35,8 @@ act workflow_dispatch -j build
 # Component Tests
 act workflow_dispatch -j test-component
 
-# E2E Tests
-act workflow_dispatch -j test-e2e
+# E2E Tests (не поддерживается в act - используйте локальный запуск)
+# act workflow_dispatch -j test-e2e  # НЕ РАБОТАЕТ
 ```
 
 ### С дополнительными опциями
@@ -56,8 +56,23 @@ act workflow_dispatch -j test-e2e --secret-file .secrets
 
 - Все 3 workflow используют `workflow_dispatch` триггер (ручной запуск)
 - Имена jobs: `build`, `test-component`, `test-e2e`
-- Для E2E нужен Docker (для Supabase контейнера)
+- **E2E тесты не работают в act** из-за проблем с загрузкой Cypress binary в Docker
 - Act использует Docker для запуска контейнеров. Убедитесь, что Docker запущен.
+
+## Локальный запуск E2E тестов
+
+Вместо act используйте:
+
+```bash
+# 1. Запустите Supabase
+npm run db:start
+
+# 2. Запустите Next.js dev сервер
+npm run dev
+
+# 3. В другом терминале запустите E2E тесты
+npm run test:e2e
+```
 
 ## Troubleshooting
 
