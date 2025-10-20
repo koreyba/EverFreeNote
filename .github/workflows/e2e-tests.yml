@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       build_id:
-        description: 'Build artifact ID (e.g., build-123456789)'
-        required: true
+        description: 'Build artifact ID (e.g., build-123456789) or leave empty to build'
+        required: false
         type: string
 
 permissions:
@@ -26,7 +26,17 @@ jobs:
           node-version: '20'
           cache: 'npm'
       
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build project (if no build_id provided)
+        if: ${{ inputs.build_id == '' }}
+        run: |
+          echo "🔨 No build_id provided, building project..."
+          npm run build
+      
       - name: Download build artifact via GitHub API
+        if: ${{ inputs.build_id != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -34,20 +44,17 @@ jobs:
           RUN_ID="${{ inputs.build_id }}"
           RUN_ID="${RUN_ID#build-}"
           
-          echo "Downloading artifact from run $RUN_ID"
+          echo "📦 Downloading artifact from run $RUN_ID"
           gh run download $RUN_ID -n ${{ inputs.build_id }} -D ./out
       
       - name: Validate artifact
         run: |
           if [ ! -d "./out" ] || [ -z "$(ls -A ./out)" ]; then
-            echo "Error: Artifact is empty or missing"
+            echo "❌ Error: Artifact is empty or missing"
             exit 1
           fi
           echo "✅ Artifact validated successfully"
           ls -la ./out
-      
-      - name: Install dependencies
-        run: npm ci
       
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
