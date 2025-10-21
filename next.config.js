@@ -1,5 +1,5 @@
 const nextConfig = {
-  output: 'export',
+  output: 'export', // Required for SPA
   images: {
     unoptimized: true,
   },
