@@ -12,20 +12,23 @@ import RichTextEditor from '@/components/RichTextEditor'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen, Zap } from 'lucide-react'
 import InteractiveTag from '@/components/InteractiveTag'
 import AuthForm from '@/components/AuthForm'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ImportButton } from '@/components/ImportButton'
 import { NoteListSkeleton } from '@/components/NoteListSkeleton'
 import { VirtualNoteList } from '@/components/VirtualNoteList'
+import { useSearchNotes } from '@/hooks/useNotesQuery'
 import { toast } from 'sonner'
+import DOMPurify from 'isomorphic-dompurify'
 
 export default function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedNote, setSelectedNote] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [ftsSearchQuery, setFtsSearchQuery] = useState('') // New FTS search
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({ title: '', description: '', tags: '' })
   const [saving, setSaving] = useState(false)
@@ -46,7 +49,19 @@ export default function App() {
   
   // Get flattened notes array from paginated data
   const notes = user ? useFlattenedNotes(notesQuery) : []
-  
+
+  // FTS search hook (only when user is authenticated and has search query)
+  const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
+    enabled: !!user && ftsSearchQuery.length >= 3
+  })
+
+  // Use FTS results if available and no error, otherwise use regular search
+  const showFTSResults = ftsSearchQuery.length >= 3 &&
+    ftsSearchResult.data &&
+    ftsSearchResult.data.method === 'fts' &&
+    !ftsSearchResult.data.error &&
+    ftsSearchResult.data.results.length > 0
+
   // Auto-load more notes on scroll (with 200px prefetch margin)
   const observerTarget = useInfiniteScroll(
     notesQuery.fetchNextPage,
@@ -86,12 +101,14 @@ export default function App() {
 
   const handleSearch = (query) => {
     setSearchQuery(query)
+    setFtsSearchQuery(query) // Also update FTS search
     // React Query will automatically refetch with new searchQuery
   }
 
   const handleTagClick = (tag) => {
     setFilterByTag(tag)
     setSearchQuery('')
+    setFtsSearchQuery('') // Also clear FTS search
     // React Query will automatically refetch with new filterByTag
     setSelectedNote(null)
     setIsEditing(false)
@@ -100,6 +117,7 @@ export default function App() {
   const handleClearTagFilter = () => {
     setFilterByTag(null)
     setSearchQuery('')
+    setFtsSearchQuery('') // Also clear FTS search
     // React Query will automatically refetch
   }
 
@@ -206,7 +224,7 @@ export default function App() {
     setIsEditing(true)
     setEditForm({
       title: note.title,
-      description: note.description,
+      description: note.description || note.content,
       tags: note.tags?.join(', ') || '',
     })
   }
@@ -302,6 +320,14 @@ export default function App() {
   }
 
   const handleSelectNote = (note) => {
+    setSelectedNote(note)
+    setIsEditing(false)
+  }
+
+  const handleSearchResultClick = (note) => {
+    // Clear search when selecting a result
+    setSearchQuery('')
+    setFtsSearchQuery('')
     setSelectedNote(note)
     setIsEditing(false)
   }
@@ -404,7 +430,99 @@ export default function App() {
 
         {/* Notes List */}
         <div className="flex-1 overflow-y-auto" id="notes-list-container">
-          {notesQuery.isLoading ? (
+          {/* Show FTS search results if available and successful */}
+          {ftsSearchQuery.length >= 3 && ftsSearchResult.isLoading ? (
+            <div className="p-4">
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
+                <span className="text-sm text-muted-foreground">Поиск заметок...</span>
+              </div>
+            </div>
+          ) : showFTSResults ? (
+            <div className="p-4">
+              {/* FTS Search Results Header */}
+              <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                <div>
+                  Найдено: <span className="font-semibold">{ftsSearchResult.data.total}</span> {ftsSearchResult.data.total === 1 ? 'заметка' : 'заметок'}
+                </div>
+                {ftsSearchResult.data.executionTime !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <span>{ftsSearchResult.data.executionTime}ms</span>
+                    <Badge variant="outline" className="text-xs gap-1">
+                      <Zap className="h-3 w-3" />
+                      Быстрый поиск
+                    </Badge>
+                  </div>
+                )}
+              </div>
+
+              {/* FTS Results List */}
+              <div className="space-y-4">
+                {ftsSearchResult.data.results.map((note) => (
+                  <Card
+                    key={note.id}
+                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => handleSelectNote(note)}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-lg line-clamp-2">
+                          {note.title || 'Без названия'}
+                        </CardTitle>
+                        <div className="flex gap-1 flex-shrink-0">
+                          {note.rank !== undefined && note.rank !== null && (
+                            <Badge variant="secondary" className="text-xs">
+                              {(note.rank * 100).toFixed(1)}%
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {/* Highlighted content preview */}
+                      {note.headline && (
+                        <div
+                          className="text-sm text-muted-foreground line-clamp-3"
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(note.headline, { ALLOWED_TAGS: ['mark'] })
+                          }}
+                          style={{
+                            '--mark-bg': 'hsl(var(--primary) / 0.2)',
+                            '--mark-color': 'hsl(var(--primary))'
+                          }}
+                        />
+                      )}
+
+                      {/* Tags */}
+                      {note.tags && note.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {note.tags.slice(0, 5).map((tag, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {note.tags.length > 5 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{note.tags.length - 5}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Metadata */}
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(note.updated_at).toLocaleDateString('ru-RU', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : notesQuery.isLoading ? (
             <NoteListSkeleton count={5} />
           ) : notes.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
@@ -661,7 +779,7 @@ export default function App() {
                 <div className="prose prose-lg max-w-none">
                   <div
                     className="prose prose-lg max-w-none"
-                    dangerouslySetInnerHTML={{ __html: selectedNote.description }}
+                    dangerouslySetInnerHTML={{ __html: selectedNote.description || selectedNote.content }}
                   />
                 </div>
                 
