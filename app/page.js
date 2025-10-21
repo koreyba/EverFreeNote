@@ -452,16 +452,20 @@ export default function App() {
               {/* FTS Results List */}
               <div className="space-y-4">
                 {ftsSearchResult.data.results.map((note) => (
-                  <Card key={note.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                  <Card
+                    key={note.id}
+                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => handleSelectNote(note)}
+                  >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
                         <CardTitle className="text-lg line-clamp-2">
                           {note.title || 'Без названия'}
                         </CardTitle>
                         <div className="flex gap-1 flex-shrink-0">
-                          {note.rank > 0 && (
+                          {note.rank !== undefined && note.rank !== null && (
                             <Badge variant="secondary" className="text-xs">
-                              {(note.rank * 100).toFixed(0)}%
+                              {(note.rank * 100).toFixed(1)}%
                             </Badge>
                           )}
                         </div>
@@ -768,7 +772,7 @@ export default function App() {
                 <div className="prose prose-lg max-w-none">
                   <div
                     className="prose prose-lg max-w-none"
-                    dangerouslySetInnerHTML={{ __html: selectedNote.description }}
+                    dangerouslySetInnerHTML={{ __html: selectedNote.description || selectedNote.content }}
                   />
                 </div>
                 
