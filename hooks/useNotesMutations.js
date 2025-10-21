@@ -40,8 +40,6 @@ export function useCreateNote() {
 
       // Optimistically update cache
       queryClient.setQueryData(['notes'], (old) => {
-        if (!old?.pages) return old
-
         const optimisticNote = {
           id: `temp-${Date.now()}`, // Temporary ID
           title: newNote.title,
@@ -50,6 +48,19 @@ export function useCreateNote() {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           user_id: newNote.userId,
+        }
+
+        // Handle case when no pages exist yet
+        if (!old?.pages || old.pages.length === 0) {
+          return {
+            pages: [{
+              notes: [optimisticNote],
+              nextCursor: undefined,
+              totalCount: 1,
+              hasMore: false
+            }],
+            pageParams: [0]
+          }
         }
 
         // Add to first page
