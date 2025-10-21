@@ -19,13 +19,16 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { ImportButton } from '@/components/ImportButton'
 import { NoteListSkeleton } from '@/components/NoteListSkeleton'
 import { VirtualNoteList } from '@/components/VirtualNoteList'
+import { useSearchNotes } from '@/hooks/useNotesQuery'
 import { toast } from 'sonner'
+import DOMPurify from 'isomorphic-dompurify'
 
 export default function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedNote, setSelectedNote] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [ftsSearchQuery, setFtsSearchQuery] = useState('') // New FTS search
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({ title: '', description: '', tags: '' })
   const [saving, setSaving] = useState(false)
@@ -46,7 +49,12 @@ export default function App() {
   
   // Get flattened notes array from paginated data
   const notes = user ? useFlattenedNotes(notesQuery) : []
-  
+
+  // FTS search hook (only when user is authenticated and has search query)
+  const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
+    enabled: !!user && ftsSearchQuery.length >= 3
+  })
+
   // Auto-load more notes on scroll (with 200px prefetch margin)
   const observerTarget = useInfiniteScroll(
     notesQuery.fetchNextPage,
@@ -86,12 +94,14 @@ export default function App() {
 
   const handleSearch = (query) => {
     setSearchQuery(query)
+    setFtsSearchQuery(query) // Also update FTS search
     // React Query will automatically refetch with new searchQuery
   }
 
   const handleTagClick = (tag) => {
     setFilterByTag(tag)
     setSearchQuery('')
+    setFtsSearchQuery('') // Also clear FTS search
     // React Query will automatically refetch with new filterByTag
     setSelectedNote(null)
     setIsEditing(false)
@@ -100,6 +110,7 @@ export default function App() {
   const handleClearTagFilter = () => {
     setFilterByTag(null)
     setSearchQuery('')
+    setFtsSearchQuery('') // Also clear FTS search
     // React Query will automatically refetch
   }
 
@@ -306,6 +317,14 @@ export default function App() {
     setIsEditing(false)
   }
 
+  const handleSearchResultClick = (note) => {
+    // Clear search when selecting a result
+    setSearchQuery('')
+    setFtsSearchQuery('')
+    setSelectedNote(note)
+    setIsEditing(false)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-muted/30 to-accent/20">
@@ -404,7 +423,88 @@ export default function App() {
 
         {/* Notes List */}
         <div className="flex-1 overflow-y-auto" id="notes-list-container">
-          {notesQuery.isLoading ? (
+          {/* Show FTS search results if available */}
+          {ftsSearchQuery.length >= 3 && ftsSearchResult.data ? (
+            <div className="p-4">
+              {/* FTS Search Results Header */}
+              <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                <div>
+                  Найдено: <span className="font-semibold">{ftsSearchResult.data.total}</span> {ftsSearchResult.data.total === 1 ? 'заметка' : 'заметок'}
+                </div>
+                {ftsSearchResult.data.executionTime !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <span>{ftsSearchResult.data.executionTime}ms</span>
+                    <Badge variant="outline" className="text-xs gap-1">
+                      <Zap className="h-3 w-3" />
+                      Быстрый поиск
+                    </Badge>
+                  </div>
+                )}
+              </div>
+
+              {/* FTS Results List */}
+              <div className="space-y-4">
+                {ftsSearchResult.data.results.map((note) => (
+                  <Card key={note.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-lg line-clamp-2">
+                          {note.title || 'Без названия'}
+                        </CardTitle>
+                        <div className="flex gap-1 flex-shrink-0">
+                          {note.rank > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              {(note.rank * 100).toFixed(0)}%
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {/* Highlighted content preview */}
+                      {note.headline && (
+                        <div
+                          className="text-sm text-muted-foreground line-clamp-3"
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(note.headline, { ALLOWED_TAGS: ['mark'] })
+                          }}
+                          style={{
+                            '--mark-bg': 'hsl(var(--primary) / 0.2)',
+                            '--mark-color': 'hsl(var(--primary))'
+                          }}
+                        />
+                      )}
+
+                      {/* Tags */}
+                      {note.tags && note.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {note.tags.slice(0, 5).map((tag, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {note.tags.length > 5 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{note.tags.length - 5}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Metadata */}
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(note.updated_at).toLocaleDateString('ru-RU', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : notesQuery.isLoading ? (
             <NoteListSkeleton count={5} />
           ) : notes.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">

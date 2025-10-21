@@ -128,6 +128,10 @@ const RichTextEditor = ({ content, onChange }) => {
         bulletList: {},
         orderedList: {},
         listItem: {},
+        // Отключаем встроенные расширения чтобы избежать конфликтов
+        heading: false,
+        link: false,
+        underline: false,
       }),
       Heading.configure({
         levels: [1, 2, 3],

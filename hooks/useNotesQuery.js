@@ -126,9 +126,10 @@ function detectBrowserLanguage() {
 
 /**
  * Custom hook for FTS search with debouncing and caching
- * Uses new /api/notes/search endpoint with Full-Text Search
- * 
+ * Uses Supabase RPC function directly (SPA compatible)
+ *
  * @param {string} query - Search query
+ * @param {string} userId - User ID for RLS
  * @param {Object} options - Search options
  * @param {string} options.language - Language code (auto-detected by default)
  * @param {number} options.minRank - Minimum relevance rank (default: 0.1)
@@ -137,7 +138,7 @@ function detectBrowserLanguage() {
  * @param {boolean} options.enabled - Whether to enable the query (default: true)
  * @returns {Object} Query result with search results and metadata
  */
-export function useSearchNotes(query, options = {}) {
+export function useSearchNotes(query, userId, options = {}) {
   const {
     language = detectBrowserLanguage(),
     minRank = 0.1,
@@ -145,34 +146,51 @@ export function useSearchNotes(query, options = {}) {
     offset = 0,
     enabled = true
   } = options
-  
+
   // Debounce query to avoid excessive API calls
   const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
-  
+
   // Validate query length (min 3 characters)
-  const isValidQuery = debouncedQuery && debouncedQuery.trim().length >= 3
-  
+  const isValidQuery = debouncedQuery && debouncedQuery.trim().length >= 3 && userId
+
   return useQuery({
-    queryKey: ['notes', 'search', debouncedQuery, language, minRank, limit, offset],
+    queryKey: ['notes', 'search', debouncedQuery, language, minRank, limit, offset, userId],
     queryFn: async () => {
-      // Build query parameters
-      const params = new URLSearchParams({
-        q: debouncedQuery,
-        lang: language,
-        minRank: minRank.toString(),
-        limit: limit.toString(),
-        offset: offset.toString()
-      })
-      
-      // Call search API
-      const response = await fetch(`/api/notes/search?${params}`)
-      
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Search failed')
+      const { createClient } = await import('@/lib/supabase/client')
+      const { buildTsQuery } = await import('@/lib/supabase/search')
+
+      const supabase = createClient()
+
+      // Build sanitized ts_query
+      const tsQuery = buildTsQuery(debouncedQuery, language)
+      const ftsLanguage = language === 'uk' ? 'russian' : language === 'en' ? 'english' : 'russian'
+
+      const startTime = Date.now()
+
+      // Execute FTS RPC function
+      const { data, error } = await supabase
+        .rpc('search_notes_fts', {
+          search_query: tsQuery,
+          search_language: ftsLanguage,
+          min_rank: minRank,
+          result_limit: limit,
+          result_offset: offset,
+          search_user_id: userId
+        })
+
+      const executionTime = Date.now() - startTime
+
+      if (error) {
+        throw new Error(`FTS search failed: ${error.message}`)
       }
-      
-      return response.json()
+
+      return {
+        results: data || [],
+        total: data?.length || 0,
+        query: debouncedQuery,
+        method: 'fts',
+        executionTime
+      }
     },
     enabled: enabled && isValidQuery,
     staleTime: SEARCH_STALE_TIME_MS,
