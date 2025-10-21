@@ -1,0 +1,34 @@
+{
+  "emptyNote": {
+    "id": "note-empty",
+    "title": "",
+    "content": "",
+    "created_at": "2024-01-01T10:00:00Z",
+    "updated_at": "2024-01-01T10:00:00Z",
+    "user_id": "user-123"
+  },
+  "simpleNote": {
+    "id": "note-simple",
+    "title": "Simple Note",
+    "content": "This is a simple note content.",
+    "created_at": "2024-01-01T10:00:00Z",
+    "updated_at": "2024-01-01T10:30:00Z",
+    "user_id": "user-123"
+  },
+  "longNote": {
+    "id": "note-long",
+    "title": "Long Note with Complex Content",
+    "content": "This is a very long note with lots of content. It contains multiple sentences and paragraphs to test how the editor handles large amounts of text. The content should be long enough to test scrolling, performance, and text rendering in the editor component.",
+    "created_at": "2024-01-01T10:00:00Z",
+    "updated_at": "2024-01-01T11:00:00Z",
+    "user_id": "user-123"
+  },
+  "richTextNote": {
+    "id": "note-rich",
+    "title": "Rich Text Note",
+    "content": "<p>This is <strong>bold</strong> and <em>italic</em> text.</p><ul><li>List item 1</li><li>List item 2</li></ul>",
+    "created_at": "2024-01-01T10:00:00Z",
+    "updated_at": "2024-01-01T10:45:00Z",
+    "user_id": "user-123"
+  }
+}

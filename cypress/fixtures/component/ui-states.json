@@ -1,0 +1,24 @@
+{
+  "loadingState": {
+    "isLoading": true,
+    "error": null,
+    "data": null
+  },
+  "errorState": {
+    "isLoading": false,
+    "error": "Something went wrong",
+    "data": null
+  },
+  "successState": {
+    "isLoading": false,
+    "error": null,
+    "data": {
+      "message": "Operation completed successfully"
+    }
+  },
+  "idleState": {
+    "isLoading": false,
+    "error": null,
+    "data": null
+  }
+}

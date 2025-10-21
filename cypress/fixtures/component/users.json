@@ -1,0 +1,19 @@
+{
+  "authenticatedUser": {
+    "id": "user-123",
+    "email": "test@example.com",
+    "name": "Test User",
+    "role": "user",
+    "avatar": "https://example.com/avatar.jpg",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  "adminUser": {
+    "id": "admin-456",
+    "email": "admin@example.com",
+    "name": "Admin User",
+    "role": "admin",
+    "avatar": "https://example.com/admin-avatar.jpg",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  "unauthenticatedUser": null
+}

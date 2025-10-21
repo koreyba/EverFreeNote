@@ -1,0 +1,103 @@
+{
+  "auth": {
+    "loginSuccess": {
+      "user": {
+        "id": "user-123",
+        "email": "test@example.com",
+        "name": "Test User"
+      },
+      "session": {
+        "access_token": "mock-access-token",
+        "refresh_token": "mock-refresh-token",
+        "expires_at": "2024-12-31T23:59:59Z"
+      }
+    },
+    "loginError": {
+      "error": "Invalid credentials",
+      "message": "The email or password you entered is incorrect"
+    },
+    "googleAuthSuccess": {
+      "user": {
+        "id": "user-google",
+        "email": "user@gmail.com",
+        "name": "Google User"
+      },
+      "session": {
+        "access_token": "google-access-token",
+        "refresh_token": "google-refresh-token",
+        "expires_at": "2024-12-31T23:59:59Z"
+      }
+    }
+  },
+  "notes": {
+    "getNotesSuccess": {
+      "notes": [
+        {
+          "id": "note-1",
+          "title": "Note 1",
+          "content": "Content 1",
+          "created_at": "2024-01-01T10:00:00Z",
+          "updated_at": "2024-01-01T10:00:00Z"
+        },
+        {
+          "id": "note-2",
+          "title": "Note 2",
+          "content": "Content 2",
+          "created_at": "2024-01-01T11:00:00Z",
+          "updated_at": "2024-01-01T11:00:00Z"
+        }
+      ],
+      "total": 2
+    },
+    "createNoteSuccess": {
+      "note": {
+        "id": "note-new",
+        "title": "New Note",
+        "content": "New content",
+        "created_at": "2024-01-01T12:00:00Z",
+        "updated_at": "2024-01-01T12:00:00Z",
+        "user_id": "user-123"
+      }
+    },
+    "updateNoteSuccess": {
+      "note": {
+        "id": "note-1",
+        "title": "Updated Note",
+        "content": "Updated content",
+        "created_at": "2024-01-01T10:00:00Z",
+        "updated_at": "2024-01-01T12:30:00Z",
+        "user_id": "user-123"
+      }
+    },
+    "deleteNoteSuccess": {
+      "message": "Note deleted successfully"
+    },
+    "notesError": {
+      "error": "Database error",
+      "message": "Failed to fetch notes"
+    }
+  },
+  "search": {
+    "searchSuccess": {
+      "results": [
+        {
+          "id": "note-1",
+          "title": "Search Result 1",
+          "content": "Content with search term",
+          "highlight": "Content with <mark>search</mark> term"
+        }
+      ],
+      "total": 1,
+      "query": "search"
+    },
+    "searchEmpty": {
+      "results": [],
+      "total": 0,
+      "query": "nonexistent"
+    },
+    "searchError": {
+      "error": "Search service unavailable",
+      "message": "Please try again later"
+    }
+  }
+}
