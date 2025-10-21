@@ -105,3 +105,5 @@ COMMENT ON FUNCTION search_notes_fts IS
 Uses PostgreSQL FTS (to_tsvector, to_tsquery, ts_rank, ts_headline).
 Supports multiple languages (russian, english) and returns highlighted fragments.
 Security: SECURITY DEFINER but checks user_id to enforce RLS.';
+
+-- Migration is safely rollbackable: DROP FUNCTION IF EXISTS search_notes_fts(text, regconfig, float, int, int, uuid);

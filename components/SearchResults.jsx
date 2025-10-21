@@ -88,7 +88,11 @@ function SearchResultItem({ note, showRank = false, method }) {
       <CardContent className="space-y-3">
         {/* Highlighted content preview */}
         {sanitizedHeadline && (
-          <div className="text-sm text-muted-foreground line-clamp-3">
+          <div
+            className="text-sm text-muted-foreground line-clamp-3"
+            role="text"
+            aria-label="Результаты поиска с выделенными совпадениями"
+          >
             <div
               dangerouslySetInnerHTML={{ __html: sanitizedHeadline }}
               className="prose prose-sm max-w-none [&_mark]:bg-primary/20 [&_mark]:text-primary [&_mark]:px-0.5 [&_mark]:rounded-sm [&_mark]:font-medium"

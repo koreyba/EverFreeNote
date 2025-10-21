@@ -431,7 +431,14 @@ export default function App() {
         {/* Notes List */}
         <div className="flex-1 overflow-y-auto" id="notes-list-container">
           {/* Show FTS search results if available and successful */}
-          {showFTSResults ? (
+          {ftsSearchQuery.length >= 3 && ftsSearchResult.isLoading ? (
+            <div className="p-4">
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
+                <span className="text-sm text-muted-foreground">Поиск заметок...</span>
+              </div>
+            </div>
+          ) : showFTSResults ? (
             <div className="p-4">
               {/* FTS Search Results Header */}
               <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">

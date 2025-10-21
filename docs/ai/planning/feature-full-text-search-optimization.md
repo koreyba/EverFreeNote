@@ -242,7 +242,7 @@ feature: full-text-search-optimization
 
 **✅ Quality Assurance:**
 - Unit tests (40+ cases) - `__tests__/lib/supabase/search.test.js`
-- E2E tests - `cypress/e2e/fts-search.cy.js`
+- E2E tests - `cypress/e2e/fts-search.cy.js` ⚠️ *Need RPC update*
 - Performance benchmarks - `scripts/benchmark-fts.js`
 - User documentation - `CHANGELOG.md`
 
@@ -253,13 +253,27 @@ feature: full-text-search-optimization
 - Error handling & observability
 
 **✅ Deployment Ready:**
-- Migration: `20251021130000_add_fts_search_function.sql`
+- Migration: `20251021140000_fix_fts_function_column_name.sql`
 - Static export compatible
 - Backward compatibility maintained
 - Monitoring & logging implemented
 
 **Timeline**: 3 дня (запланировано) → 3 дня (фактически) ✅
-**Effort**: 21 часов работы, все в рамках бюджета
+**Effort**: 21 часов работы + 2 часа post-review fixes
+
+### Post-Review Updates (Minor)
+
+**✅ Completed During Code Review:**
+- Fixed tsquery syntax errors in `buildTsQuery`
+- Added clickable FTS results with onClick handlers
+- Fixed content field compatibility (`description || content`)
+- Improved error handling and fallback logic
+- Added accessibility labels (aria-labels for screen readers)
+- Added FTS loading states in UI
+
+**🔄 Remaining Follow-ups (Nice-to-have):**
+- [ ] Update E2E tests for RPC calls (not API endpoints)
+- [ ] Add performance monitoring for FTS vs ILIKE usage
 
 **Next**: Production deployment и user testing! 🚀
 
