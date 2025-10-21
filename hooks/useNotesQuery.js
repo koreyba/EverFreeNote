@@ -151,7 +151,7 @@ export function useSearchNotes(query, userId, options = {}) {
   const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
 
   // Validate query length (min 3 characters)
-  const isValidQuery = debouncedQuery && debouncedQuery.trim().length >= 3 && userId
+  const isValidQuery = Boolean(debouncedQuery && debouncedQuery.trim().length >= 3 && userId)
 
   return useQuery({
     queryKey: ['notes', 'search', debouncedQuery, language, minRank, limit, offset, userId],
