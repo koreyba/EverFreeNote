@@ -26,7 +26,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger to automatically update updated_at
+-- Create trigger to automatically update updated_at (idempotent)
+DROP TRIGGER IF EXISTS update_notes_updated_at ON public.notes;
 CREATE TRIGGER update_notes_updated_at
     BEFORE UPDATE ON public.notes
     FOR EACH ROW
