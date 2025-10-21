@@ -70,20 +70,20 @@ BEGIN
     n.created_at,
     n.updated_at
   FROM notes n
-  WHERE 
+  WHERE
     -- Security: only return notes for the specified user
     n.user_id = search_user_id
     -- FTS match condition
-    AND to_tsvector(search_language, 
-          coalesce(n.title, '') || ' ' || 
-          coalesce(n.content, '') || ' ' || 
+    AND to_tsvector(search_language,
+          coalesce(n.title, '') || ' ' ||
+          coalesce(n.description, '') || ' ' ||
           coalesce(array_to_string(n.tags, ' '), '')
         ) @@ to_tsquery(search_language, search_query)
     -- Filter by minimum rank threshold
     AND ts_rank(
-          to_tsvector(search_language, 
-            coalesce(n.title, '') || ' ' || 
-            coalesce(n.content, '') || ' ' || 
+          to_tsvector(search_language,
+            coalesce(n.title, '') || ' ' ||
+            coalesce(n.description, '') || ' ' ||
             coalesce(array_to_string(n.tags, ' '), '')
           ),
           to_tsquery(search_language, search_query)
@@ -100,9 +100,11 @@ $$;
 GRANT EXECUTE ON FUNCTION search_notes_fts(text, regconfig, float, int, int, uuid) TO authenticated;
 
 -- Add comment for documentation
-COMMENT ON FUNCTION search_notes_fts IS 
-'Full-Text Search function for notes with ranking and highlighting. 
+COMMENT ON FUNCTION search_notes_fts IS
+'Full-Text Search function for notes with ranking and highlighting.
 Uses PostgreSQL FTS (to_tsvector, to_tsquery, ts_rank, ts_headline).
 Supports multiple languages (russian, english) and returns highlighted fragments.
 Security: SECURITY DEFINER but checks user_id to enforce RLS.';
+
+-- Migration is safely rollbackable: DROP FUNCTION IF EXISTS search_notes_fts(text, regconfig, float, int, int, uuid);
 
