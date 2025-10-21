@@ -1,0 +1,125 @@
+'use client'
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
+
+export function ImportProgressDialog({ open, progress, result, onClose }) {
+  const { currentFile, totalFiles, currentNote, totalNotes, fileName } = progress
+
+  const fileProgress = totalFiles > 0 ? (currentFile / totalFiles) * 100 : 0
+  const noteProgress = totalNotes > 0 ? (currentNote / totalNotes) * 100 : 0
+  
+  const isComplete = result !== null
+  const isInProgress = !isComplete && open
+
+  return (
+    <Dialog open={open} onOpenChange={isComplete ? onClose : () => {}}>
+      <DialogContent 
+        className={`sm:max-w-[425px] ${isInProgress ? '[&>button]:hidden' : ''}`}
+        onEscapeKeyDown={(e) => isInProgress && e.preventDefault()}
+        onPointerDownOutside={(e) => isInProgress && e.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {isInProgress && <Loader2 className="w-5 h-5 animate-spin" />}
+            {isComplete && result.success > 0 && <CheckCircle2 className="w-5 h-5 text-green-600" />}
+            {isComplete && result.success === 0 && result.errors > 0 && <XCircle className="w-5 h-5 text-destructive" />}
+            {isComplete ? 'Import Complete' : 'Importing from Evernote'}
+          </DialogTitle>
+          <DialogDescription>
+            {isInProgress && 'Please wait while we import your notes...'}
+            {isComplete && 'Your import has finished.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {isInProgress && (
+          <div className="space-y-4 py-4">
+            {/* File Progress */}
+            {totalFiles > 1 && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Files</span>
+                  <span className="font-medium">
+                    {currentFile} of {totalFiles}
+                  </span>
+                </div>
+                <Progress value={fileProgress} className="h-2" />
+              </div>
+            )}
+
+            {/* Current File Name */}
+            {fileName && (
+              <div className="text-sm">
+                <span className="text-muted-foreground">Current file: </span>
+                <span className="font-medium truncate block">{fileName}</span>
+              </div>
+            )}
+
+            {/* Note Progress */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Notes</span>
+                <span className="font-medium">
+                  {currentNote} of {totalNotes}
+                </span>
+              </div>
+              <Progress value={noteProgress} className="h-2" />
+            </div>
+
+            {/* Progress Percentage */}
+            <div className="text-center">
+              <span className="text-2xl font-bold text-primary">
+                {Math.round(noteProgress)}%
+              </span>
+            </div>
+          </div>
+        )}
+
+        {isComplete && (
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {result.success}
+                </div>
+                <div className="text-sm text-muted-foreground">Successful</div>
+              </div>
+              {result.errors > 0 && (
+                <div className="text-center p-4 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                  <div className="text-2xl font-bold text-destructive">
+                    {result.errors}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Failed</div>
+                </div>
+              )}
+            </div>
+            
+            {result.message && (
+              <p className="text-sm text-muted-foreground text-center">
+                {result.message}
+              </p>
+            )}
+          </div>
+        )}
+
+        {isComplete && (
+          <DialogFooter>
+            <Button onClick={onClose} className="w-full">
+              Close
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
