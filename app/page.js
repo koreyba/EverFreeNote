@@ -38,6 +38,7 @@ export default function App() {
   
   // Use React Query for notes fetching (only when user is authenticated)
   const notesQuery = useNotesQuery({
+    userId: user?.id,
     searchQuery,
     selectedTag: filterByTag,
     enabled: !!user, // Only fetch when user is logged in

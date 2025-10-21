@@ -8,18 +8,19 @@ const PAGE_SIZE = 50 // Optimized for smooth infinite scroll (larger pages = few
  * Uses React Query for caching and infinite scroll pagination
  * 
  * @param {Object} options - Query options
+ * @param {string} options.userId - User ID for query isolation
  * @param {string} options.searchQuery - Search term for filtering notes
  * @param {string|null} options.selectedTag - Tag to filter by
  * @param {boolean} options.enabled - Whether to enable the query
  * @returns {Object} Query result with notes data and pagination controls
  */
-export function useNotesQuery({ searchQuery = '', selectedTag = null, enabled = true } = {}) {
+export function useNotesQuery({ userId, searchQuery = '', selectedTag = null, enabled = true } = {}) {
   const supabase = createClient()
   
   return useInfiniteQuery({
     enabled,
-    // Query key includes filters for proper cache invalidation
-    queryKey: ['notes', searchQuery, selectedTag],
+    // Query key includes userId for proper cache isolation between users
+    queryKey: ['notes', userId, searchQuery, selectedTag],
     
     queryFn: async ({ pageParam = 0 }) => {
       // Calculate range for pagination

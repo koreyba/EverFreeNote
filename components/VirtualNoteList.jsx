@@ -1,5 +1,5 @@
-import { FixedSizeList } from 'react-window'
 import { forwardRef } from 'react'
+import { FixedSizeList as List } from 'react-window'
 import InteractiveTag from '@/components/InteractiveTag'
 
 /**
@@ -62,7 +62,7 @@ export const VirtualNoteList = forwardRef(function VirtualNoteList(
   }
 
   return (
-    <FixedSizeList
+    <List
       ref={ref}
       height={height}
       itemCount={notes.length}
@@ -71,7 +71,7 @@ export const VirtualNoteList = forwardRef(function VirtualNoteList(
       overscanCount={5} // Render 5 extra items above/below viewport for smooth scrolling
     >
       {Row}
-    </FixedSizeList>
+    </List>
   )
 })
 
