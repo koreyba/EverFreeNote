@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { FixedSizeList as List } from 'react-window'
+import { List } from 'react-window'
 import InteractiveTag from '@/components/InteractiveTag'
 
 /**
