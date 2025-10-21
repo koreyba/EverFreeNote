@@ -43,7 +43,7 @@ VALUES
         'a0000000-0000-0000-0000-000000000005',
         '550e8400-e29b-41d4-a716-446655440001',
         'Book Ideas',
-        '<p>Books I want to read:</p><ol><li><em>Clean Code</em> by Robert Martin</li><li><em>The Pragmatic Programmer</em></li><li><em>Design Patterns</em></li></ol><p>Fiction:</p><ul><li>Science fiction novels</li><li>Mystery thrillers</li></ul>',
+        '<p>Books I want to read:</p><ol><li><em>Clean Code</em> by Robert Martin</li><li><em>The Pragmatic Programmer</em></li><li><em>Design Patterns</em></li></ol><p><strong>Fiction:</strong></p><ul><li>Science fiction novels</li><li>Mystery thrillers</li></ul>',
         ARRAY['books', 'reading', 'personal'],
         NOW() - INTERVAL '2 hours',
         NOW() - INTERVAL '1 hour'
