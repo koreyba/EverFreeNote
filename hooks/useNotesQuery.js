@@ -141,7 +141,7 @@ function detectBrowserLanguage() {
 export function useSearchNotes(query, userId, options = {}) {
   const {
     language = detectBrowserLanguage(),
-    minRank = 0.1,
+    minRank = 0.01,
     limit = 20,
     offset = 0,
     enabled = true
