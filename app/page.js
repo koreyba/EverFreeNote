@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useQueryClient } from '@tanstack/react-query'
+import { useNotesQuery, useFlattenedNotes } from '@/hooks/useNotesQuery'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
+import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from '@/hooks/useNotesMutations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import RichTextEditor from '@/components/RichTextEditor'
@@ -13,12 +17,13 @@ import InteractiveTag from '@/components/InteractiveTag'
 import AuthForm from '@/components/AuthForm'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ImportButton } from '@/components/ImportButton'
+import { NoteListSkeleton } from '@/components/NoteListSkeleton'
+import { VirtualNoteList } from '@/components/VirtualNoteList'
 import { toast } from 'sonner'
 
 export default function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [notes, setNotes] = useState([])
   const [selectedNote, setSelectedNote] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isEditing, setIsEditing] = useState(false)
@@ -29,6 +34,31 @@ export default function App() {
   const [noteToDelete, setNoteToDelete] = useState(null)
   
   const supabase = createClient()
+  const queryClient = useQueryClient()
+  
+  // Use React Query for notes fetching (only when user is authenticated)
+  const notesQuery = useNotesQuery({
+    searchQuery,
+    selectedTag: filterByTag,
+    enabled: !!user, // Only fetch when user is logged in
+  })
+  
+  // Get flattened notes array from paginated data
+  const notes = user ? useFlattenedNotes(notesQuery) : []
+  
+  // Auto-load more notes on scroll (with 200px prefetch margin)
+  const observerTarget = useInfiniteScroll(
+    notesQuery.fetchNextPage,
+    notesQuery.hasNextPage,
+    notesQuery.isFetchingNextPage,
+    { threshold: 0.8, rootMargin: '200px' }
+  )
+  
+  // Optimistic mutations
+  const createNoteMutation = useCreateNote()
+  const updateNoteMutation = useUpdateNote()
+  const deleteNoteMutation = useDeleteNote()
+  const removeTagMutation = useRemoveTag()
 
   // Check authentication status
   useEffect(() => {
@@ -47,69 +77,21 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user || null)
-        if (session?.user) {
-          fetchNotes()
-        } else {
-          setNotes([])
-        }
       }
     )
 
     return () => subscription.unsubscribe()
   }, [])
 
-  // Fetch notes when user is authenticated
-  useEffect(() => {
-    if (user) {
-      fetchNotes()
-    }
-  }, [user])
-
-  const fetchNotes = async (search = '', tagFilter = null) => {
-    try {
-      // OPTIMIZATION: Select only needed fields for list view
-      let query = supabase
-        .from('notes')
-        .select('id, title, description, tags, created_at, updated_at')
-        .order('updated_at', { ascending: false })
-        .limit(1000) // Temporary limit until pagination (Phase 2)
-
-      // OPTIMIZATION: Filter by tag on server-side using GIN index
-      if (tagFilter) {
-        query = query.contains('tags', [tagFilter])
-      }
-
-      // Search functionality
-      // TODO Phase 6: Replace with full-text search using FTS index
-      if (search) {
-        const searchLower = search.toLowerCase()
-        query = query.or(`title.ilike.%${searchLower}%,description.ilike.%${searchLower}%`)
-      }
-
-      const { data, error } = await query
-
-      if (error) {
-        console.error('Error fetching notes:', error)
-        toast.error('Failed to load notes: ' + error.message)
-        return
-      }
-
-      setNotes(data)
-    } catch (error) {
-      console.error('Error fetching notes:', error)
-      toast.error('An unexpected error occurred while loading notes')
-    }
-  }
-
   const handleSearch = (query) => {
     setSearchQuery(query)
-    fetchNotes(query, filterByTag)
+    // React Query will automatically refetch with new searchQuery
   }
 
   const handleTagClick = (tag) => {
     setFilterByTag(tag)
     setSearchQuery('')
-    fetchNotes('', tag)
+    // React Query will automatically refetch with new filterByTag
     setSelectedNote(null)
     setIsEditing(false)
   }
@@ -117,7 +99,7 @@ export default function App() {
   const handleClearTagFilter = () => {
     setFilterByTag(null)
     setSearchQuery('')
-    fetchNotes('', null)
+    // React Query will automatically refetch
   }
 
   const handleSignInWithGoogle = async () => {
@@ -204,7 +186,8 @@ export default function App() {
       localStorage.removeItem('testUser')
       
       setUser(null)
-      setNotes([])
+      // Clear React Query cache for notes
+      queryClient.removeQueries({ queryKey: ['notes'] })
       setSelectedNote(null)
     } catch (error) {
       console.error('Error signing out:', error)
@@ -239,48 +222,28 @@ export default function App() {
         title: editForm.title.trim() || 'Untitled',
         description: editForm.description.trim(),
         tags,
-        updated_at: new Date().toISOString(),
       }
 
       if (selectedNote) {
-        // Update existing note
-        const { error } = await supabase
-          .from('notes')
-          .update(noteData)
-          .eq('id', selectedNote.id)
-
-        if (error) {
-          console.error('Error updating note:', error)
-          toast.error('Failed to update note: ' + error.message)
-          return
-        }
-
-        toast.success('Note updated successfully')
+        // Update existing note with optimistic update
+        await updateNoteMutation.mutateAsync({
+          id: selectedNote.id,
+          ...noteData,
+        })
       } else {
-        // Create new note
-        const { error } = await supabase
-          .from('notes')
-          .insert({
-            ...noteData,
-            user_id: user.id,
-          })
-
-        if (error) {
-          console.error('Error creating note:', error)
-          toast.error('Failed to create note: ' + error.message)
-          return
-        }
-
-        toast.success('Note created successfully')
+        // Create new note with optimistic update
+        await createNoteMutation.mutateAsync({
+          ...noteData,
+          userId: user.id,
+        })
       }
 
-      await fetchNotes(searchQuery, filterByTag)
       setIsEditing(false)
       setSelectedNote(null)
       setEditForm({ title: '', description: '', tags: '' })
     } catch (error) {
       console.error('Error saving note:', error)
-      toast.error('An unexpected error occurred while saving the note')
+      // Error toast handled by mutation hooks
     } finally {
       setSaving(false)
     }
@@ -295,26 +258,16 @@ export default function App() {
     if (!noteToDelete) return
 
     try {
-      const { error } = await supabase
-        .from('notes')
-        .delete()
-        .eq('id', noteToDelete.id)
-
-      if (error) {
-        console.error('Error deleting note:', error)
-        toast.error('Failed to delete note: ' + error.message)
-        return
-      }
-
-      toast.success('Note deleted successfully')
-      await fetchNotes(searchQuery, filterByTag)
+      // Delete with optimistic update
+      await deleteNoteMutation.mutateAsync(noteToDelete.id)
+      
       if (selectedNote?.id === noteToDelete.id) {
         setSelectedNote(null)
         setIsEditing(false)
       }
     } catch (error) {
       console.error('Error deleting note:', error)
-      toast.error('An unexpected error occurred while deleting the note')
+      // Error toast handled by mutation hook
     } finally {
       setDeleteDialogOpen(false)
       setNoteToDelete(null)
@@ -330,23 +283,8 @@ export default function App() {
       // Remove the tag from the tags array
       const updatedTags = noteToUpdate.tags.filter(tag => tag !== tagToRemove)
 
-      // Update the note in database
-      const { error } = await supabase
-        .from('notes')
-        .update({
-          tags: updatedTags,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', noteId)
-
-      if (error) {
-        console.error('Error removing tag from note:', error)
-        toast.error('Failed to remove tag: ' + error.message)
-        return
-      }
-
-      // Update local state
-      await fetchNotes(searchQuery, filterByTag)
+      // Update with optimistic update
+      await removeTagMutation.mutateAsync({ noteId, updatedTags })
 
       // Update selectedNote if it's the current note
       if (selectedNote?.id === noteId) {
@@ -357,8 +295,8 @@ export default function App() {
         })
       }
     } catch (error) {
-      console.error('Error removing tag from note:', error)
-      toast.error('An unexpected error occurred while removing the tag')
+      console.error('Error removing tag:', error)
+      // Error toast handled by mutation hook
     }
   }
 
@@ -460,51 +398,115 @@ export default function App() {
             <Plus className="w-4 h-4 mr-2" />
             New Note
           </Button>
-          <ImportButton onImportComplete={fetchNotes} />
+          <ImportButton onImportComplete={() => queryClient.invalidateQueries({ queryKey: ['notes'] })} />
         </div>
 
         {/* Notes List */}
-        <div className="flex-1 overflow-y-auto">
-          {notes.length === 0 ? (
+        <div className="flex-1 overflow-y-auto" id="notes-list-container">
+          {notesQuery.isLoading ? (
+            <NoteListSkeleton count={5} />
+          ) : notes.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <p>No notes yet</p>
               <p className="text-sm mt-2">Create your first note to get started!</p>
             </div>
-          ) : (
-            <div className="space-y-1 p-2">
-              {notes.map((note) => (
-                <div
-                  key={note.id}
-                  onClick={() => handleSelectNote(note)}
-                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                    selectedNote?.id === note.id
-                      ? 'bg-accent border'
-                      : 'hover:bg-muted/50 border border-transparent'
-                  }`}
-                >
-                  <h3 className="font-semibold truncate">{note.title}</h3>
-                  <p className="text-sm text-muted-foreground truncate mt-1">
-                    {note.description}
-                  </p>
-                  {note.tags && note.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {note.tags.slice(0, 3).map((tag, index) => (
-                        <InteractiveTag
-                          key={index}
-                          tag={tag}
-                          onClick={handleTagClick}
-                          showIcon={false}
-                          className="text-xs px-2 py-0.5"
-                        />
-                      ))}
+          ) : notes.length > 100 ? (
+            // Virtual scrolling for large lists (>100 notes)
+            <>
+              <VirtualNoteList
+                notes={notes}
+                selectedNote={selectedNote}
+                onSelectNote={handleSelectNote}
+                onTagClick={handleTagClick}
+                height={600} // Will be calculated dynamically
+              />
+              
+              {/* Infinite Scroll Sentinel & Loading Indicator */}
+              {notesQuery.hasNextPage && (
+                <div className="p-4">
+                  <div ref={observerTarget} className="h-1" />
+                  {notesQuery.isFetchingNextPage && (
+                    <div className="text-center py-2">
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {new Date(note.updated_at).toLocaleDateString()}
-                  </p>
+                  {!notesQuery.isFetchingNextPage && (
+                    <div className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => notesQuery.fetchNextPage()}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        Load More
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
+          ) : (
+            // Regular scrolling for small lists (≤100 notes)
+            <>
+              <div className="space-y-1 p-2">
+                {notes.map((note) => (
+                  <div
+                    key={note.id}
+                    onClick={() => handleSelectNote(note)}
+                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedNote?.id === note.id
+                        ? 'bg-accent border'
+                        : 'hover:bg-muted/50 border border-transparent'
+                    }`}
+                  >
+                    <h3 className="font-semibold truncate">{note.title}</h3>
+                    <p className="text-sm text-muted-foreground truncate mt-1">
+                      {note.description}
+                    </p>
+                    {note.tags && note.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {note.tags.slice(0, 3).map((tag, index) => (
+                          <InteractiveTag
+                            key={index}
+                            tag={tag}
+                            onClick={handleTagClick}
+                            showIcon={false}
+                            className="text-xs px-2 py-0.5"
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {new Date(note.updated_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Infinite Scroll Sentinel & Loading Indicator */}
+              {notesQuery.hasNextPage && (
+                <div className="p-4">
+                  <div ref={observerTarget} className="h-1" />
+                  {notesQuery.isFetchingNextPage && (
+                    <div className="text-center py-2">
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
+                    </div>
+                  )}
+                  {!notesQuery.isFetchingNextPage && (
+                    <div className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => notesQuery.fetchNextPage()}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        Load More
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
 
