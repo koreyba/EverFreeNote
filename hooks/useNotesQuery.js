@@ -1,7 +1,10 @@
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react'
 
 const PAGE_SIZE = 50 // Optimized for smooth infinite scroll (larger pages = fewer requests)
+const SEARCH_DEBOUNCE_MS = 300 // Debounce search input
+const SEARCH_STALE_TIME_MS = 30000 // Cache search results for 30s
 
 /**
  * Custom hook for fetching paginated notes with search and filter support
@@ -81,5 +84,100 @@ export function useFlattenedNotes(queryResult) {
   if (!queryResult.data?.pages) return []
   
   return queryResult.data.pages.flatMap(page => page.notes)
+}
+
+/**
+ * Custom hook for debouncing a value
+ * @param {any} value - Value to debounce
+ * @param {number} delay - Delay in milliseconds
+ * @returns {any} Debounced value
+ */
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+  
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+    
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [value, delay])
+  
+  return debouncedValue
+}
+
+/**
+ * Detect language from browser locale
+ * @returns {string} Language code (ru, en, uk)
+ */
+function detectBrowserLanguage() {
+  if (typeof navigator === 'undefined') return 'ru'
+  
+  const locale = navigator.language || navigator.userLanguage || 'ru'
+  const lang = locale.split('-')[0].toLowerCase()
+  
+  // Map to supported languages
+  if (lang === 'en') return 'en'
+  if (lang === 'uk') return 'uk'
+  return 'ru' // Default to Russian
+}
+
+/**
+ * Custom hook for FTS search with debouncing and caching
+ * Uses new /api/notes/search endpoint with Full-Text Search
+ * 
+ * @param {string} query - Search query
+ * @param {Object} options - Search options
+ * @param {string} options.language - Language code (auto-detected by default)
+ * @param {number} options.minRank - Minimum relevance rank (default: 0.1)
+ * @param {number} options.limit - Results limit (default: 20)
+ * @param {number} options.offset - Pagination offset (default: 0)
+ * @param {boolean} options.enabled - Whether to enable the query (default: true)
+ * @returns {Object} Query result with search results and metadata
+ */
+export function useSearchNotes(query, options = {}) {
+  const {
+    language = detectBrowserLanguage(),
+    minRank = 0.1,
+    limit = 20,
+    offset = 0,
+    enabled = true
+  } = options
+  
+  // Debounce query to avoid excessive API calls
+  const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
+  
+  // Validate query length (min 3 characters)
+  const isValidQuery = debouncedQuery && debouncedQuery.trim().length >= 3
+  
+  return useQuery({
+    queryKey: ['notes', 'search', debouncedQuery, language, minRank, limit, offset],
+    queryFn: async () => {
+      // Build query parameters
+      const params = new URLSearchParams({
+        q: debouncedQuery,
+        lang: language,
+        minRank: minRank.toString(),
+        limit: limit.toString(),
+        offset: offset.toString()
+      })
+      
+      // Call search API
+      const response = await fetch(`/api/notes/search?${params}`)
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Search failed')
+      }
+      
+      return response.json()
+    },
+    enabled: enabled && isValidQuery,
+    staleTime: SEARCH_STALE_TIME_MS,
+    // Keep previous data while fetching new results (better UX)
+    placeholderData: (previousData) => previousData,
+  })
 }
 
