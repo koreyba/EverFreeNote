@@ -93,20 +93,34 @@ export function ImportProgressDialog({ open, progress, result, onClose }) {
                 </div>
                 <div className="text-sm text-muted-foreground">Successful</div>
               </div>
-              {result.errors > 0 && (
-                <div className="text-center p-4 bg-red-50 dark:bg-red-950/20 rounded-lg">
-                  <div className="text-2xl font-bold text-destructive">
-                    {result.errors}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Failed</div>
+              <div className="text-center p-4 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                <div className="text-2xl font-bold text-destructive">
+                  {result.errors}
                 </div>
-              )}
+                <div className="text-sm text-muted-foreground">Failed</div>
+              </div>
             </div>
             
             {result.message && (
               <p className="text-sm text-muted-foreground text-center">
                 {result.message}
               </p>
+            )}
+            
+            {result.failedNotes && result.failedNotes.length > 0 && (
+              <details className="text-sm">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                  View failed notes ({result.failedNotes.length})
+                </summary>
+                <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                  {result.failedNotes.map((failed, index) => (
+                    <div key={index} className="p-2 bg-muted/50 rounded text-xs">
+                      <div className="font-medium">{failed.title}</div>
+                      <div className="text-muted-foreground">{failed.error}</div>
+                    </div>
+                  ))}
+                </div>
+              </details>
             )}
           </div>
         )}
