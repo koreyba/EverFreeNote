@@ -1,4 +1,47 @@
 -- Seed data for testing
+-- Create test users for local development
+INSERT INTO auth.users (
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at
+)
+VALUES
+    (
+        '00000000-0000-0000-0000-000000000000',
+        '550e8400-e29b-41d4-a716-446655440000',
+        'authenticated',
+        'authenticated',
+        'test@example.com',
+        '$2a$10$8K1p/5w6Z3v3x4y5z6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m', -- bcrypt hash for 'testpassword123'
+        NOW(),
+        '{"provider":"email","providers":["email"]}',
+        '{}',
+        NOW(),
+        NOW()
+    ),
+    (
+        '00000000-0000-0000-0000-000000000000',
+        '550e8400-e29b-41d4-a716-446655440001',
+        'authenticated',
+        'authenticated',
+        'skip-auth@example.com',
+        '$2a$10$8K1p/5w6Z3v3x4y5z6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m', -- bcrypt hash for 'testpassword123'
+        NOW(),
+        '{"provider":"email","providers":["email"]}',
+        '{}',
+        NOW(),
+        NOW()
+    )
+ON CONFLICT (id) DO NOTHING;
+
 -- Insert test notes for skip-auth@example.com user
 
 INSERT INTO public.notes (id, user_id, title, description, tags, created_at, updated_at)
