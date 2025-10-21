@@ -82,6 +82,9 @@ export function ImportButton({ onImportComplete }) {
     let successCount = 0
     let errorCount = 0
     let totalNotes = 0
+    let failedNotes = []
+    let lastSaveTime = 0
+    const SAVE_INTERVAL = 2000 // Save to localStorage every 2 seconds
 
     try {
       const supabase = createClient()
@@ -130,16 +133,21 @@ export function ImportButton({ onImportComplete }) {
           for (let noteIndex = 0; noteIndex < notes.length; noteIndex++) {
             const note = notes[noteIndex]
             
-            // Save current state to localStorage
-            localStorage.setItem(IMPORT_STATE_KEY, JSON.stringify({
-              currentFile: fileIndex + 1,
-              totalFiles: files.length,
-              currentNote: successCount + errorCount,
-              totalNotes,
-              successCount,
-              errorCount,
-              fileName: file.name
-            }))
+            // Throttle localStorage updates - save every 2 seconds or on last note
+            const now = Date.now()
+            const isLastNote = noteIndex === notes.length - 1
+            if (now - lastSaveTime > SAVE_INTERVAL || isLastNote) {
+              localStorage.setItem(IMPORT_STATE_KEY, JSON.stringify({
+                currentFile: fileIndex + 1,
+                totalFiles: files.length,
+                currentNote: successCount + errorCount,
+                totalNotes,
+                successCount,
+                errorCount,
+                fileName: file.name
+              }))
+              lastSaveTime = now
+            }
             
             try {
               const noteId = crypto.randomUUID()
@@ -171,6 +179,12 @@ export function ImportButton({ onImportComplete }) {
               console.error('Failed to import note:', note.title, error)
               errorCount++
               
+              // Collect failed note details
+              failedNotes.push({
+                title: note.title || 'Untitled',
+                error: error.message || 'Unknown error'
+              })
+              
               // Update note progress even on error
               setProgress(prev => ({
                 ...prev,
@@ -192,6 +206,7 @@ export function ImportButton({ onImportComplete }) {
       const result = {
         success: successCount,
         errors: errorCount,
+        failedNotes: failedNotes,
         message: successCount > 0 
           ? `Successfully imported ${successCount} note${successCount > 1 ? 's' : ''}`
           : errorCount > 0 
@@ -200,8 +215,10 @@ export function ImportButton({ onImportComplete }) {
       }
       setImportResult(result)
 
+      // Call onImportComplete with status
       if (successCount > 0) {
-        onImportComplete?.()
+        const status = errorCount > 0 ? 'partial' : 'success'
+        onImportComplete?.(status, { successCount, errorCount })
       }
     } catch (error) {
       console.error('Import failed:', error)
@@ -211,6 +228,7 @@ export function ImportButton({ onImportComplete }) {
       setImportResult({
         success: successCount,
         errors: errorCount + 1,
+        failedNotes: failedNotes,
         message: `Import failed: ${error.message}`
       })
     } finally {
