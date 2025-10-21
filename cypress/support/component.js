@@ -19,6 +19,12 @@ import './commands'
 // Add Testing Library commands
 import '@testing-library/cypress/add-commands'
 
+// Import code coverage for component tests
+import '@cypress/code-coverage/support'
+
+// Import custom component testing utilities
+import './component-utils'
+
 // Mock Next.js router
 Cypress.on('window:before:load', (win) => {
   win.__NEXT_DATA__ = {

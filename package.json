@@ -25,7 +25,10 @@
         "test": "cypress run",
         "test:e2e": "cypress run --spec 'cypress/e2e/**/*.cy.js'",
         "test:component": "cypress run --component --spec 'cypress/component/**/*.cy.js'",
+        "test:component:coverage": "cypress run --component --spec 'cypress/component/**/*.cy.js' --env codeCoverage=true",
+        "test:component:watch": "cypress open --component",
         "test:all": "npm run test:component && npm run test:e2e",
+        "coverage:component": "nyc report --reporter=html --reporter=text --report-dir=coverage/component",
         "act:list": "act -l",
         "act:build": "act -W .github/workflows/build.yml",
         "act:e2e": "act -W .github/workflows/e2e-tests.yml",
@@ -109,12 +112,15 @@
         "zod": "^4.1.12"
     },
     "devDependencies": {
+        "@cypress/code-coverage": "^3.14.7",
         "@tailwindcss/postcss": "^4.1.14",
         "@testing-library/cypress": "^10.1.0",
         "autoprefixer": "^10.4.21",
         "cypress": "^15.5.0",
         "dotenv": "^17.2.3",
         "globals": "^16.4.0",
+        "istanbul-lib-coverage": "^3.2.2",
+        "nyc": "^17.1.0",
         "postcss": "^8",
         "supabase": "^2.51.0",
         "tailwindcss": "^4.1.14"
