@@ -67,12 +67,20 @@ export default function App() {
 
   const fetchNotes = async (search = '', tagFilter = null) => {
     try {
+      // OPTIMIZATION: Select only needed fields for list view
       let query = supabase
         .from('notes')
-        .select('*')
+        .select('id, title, description, tags, created_at, updated_at')
         .order('updated_at', { ascending: false })
+        .limit(1000) // Temporary limit until pagination (Phase 2)
+
+      // OPTIMIZATION: Filter by tag on server-side using GIN index
+      if (tagFilter) {
+        query = query.contains('tags', [tagFilter])
+      }
 
       // Search functionality
+      // TODO Phase 6: Replace with full-text search using FTS index
       if (search) {
         const searchLower = search.toLowerCase()
         query = query.or(`title.ilike.%${searchLower}%,description.ilike.%${searchLower}%`)
@@ -86,29 +94,7 @@ export default function App() {
         return
       }
 
-      // Additional filtering
-      let filteredData = data
-      
-      // Filter by tag
-      if (tagFilter) {
-        filteredData = filteredData.filter(note => 
-          note.tags && note.tags.includes(tagFilter)
-        )
-      }
-      
-      // Filter by search
-      if (search) {
-        filteredData = filteredData.filter(note => {
-          const titleMatch = note.title.toLowerCase().includes(search.toLowerCase())
-          const descMatch = note.description.toLowerCase().includes(search.toLowerCase())
-          const tagMatch = note.tags?.some(tag => 
-            tag.toLowerCase().includes(search.toLowerCase())
-          )
-          return titleMatch || descMatch || tagMatch
-        })
-      }
-
-      setNotes(filteredData)
+      setNotes(data)
     } catch (error) {
       console.error('Error fetching notes:', error)
       toast.error('An unexpected error occurred while loading notes')
