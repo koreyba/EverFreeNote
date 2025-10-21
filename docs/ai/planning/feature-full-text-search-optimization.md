@@ -270,6 +270,8 @@ feature: full-text-search-optimization
 - Improved error handling and fallback logic
 - Added accessibility labels (aria-labels for screen readers)
 - Added FTS loading states in UI
+- Fixed react-window import in VirtualNoteList (FixedSizeList)
+- Fixed ILIKE fallback to use correct `description` column
 
 **🔄 Remaining Follow-ups (Nice-to-have):**
 - [ ] Update E2E tests for RPC calls (not API endpoints)

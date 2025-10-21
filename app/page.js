@@ -224,7 +224,7 @@ export default function App() {
     setIsEditing(true)
     setEditForm({
       title: note.title,
-      description: note.description,
+      description: note.description || note.content,
       tags: note.tags?.join(', ') || '',
     })
   }
