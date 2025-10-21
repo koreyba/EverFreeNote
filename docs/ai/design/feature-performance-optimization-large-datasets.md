@@ -457,10 +457,19 @@ FROM notes
 - Reduces server load significantly
 
 ### Pagination Configuration
-**Decision:** 20 notes per page
-- Good balance between load time and number of requests
-- Matches initial design
-- Can be adjusted based on real-world performance
+**Decision:** 50 notes per page (updated from 20)
+- Optimized for smooth infinite scroll
+- Fewer requests = better performance
+- Larger pages still load fast with indexed queries
+- Reduces overhead from multiple small requests
+
+### Infinite Scroll Implementation
+**Decision:** Intersection Observer with auto-load
+- Native browser API (zero overhead)
+- 200px prefetch margin (loads before user reaches bottom)
+- 80% threshold for smooth experience
+- Fallback manual "Load More" button
+- Optimized for maximum scroll speed
 
 ### Search Debounce
 **Decision:** 300ms
