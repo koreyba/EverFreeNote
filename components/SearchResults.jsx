@@ -88,15 +88,12 @@ function SearchResultItem({ note, showRank = false, method }) {
       <CardContent className="space-y-3">
         {/* Highlighted content preview */}
         {sanitizedHeadline && (
-          <div 
-            className="text-sm text-muted-foreground line-clamp-3"
-            dangerouslySetInnerHTML={{ __html: sanitizedHeadline }}
-            style={{
-              // Style for <mark> tags
-              '--mark-bg': 'hsl(var(--primary) / 0.2)',
-              '--mark-color': 'hsl(var(--primary))'
-            }}
-          />
+          <div className="text-sm text-muted-foreground line-clamp-3">
+            <div
+              dangerouslySetInnerHTML={{ __html: sanitizedHeadline }}
+              className="prose prose-sm max-w-none [&_mark]:bg-primary/20 [&_mark]:text-primary [&_mark]:px-0.5 [&_mark]:rounded-sm [&_mark]:font-medium"
+            />
+          </div>
         )}
         
         {/* Tags */}

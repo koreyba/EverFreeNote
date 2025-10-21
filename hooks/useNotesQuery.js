@@ -167,35 +167,51 @@ export function useSearchNotes(query, userId, options = {}) {
 
       const startTime = Date.now()
 
-      // Execute FTS RPC function
-      const { data, error } = await supabase
-        .rpc('search_notes_fts', {
-          search_query: tsQuery,
-          search_language: ftsLanguage,
-          min_rank: minRank,
-          result_limit: limit,
-          result_offset: offset,
-          search_user_id: userId
-        })
+      try {
+        // Execute FTS RPC function
+        const { data, error } = await supabase
+          .rpc('search_notes_fts', {
+            search_query: tsQuery,
+            search_language: ftsLanguage,
+            min_rank: minRank,
+            result_limit: limit,
+            result_offset: offset,
+            search_user_id: userId
+          })
 
-      const executionTime = Date.now() - startTime
+        const executionTime = Date.now() - startTime
 
-      if (error) {
-        throw new Error(`FTS search failed: ${error.message}`)
-      }
+        if (error) {
+          console.warn('FTS search failed, falling back to regular search:', error.message)
+          throw new Error(`FTS search failed: ${error.message}`)
+        }
 
-      return {
-        results: data || [],
-        total: data?.length || 0,
-        query: debouncedQuery,
-        method: 'fts',
-        executionTime
+        return {
+          results: data || [],
+          total: data?.length || 0,
+          query: debouncedQuery,
+          method: 'fts',
+          executionTime
+        }
+      } catch (error) {
+        // If FTS fails, don't throw - let the component fall back to regular search
+        console.warn('FTS search error (will use fallback):', error.message)
+        return {
+          results: [],
+          total: 0,
+          query: debouncedQuery,
+          method: 'fallback',
+          executionTime: Date.now() - startTime,
+          error: error.message
+        }
       }
     },
     enabled: enabled && isValidQuery,
     staleTime: SEARCH_STALE_TIME_MS,
     // Keep previous data while fetching new results (better UX)
     placeholderData: (previousData) => previousData,
+    // Don't retry FTS failures - let it fall back gracefully
+    retry: false,
   })
 }
 

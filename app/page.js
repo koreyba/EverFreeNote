@@ -12,7 +12,7 @@ import RichTextEditor from '@/components/RichTextEditor'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen, Zap } from 'lucide-react'
 import InteractiveTag from '@/components/InteractiveTag'
 import AuthForm from '@/components/AuthForm'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -54,6 +54,13 @@ export default function App() {
   const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
     enabled: !!user && ftsSearchQuery.length >= 3
   })
+
+  // Use FTS results if available and no error, otherwise use regular search
+  const showFTSResults = ftsSearchQuery.length >= 3 &&
+    ftsSearchResult.data &&
+    ftsSearchResult.data.method === 'fts' &&
+    !ftsSearchResult.data.error &&
+    ftsSearchResult.data.results.length > 0
 
   // Auto-load more notes on scroll (with 200px prefetch margin)
   const observerTarget = useInfiniteScroll(
@@ -423,8 +430,8 @@ export default function App() {
 
         {/* Notes List */}
         <div className="flex-1 overflow-y-auto" id="notes-list-container">
-          {/* Show FTS search results if available */}
-          {ftsSearchQuery.length >= 3 && ftsSearchResult.data ? (
+          {/* Show FTS search results if available and successful */}
+          {showFTSResults ? (
             <div className="p-4">
               {/* FTS Search Results Header */}
               <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
