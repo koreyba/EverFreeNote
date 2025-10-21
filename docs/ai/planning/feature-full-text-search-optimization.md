@@ -272,6 +272,8 @@ feature: full-text-search-optimization
 - Added FTS loading states in UI
 - Fixed react-window import in VirtualNoteList (FixedSizeList)
 - Fixed ILIKE fallback to use correct `description` column
+- **Fixed migration idempotency** - added `DROP TRIGGER IF EXISTS` for safe re-runs
+- **Moved test users to seed.sql** - crypto functions incompatible with hosted Supabase, but needed locally
 
 **🔄 Remaining Follow-ups (Nice-to-have):**
 - [ ] Update E2E tests for RPC calls (not API endpoints)
