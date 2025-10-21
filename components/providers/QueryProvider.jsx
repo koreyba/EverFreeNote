@@ -13,6 +13,18 @@ export function QueryProvider({ children }) {
         refetchOnWindowFocus: false, // Don't refetch on window focus (SPA behavior)
         retry: 3, // Retry failed requests 3 times
         retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+        // Global error handler for queries (logged, not thrown to Error Boundary)
+        onError: (error) => {
+          console.error('React Query error:', error)
+          // Errors are handled by individual query hooks with toast notifications
+        },
+      },
+      mutations: {
+        // Global error handler for mutations (logged, handled by mutation hooks)
+        onError: (error) => {
+          console.error('React Query mutation error:', error)
+          // Errors are handled by individual mutation hooks with toast + rollback
+        },
       },
     },
   }))
