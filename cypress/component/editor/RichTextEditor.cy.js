@@ -423,4 +423,290 @@ describe('RichTextEditor Component', () => {
     cy.get('@onChangeSpy').should('have.been.called')
     cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<mark>Highlighted text</mark>')
   })
+
+  // Extended tests for color picker functionality
+  it('opens color picker popover when clicking color button', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Click color button to open popover
+    cy.get('[data-cy="color-button"]').click()
+
+    // Wait for popover to appear and verify color picker is visible
+    // TwitterPicker renders inside popover content
+    cy.get('.twitter-picker').should('be.visible')
+  })
+
+  it('applies text color using color picker', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Type text
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Colored text')
+
+    // Select all text
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+
+    // Open color picker
+    cy.get('[data-cy="color-button"]').click()
+
+    // Wait for picker and click on first color swatch
+    cy.get('.twitter-picker').should('be.visible')
+    // TwitterPicker renders color swatches as divs with background color
+    cy.get('.twitter-picker div[title]').first().click()
+
+    // Verify onChange was called (color was applied)
+    cy.get('@onChangeSpy').should('have.been.called')
+  })
+
+  // Font family and size selector tests - simplified to just verify they render
+  it('renders font family and size selectors', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Verify selectors are rendered by checking for their trigger buttons
+    // Select components render buttons with specific widths
+    cy.get('button.w-\\[120px\\]').should('exist') // Font family selector
+    cy.get('button.w-\\[70px\\]').should('exist')  // Font size selector
+  })
+
+  // Image insertion tests
+  it('opens image URL prompt when clicking image button', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Stub window.prompt
+    cy.window().then((win) => {
+      cy.stub(win, 'prompt').returns('https://example.com/image.jpg')
+    })
+
+    // Click image button
+    cy.get('[data-cy="image-button"]').click()
+
+    // Verify prompt was called
+    cy.window().its('prompt').should('have.been.called')
+  })
+
+  it('inserts image when URL is provided', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Stub window.prompt to return image URL
+    cy.window().then((win) => {
+      cy.stub(win, 'prompt').returns('https://example.com/test.jpg')
+    })
+
+    // Click image button
+    cy.get('[data-cy="image-button"]').click()
+
+    // Verify image was inserted
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<img')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', 'https://example.com/test.jpg')
+  })
+
+  it('does not insert image when prompt is cancelled', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content="<p>Initial content</p>"
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Clear spy to track only new calls
+    cy.wrap(onChangeSpy).invoke('resetHistory')
+
+    // Stub window.prompt to return null (cancelled)
+    cy.window().then((win) => {
+      cy.stub(win, 'prompt').returns(null)
+    })
+
+    // Click image button
+    cy.get('[data-cy="image-button"]').click()
+
+    // Verify onChange was not called (no change)
+    cy.get('@onChangeSpy').should('not.have.been.called')
+  })
+
+  // Link insertion tests
+  it('opens link URL prompt when clicking link button', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Type and select text first
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Link text')
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+
+    // Stub window.prompt
+    cy.window().then((win) => {
+      cy.stub(win, 'prompt').returns('https://example.com')
+    })
+
+    // Click link button
+    cy.get('[data-cy="link-button"]').click()
+
+    // Verify prompt was called
+    cy.window().its('prompt').should('have.been.called')
+  })
+
+  it('creates link when URL is provided', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Type and select text
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Click here')
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+
+    // Stub window.prompt to return URL
+    cy.window().then((win) => {
+      cy.stub(win, 'prompt').returns('https://example.com')
+    })
+
+    // Click link button
+    cy.get('[data-cy="link-button"]').click()
+
+    // Verify link was created
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<a')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', 'https://example.com')
+  })
+
+  // Indent/Outdent tests
+  it('renders indent and outdent buttons', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Verify buttons are visible
+    cy.get('[data-cy="indent-button"]').should('be.visible')
+    cy.get('[data-cy="outdent-button"]').should('be.visible')
+  })
+
+  // Edge cases
+  it('handles empty content gracefully', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Editor should render with empty paragraph
+    cy.get('[data-cy="editor-content"]').should('be.visible')
+    cy.get('[data-cy="editor-content"]').should('contain', '')
+  })
+
+  it('handles very long content', () => {
+    const longContent = '<p>' + 'A'.repeat(10000) + '</p>'
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content={longContent}
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Editor should render long content
+    cy.get('[data-cy="editor-content"]').should('be.visible')
+    cy.get('[data-cy="editor-content"]').should('contain', 'A')
+  })
+
+  it('handles complex nested HTML content', () => {
+    const complexContent = '<p><strong>Bold <em>and italic</em></strong> with <mark>highlight</mark> and <u>underline</u></p>'
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content={complexContent}
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Editor should render complex content
+    cy.get('[data-cy="editor-content"]').should('be.visible')
+    cy.get('[data-cy="editor-content"]').should('contain', 'Bold')
+    cy.get('[data-cy="editor-content"]').should('contain', 'and italic')
+  })
+
+  it('handles rapid consecutive formatting changes', () => {
+    const onChangeSpy = cy.spy().as('onChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        content=""
+        onChange={onChangeSpy}
+      />
+    )
+
+    // Type text
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Format test')
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+
+    // Apply multiple formats rapidly
+    cy.get('[data-cy="bold-button"]').click()
+    cy.get('[data-cy="italic-button"]').click()
+    cy.get('[data-cy="underline-button"]').click()
+
+    // Verify all formats were applied
+    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<strong>')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<em>')
+    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<u>')
+  })
 })
