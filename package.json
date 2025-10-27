@@ -17,6 +17,7 @@
         "db:migration:list": "supabase migration list",
         "db:status": "supabase status",
         "db:studio": "supabase studio",
+        "db:init-users": "node scripts/init-test-users.js",
         "perf:generate": "node scripts/generate-test-notes.js",
         "perf:measure": "node scripts/measure-performance.js",
         "perf:test": "node scripts/test-migrations.js",
