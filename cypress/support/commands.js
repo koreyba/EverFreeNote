@@ -10,23 +10,138 @@
 
 /// <reference types="cypress" />
 
-// Custom command for authentication
-Cypress.Commands.add('login', (email = 'test@example.com', password = 'password') => {
-  cy.session([email, password], () => {
-    cy.visit('/')
-    cy.contains('Skip Authentication').click()
-  })
+// ============================================
+// E2E Custom Commands
+// ============================================
+
+/**
+ * Login with skip authentication
+ */
+Cypress.Commands.add('login', () => {
+  cy.visit('/', { timeout: 30000 })
+  cy.contains('Skip Authentication', { timeout: 15000 }).should('be.visible').click()
+  cy.contains('New Note', { timeout: 15000 }).should('be.visible')
 })
 
-// Custom command for creating a note
-Cypress.Commands.add('createNote', (title, content = '') => {
+/**
+ * Create a note with title, content, and optional tags
+ * @param {string} title - Note title
+ * @param {string} content - Note content
+ * @param {string} tags - Comma-separated tags (optional)
+ */
+Cypress.Commands.add('createNote', (title, content, tags = '') => {
   cy.contains('New Note').click()
   cy.get('input[placeholder="Note title"]').type(title)
-  if (content) {
-    cy.get('.ql-editor').type(content)
+  cy.get('[data-cy="editor-content"]').click().type(content)
+  if (tags) {
+    cy.get('input[placeholder="work, personal, ideas"]').type(tags)
   }
-  cy.contains('Save').click()
-  cy.contains('Note created successfully').should('be.visible')
+  cy.contains('button', 'Save').click()
+  cy.contains('Note created successfully', { timeout: 10000 }).should('be.visible')
+  cy.wait(500)
+})
+
+/**
+ * Delete a note by title
+ * @param {string} title - Note title to delete
+ */
+Cypress.Commands.add('deleteNote', (title) => {
+  cy.contains(title).click()
+  cy.wait(500)
+  cy.contains('button', 'Delete').click()
+  cy.contains('Note deleted successfully', { timeout: 10000 }).should('be.visible')
+})
+
+/**
+ * Delete all notes (cleanup)
+ * Note: This is a placeholder - implement based on app capabilities
+ */
+Cypress.Commands.add('deleteAllNotes', () => {
+  // Implementation depends on if we have "Delete All" feature
+  // For now, this is a placeholder
+  cy.log('deleteAllNotes: Not implemented yet')
+})
+
+/**
+ * Search for notes
+ * @param {string} query - Search query
+ */
+Cypress.Commands.add('searchNotes', (query) => {
+  cy.get('input[placeholder*="Search"]').clear().type(query)
+  cy.wait(500)
+})
+
+/**
+ * Clear search
+ */
+Cypress.Commands.add('clearSearch', () => {
+  cy.get('input[placeholder*="Search"]').clear()
+  cy.wait(500)
+})
+
+/**
+ * Filter notes by tag
+ * @param {string} tag - Tag name
+ */
+Cypress.Commands.add('filterByTag', (tag) => {
+  cy.contains(tag).click()
+  cy.wait(500)
+})
+
+/**
+ * Toggle theme (light/dark)
+ */
+Cypress.Commands.add('toggleTheme', () => {
+  cy.get('button').filter(':has(svg.lucide-sun, svg.lucide-moon)').click()
+  cy.wait(300)
+})
+
+/**
+ * Import ENEX file
+ * @param {string} filename - ENEX filename in fixtures/enex/
+ * @param {'prefix'|'skip'} strategy - Duplicate handling strategy
+ */
+Cypress.Commands.add('importEnex', (filename, strategy = 'prefix') => {
+  cy.contains('Import from Evernote').click()
+  cy.get('input[type="file"]').selectFile(`cypress/fixtures/enex/${filename}`, { force: true })
+  
+  if (strategy === 'prefix') {
+    cy.get('#prefix').click()
+  } else {
+    cy.get('#skip').click()
+  }
+  
+  cy.contains('button', 'Import').click()
+  cy.contains('Import completed', { timeout: 30000 }).should('be.visible')
+  cy.contains('button', 'Close').click()
+})
+
+// ============================================
+// Assertion Commands
+// ============================================
+
+/**
+ * Assert that a note exists in the list
+ * @param {string} title - Note title
+ */
+Cypress.Commands.add('assertNoteExists', (title) => {
+  cy.contains(title).should('be.visible')
+})
+
+/**
+ * Assert that a note does not exist
+ * @param {string} title - Note title
+ */
+Cypress.Commands.add('assertNoteNotExists', (title) => {
+  cy.contains(title).should('not.exist')
+})
+
+/**
+ * Assert that a tag exists
+ * @param {string} tag - Tag name
+ */
+Cypress.Commands.add('assertTagExists', (tag) => {
+  cy.contains(tag).should('be.visible')
 })
 
 // For component testing

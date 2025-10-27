@@ -8,6 +8,21 @@ module.exports = defineConfig({
     setupNodeEvents(on, config) {
       // implement node event listeners here
     },
+    // E2E test specific configuration
+    viewportWidth: 1280,
+    viewportHeight: 720,
+    video: true, // Enable video for e2e tests
+    screenshotOnRunFailure: true,
+    // Timeouts optimized for e2e
+    defaultCommandTimeout: 10000,
+    pageLoadTimeout: 30000,
+    requestTimeout: 10000,
+    responseTimeout: 30000,
+    // Retry strategy for e2e tests
+    retries: {
+      runMode: 0,  // Retry 2 times in CI
+      openMode: 0, // No retry in dev
+    },
   },
   component: {
     devServer: {

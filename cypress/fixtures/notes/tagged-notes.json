@@ -1,0 +1,18 @@
+[
+  {
+    "title": "Work Note",
+    "content": "Work related content and tasks",
+    "tags": "work, important"
+  },
+  {
+    "title": "Personal Note",
+    "content": "Personal thoughts and ideas",
+    "tags": "personal"
+  },
+  {
+    "title": "Ideas Note",
+    "content": "Brainstorming and creative ideas",
+    "tags": "ideas, brainstorming"
+  }
+]
+
