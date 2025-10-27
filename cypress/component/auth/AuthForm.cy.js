@@ -1,5 +1,5 @@
 import React from 'react'
-import AuthForm from '../../components/AuthForm'
+import AuthForm from '@/components/AuthForm'
 
 describe('AuthForm Component', () => {
   it('renders all authentication buttons and elements', () => {
@@ -144,15 +144,14 @@ describe('AuthForm Component', () => {
       .should('have.class', 'w-full')
       .and('have.class', 'h-12')
 
-    // Проверяем стили кнопки Test Login (оранжевая)
+    // Проверяем стили кнопок Test Login и Skip Auth (outline variant)
     cy.get('[data-cy="test-login-button"]')
-      .should('have.class', 'border-orange-200')
-      .and('have.class', 'text-orange-700')
+      .should('have.class', 'w-full')
+      .and('have.class', 'h-10')
 
-    // Проверяем стили кнопки Skip Auth (синяя)
     cy.get('[data-cy="skip-auth-button"]')
-      .should('have.class', 'border-blue-200')
-      .and('have.class', 'text-blue-700')
+      .should('have.class', 'w-full')
+      .and('have.class', 'h-10')
   })
 
   it('Google button contains SVG icon', () => {

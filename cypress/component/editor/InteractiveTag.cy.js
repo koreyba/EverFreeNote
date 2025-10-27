@@ -1,5 +1,5 @@
 import React from 'react'
-import InteractiveTag from '../../components/InteractiveTag'
+import InteractiveTag from '@/components/InteractiveTag'
 
 describe('InteractiveTag Component', () => {
   it('renders tag with correct text', () => {
@@ -66,7 +66,7 @@ describe('InteractiveTag Component', () => {
     // Проверяем что у тега есть правильные CSS классы
     cy.get('[data-cy="interactive-tag"]').should('have.class', 'cursor-pointer')
     cy.get('[data-cy="interactive-tag"]').should('have.class', 'transition-all')
-    cy.get('[data-cy="interactive-tag"]').should('have.class', 'hover:bg-green-100')
+    cy.get('[data-cy="interactive-tag"]').should('have.class', 'hover:bg-accent')
   })
 
   it('handles long tag names gracefully', () => {
