@@ -1,5 +1,5 @@
 import React from 'react'
-import { Input } from '../../components/ui/input'
+import { Input } from '@/components/ui/input'
 
 describe('Input Component', () => {
   it('renders with default props', () => {
