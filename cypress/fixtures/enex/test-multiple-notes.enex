@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export3.dtd">
+<en-export export-date="20231027T120000Z" application="Evernote" version="10.x">
+  <note>
+    <title>First Imported Note</title>
+    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note>
+  <div>This is the first imported note.</div>
+</en-note>]]></content>
+    <created>20231027T100000Z</created>
+    <updated>20231027T110000Z</updated>
+    <tag>imported</tag>
+    <tag>first</tag>
+  </note>
+  <note>
+    <title>Second Imported Note</title>
+    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note>
+  <div>This is the second imported note.</div>
+</en-note>]]></content>
+    <created>20231027T100100Z</created>
+    <updated>20231027T110100Z</updated>
+    <tag>imported</tag>
+    <tag>second</tag>
+  </note>
+  <note>
+    <title>Third Imported Note</title>
+    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note>
+  <div>This is the third imported note.</div>
+</en-note>]]></content>
+    <created>20231027T100200Z</created>
+    <updated>20231027T110200Z</updated>
+    <tag>imported</tag>
+    <tag>third</tag>
+  </note>
+</en-export>
+
