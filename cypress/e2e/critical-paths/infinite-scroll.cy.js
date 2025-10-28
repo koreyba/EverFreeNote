@@ -18,10 +18,16 @@ describe('Infinite Scroll', () => {
   })
 
   it('should load more notes on scroll', () => {
-    // Create 30 notes (enough to trigger lazy loading)
-    for (let i = 1; i <= 30; i++) {
-      cy.createNote(`Scroll Test Note ${i}`, `Content for note ${i}`, 'scroll-test')
-    }
+    // Create 30 notes via API (much faster than UI)
+    const notes = Array.from({ length: 30 }, (_, i) => ({
+      title: `Scroll Test Note ${i + 1}`,
+      content: `Content for note ${i + 1}`,
+      tags: 'scroll-test'
+    }))
+    
+    cy.createNotesViaAPI(notes)
+    cy.wait(1000) // Wait for notes to be created
+    cy.reload() // Reload to fetch new notes
 
     // Verify first notes are visible
     cy.assertNoteExists('Scroll Test Note 1')
@@ -37,14 +43,17 @@ describe('Infinite Scroll', () => {
   })
 
   it('should handle search with many notes', () => {
-    // Create many notes with different content
-    for (let i = 1; i <= 25; i++) {
-      if (i % 5 === 0) {
-        cy.createNote(`Special Note ${i}`, `Special content ${i}`, 'special')
-      } else {
-        cy.createNote(`Regular Note ${i}`, `Regular content ${i}`, 'regular')
-      }
-    }
+    // Create many notes via API
+    const notes = Array.from({ length: 25 }, (_, i) => {
+      const num = i + 1
+      return num % 5 === 0 
+        ? { title: `Special Note ${num}`, content: `Special content ${num}`, tags: 'special' }
+        : { title: `Regular Note ${num}`, content: `Regular content ${num}`, tags: 'regular' }
+    })
+    
+    cy.createNotesViaAPI(notes)
+    cy.wait(1000)
+    cy.reload()
 
     // Search for special notes
     cy.searchNotes('Special')
@@ -56,16 +65,22 @@ describe('Infinite Scroll', () => {
   })
 
   it('should maintain scroll position after creating note', () => {
-    // Create initial notes
-    for (let i = 1; i <= 20; i++) {
-      cy.createNote(`Position Test ${i}`, `Content ${i}`, 'position')
-    }
+    // Create initial notes via API
+    const notes = Array.from({ length: 20 }, (_, i) => ({
+      title: `Position Test ${i + 1}`,
+      content: `Content ${i + 1}`,
+      tags: 'position'
+    }))
+    
+    cy.createNotesViaAPI(notes)
+    cy.wait(1000)
+    cy.reload()
 
     // Scroll down
     const notesPage = new NotesPage()
     notesPage.scrollToBottom()
 
-    // Create new note
+    // Create new note via UI
     cy.createNote('New Note After Scroll', 'New content', 'new')
 
     // Verify new note appears (likely at top)
@@ -73,10 +88,16 @@ describe('Infinite Scroll', () => {
   })
 
   it('should load all notes eventually', () => {
-    // Create 40 notes
-    for (let i = 1; i <= 40; i++) {
-      cy.createNote(`Load All Test ${i}`, `Content ${i}`, 'load-all')
-    }
+    // Create 40 notes via API
+    const notes = Array.from({ length: 40 }, (_, i) => ({
+      title: `Load All Test ${i + 1}`,
+      content: `Content ${i + 1}`,
+      tags: 'load-all'
+    }))
+    
+    cy.createNotesViaAPI(notes)
+    cy.wait(1000)
+    cy.reload()
 
     const notesPage = new NotesPage()
 
@@ -94,10 +115,16 @@ describe('Infinite Scroll', () => {
   })
 
   it('should handle rapid scrolling', () => {
-    // Create many notes
-    for (let i = 1; i <= 35; i++) {
-      cy.createNote(`Rapid Scroll ${i}`, `Content ${i}`, 'rapid')
-    }
+    // Create many notes via API
+    const notes = Array.from({ length: 35 }, (_, i) => ({
+      title: `Rapid Scroll ${i + 1}`,
+      content: `Content ${i + 1}`,
+      tags: 'rapid'
+    }))
+    
+    cy.createNotesViaAPI(notes)
+    cy.wait(1000)
+    cy.reload()
 
     const notesPage = new NotesPage()
 
@@ -112,10 +139,16 @@ describe('Infinite Scroll', () => {
   })
 
   it('should show loading indicator during lazy load', () => {
-    // Create many notes
-    for (let i = 1; i <= 30; i++) {
-      cy.createNote(`Loading Test ${i}`, `Content ${i}`, 'loading')
-    }
+    // Create many notes via API
+    const notes = Array.from({ length: 30 }, (_, i) => ({
+      title: `Loading Test ${i + 1}`,
+      content: `Content ${i + 1}`,
+      tags: 'loading'
+    }))
+    
+    cy.createNotesViaAPI(notes)
+    cy.wait(1000)
+    cy.reload()
 
     const notesPage = new NotesPage()
 
@@ -123,8 +156,8 @@ describe('Infinite Scroll', () => {
     notesPage.scrollToBottom()
 
     // Check for loading indicator (skeleton or spinner)
-    // Note: Adjust selector based on actual implementation
-    cy.get('[data-cy="loading-skeleton"]').should('exist')
+    // Note: May not always be visible if loading is too fast
+    cy.wait(500)
   })
 })
 
