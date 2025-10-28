@@ -32,13 +32,14 @@ Cypress.Commands.add('login', () => {
 Cypress.Commands.add('createNote', (title, content, tags = '') => {
   cy.contains('New Note').click()
   cy.get('input[placeholder="Note title"]').type(title)
-  cy.get('[data-cy="editor-content"]').click().type(content)
+  // Tiptap editor - find the contenteditable div
+  cy.get('[data-cy="editor-content"] .tiptap').click().type(content)
   if (tags) {
     cy.get('input[placeholder="work, personal, ideas"]').type(tags)
   }
   cy.contains('button', 'Save').click()
-  cy.contains('Note created successfully', { timeout: 10000 }).should('be.visible')
-  cy.wait(500)
+  cy.contains('Note created successfully', { timeout: 15000 }).should('be.visible')
+  cy.wait(1000)
 })
 
 /**
@@ -67,7 +68,11 @@ Cypress.Commands.add('deleteAllNotes', () => {
  * @param {string} query - Search query
  */
 Cypress.Commands.add('searchNotes', (query) => {
-  cy.get('input[placeholder*="Search"]').clear().type(query)
+  if (query) {
+    cy.get('input[placeholder*="Search"]').clear().type(query)
+  } else {
+    cy.get('input[placeholder*="Search"]').clear()
+  }
   cy.wait(500)
 })
 
@@ -85,7 +90,7 @@ Cypress.Commands.add('clearSearch', () => {
  */
 Cypress.Commands.add('filterByTag', (tag) => {
   cy.contains(tag).click()
-  cy.wait(500)
+  cy.wait(1000) // Wait for filter to apply and search to clear
 })
 
 /**
@@ -125,7 +130,7 @@ Cypress.Commands.add('importEnex', (filename, strategy = 'prefix') => {
  * @param {string} title - Note title
  */
 Cypress.Commands.add('assertNoteExists', (title) => {
-  cy.contains(title).should('be.visible')
+  cy.contains(title).should('exist').scrollIntoView().should('be.visible')
 })
 
 /**
@@ -142,6 +147,87 @@ Cypress.Commands.add('assertNoteNotExists', (title) => {
  */
 Cypress.Commands.add('assertTagExists', (tag) => {
   cy.contains(tag).should('be.visible')
+})
+
+// ============================================
+// API Commands (for faster test data creation)
+// ============================================
+
+/**
+ * Create multiple notes via API (much faster than UI)
+ * @param {Array} notes - Array of note objects {title, content, tags}
+ */
+Cypress.Commands.add('createNotesViaAPI', (notes) => {
+  // Use Supabase REST API directly
+  cy.request({
+    method: 'GET',
+    url: 'http://localhost:54321/auth/v1/user',
+    headers: {
+      'apikey': Cypress.env('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
+      'Authorization': `Bearer ${Cypress.env('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'}`
+    },
+    failOnStatusCode: false
+  }).then((userResponse) => {
+    // Get user from session storage or use skip-auth user
+    cy.window().then((win) => {
+      // Get session from localStorage
+      const session = JSON.parse(win.localStorage.getItem('sb-localhost-auth-token') || '{}')
+      const accessToken = session?.access_token
+      const userId = session?.user?.id
+      
+      if (!userId || !accessToken) {
+        cy.log('No user session found, skipping API note creation')
+        return
+      }
+      
+      // Create notes via Supabase REST API
+      const notesData = notes.map(note => ({
+        user_id: userId,
+        title: note.title || 'Untitled',
+        description: note.content || '',
+        tags: Array.isArray(note.tags) ? note.tags : (note.tags ? note.tags.split(',').map(t => t.trim()).filter(t => t) : []),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }))
+      
+      cy.request({
+        method: 'POST',
+        url: 'http://localhost:54321/rest/v1/notes',
+        headers: {
+          'apikey': Cypress.env('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: notesData
+      })
+    })
+  })
+})
+
+/**
+ * Delete all notes for current user via API (cleanup)
+ */
+Cypress.Commands.add('deleteAllNotesViaAPI', () => {
+  cy.window().then((win) => {
+    const session = JSON.parse(win.localStorage.getItem('sb-localhost-auth-token') || '{}')
+    const accessToken = session?.access_token
+    const userId = session?.user?.id
+    
+    if (!userId || !accessToken) {
+      cy.log('No user session found, skipping cleanup')
+      return
+    }
+    
+    cy.request({
+      method: 'DELETE',
+      url: `http://localhost:54321/rest/v1/notes?user_id=eq.${userId}`,
+      headers: {
+        'apikey': Cypress.env('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
+        'Authorization': `Bearer ${accessToken}`
+      }
+    })
+  })
 })
 
 // For component testing

@@ -132,7 +132,8 @@ export class NotesPage {
    * @returns {NotesPage}
    */
   scrollToBottom() {
-    cy.scrollTo('bottom')
+    // Scroll the notes list container, not the window
+    cy.get('#notes-list-container').scrollTo('bottom', { ensureScrollable: false })
     cy.wait(1000) // Wait for lazy loading
     return this
   }

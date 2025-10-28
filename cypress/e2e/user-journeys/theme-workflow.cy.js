@@ -81,21 +81,17 @@ describe('Theme Workflow', () => {
 
     // Toggle to dark theme
     cy.toggleTheme()
+    cy.wait(500)
 
-    // Check localStorage for theme preference
-    cy.window().then((win) => {
-      const theme = win.localStorage.getItem('theme')
-      expect(theme).to.equal('dark')
-    })
+    // Check HTML class for dark theme
+    cy.get('html').should('have.class', 'dark')
 
     // Toggle back to light
     cy.toggleTheme()
+    cy.wait(500)
 
-    // Check localStorage again
-    cy.window().then((win) => {
-      const theme = win.localStorage.getItem('theme')
-      expect(theme).to.equal('light')
-    })
+    // Check HTML class for light theme
+    cy.get('html').should('not.have.class', 'dark')
   })
 })
 

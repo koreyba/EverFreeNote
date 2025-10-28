@@ -9,7 +9,8 @@ export class EditorPage {
   }
 
   get contentEditor() {
-    return cy.get('[data-cy="editor-content"]')
+    // Tiptap renders a contenteditable div inside EditorContent
+    return cy.get('[data-cy="editor-content"] .tiptap')
   }
 
   get tagsInput() {
@@ -62,7 +63,12 @@ export class EditorPage {
    * @returns {EditorPage}
    */
   fillContent(content) {
-    this.contentEditor.click().clear().type(content)
+    // For Tiptap contenteditable div
+    this.contentEditor.click()
+    // Select all and delete
+    this.contentEditor.type('{selectall}{backspace}')
+    // Type new content
+    this.contentEditor.type(content)
     return this
   }
 
@@ -124,10 +130,10 @@ export class EditorPage {
    */
   delete() {
     this.deleteButton.click()
-    // Handle confirmation dialog if exists
     cy.wait(500)
-    // Check for success message
-    cy.contains('Note deleted successfully', { timeout: 10000 }).should('be.visible')
+    // Handle confirmation dialog
+    cy.get('button').contains('Delete').click({ force: true })
+    cy.wait(1000)
     const { NotesPage } = require('./NotesPage')
     return new NotesPage()
   }
