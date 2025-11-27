@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Mock configurations for component tests
  * This file exports ready-to-use mock configurations for different scenarios

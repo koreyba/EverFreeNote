@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Page Object for Notes List page
  * Handles notes list, search, tags, and navigation

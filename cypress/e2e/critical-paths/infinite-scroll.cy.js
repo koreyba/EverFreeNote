@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Infinite Scroll E2E Test
  * Tests pagination and lazy loading with many notes

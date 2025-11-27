@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Smoke Test - Basic application loading
  * Note: Full e2e tests require Supabase to be running

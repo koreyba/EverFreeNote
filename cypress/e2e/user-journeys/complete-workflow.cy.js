@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Complete User Workflow E2E Test
  * Tests the full end-to-end user journey:

@@ -144,7 +144,7 @@ export type SearchQueryResult = {
   results: FtsSearchResult[]
   total: number
   query: string
-  method: 'fts' | 'fallback'
+ method: 'fts' | 'fallback'
   executionTime: number
   error?: string
 }
@@ -153,7 +153,7 @@ export type SearchQueryResult = {
  * Custom hook for FTS search with debouncing and caching
  * Uses Supabase RPC function directly (SPA compatible)
  */
-export function useSearchNotes(query: string, userId: string, options: SearchOptions = {}) {
+export function useSearchNotes(query: string, userId?: string, options: SearchOptions = {}) {
   const {
     language = detectBrowserLanguage(),
     minRank = 0.01,
@@ -175,6 +175,10 @@ export function useSearchNotes(query: string, userId: string, options: SearchOpt
       const { buildTsQuery } = await import('@/lib/supabase/search')
 
       const supabase = createClient()
+
+      if (!userId) {
+        throw new Error('User ID is required for search')
+      }
 
       // Build sanitized ts_query
       const tsQuery = buildTsQuery(debouncedQuery, language)

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Page Object for Login/Authentication page
  * Handles authentication flows (skip auth, Google OAuth)
