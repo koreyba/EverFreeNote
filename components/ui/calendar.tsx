@@ -11,12 +11,8 @@ import { DayPicker, getDefaultClassNames, type DayPickerDefaultProps } from "rea
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 
-type CalendarProps = Omit<
-  DayPickerDefaultProps,
-  "classNames" | "components" | "showOutsideDays" | "captionLayout" | "formatters"
-> & {
+type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   className?: string
-  classNames?: DayPickerDefaultProps["classNames"]
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }
 
@@ -144,6 +140,7 @@ function Calendar({
         ...components,
       }}
       {...props}
+      {...(props as any)}
     />
   )
 }
