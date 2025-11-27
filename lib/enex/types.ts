@@ -16,3 +16,25 @@ export type ParsedNote = {
 }
 
 export type DuplicateStrategy = 'skip' | 'replace' | 'prefix'
+
+export type ImportProgress = {
+  currentFile: number
+  totalFiles: number
+  currentNote: number
+  totalNotes: number
+  fileName: string
+}
+
+export type FailedImportNote = {
+  title: string
+  error: string
+}
+
+export type ImportResult = {
+  success: number
+  errors: number
+  failedNotes: FailedImportNote[]
+  message: string
+}
+
+export type ImportStatus = 'success' | 'partial'

@@ -1,15 +1,16 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import { Moon, Sun } from 'lucide-react'
-import { useTheme } from 'next-themes'
-import { Button } from '@/components/ui/button'
+import * as React from "react"
+import { Moon, Sun } from "lucide-react"
+import { useTheme } from "next-themes"
+
+import { Button } from "@/components/ui/button"
 
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
 
-  // Avoid hydration mismatch
+  // Avoid hydration mismatch.
   React.useEffect(() => {
     setMounted(true)
   }, [])
@@ -22,19 +23,19 @@ export function ThemeToggle() {
     )
   }
 
-  const isDark = resolvedTheme === 'dark' || theme === 'dark'
+  const isDark = resolvedTheme === "dark" || theme === "dark"
 
   return (
     <Button
       variant="ghost"
       size="icon"
       onClick={() => {
-        const newTheme = isDark ? 'light' : 'dark'
+        const newTheme = isDark ? "light" : "dark"
         setTheme(newTheme)
-        console.log('Theme switched to:', newTheme)
+        console.log("Theme switched to:", newTheme)
       }}
       className="w-9 h-9"
-      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
       {isDark ? (
         <Sun className="h-4 w-4 transition-all" />
@@ -45,4 +46,3 @@ export function ThemeToggle() {
     </Button>
   )
 }
-

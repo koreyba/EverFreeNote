@@ -5,3 +5,5 @@ export type NoteInsert = TablesInsert<'notes'>
 export type NoteUpdate = TablesUpdate<'notes'>
 
 export type SearchResult = FtsSearchResult
+
+export type Tag = string

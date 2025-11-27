@@ -44,6 +44,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      exec_sql: {
+        Args: {
+          sql: string
+        }
+        Returns: Json
+      }
       search_notes_fts: {
         Args: {
           search_query: string
@@ -80,4 +86,5 @@ export type TablesUpdate<
 export type FtsSearchResult = Tables<'notes'> & {
   rank: number
   headline: string | null
+  content?: string | null
 }

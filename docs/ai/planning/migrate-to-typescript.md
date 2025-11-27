@@ -34,6 +34,10 @@ description: Шаги перевода кода, инфраструктуры и
 - [ ] Прогнать `tsc --noEmit`, `next build`, Cypress; зафиксировать покрытие в `docs/ai/testing/`
 - [ ] Отключить `allowJs`, удалить устаревшие `.js/.jsx` артефакты и `jsconfig.json`
 
+## Параллельное ведение работ (документы разделены)
+- Файл A: `docs/ai/planning/migrate-to-typescript-ui.md` — UI/страницы/клиентская логика.
+- Файл B: `docs/ai/planning/migrate-to-typescript-core.md` — утилиты, Supabase/сервер, скрипты, тесты, финализация `allowJs`.
+
 ## Зависимости и порядок
 - Типы Supabase завязаны на актуальной схеме (`notes` + RPC `search_notes_fts`); при изменении схемы синхронизировать `supabase/types.ts`.
 - Переход компонентов на TSX зависит от готовых типовых утилит (`Note`, `SearchResult`, типы supabase клиента).

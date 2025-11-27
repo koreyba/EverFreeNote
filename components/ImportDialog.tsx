@@ -1,49 +1,52 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Upload, FileText } from 'lucide-react'
+import * as React from "react"
+import { FileText, Upload } from "lucide-react"
 
-export function ImportDialog({ open, onOpenChange, onImport }) {
-  const [isDragging, setIsDragging] = useState(false)
-  const [duplicateStrategy, setDuplicateStrategy] = useState('prefix')
-  const [selectedFiles, setSelectedFiles] = useState([])
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import type { DuplicateStrategy } from "@/lib/enex/types"
 
-  const handleDragOver = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
+type ImportDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onImport: (files: File[], settings: { duplicateStrategy: DuplicateStrategy }) => void
+}
+
+export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
+  const [isDragging, setIsDragging] = React.useState(false)
+  const [duplicateStrategy, setDuplicateStrategy] =
+    React.useState<DuplicateStrategy>("prefix")
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([])
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
     setIsDragging(true)
   }
 
-  const handleDragLeave = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
     setIsDragging(false)
   }
 
-  const handleDrop = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
     setIsDragging(false)
 
-    const files = Array.from(e.dataTransfer.files).filter(file =>
-      file.name.toLowerCase().endsWith('.enex')
+    const files = Array.from(event.dataTransfer?.files || []).filter((file) =>
+      file.name.toLowerCase().endsWith(".enex")
     )
     setSelectedFiles(files)
   }
 
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files || []).filter(file =>
-      file.name.toLowerCase().endsWith('.enex')
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).filter((file) =>
+      file.name.toLowerCase().endsWith(".enex")
     )
     setSelectedFiles(files)
   }
@@ -55,8 +58,8 @@ export function ImportDialog({ open, onOpenChange, onImport }) {
     onOpenChange(false)
   }
 
-  const handleRemoveFile = (index) => {
-    setSelectedFiles(files => files.filter((_, i) => i !== index))
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((files) => files.filter((_, i) => i !== index))
   }
 
   return (
@@ -75,11 +78,11 @@ export function ImportDialog({ open, onOpenChange, onImport }) {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`
-              relative border-2 border-dashed rounded-lg p-8 text-center transition-colors
-              ${isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'}
-              ${selectedFiles.length > 0 ? 'bg-muted/30' : ''}
-            `}
+            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              isDragging
+                ? "border-primary bg-primary/5"
+                : "border-muted-foreground/25"
+            } ${selectedFiles.length > 0 ? "bg-muted/30" : ""}`}
           >
             <input
               type="file"
@@ -90,17 +93,17 @@ export function ImportDialog({ open, onOpenChange, onImport }) {
             />
             <Upload className="w-10 h-10 mx-auto mb-2 text-muted-foreground" />
             <p className="text-sm font-medium mb-1">
-              {isDragging ? 'Drop files here' : 'Drag & drop .enex files'}
+              {isDragging ? "Drop files here" : "Drag & drop .enex files"}
             </p>
-            <p className="text-xs text-muted-foreground">
-              or click to browse
-            </p>
+            <p className="text-xs text-muted-foreground">or click to browse</p>
           </div>
 
           {/* Selected Files */}
           {selectedFiles.length > 0 && (
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Selected files ({selectedFiles.length})</Label>
+              <Label className="text-sm font-medium">
+                Selected files ({selectedFiles.length})
+              </Label>
               <div className="max-h-32 overflow-y-auto space-y-1 border rounded-md p-2">
                 {selectedFiles.map((file, index) => (
                   <div
@@ -116,6 +119,7 @@ export function ImportDialog({ open, onOpenChange, onImport }) {
                       size="sm"
                       onClick={() => handleRemoveFile(index)}
                       className="h-6 px-2"
+                      aria-label={`Remove ${file.name}`}
                     >
                       ×
                     </Button>
@@ -128,28 +132,42 @@ export function ImportDialog({ open, onOpenChange, onImport }) {
           {/* Import Settings */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">Import Settings</Label>
-            
+
             {/* Duplicate Strategy */}
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">
                 What to do with duplicate notes?
               </Label>
-              <RadioGroup value={duplicateStrategy} onValueChange={setDuplicateStrategy}>
+              <RadioGroup
+                value={duplicateStrategy}
+                onValueChange={(value: DuplicateStrategy) =>
+                  setDuplicateStrategy(value)
+                }
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="prefix" id="prefix" />
-                  <Label htmlFor="prefix" className="text-sm font-normal cursor-pointer">
+                  <Label
+                    htmlFor="prefix"
+                    className="text-sm font-normal cursor-pointer"
+                  >
                     Add [duplicate] prefix to title
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="skip" id="skip" />
-                  <Label htmlFor="skip" className="text-sm font-normal cursor-pointer">
+                  <Label
+                    htmlFor="skip"
+                    className="text-sm font-normal cursor-pointer"
+                  >
                     Skip duplicate notes
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="replace" id="replace" />
-                  <Label htmlFor="replace" className="text-sm font-normal cursor-pointer">
+                  <Label
+                    htmlFor="replace"
+                    className="text-sm font-normal cursor-pointer"
+                  >
                     Replace existing notes
                   </Label>
                 </div>
@@ -159,16 +177,10 @@ export function ImportDialog({ open, onOpenChange, onImport }) {
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleImport}
-              disabled={selectedFiles.length === 0}
-            >
+            <Button onClick={handleImport} disabled={selectedFiles.length === 0}>
               Import {selectedFiles.length > 0 && `(${selectedFiles.length})`}
             </Button>
           </div>
@@ -177,4 +189,3 @@ export function ImportDialog({ open, onOpenChange, onImport }) {
     </Dialog>
   )
 }
-

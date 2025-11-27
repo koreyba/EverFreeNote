@@ -1,43 +1,61 @@
-'use client'
+"use client"
 
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Progress } from '@/components/ui/progress'
-import { Button } from '@/components/ui/button'
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
+} from "@/components/ui/dialog"
+import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
+import { CheckCircle2, Loader2, XCircle } from "lucide-react"
 
-export function ImportProgressDialog({ open, progress, result, onClose }) {
+import type { ImportProgress, ImportResult } from "@/lib/enex/types"
+
+type ImportProgressDialogProps = {
+  open: boolean
+  progress: ImportProgress
+  result: ImportResult | null
+  onClose: () => void
+}
+
+export function ImportProgressDialog({
+  open,
+  progress,
+  result,
+  onClose,
+}: ImportProgressDialogProps) {
   const { currentFile, totalFiles, currentNote, totalNotes, fileName } = progress
 
   const fileProgress = totalFiles > 0 ? (currentFile / totalFiles) * 100 : 0
   const noteProgress = totalNotes > 0 ? (currentNote / totalNotes) * 100 : 0
-  
-  const isComplete = result !== null
+
+  const isComplete = Boolean(result)
   const isInProgress = !isComplete && open
 
   return (
     <Dialog open={open} onOpenChange={isComplete ? onClose : () => {}}>
-      <DialogContent 
-        className={`sm:max-w-[425px] ${isInProgress ? '[&>button]:hidden' : ''}`}
-        onEscapeKeyDown={(e) => isInProgress && e.preventDefault()}
-        onPointerDownOutside={(e) => isInProgress && e.preventDefault()}
+      <DialogContent
+        className={`sm:max-w-[425px] ${isInProgress ? "[&>button]:hidden" : ""}`}
+        onEscapeKeyDown={(event) => isInProgress && event.preventDefault()}
+        onPointerDownOutside={(event) => isInProgress && event.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isInProgress && <Loader2 className="w-5 h-5 animate-spin" />}
-            {isComplete && result.success > 0 && <CheckCircle2 className="w-5 h-5 text-green-600" />}
-            {isComplete && result.success === 0 && result.errors > 0 && <XCircle className="w-5 h-5 text-destructive" />}
-            {isComplete ? 'Import Complete' : 'Importing from Evernote'}
+            {isComplete && result?.success > 0 && (
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            )}
+            {isComplete && result?.success === 0 && result?.errors > 0 && (
+              <XCircle className="w-5 h-5 text-destructive" />
+            )}
+            {isComplete ? "Import Complete" : "Importing from Evernote"}
           </DialogTitle>
           <DialogDescription>
-            {isInProgress && 'Please wait while we import your notes...'}
-            {isComplete && 'Your import has finished.'}
+            {isInProgress && "Please wait while we import your notes..."}
+            {isComplete && "Your import has finished."}
           </DialogDescription>
         </DialogHeader>
 
@@ -84,7 +102,7 @@ export function ImportProgressDialog({ open, progress, result, onClose }) {
           </div>
         )}
 
-        {isComplete && (
+        {isComplete && result && (
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
@@ -100,13 +118,13 @@ export function ImportProgressDialog({ open, progress, result, onClose }) {
                 <div className="text-sm text-muted-foreground">Failed</div>
               </div>
             </div>
-            
+
             {result.message && (
               <p className="text-sm text-muted-foreground text-center">
                 {result.message}
               </p>
             )}
-            
+
             {result.failedNotes && result.failedNotes.length > 0 && (
               <details className="text-sm">
                 <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
@@ -136,4 +154,3 @@ export function ImportProgressDialog({ open, progress, result, onClose }) {
     </Dialog>
   )
 }
-

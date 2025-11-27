@@ -1,38 +1,55 @@
-'use client'
+"use client"
 
-import { Component } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertCircle } from 'lucide-react'
+import { Component, type ErrorInfo, type ReactNode } from "react"
+import { AlertCircle } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
+type ErrorBoundaryProps = {
+  children: ReactNode
+}
+
+type ErrorBoundaryState = {
+  hasError: boolean
+  error: Error | null
+  errorInfo: ErrorInfo | null
+}
 
 /**
- * Error Boundary for catching React errors
- * Provides graceful fallback UI when errors occur
+ * Error Boundary for catching React errors and showing a fallback UI.
  */
-export class ErrorBoundary extends Component {
-  constructor(props) {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
+  constructor(props: ErrorBoundaryProps) {
     super(props)
     this.state = { hasError: false, error: null, errorInfo: null }
   }
 
-  static getDerivedStateFromError(error) {
-    // Update state so the next render will show the fallback UI
-    return { hasError: true }
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true, error: null, errorInfo: null }
   }
 
-  componentDidCatch(error, errorInfo) {
-    // Log error to console for debugging
-    console.error('Error caught by boundary:', error, errorInfo)
-    
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Error caught by boundary:", error, errorInfo)
+
     this.setState({
+      hasError: true,
       error,
-      errorInfo
+      errorInfo,
     })
   }
 
   handleReset = () => {
     this.setState({ hasError: false, error: null, errorInfo: null })
-    // Reload the page to reset state
     window.location.reload()
   }
 
@@ -47,11 +64,12 @@ export class ErrorBoundary extends Component {
                 <CardTitle>Something went wrong</CardTitle>
               </div>
               <CardDescription>
-                The application encountered an unexpected error. Please try refreshing the page.
+                The application encountered an unexpected error. Please try
+                refreshing the page.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {process.env.NODE_ENV === 'development' && this.state.error && (
+              {process.env.NODE_ENV === "development" && this.state.error && (
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm font-mono text-destructive mb-2">
                     {this.state.error.toString()}
@@ -72,8 +90,8 @@ export class ErrorBoundary extends Component {
                 <Button onClick={this.handleReset} className="flex-1">
                   Reload Application
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => window.history.back()}
                   className="flex-1"
                 >
@@ -89,4 +107,3 @@ export class ErrorBoundary extends Component {
     return this.props.children
   }
 }
-
