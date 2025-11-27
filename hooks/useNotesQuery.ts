@@ -1,75 +1,87 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, InfiniteData } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useState, useEffect } from 'react'
+
+import type { FtsSearchResult, Tables } from '@/supabase/types'
 
 const PAGE_SIZE = 50 // Optimized for smooth infinite scroll (larger pages = fewer requests)
 const SEARCH_DEBOUNCE_MS = 300 // Debounce search input
 const SEARCH_STALE_TIME_MS = 30000 // Cache search results for 30s
 
+type Note = Tables<'notes'>
+
+interface NotesPage {
+  notes: Note[]
+  nextCursor?: number
+  totalCount: number
+  hasMore: boolean
+}
+
+interface UseNotesQueryOptions {
+  userId?: string
+  searchQuery?: string
+  selectedTag?: string | null
+  enabled?: boolean
+}
+
 /**
  * Custom hook for fetching paginated notes with search and filter support
  * Uses React Query for caching and infinite scroll pagination
- * 
- * @param {Object} options - Query options
- * @param {string} options.userId - User ID for query isolation
- * @param {string} options.searchQuery - Search term for filtering notes
- * @param {string|null} options.selectedTag - Tag to filter by
- * @param {boolean} options.enabled - Whether to enable the query
- * @returns {Object} Query result with notes data and pagination controls
  */
-export function useNotesQuery({ userId, searchQuery = '', selectedTag = null, enabled = true } = {}) {
+export function useNotesQuery({ userId, searchQuery = '', selectedTag = null, enabled = true }: UseNotesQueryOptions = {}) {
   const supabase = createClient()
-  
-  return useInfiniteQuery({
-    enabled,
+
+  return useInfiniteQuery<NotesPage>({
+    enabled: !!enabled,
     // Query key includes userId for proper cache isolation between users
     queryKey: ['notes', userId, searchQuery, selectedTag],
-    
+
     queryFn: async ({ pageParam = 0 }) => {
+      const page = pageParam as number
       // Calculate range for pagination
-      const start = pageParam
-      const end = pageParam + PAGE_SIZE - 1
-      
+      const start = page
+      const end = page + PAGE_SIZE - 1
+
       // Build query with optimizations from Phase 1
       let query = supabase
         .from('notes')
         .select('id, title, description, tags, created_at, updated_at', { count: 'exact' })
         .order('updated_at', { ascending: false })
         .range(start, end)
-      
+
       // Apply tag filter on server-side (uses GIN index)
       if (selectedTag) {
         query = query.contains('tags', [selectedTag])
       }
-      
+
       // Apply search filter
       // TODO Phase 6: Replace with full-text search using FTS index
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase()
         query = query.or(`title.ilike.%${searchLower}%,description.ilike.%${searchLower}%`)
       }
-      
+
       const { data, error, count } = await query
-      
+
       if (error) {
         console.error('Error fetching notes:', error)
         throw error
       }
-      
+
       return {
-        notes: data || [],
+        notes: (data as Note[]) || [],
         nextCursor: data && data.length === PAGE_SIZE ? end + 1 : undefined,
         totalCount: count || 0,
-        hasMore: data && data.length === PAGE_SIZE
+        hasMore: !!(data && data.length === PAGE_SIZE)
       }
     },
-    
+
     // Get next page cursor
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    
+
     // Initial page param
     initialPageParam: 0,
-    
+
     // Stale time from design review: 10 minutes
     staleTime: 1000 * 60 * 10,
   })
@@ -77,68 +89,71 @@ export function useNotesQuery({ userId, searchQuery = '', selectedTag = null, en
 
 /**
  * Helper hook to get flattened notes array from infinite query
- * @param {Object} queryResult - Result from useNotesQuery
- * @returns {Array} Flattened array of all notes across pages
  */
-export function useFlattenedNotes(queryResult) {
+export function useFlattenedNotes(queryResult: { data?: InfiniteData<NotesPage> }) {
   if (!queryResult.data?.pages) return []
-  
+
   return queryResult.data.pages.flatMap(page => page.notes)
 }
 
 /**
  * Custom hook for debouncing a value
- * @param {any} value - Value to debounce
- * @param {number} delay - Delay in milliseconds
- * @returns {any} Debounced value
  */
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value)
-  
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedValue(value)
     }, delay)
-    
+
     return () => {
       clearTimeout(handler)
     }
   }, [value, delay])
-  
+
   return debouncedValue
 }
 
 /**
  * Detect language from browser locale
- * @returns {string} Language code (ru, en, uk)
  */
-function detectBrowserLanguage() {
+function detectBrowserLanguage(): LanguageCode {
   if (typeof navigator === 'undefined') return 'ru'
-  
-  const locale = navigator.language || navigator.userLanguage || 'ru'
+
+  const locale = navigator.language || (navigator as any).userLanguage || 'ru'
   const lang = locale.split('-')[0].toLowerCase()
-  
+
   // Map to supported languages
   if (lang === 'en') return 'en'
   if (lang === 'uk') return 'uk'
   return 'ru' // Default to Russian
 }
 
+type LanguageCode = 'ru' | 'en' | 'uk'
+
+interface SearchOptions {
+  language?: LanguageCode
+  minRank?: number
+  limit?: number
+  offset?: number
+  enabled?: boolean
+}
+
+type SearchQueryResult = {
+  results: FtsSearchResult[]
+  total: number
+  query: string
+  method: 'fts' | 'fallback'
+  executionTime: number
+  error?: string
+}
+
 /**
  * Custom hook for FTS search with debouncing and caching
  * Uses Supabase RPC function directly (SPA compatible)
- *
- * @param {string} query - Search query
- * @param {string} userId - User ID for RLS
- * @param {Object} options - Search options
- * @param {string} options.language - Language code (auto-detected by default)
- * @param {number} options.minRank - Minimum relevance rank (default: 0.1)
- * @param {number} options.limit - Results limit (default: 20)
- * @param {number} options.offset - Pagination offset (default: 0)
- * @param {boolean} options.enabled - Whether to enable the query (default: true)
- * @returns {Object} Query result with search results and metadata
  */
-export function useSearchNotes(query, userId, options = {}) {
+export function useSearchNotes(query: string, userId: string, options: SearchOptions = {}) {
   const {
     language = detectBrowserLanguage(),
     minRank = 0.01,
@@ -153,7 +168,7 @@ export function useSearchNotes(query, userId, options = {}) {
   // Validate query length (min 3 characters)
   const isValidQuery = Boolean(debouncedQuery && debouncedQuery.trim().length >= 3 && userId)
 
-  return useQuery({
+  return useQuery<SearchQueryResult>({
     queryKey: ['notes', 'search', debouncedQuery, language, minRank, limit, offset, userId],
     queryFn: async () => {
       const { createClient } = await import('@/lib/supabase/client')
@@ -193,7 +208,7 @@ export function useSearchNotes(query, userId, options = {}) {
           method: 'fts',
           executionTime
         }
-      } catch (error) {
+      } catch (error: any) {
         // If FTS fails, don't throw - let the component fall back to regular search
         console.warn('FTS search error (will use fallback):', error.message)
         return {
@@ -206,7 +221,7 @@ export function useSearchNotes(query, userId, options = {}) {
         }
       }
     },
-    enabled: enabled && isValidQuery,
+    enabled: !!(enabled && isValidQuery),
     staleTime: SEARCH_STALE_TIME_MS,
     // Keep previous data while fetching new results (better UX)
     placeholderData: (previousData) => previousData,

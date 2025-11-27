@@ -1,19 +1,28 @@
 import DOMPurify from 'isomorphic-dompurify'
 
+import { ImageProcessor } from './image-processor'
+import type { EnexResource } from './types'
+
 export class ContentConverter {
-  constructor(imageProcessor) {
+  private readonly imageProcessor: ImageProcessor
+  private readonly CONCURRENCY_LIMIT = 5
+
+  constructor(imageProcessor: ImageProcessor) {
     this.imageProcessor = imageProcessor
-    this.CONCURRENCY_LIMIT = 5 // Max 5 concurrent image uploads
   }
 
-  async convert(html, resources, userId, noteId) {
+  async convert(html: string, resources: EnexResource[] = [], userId: string, noteId: string): Promise<string> {
     let converted = html
     converted = this.replaceUnsupported(converted)
     converted = await this.processImages(converted, resources, userId, noteId)
     converted = this.cleanupENML(converted)
-    
+
     // Sanitize HTML to prevent XSS attacks
-    converted = DOMPurify.sanitize(converted, {
+    type DomPurifyConfig = Parameters<typeof DOMPurify.sanitize>[1]
+
+    const sanitizeOptions: DomPurifyConfig & {
+      ALLOWED_STYLES?: Record<string, Record<string, RegExp[]>>
+    } = {
       ALLOWED_TAGS: [
         'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'ul', 'ol', 'li', 'img', 'a', 'div', 'span', 'blockquote', 'code',
@@ -29,13 +38,16 @@ export class ContentConverter {
           'font-weight': [/^(normal|bold|\d{3})$/]
         }
       }
-    })
-    
+    }
+
+    const sanitized: string | { toString(): string } = DOMPurify.sanitize(converted, sanitizeOptions)
+    converted = typeof sanitized === 'string' ? sanitized : sanitized.toString()
+
     return converted
   }
 
-  replaceUnsupported(html) {
-    const replacements = {
+  private replaceUnsupported(html: string): string {
+    const replacements: Record<string, string> = {
       '<table': '[Unsupported content: Table]<div style="display:none"><table',
       '</table>': '</table></div>',
       '<pre': '[Unsupported content: Code Block]<div style="display:none"><pre',
@@ -54,15 +66,15 @@ export class ContentConverter {
     return result
   }
 
-  async processImages(html, resources, userId, noteId) {
+  private async processImages(html: string, resources: EnexResource[], userId: string, noteId: string): Promise<string> {
     if (!resources || resources.length === 0) return html
 
-    const uploadedUrls = []
+    const uploadedUrls: Array<string | null> = []
 
     // Process images in batches to limit concurrency
     for (let i = 0; i < resources.length; i += this.CONCURRENCY_LIMIT) {
       const batch = resources.slice(i, i + this.CONCURRENCY_LIMIT)
-      
+
       const batchResults = await Promise.all(
         batch.map(async (resource, batchIndex) => {
           try {
@@ -80,7 +92,7 @@ export class ContentConverter {
           }
         })
       )
-      
+
       uploadedUrls.push(...batchResults)
     }
 
@@ -88,20 +100,19 @@ export class ContentConverter {
     let result = html
     let mediaIndex = 0
 
-    result = result.replace(/<en-media[^>]*\/>/gi, (match) => {
+    result = result.replace(/<en-media[^>]*\/>/gi, () => {
       const url = uploadedUrls[mediaIndex]
       mediaIndex++
       if (url) {
         return `<img src="${url}" alt="Image ${mediaIndex}" />`
-      } else {
-        return '[Image failed to upload]'
       }
+      return '[Image failed to upload]'
     })
 
     return result
   }
 
-  cleanupENML(html) {
+  private cleanupENML(html: string): string {
     return html
       .replace(/<en-note[^>]*>/gi, '<div>')
       .replace(/<\/en-note>/gi, '</div>')
