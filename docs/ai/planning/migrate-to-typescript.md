@@ -25,7 +25,7 @@ description: Шаги перевода кода, инфраструктуры и
 - [ ] Перевести `lib/indexeddb`, прочие утилиты в TS
 
 ### Фаза 3: UI-слой
-- [ ] Конвертировать `components/ui/*.jsx` в TSX, добавить проп-типизацию и переиспользование общих типов (частично: button, input, card, badge, label, accordion, alert, alert-dialog, checkbox, input-otp)
+- [ ] Конвертировать `components/ui/*.jsx` в TSX, добавить проп-типизацию и переиспользование общих типов (частично: button, input, card, badge, label, accordion, alert, alert-dialog, checkbox, input-otp, aspect-ratio, avatar, breadcrumb, collapsible, progress, separator, skeleton, switch, textarea, popover, tooltip, hover-card, dialog, dropdown-menu, drawer, sheet, toast/toaster)
 - [ ] Конвертировать фичевые компоненты (`components/*.jsx`) и страницы (`app/*.js`) в TSX, нормализовать импорты
 - [ ] Привести API-роуты к TS, типизировать `request/response`
 
