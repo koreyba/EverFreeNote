@@ -1,6 +1,7 @@
 const { defineConfig } = require('cypress')
 
 module.exports = defineConfig({
+  projectId: '76trp2',
   e2e: {
     baseUrl: 'http://localhost:3000',
     specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
@@ -13,11 +14,13 @@ module.exports = defineConfig({
     viewportHeight: 720,
     video: true, // Enable video for e2e tests
     screenshotOnRunFailure: true,
+    experimentalRunAllSpecs: true,
     // Timeouts optimized for e2e
     defaultCommandTimeout: 10000,
     pageLoadTimeout: 30000,
     requestTimeout: 10000,
     responseTimeout: 30000,
+    experimentalPromptCommand: true,
     // Retry strategy for e2e tests
     retries: {
       runMode: 0,  // Retry 2 times in CI
