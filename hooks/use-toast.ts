@@ -1,13 +1,7 @@
 "use client";
 // Inspired by react-hot-toast library
 import * as React from "react"
-
-type ToastActionElement = React.ReactNode
-type ToastProps = {
-  id?: string
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-} & Record<string, unknown>
+import type { ToastActionElement, ToastProps } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
