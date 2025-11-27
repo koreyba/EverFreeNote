@@ -140,7 +140,7 @@ interface SearchOptions {
   enabled?: boolean
 }
 
-type SearchQueryResult = {
+export type SearchQueryResult = {
   results: FtsSearchResult[]
   total: number
   query: string

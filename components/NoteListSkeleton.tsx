@@ -1,17 +1,17 @@
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from "@/components/ui/skeleton"
+
+type NoteListSkeletonProps = {
+  count?: number
+}
 
 /**
- * Loading skeleton for note list
- * Displays placeholder cards while notes are being fetched
+ * Loading skeleton for note list.
  */
-export function NoteListSkeleton({ count = 5 }) {
+export function NoteListSkeleton({ count = 5 }: NoteListSkeletonProps) {
   return (
     <div className="space-y-1 p-2">
       {Array.from({ length: count }).map((_, index) => (
-        <div
-          key={index}
-          className="p-3 rounded-lg border border-transparent"
-        >
+        <div key={index} className="p-3 rounded-lg border border-transparent">
           <Skeleton className="h-5 w-3/4 mb-2" />
           <Skeleton className="h-4 w-full mb-1" />
           <Skeleton className="h-4 w-2/3 mb-2" />
@@ -24,4 +24,3 @@ export function NoteListSkeleton({ count = 5 }) {
     </div>
   )
 }
-

@@ -1,77 +1,68 @@
-'use client'
+"use client"
 
-/**
- * SearchResults component
- * Displays FTS search results with highlighting and relevance scores
- */
+import * as React from "react"
+import { AlertCircle, Search, Zap } from "lucide-react"
+import DOMPurify from "isomorphic-dompurify"
+import type { UseQueryResult } from "@tanstack/react-query"
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle, Search, Zap } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import DOMPurify from 'isomorphic-dompurify'
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import type { SearchQueryResult } from "@/hooks/useNotesQuery"
+import type { SearchResult } from "@/types/domain"
 
-/**
- * Sanitize HTML headline to prevent XSS
- * Only allows <mark> tags for highlighting
- * 
- * @param {string} html - HTML string from ts_headline
- * @returns {string} Sanitized HTML
- */
-function sanitizeHeadline(html) {
-  if (!html) return ''
-  
+function sanitizeHeadline(html?: string | null) {
+  if (!html) return ""
+
   return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['mark'],
-    ALLOWED_ATTR: []
+    ALLOWED_TAGS: ["mark"],
+    ALLOWED_ATTR: [],
   })
 }
 
-/**
- * Format date to relative time
- * @param {string} dateString - ISO date string
- * @returns {string} Relative time string
- */
-function formatRelativeTime(dateString) {
-  if (!dateString) return ''
-  
+function formatRelativeTime(dateString?: string) {
+  if (!dateString) return ""
+
   const date = new Date(dateString)
   const now = new Date()
-  const diffMs = now - date
+  const diffMs = now.getTime() - date.getTime()
   const diffSec = Math.floor(diffMs / 1000)
   const diffMin = Math.floor(diffSec / 60)
   const diffHour = Math.floor(diffMin / 60)
   const diffDay = Math.floor(diffHour / 24)
-  
+
   if (diffDay > 7) {
-    return date.toLocaleDateString('ru-RU', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString("ru-RU", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     })
   }
   if (diffDay > 0) return `${diffDay}д назад`
   if (diffHour > 0) return `${diffHour}ч назад`
   if (diffMin > 0) return `${diffMin}мин назад`
-  return 'только что'
+  return "только что"
 }
 
-/**
- * Single search result item
- */
-function SearchResultItem({ note, showRank = false, method }) {
+type SearchResultItemProps = {
+  note: SearchResult
+  showRank?: boolean
+  method: SearchQueryResult["method"]
+}
+
+function SearchResultItem({ note, showRank = false, method }: SearchResultItemProps) {
   const sanitizedHeadline = sanitizeHeadline(note.headline)
-  
+
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-lg line-clamp-2">
-            {note.title || 'Без названия'}
+            {note.title || "Без названия"}
           </CardTitle>
           <div className="flex gap-1 flex-shrink-0">
-            {method === 'fts' && (
+            {method === "fts" && (
               <Badge variant="outline" className="text-xs gap-1">
                 <Zap className="h-3 w-3" />
                 FTS
@@ -99,7 +90,7 @@ function SearchResultItem({ note, showRank = false, method }) {
             />
           </div>
         )}
-        
+
         {/* Tags */}
         {note.tags && note.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
@@ -115,7 +106,7 @@ function SearchResultItem({ note, showRank = false, method }) {
             )}
           </div>
         )}
-        
+
         {/* Metadata */}
         <div className="text-xs text-muted-foreground">
           {formatRelativeTime(note.updated_at)}
@@ -125,10 +116,7 @@ function SearchResultItem({ note, showRank = false, method }) {
   )
 }
 
-/**
- * Loading skeleton for search results
- */
-function SearchResultsSkeleton({ count = 3 }) {
+function SearchResultsSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="space-y-4">
       {Array.from({ length: count }).map((_, i) => (
@@ -150,10 +138,7 @@ function SearchResultsSkeleton({ count = 3 }) {
   )
 }
 
-/**
- * Empty state when no results found
- */
-function EmptyResults({ query }) {
+function EmptyResults({ query }: { query: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <Search className="h-12 w-12 text-muted-foreground mb-4" />
@@ -166,63 +151,56 @@ function EmptyResults({ query }) {
   )
 }
 
-/**
- * Error state
- */
-function ErrorResults({ error }) {
+function ErrorResults({ error }: { error: unknown }) {
+  const errorMessage = error instanceof Error ? error.message : "Неизвестная ошибка"
+
   return (
     <Alert variant="destructive">
       <AlertCircle className="h-4 w-4" />
-      <AlertDescription>
-        Ошибка поиска: {error?.message || 'Неизвестная ошибка'}
-      </AlertDescription>
+      <AlertDescription>Ошибка поиска: {errorMessage}</AlertDescription>
     </Alert>
   )
 }
 
-/**
- * Main SearchResults component
- * 
- * @param {Object} props
- * @param {Object} props.searchResult - Result from useSearchNotes hook
- * @param {Function} props.onNoteClick - Callback when note is clicked
- * @param {boolean} props.showRank - Show relevance scores (for debugging)
- */
-export function SearchResults({ 
-  searchResult, 
+type SearchResultsProps = {
+  searchResult: UseQueryResult<SearchQueryResult>
+  onNoteClick?: (note: SearchResult) => void
+  showRank?: boolean
+}
+
+export function SearchResults({
+  searchResult,
   onNoteClick,
-  showRank = false 
-}) {
+  showRank = false,
+}: SearchResultsProps) {
   const { data, isLoading, isError, error } = searchResult
-  
-  // Loading state
+
   if (isLoading) {
     return <SearchResultsSkeleton />
   }
-  
-  // Error state
+
   if (isError) {
     return <ErrorResults error={error} />
   }
-  
-  // No data or empty results
+
   if (!data || !data.results || data.results.length === 0) {
-    return <EmptyResults query={data?.query || ''} />
+    return <EmptyResults query={data?.query || ""} />
   }
-  
+
   const { results, total, method, executionTime } = data
-  
+
   return (
     <div className="space-y-4">
       {/* Results metadata */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <div>
-          Найдено: <span className="font-semibold">{total}</span> {total === 1 ? 'заметка' : 'заметок'}
+          Найдено: <span className="font-semibold">{total}</span>{" "}
+          {total === 1 ? "заметка" : "заметок"}
         </div>
         {executionTime !== undefined && (
           <div className="flex items-center gap-2">
             <span>{executionTime}ms</span>
-            {method === 'fts' && (
+            {method === "fts" && (
               <Badge variant="outline" className="text-xs gap-1">
                 <Zap className="h-3 w-3" />
                 Быстрый поиск
@@ -231,19 +209,12 @@ export function SearchResults({
           </div>
         )}
       </div>
-      
+
       {/* Results list */}
       <div className="space-y-4">
         {results.map((note) => (
-          <div 
-            key={note.id}
-            onClick={() => onNoteClick?.(note)}
-          >
-            <SearchResultItem 
-              note={note} 
-              showRank={showRank}
-              method={method}
-            />
+          <div key={note.id} onClick={() => onNoteClick?.(note)}>
+            <SearchResultItem note={note} showRank={showRank} method={method} />
           </div>
         ))}
       </div>
@@ -252,4 +223,3 @@ export function SearchResults({
 }
 
 export default SearchResults
-

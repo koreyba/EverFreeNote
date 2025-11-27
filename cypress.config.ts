@@ -1,6 +1,6 @@
-const { defineConfig } = require('cypress')
+import { defineConfig } from "cypress"
 
-module.exports = defineConfig({
+export default defineConfig({
   projectId: '76trp2',
   e2e: {
     baseUrl: 'http://localhost:3000',
@@ -9,22 +9,19 @@ module.exports = defineConfig({
     setupNodeEvents(on, config) {
       // implement node event listeners here
     },
-    // E2E test specific configuration
     viewportWidth: 1280,
     viewportHeight: 720,
-    video: true, // Enable video for e2e tests
+    video: true,
     screenshotOnRunFailure: true,
     experimentalRunAllSpecs: true,
-    // Timeouts optimized for e2e
     defaultCommandTimeout: 10000,
     pageLoadTimeout: 30000,
     requestTimeout: 10000,
     responseTimeout: 30000,
     experimentalPromptCommand: true,
-    // Retry strategy for e2e tests
     retries: {
-      runMode: 0,  // Retry 2 times in CI
-      openMode: 0, // No retry in dev
+      runMode: 0,
+      openMode: 0,
     },
   },
   component: {
@@ -36,22 +33,19 @@ module.exports = defineConfig({
     supportFile: 'cypress/support/component.js',
     setupNodeEvents(on, config) {
       // Add code coverage for component tests
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       require('@cypress/code-coverage/task')(on, config)
-
-      // Add any other node event listeners here
       return config
     },
-    // Component test specific configuration
     viewportWidth: 1280,
     viewportHeight: 720,
-    video: false, // Disable video recording for component tests
+    video: false,
     screenshotOnRunFailure: true,
     retries: {
       runMode: 0,
       openMode: 0,
     },
   },
-  // Code coverage configuration
   env: {
     codeCoverage: {
       exclude: [
