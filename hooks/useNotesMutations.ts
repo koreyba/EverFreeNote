@@ -2,17 +2,35 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
+import type { Tables } from '@/supabase/types'
+
 /**
  * Custom hooks for note mutations with optimistic updates
  * Provides instant UI feedback before server confirmation
  */
+type Note = Tables<'notes'>
+
+type CreateNoteParams = Pick<Note, 'title' | 'description' | 'tags'> & { userId: string }
+type UpdateNoteParams = Pick<Note, 'id' | 'title' | 'description' | 'tags'>
+
+type NotesPage = {
+  notes: Note[]
+  nextCursor?: number
+  totalCount: number
+  hasMore: boolean
+}
+
+type NotesData = {
+  pages: NotesPage[]
+  pageParams: number[]
+}
 
 export function useCreateNote() {
   const queryClient = useQueryClient()
   const supabase = createClient()
 
   return useMutation({
-    mutationFn: async ({ title, description, tags, userId }) => {
+    mutationFn: async ({ title, description, tags, userId }: CreateNoteParams) => {
       const { data, error } = await supabase
         .from('notes')
         .insert([
@@ -36,11 +54,11 @@ export function useCreateNote() {
       await queryClient.cancelQueries({ queryKey: ['notes'] })
 
       // Snapshot previous value
-      const previousNotes = queryClient.getQueryData(['notes'])
+      const previousNotes = queryClient.getQueryData<NotesData>(['notes'])
 
       // Optimistically update cache
-      queryClient.setQueryData(['notes'], (old) => {
-        const optimisticNote = {
+      queryClient.setQueryData<NotesData>(['notes'], (old) => {
+        const optimisticNote: Note = {
           id: `temp-${Date.now()}`, // Temporary ID
           title: newNote.title,
           description: newNote.description,
@@ -78,7 +96,9 @@ export function useCreateNote() {
 
     // Rollback on error
     onError: (err, newNote, context) => {
-      queryClient.setQueryData(['notes'], context.previousNotes)
+      if (context?.previousNotes) {
+        queryClient.setQueryData(['notes'], context.previousNotes)
+      }
       toast.error('Failed to create note: ' + err.message)
     },
 
@@ -95,7 +115,7 @@ export function useUpdateNote() {
   const supabase = createClient()
 
   return useMutation({
-    mutationFn: async ({ id, title, description, tags }) => {
+    mutationFn: async ({ id, title, description, tags }: UpdateNoteParams) => {
       const { data, error } = await supabase
         .from('notes')
         .update({
@@ -115,10 +135,10 @@ export function useUpdateNote() {
     // Optimistic update
     onMutate: async (updatedNote) => {
       await queryClient.cancelQueries({ queryKey: ['notes'] })
-      const previousNotes = queryClient.getQueryData(['notes'])
+      const previousNotes = queryClient.getQueryData<NotesData>(['notes'])
 
       // Update cache
-      queryClient.setQueryData(['notes'], (old) => {
+      queryClient.setQueryData<NotesData>(['notes'], (old) => {
         if (!old?.pages) return old
 
         const newPages = old.pages.map((page) => ({
@@ -126,12 +146,12 @@ export function useUpdateNote() {
           notes: page.notes.map((note) =>
             note.id === updatedNote.id
               ? {
-                  ...note,
-                  title: updatedNote.title,
-                  description: updatedNote.description,
-                  tags: updatedNote.tags,
-                  updated_at: new Date().toISOString(),
-                }
+                ...note,
+                title: updatedNote.title,
+                description: updatedNote.description,
+                tags: updatedNote.tags,
+                updated_at: new Date().toISOString(),
+              }
               : note
           ),
         }))
@@ -143,7 +163,9 @@ export function useUpdateNote() {
     },
 
     onError: (err, updatedNote, context) => {
-      queryClient.setQueryData(['notes'], context.previousNotes)
+      if (context?.previousNotes) {
+        queryClient.setQueryData(['notes'], context.previousNotes)
+      }
       toast.error('Failed to update note: ' + err.message)
     },
 
@@ -159,7 +181,7 @@ export function useDeleteNote() {
   const supabase = createClient()
 
   return useMutation({
-    mutationFn: async (noteId) => {
+    mutationFn: async (noteId: string) => {
       const { error } = await supabase.from('notes').delete().eq('id', noteId)
       if (error) throw error
       return noteId
@@ -168,10 +190,10 @@ export function useDeleteNote() {
     // Optimistic update
     onMutate: async (noteId) => {
       await queryClient.cancelQueries({ queryKey: ['notes'] })
-      const previousNotes = queryClient.getQueryData(['notes'])
+      const previousNotes = queryClient.getQueryData<NotesData>(['notes'])
 
       // Remove from cache
-      queryClient.setQueryData(['notes'], (old) => {
+      queryClient.setQueryData<NotesData>(['notes'], (old) => {
         if (!old?.pages) return old
 
         const newPages = old.pages.map((page) => ({
@@ -186,7 +208,9 @@ export function useDeleteNote() {
     },
 
     onError: (err, noteId, context) => {
-      queryClient.setQueryData(['notes'], context.previousNotes)
+      if (context?.previousNotes) {
+        queryClient.setQueryData(['notes'], context.previousNotes)
+      }
       toast.error('Failed to delete note: ' + err.message)
     },
 
@@ -202,7 +226,7 @@ export function useRemoveTag() {
   const supabase = createClient()
 
   return useMutation({
-    mutationFn: async ({ noteId, updatedTags }) => {
+    mutationFn: async ({ noteId, updatedTags }: { noteId: string; updatedTags: string[] }) => {
       const { data, error } = await supabase
         .from('notes')
         .update({
@@ -220,9 +244,9 @@ export function useRemoveTag() {
     // Optimistic update
     onMutate: async ({ noteId, updatedTags }) => {
       await queryClient.cancelQueries({ queryKey: ['notes'] })
-      const previousNotes = queryClient.getQueryData(['notes'])
+      const previousNotes = queryClient.getQueryData<NotesData>(['notes'])
 
-      queryClient.setQueryData(['notes'], (old) => {
+      queryClient.setQueryData<NotesData>(['notes'], (old) => {
         if (!old?.pages) return old
 
         const newPages = old.pages.map((page) => ({
@@ -230,10 +254,10 @@ export function useRemoveTag() {
           notes: page.notes.map((note) =>
             note.id === noteId
               ? {
-                  ...note,
-                  tags: updatedTags,
-                  updated_at: new Date().toISOString(),
-                }
+                ...note,
+                tags: updatedTags,
+                updated_at: new Date().toISOString(),
+              }
               : note
           ),
         }))
@@ -245,7 +269,9 @@ export function useRemoveTag() {
     },
 
     onError: (err, variables, context) => {
-      queryClient.setQueryData(['notes'], context.previousNotes)
+      if (context?.previousNotes) {
+        queryClient.setQueryData(['notes'], context.previousNotes)
+      }
       toast.error('Failed to remove tag: ' + err.message)
     },
 
