@@ -70,8 +70,8 @@ See [docs/run_test.md](./docs/run_test.md) for detailed setup and testing instru
 **Type:** Single Page Application (SPA)
 
 **Stack:**
-- Next.js 14 (Static Export)
-- React 18
+- Next.js 15 (Static Export)
+- React 19
 - Supabase (BaaS)
 - Tailwind CSS + shadcn/ui
 - Cloudflare Pages
