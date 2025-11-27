@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Theme Workflow E2E Test
  * Tests theme switching and persistence

@@ -1,3 +1,4 @@
+// @ts-check
 import React from 'react'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { useQuery } from '@tanstack/react-query'

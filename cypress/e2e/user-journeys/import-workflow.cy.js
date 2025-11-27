@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Import Workflow E2E Test
  * Tests ENEX import functionality

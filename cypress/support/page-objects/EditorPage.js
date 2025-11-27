@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Page Object for Note Editor page
  * Handles note creation, editing, and deletion

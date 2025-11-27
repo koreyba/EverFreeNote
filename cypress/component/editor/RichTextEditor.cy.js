@@ -1,3 +1,4 @@
+// @ts-check
 import React from 'react'
 import RichTextEditor from '@/components/RichTextEditor'
 

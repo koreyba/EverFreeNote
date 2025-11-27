@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Tags Management E2E Test
  * Tests tags functionality: create, filter, add, remove

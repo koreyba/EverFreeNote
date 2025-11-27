@@ -1,9 +1,10 @@
-'use client'
+"use client"
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { Loader2 } from 'lucide-react'
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Loader2 } from "lucide-react"
+
+import { createClient } from "@/lib/supabase/client"
 
 export default function AuthCallback() {
   const router = useRouter()
@@ -13,20 +14,20 @@ export default function AuthCallback() {
       const supabase = createClient()
       
       // Get the code from URL
-      const code = new URLSearchParams(window.location.search).get('code')
+      const code = new URLSearchParams(window.location.search).get("code")
       
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         
         if (error) {
-          console.error('Error exchanging code for session:', error)
-          router.push('/?error=auth_callback_failed')
+          console.error("Error exchanging code for session:", error)
+          router.push("/?error=auth_callback_failed")
           return
         }
       }
 
       // Redirect to home page
-      router.push('/')
+      router.push("/")
     }
 
     handleCallback()

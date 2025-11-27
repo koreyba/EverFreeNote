@@ -1,40 +1,76 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useQueryClient } from '@tanstack/react-query'
-import { useNotesQuery, useFlattenedNotes } from '@/hooks/useNotesQuery'
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
-import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from '@/hooks/useNotesMutations'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import RichTextEditor from '@/components/RichTextEditor'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Search, Plus, Edit2, Trash2, Tag, LogOut, Loader2, BookOpen, Zap } from 'lucide-react'
-import InteractiveTag from '@/components/InteractiveTag'
-import AuthForm from '@/components/AuthForm'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { ImportButton } from '@/components/ImportButton'
-import { NoteListSkeleton } from '@/components/NoteListSkeleton'
-import { VirtualNoteList } from '@/components/VirtualNoteList'
-import { useSearchNotes } from '@/hooks/useNotesQuery'
-import { toast } from 'sonner'
-import DOMPurify from 'isomorphic-dompurify'
+import { useEffect, useState } from "react"
+import type { User } from "@supabase/supabase-js"
+import { useQueryClient } from "@tanstack/react-query"
+import DOMPurify from "isomorphic-dompurify"
+import { BookOpen, Edit2, Loader2, LogOut, Plus, Search, Tag, Trash2, Zap } from "lucide-react"
+import { toast } from "sonner"
+
+import AuthForm from "@/components/AuthForm"
+import InteractiveTag from "@/components/InteractiveTag"
+import RichTextEditor from "@/components/RichTextEditor"
+import { ImportButton } from "@/components/ImportButton"
+import { NoteListSkeleton } from "@/components/NoteListSkeleton"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { VirtualNoteList } from "@/components/VirtualNoteList"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
+import {
+  useFlattenedNotes,
+  useNotesQuery,
+  useSearchNotes,
+} from "@/hooks/useNotesQuery"
+import {
+  useCreateNote,
+  useDeleteNote,
+  useRemoveTag,
+  useUpdateNote,
+} from "@/hooks/useNotesMutations"
+import { createClient } from "@/lib/supabase/client"
+import type { Note, SearchResult } from "@/types/domain"
+
+type EditFormState = {
+  title: string
+  description: string
+  tags: string
+}
+
+type NoteRecord = Note & {
+  content?: string | null
+  headline?: string | null
+  rank?: number | null
+}
 
 export default function App() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedNote, setSelectedNote] = useState(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [ftsSearchQuery, setFtsSearchQuery] = useState('') // New FTS search
+  const [selectedNote, setSelectedNote] = useState<NoteRecord | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [ftsSearchQuery, setFtsSearchQuery] = useState("") // New FTS search
   const [isEditing, setIsEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ title: '', description: '', tags: '' })
+  const [editForm, setEditForm] = useState<EditFormState>({
+    title: "",
+    description: "",
+    tags: "",
+  })
   const [saving, setSaving] = useState(false)
-  const [filterByTag, setFilterByTag] = useState(null)
+  const [filterByTag, setFilterByTag] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [noteToDelete, setNoteToDelete] = useState(null)
+  const [noteToDelete, setNoteToDelete] = useState<NoteRecord | null>(null)
   
   const supabase = createClient()
   const queryClient = useQueryClient()
@@ -48,7 +84,7 @@ export default function App() {
   })
   
   // Get flattened notes array from paginated data
-  const notes = user ? useFlattenedNotes(notesQuery) : []
+  const notes: NoteRecord[] = user ? useFlattenedNotes(notesQuery) : []
 
   // FTS search hook (only when user is authenticated and has search query)
   const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
@@ -56,11 +92,13 @@ export default function App() {
   })
 
   // Use FTS results if available and no error, otherwise use regular search
+  const ftsData = ftsSearchResult.data
+  const ftsResults: SearchResult[] = ftsData?.results ?? []
   const showFTSResults = ftsSearchQuery.length >= 3 &&
-    ftsSearchResult.data &&
-    ftsSearchResult.data.method === 'fts' &&
-    !ftsSearchResult.data.error &&
-    ftsSearchResult.data.results.length > 0
+    !!ftsData &&
+    ftsData.method === 'fts' &&
+    !ftsData.error &&
+    ftsData.results.length > 0
 
   // Auto-load more notes on scroll (with 200px prefetch margin)
   const observerTarget = useInfiniteScroll(
@@ -91,21 +129,21 @@ export default function App() {
     checkAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         setUser(session?.user || null)
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase])
 
-  const handleSearch = (query) => {
+  const handleSearch = (query: string) => {
     setSearchQuery(query)
     setFtsSearchQuery(query) // Also update FTS search
     // React Query will automatically refetch with new searchQuery
   }
 
-  const handleTagClick = (tag) => {
+  const handleTagClick = (tag: string) => {
     setFilterByTag(tag)
     setSearchQuery('')
     setFtsSearchQuery('') // Also clear FTS search
@@ -219,7 +257,7 @@ export default function App() {
     setEditForm({ title: '', description: '', tags: '' })
   }
 
-  const handleEditNote = (note) => {
+  const handleEditNote = (note: NoteRecord) => {
     setSelectedNote(note)
     setIsEditing(true)
     setEditForm({
@@ -230,6 +268,8 @@ export default function App() {
   }
 
   const handleSaveNote = async () => {
+    if (!user) return
+
     setSaving(true)
     try {
       const tags = editForm.tags
@@ -268,7 +308,7 @@ export default function App() {
     }
   }
 
-  const handleDeleteNote = (note) => {
+  const handleDeleteNote = (note: NoteRecord) => {
     setNoteToDelete(note)
     setDeleteDialogOpen(true)
   }
@@ -293,7 +333,7 @@ export default function App() {
     }
   }
 
-  const handleRemoveTagFromNote = async (noteId, tagToRemove) => {
+  const handleRemoveTagFromNote = async (noteId: string, tagToRemove: string) => {
     try {
       // Find the note to get current tags
       const noteToUpdate = notes.find(note => note.id === noteId)
@@ -319,12 +359,12 @@ export default function App() {
     }
   }
 
-  const handleSelectNote = (note) => {
+  const handleSelectNote = (note: NoteRecord) => {
     setSelectedNote(note)
     setIsEditing(false)
   }
 
-  const handleSearchResultClick = (note) => {
+  const handleSearchResultClick = (note: SearchResult) => {
     // Clear search when selecting a result
     setSearchQuery('')
     setFtsSearchQuery('')
@@ -443,11 +483,11 @@ export default function App() {
               {/* FTS Search Results Header */}
               <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
                 <div>
-                  Найдено: <span className="font-semibold">{ftsSearchResult.data.total}</span> {ftsSearchResult.data.total === 1 ? 'заметка' : 'заметок'}
+                  Найдено: <span className="font-semibold">{ftsData?.total ?? 0}</span> {(ftsData?.total ?? 0) === 1 ? 'заметка' : 'заметок'}
                 </div>
-                {ftsSearchResult.data.executionTime !== undefined && (
+                {typeof ftsData?.executionTime === 'number' && (
                   <div className="flex items-center gap-2">
-                    <span>{ftsSearchResult.data.executionTime}ms</span>
+                    <span>{ftsData.executionTime}ms</span>
                     <Badge variant="outline" className="text-xs gap-1">
                       <Zap className="h-3 w-3" />
                       Быстрый поиск
@@ -458,11 +498,11 @@ export default function App() {
 
               {/* FTS Results List */}
               <div className="space-y-4">
-                {ftsSearchResult.data.results.map((note) => (
+                {ftsResults.map((note) => (
                   <Card
                     key={note.id}
                     className="hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => handleSelectNote(note)}
+                    onClick={() => handleSearchResultClick(note)}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
@@ -565,7 +605,7 @@ export default function App() {
               )}
             </>
           ) : (
-            // Regular scrolling for small lists (≤100 notes)
+            // Regular scrolling for small lists (<=100 notes)
             <>
               <div className="space-y-1 p-2">
                 {notes.map((note) => (

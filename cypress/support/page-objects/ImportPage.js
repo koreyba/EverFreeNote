@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Page Object for ENEX Import functionality
  * Handles file selection, duplicate strategy, and import progress

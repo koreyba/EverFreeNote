@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Notes CRUD E2E Test
  * Extended CRUD operations testing

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Search Integration E2E Test
  * Tests search UI, filters, and highlighting (not API)
