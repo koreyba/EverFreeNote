@@ -1,17 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+@plugin "tailwindcss-animate";
+@plugin "@tailwindcss/typography";
+
+/* Base styles */
 body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-        "Helvetica Neue", sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-code {
-    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-        monospace;
+* {
+  border-color: var(--color-border);
 }
 
 /* FTS Search highlighting */
@@ -23,64 +24,30 @@ mark {
     border-radius: 2px;
 }
 
-.App {
-    text-align: center;
-}
-
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
-}
-
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
-}
-
-.App-link {
-    color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
-}
-
 
 
 @theme {
+  --font-sans: "Inter", sans-serif;
+
   --color-background: oklch(100% 0 0);
   --color-foreground: oklch(20% 0.01 256);
   --color-card: oklch(100% 0 0);
   --color-card-foreground: oklch(20% 0.01 256);
   --color-popover: oklch(100% 0 0);
   --color-popover-foreground: oklch(20% 0.01 256);
-  /* Primary - Evernote green */
-  --color-primary: oklch(55% 0.15 145);
+  /* Primary - Vibrant Emerald */
+  --color-primary: oklch(60% 0.18 145);
   --color-primary-foreground: oklch(100% 0 0);
-  --color-secondary: oklch(96% 0.005 145);
-  --color-secondary-foreground: oklch(30% 0.05 145);
-  --color-muted: oklch(96% 0.005 256);
-  --color-muted-foreground: oklch(50% 0.01 256);
-  /* Accent - light green for hover states */
-  --color-accent: oklch(96% 0.02 145);
-  --color-accent-foreground: oklch(30% 0.05 145);
+  
+  --color-secondary: oklch(97% 0.01 145);
+  --color-secondary-foreground: oklch(40% 0.05 145);
+  
+  --color-muted: oklch(97% 0.005 256);
+  --color-muted-foreground: oklch(55% 0.02 256);
+  
+  /* Accent - Minty fresh */
+  --color-accent: oklch(96% 0.03 145);
+  --color-accent-foreground: oklch(40% 0.05 145);
   --color-destructive: oklch(55% 0.22 29);
   --color-destructive-foreground: oklch(100% 0 0);
   --color-border: oklch(90% 0.005 256);
@@ -149,78 +116,5 @@ body {
 }
 
 
-/* Rich Text Editor styles */
-.ProseMirror {
-  min-height: 200px;
-}
 
-.ProseMirror-focused {
-    outline: none;
-}
-
-/* TipTap Editor Styles */
-.ProseMirror h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 1rem 0 0.5rem 0;
-}
-
-.ProseMirror h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 1rem 0 0.5rem 0;
-}
-
-.ProseMirror h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0.75rem 0 0.5rem 0;
-}
-
-.ProseMirror ul {
-  padding-left: 1.5rem;
-  margin: 0.5rem 0;
-}
-
-.ProseMirror ol {
-  padding-left: 1.5rem;
-  margin: 0.5rem 0;
-}
-
-.ProseMirror ul li {
-  list-style-type: disc;
-}
-
-.ProseMirror ol li {
-  list-style-type: decimal;
-}
-
-.ProseMirror ul ul li {
-  list-style-type: circle;
-}
-
-.ProseMirror ul ul ul li {
-  list-style-type: square;
-}
-
-.ProseMirror p {
-  margin: 0.5rem 0;
-}
-
-.ProseMirror p.is-editor-empty:first-child::before {
-  color: var(--color-muted-foreground);
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
-/* Ensure text is visible in editor */
-.ProseMirror {
-  color: var(--color-foreground);
-}
-
-.ProseMirror p {
-  color: var(--color-foreground);
-}
 
