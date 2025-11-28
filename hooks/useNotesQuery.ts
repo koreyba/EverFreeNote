@@ -1,6 +1,8 @@
 import { useInfiniteQuery, useQuery, InfiniteData } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase/client'
-import { useState, useEffect } from 'react'
+import { useSupabase } from '@/lib/providers/SupabaseProvider'
+import { NoteService } from '@/lib/services/notes'
+import { SearchService, SearchResult } from '@/lib/services/search'
+import { useState, useEffect, useMemo } from 'react'
 
 import type { FtsSearchResult, Tables } from '@/supabase/types'
 
@@ -29,7 +31,8 @@ interface UseNotesQueryOptions {
  * Uses React Query for caching and infinite scroll pagination
  */
 export function useNotesQuery({ userId, searchQuery = '', selectedTag = null, enabled = true }: UseNotesQueryOptions = {}) {
-  const supabase = createClient()
+  const { supabase } = useSupabase()
+  const noteService = useMemo(() => new NoteService(supabase), [supabase])
 
   return useInfiniteQuery<NotesPage>({
     enabled: !!enabled,
@@ -38,42 +41,13 @@ export function useNotesQuery({ userId, searchQuery = '', selectedTag = null, en
 
     queryFn: async ({ pageParam = 0 }) => {
       const page = pageParam as number
-      // Calculate range for pagination
-      const start = page
-      const end = page + PAGE_SIZE - 1
-
-      // Build query with optimizations from Phase 1
-      let query = supabase
-        .from('notes')
-        .select('id, title, description, tags, created_at, updated_at', { count: 'exact' })
-        .order('updated_at', { ascending: false })
-        .range(start, end)
-
-      // Apply tag filter on server-side (uses GIN index)
-      if (selectedTag) {
-        query = query.contains('tags', [selectedTag])
-      }
-
-      // Apply search filter
-      // TODO Phase 6: Replace with full-text search using FTS index
-      if (searchQuery) {
-        const searchLower = searchQuery.toLowerCase()
-        query = query.or(`title.ilike.%${searchLower}%,description.ilike.%${searchLower}%`)
-      }
-
-      const { data, error, count } = await query
-
-      if (error) {
-        console.error('Error fetching notes:', error)
-        throw error
-      }
-
-      return {
-        notes: (data as Note[]) || [],
-        nextCursor: data && data.length === PAGE_SIZE ? end + 1 : undefined,
-        totalCount: count || 0,
-        hasMore: !!(data && data.length === PAGE_SIZE)
-      }
+      
+      return noteService.getNotes(userId!, {
+        page,
+        pageSize: PAGE_SIZE,
+        tag: selectedTag,
+        searchQuery
+      })
     },
 
     // Get next page cursor
@@ -140,13 +114,9 @@ interface SearchOptions {
   enabled?: boolean
 }
 
-export type SearchQueryResult = {
-  results: FtsSearchResult[]
-  total: number
+export type SearchQueryResult = SearchResult & {
   query: string
- method: 'fts' | 'fallback'
   executionTime: number
-  error?: string
 }
 
 /**
@@ -154,6 +124,9 @@ export type SearchQueryResult = {
  * Uses Supabase RPC function directly (SPA compatible)
  */
 export function useSearchNotes(query: string, userId?: string, options: SearchOptions = {}) {
+  const { supabase } = useSupabase()
+  const searchService = useMemo(() => new SearchService(supabase), [supabase])
+
   const {
     language = detectBrowserLanguage(),
     minRank = 0.01,
@@ -171,65 +144,29 @@ export function useSearchNotes(query: string, userId?: string, options: SearchOp
   return useQuery<SearchQueryResult>({
     queryKey: ['notes', 'search', debouncedQuery, language, minRank, limit, offset, userId],
     queryFn: async () => {
-      const { createClient } = await import('@/lib/supabase/client')
-      const { buildTsQuery } = await import('@/lib/supabase/search')
-
-      const supabase = createClient()
-
       if (!userId) {
         throw new Error('User ID is required for search')
       }
 
-      // Build sanitized ts_query
-      const tsQuery = buildTsQuery(debouncedQuery, language)
-      const ftsLanguage = language === 'uk' ? 'russian' : language === 'en' ? 'english' : 'russian'
-
       const startTime = Date.now()
+      const result = await searchService.searchNotes(userId, debouncedQuery, {
+        language,
+        minRank,
+        limit,
+        offset
+      })
+      const executionTime = Date.now() - startTime
 
-      try {
-        // Execute FTS RPC function
-        const { data, error } = await supabase
-          .rpc('search_notes_fts', {
-            search_query: tsQuery,
-            search_language: ftsLanguage,
-            min_rank: minRank,
-            result_limit: limit,
-            result_offset: offset,
-            search_user_id: userId
-          })
-
-        const executionTime = Date.now() - startTime
-
-        if (error) {
-          console.warn('FTS search failed, falling back to regular search:', error.message)
-          throw new Error(`FTS search failed: ${error.message}`)
-        }
-
-        return {
-          results: data || [],
-          total: data?.length || 0,
-          query: debouncedQuery,
-          method: 'fts',
-          executionTime
-        }
-      } catch (error: unknown) {
-        // If FTS fails, don't throw - let the component fall back to regular search
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        console.warn('FTS search error (will use fallback):', errorMessage)
-        return {
-          results: [],
-          total: 0,
-          query: debouncedQuery,
-          method: 'fallback',
-          executionTime: Date.now() - startTime,
-          error: errorMessage
-        }
+      return {
+        ...result,
+        query: debouncedQuery,
+        executionTime
       }
     },
     enabled: !!(enabled && isValidQuery),
     staleTime: SEARCH_STALE_TIME_MS,
     // Keep previous data while fetching new results (better UX)
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData: SearchQueryResult | undefined) => previousData,
     // Don't retry FTS failures - let it fall back gracefully
     retry: false,
   })

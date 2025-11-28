@@ -18,23 +18,29 @@ description: Break down work into actionable tasks and estimate timeline
 **What specific work needs to be done?**
 
 ### Phase 1: Foundation
-- [ ] Task 1.1: Create `SupabaseProvider` to manage the Supabase client instance.
-- [ ] Task 1.2: Create `BrowserAdapter` (wrappers for `window`, `localStorage`, `alert`, `prompt`).
-- [ ] Task 1.3: Implement `SanitizationService` using DOMPurify.
+- [x] Task 1.1: Create `SupabaseProvider` to manage the Supabase client instance.
+- [x] Task 1.2: Create `BrowserAdapter` (wrappers for `window`, `localStorage`, `alert`, `prompt`).
+- [x] Task 1.3: Implement `SanitizationService` using DOMPurify.
 
 ### Phase 2: Service Layer
-- [ ] Task 2.1: Create `NoteService` (CRUD operations).
-- [ ] Task 2.2: Create `AuthService` (Login/Logout).
-- [ ] Task 2.3: Create `SearchService` (Unify FTS and ILIKE logic).
-- [ ] Task 2.4: Refactor `useNotesQuery` and `useNotesMutations` to use these services.
+- [x] Task 2.1: Create `NoteService` (CRUD operations).
+- [x] Task 2.2: Create `AuthService` (Login/Logout).
+- [x] Task 2.3: Create `SearchService` (Unify FTS and ILIKE logic).
+- [x] Task 2.4: Refactor `useNotesQuery` and `useNotesMutations` to use these services.
 
 ### Phase 3: UI Decomposition
-- [ ] Task 3.1: Extract `AuthShell` (Login screen) from `page.tsx`.
-- [ ] Task 3.2: Extract `Sidebar` component.
-- [ ] Task 3.3: Extract `NoteList` / `VirtualNoteList` logic.
-- [ ] Task 3.4: Extract `NoteEditor` and `NoteView` components.
-- [ ] Task 3.5: Create `useNoteAppController` hook to manage state.
-- [ ] Task 3.6: Reassemble `page.tsx` using the new components and controller.
+- [x] Task 3.1: Extract `AuthShell` (Login screen) from `page.tsx`.
+- [x] Task 3.2: Extract `Sidebar` component.
+- [x] Task 3.3: Extract `NoteList` / `VirtualNoteList` logic.
+- [x] Task 3.4: Extract `NoteEditor` and `NoteView` components.
+- [x] Task 3.5: Create `useNoteAppController` hook to manage state.
+- [x] Task 3.6: Reassemble `page.tsx` using the new components and controller.
+
+### Phase 4: Cleanup & Documentation
+- [ ] Task 4.1: Remove unused imports and legacy code.
+- [ ] Task 4.2: Update `ARCHITECTURE.md` with new component structure.
+- [ ] Task 4.3: Run full test suite to ensure no regressions.
+- [ ] Task 4.4: Create `IMPLEMENTATION_SUMMARY.md` for the user.
 - [ ] Task 3.7: Replace in-page FTS UI с `components/SearchResults` + единый вызов `search.ts` (Codex).
 
 ### Phase 4: Cleanup & Documentation
