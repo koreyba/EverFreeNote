@@ -13,16 +13,15 @@ describe('NoteView Component', () => {
     user_id: 'user1'
   }
 
-  const getDefaultProps = () => ({
-    note: mockNote,
-    onEdit: cy.stub(),
-    onDelete: cy.stub(),
-    onTagClick: cy.stub(),
-    onRemoveTag: cy.stub()
-  })
-
   it('renders note details correctly', () => {
-    cy.mount(<NoteView {...getDefaultProps()} />)
+    const props = {
+      note: mockNote,
+      onEdit: cy.stub(),
+      onDelete: cy.stub(),
+      onTagClick: cy.stub(),
+      onRemoveTag: cy.stub()
+    }
+    cy.mount(<NoteView {...props} />)
 
     cy.contains('Test Note').should('be.visible')
     cy.contains('Test Content').should('be.visible')
@@ -33,19 +32,22 @@ describe('NoteView Component', () => {
   })
 
   it('handles actions', () => {
-    const props = getDefaultProps()
     const onEdit = cy.spy().as('onEdit')
     const onDelete = cy.spy().as('onDelete')
     const onTagClick = cy.spy().as('onTagClick')
     const onRemoveTag = cy.spy().as('onRemoveTag')
 
+    const props = {
+      note: mockNote,
+      onEdit,
+      onDelete,
+      onTagClick,
+      onRemoveTag
+    }
+
     cy.mount(
       <NoteView
         {...props}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onTagClick={onTagClick}
-        onRemoveTag={onRemoveTag}
       />
     )
 
@@ -67,7 +69,15 @@ describe('NoteView Component', () => {
       description: '<script>alert("xss")</script><p>Safe Content</p>'
     }
 
-    cy.mount(<NoteView {...getDefaultProps()} note={maliciousNote} />)
+    const props = {
+      note: maliciousNote,
+      onEdit: cy.stub(),
+      onDelete: cy.stub(),
+      onTagClick: cy.stub(),
+      onRemoveTag: cy.stub()
+    }
+
+    cy.mount(<NoteView {...props} />)
 
     cy.contains('Safe Content').should('be.visible')
     // Scope the check to the content area to avoid finding Next.js/Cypress scripts

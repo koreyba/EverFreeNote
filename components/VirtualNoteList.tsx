@@ -12,6 +12,7 @@ type VirtualNoteListProps = {
   onSelectNote: (note: Note) => void
   onTagClick: (tag: string) => void
   height: number
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ListComponent?: React.ComponentType<any>
 }
 
