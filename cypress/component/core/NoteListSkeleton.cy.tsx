@@ -1,4 +1,3 @@
-// @ts-check
 import React from 'react'
 import { NoteListSkeleton } from '@/components/NoteListSkeleton'
 
