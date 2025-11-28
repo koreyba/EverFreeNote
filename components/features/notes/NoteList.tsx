@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import InteractiveTag from "@/components/InteractiveTag"
 import { NoteListSkeleton } from "@/components/NoteListSkeleton"
-import { VirtualNoteList } from "@/components/VirtualNoteList"
 import DOMPurify from "isomorphic-dompurify"
 import type { Note, SearchResult } from "@/types/domain"
 
@@ -169,43 +168,6 @@ export function NoteList({
         <p>No notes yet</p>
         <p className="text-sm mt-2">Create your first note to get started!</p>
       </div>
-    )
-  }
-
-  // Virtual List (Large datasets)
-  if (notes.length > 100) {
-    return (
-      <>
-        <VirtualNoteList
-          notes={notes}
-          selectedNote={notes.find(n => n.id === selectedNoteId) || null}
-          onSelectNote={onSelectNote}
-          onTagClick={onTagClick}
-          height={600} // Will be calculated dynamically in parent or fixed
-        />
-        
-        {hasMore && (
-          <div className="p-4">
-            {isFetchingNextPage && (
-              <div className="text-center py-2">
-                <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
-              </div>
-            )}
-            {!isFetchingNextPage && (
-              <div className="text-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onLoadMore}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  Load More
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </>
     )
   }
 
