@@ -1,9 +1,8 @@
-// @ts-check
 import React from 'react'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 // Component that throws an error
-const ThrowError = ({ shouldThrow, errorMessage = 'Test error' }) => {
+const ThrowError = ({ shouldThrow, errorMessage = 'Test error' }: { shouldThrow: boolean, errorMessage?: string }) => {
   if (shouldThrow) {
     throw new Error(errorMessage)
   }
@@ -11,7 +10,7 @@ const ThrowError = ({ shouldThrow, errorMessage = 'Test error' }) => {
 }
 
 // Component that throws async error
-const ThrowAsyncError = ({ shouldThrow }) => {
+const ThrowAsyncError = ({ shouldThrow }: { shouldThrow: boolean }) => {
   React.useEffect(() => {
     if (shouldThrow) {
       throw new Error('Async error in useEffect')

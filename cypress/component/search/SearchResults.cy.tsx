@@ -1,9 +1,10 @@
-// @ts-check
 import React from 'react'
 import { SearchResults } from '@/components/SearchResults'
+import type { SearchQueryResult } from '@/hooks/useNotesQuery'
+import type { UseQueryResult } from '@tanstack/react-query'
 
 describe('SearchResults Component', () => {
-  let mockOnNoteClick
+  let mockOnNoteClick: Cypress.Agent<sinon.SinonStub>
 
   beforeEach(() => {
     mockOnNoteClick = cy.stub().as('onNoteClick')
@@ -11,11 +12,11 @@ describe('SearchResults Component', () => {
 
   it('shows loading skeleton when isLoading is true', () => {
     const searchResult = {
-      data: null,
+      data: undefined,
       isLoading: true,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     
@@ -29,12 +30,13 @@ describe('SearchResults Component', () => {
         results: [],
         total: 0,
         query: 'test query',
-        method: 'fts'
+        method: 'fts',
+        executionTime: 10
       },
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     
@@ -45,11 +47,11 @@ describe('SearchResults Component', () => {
 
   it('shows error state when isError is true', () => {
     const searchResult = {
-      data: null,
+      data: undefined,
       isLoading: false,
       isError: true,
       error: new Error('Database connection failed')
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     
@@ -86,7 +88,7 @@ describe('SearchResults Component', () => {
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     
@@ -113,17 +115,19 @@ describe('SearchResults Component', () => {
             title: 'Test Note',
             headline: 'This is a <mark>highlighted</mark> term',
             tags: [],
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            rank: 1
           }
         ],
         total: 1,
         query: 'highlighted',
-        method: 'fts'
+        method: 'fts',
+        executionTime: 10
       },
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     
@@ -140,17 +144,19 @@ describe('SearchResults Component', () => {
             title: 'Clickable Note',
             headline: 'Test content',
             tags: [],
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            rank: 1
           }
         ],
         total: 1,
         query: 'test',
-        method: 'fts'
+        method: 'fts',
+        executionTime: 10
       },
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     
@@ -168,17 +174,19 @@ describe('SearchResults Component', () => {
             title: 'Note with Tags',
             headline: 'Test content',
             tags: ['javascript', 'react', 'testing', 'cypress', 'component', 'extra'],
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            rank: 1
           }
         ],
         total: 1,
         query: 'test',
-        method: 'fts'
+        method: 'fts',
+        executionTime: 10
       },
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     
@@ -208,12 +216,13 @@ describe('SearchResults Component', () => {
         ],
         total: 1,
         query: 'test',
-        method: 'fts'
+        method: 'fts',
+        executionTime: 10
       },
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} showRank={true} />)
     
@@ -236,12 +245,13 @@ describe('SearchResults Component', () => {
         ],
         total: 1,
         query: 'test',
-        method: 'fts'
+        method: 'fts',
+        executionTime: 10
       },
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} showRank={false} />)
     
@@ -258,17 +268,19 @@ describe('SearchResults Component', () => {
             title: 'FTS Note',
             headline: 'Test content',
             tags: [],
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            rank: 1
           }
         ],
         total: 1,
         query: 'test',
-        method: 'fts'
+        method: 'fts',
+        executionTime: 10
       },
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     
@@ -278,7 +290,7 @@ describe('SearchResults Component', () => {
 
   it('formats relative time correctly', () => {
     const now = new Date()
-    const oneHourAgo = new Date(now - 60 * 60 * 1000)
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
     
     const searchResult = {
       data: {
@@ -288,17 +300,19 @@ describe('SearchResults Component', () => {
             title: 'Recent Note',
             headline: 'Test content',
             tags: [],
-            updated_at: oneHourAgo.toISOString()
+            updated_at: oneHourAgo.toISOString(),
+            rank: 1
           }
         ],
         total: 1,
         query: 'test',
-        method: 'fts'
+        method: 'fts',
+        executionTime: 10
       },
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     
@@ -315,17 +329,19 @@ describe('SearchResults Component', () => {
             title: null,
             headline: 'Test content',
             tags: [],
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            rank: 1
           }
         ],
         total: 1,
         query: 'test',
-        method: 'fts'
+        method: 'fts',
+        executionTime: 10
       },
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     
@@ -342,17 +358,19 @@ describe('SearchResults Component', () => {
             title: 'XSS Test',
             headline: '<mark>safe</mark><script>alert("xss")</script>',
             tags: [],
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            rank: 1
           }
         ],
         total: 1,
         query: 'test',
-        method: 'fts'
+        method: 'fts',
+        executionTime: 10
       },
       isLoading: false,
       isError: false,
       error: null
-    }
+    } as unknown as UseQueryResult<SearchQueryResult>
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
     

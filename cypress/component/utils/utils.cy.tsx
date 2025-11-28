@@ -1,4 +1,3 @@
-// @ts-check
 import { cn } from '@/lib/utils'
 
 describe('lib/utils', () => {

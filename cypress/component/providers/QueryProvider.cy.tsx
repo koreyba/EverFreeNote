@@ -1,4 +1,3 @@
-// @ts-check
 import React from 'react'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { useQuery } from '@tanstack/react-query'
@@ -18,7 +17,7 @@ describe('QueryProvider Component', () => {
     const TestComponent = () => {
       const { data, isLoading } = useQuery({
         queryKey: ['test'],
-        queryFn: () => new Promise(resolve => setTimeout(() => resolve('test data'), 100)),
+        queryFn: () => new Promise<string>(resolve => setTimeout(() => resolve('test data'), 100)),
       })
 
       if (isLoading) return <div>Loading...</div>
@@ -43,7 +42,7 @@ describe('QueryProvider Component', () => {
         retry: false,
       })
 
-      if (isError) return <div data-cy="error-message">{error.message}</div>
+      if (isError) return <div data-cy="error-message">{error?.message}</div>
       return <div>Success</div>
     }
 

@@ -1,4 +1,3 @@
-// @ts-check
 import React from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ThemeProvider } from '@/components/theme-provider'

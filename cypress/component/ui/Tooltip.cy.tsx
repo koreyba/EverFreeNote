@@ -1,4 +1,3 @@
-// @ts-check
 import React from 'react'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'

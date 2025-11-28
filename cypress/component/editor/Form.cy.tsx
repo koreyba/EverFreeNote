@@ -1,16 +1,20 @@
-// @ts-check
 import React from 'react'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 
+interface NoteFormProps {
+  onSubmit: (data: { title: string; content: string }) => void
+  initialData?: { title?: string; content?: string }
+}
+
 // Mock form components for testing
-const NoteForm = ({ onSubmit, initialData = {} }) => {
+const NoteForm = ({ onSubmit, initialData = {} }: NoteFormProps) => {
   const [title, setTitle] = React.useState(initialData.title || '')
   const [content, setContent] = React.useState(initialData.content || '')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit({ title, content })
   }
