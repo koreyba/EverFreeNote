@@ -1,6 +1,7 @@
 import React from 'react'
 import { Sidebar } from '@/components/features/notes/Sidebar'
-import type { User } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
+import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 
 describe('Sidebar Component', () => {
   const mockUser: User = {
@@ -11,6 +12,27 @@ describe('Sidebar Component', () => {
     aud: 'authenticated',
     created_at: new Date().toISOString()
   }
+
+  const createMockSupabase = (user: User | null) => {
+    return {
+      auth: {
+        getUser: cy.stub().resolves({ data: { user } }),
+        signOut: cy.stub().resolves({ error: null }),
+      },
+      storage: {
+        from: cy.stub().returns({
+          upload: cy.stub().resolves({ data: { path: '' }, error: null }),
+          getPublicUrl: cy.stub().returns({ data: { publicUrl: 'https://example.com' }, error: null }),
+        }),
+      },
+    } as unknown as SupabaseClient
+  }
+
+  const wrapWithProvider = (node: React.ReactNode, user: User | null = mockUser) => (
+    <SupabaseTestProvider supabase={createMockSupabase(user)} user={user}>
+      {node}
+    </SupabaseTestProvider>
+  )
 
   it('renders correctly', () => {
     const props = {
@@ -24,7 +46,7 @@ describe('Sidebar Component', () => {
       onImportComplete: cy.stub(),
       children: <div data-testid="note-list">Note List Content</div>
     }
-    cy.mount(<Sidebar {...props} />)
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
 
     cy.contains('EverFreeNote').should('be.visible')
     cy.contains('test@example.com').should('be.visible')
@@ -45,7 +67,7 @@ describe('Sidebar Component', () => {
       onImportComplete: cy.stub(),
       children: <div data-testid="note-list">Note List Content</div>
     }
-    cy.mount(<Sidebar {...props} />)
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
 
     cy.get('input[placeholder="Search notes..."]').type('test query')
     cy.get('@onSearch').should('have.been.called')
@@ -64,11 +86,7 @@ describe('Sidebar Component', () => {
       onImportComplete: cy.stub(),
       children: <div data-testid="note-list">Note List Content</div>
     }
-    cy.mount(
-      <Sidebar
-        {...props}
-      />
-    )
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
 
     cy.contains('work').should('be.visible')
     cy.contains('Clear filter').click()
@@ -91,11 +109,7 @@ describe('Sidebar Component', () => {
       children: <div data-testid="note-list">Note List Content</div>
     }
 
-    cy.mount(
-      <Sidebar
-        {...props}
-      />
-    )
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
 
     cy.contains('New Note').click()
     cy.get('@onCreateNote').should('have.been.called')
