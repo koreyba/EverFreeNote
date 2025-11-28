@@ -45,9 +45,10 @@ export class ImageProcessor {
       }
 
       return publicUrlData.publicUrl
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Image upload failed:', error)
-      throw new Error(`Failed to upload image: ${error.message}`)
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      throw new Error(`Failed to upload image: ${message}`)
     }
   }
 

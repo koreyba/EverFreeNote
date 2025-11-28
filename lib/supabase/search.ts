@@ -33,7 +33,8 @@ type SearchResult = {
 /**
  * Формирует безопасный ts_query для PostgreSQL FTS.
  */
-export function buildTsQuery(query: string, language: LanguageCode = 'ru'): string {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function buildTsQuery(query: string, _language: LanguageCode = 'ru'): string {
   if (!query || typeof query !== 'string') {
     throw new Error('Некорректный поисковый запрос: нужна непустая строка')
   }

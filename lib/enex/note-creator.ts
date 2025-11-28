@@ -54,9 +54,10 @@ export class NoteCreator {
 
       if (error) throw error
       return data?.id ?? null
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Note creation failed:', error)
-      throw new Error(`Failed to create note: ${error.message}`)
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      throw new Error(`Failed to create note: ${message}`)
     }
   }
 

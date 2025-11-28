@@ -84,7 +84,7 @@ export default function App() {
   })
   
   // Get flattened notes array from paginated data
-  const notes: NoteRecord[] = user ? useFlattenedNotes(notesQuery) : []
+  const notes: NoteRecord[] = useFlattenedNotes(notesQuery)
 
   // FTS search hook (only when user is authenticated and has search query)
   const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
@@ -161,7 +161,7 @@ export default function App() {
 
   const handleSignInWithGoogle = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -838,7 +838,7 @@ export default function App() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Note</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{noteToDelete?.title}"? This action cannot be undone.
+                Are you sure you want to delete &quot;{noteToDelete?.title}&quot;? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
