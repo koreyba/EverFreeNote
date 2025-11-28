@@ -12,15 +12,14 @@
 
 ## 📚 Documentation
 
-- **[⚡ Quick Start](QUICKSTART.md)** — Get started in 3 commands
 - **[🛠️ Development Setup](docs/DEVELOPMENT_SETUP.md)** ⭐ — Complete local development guide
 - **[🔄 GitHub Actions Pipelines](docs/GITHUB_ACTIONS_PIPELINES.md)** — CI/CD pipelines & local testing with Act
-- **[🔧 GitHub MCP Server Setup](GITHUB_MCP_SETUP.md)** — Connect Cursor to GitHub via MCP
+- **[🔧 GitHub MCP Server Setup](docs/GITHUB_MCP_SETUP.md)** — Connect Cursor to GitHub via MCP
 - **[🧪 Testing Guide](docs/run_test.md)** — Complete guide for running tests locally and in CI
 - **[🏗️ Architecture Guide](./docs/ARCHITECTURE.md)** ⭐ — Required reading for developers
 - **[🚀 Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** — How to deploy to Cloudflare Pages
 - **[⚙️ Cloudflare Environment Setup](CLOUDFLARE_ENV_SETUP.md)** — Fix production environment variables
-- **[🔐 Google OAuth Setup](GOOGLE_OAUTH_SETUP.md)** — Configure Google authentication
+- **[🔐 Google OAuth Setup](docs/GOOGLE_OAUTH_SETUP.md)** — Configure Google authentication
 - **[🗺️ Roadmap](./docs/roadmap.md)** — Product vision and feature roadmap
 
 ---

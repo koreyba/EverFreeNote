@@ -12,20 +12,19 @@ describe('Sidebar Component', () => {
     created_at: new Date().toISOString()
   }
 
-  const getDefaultProps = () => ({
-    user: mockUser,
-    filterByTag: null,
-    searchQuery: '',
-    onSearch: cy.stub(),
-    onClearTagFilter: cy.stub(),
-    onCreateNote: cy.stub(),
-    onSignOut: cy.stub(),
-    onImportComplete: cy.stub(),
-    children: <div data-testid="note-list">Note List Content</div>
-  })
-
   it('renders correctly', () => {
-    cy.mount(<Sidebar {...getDefaultProps()} />)
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      searchQuery: '',
+      onSearch: cy.stub(),
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onImportComplete: cy.stub(),
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+    cy.mount(<Sidebar {...props} />)
 
     cy.contains('EverFreeNote').should('be.visible')
     cy.contains('test@example.com').should('be.visible')
@@ -34,22 +33,40 @@ describe('Sidebar Component', () => {
   })
 
   it('handles search input', () => {
-    const props = getDefaultProps()
     const onSearch = cy.spy().as('onSearch')
-    cy.mount(<Sidebar {...props} onSearch={onSearch} />)
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      searchQuery: '',
+      onSearch,
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onImportComplete: cy.stub(),
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+    cy.mount(<Sidebar {...props} />)
 
     cy.get('input[placeholder="Search notes..."]').type('test query')
     cy.get('@onSearch').should('have.been.called')
   })
 
   it('shows tag filter when active', () => {
-    const props = getDefaultProps()
     const onClearTagFilter = cy.spy().as('onClearTagFilter')
+    const props = {
+      user: mockUser,
+      filterByTag: "work",
+      searchQuery: '',
+      onSearch: cy.stub(),
+      onClearTagFilter,
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onImportComplete: cy.stub(),
+      children: <div data-testid="note-list">Note List Content</div>
+    }
     cy.mount(
       <Sidebar
         {...props}
-        filterByTag="work"
-        onClearTagFilter={onClearTagFilter}
       />
     )
 
@@ -60,15 +77,23 @@ describe('Sidebar Component', () => {
   })
 
   it('handles actions', () => {
-    const props = getDefaultProps()
     const onCreateNote = cy.spy().as('onCreateNote')
     const onSignOut = cy.spy().as('onSignOut')
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      searchQuery: '',
+      onSearch: cy.stub(),
+      onClearTagFilter: cy.stub(),
+      onCreateNote,
+      onSignOut,
+      onImportComplete: cy.stub(),
+      children: <div data-testid="note-list">Note List Content</div>
+    }
 
     cy.mount(
       <Sidebar
         {...props}
-        onCreateNote={onCreateNote}
-        onSignOut={onSignOut}
       />
     )
 
