@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-import { createClient } from '@/lib/supabase/client'
 import type { Database, TablesInsert } from '@/supabase/types'
 import type { DuplicateStrategy, ParsedNote } from './types'
 
@@ -12,8 +11,8 @@ type DuplicateCheckResult =
 export class NoteCreator {
   private readonly supabase: SupabaseClient<Database>
 
-  constructor() {
-    this.supabase = createClient()
+  constructor(supabase: SupabaseClient<Database>) {
+    this.supabase = supabase
   }
 
   async create(note: ParsedNote, userId: string, duplicateStrategy: DuplicateStrategy = 'prefix'): Promise<string | null> {

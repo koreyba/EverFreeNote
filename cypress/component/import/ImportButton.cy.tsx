@@ -1,5 +1,30 @@
 import React from 'react'
 import { ImportButton } from '@/components/ImportButton'
+import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
+
+const createMockSupabase = () => {
+  return {
+    auth: {
+      getUser: cy.stub().resolves({ data: { user: null as User | null } }),
+      signInWithOAuth: cy.stub().resolves({ error: null }),
+      signInWithPassword: cy.stub().resolves({ data: { user: null }, error: null }),
+      signOut: cy.stub().resolves({ error: null }),
+    },
+    storage: {
+      from: cy.stub().returns({
+        upload: cy.stub().resolves({ data: { path: '' }, error: null }),
+        getPublicUrl: cy.stub().returns({ data: { publicUrl: 'https://example.com' }, error: null }),
+      }),
+    },
+  } as unknown as SupabaseClient
+}
+
+const wrapWithProvider = (node: React.ReactNode, supabase = createMockSupabase()) => (
+  <SupabaseTestProvider supabase={supabase}>
+    {node}
+  </SupabaseTestProvider>
+)
 
 describe('ImportButton Component', () => {
   beforeEach(() => {
@@ -10,7 +35,7 @@ describe('ImportButton Component', () => {
   })
 
   it('renders import button with correct text', () => {
-    cy.mount(<ImportButton />)
+    cy.mount(wrapWithProvider(<ImportButton />))
     
     cy.contains('Import from Evernote').should('be.visible')
     cy.get('button').should('have.class', 'w-full')
@@ -18,7 +43,7 @@ describe('ImportButton Component', () => {
   })
 
   it('opens import dialog on click', () => {
-    cy.mount(<ImportButton />)
+    cy.mount(wrapWithProvider(<ImportButton />))
     
     cy.contains('Import from Evernote').click()
     
@@ -27,14 +52,14 @@ describe('ImportButton Component', () => {
   })
 
   it('shows disabled state when importing', () => {
-    cy.mount(<ImportButton />)
+    cy.mount(wrapWithProvider(<ImportButton />))
     
     // Open dialog and start import (we'll need to mock this)
     cy.contains('Import from Evernote').should('not.be.disabled')
   })
 
   it('shows loading text when importing', () => {
-    cy.mount(<ImportButton />)
+    cy.mount(wrapWithProvider(<ImportButton />))
     
     // Button should show normal text initially
     cy.contains('Import from Evernote').should('be.visible')
@@ -43,7 +68,7 @@ describe('ImportButton Component', () => {
 
   it('calls onImportComplete callback on successful import', () => {
     const onImportComplete = cy.stub().as('onImportComplete')
-    cy.mount(<ImportButton onImportComplete={onImportComplete} />)
+    cy.mount(wrapWithProvider(<ImportButton onImportComplete={onImportComplete} />))
     
     // Verify callback prop is accepted
     cy.wrap(null).should(() => {
@@ -62,7 +87,7 @@ describe('ImportButton Component', () => {
       }))
     })
 
-    cy.mount(<ImportButton />)
+    cy.mount(wrapWithProvider(<ImportButton />))
     
     // Should show warning toast (we can't easily test toast, but we can verify localStorage is cleared)
     cy.window().then((win) => {
@@ -74,7 +99,7 @@ describe('ImportButton Component', () => {
   })
 
   it('renders all three dialogs (main, progress, result)', () => {
-    cy.mount(<ImportButton />)
+    cy.mount(wrapWithProvider(<ImportButton />))
     
     // ImportDialog should be in DOM (but not visible)
     cy.get('[role="dialog"]').should('not.exist')
@@ -85,7 +110,7 @@ describe('ImportButton Component', () => {
   })
 
   it('has correct button styling', () => {
-    cy.mount(<ImportButton />)
+    cy.mount(wrapWithProvider(<ImportButton />))
     
     cy.get('button')
       .should('have.class', 'w-full')

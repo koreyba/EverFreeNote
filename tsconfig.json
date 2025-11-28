@@ -47,7 +47,7 @@
       ]
     },
     "baseUrl": ".",
-    "target": "ES2017"
+    "target": "ESNext"
   },
   "include": [
     "**/*.ts",

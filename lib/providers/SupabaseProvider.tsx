@@ -57,3 +57,22 @@ export const useSupabase = () => {
   }
   return context
 }
+
+// Test-only provider for unit/component tests to inject a mocked Supabase client.
+export function SupabaseTestProvider({
+  children,
+  supabase,
+  user = null,
+  loading = false,
+}: {
+  children: React.ReactNode
+  supabase: SupabaseClient
+  user?: User | null
+  loading?: boolean
+}) {
+  return (
+    <SupabaseContext.Provider value={{ supabase, user, loading }}>
+      {children}
+    </SupabaseContext.Provider>
+  )
+}
