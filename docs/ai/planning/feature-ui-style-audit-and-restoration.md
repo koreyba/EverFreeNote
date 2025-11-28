@@ -113,7 +113,7 @@ description: Break down work into actionable tasks and estimate timeline
 ### Phase 4: Layout & Pages (Приоритет: MEDIUM)
 **Цель:** Согласовать общий layout приложения
 
-- [ ] **Task 4.1:** Исправить стили главной страницы (page.js)
+- [ ] **Task 4.1:** Исправить стили главной страницы (page.tsx)
   - Sidebar styling
   - Список заметок
   - Search bar

@@ -130,72 +130,72 @@ Cypress.Commands.add('mockVirtualList', (itemCount) => {
 
 ### Group 1: Core Components (Priority 1)
 **Components:**
-- ErrorBoundary.jsx
-- ImportButton.jsx
-- ImportDialog.jsx
-- ImportProgressDialog.jsx
-- SearchResults.jsx
-- VirtualNoteList.jsx
-- RichTextEditor.jsx (расширение тестов)
+- ErrorBoundary\.tsx
+- ImportButton\.tsx
+- ImportDialog\.tsx
+- ImportProgressDialog\.tsx
+- SearchResults\.tsx
+- VirtualNoteList\.tsx
+- RichTextEditor\.tsx (расширение тестов)
 
 **Test Files:**
-- `cypress/component/core/ErrorBoundary.cy.js`
-- `cypress/component/core/ImportButton.cy.js`
-- `cypress/component/core/ImportDialog.cy.js`
-- `cypress/component/core/ImportProgressDialog.cy.js`
-- `cypress/component/core/SearchResults.cy.js`
-- `cypress/component/core/VirtualNoteList.cy.js`
-- `cypress/component/editor/RichTextEditor.cy.js` (расширить)
+- `cypress/component/core/ErrorBoundary\.cy\.tsx`
+- `cypress/component/core/ImportButton\.cy\.tsx`
+- `cypress/component/core/ImportDialog\.cy\.tsx`
+- `cypress/component/core/ImportProgressDialog\.cy\.tsx`
+- `cypress/component/core/SearchResults\.cy\.tsx`
+- `cypress/component/core/VirtualNoteList\.cy\.tsx`
+- `cypress/component/editor/RichTextEditor\.cy\.tsx` (расширить)
 
 ### Group 2: UI Library Components (Priority 2)
 **Приоритетные компоненты (используются в приложении):**
-- dialog.jsx, alert-dialog.jsx
-- dropdown-menu.jsx, context-menu.jsx
-- tabs.jsx, accordion.jsx
-- progress.jsx, skeleton.jsx
-- scroll-area.jsx
-- switch.jsx, checkbox.jsx
-- toast.jsx, toaster.jsx
-- tooltip.jsx
+- dialog\.tsx, alert-dialog\.tsx
+- dropdown-menu\.tsx, context-menu\.tsx
+- tabs\.tsx, accordion\.tsx
+- progress\.tsx, skeleton\.tsx
+- scroll-area\.tsx
+- switch\.tsx, checkbox\.tsx
+- toast\.tsx, toaster\.tsx
+- tooltip\.tsx
 
 **Test Files:**
-- `cypress/component/ui/Dialog.cy.js`
-- `cypress/component/ui/Dropdown.cy.js`
-- `cypress/component/ui/Tabs.cy.js`
+- `cypress/component/ui/Dialog\.cy\.tsx`
+- `cypress/component/ui/Dropdown\.cy\.tsx`
+- `cypress/component/ui/Tabs\.cy\.tsx`
 - и т.д.
 
 ### Group 3: Hooks (Priority 1)
 **Hooks:**
-- useNotesMutations.js
-- useNotesQuery.js
-- useInfiniteScroll.js
-- use-toast.js
-- use-mobile.jsx
+- useNotesMutations.ts
+- useNotesQuery.ts
+- useInfiniteScroll.ts
+- use-toast.ts
+- use-mobile\.tsx
 
 **Test Files:**
-- `cypress/component/hooks/useNotesMutations.cy.js`
-- `cypress/component/hooks/useNotesQuery.cy.js`
-- `cypress/component/hooks/useInfiniteScroll.cy.js`
-- `cypress/component/hooks/useToast.cy.js`
-- `cypress/component/hooks/useMobile.cy.js`
+- `cypress/component/hooks/useNotesMutations\.cy\.tsx`
+- `cypress/component/hooks/useNotesQuery\.cy\.tsx`
+- `cypress/component/hooks/useInfiniteScroll\.cy\.tsx`
+- `cypress/component/hooks/useToast\.cy\.tsx`
+- `cypress/component/hooks/useMobile\.cy\.tsx`
 
 ### Group 4: Providers & Theme (Priority 3)
 **Components:**
-- QueryProvider.jsx
-- theme-provider.jsx
-- theme-toggle.jsx
+- QueryProvider\.tsx
+- theme-provider\.tsx
+- theme-toggle\.tsx
 
 **Test Files:**
-- `cypress/component/providers/QueryProvider.cy.js`
-- `cypress/component/theme/ThemeProvider.cy.js`
-- `cypress/component/theme/ThemeToggle.cy.js`
+- `cypress/component/providers/QueryProvider\.cy\.tsx`
+- `cypress/component/theme/ThemeProvider\.cy\.tsx`
+- `cypress/component/theme/ThemeToggle\.cy\.tsx`
 
 ### Group 5: Utils (Priority 2)
 **Files:**
-- lib/utils.js
+- lib/utils.ts
 
 **Test Files:**
-- `cypress/component/utils/Utils.cy.js`
+- `cypress/component/utils/Utils\.cy\.tsx`
 
 ## Design Decisions
 **Why did we choose this approach?**

@@ -99,13 +99,13 @@ npm run test:component
 ### Тесты конкретной области
 ```bash
 # Только аутентификация
-npm run test:component -- --spec 'cypress/component/auth/**/*.cy.js'
+npm run test:component -- --spec 'cypress/component/auth/**/*.cy.tsx'
 
 # Только редактор
-npm run test:component -- --spec 'cypress/component/editor/**/*.cy.js'
+npm run test:component -- --spec 'cypress/component/editor/**/*.cy.tsx'
 
 # Только UI компоненты
-npm run test:component -- --spec 'cypress/component/ui/**/*.cy.js'
+npm run test:component -- --spec 'cypress/component/ui/**/*.cy.tsx'
 ```
 
 ### С code coverage
@@ -272,8 +272,8 @@ Cypress.Commands.add('newUtility', (param) => {
 ## Troubleshooting
 
 ### Тесты не запускаются
-- Проверьте конфигурацию в `cypress.config.js`
-- Убедитесь что файлы имеют расширение `.cy.js`
+- Проверьте конфигурацию в `cypress.config.ts`
+- Убедитесь что файлы имеют расширение `.cy.tsx`
 - Проверьте корректность импортов компонентов
 
 ### Mocks не работают
@@ -283,7 +283,7 @@ Cypress.Commands.add('newUtility', (param) => {
 
 ### Code coverage не собирается
 - Убедитесь что `@cypress/code-coverage` установлен
-- Проверьте конфигурацию coverage в `cypress.config.js`
+- Проверьте конфигурацию coverage в `cypress.config.ts`
 - Проверьте что тестируемый код импортируется правильно
 
 ## Ресурсы

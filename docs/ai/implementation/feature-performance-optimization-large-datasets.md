@@ -29,22 +29,22 @@ No new environment variables needed. Existing `.env.local` sufficient.
 ### New Files to Create
 ```
 hooks/
-  ├── useNotesQuery.js          # Paginated notes fetching
-  ├── useCacheManager.js        # IndexedDB cache management
-  └── useNoteUpdate.js          # Optimistic note updates
+  ├── useNotesQuery.ts          # Paginated notes fetching
+  ├── useCacheManager.ts        # IndexedDB cache management
+  └── useNoteUpdate.ts          # Optimistic note updates
 
 components/
-  ├── NotesList.jsx             # Virtual scrolling list
-  ├── NoteListItem.jsx          # Optimized list item
-  ├── NoteListSkeleton.jsx      # Loading skeleton
-  └── SyncIndicator.jsx         # Save status indicator
+  ├── NotesList\.tsx             # Virtual scrolling list
+  ├── NoteListItem\.tsx          # Optimized list item
+  ├── NoteListSkeleton\.tsx      # Loading skeleton
+  └── SyncIndicator\.tsx         # Save status indicator
 
 lib/
   ├── cache/
-  │   └── indexedDB.js          # IndexedDB wrapper
+  │   └── indexedDB.ts          # IndexedDB wrapper
   └── analytics/
-      ├── performance.js        # Performance logging
-      └── errors.js             # Error tracking
+      ├── performance.ts        # Performance logging
+      └── errors.ts             # Error tracking
 
 supabase/
   └── migrations/
@@ -54,11 +54,11 @@ supabase/
 ### Files to Modify
 ```
 app/
-  ├── layout.js                 # Add QueryClientProvider
-  └── page.js                   # Refactor to use new hooks
+  ├── layout.tsx                 # Add QueryClientProvider
+  └── page.tsx                   # Refactor to use new hooks
 
 components/
-  └── NoteEditor.jsx            # Add optimistic updates
+  └── NoteEditor\.tsx            # Add optimistic updates
 ```
 
 ## Implementation Notes
@@ -95,7 +95,7 @@ supabase db push
 ```
 
 #### 2. Paginated Fetching Hook
-**File:** `hooks/useNotesQuery.js`
+**File:** `hooks/useNotesQuery.ts`
 
 ```javascript
 import { useInfiniteQuery } from '@tanstack/react-query'
@@ -145,7 +145,7 @@ export function useNotesQuery({ searchQuery = '', selectedTag = null }) {
 ```
 
 #### 3. Virtual Scrolling Component
-**File:** `components/NotesList.jsx`
+**File:** `components/NotesList\.tsx`
 
 ```javascript
 import { FixedSizeList } from 'react-window'
@@ -206,7 +206,7 @@ export function NotesList({
 ```
 
 #### 4. Optimized List Item
-**File:** `components/NoteListItem.jsx`
+**File:** `components/NoteListItem\.tsx`
 
 ```javascript
 import React from 'react'
@@ -246,7 +246,7 @@ NoteListItem.displayName = 'NoteListItem'
 ```
 
 #### 5. IndexedDB Cache
-**File:** `lib/cache/indexedDB.js`
+**File:** `lib/cache/indexedDB.ts`
 
 ```javascript
 import { openDB } from 'idb'
@@ -347,7 +347,7 @@ export const cacheManager = new CacheManager()
 ```
 
 #### 6. React Query Setup
-**File:** `app/layout.js`
+**File:** `app/layout.tsx`
 
 ```javascript
 'use client'

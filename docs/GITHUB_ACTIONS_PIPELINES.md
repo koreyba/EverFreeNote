@@ -279,7 +279,7 @@ npm run db:status
 ### 1. Develop and Test Locally
 ```bash
 # 1. Make code changes
-vim app/page.js
+vim app/page.tsx
 
 # 2. Test build locally
 npm run act:build

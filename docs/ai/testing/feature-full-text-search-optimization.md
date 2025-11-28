@@ -10,7 +10,7 @@ feature: full-text-search-optimization
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- **Unit test coverage**: 100% для новых функций (`lib/supabase/search.js`)
+- **Unit test coverage**: 100% для новых функций (`lib/supabase/search.ts`)
 - **Integration test coverage**: Все критичные пути (FTS query, fallback, API endpoint)
 - **E2E test coverage**: Основные user flows (search → results → highlighting)
 - **Performance testing**: Benchmark FTS vs ILIKE на 10K, 50K, 100K записей
@@ -24,7 +24,7 @@ feature: full-text-search-optimization
 ## Unit Tests
 **What individual components need testing?**
 
-### Module: `lib/supabase/search.js`
+### Module: `lib/supabase/search.ts`
 
 **Function: `buildTsQuery()`**
 - [ ] **Test: Valid single word query**
@@ -106,7 +106,7 @@ feature: full-text-search-optimization
   - Expected: Error thrown
   - Coverage: Error handling
 
-### Module: `app/api/notes/search/route.js`
+### Module: `app/api/notes/search/route.ts`
 
 **API Endpoint: GET /api/notes/search**
 - [ ] **Test: Returns 401 if not authenticated**
@@ -255,7 +255,7 @@ feature: full-text-search-optimization
 
 **Test fixtures:**
 ```javascript
-// tests/fixtures/notes.js
+// tests/fixtures/notes.ts
 export const testNotes = [
   {
     title: 'Meeting Notes',
@@ -287,7 +287,7 @@ INSERT INTO notes (user_id, title, content, tags) VALUES
 **Performance test data:**
 ```bash
 # Generate large dataset
-node scripts/generate-test-notes.js --count 10000 --user test-user-id
+node scripts/generate-test-notes.ts --count 10000 --user test-user-id
 ```
 
 ## Test Reporting & Coverage
@@ -299,9 +299,9 @@ node scripts/generate-test-notes.js --count 10000 --user test-user-id
 npm run test -- --coverage
 
 # Run specific test suites
-npm run test:unit -- lib/supabase/search.test.js
-npm run test:integration -- tests/integration/fts.test.js
-npm run test:e2e -- cypress/e2e/search.cy.js
+npm run test:unit -- lib/supabase/search\.test\.ts
+npm run test:integration -- tests/integration/fts\.test\.ts
+npm run test:e2e -- cypress/e2e/integration/search-integration.cy.js
 ```
 
 **Coverage thresholds:**
@@ -315,7 +315,7 @@ npm run test:e2e -- cypress/e2e/search.cy.js
       "lines": 100,
       "statements": 100
     },
-    "lib/supabase/search.js": {
+    "lib/supabase/search.ts": {
       "branches": 100,
       "functions": 100,
       "lines": 100,
@@ -368,7 +368,7 @@ npm run test:e2e -- cypress/e2e/search.cy.js
 
 **Performance test script:**
 ```javascript
-// tests/performance/search-benchmark.js
+// scripts/benchmark-fts.ts
 async function benchmarkSearch() {
   const queries = ['test', 'meeting', 'important', 'project'];
   const results = [];

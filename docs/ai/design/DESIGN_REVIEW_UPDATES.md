@@ -23,16 +23,16 @@ The design documentation has been updated to accurately reflect the implemented 
 ### 2. Component List Corrected ✅
 
 **Removed (not implemented):**
-- `components/NotesList.jsx`
-- `components/NoteListItem.jsx`
-- `hooks/useCacheManager.js` (deferred to Phase 4)
+- `components/NotesList\.tsx`
+- `components/NoteListItem\.tsx`
+- `hooks/useCacheManager.ts` (deferred to Phase 4)
 
 **Added (actually implemented):**
-- `hooks/useNotesQuery.js` - React Query infinite pagination
-- `hooks/useInfiniteScroll.js` - Intersection Observer auto-load
-- `hooks/useNotesMutations.js` - Optimistic CRUD operations
-- `components/VirtualNoteList.jsx` - Conditional virtualization
-- `components/NoteListSkeleton.jsx` - Loading states
+- `hooks/useNotesQuery.ts` - React Query infinite pagination
+- `hooks/useInfiniteScroll.ts` - Intersection Observer auto-load
+- `hooks/useNotesMutations.ts` - Optimistic CRUD operations
+- `components/VirtualNoteList\.tsx` - Conditional virtualization
+- `components/NoteListSkeleton\.tsx` - Loading states
 
 ### 3. Technology Stack Updated ✅
 

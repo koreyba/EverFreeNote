@@ -58,7 +58,7 @@ npx supabase stop
 
 ## Where Test Users Are Defined
 
-**File:** `scripts/init-test-users.js`
+**File:** `scripts/init-test-users.ts`
 
 This script uses Supabase Admin API to create:
 - 2 test users with known credentials
