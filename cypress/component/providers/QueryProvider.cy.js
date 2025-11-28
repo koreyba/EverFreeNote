@@ -18,7 +18,7 @@ describe('QueryProvider Component', () => {
     const TestComponent = () => {
       const { data, isLoading } = useQuery({
         queryKey: ['test'],
-        queryFn: () => Promise.resolve('test data'),
+        queryFn: () => new Promise(resolve => setTimeout(() => resolve('test data'), 100)),
       })
 
       if (isLoading) return <div>Loading...</div>

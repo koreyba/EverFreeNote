@@ -48,7 +48,7 @@ describe('SearchResults Component', () => {
       data: null,
       isLoading: false,
       isError: true,
-      error: { message: 'Database connection failed' }
+      error: new Error('Database connection failed')
     }
 
     cy.mount(<SearchResults searchResult={searchResult} onNoteClick={mockOnNoteClick} />)
