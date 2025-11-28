@@ -9,6 +9,7 @@ export interface BrowserAdapter {
   };
   location: {
     origin: string;
+    search: string;
     reload(): void;
   };
 }
@@ -52,6 +53,7 @@ class WebBrowserAdapter implements BrowserAdapter {
     }
     return {
       origin: '',
+      search: '',
       reload: () => {},
     };
   }

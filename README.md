@@ -1,4 +1,4 @@
-# 🌿 EverFreeNote
+# EverFreeNote
 
 [![Build](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/build.yml/badge.svg)](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/build.yml)
 [![Component Tests](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/component-tests.yml/badge.svg)](https://github.com/YOUR_USERNAME/EverFreeNote/actions/workflows/component-tests.yml)
@@ -10,21 +10,21 @@
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-- **[🛠️ Development Setup](docs/DEVELOPMENT_SETUP.md)** ⭐ — Complete local development guide
-- **[🔄 GitHub Actions Pipelines](docs/GITHUB_ACTIONS_PIPELINES.md)** — CI/CD pipelines & local testing with Act
-- **[🔧 GitHub MCP Server Setup](docs/GITHUB_MCP_SETUP.md)** — Connect Cursor to GitHub via MCP
-- **[🧪 Testing Guide](docs/run_test.md)** — Complete guide for running tests locally and in CI
-- **[🏗️ Architecture Guide](./docs/ARCHITECTURE.md)** ⭐ — Required reading for developers
-- **[🚀 Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** — How to deploy to Cloudflare Pages
-- **[⚙️ Cloudflare Environment Setup](CLOUDFLARE_ENV_SETUP.md)** — Fix production environment variables
-- **[🔐 Google OAuth Setup](docs/GOOGLE_OAUTH_SETUP.md)** — Configure Google authentication
-- **[🗺️ Roadmap](./docs/roadmap.md)** — Product vision and feature roadmap
+- **[Development Setup](docs/DEVELOPMENT_SETUP.md)** — local environment and tooling
+- **[GitHub Actions Pipelines](docs/GITHUB_ACTIONS_PIPELINES.md)** — CI/CD pipelines and running with Act
+- **[GitHub MCP Server Setup](docs/GITHUB_MCP_SETUP.md)** — connect Cursor to GitHub via MCP
+- **[Testing Guide](docs/run_test.md)** — how to run tests locally and in CI
+- **[Architecture Guide](docs/ARCHITECTURE.md)** — required reading before contributing
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** — deploy to Cloudflare Pages
+- **[Cloudflare Environment Setup](CLOUDFLARE_ENV_SETUP.md)** — production environment variables
+- **[Google OAuth Setup](docs/GOOGLE_OAUTH_SETUP.md)** — configure Google authentication
+- **[Roadmap](docs/roadmap.md)** — product vision and feature plan
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+
@@ -47,9 +47,9 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open http://localhost:3000
 
-**Supabase Studio**: [http://localhost:54323](http://localhost:54323)
+**Supabase Studio**: http://localhost:54323
 
 ### Test Users
 - `skip-auth@example.com` / `testpassword123`
@@ -60,26 +60,21 @@ Open [http://localhost:3000](http://localhost:3000)
 npm run db:stop
 ```
 
-See [docs/run_test.md](./docs/run_test.md) for detailed setup and testing instructions.
+See `docs/run_test.md` for detailed setup and testing instructions.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
-**Type:** Single Page Application (SPA)
+**Type:** Single Page Application (SPA)  
+**Stack:** Next.js (static export), React 19, Supabase, Tailwind CSS + shadcn/ui, Cloudflare Pages hosting  
+**Key constraints:** no SSR/server actions/API routes; all Supabase access from the client through a shared provider and service layer.
 
-**Stack:**
-- Next.js 15 (Static Export)
-- React 19
-- Supabase (BaaS)
-- Tailwind CSS + shadcn/ui
-- Cloudflare Pages
-
-See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed information.
+See `docs/ARCHITECTURE.md` for detailed information.
 
 ---
 
-## 📦 Build & Deploy
+## Build & Deploy
 
 ```bash
 # Build static export
@@ -96,19 +91,20 @@ Deploy the `out/` folder to:
 
 ---
 
-## ✨ Features
+## Features
 
-- ✅ Google OAuth Authentication
-- ✅ Create, Edit, Delete Notes
-- ✅ Tags System with Interactive Tags
-- ✅ Real-time Search
-- ✅ Tag-based Filtering
-- ✅ Responsive Design
-- ✅ Secure Row-Level Security
+- Google OAuth authentication
+- Create, edit, delete notes
+- Tags with interactive chips
+- Full-text search with FTS → ILIKE fallback
+- Tag-based filtering
+- Responsive design
+- Secure row-level security (Supabase)
+- Evernote ENEX import with HTML sanitization
 
 ---
 
-## 🔐 Environment Variables
+## Environment Variables
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
@@ -117,13 +113,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ---
 
-## 📝 License
+## License
 
 MIT
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-Before adding new features, please read [ARCHITECTURE.md](./docs/ARCHITECTURE.md) to understand the architectural principles.
-
+Before adding new features, please read `docs/ARCHITECTURE.md` to understand the architectural principles.

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { User } from '@supabase/supabase-js'
 
+import { browser } from '@/lib/adapters/browser'
 import { useSupabase } from '@/lib/providers/SupabaseProvider'
 import { useNotesQuery, useFlattenedNotes, useSearchNotes } from '@/hooks/useNotesQuery'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from '@/hooks/useNotesMutations'
@@ -76,7 +77,7 @@ export function useNoteAppController() {
   // -- Auth Effects --
   useEffect(() => {
     const checkAuth = async () => {
-      localStorage.removeItem('testUser')
+      browser.localStorage.removeItem('testUser')
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user || null)
       setLoading(false)
@@ -116,10 +117,11 @@ export function useNoteAppController() {
 
   const handleSignInWithGoogle = async () => {
     try {
+      const origin = browser.location.origin || (typeof window !== 'undefined' ? window.location.origin : '')
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: origin ? `${origin}/auth/callback` : undefined,
         },
       })
       if (error) console.error('Error signing in:', error)
@@ -181,7 +183,7 @@ export function useNoteAppController() {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
-      localStorage.removeItem('testUser')
+      browser.localStorage.removeItem('testUser')
       setUser(null)
       queryClient.removeQueries({ queryKey: ['notes'] })
       setSelectedNote(null)
@@ -344,3 +346,5 @@ export function useNoteAppController() {
     invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
   }
 }
+
+export type NoteAppController = ReturnType<typeof useNoteAppController>

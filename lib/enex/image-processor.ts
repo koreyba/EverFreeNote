@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/supabase/types'
 
 export class ImageProcessor {
@@ -8,8 +7,8 @@ export class ImageProcessor {
   private readonly bucket = 'note-images'
   private readonly MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB per image
 
-  constructor() {
-    this.supabase = createClient()
+  constructor(supabase: SupabaseClient<Database>) {
+    this.supabase = supabase
   }
 
   async upload(base64: string, mime: string, userId: string, noteId: string, fileName: string): Promise<string> {
