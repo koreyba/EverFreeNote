@@ -20,14 +20,6 @@ export function QueryProvider({ children }: QueryProviderProps) {
             retry: 3,
             retryDelay: (attemptIndex) =>
               Math.min(1000 * 2 ** attemptIndex, 30000),
-            onError: (error) => {
-              console.error("React Query error:", error)
-            },
-          },
-          mutations: {
-            onError: (error) => {
-              console.error("React Query mutation error:", error)
-            },
           },
         },
       })

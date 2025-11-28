@@ -262,8 +262,8 @@ export default function App() {
     setIsEditing(true)
     setEditForm({
       title: note.title,
-      description: note.description || note.content,
-      tags: note.tags?.join(', ') || '',
+      description: note.description ?? note.content ?? '',
+      tags: note.tags?.join(', ') ?? '',
     })
   }
 
@@ -529,7 +529,7 @@ export default function App() {
                           style={{
                             '--mark-bg': 'hsl(var(--primary) / 0.2)',
                             '--mark-color': 'hsl(var(--primary))'
-                          }}
+                          } as React.CSSProperties}
                         />
                       )}
 
@@ -770,7 +770,7 @@ export default function App() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : selectedNote ? (
           <div className="flex-1 flex flex-col">
             {/* Note View Header */}
             <div className="p-4 border-b bg-card flex items-center justify-between">
@@ -819,7 +819,7 @@ export default function App() {
                 <div className="prose prose-lg max-w-none">
                   <div
                     className="prose prose-lg max-w-none"
-                    dangerouslySetInnerHTML={{ __html: selectedNote.description || selectedNote.content }}
+                    dangerouslySetInnerHTML={{ __html: selectedNote.description || selectedNote.content || '' }}
                   />
                 </div>
                 
@@ -830,7 +830,7 @@ export default function App() {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
