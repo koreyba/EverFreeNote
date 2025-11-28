@@ -7,5 +7,5 @@
 
 ## Запуск тестов:
 ```bash
-npm run test:component -- --spec 'cypress/component/auth/**/*.cy.js'
+npm run test:component -- --spec 'cypress/component/auth/**/*.cy.tsx'
 ```

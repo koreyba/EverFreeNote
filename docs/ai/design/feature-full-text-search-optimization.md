@@ -166,13 +166,13 @@ const FTS_LANGUAGES = {
 **What are the major building blocks?**
 
 **Backend (New/Modified):**
-1. `lib/supabase/search.js` - FTS search functions (NEW)
+1. `lib/supabase/search.ts` - FTS search functions (NEW)
    - `searchNotesFTS()` - main FTS search
    - `searchNotesILIKE()` - fallback search
    - `sanitizeSearchQuery()` - input sanitization
    - `buildTsQuery()` - construct to_tsquery string
 
-2. `app/api/notes/search/route.js` - API endpoint (MODIFIED)
+2. `app/api/notes/search/route.ts` - API endpoint (MODIFIED)
    - Try FTS first
    - Catch errors → fallback to ILIKE
    - Add execution time tracking
@@ -184,11 +184,11 @@ const FTS_LANGUAGES = {
    - Security: SECURITY DEFINER with user_id check
 
 **Frontend (Modified):**
-1. `hooks/useNotesQuery.js` - add search query hook
+1. `hooks/useNotesQuery.ts` - add search query hook
    - Use React Query for caching
    - Debounce search input
 
-2. `components/SearchResults.jsx` - display highlighted results
+2. `components/SearchResults\.tsx` - display highlighted results
    - Render headline with HTML (sanitized)
    - Show relevance score (optional)
 

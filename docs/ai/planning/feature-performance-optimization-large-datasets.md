@@ -42,7 +42,7 @@ description: Break down work into actionable tasks and estimate timeline
   - Remove unnecessary data fetching
   - Add `.limit()` to all queries
   - **Estimate:** 1 hour
-  - **Files:** `app/page.js`
+  - **Files:** `app/page.tsx`
 
 ### Phase 2: Pagination & Data Fetching (Priority: CRITICAL)
 **Goal:** Implement paginated loading of notes
@@ -53,29 +53,29 @@ description: Break down work into actionable tasks and estimate timeline
   - Handle loading/error states
   - Add search/filter support
   - **Estimate:** 4 hours
-  - **Files:** `hooks/useNotesQuery.js` (new)
+  - **Files:** `hooks/useNotesQuery.ts` (new)
 
 - [ ] **Task 2.2:** Install and configure React Query
   - `npm install @tanstack/react-query`
   - Set up QueryClientProvider in layout
   - Configure cache settings
   - **Estimate:** 1 hour
-  - **Files:** `package.json`, `app/layout.js`
+  - **Files:** `package.json`, `app/layout.tsx`
 
-- [ ] **Task 2.3:** Refactor page.js to use pagination
+- [ ] **Task 2.3:** Refactor page.tsx to use pagination
   - Replace `fetchNotes` with `useNotesQuery`
   - Remove `useState` for notes array
   - Update UI to show loading states
   - Add "Load More" button
   - **Estimate:** 3 hours
-  - **Files:** `app/page.js`
+  - **Files:** `app/page.tsx`
 
 - [ ] **Task 2.4:** Add loading skeletons
   - Create `NoteListSkeleton` component
   - Show skeleton during initial load
   - Show skeleton for "Load More"
   - **Estimate:** 2 hours
-  - **Files:** `components/NoteListSkeleton.jsx` (new)
+  - **Files:** `components/NoteListSkeleton\.tsx` (new)
 
 ### Phase 3: Virtual Scrolling (Priority: HIGH)
 **Goal:** Render only visible notes for smooth scrolling
@@ -92,21 +92,21 @@ description: Break down work into actionable tasks and estimate timeline
   - Handle window resizing
   - Integrate with useNotesQuery
   - **Estimate:** 4 hours
-  - **Files:** `components/NotesList.jsx` (new)
+  - **Files:** `components/NotesList\.tsx` (new)
 
 - [ ] **Task 3.3:** Create optimized NoteListItem component
   - Extract note item to separate component
   - Add React.memo with custom comparison
   - Optimize re-renders
   - **Estimate:** 2 hours
-  - **Files:** `components/NoteListItem.jsx` (new)
+  - **Files:** `components/NoteListItem\.tsx` (new)
 
-- [ ] **Task 3.4:** Integrate virtual scrolling in page.js
+- [ ] **Task 3.4:** Integrate virtual scrolling in page.tsx
   - Replace current notes list with NotesList
   - Handle infinite scroll trigger
   - Test with 1,000+ notes
   - **Estimate:** 2 hours
-  - **Files:** `app/page.js`
+  - **Files:** `app/page.tsx`
 
 ### Phase 4: Caching Layer (Priority: MEDIUM)
 **Goal:** Add client-side caching for faster loads
@@ -123,21 +123,21 @@ description: Break down work into actionable tasks and estimate timeline
   - Add cache expiration logic
   - Handle errors gracefully
   - **Estimate:** 3 hours
-  - **Files:** `lib/cache/indexedDB.js` (new)
+  - **Files:** `lib/cache/indexedDB.ts` (new)
 
 - [ ] **Task 4.3:** Create useCacheManager hook
   - Integrate cache with React Query
   - Implement stale-while-revalidate
   - Add cache invalidation on mutations
   - **Estimate:** 3 hours
-  - **Files:** `hooks/useCacheManager.js` (new)
+  - **Files:** `hooks/useCacheManager.ts` (new)
 
 - [ ] **Task 4.4:** Integrate caching in useNotesQuery
   - Check cache before fetching
   - Update cache after fetching
   - Invalidate cache on create/update/delete
   - **Estimate:** 2 hours
-  - **Files:** `hooks/useNotesQuery.js`
+  - **Files:** `hooks/useNotesQuery.ts`
 
 ### Phase 5: Optimistic Updates (Priority: HIGH)
 **Goal:** Instant UI feedback for user actions
@@ -148,7 +148,7 @@ description: Break down work into actionable tasks and estimate timeline
   - Sync to server in background
   - Rollback on error
   - **Estimate:** 3 hours
-  - **Files:** `app/page.js`, `hooks/useNotesQuery.js`
+  - **Files:** `app/page.tsx`, `hooks/useNotesQuery.ts`
 
 - [ ] **Task 5.2:** Implement optimistic update
   - Update note in local state immediately
@@ -156,7 +156,7 @@ description: Break down work into actionable tasks and estimate timeline
   - Show sync status indicator
   - Handle conflicts
   - **Estimate:** 3 hours
-  - **Files:** `components/NoteEditor.jsx`, `hooks/useNoteUpdate.js` (new)
+  - **Files:** `components/NoteEditor\.tsx`, `hooks/useNoteUpdate.ts` (new)
 
 - [ ] **Task 5.3:** Implement optimistic delete
   - Remove note from local state immediately
@@ -164,14 +164,14 @@ description: Break down work into actionable tasks and estimate timeline
   - Sync to server after undo timeout
   - Restore on error
   - **Estimate:** 2 hours
-  - **Files:** `app/page.js`, `hooks/useNotesQuery.js`
+  - **Files:** `app/page.tsx`, `hooks/useNotesQuery.ts`
 
 - [ ] **Task 5.4:** Add sync status indicators
   - Create `SyncIndicator` component
   - Show "Saving...", "Saved", "Error" states
   - Add to NoteEditor
   - **Estimate:** 2 hours
-  - **Files:** `components/SyncIndicator.jsx` (new)
+  - **Files:** `components/SyncIndicator\.tsx` (new)
 
 ### Phase 6: Search & Filter Optimization (Priority: MEDIUM)
 **Goal:** Fast search and filtering
@@ -182,20 +182,20 @@ description: Break down work into actionable tasks and estimate timeline
   - Show search results with pagination
   - Highlight search terms
   - **Estimate:** 3 hours
-  - **Files:** `hooks/useNotesQuery.js`, `components/SearchBar.jsx`
+  - **Files:** `hooks/useNotesQuery.ts`, `components/SearchBar\.tsx`
 
 - [ ] **Task 6.2:** Optimize tag filtering
   - Use indexed query for tags
   - Add tag filter to useNotesQuery
   - Show filtered count
   - **Estimate:** 2 hours
-  - **Files:** `hooks/useNotesQuery.js`, `app/page.js`
+  - **Files:** `hooks/useNotesQuery.ts`, `app/page.tsx`
 
 - [ ] **Task 6.3:** Add search result caching
   - Cache search results in IndexedDB
   - Invalidate on note changes
   - **Estimate:** 2 hours
-  - **Files:** `hooks/useCacheManager.js`
+  - **Files:** `hooks/useCacheManager.ts`
 
 ### Phase 7: Performance Monitoring (Priority: LOW)
 **Goal:** Track and measure performance
@@ -205,21 +205,21 @@ description: Break down work into actionable tasks and estimate timeline
   - Log query durations
   - Log cache hit rates
   - **Estimate:** 2 hours
-  - **Files:** `lib/analytics/performance.js` (new)
+  - **Files:** `lib/analytics/performance.ts` (new)
 
 - [ ] **Task 7.2:** Add error tracking
   - Log failed queries
   - Log cache errors
   - Log optimistic update rollbacks
   - **Estimate:** 1 hour
-  - **Files:** `lib/analytics/errors.js` (new)
+  - **Files:** `lib/analytics/errors.ts` (new)
 
 - [ ] **Task 7.3:** Create performance dashboard (optional)
   - Show metrics in dev mode
   - Display cache stats
   - Show query performance
   - **Estimate:** 3 hours
-  - **Files:** `components/PerformanceDashboard.jsx` (new)
+  - **Files:** `components/PerformanceDashboard\.tsx` (new)
 
 ### Phase 8: Testing & Validation (Priority: HIGH)
 **Goal:** Ensure all performance targets met

@@ -67,7 +67,7 @@ description: Break down work into actionable tasks and estimate timeline
 **Estimate:** 30 минут
 
 #### 1.3: Update Cypress Config
-- [ ] Обновить `cypress.config.js` с оптимизациями
+- [ ] Обновить `cypress.config.ts` с оптимизациями
 - [ ] Добавить environment variables
 - [ ] Настроить timeouts
 
@@ -76,7 +76,7 @@ description: Break down work into actionable tasks and estimate timeline
 ### Phase 2: Page Objects Implementation - Milestone 2
 
 #### 2.1: Create LoginPage
-- [ ] Создать `cypress/support/page-objects/LoginPage.js`
+- [ ] Создать `cypress/support/page-objects/Loginpage.tsx`
 - [ ] Реализовать selectors (skipAuthButton, googleAuthButton, appTitle)
 - [ ] Реализовать actions (skipAuth, loginWithGoogle)
 - [ ] Реализовать assertions (assertOnLoginPage)
@@ -84,7 +84,7 @@ description: Break down work into actionable tasks and estimate timeline
 **Estimate:** 30 минут
 
 #### 2.2: Create NotesPage
-- [ ] Создать `cypress/support/page-objects/NotesPage.js`
+- [ ] Создать `cypress/support/page-objects/Notespage.tsx`
 - [ ] Реализовать selectors (newNoteButton, searchInput, notesList, etc.)
 - [ ] Реализовать actions (createNewNote, searchNotes, selectNote, filterByTag, logout, toggleTheme)
 - [ ] Реализовать assertions (assertNoteExists, assertNoteNotExists, assertOnNotesPage)
@@ -92,7 +92,7 @@ description: Break down work into actionable tasks and estimate timeline
 **Estimate:** 45 минут
 
 #### 2.3: Create EditorPage
-- [ ] Создать `cypress/support/page-objects/EditorPage.js`
+- [ ] Создать `cypress/support/page-objects/Editorpage.tsx`
 - [ ] Реализовать selectors (titleInput, contentEditor, tagsInput, saveButton, deleteButton, editButton)
 - [ ] Реализовать actions (fillTitle, fillContent, fillTags, save, update, delete, edit)
 - [ ] Реализовать assertions (assertOnEditorPage)
@@ -100,7 +100,7 @@ description: Break down work into actionable tasks and estimate timeline
 **Estimate:** 45 минут
 
 #### 2.4: Create ImportPage
-- [ ] Создать `cypress/support/page-objects/ImportPage.js`
+- [ ] Создать `cypress/support/page-objects/Importpage.tsx`
 - [ ] Реализовать selectors (importButton, fileInput, duplicateStrategy, startImportButton, progressDialog, closeButton)
 - [ ] Реализовать actions (openImportDialog, selectFile, selectDuplicateStrategy, startImport, waitForImportComplete, closeImportDialog)
 - [ ] Реализовать full flow method (importFile)
@@ -108,7 +108,7 @@ description: Break down work into actionable tasks and estimate timeline
 **Estimate:** 45 минут
 
 #### 2.5: Create Custom Commands
-- [ ] Обновить `cypress/support/commands.js`
+- [ ] Обновить `cypress/support/commands.ts`
 - [ ] Добавить `cy.login()`
 - [ ] Добавить `cy.createNote(title, content, tags?)`
 - [ ] Добавить `cy.deleteNote(title)`

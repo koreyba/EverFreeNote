@@ -35,36 +35,36 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] **Test case 3:** Focus state работает
   - Проверить border color при фокусе
   - Проверить outline для accessibility
-- [ ] **Existing Cypress test:** `cypress/component/RichTextEditor.cy.js` должен проходить
+- [ ] **Existing Cypress test:** `cypress/component/RichTextEditor\.cy\.tsx` должен проходить
 
-### Component 2: Button (ui/button.jsx)
+### Component 2: Button (ui/button\.tsx)
 - [ ] **Test case 1:** Все варианты кнопок видны
   - default, secondary, ghost, destructive
   - Проверить контрастность текста на фоне
 - [ ] **Test case 2:** Hover/active/disabled states работают
-- [ ] **Existing Cypress test:** `cypress/component/Button.cy.js` должен проходить
+- [ ] **Existing Cypress test:** `cypress/component/Button\.cy\.tsx` должен проходить
 
-### Component 3: Input (ui/input.jsx)
+### Component 3: Input (ui/input\.tsx)
 - [ ] **Test case 1:** Контрастность текста и placeholder
 - [ ] **Test case 2:** Focus state виден
 - [ ] **Test case 3:** Error state виден
-- [ ] **Existing Cypress test:** `cypress/component/Input.cy.js` должен проходить
+- [ ] **Existing Cypress test:** `cypress/component/Input\.cy\.tsx` должен проходить
 
-### Component 4: Card (ui/card.jsx)
+### Component 4: Card (ui/card\.tsx)
 - [ ] **Test case 1:** Shadows и borders видны
 - [ ] **Test case 2:** Spacing внутри карточек правильный
-- [ ] **Existing Cypress test:** `cypress/component/Card.cy.js` должен проходить
+- [ ] **Existing Cypress test:** `cypress/component/Card\.cy\.tsx` должен проходить
 
-### Component 5: Badge (ui/badge.jsx)
+### Component 5: Badge (ui/badge\.tsx)
 - [ ] **Test case 1:** Цвета для тегов контрастны
 - [ ] **Test case 2:** Hover states для интерактивных тегов
-- [ ] **Existing Cypress test:** `cypress/component/Badge.cy.js` должен проходить
+- [ ] **Existing Cypress test:** `cypress/component/Badge\.cy\.tsx` должен проходить
 
 ### Component 6: InteractiveTag
-- [ ] **Existing Cypress test:** `cypress/component/InteractiveTag.cy.js` должен проходить
+- [ ] **Existing Cypress test:** `cypress/component/InteractiveTag\.cy\.tsx` должен проходить
 
 ### Component 7: AuthForm
-- [ ] **Existing Cypress test:** `cypress/component/AuthForm.cy.js` должен проходить
+- [ ] **Existing Cypress test:** `cypress/component/AuthForm\.cy\.tsx` должен проходить
 
 ## Integration Tests
 **How do we test component interactions?**
@@ -89,12 +89,12 @@ description: Define testing approach, test cases, and quality assurance
 **What user flows need validation?**
 
 - [ ] **E2E flow 1:** Полный auth flow
-  - Existing test: `cypress/e2e/auth-and-notes.cy.js`
+  - Existing test: `cypress/e2e/auth-and-notes\.cy\.tsx`
   - Проверить что все элементы видны
   - Проверить что можно залогиниться
   
 - [ ] **E2E flow 2:** Полный CRUD flow для заметок
-  - Existing test: `cypress/e2e/basic-notes.cy.js`
+  - Existing test: `cypress/e2e/basic-notes\.cy\.tsx`
   - Создать заметку
   - Отредактировать заметку
   - Удалить заметку

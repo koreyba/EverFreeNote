@@ -94,7 +94,7 @@ await supabase.from('notes').delete()              // Удаление
 
 **Пример:**
 ```javascript
-// ❌ НЕПРАВИЛЬНО: /app/tags/[tag]/page.js (конфликт с static export)
+// ❌ НЕПРАВИЛЬНО: /app/tags/[tag]/page.tsx (конфликт с static export)
 
 // ✅ ПРАВИЛЬНО: Фильтрация в основном компоненте
 const [filterByTag, setFilterByTag] = useState(null)
@@ -213,19 +213,19 @@ CREATE POLICY "Users can delete own notes"
 ```
 EverFreeNote/
 ├── app/
-│   ├── page.js              # Главная страница (единая точка входа)
-│   ├── layout.js            # Общий layout
+│   ├── page.tsx              # Главная страница (единая точка входа)
+│   ├── layout.tsx            # Общий layout
 │   ├── globals.css          # Глобальные стили
 │   └── auth/
 │       └── callback/
-│           └── page.js      # OAuth callback
+│           └── page.tsx      # OAuth callback
 ├── components/
-│   ├── InteractiveTag.jsx   # Переиспользуемые компоненты
+│   ├── InteractiveTag\.tsx   # Переиспользуемые компоненты
 │   └── ui/                  # shadcn/ui компоненты
 ├── lib/
 │   ├── supabase/
-│   │   └── client.js        # Supabase client singleton
-│   └── utils.js             # Утилиты
+│   │   └── client.ts        # Supabase client singleton
+│   └── utils.ts             # Утилиты
 ├── docs/
 │   ├── ARCHITECTURE.md      # Этот файл
 │   ├── DEPLOYMENT_GUIDE.md  # Инструкции по деплою
@@ -314,7 +314,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 #### ✅ Фильтрация по категориям
 ```javascript
-// НЕ создавайте /app/category/[slug]/page.js
+// НЕ создавайте /app/category/[slug]/page.tsx
 // Используйте состояние:
 const [activeCategory, setActiveCategory] = useState(null)
 ```

@@ -167,13 +167,13 @@ Make sure Google OAuth is enabled in Supabase:
 ```
 everfreenote/
 ├── app/
-│   ├── auth/callback/page.js     # OAuth callback handler
-│   ├── page.js                   # Main application UI (SPA)
-│   ├── layout.js                 # Root layout
+│   ├── auth/callback/page.tsx     # OAuth callback handler
+│   ├── page.tsx                   # Main application UI (SPA)
+│   ├── layout.tsx                 # Root layout
 │   └── globals.css               # Global styles
 ├── lib/
 │   └── supabase/
-│       └── client.js             # Supabase browser client
+│       └── client.ts             # Supabase browser client
 ├── components/ui/                # Shadcn UI components
 ├── package.json                  # Dependencies
 ├── next.config.js               # Next.js config (static export)
@@ -304,7 +304,7 @@ All operations are protected by **Row-Level Security (RLS)** in Supabase, ensuri
 Edit `tailwind.config.js` to customize the color scheme.
 
 ### Modify UI
-The main UI is in `app/page.js` - it's a single-file component for easy customization.
+The main UI is in `app/page.tsx` - it's a single-file component for easy customization.
 
 ### Add Features
 - File attachments: Use Supabase Storage (works from browser)
