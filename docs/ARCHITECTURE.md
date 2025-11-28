@@ -220,9 +220,26 @@ EverFreeNote/
 │       └── callback/
 │           └── page.tsx      # OAuth callback
 ├── components/
-│   ├── InteractiveTag\.tsx   # Переиспользуемые компоненты
-│   └── ui/                  # shadcn/ui компоненты
+│   ├── features/            # Компоненты по фичам
+│   │   ├── auth/            # Аутентификация (AuthShell)
+│   │   └── notes/           # Заметки (Sidebar, NoteList, NoteEditor, NoteView)
+│   ├── ui/                  # shadcn/ui компоненты
+│   └── ...                  # Общие компоненты
+├── hooks/
+│   ├── useNoteAppController.ts # Логика управления состоянием приложения
+│   ├── useNotesQuery.ts     # React Query хуки для чтения
+│   ├── useNotesMutations.ts # React Query хуки для записи
+│   └── ...
 ├── lib/
+│   ├── services/            # Service Layer (бизнес-логика)
+│   │   ├── auth.ts          # Сервис аутентификации
+│   │   ├── notes.ts         # Сервис заметок (CRUD)
+│   │   ├── search.ts        # Сервис поиска (FTS + Fallback)
+│   │   └── sanitizer.ts     # Сервис очистки HTML
+│   ├── adapters/            # Адаптеры для внешних API
+│   │   └── browser.ts       # Адаптер браузерных API (для React Native)
+│   ├── providers/           # React Context Providers
+│   │   └── SupabaseProvider.tsx
 │   ├── supabase/
 │   │   └── client.ts        # Supabase client singleton
 │   └── utils.ts             # Утилиты
@@ -232,6 +249,40 @@ EverFreeNote/
 │   └── roadmap.md           # Roadmap развития
 ├── next.config.js           # Next.js конфигурация
 └── package.json
+```
+
+---
+
+## 🏗️ Service Layer Pattern
+
+В версии 2.0 мы внедрили слой сервисов для разделения ответственности:
+
+1. **UI Components** (`components/`) - Только отображение. Не знают о Supabase.
+2. **Controllers/Hooks** (`hooks/`) - Управление состоянием и связывание UI с данными.
+3. **Services** (`lib/services/`) - Чистая бизнес-логика. Инкапсулируют работу с Supabase.
+4. **Adapters** (`lib/adapters/`) - Абстракция платформо-зависимых API (window, localStorage).
+
+**Пример использования:**
+
+```typescript
+// Component
+function NoteList() {
+  const { notes } = useNoteAppController()
+  return <div>{notes.map(...)}</div>
+}
+
+// Controller (Hook)
+function useNoteAppController() {
+  const noteService = new NoteService(supabase)
+  return useQuery({ queryFn: () => noteService.getNotes(...) })
+}
+
+// Service
+class NoteService {
+  async getNotes(userId) {
+    return this.supabase.from('notes').select('*').eq('user_id', userId)
+  }
+}
 ```
 
 ---

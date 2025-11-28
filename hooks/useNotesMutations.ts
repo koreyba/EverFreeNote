@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabase } from '@/lib/providers/SupabaseProvider'
+import { NoteService } from '@/lib/services/notes'
 import { toast } from 'sonner'
+import { useMemo } from 'react'
 
 import type { Tables } from '@/supabase/types'
 
@@ -27,25 +29,12 @@ type NotesData = {
 
 export function useCreateNote() {
   const queryClient = useQueryClient()
-  const supabase = createClient()
+  const { supabase } = useSupabase()
+  const noteService = useMemo(() => new NoteService(supabase), [supabase])
 
   return useMutation({
-    mutationFn: async ({ title, description, tags, userId }: CreateNoteParams) => {
-      const { data, error } = await supabase
-        .from('notes')
-        .insert([
-          {
-            title,
-            description,
-            tags,
-            user_id: userId,
-          },
-        ])
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+    mutationFn: async (params: CreateNoteParams) => {
+      return noteService.createNote(params)
     },
 
     // Optimistic update: Add note immediately to UI
@@ -112,24 +101,16 @@ export function useCreateNote() {
 
 export function useUpdateNote() {
   const queryClient = useQueryClient()
-  const supabase = createClient()
+  const { supabase } = useSupabase()
+  const noteService = useMemo(() => new NoteService(supabase), [supabase])
 
   return useMutation({
-    mutationFn: async ({ id, title, description, tags }: UpdateNoteParams) => {
-      const { data, error } = await supabase
-        .from('notes')
-        .update({
-          title,
-          description,
-          tags,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+    mutationFn: async (params: UpdateNoteParams) => {
+      return noteService.updateNote(params.id, {
+        title: params.title,
+        description: params.description,
+        tags: params.tags
+      })
     },
 
     // Optimistic update
@@ -178,13 +159,12 @@ export function useUpdateNote() {
 
 export function useDeleteNote() {
   const queryClient = useQueryClient()
-  const supabase = createClient()
+  const { supabase } = useSupabase()
+  const noteService = useMemo(() => new NoteService(supabase), [supabase])
 
   return useMutation({
     mutationFn: async (noteId: string) => {
-      const { error } = await supabase.from('notes').delete().eq('id', noteId)
-      if (error) throw error
-      return noteId
+      return noteService.deleteNote(noteId)
     },
 
     // Optimistic update
@@ -223,22 +203,12 @@ export function useDeleteNote() {
 
 export function useRemoveTag() {
   const queryClient = useQueryClient()
-  const supabase = createClient()
+  const { supabase } = useSupabase()
+  const noteService = useMemo(() => new NoteService(supabase), [supabase])
 
   return useMutation({
     mutationFn: async ({ noteId, updatedTags }: { noteId: string; updatedTags: string[] }) => {
-      const { data, error } = await supabase
-        .from('notes')
-        .update({
-          tags: updatedTags,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', noteId)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+      return noteService.updateNote(noteId, { tags: updatedTags })
     },
 
     // Optimistic update
