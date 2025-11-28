@@ -3,48 +3,16 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { Database } from '@/supabase/types'
 
-// Build-time fallbacks (useful if env не подхватился)
-const FALLBACK_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321'
-const FALLBACK_SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+// Next.js инлайнит NEXT_PUBLIC_* переменные на этапе сборки.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// For non-Next contexts (node scripts/tests) try to hydrate env from .env/.env.local.
-// Guarded to avoid bundling dotenv into the browser.
-function ensureEnvLoaded() {
-  if (typeof window !== 'undefined') return
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    require('dotenv').config({ path: '.env.local' })
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    require('dotenv').config()
-  } catch {
-    // noop: dotenv may not be installed in all runtimes
-  }
-}
-
-function requireEnv(key: string): string {
-  const value = process.env[key]
-  if (!value) {
-    // Soft fallback to build-time defaults to avoid runtime crash in dev
-    if (key === 'NEXT_PUBLIC_SUPABASE_URL') {
-      console.warn(`Supabase env var ${key} is not set, using fallback ${FALLBACK_SUPABASE_URL}`)
-      return FALLBACK_SUPABASE_URL
-    }
-    if (key === 'NEXT_PUBLIC_SUPABASE_ANON_KEY') {
-      console.warn('Supabase env var NEXT_PUBLIC_SUPABASE_ANON_KEY is not set, using fallback anon key')
-      return FALLBACK_SUPABASE_ANON_KEY
-    }
-    throw new Error(`Supabase env var ${key} is not set`)
-  }
-  return value
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'Supabase env vars NEXT_PUBLIC_SUPABASE_URL/ANON_KEY are not set. Check .env.local и перезапусти dev/build.'
+  )
 }
 
 export function createClient(): SupabaseClient<Database> {
-  ensureEnvLoaded()
-  const supabaseUrl = requireEnv('NEXT_PUBLIC_SUPABASE_URL')
-  const supabaseAnonKey = requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
-
-  return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  return createBrowserClient<Database>(supabaseUrl as string, supabaseAnonKey as string)
 }
