@@ -39,7 +39,7 @@ describe('Checkbox Component', () => {
       return (
         <div>
           <button onClick={() => setChecked(!checked)}>Toggle</button>
-          <Checkbox checked={checked} onCheckedChange={setChecked} />
+          <Checkbox checked={checked} onCheckedChange={(c) => setChecked(c === true)} />
         </div>
       )
     }

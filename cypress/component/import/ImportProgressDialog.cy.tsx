@@ -2,7 +2,8 @@ import React from 'react'
 import { ImportProgressDialog } from '@/components/ImportProgressDialog'
 
 describe('ImportProgressDialog Component', () => {
-  let mockOnClose
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockOnClose: any
 
   beforeEach(() => {
     mockOnClose = cy.stub().as('onClose')

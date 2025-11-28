@@ -121,7 +121,7 @@ function useDebounce<T>(value: T, delay: number): T {
 function detectBrowserLanguage(): LanguageCode {
   if (typeof navigator === 'undefined') return 'ru'
 
-  const locale = navigator.language || (navigator as any).userLanguage || 'ru'
+  const locale = navigator.language || (navigator as { userLanguage?: string }).userLanguage || 'ru'
   const lang = locale.split('-')[0].toLowerCase()
 
   // Map to supported languages
@@ -212,16 +212,17 @@ export function useSearchNotes(query: string, userId?: string, options: SearchOp
           method: 'fts',
           executionTime
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // If FTS fails, don't throw - let the component fall back to regular search
-        console.warn('FTS search error (will use fallback):', error.message)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.warn('FTS search error (will use fallback):', errorMessage)
         return {
           results: [],
           total: 0,
           query: debouncedQuery,
           method: 'fallback',
           executionTime: Date.now() - startTime,
-          error: error.message
+          error: errorMessage
         }
       }
     },

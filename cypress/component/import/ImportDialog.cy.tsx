@@ -2,8 +2,10 @@ import React from 'react'
 import { ImportDialog } from '@/components/ImportDialog'
 
 describe('ImportDialog Component', () => {
-  let mockOnImport
-  let mockOnOpenChange
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockOnImport: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockOnOpenChange: any
 
   beforeEach(() => {
     mockOnImport = cy.stub().as('onImport')

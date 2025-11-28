@@ -14,8 +14,9 @@ export class EnexParser {
 
       const notes = doc.querySelectorAll('note')
       return Array.from(notes).map((note) => this.parseNote(note))
-    } catch (error: any) {
-      throw new Error(`Failed to parse .enex file: ${error.message}`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      throw new Error(`Failed to parse .enex file: ${message}`)
     }
   }
 
