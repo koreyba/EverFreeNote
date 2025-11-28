@@ -36,16 +36,16 @@
 
 ## Запуск тестов:
 ```bash
-npm run test:component -- --spec 'cypress/component/editor/**/*.cy.js'
+npm run test:component -- --spec 'cypress/component/editor/**/*.cy.tsx'
 ```
 
 ## Структура тестов:
 ```
 cypress/component/editor/
-├── RichTextEditor.cy.js     # Основной редактор
-├── Textarea.cy.js          # Текстовые поля
-├── Input.cy.js             # Поля ввода
-├── Form.cy.js              # Формы
-├── InteractiveTag.cy.js    # Теги
+├── RichTextEditor.cy.tsx     # Основной редактор
+├── Textarea.cy.tsx          # Текстовые поля
+├── Input.cy.tsx             # Поля ввода
+├── Form.cy.tsx              # Формы
+├── InteractiveTag.cy.tsx    # Теги
 └── README.md
 ```

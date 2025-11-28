@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { List } from "react-window"
+import { List as ReactWindowList } from "react-window"
 
 import InteractiveTag from "@/components/InteractiveTag"
 import type { Note } from "@/types/domain"
@@ -12,6 +12,8 @@ type VirtualNoteListProps = {
   onSelectNote: (note: Note) => void
   onTagClick: (tag: string) => void
   height: number
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ListComponent?: React.ComponentType<any>
 }
 
 const ITEM_HEIGHT = 120
@@ -25,6 +27,7 @@ export const VirtualNoteList = ({
   onSelectNote,
   onTagClick,
   height,
+  ListComponent = ReactWindowList,
 }: VirtualNoteListProps) => {
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
     const note = notes[index]
@@ -66,7 +69,7 @@ export const VirtualNoteList = ({
   }
 
   return (
-    <List
+    <ListComponent
       height={height}
       itemCount={notes.length}
       itemSize={ITEM_HEIGHT}
@@ -74,6 +77,7 @@ export const VirtualNoteList = ({
       overscanCount={5}
     >
       {Row}
-    </List>
+    </ListComponent>
   )
 }
+

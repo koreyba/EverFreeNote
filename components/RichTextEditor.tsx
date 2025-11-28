@@ -50,6 +50,7 @@ import FontFamily from "@tiptap/extension-font-family"
 import Heading from "@tiptap/extension-heading"
 
 import { FontSize } from "../extensions/FontSize"
+import { browser } from "@/lib/adapters/browser"
 
 type RichTextEditorProps = {
   content: string
@@ -69,7 +70,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   }
 
   const addImage = () => {
-    const url = window.prompt("Image URL:")
+    const url = browser.prompt("Image URL:")
     if (url) {
       editor.chain().focus().setImage({ src: url }).run()
     }
@@ -231,7 +232,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         variant={editor.isActive("link") ? "secondary" : "ghost"}
         size="sm"
         onClick={() => {
-          const url = window.prompt("URL")
+          const url = browser.prompt("URL")
           if (url) {
             editor.chain().focus().setLink({ href: url }).run()
           }

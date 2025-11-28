@@ -47,11 +47,11 @@ npm run cypress:e2e
 **Файлы для изменения:**
 ```
 app/globals.css                 # @theme tokens + глобальные стили (ГЛАВНЫЙ ФАЙЛ!)
-components/RichTextEditor.jsx   # Критический компонент
-components/ui/*.jsx             # shadcn/ui компоненты
-components/AuthForm.jsx         # Форма авторизации
-app/page.js                     # Главная страница
-app/layout.js                   # Layout wrapper
+components/RichTextEditor\.tsx   # Критический компонент
+components/ui/*\.tsx             # shadcn/ui компоненты
+components/AuthForm\.tsx         # Форма авторизации
+app/page.tsx                     # Главная страница
+app/layout.tsx                   # Layout wrapper
 ```
 
 **ВАЖНО:** В Tailwind v4 НЕТ `tailwind.config.js` для цветов! Все через `@theme` в CSS!
@@ -102,7 +102,7 @@ app/layout.js                   # Layout wrapper
 - Ring color = primary для consistent focus states
 
 #### Feature 2: RichTextEditor Styling
-**Файл:** `components/RichTextEditor.jsx`
+**Файл:** `components/RichTextEditor\.tsx`
 
 **Current problems:**
 - Текст не виден
@@ -137,7 +137,7 @@ app/layout.js                   # Layout wrapper
 - Focus: `focus:ring-2 focus:ring-primary-500`
 
 #### Feature 3: Button Component Updates
-**Файл:** `components/ui/button.jsx`
+**Файл:** `components/ui/button\.tsx`
 
 **Variants to update:**
 ```js

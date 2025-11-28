@@ -11,5 +11,5 @@
 
 ## Запуск тестов:
 ```bash
-npm run test:component -- --spec 'cypress/component/ui/**/*.cy.js'
+npm run test:component -- --spec 'cypress/component/ui/**/*.cy.tsx'
 ```

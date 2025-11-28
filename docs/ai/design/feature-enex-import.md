@@ -222,7 +222,7 @@ class NoteCreator {
 ### 1. UI Components
 
 #### ImportButton Component
-**File:** `components/ImportButton.jsx`
+**File:** `components/ImportButton\.tsx`
 
 ```jsx
 <Button onClick={handleImportClick}>
@@ -246,7 +246,7 @@ class NoteCreator {
 - Show progress dialog during import
 
 #### ImportProgressDialog Component
-**File:** `components/ImportProgressDialog.jsx`
+**File:** `components/ImportProgressDialog\.tsx`
 
 ```jsx
 <Dialog open={importing}>
@@ -266,7 +266,7 @@ class NoteCreator {
 ### 2. Core Services
 
 #### EnexParser Service
-**File:** `lib/enex/parser.js`
+**File:** `lib/enex/parser.ts`
 
 **Responsibilities:**
 - Parse XML using DOMParser
@@ -281,7 +281,7 @@ class NoteCreator {
 - Invalid dates → use current date
 
 #### ContentConverter Service
-**File:** `lib/enex/converter.js`
+**File:** `lib/enex/converter.ts`
 
 **Responsibilities:**
 - Convert Evernote HTML to clean HTML
@@ -301,7 +301,7 @@ const UNSUPPORTED_ELEMENTS = {
 ```
 
 #### ImageProcessor Service
-**File:** `lib/enex/image-processor.js`
+**File:** `lib/enex/image-processor.ts`
 
 **Responsibilities:**
 - Decode base64 images

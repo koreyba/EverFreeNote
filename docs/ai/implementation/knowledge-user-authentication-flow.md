@@ -2,8 +2,8 @@
 
 **Analysis Date:** 2025-01-20  
 **Depth:** 3 levels  
-**Entry Point:** `app/page.js` → Authentication logic  
-**Related Files:** `components/AuthForm.jsx`, `supabase/migrations/*_create_auth_users.sql`
+**Entry Point:** `app/page.tsx` → Authentication logic  
+**Related Files:** `components/AuthForm\.tsx`, `supabase/migrations/*_create_auth_users.sql`
 
 ---
 
@@ -26,7 +26,7 @@ EverFreeNote использует **Supabase Auth** для аутентифик�
 
 ### 1. Компоненты аутентификации
 
-#### AuthForm Component (`components/AuthForm.jsx`)
+#### AuthForm Component (`components/AuthForm\.tsx`)
 Простой UI компонент, который отображает три кнопки:
 - Google Sign In (основная)
 - Test Login (для разработки)
@@ -44,7 +44,7 @@ export default function AuthForm({ onTestLogin, onSkipAuth, onGoogleAuth }) {
 }
 ```
 
-#### Main App Authentication (`app/page.js`)
+#### Main App Authentication (`app/page.tsx`)
 
 **Проверка сессии при загрузке:**
 ```javascript
@@ -301,7 +301,7 @@ ERROR: column "email_confirmed_at" of relation "users" does not exist (SQLSTATE 
 ### 2. **Проблема с `.maybeSingle()` при проверке дубликатов**
 
 **Проблема:**
-В `lib/enex/note-creator.js` использовался `.maybeSingle()` для проверки дубликатов:
+В `lib/enex/note-creator.ts` использовался `.maybeSingle()` для проверки дубликатов:
 
 ```javascript
 const { data, error } = await this.supabase
@@ -504,7 +504,7 @@ WHERE NOT EXISTS (
    - Используются правильные имена колонок
 
 2. **✅ DONE: Исправить проверку дубликатов**
-   - Убран `.maybeSingle()` в `lib/enex/note-creator.js`
+   - Убран `.maybeSingle()` в `lib/enex/note-creator.ts`
    - Теперь обрабатывается массив результатов
 
 3. **✅ DONE: Создать Storage bucket**
@@ -544,14 +544,14 @@ WHERE NOT EXISTS (
 ## Metadata
 
 **Files Analyzed:**
-- `app/page.js` (709 lines)
-- `components/AuthForm.jsx` (85 lines)
+- `app/page.tsx` (709 lines)
+- `components/AuthForm\.tsx` (85 lines)
 - `supabase/migrations/20250101000000_initial_schema.sql`
 - `supabase/migrations/20250101000001_enable_rls.sql`
 - `supabase/migrations/20250120000000_create_note_images_bucket.sql`
 - `supabase/migrations/20250120000001_create_test_users.sql`
-- `lib/enex/note-creator.js` (89 lines)
-- `lib/enex/image-processor.js` (50 lines)
+- `lib/enex/note-creator.ts` (89 lines)
+- `lib/enex/image-processor.ts` (50 lines)
 
 **External Dependencies:**
 - `@supabase/supabase-js` v2.x

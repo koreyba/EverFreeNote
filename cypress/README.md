@@ -23,7 +23,7 @@ cypress/
 ├── fixtures/                  # Тестовые данные
 └── support/
     ├── component.js           # Настройки для component testing
-    └── commands.js            # Кастомные команды
+    └── commands.ts            # Кастомные команды
 ```
 
 ## 🌐 E2E тестирование (End-to-End)
@@ -49,7 +49,7 @@ cypress/
 ├── fixtures/                # Тестовые данные
 └── support/
     ├── e2e.js              # E2E настройки
-    └── commands.js         # Кастомные команды
+    └── commands.ts         # Кастомные команды
 ```
 
 ## 🎯 Кастомные команды Cypress
@@ -73,7 +73,7 @@ cy.mockSupabase() // Мок Supabase клиента
 
 ## ⚙️ Конфигурация
 
-### Cypress (`cypress.config.js`):
+### Cypress (`cypress.config.ts`):
 ```javascript
 export default defineConfig({
   e2e: {
@@ -105,7 +105,7 @@ export default defineConfig({
 
 #### Component тесты:
 ```javascript
-// cypress/component/RichTextEditor.cy.js
+// cypress/component/RichTextEditor.cy.tsx
 import { RichTextEditor } from '@/components/RichTextEditor'
 
 describe('RichTextEditor', () => {
@@ -160,7 +160,7 @@ describe('Rich Text Editor E2E', () => {
 ### Запуск конкретных тестов:
 ```bash
 # Component тест конкретного компонента
-npm run cypress:run -- --component --spec "cypress/component/RichTextEditor.cy.js"
+npm run cypress:run -- --component --spec "cypress/component/RichTextEditor.cy.tsx"
 
 # E2E тест конкретного сценария
 npm run cypress:run -- --spec "cypress/e2e/basic.cy.js"

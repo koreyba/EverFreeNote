@@ -19,8 +19,6 @@ describe('Notes CRUD Operations', () => {
   })
 
   it('should create multiple notes with different content types', () => {
-    const notesPage = new NotesPage()
-
     // Create simple note
     cy.fixture('notes/simple-note').then((note) => {
       cy.createNote(note.title, note.content, note.tags)

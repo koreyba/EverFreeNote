@@ -6,7 +6,7 @@ export default defineConfig({
     baseUrl: 'http://localhost:3000',
     specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
     supportFile: 'cypress/support/e2e.js',
-    setupNodeEvents(on, config) {
+    setupNodeEvents() {
       // implement node event listeners here
     },
     viewportWidth: 1280,
@@ -33,7 +33,6 @@ export default defineConfig({
     supportFile: 'cypress/support/component.js',
     setupNodeEvents(on, config) {
       // Add code coverage for component tests
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       require('@cypress/code-coverage/task')(on, config)
       return config
     },

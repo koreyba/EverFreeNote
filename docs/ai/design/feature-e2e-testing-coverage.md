@@ -52,12 +52,12 @@ cypress/
 │       └── auth-integration.cy.js       # OAuth (if possible)
 ├── support/
 │   ├── e2e.js                           # Global config
-│   ├── commands.js                      # Custom commands
+│   ├── commands.ts                      # Custom commands
 │   ├── page-objects/
-│   │   ├── LoginPage.js
-│   │   ├── NotesPage.js
-│   │   ├── EditorPage.js
-│   │   └── ImportPage.js
+│   │   ├── Loginpage.tsx
+│   │   ├── Notespage.tsx
+│   │   ├── Editorpage.tsx
+│   │   └── Importpage.tsx
 │   └── helpers/
 │       ├── setup.js
 │       └── teardown.js
@@ -275,7 +275,7 @@ class ImportPage {
 ### Custom Commands
 
 ```javascript
-// cypress/support/commands.js
+// cypress/support/commands.ts
 
 // Authentication
 Cypress.Commands.add('login', () => {
@@ -547,7 +547,7 @@ it('should handle complete note lifecycle', () => {
 
 ### Performance Targets
 ```javascript
-// cypress.config.js
+// cypress.config.ts
 e2e: {
   defaultCommandTimeout: 10000,
   pageLoadTimeout: 30000,
@@ -615,7 +615,7 @@ jobs:
 1. Create Page Objects
 2. Create Custom Commands
 3. Create Fixtures
-4. Update cypress.config.js
+4. Update cypress.config.ts
 
 ### Phase 2: Refactor Existing Tests
 1. ✅ Keep: `auth-and-notes.cy.js` → refactor to `complete-workflow.cy.js`
