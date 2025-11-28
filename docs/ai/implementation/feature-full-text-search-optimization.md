@@ -21,7 +21,7 @@ feature: full-text-search-optimization
 npm run supabase:db:status
 
 # Сгенерировать test data если нужно
-node scripts/generate-test-notes.js --count 10000
+node scripts/generate-test-notes.ts --count 10000
 
 # Запустить dev server
 npm run dev
@@ -29,7 +29,7 @@ npm run dev
 
 **Configuration:**
 - Supabase credentials в `.env.local`
-- FTS language configs в `lib/supabase/search.js`
+- FTS language configs в `lib/supabase/search.ts`
 - Query limits: max 1000 символов, min 3 символа для prefix matching
 
 ## Code Structure
@@ -41,23 +41,23 @@ supabase/migrations/
   └── 20251021_add_fts_search_function.sql  # NEW: RPC function
 
 lib/supabase/
-  ├── search.js              # NEW: FTS search functions
-  └── client.js              # Existing: Supabase client
+  ├── search.ts              # NEW: FTS search functions
+  └── client.ts              # Existing: Supabase client
 
 app/api/notes/
   └── search/
-      └── route.js           # MODIFIED: Use FTS
+      └── route.ts           # MODIFIED: Use FTS
 
 hooks/
-  └── useNotesQuery.js       # MODIFIED: Add search hook
+  └── useNotesQuery.ts       # MODIFIED: Add search hook
 
 components/
-  ├── SearchResults.jsx      # NEW/MODIFIED: Display highlighted results
-  └── VirtualNoteList.jsx    # MODIFIED: Integrate search
+  ├── SearchResults\.tsx      # NEW/MODIFIED: Display highlighted results
+  └── VirtualNoteList\.tsx    # MODIFIED: Integrate search
 
 tests/
   ├── unit/
-  │   └── search.test.js     # NEW: Unit tests for FTS
+  │   └── search\.test\.ts     # NEW: Unit tests for FTS
   └── e2e/
       └── search.cy.js       # NEW: E2E tests for search
 ```
@@ -67,7 +67,7 @@ tests/
 
 ### Core Feature 1: FTS Search Function
 
-**File**: `lib/supabase/search.js`
+**File**: `lib/supabase/search.ts`
 
 ```javascript
 /**
@@ -203,7 +203,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 ### Core Feature 3: Query Sanitization
 
-**File**: `lib/supabase/search.js`
+**File**: `lib/supabase/search.ts`
 
 ```javascript
 /**
@@ -246,7 +246,7 @@ function buildTsQuery(query, language) {
 
 ### Core Feature 4: ILIKE Fallback
 
-**File**: `lib/supabase/search.js`
+**File**: `lib/supabase/search.ts`
 
 ```javascript
 /**
@@ -289,7 +289,7 @@ export async function searchNotesILIKE(query, userId, options = {}) {
 
 ### Core Feature 5: API Endpoint with Fallback
 
-**File**: `app/api/notes/search/route.js`
+**File**: `app/api/notes/search/route.ts`
 
 ```javascript
 export async function GET(request) {
@@ -401,7 +401,7 @@ Results → Frontend → Display with Highlighting
 
 **Frontend integration:**
 ```javascript
-// hooks/useNotesQuery.js
+// hooks/useNotesQuery.ts
 export function useSearchNotes(query, options = {}) {
   return useQuery({
     queryKey: ['notes', 'search', query, options],

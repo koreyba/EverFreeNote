@@ -40,17 +40,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 lib/
   enex/
-    parser.js           # XML parsing
-    converter.js        # HTML conversion
-    image-processor.js  # Image upload
-    note-creator.js     # DB operations
-    types.js            # TypeScript types (if needed)
+    parser.ts           # XML parsing
+    converter.ts        # HTML conversion
+    image-processor.ts  # Image upload
+    note-creator.ts     # DB operations
+    types.ts            # TypeScript types (if needed)
     
 components/
-  ImportButton.jsx              # Main import button
-  ImportProgressDialog.jsx      # Progress UI
-  UnsupportedFeaturesDialog.jsx # Warning dialog
-  RichTextEditor.jsx            # Update with Image extension
+  ImportButton\.tsx              # Main import button
+  ImportProgressDialog\.tsx      # Progress UI
+  UnsupportedFeaturesDialog\.tsx # Warning dialog
+  RichTextEditor\.tsx            # Update with Image extension
   
 supabase/
   migrations/
@@ -60,7 +60,7 @@ supabase/
 **Naming conventions:**
 - Services: PascalCase classes (`EnexParser`, `ImageProcessor`)
 - Components: PascalCase (`ImportButton`)
-- Files: kebab-case (`image-processor.js`)
+- Files: kebab-case (`image-processor.ts`)
 - Functions: camelCase (`parseNote`, `uploadImage`)
 
 ## Implementation Notes
@@ -69,7 +69,7 @@ supabase/
 ### Core Features
 
 #### Feature 1: EnexParser
-**File:** `lib/enex/parser.js`
+**File:** `lib/enex/parser.ts`
 
 ```javascript
 export class EnexParser {
@@ -159,7 +159,7 @@ export class EnexParser {
 ```
 
 #### Feature 2: ContentConverter
-**File:** `lib/enex/converter.js`
+**File:** `lib/enex/converter.ts`
 
 ```javascript
 export class ContentConverter {
@@ -267,7 +267,7 @@ export class ContentConverter {
 ```
 
 #### Feature 3: ImageProcessor
-**File:** `lib/enex/image-processor.js`
+**File:** `lib/enex/image-processor.ts`
 
 ```javascript
 import { createClient } from '@/lib/supabase/client'
@@ -338,7 +338,7 @@ export class ImageProcessor {
 ```
 
 #### Feature 4: NoteCreator
-**File:** `lib/enex/note-creator.js`
+**File:** `lib/enex/note-creator.ts`
 
 ```javascript
 import { createClient } from '@/lib/supabase/client'

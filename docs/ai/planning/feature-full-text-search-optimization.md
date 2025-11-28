@@ -29,7 +29,7 @@ feature: full-text-search-optimization
   - Тестировать в Supabase SQL Editor
 
 - [x] **Task 1.2: Create FTS search functions** (2-3 hours) ✅
-  - Создать `lib/supabase/search.js`
+  - Создать `lib/supabase/search.ts`
   - Реализовать `searchNotesFTS(query, userId, options)`
   - Реализовать `buildTsQuery(query, language)` с sanitization (max 1000 chars)
   - Добавить language detection/mapping (ru/en/uk → russian/english)
@@ -56,14 +56,14 @@ feature: full-text-search-optimization
 **Goal**: Обновить UI для работы с FTS результатами и highlighting
 
 - [x] **Task 2.1: Update search query hook** (1 hour) ✅
-  - Обновить `hooks/useNotesQuery.js`
+  - Обновить `hooks/useNotesQuery.ts`
   - Добавить `useSearchNotes(query, options)` hook
   - Использовать React Query с debouncing (300ms) и staleTime (30s)
   - Добавить language detection: browser locale (navigator.language) → fallback 'ru'
   - Добавить минимальную длину запроса (3+ символа) для лучшей производительности
 
 - [x] **Task 2.2: Create SearchResults component** (2 hours) ✅
-  - Создать `components/SearchResults.jsx` компонент
+  - Создать `components/SearchResults\.tsx` компонент
   - Render `headline` с HTML highlighting (через dangerouslySetInnerHTML с sanitization)
   - Показать relevance score (опционально, для debugging)
   - Показать badge "Fast Search" когда используется FTS
@@ -73,13 +73,13 @@ feature: full-text-search-optimization
   - SearchResults компонент готов к интеграции
   - Обеспечена обратная совместимость
   - Loading states, empty results обработаны
-  - Интеграция в app/page.js может быть сделана позже
+  - Интеграция в app/page.tsx может быть сделана позже
 
 ### Phase 3: Testing & Optimization
 **Goal**: Обеспечить качество и производительность
 
 - [x] **Task 3.1: Write unit tests** (2-3 hours) ✅
-  - Создан `__tests__/lib/supabase/search.test.js` (40+ test cases)
+  - Создан `__tests__/lib/supabase/search\.test\.ts` (40+ test cases)
   - Тесты для `buildTsQuery()`: sanitization, edge cases, validation
   - Тесты для `detectLanguage()`: language detection logic
   - Готовы к запуску (нужна настройка Jest в CI)
@@ -90,7 +90,7 @@ feature: full-text-search-optimization
   - Fallback scenarios и performance validation
 
 - [x] **Task 3.3: Performance testing** (1-2 hours) ✅
-  - `scripts/benchmark-fts.js` готов для production testing
+  - `scripts/benchmark-fts.ts` готов для production testing
   - Сравнение FTS vs ILIKE performance
   - Автоматический расчет speedup метрик
 
@@ -241,9 +241,9 @@ feature: full-text-search-optimization
 - SPA-compatible architecture
 
 **✅ Quality Assurance:**
-- Unit tests (40+ cases) - `__tests__/lib/supabase/search.test.js`
+- Unit tests (40+ cases) - `__tests__/lib/supabase/search\.test\.ts`
 - E2E tests - `cypress/e2e/fts-search.cy.js` ⚠️ *Need RPC update*
-- Performance benchmarks - `scripts/benchmark-fts.js`
+- Performance benchmarks - `scripts/benchmark-fts.ts`
 - User documentation - `CHANGELOG.md`
 
 **✅ Architecture Decisions:**

@@ -103,7 +103,7 @@ graph TD
 - Scrollbar styling
 
 ### 3. RichTextEditor Component
-**Файл:** `components/RichTextEditor.jsx`
+**Файл:** `components/RichTextEditor\.tsx`
 
 **Критические проблемы для исправления:**
 - ❌ Текст не виден → добавить правильный color
@@ -118,7 +118,7 @@ graph TD
 - Focus state: зеленый border
 
 ### 4. UI Components (shadcn/ui)
-**Файлы:** `components/ui/*.jsx`
+**Файлы:** `components/ui/*\.tsx`
 
 **Компоненты для аудита:**
 - Button - проверить все варианты (primary, secondary, ghost)
@@ -128,7 +128,7 @@ graph TD
 - Dialog/Alert - модальные окна
 
 ### 5. AuthForm Component
-**Файл:** `components/AuthForm.jsx`
+**Файл:** `components/AuthForm\.tsx`
 
 **Проверить:**
 - Контрастность текста на темном фоне
@@ -136,7 +136,7 @@ graph TD
 - Focus states для inputs
 
 ### 6. Layout Components
-**Файлы:** `app/layout.js`, `app/page.js`
+**Файлы:** `app/layout.tsx`, `app/page.tsx`
 
 **Проверить:**
 - Sidebar styling

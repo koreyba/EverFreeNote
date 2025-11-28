@@ -42,7 +42,7 @@ cypress/
 │   └── integration/            # Component integration
 ├── support/
 │   ├── e2e.js                  # Global config
-│   ├── commands.js             # Custom commands
+│   ├── commands.ts             # Custom commands
 │   ├── page-objects/           # Page Object classes
 │   └── helpers/                # Test helpers
 └── fixtures/
@@ -76,7 +76,7 @@ class PageName {
 
 **Example:**
 ```javascript
-// cypress/support/page-objects/NotesPage.js
+// cypress/support/page-objects/Notespage.tsx
 export class NotesPage {
   get newNoteButton() { return cy.contains('New Note') }
   get searchInput() { return cy.get('input[placeholder*="Search"]') }
@@ -107,7 +107,7 @@ Cypress.Commands.add('commandName', (param1, param2) => {
 
 **Example:**
 ```javascript
-// cypress/support/commands.js
+// cypress/support/commands.ts
 Cypress.Commands.add('login', () => {
   cy.visit('/')
   cy.contains('Skip Authentication').click()
@@ -250,7 +250,7 @@ class NotesPage {
 
 ### Retry Strategy
 ```javascript
-// cypress.config.js
+// cypress.config.ts
 e2e: {
   retries: {
     runMode: 2,      // Retry 2 times in CI
@@ -322,7 +322,7 @@ it('delete', () => { /* 2 min */ })
 
 #### 4. Parallel Execution (if possible)
 ```javascript
-// cypress.config.js
+// cypress.config.ts
 e2e: {
   experimentalRunAllSpecs: true // Run specs in parallel
 }

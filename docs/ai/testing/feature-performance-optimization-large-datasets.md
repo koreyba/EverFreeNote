@@ -19,7 +19,7 @@ description: Define testing approach, test cases, and quality assurance
 **What individual components need testing?**
 
 ### useNotesQuery Hook
-**File:** `hooks/useNotesQuery.test.js`
+**File:** `hooks/useNotesQuery\.test\.ts`
 
 - [ ] Test case 1: Fetches first page of notes successfully
   - Mock Supabase response with 20 notes
@@ -51,7 +51,7 @@ description: Define testing approach, test cases, and quality assurance
   - Check cache invalidation on mutations
 
 ### CacheManager (IndexedDB)
-**File:** `lib/cache/indexedDB.test.js`
+**File:** `lib/cache/indexedDB\.test\.ts`
 
 - [ ] Test case 1: Initializes database successfully
   - Verify DB created with correct name/version
@@ -83,7 +83,7 @@ description: Define testing approach, test cases, and quality assurance
   - Check error logging
 
 ### NoteListItem Component
-**File:** `components/NoteListItem.test.jsx`
+**File:** `components/NoteListItem.test\.tsx`
 
 - [ ] Test case 1: Renders note data correctly
   - Pass note object
@@ -110,7 +110,7 @@ description: Define testing approach, test cases, and quality assurance
   - No errors thrown
 
 ### NotesList Component
-**File:** `components/NotesList.test.jsx`
+**File:** `components/NotesList.test\.tsx`
 
 - [ ] Test case 1: Renders virtual list correctly
   - Pass array of notes
@@ -134,7 +134,7 @@ description: Define testing approach, test cases, and quality assurance
 **How do we test component interactions?**
 
 ### Pagination Flow
-**File:** `tests/integration/pagination.test.js`
+**File:** `tests/integration/pagination\.test\.ts`
 
 - [ ] Integration scenario 1: Load and display paginated notes
   - Mount app component
@@ -156,7 +156,7 @@ description: Define testing approach, test cases, and quality assurance
   - Verify pagination works with filter
 
 ### Optimistic Updates Flow
-**File:** `tests/integration/optimistic-updates.test.js`
+**File:** `tests/integration/optimistic-updates\.test\.ts`
 
 - [ ] Integration scenario 1: Create note optimistically
   - Click "New Note"
@@ -184,7 +184,7 @@ description: Define testing approach, test cases, and quality assurance
   - Verify error message shown
 
 ### Cache Integration
-**File:** `tests/integration/caching.test.js`
+**File:** `tests/integration/caching\.test\.ts`
 
 - [ ] Integration scenario 1: Cache hit on reload
   - Load notes
@@ -294,7 +294,7 @@ description: Define testing approach, test cases, and quality assurance
 - Edge case scenarios
 
 ### Seed Data Script
-**File:** `tests/scripts/seed-test-data.js`
+**File:** `tests/scripts/seed-test-data.ts`
 
 ```javascript
 // Generate test notes
@@ -322,7 +322,7 @@ async function seedTestData(count = 1000) {
 npm run test -- --coverage
 
 # Run specific test suite
-npm run test hooks/useNotesQuery.test.js
+npm run test hooks/useNotesQuery\.test\.ts
 
 # Run E2E tests
 npm run cypress:run

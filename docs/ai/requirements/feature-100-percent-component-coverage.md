@@ -29,7 +29,7 @@ description: Clarify the problem space, gather requirements, and define success 
 
 **Secondary goals:**
 - Создать тесты для провайдеров (QueryProvider, theme-provider)
-- Покрыть утилиты в lib/utils.js
+- Покрыть утилиты в lib/utils.ts
 - Документировать паттерны тестирования для каждого типа компонентов
 - Настроить минимальный порог покрытия в CI/CD (90%+)
 

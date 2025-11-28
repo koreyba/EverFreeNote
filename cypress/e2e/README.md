@@ -72,7 +72,7 @@ importPage.importFile('test.enex', 'prefix')
 
 ## Custom Commands
 
-Located in `cypress/support/commands.js`:
+Located in `cypress/support/commands.ts`:
 
 ### Authentication
 ```javascript

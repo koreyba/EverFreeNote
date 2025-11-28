@@ -18,7 +18,8 @@ import {
   type ImportResult,
   type ImportStatus,
 } from "@/lib/enex/types"
-import { createClient } from "@/lib/supabase/client"
+import { useSupabase } from "@/lib/providers/SupabaseProvider"
+import { browser } from "@/lib/adapters/browser"
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
 const IMPORT_STATE_KEY = "everfreenote-import-state"
@@ -46,10 +47,11 @@ export function ImportButton({ onImportComplete }: ImportButtonProps) {
   const [importResult, setImportResult] = React.useState<ImportResult | null>(
     null
   )
+  const { supabase } = useSupabase()
 
   // Check for interrupted import on mount
   React.useEffect(() => {
-    const savedState = localStorage.getItem(IMPORT_STATE_KEY)
+    const savedState = browser.localStorage.getItem(IMPORT_STATE_KEY)
     if (savedState) {
       try {
         const state = JSON.parse(savedState) as Partial<ImportProgress> & {
@@ -60,10 +62,10 @@ export function ImportButton({ onImportComplete }: ImportButtonProps) {
           `Previous import was interrupted. ${state.successCount || 0} notes were imported before the interruption.`,
           { duration: 10000 }
         )
-        localStorage.removeItem(IMPORT_STATE_KEY)
+        browser.localStorage.removeItem(IMPORT_STATE_KEY)
       } catch (error) {
         console.error("Failed to parse saved import state:", error)
-        localStorage.removeItem(IMPORT_STATE_KEY)
+        browser.localStorage.removeItem(IMPORT_STATE_KEY)
       }
     }
   }, [])
@@ -76,8 +78,11 @@ export function ImportButton({ onImportComplete }: ImportButtonProps) {
       event.preventDefault()
       event.returnValue = "Import is in progress. Are you sure you want to leave?"
     }
-    window.addEventListener("beforeunload", handleBeforeUnload)
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", handleBeforeUnload)
+      return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+    }
+    return undefined
   }, [importing])
 
   const handleImportClick = () => {
@@ -111,7 +116,6 @@ export function ImportButton({ onImportComplete }: ImportButtonProps) {
     const SAVE_INTERVAL = 2000 // Save to localStorage every 2 seconds
 
     try {
-      const supabase = createClient()
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -124,9 +128,9 @@ export function ImportButton({ onImportComplete }: ImportButtonProps) {
       }
 
       const parser = new EnexParser()
-      const imageProcessor = new ImageProcessor()
+      const imageProcessor = new ImageProcessor(supabase)
       const converter = new ContentConverter(imageProcessor)
-      const noteCreator = new NoteCreator()
+      const noteCreator = new NoteCreator(supabase)
 
       // Initialize progress
       setProgress({
@@ -164,7 +168,7 @@ export function ImportButton({ onImportComplete }: ImportButtonProps) {
             const now = Date.now()
             const isLastNote = noteIndex === notes.length - 1
             if (now - lastSaveTime > SAVE_INTERVAL || isLastNote) {
-              localStorage.setItem(
+              browser.localStorage.setItem(
                 IMPORT_STATE_KEY,
                 JSON.stringify({
                   currentFile: fileIndex + 1,
@@ -232,7 +236,7 @@ export function ImportButton({ onImportComplete }: ImportButtonProps) {
       }
 
       // Clear saved state on successful completion
-      localStorage.removeItem(IMPORT_STATE_KEY)
+      browser.localStorage.removeItem(IMPORT_STATE_KEY)
 
       // Set result and keep dialog open
       const result: ImportResult = {
@@ -256,7 +260,7 @@ export function ImportButton({ onImportComplete }: ImportButtonProps) {
     } catch (error) {
       const err = error as Error
       console.error("Import failed:", err)
-      localStorage.removeItem(IMPORT_STATE_KEY)
+      browser.localStorage.removeItem(IMPORT_STATE_KEY)
 
       // Set error result
       setImportResult({

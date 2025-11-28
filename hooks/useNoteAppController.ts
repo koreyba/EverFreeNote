@@ -1,0 +1,350 @@
+import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import type { User } from '@supabase/supabase-js'
+
+import { browser } from '@/lib/adapters/browser'
+import { useSupabase } from '@/lib/providers/SupabaseProvider'
+import { useNotesQuery, useFlattenedNotes, useSearchNotes } from '@/hooks/useNotesQuery'
+import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from '@/hooks/useNotesMutations'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
+import type { NoteViewModel, SearchResult } from '@/types/domain'
+
+export type EditFormState = {
+  title: string
+  description: string
+  tags: string
+}
+
+export function useNoteAppController() {
+  // -- State --
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [selectedNote, setSelectedNote] = useState<NoteViewModel | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [ftsSearchQuery, setFtsSearchQuery] = useState("")
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState<EditFormState>({
+    title: "",
+    description: "",
+    tags: "",
+  })
+  const [saving, setSaving] = useState(false)
+  const [filterByTag, setFilterByTag] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [noteToDelete, setNoteToDelete] = useState<NoteViewModel | null>(null)
+
+  // -- Dependencies --
+  const { supabase } = useSupabase()
+  const queryClient = useQueryClient()
+
+  // -- Queries --
+  const notesQuery = useNotesQuery({
+    userId: user?.id,
+    searchQuery,
+    selectedTag: filterByTag,
+    enabled: !!user,
+  })
+
+  const notes: NoteViewModel[] = useFlattenedNotes(notesQuery)
+
+  const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
+    enabled: !!user && ftsSearchQuery.length >= 3
+  })
+
+  const ftsData = ftsSearchResult.data
+  const ftsResults: SearchResult[] = ftsData?.results ?? []
+  const showFTSResults = ftsSearchQuery.length >= 3 &&
+    !!ftsData &&
+    ftsData.method === 'fts' &&
+    !ftsData.error &&
+    ftsData.results.length > 0
+
+  // -- Infinite Scroll --
+  const observerTarget = useInfiniteScroll(
+    notesQuery.fetchNextPage,
+    notesQuery.hasNextPage,
+    notesQuery.isFetchingNextPage,
+    { threshold: 0.8, rootMargin: '200px' }
+  )
+
+  // -- Mutations --
+  const createNoteMutation = useCreateNote()
+  const updateNoteMutation = useUpdateNote()
+  const deleteNoteMutation = useDeleteNote()
+  const removeTagMutation = useRemoveTag()
+
+  // -- Auth Effects --
+  useEffect(() => {
+    const checkAuth = async () => {
+      browser.localStorage.removeItem('testUser')
+      const { data: { session } } = await supabase.auth.getSession()
+      setUser(session?.user || null)
+      setLoading(false)
+    }
+
+    checkAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setUser(session?.user || null)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
+
+  // -- Handlers --
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
+    setFtsSearchQuery(query)
+  }
+
+  const handleTagClick = (tag: string) => {
+    setFilterByTag(tag)
+    setSearchQuery('')
+    setFtsSearchQuery('')
+    setSelectedNote(null)
+    setIsEditing(false)
+  }
+
+  const handleClearTagFilter = () => {
+    setFilterByTag(null)
+    setSearchQuery('')
+    setFtsSearchQuery('')
+  }
+
+  const handleSignInWithGoogle = async () => {
+    try {
+      const origin = browser.location.origin || (typeof window !== 'undefined' ? window.location.origin : '')
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: origin ? `${origin}/auth/callback` : undefined,
+        },
+      })
+      if (error) console.error('Error signing in:', error)
+    } catch (error) {
+      console.error('Error signing in:', error)
+    }
+  }
+
+  const handleTestLogin = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'test@example.com',
+        password: 'testpassword123'
+      })
+
+      if (error) {
+        toast.error('Failed to login as test user: ' + error.message)
+        setLoading(false)
+        return
+      }
+
+      if (data?.user) {
+        setUser(data.user)
+        toast.success('Logged in as test user!')
+      }
+    } catch (error) {
+      toast.error('Failed to login as test user')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSkipAuth = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'skip-auth@example.com',
+        password: 'testpassword123'
+      })
+
+      if (error) {
+        toast.error('Failed to login as skip-auth user: ' + error.message)
+        setLoading(false)
+        return
+      }
+
+      if (data?.user) {
+        setUser(data.user)
+        toast.success('Logged in as skip-auth user!')
+      }
+    } catch (error) {
+      toast.error('Failed to login as skip-auth user')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      browser.localStorage.removeItem('testUser')
+      setUser(null)
+      queryClient.removeQueries({ queryKey: ['notes'] })
+      setSelectedNote(null)
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
+  const handleCreateNote = () => {
+    setSelectedNote(null)
+    setIsEditing(true)
+    setEditForm({ title: '', description: '', tags: '' })
+  }
+
+  const handleEditNote = (note: NoteViewModel) => {
+    setSelectedNote(note)
+    setIsEditing(true)
+    setEditForm({
+      title: note.title,
+      description: note.description ?? note.content ?? '',
+      tags: note.tags?.join(', ') ?? '',
+    })
+  }
+
+  const handleSaveNote = async () => {
+    if (!user) return
+
+    setSaving(true)
+    try {
+      const tags = editForm.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0)
+
+      const noteData = {
+        title: editForm.title.trim() || 'Untitled',
+        description: editForm.description.trim(),
+        tags,
+      }
+
+      if (selectedNote) {
+        await updateNoteMutation.mutateAsync({
+          id: selectedNote.id,
+          ...noteData,
+        })
+      } else {
+        await createNoteMutation.mutateAsync({
+          ...noteData,
+          userId: user.id,
+        })
+      }
+
+      setIsEditing(false)
+      setSelectedNote(null)
+      setEditForm({ title: '', description: '', tags: '' })
+    } catch (error) {
+      console.error('Error saving note:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteNote = (note: NoteViewModel) => {
+    setNoteToDelete(note)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDeleteNote = async () => {
+    if (!noteToDelete) return
+
+    try {
+      await deleteNoteMutation.mutateAsync(noteToDelete.id)
+      
+      if (selectedNote?.id === noteToDelete.id) {
+        setSelectedNote(null)
+        setIsEditing(false)
+      }
+    } catch (error) {
+      console.error('Error deleting note:', error)
+    } finally {
+      setDeleteDialogOpen(false)
+      setNoteToDelete(null)
+    }
+  }
+
+  const handleRemoveTagFromNote = async (noteId: string, tagToRemove: string) => {
+    try {
+      const noteToUpdate = notes.find(note => note.id === noteId)
+      if (!noteToUpdate || !noteToUpdate.tags) return
+
+      const updatedTags = noteToUpdate.tags.filter(tag => tag !== tagToRemove)
+      await removeTagMutation.mutateAsync({ noteId, updatedTags })
+
+      if (selectedNote?.id === noteId) {
+        setSelectedNote({
+          ...selectedNote,
+          tags: updatedTags,
+          updated_at: new Date().toISOString()
+        })
+      }
+    } catch (error) {
+      console.error('Error removing tag:', error)
+    }
+  }
+
+  const handleSelectNote = (note: NoteViewModel | null) => {
+    setSelectedNote(note)
+    setIsEditing(false)
+  }
+
+  const handleSearchResultClick = (note: SearchResult) => {
+    setSearchQuery('')
+    setFtsSearchQuery('')
+    setSelectedNote(note)
+    setIsEditing(false)
+  }
+
+  return {
+    // State
+    user,
+    loading,
+    selectedNote,
+    searchQuery,
+    isEditing,
+    editForm,
+    setEditForm,
+    saving,
+    filterByTag,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    noteToDelete,
+    
+    // Data
+    notes,
+    notesQuery,
+    ftsSearchResult,
+    ftsData,
+    ftsResults,
+    showFTSResults,
+    observerTarget,
+
+    // Handlers
+    handleSearch,
+    handleTagClick,
+    handleClearTagFilter,
+    handleSignInWithGoogle,
+    handleTestLogin,
+    handleSkipAuth,
+    handleSignOut,
+    handleCreateNote,
+    handleEditNote,
+    handleSaveNote,
+    handleDeleteNote,
+    confirmDeleteNote,
+    handleRemoveTagFromNote,
+    handleSelectNote,
+    handleSearchResultClick,
+    
+    // Helpers
+    invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
+  }
+}
+
+export type NoteAppController = ReturnType<typeof useNoteAppController>

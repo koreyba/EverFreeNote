@@ -218,7 +218,7 @@ WHERE user_id IS NOT NULL;
 ### ✅ Implemented Components
 
 ### 1. useNotesQuery Hook
-**File:** `hooks/useNotesQuery.js` ✅
+**File:** `hooks/useNotesQuery.ts` ✅
 
 **Responsibilities:**
 - Fetch paginated notes with React Query
@@ -246,7 +246,7 @@ const notes = useFlattenedNotes(notesQuery)
 ```
 
 ### 2. useInfiniteScroll Hook
-**File:** `hooks/useInfiniteScroll.js` ✅
+**File:** `hooks/useInfiniteScroll.ts` ✅
 
 **Responsibilities:**
 - Auto-load on scroll with Intersection Observer
@@ -265,7 +265,7 @@ const observerTarget = useInfiniteScroll(
 ```
 
 ### 3. useNotesMutations Hooks
-**File:** `hooks/useNotesMutations.js` ✅
+**File:** `hooks/useNotesMutations.ts` ✅
 
 **Responsibilities:**
 - Optimistic CRUD operations
@@ -286,7 +286,7 @@ const removeTagMutation = useRemoveTag()
 ```
 
 ### 4. VirtualNoteList Component
-**File:** `components/VirtualNoteList.jsx` ✅
+**File:** `components/VirtualNoteList\.tsx` ✅
 
 **Responsibilities:**
 - Virtual scrolling with react-window
@@ -305,14 +305,14 @@ const removeTagMutation = useRemoveTag()
 ```
 
 ### 5. NoteListSkeleton Component
-**File:** `components/NoteListSkeleton.jsx` ✅
+**File:** `components/NoteListSkeleton\.tsx` ✅
 
 **Responsibilities:**
 - Loading placeholder UI
 - Skeleton cards for notes
 
 ### 6. Main App Component
-**File:** `app/page.js` ✅ Refactored
+**File:** `app/page.tsx` ✅ Refactored
 
 **Changes:**
 - Integrated React Query
@@ -331,7 +331,7 @@ const removeTagMutation = useRemoveTag()
 ### ⏭️ Deferred Components (Phase 4)
 
 ### 8. useCacheManager Hook
-**File:** `hooks/useCacheManager.js` ⏭️ Not implemented
+**File:** `hooks/useCacheManager.ts` ⏭️ Not implemented
 
 **Planned Responsibilities:**
 - IndexedDB operations

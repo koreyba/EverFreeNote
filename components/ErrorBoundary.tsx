@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { browser } from "@/lib/adapters/browser"
 
 type ErrorBoundaryProps = {
   children: ReactNode
@@ -50,7 +51,7 @@ export class ErrorBoundary extends Component<
 
   handleReset = () => {
     this.setState({ hasError: false, error: null, errorInfo: null })
-    window.location.reload()
+    browser.location.reload()
   }
 
   render() {
@@ -92,7 +93,13 @@ export class ErrorBoundary extends Component<
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => window.history.back()}
+                  onClick={() => {
+                    if (typeof window !== "undefined" && window.history.length > 0) {
+                      window.history.back()
+                    } else {
+                      browser.location.reload()
+                    }
+                  }}
                   className="flex-1"
                 >
                   Go Back

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
+import { browser } from "@/lib/adapters/browser"
 
 export default function AuthCallback() {
   const router = useRouter()
@@ -12,10 +13,10 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       const supabase = createClient()
-      
-      // Get the code from URL
-      const code = new URLSearchParams(window.location.search).get("code")
-      
+
+      const search = browser.location.search || (typeof window !== "undefined" ? window.location.search : "")
+      const code = new URLSearchParams(search).get("code")
+
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         
