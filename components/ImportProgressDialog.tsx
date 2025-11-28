@@ -32,7 +32,7 @@ export function ImportProgressDialog({
   const fileProgress = totalFiles > 0 ? (currentFile / totalFiles) * 100 : 0
   const noteProgress = totalNotes > 0 ? (currentNote / totalNotes) * 100 : 0
 
-  const isComplete = Boolean(result)
+  const isComplete = result !== null
   const isInProgress = !isComplete && open
 
   return (
@@ -45,10 +45,10 @@ export function ImportProgressDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isInProgress && <Loader2 className="w-5 h-5 animate-spin" />}
-            {isComplete && result?.success > 0 && (
+            {isComplete && result && result.success > 0 && (
               <CheckCircle2 className="w-5 h-5 text-green-600" />
             )}
-            {isComplete && result?.success === 0 && result?.errors > 0 && (
+            {isComplete && result && result.success === 0 && result.errors > 0 && (
               <XCircle className="w-5 h-5 text-destructive" />
             )}
             {isComplete ? "Import Complete" : "Importing from Evernote"}

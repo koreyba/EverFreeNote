@@ -57,6 +57,7 @@ description: Define testing approach, test cases, and quality assurance
 - Coverage gaps (files/functions below 100% and rationale)
 - Links to test reports or dashboards
 - Manual testing outcomes and sign-off
+- Latest quick check: `npx tsc --noEmit` (pass, 2025-11-27) for UI TS migration sweep
 
 ## Manual Testing
 **What requires human validation?**
