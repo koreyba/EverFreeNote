@@ -5,20 +5,28 @@ import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
-import { browser } from "@/lib/adapters/browser"
 
 export default function AuthCallback() {
   const router = useRouter()
 
   useEffect(() => {
     const handleCallback = async () => {
-      const supabase = createClient()
+      try {
+        const supabase = createClient()
 
-      const search = browser.location.search || (typeof window !== "undefined" ? window.location.search : "")
-      const code = new URLSearchParams(search).get("code")
+        // Extract code from URL query parameters
+        const searchParams = new URLSearchParams(window.location.search)
+        const code = searchParams.get("code")
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (!code) {
+          console.error("No authorization code found in callback URL")
+          router.push(`/?error=auth_callback_failed&message=${encodeURIComponent("No authorization code provided")}`)
+          return
+        }
+
+        // exchangeCodeForSession will automatically use code_verifier from localStorage
+        // that was saved by createBrowserClient during signInWithOAuth()
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
         if (error) {
           console.error("Error exchanging code for session:", error)
@@ -30,10 +38,23 @@ export default function AuthCallback() {
           router.push(`/?error=auth_callback_failed&message=${encodeURIComponent(error.message)}`)
           return
         }
-      }
 
-      // Redirect to home page
-      router.push("/")
+        // Safely access session after error check - data may be null on error
+        const session = data?.session
+        if (!session) {
+          console.error("No session returned after code exchange")
+          router.push(`/?error=auth_callback_failed&message=${encodeURIComponent("Failed to establish session")}`)
+          return
+        }
+
+        // Redirect to home page
+        router.push("/")
+      } catch (error) {
+        // Catch any unexpected errors (e.g., TypeError from destructuring)
+        console.error("Unexpected error in auth callback:", error)
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
+        router.push(`/?error=auth_callback_failed&message=${encodeURIComponent(errorMessage)}`)
+      }
     }
 
     handleCallback()
