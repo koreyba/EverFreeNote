@@ -55,7 +55,7 @@ Client (SPA) ──HTTPS──> Supabase (DB/Auth/Storage/RPC)
 ## 4. Данные и поиск
 
 - **Notes CRUD:** `lib/services/notes.ts` — пагинация через `.range`, сортировка по `updated_at`.
-- **Поиск:** `lib/services/search.ts` — FTS (RPC) с fallback на ILIKE; общий компонент результатов в `NoteList`.
+- **Поиск:** `@core/services/search` — FTS (RPC) с fallback на ILIKE; общий компонент результатов в `NoteList`.
 - **Санитизация:** HTML очищается через DOMPurify перед `dangerouslySetInnerHTML` и при импорте ENEX (`lib/services/sanitizer.ts`, `lib/enex/converter.ts`).
 - **Пагинация:** Infinite Scroll + React Query `useInfiniteQuery` (`hooks/useNotesQuery.ts`).
 

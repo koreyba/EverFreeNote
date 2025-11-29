@@ -9,55 +9,58 @@ description: Technical implementation notes, patterns, and code guidelines
 ## Development Setup
 **How do we get started?**
 
-- Настроить алиасы/paths для `/core`, `/ui/web`, `/ui/mobile` (tsconfig, eslint).
-- Подготовить отдельные entrypoints: web (Next) и mobile (RN) используют свои провайдеры/адаптеры.
-- Для RN: использовать `@react-native-async-storage/async-storage`, `expo-auth-session` (+ Linking/WebBrowser) для OAuth/deep link, и supabase-js конфиг с fetch/storage (cross-fetch при необходимости).
+- Настроены алиасы/paths для `/core`, `/ui/web`, `/ui/mobile` в tsconfig.
+- Web entrypoint (Next) и mobile (RN/Expo, позже) используют собственные провайдеры/адаптеры.
+- RN зависимости для будущей интеграции: `@react-native-async-storage/async-storage`, `expo-web-browser` (OAuth placeholder), `cross-fetch` при необходимости; пока не установлены в web-пакете, используются stubs для tsc.
 
 ## Code Structure
 **How is the code organized?**
 
-- `/core`: types, services, use-cases, adapters (interfaces), config.
-- `/ui/web`: Next UI, web adapters, web providers.
-- `/ui/mobile`: RN entrypoint, mobile adapters, providers (позже UI).
-- Общие утилиты и типы — в core.
-- Для RN адаптеров: storage на AsyncStorage, navigation/oauth на Linking + expo-auth-session.
-- Для web адаптеров: storage на localStorage, navigation на window.location, OAuth redirect через браузер.
+- `/core`: adapters (интерфейсы), services (auth/notes/search/sanitizer), utils (search helpers), config interfaces.
+- `/ui/web`: web adapters (localStorage, window.location, OAuth redirect, Supabase web factory), config (`ui/web/config.ts`), провайдеры.
+- `/ui/mobile`: RN adapters (AsyncStorage, Linking/WebBrowser placeholder, Supabase RN factory), config (`ui/mobile/config.ts`), stubs для типов.
+- Общие утилиты и типы — в core; UI остаётся в `/components`/`app`.
 
 ## Implementation Notes
 **Key technical details to remember:**
 
 ### Core Features
-- Supabase client factory должен принимать storage/fetch из адаптеров, не использовать window/global напрямую.
-- Auth use-case: разделить web redirect flow и mobile deep-link flow через адаптеры.
-- Notes/search/enex сервисы остаются в core, зависят от Supabase client/adapter интерфейсов.
+- Supabase client factory принимает storage/fetch из адаптеров, без прямых `window`/`localStorage`.
+- Auth: web redirect URI берётся из `webOAuthRedirectUri`; mobile deep link placeholder `everfreenote://auth/callback` для будущего RN.
+- Notes/search/enex сервисы живут в core; search использует RPC + fallback ILIKE, без web API.
 
 ### Patterns & Best Practices
-- Dependency inversion: все платформенные зависимости через интерфейсы адаптеров.
-- Никаких прямых обращений к window/localStorage в core.
-- Минимизировать side-effects в core; side-effects (navigation, storage writes) — в адаптерах/провайдерах.
+- Dependency inversion: любые платформенные зависимости идут через адаптеры.
+- Core без прямых браузерных/RN API.
+- Сайд-эффекты (навигация, storage) остаются в платформенных адаптерах/провайдерах.
 
 ## Integration Points
 **How do pieces connect?**
 
-- Web: Next providers создают web Supabase client, передают адаптеры (browser storage/navigation) в core hooks/use-cases.
-- Mobile: RN provider создаёт RN Supabase client, передаёт AsyncStorage/Linking адаптеры в core.
-- React Query остаётся платформенным (web), для mobile — отдельная конфигурация при необходимости.
+- Web: SupabaseProvider использует web factory + web storage; hooks (`useNoteAppController`, `useNotesQuery`) используют core сервисы.
+- Mobile: RN factory/адаптеры готовы; реальная OAuth интеграция в RN помечена TODO (нужен провайдерский auth URL).
+- React Query конфиг остаётся вебовым; для RN будет отдельный провайдер при старте UI.
+ - Примеры подключений:
+   - Web: `import { webSupabaseClientFactory } from '@ui/web/adapters/supabaseClient'; import { webStorageAdapter } from '@ui/web/adapters/storage'; import { webOAuthRedirectUri } from '@ui/web/config';`
+   - Mobile: `import { mobileSupabaseClientFactory } from '@ui/mobile/adapters/supabaseClient'; import { mobileStorageAdapter } from '@ui/mobile/adapters/storage'; import { mobileOAuthAdapter } from '@ui/mobile/adapters/oauth'; import { mobileSupabaseConfig, mobileOAuthRedirectUri } from '@ui/mobile/config';` (OAuth adapter — placeholder, требует связки с Supabase OAuth URL и deep link).
 
 ## Error Handling
 **How do we handle failures?**
 
-- Auth: корректно обрабатывать отсутствие code_verifier (web), network/timeouts (both), graceful fallback.
-- Storage errors: адаптеры должны кидать/логировать понятные ошибки и не падать твердотело.
+- Auth: корректно обрабатываем отсутствие session, ошибки sign-in/out; web поймает unhandled rejection от Web Locks в SupabaseProvider.
+- Storage: адаптеры не бросают синхронно; ошибки ассинхронных вызовов логируются.
+- Search: fallback на ILIKE при ошибке RPC.
 
 ## Performance Considerations
 **How do we keep it fast?**
 
-- Core без лишних зависимостей; не тянуть UI-бандл в мобильный слой.
-- Переиспользовать существующие кэши (React Query) только в платформенных слоях, не в core.
+- Core лёгкий, без UI зависимостей.
+- Веб-адаптеры используют браузерные API напрямую без лишних обёрток.
+- Следить за размером web bundle — core не должен тянуть лишние RN deps (они не установлены).
 
 ## Security Notes
 **What security measures are in place?**
 
-- Секреты Supabase остаются в env; никакого хардкода в core.
-- OAuth flow разделён: web — redirect, mobile — deep link/custom tabs, оба не должны логировать токены.
-- Storage адаптеры должны безопасно хранить/очищать сессии.***
+- Supabase секреты берутся из env; нет хардкода в core.
+- OAuth: web — https redirect; mobile — deep link placeholder, без токенов в логах.
+- Sanitizer реэкспортируется из существующего сервиса (DOMPurify) для безопасного HTML.***
