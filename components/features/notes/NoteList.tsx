@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import InteractiveTag from "@/components/InteractiveTag"
 import { NoteListSkeleton } from "@/components/NoteListSkeleton"
 import DOMPurify from "isomorphic-dompurify"
+import { SanitizationService } from "@/lib/services/sanitizer"
 import type { Note, SearchResult } from "@/types/domain"
 
 // Define NoteRecord locally to match what's used in page.tsx
@@ -26,7 +27,7 @@ interface NoteListProps {
   onLoadMore: () => void
   hasMore: boolean
   isFetchingNextPage: boolean
-  
+
   // FTS Search Props
   ftsQuery: string
   ftsLoading: boolean
@@ -54,7 +55,7 @@ export function NoteList({
   ftsData,
   onSearchResultClick
 }: NoteListProps) {
-  
+
   // FTS Loading State
   if (ftsQuery.length >= 3 && ftsLoading) {
     return (
@@ -179,15 +180,14 @@ export function NoteList({
           <div
             key={note.id}
             onClick={() => onSelectNote(note)}
-            className={`p-3 rounded-lg cursor-pointer transition-colors ${
-              selectedNoteId === note.id
+            className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedNoteId === note.id
                 ? 'bg-accent border'
                 : 'hover:bg-muted/50 border border-transparent'
-            }`}
+              }`}
           >
             <h3 className="font-semibold truncate">{note.title}</h3>
             <p className="text-sm text-muted-foreground truncate mt-1">
-              {note.description}
+              {note.description ? SanitizationService.stripHtml(note.description) : ''}
             </p>
             {note.tags && note.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
@@ -208,7 +208,7 @@ export function NoteList({
           </div>
         ))}
       </div>
-      
+
       {hasMore && (
         <div className="p-4">
           {isFetchingNextPage && (
