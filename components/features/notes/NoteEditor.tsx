@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Loader2, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +19,7 @@ interface NoteEditorProps {
   onCancel: () => void
 }
 
-export function NoteEditor({
+export const NoteEditor = React.memo(function NoteEditor({
   title,
   description,
   tags,
@@ -30,6 +31,21 @@ export function NoteEditor({
   onSave,
   onCancel
 }: NoteEditorProps) {
+  // Обработчики событий для предотвращения пересоздания на каждом рендере
+  const handleTitleChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onTitleChange(e.target.value)
+    },
+    [onTitleChange]
+  )
+
+  const handleTagsChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onTagsChange(e.target.value)
+    },
+    [onTagsChange]
+  )
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Editor Header */}
@@ -68,8 +84,8 @@ export function NoteEditor({
               type="text"
               placeholder="Note title"
               value={title}
-              onChange={(e) => onTitleChange(e.target.value)}
-              className="text-2xl font-bold border-none focus-visible:ring-0 px-0"
+              onChange={handleTitleChange}
+              className="text-2xl font-bold border-none focus-visible:ring-0 px-0 bg-transparent"
             />
           </div>
           <div>
@@ -81,7 +97,7 @@ export function NoteEditor({
               type="text"
               placeholder="work, personal, ideas"
               value={tags}
-              onChange={(e) => onTagsChange(e.target.value)}
+              onChange={handleTagsChange}
             />
           </div>
           <div>
@@ -94,4 +110,4 @@ export function NoteEditor({
       </div>
     </div>
   )
-}
+})

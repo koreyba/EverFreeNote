@@ -49,16 +49,28 @@ export function useNoteAppController() {
   const notes: NoteViewModel[] = useFlattenedNotes(notesQuery)
 
   const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
-    enabled: !!user && ftsSearchQuery.length >= 3
+    enabled: !!user && ftsSearchQuery.length >= 3,
+    selectedTag: filterByTag
   })
 
   const ftsData = ftsSearchResult.data
-  const ftsResults: SearchResult[] = ftsData?.results ?? []
+  const ftsResultsRaw: SearchResult[] = ftsData?.results ?? []
+  const filteredFtsResults: SearchResult[] = filterByTag
+    ? ftsResultsRaw.filter(note => note.tags?.includes(filterByTag))
+    : ftsResultsRaw
+
+  // Create filtered ftsData object
+  const filteredFtsData = ftsData ? {
+    ...ftsData,
+    results: filteredFtsResults,
+    total: filteredFtsResults.length
+  } : undefined
+
   const showFTSResults = ftsSearchQuery.length >= 3 &&
-    !!ftsData &&
-    ftsData.method === 'fts' &&
-    !ftsData.error &&
-    ftsData.results.length > 0
+    !!filteredFtsData &&
+    filteredFtsData.method === 'fts' &&
+    !filteredFtsData.error &&
+    filteredFtsResults.length > 0
 
   // -- Infinite Scroll --
   const observerTarget = useInfiniteScroll(
@@ -103,16 +115,13 @@ export function useNoteAppController() {
 
   const handleTagClick = (tag: string) => {
     setFilterByTag(tag)
-    setSearchQuery('')
-    setFtsSearchQuery('')
+    // Don't reset search - preserve search state when clicking tags
     setSelectedNote(null)
     setIsEditing(false)
   }
 
   const handleClearTagFilter = () => {
     setFilterByTag(null)
-    setSearchQuery('')
-    setFtsSearchQuery('')
   }
 
   const handleSignInWithGoogle = async () => {
@@ -148,7 +157,7 @@ export function useNoteAppController() {
         setUser(data.user)
         toast.success('Logged in as test user!')
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to login as test user')
     } finally {
       setLoading(false)
@@ -173,7 +182,7 @@ export function useNoteAppController() {
         setUser(data.user)
         toast.success('Logged in as skip-auth user!')
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to login as skip-auth user')
     } finally {
       setLoading(false)
@@ -213,6 +222,7 @@ export function useNoteAppController() {
 
     setSaving(true)
     try {
+      let savedNote: NoteViewModel | null = null
       const tags = editForm.tags
         .split(',')
         .map(tag => tag.trim())
@@ -225,19 +235,23 @@ export function useNoteAppController() {
       }
 
       if (selectedNote) {
-        await updateNoteMutation.mutateAsync({
+        const updated = await updateNoteMutation.mutateAsync({
           id: selectedNote.id,
           ...noteData,
         })
+        savedNote = { ...selectedNote, ...updated }
       } else {
-        await createNoteMutation.mutateAsync({
+        const created = await createNoteMutation.mutateAsync({
           ...noteData,
           userId: user.id,
         })
+        savedNote = created as NoteViewModel
       }
 
       setIsEditing(false)
-      setSelectedNote(null)
+      if (savedNote) {
+        setSelectedNote(savedNote)
+      }
       setEditForm({ title: '', description: '', tags: '' })
     } catch (error) {
       console.error('Error saving note:', error)
@@ -256,7 +270,7 @@ export function useNoteAppController() {
 
     try {
       await deleteNoteMutation.mutateAsync(noteToDelete.id)
-      
+
       if (selectedNote?.id === noteToDelete.id) {
         setSelectedNote(null)
         setIsEditing(false)
@@ -295,8 +309,7 @@ export function useNoteAppController() {
   }
 
   const handleSearchResultClick = (note: SearchResult) => {
-    setSearchQuery('')
-    setFtsSearchQuery('')
+    // Don't reset search - keep search results visible when viewing a note
     setSelectedNote(note)
     setIsEditing(false)
   }
@@ -315,13 +328,13 @@ export function useNoteAppController() {
     deleteDialogOpen,
     setDeleteDialogOpen,
     noteToDelete,
-    
+
     // Data
     notes,
     notesQuery,
     ftsSearchResult,
-    ftsData,
-    ftsResults,
+    ftsData: filteredFtsData,
+    ftsResults: filteredFtsResults,
     showFTSResults,
     observerTarget,
 
@@ -341,7 +354,7 @@ export function useNoteAppController() {
     handleRemoveTagFromNote,
     handleSelectNote,
     handleSearchResultClick,
-    
+
     // Helpers
     invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
   }
