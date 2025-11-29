@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Edit2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
@@ -21,15 +22,24 @@ interface NoteViewProps {
   onRemoveTag: (tag: string) => void
 }
 
-export function NoteView({
+export const NoteView = React.memo(function NoteView({
   note,
   onEdit,
   onDelete,
   onTagClick,
   onRemoveTag
 }: NoteViewProps) {
-  // Sanitize content before rendering
-  const sanitizedContent = SanitizationService.sanitize(note.description || note.content || '')
+  // Мемоизация санитизированного контента для предотвращения повторной обработки
+  const sanitizedContent = React.useMemo(
+    () => SanitizationService.sanitize(note.description || note.content || ''),
+    [note.description, note.content]
+  )
+
+  // Форматирование дат для предотвращения повторных вычислений
+  const formattedDates = React.useMemo(() => ({
+    created: new Date(note.created_at).toLocaleString(),
+    updated: new Date(note.updated_at).toLocaleString()
+  }), [note.created_at, note.updated_at])
 
   return (
     <div className="flex-1 flex flex-col">
@@ -49,7 +59,7 @@ export function NoteView({
             onClick={onDelete}
             variant="outline"
             size="sm"
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
           >
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
@@ -77,19 +87,18 @@ export function NoteView({
             </div>
           )}
           
-          <div className="prose prose-lg max-w-none">
+          <div className="prose prose-neutral dark:prose-invert prose-lg max-w-none">
             <div
-              className="prose prose-lg max-w-none"
               dangerouslySetInnerHTML={{ __html: sanitizedContent }}
             />
           </div>
           
           <div className="mt-8 pt-4 border-t text-sm text-muted-foreground">
-            <p>Created: {new Date(note.created_at).toLocaleString()}</p>
-            <p>Updated: {new Date(note.updated_at).toLocaleString()}</p>
+            <p>Created: {formattedDates.created}</p>
+            <p>Updated: {formattedDates.updated}</p>
           </div>
         </div>
       </div>
     </div>
   )
-}
+})
