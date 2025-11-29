@@ -57,6 +57,7 @@ export default defineConfig({
         'components/**/*.{js,jsx,ts,tsx}',
         'lib/**/*.{js,jsx,ts,tsx}',
         'hooks/**/*.{js,jsx,ts,tsx}',
+        'ui/**/*.{js,jsx,ts,tsx}',
       ],
     },
   },
