@@ -49,17 +49,15 @@ export function useNoteAppController() {
   const notes: NoteViewModel[] = useFlattenedNotes(notesQuery)
 
   const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
-    enabled: !!user && ftsSearchQuery.length >= 3
+    enabled: !!user && ftsSearchQuery.length >= 3,
+    selectedTag: filterByTag
   })
 
   const ftsData = ftsSearchResult.data
-
-  // Filter FTS results by selected tag (client-side filtering)
-  const filteredFtsResults: SearchResult[] = ftsData?.results
-    ? filterByTag
-      ? ftsData.results.filter(note => note.tags?.includes(filterByTag))
-      : ftsData.results
-    : []
+  const ftsResultsRaw: SearchResult[] = ftsData?.results ?? []
+  const filteredFtsResults: SearchResult[] = filterByTag
+    ? ftsResultsRaw.filter(note => note.tags?.includes(filterByTag))
+    : ftsResultsRaw
 
   // Create filtered ftsData object
   const filteredFtsData = ftsData ? {
@@ -69,9 +67,9 @@ export function useNoteAppController() {
   } : undefined
 
   const showFTSResults = ftsSearchQuery.length >= 3 &&
-    !!ftsData &&
-    ftsData.method === 'fts' &&
-    !ftsData.error &&
+    !!filteredFtsData &&
+    filteredFtsData.method === 'fts' &&
+    !filteredFtsData.error &&
     filteredFtsResults.length > 0
 
   // -- Infinite Scroll --
@@ -124,8 +122,6 @@ export function useNoteAppController() {
 
   const handleClearTagFilter = () => {
     setFilterByTag(null)
-    setSearchQuery('')
-    setFtsSearchQuery('')
   }
 
   const handleSignInWithGoogle = async () => {

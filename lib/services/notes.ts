@@ -3,6 +3,9 @@ import { Tables } from '@/supabase/types';
 
 type Note = Tables<'notes'>;
 
+// Sanitize value for PostgREST OR syntax: strip commas to avoid breaking the logic tree
+const sanitizeOrValue = (value: string) => value.replace(/,/g, ' ');
+
 export class NoteService {
   constructor(private supabase: SupabaseClient) {}
 
@@ -31,7 +34,8 @@ export class NoteService {
 
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
-      query = query.or(`title.ilike.%${searchLower}%,description.ilike.%${searchLower}%`);
+      const safeSearch = sanitizeOrValue(searchLower);
+      query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
     }
 
     const { data, error, count } = await query;
