@@ -32,15 +32,15 @@ body {
    ============================================================================= */
 
 mark {
-  background-color: hsl(var(--primary) / 0.2);
-  color: hsl(var(--primary));
+  background-color: color-mix(in oklch, var(--primary), transparent 80%);
+  color: var(--primary);
   font-weight: 500;
   padding: 0 2px;
   border-radius: 2px;
 }
 
 .dark mark {
-  background-color: hsl(var(--primary) / 0.3);
+  background-color: color-mix(in oklch, var(--primary), transparent 70%);
   color: oklch(75% 0.18 145);
 }
 
@@ -165,7 +165,7 @@ mark {
 .prose code,
 .ProseMirror code {
   color: var(--color-foreground);
-  background-color: oklch(96% 0.005 256);
+  background-color: var(--color-muted);
   padding: 0.2em 0.4em;
   border-radius: var(--radius-sm);
   font-size: 0.875em;
@@ -174,7 +174,7 @@ mark {
 
 .prose pre,
 .ProseMirror pre {
-  background-color: oklch(97% 0.005 256);
+  background-color: var(--color-muted);
   border: 1px solid var(--color-border);
   color: var(--color-foreground);
   padding: 1em;
@@ -234,20 +234,21 @@ mark {
 }
 
 /* Убираем отступы у первого и последнего элемента */
-.prose > *:first-child,
-.ProseMirror > *:first-child {
+.prose>*:first-child,
+.ProseMirror>*:first-child {
   margin-top: 0 !important;
 }
 
-.prose > *:last-child,
-.ProseMirror > *:last-child {
+.prose>*:last-child,
+.ProseMirror>*:last-child {
   margin-bottom: 0 !important;
 }
 
 /* Поддержка пустых параграфов */
 .prose p:empty::after,
 .ProseMirror p:empty::after {
-  content: '\200B'; /* Zero-width space для сохранения высоты */
+  content: '\200B';
+  /* Zero-width space для сохранения высоты */
   display: inline;
 }
 
@@ -301,68 +302,68 @@ mark {
 @theme {
   /* Typography */
   --font-sans: "Inter", sans-serif;
-  
+
   /* Common spacing values */
   --spacing-section: 3em;
   --spacing-element: 1.25em;
   --spacing-small: 0.5em;
-  
+
   /* Common line-heights */
   --line-height-heading: 1.25;
   --line-height-body: 1.75;
-  
+
   /* Border radius */
   --radius: 0.5rem;
   --radius-sm: 0.25rem;
-  
+
   /* =============================================================================
      LIGHT THEME COLORS
      ============================================================================= */
-  
+
   /* Backgrounds */
   --color-background: oklch(100% 0 0);
   --color-foreground: oklch(20% 0.01 256);
-  
+
   /* Cards and surfaces */
   --color-card: oklch(100% 0 0);
   --color-card-foreground: oklch(20% 0.01 256);
   --color-popover: oklch(100% 0 0);
   --color-popover-foreground: oklch(20% 0.01 256);
-  
+
   /* Primary - Vibrant Emerald */
   --color-primary: oklch(60% 0.18 145);
   --color-primary-foreground: oklch(100% 0 0);
-  
+
   /* Secondary */
   --color-secondary: oklch(97% 0.01 145);
   --color-secondary-foreground: oklch(40% 0.05 145);
-  
+
   /* Muted */
   --color-muted: oklch(97% 0.005 256);
   --color-muted-foreground: oklch(55% 0.02 256);
-  
+
   /* Accent - Minty fresh */
   --color-accent: oklch(96% 0.03 145);
   --color-accent-foreground: oklch(40% 0.05 145);
-  
+
   /* Destructive */
   --color-destructive: oklch(55% 0.22 29);
   --color-destructive-foreground: oklch(100% 0 0);
-  
+
   /* Borders and inputs */
   --color-border: oklch(90% 0.005 256);
   --color-input: oklch(90% 0.005 256);
-  
+
   /* Focus ring */
   --color-ring: oklch(55% 0.15 145);
-  
+
   /* Charts */
   --color-chart-1: oklch(69.75% 0.1403 50.58);
   --color-chart-2: oklch(54.89% 0.0982 200.08);
   --color-chart-3: oklch(38.04% 0.0682 220.15);
   --color-chart-4: oklch(77.56% 0.1403 90.58);
   --color-chart-5: oklch(76.07% 0.1682 41.23);
-  
+
   /* Sidebar */
   --color-sidebar-background: oklch(98% 0 0);
   --color-sidebar-foreground: oklch(35% 0.01 256);
@@ -382,49 +383,49 @@ mark {
   /* Backgrounds - softer dark gray for reduced eye strain */
   --color-background: oklch(20% 0.015 256);
   --color-foreground: oklch(95% 0.005 256);
-  
+
   /* Cards - slightly elevated from background for depth */
   --color-card: oklch(24% 0.015 256);
   --color-card-foreground: oklch(95% 0.005 256);
-  
+
   /* Popovers - even more elevated */
   --color-popover: oklch(26% 0.015 256);
   --color-popover-foreground: oklch(95% 0.005 256);
-  
+
   /* Primary - vibrant emerald green for dark theme */
   --color-primary: oklch(65% 0.18 145);
   --color-primary-foreground: oklch(15% 0.01 145);
-  
+
   /* Secondary */
   --color-secondary: oklch(30% 0.02 256);
   --color-secondary-foreground: oklch(95% 0.005 256);
-  
+
   /* Muted */
   --color-muted: oklch(28% 0.015 256);
   --color-muted-foreground: oklch(65% 0.01 256);
-  
+
   /* Accent */
   --color-accent: oklch(32% 0.04 145);
   --color-accent-foreground: oklch(95% 0.005 256);
-  
+
   /* Destructive */
   --color-destructive: oklch(50% 0.2 29);
   --color-destructive-foreground: oklch(100% 0 0);
-  
+
   /* Borders and inputs */
   --color-border: oklch(32% 0.015 256);
   --color-input: oklch(32% 0.015 256);
-  
+
   /* Focus ring */
   --color-ring: oklch(65% 0.18 145);
-  
+
   /* Charts */
   --color-chart-1: oklch(65% 0.18 145);
   --color-chart-2: oklch(60% 0.15 200);
   --color-chart-3: oklch(70% 0.15 90);
   --color-chart-4: oklch(65% 0.15 305);
   --color-chart-5: oklch(65% 0.18 351);
-  
+
   /* Sidebar */
   --color-sidebar-background: oklch(18% 0.015 256);
   --color-sidebar-foreground: oklch(92% 0.005 256);
@@ -435,5 +436,3 @@ mark {
   --color-sidebar-border: oklch(28% 0.015 256);
   --color-sidebar-ring: oklch(65% 0.18 145);
 }
-
-
