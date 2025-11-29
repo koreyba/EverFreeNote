@@ -1,7 +1,9 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { webSupabaseClientFactory } from "@ui/web/adapters/supabaseClient"
+import { webStorageAdapter } from "@ui/web/adapters/storage"
+import { supabaseConfig } from "@ui/web/config"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 
 type SupabaseContextType = {
@@ -13,7 +15,12 @@ type SupabaseContextType = {
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
 
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
-  const [supabase] = useState(() => createClient())
+  const [supabase] = useState(() => {
+    return webSupabaseClientFactory.createClient(
+      supabaseConfig,
+      { storage: webStorageAdapter }
+    )
+  })
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 

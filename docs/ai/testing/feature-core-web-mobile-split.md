@@ -56,7 +56,7 @@ description: Define testing approach, test cases, and quality assurance
 ## Manual Testing
 **What requires human validation?**
 
-- Web auth redirect and notes CRUD after реорганизации.
+- Web auth redirect and notes CRUD after реорганизации (smoke/regression).
 - DevTools/network check на отсутствие лишних запросов/ошибок.
 
 ## Performance Testing
@@ -69,4 +69,4 @@ description: Define testing approach, test cases, and quality assurance
 **How do we manage issues?**
 
 - Любые регрессии web фиксируем задачами в плане.
-- Отдельно логируем блокеры RN адаптеров для следующей фазы.***
+- Отдельно логируем блокеры RN адаптеров для следующей фазы.
