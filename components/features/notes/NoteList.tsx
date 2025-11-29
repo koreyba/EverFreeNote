@@ -93,6 +93,7 @@ export function NoteList({
               note={note}
               variant="search"
               onClick={() => onSearchResultClick(note)}
+              onTagClick={onTagClick}
             />
           ))}
         </div>

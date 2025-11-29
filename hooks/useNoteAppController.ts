@@ -53,12 +53,26 @@ export function useNoteAppController() {
   })
 
   const ftsData = ftsSearchResult.data
-  const ftsResults: SearchResult[] = ftsData?.results ?? []
+
+  // Filter FTS results by selected tag (client-side filtering)
+  const filteredFtsResults: SearchResult[] = ftsData?.results
+    ? filterByTag
+      ? ftsData.results.filter(note => note.tags?.includes(filterByTag))
+      : ftsData.results
+    : []
+
+  // Create filtered ftsData object
+  const filteredFtsData = ftsData ? {
+    ...ftsData,
+    results: filteredFtsResults,
+    total: filteredFtsResults.length
+  } : undefined
+
   const showFTSResults = ftsSearchQuery.length >= 3 &&
     !!ftsData &&
     ftsData.method === 'fts' &&
     !ftsData.error &&
-    ftsData.results.length > 0
+    filteredFtsResults.length > 0
 
   // -- Infinite Scroll --
   const observerTarget = useInfiniteScroll(
@@ -103,8 +117,7 @@ export function useNoteAppController() {
 
   const handleTagClick = (tag: string) => {
     setFilterByTag(tag)
-    setSearchQuery('')
-    setFtsSearchQuery('')
+    // Don't reset search - preserve search state when clicking tags
     setSelectedNote(null)
     setIsEditing(false)
   }
@@ -256,7 +269,7 @@ export function useNoteAppController() {
 
     try {
       await deleteNoteMutation.mutateAsync(noteToDelete.id)
-      
+
       if (selectedNote?.id === noteToDelete.id) {
         setSelectedNote(null)
         setIsEditing(false)
@@ -295,8 +308,7 @@ export function useNoteAppController() {
   }
 
   const handleSearchResultClick = (note: SearchResult) => {
-    setSearchQuery('')
-    setFtsSearchQuery('')
+    // Don't reset search - keep search results visible when viewing a note
     setSelectedNote(note)
     setIsEditing(false)
   }
@@ -315,13 +327,13 @@ export function useNoteAppController() {
     deleteDialogOpen,
     setDeleteDialogOpen,
     noteToDelete,
-    
+
     // Data
     notes,
     notesQuery,
     ftsSearchResult,
-    ftsData,
-    ftsResults,
+    ftsData: filteredFtsData,
+    ftsResults: filteredFtsResults,
     showFTSResults,
     observerTarget,
 
@@ -341,7 +353,7 @@ export function useNoteAppController() {
     handleRemoveTagFromNote,
     handleSelectNote,
     handleSearchResultClick,
-    
+
     // Helpers
     invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
   }

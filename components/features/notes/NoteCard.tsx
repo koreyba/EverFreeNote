@@ -100,9 +100,13 @@ export function NoteCard({ note, variant, isSelected, onClick, onTagClick }: Not
                 {note.tags && note.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                         {note.tags.slice(0, 5).map((tag, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                                {tag}
-                            </Badge>
+                            <InteractiveTag
+                                key={idx}
+                                tag={tag}
+                                onClick={onTagClick || (() => { })}
+                                showIcon={false}
+                                className="text-xs px-2 py-0.5"
+                            />
                         ))}
                         {note.tags.length > 5 && (
                             <Badge variant="outline" className="text-xs">
