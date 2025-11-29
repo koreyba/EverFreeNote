@@ -4,7 +4,7 @@ import { NoteService } from '@core/services/notes'
 import { SearchService, SearchResult } from '@core/services/search'
 import { useState, useEffect, useMemo } from 'react'
 
-import type { FtsSearchResult, Tables } from '@/supabase/types'
+import type { Tables } from '@/supabase/types'
 
 const PAGE_SIZE = 50 // Optimized for smooth infinite scroll (larger pages = fewer requests)
 const SEARCH_DEBOUNCE_MS = 300 // Debounce search input

@@ -143,10 +143,10 @@ export function useNoteAppController() {
   const handleTestLogin = async () => {
     try {
       setAuthLoading(true) // Show loading indicator immediately
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'test@example.com',
-        password: 'testpassword123'
-      })
+      const { data, error } = await authService.signInWithPassword(
+        'test@example.com',
+        'testpassword123'
+      )
 
       if (error) {
         toast.error('Failed to login as test user: ' + error.message)
@@ -169,10 +169,10 @@ export function useNoteAppController() {
   const handleSkipAuth = async () => {
     try {
       setAuthLoading(true) // Show loading indicator immediately
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'skip-auth@example.com',
-        password: 'testpassword123'
-      })
+      const { data, error } = await authService.signInWithPassword(
+        'skip-auth@example.com',
+        'testpassword123'
+      )
 
       if (error) {
         toast.error('Failed to login as skip-auth user: ' + error.message)
@@ -194,7 +194,7 @@ export function useNoteAppController() {
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut()
+      await authService.signOut()
       await webStorageAdapter.removeItem('testUser')
       setUser(null)
       queryClient.removeQueries({ queryKey: ['notes'] })
