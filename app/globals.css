@@ -24,6 +24,265 @@ mark {
     border-radius: 2px;
 }
 
+/* Dark theme search highlighting */
+.dark mark {
+    background-color: hsl(var(--primary) / 0.3);
+    color: oklch(75% 0.18 145);
+    font-weight: 500;
+}
+
+/* =============================================================================
+   NOTE CONTENT STYLES - SINGLE SOURCE OF TRUTH
+   Применяется к .prose (режим чтения) и .ProseMirror (режим редактирования)
+   ============================================================================= */
+
+.prose,
+.ProseMirror {
+  color: var(--color-foreground);
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6,
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  color: var(--color-foreground);
+  font-weight: 700;
+}
+
+.prose h1,
+.ProseMirror h1 {
+  margin-top: 0;
+  margin-bottom: 0.8888889em;
+  line-height: 1.1111111;
+  font-size: 2.25em;
+}
+
+.prose h2,
+.ProseMirror h2 {
+  margin-top: 1.5555556em;
+  margin-bottom: 0.8888889em;
+  line-height: 1.3333333;
+  font-size: 1.875em;
+}
+
+.prose h3,
+.ProseMirror h3 {
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  line-height: 1.6;
+  font-size: 1.5em;
+}
+
+.prose h4,
+.prose h5,
+.prose h6,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.5;
+}
+
+.prose p,
+.ProseMirror p {
+  margin-top: 1.25em;
+  margin-bottom: 1.25em;
+  line-height: 1.75;
+  color: var(--color-foreground);
+}
+
+.prose ul,
+.prose ol,
+.ProseMirror ul,
+.ProseMirror ol {
+  margin-top: 1.25em;
+  margin-bottom: 1.25em;
+  color: var(--color-foreground);
+  padding-left: 1.625em;
+}
+
+.prose li,
+.ProseMirror li {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.75;
+  color: var(--color-foreground);
+}
+
+.prose li::marker,
+.ProseMirror li::marker {
+  color: var(--color-foreground);
+}
+
+.prose strong,
+.prose b,
+.ProseMirror strong,
+.ProseMirror b {
+  color: var(--color-foreground);
+  font-weight: 700;
+}
+
+.prose em,
+.prose i,
+.ProseMirror em,
+.ProseMirror i {
+  font-style: italic;
+}
+
+.prose a,
+.ProseMirror a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.prose a:hover,
+.ProseMirror a:hover {
+  opacity: 0.8;
+}
+
+.prose code,
+.ProseMirror code {
+  color: var(--color-foreground);
+  background-color: oklch(96% 0.005 256);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.prose pre,
+.ProseMirror pre {
+  background-color: oklch(97% 0.005 256);
+  border: 1px solid var(--color-border);
+  color: var(--color-foreground);
+  padding: 1em;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-top: 1.7142857em;
+  margin-bottom: 1.7142857em;
+}
+
+.prose pre code,
+.ProseMirror pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+.prose blockquote,
+.ProseMirror blockquote {
+  color: var(--color-muted-foreground);
+  border-left: 4px solid var(--color-border);
+  padding-left: 1em;
+  font-style: italic;
+  margin-top: 1.6em;
+  margin-bottom: 1.6em;
+}
+
+.prose hr,
+.ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin-top: 3em;
+  margin-bottom: 3em;
+}
+
+.prose table,
+.ProseMirror table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+
+.prose th,
+.prose td,
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid var(--color-border);
+  padding: 0.5714286em;
+  text-align: left;
+  color: var(--color-foreground);
+}
+
+.prose thead,
+.ProseMirror thead {
+  border-bottom: 2px solid var(--color-border);
+}
+
+/* Убираем отступы у первого и последнего элемента */
+.prose > *:first-child,
+.ProseMirror > *:first-child {
+  margin-top: 0 !important;
+}
+
+.prose > *:last-child,
+.ProseMirror > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Поддержка пустых параграфов */
+.prose p:empty::after,
+.ProseMirror p:empty::after {
+  content: '\200B'; /* Zero-width space для сохранения высоты */
+  display: inline;
+}
+
+/* Специфичные стили для prose */
+.prose {
+  max-width: 65ch;
+}
+
+.prose-lg {
+  font-size: 1.125rem;
+}
+
+/* Специфичные стили для ProseMirror (редактор) */
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror hr {
+  cursor: pointer;
+}
+
+.ProseMirror hr.ProseMirror-selectednode {
+  border-top: 2px solid var(--color-primary);
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--color-muted-foreground);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Dark theme overrides */
+.dark .prose code,
+.dark .ProseMirror code {
+  background-color: var(--color-muted);
+}
+
+.dark .prose pre,
+.dark .ProseMirror pre {
+  background-color: var(--color-muted);
+}
+
+/* =============================================================================
+   END NOTE CONTENT STYLES
+   ============================================================================= */
+
 
 
 @theme {
@@ -72,38 +331,61 @@ mark {
 
 /* Dark theme - override CSS variables */
 .dark {
-  --color-background: oklch(15.93% 0.0283 285.82);
-  --color-foreground: oklch(98.04% 0.0058 264.54);
-  --color-card: oklch(15.93% 0.0283 285.82);
-  --color-card-foreground: oklch(98.04% 0.0058 264.54);
-  --color-popover: oklch(15.93% 0.0283 285.82);
-  --color-popover-foreground: oklch(98.04% 0.0058 264.54);
-  --color-primary: oklch(98.04% 0.0058 264.54);
-  --color-primary-foreground: oklch(25.35% 0.0352 285.88);
-  --color-secondary: oklch(29.84% 0.0352 285.88);
-  --color-secondary-foreground: oklch(98.04% 0.0058 264.54);
-  --color-muted: oklch(29.84% 0.0352 285.88);
-  --color-muted-foreground: oklch(70.12% 0.0162 256.85);
-  --color-accent: oklch(29.84% 0.0352 285.88);
-  --color-accent-foreground: oklch(98.04% 0.0058 264.54);
-  --color-destructive: oklch(41.8% 0.1576 29.23);
-  --color-destructive-foreground: oklch(98.04% 0.0058 264.54);
-  --color-border: oklch(29.84% 0.0352 285.88);
-  --color-input: oklch(29.84% 0.0352 285.88);
-  --color-ring: oklch(85.12% 0.0162 256.85);
-  --color-chart-1: oklch(59.75% 0.1682 264.54);
-  --color-chart-2: oklch(54.89% 0.1082 200.08);
-  --color-chart-3: oklch(67.56% 0.1403 90.58);
-  --color-chart-4: oklch(68.07% 0.1282 305.23);
-  --color-chart-5: oklch(67.07% 0.1682 351.23);
-  --color-sidebar-background: oklch(22.35% 0.0283 285.82);
-  --color-sidebar-foreground: oklch(95.9% 0.0058 264.54);
-  --color-sidebar-primary: oklch(59.75% 0.1682 264.54);
-  --color-sidebar-primary-foreground: oklch(100% 0 0);
-  --color-sidebar-accent: oklch(27.84% 0.0352 285.88);
-  --color-sidebar-accent-foreground: oklch(95.9% 0.0058 264.54);
-  --color-sidebar-border: oklch(27.84% 0.0352 285.88);
-  --color-sidebar-ring: oklch(69.75% 0.1682 264.54);
+  /* Main backgrounds - softer dark gray for reduced eye strain */
+  --color-background: oklch(20% 0.015 256);
+  --color-foreground: oklch(95% 0.005 256);
+  
+  /* Cards - slightly elevated from background for depth */
+  --color-card: oklch(24% 0.015 256);
+  --color-card-foreground: oklch(95% 0.005 256);
+  
+  /* Popovers - even more elevated */
+  --color-popover: oklch(26% 0.015 256);
+  --color-popover-foreground: oklch(95% 0.005 256);
+  
+  /* Primary - vibrant emerald green for dark theme */
+  --color-primary: oklch(65% 0.18 145);
+  --color-primary-foreground: oklch(15% 0.01 145);
+  
+  /* Secondary - subtle with good contrast */
+  --color-secondary: oklch(30% 0.02 256);
+  --color-secondary-foreground: oklch(95% 0.005 256);
+  
+  /* Muted - for less prominent UI elements */
+  --color-muted: oklch(28% 0.015 256);
+  --color-muted-foreground: oklch(65% 0.01 256);
+  
+  /* Accent - minty fresh for highlights */
+  --color-accent: oklch(32% 0.04 145);
+  --color-accent-foreground: oklch(95% 0.005 256);
+  
+  /* Destructive - clear red for danger actions */
+  --color-destructive: oklch(50% 0.2 29);
+  --color-destructive-foreground: oklch(100% 0 0);
+  
+  /* Borders and inputs - subtle but visible */
+  --color-border: oklch(32% 0.015 256);
+  --color-input: oklch(32% 0.015 256);
+  
+  /* Ring - emerald focus indicator */
+  --color-ring: oklch(65% 0.18 145);
+  
+  /* Charts - vibrant colors for data visualization */
+  --color-chart-1: oklch(65% 0.18 145);
+  --color-chart-2: oklch(60% 0.15 200);
+  --color-chart-3: oklch(70% 0.15 90);
+  --color-chart-4: oklch(65% 0.15 305);
+  --color-chart-5: oklch(65% 0.18 351);
+  
+  /* Sidebar - distinguishable from main content */
+  --color-sidebar-background: oklch(18% 0.015 256);
+  --color-sidebar-foreground: oklch(92% 0.005 256);
+  --color-sidebar-primary: oklch(65% 0.18 145);
+  --color-sidebar-primary-foreground: oklch(15% 0.01 145);
+  --color-sidebar-accent: oklch(28% 0.03 145);
+  --color-sidebar-accent-foreground: oklch(92% 0.005 256);
+  --color-sidebar-border: oklch(28% 0.015 256);
+  --color-sidebar-ring: oklch(65% 0.18 145);
 }
 
 * {

@@ -148,7 +148,7 @@ export function useNoteAppController() {
         setUser(data.user)
         toast.success('Logged in as test user!')
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to login as test user')
     } finally {
       setLoading(false)
@@ -173,7 +173,7 @@ export function useNoteAppController() {
         setUser(data.user)
         toast.success('Logged in as skip-auth user!')
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to login as skip-auth user')
     } finally {
       setLoading(false)

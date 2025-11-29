@@ -312,7 +312,8 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 }
 
 const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
-  const editorExtensions: Extensions = [
+  // Мемоизация конфигурации расширений для предотвращения пересоздания
+  const editorExtensions: Extensions = React.useMemo(() => [
     StarterKit.configure({
       bulletList: {},
       orderedList: {},
@@ -340,7 +341,15 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
     Color,
     FontFamily,
     FontSize,
-  ]
+  ], [])
+
+  // Мемоизация editorProps для предотвращения ре-рендеров
+  const editorProps = React.useMemo(() => ({
+    attributes: {
+      class:
+        "prose prose-neutral dark:prose-invert prose-lg max-w-none focus:outline-none px-6 py-4",
+    },
+  }), [])
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -349,12 +358,7 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML())
     },
-    editorProps: {
-      attributes: {
-        class:
-          "prose prose-neutral dark:prose-invert prose-sm sm:prose-base lg:prose-lg xl:prose-2xl m-5 focus:outline-none max-w-none text-foreground",
-      },
-    },
+    editorProps,
   })
 
   return (
@@ -363,7 +367,7 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
       <EditorContent
         data-cy="editor-content"
         editor={editor}
-        className="min-h-[200px]"
+        className="min-h-[400px]"
       />
     </div>
   )
