@@ -1,5 +1,6 @@
 import React from 'react'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { browser } from '@/lib/adapters/browser'
 
 // Component that throws an error
 const ThrowError = ({ shouldThrow, errorMessage = 'Test error' }: { shouldThrow: boolean, errorMessage?: string }) => {
@@ -21,6 +22,8 @@ const ThrowAsyncError = ({ shouldThrow }: { shouldThrow: boolean }) => {
 }
 
 describe('ErrorBoundary Component', () => {
+  const suppress = () => cy.on('uncaught:exception', () => false)
+
   it('renders children normally when no error occurs', () => {
     cy.mount(
       <ErrorBoundary>
@@ -34,8 +37,7 @@ describe('ErrorBoundary Component', () => {
   })
 
   it('catches render errors and displays fallback UI', () => {
-    // Suppress error console output for cleaner test logs
-    cy.on('uncaught:exception', () => false)
+    suppress()
 
     cy.mount(
       <ErrorBoundary>
@@ -49,7 +51,7 @@ describe('ErrorBoundary Component', () => {
   })
 
   it('displays error message in fallback UI', () => {
-    cy.on('uncaught:exception', () => false)
+    suppress()
 
     const customError = 'Custom error message for testing'
     
@@ -64,7 +66,7 @@ describe('ErrorBoundary Component', () => {
   })
 
   it('catches async errors from useEffect', () => {
-    cy.on('uncaught:exception', () => false)
+    suppress()
 
     cy.mount(
       <ErrorBoundary>
@@ -78,7 +80,7 @@ describe('ErrorBoundary Component', () => {
   })
 
   it('renders error boundary with fallback UI structure', () => {
-    cy.on('uncaught:exception', () => false)
+    suppress()
 
     cy.mount(
       <ErrorBoundary>
@@ -93,7 +95,7 @@ describe('ErrorBoundary Component', () => {
   })
 
   it('does not affect sibling components outside error boundary', () => {
-    cy.on('uncaught:exception', () => false)
+    suppress()
 
     cy.mount(
       <div>
@@ -129,7 +131,7 @@ describe('ErrorBoundary Component', () => {
   })
 
   it('shows error details in development mode', () => {
-    cy.on('uncaught:exception', () => false)
+    suppress()
 
     cy.mount(
       <ErrorBoundary>
@@ -139,6 +141,42 @@ describe('ErrorBoundary Component', () => {
 
     // Verify error details are shown
     cy.contains('Detailed error for dev').should('be.visible')
+  })
+
+  it('reloads page when clicking Reload Application', () => {
+    suppress()
+
+    const reload = cy.stub().as('reload')
+    Object.defineProperty(browser, 'location', {
+      configurable: true,
+      value: { reload, origin: '', search: '' }
+    })
+
+    cy.mount(
+      <ErrorBoundary>
+        <ThrowError shouldThrow={true} />
+      </ErrorBoundary>
+    )
+
+    cy.contains('Reload Application').click()
+    cy.get('@reload').should('have.been.called')
+  })
+
+  it('navigates back when clicking Go Back', () => {
+    suppress()
+
+    cy.window().then((win) => {
+      cy.stub(win.history, 'back').as('back')
+    })
+
+    cy.mount(
+      <ErrorBoundary>
+        <ThrowError shouldThrow={true} />
+      </ErrorBoundary>
+    )
+
+    cy.contains('Go Back').click()
+    cy.get('@back').should('have.been.called')
   })
 })
 

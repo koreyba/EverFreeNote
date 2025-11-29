@@ -108,5 +108,46 @@ describe('VirtualNoteList Component', () => {
     cy.contains('tag1').first().click()
     // Depending on InteractiveTag implementation, we might need to adjust selector
     // But assuming it propagates click
+    cy.get('@onTagClick').should('have.been.calledWith', 'tag1')
+  })
+
+  it('renders nothing when there are no notes', () => {
+    const onSelectNote = cy.stub().as('onSelectNote')
+    const onTagClick = cy.stub().as('onTagClick')
+
+    cy.mount(
+      <VirtualNoteList
+        notes={[]}
+        selectedNote={null}
+        onSelectNote={onSelectNote}
+        onTagClick={onTagClick}
+        height={500}
+        ListComponent={MockList}
+      />
+    )
+
+    cy.get('.mock-list').should('not.exist')
+  })
+
+  it('renders skeleton row when item data missing', () => {
+    const SparseList = ({ children: Row }: MockListProps) => (
+      <div className="mock-list">
+        <Row index={0} style={{ height: 120 }} data={{ notes: mockNotes.slice(0, 1), selectedNote: null, onSelectNote: cy.stub(), onTagClick: cy.stub() }} />
+        <Row index={1} style={{ height: 120 }} data={{ notes: mockNotes.slice(0, 1), selectedNote: null, onSelectNote: cy.stub(), onTagClick: cy.stub() }} />
+      </div>
+    )
+
+    cy.mount(
+      <VirtualNoteList
+        notes={mockNotes.slice(0, 1)}
+        selectedNote={null}
+        onSelectNote={cy.stub()}
+        onTagClick={cy.stub()}
+        height={500}
+        ListComponent={SparseList}
+      />
+    )
+
+    cy.get('.animate-pulse').should('exist')
   })
 })
