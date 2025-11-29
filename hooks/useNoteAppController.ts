@@ -222,6 +222,7 @@ export function useNoteAppController() {
 
     setSaving(true)
     try {
+      let savedNote: NoteViewModel | null = null
       const tags = editForm.tags
         .split(',')
         .map(tag => tag.trim())
@@ -234,19 +235,23 @@ export function useNoteAppController() {
       }
 
       if (selectedNote) {
-        await updateNoteMutation.mutateAsync({
+        const updated = await updateNoteMutation.mutateAsync({
           id: selectedNote.id,
           ...noteData,
         })
+        savedNote = { ...selectedNote, ...updated }
       } else {
-        await createNoteMutation.mutateAsync({
+        const created = await createNoteMutation.mutateAsync({
           ...noteData,
           userId: user.id,
         })
+        savedNote = created as NoteViewModel
       }
 
       setIsEditing(false)
-      setSelectedNote(null)
+      if (savedNote) {
+        setSelectedNote(savedNote)
+      }
       setEditForm({ title: '', description: '', tags: '' })
     } catch (error) {
       console.error('Error saving note:', error)
