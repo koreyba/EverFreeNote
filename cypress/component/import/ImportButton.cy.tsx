@@ -2,11 +2,14 @@ import React from 'react'
 import { ImportButton } from '@/components/ImportButton'
 import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
+import { EnexParser } from '@/lib/enex/parser'
+import { ContentConverter } from '@/lib/enex/converter'
+import { NoteCreator } from '@/lib/enex/note-creator'
 
-const createMockSupabase = () => {
+const createMockSupabase = (user: User | null = { id: 'user-1' } as User) => {
   return {
     auth: {
-      getUser: cy.stub().resolves({ data: { user: null as User | null } }),
+      getUser: cy.stub().resolves({ data: { user } }),
       signInWithOAuth: cy.stub().resolves({ error: null }),
       signInWithPassword: cy.stub().resolves({ data: { user: null }, error: null }),
       signOut: cy.stub().resolves({ error: null }),
@@ -64,6 +67,63 @@ describe('ImportButton Component', () => {
     // Button should show normal text initially
     cy.contains('Import from Evernote').should('be.visible')
     cy.contains('Importing...').should('not.exist')
+  })
+
+  it('runs full import flow and calls onImportComplete', () => {
+    const onImportComplete = cy.stub().as('onImportComplete')
+
+    // Stub heavy dependencies to avoid real parsing/requests
+    cy.stub(EnexParser.prototype, 'parse').resolves([{
+      title: 'Stub Note',
+      description: 'desc',
+      tags: ['stub'],
+      content: '<p>content</p>',
+      resources: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: 'user-1'
+    }])
+    cy.stub(ContentConverter.prototype, 'convert').resolves('<p>converted</p>')
+    cy.stub(NoteCreator.prototype, 'create').resolves()
+    cy.stub(globalThis.crypto, 'randomUUID').returns('uuid-1')
+
+    cy.mount(wrapWithProvider(<ImportButton onImportComplete={onImportComplete} />, createMockSupabase()))
+
+    cy.contains('Import from Evernote').click()
+
+    cy.get('input[type="file"]').selectFile({
+      contents: Cypress.Buffer.from('<?xml version="1.0"?><en-export></en-export>'),
+      fileName: 'stub.enex',
+      mimeType: 'application/xml'
+    }, { force: true })
+
+    cy.contains('button', 'Import (1)').click()
+
+    cy.get('@onImportComplete').should('have.been.calledWith', 'success', { successCount: 1, errorCount: 0 })
+    cy.contains('Importing...').should('not.exist')
+  })
+
+  it('aborts import when user is not authenticated', () => {
+    cy.stub(EnexParser.prototype, 'parse').as('parseStub')
+    cy.stub(ContentConverter.prototype, 'convert').as('convertStub')
+    cy.stub(NoteCreator.prototype, 'create').as('createStub')
+
+    cy.mount(wrapWithProvider(<ImportButton />, createMockSupabase(null)))
+
+    cy.contains('Import from Evernote').click()
+
+    cy.get('input[type="file"]').selectFile({
+      contents: Cypress.Buffer.from('<?xml version="1.0"?><en-export></en-export>'),
+      fileName: 'stub.enex',
+      mimeType: 'application/xml'
+    }, { force: true })
+
+    cy.contains('button', 'Import (1)').click()
+
+    cy.get('@parseStub').should('not.have.been.called')
+    cy.get('@convertStub').should('not.have.been.called')
+    cy.get('@createStub').should('not.have.been.called')
+    cy.contains('Importing from Evernote').should('not.exist')
   })
 
   it('calls onImportComplete callback on successful import', () => {
