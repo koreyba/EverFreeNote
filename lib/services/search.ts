@@ -7,6 +7,7 @@ export type SearchOptions = {
   minRank?: number;
   limit?: number;
   offset?: number;
+  tag?: string | null;
 };
 
 export type SearchResult = {
@@ -19,6 +20,11 @@ export type SearchResult = {
 export class SearchService {
   constructor(private supabase: SupabaseClient) {}
 
+  // Strip commas to avoid breaking PostgREST OR syntax
+  private sanitizeOrValue(value: string) {
+    return value.replace(/,/g, ' ');
+  }
+
   async searchNotes(
     userId: string,
     query: string,
@@ -28,7 +34,8 @@ export class SearchService {
       language = 'ru',
       minRank = 0.01,
       limit = 20,
-      offset = 0
+      offset = 0,
+      tag = null
     } = options;
 
     // 1. Try Full Text Search (FTS)
@@ -46,9 +53,13 @@ export class SearchService {
       });
 
       if (!error && data) {
+        const filtered = tag
+          ? data.filter((note: FtsSearchResult) => (note.tags ?? []).includes(tag))
+          : data as FtsSearchResult[];
+
         return {
-          results: data,
-          total: data.length,
+          results: filtered,
+          total: filtered.length,
           method: 'fts'
         };
       }
@@ -61,11 +72,18 @@ export class SearchService {
     // 2. Fallback to ILIKE (Simple search)
     try {
       const searchLower = query.toLowerCase();
-      const { data, error } = await this.supabase
+      const safeSearch = this.sanitizeOrValue(searchLower);
+      let supabaseQuery = this.supabase
         .from('notes')
         .select('id, title, description, tags, created_at, updated_at')
         .eq('user_id', userId)
-        .or(`title.ilike.%${searchLower}%,description.ilike.%${searchLower}%`)
+        .or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+
+      if (tag) {
+        supabaseQuery = supabaseQuery.contains('tags', [tag]);
+      }
+
+      const { data, error } = await supabaseQuery
         .range(offset, offset + limit - 1)
         .order('updated_at', { ascending: false });
 

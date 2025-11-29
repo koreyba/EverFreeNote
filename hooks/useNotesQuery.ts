@@ -111,6 +111,7 @@ interface SearchOptions {
   minRank?: number
   limit?: number
   offset?: number
+  selectedTag?: string | null
   enabled?: boolean
 }
 
@@ -132,6 +133,7 @@ export function useSearchNotes(query: string, userId?: string, options: SearchOp
     minRank = 0.01,
     limit = 20,
     offset = 0,
+    selectedTag = null,
     enabled = true
   } = options
 
@@ -142,7 +144,7 @@ export function useSearchNotes(query: string, userId?: string, options: SearchOp
   const isValidQuery = Boolean(debouncedQuery && debouncedQuery.trim().length >= 3 && userId)
 
   return useQuery<SearchQueryResult>({
-    queryKey: ['notes', 'search', debouncedQuery, language, minRank, limit, offset, userId],
+    queryKey: ['notes', 'search', debouncedQuery, language, minRank, limit, offset, selectedTag, userId],
     queryFn: async () => {
       if (!userId) {
         throw new Error('User ID is required for search')
@@ -153,7 +155,8 @@ export function useSearchNotes(query: string, userId?: string, options: SearchOp
         language,
         minRank,
         limit,
-        offset
+        offset,
+        tag: selectedTag ?? undefined
       })
       const executionTime = Date.now() - startTime
 
