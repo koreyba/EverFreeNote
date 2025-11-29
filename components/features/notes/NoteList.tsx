@@ -3,11 +3,8 @@
 import { Loader2, Zap } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import InteractiveTag from "@/components/InteractiveTag"
 import { NoteListSkeleton } from "@/components/NoteListSkeleton"
-import DOMPurify from "isomorphic-dompurify"
-import { SanitizationService } from "@/lib/services/sanitizer"
+import { NoteCard } from "./NoteCard"
 import type { Note, SearchResult } from "@/types/domain"
 
 // Define NoteRecord locally to match what's used in page.tsx
@@ -91,66 +88,12 @@ export function NoteList({
         {/* FTS Results List */}
         <div className="space-y-4">
           {ftsData.results.map((note) => (
-            <Card
+            <NoteCard
               key={note.id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
+              note={note}
+              variant="search"
               onClick={() => onSearchResultClick(note)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-lg line-clamp-2">
-                    {note.title || 'Без названия'}
-                  </CardTitle>
-                  <div className="flex gap-1 flex-shrink-0">
-                    {note.rank !== undefined && note.rank !== null && (
-                      <Badge variant="secondary" className="text-xs">
-                        {(note.rank * 100).toFixed(1)}%
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Highlighted content preview */}
-                {note.headline && (
-                  <div
-                    className="text-sm text-muted-foreground line-clamp-3"
-                    dangerouslySetInnerHTML={{
-                      __html: DOMPurify.sanitize(note.headline, { ALLOWED_TAGS: ['mark'] })
-                    }}
-                    style={{
-                      '--mark-bg': 'hsl(var(--primary) / 0.2)',
-                      '--mark-color': 'hsl(var(--primary))'
-                    } as React.CSSProperties}
-                  />
-                )}
-
-                {/* Tags */}
-                {note.tags && note.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {note.tags.slice(0, 5).map((tag, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                    {note.tags.length > 5 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{note.tags.length - 5}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-
-                {/* Metadata */}
-                <div className="text-xs text-muted-foreground">
-                  {new Date(note.updated_at).toLocaleDateString('ru-RU', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+            />
           ))}
         </div>
       </div>
@@ -177,35 +120,14 @@ export function NoteList({
     <>
       <div className="space-y-1 p-2">
         {notes.map((note) => (
-          <div
+          <NoteCard
             key={note.id}
+            note={note}
+            variant="compact"
+            isSelected={selectedNoteId === note.id}
             onClick={() => onSelectNote(note)}
-            className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedNoteId === note.id
-                ? 'bg-accent border'
-                : 'hover:bg-muted/50 border border-transparent'
-              }`}
-          >
-            <h3 className="font-semibold truncate">{note.title}</h3>
-            <p className="text-sm text-muted-foreground truncate mt-1">
-              {note.description ? SanitizationService.stripHtml(note.description) : ''}
-            </p>
-            {note.tags && note.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {note.tags.slice(0, 3).map((tag, index) => (
-                  <InteractiveTag
-                    key={index}
-                    tag={tag}
-                    onClick={onTagClick}
-                    showIcon={false}
-                    className="text-xs px-2 py-0.5"
-                  />
-                ))}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-2">
-              {new Date(note.updated_at).toLocaleDateString()}
-            </p>
-          </div>
+            onTagClick={onTagClick}
+          />
         ))}
       </div>
 
