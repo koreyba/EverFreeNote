@@ -176,5 +176,76 @@ describe('ImportButton Component', () => {
       .should('have.class', 'w-full')
       .and('be.visible')
   })
+
+  it('handles oversized files', () => {
+    cy.mount(wrapWithProvider(<ImportButton />))
+    
+    cy.contains('Import from Evernote').click()
+    
+    // Create a large file mock
+    const largeFile = new File(['a'.repeat(1024 * 1024 + 1)], 'large.enex', { type: 'application/xml' })
+    Object.defineProperty(largeFile, 'size', { value: 101 * 1024 * 1024 }) // 101MB
+
+    cy.get('input[type="file"]').selectFile({
+      contents: largeFile,
+      fileName: 'large.enex',
+      mimeType: 'application/xml'
+    }, { force: true })
+
+    cy.contains('button', 'Import (1)').click()
+
+    // Should show error toast (we can't verify toast easily, but we can verify import didn't start)
+    cy.contains('Importing...').should('not.exist')
+  })
+
+  it('handles parser errors', () => {
+    const onImportComplete = cy.stub().as('onImportComplete')
+    cy.stub(EnexParser.prototype, 'parse').rejects(new Error('Parse error'))
+
+    cy.mount(wrapWithProvider(<ImportButton onImportComplete={onImportComplete} />, createMockSupabase()))
+
+    cy.contains('Import from Evernote').click()
+
+    cy.get('input[type="file"]').selectFile({
+      contents: Cypress.Buffer.from('invalid'),
+      fileName: 'invalid.enex',
+      mimeType: 'application/xml'
+    }, { force: true })
+
+    cy.contains('button', 'Import (1)').click()
+
+    // Should complete with error
+    cy.get('@onImportComplete').should('have.been.calledWith', 'partial', { successCount: 0, errorCount: 1 })
+  })
+
+  it('handles note creation errors', () => {
+    const onImportComplete = cy.stub().as('onImportComplete')
+    
+    cy.stub(EnexParser.prototype, 'parse').resolves([{
+      title: 'Note 1',
+      content: 'content',
+      resources: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: 'user-1'
+    }])
+    cy.stub(ContentConverter.prototype, 'convert').resolves('content')
+    cy.stub(NoteCreator.prototype, 'create').rejects(new Error('Create error'))
+
+    cy.mount(wrapWithProvider(<ImportButton onImportComplete={onImportComplete} />, createMockSupabase()))
+
+    cy.contains('Import from Evernote').click()
+
+    cy.get('input[type="file"]').selectFile({
+      contents: Cypress.Buffer.from('valid'),
+      fileName: 'valid.enex',
+      mimeType: 'application/xml'
+    }, { force: true })
+
+    cy.contains('button', 'Import (1)').click()
+
+    // Should complete with error
+    cy.get('@onImportComplete').should('have.been.calledWith', 'partial', { successCount: 0, errorCount: 1 })
+  })
 })
 

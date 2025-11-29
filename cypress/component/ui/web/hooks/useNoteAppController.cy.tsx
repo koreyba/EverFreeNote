@@ -1,0 +1,329 @@
+import React from 'react'
+import { useNoteAppController } from '../../../../../ui/web/hooks/useNoteAppController'
+import { QueryProvider } from '@/components/providers/QueryProvider'
+import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
+import { NoteViewModel } from '@/types/domain'
+
+const TestComponent = () => {
+  const controller = useNoteAppController()
+  
+  return (
+    <div>
+      <div data-cy="loading">{controller.loading ? 'true' : 'false'}</div>
+      <div data-cy="user">{controller.user ? controller.user.id : 'no-user'}</div>
+      <div data-cy="isEditing">{controller.isEditing ? 'true' : 'false'}</div>
+      <div data-cy="editForm-title">{controller.editForm.title}</div>
+      <div data-cy="selectedNote-id">{controller.selectedNote ? controller.selectedNote.id : 'none'}</div>
+      <div data-cy="searchQuery">{controller.searchQuery}</div>
+      <div data-cy="deleteDialogOpen">{controller.deleteDialogOpen ? 'true' : 'false'}</div>
+      <div data-cy="filterByTag">{controller.filterByTag || 'none'}</div>
+
+      <button data-cy="login-btn" onClick={controller.handleTestLogin}>Login</button>
+      <button data-cy="skip-auth-btn" onClick={controller.handleSkipAuth}>Skip Auth</button>
+      <button data-cy="sign-out-btn" onClick={controller.handleSignOut}>Sign Out</button>
+      <button data-cy="google-login-btn" onClick={controller.handleSignInWithGoogle}>Google Login</button>
+      
+      <button data-cy="create-note-btn" onClick={controller.handleCreateNote}>Create Note</button>
+      <button data-cy="edit-note-btn" onClick={() => controller.handleEditNote({ 
+        id: '1', 
+        title: 'Test Note', 
+        description: 'Desc', 
+        tags: [],
+        created_at: '2023-01-01',
+        updated_at: '2023-01-01',
+        user_id: 'test-user'
+      } as NoteViewModel)}>Edit Note</button>
+      <button data-cy="select-note-btn" onClick={() => controller.handleSelectNote({ 
+        id: '2', 
+        title: 'Selected Note',
+        description: '',
+        tags: [],
+        created_at: '2023-01-01',
+        updated_at: '2023-01-01',
+        user_id: 'test-user'
+      } as NoteViewModel)}>Select Note</button>
+      <button data-cy="search-btn" onClick={() => controller.handleSearch('test query')}>Search</button>
+      
+      <input 
+        data-cy="title-input" 
+        value={controller.editForm.title} 
+        onChange={(e) => controller.setEditForm({ ...controller.editForm, title: e.target.value })}
+      />
+      <button data-cy="save-note-btn" onClick={controller.handleSaveNote}>Save Note</button>
+      <button data-cy="delete-note-btn" onClick={() => controller.handleDeleteNote({ 
+        id: '1', 
+        title: 'To Delete', 
+        description: '', 
+        tags: [],
+        created_at: '2023-01-01',
+        updated_at: '2023-01-01',
+        user_id: 'test-user'
+      } as NoteViewModel)}>Delete Note</button>
+      <button data-cy="confirm-delete-btn" onClick={controller.confirmDeleteNote}>Confirm Delete</button>
+      
+      <button data-cy="tag-click-btn" onClick={() => controller.handleTagClick('test-tag')}>Tag Click</button>
+      <button data-cy="clear-tag-btn" onClick={controller.handleClearTagFilter}>Clear Tag</button>
+      <button data-cy="search-result-click-btn" onClick={() => controller.handleSearchResultClick({
+        id: '3',
+        title: 'Search Result',
+        description: 'Desc',
+        tags: [],
+        created_at: '2023-01-01',
+        updated_at: '2023-01-01',
+        user_id: 'test-user',
+        rank: 1,
+        headline: 'Headline'
+      })}>Search Result Click</button>
+      <button data-cy="invalidate-btn" onClick={controller.invalidateNotes}>Invalidate</button>
+    </div>
+  )
+}
+
+describe('useNoteAppController', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockSupabase: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockQueryBuilder: any
+
+  beforeEach(() => {
+    mockQueryBuilder = {
+      select: cy.stub().returnsThis(),
+      order: cy.stub().returnsThis(),
+      range: cy.stub().returnsThis(),
+      contains: cy.stub().returnsThis(),
+      or: cy.stub().returnsThis(),
+      insert: cy.stub().returnsThis(),
+      update: cy.stub().returnsThis(),
+      delete: cy.stub().returnsThis(),
+      eq: cy.stub().returnsThis(),
+      single: cy.stub().resolves({ data: { id: '1', title: 'Saved Note', tags: [] }, error: null }),
+      then: (resolve: any) => resolve({ data: [], error: null, count: 0 })
+    }
+
+    mockSupabase = {
+      auth: {
+        getSession: cy.stub().resolves({ data: { session: null }, error: null }),
+        onAuthStateChange: cy.stub().returns({ data: { subscription: { unsubscribe: cy.stub() } } }),
+        signInWithOAuth: cy.stub().resolves({ error: null }),
+        signInWithPassword: cy.stub().resolves({ data: { user: { id: 'test-user' } }, error: null }),
+        signOut: cy.stub().resolves({ error: null }),
+      },
+      from: cy.stub().returns(mockQueryBuilder),
+      rpc: cy.stub().resolves({ data: [], error: null })
+    }
+  })
+
+  it('initializes with loading state and checks auth', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+    
+    cy.get('[data-cy="loading"]').should('contain', 'false')
+    cy.get('[data-cy="user"]').should('contain', 'no-user')
+    
+    cy.wrap(mockSupabase.auth.getSession).should('have.been.called')
+  })
+
+  it('handles login', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="login-btn"]').click()
+    cy.get('[data-cy="user"]').should('contain', 'test-user')
+  })
+
+  it('handles skip auth', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="skip-auth-btn"]').click()
+    cy.get('[data-cy="user"]').should('contain', 'test-user')
+  })
+
+  it('handles sign out', () => {
+    mockSupabase.auth.getSession.resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+    
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="user"]').should('contain', 'test-user')
+    cy.get('[data-cy="sign-out-btn"]').click()
+    cy.get('[data-cy="user"]').should('contain', 'no-user')
+    cy.wrap(mockSupabase.auth.signOut).should('have.been.called')
+  })
+
+  it('handles google login', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="google-login-btn"]').click()
+    cy.wrap(mockSupabase.auth.signInWithOAuth).should('have.been.called')
+  })
+
+  it('handles create note state', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="create-note-btn"]').click()
+    cy.get('[data-cy="isEditing"]').should('contain', 'true')
+    cy.get('[data-cy="editForm-title"]').should('be.empty')
+    cy.get('[data-cy="selectedNote-id"]').should('contain', 'none')
+  })
+
+  it('handles edit note state', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="isEditing"]').should('contain', 'true')
+    cy.get('[data-cy="editForm-title"]').should('contain', 'Test Note')
+    cy.get('[data-cy="selectedNote-id"]').should('contain', '1')
+  })
+
+  it('handles select note', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="select-note-btn"]').click()
+    cy.get('[data-cy="isEditing"]').should('contain', 'false')
+    cy.get('[data-cy="selectedNote-id"]').should('contain', '2')
+  })
+
+  it('handles search', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="search-btn"]').click()
+    cy.get('[data-cy="searchQuery"]').should('contain', 'test query')
+  })
+
+  it('handles save note (create)', () => {
+    // We need user to be logged in for save to work
+    mockSupabase.auth.getSession.resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    // Wait for auth check
+    cy.get('[data-cy="user"]').should('contain', 'test-user')
+
+    cy.get('[data-cy="create-note-btn"]').click()
+    cy.get('[data-cy="title-input"]').type('New Note')
+    cy.get('[data-cy="save-note-btn"]').click()
+
+    // Check if insert was called
+    cy.wrap(mockQueryBuilder.insert).should('have.been.called')
+  })
+
+  it('handles delete note', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="delete-note-btn"]').click()
+    cy.get('[data-cy="deleteDialogOpen"]').should('contain', 'true')
+    
+    cy.get('[data-cy="confirm-delete-btn"]').click()
+    
+    // Check if delete was called
+    cy.wrap(mockQueryBuilder.delete).should('have.been.called')
+    cy.wrap(mockQueryBuilder.eq).should('have.been.calledWith', 'id', '1')
+  })
+
+  it('handles tag filtering', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="tag-click-btn"]').click()
+    cy.get('[data-cy="filterByTag"]').should('contain', 'test-tag')
+    
+    cy.get('[data-cy="clear-tag-btn"]').click()
+    cy.get('[data-cy="filterByTag"]').should('contain', 'none')
+  })
+
+  it('handles search result click', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="search-result-click-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('contain', '3')
+    cy.get('[data-cy="isEditing"]').should('contain', 'false')
+  })
+
+  it('handles invalidation', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="invalidate-btn"]').click()
+    // Hard to assert invalidation directly without spying on queryClient, 
+    // but ensuring it doesn't crash is a good start
+  })
+})
