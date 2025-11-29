@@ -29,6 +29,7 @@ export default function RootLayout({
                 defaultTheme="light"
                 enableSystem={false}
                 storageKey="everfreenote-theme"
+                disableTransitionOnChange={true}
               >
                 {children}
                 <Toaster />

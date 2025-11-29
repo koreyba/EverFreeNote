@@ -24,6 +24,7 @@ export default function InteractiveTag({
   const [isHovered, setIsHovered] = React.useState(false)
 
   const handleTagClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation() // Prevent card onClick from firing
     const target = event.target as HTMLElement | null
     if (target?.closest(".remove-tag")) return
     onClick?.(tag)
