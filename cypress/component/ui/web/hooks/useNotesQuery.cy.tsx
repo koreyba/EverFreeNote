@@ -2,8 +2,15 @@ import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 import { useNotesQuery, useFlattenedNotes, useSearchNotes } from '../../../../../ui/web/hooks/useNotesQuery'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-const TestComponent = ({ userId, searchQuery, selectedTag }: any) => {
+interface TestComponentProps {
+  userId?: string
+  searchQuery?: string
+  selectedTag?: string | null
+}
+
+const TestComponent = ({ userId, searchQuery, selectedTag }: TestComponentProps) => {
   const query = useNotesQuery({ userId, searchQuery, selectedTag })
   const notes = useFlattenedNotes(query)
   
@@ -14,7 +21,7 @@ const TestComponent = ({ userId, searchQuery, selectedTag }: any) => {
     <div>
       <div data-cy="notes-count">{notes.length}</div>
       <ul>
-        {notes.map((note: any) => (
+        {notes.map((note) => (
           <li key={note.id} data-cy={`note-${note.id}`}>{note.title}</li>
         ))}
       </ul>
@@ -22,7 +29,20 @@ const TestComponent = ({ userId, searchQuery, selectedTag }: any) => {
   )
 }
 
-const SearchTestComponent = ({ query, userId, options }: any) => {
+interface SearchTestComponentProps {
+  query: string
+  userId?: string
+  options?: {
+    language?: 'ru' | 'en' | 'uk'
+    minRank?: number
+    limit?: number
+    offset?: number
+    selectedTag?: string | null
+    enabled?: boolean
+  }
+}
+
+const SearchTestComponent = ({ query, userId, options }: SearchTestComponentProps) => {
   const searchQuery = useSearchNotes(query, userId, options)
 
   if (searchQuery.isLoading) return <div>Searching...</div>
@@ -33,7 +53,7 @@ const SearchTestComponent = ({ query, userId, options }: any) => {
     <div>
       <div data-cy="search-count">{searchQuery.data.results.length}</div>
       <ul>
-        {searchQuery.data.results.map((note: any) => (
+        {searchQuery.data.results.map((note) => (
           <li key={note.id} data-cy={`search-note-${note.id}`}>{note.title}</li>
         ))}
       </ul>
@@ -42,7 +62,7 @@ const SearchTestComponent = ({ query, userId, options }: any) => {
 }
 
 describe('useNotesQuery', () => {
-  let mockSupabase: any
+  let mockSupabase: SupabaseClient
   let queryClient: QueryClient
 
   beforeEach(() => {
@@ -55,7 +75,7 @@ describe('useNotesQuery', () => {
     })
 
     // Helper to create a chainable mock
-    const createChain = (finalResult: any) => {
+    const createChain = (finalResult: { data: unknown[]; error: unknown; count?: number }) => {
       const chain = {
         select: cy.stub().returnsThis(),
         order: cy.stub().returnsThis(),
@@ -63,7 +83,7 @@ describe('useNotesQuery', () => {
         eq: cy.stub().returnsThis(),
         contains: cy.stub().returnsThis(),
         or: cy.stub().returnsThis(),
-        then: (cb: any) => cb(finalResult) // For await
+        then: (cb: (res: typeof finalResult) => void) => cb(finalResult) // For await
       }
       // Make methods return the chain itself
       chain.select.returns(chain)
@@ -77,7 +97,7 @@ describe('useNotesQuery', () => {
     mockSupabase = {
       from: cy.stub().returns(createChain({ data: [{ id: '1', title: 'Note 1' }], error: null, count: 1 })),
       rpc: cy.stub().resolves({ data: [{ id: '2', title: 'Search Result', rank: 0.5 }], error: null })
-    }
+    } as unknown as SupabaseClient
   })
 
   it('fetches notes successfully', () => {
@@ -94,7 +114,7 @@ describe('useNotesQuery', () => {
   })
 
   it('handles empty data in useFlattenedNotes', () => {
-    const createChain = (finalResult: any) => {
+    const createChain = (finalResult: { data: unknown[]; error: unknown; count?: number }) => {
       const chain = {
         select: cy.stub().returnsThis(),
         order: cy.stub().returnsThis(),
@@ -102,7 +122,7 @@ describe('useNotesQuery', () => {
         eq: cy.stub().returnsThis(),
         contains: cy.stub().returnsThis(),
         or: cy.stub().returnsThis(),
-        then: (cb: any) => cb(finalResult)
+        then: (cb: (res: typeof finalResult) => void) => cb(finalResult)
       }
       chain.select.returns(chain)
       chain.order.returns(chain)

@@ -3,6 +3,7 @@ import { useNoteAppController } from '../../../../../ui/web/hooks/useNoteAppCont
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 import { NoteViewModel } from '@/types/domain'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const TestComponent = () => {
   const controller = useNoteAppController()
@@ -79,11 +80,33 @@ const TestComponent = () => {
   )
 }
 
+interface MockQueryBuilder {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  select: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  order: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  range: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  contains: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  or: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  insert: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  update: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  eq: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  single: any
+  then: (resolve: (res: { data: unknown[]; error: null; count: number }) => void) => void
+}
+
 describe('useNoteAppController', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockQueryBuilder: any
+  let mockSupabase: SupabaseClient
+  let mockQueryBuilder: MockQueryBuilder
 
   beforeEach(() => {
     mockQueryBuilder = {
@@ -97,7 +120,7 @@ describe('useNoteAppController', () => {
       delete: cy.stub().returnsThis(),
       eq: cy.stub().returnsThis(),
       single: cy.stub().resolves({ data: { id: '1', title: 'Saved Note', tags: [] }, error: null }),
-      then: (resolve: any) => resolve({ data: [], error: null, count: 0 })
+      then: (resolve: (res: { data: unknown[]; error: null; count: number }) => void) => resolve({ data: [], error: null, count: 0 })
     }
 
     mockSupabase = {
@@ -110,7 +133,7 @@ describe('useNoteAppController', () => {
       },
       from: cy.stub().returns(mockQueryBuilder),
       rpc: cy.stub().resolves({ data: [], error: null })
-    }
+    } as unknown as SupabaseClient
   })
 
   it('initializes with loading state and checks auth', () => {
@@ -155,7 +178,8 @@ describe('useNoteAppController', () => {
   })
 
   it('handles sign out', () => {
-    mockSupabase.auth.getSession.resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mockSupabase.auth.getSession as any).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
     
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
@@ -243,7 +267,8 @@ describe('useNoteAppController', () => {
 
   it('handles save note (create)', () => {
     // We need user to be logged in for save to work
-    mockSupabase.auth.getSession.resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mockSupabase.auth.getSession as any).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>

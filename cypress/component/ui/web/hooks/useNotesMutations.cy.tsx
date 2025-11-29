@@ -42,21 +42,24 @@ describe('useNotesMutations', () => {
     // Mock Supabase
     mockSupabase = {
       from: () => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         insert: () => ({
           select: () => ({
             single: cy.stub().resolves({ data: { id: 'temp-1', title: 'New' }, error: null })
           })
-        }),
+        } as any),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         update: () => ({
           eq: () => ({
             select: () => ({
               single: cy.stub().resolves({ data: { id: '1', title: 'Updated' }, error: null })
             })
           })
-        }),
+        } as any),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete: () => ({
           eq: cy.stub().resolves({ error: null })
-        })
+        } as any)
       })
     } as unknown as SupabaseClient
   })
@@ -80,7 +83,7 @@ describe('useNotesMutations', () => {
 
   it('optimistically updates cache on update', () => {
     // Seed cache
-    queryClient.setQueryData(['notes'], {
+    queryClient.setQueryData<any>(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original' }] }]
     })
 
@@ -100,7 +103,7 @@ describe('useNotesMutations', () => {
 
   it('optimistically updates cache on delete', () => {
     // Seed cache
-    queryClient.setQueryData(['notes'], {
+    queryClient.setQueryData<any>(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original' }] }]
     })
 
@@ -120,7 +123,7 @@ describe('useNotesMutations', () => {
 
   it('optimistically updates cache on remove tag', () => {
     // Seed cache
-    queryClient.setQueryData(['notes'], {
+    queryClient.setQueryData<any>(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original', tags: ['tag1'] }] }]
     })
 
@@ -140,18 +143,20 @@ describe('useNotesMutations', () => {
 
   it('rolls back on error', () => {
     // Seed cache so we have something to rollback to
-    queryClient.setQueryData(['notes'], {
+    queryClient.setQueryData<any>(['notes'], {
       pages: [{ notes: [] }]
     })
 
     // Mock error
-    mockSupabase.from = () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockSupabase as any).from = () => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       insert: () => ({
         select: () => ({
           single: cy.stub().rejects(new Error('Failed'))
         })
-      })
-    })
+      } as any)
+    } as any)
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
@@ -178,20 +183,22 @@ describe('useNotesMutations', () => {
 
   it('rolls back on update error', () => {
     // Seed cache
-    queryClient.setQueryData(['notes'], {
+    queryClient.setQueryData<any>(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original' }] }]
     })
 
     // Mock error
-    mockSupabase.from = () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockSupabase as any).from = () => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       update: () => ({
         eq: () => ({
           select: () => ({
             single: cy.stub().rejects(new Error('Failed'))
           })
         })
-      })
-    })
+      } as any)
+    } as any)
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
@@ -211,16 +218,18 @@ describe('useNotesMutations', () => {
 
   it('rolls back on delete error', () => {
     // Seed cache
-    queryClient.setQueryData(['notes'], {
+    queryClient.setQueryData<any>(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original' }] }]
     })
 
     // Mock error
-    mockSupabase.from = () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockSupabase as any).from = () => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete: () => ({
         eq: cy.stub().rejects(new Error('Failed'))
-      })
-    })
+      } as any)
+    } as any)
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
@@ -237,20 +246,22 @@ describe('useNotesMutations', () => {
 
   it('rolls back on remove tag error', () => {
     // Seed cache
-    queryClient.setQueryData(['notes'], {
+    queryClient.setQueryData<any>(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original', tags: ['tag1'] }] }]
     })
 
     // Mock error
-    mockSupabase.from = () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockSupabase as any).from = () => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       update: () => ({
         eq: () => ({
           select: () => ({
             single: cy.stub().rejects(new Error('Failed'))
           })
         })
-      })
-    })
+      } as any)
+    } as any)
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
