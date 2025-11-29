@@ -1,6 +1,8 @@
 "use client"
 
+import { useEffect } from "react"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
 import { AuthShell } from "@/components/features/auth/AuthShell"
 import { NotesShell } from "@/components/features/notes/NotesShell"
@@ -9,6 +11,21 @@ import { useNoteAppController } from "@/hooks/useNoteAppController"
 export default function App() {
   const controller = useNoteAppController()
   const { user, loading, handleTestLogin, handleSkipAuth, handleSignInWithGoogle } = controller
+
+  // Show auth error from URL params
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const error = params.get('error')
+      const message = params.get('message')
+
+      if (error === 'auth_callback_failed') {
+        toast.error(`Authentication failed: ${message || 'Unknown error'}`)
+        // Clean up URL
+        window.history.replaceState({}, '', '/')
+      }
+    }
+  }, [])
 
   if (loading) {
     return (

@@ -19,10 +19,15 @@ export default function AuthCallback() {
 
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
-        
+
         if (error) {
           console.error("Error exchanging code for session:", error)
-          router.push("/?error=auth_callback_failed")
+          console.error("Error details:", {
+            message: error.message,
+            status: error.status,
+            name: error.name
+          })
+          router.push(`/?error=auth_callback_failed&message=${encodeURIComponent(error.message)}`)
           return
         }
       }
