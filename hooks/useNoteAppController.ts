@@ -135,6 +135,8 @@ export function useNoteAppController() {
         provider: 'google',
         options: {
           redirectTo: origin ? `${origin}/auth/callback` : undefined,
+          // Explicitly enable PKCE flow for public clients
+          flowType: 'pkce',
         },
       })
       if (error) console.error('Error signing in:', error)
