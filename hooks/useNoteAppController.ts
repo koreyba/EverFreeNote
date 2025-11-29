@@ -20,6 +20,7 @@ export function useNoteAppController() {
   // -- State --
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [authLoading, setAuthLoading] = useState(false) // Local loading state for auth operations
   const [selectedNote, setSelectedNote] = useState<NoteViewModel | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [ftsSearchQuery, setFtsSearchQuery] = useState("")
@@ -35,8 +36,11 @@ export function useNoteAppController() {
   const [noteToDelete, setNoteToDelete] = useState<NoteViewModel | null>(null)
 
   // -- Dependencies --
-  const { supabase } = useSupabase()
+  const { supabase, loading: providerLoading } = useSupabase()
   const queryClient = useQueryClient()
+  
+  // Combine provider loading with local auth loading
+  const combinedLoading = loading || providerLoading || authLoading
 
   // -- Queries --
   const notesQuery = useNotesQuery({
@@ -141,7 +145,7 @@ export function useNoteAppController() {
 
   const handleTestLogin = async () => {
     try {
-      setLoading(true)
+      setAuthLoading(true) // Show loading indicator immediately
       const { data, error } = await supabase.auth.signInWithPassword({
         email: 'test@example.com',
         password: 'testpassword123'
@@ -149,24 +153,25 @@ export function useNoteAppController() {
 
       if (error) {
         toast.error('Failed to login as test user: ' + error.message)
-        setLoading(false)
+        setAuthLoading(false)
         return
       }
 
       if (data?.user) {
         setUser(data.user)
         toast.success('Logged in as test user!')
+        // loading from SupabaseProvider will be updated via onAuthStateChange
       }
     } catch {
       toast.error('Failed to login as test user')
     } finally {
-      setLoading(false)
+      setAuthLoading(false)
     }
   }
 
   const handleSkipAuth = async () => {
     try {
-      setLoading(true)
+      setAuthLoading(true) // Show loading indicator immediately
       const { data, error } = await supabase.auth.signInWithPassword({
         email: 'skip-auth@example.com',
         password: 'testpassword123'
@@ -174,18 +179,19 @@ export function useNoteAppController() {
 
       if (error) {
         toast.error('Failed to login as skip-auth user: ' + error.message)
-        setLoading(false)
+        setAuthLoading(false)
         return
       }
 
       if (data?.user) {
         setUser(data.user)
         toast.success('Logged in as skip-auth user!')
+        // loading from SupabaseProvider will be updated via onAuthStateChange
       }
     } catch {
       toast.error('Failed to login as skip-auth user')
     } finally {
-      setLoading(false)
+      setAuthLoading(false)
     }
   }
 
@@ -317,7 +323,7 @@ export function useNoteAppController() {
   return {
     // State
     user,
-    loading,
+    loading: combinedLoading,
     selectedNote,
     searchQuery,
     isEditing,

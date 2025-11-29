@@ -18,6 +18,15 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = typeof event.reason === "string" ? event.reason : (event.reason?.message as string | undefined)
+      if (reason?.includes("Navigator LockManager lock")) {
+        // Supabase auth falls back if Web Locks are busy; ignore to avoid debugger breakpoints
+        event.preventDefault()
+      }
+    }
+    window.addEventListener("unhandledrejection", handleUnhandledRejection)
+
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
@@ -40,6 +49,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       subscription.unsubscribe()
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection)
     }
   }, [supabase])
 
