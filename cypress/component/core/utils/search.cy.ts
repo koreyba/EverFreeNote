@@ -80,8 +80,6 @@ describe('core/utils/search', () => {
           created_at: '2023-01-01',
           updated_at: '2023-01-01',
           user_id: 'old-user',
-          is_archived: false,
-          is_favorite: false
         }
       ]
       const userId = 'new-user'
@@ -104,8 +102,6 @@ describe('core/utils/search', () => {
           created_at: '2023-01-01',
           updated_at: '2023-01-01',
           user_id: 'user',
-          is_archived: false,
-          is_favorite: false
         }
       ]
       const result = mapNotesToFtsResult(notes, 'user')

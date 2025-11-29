@@ -3,12 +3,12 @@ import { ImportDialog } from '@/components/ImportDialog'
 import { DuplicateStrategy } from '@/lib/enex/types'
 
 describe('ImportDialog', () => {
-  const onOpenChangeSpy = cy.spy().as('onOpenChange')
-  const onImportSpy = cy.spy().as('onImport')
+  let onOpenChangeSpy: any
+  let onImportSpy: any
 
   beforeEach(() => {
-    onOpenChangeSpy.resetHistory()
-    onImportSpy.resetHistory()
+    onOpenChangeSpy = cy.spy().as('onOpenChange')
+    onImportSpy = cy.spy().as('onImport')
   })
 
   it('renders correctly when open', () => {

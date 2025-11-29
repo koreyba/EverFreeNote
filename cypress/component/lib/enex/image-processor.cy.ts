@@ -1,10 +1,31 @@
 import { ImageProcessor } from '../../../../lib/enex/image-processor'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+type UploadResponse = { data: { path: string } | null; error: null | { message: string } }
+type PublicUrlResponse = { data: { publicUrl: string | null } }
+
+interface CypressStub<TArgs extends any[] = any[], TResult = any> {
+  (...args: TArgs): TResult
+  resolves(value: TResult): this
+  rejects(reason?: any): this
+  getCall(index: number): { args: any[] }
+  returns(value: TResult): this
+}
+
+type SupabaseStorageStub = {
+  from: () => SupabaseStorageStub
+  upload: CypressStub<any[], UploadResponse>
+  getPublicUrl: CypressStub<any[], PublicUrlResponse>
+}
+
+type SupabaseClientStub = {
+  storage: SupabaseStorageStub
+}
+
 describe('ImageProcessor', () => {
   let processor: ImageProcessor
-  let mockSupabase: any
-  let mockStorage: any
+  let mockSupabase: SupabaseClientStub
+  let mockStorage: SupabaseStorageStub
 
   beforeEach(() => {
     mockStorage = {
@@ -17,7 +38,7 @@ describe('ImageProcessor', () => {
       storage: mockStorage
     }
 
-    processor = new ImageProcessor(mockSupabase as SupabaseClient)
+    processor = new ImageProcessor(mockSupabase as unknown as SupabaseClient)
   })
 
   it('uploads an image successfully', async () => {
@@ -58,17 +79,16 @@ describe('ImageProcessor', () => {
     
     // Maybe we can skip this test or try to mock the private method if we cast to any.
     
-    const processorAny = processor as any
-    const originalBase64ToBlob = processorAny.base64ToBlob
-    processorAny.base64ToBlob = () => {
-      return { size: 11 * 1024 * 1024 } // Mock blob with large size
-    }
+      const processorAny = processor as unknown as { base64ToBlob: () => { size: number } }
+      const originalBase64ToBlob = processorAny.base64ToBlob
+      processorAny.base64ToBlob = () => ({ size: 11 * 1024 * 1024 })
 
     try {
       await processor.upload('data', 'image/png', 'u', 'n', 'f')
       expect.fail('Should have thrown error')
-    } catch (error: any) {
-      expect(error.message).to.contain('Image too large')
+    } catch (error: unknown) {
+      const err = error as Error
+      expect(err.message).to.contain('Image too large')
     } finally {
       processorAny.base64ToBlob = originalBase64ToBlob
     }
@@ -80,8 +100,9 @@ describe('ImageProcessor', () => {
     try {
       await processor.upload('data', 'image/png', 'u', 'n', 'f')
       expect.fail('Should have thrown error')
-    } catch (error: any) {
-      expect(error.message).to.contain('Storage error')
+    } catch (error: unknown) {
+      const err = error as Error
+      expect(err.message).to.contain('Storage error')
     }
   })
 
@@ -91,8 +112,9 @@ describe('ImageProcessor', () => {
     try {
       await processor.upload('data', 'image/png', 'u', 'n', 'f')
       expect.fail('Should have thrown error')
-    } catch (error: any) {
-      expect(error.message).to.contain('Failed to get public URL')
+    } catch (error: unknown) {
+      const err = error as Error
+      expect(err.message).to.contain('Failed to get public URL')
     }
   })
 })

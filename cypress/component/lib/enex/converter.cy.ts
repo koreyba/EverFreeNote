@@ -2,15 +2,25 @@ import { ContentConverter } from '../../../../lib/enex/converter'
 import { ImageProcessor } from '../../../../lib/enex/image-processor'
 import type { EnexResource } from '../../../../lib/enex/types'
 
+interface CypressStub<TArgs extends any[] = any[], TResult = any> {
+  (...args: TArgs): TResult
+  resolves(value: TResult): this
+  rejects(reason?: any): this
+}
+
+type ImageProcessorStub = {
+  upload: CypressStub<any[], string>
+}
+
 describe('ContentConverter', () => {
   let converter: ContentConverter
-  let mockImageProcessor: any
+  let mockImageProcessor: ImageProcessorStub
 
   beforeEach(() => {
     mockImageProcessor = {
       upload: cy.stub().resolves('https://example.com/image.png')
     }
-    converter = new ContentConverter(mockImageProcessor as ImageProcessor)
+    converter = new ContentConverter(mockImageProcessor as unknown as ImageProcessor)
   })
 
   it('converts basic ENML to HTML', async () => {

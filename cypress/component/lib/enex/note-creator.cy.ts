@@ -2,10 +2,31 @@ import { NoteCreator } from '../../../../lib/enex/note-creator'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ParsedNote } from '../../../../lib/enex/types'
 
+interface CypressStub<TArgs extends any[] = any[], TResult = any> {
+  (...args: TArgs): TResult
+  resolves(value: TResult): this
+  rejects(reason?: any): this
+  returnsThis(): this
+  getCall?(index: number): { args: any[] }
+}
+
+type SupabaseQueryBuilder = {
+  select: CypressStub<any[], any>
+  eq: CypressStub<any[], any>
+  insert: CypressStub<any[], any>
+  update: CypressStub<any[], any>
+  single: CypressStub<any[], { data: unknown; error: { message: string } | null }>
+  then: (callback: (result: { data: any[]; error: any }) => void) => void
+}
+
+type SupabaseClientStub = {
+  from: () => SupabaseQueryBuilder
+}
+
 describe('NoteCreator', () => {
   let creator: NoteCreator
-  let mockSupabase: any
-  let mockQueryBuilder: any
+  let mockSupabase: SupabaseClientStub
+  let mockQueryBuilder: SupabaseQueryBuilder
 
   const mockNote: ParsedNote = {
     title: 'Test Note',
@@ -23,14 +44,14 @@ describe('NoteCreator', () => {
       insert: cy.stub().returnsThis(),
       update: cy.stub().returnsThis(),
       single: cy.stub().resolves({ data: { id: 'new-note-id' }, error: null }),
-      then: (resolve: any) => resolve({ data: [], error: null }) // Default: no duplicates
+      then: (resolve) => resolve({ data: [], error: null }) // Default: no duplicates
     }
 
     mockSupabase = {
       from: cy.stub().returns(mockQueryBuilder)
     }
 
-    creator = new NoteCreator(mockSupabase as SupabaseClient)
+    creator = new NoteCreator(mockSupabase as unknown as SupabaseClient)
   })
 
   it('creates a new note when no duplicate exists', async () => {
@@ -40,7 +61,7 @@ describe('NoteCreator', () => {
     expect(mockSupabase.from).to.have.been.calledWith('notes')
     expect(mockQueryBuilder.insert).to.have.been.called
     
-    const insertCall = mockQueryBuilder.insert.getCall(0)
+    const insertCall = (mockQueryBuilder.insert as { getCall: (index: number) => { args: any[] } }).getCall(0)
     const noteData = insertCall.args[0]
     expect(noteData.title).to.equal('Test Note')
     expect(noteData.user_id).to.equal('user1')
@@ -48,7 +69,7 @@ describe('NoteCreator', () => {
 
   it('skips duplicate when strategy is skip', async () => {
     // Mock duplicate found
-    mockQueryBuilder.then = (resolve: any) => resolve({ data: [{ id: 'existing-id', title: 'Test Note' }], error: null })
+    mockQueryBuilder.then = (resolve) => resolve({ data: [{ id: 'existing-id', title: 'Test Note' }], error: null })
     
     const id = await creator.create(mockNote, 'user1', 'skip')
     
@@ -59,7 +80,7 @@ describe('NoteCreator', () => {
 
   it('replaces duplicate when strategy is replace', async () => {
     // Mock duplicate found
-    mockQueryBuilder.then = (resolve: any) => resolve({ data: [{ id: 'existing-id', title: 'Test Note' }], error: null })
+    mockQueryBuilder.then = (resolve) => resolve({ data: [{ id: 'existing-id', title: 'Test Note' }], error: null })
     
     // Mock update response
     mockQueryBuilder.single.resolves({ data: { id: 'existing-id' }, error: null })
@@ -73,14 +94,14 @@ describe('NoteCreator', () => {
 
   it('prefixes duplicate when strategy is prefix', async () => {
     // Mock duplicate found
-    mockQueryBuilder.then = (resolve: any) => resolve({ data: [{ id: 'existing-id', title: 'Test Note' }], error: null })
+    mockQueryBuilder.then = (resolve) => resolve({ data: [{ id: 'existing-id', title: 'Test Note' }], error: null })
     
     const id = await creator.create(mockNote, 'user1', 'prefix')
     
     expect(id).to.equal('new-note-id')
     expect(mockQueryBuilder.insert).to.have.been.called
     
-    const insertCall = mockQueryBuilder.insert.getCall(0)
+    const insertCall = (mockQueryBuilder.insert as { getCall: (index: number) => { args: any[] } }).getCall(0)
     const noteData = insertCall.args[0]
     expect(noteData.title).to.equal('[duplicate] Test Note')
   })
@@ -91,8 +112,8 @@ describe('NoteCreator', () => {
     try {
       await creator.create(mockNote, 'user1')
       expect.fail('Should have thrown error')
-    } catch (error: any) {
-      expect(error.message).to.contain('Failed to create note: DB Error')
+    } catch (error: unknown) {
+      expect((error as Error).message).to.contain('Failed to create note: DB Error')
     }
   })
 })
