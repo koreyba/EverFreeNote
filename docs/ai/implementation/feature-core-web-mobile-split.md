@@ -21,6 +21,7 @@ description: Technical implementation notes, patterns, and code guidelines
 - `/ui/mobile`: RN entrypoint, mobile adapters, providers (позже UI).
 - Общие утилиты и типы — в core.
 - Для RN адаптеров: storage на AsyncStorage, navigation/oauth на Linking + expo-auth-session.
+- Для web адаптеров: storage на localStorage, navigation на window.location, OAuth redirect через браузер.
 
 ## Implementation Notes
 **Key technical details to remember:**

@@ -3,12 +3,14 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { User } from '@supabase/supabase-js'
 
-import { browser } from '@/lib/adapters/browser'
 import { useSupabase } from '@/lib/providers/SupabaseProvider'
 import { useNotesQuery, useFlattenedNotes, useSearchNotes } from '@/hooks/useNotesQuery'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from '@/hooks/useNotesMutations'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import type { NoteViewModel, SearchResult } from '@/types/domain'
+import { AuthService } from '@core/services/auth'
+import { webStorageAdapter } from '@ui/web/adapters/storage'
+import { webOAuthRedirectUri } from '@ui/web/config'
 
 export type EditFormState = {
   title: string
@@ -38,6 +40,7 @@ export function useNoteAppController() {
   // -- Dependencies --
   const { supabase, loading: providerLoading } = useSupabase()
   const queryClient = useQueryClient()
+  const authService = new AuthService(supabase)
   
   // Combine provider loading with local auth loading
   const combinedLoading = loading || providerLoading || authLoading
@@ -93,7 +96,7 @@ export function useNoteAppController() {
   // -- Auth Effects --
   useEffect(() => {
     const checkAuth = async () => {
-      browser.localStorage.removeItem('testUser')
+      await webStorageAdapter.removeItem('testUser')
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user || null)
       setLoading(false)
@@ -130,13 +133,7 @@ export function useNoteAppController() {
 
   const handleSignInWithGoogle = async () => {
     try {
-      const origin = browser.location.origin || (typeof window !== 'undefined' ? window.location.origin : '')
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: origin ? `${origin}/auth/callback` : undefined,
-        },
-      })
+      const { error } = await authService.signInWithGoogle(webOAuthRedirectUri)
       if (error) console.error('Error signing in:', error)
     } catch (error) {
       console.error('Error signing in:', error)
@@ -198,7 +195,7 @@ export function useNoteAppController() {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
-      browser.localStorage.removeItem('testUser')
+      await webStorageAdapter.removeItem('testUser')
       setUser(null)
       queryClient.removeQueries({ queryKey: ['notes'] })
       setSelectedNote(null)

@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery, InfiniteData } from '@tanstack/react-query'
 import { useSupabase } from '@/lib/providers/SupabaseProvider'
-import { NoteService } from '@/lib/services/notes'
-import { SearchService, SearchResult } from '@/lib/services/search'
+import { NoteService } from '@core/services/notes'
+import { SearchService, SearchResult } from '@core/services/search'
 import { useState, useEffect, useMemo } from 'react'
 
 import type { FtsSearchResult, Tables } from '@/supabase/types'
