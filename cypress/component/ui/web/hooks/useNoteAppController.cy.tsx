@@ -4,6 +4,7 @@ import { QueryProvider } from '@/components/providers/QueryProvider'
 import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 import { NoteViewModel } from '@/types/domain'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import * as NotesQuery from '../../../../../ui/web/hooks/useNotesQuery'
 
 const TestComponent = () => {
   const controller = useNoteAppController()
@@ -15,6 +16,7 @@ const TestComponent = () => {
       <div data-cy="isEditing">{controller.isEditing ? 'true' : 'false'}</div>
       <div data-cy="editForm-title">{controller.editForm.title}</div>
       <div data-cy="selectedNote-id">{controller.selectedNote ? controller.selectedNote.id : 'none'}</div>
+      <div data-cy="selectedNote-tags">{controller.selectedNote?.tags?.join(',') || ''}</div>
       <div data-cy="searchQuery">{controller.searchQuery}</div>
       <div data-cy="deleteDialogOpen">{controller.deleteDialogOpen ? 'true' : 'false'}</div>
       <div data-cy="filterByTag">{controller.filterByTag || 'none'}</div>
@@ -76,6 +78,8 @@ const TestComponent = () => {
         headline: 'Headline'
       })}>Search Result Click</button>
       <button data-cy="invalidate-btn" onClick={controller.invalidateNotes}>Invalidate</button>
+      
+      <button data-cy="remove-tag-btn" onClick={() => controller.handleRemoveTagFromNote('1', 'tag1')}>Remove Tag</button>
     </div>
   )
 }
@@ -350,5 +354,45 @@ describe('useNoteAppController', () => {
     cy.get('[data-cy="invalidate-btn"]').click()
     // Hard to assert invalidation directly without spying on queryClient, 
     // but ensuring it doesn't crash is a good start
+  })
+
+  it('handles remove tag from note', () => {
+    // Ensure user is logged in
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mockSupabase.auth.getSession as any).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+
+    // Mock supabase response for notes query
+    mockQueryBuilder.then = (resolve: any) => resolve({ 
+      data: [{ id: '1', title: 'Note 1', tags: ['tag1', 'tag2'], user_id: 'test-user' }], 
+      error: null, 
+      count: 1 
+    })
+
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    // Wait for user and notes to load
+    cy.get('[data-cy="user"]').should('contain', 'test-user')
+    
+    // Select the note first to verify state update
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('contain', '1')
+
+    cy.get('[data-cy="remove-tag-btn"]').click()
+    
+    // Check if update was called with removed tag
+    cy.wrap(mockQueryBuilder.update).should('have.been.called')
+    
+    // Wait for async operation
+    cy.wait(100)
+    
+    // Check if selected note tags updated in UI
+    cy.get('[data-cy="selectedNote-tags"]').should('contain', 'tag2')
+    cy.get('[data-cy="selectedNote-tags"]').should('not.contain', 'tag1')
   })
 })
