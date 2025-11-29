@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSupabase } from '@/lib/providers/SupabaseProvider'
-import { NoteService } from '@/lib/services/notes'
+import { NoteService } from '@core/services/notes'
 import { toast } from 'sonner'
 import { useMemo } from 'react'
 

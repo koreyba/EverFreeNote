@@ -23,7 +23,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### Phase 2: Core Features (Web)
 - [x] Реализовать web-адаптеры: `StorageAdapter` (localStorage), `NavigationAdapter` (window.location), web OAuth redirect; web Supabase client factory (browser fetch + localStorage).
-- [x] Обновить провайдеры/контроллеры (`useNoteAppController` и др.) для работы через адаптеры core. (провайдер Supabase переведён на web factory/adapter; controller обновление остаётся далее при переносе use-cases)
+- [x] Обновить провайдеры/контроллеры (`useNoteAppController` и др.) для работы через адаптеры core. (провайдер Supabase переведён на web factory/adapter; контроллер перенесён в `@ui/web/hooks/useNoteAppController`)
 - [ ] Прогнать web smoke/существующие тесты, убедиться в отсутствии регрессий.
 
 ### Phase 3: Integration & Polish (Mobile prep)
