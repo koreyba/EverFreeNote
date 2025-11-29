@@ -12,7 +12,7 @@ const TestComponent = ({ fetchNextPage, hasNextPage, isFetchingNextPage, options
   const ref = useInfiniteScroll(fetchNextPage, hasNextPage, isFetchingNextPage, options)
 
   return (
-    <div style={{ height: '200px', overflow: 'auto' }}>
+    <div data-cy="scroll-container" style={{ height: '200px', overflow: 'auto' }}>
       <div style={{ height: '500px' }}>Content</div>
       <div ref={ref} data-cy="sentinel" style={{ height: '20px', background: 'red' }}>Sentinel</div>
     </div>
@@ -31,19 +31,13 @@ describe('useInfiniteScroll', () => {
       />
     )
 
-    // Scroll to bottom to make sentinel visible
-    // Since we are using IntersectionObserver, we need to make sure the environment supports it.
-    // Cypress browser (Chrome/Electron) supports it.
-    // However, in component testing, the viewport might be large enough to show it immediately?
-    // The container is 200px, content is 500px. So it should be hidden.
-    
     cy.get('[data-cy="sentinel"]').should('not.be.visible')
     
     // Scroll the container
-    cy.get('div').first().scrollTo('bottom')
+    cy.get('[data-cy="scroll-container"]').scrollTo('bottom')
     
     // Wait for observer to trigger
-    cy.wait(100)
+    cy.wait(200)
     
     cy.get('@fetchNextPage').should('have.been.called')
   })
@@ -59,8 +53,8 @@ describe('useInfiniteScroll', () => {
       />
     )
 
-    cy.get('div').first().scrollTo('bottom')
-    cy.wait(100)
+    cy.get('[data-cy="scroll-container"]').scrollTo('bottom')
+    cy.wait(200)
     
     cy.get('@fetchNextPage').should('not.have.been.called')
   })
@@ -76,8 +70,8 @@ describe('useInfiniteScroll', () => {
       />
     )
 
-    cy.get('div').first().scrollTo('bottom')
-    cy.wait(100)
+    cy.get('[data-cy="scroll-container"]').scrollTo('bottom')
+    cy.wait(200)
     
     cy.get('@fetchNextPage').should('not.have.been.called')
   })
@@ -85,18 +79,24 @@ describe('useInfiniteScroll', () => {
   it('respects custom options', () => {
     const fetchNextPage = cy.stub().as('fetchNextPage')
     
-    // Use a large rootMargin to trigger early
+    // Spy on IntersectionObserver
+    cy.window().then((win) => {
+      cy.spy(win, 'IntersectionObserver').as('intersectionObserver')
+    })
+
     cy.mount(
       <TestComponent 
         fetchNextPage={fetchNextPage} 
         hasNextPage={true} 
         isFetchingNextPage={false}
-        options={{ rootMargin: '500px' }}
+        options={{ rootMargin: '500px', threshold: 0.5 }}
       />
     )
 
-    // Should trigger immediately because rootMargin is huge
-    cy.wait(100)
-    cy.get('@fetchNextPage').should('have.been.called')
+    cy.get('@intersectionObserver').should('have.been.calledWith', Cypress.sinon.match.any, {
+      root: null,
+      rootMargin: '500px',
+      threshold: 0.5
+    })
   })
 })
