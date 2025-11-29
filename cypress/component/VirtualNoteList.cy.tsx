@@ -2,11 +2,18 @@ import React from 'react'
 import { VirtualNoteList } from '@/components/VirtualNoteList'
 import type { Note } from '@/types/domain'
 
-// Mock List component to avoid react-window issues in test environment
-const MockList = ({ itemCount, children: Row }: any) => (
+// Mock List component to avoid react-window issues in test environment.
+// It must forward itemData to Row so the row renderer receives notes/handlers.
+type MockListProps = {
+  itemCount: number
+  itemData: unknown
+  children: React.ComponentType<{ index: number; style: React.CSSProperties; data: unknown }>
+}
+
+const MockList = ({ itemCount, itemData, children: Row }: MockListProps) => (
   <div className="mock-list">
     {Array.from({ length: itemCount }).map((_, index) => (
-      <Row key={index} index={index} style={{ height: 120 }} />
+      <Row key={index} index={index} style={{ height: 120 }} data={itemData} />
     ))}
   </div>
 )
