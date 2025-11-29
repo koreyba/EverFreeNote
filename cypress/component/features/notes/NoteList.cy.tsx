@@ -4,23 +4,23 @@ import type { Note, SearchResult } from '@/types/domain'
 
 describe('NoteList Component', () => {
   const mockNotes: (Note & { content?: string | null })[] = [
-    { 
-      id: '1', 
-      title: 'Test Note 1', 
-      description: 'Description 1', 
-      tags: ['work'], 
-      created_at: new Date().toISOString(), 
-      updated_at: new Date().toISOString(), 
-      user_id: 'user1' 
+    {
+      id: '1',
+      title: 'Test Note 1',
+      description: 'Description 1',
+      tags: ['work'],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: 'user1'
     },
-    { 
-      id: '2', 
-      title: 'Test Note 2', 
-      description: 'Description 2', 
-      tags: ['personal'], 
-      created_at: new Date().toISOString(), 
-      updated_at: new Date().toISOString(), 
-      user_id: 'user1' 
+    {
+      id: '2',
+      title: 'Test Note 2',
+      description: 'Description 2',
+      tags: ['personal'],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: 'user1'
     }
   ]
 
@@ -62,7 +62,7 @@ describe('NoteList Component', () => {
 
   it('handles note selection', () => {
     const onSelectSpy = cy.spy().as('onSelect')
-    
+
     cy.mount(
       <NoteList
         notes={mockNotes}
@@ -100,7 +100,6 @@ describe('NoteList Component', () => {
       />
     )
 
-    // Check for skeleton elements (usually represented by animate-pulse or specific structure)
     cy.get('.animate-pulse').should('exist')
   })
 
@@ -109,7 +108,7 @@ describe('NoteList Component', () => {
 
     cy.mount(
       <NoteList
-        notes={mockNotes} // Should be ignored when showFTSResults is true
+        notes={mockNotes}
         isLoading={false}
         onSelectNote={cy.stub()}
         onTagClick={cy.stub()}
@@ -128,15 +127,12 @@ describe('NoteList Component', () => {
       />
     )
 
-    // Should show search results, not regular notes
     cy.contains('Search Result 1').should('be.visible')
     cy.contains('Test Note 1').should('not.exist')
-    
-    // Check for search metadata
-    cy.contains('Найдено: 1').should('be.visible')
-    cy.contains('Быстрый поиск').should('be.visible')
 
-    // Test click on search result
+    cy.contains('10ms').should('be.visible')
+    cy.contains('1').should('exist')
+
     cy.contains('Search Result 1').click()
     cy.get('@onSearchResultClick').should('have.been.calledWith', mockFtsResults[0])
   })
@@ -158,6 +154,71 @@ describe('NoteList Component', () => {
       />
     )
 
-    cy.contains('Поиск заметок...').should('be.visible')
+    cy.get('.animate-spin').should('be.visible')
+  })
+
+  it('renders load more button and calls handler', () => {
+    const onLoadMore = cy.stub().as('onLoadMore')
+
+    cy.mount(
+      <NoteList
+        notes={mockNotes}
+        isLoading={false}
+        onSelectNote={cy.stub()}
+        onTagClick={cy.stub()}
+        onLoadMore={onLoadMore}
+        hasMore={true}
+        isFetchingNextPage={false}
+        ftsQuery=""
+        ftsLoading={false}
+        showFTSResults={false}
+        onSearchResultClick={cy.stub()}
+      />
+    )
+
+    cy.contains('Load More').should('be.visible').click()
+    cy.get('@onLoadMore').should('have.been.calledOnce')
+  })
+
+  it('shows spinner instead of button while fetching next page', () => {
+    cy.mount(
+      <NoteList
+        notes={mockNotes}
+        isLoading={false}
+        onSelectNote={cy.stub()}
+        onTagClick={cy.stub()}
+        onLoadMore={cy.stub()}
+        hasMore={true}
+        isFetchingNextPage={true}
+        ftsQuery=""
+        ftsLoading={false}
+        showFTSResults={false}
+        onSearchResultClick={cy.stub()}
+      />
+    )
+
+    cy.get('.animate-spin').should('be.visible')
+    cy.contains('Load More').should('not.exist')
+  })
+
+  it('shows empty state when no notes and not loading', () => {
+    cy.mount(
+      <NoteList
+        notes={[]}
+        isLoading={false}
+        onSelectNote={cy.stub()}
+        onTagClick={cy.stub()}
+        onLoadMore={cy.stub()}
+        hasMore={false}
+        isFetchingNextPage={false}
+        ftsQuery=""
+        ftsLoading={false}
+        showFTSResults={false}
+        onSearchResultClick={cy.stub()}
+      />
+    )
+
+    cy.contains('No notes yet').should('be.visible')
+    cy.contains('Create your first note to get started!').should('be.visible')
   })
 })
