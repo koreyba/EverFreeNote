@@ -1,0 +1,285 @@
+import React from 'react'
+import { ImportButton } from '@/components/ImportButton'
+import { browser } from '@/lib/adapters/browser'
+import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
+import { EnexParser } from '@/lib/enex/parser'
+
+describe('ImportButton', () => {
+  let mockSupabase: any
+
+  const validEnexContent = `<?xml version="1.0" encoding="UTF-8"?>
+<en-export export-date="20230101T000000Z" application="Evernote" version="10.0">
+  <note>
+    <title>Test Note</title>
+    <content>
+      <![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+      <en-note><div>Test Content</div></en-note>]]>
+    </content>
+    <created>20230101T000000Z</created>
+    <updated>20230101T000000Z</updated>
+  </note>
+</en-export>`
+
+  let mockQueryBuilder: any
+
+  beforeEach(() => {
+    cy.spy(console, 'log').as('consoleLog')
+    cy.spy(console, 'error').as('consoleError')
+
+    // Stub EnexParser.prototype.parse
+    if (!(EnexParser.prototype.parse as any).restore) {
+        cy.stub(EnexParser.prototype, 'parse').resolves([
+            {
+              title: 'Test Note',
+              content: '<div>Test Content</div>',
+              created: new Date('2023-01-01T00:00:00Z'),
+              updated: new Date('2023-01-01T00:00:00Z'),
+              tags: [],
+              resources: []
+            }
+          ])
+    } else {
+        (EnexParser.prototype.parse as any).resetHistory();
+        (EnexParser.prototype.parse as any).resolves([
+            {
+              title: 'Test Note',
+              content: '<div>Test Content</div>',
+              created: new Date('2023-01-01T00:00:00Z'),
+              updated: new Date('2023-01-01T00:00:00Z'),
+              tags: [],
+              resources: []
+            }
+          ])
+    }
+
+    // Mock Supabase Query Builder
+    mockQueryBuilder = {
+      select: cy.stub(),
+      insert: cy.stub(),
+      update: cy.stub(),
+      eq: cy.stub(),
+      single: cy.stub(),
+      then: (resolve: any) => resolve({ data: [], error: null }) // Default resolve for list (handleDuplicate)
+    }
+    
+    // Chainable returns
+    mockQueryBuilder.select.returns(mockQueryBuilder)
+    mockQueryBuilder.insert.returns(mockQueryBuilder)
+    mockQueryBuilder.update.returns(mockQueryBuilder)
+    mockQueryBuilder.eq.returns(mockQueryBuilder)
+    mockQueryBuilder.single.resolves({ data: { id: 'new-note-id' }, error: null })
+
+    // Mock Supabase Client
+    mockSupabase = {
+      auth: {
+        getUser: cy.stub().resolves({ data: { user: { id: 'test-user-id' } } }),
+      },
+      storage: {
+        from: cy.stub().returns({
+          upload: cy.stub().resolves({ data: { path: 'test-path' }, error: null }),
+          getPublicUrl: cy.stub().returns({ data: { publicUrl: 'http://test-url' } }),
+        }),
+      },
+      from: cy.stub().returns(mockQueryBuilder),
+    }
+
+    // Mock browser.localStorage
+    if (!(browser.localStorage.getItem as any).restore) {
+        cy.stub(browser.localStorage, 'getItem').returns(null)
+    } else {
+        (browser.localStorage.getItem as any).resetHistory();
+        (browser.localStorage.getItem as any).returns(null);
+    }
+
+    if (!(browser.localStorage.setItem as any).restore) {
+        cy.stub(browser.localStorage, 'setItem')
+    } else {
+        (browser.localStorage.setItem as any).resetHistory();
+    }
+
+    if (!(browser.localStorage.removeItem as any).restore) {
+        cy.stub(browser.localStorage, 'removeItem')
+    } else {
+        (browser.localStorage.removeItem as any).resetHistory();
+    }
+  })
+
+  it('renders the import button', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <ImportButton />
+      </SupabaseTestProvider>
+    )
+    cy.contains('Import from Evernote').should('be.visible')
+  })
+
+  it('opens the dialog when clicked', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <ImportButton />
+      </SupabaseTestProvider>
+    )
+    cy.contains('Import from Evernote').click()
+    cy.contains('Drag and drop .enex files').should('be.visible')
+  })
+
+  it('performs import successfully', () => {
+    const onImportComplete = cy.spy().as('onImportComplete')
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <ImportButton onImportComplete={onImportComplete} />
+      </SupabaseTestProvider>
+    )
+
+    // Open dialog
+    cy.contains('Import from Evernote').click()
+
+    // Select file
+    const file = new File([validEnexContent], 'notes.enex', { type: 'application/xml' })
+    cy.get('input[type="file"]').selectFile({
+      contents: file,
+      fileName: 'notes.enex',
+      mimeType: 'application/xml'
+    }, { force: true })
+
+    // Click Import inside the dialog
+    cy.get('[role="dialog"] button').contains('Import').click()
+
+    // Check if getUser was called
+    cy.wrap(mockSupabase.auth.getUser).should('have.been.called')
+
+    // Check for errors
+    cy.get('@consoleError').should((spy: any) => {
+        if (spy.called) {
+            const calls = spy.getCalls()
+            const relevantCalls = calls.filter((call: any) => {
+                const msg = call.args[0] || ''
+                return typeof msg === 'string' && !msg.includes('webpack-dev-server')
+            })
+            if (relevantCalls.length > 0) {
+                const args = relevantCalls[0].args
+                throw new Error(`Console error called with: ${args.join(' ')}`)
+            }
+        }
+    })
+
+    // Wait for completion
+    cy.contains('Successfully imported 1 note', { timeout: 10000 }).should('be.visible')
+    
+    // Check if onImportComplete was called
+    cy.get('@onImportComplete').should('have.been.calledWith', 'success', { successCount: 1, errorCount: 0 })
+
+    // Check if localStorage was cleaned up
+    cy.wrap(browser.localStorage.removeItem).should('have.been.calledWith', 'everfreenote-import-state')
+  })
+
+  it('handles import errors gracefully', () => {
+    // Mock insert failure
+    mockQueryBuilder.single.rejects(new Error('Database error'))
+
+    const onImportComplete = cy.spy().as('onImportComplete')
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <ImportButton onImportComplete={onImportComplete} />
+      </SupabaseTestProvider>
+    )
+
+    cy.contains('Import from Evernote').click()
+
+    const file = new File([validEnexContent], 'notes.enex', { type: 'application/xml' })
+    cy.get('input[type="file"]').selectFile({
+      contents: file,
+      fileName: 'notes.enex',
+      mimeType: 'application/xml'
+    }, { force: true })
+
+    cy.get('[role="dialog"] button').contains('Import').click()
+
+    // Should show error in result
+    cy.contains('All imports failed').should('be.visible')
+    
+    // Check failed notes list
+    cy.contains('Test Note').should('be.visible')
+    cy.contains('Database error').should('be.visible')
+  })
+
+  it('restores state from localStorage', () => {
+    const savedState = JSON.stringify({
+      successCount: 5,
+      errorCount: 1,
+      totalNotes: 10,
+    })
+    
+    // Mock getItem to return saved state
+    ;(browser.localStorage.getItem as any).returns(savedState)
+
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <ImportButton />
+      </SupabaseTestProvider>
+    )
+
+    // Should show toast warning
+    // Since we can't easily check toast, we can check if removeItem was called (it cleans up after showing toast)
+    cy.wrap(browser.localStorage.removeItem).should('have.been.calledWith', 'everfreenote-import-state')
+  })
+
+  // it('validates file size', () => {
+  //   cy.mount(
+  //     <SupabaseTestProvider supabase={mockSupabase}>
+  //       <ImportButton />
+  //     </SupabaseTestProvider>
+  //   )
+  //   cy.contains('Import from Evernote').click()
+
+  //   // Create a large file (mocking size property)
+  //   const largeFile = new File([''], 'large.enex', { type: 'application/xml' })
+  //   Object.defineProperty(largeFile, 'size', { value: 101 * 1024 * 1024 }) // 101MB
+
+  //   cy.get('input[type="file"]').selectFile({
+  //     contents: largeFile,
+  //     fileName: 'large.enex',
+  //     mimeType: 'application/xml'
+  //   }, { force: true })
+
+  //   cy.get('[role="dialog"] button').contains('Import').click()
+
+  //   // Should show error toast (we can't see toast easily, but we can check that import didn't start)
+  //   // The progress dialog should NOT be visible if validation failed immediately
+  //   // But wait, the code sets progressDialogOpen(true) BEFORE validation.
+  //   // Let's check the code:
+  //   // setImporting(true)
+  //   // setProgressDialogOpen(true)
+  //   // ... validation ...
+  //   // if oversized: setImporting(false), setProgressDialogOpen(false)
+    
+  //   // So it might flash.
+  //   // We can check that mockSupabase.auth.getUser was NOT called
+  //   cy.wrap(mockSupabase.auth.getUser).should('not.have.been.called')
+  // })
+
+  it('requires user to be logged in', () => {
+    mockSupabase.auth.getUser.resolves({ data: { user: null } })
+
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <ImportButton />
+      </SupabaseTestProvider>
+    )
+    cy.contains('Import from Evernote').click()
+
+    const file = new File([validEnexContent], 'notes.enex', { type: 'application/xml' })
+    cy.get('input[type="file"]').selectFile({
+      contents: file,
+      fileName: 'notes.enex',
+      mimeType: 'application/xml'
+    }, { force: true })
+
+    cy.get('[role="dialog"] button').contains('Import').click()
+
+    // Should not proceed to parsing
+    // We can check if parser was instantiated? No.
+    // We can check if insert was called.
+    cy.wrap(mockSupabase.from).should('not.have.been.called')
+  })
+})
