@@ -31,7 +31,6 @@ cypress/fixtures/component/
 
 cypress/support/
 ├── component.js    # Основная конфигурация
-└── component-utils.js # Пользовательские утилиты
 ```
 
 ## Быстрый старт
@@ -251,7 +250,6 @@ npm run test:component:watch
 
 ### Добавление новых утилит
 
-Добавьте функции в `cypress/support/component-utils.js`:
 
 ```javascript
 Cypress.Commands.add('newUtility', (param) => {

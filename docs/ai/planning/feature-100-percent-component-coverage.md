@@ -173,7 +173,6 @@ description: Break down work into actionable tasks and estimate timeline
 **External dependencies:**
 - Cypress Component Testing (уже настроен)
 - babel-plugin-istanbul (уже установлен)
-- Существующие test utilities (component-utils.js)
 
 **Team/resource dependencies:**
 - 1 разработчик может работать над Phase 1 и 2
