@@ -42,24 +42,21 @@ describe('useNotesMutations', () => {
     // Mock Supabase
     mockSupabase = {
       from: () => ({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         insert: () => ({
           select: () => ({
             single: cy.stub().resolves({ data: { id: 'temp-1', title: 'New' }, error: null })
           })
-        } as any),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }),
         update: () => ({
           eq: () => ({
             select: () => ({
               single: cy.stub().resolves({ data: { id: '1', title: 'Updated' }, error: null })
             })
           })
-        } as any),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }),
         delete: () => ({
           eq: cy.stub().resolves({ error: null })
-        } as any)
+        })
       })
     } as unknown as SupabaseClient
   })
@@ -83,7 +80,7 @@ describe('useNotesMutations', () => {
 
   it('optimistically updates cache on update', () => {
     // Seed cache
-    queryClient.setQueryData<any>(['notes'], {
+    queryClient.setQueryData(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original' }] }]
     })
 
@@ -103,7 +100,7 @@ describe('useNotesMutations', () => {
 
   it('optimistically updates cache on delete', () => {
     // Seed cache
-    queryClient.setQueryData<any>(['notes'], {
+    queryClient.setQueryData(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original' }] }]
     })
 
@@ -123,7 +120,7 @@ describe('useNotesMutations', () => {
 
   it('optimistically updates cache on remove tag', () => {
     // Seed cache
-    queryClient.setQueryData<any>(['notes'], {
+    queryClient.setQueryData(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original', tags: ['tag1'] }] }]
     })
 
@@ -143,20 +140,18 @@ describe('useNotesMutations', () => {
 
   it('rolls back on error', () => {
     // Seed cache so we have something to rollback to
-    queryClient.setQueryData<any>(['notes'], {
+    queryClient.setQueryData(['notes'], {
       pages: [{ notes: [] }]
     })
 
     // Mock error
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(mockSupabase as any).from = () => ({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockSupabase as unknown as { from: unknown }).from = () => ({
       insert: () => ({
         select: () => ({
           single: cy.stub().rejects(new Error('Failed'))
         })
-      } as any)
-    } as any)
+      })
+    })
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
@@ -168,37 +163,25 @@ describe('useNotesMutations', () => {
 
     cy.get('[data-cy="create-btn"]').click()
     
-    // Should set data 3 times: 
-    // 1. Initial seed (in test setup) - actually this is synchronous before spy? No, spy is set up in beforeEach.
-    // Wait, setQueryData is called in test setup, but spy is set up in beforeEach.
-    // So the spy will catch the seed call?
-    // beforeEach runs before the test body.
-    // So yes, the seed call will be recorded.
-    // Then optimistic update (2nd call).
-    // Then rollback (3rd call).
-    // So we expect 3 calls.
-    
     cy.get('@setQueryData').should('have.callCount', 3)
   })
 
   it('rolls back on update error', () => {
     // Seed cache
-    queryClient.setQueryData<any>(['notes'], {
+    queryClient.setQueryData(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original' }] }]
     })
 
     // Mock error
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(mockSupabase as any).from = () => ({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockSupabase as unknown as { from: unknown }).from = () => ({
       update: () => ({
         eq: () => ({
           select: () => ({
             single: cy.stub().rejects(new Error('Failed'))
           })
         })
-      } as any)
-    } as any)
+      })
+    })
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
@@ -210,26 +193,21 @@ describe('useNotesMutations', () => {
 
     cy.get('[data-cy="update-btn"]').click()
     
-    // 1. Seed (in test)
-    // 2. Optimistic update
-    // 3. Rollback
     cy.get('@setQueryData').should('have.callCount', 3)
   })
 
   it('rolls back on delete error', () => {
     // Seed cache
-    queryClient.setQueryData<any>(['notes'], {
+    queryClient.setQueryData(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original' }] }]
     })
 
     // Mock error
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(mockSupabase as any).from = () => ({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockSupabase as unknown as { from: unknown }).from = () => ({
       delete: () => ({
         eq: cy.stub().rejects(new Error('Failed'))
-      } as any)
-    } as any)
+      })
+    })
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
@@ -246,22 +224,20 @@ describe('useNotesMutations', () => {
 
   it('rolls back on remove tag error', () => {
     // Seed cache
-    queryClient.setQueryData<any>(['notes'], {
+    queryClient.setQueryData(['notes'], {
       pages: [{ notes: [{ id: '1', title: 'Original', tags: ['tag1'] }] }]
     })
 
     // Mock error
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(mockSupabase as any).from = () => ({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockSupabase as unknown as { from: unknown }).from = () => ({
       update: () => ({
         eq: () => ({
           select: () => ({
             single: cy.stub().rejects(new Error('Failed'))
           })
         })
-      } as any)
-    } as any)
+      })
+    })
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>

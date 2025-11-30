@@ -1,11 +1,26 @@
 import { NoteService } from '@/core/services/notes'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+// Helper type for Sinon stubs
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SinonStub = any
+
 describe('core/services/NoteService', () => {
   let mockSupabase: SupabaseClient
   let service: NoteService
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockQueryBuilder: any
+  let mockQueryBuilder: {
+    select: SinonStub,
+    order: SinonStub,
+    range: SinonStub,
+    contains: SinonStub,
+    or: SinonStub,
+    insert: SinonStub,
+    update: SinonStub,
+    delete: SinonStub,
+    eq: SinonStub,
+    single: SinonStub,
+    then: (resolve: (res: unknown) => void) => void
+  }
 
   beforeEach(() => {
     mockQueryBuilder = {
@@ -19,7 +34,7 @@ describe('core/services/NoteService', () => {
       delete: cy.stub().returnsThis(),
       eq: cy.stub().returnsThis(),
       single: cy.stub().resolves({ data: { id: '1' }, error: null }),
-      then: (resolve: (res: any) => void) => resolve({ data: [], error: null, count: 0 })
+      then: (resolve: (res: unknown) => void) => resolve({ data: [], error: null, count: 0 })
     }
 
     mockSupabase = {
@@ -32,8 +47,7 @@ describe('core/services/NoteService', () => {
   describe('getNotes', () => {
     it('fetches notes with default options', async () => {
       const mockData = [{ id: '1', title: 'Note 1' }]
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockQueryBuilder.then as any) = (resolve: any) => resolve({ data: mockData, error: null, count: 1 })
+      mockQueryBuilder.then = (resolve: (res: unknown) => void) => resolve({ data: mockData, error: null, count: 1 })
 
       const result = await service.getNotes('user-1')
 
@@ -72,21 +86,19 @@ describe('core/services/NoteService', () => {
     })
 
     it('handles error', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockQueryBuilder.then as any) = (resolve: any) => resolve({ data: null, error: { message: 'DB Error' } })
+      mockQueryBuilder.then = (resolve: (res: unknown) => void) => resolve({ data: null, error: { message: 'DB Error' } })
 
       try {
         await service.getNotes('user-1')
         expect.fail('Should have thrown')
-      } catch (e: any) {
-        expect(e.message).to.equal('DB Error')
+      } catch (e: unknown) {
+        expect((e as Error).message).to.equal('DB Error')
       }
     })
 
     it('calculates hasMore correctly', async () => {
       const mockData = Array(10).fill({ id: '1' })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockQueryBuilder.then as any) = (resolve: any) => resolve({ data: mockData, error: null, count: 20 })
+      mockQueryBuilder.then = (resolve: (res: unknown) => void) => resolve({ data: mockData, error: null, count: 20 })
 
       const result = await service.getNotes('user-1', { pageSize: 10 })
       expect(result.hasMore).to.be.true
@@ -115,8 +127,8 @@ describe('core/services/NoteService', () => {
       try {
         await service.createNote({ title: 'New', description: '', tags: [], userId: '1' })
         expect.fail('Should have thrown')
-      } catch (e: any) {
-        expect(e.message).to.equal('Create Error')
+      } catch (e: unknown) {
+        expect((e as Error).message).to.equal('Create Error')
       }
     })
   })
@@ -137,16 +149,15 @@ describe('core/services/NoteService', () => {
       try {
         await service.updateNote('1', { title: 'Updated' })
         expect.fail('Should have thrown')
-      } catch (e: any) {
-        expect(e.message).to.equal('Update Error')
+      } catch (e: unknown) {
+        expect((e as Error).message).to.equal('Update Error')
       }
     })
   })
 
   describe('deleteNote', () => {
     it('deletes a note', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockQueryBuilder.then as any) = (resolve: any) => resolve({ error: null })
+      mockQueryBuilder.then = (resolve: (res: unknown) => void) => resolve({ error: null })
       
       await service.deleteNote('1')
       expect(mockQueryBuilder.delete).to.have.been.called
@@ -154,14 +165,13 @@ describe('core/services/NoteService', () => {
     })
 
     it('handles delete error', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockQueryBuilder.then as any) = (resolve: any) => resolve({ error: { message: 'Delete Error' } })
+      mockQueryBuilder.then = (resolve: (res: unknown) => void) => resolve({ error: { message: 'Delete Error' } })
       
       try {
         await service.deleteNote('1')
         expect.fail('Should have thrown')
-      } catch (e: any) {
-        expect(e.message).to.equal('Delete Error')
+      } catch (e: unknown) {
+        expect((e as Error).message).to.equal('Delete Error')
       }
     })
   })

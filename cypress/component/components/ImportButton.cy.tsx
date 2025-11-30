@@ -4,7 +4,12 @@ import { browser } from '@/lib/adapters/browser'
 import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 import { EnexParser } from '@/lib/enex/parser'
 
+// Helper type for Sinon stubs
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SinonStub = any
+
 describe('ImportButton', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockSupabase: any
 
   const validEnexContent = `<?xml version="1.0" encoding="UTF-8"?>
@@ -20,14 +25,22 @@ describe('ImportButton', () => {
   </note>
 </en-export>`
 
-  let mockQueryBuilder: any
+  let mockQueryBuilder: {
+    select: SinonStub,
+    insert: SinonStub,
+    update: SinonStub,
+    eq: SinonStub,
+    single: SinonStub,
+    then: (resolve: (value: unknown) => void) => void
+  }
 
   beforeEach(() => {
     cy.spy(console, 'log').as('consoleLog')
     cy.spy(console, 'error').as('consoleError')
 
     // Stub EnexParser.prototype.parse
-    if (!(EnexParser.prototype.parse as any).restore) {
+    const parseStub = EnexParser.prototype.parse as unknown as SinonStub
+    if (!parseStub.restore) {
         cy.stub(EnexParser.prototype, 'parse').resolves([
             {
               title: 'Test Note',
@@ -39,8 +52,8 @@ describe('ImportButton', () => {
             }
           ])
     } else {
-        (EnexParser.prototype.parse as any).resetHistory();
-        (EnexParser.prototype.parse as any).resolves([
+        parseStub.resetHistory();
+        parseStub.resolves([
             {
               title: 'Test Note',
               content: '<div>Test Content</div>',
@@ -59,7 +72,7 @@ describe('ImportButton', () => {
       update: cy.stub(),
       eq: cy.stub(),
       single: cy.stub(),
-      then: (resolve: any) => resolve({ data: [], error: null }) // Default resolve for list (handleDuplicate)
+      then: (resolve: (value: unknown) => void) => resolve({ data: [], error: null }) // Default resolve for list (handleDuplicate)
     }
     
     // Chainable returns
@@ -84,23 +97,26 @@ describe('ImportButton', () => {
     }
 
     // Mock browser.localStorage
-    if (!(browser.localStorage.getItem as any).restore) {
+    const getItemStub = browser.localStorage.getItem as unknown as SinonStub
+    if (!getItemStub.restore) {
         cy.stub(browser.localStorage, 'getItem').returns(null)
     } else {
-        (browser.localStorage.getItem as any).resetHistory();
-        (browser.localStorage.getItem as any).returns(null);
+        getItemStub.resetHistory();
+        getItemStub.returns(null);
     }
 
-    if (!(browser.localStorage.setItem as any).restore) {
+    const setItemStub = browser.localStorage.setItem as unknown as SinonStub
+    if (!setItemStub.restore) {
         cy.stub(browser.localStorage, 'setItem')
     } else {
-        (browser.localStorage.setItem as any).resetHistory();
+        setItemStub.resetHistory();
     }
 
-    if (!(browser.localStorage.removeItem as any).restore) {
+    const removeItemStub = browser.localStorage.removeItem as unknown as SinonStub
+    if (!removeItemStub.restore) {
         cy.stub(browser.localStorage, 'removeItem')
     } else {
-        (browser.localStorage.removeItem as any).resetHistory();
+        removeItemStub.resetHistory();
     }
   })
 
@@ -149,9 +165,11 @@ describe('ImportButton', () => {
     cy.wrap(mockSupabase.auth.getUser).should('have.been.called')
 
     // Check for errors
-    cy.get('@consoleError').should((spy: any) => {
-        if (spy.called) {
-            const calls = spy.getCalls()
+    cy.get('@consoleError').should((spy: unknown) => {
+        const consoleSpy = spy as SinonStub
+        if (consoleSpy.called) {
+            const calls = consoleSpy.getCalls()
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const relevantCalls = calls.filter((call: any) => {
                 const msg = call.args[0] || ''
                 return typeof msg === 'string' && !msg.includes('webpack-dev-server')
@@ -211,7 +229,7 @@ describe('ImportButton', () => {
     })
     
     // Mock getItem to return saved state
-    ;(browser.localStorage.getItem as any).returns(savedState)
+    ;(browser.localStorage.getItem as unknown as SinonStub).returns(savedState)
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>

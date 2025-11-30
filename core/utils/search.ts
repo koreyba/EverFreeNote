@@ -11,7 +11,7 @@ export type LanguageCode = keyof typeof FTS_LANGUAGES
 const MAX_QUERY_LENGTH = 1000
 const MIN_QUERY_LENGTH = 3
 
-export function buildTsQuery(query: string, _language: LanguageCode = 'ru'): string {
+export function buildTsQuery(query: string): string {
   if (!query || typeof query !== 'string') {
     throw new Error('Query must be a non-empty string')
   }
