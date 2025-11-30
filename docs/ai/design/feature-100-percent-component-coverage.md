@@ -47,7 +47,6 @@ graph TD
 - Cypress Component Testing (уже настроен)
 - @testing-library/cypress для queries
 - babel-plugin-istanbul для coverage
-- Custom test utilities (component-utils.js)
 
 ## Data Models
 **What data do we need to manage?**
@@ -95,7 +94,6 @@ interface ErrorScenario {
 
 **Test Utilities Extension:**
 ```typescript
-// Расширение cypress/support/component-utils.js
 
 // Mock Supabase для компонентов
 Cypress.Commands.add('mockSupabaseQuery', (table, data) => {
@@ -221,7 +219,6 @@ Cypress.Commands.add('mockVirtualList', (itemCount) => {
 
 5. **Расширение существующих test utilities**
    - *Почему:* Переиспользование кода, консистентность API
-   - *Файл:* `cypress/support/component-utils.js`
 
 ## Non-Functional Requirements
 **How should the system perform?**
