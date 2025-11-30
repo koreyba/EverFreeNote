@@ -4,9 +4,6 @@ import { QueryProvider } from '@/components/providers/QueryProvider'
 import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SinonStub = any
-
 const TestComponent = () => {
   const controller = useNoteAppController()
   
@@ -38,6 +35,7 @@ describe('Search Robustness', () => {
         select: cy.stub().returnsThis(),
         order: cy.stub().returnsThis(),
         range: cy.stub().returnsThis(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         then: (resolve: any) => resolve({ data: [], error: null })
       }),
       rpc: cy.stub().resolves({ data: [], error: null })

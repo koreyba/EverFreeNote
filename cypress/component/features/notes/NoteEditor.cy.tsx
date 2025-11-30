@@ -7,7 +7,6 @@ describe('NoteEditor Component', () => {
     description: '<p>Test Description</p>',
     tags: 'tag1, tag2',
     isSaving: false,
-    isNew: false,
     onTitleChange: cy.stub(),
     onDescriptionChange: cy.stub(),
     onTagsChange: cy.stub(),
@@ -26,7 +25,7 @@ describe('NoteEditor Component', () => {
   })
 
   it('renders in new note mode', () => {
-    cy.mount(<NoteEditor {...getDefaultProps()} isNew={true} />)
+    cy.mount(<NoteEditor {...getDefaultProps()} />)
 
     cy.contains('Editing').should('be.visible')
   })

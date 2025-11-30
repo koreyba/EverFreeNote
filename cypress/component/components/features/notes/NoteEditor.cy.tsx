@@ -7,7 +7,6 @@ describe('NoteEditor', () => {
     description: '<p>Test Description</p>',
     tags: 'tag1, tag2',
     isSaving: false,
-    isNew: false,
     onTitleChange: cy.spy().as('onTitleChange'),
     onDescriptionChange: cy.spy().as('onDescriptionChange'),
     onTagsChange: cy.spy().as('onTagsChange'),
@@ -24,7 +23,7 @@ describe('NoteEditor', () => {
   })
 
   it('renders new note state', () => {
-    cy.mount(<NoteEditor {...getDefaultProps()} isNew={true} />)
+    cy.mount(<NoteEditor {...getDefaultProps()} />)
     cy.contains('Editing').should('be.visible')
   })
 
