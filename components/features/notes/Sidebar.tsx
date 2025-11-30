@@ -1,9 +1,15 @@
 "use client"
 
-import { BookOpen, LogOut, Plus, Search, Tag } from "lucide-react"
+import { BookOpen, LogOut, Plus, Search, Tag, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ImportButton } from "@/components/ImportButton"
 import { User } from "@supabase/supabase-js"
@@ -56,7 +62,7 @@ export function Sidebar({
               size="sm"
               className="h-6 text-xs"
             >
-              Clear filter
+              Clear Tags
             </Button>
           </div>
         )}
@@ -69,8 +75,30 @@ export function Sidebar({
             placeholder={filterByTag ? `Search in "${filterByTag}" notes...` : "Search notes..."}
             value={searchQuery}
             onChange={(e) => onSearch(e.target.value)}
-            className="pl-10"
+            className="pl-10 pr-8"
           />
+          {searchQuery && (
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 hover:bg-transparent"
+                      onClick={() => onSearch('')}
+                    >
+                      <X className="w-4 h-4 text-gray-400 hover:text-foreground" />
+                      <span className="sr-only">Clear Search</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Clear Search</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
         </div>
       </div>
 
