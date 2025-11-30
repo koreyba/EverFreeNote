@@ -14,29 +14,21 @@ description: Technical implementation notes, patterns, and code guidelines for m
 ## Code Structure
 **How is the code organized?**
 
-- `components/features/mobile/MobileHeader.tsx`: New component for the top bar.
-- `app/page.tsx`: Main entry point where the layout logic resides.
-- `components/features/notes/Sidebar.tsx`: Existing component, will be reused inside the Sheet.
+- `components/features/notes/NotesShell.tsx`: Main layout controller. Handles mobile view switching.
+- `components/features/notes/Sidebar.tsx`: Adapted for responsive width.
+- `components/features/notes/NoteView.tsx`: Added mobile navigation (Back button).
 
 ## Implementation Notes
 **Key technical details to remember:**
 
 ### Responsive Layout Strategy
-- Use `hidden md:flex` for the desktop sidebar container.
-- Use `flex md:hidden` for the mobile header.
-- The `Sidebar` component itself should be responsive-agnostic (fill parent height/width).
+- Use `hidden md:flex` to toggle between the List view (Sidebar) and the Detail view (Editor) on mobile.
+- On Desktop, both are visible side-by-side.
+- `Sidebar` takes `w-full` on mobile and `w-80` on desktop.
 
-### Sheet Integration
-```tsx
-<Sheet>
-  <SheetTrigger>
-    <MenuIcon />
-  </SheetTrigger>
-  <SheetContent side="left" className="p-0 w-80">
-    <Sidebar ... />
-  </SheetContent>
-</Sheet>
-```
+### Navigation
+- Mobile navigation is state-driven (`selectedNote` not null -> show Editor).
+- "Back" button clears `selectedNote` to return to the list.
 
 ## Integration Points
 **How do pieces connect?**

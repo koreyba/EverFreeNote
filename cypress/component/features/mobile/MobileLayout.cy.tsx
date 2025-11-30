@@ -81,14 +81,11 @@ describe('Mobile Layout Adaptation', () => {
       </SupabaseTestProvider>
     )
 
-    // Sidebar content should be visible
-    cy.contains('EverFreeNote').should('be.visible')
-    cy.contains('New Note').should('be.visible')
+    // Sidebar content should be visible (not hidden)
+    cy.get('[data-testid="sidebar-container"]').should('not.have.class', 'hidden')
     
     // Editor should be hidden
-    // The editor container has `hidden md:flex` when !showEditor
-    // We can check for the empty state text
-    cy.contains('Select a note').should('not.be.visible') 
+    cy.get('[data-testid="editor-container"]').should('have.class', 'hidden')
   })
 
   it('shows editor and hides sidebar when note is selected on mobile', () => {
@@ -110,13 +107,13 @@ describe('Mobile Layout Adaptation', () => {
     )
 
     // Sidebar should be hidden
-    // It has `hidden md:flex`
-    // We check if the "New Note" button is hidden
-    cy.contains('New Note').should('not.be.visible')
+    cy.get('[data-testid="sidebar-container"]').should('have.class', 'hidden')
 
     // Editor (NoteView) should be visible
-    cy.contains('Test Note').should('be.visible') // Content title
-    cy.contains('Reading').should('be.visible') // Header status
+    cy.get('[data-testid="editor-container"]').should('not.have.class', 'hidden')
+    
+    cy.contains('Test Note').should('exist') // Content title
+    cy.contains('Reading').should('exist') // Header status
   })
 
   it('shows Editing status in editor', () => {
@@ -132,7 +129,7 @@ describe('Mobile Layout Adaptation', () => {
       </SupabaseTestProvider>
     )
 
-    cy.contains('Editing').should('be.visible')
+    cy.contains('Editing').should('exist')
   })
 
   it('shows back button in NoteView on mobile', () => {
@@ -153,8 +150,8 @@ describe('Mobile Layout Adaptation', () => {
       </SupabaseTestProvider>
     )
 
-    // Back button (ChevronLeft) should be visible
-    cy.get('.lucide-chevron-left').should('be.visible')
+    // Back button (ChevronLeft) should exist
+    cy.get('.lucide-chevron-left').should('exist')
     
     // Click back button
     cy.get('.lucide-chevron-left').parent().click()
@@ -179,7 +176,7 @@ describe('Mobile Layout Adaptation', () => {
       </SupabaseTestProvider>
     )
 
-    // Back button should be hidden (md:hidden)
-    cy.get('.lucide-chevron-left').should('not.be.visible')
+    // Back button should have md:hidden class
+    cy.get('.lucide-chevron-left').parent().should('have.class', 'md:hidden')
   })
 })

@@ -26,6 +26,7 @@ interface SidebarProps {
   onImportComplete: () => void
   children: React.ReactNode // For the NoteList
   className?: string
+  "data-testid"?: string
 }
 
 export function Sidebar({
@@ -38,10 +39,11 @@ export function Sidebar({
   onSignOut,
   onImportComplete,
   children,
-  className
+  className,
+  "data-testid": dataTestId
 }: SidebarProps) {
   return (
-    <div className={cn("w-80 bg-card border-r flex flex-col h-full", className)}>
+    <div className={cn("w-80 bg-card border-r flex flex-col h-full", className)} data-testid={dataTestId}>
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">

@@ -60,14 +60,18 @@ export function NotesShell({ controller }: NotesShellProps) {
         onSignOut={handleSignOut}
         onImportComplete={invalidateNotes}
         className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
+        data-testid="sidebar-container"
       >
         <ListPane controller={controller} />
       </Sidebar>
 
-      <div className={cn(
-        "flex-1 flex flex-col h-full",
-        !showEditor ? "hidden md:flex" : "w-full"
-      )}>
+      <div 
+        className={cn(
+          "flex-1 flex flex-col h-full",
+          !showEditor ? "hidden md:flex" : "w-full"
+        )}
+        data-testid="editor-container"
+      >
         <EditorPane 
           controller={controller} 
           onBack={() => handleSelectNote(null)} 

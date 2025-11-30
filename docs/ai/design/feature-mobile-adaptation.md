@@ -53,27 +53,23 @@ graph TD
 ## Component Breakdown
 **What are the major building blocks?**
 
-1.  **`MobileHeader` (New)**:
-    - Visible only on mobile (`block md:hidden`).
-    - Contains the "Menu" button (Hamburger icon) and the App Title/Logo.
-    - Triggers the Sidebar Sheet.
+1.  **`NotesShell` (Updated)**:
+    - Handles the responsive layout logic.
+    - Toggles visibility between `Sidebar` (List) and `EditorPane` based on selection state on mobile.
 
 2.  **`Sidebar` (Modified)**:
-    - Currently, it's a fixed `div`.
-    - We need to wrap it or adapt it to be used inside a `SheetContent` for mobile.
-    - It should accept props to close the sheet upon selection (optional but good UX).
+    - Adapted to be full-width on mobile and fixed-width on desktop.
+    - Contains the "Clear Tags" and "Clear Search" functionality.
 
-3.  **`MainLayout` / `Page`**:
-    - Needs to adjust grid/flex layout.
-    - Instead of hardcoded `w-80` for sidebar, use responsive classes.
-
-4.  **`NoteList` & `NoteEditor`**:
-    - Ensure they use `w-full` and responsive padding.
+3.  **`NoteView` & `NoteEditor`**:
+    - Updated headers to show "Reading" / "Editing" status instead of duplicating titles.
+    - Added "Back" button for mobile navigation.
 
 ## Design Decisions
 **Why did we choose this approach?**
 
-- **`shadcn/ui` Sheet**: We already use `shadcn/ui`. The `Sheet` component is the standard way to implement mobile drawers in this ecosystem.
+- **CSS-based Switching**: Instead of a separate MobileHeader and Drawer, we used Tailwind's utility classes (`hidden md:flex`, `w-full`) to switch views. This kept the DOM lighter and reused the existing Sidebar component effectively.
+- **`shadcn/ui` Sheet**: Originally planned, but found that a simple full-screen toggle was more effective for the "Master-Detail" pattern on mobile.
 - **Responsive Prefixes**: Tailwind's `md:` prefix allows us to keep a single codebase for both mobile and desktop without duplicating logic.
 
 ## Non-Functional Requirements
