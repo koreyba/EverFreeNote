@@ -44,6 +44,15 @@
       ],
       "@/types/*": [
         "./types/*"
+      ],
+      "@core/*": [
+        "./core/*"
+      ],
+      "@ui/web/*": [
+        "./ui/web/*"
+      ],
+      "@ui/mobile/*": [
+        "./ui/mobile/*"
       ]
     },
     "baseUrl": ".",

@@ -4,7 +4,9 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
-import { createClient } from "@/lib/supabase/client"
+import { webSupabaseClientFactory } from "@ui/web/adapters/supabaseClient"
+import { webStorageAdapter } from "@ui/web/adapters/storage"
+import { supabaseConfig } from "@ui/web/config"
 
 export default function AuthCallback() {
   const router = useRouter()
@@ -18,7 +20,10 @@ export default function AuthCallback() {
           return
         }
 
-        const supabase = createClient()
+        const supabase = webSupabaseClientFactory.createClient(
+          supabaseConfig,
+          { storage: webStorageAdapter }
+        )
 
         // If Supabase already processed the callback (detectSessionInUrl runs internally)
         // and we already have a session, just redirect without re-exchanging the code.

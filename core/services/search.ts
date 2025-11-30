@@ -1,0 +1,108 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Tables, FtsSearchResult } from '@/supabase/types'
+import {
+  buildTsQuery,
+  detectLanguage,
+  ftsLanguage,
+  mapNotesToFtsResult,
+  type LanguageCode,
+  type SearchOptions,
+  type SearchResult,
+} from '../utils/search'
+
+export class SearchService {
+  constructor(private supabase: SupabaseClient) {}
+
+  // Strip commas to avoid breaking PostgREST OR syntax
+  private sanitizeOrValue(value: string) {
+    return value.replace(/,/g, ' ')
+  }
+
+  async searchNotes(
+    userId: string,
+    query: string,
+    options: SearchOptions = {}
+  ): Promise<SearchResult> {
+    const {
+      language = detectLanguage(query),
+      minRank = 0.01,
+      limit = 20,
+      offset = 0,
+      tag = null,
+    } = options
+
+    // 1. Try Full Text Search (FTS)
+    try {
+      const tsQuery = buildTsQuery(query)
+      const ftsLang = ftsLanguage(language as LanguageCode)
+
+      const { data, error } = await this.supabase.rpc('search_notes_fts', {
+        search_query: tsQuery,
+        search_language: ftsLang,
+        min_rank: minRank,
+        result_limit: limit,
+        result_offset: offset,
+        search_user_id: userId,
+      })
+
+      if (!error && data) {
+        const filtered = tag
+          ? (data as FtsSearchResult[]).filter((note) => (note.tags ?? []).includes(tag))
+          : (data as FtsSearchResult[])
+
+        return {
+          results: filtered,
+          total: filtered.length,
+          method: 'fts',
+        }
+      }
+    } catch (e) {
+      console.warn('FTS search exception:', e)
+    }
+
+    // 2. Fallback to ILIKE (Simple search)
+    try {
+      const searchLower = query.toLowerCase()
+      const safeSearch = this.sanitizeOrValue(searchLower)
+      let supabaseQuery = this.supabase
+        .from('notes')
+        .select('id, title, description, tags, created_at, updated_at')
+        .eq('user_id', userId)
+        .or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`)
+
+      if (tag) {
+        supabaseQuery = supabaseQuery.contains('tags', [tag])
+      }
+
+      const { data, error } = await supabaseQuery
+        .range(offset, offset + limit - 1)
+        .order('updated_at', { ascending: false })
+
+      if (error) throw error
+
+      const mappedResults: FtsSearchResult[] = mapNotesToFtsResult((data as Tables<'notes'>[]) || [], userId)
+
+      return {
+        results: mappedResults,
+        total: mappedResults.length,
+        method: 'fallback',
+      }
+    } catch (error: unknown) {
+      let errorMessage = 'Unknown error occurred'
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = String((error as { message: unknown }).message)
+      }
+
+      return {
+        results: [],
+        total: 0,
+        method: 'fallback',
+        error: errorMessage,
+      }
+    }
+  }
+}
+
+export type { SearchOptions, SearchResult, LanguageCode } from '../utils/search'

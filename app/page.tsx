@@ -6,7 +6,7 @@ import { toast } from "sonner"
 
 import { AuthShell } from "@/components/features/auth/AuthShell"
 import { NotesShell } from "@/components/features/notes/NotesShell"
-import { useNoteAppController } from "@/hooks/useNoteAppController"
+import { useNoteAppController } from "@ui/web/hooks/useNoteAppController"
 
 export default function App() {
   const controller = useNoteAppController()

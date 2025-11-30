@@ -52,7 +52,6 @@ describe('Tooltip Component', () => {
     )
 
     cy.contains('Focus me').focus()
-    cy.wait(100)
     cy.contains('Tooltip content').should('be.visible')
   })
 

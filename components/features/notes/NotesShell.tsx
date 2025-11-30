@@ -18,7 +18,7 @@ import { NoteEditor } from "@/components/features/notes/NoteEditor"
 import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
 import type { Note } from "@/types/domain"
-import type { NoteAppController } from "@/hooks/useNoteAppController"
+import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 
 type NoteRecord = Note & {
   content?: string | null
