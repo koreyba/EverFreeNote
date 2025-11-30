@@ -1,9 +1,23 @@
 import React from 'react'
 import { VirtualNoteList } from '@/components/VirtualNoteList'
 import type { Note } from '@/types/domain'
+import { ListChildComponentProps } from 'react-window'
+
+type ItemData = {
+  notes: Note[]
+  selectedNote: Note | null
+  onSelectNote: (note: Note) => void
+  onTagClick: (tag: string) => void
+}
 
 // Mock List component to bypass react-window complexity in tests
-const MockList = ({ children, itemCount, itemData, height, width }: any) => {
+const MockList = ({ children, itemCount, itemData, height, width }: {
+  children: React.ComponentType<ListChildComponentProps>;
+  itemCount: number;
+  itemData: ItemData;
+  height: number | string;
+  width: number | string;
+}) => {
   const Row = children
   const items = []
   for (let i = 0; i < itemCount; i++) {

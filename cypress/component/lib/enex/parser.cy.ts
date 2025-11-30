@@ -53,8 +53,8 @@ describe('EnexParser', () => {
     try {
       await parser.parse(file)
       expect.fail('Should have thrown an error')
-    } catch (error: any) {
-      expect(error.message).to.contain('Failed to parse .enex file')
+    } catch (error: unknown) {
+      expect((error as Error).message).to.contain('Failed to parse .enex file')
     }
   })
 

@@ -2,14 +2,18 @@ import React from 'react'
 import RichTextEditor from '@/components/RichTextEditor'
 import { browser } from '@/lib/adapters/browser'
 
+// Helper type for Sinon stubs
+type SinonStub = ReturnType<typeof cy.stub>
+
 describe('RichTextEditor', () => {
   beforeEach(() => {
     // Mock browser.prompt
-    if (!(browser.prompt as any).restore) {
+    const promptStub = browser.prompt as unknown as SinonStub
+    if (!promptStub.restore) {
         cy.stub(browser, 'prompt').returns('http://example.com')
     } else {
-        (browser.prompt as any).resetHistory();
-        (browser.prompt as any).returns('http://example.com');
+        promptStub.resetHistory();
+        promptStub.returns('http://example.com');
     }
   })
 

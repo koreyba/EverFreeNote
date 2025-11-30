@@ -2,14 +2,11 @@ import { ContentConverter } from '../../../../lib/enex/converter'
 import { ImageProcessor } from '../../../../lib/enex/image-processor'
 import type { EnexResource } from '../../../../lib/enex/types'
 
-interface CypressStub<TArgs extends any[] = any[], TResult = any> {
-  (...args: TArgs): TResult
-  resolves(value: TResult): this
-  rejects(reason?: any): this
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SinonStub = any
 
 type ImageProcessorStub = {
-  upload: CypressStub<any[], string>
+  upload: SinonStub
 }
 
 describe('ContentConverter', () => {

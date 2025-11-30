@@ -1,27 +1,27 @@
 import React from 'react'
 import { NoteList } from '@/components/features/notes/NoteList'
-import { Note, SearchResult } from '@/types/domain'
+import { SearchResult, NoteViewModel } from '@/types/domain'
 
-const mockNotes: Note[] = [
+const mockNotes: NoteViewModel[] = [
   {
     id: '1',
     title: 'Note 1',
     content: 'Content 1',
+    description: 'Description 1',
+    tags: [],
+    created_at: '2023-01-01T00:00:00Z',
     updated_at: '2023-01-01T00:00:00Z',
-    user_id: 'u1',
-    is_archived: false,
-    is_favorite: false,
-    is_deleted: false
+    user_id: 'u1'
   },
   {
     id: '2',
     title: 'Note 2',
     content: 'Content 2',
+    description: 'Description 2',
+    tags: [],
+    created_at: '2023-01-02T00:00:00Z',
     updated_at: '2023-01-02T00:00:00Z',
-    user_id: 'u1',
-    is_archived: false,
-    is_favorite: false,
-    is_deleted: false
+    user_id: 'u1'
   }
 ]
 

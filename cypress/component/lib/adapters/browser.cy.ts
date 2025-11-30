@@ -60,14 +60,7 @@ describe('WebBrowserAdapter', () => {
       // But let's try stubbing the method on the instance if possible, or just skip if too risky.
       // Actually, browser.location returns window.location directly in the implementation.
       
-      const originalReload = window.location.reload;
-      try {
-        // Attempt to stub. If it fails (read-only), we might need a different approach or accept it's hard to test reload invocation without side effects.
-        // A safer way is to check if the property exists.
-        expect(browser.location.reload).to.be.a('function');
-      } catch (e) {
-        // ignore
-      }
-    });
-  });
-});
+      expect(browser.location.reload).to.be.a('function');
+    })
+  })
+})

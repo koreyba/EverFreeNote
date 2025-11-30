@@ -1,8 +1,8 @@
 import React from 'react'
 import { NoteCard } from '@/components/features/notes/NoteCard'
-import { Note, SearchResult } from '@/types/domain'
+import { SearchResult, NoteViewModel } from '@/types/domain'
 
-const mockNote: Note = {
+const mockNote: NoteViewModel = {
   id: '1',
   title: 'Test Note',
   content: '<div>Test Content</div>',
@@ -10,10 +10,7 @@ const mockNote: Note = {
   tags: ['tag1', 'tag2'],
   created_at: '2023-01-01T00:00:00Z',
   updated_at: '2023-01-02T00:00:00Z',
-  user_id: 'user1',
-  is_archived: false,
-  is_favorite: false,
-  is_deleted: false
+  user_id: 'user1'
 }
 
 const mockSearchResult: SearchResult = {

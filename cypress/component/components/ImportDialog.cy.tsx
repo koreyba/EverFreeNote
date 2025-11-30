@@ -1,10 +1,13 @@
 import React from 'react'
 import { ImportDialog } from '@/components/ImportDialog'
-import { DuplicateStrategy } from '@/lib/enex/types'
+
+// Helper type for Sinon stubs
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SinonStub = any
 
 describe('ImportDialog', () => {
-  let onOpenChangeSpy: any
-  let onImportSpy: any
+  let onOpenChangeSpy: SinonStub
+  let onImportSpy: SinonStub
 
   beforeEach(() => {
     onOpenChangeSpy = cy.spy().as('onOpenChange')
@@ -168,8 +171,9 @@ describe('ImportDialog', () => {
     cy.get('button').contains('Import').click()
 
     cy.get('@onImport').should('have.been.calledOnce')
-    cy.get('@onImport').should((spy: any) => {
-      const args = spy.firstCall.args
+    cy.get('@onImport').should((spy: unknown) => {
+      const sinonSpy = spy as SinonStub
+      const args = sinonSpy.firstCall.args
       expect(args[0]).to.have.length(1)
       expect(args[0][0].name).to.equal('test.enex')
       expect(args[1]).to.deep.equal({ duplicateStrategy: 'skip' })

@@ -4,7 +4,9 @@ import { QueryProvider } from '@/components/providers/QueryProvider'
 import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 import { NoteViewModel } from '@/types/domain'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import * as NotesQuery from '../../../../../ui/web/hooks/useNotesQuery'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SinonStub = any
 
 const TestComponent = () => {
   const controller = useNoteAppController()
@@ -85,26 +87,16 @@ const TestComponent = () => {
 }
 
 interface MockQueryBuilder {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  select: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  order: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  range: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  contains: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  or: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  insert: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  update: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  delete: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  eq: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  single: any
+  select: SinonStub
+  order: SinonStub
+  range: SinonStub
+  contains: SinonStub
+  or: SinonStub
+  insert: SinonStub
+  update: SinonStub
+  delete: SinonStub
+  eq: SinonStub
+  single: SinonStub
   then: (resolve: (res: { data: unknown[]; error: null; count: number }) => void) => void
 }
 
@@ -182,8 +174,7 @@ describe('useNoteAppController', () => {
   })
 
   it('handles sign out', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (mockSupabase.auth.getSession as any).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+    ;(mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
     
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
@@ -271,8 +262,7 @@ describe('useNoteAppController', () => {
 
   it('handles save note (create)', () => {
     // We need user to be logged in for save to work
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (mockSupabase.auth.getSession as any).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+    ;(mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
@@ -358,11 +348,11 @@ describe('useNoteAppController', () => {
 
   it('handles remove tag from note', () => {
     // Ensure user is logged in
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (mockSupabase.auth.getSession as any).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+    ;(mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
 
     // Mock supabase response for notes query
-    mockQueryBuilder.then = (resolve: any) => resolve({ 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockQueryBuilder.then = (resolve: (res: any) => void) => resolve({ 
       data: [{ id: '1', title: 'Note 1', tags: ['tag1', 'tag2'], user_id: 'test-user' }], 
       error: null, 
       count: 1 

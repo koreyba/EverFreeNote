@@ -2,25 +2,20 @@ import { NoteCreator } from '../../../../lib/enex/note-creator'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ParsedNote } from '../../../../lib/enex/types'
 
-interface CypressStub<TArgs extends any[] = any[], TResult = any> {
-  (...args: TArgs): TResult
-  resolves(value: TResult): this
-  rejects(reason?: any): this
-  returnsThis(): this
-  getCall?(index: number): { args: any[] }
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SinonStub = any
 
 type SupabaseQueryBuilder = {
-  select: CypressStub<any[], any>
-  eq: CypressStub<any[], any>
-  insert: CypressStub<any[], any>
-  update: CypressStub<any[], any>
-  single: CypressStub<any[], { data: unknown; error: { message: string } | null }>
-  then: (callback: (result: { data: any[]; error: any }) => void) => void
+  select: SinonStub
+  eq: SinonStub
+  insert: SinonStub
+  update: SinonStub
+  single: SinonStub
+  then: (callback: (result: { data: unknown[]; error: unknown }) => void) => void
 }
 
 type SupabaseClientStub = {
-  from: () => SupabaseQueryBuilder
+  from: SinonStub
 }
 
 describe('NoteCreator', () => {
@@ -61,7 +56,7 @@ describe('NoteCreator', () => {
     expect(mockSupabase.from).to.have.been.calledWith('notes')
     expect(mockQueryBuilder.insert).to.have.been.called
     
-    const insertCall = (mockQueryBuilder.insert as { getCall: (index: number) => { args: any[] } }).getCall(0)
+    const insertCall = mockQueryBuilder.insert.getCall(0)
     const noteData = insertCall.args[0]
     expect(noteData.title).to.equal('Test Note')
     expect(noteData.user_id).to.equal('user1')
@@ -101,7 +96,7 @@ describe('NoteCreator', () => {
     expect(id).to.equal('new-note-id')
     expect(mockQueryBuilder.insert).to.have.been.called
     
-    const insertCall = (mockQueryBuilder.insert as { getCall: (index: number) => { args: any[] } }).getCall(0)
+    const insertCall = mockQueryBuilder.insert.getCall(0)
     const noteData = insertCall.args[0]
     expect(noteData.title).to.equal('[duplicate] Test Note')
   })

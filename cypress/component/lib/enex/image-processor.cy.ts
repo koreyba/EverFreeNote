@@ -1,21 +1,13 @@
 import { ImageProcessor } from '../../../../lib/enex/image-processor'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-type UploadResponse = { data: { path: string } | null; error: null | { message: string } }
-type PublicUrlResponse = { data: { publicUrl: string | null } }
-
-interface CypressStub<TArgs extends any[] = any[], TResult = any> {
-  (...args: TArgs): TResult
-  resolves(value: TResult): this
-  rejects(reason?: any): this
-  getCall(index: number): { args: any[] }
-  returns(value: TResult): this
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SinonStub = any
 
 type SupabaseStorageStub = {
-  from: () => SupabaseStorageStub
-  upload: CypressStub<any[], UploadResponse>
-  getPublicUrl: CypressStub<any[], PublicUrlResponse>
+  from: SinonStub
+  upload: SinonStub
+  getPublicUrl: SinonStub
 }
 
 type SupabaseClientStub = {

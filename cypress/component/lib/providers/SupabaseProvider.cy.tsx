@@ -3,6 +3,8 @@ import { SupabaseProvider, useSupabase } from '@/lib/providers/SupabaseProvider'
 import { webSupabaseClientFactory } from '@/ui/web/adapters/supabaseClient'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+type SinonStub = ReturnType<typeof cy.stub>
+
 const TestConsumer = () => {
   const { user, loading } = useSupabase()
   return (
@@ -15,11 +17,8 @@ const TestConsumer = () => {
 
 describe('SupabaseProvider', () => {
   let mockSupabase: SupabaseClient
-  let originalCreateClient: any
 
   beforeEach(() => {
-    originalCreateClient = webSupabaseClientFactory.createClient
-
     mockSupabase = {
       auth: {
         getSession: cy.stub().resolves({ data: { session: null }, error: null }),
@@ -28,14 +27,7 @@ describe('SupabaseProvider', () => {
     } as unknown as SupabaseClient
 
     // Mock the factory method
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (webSupabaseClientFactory as any).createClient = () => mockSupabase
-  })
-
-  afterEach(() => {
-    // Restore original method
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (webSupabaseClientFactory as any).createClient = originalCreateClient
+    cy.stub(webSupabaseClientFactory, 'createClient').returns(mockSupabase)
   })
 
   it('renders children and provides initial state', () => {
@@ -54,8 +46,7 @@ describe('SupabaseProvider', () => {
 
   it('updates user on session change', () => {
     const mockSession = { user: { email: 'test@example.com' } }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(mockSupabase.auth.getSession as any).resolves({ data: { session: mockSession }, error: null })
+    ;(mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: mockSession }, error: null })
 
     cy.mount(
       <SupabaseProvider>

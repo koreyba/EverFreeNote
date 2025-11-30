@@ -33,7 +33,7 @@ export class SearchService {
 
     // 1. Try Full Text Search (FTS)
     try {
-      const tsQuery = buildTsQuery(query, language)
+      const tsQuery = buildTsQuery(query)
       const ftsLang = ftsLanguage(language as LanguageCode)
 
       const { data, error } = await this.supabase.rpc('search_notes_fts', {
