@@ -4,6 +4,7 @@ import * as React from "react"
 import { Loader2, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import RichTextEditor from "@/components/RichTextEditor"
 
 interface NoteEditorProps {
@@ -33,7 +34,7 @@ export const NoteEditor = React.memo(function NoteEditor({
 }: NoteEditorProps) {
   // Обработчики событий для предотвращения пересоздания на каждом рендере
   const handleTitleChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       onTitleChange(e.target.value)
     },
     [onTitleChange]
@@ -46,12 +47,22 @@ export const NoteEditor = React.memo(function NoteEditor({
     [onTagsChange]
   )
 
+  // Auto-resize textarea
+  const titleRef = React.useRef<HTMLTextAreaElement>(null)
+  
+  React.useEffect(() => {
+    if (titleRef.current) {
+      titleRef.current.style.height = 'auto'
+      titleRef.current.style.height = titleRef.current.scrollHeight + 'px'
+    }
+  }, [title])
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Editor Header */}
       <div className="p-4 border-b bg-card flex items-center justify-between">
-        <h2 className="text-lg font-semibold">
-          {isNew ? 'New Note' : 'Edit Note'}
+        <h2 className="text-lg font-semibold text-muted-foreground">
+          Editing
         </h2>
         <div className="flex gap-2">
           <Button
@@ -80,12 +91,13 @@ export const NoteEditor = React.memo(function NoteEditor({
       <div className="flex-1 overflow-y-auto p-6 bg-card">
         <div className="max-w-4xl mx-auto space-y-4">
           <div>
-            <Input
-              type="text"
+            <Textarea
+              ref={titleRef}
               placeholder="Note title"
               value={title}
               onChange={handleTitleChange}
-              className="text-2xl font-bold border-none focus-visible:ring-0 px-0 bg-transparent"
+              className="text-2xl font-bold border-none focus-visible:ring-0 px-0 bg-transparent min-h-[40px] resize-none overflow-hidden"
+              rows={1}
             />
           </div>
           <div>

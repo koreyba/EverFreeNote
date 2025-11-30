@@ -13,6 +13,7 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ImportButton } from "@/components/ImportButton"
 import { User } from "@supabase/supabase-js"
+import { cn } from "@/lib/utils"
 
 interface SidebarProps {
   user: User
@@ -24,6 +25,7 @@ interface SidebarProps {
   onSignOut: () => void
   onImportComplete: () => void
   children: React.ReactNode // For the NoteList
+  className?: string
 }
 
 export function Sidebar({
@@ -35,10 +37,11 @@ export function Sidebar({
   onCreateNote,
   onSignOut,
   onImportComplete,
-  children
+  children,
+  className
 }: SidebarProps) {
   return (
-    <div className="w-80 bg-card border-r flex flex-col h-full">
+    <div className={cn("w-80 bg-card border-r flex flex-col h-full", className)}>
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
