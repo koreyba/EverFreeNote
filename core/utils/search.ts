@@ -11,19 +11,19 @@ export type LanguageCode = keyof typeof FTS_LANGUAGES
 const MAX_QUERY_LENGTH = 1000
 const MIN_QUERY_LENGTH = 3
 
-export function buildTsQuery(query: string): string {
+export function buildTsQuery(query: string): string | null {
   if (!query || typeof query !== 'string') {
-    throw new Error('Query must be a non-empty string')
+    return null
   }
 
   if (query.length > MAX_QUERY_LENGTH) {
-    throw new Error(`Query exceeds maximum length: ${MAX_QUERY_LENGTH}`)
+    return null
   }
 
   const trimmed = query.trim()
 
   if (trimmed.length < MIN_QUERY_LENGTH) {
-    throw new Error(`Query must be at least ${MIN_QUERY_LENGTH} characters`)
+    return null
   }
 
   const sanitized = trimmed
@@ -32,7 +32,7 @@ export function buildTsQuery(query: string): string {
     .trim()
 
   if (!sanitized) {
-    throw new Error('Query is empty after sanitization')
+    return null
   }
 
   const words = sanitized.split(' ').filter(Boolean)
