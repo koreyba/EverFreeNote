@@ -12,7 +12,6 @@ interface NoteEditorProps {
   description: string
   tags: string
   isSaving: boolean
-  isNew: boolean
   onTitleChange: (value: string) => void
   onDescriptionChange: (value: string) => void
   onTagsChange: (value: string) => void
@@ -25,7 +24,6 @@ export const NoteEditor = React.memo(function NoteEditor({
   description,
   tags,
   isSaving,
-  isNew,
   onTitleChange,
   onDescriptionChange,
   onTagsChange,

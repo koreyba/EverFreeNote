@@ -149,7 +149,6 @@ function EditorPane({ controller, onBack }: { controller: NoteAppController, onB
         description={editForm.description}
         tags={editForm.tags}
         isSaving={saving}
-        isNew={!selectedNote}
         onTitleChange={(val) => setEditForm((prev) => ({ ...prev, title: val }))}
         onDescriptionChange={(val) => setEditForm((prev) => ({ ...prev, description: val }))}
         onTagsChange={(val) => setEditForm((prev) => ({ ...prev, tags: val }))}

@@ -5,6 +5,7 @@ import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 describe('Mobile Layout Adaptation', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mockUser = { id: 'test-user', email: 'test@example.com' } as any
   
   let createMockController: (overrides?: Partial<NoteAppController>) => NoteAppController
@@ -15,6 +16,7 @@ describe('Mobile Layout Adaptation', () => {
       user: mockUser,
       loading: false,
       notes: [],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       notesQuery: { isLoading: false, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: cy.stub() } as any,
       selectedNote: null,
       isEditing: false,
@@ -24,9 +26,11 @@ describe('Mobile Layout Adaptation', () => {
       deleteDialogOpen: false,
       noteToDelete: null,
       saving: false,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ftsSearchResult: { isLoading: false, data: [] } as any,
       showFTSResults: false,
-      ftsData: null,
+      ftsData: undefined,
+      ftsResults: [],
       observerTarget: { current: null },
       
       handleSelectNote: cy.stub().as('handleSelectNote'),
@@ -60,6 +64,7 @@ describe('Mobile Layout Adaptation', () => {
         select: cy.stub().returnsThis(),
         order: cy.stub().returnsThis(),
         range: cy.stub().returnsThis(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         then: (resolve: any) => resolve({ data: [], error: null })
       }),
       storage: {
@@ -94,6 +99,7 @@ describe('Mobile Layout Adaptation', () => {
       id: '1', 
       title: 'Test Note', 
       description: 'Content', 
+      tags: [],
       created_at: new Date().toISOString(), 
       updated_at: new Date().toISOString(),
       user_id: 'test-user'
@@ -138,6 +144,7 @@ describe('Mobile Layout Adaptation', () => {
       id: '1', 
       title: 'Test Note', 
       description: 'Content', 
+      tags: [],
       created_at: new Date().toISOString(), 
       updated_at: new Date().toISOString(),
       user_id: 'test-user'
@@ -164,6 +171,7 @@ describe('Mobile Layout Adaptation', () => {
       id: '1', 
       title: 'Test Note', 
       description: 'Content', 
+      tags: [],
       created_at: new Date().toISOString(), 
       updated_at: new Date().toISOString(),
       user_id: 'test-user'
