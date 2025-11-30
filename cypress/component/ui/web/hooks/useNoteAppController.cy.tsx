@@ -378,9 +378,6 @@ describe('useNoteAppController', () => {
     // Check if update was called with removed tag
     cy.wrap(mockQueryBuilder.update).should('have.been.called')
     
-    // Wait for async operation
-    cy.wait(100)
-    
     // Check if selected note tags updated in UI
     cy.get('[data-cy="selectedNote-tags"]').should('contain', 'tag2')
     cy.get('[data-cy="selectedNote-tags"]').should('not.contain', 'tag1')

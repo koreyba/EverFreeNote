@@ -36,9 +36,6 @@ describe('useInfiniteScroll', () => {
     // Scroll the container
     cy.get('[data-cy="scroll-container"]').scrollTo('bottom')
     
-    // Wait for observer to trigger
-    cy.wait(200)
-    
     cy.get('@fetchNextPage').should('have.been.called')
   })
 
@@ -54,7 +51,6 @@ describe('useInfiniteScroll', () => {
     )
 
     cy.get('[data-cy="scroll-container"]').scrollTo('bottom')
-    cy.wait(200)
     
     cy.get('@fetchNextPage').should('not.have.been.called')
   })
@@ -71,7 +67,6 @@ describe('useInfiniteScroll', () => {
     )
 
     cy.get('[data-cy="scroll-container"]').scrollTo('bottom')
-    cy.wait(200)
     
     cy.get('@fetchNextPage').should('not.have.been.called')
   })
