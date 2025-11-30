@@ -117,9 +117,6 @@ describe('AuthForm Component', () => {
     cy.get('[data-cy="test-login-button"]').should('be.disabled')
     cy.get('[data-cy="skip-auth-button"]').should('be.disabled')
 
-    // Ждем завершения
-    cy.wait(150)
-
     // После завершения кнопки должны быть enabled
     cy.get('[data-cy="google-button"]').should('not.be.disabled')
     cy.get('[data-cy="test-login-button"]').should('not.be.disabled')

@@ -8,7 +8,7 @@ export default defineConfig({
       bundler: 'webpack',
     },
     specPattern: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
-    supportFile: 'cypress/support/component.js',
+    supportFile: 'cypress/support/component.ts',
     setupNodeEvents(on, config) {
       // Add code coverage for component tests
       require('@cypress/code-coverage/task')(on, config)

@@ -31,13 +31,11 @@ Cypress.Commands.add('createNote', (title: string, content: string, tags = '') =
 
   cy.contains('button', 'Save').click()
   cy.contains('Note created successfully', { timeout: 15000 }).should('be.visible')
-  cy.wait(1000)
 })
 
 Cypress.Commands.add('deleteNote', (title: string) => {
   cy.contains(title).click()
-  cy.wait(500)
-  cy.contains('button', 'Delete').click()
+  cy.contains('button', 'Delete').should('be.visible').click()
   cy.contains('Note deleted successfully', { timeout: 10000 }).should('be.visible')
 })
 
@@ -51,22 +49,18 @@ Cypress.Commands.add('searchNotes', (query: string) => {
   } else {
     cy.get('input[placeholder*="Search"]').clear()
   }
-  cy.wait(500)
 })
 
 Cypress.Commands.add('clearSearch', () => {
   cy.get('input[placeholder*="Search"]').clear()
-  cy.wait(500)
 })
 
 Cypress.Commands.add('filterByTag', (tag: string) => {
   cy.contains(tag).click()
-  cy.wait(1000)
 })
 
 Cypress.Commands.add('toggleTheme', () => {
   cy.get('button').filter(':has(svg.lucide-sun, svg.lucide-moon)').click()
-  cy.wait(300)
 })
 
 Cypress.Commands.add('importEnex', (filename: string, strategy: ImportStrategy = 'prefix') => {

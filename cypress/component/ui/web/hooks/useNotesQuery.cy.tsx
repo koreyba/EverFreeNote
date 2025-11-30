@@ -215,7 +215,6 @@ describe('useNotesQuery', () => {
 
     // Check if rpc was called with 'english'
     // We need to wait for the debounce and query
-    cy.wait(500) // Wait for debounce
     // Actually, we can just check the spy call arguments
     // But we need to ensure the query ran.
     cy.get('[data-cy="search-count"]').should('exist')
