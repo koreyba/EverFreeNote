@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { Edit2, Trash2 } from "lucide-react"
+import { Edit2, Trash2, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
+
 import { SanitizationService } from "@/lib/services/sanitizer"
 import type { Note } from "@/types/domain"
 
@@ -20,6 +21,7 @@ interface NoteViewProps {
   onDelete: () => void
   onTagClick: (tag: string) => void
   onRemoveTag: (tag: string) => void
+  onBack?: () => void
 }
 
 export const NoteView = React.memo(function NoteView({
@@ -27,7 +29,8 @@ export const NoteView = React.memo(function NoteView({
   onEdit,
   onDelete,
   onTagClick,
-  onRemoveTag
+  onRemoveTag,
+  onBack
 }: NoteViewProps) {
   // Мемоизация санитизированного контента для предотвращения повторной обработки
   const sanitizedContent = React.useMemo(
@@ -45,7 +48,19 @@ export const NoteView = React.memo(function NoteView({
     <div className="flex-1 flex flex-col">
       {/* Note View Header */}
       <div className="p-4 border-b bg-card flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{note.title}</h2>
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden -ml-2"
+              onClick={onBack}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+          )}
+          <h2 className="text-lg font-semibold text-muted-foreground">Reading</h2>
+        </div>
         <div className="flex gap-2">
           <Button
             onClick={onEdit}

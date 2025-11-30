@@ -89,9 +89,52 @@ describe('Sidebar Component', () => {
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
 
     cy.contains('work').should('be.visible')
-    cy.contains('Clear filter').click()
+    cy.contains('Clear Tags').click()
     cy.get('@onClearTagFilter').should('have.been.called')
     cy.get('input').should('have.attr', 'placeholder', 'Search in "work" notes...')
+  })
+
+  it('handles clear search button', () => {
+    const onSearch = cy.spy().as('onSearch')
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      searchQuery: 'test query',
+      onSearch,
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onImportComplete: cy.stub(),
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+    // Button should be visible when there is a query
+    cy.get('button').find('.lucide-x').should('exist')
+    
+    // Tooltip check (might need trigger)
+    cy.get('button').find('.lucide-x').parent().trigger('mouseenter')
+    cy.contains('Clear Search').should('exist')
+
+    cy.get('button').find('.lucide-x').parent().click()
+    cy.get('@onSearch').should('have.been.calledWith', '')
+  })
+
+  it('does not show clear search button when query is empty', () => {
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      searchQuery: '',
+      onSearch: cy.stub(),
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onImportComplete: cy.stub(),
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+    cy.get('button').find('.lucide-x').should('not.exist')
   })
 
   it('handles actions', () => {

@@ -19,21 +19,21 @@ describe('core/utils/search', () => {
       expect(buildTsQuery('test! & query|')).to.equal('test:* & query:*')
     })
 
-    it('throws error for empty query', () => {
-      expect(() => buildTsQuery('')).to.throw('Query must be a non-empty string')
+    it('returns null for empty query', () => {
+      expect(buildTsQuery('')).to.be.null
     })
 
-    it('throws error for short query', () => {
-      expect(() => buildTsQuery('ab')).to.throw('Query must be at least 3 characters')
+    it('returns null for short query', () => {
+      expect(buildTsQuery('ab')).to.be.null
     })
 
-    it('throws error for long query', () => {
+    it('returns null for long query', () => {
       const longQuery = 'a'.repeat(1001)
-      expect(() => buildTsQuery(longQuery)).to.throw('Query exceeds maximum length')
+      expect(buildTsQuery(longQuery)).to.be.null
     })
 
-    it('throws error if query becomes empty after sanitization', () => {
-      expect(() => buildTsQuery('!!!')).to.throw('Query is empty after sanitization')
+    it('returns null if query becomes empty after sanitization', () => {
+      expect(buildTsQuery('!!!')).to.be.null
     })
   })
 
