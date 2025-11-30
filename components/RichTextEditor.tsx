@@ -137,11 +137,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       </Popover>
 
       <Select
-        data-cy="font-family-select"
         onValueChange={(value) => editor.chain().focus().setFontFamily(value).run()}
         defaultValue={fontFamilies[0]}
       >
-        <SelectTrigger className="w-[120px] text-xs h-8">
+        <SelectTrigger data-cy="font-family-select" className="w-[120px] text-xs h-8">
           <SelectValue placeholder="Font Family" />
         </SelectTrigger>
         <SelectContent>
@@ -154,11 +153,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       </Select>
 
       <Select
-        data-cy="font-size-select"
         onValueChange={(value) => editor.chain().focus().setFontSize(`${value}pt`).run()}
         defaultValue={fontSizes[1]}
       >
-        <SelectTrigger className="w-[70px] text-xs h-8">
+        <SelectTrigger data-cy="font-size-select" className="w-[70px] text-xs h-8">
           <SelectValue placeholder="Font Size" />
         </SelectTrigger>
         <SelectContent>

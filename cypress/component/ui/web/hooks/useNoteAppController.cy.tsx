@@ -382,4 +382,58 @@ describe('useNoteAppController', () => {
     cy.get('[data-cy="selectedNote-tags"]').should('contain', 'tag2')
     cy.get('[data-cy="selectedNote-tags"]').should('not.contain', 'tag1')
   })
+
+  it('handles remove tag error', () => {
+    ;(mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+
+    // Mock notes query success
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockQueryBuilder.then = (resolve: (res: any) => void) => resolve({ 
+      data: [{ id: '1', title: 'Note 1', tags: ['tag1', 'tag2'], user_id: 'test-user' }], 
+      error: null, 
+      count: 1 
+    })
+
+    // Mock update failure
+    const updateStub = cy.stub().returns({
+        eq: cy.stub().returns({
+            select: cy.stub().returns({
+                single: cy.stub().rejects(new Error('Update failed'))
+            })
+        })
+    })
+    mockQueryBuilder.update = updateStub
+
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="user"]').should('contain', 'test-user')
+    cy.get('[data-cy="remove-tag-btn"]').click()
+    
+    cy.wrap(updateStub).should('have.been.called')
+  })
+
+  it('handles null search results', () => {
+    // Mock rpc to return null data
+    (mockSupabase.rpc as unknown as SinonStub).resolves({ data: null, error: null })
+    
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+    
+    // Trigger search
+    cy.get('[data-cy="search-btn"]').click()
+    
+    // Check that it doesn't crash
+    cy.get('[data-cy="searchQuery"]').should('contain', 'test query')
+  })
 })

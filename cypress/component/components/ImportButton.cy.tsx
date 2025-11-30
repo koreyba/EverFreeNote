@@ -242,39 +242,61 @@ describe('ImportButton', () => {
     cy.wrap(browser.localStorage.removeItem).should('have.been.calledWith', 'everfreenote-import-state')
   })
 
-  // it('validates file size', () => {
-  //   cy.mount(
-  //     <SupabaseTestProvider supabase={mockSupabase}>
-  //       <ImportButton />
-  //     </SupabaseTestProvider>
-  //   )
-  //   cy.contains('Import from Evernote').click()
+  it('validates file size', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <ImportButton maxFileSize={10} />
+      </SupabaseTestProvider>
+    )
+    cy.contains('Import from Evernote').click()
 
-  //   // Create a large file (mocking size property)
-  //   const largeFile = new File([''], 'large.enex', { type: 'application/xml' })
-  //   Object.defineProperty(largeFile, 'size', { value: 101 * 1024 * 1024 }) // 101MB
+    // Create a file larger than 10 bytes
+    // const file = new File(['some content larger than 10 bytes'], 'test.enex', { type: 'application/xml' })
 
-  //   cy.get('input[type="file"]').selectFile({
-  //     contents: largeFile,
-  //     fileName: 'large.enex',
-  //     mimeType: 'application/xml'
-  //   }, { force: true })
+    cy.get('input[type="file"]').selectFile({
+      contents: Cypress.Buffer.from('some content larger than 10 bytes'),
+      fileName: 'test.enex',
+      mimeType: 'application/xml'
+    }, { force: true })
 
-  //   cy.get('[role="dialog"] button').contains('Import').click()
+    cy.get('[role="dialog"] button').contains('Import').click()
 
-  //   // Should show error toast (we can't see toast easily, but we can check that import didn't start)
-  //   // The progress dialog should NOT be visible if validation failed immediately
-  //   // But wait, the code sets progressDialogOpen(true) BEFORE validation.
-  //   // Let's check the code:
-  //   // setImporting(true)
-  //   // setProgressDialogOpen(true)
-  //   // ... validation ...
-  //   // if oversized: setImporting(false), setProgressDialogOpen(false)
-    
-  //   // So it might flash.
-  //   // We can check that mockSupabase.auth.getUser was NOT called
-  //   cy.wrap(mockSupabase.auth.getUser).should('not.have.been.called')
-  // })
+    // Should show error toast (we can't see toast easily, but we can check that import didn't start)
+    // We can check that mockSupabase.auth.getUser was NOT called
+    cy.wrap(mockSupabase.auth.getUser).should('not.have.been.called')
+  })
+
+  it('closes progress dialog', () => {
+    const onImportComplete = cy.spy().as('onImportComplete')
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <ImportButton onImportComplete={onImportComplete} />
+      </SupabaseTestProvider>
+    )
+
+    // Open dialog
+    cy.contains('Import from Evernote').click()
+
+    // Select file
+    const file = new File([validEnexContent], 'notes.enex', { type: 'application/xml' })
+    cy.get('input[type="file"]').selectFile({
+      contents: file,
+      fileName: 'notes.enex',
+      mimeType: 'application/xml'
+    }, { force: true })
+
+    // Click Import inside the dialog
+    cy.get('[role="dialog"] button').contains('Import').click()
+
+    // Wait for completion
+    cy.contains('Successfully imported 1 note', { timeout: 10000 }).should('be.visible')
+
+    // Click Close button in progress dialog
+    cy.contains('button', 'Close').click()
+
+    // Progress dialog should be closed (not visible)
+    cy.contains('Import Progress').should('not.exist')
+  })
 
   it('requires user to be logged in', () => {
     mockSupabase.auth.getUser.resolves({ data: { user: null } })
