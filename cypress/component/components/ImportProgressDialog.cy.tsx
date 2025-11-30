@@ -144,4 +144,56 @@ describe('ImportProgressDialog', () => {
     cy.contains('button', 'Close').click()
     cy.get('@onClose').should('have.been.called')
   })
+
+  it('prevents closing on escape key when in progress', () => {
+    const onClose = cy.spy().as('onClose')
+    cy.mount(
+      <ImportProgressDialog
+        open={true}
+        progress={defaultProgress}
+        result={null} // In progress
+        onClose={onClose}
+      />
+    )
+
+    cy.get('body').type('{esc}')
+    cy.get('@onClose').should('not.have.been.called')
+    cy.get('[role="dialog"]').should('be.visible')
+  })
+
+  it('prevents closing on outside click when in progress', () => {
+    const onClose = cy.spy().as('onClose')
+    cy.mount(
+      <ImportProgressDialog
+        open={true}
+        progress={defaultProgress}
+        result={null} // In progress
+        onClose={onClose}
+      />
+    )
+
+    cy.get('body').click(0, 0, { force: true }) // Click outside dialog
+    cy.get('@onClose').should('not.have.been.called')
+    cy.get('[role="dialog"]').should('be.visible')
+  })
+
+  it('allows closing on escape key when complete', () => {
+    const onClose = cy.spy().as('onClose')
+    const result = { success: 1, errors: 0, failedNotes: [], message: 'Done' }
+    cy.mount(
+      <ImportProgressDialog
+        open={true}
+        progress={defaultProgress}
+        result={result}
+        onClose={onClose}
+      />
+    )
+
+    cy.get('[role="dialog"]').should('be.visible')
+    // Click inside to ensure focus
+    cy.get('[role="dialog"]').click()
+    cy.wait(100)
+    cy.get('body').type('{esc}')
+    cy.get('@onClose').should('have.been.called')
+  })
 })

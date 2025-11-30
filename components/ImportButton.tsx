@@ -21,7 +21,6 @@ import {
 import { useSupabase } from "@/lib/providers/SupabaseProvider"
 import { browser } from "@/lib/adapters/browser"
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
 const IMPORT_STATE_KEY = "everfreenote-import-state"
 
 const initialProgress: ImportProgress = {
@@ -37,9 +36,10 @@ type ImportButtonProps = {
     status: ImportStatus,
     counts: { successCount: number; errorCount: number }
   ) => void
+  maxFileSize?: number
 }
 
-export function ImportButton({ onImportComplete }: ImportButtonProps) {
+export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024 }: ImportButtonProps) {
   const [importing, setImporting] = React.useState(false)
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [progressDialogOpen, setProgressDialogOpen] = React.useState(false)
@@ -99,10 +99,10 @@ export function ImportButton({ onImportComplete }: ImportButtonProps) {
     setImportResult(null)
 
     // Validate file sizes
-    const oversizedFiles = files.filter((file) => file.size > MAX_FILE_SIZE)
+    const oversizedFiles = files.filter((file) => file.size > maxFileSize)
     if (oversizedFiles.length > 0) {
       const fileNames = oversizedFiles.map((file) => file.name).join(", ")
-      toast.error(`Files too large (max 100MB): ${fileNames}`)
+      toast.error(`Files too large (max ${Math.round(maxFileSize / 1024 / 1024)}MB): ${fileNames}`)
       setImporting(false)
       setProgressDialogOpen(false)
       return
