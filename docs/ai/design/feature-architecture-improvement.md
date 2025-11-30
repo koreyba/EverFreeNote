@@ -55,7 +55,7 @@ No changes to the database schema are required. The client-side data models (Typ
 1.  **Providers**: `SupabaseProvider` (Context for Supabase client).
 2.  **Layouts**: `AuthShell`, `NotesShell`.
 3.  **Panes**: `Sidebar`, `EditorPane`, `ListPane`, `EmptyState`.
-4.  **Services**: `lib/services/notes.ts`, `lib/services/auth.ts`, `lib/services/search.ts`.
+4.  **Services**: `@core/services/notes`, `@core/services/auth`, `@core/services/search`.
 5.  **Utils**: `lib/utils/sanitizer.ts`, `lib/adapters/storage.ts`, `lib/adapters/browser.ts`.
 
 ## Design Decisions
