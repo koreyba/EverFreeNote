@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
+import { cn } from "@/lib/utils"
 import { Sidebar } from "@/components/features/notes/Sidebar"
 import { NoteList } from "@/components/features/notes/NoteList"
 import { NoteEditor } from "@/components/features/notes/NoteEditor"
@@ -40,7 +41,12 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleCreateNote,
     handleSignOut,
     invalidateNotes,
+    selectedNote,
+    isEditing,
+    handleSelectNote,
   } = controller
+
+  const showEditor = !!(selectedNote || isEditing)
 
   return (
     <div className="flex h-screen bg-muted/20">
@@ -53,11 +59,24 @@ export function NotesShell({ controller }: NotesShellProps) {
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
         onImportComplete={invalidateNotes}
+        className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
+        data-testid="sidebar-container"
       >
         <ListPane controller={controller} />
       </Sidebar>
 
-      <EditorPane controller={controller} />
+      <div 
+        className={cn(
+          "flex-1 flex flex-col h-full",
+          !showEditor ? "hidden md:flex" : "w-full"
+        )}
+        data-testid="editor-container"
+      >
+        <EditorPane 
+          controller={controller} 
+          onBack={() => handleSelectNote(null)} 
+        />
+      </div>
 
       <DeleteNoteDialog controller={controller} />
     </div>
@@ -105,7 +124,7 @@ function ListPane({ controller }: { controller: NoteAppController }) {
   )
 }
 
-function EditorPane({ controller }: { controller: NoteAppController }) {
+function EditorPane({ controller, onBack }: { controller: NoteAppController, onBack: () => void }) {
   const {
     selectedNote,
     isEditing,
@@ -130,7 +149,6 @@ function EditorPane({ controller }: { controller: NoteAppController }) {
         description={editForm.description}
         tags={editForm.tags}
         isSaving={saving}
-        isNew={!selectedNote}
         onTitleChange={(val) => setEditForm((prev) => ({ ...prev, title: val }))}
         onDescriptionChange={(val) => setEditForm((prev) => ({ ...prev, description: val }))}
         onTagsChange={(val) => setEditForm((prev) => ({ ...prev, tags: val }))}
@@ -154,6 +172,7 @@ function EditorPane({ controller }: { controller: NoteAppController }) {
         onDelete={() => handleDeleteNote(selectedNote)}
         onTagClick={controller.handleTagClick}
         onRemoveTag={(tag) => handleRemoveTagFromNote(selectedNote.id, tag)}
+        onBack={onBack}
       />
     )
   }

@@ -7,7 +7,6 @@ describe('NoteEditor Component', () => {
     description: '<p>Test Description</p>',
     tags: 'tag1, tag2',
     isSaving: false,
-    isNew: false,
     onTitleChange: cy.stub(),
     onDescriptionChange: cy.stub(),
     onTagsChange: cy.stub(),
@@ -18,17 +17,17 @@ describe('NoteEditor Component', () => {
   it('renders in edit mode', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
-    cy.contains('Edit Note').should('be.visible')
-    cy.get('input[placeholder="Note title"]').should('have.value', 'Test Title')
+    cy.contains('Editing').should('be.visible')
+    cy.get('textarea[placeholder="Note title"]').should('have.value', 'Test Title')
     cy.get('input[placeholder="work, personal, ideas"]').should('have.value', 'tag1, tag2')
     // RichTextEditor content check might be complex, but we can check if it renders
     cy.get('.ProseMirror').should('contain.text', 'Test Description')
   })
 
   it('renders in new note mode', () => {
-    cy.mount(<NoteEditor {...getDefaultProps()} isNew={true} />)
+    cy.mount(<NoteEditor {...getDefaultProps()} />)
 
-    cy.contains('New Note').should('be.visible')
+    cy.contains('Editing').should('be.visible')
   })
 
   it('handles input changes', () => {
@@ -44,7 +43,7 @@ describe('NoteEditor Component', () => {
       />
     )
 
-    cy.get('input[placeholder="Note title"]').clear().type('New Title')
+    cy.get('textarea[placeholder="Note title"]').clear().type('New Title')
     cy.get('@onTitleChange').should('have.been.called')
 
     cy.get('input[placeholder="work, personal, ideas"]').clear().type('new tag')

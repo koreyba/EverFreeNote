@@ -13,9 +13,11 @@ import {
 export class SearchService {
   constructor(private supabase: SupabaseClient) {}
 
-  // Strip commas to avoid breaking PostgREST OR syntax
+  // Sanitize for PostgREST OR syntax
   private sanitizeOrValue(value: string) {
-    return value.replace(/,/g, ' ')
+    // Remove double quotes to avoid breaking PostgREST quoted values
+    // We will wrap the value in double quotes in the query
+    return value.replace(/"/g, '')
   }
 
   async searchNotes(
@@ -34,26 +36,33 @@ export class SearchService {
     // 1. Try Full Text Search (FTS)
     try {
       const tsQuery = buildTsQuery(query)
-      const ftsLang = ftsLanguage(language as LanguageCode)
+      
+      if (tsQuery) {
+        const ftsLang = ftsLanguage(language as LanguageCode)
 
-      const { data, error } = await this.supabase.rpc('search_notes_fts', {
-        search_query: tsQuery,
-        search_language: ftsLang,
-        min_rank: minRank,
-        result_limit: limit,
-        result_offset: offset,
-        search_user_id: userId,
-      })
+        const { data, error } = await this.supabase.rpc('search_notes_fts', {
+          search_query: tsQuery,
+          search_language: ftsLang,
+          min_rank: minRank,
+          result_limit: limit,
+          result_offset: offset,
+          search_user_id: userId,
+        })
 
-      if (!error && data) {
-        const filtered = tag
-          ? (data as FtsSearchResult[]).filter((note) => (note.tags ?? []).includes(tag))
-          : (data as FtsSearchResult[])
+        if (!error && data) {
+          const filtered = tag
+            ? (data as FtsSearchResult[]).filter((note) => (note.tags ?? []).includes(tag))
+            : (data as FtsSearchResult[])
 
-        return {
-          results: filtered,
-          total: filtered.length,
-          method: 'fts',
+          // If FTS found results, return them.
+          // If FTS found nothing (0 results), fall through to ILIKE fallback to support substring search (e.g. "альные" in "специальные")
+          if (filtered.length > 0) {
+            return {
+              results: filtered,
+              total: filtered.length,
+              method: 'fts',
+            }
+          }
         }
       }
     } catch (e) {
@@ -68,7 +77,7 @@ export class SearchService {
         .from('notes')
         .select('id, title, description, tags, created_at, updated_at')
         .eq('user_id', userId)
-        .or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`)
+        .or(`title.ilike."%${safeSearch}%",description.ilike."%${safeSearch}%"`)
 
       if (tag) {
         supabaseQuery = supabaseQuery.contains('tags', [tag])

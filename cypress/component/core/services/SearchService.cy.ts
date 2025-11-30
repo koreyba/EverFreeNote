@@ -80,9 +80,9 @@ describe('core/services/SearchService', () => {
       
       await service.searchNotes('user-1', 'test,query')
 
-      // Should replace comma with space
+      // Should preserve comma (only quotes are removed)
       expect(mockQueryBuilder.or).to.have.been.calledWith(
-        Cypress.sinon.match((val: string) => val.includes('test query'))
+        Cypress.sinon.match((val: string) => val.includes('test,query'))
       )
     })
 
