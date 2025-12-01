@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { AuthShell } from "@/components/features/auth/AuthShell"
 import { NotesShell } from "@/components/features/notes/NotesShell"
 import { useNoteAppController } from "@ui/web/hooks/useNoteAppController"
+import { featureFlags } from "@ui/web/featureFlags"
 
 export default function App() {
   const controller = useNoteAppController()
@@ -38,6 +39,7 @@ export default function App() {
   if (!user) {
     return (
       <AuthShell
+        enableTestAuth={featureFlags.testAuth}
         onTestLogin={handleTestLogin}
         onSkipAuth={handleSkipAuth}
         onGoogleAuth={handleSignInWithGoogle}

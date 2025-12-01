@@ -1,16 +1,18 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 
 type AuthFormProps = {
+  enableTestAuth?: boolean
   onTestLogin: () => Promise<void> | void
   onSkipAuth: () => Promise<void> | void
   onGoogleAuth: () => Promise<void> | void
 }
 
 export default function AuthForm({
+  enableTestAuth = false,
   onTestLogin,
   onSkipAuth,
   onGoogleAuth,
@@ -74,40 +76,44 @@ export default function AuthForm({
           Continue with Google
         </Button>
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span
-              data-cy="auth-divider"
-              className="px-2 bg-card text-muted-foreground"
-            >
-              Or test the app
-            </span>
-          </div>
-        </div>
+        {enableTestAuth && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span
+                  data-cy="auth-divider"
+                  className="px-2 bg-card text-muted-foreground"
+                >
+                  Or test the app
+                </span>
+              </div>
+            </div>
 
-        <div className="space-y-2">
-          <Button
-            data-cy="test-login-button"
-            onClick={handleTestLogin}
-            variant="outline"
-            className="w-full h-10 text-sm hover:bg-accent hover:text-accent-foreground"
-            disabled={loading}
-          >
-            🧪 Test Login (Persistent)
-          </Button>
-          <Button
-            data-cy="skip-auth-button"
-            onClick={handleSkipAuth}
-            variant="outline"
-            className="w-full h-10 text-sm hover:bg-accent hover:text-accent-foreground"
-            disabled={loading}
-          >
-            🚀 Skip Authentication (Quick Test)
-          </Button>
-        </div>
+            <div className="space-y-2">
+              <Button
+                data-cy="test-login-button"
+                onClick={handleTestLogin}
+                variant="outline"
+                className="w-full h-10 text-sm hover:bg-accent hover:text-accent-foreground"
+                disabled={loading}
+              >
+                Test Login (Persistent)
+              </Button>
+              <Button
+                data-cy="skip-auth-button"
+                onClick={handleSkipAuth}
+                variant="outline"
+                className="w-full h-10 text-sm hover:bg-accent hover:text-accent-foreground"
+                disabled={loading}
+              >
+                Skip Authentication (Quick Test)
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
