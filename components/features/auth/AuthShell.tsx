@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import AuthForm from "@/components/AuthForm"
 
 interface AuthShellProps {
+  enableTestAuth?: boolean
   onTestLogin: () => void
   onSkipAuth: () => void
   onGoogleAuth: () => void
 }
 
-export function AuthShell({ onTestLogin, onSkipAuth, onGoogleAuth }: AuthShellProps) {
+export function AuthShell({ enableTestAuth = false, onTestLogin, onSkipAuth, onGoogleAuth }: AuthShellProps) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-muted/30 to-accent/20">
       <Card className="w-full max-w-md shadow-lg">
@@ -27,6 +28,7 @@ export function AuthShell({ onTestLogin, onSkipAuth, onGoogleAuth }: AuthShellPr
         </CardHeader>
         <CardContent className="space-y-4">
           <AuthForm
+            enableTestAuth={enableTestAuth}
             onTestLogin={onTestLogin}
             onSkipAuth={onSkipAuth}
             onGoogleAuth={onGoogleAuth}
