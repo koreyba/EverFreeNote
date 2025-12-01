@@ -5,6 +5,11 @@ import dotenv from 'dotenv'
 
 dotenv.config({ path: '.env.local' })
 
+if (process.env.NEXT_PUBLIC_ENABLE_TEST_AUTH !== 'true') {
+  console.log('Test user seeding skipped because NEXT_PUBLIC_ENABLE_TEST_AUTH is not true')
+  process.exit(0)
+}
+
 const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:54321'
 const SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_KEY ||

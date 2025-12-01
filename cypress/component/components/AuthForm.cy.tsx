@@ -5,6 +5,7 @@ describe('AuthForm', () => {
   it('renders all buttons', () => {
     cy.mount(
       <AuthForm
+        enableTestAuth
         onTestLogin={cy.spy()}
         onSkipAuth={cy.spy()}
         onGoogleAuth={cy.spy()}
@@ -20,6 +21,7 @@ describe('AuthForm', () => {
     const onGoogleAuth = cy.spy().as('onGoogleAuth')
     cy.mount(
       <AuthForm
+        enableTestAuth
         onTestLogin={cy.spy()}
         onSkipAuth={cy.spy()}
         onGoogleAuth={onGoogleAuth}
@@ -33,6 +35,7 @@ describe('AuthForm', () => {
     const onTestLogin = cy.spy().as('onTestLogin')
     cy.mount(
       <AuthForm
+        enableTestAuth
         onTestLogin={onTestLogin}
         onSkipAuth={cy.spy()}
         onGoogleAuth={cy.spy()}
@@ -46,6 +49,7 @@ describe('AuthForm', () => {
     const onSkipAuth = cy.spy().as('onSkipAuth')
     cy.mount(
       <AuthForm
+        enableTestAuth
         onTestLogin={cy.spy()}
         onSkipAuth={onSkipAuth}
         onGoogleAuth={cy.spy()}
@@ -66,6 +70,7 @@ describe('AuthForm', () => {
 
     cy.mount(
       <AuthForm
+        enableTestAuth
         onTestLogin={cy.spy()}
         onSkipAuth={cy.spy()}
         onGoogleAuth={onGoogleAuth}
