@@ -11,6 +11,7 @@ import type { NoteViewModel, SearchResult } from '@/types/domain'
 import { AuthService } from '@core/services/auth'
 import { webStorageAdapter } from '@ui/web/adapters/storage'
 import { webOAuthRedirectUri } from '@ui/web/config'
+import { featureFlags } from '@ui/web/featureFlags'
 
 export type EditFormState = {
   title: string
@@ -141,6 +142,11 @@ export function useNoteAppController() {
   }
 
   const handleTestLogin = async () => {
+    if (!featureFlags.testAuth) {
+      toast.error('Test authentication is disabled in this environment')
+      return
+    }
+
     try {
       setAuthLoading(true) // Show loading indicator immediately
       const { data, error } = await authService.signInWithPassword(
@@ -167,6 +173,11 @@ export function useNoteAppController() {
   }
 
   const handleSkipAuth = async () => {
+    if (!featureFlags.testAuth) {
+      toast.error('Test authentication is disabled in this environment')
+      return
+    }
+
     try {
       setAuthLoading(true) // Show loading indicator immediately
       const { data, error } = await authService.signInWithPassword(
