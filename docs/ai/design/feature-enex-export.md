@@ -109,7 +109,7 @@ interface Note {
 ```typescript
 interface ExportNote {
   title: string
-  content: string // HTML content wrapped in <en-note>
+  content: string // ENML with <en-media> referencing resources by hash
   created: Date
   updated: Date
   tags: string[]
@@ -117,8 +117,9 @@ interface ExportNote {
 }
 
 interface ExportResource {
-  data: string // base64 encoded
+  data: string // base64 encoded (original binary md5 hashed)
   mime: string
+  hash: string // md5 hex lowercase of binary data
   width?: number
   height?: number
   fileName: string
@@ -144,6 +145,12 @@ Bucket: note-images
 Path: {user_id}/{note_id}/{timestamp}_{filename}.{ext}
 Public: true
 ```
+
+### ENML Content Transformation (images)
+- Разбор HTML и замена `<img src="...">` на `<en-media type="{mime}" hash="{md5}"/>` в ENML (hash = md5 от бинарных данных ресурса, нижний регистр, без пробелов) по аналогии с Evernote.
+- Ресурсы добавляются в порядке появления в контенте, хэш используется для линковки `<en-media>` → `<resource><data>`.
+- Атрибуты alt/title могут использоваться как fallback для `<en-media>` (title) если потребуется доступность.
+- Для идемпотентности: фиксированный порядок тегов, ресурсов и атрибутов; одинаковый формат дат и переносов строк.
 
 ## API Design
 **How do components communicate?**
@@ -181,7 +188,7 @@ class ImageDownloader {
   /**
    * Download image from URL and convert to base64
    * @param url - Public URL of image
-   * @returns Promise<ExportResource | null> - null if download fails
+   * @returns Promise<ExportResource | null> - null if download fails (includes md5 hash)
    */
   async downloadImage(url: string): Promise<ExportResource | null>
   
@@ -319,6 +326,8 @@ interface ExportProgressDialogProps {
 - Координация процесса экспорта
 - Получение выбранных заметок через NoteService
 - Вызов ImageDownloader для каждой заметки
+- Конвертация HTML → ENML с <en-media> и md5-хэшами ресурсов как в Evernote
+- Обеспечение идемпотентности: детерминированный порядок заметок/ресурсов/тегов, единый формат дат
 - Вызов EnexBuilder для генерации XML
 - Создание Blob файла
 - Обработка ошибок скачивания изображений (graceful degradation)
@@ -328,8 +337,10 @@ interface ExportProgressDialogProps {
 2. Получить выбранные заметки по их ID через NoteService.getNotesByIds()
 3. Для каждой заметки:
    - Извлечь URL изображений из HTML через ImageDownloader.extractImageUrls()
-   - Скачать изображения батчами (до 5 параллельно) и конвертировать в base64
+   - Скачать изображения батчами (до 5 параллельно) и конвертировать в base64, вычислить md5 от бинарных данных
    - Пропускать проблемные изображения (возвращают null), логировать ошибки
+   - Собрать ExportResource (hash, mime, data, fileName, width/height) в порядке появления
+   - Заменить <img> в HTML на <en-media type="..." hash="..."> с ссылкой на ExportResource.hash
    - Подготовить данные для экспорта (ExportNote)
 4. Сгенерировать XML через EnexBuilder.build()
 5. Создать Blob с типом 'application/xml'
@@ -368,9 +379,10 @@ async getNotesByIds(noteIds: string[], userId: string): Promise<Note[]>
 **Responsibilities:**
 - Извлечение URL изображений из HTML
 - Скачивание изображений через fetch
-- Конвертация в base64
+- Конвертация в base64 и вычисление md5 (hash для <en-media>)
 - Определение MIME типа
 - Извлечение размеров изображения (если возможно)
+- Возврат ExportResource с hash/data/mime/fileName/width/height
 
 **Error handling:**
 - Пропускать изображения при ошибках скачивания (graceful degradation)
@@ -385,14 +397,15 @@ async getNotesByIds(noteIds: string[], userId: string): Promise<Note[]>
 - Генерация валидного XML .enex файла
 - Форматирование дат в формат Evernote (ISO 8601)
 - Экранирование XML специальных символов
-- Обертка HTML контента в CDATA
-- Генерация ресурсов (изображений) в base64
+- Обертка ENML контента в CDATA (<en-note> + <en-media>)
+- Генерация ресурсов (изображений) в base64 с hash, линкованных через <en-media>
+- Детерминированный порядок: теги, ресурсы, заметки — для идемпотентности импорта/экспорта
 
 **XML generation:**
 - Использовать строковую конкатенацию с правильным экранированием (проще и быстрее, чем DOMParser)
 - Включить DOCTYPE и DTD ссылки для совместимости с Evernote
 - Правильно экранировать XML специальные символы (`<`, `>`, `&`, `"`, `'`)
-- Обернуть HTML контент в CDATA для избежания проблем с экранированием
+- Обернуть ENML контент (<en-note>) в CDATA для избежания проблем с экранированием
 
 ### 3. Utilities
 
@@ -444,6 +457,11 @@ async getNotesByIds(noteIds: string[], userId: string): Promise<Note[]>
 - **Alternatives:** Прямой доступ к Supabase
 - **Trade-offs:** Зависимость от существующего сервиса, но консистентность
 
+**Decision 5: Совместимость изображений с Evernote (md5 + <en-media>)**
+- **Rationale:** Evernote использует md5-хэш бинарных данных в атрибуте `hash` тега `<en-media>` для связывания с `<resource>`. Повторение этой схемы дает корректное отображение и идемпотентный экспорт/импорт.
+- **Alternatives:** Использовать data URI в HTML или произвольные идентификаторы ресурсов (ломает совместимость Evernote).
+- **Trade-offs:** Дополнительные вычисления md5 на клиенте и жесткий порядок ресурсов, но полная совместимость и детерминизм.
+
 ## Non-Functional Requirements
 **How should the system perform?**
 
@@ -470,3 +488,4 @@ async getNotesByIds(noteIds: string[], userId: string): Promise<Note[]>
   - Обработка пустого списка заметок (валидный .enex с пустым en-export)
   - Обработка сетевых таймаутов при скачивании изображений
   - Корректная обработка ошибок скачивания файла в браузере (блокировка всплывающих окон)
+  - Идемпотентность экспорта/импорта: детерминированный вывод (порядок заметок/ресурсов/тегов, формат дат), различия только в export-date

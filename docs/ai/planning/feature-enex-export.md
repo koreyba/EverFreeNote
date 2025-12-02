@@ -16,7 +16,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 - [ ] Milestone 2: Image Export Support
   - Скачивание и конвертация изображений
-  - Включение изображений в .enex файл
+  - Включение изображений в .enex файл с hash/en-media как в Evernote
   - Обработка ошибок при скачивании
 
 - [ ] Milestone 3: Polish & Testing
@@ -31,7 +31,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 #### Task 1.1: Create Export Types and Interfaces
 - [ ] Создать типы для экспорта (`lib/enex/export-types.ts`)
-  - `ExportNote`, `ExportResource`, `ExportProgress`
+  - `ExportNote`, `ExportResource`, `ExportProgress` (ExportResource.hash: md5 hex)
 - [ ] Определить интерфейсы сервисов
 - **Estimate:** 1 hour
 
@@ -43,7 +43,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 #### Task 1.3: Implement EnexBuilder (без изображений)
 - [ ] Создать `lib/enex/enex-builder.ts`
-- [ ] Реализовать генерацию XML структуры
+- [ ] Реализовать генерацию XML структуры (en-export, en-note в CDATA)
 - [ ] Реализовать `buildNote()` для заметок без изображений
 - [ ] Экранирование XML специальных символов
 - [ ] Обертка HTML в CDATA
@@ -105,9 +105,9 @@ description: Break down work into actionable tasks and estimate timeline
 #### Task 2.1: Implement ImageDownloader
 - [ ] Создать `lib/enex/image-downloader.ts`
 - [ ] Реализовать `extractImageUrls()` для извлечения URL из HTML
-- [ ] Реализовать `downloadImage()` для скачивания и конвертации в base64
-- [ ] Определение MIME типа
-- [ ] Обработка ошибок скачивания
+- [ ] Реализовать `downloadImage()` для скачивания и конвертации в base64 + md5 hash
+- [ ] Определение MIME типа и размеров изображения
+- [ ] Обработка ошибок скачивания (graceful degradation)
 - [ ] Добавить тесты
 - **Estimate:** 4 hours
 
@@ -115,6 +115,7 @@ description: Break down work into actionable tasks and estimate timeline
 - [ ] Реализовать `buildResource()` для генерации XML ресурсов
 - [ ] Интеграция ресурсов в `buildNote()`
 - [ ] Обработка изображений без размеров
+- [ ] Встраивание `<en-media type="..." hash="...">` в ENML
 - [ ] Добавить тесты
 - **Estimate:** 2 hours
 
@@ -127,12 +128,15 @@ description: Break down work into actionable tasks and estimate timeline
 - [ ] Подсчет пропущенных изображений
 - [ ] Возврат информации о пропущенных изображениях
 - [ ] Показ предупреждения о пропущенных изображениях в итоговом сообщении
+- [ ] Конвертация HTML → ENML с `<en-media hash="...">` и md5 как в Evernote
+- [ ] Детерминированный порядок ресурсов/тегов для идемпотентности (round-trip совпадает, кроме export-date)
 - **Estimate:** 4 hours
 
 #### Task 2.4: Testing Image Export
 - [ ] Тестирование экспорта с изображениями
 - [ ] Проверка base64 кодирования
 - [ ] Проверка отображения изображений после импорта
+- [ ] Проверка корректности md5/hash привязки `<en-media>` → `<resource>`
 - [ ] Тестирование с большим количеством изображений
 - **Estimate:** 2 hours
 
@@ -173,6 +177,7 @@ description: Break down work into actionable tasks and estimate timeline
 - [ ] E2E тесты для экспорта
 - [ ] Тестирование с различными размерами данных
 - [ ] Проверка совместимости с Evernote
+- [ ] Тесты на идемпотентность: повторный экспорт/импорт дает тот же .enex (кроме export-date), детерминированный порядок ресурсов/тегов и стабильные md5-хэши
 - **Estimate:** 4 hours
 
 ## Dependencies
