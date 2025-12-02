@@ -84,7 +84,9 @@ export function formatEvernoteDate(date: Date | string): string {
 **Implementation approach:**
 - Использовать строковую конкатенацию для генерации XML (проще и быстрее, чем DOMParser)
 - Правильное экранирование XML специальных символов (`<`, `>`, `&`, `"`, `'`)
-- Обертка HTML контента в CDATA для избежания проблем с экранированием
+- Обертка ENML контента в CDATA (<en-note> + <en-media>)
+- Встраивание ресурсов с md5-хэшами и линковка через `<en-media type="..." hash="...">`
+- Детерминированный порядок тегов/ресурсов для идемпотентности (повторный экспорт ≈ исходный .enex)
 
 **Code pattern:**
 ```typescript
@@ -112,9 +114,10 @@ private buildNote(note: ExportNote): string {
 
 **Implementation approach:**
 - Использовать `fetch()` для скачивания изображений
-- Конвертация Response в Blob, затем в base64 через FileReader
+- Конвертация Response в Blob, затем в ArrayBuffer → md5 → base64 через FileReader
 - Определение MIME типа из Content-Type заголовка или расширения файла
-- Обработка ошибок с возвратом null
+- Извлечение размеров (через Image/OffscreenCanvas) при возможности
+- Обработка ошибок с возвратом null (graceful degradation)
 
 **Code pattern:**
 ```typescript
@@ -124,12 +127,18 @@ async downloadImage(url: string): Promise<ExportResource | null> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     
     const blob = await response.blob()
+    const arrayBuffer = await blob.arrayBuffer()
+    const hash = md5(arrayBuffer) // md5 в нижнем регистре, hex
     const base64 = await this.blobToBase64(blob)
     const mime = blob.type || this.getMimeFromUrl(url)
+    const { width, height } = await this.getImageSize(blob)
     
     return {
       data: base64,
       mime,
+      hash,
+      width,
+      height,
       fileName: this.getFileNameFromUrl(url)
     }
   } catch (error) {
@@ -146,7 +155,9 @@ async downloadImage(url: string): Promise<ExportResource | null> {
 - Получение выбранных заметок по их ID через NoteService
 - Последовательная обработка заметок с параллельной обработкой изображений внутри каждой заметки
 - Batch processing изображений для ограничения параллельных запросов
+- Конвертация HTML → ENML: замена <img> на `<en-media type="..." hash="...">` (hash = md5 бинарных данных)
 - Graceful degradation при ошибках скачивания изображений
+- Детерминированный порядок ресурсов/тегов/заметок для идемпотентности экспорта/импорта
 - Генерация XML через EnexBuilder
 - Создание Blob с правильным MIME типом (`application/xml`)
 
@@ -167,17 +178,17 @@ async exportNotes(
     const note = notes[i]
     onProgress?.({ currentNote: i + 1, totalNotes: notes.length, ... })
     
-    // Extract and download images (skip on errors)
-    const { resources, skipped } = await this.processImages(
-      note.description, 
-      userId, 
+    // Extract/download images -> resources with md5 hashes, build ENML
+    const { resources, skipped, enmlContent } = await this.processImages(
+      note.description,
+      userId,
       note.id
     )
     skippedImages += skipped
     
     exportNotes.push({
       title: note.title,
-      content: note.description,
+      content: enmlContent,
       created: new Date(note.created_at),
       updated: new Date(note.updated_at),
       tags: note.tags || [],
@@ -245,6 +256,15 @@ const handleToggleNote = (noteId: string) => {
   - Обрабатывать заметки последовательно, а не загружать все в память
   - Очищать base64 данные после добавления в XML (если используется потоковая обработка)
   - Использовать batch processing для изображений
+
+- **Idempotency & ENML:**
+  - Использовать детерминированный порядок (заметки, ресурсы в порядке появления, теги отсортированы) и единый формат дат
+  - Хэшировать бинарные данные (md5, hex в нижнем регистре) и подставлять в `<en-media hash="...">`
+  - Генерировать ENML одинаковым образом при повторных экспортах, отличия только в `export-date`
+
+- **Testing focus:**
+  - Юнит/интеграционные тесты на соответствие md5-хэшей `<en-media>` ↔ `<resource>` и детерминированный вывод
+  - Round-trip тест: экспорт → импорт → повторный экспорт ≈ исходный .enex (за исключением `export-date`)
 
 - **Code Style:**
   - Следовать существующим конвенциям проекта
