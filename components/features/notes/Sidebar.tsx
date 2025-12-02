@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/tooltip"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ImportButton } from "@/components/ImportButton"
+import { ExportButton } from "@/components/ExportButton"
 import { User } from "@supabase/supabase-js"
 import { cn } from "@/lib/utils"
 
@@ -24,6 +25,7 @@ interface SidebarProps {
   onCreateNote: () => void
   onSignOut: () => void
   onImportComplete: () => void
+  onExportComplete?: (success: boolean, exportedCount: number) => void
   children: React.ReactNode // For the NoteList
   className?: string
   "data-testid"?: string
@@ -38,6 +40,7 @@ export function Sidebar({
   onCreateNote,
   onSignOut,
   onImportComplete,
+  onExportComplete,
   children,
   className,
   "data-testid": dataTestId
@@ -117,6 +120,7 @@ export function Sidebar({
           New Note
         </Button>
         <ImportButton onImportComplete={onImportComplete} />
+        <ExportButton onExportComplete={onExportComplete} />
       </div>
 
       {/* Notes List Container */}
