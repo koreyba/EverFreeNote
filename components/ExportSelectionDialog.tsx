@@ -38,8 +38,6 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
   const [page, setPage] = React.useState(0)
   const [totalCount, setTotalCount] = React.useState(0)
 
-  const scrollRef = React.useRef<HTMLDivElement | null>(null)
-
   const toggleNote = (noteId: string) => {
     setSelectedIds((prev) => {
       if (selectAll) {
