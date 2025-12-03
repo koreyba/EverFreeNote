@@ -7,19 +7,30 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
 import type { DuplicateStrategy } from "@/lib/enex/types"
 
 type ImportDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onImport: (files: File[], settings: { duplicateStrategy: DuplicateStrategy }) => void
+  onImport: (
+    files: File[],
+    settings: { duplicateStrategy: DuplicateStrategy; skipFileDuplicates: boolean }
+  ) => void
 }
 
 export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
   const [isDragging, setIsDragging] = React.useState(false)
   const [duplicateStrategy, setDuplicateStrategy] =
     React.useState<DuplicateStrategy>("prefix")
+  const [skipFileDuplicates, setSkipFileDuplicates] = React.useState(false)
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([])
+
+  React.useEffect(() => {
+    if (open) {
+      setSkipFileDuplicates(false)
+    }
+  }, [open])
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -53,7 +64,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
 
   const handleImport = () => {
     if (selectedFiles.length === 0) return
-    onImport(selectedFiles, { duplicateStrategy })
+    onImport(selectedFiles, { duplicateStrategy, skipFileDuplicates })
     setSelectedFiles([])
     onOpenChange(false)
   }
@@ -172,6 +183,17 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                   </Label>
                 </div>
               </RadioGroup>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-1">
+              <Checkbox
+                id="skip-file-duplicates"
+                checked={skipFileDuplicates}
+                onCheckedChange={(checked) => setSkipFileDuplicates(Boolean(checked))}
+              />
+              <Label htmlFor="skip-file-duplicates" className="text-sm font-normal cursor-pointer">
+                Skip duplicates inside imported file(s)
+              </Label>
             </div>
           </div>
 

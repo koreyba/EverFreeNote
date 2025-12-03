@@ -4,6 +4,8 @@ export type EnexResource = {
   width?: number
   height?: number
   fileName?: string
+  // Calculated MD5 hash (Evernote uses md5 in en-media hash attr)
+  hash?: string
 }
 
 export type ParsedNote = {
@@ -16,6 +18,11 @@ export type ParsedNote = {
 }
 
 export type DuplicateStrategy = 'skip' | 'replace' | 'prefix'
+
+export type ImportSettings = {
+  duplicateStrategy: DuplicateStrategy
+  skipFileDuplicates: boolean
+}
 
 export type ImportProgress = {
   currentFile: number
