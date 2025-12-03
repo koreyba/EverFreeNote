@@ -3,11 +3,8 @@ import type { ExportResource } from './export-types'
 export class ImageDownloader {
   async downloadImage(url: string): Promise<ExportResource | null> {
     try {
-      const response = await fetch(url)
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-
-      const buffer = await response.arrayBuffer()
-      const mime = response.headers.get('content-type') || this.getMimeFromUrl(url) || 'application/octet-stream'
+      const direct = await this.fetchBuffer(url)
+      const { buffer, mime } = direct
       const hash = this.computeMd5(buffer)
       const base64 = this.arrayBufferToBase64(buffer)
       const size = await this.getImageSize(new Blob([buffer], { type: mime }))
@@ -21,7 +18,7 @@ export class ImageDownloader {
         fileName: this.getFileNameFromUrl(url),
       }
     } catch (error) {
-      console.error('Failed to download image:', url, error)
+      console.error('Failed to download image:', { url, error })
       return null
     }
   }
@@ -35,6 +32,27 @@ export class ImageDownloader {
     return images
       .map((img) => img.getAttribute('src') || '')
       .filter((src) => Boolean(src) && this.isAbsoluteUrl(src))
+  }
+
+  private async fetchBuffer(url: string): Promise<{ buffer: ArrayBuffer; mime: string }> {
+    const host = this.safeHost(url)
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const buffer = await res.arrayBuffer()
+      const mime = res.headers.get('content-type') || this.getMimeFromUrl(url) || 'application/octet-stream'
+      console.info('[image-downloader] direct fetch ok', { host, mime, size: buffer.byteLength })
+      return { buffer, mime }
+    } catch (error) {
+      console.warn('[image-downloader] direct fetch failed, try proxy', { host, url, error })
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`
+      const res = await fetch(proxyUrl)
+      if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`)
+      const mime = res.headers.get('x-proxy-mime') || res.headers.get('content-type') || this.getMimeFromUrl(url) || 'application/octet-stream'
+      const buffer = await res.arrayBuffer()
+      console.info('[image-downloader] proxy fetch ok', { host, mime, size: buffer.byteLength })
+      return { buffer, mime }
+    }
   }
 
   private isAbsoluteUrl(url: string): boolean {
@@ -178,7 +196,8 @@ export class ImageDownloader {
         const bitmap = await createImageBitmap(blob)
         return { width: bitmap.width, height: bitmap.height }
       } catch (error) {
-        console.warn('Failed to read image dimensions:', error)
+        // Log once per call and continue without blocking resource creation
+        console.warn('Failed to read image dimensions, skipping dimensions:', error)
       }
     }
     return {}
@@ -217,6 +236,14 @@ export class ImageDownloader {
       return parts[parts.length - 1] || 'image'
     } catch {
       return 'image'
+    }
+  }
+
+  private safeHost(url: string): string {
+    try {
+      return new URL(url).host
+    } catch {
+      return 'invalid-host'
     }
   }
 }
