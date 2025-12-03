@@ -44,7 +44,6 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
     let page = 0
     const pageSize = 200
     // Loop until no more pages
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { notes, hasMore, nextCursor } = await noteService.getNotes(userId, {
         page,
