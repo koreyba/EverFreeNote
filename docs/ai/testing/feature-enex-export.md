@@ -17,6 +17,10 @@ description: Define testing approach, test cases, and quality assurance
 ## Unit Tests
 **What individual components need testing?**
 
+New component tests added (Cypress component):
+- `cypress/component/lib/enex/note-creator.cy.ts`: внутренняя дедупликация по чекбоксу skipFileDuplicates (первое вхождение создаётся, последующие пропускаются; сразу пропускает, если заголовок уже встречен).
+- `cypress/component/components/ImportDialog.cy.tsx`: дефолтное значение чекбокса (off), передача флага в onImport, сброс чекбокса при повторном открытии диалога.
+
 ### Date Formatter (`lib/enex/date-formatter.ts`)
 - [ ] Test case 1: Конвертация ISO timestamp в формат Evernote
   - Входные данные: `2023-01-01T12:00:00Z`

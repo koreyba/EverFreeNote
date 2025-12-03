@@ -111,4 +111,32 @@ describe('NoteCreator', () => {
       expect((error as Error).message).to.contain('Failed to create note: DB Error')
     }
   })
+
+  it('skips duplicates inside the same import when flag enabled', async () => {
+    const context = {
+      skipFileDuplicates: true,
+      existingByTitle: new Map<string, string>(),
+      seenTitlesInImport: new Set<string>(['Test Note'])
+    }
+
+    const id = await creator.create(mockNote, 'user1', 'skip', context)
+
+    expect(id).to.be.null
+    expect(mockSupabase.from).not.to.have.been.called
+  })
+
+  it('creates first occurrence and skips subsequent duplicates inside the same import', async () => {
+    const context = {
+      skipFileDuplicates: true,
+      existingByTitle: new Map<string, string>(),
+      seenTitlesInImport: new Set<string>()
+    }
+
+    const firstId = await creator.create(mockNote, 'user1', 'skip', context)
+    const secondId = await creator.create(mockNote, 'user1', 'skip', context)
+
+    expect(firstId).to.equal('new-note-id')
+    expect(secondId).to.be.null
+    expect(mockQueryBuilder.insert).to.have.been.calledOnce
+  })
 })

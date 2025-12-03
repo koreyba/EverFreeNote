@@ -47,6 +47,12 @@ export class ImageDownloader {
       console.debug?.('[image-downloader] direct fetch ok', { host, mime, size: buffer.byteLength })
       return { buffer, mime }
     } catch (error) {
+      // Fallback to proxy only if explicitly enabled (SPA build has no API route)
+      const proxyEnabled = process.env.NEXT_PUBLIC_ENABLE_IMAGE_PROXY === 'true'
+      if (!proxyEnabled) {
+        throw error
+      }
+
       console.debug?.('[image-downloader] direct fetch failed, try proxy', {
         host,
         url,
