@@ -23,6 +23,28 @@ import { browser } from "@/lib/adapters/browser"
 
 const IMPORT_STATE_KEY = "everfreenote-import-state"
 
+type SupabaseClientType = ReturnType<typeof useSupabase>["supabase"]
+
+async function fetchExistingTitles(client: SupabaseClientType, userId: string) {
+  const { data, error } = await client
+    .from("notes")
+    .select("id, title")
+    .eq("user_id", userId)
+
+  if (error) {
+    console.error("Failed to fetch existing titles:", error)
+    return new Map<string, string>()
+  }
+
+  const map = new Map<string, string>()
+  data?.forEach((row) => {
+    if (!map.has(row.title)) {
+      map.set(row.title, row.id)
+    }
+  })
+  return map
+}
+
 const initialProgress: ImportProgress = {
   currentFile: 0,
   totalFiles: 0,
@@ -91,7 +113,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
 
   const handleImport = async (
     files: File[],
-    settings: { duplicateStrategy: DuplicateStrategy }
+    settings: { duplicateStrategy: DuplicateStrategy; skipFileDuplicates: boolean }
   ) => {
     console.log("Starting import of", files.length, "files with settings:", settings)
     setImporting(true)
@@ -131,6 +153,11 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
       const imageProcessor = new ImageProcessor(supabase)
       const converter = new ContentConverter(imageProcessor)
       const noteCreator = new NoteCreator(supabase)
+
+      // Snapshot существующих заголовков в базе до импорта
+      const existingByTitle = await fetchExistingTitles(supabase, user.id)
+      // Отслеживаем титлы, уже встреченные в текущем сеансе импорта (внутри файла/файлов)
+      const seenTitlesInImport = new Set<string>()
 
       // Initialize progress
       setProgress({
@@ -200,7 +227,12 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
                   content: convertedContent,
                 },
                 user.id,
-                settings.duplicateStrategy
+                settings.duplicateStrategy,
+                {
+                  skipFileDuplicates: settings.skipFileDuplicates,
+                  existingByTitle,
+                  seenTitlesInImport,
+                }
               )
 
               successCount++

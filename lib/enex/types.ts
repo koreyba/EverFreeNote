@@ -19,6 +19,11 @@ export type ParsedNote = {
 
 export type DuplicateStrategy = 'skip' | 'replace' | 'prefix'
 
+export type ImportSettings = {
+  duplicateStrategy: DuplicateStrategy
+  skipFileDuplicates: boolean
+}
+
 export type ImportProgress = {
   currentFile: number
   totalFiles: number
