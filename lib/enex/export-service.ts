@@ -130,6 +130,8 @@ export class ExportService {
       return { resources: [], enmlContent: html, skipped: 0 }
     }
 
+    console.info('[export-service] processing images', { count: urls.length, sample: urls.slice(0, 3) })
+
     const downloaded: Array<{ resource: ExportResource | null }> = []
     for (let i = 0; i < urls.length; i += this.CONCURRENCY_LIMIT) {
       const batch = urls.slice(i, i + this.CONCURRENCY_LIMIT)
@@ -161,12 +163,12 @@ export class ExportService {
         img.replaceWith(enMedia)
       } else {
         skipped += 1
-        const fallback = doc.createTextNode('[image skipped]')
-        img.replaceWith(fallback)
+        // keep original <img> so at least external link remains
       }
     })
 
-    const enmlContent = doc.body.innerHTML
+    let enmlContent = doc.body.innerHTML
+    enmlContent = enmlContent.replace(/<en-media([^>]*)><\/en-media>/gi, '<en-media$1/>')
 
     return { resources, enmlContent, skipped }
   }
