@@ -1,6 +1,7 @@
 export type EnexResource = {
   data: string
   mime: string
+  hash?: string
   width?: number
   height?: number
   fileName?: string
