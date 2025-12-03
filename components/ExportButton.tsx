@@ -22,7 +22,6 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [exporting, setExporting] = React.useState(false)
   const [progressDialogOpen, setProgressDialogOpen] = React.useState(false)
-  const [skippedImages, setSkippedImages] = React.useState(0)
   const [progress, setProgress] = React.useState<ExportProgress>({
     currentNote: 0,
     totalNotes: 0,
@@ -79,7 +78,6 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
       currentStep: "fetching",
       message: "Подготовка заметок",
     })
-    setSkippedImages(0)
     try {
       const {
         data: { user },
@@ -100,12 +98,11 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
         setProgress((prev) => ({ ...prev, totalNotes: noteIds.length }))
       }
 
-      const { blob, fileName, skippedImages: skipped } = await exportService.exportNotes(
+      const { blob, fileName } = await exportService.exportNotes(
         noteIds,
         user.id,
         (p) => setProgress(p)
       )
-      setSkippedImages(skipped)
       setProgress((prev) => ({
         ...prev,
         currentStep: "complete",
@@ -150,7 +147,6 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
       <ExportProgressDialog
         open={progressDialogOpen}
         progress={progress}
-        skippedImages={skippedImages}
         onClose={() => setProgressDialogOpen(false)}
       />
     </>

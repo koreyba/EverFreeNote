@@ -10,22 +10,19 @@ import {
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { CheckCircle2, Loader2, TriangleAlert } from "lucide-react"
+import { CheckCircle2, Loader2 } from "lucide-react"
 
 import type { ExportProgress } from "@/lib/enex/export-types"
 
 type ExportProgressDialogProps = {
   open: boolean
   progress: ExportProgress
-  skippedImages?: number
   onClose: () => void
 }
 
 export function ExportProgressDialog({
   open,
   progress,
-  skippedImages = 0,
   onClose,
 }: ExportProgressDialogProps) {
   const { currentNote, totalNotes, currentStep, message } = progress
@@ -67,15 +64,6 @@ export function ExportProgressDialog({
             <div className="text-center text-sm font-semibold text-primary">{percent}%</div>
           </div>
 
-          {skippedImages > 0 && (
-            <Alert variant="warning" className="border-amber-300 text-amber-900 dark:text-amber-200">
-              <TriangleAlert className="h-4 w-4" />
-              <AlertTitle>Изображения пропущены</AlertTitle>
-              <AlertDescription>
-                {skippedImages} изображений не удалось экспортировать. Файл создан без них.
-              </AlertDescription>
-            </Alert>
-          )}
         </div>
 
         {isComplete && (
