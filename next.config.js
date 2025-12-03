@@ -1,3 +1,4 @@
+// SPA static export
 const nextConfig = {
   output: 'export', // Required for SPA
   images: {
