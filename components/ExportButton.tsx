@@ -26,7 +26,7 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
     currentNote: 0,
     totalNotes: 0,
     currentStep: "fetching",
-    message: "Подготовка",
+    message: "Preparing",
   })
 
   const { supabase } = useSupabase()
@@ -36,25 +36,27 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
   const enexBuilder = React.useMemo(() => new EnexBuilder(), [])
   const exportService = React.useMemo(
     () => new ExportService(noteService, enexBuilder, imageDownloader),
-    [noteService, enexBuilder, imageDownloader]
+    [noteService, enexBuilder, imageDownloader],
   )
 
-  const fetchAllNoteIds = React.useCallback(async (userId: string) => {
-    const ids: string[] = []
-    let page = 0
-    const pageSize = 200
-    // Loop until no more pages
-    while (true) {
-      const { notes, hasMore, nextCursor } = await noteService.getNotes(userId, {
-        page,
-        pageSize,
-      })
-      ids.push(...notes.map((n) => n.id))
-      if (!hasMore) break
-      page = typeof nextCursor === "number" ? nextCursor : page + 1
-    }
-    return ids
-  }, [noteService])
+  const fetchAllNoteIds = React.useCallback(
+    async (userId: string) => {
+      const ids: string[] = []
+      let page = 0
+      const pageSize = 200
+      while (true) {
+        const { notes, hasMore, nextCursor } = await noteService.getNotes(userId, {
+          page,
+          pageSize,
+        })
+        ids.push(...notes.map((n) => n.id))
+        if (!hasMore) break
+        page = typeof nextCursor === "number" ? nextCursor : page + 1
+      }
+      return ids
+    },
+    [noteService],
+  )
 
   const handleOpen = async () => {
     setDialogOpen(true)
@@ -75,14 +77,14 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
       currentNote: 0,
       totalNotes: selectAll ? selection.totalCount : initialIds.length,
       currentStep: "fetching",
-      message: "Подготовка заметок",
+      message: "Preparing notes",
     })
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) {
-        toast.error("Нужно войти, чтобы экспортировать заметки")
+        toast.error("You need to sign in to export notes")
         return
       }
 
@@ -97,28 +99,24 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
         setProgress((prev) => ({ ...prev, totalNotes: noteIds.length }))
       }
 
-      const { blob, fileName } = await exportService.exportNotes(
-        noteIds,
-        user.id,
-        (p) => setProgress(p)
-      )
+      const { blob, fileName } = await exportService.exportNotes(noteIds, user.id, (p) => setProgress(p))
       setProgress((prev) => ({
         ...prev,
         currentStep: "complete",
-        message: "Готово",
+        message: "Done",
       }))
       downloadBlob(blob, fileName)
-      toast.success(`Экспортировано ${noteIds.length} заметок`)
+      toast.success(`Exported ${noteIds.length} notes`)
       onExportComplete?.(true, noteIds.length)
       setDialogOpen(false)
     } catch (error) {
       console.error("Export failed:", error)
-      toast.error("Не удалось экспортировать заметки")
+      toast.error("Failed to export notes")
       onExportComplete?.(false, 0)
       setProgress((prev) => ({
         ...prev,
         currentStep: "complete",
-        message: "Экспорт завершён с ошибкой",
+        message: "Export completed with errors",
       }))
     } finally {
       setExporting(false)
@@ -127,27 +125,14 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
 
   return (
     <>
-      <Button
-        onClick={handleOpen}
-        disabled={exporting}
-        variant="outline"
-        className="w-full"
-      >
+      <Button onClick={handleOpen} disabled={exporting} variant="outline" className="w-full">
         <Download className="w-4 h-4 mr-2" />
-        {exporting ? "Экспорт..." : "Экспорт в Evernote"}
+        {exporting ? "Exporting..." : "Export to Evernote"}
       </Button>
 
-      <ExportSelectionDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onExport={handleExport}
-      />
+      <ExportSelectionDialog open={dialogOpen} onOpenChange={setDialogOpen} onExport={handleExport} />
 
-      <ExportProgressDialog
-        open={progressDialogOpen}
-        progress={progress}
-        onClose={() => setProgressDialogOpen(false)}
-      />
+      <ExportProgressDialog open={progressDialogOpen} progress={progress} onClose={() => setProgressDialogOpen(false)} />
     </>
   )
 }
