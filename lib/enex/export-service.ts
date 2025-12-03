@@ -65,7 +65,7 @@ export class ExportService {
         currentNote: i + 1,
         totalNotes: exportNotes.length,
         currentStep: 'downloading-images',
-        message: `Обработка изображений (${i + 1}/${exportNotes.length})`,
+        message: `Обработка заметок (${i + 1}/${exportNotes.length})`,
       })
 
       const { resources, enmlContent, skipped } = await this.processImages(note.content)
@@ -129,8 +129,6 @@ export class ExportService {
     if (urls.length === 0) {
       return { resources: [], enmlContent: html, skipped: 0 }
     }
-
-    console.info('[export-service] processing images', { count: urls.length, sample: urls.slice(0, 3) })
 
     const downloaded: Array<{ resource: ExportResource | null }> = []
     for (let i = 0; i < urls.length; i += this.CONCURRENCY_LIMIT) {

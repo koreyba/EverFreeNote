@@ -11,19 +11,16 @@ export class ContentConverter {
     this.imageProcessor = imageProcessor
   }
 
-  async convert(html: string, resources: EnexResource[] = [], userId: string, noteId: string): Promise<string> {
-    const mediaHashes = Array.from(html.matchAll(/<en-media[^>]*hash="([^"]+)"/gi)).map((m) => m[1])
-    const resourceHashes = resources.map((r) => r.hash || this.computeMd5FromBase64(r.data)).filter(Boolean) as string[]
-    console.info('[import] en-media vs resources', {
-      mediaCount: mediaHashes.length,
-      resourceCount: resources.length,
-      mediaHashes,
-      resourceHashes,
-    })
-
+  async convert(
+    html: string,
+    resources: EnexResource[] = [],
+    userId: string,
+    noteId: string,
+    noteTitle = 'Untitled'
+  ): Promise<string> {
     let converted = html
     converted = this.replaceUnsupported(converted)
-    converted = await this.processImages(converted, resources, userId, noteId)
+    converted = await this.processImages(converted, resources, userId, noteId, noteTitle)
     converted = this.cleanupENML(converted)
 
     // Sanitize HTML to prevent XSS attacks
@@ -75,7 +72,13 @@ export class ContentConverter {
     return result
   }
 
-  private async processImages(html: string, resources: EnexResource[], userId: string, noteId: string): Promise<string> {
+  private async processImages(
+    html: string,
+    resources: EnexResource[],
+    userId: string,
+    noteId: string,
+    noteTitle: string
+  ): Promise<string> {
     if (!resources || resources.length === 0) return html
 
     // Build hash -> resource map using md5 of base64 (for matching by hash)
@@ -129,7 +132,7 @@ export class ContentConverter {
       } else if (resource) {
         replacement = `<img src="data:${resource.mime};base64,${resource.data}" alt="Image ${idx + 1}" data-original-hash="${hash}" data-original-order="${idx}" />`
       } else {
-        console.warn('[import] missing resource for en-media', { hash })
+        console.warn('[import] missing resource for en-media', { hash, noteTitle })
         replacement = `[Image missing: ${hash}]`
       }
 

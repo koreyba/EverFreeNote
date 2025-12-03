@@ -18,7 +18,10 @@ export class ImageDownloader {
         fileName: this.getFileNameFromUrl(url),
       }
     } catch (error) {
-      console.error('Failed to download image:', { url, error })
+      console.debug?.('[image-downloader] skipped image', {
+        url,
+        reason: (error as Error)?.message ?? error,
+      })
       return null
     }
   }
@@ -41,16 +44,20 @@ export class ImageDownloader {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const buffer = await res.arrayBuffer()
       const mime = res.headers.get('content-type') || this.getMimeFromUrl(url) || 'application/octet-stream'
-      console.info('[image-downloader] direct fetch ok', { host, mime, size: buffer.byteLength })
+      console.debug?.('[image-downloader] direct fetch ok', { host, mime, size: buffer.byteLength })
       return { buffer, mime }
     } catch (error) {
-      console.warn('[image-downloader] direct fetch failed, try proxy', { host, url, error })
+      console.debug?.('[image-downloader] direct fetch failed, try proxy', {
+        host,
+        url,
+        reason: (error as Error)?.message ?? error,
+      })
       const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`
       const res = await fetch(proxyUrl)
       if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`)
       const mime = res.headers.get('x-proxy-mime') || res.headers.get('content-type') || this.getMimeFromUrl(url) || 'application/octet-stream'
       const buffer = await res.arrayBuffer()
-      console.info('[image-downloader] proxy fetch ok', { host, mime, size: buffer.byteLength })
+      console.debug?.('[image-downloader] proxy fetch ok', { host, mime, size: buffer.byteLength })
       return { buffer, mime }
     }
   }
@@ -197,7 +204,7 @@ export class ImageDownloader {
         return { width: bitmap.width, height: bitmap.height }
       } catch (error) {
         // Log once per call and continue without blocking resource creation
-        console.warn('Failed to read image dimensions, skipping dimensions:', error)
+        console.debug?.('Failed to read image dimensions, skipping dimensions:', (error as Error)?.message ?? error)
       }
     }
     return {}
