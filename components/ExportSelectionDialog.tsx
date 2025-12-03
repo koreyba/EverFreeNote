@@ -93,42 +93,47 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
   const filteredNotes = React.useMemo(() => {
     if (!search.trim()) return notes
     const q = search.toLowerCase()
-    return notes.filter((note) =>
-      (note.title || "").toLowerCase().includes(q) ||
-      (note.description || "").toLowerCase().includes(q)
+    return notes.filter(
+      (note) => (note.title || "").toLowerCase().includes(q) || (note.description || "").toLowerCase().includes(q),
     )
   }, [notes, search])
 
-  const loadPage = React.useCallback(async (pageToLoad: number) => {
-    setLoading(true)
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        return
-      }
+  const loadPage = React.useCallback(
+    async (pageToLoad: number) => {
+      setLoading(true)
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) {
+          return
+        }
 
-      const { notes: fetchedNotes, totalCount: count, hasMore: more, nextCursor } = await noteService.getNotes(user.id, {
-        page: pageToLoad,
-        pageSize: PAGE_SIZE,
-      })
+        const { notes: fetchedNotes, totalCount: count, hasMore: more, nextCursor } = await noteService.getNotes(
+          user.id,
+          {
+            page: pageToLoad,
+            pageSize: PAGE_SIZE,
+          },
+        )
 
-      setNotes((prev) => [...prev, ...fetchedNotes])
-      setTotalCount(count)
-      setHasMore(Boolean(more))
-      if (typeof nextCursor === 'number') {
-        setPage(nextCursor)
-      } else {
-        setPage(pageToLoad + 1)
+        setNotes((prev) => [...prev, ...fetchedNotes])
+        setTotalCount(count)
+        setHasMore(Boolean(more))
+        if (typeof nextCursor === "number") {
+          setPage(nextCursor)
+        } else {
+          setPage(pageToLoad + 1)
+        }
+      } catch (error) {
+        console.error("Failed to load notes for export:", error)
+      } finally {
+        setLoading(false)
+        setInitialLoading(false)
       }
-    } catch (error) {
-      console.error('Failed to load notes for export:', error)
-    } finally {
-      setLoading(false)
-      setInitialLoading(false)
-    }
-  }, [noteService, supabase])
+    },
+    [noteService, supabase],
+  )
 
   React.useEffect(() => {
     if (open) {
@@ -154,9 +159,9 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[720px]">
         <DialogHeader>
-          <DialogTitle>Экспорт заметок в .enex</DialogTitle>
+          <DialogTitle>Export notes to .enex</DialogTitle>
           <DialogDescription>
-            Выберите заметки для экспорта. Можно выбрать все сразу или отмечать по одной.
+            Choose notes to export. You can select everything at once or pick them one by one.
           </DialogDescription>
         </DialogHeader>
 
@@ -164,16 +169,10 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground">
-                Выбрано:{" "}
-                <span className="font-medium text-foreground">{selectedCount}</span> из {totalCount}
+                Selected: <span className="font-medium text-foreground">{selectedCount}</span> of {totalCount}
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSelectAll}
-                disabled={totalCount === 0}
-              >
-                {allSelected ? "Снять выделение" : "Выбрать все"}
+              <Button variant="outline" size="sm" onClick={handleSelectAll} disabled={totalCount === 0}>
+                {allSelected ? "Clear selection" : "Select all"}
               </Button>
             </div>
             <div className="w-full md:w-72">
@@ -181,7 +180,7 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Поиск по заголовку или тексту"
+                placeholder="Search by title or text"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/60"
               />
             </div>
@@ -189,15 +188,15 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
 
           {initialLoading ? (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Загрузка заметок...
+              Loading notes...
             </div>
           ) : totalCount === 0 ? (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              У вас пока нет заметок для экспорта
+              You do not have any notes to export yet
             </div>
           ) : filteredNotes.length === 0 ? (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Ничего не найдено по запросу “{search}”
+              Nothing found for "{search}"
             </div>
           ) : (
             <div className="h-[520px] rounded-md border p-2">
@@ -217,13 +216,13 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
                         checked={isSelected}
                         onCheckedChange={() => toggleNote(note.id)}
                         className="mt-1"
-                        aria-label={`Выбрать заметку ${note.title}`}
+                        aria-label={`Select note ${note.title}`}
                       />
                       <div className="flex-1 space-y-1" onClick={() => toggleNote(note.id)}>
                         <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-semibold leading-snug line-clamp-2">{note.title || "Без названия"}</h3>
+                          <h3 className="font-semibold leading-snug line-clamp-2">{note.title || "Untitled"}</h3>
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {new Date(note.updated_at).toLocaleDateString("ru-RU")}
+                            {new Date(note.updated_at).toLocaleDateString("en-US")}
                           </span>
                         </div>
                         {note.description && (
@@ -252,7 +251,7 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
                 })}
                 {hasMore && (
                   <div className="py-3 text-center text-sm text-muted-foreground">
-                    {loading ? "Загружаем ещё..." : "Прокрутите ниже, чтобы загрузить ещё"}
+                    {loading ? "Loading more..." : "Scroll down to load more"}
                   </div>
                 )}
               </div>
@@ -261,10 +260,10 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
+              Cancel
             </Button>
             <Button onClick={handleExport} disabled={selectedCount === 0}>
-              Экспортировать{selectedCount > 0 ? ` (${selectedCount})` : ""}
+              Export{selectedCount > 0 ? ` (${selectedCount})` : ""}
             </Button>
           </div>
         </div>
