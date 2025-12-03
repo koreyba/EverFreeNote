@@ -190,7 +190,8 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
                 note.content,
                 note.resources,
                 user.id,
-                noteId
+                noteId,
+                note.title || "Untitled"
               )
 
               await noteCreator.create(

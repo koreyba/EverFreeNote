@@ -56,11 +56,6 @@ export function ExportProgressDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Этап</span>
-            <span className="font-medium">{message}</span>
-          </div>
-
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Заметки</span>

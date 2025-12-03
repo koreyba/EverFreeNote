@@ -1,10 +1,11 @@
 export type EnexResource = {
   data: string
   mime: string
-  hash?: string
   width?: number
   height?: number
   fileName?: string
+  // Calculated MD5 hash (Evernote uses md5 in en-media hash attr)
+  hash?: string
 }
 
 export type ParsedNote = {
