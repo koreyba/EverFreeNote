@@ -2,11 +2,7 @@ import React from 'react'
 import { ImportDialog } from '@/components/ImportDialog'
 
 describe('ImportDialog', () => {
-  const fileFixture = {
-    contents: '<enex></enex>',
-    fileName: 'sample.enex',
-    mimeType: 'application/xml'
-  }
+  const fixturePath = 'cypress/fixtures/enex/test-single-note.enex'
 
   it('передаёт skipFileDuplicates=false по умолчанию', () => {
     const onImport = cy.stub().as('onImport')
@@ -20,7 +16,7 @@ describe('ImportDialog', () => {
       />
     )
 
-    cy.get('input[type="file"]').selectFile(fileFixture)
+    cy.get('input[type="file"]').selectFile(fixturePath, { force: true })
     cy.contains('button', /^Import/).click()
 
     cy.get('@onImport').should('have.been.calledOnce')
@@ -42,7 +38,7 @@ describe('ImportDialog', () => {
     )
 
     cy.get('#skip-file-duplicates').click()
-    cy.get('input[type="file"]').selectFile(fileFixture)
+    cy.get('input[type="file"]').selectFile(fixturePath, { force: true })
     cy.contains('button', /^Import/).click()
 
     cy.get('@onImport').its('firstCall.args.1').should((settings) => {
@@ -77,7 +73,7 @@ describe('ImportDialog', () => {
     cy.mount(<Wrapper />)
 
     cy.get('#skip-file-duplicates').click()
-    cy.get('input[type="file"]').selectFile(fileFixture)
+    cy.get('input[type="file"]').selectFile(fixturePath, { force: true })
     cy.contains('button', /^Import/).click()
 
     cy.get('@onOpenChange').should('have.been.calledWith', false)
