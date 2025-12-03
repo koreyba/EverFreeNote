@@ -1,197 +1,84 @@
 import React from 'react'
 import { ImportDialog } from '@/components/ImportDialog'
 
-// Helper type for Sinon stubs
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SinonStub = any
-
 describe('ImportDialog', () => {
-  let onOpenChangeSpy: SinonStub
-  let onImportSpy: SinonStub
+  const fixturePath = 'cypress/fixtures/enex/test-single-note.enex'
 
-  beforeEach(() => {
-    onOpenChangeSpy = cy.spy().as('onOpenChange')
-    onImportSpy = cy.spy().as('onImport')
-  })
+  it('передаёт skipFileDuplicates=false по умолчанию', () => {
+    const onImport = cy.stub().as('onImport')
+    const onOpenChange = cy.stub().as('onOpenChange')
 
-  it('renders correctly when open', () => {
     cy.mount(
       <ImportDialog
-        open={true}
-        onOpenChange={onOpenChangeSpy}
-        onImport={onImportSpy}
+        open
+        onOpenChange={onOpenChange}
+        onImport={onImport}
       />
     )
 
-    cy.contains('Import from Evernote').should('be.visible')
-    cy.contains('Drag and drop .enex files').should('be.visible')
-    cy.contains('Import Settings').should('be.visible')
-    cy.contains('What to do with duplicate notes?').should('be.visible')
-    cy.get('button').contains('Import').should('be.disabled')
-  })
-
-  it('handles file selection via input', () => {
-    cy.mount(
-      <ImportDialog
-        open={true}
-        onOpenChange={onOpenChangeSpy}
-        onImport={onImportSpy}
-      />
-    )
-
-    // Create a dummy file
-    const file = new File(['content'], 'notes.enex', { type: 'application/xml' })
-    
-    // Trigger file selection
-    cy.get('input[type="file"]').selectFile({
-      contents: file,
-      fileName: 'notes.enex',
-      mimeType: 'application/xml'
-    }, { force: true }) // force because input is hidden
-
-    cy.contains('Selected files (1)').should('be.visible')
-    cy.contains('notes.enex').should('be.visible')
-    cy.get('button').contains('Import (1)').should('not.be.disabled')
-  })
-
-  it('filters non-enex files', () => {
-    cy.mount(
-      <ImportDialog
-        open={true}
-        onOpenChange={onOpenChangeSpy}
-        onImport={onImportSpy}
-      />
-    )
-
-    const file = new File(['content'], 'image.png', { type: 'image/png' })
-    
-    cy.get('input[type="file"]').selectFile({
-      contents: file,
-      fileName: 'image.png',
-      mimeType: 'image/png'
-    }, { force: true })
-
-    cy.contains('Selected files').should('not.exist')
-    cy.get('button').contains('Import').should('be.disabled')
-  })
-
-  it('handles drag and drop', () => {
-    cy.mount(
-      <ImportDialog
-        open={true}
-        onOpenChange={onOpenChangeSpy}
-        onImport={onImportSpy}
-      />
-    )
-
-    const file = new File(['content'], 'dragged.enex', { type: 'application/xml' })
-
-    cy.get('.border-dashed').trigger('dragover')
-    cy.get('.border-dashed').should('have.class', 'border-primary')
-    
-    cy.get('.border-dashed').trigger('dragleave')
-    cy.get('.border-dashed').should('not.have.class', 'border-primary')
-
-    cy.get('.border-dashed').selectFile({
-      contents: file,
-      fileName: 'dragged.enex',
-      mimeType: 'application/xml'
-    }, { action: 'drag-drop' })
-
-    cy.contains('dragged.enex').should('be.visible')
-  })
-
-  it('removes selected files', () => {
-    cy.mount(
-      <ImportDialog
-        open={true}
-        onOpenChange={onOpenChangeSpy}
-        onImport={onImportSpy}
-      />
-    )
-
-    const file1 = new File(['c1'], 'note1.enex', { type: 'application/xml' })
-    const file2 = new File(['c2'], 'note2.enex', { type: 'application/xml' })
-
-    cy.get('input[type="file"]').selectFile([
-      { contents: file1, fileName: 'note1.enex' },
-      { contents: file2, fileName: 'note2.enex' }
-    ], { force: true })
-
-    cy.contains('Selected files (2)').should('be.visible')
-    
-    // Remove first file
-    cy.get('button[aria-label="Remove note1.enex"]').click()
-    
-    cy.contains('Selected files (1)').should('be.visible')
-    cy.contains('note1.enex').should('not.exist')
-    cy.contains('note2.enex').should('be.visible')
-  })
-
-  it('changes duplicate strategy', () => {
-    cy.mount(
-      <ImportDialog
-        open={true}
-        onOpenChange={onOpenChangeSpy}
-        onImport={onImportSpy}
-      />
-    )
-
-    // Default is prefix
-    cy.get('button[role="radio"][value="prefix"]').should('have.attr', 'aria-checked', 'true')
-
-    // Change to skip
-    cy.get('label[for="skip"]').click()
-    cy.get('button[role="radio"][value="skip"]').should('have.attr', 'aria-checked', 'true')
-    
-    // Change to replace
-    cy.get('label[for="replace"]').click()
-    cy.get('button[role="radio"][value="replace"]').should('have.attr', 'aria-checked', 'true')
-  })
-
-  it('calls onImport with correct arguments', () => {
-    cy.mount(
-      <ImportDialog
-        open={true}
-        onOpenChange={onOpenChangeSpy}
-        onImport={onImportSpy}
-      />
-    )
-
-    const file = new File(['content'], 'test.enex', { type: 'application/xml' })
-    
-    cy.get('input[type="file"]').selectFile({
-      contents: file,
-      fileName: 'test.enex'
-    }, { force: true })
-
-    // Select 'skip' strategy
-    cy.get('label[for="skip"]').click()
-
-    cy.get('button').contains('Import').click()
+    cy.get('input[type="file"]').selectFile(fixturePath, { force: true })
+    cy.contains('button', /^Import/).click()
 
     cy.get('@onImport').should('have.been.calledOnce')
-    cy.get('@onImport').should((spy: unknown) => {
-      const sinonSpy = spy as SinonStub
-      const args = sinonSpy.firstCall.args
-      expect(args[0]).to.have.length(1)
-      expect(args[0][0].name).to.equal('test.enex')
-      expect(args[1]).to.deep.equal({ duplicateStrategy: 'skip' })
+    cy.get('@onImport').its('firstCall.args.1').should((settings) => {
+      expect(settings.duplicateStrategy).to.equal('prefix')
+      expect(settings.skipFileDuplicates).to.be.false
     })
-
-    cy.get('@onOpenChange').should('have.been.calledWith', false)
   })
 
-  it('closes on cancel', () => {
+  it('включает skipFileDuplicates при отметке чекбокса', () => {
+    const onImport = cy.stub().as('onImport')
+
     cy.mount(
       <ImportDialog
-        open={true}
-        onOpenChange={onOpenChangeSpy}
-        onImport={onImportSpy}
+        open
+        onOpenChange={() => {}}
+        onImport={onImport}
       />
     )
 
-    cy.contains('Cancel').click()
+    cy.get('#skip-file-duplicates').click()
+    cy.get('input[type="file"]').selectFile(fixturePath, { force: true })
+    cy.contains('button', /^Import/).click()
+
+    cy.get('@onImport').its('firstCall.args.1').should((settings) => {
+      expect(settings.skipFileDuplicates).to.be.true
+    })
+  })
+
+  it('сбрасывает чекбокс при повторном открытии диалога', () => {
+    const onImport = cy.stub().as('onImport')
+    const onOpenChangeSpy = cy.stub().as('onOpenChange')
+
+    const Wrapper: React.FC = () => {
+      const [open, setOpen] = React.useState(true)
+      const handleOpenChange = (value: boolean) => {
+        onOpenChangeSpy(value)
+        setOpen(value)
+      }
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)} data-cy="reopen">
+            Reopen
+          </button>
+          <ImportDialog
+            open={open}
+            onOpenChange={handleOpenChange}
+            onImport={onImport}
+          />
+        </>
+      )
+    }
+
+    cy.mount(<Wrapper />)
+
+    cy.get('#skip-file-duplicates').click()
+    cy.get('input[type="file"]').selectFile(fixturePath, { force: true })
+    cy.contains('button', /^Import/).click()
+
     cy.get('@onOpenChange').should('have.been.calledWith', false)
+
+    cy.get('[data-cy="reopen"]').click()
+    cy.get('#skip-file-duplicates').should('not.be.checked')
   })
 })

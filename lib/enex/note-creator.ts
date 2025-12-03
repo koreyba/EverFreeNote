@@ -15,9 +15,18 @@ export class NoteCreator {
     this.supabase = supabase
   }
 
-  async create(note: ParsedNote, userId: string, duplicateStrategy: DuplicateStrategy = 'prefix'): Promise<string | null> {
+  async create(
+    note: ParsedNote,
+    userId: string,
+    duplicateStrategy: DuplicateStrategy = 'prefix',
+    duplicateContext?: {
+      skipFileDuplicates: boolean
+      existingByTitle: Map<string, string>
+      seenTitlesInImport: Set<string>
+    }
+  ): Promise<string | null> {
     try {
-      const result = await this.handleDuplicate(note.title, userId, duplicateStrategy)
+      const result = await this.handleDuplicate(note.title, userId, duplicateStrategy, duplicateContext)
 
       if (result.skip) {
         console.log('Skipping duplicate note:', note.title)
@@ -42,6 +51,11 @@ export class NoteCreator {
           .single()
 
         if (error) throw error
+
+        if (duplicateContext?.skipFileDuplicates) {
+          duplicateContext.seenTitlesInImport.add(note.title)
+        }
+
         return data?.id ?? null
       }
 
@@ -52,7 +66,13 @@ export class NoteCreator {
         .single()
 
       if (error) throw error
-      return data?.id ?? null
+      const createdId = data?.id ?? null
+
+      if (duplicateContext?.skipFileDuplicates) {
+        duplicateContext.seenTitlesInImport.add(note.title)
+      }
+
+      return createdId
     } catch (error: unknown) {
       console.error('Note creation failed:', error)
       let message = 'Unknown error'
@@ -65,7 +85,43 @@ export class NoteCreator {
     }
   }
 
-  private async handleDuplicate(title: string, userId: string, strategy: DuplicateStrategy): Promise<DuplicateCheckResult> {
+  private async handleDuplicate(
+    title: string,
+    userId: string,
+    strategy: DuplicateStrategy,
+    context?: {
+      skipFileDuplicates: boolean
+      existingByTitle: Map<string, string>
+      seenTitlesInImport: Set<string>
+    }
+  ): Promise<DuplicateCheckResult> {
+    if (context) {
+      const { skipFileDuplicates, existingByTitle, seenTitlesInImport } = context
+
+      if (skipFileDuplicates && seenTitlesInImport.has(title)) {
+        return { title, skip: true, replace: false }
+      }
+
+      const existingId = existingByTitle.get(title)
+
+      if (!existingId) {
+        if (skipFileDuplicates) {
+          seenTitlesInImport.add(title)
+        }
+        return { title, skip: false, replace: false }
+      }
+
+      switch (strategy) {
+        case 'skip':
+          return { title, skip: true, replace: false }
+        case 'replace':
+          return { title, skip: false, replace: true, existingId }
+        case 'prefix':
+        default:
+          return { title: `[duplicate] ${title}`, skip: false, replace: false }
+      }
+    }
+
     const { data, error } = await this.supabase
       .from('notes')
       .select('id, title')

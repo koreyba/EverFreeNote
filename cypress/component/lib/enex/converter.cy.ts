@@ -43,7 +43,8 @@ describe('ContentConverter', () => {
       data: 'base64data',
       mime: 'image/png',
       width: 100,
-      height: 100
+      height: 100,
+      hash: '123'
     }]
 
     const result = await converter.convert(enml, resources, 'user1', 'note1')
@@ -64,12 +65,14 @@ describe('ContentConverter', () => {
     const enml = '<en-note><en-media hash="123" /></en-note>'
     const resources: EnexResource[] = [{
       data: 'base64data',
-      mime: 'image/png'
+      mime: 'image/png',
+      hash: '123'
     }]
 
     const result = await converter.convert(enml, resources, 'user1', 'note1')
     
-    expect(result).to.contain('[Image failed to upload]')
+    // Should fall back to base64 if upload fails
+    expect(result).to.contain('data:image/png;base64,base64data')
   })
 
   it('sanitizes HTML', async () => {

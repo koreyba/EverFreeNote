@@ -1,166 +1,87 @@
-import DOMPurify from 'isomorphic-dompurify'
+import type { ExportResource } from './export-types'
 
-import { ImageProcessor } from './image-processor'
-import type { EnexResource } from './types'
+export class ImageDownloader {
+  async downloadImage(url: string): Promise<ExportResource | null> {
+    try {
+      const direct = await this.fetchBuffer(url)
+      const { buffer, mime } = direct
+      const hash = this.computeMd5(buffer)
+      const base64 = this.arrayBufferToBase64(buffer)
+      const size = await this.getImageSize(new Blob([buffer], { type: mime }))
 
-export class ContentConverter {
-  private readonly imageProcessor: ImageProcessor
-  private readonly CONCURRENCY_LIMIT = 5
-
-  constructor(imageProcessor: ImageProcessor) {
-    this.imageProcessor = imageProcessor
-  }
-
-  async convert(
-    html: string,
-    resources: EnexResource[] = [],
-    userId: string,
-    noteId: string,
-    noteTitle = 'Untitled'
-  ): Promise<string> {
-    let converted = html
-    converted = this.replaceUnsupported(converted)
-    converted = await this.processImages(converted, resources, userId, noteId, noteTitle)
-    converted = this.cleanupENML(converted)
-
-    // Sanitize HTML to prevent XSS attacks
-    type DomPurifyConfig = Parameters<typeof DOMPurify.sanitize>[1]
-
-    const sanitizeOptions: DomPurifyConfig & {
-      ALLOWED_STYLES?: Record<string, Record<string, RegExp[]>>
-    } = {
-      ALLOWED_TAGS: [
-        'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'ul', 'ol', 'li', 'img', 'a', 'div', 'span', 'blockquote', 'code',
-        'hr', 's', 'sub', 'sup'
-      ],
-      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style'],
-      ALLOWED_STYLES: {
-        '*': {
-          'color': [/^#[0-9a-f]{3,6}$/i],
-          'background-color': [/^#[0-9a-f]{3,6}$/i],
-          'text-align': [/^(left|right|center|justify)$/],
-          'font-size': [/^\d+(px|em|rem|%)$/],
-          'font-weight': [/^(normal|bold|\d{3})$/]
-        }
+      return {
+        data: base64,
+        mime,
+        hash,
+        width: size.width,
+        height: size.height,
+        fileName: this.getFileNameFromUrl(url),
       }
+    } catch (error) {
+      console.debug?.('[image-downloader] skipped image', {
+        url,
+        reason: (error as Error)?.message ?? error,
+      })
+      return null
     }
-
-    const sanitized: string | { toString(): string } = DOMPurify.sanitize(converted, sanitizeOptions)
-    converted = typeof sanitized === 'string' ? sanitized : sanitized.toString()
-
-    return converted
   }
 
-  private replaceUnsupported(html: string): string {
-    const replacements: Record<string, string> = {
-      '<table': '[Unsupported content: Table]<div style="display:none"><table',
-      '</table>': '</table></div>',
-      '<pre': '[Unsupported content: Code Block]<div style="display:none"><pre',
-      '</pre>': '</pre></div>',
-      '<en-todo': '[Unsupported content: Checkbox]<div style="display:none"><en-todo',
-      '</en-todo>': '</en-todo></div>',
-      '<en-crypt': '[Unsupported content: Encrypted Text]<div style="display:none"><en-crypt',
-      '</en-crypt>': '</en-crypt></div>'
-    }
+  extractImageUrls(html: string): string[] {
+    if (!html) return []
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    const images = Array.from(doc.querySelectorAll('img'))
 
-    let result = html
-    for (const [pattern, replacement] of Object.entries(replacements)) {
-      result = result.replace(new RegExp(pattern, 'gi'), replacement)
-    }
-
-    return result
+    return images
+      .map((img) => img.getAttribute('src') || '')
+      .filter((src) => Boolean(src) && this.isAbsoluteUrl(src))
   }
 
-  private async processImages(
-    html: string,
-    resources: EnexResource[],
-    userId: string,
-    noteId: string,
-    noteTitle: string
-  ): Promise<string> {
-    if (!resources || resources.length === 0) return html
-
-    // Build hash -> resource map using md5 of base64 (for matching by hash)
-    const resourceMap = new Map<string, EnexResource>()
-    resources.forEach((res) => {
-      const hash = (res.hash || this.computeMd5FromBase64(res.data)).toLowerCase()
-      res.hash = hash
-      if (!resourceMap.has(hash)) {
-        resourceMap.set(hash, res)
-      }
-    })
-
-    const uploadedUrls: Array<string | null> = []
-
-    // Process images in batches to limit concurrency
-    for (let i = 0; i < resources.length; i += this.CONCURRENCY_LIMIT) {
-      const batch = resources.slice(i, i + this.CONCURRENCY_LIMIT)
-
-      const batchResults = await Promise.all(
-        batch.map(async (resource, batchIndex) => {
-          try {
-            const url = await this.imageProcessor.upload(
-              resource.data,
-              resource.mime,
-              userId,
-              noteId,
-              `image_${i + batchIndex}`
-            )
-            return url
-          } catch (error) {
-            console.error('Failed to upload image:', error)
-            return null
-          }
-        })
-      )
-
-      uploadedUrls.push(...batchResults)
-    }
-
-    // Replace <en-media> tags with <img> tags
-    let result = html
-    const mediaMatches = Array.from(result.matchAll(/<en-media[^>]*hash="([^"]+)"[^>]*\/>/gi))
-    mediaMatches.forEach((match, idx) => {
-      const hash = match[1].toLowerCase()
-      const resource = resourceMap.get(hash)
-      const uploadUrl = resource ? uploadedUrls[resources.indexOf(resource)] : null
-
-      let replacement: string
-      if (resource && uploadUrl) {
-        replacement = `<img src="${uploadUrl}" alt="Image ${idx + 1}" data-original-hash="${hash}" data-original-order="${idx}" />`
-      } else if (resource) {
-        replacement = `<img src="data:${resource.mime};base64,${resource.data}" alt="Image ${idx + 1}" data-original-hash="${hash}" data-original-order="${idx}" />`
-      } else {
-        console.warn('[import] missing resource for en-media', { hash, noteTitle })
-        replacement = `[Image missing: ${hash}]`
+  private async fetchBuffer(url: string): Promise<{ buffer: ArrayBuffer; mime: string }> {
+    const host = this.safeHost(url)
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const buffer = await res.arrayBuffer()
+      const mime = res.headers.get('content-type') || this.getMimeFromUrl(url) || 'application/octet-stream'
+      console.debug?.('[image-downloader] direct fetch ok', { host, mime, size: buffer.byteLength })
+      return { buffer, mime }
+    } catch (error) {
+      // Fallback to proxy only if explicitly enabled (SPA build has no API route)
+      const proxyEnabled = process.env.NEXT_PUBLIC_ENABLE_IMAGE_PROXY === 'true'
+      if (!proxyEnabled) {
+        throw error
       }
 
-      result = result.replace(match[0], replacement)
-    })
-
-    return result
-  }
-
-  private cleanupENML(html: string): string {
-    return html
-      .replace(/<en-note[^>]*>/gi, '<div>')
-      .replace(/<\/en-note>/gi, '</div>')
-  }
-
-  private computeMd5FromBase64(base64Data: string): string {
-    const binaryString = atob(base64Data)
-    const len = binaryString.length
-    const buffer = new Uint8Array(len)
-    for (let i = 0; i < len; i++) {
-      buffer[i] = binaryString.charCodeAt(i)
+      console.debug?.('[image-downloader] direct fetch failed, try proxy', {
+        host,
+        url,
+        reason: (error as Error)?.message ?? error,
+      })
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`
+      const res = await fetch(proxyUrl)
+      if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`)
+      const mime = res.headers.get('x-proxy-mime') || res.headers.get('content-type') || this.getMimeFromUrl(url) || 'application/octet-stream'
+      const buffer = await res.arrayBuffer()
+      console.debug?.('[image-downloader] proxy fetch ok', { host, mime, size: buffer.byteLength })
+      return { buffer, mime }
     }
-    return this.computeMd5(buffer.buffer)
+  }
+
+  private isAbsoluteUrl(url: string): boolean {
+    try {
+      const parsed = new URL(url)
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    } catch {
+      return false
+    }
   }
 
   private computeMd5(buffer: ArrayBuffer): string {
     const data = new Uint8Array(buffer)
     const originalLength = data.length
+
+    // MD5 padding
     const paddedLength = (((originalLength + 8) >>> 6) + 1) << 4
     const words = new Uint32Array(paddedLength)
 
@@ -272,6 +193,29 @@ export class ContentConverter {
     return [a, b, c, d].map((x) => this.toHexLe(x)).join('')
   }
 
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    let binary = ''
+    const bytes = new Uint8Array(buffer)
+    const len = bytes.byteLength
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    return btoa(binary)
+  }
+
+  private async getImageSize(blob: Blob): Promise<{ width?: number; height?: number }> {
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const bitmap = await createImageBitmap(blob)
+        return { width: bitmap.width, height: bitmap.height }
+      } catch (error) {
+        // Log once per call and continue without blocking resource creation
+        console.debug?.('Failed to read image dimensions, skipping dimensions:', (error as Error)?.message ?? error)
+      }
+    }
+    return {}
+  }
+
   private rotateLeft(value: number, shift: number): number {
     return (value << shift) | (value >>> (32 - shift))
   }
@@ -279,5 +223,40 @@ export class ContentConverter {
   private toHexLe(num: number): string {
     const hex = (num >>> 0).toString(16)
     return ('00000000' + hex).slice(-8).match(/../g)?.reverse().join('') ?? ''
+  }
+
+  private getMimeFromUrl(url: string): string | null {
+    const extension = url.split('.').pop()?.toLowerCase()
+    if (!extension) return null
+    const map: Record<string, string> = {
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      webp: 'image/webp',
+      svg: 'image/svg+xml',
+      bmp: 'image/bmp',
+      tif: 'image/tiff',
+      tiff: 'image/tiff',
+    }
+    return map[extension] || null
+  }
+
+  private getFileNameFromUrl(url: string): string {
+    try {
+      const parsed = new URL(url)
+      const parts = parsed.pathname.split('/')
+      return parts[parts.length - 1] || 'image'
+    } catch {
+      return 'image'
+    }
+  }
+
+  private safeHost(url: string): string {
+    try {
+      return new URL(url).host
+    } catch {
+      return 'invalid-host'
+    }
   }
 }

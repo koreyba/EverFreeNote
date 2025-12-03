@@ -1,9 +1,11 @@
+// SPA static export
 const nextConfig = {
   output: 'export', // Required for SPA
   images: {
     unoptimized: true,
   },
   trailingSlash: true,
+  turbopack: {},
   webpack(config, { dev }) {
     if (dev) {
       // Reduce CPU/memory from file watching
