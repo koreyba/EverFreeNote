@@ -71,7 +71,8 @@ describe('ContentConverter', () => {
 
     const result = await converter.convert(enml, resources, 'user1', 'note1')
     
-    expect(result).to.contain('[Image failed to upload]')
+    // Should fall back to base64 if upload fails
+    expect(result).to.contain('data:image/png;base64,base64data')
   })
 
   it('sanitizes HTML', async () => {
