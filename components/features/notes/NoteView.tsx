@@ -103,11 +103,10 @@ export const NoteView = React.memo(function NoteView({
             </div>
           )}
           
-          <div className={NOTE_CONTENT_CLASS}>
-            <div
-              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-            />
-          </div>
+          <div
+            className={NOTE_CONTENT_CLASS}
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+          />
           
           <div className="mt-8 pt-4 border-t text-sm text-muted-foreground">
             <p>Created: {formattedDates.created}</p>

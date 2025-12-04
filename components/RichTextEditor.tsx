@@ -345,7 +345,7 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   // Мемоизация editorProps для предотвращения ре-рендеров
   const editorProps = React.useMemo(() => ({
     attributes: {
-      class: `${NOTE_CONTENT_CLASS} focus:outline-none px-6 py-4`,
+      class: "focus:outline-none",
     },
   }), [])
 
@@ -365,7 +365,7 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
       <EditorContent
         data-cy="editor-content"
         editor={editor}
-        className="min-h-[400px]"
+        className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-6 py-4`}
       />
     </div>
   )

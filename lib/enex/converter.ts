@@ -143,9 +143,45 @@ export class ContentConverter {
   }
 
   private cleanupENML(html: string): string {
+    let result = html
+      // Удаляем en-note обёртку полностью
+      .replace(/<en-note[^>]*>/gi, '')
+      .replace(/<\/en-note>/gi, '')
+
+    // Нормализуем div в p для текстовых блоков
+    // Заменяем только простые div (без вложенных блочных элементов)
+    result = this.normalizeDivsToP(result)
+
+    // Удаляем пустые параграфы с только пробельными символами (включая &hairsp;, &nbsp;, etc.)
+    result = this.removeEmptyParagraphs(result)
+
+    return result
+  }
+
+  private removeEmptyParagraphs(html: string): string {
+    // Удаляем <p> содержащие только пробельные символы, &nbsp;, &hairsp;, <br> и т.д.
     return html
-      .replace(/<en-note[^>]*>/gi, '<div>')
-      .replace(/<\/en-note>/gi, '</div>')
+      // Удаляем пустые <p> в начале
+      .replace(/^(\s*<p[^>]*>(\s|&nbsp;|&hairsp;|&#8202;|<br\s*\/?>)*<\/p>\s*)+/gi, '')
+      // Удаляем пустые <p> в конце
+      .replace(/(\s*<p[^>]*>(\s|&nbsp;|&hairsp;|&#8202;|<br\s*\/?>)*<\/p>\s*)+$/gi, '')
+  }
+
+  private normalizeDivsToP(html: string): string {
+    // Заменяем <div> на <p> только если внутри нет блочных элементов
+    // Используем простую замену для div без атрибутов или с style
+    const blockElements = ['div', 'p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'table', 'hr']
+    const blockPattern = blockElements.map(el => `<${el}[\\s>]`).join('|')
+
+    // Разбиваем на div блоки и проверяем каждый
+    return html.replace(/<div([^>]*)>([\s\S]*?)<\/div>/gi, (match, attrs, content) => {
+      // Если внутри есть блочные элементы, оставляем div
+      if (new RegExp(blockPattern, 'i').test(content)) {
+        return match
+      }
+      // Иначе заменяем на p
+      return `<p${attrs}>${content}</p>`
+    })
   }
 
   private computeMd5FromBase64(base64Data: string): string {
