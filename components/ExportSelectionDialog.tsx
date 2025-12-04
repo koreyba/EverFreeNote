@@ -156,16 +156,16 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px]">
-        <DialogHeader>
+      <DialogContent className="w-full h-full sm:h-auto sm:max-h-[85vh] sm:max-w-[720px] p-4 sm:p-6 flex flex-col gap-0 sm:gap-4 sm:rounded-lg rounded-none">
+        <DialogHeader className="mb-4 sm:mb-0">
           <DialogTitle>Export notes to .enex</DialogTitle>
           <DialogDescription>
             Choose notes to export. You can select everything at once or pick them one by one.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex-1 flex flex-col gap-4 min-h-0">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between shrink-0">
             <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground">
                 Selected: <span className="font-medium text-foreground">{selectedCount}</span> of {totalCount}
@@ -186,26 +186,26 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
           </div>
 
           {initialLoading ? (
-            <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+            <div className="flex-1 rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground flex items-center justify-center">
               Loading notes...
             </div>
           ) : totalCount === 0 ? (
-            <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+            <div className="flex-1 rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground flex items-center justify-center">
               You do not have any notes to export yet
             </div>
           ) : filteredNotes.length === 0 ? (
-            <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+            <div className="flex-1 rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground flex items-center justify-center">
               Nothing found for &quot;{search}&quot;
             </div>
           ) : (
-            <div className="h-[520px] rounded-md border p-2">
-              <div onScroll={handleScroll} className="h-[520px] overflow-y-auto pr-1 space-y-2">
+            <div className="flex-1 sm:flex-none sm:h-[55vh] rounded-md border p-2 min-h-0 overflow-hidden flex flex-col">
+              <div onScroll={handleScroll} className="flex-1 overflow-y-auto pr-1 space-y-2">
                 {filteredNotes.map((note) => {
                   const isSelected = selectAll ? !deselectedIds.has(note.id) : selectedIds.has(note.id)
                   return (
                     <div
                       key={note.id}
-                      className={`flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer ${
+                      className={`flex items-center gap-3 rounded-lg border p-2 transition-colors cursor-pointer ${
                         isSelected
                           ? "border-primary/60 bg-primary/5"
                           : "border-border hover:border-primary/40 hover:bg-muted/50"
@@ -220,30 +220,30 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
                           aria-label={`Select note ${note.title}`}
                         />
                       </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-semibold leading-snug line-clamp-2">{note.title || "Untitled"}</h3>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="font-semibold text-sm truncate">{note.title || "Untitled"}</h3>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                             {new Date(note.updated_at).toLocaleDateString("en-US")}
                           </span>
                         </div>
                         {note.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
+                          <p className="text-xs text-muted-foreground truncate">
                             {note.description.replace(/<[^>]*>/g, "")}
                           </p>
                         )}
                         {note.tags && note.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 pt-1">
-                            {note.tags.slice(0, 4).map((tag) => (
+                          <div className="flex flex-wrap gap-1">
+                            {note.tags.slice(0, 3).map((tag) => (
                               <span
                                 key={tag}
-                                className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                                className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
                               >
                                 {tag}
                               </span>
                             ))}
-                            {note.tags.length > 4 && (
-                              <span className="text-xs text-muted-foreground">+{note.tags.length - 4}</span>
+                            {note.tags.length > 3 && (
+                              <span className="text-[10px] text-muted-foreground">+{note.tags.length - 3}</span>
                             )}
                           </div>
                         )}
@@ -260,7 +260,7 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
             </div>
           )}
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 shrink-0 pt-2 sm:pt-0">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
