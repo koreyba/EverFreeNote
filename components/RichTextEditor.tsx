@@ -51,6 +51,7 @@ import Heading from "@tiptap/extension-heading"
 
 import { FontSize } from "../extensions/FontSize"
 import { browser } from "@/lib/adapters/browser"
+import { NOTE_CONTENT_CLASS } from "@/lib/constants/typography"
 
 type RichTextEditorProps = {
   content: string
@@ -62,7 +63,7 @@ type MenuBarProps = {
 }
 
 const fontFamilies = ["Sans Serif", "Serif", "Monospace", "Cursive"]
-const fontSizes = ["12", "15", "18", "24", "30", "36"]
+const fontSizes = ["10", "11", "12", "13", "14", "15", "18", "24", "30", "36"]
 
 const MenuBar = ({ editor }: MenuBarProps) => {
   if (!editor) {
@@ -154,7 +155,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 
       <Select
         onValueChange={(value) => editor.chain().focus().setFontSize(`${value}pt`).run()}
-        defaultValue={fontSizes[1]}
+        defaultValue={fontSizes[2]}
       >
         <SelectTrigger data-cy="font-size-select" className="w-[70px] text-xs h-8">
           <SelectValue placeholder="Font Size" />
@@ -344,8 +345,7 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   // Мемоизация editorProps для предотвращения ре-рендеров
   const editorProps = React.useMemo(() => ({
     attributes: {
-      class:
-        "prose prose-neutral dark:prose-invert prose-lg max-w-none focus:outline-none px-6 py-4",
+      class: `${NOTE_CONTENT_CLASS} focus:outline-none px-6 py-4`,
     },
   }), [])
 

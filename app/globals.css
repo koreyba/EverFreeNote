@@ -52,6 +52,8 @@ mark {
 .prose,
 .ProseMirror {
   color: var(--color-foreground);
+  font-size: 12pt;
+  line-height: var(--line-height-body);
 }
 
 .prose h1,
@@ -282,20 +284,20 @@ mark {
   pointer-events: none;
 }
 
-/* Dark theme overrides */
-.dark .prose code,
-.dark .ProseMirror code {
-  background-color: var(--color-muted);
-}
+  /* Dark theme overrides */
+  .dark .prose code,
+  .dark .ProseMirror code {
+    background-color: var(--color-muted);
+  }
+  
+  .dark .prose pre,
+  .dark .ProseMirror pre {
+    background-color: var(--color-muted);
+  }
 
-.dark .prose pre,
-.dark .ProseMirror pre {
-  background-color: var(--color-muted);
-}
-
-/* =============================================================================
-   END NOTE CONTENT STYLES
-   ============================================================================= */
+  /* =============================================================================
+     END NOTE CONTENT STYLES
+     ============================================================================= */
 
 
 
