@@ -23,17 +23,18 @@ describe('ContentConverter', () => {
   it('converts basic ENML to HTML', async () => {
     const enml = '<en-note><div>Hello World</div></en-note>'
     const result = await converter.convert(enml, [], 'user1', 'note1')
-    
-    expect(result).to.contain('<div>Hello World</div>')
+
+    // normalizeDivsToP converts simple divs to p tags
+    expect(result).to.contain('<p>Hello World</p>')
     expect(result).not.to.contain('<en-note>')
   })
 
   it('replaces unsupported tags', async () => {
     const enml = '<en-note><table border="1"><tr><td>Cell</td></tr></table></en-note>'
     const result = await converter.convert(enml, [], 'user1', 'note1')
-    
+
     expect(result).to.contain('[Unsupported content: Table]')
-    // DOMPurify strips the table tags but keeps the content inside the hidden div
+    // DOMPurify strips the table tags, div with display:none is kept as div (special marker)
     expect(result).to.contain('<div style="display:none">Cell</div>')
   })
 
@@ -48,7 +49,7 @@ describe('ContentConverter', () => {
     }]
 
     const result = await converter.convert(enml, resources, 'user1', 'note1')
-    
+
     expect(mockImageProcessor.upload).to.have.been.calledWith(
       'base64data',
       'image/png',
@@ -56,6 +57,7 @@ describe('ContentConverter', () => {
       'note1',
       'image_0'
     )
+    // Image is wrapped in p (div with inline content is converted to p)
     expect(result).to.contain('<img src="https://example.com/image.png"')
   })
 
@@ -78,9 +80,10 @@ describe('ContentConverter', () => {
   it('sanitizes HTML', async () => {
     const enml = '<en-note><script>alert("xss")</script><div>Safe</div></en-note>'
     const result = await converter.convert(enml, [], 'user1', 'note1')
-    
+
     expect(result).not.to.contain('<script>')
-    expect(result).to.contain('<div>Safe</div>')
+    // normalizeDivsToP converts simple divs (with only inline content) to p tags
+    expect(result).to.contain('<p>Safe</p>')
   })
   
   it('allows specific styles', async () => {

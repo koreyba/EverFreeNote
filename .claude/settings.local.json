@@ -3,7 +3,11 @@
     "allow": [
       "Bash(find:*)",
       "Bash(cat:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx cypress run:*)",
+      "Bash(cmd /c \"npx cypress run --component --spec cypress/component/lib/enex/converter.cy.ts,cypress/component/ui/Switch.cy.tsx\")",
+      "Bash(powershell -Command \"npx cypress run --component --spec ''cypress/component/lib/enex/converter.cy.ts,cypress/component/ui/Switch.cy.tsx''\")",
+      "Bash(powershell -Command \"npx cypress run --component --spec cypress/component/lib/enex/converter.cy.ts\")"
     ],
     "deny": [],
     "ask": []
