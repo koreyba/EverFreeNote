@@ -149,13 +149,6 @@ export function Sidebar({
             </div>
             <span className="text-sm truncate">{user.email}</span>
           </div>
-          <Button
-            onClick={onSignOut}
-            variant="ghost"
-            size="sm"
-          >
-            <LogOut className="w-4 h-4" />
-          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="p-2">
@@ -166,6 +159,7 @@ export function Sidebar({
               align="end"
               side="top"
               sideOffset={12}
+              alignOffset={-45}
               className="w-56 space-y-2 p-3"
             >
               <div className="space-y-2">
@@ -174,6 +168,13 @@ export function Sidebar({
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            onClick={onSignOut}
+            variant="ghost"
+            size="sm"
+          >
+            <LogOut className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     </div>
