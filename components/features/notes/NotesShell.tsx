@@ -49,7 +49,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   const showEditor = !!(selectedNote || isEditing)
 
   return (
-    <div className="flex h-screen bg-muted/20">
+    <div className="flex h-screen max-h-screen bg-muted/20 overflow-hidden">
       <Sidebar
         user={user!}
         filterByTag={filterByTag}
@@ -65,16 +65,16 @@ export function NotesShell({ controller }: NotesShellProps) {
         <ListPane controller={controller} />
       </Sidebar>
 
-      <div 
+      <div
         className={cn(
-          "flex-1 flex flex-col h-full",
+          "flex-1 flex flex-col h-full overflow-y-auto",
           !showEditor ? "hidden md:flex" : "w-full"
         )}
         data-testid="editor-container"
       >
-        <EditorPane 
-          controller={controller} 
-          onBack={() => handleSelectNote(null)} 
+        <EditorPane
+          controller={controller}
+          onBack={() => handleSelectNote(null)}
         />
       </div>
 

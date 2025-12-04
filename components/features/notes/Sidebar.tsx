@@ -46,7 +46,13 @@ export function Sidebar({
   "data-testid": dataTestId
 }: SidebarProps) {
   return (
-    <div className={cn("w-80 bg-card border-r flex flex-col h-full", className)} data-testid={dataTestId}>
+    <div
+      className={cn(
+        "w-80 bg-card border-r flex flex-col h-full md:sticky md:top-0 md:h-screen md:overflow-hidden",
+        className
+      )}
+      data-testid={dataTestId}
+    >
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
