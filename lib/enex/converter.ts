@@ -32,7 +32,7 @@ export class ContentConverter {
       ALLOWED_TAGS: [
         'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'ul', 'ol', 'li', 'img', 'a', 'div', 'span', 'blockquote', 'code',
-        'hr', 's', 'sub', 'sup'
+        'hr', 's', 'sub', 'sup', 'mark'
       ],
       ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style'],
       ALLOWED_STYLES: {
