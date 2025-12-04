@@ -51,6 +51,7 @@ describe('Mobile Layout Adaptation', () => {
       setEditForm: cy.stub(),
       invalidateNotes: cy.stub(),
       handleSearchResultClick: cy.stub(),
+      totalNotes: 0,
       
       ...overrides
     })
