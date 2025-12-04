@@ -244,10 +244,6 @@ mark {
   white-space: pre-wrap;
 }
 
-/* Скрываем trailingBreak, который Tiptap добавляет для курсора */
-.note-content .ProseMirror .ProseMirror-trailingBreak {
-  display: none;
-}
 
 .note-content .ProseMirror > *:first-child {
   margin-top: 0 !important;
