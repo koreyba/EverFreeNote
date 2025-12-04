@@ -75,7 +75,7 @@ export function useNoteAppController() {
       if (typeof total === 'number') return total
     }
     return notes.length
-  }, [notesQuery.data?.pages, notes.length])
+  }, [notesQuery.data?.pages, notes.length]) ?? 0
 
   // Create filtered ftsData object
   const filteredFtsData = ftsData ? {
