@@ -18,6 +18,12 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
+button,
+[role="button"],
+[type="button"] {
+  cursor: pointer !important;
+}
+
 /* Color scheme meta for browser optimization */
 :root {
   color-scheme: light;

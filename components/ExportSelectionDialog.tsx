@@ -39,19 +39,8 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
   const [totalCount, setTotalCount] = React.useState(0)
 
   const toggleNote = (noteId: string) => {
-    setSelectedIds((prev) => {
-      if (selectAll) {
-        setDeselectedIds((prevD) => {
-          const nextD = new Set(prevD)
-          if (nextD.has(noteId)) {
-            nextD.delete(noteId)
-          } else {
-            nextD.add(noteId)
-          }
-          return nextD
-        })
-        return prev
-      } else {
+    if (selectAll) {
+      setDeselectedIds((prev) => {
         const next = new Set(prev)
         if (next.has(noteId)) {
           next.delete(noteId)
@@ -59,8 +48,18 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
           next.add(noteId)
         }
         return next
-      }
-    })
+      })
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(noteId)) {
+          next.delete(noteId)
+        } else {
+          next.add(noteId)
+        }
+        return next
+      })
+    }
   }
 
   const handleSelectAll = () => {
@@ -206,19 +205,22 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
                   return (
                     <div
                       key={note.id}
-                      className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+                      className={`flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer ${
                         isSelected
                           ? "border-primary/60 bg-primary/5"
                           : "border-border hover:border-primary/40 hover:bg-muted/50"
                       }`}
+                      onClick={() => toggleNote(note.id)}
                     >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleNote(note.id)}
-                        className="mt-1"
-                        aria-label={`Select note ${note.title}`}
-                      />
-                      <div className="flex-1 space-y-1" onClick={() => toggleNote(note.id)}>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleNote(note.id)}
+                          className="mt-1"
+                          aria-label={`Select note ${note.title}`}
+                        />
+                      </div>
+                      <div className="flex-1 space-y-1">
                         <div className="flex items-start justify-between gap-2">
                           <h3 className="font-semibold leading-snug line-clamp-2">{note.title || "Untitled"}</h3>
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
