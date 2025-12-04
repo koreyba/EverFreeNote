@@ -16,7 +16,7 @@ describe('NoteEditor', () => {
 
   it('renders correctly', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
-    cy.get('textarea[placeholder="Note title"]').should('have.value', 'Test Title')
+    cy.get('input[placeholder="Note title"]').should('have.value', 'Test Title')
     cy.get('input[placeholder="work, personal, ideas"]').should('have.value', 'tag1, tag2')
     cy.contains('Editing').should('be.visible')
     cy.contains('Test Description').should('be.visible')
@@ -30,7 +30,7 @@ describe('NoteEditor', () => {
   it('handles title change', () => {
     const props = getDefaultProps()
     cy.mount(<NoteEditor {...props} />)
-    cy.get('textarea[placeholder="Note title"]').clear().type('New Title')
+    cy.get('input[placeholder="Note title"]').clear().type('New Title')
     cy.get('@onTitleChange').should('have.been.called')
   })
 
