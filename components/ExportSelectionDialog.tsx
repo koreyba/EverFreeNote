@@ -195,7 +195,7 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
             </div>
           ) : filteredNotes.length === 0 ? (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Nothing found for "{search}"
+              Nothing found for &quot;{search}&quot;
             </div>
           ) : (
             <div className="h-[520px] rounded-md border p-2">
