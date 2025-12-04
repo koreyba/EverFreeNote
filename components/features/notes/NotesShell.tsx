@@ -34,6 +34,7 @@ type NotesShellProps = {
 export function NotesShell({ controller }: NotesShellProps) {
   const {
     user,
+    totalNotes,
     filterByTag,
     searchQuery,
     handleSearch,
@@ -53,6 +54,7 @@ export function NotesShell({ controller }: NotesShellProps) {
       <Sidebar
         user={user!}
         filterByTag={filterByTag}
+        totalNotes={totalNotes}
         searchQuery={searchQuery}
         onSearch={handleSearch}
         onClearTagFilter={handleClearTagFilter}

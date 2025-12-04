@@ -30,13 +30,6 @@ export const NoteEditor = React.memo(function NoteEditor({
   onCancel
 }: NoteEditorProps) {
   // Обработчики событий для предотвращения пересоздания на каждом рендере
-  const handleTitleChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      onTitleChange(e.target.value)
-    },
-    [onTitleChange]
-  )
-
   const handleTagsChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onTagsChange(e.target.value)
