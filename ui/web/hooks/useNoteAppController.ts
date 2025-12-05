@@ -37,6 +37,9 @@ export function useNoteAppController() {
   const [filterByTag, setFilterByTag] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [noteToDelete, setNoteToDelete] = useState<NoteViewModel | null>(null)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   // -- Dependencies --
   const { supabase, loading: providerLoading } = useSupabase()
@@ -76,6 +79,8 @@ export function useNoteAppController() {
     }
     return notes.length
   }, [notesQuery.data?.pages, notes.length]) ?? 0
+
+  const selectedCount = selectedNoteIds.size
 
   // Create filtered ftsData object
   const filteredFtsData = ftsData ? {
@@ -332,11 +337,69 @@ export function useNoteAppController() {
     setIsEditing(false)
   }
 
-  const handleSearchResultClick = (note: SearchResult) => {
-    // Don't reset search - keep search results visible when viewing a note
-    setSelectedNote(note)
-    setIsEditing(false)
-  }
+    const handleSearchResultClick = (note: SearchResult) => {
+      // Don't reset search - keep search results visible when viewing a note
+      setSelectedNote(note)
+      setIsEditing(false)
+    }
+
+    const enterSelectionMode = () => {
+      setSelectionMode(true)
+      setSelectedNoteIds(new Set())
+      setIsEditing(false)
+      setSelectedNote(null)
+    }
+
+    const exitSelectionMode = () => {
+      setSelectionMode(false)
+      setSelectedNoteIds(new Set())
+    }
+
+    const toggleNoteSelection = (noteId: string) => {
+      setSelectionMode(true)
+      setSelectedNoteIds(prev => {
+        const next = new Set(prev)
+        if (next.has(noteId)) {
+          next.delete(noteId)
+        } else {
+          next.add(noteId)
+        }
+        return next
+      })
+    }
+
+    const selectAllVisible = () => {
+      if (!notes.length) return
+      setSelectionMode(true)
+      setSelectedNoteIds(new Set(notes.map(n => n.id)))
+    }
+
+    const clearSelection = () => {
+      setSelectedNoteIds(new Set())
+    }
+
+    const deleteSelectedNotes = async () => {
+      if (!selectedNoteIds.size) return
+      setBulkDeleting(true)
+      try {
+        const ids = Array.from(selectedNoteIds)
+        const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync(id)))
+        const failed = results.filter(r => r.status === 'rejected').length
+        if (failed > 0) {
+          toast.error(`Failed to delete ${failed} notes`)
+        } else {
+          toast.success(`Deleted ${ids.length} notes`)
+        }
+        exitSelectionMode()
+        await queryClient.invalidateQueries({ queryKey: ['notes'] })
+        setSelectedNote(null)
+      } catch (error) {
+        console.error('Bulk delete error:', error)
+        toast.error('Failed to delete selected notes')
+      } finally {
+        setBulkDeleting(false)
+      }
+    }
 
   return {
     // State
@@ -349,14 +412,18 @@ export function useNoteAppController() {
     setEditForm,
     saving,
     filterByTag,
-    deleteDialogOpen,
-    setDeleteDialogOpen,
-    noteToDelete,
+      deleteDialogOpen,
+      setDeleteDialogOpen,
+      noteToDelete,
+      selectionMode,
+      selectedNoteIds,
+      selectedCount,
+      bulkDeleting,
 
-    // Data
-    notes,
-    notesQuery,
-    ftsSearchResult,
+      // Data
+      notes,
+      notesQuery,
+      ftsSearchResult,
     ftsData: filteredFtsData,
     ftsResults: filteredFtsResults,
     showFTSResults,
@@ -378,11 +445,17 @@ export function useNoteAppController() {
     confirmDeleteNote,
     handleRemoveTagFromNote,
     handleSelectNote,
-    handleSearchResultClick,
+      handleSearchResultClick,
+      enterSelectionMode,
+      exitSelectionMode,
+      toggleNoteSelection,
+      selectAllVisible,
+      clearSelection,
+      deleteSelectedNotes,
 
-    // Helpers
-    invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
+      // Helpers
+      invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
+    }
   }
-}
 
 export type NoteAppController = ReturnType<typeof useNoteAppController>
