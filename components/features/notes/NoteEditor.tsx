@@ -4,7 +4,6 @@ import * as React from "react"
 import { Loader2, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import RichTextEditor from "@/components/RichTextEditor"
 
 interface NoteEditorProps {
@@ -31,29 +30,12 @@ export const NoteEditor = React.memo(function NoteEditor({
   onCancel
 }: NoteEditorProps) {
   // Обработчики событий для предотвращения пересоздания на каждом рендере
-  const handleTitleChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      onTitleChange(e.target.value)
-    },
-    [onTitleChange]
-  )
-
   const handleTagsChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onTagsChange(e.target.value)
     },
     [onTagsChange]
   )
-
-  // Auto-resize textarea
-  const titleRef = React.useRef<HTMLTextAreaElement>(null)
-  
-  React.useEffect(() => {
-    if (titleRef.current) {
-      titleRef.current.style.height = 'auto'
-      titleRef.current.style.height = titleRef.current.scrollHeight + 'px'
-    }
-  }, [title])
 
   return (
     <div className="flex-1 flex flex-col">
@@ -89,19 +71,18 @@ export const NoteEditor = React.memo(function NoteEditor({
       <div className="flex-1 overflow-y-auto p-6 bg-card">
         <div className="max-w-4xl mx-auto space-y-4">
           <div>
-            <Textarea
-              ref={titleRef}
+            <Input
+              type="text"
               placeholder="Note title"
               value={title}
-              onChange={handleTitleChange}
-              className="text-2xl font-bold border-none focus-visible:ring-0 px-0 bg-transparent min-h-[40px] resize-none overflow-hidden"
-              rows={1}
+              onChange={(e) => onTitleChange(e.target.value)}
+              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-2xl font-bold leading-snug shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
           <div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
               <Tag className="w-4 h-4" />
-              <span>Tags (comma-separated)</span>
+              <span>Tags (comma-separated):</span>
             </div>
             <Input
               type="text"

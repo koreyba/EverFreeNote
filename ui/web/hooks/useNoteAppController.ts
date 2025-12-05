@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { User } from '@supabase/supabase-js'
@@ -66,6 +66,16 @@ export function useNoteAppController() {
   const filteredFtsResults: SearchResult[] = filterByTag
     ? ftsResultsRaw.filter(note => note.tags?.includes(filterByTag))
     : ftsResultsRaw
+
+  // Total count of notes (from first page, falls back to loaded count)
+  const totalNotes = useMemo(() => {
+    const pages = notesQuery.data?.pages
+    if (pages?.length) {
+      const total = pages[0]?.totalCount
+      if (typeof total === 'number') return total
+    }
+    return notes.length
+  }, [notesQuery.data?.pages, notes.length]) ?? 0
 
   // Create filtered ftsData object
   const filteredFtsData = ftsData ? {
@@ -351,6 +361,7 @@ export function useNoteAppController() {
     ftsResults: filteredFtsResults,
     showFTSResults,
     observerTarget,
+    totalNotes,
 
     // Handlers
     handleSearch,

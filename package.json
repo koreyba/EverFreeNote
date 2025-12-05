@@ -9,7 +9,6 @@
     "dev:webpack": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
     "type-check": "tsc --noEmit",
     "eslint": "eslint . --max-warnings=0",
     "db:start": "supabase start",

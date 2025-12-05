@@ -3,6 +3,7 @@
 import { BookOpen } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import AuthForm from "@/components/AuthForm"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface AuthShellProps {
   enableTestAuth?: boolean
@@ -14,7 +15,11 @@ interface AuthShellProps {
 export function AuthShell({ enableTestAuth = false, onTestLogin, onSkipAuth, onGoogleAuth }: AuthShellProps) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-muted/30 to-accent/20">
-      <Card className="w-full max-w-md shadow-lg">
+      <div className="relative w-full max-w-md">
+        <div className="absolute right-3 top-3">
+          <ThemeToggle />
+        </div>
+        <Card className="w-full shadow-lg">
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center mb-4">
             <div className="p-3 bg-accent rounded-full">
@@ -38,7 +43,8 @@ export function AuthShell({ enableTestAuth = false, onTestLogin, onSkipAuth, onG
             By continuing, you agree to our Terms of Service and Privacy Policy
           </p>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }
