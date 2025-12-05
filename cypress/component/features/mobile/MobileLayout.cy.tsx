@@ -26,6 +26,10 @@ describe('Mobile Layout Adaptation', () => {
       deleteDialogOpen: false,
       noteToDelete: null,
       saving: false,
+      selectionMode: false,
+      selectedNoteIds: new Set(),
+      selectedCount: 0,
+      bulkDeleting: false,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ftsSearchResult: { isLoading: false, data: [] } as any,
       showFTSResults: false,
@@ -51,6 +55,12 @@ describe('Mobile Layout Adaptation', () => {
       setEditForm: cy.stub(),
       invalidateNotes: cy.stub(),
       handleSearchResultClick: cy.stub(),
+      enterSelectionMode: cy.stub(),
+      exitSelectionMode: cy.stub(),
+      selectAllVisible: cy.stub(),
+      clearSelection: cy.stub(),
+      toggleNoteSelection: cy.stub(),
+      deleteSelectedNotes: cy.stub(),
       totalNotes: 0,
       
       ...overrides

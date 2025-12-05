@@ -19,6 +19,9 @@ interface NoteListProps {
   notes: NoteRecord[]
   isLoading: boolean
   selectedNoteId?: string
+  selectionMode?: boolean
+  selectedIds?: Set<string>
+  onToggleSelect?: (note: NoteRecord) => void
   onSelectNote: (note: NoteRecord) => void
   onTagClick: (tag: string) => void
   onLoadMore: () => void
@@ -41,6 +44,9 @@ export function NoteList({
   notes,
   isLoading,
   selectedNoteId,
+  selectionMode = false,
+  selectedIds = new Set(),
+  onToggleSelect,
   onSelectNote,
   onTagClick,
   onLoadMore,
@@ -92,7 +98,10 @@ export function NoteList({
               key={note.id}
               note={note}
               variant="search"
-              onClick={() => onSearchResultClick(note)}
+              selectionMode={selectionMode}
+              isSelected={selectionMode ? selectedIds.has(note.id) : false}
+              onToggleSelect={() => onToggleSelect?.(note as unknown as NoteRecord)}
+              onClick={() => (selectionMode ? onToggleSelect?.(note as unknown as NoteRecord) : onSearchResultClick(note))}
               onTagClick={onTagClick}
             />
           ))}
@@ -125,8 +134,10 @@ export function NoteList({
             key={note.id}
             note={note}
             variant="compact"
-            isSelected={selectedNoteId === note.id}
-            onClick={() => onSelectNote(note)}
+            isSelected={selectionMode ? selectedIds.has(note.id) : selectedNoteId === note.id}
+            selectionMode={selectionMode}
+            onToggleSelect={() => onToggleSelect?.(note)}
+            onClick={() => selectionMode ? onToggleSelect?.(note) : onSelectNote(note)}
             onTagClick={onTagClick}
           />
         ))}
