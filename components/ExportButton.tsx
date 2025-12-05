@@ -100,15 +100,16 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
       }
 
       const { blob, fileName } = await exportService.exportNotes(noteIds, user.id, (p) => setProgress(p))
-      setProgress((prev) => ({
-        ...prev,
-        currentStep: "complete",
-        message: "Done",
-      }))
-      downloadBlob(blob, fileName)
+
+      // Запускаем скачивание и закрытие диалога асинхронно, чтобы не блокировать UI
+      // ExportSelectionDialog содержит много элементов, его закрытие занимает время
+      setTimeout(() => {
+        downloadBlob(blob, fileName)
+        setDialogOpen(false)
+      }, 0)
+
       toast.success(`Exported ${noteIds.length} notes`)
       onExportComplete?.(true, noteIds.length)
-      setDialogOpen(false)
     } catch (error) {
       console.error("Export failed:", error)
       toast.error("Failed to export notes")
@@ -145,5 +146,6 @@ function downloadBlob(blob: Blob, fileName: string) {
   document.body.appendChild(link)
   link.click()
   link.remove()
-  URL.revokeObjectURL(url)
+  // Откладываем освобождение URL, чтобы дать браузеру время на скачивание
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

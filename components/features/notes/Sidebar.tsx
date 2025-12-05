@@ -1,6 +1,6 @@
 "use client"
 
-import { BookOpen, LogOut, Plus, Search, Tag, X } from "lucide-react"
+import { BookOpen, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
 import { User } from "@supabase/supabase-js"
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils"
 
 interface SidebarProps {
   user: User
+  totalNotes?: number
   filterByTag: string | null
   searchQuery: string
   onSearch: (query: string) => void
@@ -33,6 +35,7 @@ interface SidebarProps {
 
 export function Sidebar({
   user,
+  totalNotes,
   filterByTag,
   searchQuery,
   onSearch,
@@ -46,7 +49,13 @@ export function Sidebar({
   "data-testid": dataTestId
 }: SidebarProps) {
   return (
-    <div className={cn("w-80 bg-card border-r flex flex-col h-full", className)} data-testid={dataTestId}>
+    <div
+      className={cn(
+        "w-80 bg-card border-r flex flex-col h-full md:sticky md:top-0 md:h-screen md:overflow-hidden",
+        className
+      )}
+      data-testid={dataTestId}
+    >
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
@@ -111,7 +120,7 @@ export function Sidebar({
       </div>
 
       {/* New Note Button */}
-      <div className="p-4 border-b space-y-2">
+      <div className="p-4 border-b space-y-3">
         <Button
           onClick={onCreateNote}
           className="w-full"
@@ -119,8 +128,9 @@ export function Sidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
-        <ImportButton onImportComplete={onImportComplete} />
-        <ExportButton onExportComplete={onExportComplete} />
+        <p className="text-xs text-muted-foreground text-center">
+          Total notes: {typeof totalNotes === "number" ? totalNotes : "—"}
+        </p>
       </div>
 
       {/* Notes List Container */}
@@ -130,7 +140,7 @@ export function Sidebar({
 
       {/* User Profile */}
       <div className="p-4 border-t">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
               <span className="text-sm font-semibold text-accent-foreground">
@@ -139,6 +149,25 @@ export function Sidebar({
             </div>
             <span className="text-sm truncate">{user.email}</span>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="p-2">
+                <Settings className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              side="top"
+              sideOffset={12}
+              alignOffset={-45}
+              className="w-56 space-y-2 p-3"
+            >
+              <div className="space-y-2">
+                <ImportButton onImportComplete={onImportComplete} />
+                <ExportButton onExportComplete={onExportComplete} />
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             onClick={onSignOut}
             variant="ghost"

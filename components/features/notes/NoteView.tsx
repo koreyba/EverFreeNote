@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
 
 import { SanitizationService } from "@/lib/services/sanitizer"
+import { NOTE_CONTENT_CLASS } from "@/lib/constants/typography"
 import type { Note } from "@/types/domain"
 
 // Define NoteRecord locally to match what's used in page.tsx
@@ -102,11 +103,10 @@ export const NoteView = React.memo(function NoteView({
             </div>
           )}
           
-          <div className="prose prose-neutral dark:prose-invert prose-lg max-w-none">
-            <div
-              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-            />
-          </div>
+          <div
+            className={NOTE_CONTENT_CLASS}
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+          />
           
           <div className="mt-8 pt-4 border-t text-sm text-muted-foreground">
             <p>Created: {formattedDates.created}</p>
