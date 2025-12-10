@@ -302,3 +302,4 @@ npm install
 - [TipTap 3.0 Release Notes](https://tiptap.dev/blog/release-notes/tiptap-3-0-is-stable)
 - [ESLint 9 Flat Config](https://eslint.org/docs/latest/use/configure/configuration-files-new)
 - [React 19 Features](https://react.dev/blog/2024/04/25/react-19)
+

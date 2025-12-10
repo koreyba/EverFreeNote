@@ -56,16 +56,15 @@ export function NoteList({
   ftsLoading,
   showFTSResults,
   ftsData,
-  onSearchResultClick
+  onSearchResultClick,
 }: NoteListProps) {
-
   // FTS Loading State
   if (ftsQuery.length >= 3 && ftsLoading) {
     return (
       <div className="p-4">
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-          <span className="text-sm text-muted-foreground">Поиск заметок...</span>
+          <span className="text-sm text-muted-foreground">Searching notes...</span>
         </div>
       </div>
     )
@@ -78,34 +77,42 @@ export function NoteList({
         {/* FTS Search Results Header */}
         <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
           <div>
-            Найдено: <span className="font-semibold">{ftsData.total}</span> {ftsData.total === 1 ? 'заметка' : 'заметок'}
+            Found: <span className="font-semibold">{ftsData.total}</span> {ftsData.total === 1 ? "note" : "notes"}
           </div>
-          {typeof ftsData.executionTime === 'number' && (
+          {typeof ftsData.executionTime === "number" && (
             <div className="flex items-center gap-2">
               <span>{ftsData.executionTime}ms</span>
               <Badge variant="outline" className="text-xs gap-1">
                 <Zap className="h-3 w-3" />
-                Быстрый поиск
+                Quick search
               </Badge>
             </div>
           )}
         </div>
 
         {/* FTS Results List */}
-        <div className="space-y-4">
-          {ftsData.results.map((note) => (
-            <NoteCard
-              key={note.id}
-              note={note}
-              variant="search"
-              selectionMode={selectionMode}
-              isSelected={selectionMode ? selectedIds.has(note.id) : false}
-              onToggleSelect={() => onToggleSelect?.(note as unknown as NoteRecord)}
-              onClick={() => (selectionMode ? onToggleSelect?.(note as unknown as NoteRecord) : onSearchResultClick(note))}
-              onTagClick={onTagClick}
-            />
-          ))}
-        </div>
+        {ftsData.results.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-8 text-center">No results found.</div>
+        ) : (
+          <div className="space-y-4">
+            {ftsData.results.map((note) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                variant="search"
+                selectionMode={selectionMode}
+                isSelected={selectionMode ? selectedIds.has(note.id) : false}
+                onToggleSelect={() => onToggleSelect?.(note as unknown as NoteRecord)}
+                onClick={() =>
+                  selectionMode
+                    ? onToggleSelect?.(note as unknown as NoteRecord)
+                    : onSearchResultClick(note)
+                }
+                onTagClick={onTagClick}
+              />
+            ))}
+          </div>
+        )}
       </div>
     )
   }
@@ -137,7 +144,7 @@ export function NoteList({
             isSelected={selectionMode ? selectedIds.has(note.id) : selectedNoteId === note.id}
             selectionMode={selectionMode}
             onToggleSelect={() => onToggleSelect?.(note)}
-            onClick={() => selectionMode ? onToggleSelect?.(note) : onSelectNote(note)}
+            onClick={() => (selectionMode ? onToggleSelect?.(note) : onSelectNote(note))}
             onTagClick={onTagClick}
           />
         ))}
