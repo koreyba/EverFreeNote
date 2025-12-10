@@ -30,11 +30,14 @@ describe('Mobile Layout Adaptation', () => {
       selectedNoteIds: new Set(),
       selectedCount: 0,
       bulkDeleting: false,
+      selectAllActive: false,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ftsSearchResult: { isLoading: false, data: [] } as any,
       showFTSResults: false,
       ftsData: undefined,
       ftsResults: [],
+      ftsHasMore: false,
+      ftsLoadingMore: false,
       observerTarget: { current: null },
       
       handleSelectNote: cy.stub().as('handleSelectNote'),
@@ -59,6 +62,7 @@ describe('Mobile Layout Adaptation', () => {
       exitSelectionMode: cy.stub(),
       selectAllVisible: cy.stub(),
       clearSelection: cy.stub(),
+      loadMoreFts: cy.stub(),
       toggleNoteSelection: cy.stub(),
       deleteSelectedNotes: cy.stub(),
       totalNotes: 0,

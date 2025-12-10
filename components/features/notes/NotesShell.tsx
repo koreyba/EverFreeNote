@@ -110,6 +110,8 @@ function ListPane({ controller }: { controller: NoteAppController }) {
     ftsSearchResult,
     showFTSResults,
     ftsData,
+    ftsHasMore,
+    ftsLoadingMore,
     observerTarget,
     handleSelectNote,
     selectionMode,
@@ -137,6 +139,9 @@ function ListPane({ controller }: { controller: NoteAppController }) {
         ftsLoading={ftsSearchResult.isLoading}
         showFTSResults={showFTSResults}
         ftsData={ftsData}
+        ftsHasMore={ftsHasMore}
+        ftsLoadingMore={ftsLoadingMore}
+        onLoadMoreFts={controller.loadMoreFts}
         onSearchResultClick={handleSearchResultClick}
       />
 

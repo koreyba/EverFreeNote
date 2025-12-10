@@ -50,16 +50,23 @@ export class SearchService {
         })
 
         if (!error && data) {
+          type FtsRow = FtsSearchResult & { total_count?: number }
+          const rows = data as FtsRow[]
           const filtered = tag
-            ? (data as FtsSearchResult[]).filter((note) => (note.tags ?? []).includes(tag))
-            : (data as FtsSearchResult[])
+            ? rows.filter((note) => (note.tags ?? []).includes(tag))
+            : rows
 
           // If FTS found results, return them.
-          // If FTS found nothing (0 results), fall through to ILIKE fallback to support substring search (e.g. "альные" in "специальные")
+          // If FTS found nothing (0 results), fall through to ILIKE fallback to support substring search
           if (filtered.length > 0) {
+            const totalFromDb = filtered[0]?.total_count ?? rows[0]?.total_count
+            const inferredTotal = typeof totalFromDb === 'number'
+              ? totalFromDb
+              : filtered.length + offset
+
             return {
               results: filtered,
-              total: filtered.length,
+              total: inferredTotal,
               method: 'fts',
             }
           }

@@ -22,7 +22,8 @@ RETURNS TABLE (
   rank real,
   headline text,
   created_at timestamptz,
-  updated_at timestamptz
+  updated_at timestamptz,
+  total_count int
 ) 
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -68,7 +69,8 @@ BEGIN
         substring(coalesce(n.description, ''), 1, 200)
     END as headline,
     n.created_at,
-    n.updated_at
+    n.updated_at,
+    COUNT(*) OVER() AS total_count
   FROM notes n
   WHERE
     -- Security: only return notes for the specified user
