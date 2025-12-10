@@ -40,6 +40,11 @@ export function useNoteAppController() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [selectAllActive, setSelectAllActive] = useState(false)
+  const [deselectedNoteIds, setDeselectedNoteIds] = useState<Set<string>>(new Set())
+  const [ftsOffset, setFtsOffset] = useState(0)
+  const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
+  const ftsLimit = 20
 
   // -- Dependencies --
   const { supabase, loading: providerLoading } = useSupabase()
@@ -61,7 +66,9 @@ export function useNoteAppController() {
 
   const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
     enabled: !!user && ftsSearchQuery.length >= 3,
-    selectedTag: filterByTag
+    selectedTag: filterByTag,
+    offset: ftsOffset,
+    limit: ftsLimit
   })
 
   const ftsData = ftsSearchResult.data
@@ -69,6 +76,39 @@ export function useNoteAppController() {
   const filteredFtsResults: SearchResult[] = filterByTag
     ? ftsResultsRaw.filter(note => note.tags?.includes(filterByTag))
     : ftsResultsRaw
+
+  // Accumulate FTS pages for "load more"
+  useEffect(() => {
+    // reset on query/tag change
+    setFtsOffset(0)
+    setFtsAccumulatedResults([])
+  }, [ftsSearchQuery, filterByTag])
+
+  useEffect(() => {
+    if (!ftsSearchResult.data) return
+    setFtsAccumulatedResults((prev) => {
+      if (ftsOffset === 0) {
+        if (prev.length === filteredFtsResults.length) {
+          const prevIds = new Set(prev.map((n) => n.id))
+          const same = filteredFtsResults.every((n) => prevIds.has(n.id))
+          if (same) return prev
+        }
+        return filteredFtsResults
+      }
+      const next = [...prev]
+      const seen = new Set(prev.map((item) => item.id))
+      filteredFtsResults.forEach((item) => {
+        if (!seen.has(item.id)) {
+          next.push(item)
+        }
+      })
+      return next
+    })
+  }, [ftsSearchResult.data, ftsOffset, filteredFtsResults, ftsSearchQuery, filterByTag])
+
+  const ftsTotal = ftsData?.total ?? ftsAccumulatedResults.length
+  const ftsHasMore = !!ftsData && (ftsAccumulatedResults.length < ftsTotal || ftsData.results.length === ftsLimit)
+  const ftsLoadingMore = ftsSearchResult.isFetching && ftsOffset > 0
 
   // Total count of notes (from first page, falls back to loaded count)
   const totalNotes = useMemo(() => {
@@ -80,21 +120,22 @@ export function useNoteAppController() {
     return notes.length
   }, [notesQuery.data?.pages, notes.length]) ?? 0
 
-  const selectedCount = selectedNoteIds.size
+  const showFTSResults = ftsSearchQuery.length >= 3 &&
+    !!ftsData &&
+    !ftsData.error
 
-  // Create filtered ftsData object
-  const filteredFtsData = ftsData ? {
+  const aggregatedFtsData = showFTSResults ? {
     ...ftsData,
-    results: filteredFtsResults,
-    total: filteredFtsResults.length
+    results: ftsAccumulatedResults,
+    total: ftsTotal
   } : undefined
 
-  const showFTSResults = ftsSearchQuery.length >= 3 &&
-    !!filteredFtsData &&
-    filteredFtsData.method === 'fts' &&
-    !filteredFtsData.error
+  const baseTotal = showFTSResults && aggregatedFtsData ? aggregatedFtsData.total : totalNotes
+  const selectedCount = selectAllActive && !showFTSResults
+    ? Math.max(0, (baseTotal ?? 0) - deselectedNoteIds.size)
+    : selectedNoteIds.size
 
-  const totalNotesDisplay = showFTSResults && filteredFtsData ? filteredFtsData.total : totalNotes
+  const totalNotesDisplay = showFTSResults && aggregatedFtsData ? aggregatedFtsData.total : totalNotes
 
   // -- Infinite Scroll --
   const observerTarget = useInfiniteScroll(
@@ -346,6 +387,8 @@ export function useNoteAppController() {
 
     const enterSelectionMode = () => {
       setSelectionMode(true)
+      setSelectAllActive(false)
+      setDeselectedNoteIds(new Set())
       setSelectedNoteIds(new Set())
       setIsEditing(false)
       setSelectedNote(null)
@@ -353,11 +396,29 @@ export function useNoteAppController() {
 
     const exitSelectionMode = () => {
       setSelectionMode(false)
+      setSelectAllActive(false)
+      setDeselectedNoteIds(new Set())
       setSelectedNoteIds(new Set())
     }
 
     const toggleNoteSelection = (noteId: string) => {
       setSelectionMode(true)
+      if (selectAllActive) {
+        setSelectedNoteIds((prev) => {
+          const next = new Set(prev)
+          const nextDeselected = new Set(deselectedNoteIds)
+          if (next.has(noteId)) {
+            next.delete(noteId)
+            nextDeselected.add(noteId)
+          } else {
+            next.add(noteId)
+            nextDeselected.delete(noteId)
+          }
+          setDeselectedNoteIds(nextDeselected)
+          return next
+        })
+        return
+      }
       setSelectedNoteIds(prev => {
         const next = new Set(prev)
         if (next.has(noteId)) {
@@ -370,16 +431,52 @@ export function useNoteAppController() {
     }
 
   const selectAllVisible = () => {
-    const source = showFTSResults && filteredFtsData
-      ? filteredFtsData.results
+    const source = showFTSResults && aggregatedFtsData
+      ? aggregatedFtsData.results
       : notes
-    if (!source.length) return
     setSelectionMode(true)
+    if (showFTSResults) {
+      // In search mode select only currently visible results, do not auto-select future pages
+      setSelectAllActive(false)
+      setDeselectedNoteIds(new Set())
+      setSelectedNoteIds(new Set(source.map((n) => n.id)))
+      return
+    }
+    setSelectAllActive(true)
+    setDeselectedNoteIds(new Set())
     setSelectedNoteIds(new Set(source.map((n) => n.id)))
   }
 
+  useEffect(() => {
+    if (!selectAllActive || showFTSResults) return
+    const nextIds = notes
+      .filter((n) => !deselectedNoteIds.has(n.id))
+      .map((n) => n.id)
+    setSelectedNoteIds((prev) => {
+      if (prev.size === nextIds.length) {
+        // quick equality check
+        let allMatch = true
+        for (const id of nextIds) {
+          if (!prev.has(id)) {
+            allMatch = false
+            break
+          }
+        }
+        if (allMatch) return prev
+      }
+      return new Set(nextIds)
+    })
+  }, [selectAllActive, showFTSResults, notes, deselectedNoteIds])
+
     const clearSelection = () => {
       setSelectedNoteIds(new Set())
+      setSelectAllActive(false)
+      setDeselectedNoteIds(new Set())
+    }
+
+    const loadMoreFts = () => {
+      if (ftsLoadingMore || !ftsHasMore) return
+      setFtsOffset((prev) => prev + ftsLimit)
     }
 
     const deleteSelectedNotes = async () => {
@@ -423,13 +520,16 @@ export function useNoteAppController() {
       selectedNoteIds,
       selectedCount,
       bulkDeleting,
+      selectAllActive,
 
       // Data
       notes,
       notesQuery,
       ftsSearchResult,
-    ftsData: filteredFtsData,
-    ftsResults: filteredFtsResults,
+    ftsData: aggregatedFtsData,
+    ftsResults: ftsAccumulatedResults,
+    ftsHasMore,
+    ftsLoadingMore,
     showFTSResults,
     observerTarget,
       totalNotes: totalNotesDisplay,
@@ -455,6 +555,7 @@ export function useNoteAppController() {
       toggleNoteSelection,
       selectAllVisible,
       clearSelection,
+      loadMoreFts,
       deleteSelectedNotes,
 
       // Helpers
