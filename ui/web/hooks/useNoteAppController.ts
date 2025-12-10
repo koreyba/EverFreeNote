@@ -92,8 +92,9 @@ export function useNoteAppController() {
   const showFTSResults = ftsSearchQuery.length >= 3 &&
     !!filteredFtsData &&
     filteredFtsData.method === 'fts' &&
-    !filteredFtsData.error &&
-    filteredFtsResults.length > 0
+    !filteredFtsData.error
+
+  const totalNotesDisplay = showFTSResults && filteredFtsData ? filteredFtsData.total : totalNotes
 
   // -- Infinite Scroll --
   const observerTarget = useInfiniteScroll(
@@ -368,11 +369,14 @@ export function useNoteAppController() {
       })
     }
 
-    const selectAllVisible = () => {
-      if (!notes.length) return
-      setSelectionMode(true)
-      setSelectedNoteIds(new Set(notes.map(n => n.id)))
-    }
+  const selectAllVisible = () => {
+    const source = showFTSResults && filteredFtsData
+      ? filteredFtsData.results
+      : notes
+    if (!source.length) return
+    setSelectionMode(true)
+    setSelectedNoteIds(new Set(source.map((n) => n.id)))
+  }
 
     const clearSelection = () => {
       setSelectedNoteIds(new Set())
@@ -428,7 +432,7 @@ export function useNoteAppController() {
     ftsResults: filteredFtsResults,
     showFTSResults,
     observerTarget,
-    totalNotes,
+      totalNotes: totalNotesDisplay,
 
     // Handlers
     handleSearch,
