@@ -13,7 +13,7 @@ describe('Sidebar Component', () => {
     created_at: new Date().toISOString()
   }
 
-  const baseSelectionProps = {
+  const createSelectionProps = () => ({
     totalNotes: 0,
     selectionMode: false,
     selectedCount: 0,
@@ -23,7 +23,7 @@ describe('Sidebar Component', () => {
     onSelectAll: cy.stub(),
     onClearSelection: cy.stub(),
     onBulkDelete: cy.stub(),
-  }
+  })
 
   const createMockSupabase = (user: User | null) => {
     return {
@@ -57,7 +57,7 @@ describe('Sidebar Component', () => {
       onSignOut: cy.stub(),
       onImportComplete: cy.stub(),
       onExportComplete: cy.stub(),
-      ...baseSelectionProps,
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
@@ -80,7 +80,7 @@ describe('Sidebar Component', () => {
       onSignOut: cy.stub(),
       onImportComplete: cy.stub(),
       onExportComplete: cy.stub(),
-      ...baseSelectionProps,
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
@@ -101,7 +101,7 @@ describe('Sidebar Component', () => {
       onSignOut: cy.stub(),
       onImportComplete: cy.stub(),
       onExportComplete: cy.stub(),
-      ...baseSelectionProps,
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
@@ -124,7 +124,7 @@ describe('Sidebar Component', () => {
       onSignOut: cy.stub(),
       onImportComplete: cy.stub(),
       onExportComplete: cy.stub(),
-      ...baseSelectionProps,
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
@@ -151,7 +151,7 @@ describe('Sidebar Component', () => {
       onSignOut: cy.stub(),
       onImportComplete: cy.stub(),
       onExportComplete: cy.stub(),
-      ...baseSelectionProps,
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
@@ -172,7 +172,7 @@ describe('Sidebar Component', () => {
       onSignOut,
       onImportComplete: cy.stub(),
       onExportComplete: cy.stub(),
-      ...baseSelectionProps,
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
 
