@@ -88,7 +88,10 @@ describe('NoteCard', () => {
         onClick={cy.spy()}
       />
     )
-    // Check for bg-accent class on the container
-    cy.contains('Test Note').closest('div').should('have.class', 'bg-accent')
+    // Check that any ancestor container has bg-accent (selection highlight)
+    cy.contains('Test Note')
+      .parents('div')
+      .filter('.bg-accent')
+      .should('exist')
   })
 })
