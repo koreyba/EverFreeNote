@@ -40,6 +40,7 @@ export function useNoteAppController() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
   const [selectAllActive, setSelectAllActive] = useState(false)
   const [deselectedNoteIds, setDeselectedNoteIds] = useState<Set<string>>(new Set())
   const [ftsOffset, setFtsOffset] = useState(0)
@@ -269,6 +270,45 @@ export function useNoteAppController() {
       setSelectedNote(null)
     } catch (error) {
       console.error('Error signing out:', error)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!user) return
+    setDeleteAccountLoading(true)
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !sessionData.session?.access_token) {
+        throw new Error("Unable to get session token for deletion")
+      }
+      const token = sessionData.session.access_token
+      const functionsUrl = process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+      if (!functionsUrl) {
+        throw new Error("Functions URL is not configured (set NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL)")
+      }
+
+      const response = await fetch(`${functionsUrl}/functions/v1/delete-account`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ deleteNotes: true }),
+      })
+
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const message = payload?.error || `Delete function error (${response.status})`
+        throw new Error(message)
+      }
+
+      toast.success("Account deleted")
+      await handleSignOut()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete account"
+      toast.error(message)
+    } finally {
+      setDeleteAccountLoading(false)
     }
   }
 
@@ -520,6 +560,7 @@ export function useNoteAppController() {
       selectedNoteIds,
       selectedCount,
       bulkDeleting,
+      deleteAccountLoading,
       selectAllActive,
 
       // Data
@@ -540,11 +581,12 @@ export function useNoteAppController() {
     handleClearTagFilter,
     handleSignInWithGoogle,
     handleTestLogin,
-    handleSkipAuth,
-    handleSignOut,
-    handleCreateNote,
-    handleEditNote,
-    handleSaveNote,
+      handleSkipAuth,
+      handleSignOut,
+      handleDeleteAccount,
+      handleCreateNote,
+      handleEditNote,
+      handleSaveNote,
     handleDeleteNote,
     confirmDeleteNote,
     handleRemoveTagFromNote,

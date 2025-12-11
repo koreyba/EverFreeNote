@@ -1,0 +1,53 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL")
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+}
+
+serve(async (req) => {
+  if (!supabaseUrl || !serviceRoleKey) {
+    return new Response(JSON.stringify({ error: "Function not configured" }), { status: 500 })
+  }
+
+  const authHeader = req.headers.get("Authorization")
+  const token = authHeader?.replace("Bearer ", "")
+  if (!token) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    global: {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  })
+
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    }
+
+    // Delete user notes
+    const { error: notesError } = await supabase.from("notes").delete().eq("user_id", user.id)
+    if (notesError) {
+      throw notesError
+    }
+
+    // Delete the user account
+    const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id)
+    if (deleteError) {
+      throw deleteError
+    }
+
+    return new Response(JSON.stringify({ success: true }), { status: 200 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to delete account"
+    return new Response(JSON.stringify({ error: message }), { status: 500 })
+  }
+})

@@ -39,6 +39,7 @@ describe('Mobile Layout Adaptation', () => {
       ftsHasMore: false,
       ftsLoadingMore: false,
       observerTarget: { current: null },
+      deleteAccountLoading: false,
       
       handleSelectNote: cy.stub().as('handleSelectNote'),
       handleCreateNote: cy.stub(),
@@ -52,6 +53,7 @@ describe('Mobile Layout Adaptation', () => {
       handleTagClick: cy.stub(),
       handleRemoveTagFromNote: cy.stub(),
       handleSignOut: cy.stub(),
+      handleDeleteAccount: cy.stub(),
       handleTestLogin: cy.stub(),
       handleSkipAuth: cy.stub(),
       handleSignInWithGoogle: cy.stub(),

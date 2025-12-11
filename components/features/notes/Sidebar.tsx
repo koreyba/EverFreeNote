@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/compon
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
+import { DeleteAccountDialog } from "@/components/features/account/DeleteAccountDialog"
 import { User } from "@supabase/supabase-js"
 import { cn } from "@/lib/utils"
 
@@ -36,6 +37,8 @@ interface SidebarProps {
   onClearTagFilter: () => void
   onCreateNote: () => void
   onSignOut: () => void
+  onDeleteAccount: () => Promise<void> | void
+  deleteAccountLoading?: boolean
   onImportComplete: () => void
   onExportComplete?: (success: boolean, exportedCount: number) => void
   children: React.ReactNode // For the NoteList
@@ -60,6 +63,8 @@ export function Sidebar({
   onClearTagFilter,
   onCreateNote,
   onSignOut,
+  onDeleteAccount,
+  deleteAccountLoading = false,
   onImportComplete,
   onExportComplete,
   children,
@@ -67,9 +72,14 @@ export function Sidebar({
   "data-testid": dataTestId
 }: SidebarProps) {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
   const handleBulkConfirm = async () => {
     await onBulkDelete()
     setBulkDialogOpen(false)
+  }
+  const handleDeleteAccount = async () => {
+    await onDeleteAccount()
+    setDeleteAccountOpen(false)
   }
 
   return (
@@ -216,6 +226,14 @@ export function Sidebar({
               <div className="space-y-2">
                 <ImportButton onImportComplete={onImportComplete} />
                 <ExportButton onExportComplete={onExportComplete} />
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setDeleteAccountOpen(true)}
+                >
+                  Delete my account
+                </Button>
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -235,6 +253,12 @@ export function Sidebar({
         count={selectedCount}
         onConfirm={handleBulkConfirm}
         loading={bulkDeleting}
+      />
+      <DeleteAccountDialog
+        open={deleteAccountOpen}
+        onOpenChange={setDeleteAccountOpen}
+        onConfirm={handleDeleteAccount}
+        loading={deleteAccountLoading}
       />
     </div>
   )
