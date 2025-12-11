@@ -372,15 +372,15 @@ export function useNoteAppController() {
     setDeleteDialogOpen(true)
   }
 
-  const confirmDeleteNote = async () => {
-    if (!noteToDelete) return
+    const confirmDeleteNote = async () => {
+      if (!noteToDelete) return
 
-    try {
-      await deleteNoteMutation.mutateAsync(noteToDelete.id)
+      try {
+        await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
 
-      if (selectedNote?.id === noteToDelete.id) {
-        setSelectedNote(null)
-        setIsEditing(false)
+        if (selectedNote?.id === noteToDelete.id) {
+          setSelectedNote(null)
+          setIsEditing(false)
       }
     } catch (error) {
       console.error('Error deleting note:', error)
@@ -468,12 +468,12 @@ export function useNoteAppController() {
       setBulkDeleting(true)
       try {
         const ids = Array.from(selectedNoteIds)
-        const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync(id)))
-        const failed = results.filter(r => r.status === 'rejected').length
-        if (failed > 0) {
-          toast.error(`Failed to delete ${failed} notes`)
-        } else {
-          toast.success(`Deleted ${ids.length} notes`)
+      const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync({ id, silent: true })))
+      const failed = results.filter(r => r.status === 'rejected').length
+      if (failed > 0) {
+        toast.error(`Failed to delete ${failed} notes`)
+      } else {
+        toast.success(`Deleted ${ids.length} notes`)
         }
         exitSelectionMode()
         await queryClient.invalidateQueries({ queryKey: ['notes'] })
