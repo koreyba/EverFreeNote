@@ -55,5 +55,5 @@ Assess how well the project separates core logic (services, domain, adapters) fr
 - [ ] Update adapter imports to `@ui/web/adapters/browser`.
 - [ ] Migrate Cypress specs off `@/lib/...`.
 - [x] Extract FTS pagination helper to core and wire into `useNoteAppController` (`core/services/ftsPagination.ts`).
-- [ ] Extract selection helper to core and wire into `useNoteAppController`.
+- [x] Extract selection helper to core and wire into `useNoteAppController` (`core/services/selection.ts`).
 - [ ] Remove obsolete `lib/services/*` and `lib/adapters/browser.ts` after all consumers are switched.

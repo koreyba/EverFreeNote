@@ -10,6 +10,7 @@ import { useInfiniteScroll } from './useInfiniteScroll'
 import type { NoteViewModel, SearchResult } from '@/types/domain'
 import { AuthService } from '@core/services/auth'
 import { computeFtsHasMore, computeFtsTotal } from '@core/services/ftsPagination'
+import { clearSelection as clearSelectionSet, selectAll as selectAllSet, toggleSelection } from '@core/services/selection'
 import { webStorageAdapter } from '@ui/web/adapters/storage'
 import { webOAuthRedirectUri } from '@ui/web/config'
 import { featureFlags } from '@ui/web/featureFlags'
@@ -450,15 +451,7 @@ export function useNoteAppController() {
 
     const toggleNoteSelection = (noteId: string) => {
       setSelectionMode(true)
-      setSelectedNoteIds(prev => {
-        const next = new Set(prev)
-        if (next.has(noteId)) {
-          next.delete(noteId)
-        } else {
-          next.add(noteId)
-        }
-        return next
-      })
+      setSelectedNoteIds(prev => toggleSelection(prev, noteId))
     }
 
     const selectAllVisible = () => {
@@ -466,11 +459,11 @@ export function useNoteAppController() {
         ? aggregatedFtsData.results
         : notes
       setSelectionMode(true)
-      setSelectedNoteIds(new Set(source.map((n) => n.id)))
+      setSelectedNoteIds(selectAllSet(source.map((n) => n.id)))
     }
 
     const clearSelection = () => {
-      setSelectedNoteIds(new Set())
+      setSelectedNoteIds(clearSelectionSet())
     }
 
     const loadMoreFts = () => {
