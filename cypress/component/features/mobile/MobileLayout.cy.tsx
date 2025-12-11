@@ -68,6 +68,8 @@ describe('Mobile Layout Adaptation', () => {
       toggleNoteSelection: cy.stub(),
       deleteSelectedNotes: cy.stub(),
       totalNotes: 0,
+      notesDisplayed: 0,
+      notesTotal: 0,
       
       ...overrides
     })

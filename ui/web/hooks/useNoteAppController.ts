@@ -41,8 +41,6 @@ export function useNoteAppController() {
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
-  const [selectAllActive, setSelectAllActive] = useState(false)
-  const [deselectedNoteIds, setDeselectedNoteIds] = useState<Set<string>>(new Set())
   const [ftsOffset, setFtsOffset] = useState(0)
   const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
   const ftsLimit = 20
@@ -131,12 +129,10 @@ export function useNoteAppController() {
     total: ftsTotal
   } : undefined
 
+  const notesDisplayed = showFTSResults && aggregatedFtsData ? aggregatedFtsData.results.length : notes.length
   const baseTotal = showFTSResults && aggregatedFtsData ? aggregatedFtsData.total : totalNotes
-  const selectedCount = selectAllActive && !showFTSResults
-    ? Math.max(0, (baseTotal ?? 0) - deselectedNoteIds.size)
-    : selectedNoteIds.size
-
-  const totalNotesDisplay = showFTSResults && aggregatedFtsData ? aggregatedFtsData.total : totalNotes
+  const notesTotal = baseTotal ?? notesDisplayed
+  const selectedCount = selectedNoteIds.size
 
   // -- Infinite Scroll --
   const observerTarget = useInfiniteScroll(
@@ -427,8 +423,6 @@ export function useNoteAppController() {
 
     const enterSelectionMode = () => {
       setSelectionMode(true)
-      setSelectAllActive(false)
-      setDeselectedNoteIds(new Set())
       setSelectedNoteIds(new Set())
       setIsEditing(false)
       setSelectedNote(null)
@@ -436,29 +430,11 @@ export function useNoteAppController() {
 
     const exitSelectionMode = () => {
       setSelectionMode(false)
-      setSelectAllActive(false)
-      setDeselectedNoteIds(new Set())
       setSelectedNoteIds(new Set())
     }
 
     const toggleNoteSelection = (noteId: string) => {
       setSelectionMode(true)
-      if (selectAllActive) {
-        setSelectedNoteIds((prev) => {
-          const next = new Set(prev)
-          const nextDeselected = new Set(deselectedNoteIds)
-          if (next.has(noteId)) {
-            next.delete(noteId)
-            nextDeselected.add(noteId)
-          } else {
-            next.add(noteId)
-            nextDeselected.delete(noteId)
-          }
-          setDeselectedNoteIds(nextDeselected)
-          return next
-        })
-        return
-      }
       setSelectedNoteIds(prev => {
         const next = new Set(prev)
         if (next.has(noteId)) {
@@ -470,48 +446,16 @@ export function useNoteAppController() {
       })
     }
 
-  const selectAllVisible = () => {
-    const source = showFTSResults && aggregatedFtsData
-      ? aggregatedFtsData.results
-      : notes
-    setSelectionMode(true)
-    if (showFTSResults) {
-      // In search mode select only currently visible results, do not auto-select future pages
-      setSelectAllActive(false)
-      setDeselectedNoteIds(new Set())
+    const selectAllVisible = () => {
+      const source = showFTSResults && aggregatedFtsData
+        ? aggregatedFtsData.results
+        : notes
+      setSelectionMode(true)
       setSelectedNoteIds(new Set(source.map((n) => n.id)))
-      return
     }
-    setSelectAllActive(true)
-    setDeselectedNoteIds(new Set())
-    setSelectedNoteIds(new Set(source.map((n) => n.id)))
-  }
-
-  useEffect(() => {
-    if (!selectAllActive || showFTSResults) return
-    const nextIds = notes
-      .filter((n) => !deselectedNoteIds.has(n.id))
-      .map((n) => n.id)
-    setSelectedNoteIds((prev) => {
-      if (prev.size === nextIds.length) {
-        // quick equality check
-        let allMatch = true
-        for (const id of nextIds) {
-          if (!prev.has(id)) {
-            allMatch = false
-            break
-          }
-        }
-        if (allMatch) return prev
-      }
-      return new Set(nextIds)
-    })
-  }, [selectAllActive, showFTSResults, notes, deselectedNoteIds])
 
     const clearSelection = () => {
       setSelectedNoteIds(new Set())
-      setSelectAllActive(false)
-      setDeselectedNoteIds(new Set())
     }
 
     const loadMoreFts = () => {
@@ -561,7 +505,6 @@ export function useNoteAppController() {
       selectedCount,
       bulkDeleting,
       deleteAccountLoading,
-      selectAllActive,
 
       // Data
       notes,
@@ -573,7 +516,9 @@ export function useNoteAppController() {
     ftsLoadingMore,
     showFTSResults,
     observerTarget,
-      totalNotes: totalNotesDisplay,
+      totalNotes: notesTotal,
+      notesDisplayed,
+      notesTotal,
 
     // Handlers
     handleSearch,
