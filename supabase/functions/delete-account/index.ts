@@ -21,26 +21,25 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    global: {
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  })
+  // Admin client (service role)
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
+    // Validate user token
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
+    if (userError || !userData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
     }
+    const user = userData.user
 
     // Delete user notes
-    const { error: notesError } = await supabase.from("notes").delete().eq("user_id", user.id)
+    const { error: notesError } = await supabaseAdmin.from("notes").delete().eq("user_id", user.id)
     if (notesError) {
       throw notesError
     }
 
     // Delete the user account
-    const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id)
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id)
     if (deleteError) {
       throw deleteError
     }
