@@ -9,6 +9,7 @@ import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './use
 import { useInfiniteScroll } from './useInfiniteScroll'
 import type { NoteViewModel, SearchResult } from '@/types/domain'
 import { AuthService } from '@core/services/auth'
+import { computeFtsHasMore, computeFtsTotal } from '@core/services/ftsPagination'
 import { webStorageAdapter } from '@ui/web/adapters/storage'
 import { webOAuthRedirectUri } from '@ui/web/config'
 import { featureFlags } from '@ui/web/featureFlags'
@@ -105,11 +106,10 @@ export function useNoteAppController() {
     })
   }, [ftsSearchResult.data, ftsOffset, filteredFtsResults, ftsSearchQuery, filterByTag])
 
+  const ftsTotalKnown = typeof ftsData?.total === 'number' && ftsData.total >= 0 ? ftsData.total : undefined
   const lastFtsPageSize = ftsData?.results?.length ?? 0
-  // If last page was full (= ftsLimit), there might be more results
-  const ftsHasMore = !!ftsData && lastFtsPageSize === ftsLimit
-  // Show total only when all results are loaded (no more pages)
-  const ftsTotal = ftsHasMore ? undefined : ftsAccumulatedResults.length
+  const ftsHasMore = !!ftsData && computeFtsHasMore(ftsTotalKnown, ftsAccumulatedResults.length, lastFtsPageSize, ftsLimit)
+  const ftsTotal = computeFtsTotal(ftsTotalKnown, ftsAccumulatedResults.length, ftsHasMore)
   const ftsLoadingMore = ftsSearchResult.isFetching && ftsOffset > 0
 
   // Total count of notes (from first page, falls back to loaded count)

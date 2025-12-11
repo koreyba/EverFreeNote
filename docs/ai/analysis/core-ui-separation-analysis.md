@@ -1,261 +1,59 @@
-# Анализ разделения архитектуры Core/UI
-
-## Краткое резюме
-
-**Core чист и независим** — зависимостей от UI не обнаружено. Однако есть значительное **дублирование кода** между папками `lib/` и `core/`, а также **бизнес-логика в UI-слое**, которую следует перенести в core для повторного использования на мобильных платформах.
-
----
-
-## 1. Анализ слоя Core
-
-### Расположение: `core/`
-
-```
-core/
-├── index.ts              # Реэкспорт всех модулей
-├── services/
-│   ├── auth.ts           # AuthService
-│   ├── notes.ts          # NoteService
-│   ├── search.ts         # SearchService (FTS)
-│   └── sanitizer.ts      # Реэкспорт из lib/
-├── adapters/
-│   ├── storage.ts        # Интерфейс StorageAdapter
-│   ├── navigation.ts     # Интерфейс NavigationAdapter
-│   ├── oauth.ts          # Интерфейс OAuthAdapter
-│   ├── config.ts         # Интерфейс ConfigAdapter
-│   └── supabaseClient.ts # Интерфейс getSupabaseClient
-└── utils/
-    └── search.ts         # Утилита buildSearchQuery
-```
-
-### Проверка зависимостей Core
-
-| Файл | Зависимости | Статус |
-|------|-------------|--------|
-| `core/services/auth.ts` | `@supabase/supabase-js` | ✅ Чисто |
-| `core/services/notes.ts` | `@supabase/supabase-js`, `@/supabase/types` | ✅ Чисто |
-| `core/services/search.ts` | `@supabase/supabase-js` | ✅ Чисто |
-| `core/services/sanitizer.ts` | `@/lib/services/sanitizer` | ⚠️ Реэкспорт |
-| `core/adapters/*` | Чистые TypeScript интерфейсы | ✅ Чисто |
-| `core/utils/search.ts` | Без зависимостей | ✅ Чисто |
-
-**Вывод: Core НЕ имеет зависимостей от React/UI.** Может использоваться в любом TypeScript-окружении.
-
----
-
-## 2. Дублирование: lib/ vs core/
-
-### Обнаруженные дубликаты
-
-| lib/ | core/ | Различие |
-|------|-------|----------|
-| `lib/services/auth.ts` | `core/services/auth.ts` | **Идентичны** (только форматирование) |
-| `lib/services/notes.ts` | `core/services/notes.ts` | В lib есть метод `getNotesByIds` |
-| `lib/services/sanitizer.ts` | `core/services/sanitizer.ts` | **core реэкспортирует lib** |
-
-### Анализ использования
-
-| Потребитель | Использует lib/ | Использует core/ |
-|-------------|-----------------|------------------|
-| `ui/web/hooks/useNotesQuery.ts` | - | `@core/services/notes`, `@core/services/search` |
-| `ui/web/hooks/useNotesMutations.ts` | - | `@core/services/notes` |
-| `ui/web/hooks/useNoteAppController.ts` | - | `@core/services/auth` |
-| `lib/enex/export-service.ts` | `../services/notes` | - |
-| `cypress/component/...ExportButton.cy.tsx` | `@/lib/services/notes` | - |
-| `cypress/component/...ExportSelectionDialog.cy.tsx` | `@/lib/services/notes` | - |
-
-### Рекомендации
-
-1. **Удалить `lib/services/auth.ts`** — дубликат core
-2. **Объединить `lib/services/notes.ts` с `core/services/notes.ts`** — добавить недостающий метод `getNotesByIds`
-3. **Перенести `lib/services/sanitizer.ts` в `core/services/sanitizer.ts`** — убрать реэкспорт
-4. **Обновить ENEX экспорт на использование core** — изменить импорт в `lib/enex/export-service.ts`
-
----
-
-## 3. Бизнес-логика в UI-слое
-
-### Обнаружено в `ui/web/hooks/useNoteAppController.ts`
-
-Следующую логику следует вынести в core-сервисы для повторного использования на мобильных платформах:
-
-#### 3.1 Логика удаления аккаунта (строки 287-324)
-
-```typescript
-// Сейчас в UI хуке - должно быть в core/services/account.ts
-const handleDeleteAccount = async () => {
-  // Вызов Supabase edge function
-  // Бизнес-логика удаления аккаунта
-}
-```
-
-**Рекомендация:** Создать `core/services/account.ts` с `AccountService.deleteAccount()`
-
-#### 3.2 Логика пагинации FTS (строки 79-113)
-
-```typescript
-// Логика накопления и пагинации FTS
-const [ftsOffset, setFtsOffset] = useState(0)
-const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
-// ... эффекты накопления
-```
-
-**Рекомендация:** Создать `core/services/fts-pagination.ts` с:
-- Класс `FtsPaginationService`
-- Чистая функция `accumulateResults(prev, next, offset)`
-- Чистая функция `hasMore(pageSize, limit)`
-
-#### 3.3 Управление состоянием выбора (строки 439-502)
-
-```typescript
-// Режим выбора, массовые операции
-const enterSelectionMode = () => {...}
-const toggleNoteSelection = (noteId) => {...}
-const selectAllVisible = () => {...}
-const deleteSelectedNotes = async () => {...}
-```
-
-**Рекомендация:** Создать `core/services/selection.ts` с:
-- Класс `SelectionService`
-- Чистые функции для операций выбора
-- Платформо-независимая логика массового удаления
-
----
-
-## 4. Папка lib/: что оставить vs перенести
-
-### Должно остаться в lib/
-
-| Путь | Причина |
-|------|---------|
-| `lib/enex/*` | ENEX экспорт — специфичная фича, не core |
-| `lib/supabase/client.ts` | Web-специфичная инициализация Supabase клиента |
-| `lib/providers/SupabaseProvider.tsx` | React-специфичный провайдер |
-| `lib/utils.ts` | Содержит `cn()` — утилита для Tailwind |
-| `lib/constants/typography.ts` | UI-константы |
-| `lib/utils/normalize-html.ts` | Можно перенести в core, если нужно для мобильных |
-
-### Должно переехать в core/
-
-| Путь | Куда | Причина |
-|------|------|---------|
-| `lib/services/auth.ts` | УДАЛИТЬ | Дубликат |
-| `lib/services/notes.ts` | ОБЪЕДИНИТЬ | Недостающий метод |
-| `lib/services/sanitizer.ts` | ПЕРЕНЕСТИ | Платформо-независимый |
-| `lib/adapters/browser.ts` | УДАЛИТЬ или ОБЪЕДИНИТЬ | Дублирует паттерн адаптеров core |
-
----
-
-## 5. Анализ паттерна адаптеров
-
-### Текущая структура
-
-```
-core/adapters/           # Только интерфейсы
-├── storage.ts           # Интерфейс StorageAdapter
-├── navigation.ts        # Интерфейс NavigationAdapter
-├── oauth.ts             # Интерфейс OAuthAdapter
-├── config.ts            # Интерфейс ConfigAdapter
-└── supabaseClient.ts    # Интерфейс getSupabaseClient
-
-ui/web/adapters/         # Web-реализации
-├── storage.ts           # Реализация через localStorage
-├── navigation.ts        # Реализация через Next.js router
-├── oauth.ts             # Web OAuth реализация
-└── supabaseClient.ts    # Browser Supabase client
-
-ui/mobile/adapters/      # Мобильные реализации (заглушки)
-├── storage.ts           # Пустая заглушка
-├── navigation.ts        # Пустая заглушка
-├── oauth.ts             # Пустая заглушка
-└── supabaseClient.ts    # Пустая заглушка
-```
-
-**Вывод: Паттерн адаптеров реализован правильно.** Core определяет интерфейсы, UI предоставляет реализации.
-
-### lib/adapters/browser.ts
-
-Этот файл определяет интерфейс `BrowserAdapter`, похожий на адаптеры core, но имеет только web-реализацию. **Можно удалить** — функциональность пересекается с `core/adapters/` + `ui/web/adapters/`.
-
----
-
-## 6. Матрица приоритетов миграции
-
-| Задача | Приоритет | Трудозатраты | Влияние |
-|--------|-----------|--------------|---------|
-| Удалить `lib/services/auth.ts` | Высокий | Низкие | Уменьшает путаницу |
-| Добавить `getNotesByIds` в core | Высокий | Низкие | Позволяет ENEX использовать core |
-| Перенести sanitizer в core | Средний | Низкие | Чистая архитектура |
-| Вынести удаление аккаунта в core | Высокий | Средние | Переиспользование на мобильных |
-| Вынести пагинацию FTS в core | Средний | Средние | Переиспользование на мобильных |
-| Вынести логику выбора в core | Средний | Средние | Переиспользование на мобильных |
-| Удалить `lib/adapters/browser.ts` | Низкий | Низкие | Очистка кода |
-
----
-
-## 7. Заключение
-
-### ✅ Что хорошо
-
-- Core-слой имеет **ноль UI-зависимостей** — готов для мобильных
-- Паттерн адаптеров реализован правильно
-- Сервисы используют dependency injection (Supabase client)
-- Типы используются совместно через `@/supabase/types`
-
-### ⚠️ Что требует доработки
-
-1. ~~**Дублирование кода** между lib/ и core/ сервисами~~ ✅ Исправлено
-2. **Бизнес-логика** в UI хуках должна переехать в core
-3. ~~**Непоследовательные импорты** — часть файлов использует lib/, часть core/~~ ✅ Исправлено
-4. ~~**ENEX экспорт** использует lib/services вместо core/~~ ✅ Исправлено
-
-### 🎯 Рекомендуемые действия
-
-1. ~~**Срочно:** Консолидировать lib/services в core/services~~ ✅ Выполнено
-2. **Краткосрочно:** Вынести логику account/FTS/selection в core
-3. **Долгосрочно:** Следить, чтобы вся новая бизнес-логика шла в core/
-
----
-
-## 8. Выполненные изменения (2025-12-11)
-
-### Удалено
-- `lib/services/auth.ts` — дубликат core
-- `lib/services/notes.ts` — дубликат core (метод `getNotesByIds` добавлен в core)
-- `lib/services/sanitizer.ts` — перенесён в core
-- `lib/adapters/browser.ts` — перемещён в ui/web/adapters/
-- Папки `lib/services/` и `lib/adapters/` (пустые)
-
-### Добавлено/обновлено
-- `core/services/notes.ts` — добавлен метод `getNotesByIds`
-- `core/services/sanitizer.ts` — полная реализация (вместо реэкспорта)
-- `ui/web/adapters/browser.ts` — перенесён из lib/
-
-### Обновлённые импорты
-| Файл | Было | Стало |
-|------|------|-------|
-| `components/NoteCard.tsx` | `@/lib/services/sanitizer` | `@core/services/sanitizer` |
-| `components/NoteView.tsx` | `@/lib/services/sanitizer` | `@core/services/sanitizer` |
-| `components/ExportButton.tsx` | `@/lib/services/notes` | `@core/services/notes` |
-| `components/ExportSelectionDialog.tsx` | `@/lib/services/notes` | `@core/services/notes` |
-| `lib/enex/export-service.ts` | `../services/notes` | `@core/services/notes` |
-| `components/ErrorBoundary.tsx` | `@/lib/adapters/browser` | `@ui/web/adapters/browser` |
-| `components/RichTextEditor.tsx` | `@/lib/adapters/browser` | `@ui/web/adapters/browser` |
-| `components/ImportButton.tsx` | `@/lib/adapters/browser` | `@ui/web/adapters/browser` |
-| Тесты Cypress (8 файлов) | `@/lib/...` | `@core/...` или `@ui/web/...` |
-
-### Текущая структура lib/
-```
-lib/
-├── enex/           # ENEX экспорт/импорт — остаётся
-├── supabase/       # Web Supabase клиент — остаётся
-├── providers/      # React провайдеры — остаётся
-├── constants/      # UI константы — остаётся
-├── utils.ts        # cn() для Tailwind — остаётся
-└── utils/          # normalize-html — остаётся
-```
-
----
-
-*Создано: 2025-12-11*
-*Обновлено: 2025-12-11*
+# Core/UI Separation Analysis
+
+## Purpose
+Assess how well the project separates core logic (services, domain, adapters) from UI and identify concrete steps to finish the refactor.
+
+## Current State
+- **Core intent**: `core/` holds business logic (auth, notes, search, sanitizer), adapters, and utilities that should be UI-agnostic.
+- **UI intent**: `ui/web/` consumes core via adapters (storage, navigation, OAuth, Supabase client).
+- **Lib overlap**: `lib/` still mixes UI-facing helpers and duplicated services/adapters. Several files still import from `@/lib/...` instead of `@core/...` or `@ui/web/...`.
+- **FTS/search**: Core search service (`core/services/search.ts`) is used by UI hooks. FTS pagination/total handling lives inside `useNoteAppController` and is not extracted.
+- **Selection logic**: Bulk selection lives in UI controller; not yet extracted to a reusable core helper.
+
+## Gaps and Duplicates
+- Duplicated services:
+  - `lib/services/auth.ts` vs `core/services/auth.ts`
+  - `lib/services/notes.ts` vs `core/services/notes.ts` (lib has extra `getNotesByIds`)
+  - `lib/services/sanitizer.ts` vs `core/services/sanitizer.ts`
+- Adapters:
+  - `lib/adapters/browser.ts` should be replaced by `ui/web/adapters/*` (storage, navigation, oauth, supabaseClient).
+- Imports still pointing to lib:
+  - `components/NoteCard.tsx` and `components/NoteView.tsx` use `@/lib/services/sanitizer`.
+  - Export/import buttons and dialogs reference `@/lib/services/notes`.
+  - ENEX export service references `../services/notes` instead of `@core/services/notes`.
+  - Some components use `@/lib/adapters/browser` instead of `@ui/web/adapters/browser`.
+  - Cypress specs still reference `@/lib/...` in some places.
+- Missing extraction:
+  - Selection handling (enter/exit selection, toggle, select all visible, bulk delete) is embedded in `useNoteAppController`.
+  - FTS pagination helpers (accumulate results, hasMore logic) live inline in UI hook.
+
+## Recommendations
+1) **Remove lib duplicates**:
+   - Delete `lib/services/auth.ts`, `lib/services/notes.ts`, `lib/services/sanitizer.ts` after consumers are switched.
+   - Delete `lib/adapters/browser.ts`; use `ui/web/adapters/*`.
+2) **Fix imports** (priority file targets):
+   - `components/NoteCard.tsx`, `components/NoteView.tsx` -> `@core/services/sanitizer`.
+   - `components/ExportButton.tsx`, `components/ExportSelectionDialog.tsx` -> `@core/services/notes`.
+   - `lib/enex/export-service.ts` -> `@core/services/notes`.
+   - `components/ErrorBoundary.tsx`, `components/RichTextEditor.tsx`, `components/ImportButton.tsx` -> `@ui/web/adapters/browser`.
+   - Cypress specs under `cypress/component/...` pointing to `@/lib/...` -> update to `@core/...` or `@ui/web/...`.
+3) **Extract helpers**:
+   - Selection: create `core/services/selection.ts` (or similar) with pure helpers for toggle/select-all/bulk-diff; UI controller calls it.
+   - FTS pagination: create `core/services/ftsPagination.ts` with `accumulateResults(prev, next, offset)` and `hasMore(pageSize, limit, total?)`.
+4) **Adapter layout** (keep clear separation):
+   ```
+   core/adapters/        # abstract interfaces/factories
+   ui/web/adapters/      # browser implementations
+   ui/mobile/adapters/   # mobile implementations (future)
+   ```
+5) **Type hygiene**:
+   - Avoid pulling UI-only types into core; core should depend on `@/supabase/types` and internal domain types only.
+
+## Action Items
+- [ ] Update sanitizer imports to `@core/services/sanitizer`.
+- [ ] Update note services imports (Export/Import dialogs, ENEX) to `@core/services/notes`.
+- [ ] Update adapter imports to `@ui/web/adapters/browser`.
+- [ ] Migrate Cypress specs off `@/lib/...`.
+- [x] Extract FTS pagination helper to core and wire into `useNoteAppController` (`core/services/ftsPagination.ts`).
+- [ ] Extract selection helper to core and wire into `useNoteAppController`.
+- [ ] Remove obsolete `lib/services/*` and `lib/adapters/browser.ts` after all consumers are switched.
