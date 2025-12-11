@@ -11,7 +11,7 @@ import { ExportService } from "@/lib/enex/export-service"
 import { ImageDownloader } from "@/lib/enex/image-downloader"
 import { EnexBuilder } from "@/lib/enex/enex-builder"
 import { useSupabase } from "@/lib/providers/SupabaseProvider"
-import { NoteService } from "@/lib/services/notes"
+import { NoteService } from "@core/services/notes"
 import type { ExportProgress } from "@/lib/enex/export-types"
 
 type ExportButtonProps = {

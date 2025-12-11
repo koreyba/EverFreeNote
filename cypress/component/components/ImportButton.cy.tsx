@@ -1,6 +1,6 @@
 import React from 'react'
 import { ImportButton } from '@/components/ImportButton'
-import { browser } from '@/lib/adapters/browser'
+import { browser } from '@ui/web/adapters/browser'
 import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 import { EnexParser } from '@/lib/enex/parser'
 

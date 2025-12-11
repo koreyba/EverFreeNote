@@ -1,6 +1,6 @@
 import React from 'react'
 import RichTextEditor from '@/components/RichTextEditor'
-import { browser } from '@/lib/adapters/browser'
+import { browser } from '@ui/web/adapters/browser'
 
 // Helper type for Sinon stubs
 type SinonStub = ReturnType<typeof cy.stub>

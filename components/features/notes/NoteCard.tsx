@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import InteractiveTag from "@/components/InteractiveTag"
 import { Checkbox } from "@/components/ui/checkbox"
 import DOMPurify from "isomorphic-dompurify"
-import { SanitizationService } from "@/lib/services/sanitizer"
+import { SanitizationService } from "@core/services/sanitizer"
 import type { Note, SearchResult } from "@/types/domain"
 
 type NoteRecord = Note & {
