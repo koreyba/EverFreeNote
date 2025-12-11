@@ -51,7 +51,7 @@ export function ImportProgressDialog({
             {isComplete && result && result.success === 0 && result.errors > 0 && (
               <XCircle className="w-5 h-5 text-destructive" />
             )}
-            {isComplete ? "Import Complete" : "Importing from Evernote"}
+            {isComplete ? "Import Complete" : "Importing ENEX file"}
           </DialogTitle>
           <DialogDescription>
             {isInProgress && "Please wait while we import your notes..."}

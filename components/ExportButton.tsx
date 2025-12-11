@@ -128,7 +128,7 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
     <>
       <Button onClick={handleOpen} disabled={exporting} variant="outline" className="w-full">
         <Download className="w-4 h-4 mr-2" />
-        {exporting ? "Exporting..." : "Export to Evernote"}
+        {exporting ? "Exporting..." : "Export .enex file"}
       </Button>
 
       <ExportSelectionDialog open={dialogOpen} onOpenChange={setDialogOpen} onExport={handleExport} />

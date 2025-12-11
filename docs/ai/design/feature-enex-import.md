@@ -227,7 +227,7 @@ class NoteCreator {
 ```jsx
 <Button onClick={handleImportClick}>
   <Upload className="w-4 h-4 mr-2" />
-  Import from Evernote
+  Import .enex file
 </Button>
 <input
   type="file"
@@ -252,7 +252,7 @@ class NoteCreator {
 <Dialog open={importing}>
   <DialogContent>
     <DialogHeader>
-      <DialogTitle>Importing from Evernote</DialogTitle>
+      <DialogTitle>Importing ENEX file</DialogTitle>
       <DialogDescription>
         Processing {currentFile} of {totalFiles} files...
         {currentNote} of {totalNotes} notes imported

@@ -45,7 +45,7 @@ describe('ExportButton', () => {
       </SupabaseTestProvider>
     )
 
-    cy.contains('button', 'Export to Evernote').should('be.visible')
+    cy.contains('button', 'Export .enex file').should('be.visible')
   })
 
   it('opens dialog on click', () => {
@@ -55,7 +55,7 @@ describe('ExportButton', () => {
       </SupabaseTestProvider>
     )
 
-    cy.contains('button', 'Export to Evernote').click()
+    cy.contains('button', 'Export .enex file').click()
     cy.contains('Export notes to .enex').should('be.visible')
   })
 
@@ -87,7 +87,7 @@ describe('ExportButton', () => {
       </SupabaseTestProvider>
     )
 
-    cy.contains('button', 'Export to Evernote').click()
+    cy.contains('button', 'Export .enex file').click()
     
     // Wait for notes to load
     cy.contains('Note 1').should('be.visible')
