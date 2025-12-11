@@ -33,8 +33,8 @@ interface NoteListProps {
   ftsLoading: boolean
   showFTSResults: boolean
   ftsData?: {
-    total: number
-    executionTime: number
+    total?: number
+    executionTime?: number
     results: SearchResult[]
   }
   ftsHasMore?: boolean
@@ -61,8 +61,8 @@ export function NoteList({
   ftsData,
   ftsHasMore = false,
   ftsLoadingMore = false,
-  onSearchResultClick,
   onLoadMoreFts,
+  onSearchResultClick,
 }: NoteListProps) {
   const isInitialFtsLoading = ftsQuery.length >= 3 && ftsLoading && !ftsData
 
@@ -122,12 +122,13 @@ export function NoteList({
           </div>
         )}
         {ftsHasMore && (
-          <div className="pt-4">
-            {ftsLoadingMore ? (
+          <div className="p-4">
+            {ftsLoadingMore && (
               <div className="text-center py-2">
                 <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
               </div>
-            ) : (
+            )}
+            {!ftsLoadingMore && (
               <div className="text-center">
                 <Button
                   variant="ghost"
@@ -135,7 +136,7 @@ export function NoteList({
                   onClick={onLoadMoreFts}
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Load more results
+                  Load More
                 </Button>
               </div>
             )}

@@ -30,7 +30,6 @@ describe('Mobile Layout Adaptation', () => {
       selectedNoteIds: new Set(),
       selectedCount: 0,
       bulkDeleting: false,
-      selectAllActive: false,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ftsSearchResult: { isLoading: false, data: [] } as any,
       showFTSResults: false,

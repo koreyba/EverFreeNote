@@ -14,7 +14,7 @@ const TestComponent = () => {
     <div>
       <button data-cy="create-btn" onClick={() => createMutation.mutate({ title: 'New', description: 'Desc', tags: [], userId: 'user-1' })}>Create</button>
       <button data-cy="update-btn" onClick={() => updateMutation.mutate({ id: '1', title: 'Updated', description: 'Desc', tags: [] })}>Update</button>
-      <button data-cy="delete-btn" onClick={() => deleteMutation.mutate('1')}>Delete</button>
+      <button data-cy="delete-btn" onClick={() => deleteMutation.mutate({ id: '1' })}>Delete</button>
       <button data-cy="remove-tag-btn" onClick={() => removeTagMutation.mutate({ noteId: '1', updatedTags: [] })}>Remove Tag</button>
     </div>
   )
