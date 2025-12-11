@@ -2,7 +2,7 @@ import React from 'react'
 import { ExportButton } from '@/components/ExportButton'
 import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
 import { ExportService } from '@/lib/enex/export-service'
-import { NoteService } from '@/lib/services/notes'
+import { NoteService } from '@core/services/notes'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SinonStub = any

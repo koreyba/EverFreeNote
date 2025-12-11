@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { browser } from "@/lib/adapters/browser"
+import { browser } from "@ui/web/adapters/browser"
 
 type ErrorBoundaryProps = {
   children: ReactNode

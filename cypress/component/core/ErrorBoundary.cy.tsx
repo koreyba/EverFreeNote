@@ -1,6 +1,6 @@
 import React from 'react'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { browser } from '@/lib/adapters/browser'
+import { browser } from '@ui/web/adapters/browser'
 
 // Component that throws an error
 const ThrowError = ({ shouldThrow, errorMessage = 'Test error' }: { shouldThrow: boolean, errorMessage?: string }) => {

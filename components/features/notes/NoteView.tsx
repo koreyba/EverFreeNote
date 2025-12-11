@@ -5,7 +5,7 @@ import { Edit2, Trash2, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
 
-import { SanitizationService } from "@/lib/services/sanitizer"
+import { SanitizationService } from "@core/services/sanitizer"
 import { NOTE_CONTENT_CLASS } from "@/lib/constants/typography"
 import type { Note } from "@/types/domain"
 

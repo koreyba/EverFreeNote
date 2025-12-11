@@ -51,7 +51,7 @@ import Heading from "@tiptap/extension-heading"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 import { FontSize } from "../extensions/FontSize"
-import { browser } from "@/lib/adapters/browser"
+import { browser } from "@ui/web/adapters/browser"
 import { NOTE_CONTENT_CLASS } from "@/lib/constants/typography"
 
 type RichTextEditorProps = {

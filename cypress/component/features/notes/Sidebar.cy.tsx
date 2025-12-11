@@ -95,6 +95,29 @@ describe('Sidebar Component', () => {
     cy.contains('Notes displayed: 5 out of 12').should('be.visible')
   })
 
+  it('shows unknown total when not provided', () => {
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      searchQuery: '',
+      onSearch: cy.stub(),
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
+      onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
+      notesDisplayed: 5,
+      notesTotal: undefined,
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+    cy.contains('Notes displayed: 5 out of unknown').should('be.visible')
+  })
+
   it('handles search input', () => {
     const onSearch = cy.spy().as('onSearch')
     const props = {

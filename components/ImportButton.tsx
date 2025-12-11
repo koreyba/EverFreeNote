@@ -19,7 +19,7 @@ import {
   type ImportStatus,
 } from "@/lib/enex/types"
 import { useSupabase } from "@/lib/providers/SupabaseProvider"
-import { browser } from "@/lib/adapters/browser"
+import { browser } from "@ui/web/adapters/browser"
 
 const IMPORT_STATE_KEY = "everfreenote-import-state"
 

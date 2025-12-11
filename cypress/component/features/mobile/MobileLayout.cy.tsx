@@ -37,6 +37,7 @@ describe('Mobile Layout Adaptation', () => {
       ftsResults: [],
       ftsHasMore: false,
       ftsLoadingMore: false,
+      ftsObserverTarget: { current: null },
       observerTarget: { current: null },
       deleteAccountLoading: false,
       
