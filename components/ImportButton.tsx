@@ -322,7 +322,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
         className="w-full"
       >
         <Upload className="w-4 h-4 mr-2" />
-        {importing ? "Importing..." : "Import from Evernote"}
+        {importing ? "Importing..." : "Import .enex file"}
       </Button>
 
       <ImportDialog

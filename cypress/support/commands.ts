@@ -64,7 +64,7 @@ Cypress.Commands.add('toggleTheme', () => {
 })
 
 Cypress.Commands.add('importEnex', (filename: string, strategy: ImportStrategy = 'prefix') => {
-  cy.contains('Import from Evernote').click()
+  cy.contains('Import .enex file').click()
   cy.get('input[type="file"]').selectFile(`cypress/fixtures/enex/${filename}`, { force: true })
 
   if (strategy === 'prefix') {
