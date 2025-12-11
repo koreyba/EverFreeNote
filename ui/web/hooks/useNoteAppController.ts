@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { User } from '@supabase/supabase-js'
@@ -105,8 +105,11 @@ export function useNoteAppController() {
     })
   }, [ftsSearchResult.data, ftsOffset, filteredFtsResults, ftsSearchQuery, filterByTag])
 
-  const ftsTotal = ftsData?.total ?? ftsAccumulatedResults.length
-  const ftsHasMore = !!ftsData && (ftsAccumulatedResults.length < ftsTotal || ftsData.results.length === ftsLimit)
+  const lastFtsPageSize = ftsData?.results?.length ?? 0
+  // If last page was full (= ftsLimit), there might be more results
+  const ftsHasMore = !!ftsData && lastFtsPageSize === ftsLimit
+  // Show total only when all results are loaded (no more pages)
+  const ftsTotal = ftsHasMore ? undefined : ftsAccumulatedResults.length
   const ftsLoadingMore = ftsSearchResult.isFetching && ftsOffset > 0
 
   // Total count of notes (from first page, falls back to loaded count)
@@ -131,7 +134,7 @@ export function useNoteAppController() {
 
   const notesDisplayed = showFTSResults && aggregatedFtsData ? aggregatedFtsData.results.length : notes.length
   const baseTotal = showFTSResults && aggregatedFtsData ? aggregatedFtsData.total : totalNotes
-  const notesTotal = baseTotal ?? notesDisplayed
+  const notesTotal = baseTotal
   const selectedCount = selectedNoteIds.size
 
   // -- Infinite Scroll --
@@ -139,6 +142,18 @@ export function useNoteAppController() {
     notesQuery.fetchNextPage,
     notesQuery.hasNextPage,
     notesQuery.isFetchingNextPage,
+    { threshold: 0.8, rootMargin: '200px' }
+  )
+
+  // FTS Infinite Scroll
+  const loadMoreFtsCallback = useCallback(() => {
+    setFtsOffset((prev) => prev + ftsLimit)
+  }, [ftsLimit])
+
+  const ftsObserverTarget = useInfiniteScroll(
+    loadMoreFtsCallback,
+    ftsHasMore,
+    ftsLoadingMore,
     { threshold: 0.8, rootMargin: '200px' }
   )
 
@@ -516,6 +531,7 @@ export function useNoteAppController() {
     ftsLoadingMore,
     showFTSResults,
     observerTarget,
+    ftsObserverTarget,
       totalNotes: notesTotal,
       notesDisplayed,
       notesTotal,

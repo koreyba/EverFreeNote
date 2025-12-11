@@ -172,7 +172,7 @@ export function Sidebar({
           {selectionMode ? "Exit selection" : "Select Notes"}
         </Button>
         <p className="text-xs text-muted-foreground text-center">
-          Notes displayed: {typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of {typeof notesTotal === "number" ? notesTotal : "-"}
+          Notes displayed: {typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of {typeof notesTotal === "number" ? notesTotal : "unknown"}
         </p>
         {selectionMode && (
           <div className="space-y-2">
