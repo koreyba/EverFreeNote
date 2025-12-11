@@ -1,10 +1,10 @@
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Enable UUID extension (pgcrypto provides gen_random_uuid, available on Supabase)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Create notes table
 -- user_id references auth.users(id) - Supabase Auth manages users
 CREATE TABLE IF NOT EXISTS public.notes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT DEFAULT 'Untitled',
     description TEXT DEFAULT '',
