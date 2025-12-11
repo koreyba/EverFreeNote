@@ -196,4 +196,37 @@ describe('Sidebar Component', () => {
     cy.get('button').find('.lucide-log-out').parent().click()
     cy.get('@onSignOut').should('have.been.called')
   })
+
+  it('shows delete account dialog and requires acknowledgement', () => {
+    const onDeleteAccount = cy.spy().as('onDeleteAccount')
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      searchQuery: '',
+      onSearch: cy.stub(),
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onDeleteAccount,
+      deleteAccountLoading: false,
+      onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+    cy.get('button').find('.lucide-settings').parent().click()
+    cy.contains('Delete my account').click()
+
+    cy.contains('Delete my account').should('be.visible')
+    cy.contains('Delete account').should('be.disabled')
+
+    // shadcn Checkbox renders role="checkbox"
+    cy.get('[role="checkbox"]').click({ force: true })
+    cy.contains('Delete account').click()
+
+    cy.get('@onDeleteAccount').should('have.been.calledOnce')
+  })
 })
