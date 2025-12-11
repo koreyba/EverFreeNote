@@ -49,6 +49,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleClearTagFilter,
     handleCreateNote,
     handleSignOut,
+    handleDeleteAccount,
+    deleteAccountLoading,
     invalidateNotes,
     selectedNote,
     isEditing,
@@ -76,6 +78,8 @@ export function NotesShell({ controller }: NotesShellProps) {
         onClearTagFilter={handleClearTagFilter}
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
+        onDeleteAccount={handleDeleteAccount}
+        deleteAccountLoading={deleteAccountLoading}
         onImportComplete={invalidateNotes}
         className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
