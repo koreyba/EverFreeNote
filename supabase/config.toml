@@ -6,8 +6,8 @@ project_id = "EverFreeNote"
 
 [api]
 enabled = true
-# Port to use for the API URL. Moved out of excluded range.
-port = 55421
+# Port to use for the API URL.
+port = 54321
 # Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
 # endpoints. `public` and `graphql_public` schemas are included by default.
 schemas = ["public", "graphql_public"]
@@ -25,10 +25,10 @@ enabled = false
 # key_path = "../certs/my-key.pem"
 
 [db]
-# Port to use for the local database URL. Moved out of excluded range.
-port = 55422
+# Port to use for the local database URL.
+port = 54322
 # Port used by db diff command to initialize the shadow database.
-shadow_port = 55420
+shadow_port = 54320
 # The database major version to use. This has to be the same as your remote database's. Run `SHOW
 # server_version;` on the remote database to check.
 major_version = 17
@@ -36,7 +36,7 @@ major_version = 17
 [db.pooler]
 enabled = false
 # Port to use for the local connection pooler.
-port = 55429
+port = 54329
 # Specifies when a server connection can be reused by other clients.
 # Configure one of the supported pooler modes: `transaction`, `session`.
 pool_mode = "transaction"
@@ -81,8 +81,8 @@ enabled = true
 
 [studio]
 enabled = true
-# Port to use for Supabase Studio. Moved out of excluded range.
-port = 55423
+# Port to use for Supabase Studio.
+port = 54323
 # External URL of the API server that frontend connects to.
 api_url = "http://127.0.0.1"
 # OpenAI API Key to use for Supabase AI in the Supabase Studio.
@@ -92,8 +92,8 @@ openai_api_key = "env(OPENAI_API_KEY)"
 # are monitored, and you can view the emails that would have been sent from the web interface.
 [inbucket]
 enabled = true
-# Port to use for the email testing server web interface. Moved out of excluded range.
-port = 55424
+# Port to use for the email testing server web interface.
+port = 54324
 # Uncomment to expose additional ports for testing user applications that send emails.
 # smtp_port = 54325
 # pop3_port = 54326
@@ -105,10 +105,6 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
-# Image transformation API is available to Supabase Pro plan.
-# [storage.image_transformation]
-# enabled = true
-
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]
 # public = false
@@ -116,15 +112,46 @@ file_size_limit = "50MiB"
 # allowed_mime_types = ["image/png", "image/jpeg"]
 # objects_path = "./images"
 
+# Allow connections via S3 compatible clients
+[storage.s3_protocol]
+enabled = true
+
+# Image transformation API is available to Supabase Pro plan.
+# [storage.image_transformation]
+# enabled = true
+
+# Store analytical data in S3 for running ETL jobs over Iceberg Catalog
+# This feature is only available on the hosted platform.
+[storage.analytics]
+enabled = false
+max_namespaces = 5
+max_tables = 10
+max_catalogs = 2
+
+# Analytics Buckets is available to Supabase Pro plan.
+# [storage.analytics.buckets.my-warehouse]
+
+# Store vector embeddings in S3 for large and durable datasets
+# This feature is only available on the hosted platform.
+[storage.vector]
+enabled = false
+max_buckets = 10
+max_indexes = 5
+
+# Vector Buckets is available to Supabase Pro plan.
+# [storage.vector.buckets.documents-openai]
+
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://localhost:3000"
+site_url = "http://127.0.0.1:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["http://localhost:3000", "http://127.0.0.1:3000"]
+additional_redirect_urls = ["https://127.0.0.1:3000"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
+# JWT issuer URL. If not set, defaults to the local API URL (http://127.0.0.1:<port>/auth/v1).
+# jwt_issuer = ""
 # Path to JWT signing key. DO NOT commit your signing keys file to git.
 # signing_keys_path = "./signing_keys.json"
 # If disabled, the refresh token will never expire.
@@ -197,6 +224,12 @@ otp_expiry = 3600
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
+
+# Uncomment to customize notification email template
+# [auth.email.notification.password_changed]
+# enabled = true
+# subject = "Your password has been changed"
+# content_path = "./templates/password_changed_notification.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
@@ -278,14 +311,6 @@ skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
 
-# Uncomment to enable Google OAuth locally (requires setup in Google Console)
-# [auth.external.google]
-# enabled = true
-# client_id = "env(GOOGLE_CLIENT_ID)"
-# secret = "env(GOOGLE_CLIENT_SECRET)"
-# redirect_uri = ""
-# skip_nonce_check = true
-
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
 [auth.web3.solana]
@@ -339,8 +364,7 @@ deno_version = 2
 
 [analytics]
 enabled = true
-# Port moved out of excluded range.
-port = 55427
+port = 54327
 # Configure one of the supported backends: `postgres`, `bigquery`.
 backend = "postgres"
 
@@ -356,9 +380,3 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
-
-[functions.delete-account]
-enabled = true
-verify_jwt = true
-import_map = "./functions/delete-account/deno.json"
-entrypoint = "./functions/delete-account/index.ts"
