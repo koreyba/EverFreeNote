@@ -17,7 +17,8 @@ if (process.env.NEXT_PUBLIC_ENABLE_TEST_AUTH !== 'true') {
   process.exit(0)
 }
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:55421'
+// Use Supabase local API port (see supabase/config.toml -> [api].port)
+const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:54321'
 const SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_KEY ||
   'REDACTED_JWT'
