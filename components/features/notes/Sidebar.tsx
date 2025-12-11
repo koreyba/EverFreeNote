@@ -221,7 +221,7 @@ export function Sidebar({
               side="top"
               sideOffset={12}
               alignOffset={-45}
-              className="w-56 space-y-2 p-3 bg-slate-900/95 text-slate-50 border border-primary/30 shadow-2xl backdrop-blur-lg"
+              className="w-56 space-y-2 p-3 bg-popover text-popover-foreground border border-border shadow-xl backdrop-blur"
             >
               <div className="space-y-2">
                 <ImportButton onImportComplete={onImportComplete} />
