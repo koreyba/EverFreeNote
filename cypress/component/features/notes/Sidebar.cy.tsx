@@ -14,7 +14,8 @@ describe('Sidebar Component', () => {
   }
 
   const createSelectionProps = () => ({
-    totalNotes: 0,
+    notesDisplayed: 0,
+    notesTotal: 0,
     selectionMode: false,
     selectedCount: 0,
     bulkDeleting: false,
@@ -67,7 +68,31 @@ describe('Sidebar Component', () => {
     cy.contains('EverFreeNote').should('be.visible')
     cy.contains('test@example.com').should('be.visible')
     cy.contains('New Note').should('be.visible')
+    cy.contains('Notes displayed: 0 out of 0').should('be.visible')
     cy.get('[data-testid="note-list"]').should('be.visible')
+  })
+
+  it('shows provided displayed/total counts', () => {
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      searchQuery: '',
+      onSearch: cy.stub(),
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
+      onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
+      notesDisplayed: 5,
+      notesTotal: 12,
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+    cy.contains('Notes displayed: 5 out of 12').should('be.visible')
   })
 
   it('handles search input', () => {

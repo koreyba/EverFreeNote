@@ -22,7 +22,8 @@ import { cn } from "@/lib/utils"
 
 interface SidebarProps {
   user: User
-  totalNotes?: number
+  notesDisplayed?: number
+  notesTotal?: number
   selectionMode: boolean
   selectedCount: number
   bulkDeleting: boolean
@@ -48,7 +49,8 @@ interface SidebarProps {
 
 export function Sidebar({
   user,
-  totalNotes,
+  notesDisplayed,
+  notesTotal,
   selectionMode,
   selectedCount,
   bulkDeleting,
@@ -170,7 +172,7 @@ export function Sidebar({
           {selectionMode ? "Exit selection" : "Select Notes"}
         </Button>
         <p className="text-xs text-muted-foreground text-center">
-          Total notes: {typeof totalNotes === "number" ? totalNotes : "-"}
+          Notes displayed: {typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of {typeof notesTotal === "number" ? notesTotal : "-"}
         </p>
         {selectionMode && (
           <div className="space-y-2">

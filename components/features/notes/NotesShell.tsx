@@ -34,7 +34,8 @@ type NotesShellProps = {
 export function NotesShell({ controller }: NotesShellProps) {
   const {
     user,
-    totalNotes,
+    notesDisplayed,
+    notesTotal,
     selectionMode,
     selectedCount,
     bulkDeleting,
@@ -64,7 +65,8 @@ export function NotesShell({ controller }: NotesShellProps) {
       <Sidebar
         user={user!}
         filterByTag={filterByTag}
-        totalNotes={totalNotes}
+        notesDisplayed={notesDisplayed}
+        notesTotal={notesTotal}
         selectionMode={selectionMode}
         selectedCount={selectedCount}
         bulkDeleting={bulkDeleting}
