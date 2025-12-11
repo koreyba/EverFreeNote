@@ -13,6 +13,18 @@ describe('Sidebar Component', () => {
     created_at: new Date().toISOString()
   }
 
+  const createSelectionProps = () => ({
+    totalNotes: 0,
+    selectionMode: false,
+    selectedCount: 0,
+    bulkDeleting: false,
+    onEnterSelectionMode: cy.stub(),
+    onExitSelectionMode: cy.stub(),
+    onSelectAll: cy.stub(),
+    onClearSelection: cy.stub(),
+    onBulkDelete: cy.stub(),
+  })
+
   const createMockSupabase = (user: User | null) => {
     return {
       auth: {
@@ -43,7 +55,11 @@ describe('Sidebar Component', () => {
       onClearTagFilter: cy.stub(),
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
       onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
@@ -64,7 +80,11 @@ describe('Sidebar Component', () => {
       onClearTagFilter: cy.stub(),
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
       onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
@@ -83,7 +103,11 @@ describe('Sidebar Component', () => {
       onClearTagFilter,
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
       onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
@@ -104,7 +128,11 @@ describe('Sidebar Component', () => {
       onClearTagFilter: cy.stub(),
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
       onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
@@ -129,7 +157,11 @@ describe('Sidebar Component', () => {
       onClearTagFilter: cy.stub(),
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
       onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
@@ -148,7 +180,11 @@ describe('Sidebar Component', () => {
       onClearTagFilter: cy.stub(),
       onCreateNote,
       onSignOut,
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
       onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
       children: <div data-testid="note-list">Note List Content</div>
     }
 
@@ -159,5 +195,38 @@ describe('Sidebar Component', () => {
 
     cy.get('button').find('.lucide-log-out').parent().click()
     cy.get('@onSignOut').should('have.been.called')
+  })
+
+  it('shows delete account dialog and requires acknowledgement', () => {
+    const onDeleteAccount = cy.spy().as('onDeleteAccount')
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      searchQuery: '',
+      onSearch: cy.stub(),
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onDeleteAccount,
+      deleteAccountLoading: false,
+      onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+    cy.get('button').find('.lucide-settings').parent().click()
+    cy.contains('Delete my account').click()
+
+    cy.contains('Delete my account').should('be.visible')
+    cy.contains('Delete account').should('be.disabled')
+
+    // shadcn Checkbox renders role="checkbox"
+    cy.get('[role="checkbox"]').click({ force: true })
+    cy.contains('Delete account').click()
+
+    cy.get('@onDeleteAccount').should('have.been.calledOnce')
   })
 })

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { BookOpen, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,18 +15,30 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
+import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
+import { DeleteAccountDialog } from "@/components/features/account/DeleteAccountDialog"
 import { User } from "@supabase/supabase-js"
 import { cn } from "@/lib/utils"
 
 interface SidebarProps {
   user: User
   totalNotes?: number
+  selectionMode: boolean
+  selectedCount: number
+  bulkDeleting: boolean
+  onEnterSelectionMode: () => void
+  onExitSelectionMode: () => void
+  onSelectAll: () => void
+  onClearSelection: () => void
+  onBulkDelete: () => void
   filterByTag: string | null
   searchQuery: string
   onSearch: (query: string) => void
   onClearTagFilter: () => void
   onCreateNote: () => void
   onSignOut: () => void
+  onDeleteAccount: () => Promise<void> | void
+  deleteAccountLoading?: boolean
   onImportComplete: () => void
   onExportComplete?: (success: boolean, exportedCount: number) => void
   children: React.ReactNode // For the NoteList
@@ -36,18 +49,39 @@ interface SidebarProps {
 export function Sidebar({
   user,
   totalNotes,
+  selectionMode,
+  selectedCount,
+  bulkDeleting,
+  onEnterSelectionMode,
+  onExitSelectionMode,
+  onSelectAll,
+  onClearSelection,
+  onBulkDelete,
   filterByTag,
   searchQuery,
   onSearch,
   onClearTagFilter,
   onCreateNote,
   onSignOut,
+  onDeleteAccount,
+  deleteAccountLoading = false,
   onImportComplete,
   onExportComplete,
   children,
   className,
   "data-testid": dataTestId
 }: SidebarProps) {
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+  const handleBulkConfirm = async () => {
+    await onBulkDelete()
+    setBulkDialogOpen(false)
+  }
+  const handleDeleteAccount = async () => {
+    await onDeleteAccount()
+    setDeleteAccountOpen(false)
+  }
+
   return (
     <div
       className={cn(
@@ -128,9 +162,36 @@ export function Sidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
+        <Button
+          variant={selectionMode ? "secondary" : "outline"}
+          onClick={selectionMode ? onExitSelectionMode : onEnterSelectionMode}
+          className="w-full"
+        >
+          {selectionMode ? "Exit selection" : "Select Notes"}
+        </Button>
         <p className="text-xs text-muted-foreground text-center">
-          Total notes: {typeof totalNotes === "number" ? totalNotes : "—"}
+          Total notes: {typeof totalNotes === "number" ? totalNotes : "-"}
         </p>
+        {selectionMode && (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={onSelectAll}>
+                Select all
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1" onClick={onClearSelection}>
+                Unselect all
+              </Button>
+            </div>
+            <Button
+              variant="destructive"
+              disabled={selectedCount === 0 || bulkDeleting}
+              className="w-full"
+              onClick={() => setBulkDialogOpen(true)}
+            >
+              {bulkDeleting ? "Deleting..." : `Delete selected${selectedCount > 0 ? ` (${selectedCount})` : ""}`}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Notes List Container */}
@@ -160,11 +221,19 @@ export function Sidebar({
               side="top"
               sideOffset={12}
               alignOffset={-45}
-              className="w-56 space-y-2 p-3"
+              className="w-56 space-y-2 p-3 bg-popover text-popover-foreground border border-border shadow-xl backdrop-blur"
             >
               <div className="space-y-2">
                 <ImportButton onImportComplete={onImportComplete} />
                 <ExportButton onExportComplete={onExportComplete} />
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setDeleteAccountOpen(true)}
+                >
+                  Delete my account
+                </Button>
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -177,6 +246,21 @@ export function Sidebar({
           </Button>
         </div>
       </div>
+
+      <BulkDeleteDialog
+        open={bulkDialogOpen}
+        onOpenChange={setBulkDialogOpen}
+        count={selectedCount}
+        onConfirm={handleBulkConfirm}
+        loading={bulkDeleting}
+      />
+      <DeleteAccountDialog
+        open={deleteAccountOpen}
+        onOpenChange={setDeleteAccountOpen}
+        onConfirm={handleDeleteAccount}
+        loading={deleteAccountLoading}
+      />
     </div>
   )
 }
+

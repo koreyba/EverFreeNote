@@ -35,12 +35,22 @@ export function NotesShell({ controller }: NotesShellProps) {
   const {
     user,
     totalNotes,
+    selectionMode,
+    selectedCount,
+    bulkDeleting,
+    enterSelectionMode,
+    exitSelectionMode,
+    selectAllVisible,
+    clearSelection,
+    deleteSelectedNotes,
     filterByTag,
     searchQuery,
     handleSearch,
     handleClearTagFilter,
     handleCreateNote,
     handleSignOut,
+    handleDeleteAccount,
+    deleteAccountLoading,
     invalidateNotes,
     selectedNote,
     isEditing,
@@ -55,11 +65,21 @@ export function NotesShell({ controller }: NotesShellProps) {
         user={user!}
         filterByTag={filterByTag}
         totalNotes={totalNotes}
+        selectionMode={selectionMode}
+        selectedCount={selectedCount}
+        bulkDeleting={bulkDeleting}
+        onEnterSelectionMode={enterSelectionMode}
+        onExitSelectionMode={exitSelectionMode}
+        onSelectAll={selectAllVisible}
+        onClearSelection={clearSelection}
+        onBulkDelete={deleteSelectedNotes}
         searchQuery={searchQuery}
         onSearch={handleSearch}
         onClearTagFilter={handleClearTagFilter}
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
+        onDeleteAccount={handleDeleteAccount}
+        deleteAccountLoading={deleteAccountLoading}
         onImportComplete={invalidateNotes}
         className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
@@ -94,8 +114,13 @@ function ListPane({ controller }: { controller: NoteAppController }) {
     ftsSearchResult,
     showFTSResults,
     ftsData,
+    ftsHasMore,
+    ftsLoadingMore,
     observerTarget,
     handleSelectNote,
+    selectionMode,
+    selectedNoteIds,
+    toggleNoteSelection,
     handleTagClick,
     handleSearchResultClick,
   } = controller
@@ -106,6 +131,9 @@ function ListPane({ controller }: { controller: NoteAppController }) {
         notes={notes as NoteRecord[]}
         isLoading={notesQuery.isLoading}
         selectedNoteId={selectedNote?.id}
+        selectionMode={selectionMode}
+        selectedIds={selectedNoteIds}
+        onToggleSelect={(note) => toggleNoteSelection(note.id)}
         onSelectNote={handleSelectNote}
         onTagClick={handleTagClick}
         onLoadMore={() => notesQuery.fetchNextPage()}
@@ -115,6 +143,9 @@ function ListPane({ controller }: { controller: NoteAppController }) {
         ftsLoading={ftsSearchResult.isLoading}
         showFTSResults={showFTSResults}
         ftsData={ftsData}
+        ftsHasMore={ftsHasMore}
+        ftsLoadingMore={ftsLoadingMore}
+        onLoadMoreFts={controller.loadMoreFts}
         onSearchResultClick={handleSearchResultClick}
       />
 

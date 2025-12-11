@@ -67,7 +67,7 @@ describe('NoteList', () => {
 
   it('renders FTS loading', () => {
     cy.mount(<NoteList {...getDefaultProps()} ftsQuery="test" ftsLoading={true} />)
-    cy.contains('Поиск заметок...').should('be.visible')
+    cy.contains('Searching notes...').should('be.visible')
   })
 
   it('renders FTS results', () => {
@@ -83,7 +83,8 @@ describe('NoteList', () => {
         }}
       />
     )
-    cy.contains('Найдено: 1 заметка').should('be.visible')
+    cy.contains('Found:').should('be.visible')
+    cy.contains('1').should('be.visible')
     cy.contains('10ms').should('be.visible')
     cy.contains('Note 1').should('be.visible')
   })

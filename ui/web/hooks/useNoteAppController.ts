@@ -37,6 +37,15 @@ export function useNoteAppController() {
   const [filterByTag, setFilterByTag] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [noteToDelete, setNoteToDelete] = useState<NoteViewModel | null>(null)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
+  const [selectAllActive, setSelectAllActive] = useState(false)
+  const [deselectedNoteIds, setDeselectedNoteIds] = useState<Set<string>>(new Set())
+  const [ftsOffset, setFtsOffset] = useState(0)
+  const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
+  const ftsLimit = 20
 
   // -- Dependencies --
   const { supabase, loading: providerLoading } = useSupabase()
@@ -58,7 +67,9 @@ export function useNoteAppController() {
 
   const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
     enabled: !!user && ftsSearchQuery.length >= 3,
-    selectedTag: filterByTag
+    selectedTag: filterByTag,
+    offset: ftsOffset,
+    limit: ftsLimit
   })
 
   const ftsData = ftsSearchResult.data
@@ -66,6 +77,39 @@ export function useNoteAppController() {
   const filteredFtsResults: SearchResult[] = filterByTag
     ? ftsResultsRaw.filter(note => note.tags?.includes(filterByTag))
     : ftsResultsRaw
+
+  // Accumulate FTS pages for "load more"
+  useEffect(() => {
+    // reset on query/tag change
+    setFtsOffset(0)
+    setFtsAccumulatedResults([])
+  }, [ftsSearchQuery, filterByTag])
+
+  useEffect(() => {
+    if (!ftsSearchResult.data) return
+    setFtsAccumulatedResults((prev) => {
+      if (ftsOffset === 0) {
+        if (prev.length === filteredFtsResults.length) {
+          const prevIds = new Set(prev.map((n) => n.id))
+          const same = filteredFtsResults.every((n) => prevIds.has(n.id))
+          if (same) return prev
+        }
+        return filteredFtsResults
+      }
+      const next = [...prev]
+      const seen = new Set(prev.map((item) => item.id))
+      filteredFtsResults.forEach((item) => {
+        if (!seen.has(item.id)) {
+          next.push(item)
+        }
+      })
+      return next
+    })
+  }, [ftsSearchResult.data, ftsOffset, filteredFtsResults, ftsSearchQuery, filterByTag])
+
+  const ftsTotal = ftsData?.total ?? ftsAccumulatedResults.length
+  const ftsHasMore = !!ftsData && (ftsAccumulatedResults.length < ftsTotal || ftsData.results.length === ftsLimit)
+  const ftsLoadingMore = ftsSearchResult.isFetching && ftsOffset > 0
 
   // Total count of notes (from first page, falls back to loaded count)
   const totalNotes = useMemo(() => {
@@ -77,18 +121,22 @@ export function useNoteAppController() {
     return notes.length
   }, [notesQuery.data?.pages, notes.length]) ?? 0
 
-  // Create filtered ftsData object
-  const filteredFtsData = ftsData ? {
+  const showFTSResults = ftsSearchQuery.length >= 3 &&
+    !!ftsData &&
+    !ftsData.error
+
+  const aggregatedFtsData = showFTSResults ? {
     ...ftsData,
-    results: filteredFtsResults,
-    total: filteredFtsResults.length
+    results: ftsAccumulatedResults,
+    total: ftsTotal
   } : undefined
 
-  const showFTSResults = ftsSearchQuery.length >= 3 &&
-    !!filteredFtsData &&
-    filteredFtsData.method === 'fts' &&
-    !filteredFtsData.error &&
-    filteredFtsResults.length > 0
+  const baseTotal = showFTSResults && aggregatedFtsData ? aggregatedFtsData.total : totalNotes
+  const selectedCount = selectAllActive && !showFTSResults
+    ? Math.max(0, (baseTotal ?? 0) - deselectedNoteIds.size)
+    : selectedNoteIds.size
+
+  const totalNotesDisplay = showFTSResults && aggregatedFtsData ? aggregatedFtsData.total : totalNotes
 
   // -- Infinite Scroll --
   const observerTarget = useInfiniteScroll(
@@ -225,6 +273,45 @@ export function useNoteAppController() {
     }
   }
 
+  const handleDeleteAccount = async () => {
+    if (!user) return
+    setDeleteAccountLoading(true)
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !sessionData.session?.access_token) {
+        throw new Error("Unable to get session token for deletion")
+      }
+      const token = sessionData.session.access_token
+      const functionsUrl = process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+      if (!functionsUrl) {
+        throw new Error("Functions URL is not configured (set NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL)")
+      }
+
+      const response = await fetch(`${functionsUrl}/functions/v1/delete-account`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ deleteNotes: true }),
+      })
+
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const message = payload?.error || `Delete function error (${response.status})`
+        throw new Error(message)
+      }
+
+      toast.success("Account deleted")
+      await handleSignOut()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete account"
+      toast.error(message)
+    } finally {
+      setDeleteAccountLoading(false)
+    }
+  }
+
   const handleCreateNote = () => {
     setSelectedNote(null)
     setIsEditing(true)
@@ -332,11 +419,128 @@ export function useNoteAppController() {
     setIsEditing(false)
   }
 
-  const handleSearchResultClick = (note: SearchResult) => {
-    // Don't reset search - keep search results visible when viewing a note
-    setSelectedNote(note)
-    setIsEditing(false)
+    const handleSearchResultClick = (note: SearchResult) => {
+      // Don't reset search - keep search results visible when viewing a note
+      setSelectedNote(note)
+      setIsEditing(false)
+    }
+
+    const enterSelectionMode = () => {
+      setSelectionMode(true)
+      setSelectAllActive(false)
+      setDeselectedNoteIds(new Set())
+      setSelectedNoteIds(new Set())
+      setIsEditing(false)
+      setSelectedNote(null)
+    }
+
+    const exitSelectionMode = () => {
+      setSelectionMode(false)
+      setSelectAllActive(false)
+      setDeselectedNoteIds(new Set())
+      setSelectedNoteIds(new Set())
+    }
+
+    const toggleNoteSelection = (noteId: string) => {
+      setSelectionMode(true)
+      if (selectAllActive) {
+        setSelectedNoteIds((prev) => {
+          const next = new Set(prev)
+          const nextDeselected = new Set(deselectedNoteIds)
+          if (next.has(noteId)) {
+            next.delete(noteId)
+            nextDeselected.add(noteId)
+          } else {
+            next.add(noteId)
+            nextDeselected.delete(noteId)
+          }
+          setDeselectedNoteIds(nextDeselected)
+          return next
+        })
+        return
+      }
+      setSelectedNoteIds(prev => {
+        const next = new Set(prev)
+        if (next.has(noteId)) {
+          next.delete(noteId)
+        } else {
+          next.add(noteId)
+        }
+        return next
+      })
+    }
+
+  const selectAllVisible = () => {
+    const source = showFTSResults && aggregatedFtsData
+      ? aggregatedFtsData.results
+      : notes
+    setSelectionMode(true)
+    if (showFTSResults) {
+      // In search mode select only currently visible results, do not auto-select future pages
+      setSelectAllActive(false)
+      setDeselectedNoteIds(new Set())
+      setSelectedNoteIds(new Set(source.map((n) => n.id)))
+      return
+    }
+    setSelectAllActive(true)
+    setDeselectedNoteIds(new Set())
+    setSelectedNoteIds(new Set(source.map((n) => n.id)))
   }
+
+  useEffect(() => {
+    if (!selectAllActive || showFTSResults) return
+    const nextIds = notes
+      .filter((n) => !deselectedNoteIds.has(n.id))
+      .map((n) => n.id)
+    setSelectedNoteIds((prev) => {
+      if (prev.size === nextIds.length) {
+        // quick equality check
+        let allMatch = true
+        for (const id of nextIds) {
+          if (!prev.has(id)) {
+            allMatch = false
+            break
+          }
+        }
+        if (allMatch) return prev
+      }
+      return new Set(nextIds)
+    })
+  }, [selectAllActive, showFTSResults, notes, deselectedNoteIds])
+
+    const clearSelection = () => {
+      setSelectedNoteIds(new Set())
+      setSelectAllActive(false)
+      setDeselectedNoteIds(new Set())
+    }
+
+    const loadMoreFts = () => {
+      if (ftsLoadingMore || !ftsHasMore) return
+      setFtsOffset((prev) => prev + ftsLimit)
+    }
+
+    const deleteSelectedNotes = async () => {
+      if (!selectedNoteIds.size) return
+      setBulkDeleting(true)
+      try {
+        const ids = Array.from(selectedNoteIds)
+        const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync(id)))
+        const failed = results.filter(r => r.status === 'rejected').length
+        if (failed > 0) {
+          toast.error(`Failed to delete ${failed} notes`)
+        } else {
+          toast.success(`Deleted ${ids.length} notes`)
+        }
+        exitSelectionMode()
+        await queryClient.invalidateQueries({ queryKey: ['notes'] })
+        setSelectedNote(null)
+      } catch (error) {
+        console.error('Bulk delete error:', error)
+        toast.error('Failed to delete selected notes')
+      } finally {
+        setBulkDeleting(false)
+      }
+    }
 
   return {
     // State
@@ -349,19 +553,27 @@ export function useNoteAppController() {
     setEditForm,
     saving,
     filterByTag,
-    deleteDialogOpen,
-    setDeleteDialogOpen,
-    noteToDelete,
+      deleteDialogOpen,
+      setDeleteDialogOpen,
+      noteToDelete,
+      selectionMode,
+      selectedNoteIds,
+      selectedCount,
+      bulkDeleting,
+      deleteAccountLoading,
+      selectAllActive,
 
-    // Data
-    notes,
-    notesQuery,
-    ftsSearchResult,
-    ftsData: filteredFtsData,
-    ftsResults: filteredFtsResults,
+      // Data
+      notes,
+      notesQuery,
+      ftsSearchResult,
+    ftsData: aggregatedFtsData,
+    ftsResults: ftsAccumulatedResults,
+    ftsHasMore,
+    ftsLoadingMore,
     showFTSResults,
     observerTarget,
-    totalNotes,
+      totalNotes: totalNotesDisplay,
 
     // Handlers
     handleSearch,
@@ -369,20 +581,28 @@ export function useNoteAppController() {
     handleClearTagFilter,
     handleSignInWithGoogle,
     handleTestLogin,
-    handleSkipAuth,
-    handleSignOut,
-    handleCreateNote,
-    handleEditNote,
-    handleSaveNote,
+      handleSkipAuth,
+      handleSignOut,
+      handleDeleteAccount,
+      handleCreateNote,
+      handleEditNote,
+      handleSaveNote,
     handleDeleteNote,
     confirmDeleteNote,
     handleRemoveTagFromNote,
     handleSelectNote,
-    handleSearchResultClick,
+      handleSearchResultClick,
+      enterSelectionMode,
+      exitSelectionMode,
+      toggleNoteSelection,
+      selectAllVisible,
+      clearSelection,
+      loadMoreFts,
+      deleteSelectedNotes,
 
-    // Helpers
-    invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
+      // Helpers
+      invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
+    }
   }
-}
 
 export type NoteAppController = ReturnType<typeof useNoteAppController>
