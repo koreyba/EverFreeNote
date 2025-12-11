@@ -22,13 +22,24 @@ description: Technical implementation notes, patterns, and code guidelines
 **Key technical details to remember:**
 
 ### Core Features
-- Добавить вычисление `notesDisplayed` (длина видимых данных) и `notesTotal` (общее для текущего контекста: обычный список totalCount, FTS total/accumulated, учитывая тег фильтр).
-- Передать counts в Sidebar и отрендерить «Notes displayed: X out of Y».
-- Логика удаления/выбора остаётся только для загруженных элементов.
+- `notesDisplayed`: длина видимых данных (обычный список или FTS результаты)
+- `notesTotal`:
+  - Обычный режим: `pages[0].totalCount`
+  - FTS режим: `undefined` если `ftsHasMore`, иначе `ftsAccumulatedResults.length`
+- Sidebar показывает «Notes displayed: X out of Y» или «X out of unknown»
+- Логика удаления/выбора остаётся только для загруженных элементов
+
+### FTS Infinite Scroll
+- `ftsHasMore = lastFtsPageSize === ftsLimit` (20) — простая проверка: если последняя страница полная, возможно есть ещё
+- `ftsTotal = ftsHasMore ? undefined : ftsAccumulatedResults.length`
+- `ftsObserverTarget` — отдельный ref для IntersectionObserver в FTS режиме
+- `loadMoreFtsCallback` — useCallback для стабильной функции подгрузки
+- Кнопка "Load More" присутствует как визуальный индикатор и fallback
 
 ### Patterns & Best Practices
-- Не добавлять доп. запросы; использовать уже загруженные данные + метаданные total.
-- FTS: если total отсутствует, используем длину накопленных результатов.
+- Не добавлять доп. запросы; использовать уже загруженные данные
+- Unified UX: оба режима (обычный и FTS) имеют одинаковый infinite scroll + Load More кнопку
+- "unknown" вместо неточного числа при неполной загрузке FTS
 
 ## Integration Points
 **How do pieces connect?**
@@ -39,7 +50,9 @@ description: Technical implementation notes, patterns, and code guidelines
 ## Error Handling
 **How do we handle failures?**
 
-- Если total неизвестен, показываем честно `X out of X` (нет «+1» эвристик).
+- FTS режим с неполной загрузкой: показываем `X out of unknown`
+- После полной загрузки FTS: показываем `X out of X` (где X = длина накопленных результатов)
+- Обычный режим: всегда показываем `X out of Y` (Y из totalCount)
 
 ## Performance Considerations
 **How do we keep it fast?**
