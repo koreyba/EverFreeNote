@@ -1,45 +1,34 @@
 ---
 phase: implementation
 title: Гайд по реализации оффлайн-режима
-description: Практические шаги, соглашения и точки интеграции
+description: Шаги, соглашения и интеграция
 ---
 
-# Гайд по реализации
+# Реализация
 
-## Подготовка
-- Web: адаптер IndexedDB (обёртка для get/set по ключу, курсоры для LRU), контроль лимита ~100 МБ.
-- Mobile: адаптер SQLite (или AsyncStorage + слой для пачек), NetInfo для статуса сети.
-- Общие типы: CachedNote, Mutation, SyncState, интерфейсы StorageAdapter и SyncManager.
+## Хранилище и очередь
+- Web: IndexedDB адаптер (`ui/web/adapters/offlineStorage.ts`), fallback на localStorage. Оцениваем размер по JSON, чистим по давности (LRU/updatedAt). Stores: `notes`, `queue`.
+- Очередь: `OfflineQueueService` (enqueue/pop/markStatus), `MutationQueueItem` хранит op/payload/clientUpdatedAt/status.
+- Кеш: `OfflineCacheService` (load/save/delete, enforceLimit).
 
-## Структура модулей
-- `core/cache`: API кеша (load, save, enforceLimit), политика LRU/updated_at.
-- `core/mutationQueue`: enqueue/dequeue, tempId для create, статусы pending/failed.
-- `core/syncManager`: online/offline, drainQueue батчами, retry + backoff, остановка при отсутствии прогресса, вывод списка failed.
-- `core/localSearch` (заглушка/интерфейс) — подключим позже.
-- `ui/web` и `ui/mobile`: адаптеры хранения/сети, хук useNotes/useMutations, прокидывание статусов (isOnline, pendingCount).
+## Overlay и UI
+- Overlay cached notes поверх серверных (`applyNoteOverlay`): оффлайн правки сразу видны в списке/деталях, восстановление после рестарта.
+- Контроллер (`useNoteAppController`):
+  - При оффлайн create/update/delete сохраняет в кеш и очередь, обновляет selectedNote и overlay, считает pending/failed.
+  - При online через SyncManager очищает кеш/overlay по onSuccess, пересчитывает pending/failed.
+  - Sidebar показывает оффлайн-баннер + лейблы pending/failed.
 
-## Ключевые детали
-- Лимит кеша: при записи — проверка объёма; если >100 МБ, удалить самые старые записи (LRU/по updated_at). Не храним тяжёлые вложения сверх лимита.
-- Очередь: все мутации только через enqueue; обновление локальной копии сразу (оптимистично), статус pending.
-- Синк:
-  - Срабатывает при переходе в online или по таймеру.
-  - Берёт батч (например, 10–20) и отправляет в Supabase.
-  - При успехе: обновляет кеш, помечает synced, убирает из очереди.
-  - При ошибке сети: retry с expo-backoff; при исчерпании попыток — статус failed, оставить в очереди, UI может подсветить.
-  - Если нет прогресса (несколько циклов без успеха) — не зацикливаться, ждать следующего online.
-- Конфликты: last-write-wins по updated_at; если Supabase вернул конфликт — создаём копию заметки и помечаем, что нужна ручная проверка.
-- Поиск: пока всегда онлайн FTS; в оффлайне — возвращаем сообщение «поиск недоступен», но интерфейс LocalSearch не ломаем.
+## Синхронизация
+- `OfflineSyncManager`: drainQueue батчами, retry/backoff (задача адаптера), onSuccess callback удаляет из кеша/overlay, обновляет счетчики.
+- Триггеры: при online (NetworkStatusProvider) вызывается drainQueue; TODO: таймер/доп. триггеры при необходимости.
 
-## Соглашения и практики
-- Адаптерный слой для хранения/сети — обязательный, чтобы веб/мобайл не дублировали логику.
-- Хуки UI не должны знать о типе хранилища; получают только данные и статусы (isOffline, pendingCount, hasFailed).
-- Не добавляем серверные роуты — работаем через Supabase/edge functions.
+## Политика конфликтов
+- last-write-wins (updated_at); при конфликте создаётся копия заметки (адаптация потребует доработки на уровне Supabase/mutations при обнаружении конфликта).
 
-## Обработка ошибок
-- Сетевые ошибки: оставляем записи в pending, повторяем при online.
-- Фатальные ошибки синка: маркируем failed, не удаляем из очереди, показываем пользователю (можно отложить в UI).
-- Кеш: если запись не помещается в лимит — вернуть явную ошибку и не писать.
+## Поведение при перезапуске
+- Очередь и кеш читаются при инициализации контроллера → pending/failed/overlay восстанавливаются.
 
-## Безопасность
-- Все сетевые вызовы через авторизованный Supabase клиент.
-- Локальное хранилище не шифруем на MVP, но не складываем чувствительные токены в кеш заметок.
+## Что остаётся сделать
+- Mobile адаптер (SQLite/AsyncStorage + NetInfo) — TODO.
+- Более точная оценка размера в IndexedDB (без JSON roundtrip).
+- Доп. индикация прогресса синка/ошибок — по необходимости.
