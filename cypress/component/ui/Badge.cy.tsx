@@ -1,5 +1,5 @@
 import React from 'react'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@ui/web/components/ui/badge'
 
 describe('Badge Component', () => {
   it('renders with default props', () => {

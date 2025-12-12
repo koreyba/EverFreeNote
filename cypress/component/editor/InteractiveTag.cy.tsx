@@ -1,5 +1,5 @@
 import React from 'react'
-import InteractiveTag from '@/components/InteractiveTag'
+import InteractiveTag from '@ui/web/components/InteractiveTag'
 
 describe('InteractiveTag Component', () => {
   it('renders tag with correct text', () => {

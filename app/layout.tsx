@@ -4,7 +4,7 @@ import type { ReactNode } from "react"
 
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { QueryProvider } from "@/components/providers/QueryProvider"
-import { SupabaseProvider } from "@/lib/providers/SupabaseProvider"
+import { SupabaseProvider } from "@ui/web/providers/SupabaseProvider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 

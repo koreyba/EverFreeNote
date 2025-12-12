@@ -1,8 +1,8 @@
 import React from 'react'
-import { ImportButton } from '@/components/ImportButton'
+import { ImportButton } from '@ui/web/components/ImportButton'
 import { browser } from '@ui/web/adapters/browser'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
-import { EnexParser } from '@/lib/enex/parser'
+import { EnexParser } from '@core/enex/parser'
 
 // Helper type for Sinon stubs
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

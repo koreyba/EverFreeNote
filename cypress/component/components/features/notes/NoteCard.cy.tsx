@@ -1,6 +1,6 @@
 import React from 'react'
-import { NoteCard } from '@/components/features/notes/NoteCard'
-import { SearchResult, NoteViewModel } from '@/types/domain'
+import { NoteCard } from '@ui/web/components/features/notes/NoteCard'
+import { SearchResult, NoteViewModel } from '@core/types/domain'
 
 const mockNote: NoteViewModel = {
   id: '1',

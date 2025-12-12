@@ -3,11 +3,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { User } from '@supabase/supabase-js'
 
-import { useSupabase } from '@/lib/providers/SupabaseProvider'
+import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { useNotesQuery, useFlattenedNotes, useSearchNotes } from './useNotesQuery'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import { useInfiniteScroll } from './useInfiniteScroll'
-import type { NoteViewModel, SearchResult } from '@/types/domain'
+import type { NoteViewModel, SearchResult } from '@core/types/domain'
 import { AuthService } from '@core/services/auth'
 import { computeFtsHasMore, computeFtsTotal } from '@core/services/ftsPagination'
 import { clearSelection as clearSelectionSet, selectAll as selectAllSet, toggleSelection } from '@core/services/selection'
@@ -74,7 +74,10 @@ export function useNoteAppController() {
 
   const ftsData = ftsSearchResult.data
   // Server now handles tag filtering via filter_tag RPC parameter
-  const ftsResultsRaw: SearchResult[] = ftsData?.results ?? []
+  const ftsResultsRaw: SearchResult[] = useMemo(
+    () => ftsData?.results ?? [],
+    [ftsData?.results]
+  )
 
   // Accumulate FTS pages for "load more"
   useEffect(() => {

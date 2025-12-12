@@ -1,6 +1,6 @@
-import { NoteCreator } from '../../../../lib/enex/note-creator'
+import { NoteCreator } from '@core/enex/note-creator'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ParsedNote } from '../../../../lib/enex/types'
+import type { ParsedNote } from '@core/enex/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SinonStub = any

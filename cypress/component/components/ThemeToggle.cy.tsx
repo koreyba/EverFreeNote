@@ -1,5 +1,5 @@
 import React from 'react'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { ThemeToggle } from '@ui/web/components/theme-toggle'
 import { ThemeProvider } from 'next-themes'
 
 describe('ThemeToggle', () => {

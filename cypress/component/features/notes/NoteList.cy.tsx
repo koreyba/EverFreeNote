@@ -1,6 +1,6 @@
 import React from 'react'
-import { NoteList } from '@/components/features/notes/NoteList'
-import type { SearchResult } from '@/types/domain'
+import { NoteList } from '@ui/web/components/features/notes/NoteList'
+import type { SearchResult } from '@core/types/domain'
 
 describe('NoteList FTS header', () => {
   const getBaseProps = () => ({

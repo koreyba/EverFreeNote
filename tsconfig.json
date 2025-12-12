@@ -17,7 +17,7 @@
     "jsx": "react-jsx",
     "incremental": true,
     "typeRoots": [
-      "./types",
+      "./core/types",
       "./extensions",
       "./node_modules/@types"
     ],
@@ -31,19 +31,13 @@
         "./*"
       ],
       "@/components/*": [
-        "./components/*"
-      ],
-      "@/lib/*": [
-        "./lib/*"
-      ],
-      "@/app/*": [
-        "./app/*"
+        "./ui/web/components/*"
       ],
       "@/supabase/*": [
         "./supabase/*"
       ],
       "@/types/*": [
-        "./types/*"
+        "./core/types/*"
       ],
       "@core/*": [
         "./core/*"

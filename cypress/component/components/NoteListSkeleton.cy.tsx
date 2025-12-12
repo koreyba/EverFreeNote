@@ -1,5 +1,5 @@
 import React from 'react'
-import { NoteListSkeleton } from '@/components/NoteListSkeleton'
+import { NoteListSkeleton } from '@ui/web/components/NoteListSkeleton'
 
 describe('NoteListSkeleton', () => {
   it('renders default number of items', () => {
