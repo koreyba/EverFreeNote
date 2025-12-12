@@ -1,6 +1,6 @@
 import React from 'react'
-import { NoteCard } from '@/components/features/notes/NoteCard'
-import type { Note, SearchResult } from '@/types/domain'
+import { NoteCard } from '@ui/web/components/features/notes/NoteCard'
+import type { Note, SearchResult } from '@core/types/domain'
 
 describe('NoteCard Component', () => {
   const baseNote: Note = {

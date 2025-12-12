@@ -1,4 +1,4 @@
-import { ImageProcessor } from '../../../../lib/enex/image-processor'
+import { ImageProcessor } from '@core/enex/image-processor'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

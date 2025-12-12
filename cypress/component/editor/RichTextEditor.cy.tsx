@@ -1,5 +1,5 @@
 import React from 'react'
-import RichTextEditor from '@/components/RichTextEditor'
+import RichTextEditor from '@ui/web/components/RichTextEditor'
 
 describe('RichTextEditor Component', () => {
   it('renders with all toolbar buttons and editor area', () => {

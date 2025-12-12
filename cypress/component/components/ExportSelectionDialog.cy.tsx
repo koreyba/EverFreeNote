@@ -1,5 +1,5 @@
 import React from 'react'
-import { ExportSelectionDialog } from '@/components/ExportSelectionDialog'
+import { ExportSelectionDialog } from '@ui/web/components/ExportSelectionDialog'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
 

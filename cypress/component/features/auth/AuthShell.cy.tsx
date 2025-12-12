@@ -1,5 +1,5 @@
 import React from 'react'
-import { AuthShell } from '@/components/features/auth/AuthShell'
+import { AuthShell } from '@ui/web/components/features/auth/AuthShell'
 
 describe('AuthShell Component', () => {
   it('renders correctly', () => {

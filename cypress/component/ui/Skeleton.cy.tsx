@@ -1,5 +1,5 @@
 import React from 'react'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from '@ui/web/components/ui/skeleton'
 
 describe('Skeleton Component', () => {
   it('renders skeleton element', () => {

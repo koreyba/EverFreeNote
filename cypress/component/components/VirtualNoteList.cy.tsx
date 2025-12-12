@@ -1,6 +1,6 @@
 import React from 'react'
-import { VirtualNoteList } from '@/components/VirtualNoteList'
-import type { Note } from '@/types/domain'
+import { VirtualNoteList } from '@ui/web/components/VirtualNoteList'
+import type { Note } from '@core/types/domain'
 import { ListChildComponentProps } from 'react-window'
 
 type ItemData = {

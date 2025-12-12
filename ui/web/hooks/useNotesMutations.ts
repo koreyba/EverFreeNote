@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSupabase } from '@/lib/providers/SupabaseProvider'
+import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
 import { toast } from 'sonner'
 import { useMemo } from 'react'
@@ -9,6 +9,9 @@ import type { Tables } from '@/supabase/types'
 /**
  * Custom hooks for note mutations with optimistic updates
  * Provides instant UI feedback before server confirmation
+ * 
+ * Toast notifications are handled via callbacks for platform independence.
+ * Default callbacks use web toast (sonner), but can be overridden for mobile.
  */
 type Note = Tables<'notes'>
 
@@ -28,7 +31,35 @@ type NotesData = {
   pageParams: number[]
 }
 
-export function useCreateNote() {
+/**
+ * Callbacks for mutation results - allows platform-specific UI feedback
+ */
+export type MutationCallbacks = {
+  onSuccess?: () => void
+  onError?: (error: Error) => void
+}
+
+// Default web callbacks using sonner toast
+const defaultCreateCallbacks: MutationCallbacks = {
+  onSuccess: () => toast.success('Note created successfully'),
+  onError: (err) => toast.error('Failed to create note: ' + err.message),
+}
+
+const defaultUpdateCallbacks: MutationCallbacks = {
+  onSuccess: () => toast.success('Note updated successfully'),
+  onError: (err) => toast.error('Failed to update note: ' + err.message),
+}
+
+const defaultDeleteCallbacks: MutationCallbacks = {
+  onSuccess: () => toast.success('Note deleted successfully'),
+  onError: (err) => toast.error('Failed to delete note: ' + err.message),
+}
+
+const defaultRemoveTagCallbacks: MutationCallbacks = {
+  onError: (err) => toast.error('Failed to remove tag: ' + err.message),
+}
+
+export function useCreateNote(callbacks: MutationCallbacks = defaultCreateCallbacks) {
   const queryClient = useQueryClient()
   const { supabase } = useSupabase()
   const noteService = useMemo(() => new NoteService(supabase), [supabase])
@@ -85,22 +116,22 @@ export function useCreateNote() {
     },
 
     // Rollback on error
-    onError: (err, newNote, context) => {
+    onError: (err, _newNote, context) => {
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes'], context.previousNotes)
       }
-      toast.error('Failed to create note: ' + err.message)
+      callbacks.onError?.(err)
     },
 
     // Refetch on success
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
-      toast.success('Note created successfully')
+      callbacks.onSuccess?.()
     },
   })
 }
 
-export function useUpdateNote() {
+export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallbacks) {
   const queryClient = useQueryClient()
   const { supabase } = useSupabase()
   const noteService = useMemo(() => new NoteService(supabase), [supabase])
@@ -144,21 +175,26 @@ export function useUpdateNote() {
       return { previousNotes }
     },
 
-    onError: (err, updatedNote, context) => {
+    onError: (err, _updatedNote, context) => {
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes'], context.previousNotes)
       }
-      toast.error('Failed to update note: ' + err.message)
+      callbacks.onError?.(err)
     },
 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
-      toast.success('Note updated successfully')
+      callbacks.onSuccess?.()
     },
   })
 }
 
-export function useDeleteNote() {
+type DeleteNoteCallbacks = MutationCallbacks & {
+  /** If true, skip success notification */
+  silent?: boolean
+}
+
+export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCallbacks) {
   const queryClient = useQueryClient()
   const { supabase } = useSupabase()
   const noteService = useMemo(() => new NoteService(supabase), [supabase])
@@ -192,19 +228,19 @@ export function useDeleteNote() {
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes'], context.previousNotes)
       }
-      toast.error('Failed to delete note: ' + err.message)
+      callbacks.onError?.(err)
     },
 
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
-      if (!vars?.silent) {
-        toast.success('Note deleted successfully')
+      if (!vars?.silent && !callbacks.silent) {
+        callbacks.onSuccess?.()
       }
     },
   })
 }
 
-export function useRemoveTag() {
+export function useRemoveTag(callbacks: MutationCallbacks = defaultRemoveTagCallbacks) {
   const queryClient = useQueryClient()
   const { supabase } = useSupabase()
   const noteService = useMemo(() => new NoteService(supabase), [supabase])
@@ -241,16 +277,16 @@ export function useRemoveTag() {
       return { previousNotes, noteId, updatedTags }
     },
 
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes'], context.previousNotes)
       }
-      toast.error('Failed to remove tag: ' + err.message)
+      callbacks.onError?.(err)
     },
 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
+      callbacks.onSuccess?.()
     },
   })
 }
-

@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery, InfiniteData } from '@tanstack/react-query'
-import { useSupabase } from '@/lib/providers/SupabaseProvider'
+import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
 import { SearchService, SearchResult } from '@core/services/search'
 import { useState, useEffect, useMemo } from 'react'

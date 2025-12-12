@@ -1,5 +1,5 @@
 import React from 'react'
-import RichTextEditor from '@/components/RichTextEditor'
+import RichTextEditor from '@ui/web/components/RichTextEditor'
 import { browser } from '@ui/web/adapters/browser'
 
 // Helper type for Sinon stubs
