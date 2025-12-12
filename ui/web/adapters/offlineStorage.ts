@@ -48,16 +48,30 @@ const withStore = async <T>(
   return new Promise<T>((resolve, reject) => {
     const tx = db.transaction(storeName, mode)
     const store = tx.objectStore(storeName)
-    Promise.resolve(fn(store))
-      .then((result) => {
-        tx.oncomplete = () => resolve(result)
-        tx.onerror = () => reject(tx.error)
-        tx.onabort = () => reject(tx.error)
-      })
-      .catch((err) => {
-        tx.abort()
-        reject(err)
-      })
+    let fnResult: T
+
+    // Set handlers BEFORE executing fn to avoid race condition
+    // IndexedDB auto-commits when no pending operations remain
+    tx.oncomplete = () => resolve(fnResult)
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error)
+
+    try {
+      const result = fn(store)
+      if (result instanceof Promise) {
+        result
+          .then((r) => { fnResult = r })
+          .catch((err) => {
+            tx.abort()
+            reject(err)
+          })
+      } else {
+        fnResult = result
+      }
+    } catch (err) {
+      tx.abort()
+      reject(err)
+    }
   })
 }
 
