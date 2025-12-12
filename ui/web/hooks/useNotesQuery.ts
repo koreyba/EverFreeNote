@@ -131,7 +131,7 @@ export function useSearchNotes(query: string, userId?: string, options: SearchOp
   const {
     language = detectBrowserLanguage(),
     minRank = 0.01,
-    limit = 20,
+    limit = 50,
     offset = 0,
     selectedTag = null,
     enabled = true
