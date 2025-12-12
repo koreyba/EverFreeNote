@@ -45,7 +45,7 @@ export function useNoteAppController() {
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
   const [ftsOffset, setFtsOffset] = useState(0)
   const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
-  const ftsLimit = 5
+  const ftsLimit = 50
 
   // -- Dependencies --
   const { supabase, loading: providerLoading } = useSupabase()
