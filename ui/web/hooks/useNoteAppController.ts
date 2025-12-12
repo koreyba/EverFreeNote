@@ -7,7 +7,7 @@ import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { useNotesQuery, useFlattenedNotes, useSearchNotes } from './useNotesQuery'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import { useInfiniteScroll } from './useInfiniteScroll'
-import type { NoteViewModel, SearchResult } from '@core/types/domain'
+import type { NoteViewModel, SearchResult, NoteInsert, NoteUpdate } from '@core/types/domain'
 import { AuthService } from '@core/services/auth'
 import { computeFtsHasMore, computeFtsTotal } from '@core/services/ftsPagination'
 import { clearSelection as clearSelectionSet, selectAll as selectAllSet, toggleSelection } from '@core/services/selection'
@@ -16,12 +16,18 @@ import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import { webOAuthRedirectUri } from '@ui/web/config'
 import { featureFlags } from '@ui/web/featureFlags'
 import { OfflineQueueService } from '@core/services/offlineQueue'
+import { OfflineSyncManager } from '@core/services/offlineSyncManager'
+import { webNetworkStatus } from '@ui/web/adapters/networkStatus'
+import type { MutationQueueItemInput } from '@core/types/offline'
+import { v4 as uuidv4 } from 'uuid'
 
 export type EditFormState = {
   title: string
   description: string
   tags: string
 }
+
+type NotePayload = (Partial<NoteInsert> & { userId?: string }) | Partial<NoteUpdate>
 
 export function useNoteAppController() {
   // -- State --
@@ -51,12 +57,45 @@ export function useNoteAppController() {
   // Offline queue state placeholders (будут подключены к offline storage/queue)
   const [pendingCount, setPendingCount] = useState(0)
   const [failedCount, setFailedCount] = useState(0)
-  const offlineQueue = useMemo(() => new OfflineQueueService(webOfflineStorageAdapter), [])
+  const [isOffline, setIsOffline] = useState<boolean>(typeof window !== 'undefined' ? !navigator.onLine : false)
 
   // -- Dependencies --
   const { supabase, loading: providerLoading } = useSupabase()
   const queryClient = useQueryClient()
   const authService = new AuthService(supabase)
+
+  // -- Mutations (needed for sync manager) --
+  const createNoteMutation = useCreateNote()
+  const updateNoteMutation = useUpdateNote()
+  const deleteNoteMutation = useDeleteNote()
+  const removeTagMutation = useRemoveTag()
+
+  const offlineQueue = useMemo(() => new OfflineQueueService(webOfflineStorageAdapter), [])
+  const syncManager = useMemo(() => {
+    const performSync = async (item: MutationQueueItemInput) => {
+      if (!user) return
+      if (item.operation === 'create') {
+        const payload = item.payload as Partial<NoteInsert> & { userId?: string }
+        await createNoteMutation.mutateAsync({
+          title: payload.title ?? 'Untitled',
+          description: payload.description ?? '',
+          tags: payload.tags ?? [],
+          userId: payload.userId ?? user.id,
+        })
+      } else if (item.operation === 'update') {
+        const payload = item.payload as Partial<NoteUpdate>
+        await updateNoteMutation.mutateAsync({
+          id: item.noteId,
+          title: payload.title ?? 'Untitled',
+          description: payload.description ?? '',
+          tags: payload.tags ?? [],
+        })
+      } else if (item.operation === 'delete') {
+        await deleteNoteMutation.mutateAsync({ id: item.noteId, silent: true })
+      }
+    }
+    return new OfflineSyncManager(webOfflineStorageAdapter, performSync, webNetworkStatus)
+  }, [createNoteMutation, updateNoteMutation, deleteNoteMutation, user])
 
   // Combine provider loading with local auth loading
   const combinedLoading = loading || providerLoading || authLoading
@@ -165,12 +204,6 @@ export function useNoteAppController() {
     { threshold: 0.8, rootMargin: '200px' }
   )
 
-  // -- Mutations --
-  const createNoteMutation = useCreateNote()
-  const updateNoteMutation = useUpdateNote()
-  const deleteNoteMutation = useDeleteNote()
-  const removeTagMutation = useRemoveTag()
-
   // -- Auth Effects --
   useEffect(() => {
     const checkAuth = async () => {
@@ -200,6 +233,24 @@ export function useNoteAppController() {
     }
     void loadQueueState()
   }, [offlineQueue])
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false)
+      void syncManager.handleOnline().then(async () => {
+        const queue = await offlineQueue.getQueue()
+        setPendingCount(queue.filter((q) => q.status === 'pending').length)
+        setFailedCount(queue.filter((q) => q.status === 'failed').length)
+      })
+    }
+    const handleOffline = () => setIsOffline(true)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [offlineQueue, syncManager])
 
   // -- Handlers --
 
@@ -360,6 +411,19 @@ export function useNoteAppController() {
   const handleSaveNote = async () => {
     if (!user) return
 
+    const offlineMutation = async (operation: MutationQueueItemInput['operation'], noteId: string, payload: NotePayload) => {
+      const item: MutationQueueItemInput = {
+        noteId,
+        operation,
+        payload,
+        clientUpdatedAt: new Date().toISOString(),
+      }
+      await offlineQueue.enqueue(item)
+      const queue = await offlineQueue.getQueue()
+      setPendingCount(queue.filter((q) => q.status === 'pending').length)
+      setFailedCount(queue.filter((q) => q.status === 'failed').length)
+    }
+
     setSaving(true)
     try {
       let savedNote: NoteViewModel | null = null
@@ -375,17 +439,28 @@ export function useNoteAppController() {
       }
 
       if (selectedNote) {
-        const updated = await updateNoteMutation.mutateAsync({
-          id: selectedNote.id,
-          ...noteData,
-        })
-        savedNote = { ...selectedNote, ...updated }
+        if (isOffline) {
+          await offlineMutation('update', selectedNote.id, noteData)
+          toast.success('Saved offline (will sync when online)')
+        } else {
+          const updated = await updateNoteMutation.mutateAsync({
+            id: selectedNote.id,
+            ...noteData,
+          })
+          savedNote = { ...selectedNote, ...updated }
+        }
       } else {
-        const created = await createNoteMutation.mutateAsync({
-          ...noteData,
-          userId: user.id,
-        })
-        savedNote = created as NoteViewModel
+        const tempId = uuidv4()
+        if (isOffline) {
+          await offlineMutation('create', tempId, { ...noteData, userId: user.id })
+          toast.success('Saved offline (will sync when online)')
+        } else {
+          const created = await createNoteMutation.mutateAsync({
+            ...noteData,
+            userId: user.id,
+          })
+          savedNote = created as NoteViewModel
+        }
       }
 
       setIsEditing(false)
@@ -409,7 +484,20 @@ export function useNoteAppController() {
     if (!noteToDelete) return
 
     try {
-      await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
+      if (isOffline) {
+        await offlineQueue.enqueue({
+          noteId: noteToDelete.id,
+          operation: 'delete',
+          payload: {},
+          clientUpdatedAt: new Date().toISOString(),
+        })
+        const queue = await offlineQueue.getQueue()
+        setPendingCount(queue.filter((q) => q.status === 'pending').length)
+        setFailedCount(queue.filter((q) => q.status === 'failed').length)
+        toast.success('Deletion queued offline')
+      } else {
+        await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
+      }
 
       if (selectedNote?.id === noteToDelete.id) {
         setSelectedNote(null)
@@ -493,12 +581,27 @@ export function useNoteAppController() {
     setBulkDeleting(true)
     try {
       const ids = Array.from(selectedNoteIds)
-      const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync({ id, silent: true })))
-      const failed = results.filter(r => r.status === 'rejected').length
-      if (failed > 0) {
-        toast.error(`Failed to delete ${failed} notes`)
+      if (isOffline) {
+        await offlineQueue.enqueueMany(
+          ids.map((id) => ({
+            noteId: id,
+            operation: 'delete',
+            payload: {},
+            clientUpdatedAt: new Date().toISOString(),
+          }))
+        )
+        const queue = await offlineQueue.getQueue()
+        setPendingCount(queue.filter((q) => q.status === 'pending').length)
+        setFailedCount(queue.filter((q) => q.status === 'failed').length)
+        toast.success(`Queued deletion of ${ids.length} notes (offline)`)
       } else {
-        toast.success(`Deleted ${ids.length} notes`)
+        const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync({ id, silent: true })))
+        const failed = results.filter(r => r.status === 'rejected').length
+        if (failed > 0) {
+          toast.error(`Failed to delete ${failed} notes`)
+        } else {
+          toast.success(`Deleted ${ids.length} notes`)
+        }
       }
       exitSelectionMode()
       await queryClient.invalidateQueries({ queryKey: ['notes'] })
@@ -530,6 +633,7 @@ export function useNoteAppController() {
     selectedCount,
     bulkDeleting,
     deleteAccountLoading,
+    isOffline,
 
     // Data
     notes,
