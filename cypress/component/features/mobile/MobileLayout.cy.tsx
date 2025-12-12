@@ -1,7 +1,7 @@
 import React from 'react'
 import { NotesShell } from '@/components/features/notes/NotesShell'
 import type { NoteAppController } from '@/ui/web/hooks/useNoteAppController'
-import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
+import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 describe('Mobile Layout Adaptation', () => {

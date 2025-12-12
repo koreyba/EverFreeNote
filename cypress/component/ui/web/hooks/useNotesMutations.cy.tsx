@@ -1,6 +1,6 @@
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
+import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from '../../../../../ui/web/hooks/useNotesMutations'
 import type { SupabaseClient } from '@supabase/supabase-js'
 

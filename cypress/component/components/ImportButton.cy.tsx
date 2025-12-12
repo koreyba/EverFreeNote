@@ -1,7 +1,7 @@
 import React from 'react'
 import { ImportButton } from '@/components/ImportButton'
 import { browser } from '@ui/web/adapters/browser'
-import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
+import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { EnexParser } from '@/lib/enex/parser'
 
 // Helper type for Sinon stubs
