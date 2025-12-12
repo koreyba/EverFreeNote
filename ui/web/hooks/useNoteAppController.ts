@@ -75,47 +75,60 @@ export function useNoteAppController() {
   const offlineQueue = useMemo(() => new OfflineQueueService(webOfflineStorageAdapter), [])
   const offlineCache = useMemo(() => new OfflineCacheService(webOfflineStorageAdapter), [])
 
-  // Refs for sync callbacks - updated on every render to have current closure values
-  const syncCallbacksRef = useRef<{
-    performSync: (item: MutationQueueItemInput) => Promise<void>
-    onSuccess: (item: MutationQueueItemInput) => Promise<void>
-  } | null>(null)
+  // Refs for sync callbacks - stable references that delegate to current values
+  const userRef = useRef(user)
+  const createMutationRef = useRef(createNoteMutation)
+  const updateMutationRef = useRef(updateNoteMutation)
+  const deleteMutationRef = useRef(deleteNoteMutation)
+  const offlineCacheRef = useRef(offlineCache)
+  const offlineQueueRef = useRef(offlineQueue)
 
-  // Update callbacks ref with current values (runs on every render)
-  syncCallbacksRef.current = {
+  // Update refs when values change (not on every keystroke)
+  useEffect(() => {
+    userRef.current = user
+    createMutationRef.current = createNoteMutation
+    updateMutationRef.current = updateNoteMutation
+    deleteMutationRef.current = deleteNoteMutation
+    offlineCacheRef.current = offlineCache
+    offlineQueueRef.current = offlineQueue
+  }, [user, createNoteMutation, updateNoteMutation, deleteNoteMutation, offlineCache, offlineQueue])
+
+  // Stable callback refs - created once, always use current values via refs
+  const syncCallbacksRef = useRef({
     performSync: async (item: MutationQueueItemInput) => {
-      if (!user) {
+      const currentUser = userRef.current
+      if (!currentUser) {
         throw new Error('User not authenticated - sync skipped')
       }
       if (item.operation === 'create') {
         const payload = item.payload as Partial<NoteInsert> & { userId?: string }
-        await createNoteMutation.mutateAsync({
+        await createMutationRef.current.mutateAsync({
           title: payload.title ?? 'Untitled',
           description: payload.description ?? '',
           tags: payload.tags ?? [],
-          userId: payload.userId ?? user.id,
+          userId: payload.userId ?? currentUser.id,
         })
       } else if (item.operation === 'update') {
         const payload = item.payload as Partial<NoteUpdate>
-        await updateNoteMutation.mutateAsync({
+        await updateMutationRef.current.mutateAsync({
           id: item.noteId,
           title: payload.title ?? 'Untitled',
           description: payload.description ?? '',
           tags: payload.tags ?? [],
         })
       } else if (item.operation === 'delete') {
-        await deleteNoteMutation.mutateAsync({ id: item.noteId, silent: true })
+        await deleteMutationRef.current.mutateAsync({ id: item.noteId, silent: true })
       }
     },
     onSuccess: async (item: MutationQueueItemInput) => {
-      await offlineCache.deleteNote(item.noteId)
-      const cached = await offlineCache.loadNotes()
+      await offlineCacheRef.current.deleteNote(item.noteId)
+      const cached = await offlineCacheRef.current.loadNotes()
       setOfflineOverlay(cached)
-      const queue = await offlineQueue.getQueue()
+      const queue = await offlineQueueRef.current.getQueue()
       setPendingCount(queue.filter((q) => q.status === 'pending').length)
       setFailedCount(queue.filter((q) => q.status === 'failed').length)
     },
-  }
+  })
 
   // Create syncManager only ONCE using useRef (not useMemo with unstable deps)
   const syncManagerRef = useRef<OfflineSyncManager | null>(null)
