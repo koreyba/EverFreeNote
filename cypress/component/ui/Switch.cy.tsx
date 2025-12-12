@@ -1,5 +1,5 @@
 import React from 'react'
-import { Switch } from '@/components/ui/switch'
+import { Switch } from '@ui/web/components/ui/switch'
 
 describe('Switch Component', () => {
   it('renders switch in unchecked state by default', () => {

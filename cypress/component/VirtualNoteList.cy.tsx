@@ -1,6 +1,6 @@
 import React from 'react'
-import { VirtualNoteList } from '@/components/VirtualNoteList'
-import type { Note } from '@/types/domain'
+import { VirtualNoteList } from '@ui/web/components/VirtualNoteList'
+import type { Note } from '@core/types/domain'
 
 // Mock List component to avoid react-window issues in test environment.
 // It must forward itemData to Row so the row renderer receives notes/handlers.

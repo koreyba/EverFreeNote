@@ -1,6 +1,6 @@
 import React from 'react'
-import { NoteView } from '@/components/features/notes/NoteView'
-import type { Note } from '@/types/domain'
+import { NoteView } from '@ui/web/components/features/notes/NoteView'
+import type { Note } from '@core/types/domain'
 
 describe('NoteView Component', () => {
   const mockNote: Note & { content?: string | null } = {

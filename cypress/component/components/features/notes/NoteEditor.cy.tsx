@@ -1,5 +1,5 @@
 import React from 'react'
-import { NoteEditor } from '@/components/features/notes/NoteEditor'
+import { NoteEditor } from '@ui/web/components/features/notes/NoteEditor'
 
 describe('NoteEditor', () => {
   const getDefaultProps = () => ({

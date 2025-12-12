@@ -1,5 +1,5 @@
 import React from 'react'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { ErrorBoundary } from '@ui/web/components/ErrorBoundary'
 import { browser } from '@ui/web/adapters/browser'
 
 const ThrowingComponent = () => {

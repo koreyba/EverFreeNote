@@ -8,8 +8,8 @@ import {
   DialogTrigger,
   DialogFooter,
   DialogClose
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+} from '@ui/web/components/ui/dialog'
+import { Button } from '@ui/web/components/ui/button'
 
 describe('Dialog Component', () => {
   it('renders trigger button', () => {

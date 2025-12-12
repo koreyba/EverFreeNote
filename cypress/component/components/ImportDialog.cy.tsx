@@ -1,5 +1,5 @@
 import React from 'react'
-import { ImportDialog } from '@/components/ImportDialog'
+import { ImportDialog } from '@ui/web/components/ImportDialog'
 
 describe('ImportDialog', () => {
   const fixturePath = 'cypress/fixtures/enex/test-single-note.enex'

@@ -1,6 +1,6 @@
-import { ContentConverter } from '../../../../lib/enex/converter'
-import { ImageProcessor } from '../../../../lib/enex/image-processor'
-import type { EnexResource } from '../../../../lib/enex/types'
+import { ContentConverter } from '@core/enex/converter'
+import { ImageProcessor } from '@core/enex/image-processor'
+import type { EnexResource } from '@core/enex/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SinonStub = any
