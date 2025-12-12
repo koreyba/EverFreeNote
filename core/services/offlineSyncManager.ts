@@ -6,6 +6,7 @@ import type {
   NetworkStatusProvider,
 } from '../types/offline'
 import { OfflineQueueService } from './offlineQueue'
+import { compactQueue } from '../utils/compactQueue'
 
 type PerformSync = (item: MutationQueueItem) => Promise<void>
 
@@ -70,6 +71,12 @@ export class OfflineSyncManager {
     this.draining = true
     try {
       const batchSize = options?.batchSize ?? 10
+      // Compact queue before processing to avoid conflicting ops
+      const current = await this.queue.getQueue()
+      const compacted = compactQueue(current)
+      if (compacted.length !== current.length) {
+        await this.queue.upsertQueue(compacted)
+      }
 
       while (this.online) {
         // Get pending items WITHOUT removing them from queue

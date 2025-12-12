@@ -279,7 +279,17 @@ export function useNoteAppController() {
   useEffect(() => {
     const loadQueueState = async () => {
       const queue = await offlineQueue.getQueue()
-      const cached = await offlineCache.loadNotes()
+      let cached = await offlineCache.loadNotes()
+      if (!queue.length && cached.length) {
+        // Очистка временных заметок, если очередь пуста (например, compaction выкинул create+delete)
+        const idsToRemove = cached.filter((c) => c.status !== 'synced' || c.deleted).map((c) => c.id)
+        if (idsToRemove.length) {
+          for (const id of idsToRemove) {
+            await offlineCache.deleteNote(id)
+          }
+          cached = await offlineCache.loadNotes()
+        }
+      }
       setOfflineOverlay(cached)
       setPendingCount(queue.filter((q) => q.status === 'pending').length)
       setFailedCount(queue.filter((q) => q.status === 'failed').length)
@@ -300,7 +310,16 @@ export function useNoteAppController() {
 
     const updateQueueState = async () => {
       const queue = await offlineQueue.getQueue()
-      const cached = await offlineCache.loadNotes()
+      let cached = await offlineCache.loadNotes()
+      if (!queue.length && cached.length) {
+        const idsToRemove = cached.filter((c) => c.status !== 'synced' || c.deleted).map((c) => c.id)
+        if (idsToRemove.length) {
+          for (const id of idsToRemove) {
+            await offlineCache.deleteNote(id)
+          }
+          cached = await offlineCache.loadNotes()
+        }
+      }
       setOfflineOverlay(cached)
       const pending = queue.filter((q) => q.status === 'pending').length
       const failed = queue.filter((q) => q.status === 'failed').length
@@ -496,7 +515,12 @@ export function useNoteAppController() {
   const handleSaveNote = async () => {
     if (!user) return
 
-    const offlineMutation = async (operation: MutationQueueItemInput['operation'], noteId: string, payload: NotePayload) => {
+    const offlineMutation = async (
+      operation: MutationQueueItemInput['operation'],
+      noteId: string,
+      payload: NotePayload,
+      baseNote?: NoteViewModel | null
+    ) => {
       const item: MutationQueueItemInput = {
         noteId,
         operation,
@@ -504,7 +528,12 @@ export function useNoteAppController() {
         clientUpdatedAt: new Date().toISOString(),
       }
       await offlineQueue.enqueue(item)
-      // Сохраняем/обновляем заметку в оффлайн-кеше для отображения
+      // Сохраняем локальный кеш для overlay (офлайн отображение)
+      const nowIso = new Date().toISOString()
+      const createdIso =
+        (baseNote as { created_at?: string } | undefined)?.created_at ??
+        (baseNote as { createdAt?: string } | undefined)?.createdAt ??
+        nowIso
       const cached: CachedNote = {
         id: noteId,
         title: payload.title ?? 'Untitled',
@@ -512,7 +541,14 @@ export function useNoteAppController() {
         tags: 'tags' in payload ? payload.tags : undefined,
         content: 'description' in payload ? payload.description : undefined,
         status: 'pending',
-        updatedAt: new Date().toISOString(),
+        updatedAt: nowIso,
+        // created_at/updated_at нужны для корректных дат в офлайн-UI
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        created_at: createdIso,
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        updated_at: nowIso,
       }
       await offlineCache.saveNote(cached)
       setOfflineOverlay(await offlineCache.loadNotes())
@@ -537,7 +573,7 @@ export function useNoteAppController() {
 
       if (selectedNote) {
         if (isOffline) {
-          await offlineMutation('update', selectedNote.id, noteData)
+          await offlineMutation('update', selectedNote.id, noteData, selectedNote)
           // Оптимистичное обновление выбранной заметки
           setSelectedNote({
             ...selectedNote,
@@ -556,7 +592,7 @@ export function useNoteAppController() {
       } else {
         const tempId = uuidv4()
         if (isOffline) {
-          await offlineMutation('create', tempId, { ...noteData, userId: user.id })
+          await offlineMutation('create', tempId, { ...noteData, userId: user.id }, null)
           setSelectedNote({
             id: tempId,
             title: noteData.title,
@@ -601,13 +637,14 @@ export function useNoteAppController() {
           payload: {},
           clientUpdatedAt: new Date().toISOString(),
         })
-        // Mark as deleted for optimistic UI (don't remove from cache yet)
+        // Удаляем из кеша, чтобы карточка не дублировалась офлайн
         await offlineCache.saveNote({
           id: noteToDelete.id,
           status: 'pending',
           deleted: true,
           updatedAt: new Date().toISOString(),
         })
+        await offlineCache.deleteNote(noteToDelete.id)
         setOfflineOverlay(await offlineCache.loadNotes())
         const queue = await offlineQueue.getQueue()
         setPendingCount(queue.filter((q) => q.status === 'pending').length)
@@ -811,3 +848,5 @@ export function useNoteAppController() {
 }
 
 export type NoteAppController = ReturnType<typeof useNoteAppController>
+
+

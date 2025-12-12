@@ -235,6 +235,7 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
 
       async upsertQueue(items) {
         await withStore(QUEUE_STORE, 'readwrite', (store) => {
+          store.clear()
           items.forEach((i) => store.put(i))
           return
         })
