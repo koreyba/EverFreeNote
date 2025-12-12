@@ -47,8 +47,19 @@ export class OfflineQueueService {
     return this.storage.getQueue()
   }
 
+  /** @deprecated Use getPendingBatch + removeItems instead */
   async popBatch(batchSize = 10): Promise<MutationQueueItem[]> {
     return this.storage.popQueueBatch(batchSize)
+  }
+
+  /** Get pending items without removing them */
+  async getPendingBatch(batchSize = 10): Promise<MutationQueueItem[]> {
+    return this.storage.getPendingBatch(batchSize)
+  }
+
+  /** Remove items from queue after successful sync */
+  async removeItems(ids: string[]): Promise<void> {
+    await this.storage.removeQueueItems(ids)
   }
 
   async markStatus(id: string, status: MutationStatus, lastError?: string): Promise<void> {

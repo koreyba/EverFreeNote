@@ -11,6 +11,7 @@ export interface CachedNote extends Partial<Note> {
   content?: string | null
   updatedAt: string
   pendingOps?: MutationOperation[]
+  deleted?: boolean // For optimistic delete UI
 }
 
 export interface MutationQueueItem {
@@ -43,7 +44,12 @@ export interface OfflineStorageAdapter {
   getQueue(): Promise<MutationQueueItem[]>
   upsertQueueItem(item: MutationQueueItem): Promise<void>
   upsertQueue(items: MutationQueueItem[]): Promise<void>
+  /** @deprecated Use getPendingBatch + removeQueueItems instead */
   popQueueBatch(batchSize: number): Promise<MutationQueueItem[]>
+  /** Get pending items without removing them from queue */
+  getPendingBatch(batchSize: number): Promise<MutationQueueItem[]>
+  /** Remove items from queue after successful sync */
+  removeQueueItems(ids: string[]): Promise<void>
   markSynced(noteId: string, updatedAt: string): Promise<void>
   markQueueItemStatus(id: string, status: MutationStatus, lastError?: string): Promise<void>
   enforceLimit(): Promise<void>
