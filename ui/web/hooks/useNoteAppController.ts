@@ -74,10 +74,7 @@ export function useNoteAppController() {
 
   const ftsData = ftsSearchResult.data
   // Server now handles tag filtering via filter_tag RPC parameter
-  const ftsResultsRaw: SearchResult[] = useMemo(
-    () => ftsData?.results ?? [],
-    [ftsData?.results]
-  )
+  const ftsResultsRaw: SearchResult[] = ftsData?.results ?? []
 
   // Accumulate FTS pages for "load more"
   useEffect(() => {
