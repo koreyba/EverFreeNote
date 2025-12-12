@@ -70,6 +70,7 @@ describe('Mobile Layout Adaptation', () => {
       totalNotes: 0,
       notesDisplayed: 0,
       notesTotal: 0,
+      isOffline: false,
       pendingCount: 0,
       failedCount: 0,
       
