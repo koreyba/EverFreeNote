@@ -82,13 +82,18 @@ export class OfflineSyncManager {
         for (const item of batch) {
           try {
             await this.performSync(item)
-            // Mark for removal after successful sync
+            // Sync successful - mark for removal
             successIds.push(item.id)
+            hadProgress = true
+            // Call onSuccess for UI updates (errors here don't affect queue)
             const onSuccess = options?.onSuccess ?? this.defaultOnSuccess
             if (onSuccess) {
-              await onSuccess(item)
+              try {
+                await onSuccess(item)
+              } catch (e) {
+                console.warn('onSuccess callback error (sync was successful):', e)
+              }
             }
-            hadProgress = true
           } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown sync error'
             // Mark as failed but keep in queue for retry

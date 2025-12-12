@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { User } from '@supabase/supabase-js'
@@ -74,9 +74,19 @@ export function useNoteAppController() {
 
   const offlineQueue = useMemo(() => new OfflineQueueService(webOfflineStorageAdapter), [])
   const offlineCache = useMemo(() => new OfflineCacheService(webOfflineStorageAdapter), [])
-  const syncManager = useMemo(() => {
-    const performSync = async (item: MutationQueueItemInput) => {
-      if (!user) return
+
+  // Refs for sync callbacks - updated on every render to have current closure values
+  const syncCallbacksRef = useRef<{
+    performSync: (item: MutationQueueItemInput) => Promise<void>
+    onSuccess: (item: MutationQueueItemInput) => Promise<void>
+  } | null>(null)
+
+  // Update callbacks ref with current values (runs on every render)
+  syncCallbacksRef.current = {
+    performSync: async (item: MutationQueueItemInput) => {
+      if (!user) {
+        throw new Error('User not authenticated - sync skipped')
+      }
       if (item.operation === 'create') {
         const payload = item.payload as Partial<NoteInsert> & { userId?: string }
         await createNoteMutation.mutateAsync({
@@ -96,17 +106,28 @@ export function useNoteAppController() {
       } else if (item.operation === 'delete') {
         await deleteNoteMutation.mutateAsync({ id: item.noteId, silent: true })
       }
-    }
-    const onSuccess = async (item: MutationQueueItemInput) => {
+    },
+    onSuccess: async (item: MutationQueueItemInput) => {
       await offlineCache.deleteNote(item.noteId)
       const cached = await offlineCache.loadNotes()
       setOfflineOverlay(cached)
       const queue = await offlineQueue.getQueue()
       setPendingCount(queue.filter((q) => q.status === 'pending').length)
       setFailedCount(queue.filter((q) => q.status === 'failed').length)
-    }
-    return new OfflineSyncManager(webOfflineStorageAdapter, performSync, webNetworkStatus, onSuccess)
-  }, [createNoteMutation, updateNoteMutation, deleteNoteMutation, user, offlineCache, offlineQueue])
+    },
+  }
+
+  // Create syncManager only ONCE using useRef (not useMemo with unstable deps)
+  const syncManagerRef = useRef<OfflineSyncManager | null>(null)
+  if (!syncManagerRef.current) {
+    syncManagerRef.current = new OfflineSyncManager(
+      webOfflineStorageAdapter,
+      // Wrapper delegates to ref - always uses current callback
+      (item) => syncCallbacksRef.current!.performSync(item),
+      webNetworkStatus,
+      (item) => syncCallbacksRef.current!.onSuccess(item)
+    )
+  }
 
   // Combine provider loading with local auth loading
   const combinedLoading = loading || providerLoading || authLoading
@@ -253,33 +274,53 @@ export function useNoteAppController() {
     void loadQueueState()
   }, [offlineQueue, offlineCache])
 
-  // Dispose syncManager on unmount or when recreated
+  // Dispose syncManager only on unmount (it's now a singleton)
   useEffect(() => {
     return () => {
-      syncManager.dispose()
+      syncManagerRef.current?.dispose()
     }
-  }, [syncManager])
+  }, [])
 
   // Handle online/offline state changes (sync is triggered by syncManager internally)
   useEffect(() => {
-    const handleOnline = async () => {
-      setIsOffline(false)
-      // SyncManager already handles drainQueue via networkStatus subscription
-      // Just update UI state after a short delay to let sync complete
-      setTimeout(async () => {
-        const queue = await offlineQueue.getQueue()
-        const cached = await offlineCache.loadNotes()
-        setOfflineOverlay(cached)
-        setPendingCount(queue.filter((q) => q.status === 'pending').length)
-        setFailedCount(queue.filter((q) => q.status === 'failed').length)
-      }, 500)
+    let updateInterval: ReturnType<typeof setInterval> | null = null
+
+    const updateQueueState = async () => {
+      const queue = await offlineQueue.getQueue()
+      const cached = await offlineCache.loadNotes()
+      setOfflineOverlay(cached)
+      const pending = queue.filter((q) => q.status === 'pending').length
+      const failed = queue.filter((q) => q.status === 'failed').length
+      setPendingCount(pending)
+      setFailedCount(failed)
+      // Stop polling when queue is empty
+      if (pending === 0 && updateInterval) {
+        clearInterval(updateInterval)
+        updateInterval = null
+      }
     }
-    const handleOffline = () => setIsOffline(true)
+
+    const handleOnline = () => {
+      setIsOffline(false)
+      // Poll for updates while sync is in progress
+      updateInterval = setInterval(updateQueueState, 1000)
+      // Also update immediately and after a delay
+      void updateQueueState()
+      setTimeout(() => void updateQueueState(), 2000)
+    }
+    const handleOffline = () => {
+      setIsOffline(true)
+      if (updateInterval) {
+        clearInterval(updateInterval)
+        updateInterval = null
+      }
+    }
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
+      if (updateInterval) clearInterval(updateInterval)
     }
   }, [offlineQueue, offlineCache])
 
