@@ -80,12 +80,14 @@ export function NoteList({
 
   // FTS Results
   if (showFTSResults && ftsData) {
+    const displayTotal = typeof ftsData.total === "number" ? ftsData.total : ftsData.results.length
+
     return (
       <div className="p-4">
         {/* FTS Search Results Header */}
         <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
           <div>
-            Found: <span className="font-semibold">{ftsData.total}</span> {ftsData.total === 1 ? "note" : "notes"}
+            Found: <span className="font-semibold">{displayTotal}</span> {displayTotal === 1 ? "note" : "notes"}
           </div>
           {typeof ftsData.executionTime === "number" && (
             <div className="flex items-center gap-2">

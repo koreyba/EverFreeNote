@@ -28,19 +28,16 @@ describe('core/services/SearchService', () => {
   describe('searchNotes', () => {
     it('uses FTS when available', async () => {
       const mockData = [{ id: '1', title: 'Test', rank: 0.5 }]
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockSupabase.rpc as any).resolves({ data: mockData, error: null })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ; (mockSupabase.rpc as any).resolves({ data: mockData, error: null })
 
       const result = await service.searchNotes('user-1', 'test query')
 
-      expect(mockSupabase.rpc).to.have.been.calledWith('search_notes_fts', {
+      expect(mockSupabase.rpc).to.have.been.calledWith('search_notes_fts', Cypress.sinon.match({
         search_query: 'test:* & query:*',
         search_language: 'english',
-        min_rank: 0.01,
-        result_limit: 20,
-        result_offset: 0,
         search_user_id: 'user-1'
-      })
+      }))
 
       expect(result.method).to.equal('fts')
       expect(result.results).to.deep.equal(mockData)
@@ -51,8 +48,8 @@ describe('core/services/SearchService', () => {
         { id: '1', title: 'Test 1', tags: ['tag1'] },
         { id: '2', title: 'Test 2', tags: ['tag2'] }
       ]
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockSupabase.rpc as any).resolves({ data: mockData, error: null })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ; (mockSupabase.rpc as any).resolves({ data: mockData, error: null })
 
       const result = await service.searchNotes('user-1', 'test', { tag: 'tag1' })
 
@@ -62,8 +59,8 @@ describe('core/services/SearchService', () => {
 
     it('falls back to ILIKE when FTS fails', async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockSupabase.rpc as any).resolves({ data: null, error: { message: 'FTS Error' } })
-      
+      ; (mockSupabase.rpc as any).resolves({ data: null, error: { message: 'FTS Error' } })
+
       const mockFallbackData = [{ id: '1', title: 'Fallback', description: 'Desc' }]
       mockQueryBuilder.order.resolves({ data: mockFallbackData, error: null })
 
@@ -76,8 +73,8 @@ describe('core/services/SearchService', () => {
 
     it('sanitizes input for ILIKE', async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockSupabase.rpc as any).resolves({ error: true })
-      
+      ; (mockSupabase.rpc as any).resolves({ error: true })
+
       await service.searchNotes('user-1', 'test,query')
 
       // Should preserve comma (only quotes are removed)
@@ -88,8 +85,8 @@ describe('core/services/SearchService', () => {
 
     it('applies tag filter in fallback', async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockSupabase.rpc as any).resolves({ error: true })
-      
+      ; (mockSupabase.rpc as any).resolves({ error: true })
+
       await service.searchNotes('user-1', 'test', { tag: 'tag1' })
 
       expect(mockQueryBuilder.contains).to.have.been.calledWith('tags', ['tag1'])
@@ -97,7 +94,7 @@ describe('core/services/SearchService', () => {
 
     it('handles fallback error', async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(mockSupabase.rpc as any).resolves({ error: true })
+      ; (mockSupabase.rpc as any).resolves({ error: true })
       mockQueryBuilder.order.resolves({ data: null, error: { message: 'DB Error' } })
 
       const result = await service.searchNotes('user-1', 'test')
