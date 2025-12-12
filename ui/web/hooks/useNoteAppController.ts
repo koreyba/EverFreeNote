@@ -644,7 +644,6 @@ export function useNoteAppController() {
           deleted: true,
           updatedAt: new Date().toISOString(),
         })
-        await offlineCache.deleteNote(noteToDelete.id)
         setOfflineOverlay(await offlineCache.loadNotes())
         const queue = await offlineQueue.getQueue()
         setPendingCount(queue.filter((q) => q.status === 'pending').length)
