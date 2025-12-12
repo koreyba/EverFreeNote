@@ -1,6 +1,6 @@
 import React from 'react'
-import { NoteList } from '@/components/features/notes/NoteList'
-import { SearchResult, NoteViewModel } from '@/types/domain'
+import { NoteList } from '@ui/web/components/features/notes/NoteList'
+import { SearchResult, NoteViewModel } from '@core/types/domain'
 
 const mockNotes: NoteViewModel[] = [
   {

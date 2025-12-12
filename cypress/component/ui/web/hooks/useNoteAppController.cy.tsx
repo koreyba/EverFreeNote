@@ -1,8 +1,8 @@
 import React from 'react'
 import { useNoteAppController } from '../../../../../ui/web/hooks/useNoteAppController'
-import { QueryProvider } from '@/components/providers/QueryProvider'
+import { QueryProvider } from '@ui/web/components/providers/QueryProvider'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
-import { NoteViewModel } from '@/types/domain'
+import { NoteViewModel } from '@core/types/domain'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

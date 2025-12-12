@@ -1,5 +1,5 @@
 import React from 'react'
-import { EmptyState } from '@/components/features/notes/EmptyState'
+import { EmptyState } from '@ui/web/components/features/notes/EmptyState'
 
 describe('EmptyState Component', () => {
   it('renders correctly', () => {
