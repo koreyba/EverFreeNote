@@ -11,7 +11,7 @@ import { ExportService } from "@/lib/enex/export-service"
 import { ImageDownloader } from "@/lib/enex/image-downloader"
 import { EnexBuilder } from "@/lib/enex/enex-builder"
 import { useSupabase } from "@/lib/providers/SupabaseProvider"
-import { NoteService } from "@/lib/services/notes"
+import { NoteService } from "@core/services/notes"
 import type { ExportProgress } from "@/lib/enex/export-types"
 
 type ExportButtonProps = {
@@ -128,7 +128,7 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
     <>
       <Button onClick={handleOpen} disabled={exporting} variant="outline" className="w-full">
         <Download className="w-4 h-4 mr-2" />
-        {exporting ? "Exporting..." : "Export to Evernote"}
+        {exporting ? "Exporting..." : "Export .enex file"}
       </Button>
 
       <ExportSelectionDialog open={dialogOpen} onOpenChange={setDialogOpen} onExport={handleExport} />

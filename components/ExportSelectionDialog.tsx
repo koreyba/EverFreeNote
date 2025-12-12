@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useSupabase } from "@/lib/providers/SupabaseProvider"
-import { NoteService } from "@/lib/services/notes"
+import { NoteService } from "@core/services/notes"
 import type { Note } from "@/types/domain"
 
 const PAGE_SIZE = 50

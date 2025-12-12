@@ -1,7 +1,7 @@
 import React from 'react'
 import { ImportButton } from '@/components/ImportButton'
-import { browser } from '@/lib/adapters/browser'
-import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
+import { browser } from '@ui/web/adapters/browser'
+import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { EnexParser } from '@/lib/enex/parser'
 
 // Helper type for Sinon stubs
@@ -126,7 +126,7 @@ describe('ImportButton', () => {
         <ImportButton />
       </SupabaseTestProvider>
     )
-    cy.contains('Import from Evernote').should('be.visible')
+    cy.contains('Import .enex file').should('be.visible')
   })
 
   it('opens the dialog when clicked', () => {
@@ -135,7 +135,7 @@ describe('ImportButton', () => {
         <ImportButton />
       </SupabaseTestProvider>
     )
-    cy.contains('Import from Evernote').click()
+    cy.contains('Import .enex file').click()
     cy.contains('Drag and drop .enex files').should('be.visible')
   })
 
@@ -148,7 +148,7 @@ describe('ImportButton', () => {
     )
 
     // Open dialog
-    cy.contains('Import from Evernote').click()
+    cy.contains('Import .enex file').click()
 
     // Select file
     const file = new File([validEnexContent], 'notes.enex', { type: 'application/xml' })
@@ -202,7 +202,7 @@ describe('ImportButton', () => {
       </SupabaseTestProvider>
     )
 
-    cy.contains('Import from Evernote').click()
+    cy.contains('Import .enex file').click()
 
     const file = new File([validEnexContent], 'notes.enex', { type: 'application/xml' })
     cy.get('input[type="file"]').selectFile({
@@ -248,7 +248,7 @@ describe('ImportButton', () => {
         <ImportButton maxFileSize={10} />
       </SupabaseTestProvider>
     )
-    cy.contains('Import from Evernote').click()
+    cy.contains('Import .enex file').click()
 
     // Create a file larger than 10 bytes
     // const file = new File(['some content larger than 10 bytes'], 'test.enex', { type: 'application/xml' })
@@ -275,7 +275,7 @@ describe('ImportButton', () => {
     )
 
     // Open dialog
-    cy.contains('Import from Evernote').click()
+    cy.contains('Import .enex file').click()
 
     // Select file
     const file = new File([validEnexContent], 'notes.enex', { type: 'application/xml' })
@@ -306,7 +306,7 @@ describe('ImportButton', () => {
         <ImportButton />
       </SupabaseTestProvider>
     )
-    cy.contains('Import from Evernote').click()
+    cy.contains('Import .enex file').click()
 
     const file = new File([validEnexContent], 'notes.enex', { type: 'application/xml' })
     cy.get('input[type="file"]').selectFile({

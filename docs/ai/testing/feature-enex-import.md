@@ -159,7 +159,7 @@ description: Define testing approach, test cases, and quality assurance
 **What user flows need validation?**
 
 - [ ] **E2E flow 1:** Import single .enex file
-  - User clicks "Import from Evernote"
+  - User clicks "Import .enex file"
   - Selects single .enex file
   - Sees unsupported features dialog
   - Confirms import

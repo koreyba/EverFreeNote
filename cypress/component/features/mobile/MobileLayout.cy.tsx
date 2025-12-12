@@ -1,7 +1,7 @@
 import React from 'react'
 import { NotesShell } from '@/components/features/notes/NotesShell'
 import type { NoteAppController } from '@/ui/web/hooks/useNoteAppController'
-import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
+import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 describe('Mobile Layout Adaptation', () => {
@@ -30,7 +30,6 @@ describe('Mobile Layout Adaptation', () => {
       selectedNoteIds: new Set(),
       selectedCount: 0,
       bulkDeleting: false,
-      selectAllActive: false,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ftsSearchResult: { isLoading: false, data: [] } as any,
       showFTSResults: false,
@@ -38,6 +37,7 @@ describe('Mobile Layout Adaptation', () => {
       ftsResults: [],
       ftsHasMore: false,
       ftsLoadingMore: false,
+      ftsObserverTarget: { current: null },
       observerTarget: { current: null },
       deleteAccountLoading: false,
       
@@ -68,6 +68,8 @@ describe('Mobile Layout Adaptation', () => {
       toggleNoteSelection: cy.stub(),
       deleteSelectedNotes: cy.stub(),
       totalNotes: 0,
+      notesDisplayed: 0,
+      notesTotal: 0,
       
       ...overrides
     })

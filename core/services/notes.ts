@@ -87,4 +87,18 @@ export class NoteService {
     if (error) throw error
     return id
   }
+
+  async getNotesByIds(noteIds: string[], userId: string) {
+    if (!noteIds.length) return []
+
+    const { data, error } = await this.supabase
+      .from('notes')
+      .select('id, title, description, tags, created_at, updated_at')
+      .eq('user_id', userId)
+      .in('id', noteIds)
+      .order('updated_at', { ascending: false })
+
+    if (error) throw error
+    return (data as Note[]) || []
+  }
 }

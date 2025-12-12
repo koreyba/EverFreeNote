@@ -34,7 +34,8 @@ type NotesShellProps = {
 export function NotesShell({ controller }: NotesShellProps) {
   const {
     user,
-    totalNotes,
+    notesDisplayed,
+    notesTotal,
     selectionMode,
     selectedCount,
     bulkDeleting,
@@ -64,7 +65,8 @@ export function NotesShell({ controller }: NotesShellProps) {
       <Sidebar
         user={user!}
         filterByTag={filterByTag}
-        totalNotes={totalNotes}
+        notesDisplayed={notesDisplayed}
+        notesTotal={notesTotal}
         selectionMode={selectionMode}
         selectedCount={selectedCount}
         bulkDeleting={bulkDeleting}
@@ -117,6 +119,7 @@ function ListPane({ controller }: { controller: NoteAppController }) {
     ftsHasMore,
     ftsLoadingMore,
     observerTarget,
+    ftsObserverTarget,
     handleSelectNote,
     selectionMode,
     selectedNoteIds,
@@ -142,16 +145,27 @@ function ListPane({ controller }: { controller: NoteAppController }) {
         ftsQuery={searchQuery}
         ftsLoading={ftsSearchResult.isLoading}
         showFTSResults={showFTSResults}
-        ftsData={ftsData}
+        ftsData={
+          ftsData
+            ? {
+              total: ftsData.total,
+              executionTime: ftsData.executionTime,
+              results: ftsData.results,
+            }
+            : undefined
+        }
         ftsHasMore={ftsHasMore}
         ftsLoadingMore={ftsLoadingMore}
         onLoadMoreFts={controller.loadMoreFts}
         onSearchResultClick={handleSearchResultClick}
       />
 
-      {/* Infinite Scroll Sentinel */}
+      {/* Infinite Scroll Sentinel - unified for regular and FTS results */}
       {notesQuery.hasNextPage && !showFTSResults && (
         <div ref={observerTarget} className="h-1" />
+      )}
+      {ftsHasMore && showFTSResults && (
+        <div ref={ftsObserverTarget} className="h-1" />
       )}
     </>
   )

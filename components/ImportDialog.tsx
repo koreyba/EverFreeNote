@@ -77,7 +77,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Import from Evernote</DialogTitle>
+          <DialogTitle>Import ENEX file</DialogTitle>
           <DialogDescription>
             Drag and drop .enex files or click to browse
           </DialogDescription>
