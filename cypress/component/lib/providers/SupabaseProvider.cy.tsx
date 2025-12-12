@@ -1,5 +1,5 @@
 import React from 'react'
-import { SupabaseProvider, useSupabase } from '@/lib/providers/SupabaseProvider'
+import { SupabaseProvider, useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { webSupabaseClientFactory } from '@/ui/web/adapters/supabaseClient'
 import type { SupabaseClient } from '@supabase/supabase-js'
 

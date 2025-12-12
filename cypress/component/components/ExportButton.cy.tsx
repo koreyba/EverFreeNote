@@ -1,6 +1,6 @@
 import React from 'react'
 import { ExportButton } from '@/components/ExportButton'
-import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
+import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { ExportService } from '@/lib/enex/export-service'
 import { NoteService } from '@core/services/notes'
 

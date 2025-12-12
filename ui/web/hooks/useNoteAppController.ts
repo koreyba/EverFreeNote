@@ -107,8 +107,10 @@ export function useNoteAppController() {
     })
   }, [ftsSearchResult.data, ftsOffset, filteredFtsResults, ftsSearchQuery, filterByTag])
 
-  const ftsTotalKnown = typeof ftsData?.total === 'number' && ftsData.total >= 0 ? ftsData.total : undefined
-  const lastFtsPageSize = ftsData?.results?.length ?? 0
+  const ftsTotalKnownRaw = typeof ftsData?.total === 'number' && ftsData.total >= 0 ? ftsData.total : undefined
+  // When tag filter is applied client-side, server total is not tag-specific; treat as unknown
+  const ftsTotalKnown = filterByTag ? undefined : ftsTotalKnownRaw
+  const lastFtsPageSize = filteredFtsResults.length
   const ftsHasMore = !!ftsData && computeFtsHasMore(ftsTotalKnown, ftsAccumulatedResults.length, lastFtsPageSize, ftsLimit)
   const ftsTotal = computeFtsTotal(ftsTotalKnown, ftsAccumulatedResults.length, ftsHasMore)
   const ftsLoadingMore = ftsSearchResult.isFetching && ftsOffset > 0

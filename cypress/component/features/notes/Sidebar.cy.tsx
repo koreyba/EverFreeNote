@@ -1,7 +1,7 @@
 import React from 'react'
 import { Sidebar } from '@/components/features/notes/Sidebar'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
-import { SupabaseTestProvider } from '@/lib/providers/SupabaseProvider'
+import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 
 describe('Sidebar Component', () => {
   const mockUser: User = {
