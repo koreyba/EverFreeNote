@@ -32,9 +32,7 @@ export default defineConfig({
         'coverage/**/*',
       ],
       include: [
-        'components/**/*.{js,jsx,ts,tsx}',
-        'lib/**/*.{js,jsx,ts,tsx}',
-        'hooks/**/*.{js,jsx,ts,tsx}',
+        'core/**/*.{js,jsx,ts,tsx}',
         'ui/**/*.{js,jsx,ts,tsx}',
       ],
     },
