@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import InteractiveTag from "@/components/InteractiveTag"
 import { Checkbox } from "@/components/ui/checkbox"
 import DOMPurify from "isomorphic-dompurify"
-import { SanitizationService } from "@core/services/sanitizer"
+import { SanitizationService } from "../../../core/services/sanitizer"
 import type { Note, SearchResult } from "@/types/domain"
 
 type NoteRecord = Note & {
@@ -46,9 +46,8 @@ export function NoteCard({
     return (
       <div
         onClick={onClick}
-        className={`p-3 rounded-lg cursor-pointer transition-colors border ${
-          isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
-        }`}
+        className={`p-3 rounded-lg cursor-pointer transition-colors border ${isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
+          }`}
       >
         <div className="flex items-start gap-3">
           {selectionMode && (
@@ -70,7 +69,7 @@ export function NoteCard({
                   <InteractiveTag
                     key={index}
                     tag={tag}
-                    onClick={onTagClick || (() => {})}
+                    onClick={onTagClick || (() => { })}
                     showIcon={false}
                     className="text-xs px-2 py-0.5"
                   />
@@ -127,7 +126,7 @@ export function NoteCard({
                     <InteractiveTag
                       key={idx}
                       tag={tag}
-                      onClick={onTagClick || (() => {})}
+                      onClick={onTagClick || (() => { })}
                       showIcon={false}
                       className="text-xs px-2 py-0.5"
                     />

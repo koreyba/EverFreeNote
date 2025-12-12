@@ -3,7 +3,7 @@ import { NoteList } from '@/components/features/notes/NoteList'
 import type { SearchResult } from '@/types/domain'
 
 describe('NoteList FTS header', () => {
-  const baseProps = {
+  const getBaseProps = () => ({
     notes: [],
     isLoading: false,
     onSelectNote: cy.stub(),
@@ -18,7 +18,7 @@ describe('NoteList FTS header', () => {
     ftsLoadingMore: false,
     onLoadMoreFts: cy.stub(),
     onSearchResultClick: cy.stub(),
-  }
+  })
 
   const mockResult = (overrides: Partial<SearchResult> = {}): SearchResult => ({
     id: '1',
@@ -42,7 +42,7 @@ describe('NoteList FTS header', () => {
 
     cy.mount(
       <NoteList
-        {...baseProps}
+        {...getBaseProps()}
         showFTSResults
         ftsData={ftsData}
       />
@@ -60,7 +60,7 @@ describe('NoteList FTS header', () => {
 
     cy.mount(
       <NoteList
-        {...baseProps}
+        {...getBaseProps()}
         showFTSResults
         ftsData={ftsData}
       />
