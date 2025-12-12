@@ -51,7 +51,7 @@ export function useNoteAppController() {
   const { supabase, loading: providerLoading } = useSupabase()
   const queryClient = useQueryClient()
   const authService = new AuthService(supabase)
-  
+
   // Combine provider loading with local auth loading
   const combinedLoading = loading || providerLoading || authLoading
 
@@ -73,10 +73,8 @@ export function useNoteAppController() {
   })
 
   const ftsData = ftsSearchResult.data
+  // Server now handles tag filtering via filter_tag RPC parameter
   const ftsResultsRaw: SearchResult[] = ftsData?.results ?? []
-  const filteredFtsResults: SearchResult[] = filterByTag
-    ? ftsResultsRaw.filter(note => note.tags?.includes(filterByTag))
-    : ftsResultsRaw
 
   // Accumulate FTS pages for "load more"
   useEffect(() => {
@@ -89,29 +87,30 @@ export function useNoteAppController() {
     if (!ftsSearchResult.data) return
     setFtsAccumulatedResults((prev) => {
       if (ftsOffset === 0) {
-        if (prev.length === filteredFtsResults.length) {
+        if (prev.length === ftsResultsRaw.length) {
           const prevIds = new Set(prev.map((n) => n.id))
-          const same = filteredFtsResults.every((n) => prevIds.has(n.id))
+          const same = ftsResultsRaw.every((n) => prevIds.has(n.id))
           if (same) return prev
         }
-        return filteredFtsResults
+        return ftsResultsRaw
       }
       const next = [...prev]
       const seen = new Set(prev.map((item) => item.id))
-      filteredFtsResults.forEach((item) => {
+      ftsResultsRaw.forEach((item) => {
         if (!seen.has(item.id)) {
           next.push(item)
         }
       })
       return next
     })
-  }, [ftsSearchResult.data, ftsOffset, filteredFtsResults, ftsSearchQuery, filterByTag])
+  }, [ftsSearchResult.data, ftsOffset, ftsResultsRaw, ftsSearchQuery, filterByTag])
 
-  const ftsTotalKnownRaw = typeof ftsData?.total === 'number' && ftsData.total >= 0 ? ftsData.total : undefined
-  // When tag filter is applied client-side, server total is not tag-specific; treat as unknown
-  const ftsTotalKnown = filterByTag ? undefined : ftsTotalKnownRaw
-  const lastFtsPageSize = filteredFtsResults.length
-  const ftsHasMore = !!ftsData && computeFtsHasMore(ftsTotalKnown, ftsAccumulatedResults.length, lastFtsPageSize, ftsLimit)
+  // Server now returns tag-filtered total, so we can use it directly
+  const ftsTotalKnown = typeof ftsData?.total === 'number' && ftsData.total >= 0 ? ftsData.total : undefined
+  const lastFtsPageSize = ftsResultsRaw.length
+  // Simple hasMore: use server-provided total (now tag-aware) or fallback to page size check
+  const ftsHasMore = !!ftsData && lastFtsPageSize > 0 &&
+    computeFtsHasMore(ftsTotalKnown, ftsAccumulatedResults.length, lastFtsPageSize, ftsLimit)
   const ftsTotal = computeFtsTotal(ftsTotalKnown, ftsAccumulatedResults.length, ftsHasMore)
   const ftsLoadingMore = ftsSearchResult.isFetching && ftsOffset > 0
 
@@ -390,15 +389,15 @@ export function useNoteAppController() {
     setDeleteDialogOpen(true)
   }
 
-    const confirmDeleteNote = async () => {
-      if (!noteToDelete) return
+  const confirmDeleteNote = async () => {
+    if (!noteToDelete) return
 
-      try {
-        await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
+    try {
+      await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
 
-        if (selectedNote?.id === noteToDelete.id) {
-          setSelectedNote(null)
-          setIsEditing(false)
+      if (selectedNote?.id === noteToDelete.id) {
+        setSelectedNote(null)
+        setIsEditing(false)
       }
     } catch (error) {
       console.error('Error deleting note:', error)
@@ -433,68 +432,68 @@ export function useNoteAppController() {
     setIsEditing(false)
   }
 
-    const handleSearchResultClick = (note: SearchResult) => {
-      // Don't reset search - keep search results visible when viewing a note
-      setSelectedNote(note)
-      setIsEditing(false)
-    }
+  const handleSearchResultClick = (note: SearchResult) => {
+    // Don't reset search - keep search results visible when viewing a note
+    setSelectedNote(note)
+    setIsEditing(false)
+  }
 
-    const enterSelectionMode = () => {
-      setSelectionMode(true)
-      setSelectedNoteIds(new Set())
-      setIsEditing(false)
-      setSelectedNote(null)
-    }
+  const enterSelectionMode = () => {
+    setSelectionMode(true)
+    setSelectedNoteIds(new Set())
+    setIsEditing(false)
+    setSelectedNote(null)
+  }
 
-    const exitSelectionMode = () => {
-      setSelectionMode(false)
-      setSelectedNoteIds(new Set())
-    }
+  const exitSelectionMode = () => {
+    setSelectionMode(false)
+    setSelectedNoteIds(new Set())
+  }
 
-    const toggleNoteSelection = (noteId: string) => {
-      setSelectionMode(true)
-      setSelectedNoteIds(prev => toggleSelection(prev, noteId))
-    }
+  const toggleNoteSelection = (noteId: string) => {
+    setSelectionMode(true)
+    setSelectedNoteIds(prev => toggleSelection(prev, noteId))
+  }
 
-    const selectAllVisible = () => {
-      const source = showFTSResults && aggregatedFtsData
-        ? aggregatedFtsData.results
-        : notes
-      setSelectionMode(true)
-      setSelectedNoteIds(selectAllSet(source.map((n) => n.id)))
-    }
+  const selectAllVisible = () => {
+    const source = showFTSResults && aggregatedFtsData
+      ? aggregatedFtsData.results
+      : notes
+    setSelectionMode(true)
+    setSelectedNoteIds(selectAllSet(source.map((n) => n.id)))
+  }
 
-    const clearSelection = () => {
-      setSelectedNoteIds(clearSelectionSet())
-    }
+  const clearSelection = () => {
+    setSelectedNoteIds(clearSelectionSet())
+  }
 
-    const loadMoreFts = () => {
-      if (ftsLoadingMore || !ftsHasMore) return
-      setFtsOffset((prev) => prev + ftsLimit)
-    }
+  const loadMoreFts = () => {
+    if (ftsLoadingMore || !ftsHasMore) return
+    setFtsOffset((prev) => prev + ftsLimit)
+  }
 
-    const deleteSelectedNotes = async () => {
-      if (!selectedNoteIds.size) return
-      setBulkDeleting(true)
-      try {
-        const ids = Array.from(selectedNoteIds)
+  const deleteSelectedNotes = async () => {
+    if (!selectedNoteIds.size) return
+    setBulkDeleting(true)
+    try {
+      const ids = Array.from(selectedNoteIds)
       const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync({ id, silent: true })))
       const failed = results.filter(r => r.status === 'rejected').length
       if (failed > 0) {
         toast.error(`Failed to delete ${failed} notes`)
       } else {
         toast.success(`Deleted ${ids.length} notes`)
-        }
-        exitSelectionMode()
-        await queryClient.invalidateQueries({ queryKey: ['notes'] })
-        setSelectedNote(null)
-      } catch (error) {
-        console.error('Bulk delete error:', error)
-        toast.error('Failed to delete selected notes')
-      } finally {
-        setBulkDeleting(false)
       }
+      exitSelectionMode()
+      await queryClient.invalidateQueries({ queryKey: ['notes'] })
+      setSelectedNote(null)
+    } catch (error) {
+      console.error('Bulk delete error:', error)
+      toast.error('Failed to delete selected notes')
+    } finally {
+      setBulkDeleting(false)
     }
+  }
 
   return {
     // State
@@ -507,19 +506,19 @@ export function useNoteAppController() {
     setEditForm,
     saving,
     filterByTag,
-      deleteDialogOpen,
-      setDeleteDialogOpen,
-      noteToDelete,
-      selectionMode,
-      selectedNoteIds,
-      selectedCount,
-      bulkDeleting,
-      deleteAccountLoading,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    noteToDelete,
+    selectionMode,
+    selectedNoteIds,
+    selectedCount,
+    bulkDeleting,
+    deleteAccountLoading,
 
-      // Data
-      notes,
-      notesQuery,
-      ftsSearchResult,
+    // Data
+    notes,
+    notesQuery,
+    ftsSearchResult,
     ftsData: aggregatedFtsData,
     ftsResults: ftsAccumulatedResults,
     ftsHasMore,
@@ -527,9 +526,9 @@ export function useNoteAppController() {
     showFTSResults,
     observerTarget,
     ftsObserverTarget,
-      totalNotes: notesTotal,
-      notesDisplayed,
-      notesTotal,
+    totalNotes: notesTotal,
+    notesDisplayed,
+    notesTotal,
 
     // Handlers
     handleSearch,
@@ -537,28 +536,28 @@ export function useNoteAppController() {
     handleClearTagFilter,
     handleSignInWithGoogle,
     handleTestLogin,
-      handleSkipAuth,
-      handleSignOut,
-      handleDeleteAccount,
-      handleCreateNote,
-      handleEditNote,
-      handleSaveNote,
+    handleSkipAuth,
+    handleSignOut,
+    handleDeleteAccount,
+    handleCreateNote,
+    handleEditNote,
+    handleSaveNote,
     handleDeleteNote,
     confirmDeleteNote,
     handleRemoveTagFromNote,
     handleSelectNote,
-      handleSearchResultClick,
-      enterSelectionMode,
-      exitSelectionMode,
-      toggleNoteSelection,
-      selectAllVisible,
-      clearSelection,
-      loadMoreFts,
-      deleteSelectedNotes,
+    handleSearchResultClick,
+    enterSelectionMode,
+    exitSelectionMode,
+    toggleNoteSelection,
+    selectAllVisible,
+    clearSelection,
+    loadMoreFts,
+    deleteSelectedNotes,
 
-      // Helpers
-      invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
-    }
+    // Helpers
+    invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
   }
+}
 
 export type NoteAppController = ReturnType<typeof useNoteAppController>

@@ -11,7 +11,7 @@ import {
 } from '../utils/search'
 
 export class SearchService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: SupabaseClient) { }
 
   // Sanitize for PostgREST OR syntax
   private sanitizeOrValue(value: string) {
@@ -36,7 +36,7 @@ export class SearchService {
     // 1. Try Full Text Search (FTS)
     try {
       const tsQuery = buildTsQuery(query)
-      
+
       if (tsQuery) {
         const ftsLang = ftsLanguage(language as LanguageCode)
 
@@ -47,25 +47,23 @@ export class SearchService {
           result_limit: limit,
           result_offset: offset,
           search_user_id: userId,
+          filter_tag: tag ?? null,
         })
 
         if (!error && data) {
           type FtsRow = FtsSearchResult & { total_count?: number }
           const rows = data as FtsRow[]
-          const filtered = tag
-            ? rows.filter((note) => (note.tags ?? []).includes(tag))
-            : rows
 
           // If FTS found results, return them.
           // If FTS found nothing (0 results), fall through to ILIKE fallback to support substring search
-          if (filtered.length > 0) {
-            const totalFromDb = filtered[0]?.total_count ?? rows[0]?.total_count
+          if (rows.length > 0) {
+            const totalFromDb = rows[0]?.total_count
             const inferredTotal = typeof totalFromDb === 'number'
               ? totalFromDb
-              : filtered.length + offset
+              : rows.length + offset
 
             return {
-              results: filtered,
+              results: rows,
               total: inferredTotal,
               method: 'fts',
             }

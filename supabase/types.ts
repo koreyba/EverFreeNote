@@ -58,6 +58,7 @@ export type Database = {
           result_limit?: number
           result_offset?: number
           search_user_id: string
+          filter_tag?: string | null
         }
         Returns: FtsSearchResult[]
       }
