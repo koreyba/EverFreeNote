@@ -47,6 +47,10 @@ export class OfflineQueueService {
     return this.storage.getQueue()
   }
 
+  async upsertQueue(items: MutationQueueItem[]): Promise<void> {
+    await this.storage.upsertQueue(items)
+  }
+
   /** @deprecated Use getPendingBatch + removeItems instead */
   async popBatch(batchSize = 10): Promise<MutationQueueItem[]> {
     return this.storage.popQueueBatch(batchSize)
