@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { BookOpen, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,8 @@ interface SidebarProps {
   user: User
   notesDisplayed?: number
   notesTotal?: number
+  pendingCount?: number
+  failedCount?: number
   selectionMode: boolean
   selectedCount: number
   bulkDeleting: boolean
@@ -51,6 +53,8 @@ export function Sidebar({
   user,
   notesDisplayed,
   notesTotal,
+  pendingCount = 0,
+  failedCount = 0,
   selectionMode,
   selectedCount,
   bulkDeleting,
@@ -75,6 +79,21 @@ export function Sidebar({
 }: SidebarProps) {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+  const [isOffline, setIsOffline] = useState<boolean>(typeof window !== "undefined" ? !navigator.onLine : false)
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false)
+    const handleOffline = () => setIsOffline(true)
+
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [])
+
   const handleBulkConfirm = async () => {
     await onBulkDelete()
     setBulkDialogOpen(false)
@@ -101,6 +120,24 @@ export function Sidebar({
           </div>
           <ThemeToggle />
         </div>
+
+        {isOffline && (
+          <div className="mb-3 rounded-md border border-dashed bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            Offline mode: cached notes available, search недоступен до восстановления сети.
+          </div>
+        )}
+        {(pendingCount ?? 0) > 0 || (failedCount ?? 0) > 0 ? (
+          <div className="mb-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+            {(pendingCount ?? 0) > 0 && (
+              <span className="rounded bg-muted px-2 py-1">Pending: {pendingCount}</span>
+            )}
+            {(failedCount ?? 0) > 0 && (
+              <span className="rounded bg-destructive/10 text-destructive px-2 py-1">
+                Failed: {failedCount}
+              </span>
+            )}
+          </div>
+        ) : null}
 
         {/* Tag Filter Badge */}
         {filterByTag && (

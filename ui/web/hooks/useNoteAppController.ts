@@ -12,8 +12,10 @@ import { AuthService } from '@core/services/auth'
 import { computeFtsHasMore, computeFtsTotal } from '@core/services/ftsPagination'
 import { clearSelection as clearSelectionSet, selectAll as selectAllSet, toggleSelection } from '@core/services/selection'
 import { webStorageAdapter } from '@ui/web/adapters/storage'
+import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import { webOAuthRedirectUri } from '@ui/web/config'
 import { featureFlags } from '@ui/web/featureFlags'
+import { OfflineQueueService } from '@core/services/offlineQueue'
 
 export type EditFormState = {
   title: string
@@ -46,6 +48,10 @@ export function useNoteAppController() {
   const [ftsOffset, setFtsOffset] = useState(0)
   const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
   const ftsLimit = 50
+  // Offline queue state placeholders (будут подключены к offline storage/queue)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [failedCount, setFailedCount] = useState(0)
+  const offlineQueue = useMemo(() => new OfflineQueueService(webOfflineStorageAdapter), [])
 
   // -- Dependencies --
   const { supabase, loading: providerLoading } = useSupabase()
@@ -74,7 +80,7 @@ export function useNoteAppController() {
 
   const ftsData = ftsSearchResult.data
   // Server now handles tag filtering via filter_tag RPC parameter
-  const ftsResultsRaw: SearchResult[] = ftsData?.results ?? []
+  const ftsResultsRaw: SearchResult[] = useMemo(() => ftsData?.results ?? [], [ftsData?.results])
 
   // Accumulate FTS pages for "load more"
   useEffect(() => {
@@ -184,6 +190,16 @@ export function useNoteAppController() {
 
     return () => subscription.unsubscribe()
   }, [supabase])
+
+  // -- Offline queue counts (persisted) --
+  useEffect(() => {
+    const loadQueueState = async () => {
+      const queue = await offlineQueue.getQueue()
+      setPendingCount(queue.filter((q) => q.status === 'pending').length)
+      setFailedCount(queue.filter((q) => q.status === 'failed').length)
+    }
+    void loadQueueState()
+  }, [offlineQueue])
 
   // -- Handlers --
 
@@ -529,6 +545,8 @@ export function useNoteAppController() {
     totalNotes: notesTotal,
     notesDisplayed,
     notesTotal,
+    pendingCount,
+    failedCount,
 
     // Handlers
     handleSearch,

@@ -29,7 +29,7 @@ graph TD
 
 Принципы:
 - Ядро общее для web и mobile: кеш, очередь мутаций, синк-менеджер, политика конфликтов.
-- Адаптеры платформы: web (IndexedDB + статус сети браузера), mobile (SQLite/AsyncStorage + NetInfo).
+- Адаптеры платформ: web (IndexedDB + статус сети браузера), mobile (SQLite/AsyncStorage + NetInfo).
 - Поиск пока онлайн (FTS Supabase); локальный поиск — расширение через интерфейс LocalSearch.
 - Лимит локального хранилища ~100 МБ, очистка по LRU/давности обновления.
 - Никаких серверных роутов/SSR: SPA/Next export, работа через Supabase/edge functions.
@@ -51,19 +51,19 @@ graph TD
 
 ## Модели данных
 - CachedNote: { id (server|temp), title, content, tags, updated_at, status: synced|pending|failed, pendingOps? }.
-- Mutation: { tempId/realId, op: create|update|delete, payload, clientUpdatedAt, status }.
-- SyncState: { lastSyncAt, isOnline, queueSize }.
-- (Опция) LocalSearchIndex: упрощённый индекс по title/description/tags, включим позже.
++- Mutation: { tempId/realId, op: create|update|delete, payload, clientUpdatedAt, status }.
++- SyncState: { lastSyncAt, isOnline, queueSize }.
++- (Опционально) LocalSearchIndex: упрощённый индекс по title/description/tags для будущего оффлайн-поиска.
 
 ## Контракты/интерфейсы
-- StorageAdapter: saveNote, loadNotes (с пагинацией/лимитом), upsertQueueItem, popQueueBatch, markSynced, enforceLimit, clear.
-- SyncManager: enqueue(op), drainQueue(batch/serial), onOnline/offline, обратная связь о failed/pending, backoff.
+- StorageAdapter: saveNote, loadNotes (пагинация/лимит), upsertQueueItem, popQueueBatch, markSynced, enforceLimit, clear.
+- SyncManager: enqueue(op), drainQueue(batch/serial), onOnline/offline, отчёт о failed/pending, backoff.
 - LocalSearch: search(query) по кешу (пока заглушка).
-- Network: Supabase JS client с авторизацией; никаких доп. серверных роутов.
+- Network: Supabase JS client с авторизацией; никаких дополнительных серверных роутов.
 
 ## Ключевые решения и компромиссы
 - Конфликты: last-write-wins по updated_at; при явном конфликте создаём копию заметки.
-- Поиск: пока только онлайн FTS, оффлайн будет добавлен позже через уже описанный интерфейс.
+- Поиск: пока только онлайн FTS; оффлайн будет добавлен позже через уже описанный интерфейс.
 - Лимит кеша: ~100 МБ, очистка по LRU/давности; тяжёлые вложения не храним сверх лимита.
 - SPA/export: не вводим серверные эндпоинты, всё через Supabase/edge.
 
