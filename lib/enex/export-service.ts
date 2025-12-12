@@ -1,7 +1,7 @@
 import { EnexBuilder } from "./enex-builder"
 import { ImageDownloader } from "./image-downloader"
 import type { ExportNote, ExportProgress, ExportResource } from "./export-types"
-import { NoteService } from "../services/notes"
+import { NoteService } from "@core/services/notes"
 
 export class ExportService {
   private readonly noteService: NoteService

@@ -32,7 +32,7 @@ describe('ImportProgressDialog', () => {
       />
     )
 
-    cy.contains('Importing from Evernote').should('be.visible')
+    cy.contains('Importing ENEX file').should('be.visible')
     cy.contains('Please wait while we import your notes...').should('be.visible')
     
     // Check file progress

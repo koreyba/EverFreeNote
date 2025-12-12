@@ -270,7 +270,7 @@ export class ContentConverter {
 **File:** `lib/enex/image-processor.ts`
 
 ```javascript
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@ui/web/adapters/supabaseClient'
 
 export class ImageProcessor {
   constructor() {
@@ -341,7 +341,7 @@ export class ImageProcessor {
 **File:** `lib/enex/note-creator.ts`
 
 ```javascript
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@ui/web/adapters/supabaseClient'
 
 export class NoteCreator {
   constructor() {

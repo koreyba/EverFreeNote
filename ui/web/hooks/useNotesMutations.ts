@@ -14,6 +14,7 @@ type Note = Tables<'notes'>
 
 type CreateNoteParams = Pick<Note, 'title' | 'description' | 'tags'> & { userId: string }
 type UpdateNoteParams = Pick<Note, 'id' | 'title' | 'description' | 'tags'>
+type DeleteNoteParams = { id: string; silent?: boolean }
 
 type NotesPage = {
   notes: Note[]
@@ -163,12 +164,12 @@ export function useDeleteNote() {
   const noteService = useMemo(() => new NoteService(supabase), [supabase])
 
   return useMutation({
-    mutationFn: async (noteId: string) => {
-      return noteService.deleteNote(noteId)
+    mutationFn: async ({ id }: DeleteNoteParams) => {
+      return noteService.deleteNote(id)
     },
 
     // Optimistic update
-    onMutate: async (noteId) => {
+    onMutate: async ({ id }) => {
       await queryClient.cancelQueries({ queryKey: ['notes'] })
       const previousNotes = queryClient.getQueryData<NotesData>(['notes'])
 
@@ -178,7 +179,7 @@ export function useDeleteNote() {
 
         const newPages = old.pages.map((page) => ({
           ...page,
-          notes: page.notes.filter((note) => note.id !== noteId),
+          notes: page.notes.filter((note) => note.id !== id),
         }))
 
         return { ...old, pages: newPages }
@@ -187,16 +188,18 @@ export function useDeleteNote() {
       return { previousNotes }
     },
 
-    onError: (err, noteId, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes'], context.previousNotes)
       }
       toast.error('Failed to delete note: ' + err.message)
     },
 
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
-      toast.success('Note deleted successfully')
+      if (!vars?.silent) {
+        toast.success('Note deleted successfully')
+      }
     },
   })
 }
