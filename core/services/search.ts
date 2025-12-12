@@ -28,7 +28,7 @@ export class SearchService {
     const {
       language = detectLanguage(query),
       minRank = 0.01,
-      limit = 20,
+      limit = 50,
       offset = 0,
       tag = null,
     } = options
