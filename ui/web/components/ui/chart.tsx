@@ -287,7 +287,7 @@ const ChartLegendContent = React.forwardRef<HTMLDivElement, ChartLegendContentPr
         {...(legendProps as React.HTMLAttributes<HTMLDivElement>)}
       >
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {payload.map((item: any, index: number) => {
+        {payload.map((item: any) => {
           const key = `${nameKey || item.dataKey || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
