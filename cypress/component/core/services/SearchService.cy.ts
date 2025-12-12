@@ -43,18 +43,19 @@ describe('core/services/SearchService', () => {
       expect(result.results).to.deep.equal(mockData)
     })
 
-    it('filters FTS results by tag', async () => {
+    it('passes filter_tag to RPC for server-side filtering', async () => {
       const mockData = [
-        { id: '1', title: 'Test 1', tags: ['tag1'] },
-        { id: '2', title: 'Test 2', tags: ['tag2'] }
+        { id: '1', title: 'Test 1', tags: ['tag1'] }
       ]
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ; (mockSupabase.rpc as any).resolves({ data: mockData, error: null })
 
       const result = await service.searchNotes('user-1', 'test', { tag: 'tag1' })
 
+      expect(mockSupabase.rpc).to.have.been.calledWith('search_notes_fts', Cypress.sinon.match({
+        filter_tag: 'tag1'
+      }))
       expect(result.results).to.have.length(1)
-      expect(result.results[0].id).to.equal('1')
     })
 
     it('falls back to ILIKE when FTS fails', async () => {
