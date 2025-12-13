@@ -51,11 +51,11 @@ export const NoteEditor = React.memo(function NoteEditor({
 
   const handleTitleChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     debouncedTitle(e.target.value)
-  }, [])
+  }, [debouncedTitle])
 
   const handleTagsChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     debouncedTags(e.target.value)
-  }, [])
+  }, [debouncedTags])
 
   return (
     <div className="flex-1 flex flex-col">
