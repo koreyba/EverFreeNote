@@ -497,6 +497,13 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
     editorProps,
   })
 
+  // Sync content when it changes externally (e.g. switching notes)
+  React.useEffect(() => {
+    if (editor && content !== undefined && content !== editor.getHTML()) {
+      editor.commands.setContent(content)
+    }
+  }, [content, editor])
+
   return (
     <div className="border rounded-md bg-background">
       <MenuBar editor={editor} />

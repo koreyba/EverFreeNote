@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { Badge } from "@ui/web/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/web/components/ui/card"
 import InteractiveTag from "@ui/web/components/InteractiveTag"
@@ -24,7 +25,7 @@ type NoteCardProps = {
   onTagClick?: (tag: string) => void
 }
 
-export function NoteCard({
+export const NoteCard = memo(function NoteCard({
   note,
   variant,
   isSelected,
@@ -147,4 +148,4 @@ export function NoteCard({
       </CardHeader>
     </Card>
   )
-}
+})

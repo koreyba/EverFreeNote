@@ -179,8 +179,6 @@ function EditorPane({ controller, onBack }: { controller: NoteAppController, onB
   const {
     selectedNote,
     isEditing,
-    editForm,
-    setEditForm,
     saving,
     handleSaveNote,
     handleSelectNote,
@@ -196,13 +194,10 @@ function EditorPane({ controller, onBack }: { controller: NoteAppController, onB
   if (isEditing) {
     return (
       <NoteEditor
-        title={editForm.title}
-        description={editForm.description}
-        tags={editForm.tags}
+        initialTitle={selectedNote?.title ?? ""}
+        initialDescription={selectedNote?.description ?? selectedNote?.content ?? ""}
+        initialTags={selectedNote?.tags?.join(", ") ?? ""}
         isSaving={saving}
-        onTitleChange={(val) => setEditForm((prev) => ({ ...prev, title: val }))}
-        onDescriptionChange={(val) => setEditForm((prev) => ({ ...prev, description: val }))}
-        onTagsChange={(val) => setEditForm((prev) => ({ ...prev, tags: val }))}
         onSave={handleSaveNote}
         onCancel={() => {
           if (!selectedNote) {

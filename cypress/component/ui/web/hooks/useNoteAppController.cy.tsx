@@ -16,7 +16,6 @@ const TestComponent = () => {
       <div data-cy="loading">{controller.loading ? 'true' : 'false'}</div>
       <div data-cy="user">{controller.user ? controller.user.id : 'no-user'}</div>
       <div data-cy="isEditing">{controller.isEditing ? 'true' : 'false'}</div>
-      <div data-cy="editForm-title">{controller.editForm.title}</div>
       <div data-cy="selectedNote-id">{controller.selectedNote ? controller.selectedNote.id : 'none'}</div>
       <div data-cy="selectedNote-tags">{controller.selectedNote?.tags?.join(',') || ''}</div>
       <div data-cy="searchQuery">{controller.searchQuery}</div>
@@ -49,12 +48,11 @@ const TestComponent = () => {
       } as NoteViewModel)}>Select Note</button>
       <button data-cy="search-btn" onClick={() => controller.handleSearch('test query')}>Search</button>
       
-      <input 
-        data-cy="title-input" 
-        value={controller.editForm.title} 
-        onChange={(e) => controller.setEditForm({ ...controller.editForm, title: e.target.value })}
-      />
-      <button data-cy="save-note-btn" onClick={controller.handleSaveNote}>Save Note</button>
+      <button data-cy="save-note-btn" onClick={() => controller.handleSaveNote({
+        title: 'New Note',
+        description: 'New Description',
+        tags: 'tag1, tag2'
+      })}>Save Note</button>
       <button data-cy="delete-note-btn" onClick={() => controller.handleDeleteNote({ 
         id: '1', 
         title: 'To Delete', 
@@ -214,7 +212,6 @@ describe('useNoteAppController', () => {
 
     cy.get('[data-cy="create-note-btn"]').click()
     cy.get('[data-cy="isEditing"]').should('contain', 'true')
-    cy.get('[data-cy="editForm-title"]').should('be.empty')
     cy.get('[data-cy="selectedNote-id"]').should('contain', 'none')
   })
 
@@ -229,7 +226,6 @@ describe('useNoteAppController', () => {
 
     cy.get('[data-cy="edit-note-btn"]').click()
     cy.get('[data-cy="isEditing"]').should('contain', 'true')
-    cy.get('[data-cy="editForm-title"]').should('contain', 'Test Note')
     cy.get('[data-cy="selectedNote-id"]').should('contain', '1')
   })
 
@@ -276,7 +272,6 @@ describe('useNoteAppController', () => {
     cy.get('[data-cy="user"]').should('contain', 'test-user')
 
     cy.get('[data-cy="create-note-btn"]').click()
-    cy.get('[data-cy="title-input"]').type('New Note')
     cy.get('[data-cy="save-note-btn"]').click()
 
     // Check if insert was called

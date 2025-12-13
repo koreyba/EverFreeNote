@@ -7,34 +7,43 @@ import { Input } from "@/components/ui/input"
 import RichTextEditor from "@/components/RichTextEditor"
 
 interface NoteEditorProps {
-  title: string
-  description: string
-  tags: string
+  initialTitle?: string
+  initialDescription?: string
+  initialTags?: string
   isSaving: boolean
-  onTitleChange: (value: string) => void
-  onDescriptionChange: (value: string) => void
-  onTagsChange: (value: string) => void
-  onSave: () => void
+  onSave: (data: { title: string; description: string; tags: string }) => void
   onCancel: () => void
 }
 
 export const NoteEditor = React.memo(function NoteEditor({
-  title,
-  description,
-  tags,
+  initialTitle = "",
+  initialDescription = "",
+  initialTags = "",
   isSaving,
-  onTitleChange,
-  onDescriptionChange,
-  onTagsChange,
   onSave,
   onCancel
 }: NoteEditorProps) {
+  const [title, setTitle] = React.useState(initialTitle)
+  const [description, setDescription] = React.useState(initialDescription)
+  const [tags, setTags] = React.useState(initialTags)
+
+  // Sync with props if they change (e.g. switching notes)
+  React.useEffect(() => {
+    setTitle(initialTitle)
+    setDescription(initialDescription)
+    setTags(initialTags)
+  }, [initialTitle, initialDescription, initialTags])
+
+  const handleSave = () => {
+    onSave({ title, description, tags })
+  }
+
   // Обработчики событий для предотвращения пересоздания на каждом рендере
   const handleTagsChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      onTagsChange(e.target.value)
+      setTags(e.target.value)
     },
-    [onTagsChange]
+    []
   )
 
   return (
@@ -52,7 +61,7 @@ export const NoteEditor = React.memo(function NoteEditor({
             Cancel
           </Button>
           <Button
-            onClick={onSave}
+            onClick={handleSave}
             disabled={isSaving}
           >
             {isSaving ? (
@@ -75,7 +84,7 @@ export const NoteEditor = React.memo(function NoteEditor({
               type="text"
               placeholder="Note title"
               value={title}
-              onChange={(e) => onTitleChange(e.target.value)}
+              onChange={(e) => setTitle(e.target.value)}
               className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-2xl font-bold leading-snug shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
@@ -94,7 +103,7 @@ export const NoteEditor = React.memo(function NoteEditor({
           <div>
             <RichTextEditor
               content={description}
-              onChange={onDescriptionChange}
+              onChange={setDescription}
             />
           </div>
         </div>
