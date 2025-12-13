@@ -175,4 +175,74 @@ describe('OfflineSyncManager', () => {
       expect(drainSpy).to.not.have.been.called
     })
   })
+
+  it('should prevent parallel drain calls', async () => {
+    const item = createItem('1', 'note-1')
+    ;(mockStorage.getQueue as unknown as sinon.SinonStub).resolves([item])
+    
+    const getPendingBatch = mockStorage.getPendingBatch as unknown as sinon.SinonStub
+    getPendingBatch.onFirstCall().resolves([item])
+    getPendingBatch.resolves([]) // Subsequent calls return empty to stop loop
+
+    let resolveSync: (() => void) | undefined
+    const syncPromise = new Promise<void>(resolve => { resolveSync = resolve })
+    performSyncStub.returns(syncPromise)
+
+    // Call drainQueue twice
+    const p1 = manager.drainQueue()
+    const p2 = manager.drainQueue()
+
+    // p2 should return immediately because draining is true
+    await p2
+    
+    // p1 is waiting for performSync
+    // Resolve it now
+    if (resolveSync) resolveSync()
+    
+    await p1
+
+    // Should only start one drain process (one call to getQueue/compact)
+    expect(mockStorage.getQueue).to.have.been.calledOnce
+  })
+
+  it('should use provided batchSize', async () => {
+    const item = createItem('1', 'note-1')
+    ;(mockStorage.getQueue as unknown as sinon.SinonStub).resolves([item])
+    ;(mockStorage.getPendingBatch as unknown as sinon.SinonStub).resolves([])
+
+    await manager.drainQueue({ batchSize: 50 })
+
+    expect(mockStorage.getPendingBatch).to.have.been.calledWith(50)
+  })
+
+  it('should use custom onSuccess callback', async () => {
+    const item = createItem('1', 'note-1')
+    ;(mockStorage.getQueue as unknown as sinon.SinonStub).resolves([item])
+    
+    const getPendingBatch = mockStorage.getPendingBatch as unknown as sinon.SinonStub
+    getPendingBatch.onFirstCall().resolves([item])
+    getPendingBatch.onSecondCall().resolves([])
+
+    const customOnSuccess = cy.stub().resolves()
+    
+    await manager.drainQueue({ onSuccess: customOnSuccess })
+    
+    expect(customOnSuccess).to.have.been.calledWith(item)
+    expect(onSuccessStub).to.not.have.been.called // Default should not be called
+  })
+
+  it('should unsubscribe from network status on dispose', () => {
+    const unsubscribeSpy = cy.spy()
+    ;(mockNetwork.subscribe as unknown as sinon.SinonStub).returns(unsubscribeSpy)
+    
+    // Re-create manager to capture the spy
+    manager = new OfflineSyncManager(
+      mockStorage,
+      performSyncStub,
+      mockNetwork
+    )
+    
+    manager.dispose()
+    expect(unsubscribeSpy).to.have.been.called
+  })
 })
