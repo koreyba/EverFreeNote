@@ -79,9 +79,9 @@ export class OfflineSyncManager {
       // Compact queue before processing to avoid conflicting ops
       const current = await this.queue.getQueue()
       const compacted = compactQueue(current)
-      if (compacted.length !== current.length) {
-        await this.queue.upsertQueue(compacted)
-      }
+      // Always persist compacted queue to ensure statuses are reset to 'pending'
+      // even if the number of items hasn't changed (e.g. retrying failed items)
+      await this.queue.upsertQueue(compacted)
 
       while (this.online) {
         // Get pending items WITHOUT removing them from queue
