@@ -72,11 +72,12 @@ describe('NoteList Virtualization', () => {
     
     // We use { ensureScrollable: false } because sometimes Cypress thinks the element is not scrollable 
     // if it's covered or has specific styles, but react-window divs are scrollable.
-    // Scroll to a very large offset to ensure we hit the bottom
-    cy.get('[data-testid="note-card"]').first().closest('[style*="overflow"]').scrollTo(0, 50000, { ensureScrollable: false })
     
-    // Wait for potential render frame (though react-window is usually sync)
-    // cy.wait(100) 
+    // Target the scrollable container directly. react-window renders a div with overflow: auto/scroll.
+    cy.get('div[style*="overflow"]').should('exist').scrollTo('bottom', { ensureScrollable: false, duration: 100 })
+    
+    // Wait for virtualization to catch up
+    //cy.wait(200)
     
     // Now the last note should be visible
     cy.contains('Note 99').should('be.visible')
