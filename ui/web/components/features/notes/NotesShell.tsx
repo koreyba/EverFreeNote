@@ -55,6 +55,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     invalidateNotes,
     pendingCount,
     failedCount,
+    isOffline,
     selectedNote,
     isEditing,
     handleSelectNote,
@@ -71,6 +72,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         notesTotal={notesTotal}
         pendingCount={pendingCount}
         failedCount={failedCount}
+        isOffline={isOffline}
         selectionMode={selectionMode}
         selectedCount={selectedCount}
         bulkDeleting={bulkDeleting}

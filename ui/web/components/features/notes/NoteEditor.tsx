@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor from "@/components/RichTextEditor"
 
+const INPUT_DEBOUNCE_MS = 250
+
 interface NoteEditorProps {
   initialTitle?: string
   initialDescription?: string
@@ -23,28 +25,44 @@ export const NoteEditor = React.memo(function NoteEditor({
   onSave,
   onCancel
 }: NoteEditorProps) {
-  const [title, setTitle] = React.useState(initialTitle)
   const [description, setDescription] = React.useState(initialDescription)
-  const [tags, setTags] = React.useState(initialTags)
+  const [titleCommitted, setTitleCommitted] = React.useState(initialTitle)
+  const [tagsCommitted, setTagsCommitted] = React.useState(initialTags)
+  const [inputResetKey, setInputResetKey] = React.useState(0)
+  const titleInputRef = React.useRef<HTMLInputElement | null>(null)
+  const tagsInputRef = React.useRef<HTMLInputElement | null>(null)
+  const titleDebounceRef = React.useRef<number | null>(null)
+  const tagsDebounceRef = React.useRef<number | null>(null)
 
   // Sync with props if they change (e.g. switching notes)
   React.useEffect(() => {
-    setTitle(initialTitle)
     setDescription(initialDescription)
-    setTags(initialTags)
+    setTitleCommitted(initialTitle)
+    setTagsCommitted(initialTags)
+    setInputResetKey((k) => k + 1)
   }, [initialTitle, initialDescription, initialTags])
 
   const handleSave = () => {
-    onSave({ title, description, tags })
+    const latestTitle = titleInputRef.current?.value ?? titleCommitted
+    const latestTags = tagsInputRef.current?.value ?? tagsCommitted
+    onSave({ title: latestTitle, description, tags: latestTags })
   }
 
-  // Обработчики событий для предотвращения пересоздания на каждом рендере
-  const handleTagsChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setTags(e.target.value)
-    },
-    []
-  )
+  const handleTitleChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (titleDebounceRef.current) {
+      clearTimeout(titleDebounceRef.current)
+    }
+    titleDebounceRef.current = window.setTimeout(() => setTitleCommitted(value), INPUT_DEBOUNCE_MS)
+  }, [])
+
+  const handleTagsChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (tagsDebounceRef.current) {
+      clearTimeout(tagsDebounceRef.current)
+    }
+    tagsDebounceRef.current = window.setTimeout(() => setTagsCommitted(value), INPUT_DEBOUNCE_MS)
+  }, [])
 
   return (
     <div className="flex-1 flex flex-col">
@@ -81,10 +99,12 @@ export const NoteEditor = React.memo(function NoteEditor({
         <div className="max-w-4xl mx-auto space-y-4">
           <div>
             <Input
+              key={`title-${inputResetKey}`}
+              ref={titleInputRef}
               type="text"
               placeholder="Note title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              defaultValue={initialTitle}
+              onChange={handleTitleChange}
               className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-2xl font-bold leading-snug shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
@@ -94,9 +114,11 @@ export const NoteEditor = React.memo(function NoteEditor({
               <span>Tags (comma-separated):</span>
             </div>
             <Input
+              key={`tags-${inputResetKey}`}
+              ref={tagsInputRef}
               type="text"
               placeholder="work, personal, ideas"
-              value={tags}
+              defaultValue={initialTags}
               onChange={handleTagsChange}
             />
           </div>

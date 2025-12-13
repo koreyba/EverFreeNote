@@ -137,6 +137,27 @@ export function useNoteAppController() {
     )
   }
 
+  const enqueueMutation = useCallback(
+    async (item: MutationQueueItemInput) => {
+      if (syncManagerRef.current) {
+        await syncManagerRef.current.enqueue(item)
+      } else {
+        await offlineQueue.enqueue(item)
+      }
+    },
+    [offlineQueue]
+  )
+
+  const enqueueBatchAndDrainIfOnline = useCallback(
+    async (items: MutationQueueItemInput[]) => {
+      await offlineQueue.enqueueMany(items)
+      if (syncManagerRef.current && !isOffline) {
+        await syncManagerRef.current.drainQueue()
+      }
+    },
+    [offlineQueue, isOffline]
+  )
+
   // Combine provider loading with local auth loading
   const combinedLoading = loading || providerLoading || authLoading
 
@@ -516,7 +537,7 @@ export function useNoteAppController() {
         payload,
         clientUpdatedAt: new Date().toISOString(),
       }
-      await offlineQueue.enqueue(item)
+      await enqueueMutation(item)
       // Сохраняем локальный кеш для overlay (офлайн отображение)
       const nowIso = new Date().toISOString()
       const createdIso =
@@ -627,7 +648,7 @@ export function useNoteAppController() {
 
     try {
       if (isOffline) {
-        await offlineQueue.enqueue({
+        await enqueueMutation({
           noteId: noteToDelete.id,
           operation: 'delete',
           payload: {},
@@ -740,7 +761,7 @@ export function useNoteAppController() {
     try {
       const ids = Array.from(selectedNoteIds)
       if (isOffline) {
-        await offlineQueue.enqueueMany(
+        await enqueueBatchAndDrainIfOnline(
           ids.map((id) => ({
             noteId: id,
             operation: 'delete',
@@ -860,5 +881,3 @@ export function useNoteAppController() {
 }
 
 export type NoteAppController = ReturnType<typeof useNoteAppController>
-
-
