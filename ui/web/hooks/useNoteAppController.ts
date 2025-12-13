@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { User } from '@supabase/supabase-js'
@@ -7,19 +7,29 @@ import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { useNotesQuery, useFlattenedNotes, useSearchNotes } from './useNotesQuery'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import { useInfiniteScroll } from './useInfiniteScroll'
-import type { NoteViewModel, SearchResult } from '@core/types/domain'
+import type { NoteViewModel, SearchResult, NoteInsert, NoteUpdate } from '@core/types/domain'
 import { AuthService } from '@core/services/auth'
 import { computeFtsHasMore, computeFtsTotal } from '@core/services/ftsPagination'
 import { clearSelection as clearSelectionSet, selectAll as selectAllSet, toggleSelection } from '@core/services/selection'
 import { webStorageAdapter } from '@ui/web/adapters/storage'
+import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import { webOAuthRedirectUri } from '@ui/web/config'
 import { featureFlags } from '@ui/web/featureFlags'
+import { OfflineQueueService } from '@core/services/offlineQueue'
+import { OfflineSyncManager } from '@core/services/offlineSyncManager'
+import { webNetworkStatus } from '@ui/web/adapters/networkStatus'
+import type { MutationQueueItemInput, CachedNote } from '@core/types/offline'
+import { OfflineCacheService } from '@core/services/offlineCache'
+import { v4 as uuidv4 } from 'uuid'
+import { applyNoteOverlay } from '@core/utils/overlay'
 
 export type EditFormState = {
   title: string
   description: string
   tags: string
 }
+
+type NotePayload = (Partial<NoteInsert> & { userId?: string }) | Partial<NoteUpdate>
 
 export function useNoteAppController() {
   // -- State --
@@ -46,11 +56,91 @@ export function useNoteAppController() {
   const [ftsOffset, setFtsOffset] = useState(0)
   const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
   const ftsLimit = 50
+  // Offline queue state placeholders (будут подключены к offline storage/queue)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [failedCount, setFailedCount] = useState(0)
+  const [isOffline, setIsOffline] = useState<boolean>(typeof window !== 'undefined' ? !navigator.onLine : false)
 
   // -- Dependencies --
   const { supabase, loading: providerLoading } = useSupabase()
   const queryClient = useQueryClient()
   const authService = new AuthService(supabase)
+
+  // -- Mutations (needed for sync manager) --
+  const createNoteMutation = useCreateNote()
+  const updateNoteMutation = useUpdateNote()
+  const deleteNoteMutation = useDeleteNote()
+  const removeTagMutation = useRemoveTag()
+
+  const offlineQueue = useMemo(() => new OfflineQueueService(webOfflineStorageAdapter), [])
+  const offlineCache = useMemo(() => new OfflineCacheService(webOfflineStorageAdapter), [])
+
+  // Refs for sync callbacks - stable references that delegate to current values
+  const userRef = useRef(user)
+  const createMutationRef = useRef(createNoteMutation)
+  const updateMutationRef = useRef(updateNoteMutation)
+  const deleteMutationRef = useRef(deleteNoteMutation)
+  const offlineCacheRef = useRef(offlineCache)
+  const offlineQueueRef = useRef(offlineQueue)
+
+  // Update refs when values change (not on every keystroke)
+  useEffect(() => {
+    userRef.current = user
+    createMutationRef.current = createNoteMutation
+    updateMutationRef.current = updateNoteMutation
+    deleteMutationRef.current = deleteNoteMutation
+    offlineCacheRef.current = offlineCache
+    offlineQueueRef.current = offlineQueue
+  }, [user, createNoteMutation, updateNoteMutation, deleteNoteMutation, offlineCache, offlineQueue])
+
+  // Stable callback refs - created once, always use current values via refs
+  const syncCallbacksRef = useRef({
+    performSync: async (item: MutationQueueItemInput) => {
+      const currentUser = userRef.current
+      if (!currentUser) {
+        throw new Error('User not authenticated - sync skipped')
+      }
+      if (item.operation === 'create') {
+        const payload = item.payload as Partial<NoteInsert> & { userId?: string }
+        await createMutationRef.current.mutateAsync({
+          title: payload.title ?? 'Untitled',
+          description: payload.description ?? '',
+          tags: payload.tags ?? [],
+          userId: payload.userId ?? currentUser.id,
+        })
+      } else if (item.operation === 'update') {
+        const payload = item.payload as Partial<NoteUpdate>
+        await updateMutationRef.current.mutateAsync({
+          id: item.noteId,
+          title: payload.title ?? 'Untitled',
+          description: payload.description ?? '',
+          tags: payload.tags ?? [],
+        })
+      } else if (item.operation === 'delete') {
+        await deleteMutationRef.current.mutateAsync({ id: item.noteId, silent: true })
+      }
+    },
+    onSuccess: async (item: MutationQueueItemInput) => {
+      await offlineCacheRef.current.deleteNote(item.noteId)
+      const cached = await offlineCacheRef.current.loadNotes()
+      setOfflineOverlay(cached)
+      const queue = await offlineQueueRef.current.getQueue()
+      setPendingCount(queue.filter((q) => q.status === 'pending').length)
+      setFailedCount(queue.filter((q) => q.status === 'failed').length)
+    },
+  })
+
+  // Create syncManager only ONCE using useRef (not useMemo with unstable deps)
+  const syncManagerRef = useRef<OfflineSyncManager | null>(null)
+  if (!syncManagerRef.current) {
+    syncManagerRef.current = new OfflineSyncManager(
+      webOfflineStorageAdapter,
+      // Wrapper delegates to ref - always uses current callback
+      (item) => syncCallbacksRef.current!.performSync(item),
+      webNetworkStatus,
+      (item) => syncCallbacksRef.current!.onSuccess(item)
+    )
+  }
 
   // Combine provider loading with local auth loading
   const combinedLoading = loading || providerLoading || authLoading
@@ -63,7 +153,13 @@ export function useNoteAppController() {
     enabled: !!user,
   })
 
-  const notes: NoteViewModel[] = useFlattenedNotes(notesQuery)
+  const baseNotes: NoteViewModel[] = useFlattenedNotes(notesQuery)
+  const [offlineOverlay, setOfflineOverlay] = useState<CachedNote[]>([])
+
+  const notes: NoteViewModel[] = useMemo(() => {
+    if (!offlineOverlay.length) return baseNotes
+    return applyNoteOverlay(baseNotes, offlineOverlay) as NoteViewModel[]
+  }, [baseNotes, offlineOverlay])
 
   const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
     enabled: !!user && ftsSearchQuery.length >= 3,
@@ -74,7 +170,7 @@ export function useNoteAppController() {
 
   const ftsData = ftsSearchResult.data
   // Server now handles tag filtering via filter_tag RPC parameter
-  const ftsResultsRaw: SearchResult[] = ftsData?.results ?? []
+  const ftsResultsRaw: SearchResult[] = useMemo(() => ftsData?.results ?? [], [ftsData?.results])
 
   // Accumulate FTS pages for "load more"
   useEffect(() => {
@@ -159,12 +255,6 @@ export function useNoteAppController() {
     { threshold: 0.8, rootMargin: '200px' }
   )
 
-  // -- Mutations --
-  const createNoteMutation = useCreateNote()
-  const updateNoteMutation = useUpdateNote()
-  const deleteNoteMutation = useDeleteNote()
-  const removeTagMutation = useRemoveTag()
-
   // -- Auth Effects --
   useEffect(() => {
     const checkAuth = async () => {
@@ -184,6 +274,87 @@ export function useNoteAppController() {
 
     return () => subscription.unsubscribe()
   }, [supabase])
+
+  // -- Offline queue counts (persisted) --
+  useEffect(() => {
+    const loadQueueState = async () => {
+      const queue = await offlineQueue.getQueue()
+      let cached = await offlineCache.loadNotes()
+      if (!queue.length && cached.length) {
+        // Очистка временных заметок, если очередь пуста (например, compaction выкинул create+delete)
+        const idsToRemove = cached.filter((c) => c.status !== 'synced' || c.deleted).map((c) => c.id)
+        if (idsToRemove.length) {
+          for (const id of idsToRemove) {
+            await offlineCache.deleteNote(id)
+          }
+          cached = await offlineCache.loadNotes()
+        }
+      }
+      setOfflineOverlay(cached)
+      setPendingCount(queue.filter((q) => q.status === 'pending').length)
+      setFailedCount(queue.filter((q) => q.status === 'failed').length)
+    }
+    void loadQueueState()
+  }, [offlineQueue, offlineCache])
+
+  // Dispose syncManager only on unmount (it's now a singleton)
+  useEffect(() => {
+    return () => {
+      syncManagerRef.current?.dispose()
+    }
+  }, [])
+
+  // Handle online/offline state changes (sync is triggered by syncManager internally)
+  useEffect(() => {
+    let updateInterval: ReturnType<typeof setInterval> | null = null
+
+    const updateQueueState = async () => {
+      const queue = await offlineQueue.getQueue()
+      let cached = await offlineCache.loadNotes()
+      if (!queue.length && cached.length) {
+        const idsToRemove = cached.filter((c) => c.status !== 'synced' || c.deleted).map((c) => c.id)
+        if (idsToRemove.length) {
+          for (const id of idsToRemove) {
+            await offlineCache.deleteNote(id)
+          }
+          cached = await offlineCache.loadNotes()
+        }
+      }
+      setOfflineOverlay(cached)
+      const pending = queue.filter((q) => q.status === 'pending').length
+      const failed = queue.filter((q) => q.status === 'failed').length
+      setPendingCount(pending)
+      setFailedCount(failed)
+      // Stop polling when queue is empty
+      if (pending === 0 && updateInterval) {
+        clearInterval(updateInterval)
+        updateInterval = null
+      }
+    }
+
+    const handleOnline = () => {
+      setIsOffline(false)
+      // Poll for updates while sync is in progress
+      updateInterval = setInterval(updateQueueState, 1000)
+      // Also update immediately and after a delay
+      void updateQueueState()
+      setTimeout(() => void updateQueueState(), 2000)
+    }
+    const handleOffline = () => {
+      setIsOffline(true)
+      if (updateInterval) {
+        clearInterval(updateInterval)
+        updateInterval = null
+      }
+    }
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+      if (updateInterval) clearInterval(updateInterval)
+    }
+  }, [offlineQueue, offlineCache])
 
   // -- Handlers --
 
@@ -344,6 +515,48 @@ export function useNoteAppController() {
   const handleSaveNote = async () => {
     if (!user) return
 
+    const offlineMutation = async (
+      operation: MutationQueueItemInput['operation'],
+      noteId: string,
+      payload: NotePayload,
+      baseNote?: NoteViewModel | null
+    ) => {
+      const item: MutationQueueItemInput = {
+        noteId,
+        operation,
+        payload,
+        clientUpdatedAt: new Date().toISOString(),
+      }
+      await offlineQueue.enqueue(item)
+      // Сохраняем локальный кеш для overlay (офлайн отображение)
+      const nowIso = new Date().toISOString()
+      const createdIso =
+        (baseNote as { created_at?: string } | undefined)?.created_at ??
+        (baseNote as { createdAt?: string } | undefined)?.createdAt ??
+        nowIso
+      const cached: CachedNote = {
+        id: noteId,
+        title: payload.title ?? 'Untitled',
+        description: 'description' in payload ? payload.description : undefined,
+        tags: 'tags' in payload ? payload.tags : undefined,
+        content: 'description' in payload ? payload.description : undefined,
+        status: 'pending',
+        updatedAt: nowIso,
+        // created_at/updated_at нужны для корректных дат в офлайн-UI
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        created_at: createdIso,
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        updated_at: nowIso,
+      }
+      await offlineCache.saveNote(cached)
+      setOfflineOverlay(await offlineCache.loadNotes())
+      const queue = await offlineQueue.getQueue()
+      setPendingCount(queue.filter((q) => q.status === 'pending').length)
+      setFailedCount(queue.filter((q) => q.status === 'failed').length)
+    }
+
     setSaving(true)
     try {
       let savedNote: NoteViewModel | null = null
@@ -359,17 +572,41 @@ export function useNoteAppController() {
       }
 
       if (selectedNote) {
-        const updated = await updateNoteMutation.mutateAsync({
-          id: selectedNote.id,
-          ...noteData,
-        })
-        savedNote = { ...selectedNote, ...updated }
+        if (isOffline) {
+          await offlineMutation('update', selectedNote.id, noteData, selectedNote)
+          // Оптимистичное обновление выбранной заметки
+          setSelectedNote({
+            ...selectedNote,
+            title: noteData.title,
+            description: noteData.description,
+            tags: noteData.tags,
+          })
+          toast.success('Saved offline (will sync when online)')
+        } else {
+          const updated = await updateNoteMutation.mutateAsync({
+            id: selectedNote.id,
+            ...noteData,
+          })
+          savedNote = { ...selectedNote, ...updated }
+        }
       } else {
-        const created = await createNoteMutation.mutateAsync({
-          ...noteData,
-          userId: user.id,
-        })
-        savedNote = created as NoteViewModel
+        const tempId = uuidv4()
+        if (isOffline) {
+          await offlineMutation('create', tempId, { ...noteData, userId: user.id }, null)
+          setSelectedNote({
+            id: tempId,
+            title: noteData.title,
+            description: noteData.description,
+            tags: noteData.tags,
+          } as NoteViewModel)
+          toast.success('Saved offline (will sync when online)')
+        } else {
+          const created = await createNoteMutation.mutateAsync({
+            ...noteData,
+            userId: user.id,
+          })
+          savedNote = created as NoteViewModel
+        }
       }
 
       setIsEditing(false)
@@ -393,7 +630,28 @@ export function useNoteAppController() {
     if (!noteToDelete) return
 
     try {
-      await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
+      if (isOffline) {
+        await offlineQueue.enqueue({
+          noteId: noteToDelete.id,
+          operation: 'delete',
+          payload: {},
+          clientUpdatedAt: new Date().toISOString(),
+        })
+        // Удаляем из кеша, чтобы карточка не дублировалась офлайн
+        await offlineCache.saveNote({
+          id: noteToDelete.id,
+          status: 'pending',
+          deleted: true,
+          updatedAt: new Date().toISOString(),
+        })
+        setOfflineOverlay(await offlineCache.loadNotes())
+        const queue = await offlineQueue.getQueue()
+        setPendingCount(queue.filter((q) => q.status === 'pending').length)
+        setFailedCount(queue.filter((q) => q.status === 'failed').length)
+        toast.success('Deletion queued offline')
+      } else {
+        await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
+      }
 
       if (selectedNote?.id === noteToDelete.id) {
         setSelectedNote(null)
@@ -477,12 +735,37 @@ export function useNoteAppController() {
     setBulkDeleting(true)
     try {
       const ids = Array.from(selectedNoteIds)
-      const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync({ id, silent: true })))
-      const failed = results.filter(r => r.status === 'rejected').length
-      if (failed > 0) {
-        toast.error(`Failed to delete ${failed} notes`)
+      if (isOffline) {
+        await offlineQueue.enqueueMany(
+          ids.map((id) => ({
+            noteId: id,
+            operation: 'delete',
+            payload: {},
+            clientUpdatedAt: new Date().toISOString(),
+          }))
+        )
+        // Mark all as deleted for optimistic UI
+        for (const id of ids) {
+          await offlineCache.saveNote({
+            id,
+            status: 'pending',
+            deleted: true,
+            updatedAt: new Date().toISOString(),
+          })
+        }
+        setOfflineOverlay(await offlineCache.loadNotes())
+        const queue = await offlineQueue.getQueue()
+        setPendingCount(queue.filter((q) => q.status === 'pending').length)
+        setFailedCount(queue.filter((q) => q.status === 'failed').length)
+        toast.success(`Queued deletion of ${ids.length} notes (offline)`)
       } else {
-        toast.success(`Deleted ${ids.length} notes`)
+        const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync({ id, silent: true })))
+        const failed = results.filter(r => r.status === 'rejected').length
+        if (failed > 0) {
+          toast.error(`Failed to delete ${failed} notes`)
+        } else {
+          toast.success(`Deleted ${ids.length} notes`)
+        }
       }
       exitSelectionMode()
       await queryClient.invalidateQueries({ queryKey: ['notes'] })
@@ -514,6 +797,7 @@ export function useNoteAppController() {
     selectedCount,
     bulkDeleting,
     deleteAccountLoading,
+    isOffline,
 
     // Data
     notes,
@@ -529,6 +813,8 @@ export function useNoteAppController() {
     totalNotes: notesTotal,
     notesDisplayed,
     notesTotal,
+    pendingCount,
+    failedCount,
 
     // Handlers
     handleSearch,
@@ -561,3 +847,5 @@ export function useNoteAppController() {
 }
 
 export type NoteAppController = ReturnType<typeof useNoteAppController>
+
+

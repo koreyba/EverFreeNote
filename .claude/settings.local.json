@@ -8,7 +8,12 @@
       "Bash(cmd /c \"npx cypress run --component --spec cypress/component/lib/enex/converter.cy.ts,cypress/component/ui/Switch.cy.tsx\")",
       "Bash(powershell -Command \"npx cypress run --component --spec ''cypress/component/lib/enex/converter.cy.ts,cypress/component/ui/Switch.cy.tsx''\")",
       "Bash(powershell -Command \"npx cypress run --component --spec cypress/component/lib/enex/converter.cy.ts\")",
-      "Bash(ls \"c:\\Projects\\EverFreeNote\\lib\\adapters\"\" 2>/dev/null || echo \"Directory empty or not found \")"
+      "Bash(ls \"c:\\Projects\\EverFreeNote\\lib\\adapters\"\" 2>/dev/null || echo \"Directory empty or not found \")",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm test:*)",
+      "Bash(npx vitest run --testPathPattern=\"offline|overlay\")",
+      "Bash(npx vitest:*)",
+      "Bash(npm run)"
     ],
     "deny": [],
     "ask": []
