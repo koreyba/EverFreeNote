@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { BookOpen, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,7 @@ interface SidebarProps {
   notesTotal?: number
   pendingCount?: number
   failedCount?: number
+  isOffline: boolean
   selectionMode: boolean
   selectedCount: number
   bulkDeleting: boolean
@@ -55,6 +56,7 @@ export function Sidebar({
   notesTotal,
   pendingCount = 0,
   failedCount = 0,
+  isOffline,
   selectionMode,
   selectedCount,
   bulkDeleting,
@@ -79,25 +81,33 @@ export function Sidebar({
 }: SidebarProps) {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
-  const [isOffline, setIsOffline] = useState<boolean>(typeof window !== "undefined" ? !navigator.onLine : false)
-
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false)
-    const handleOffline = () => setIsOffline(true)
-
-    window.addEventListener("online", handleOnline)
-    window.addEventListener("offline", handleOffline)
-
-    return () => {
-      window.removeEventListener("online", handleOnline)
-      window.removeEventListener("offline", handleOffline)
-    }
-  }, [])
+  const [searchDraft, setSearchDraft] = useState(searchQuery)
+  const searchDebounceRef = useRef<number | null>(null)
 
   const handleBulkConfirm = async () => {
     await onBulkDelete()
     setBulkDialogOpen(false)
   }
+  useEffect(() => {
+    setSearchDraft(searchQuery)
+  }, [searchQuery])
+
+  const handleSearchChange = (value: string) => {
+    setSearchDraft(value)
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current)
+    }
+    searchDebounceRef.current = window.setTimeout(() => {
+      onSearch(value)
+    }, 250)
+  }
+
+  useEffect(() => () => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current)
+    }
+  }, [])
+
   const handleDeleteAccount = async () => {
     await onDeleteAccount()
     setDeleteAccountOpen(false)
@@ -163,8 +173,8 @@ export function Sidebar({
           <Input
             type="text"
             placeholder={filterByTag ? `Search in "${filterByTag}" notes...` : "Search notes..."}
-            value={searchQuery}
-            onChange={(e) => onSearch(e.target.value)}
+            value={searchDraft}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10 pr-8"
           />
           {searchQuery && (
@@ -302,4 +312,3 @@ export function Sidebar({
     </div>
   )
 }
-

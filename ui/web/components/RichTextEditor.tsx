@@ -59,6 +59,8 @@ type RichTextEditorProps = {
   onChange: (html: string) => void
 }
 
+const DEBOUNCE_MS = 250
+
 type MenuBarProps = {
   editor: Editor | null
 }
@@ -449,6 +451,16 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 }
 
 const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
+  const debounceTimerRef = React.useRef<number | null>(null)
+
+  const debouncedOnChange = React.useCallback((html: string) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    debounceTimerRef.current = window.setTimeout(() => {
+      onChange(html)
+    }, DEBOUNCE_MS)
+  }, [onChange])
   // Мемоизация конфигурации расширений для предотвращения пересоздания
   const editorExtensions: Extensions = React.useMemo(() => [
     StarterKit.configure({
@@ -492,7 +504,7 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
     extensions: editorExtensions,
     content,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML())
+      debouncedOnChange(editor.getHTML())
     },
     editorProps,
   })
@@ -503,6 +515,14 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
       editor.commands.setContent(content)
     }
   }, [content, editor])
+
+  React.useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div className="border rounded-md bg-background">

@@ -19,6 +19,7 @@ describe('Sidebar Component', () => {
     selectionMode: false,
     selectedCount: 0,
     bulkDeleting: false,
+    isOffline: false,
     onEnterSelectionMode: cy.stub(),
     onExitSelectionMode: cy.stub(),
     onSelectAll: cy.stub(),
