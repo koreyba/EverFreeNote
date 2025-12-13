@@ -67,6 +67,21 @@ Cypress.on('window:before:load', (win) => {
     query: {},
     buildId: 'test',
   }
+
+  // Mock matchMedia for next-themes and other responsive components
+  Object.defineProperty(win, 'matchMedia', {
+    writable: true,
+    value: cy.stub().returns({
+      matches: false,
+      media: '',
+      onchange: null,
+      addListener: cy.stub(), // deprecated
+      removeListener: cy.stub(), // deprecated
+      addEventListener: cy.stub(),
+      removeEventListener: cy.stub(),
+      dispatchEvent: cy.stub(),
+    }),
+  })
 })
 
 Cypress.Commands.add('mockSupabase', () => {

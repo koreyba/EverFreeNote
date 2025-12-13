@@ -53,6 +53,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleDeleteAccount,
     deleteAccountLoading,
     invalidateNotes,
+    pendingCount,
+    failedCount,
     selectedNote,
     isEditing,
     handleSelectNote,
@@ -67,6 +69,8 @@ export function NotesShell({ controller }: NotesShellProps) {
         filterByTag={filterByTag}
         notesDisplayed={notesDisplayed}
         notesTotal={notesTotal}
+        pendingCount={pendingCount}
+        failedCount={failedCount}
         selectionMode={selectionMode}
         selectedCount={selectedCount}
         bulkDeleting={bulkDeleting}
