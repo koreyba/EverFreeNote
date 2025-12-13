@@ -64,6 +64,10 @@ interface NoteListProps {
   ftsLoadingMore?: boolean
   onLoadMoreFts?: () => void
   onSearchResultClick: (note: SearchResult) => void
+  
+  // Optional fixed dimensions for testing or specific layouts
+  height?: number
+  width?: number
 }
 
 interface ItemData {
@@ -206,6 +210,26 @@ const SearchRow = memo(({ index, style, ...props }: RowComponentProps<SearchItem
 })
 SearchRow.displayName = 'SearchRow'
 
+// Helper component to handle fixed size or AutoSizer
+const Sizer = ({ 
+  height, 
+  width, 
+  children 
+}: { 
+  height?: number
+  width?: number
+  children: (size: { height: number, width: number }) => React.ReactNode 
+}) => {
+  if (height !== undefined && width !== undefined) {
+    return <div style={{ height, width }}>{children({ height, width })}</div>
+  }
+  return (
+    <AutoSizer defaultHeight={500} defaultWidth={300} style={{ height: '100%', width: '100%' }}>
+      {children}
+    </AutoSizer>
+  )
+}
+
 export const NoteList = memo(function NoteList({
   notes,
   isLoading,
@@ -226,6 +250,8 @@ export const NoteList = memo(function NoteList({
   ftsLoadingMore = false,
   onLoadMoreFts,
   onSearchResultClick,
+  height: fixedHeight,
+  width: fixedWidth,
 }: NoteListProps) {
   const isInitialFtsLoading = ftsQuery.length >= 3 && ftsLoading && !ftsData
   const isSearch = showFTSResults && !!ftsData
@@ -332,7 +358,7 @@ export const NoteList = memo(function NoteList({
 
         {/* Virtualized FTS Results List */}
         <div className="flex-1 h-full min-h-0">
-          <AutoSizer defaultHeight={500} defaultWidth={300} style={{ height: '100%', width: '100%' }}>
+          <Sizer height={fixedHeight} width={fixedWidth}>
             {({ height, width }) => (
               <VirtualList
                 height={height}
@@ -350,7 +376,7 @@ export const NoteList = memo(function NoteList({
                 rowComponent={SearchRow}
               />
             )}
-          </AutoSizer>
+          </Sizer>
         </div>
       </div>
     )
@@ -376,7 +402,7 @@ export const NoteList = memo(function NoteList({
     <div className="h-full flex flex-col">
       {/* Virtualized List */}
       <div className="flex-1 h-full min-h-0">
-        <AutoSizer defaultHeight={500} defaultWidth={300} style={{ height: '100%', width: '100%' }}>
+        <Sizer height={fixedHeight} width={fixedWidth}>
           {({ height, width }) => (
             <VirtualList
               height={height}
@@ -394,7 +420,7 @@ export const NoteList = memo(function NoteList({
               rowComponent={NoteRow}
             />
           )}
-        </AutoSizer>
+        </Sizer>
       </div>
     </div>
   )

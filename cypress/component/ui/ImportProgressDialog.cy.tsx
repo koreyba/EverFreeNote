@@ -192,8 +192,8 @@ describe('ImportProgressDialog', () => {
     cy.get('[role="dialog"]').should('be.visible')
     // Click inside to ensure focus
     cy.get('[role="dialog"]').click()
-    cy.wait(100)
-    cy.get('body').type('{esc}')
+
+    cy.get('body').should('exist').type('{esc}')
     cy.get('@onClose').should('have.been.called')
   })
 })
