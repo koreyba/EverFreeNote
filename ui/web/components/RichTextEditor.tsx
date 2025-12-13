@@ -53,11 +53,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@ui/we
 import { FontSize } from "@/extensions/FontSize"
 import { browser } from "@ui/web/adapters/browser"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
+import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
 type RichTextEditorProps = {
   content: string
   onChange: (html: string) => void
 }
+
+const DEBOUNCE_MS = 250
 
 type MenuBarProps = {
   editor: Editor | null
@@ -449,6 +452,9 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 }
 
 const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
+  const debouncedOnChange = useDebouncedCallback((html: string) => {
+    onChange(html)
+  }, DEBOUNCE_MS)
   // Мемоизация конфигурации расширений для предотвращения пересоздания
   const editorExtensions: Extensions = React.useMemo(() => [
     StarterKit.configure({
@@ -492,10 +498,17 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
     extensions: editorExtensions,
     content,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML())
+      debouncedOnChange(editor.getHTML())
     },
     editorProps,
   })
+
+  // Sync content when it changes externally (e.g. switching notes)
+  React.useEffect(() => {
+    if (editor && content !== undefined && content !== editor.getHTML()) {
+      editor.commands.setContent(content)
+    }
+  }, [content, editor])
 
   return (
     <div className="border rounded-md bg-background">

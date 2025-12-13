@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { Badge } from "@ui/web/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/web/components/ui/card"
 import InteractiveTag from "@ui/web/components/InteractiveTag"
@@ -24,7 +25,7 @@ type NoteCardProps = {
   onTagClick?: (tag: string) => void
 }
 
-export function NoteCard({
+export const NoteCard = memo(function NoteCard({
   note,
   variant,
   isSelected,
@@ -45,11 +46,12 @@ export function NoteCard({
   if (variant === "compact") {
     return (
       <div
+        data-testid="note-card"
         onClick={onClick}
-        className={`p-3 rounded-lg cursor-pointer transition-colors border ${isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
+        className={`p-3 rounded-lg cursor-pointer transition-colors border h-full ${isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
           }`}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 h-full">
           {selectionMode && (
             <Checkbox
               checked={isSelected}
@@ -58,7 +60,7 @@ export function NoteCard({
               className="mt-1"
             />
           )}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex flex-col h-full">
             <h3 className="font-semibold truncate">{note.title}</h3>
             <p className="text-sm text-muted-foreground truncate mt-1">
               {note.description ? SanitizationService.stripHtml(note.description) : ""}
@@ -76,6 +78,7 @@ export function NoteCard({
                 ))}
               </div>
             )}
+            <div className="flex-1" />
             <p className="text-xs text-muted-foreground mt-2">{formatDate(note.updated_at)}</p>
           </div>
         </div>
@@ -83,10 +86,10 @@ export function NoteCard({
     )
   }
 
-  // Search variant - for search results
+  // Search variant - for search results (original structure)
   const searchNote = note as SearchResult
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
+    <Card data-testid="note-card" className="hover:shadow-md transition-shadow cursor-pointer h-full" onClick={onClick}>
       <CardHeader className="pb-3">
         <div className="flex items-start gap-3">
           {selectionMode && (
@@ -147,4 +150,4 @@ export function NoteCard({
       </CardHeader>
     </Card>
   )
-}
+})

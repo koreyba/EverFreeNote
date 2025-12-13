@@ -5,37 +5,57 @@ import { Loader2, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor from "@/components/RichTextEditor"
+import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
+
+const INPUT_DEBOUNCE_MS = 250
 
 interface NoteEditorProps {
-  title: string
-  description: string
-  tags: string
+  initialTitle?: string
+  initialDescription?: string
+  initialTags?: string
   isSaving: boolean
-  onTitleChange: (value: string) => void
-  onDescriptionChange: (value: string) => void
-  onTagsChange: (value: string) => void
-  onSave: () => void
+  onSave: (data: { title: string; description: string; tags: string }) => void
   onCancel: () => void
 }
 
 export const NoteEditor = React.memo(function NoteEditor({
-  title,
-  description,
-  tags,
+  initialTitle = "",
+  initialDescription = "",
+  initialTags = "",
   isSaving,
-  onTitleChange,
-  onDescriptionChange,
-  onTagsChange,
   onSave,
   onCancel
 }: NoteEditorProps) {
-  // Обработчики событий для предотвращения пересоздания на каждом рендере
-  const handleTagsChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onTagsChange(e.target.value)
-    },
-    [onTagsChange]
-  )
+  const [description, setDescription] = React.useState(initialDescription)
+  const [titleState, setTitleState] = React.useState(initialTitle)
+  const [tagsState, setTagsState] = React.useState(initialTags)
+  const [inputResetKey, setInputResetKey] = React.useState(0)
+  const titleInputRef = React.useRef<HTMLInputElement | null>(null)
+  const tagsInputRef = React.useRef<HTMLInputElement | null>(null)
+  const debouncedTitle = useDebouncedCallback((value: string) => setTitleState(value), INPUT_DEBOUNCE_MS)
+  const debouncedTags = useDebouncedCallback((value: string) => setTagsState(value), INPUT_DEBOUNCE_MS)
+
+  // Sync with props if they change (e.g. switching notes)
+  React.useEffect(() => {
+    setDescription(initialDescription)
+    setTitleState(initialTitle)
+    setTagsState(initialTags)
+    setInputResetKey((k) => k + 1)
+  }, [initialTitle, initialDescription, initialTags])
+
+  const handleSave = () => {
+    const latestTitle = titleInputRef.current?.value ?? titleState
+    const latestTags = tagsInputRef.current?.value ?? tagsState
+    onSave({ title: latestTitle, description, tags: latestTags })
+  }
+
+  const handleTitleChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    debouncedTitle(e.target.value)
+  }, [debouncedTitle])
+
+  const handleTagsChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    debouncedTags(e.target.value)
+  }, [debouncedTags])
 
   return (
     <div className="flex-1 flex flex-col">
@@ -52,7 +72,7 @@ export const NoteEditor = React.memo(function NoteEditor({
             Cancel
           </Button>
           <Button
-            onClick={onSave}
+            onClick={handleSave}
             disabled={isSaving}
           >
             {isSaving ? (
@@ -72,10 +92,12 @@ export const NoteEditor = React.memo(function NoteEditor({
         <div className="max-w-4xl mx-auto space-y-4">
           <div>
             <Input
+              key={`title-${inputResetKey}`}
+              ref={titleInputRef}
               type="text"
               placeholder="Note title"
-              value={title}
-              onChange={(e) => onTitleChange(e.target.value)}
+              defaultValue={initialTitle}
+              onChange={handleTitleChange}
               className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-2xl font-bold leading-snug shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
@@ -85,16 +107,18 @@ export const NoteEditor = React.memo(function NoteEditor({
               <span>Tags (comma-separated):</span>
             </div>
             <Input
+              key={`tags-${inputResetKey}`}
+              ref={tagsInputRef}
               type="text"
               placeholder="work, personal, ideas"
-              value={tags}
+              defaultValue={initialTags}
               onChange={handleTagsChange}
             />
           </div>
           <div>
             <RichTextEditor
               content={description}
-              onChange={onDescriptionChange}
+              onChange={setDescription}
             />
           </div>
         </div>
