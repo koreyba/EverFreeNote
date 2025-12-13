@@ -3,6 +3,7 @@ import { NotesShell } from '@ui/web/components/features/notes/NotesShell'
 import type { NoteAppController } from '@/ui/web/hooks/useNoteAppController'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { ThemeProvider } from '@/components/theme-provider'
 
 describe('Mobile Layout Adaptation', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,16 +104,18 @@ describe('Mobile Layout Adaptation', () => {
     const controller = createMockController()
     
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
-        <NotesShell controller={controller} />
-      </SupabaseTestProvider>
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
     )
 
     // Sidebar content should be visible (not hidden)
-    cy.get('[data-testid="sidebar-container"]').should('not.have.class', 'hidden')
+    cy.get('[data-testid=\'sidebar-container\']').should('not.have.class', 'hidden')
     
     // Editor should be hidden
-    cy.get('[data-testid="editor-container"]').should('have.class', 'hidden')
+    cy.get('[data-testid=\'editor-container\']').should('have.class', 'hidden')
   })
 
   it('shows editor and hides sidebar when note is selected on mobile', () => {
@@ -129,16 +132,18 @@ describe('Mobile Layout Adaptation', () => {
     const controller = createMockController({ selectedNote })
     
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
-        <NotesShell controller={controller} />
-      </SupabaseTestProvider>
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
     )
 
     // Sidebar should be hidden
-    cy.get('[data-testid="sidebar-container"]').should('have.class', 'hidden')
+    cy.get('[data-testid=\'sidebar-container\']').should('have.class', 'hidden')
 
     // Editor (NoteView) should be visible
-    cy.get('[data-testid="editor-container"]').should('not.have.class', 'hidden')
+    cy.get('[data-testid=\'editor-container\']').should('not.have.class', 'hidden')
     
     cy.contains('Test Note').should('exist') // Content title
     cy.contains('Reading').should('exist') // Header status
@@ -152,9 +157,11 @@ describe('Mobile Layout Adaptation', () => {
     })
     
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
-        <NotesShell controller={controller} />
-      </SupabaseTestProvider>
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
     )
 
     cy.contains('Editing').should('exist')
@@ -174,9 +181,11 @@ describe('Mobile Layout Adaptation', () => {
     const controller = createMockController({ selectedNote })
     
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
-        <NotesShell controller={controller} />
-      </SupabaseTestProvider>
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
     )
 
     // Back button (ChevronLeft) should exist
@@ -201,9 +210,11 @@ describe('Mobile Layout Adaptation', () => {
     const controller = createMockController({ selectedNote })
     
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
-        <NotesShell controller={controller} />
-      </SupabaseTestProvider>
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
     )
 
     // Back button should have md:hidden class
