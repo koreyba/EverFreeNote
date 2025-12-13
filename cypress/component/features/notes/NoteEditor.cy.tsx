@@ -40,7 +40,7 @@ describe('NoteEditor Component', () => {
     cy.contains('Save').click()
     cy.get('@onSave').should('have.been.called')
 
-    cy.contains('Cancel').click()
+    cy.contains('Read').click()
     cy.get('@onCancel').should('have.been.called')
   })
 
