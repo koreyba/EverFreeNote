@@ -74,6 +74,9 @@ interface ItemData {
   onToggleSelect?: (note: NoteRecord) => void
   onSelectNote: (note: NoteRecord) => void
   onTagClick: (tag: string) => void
+  hasMore: boolean
+  isLoadingMore: boolean
+  onLoadMore: () => void
 }
 
 interface SearchItemData {
@@ -83,6 +86,9 @@ interface SearchItemData {
   onToggleSelect?: (note: NoteRecord) => void
   onSearchResultClick: (note: SearchResult) => void
   onTagClick: (tag: string) => void
+  hasMore: boolean
+  isLoadingMore: boolean
+  onLoadMore: () => void
 }
 
 // Row component for react-window (regular notes list)
@@ -95,7 +101,30 @@ const NoteRow = memo(({ index, style, ...props }: RowComponentProps<ItemData>) =
     onToggleSelect,
     onSelectNote,
     onTagClick,
+    hasMore,
+    isLoadingMore,
+    onLoadMore,
   } = props as unknown as ItemData
+
+  // Render Load More / Loading indicator at the end
+  if (index === items.length) {
+    return (
+      <div style={style} className="px-2 py-2 flex justify-center items-center">
+        {isLoadingMore ? (
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        ) : hasMore ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onLoadMore}
+            className="text-xs text-muted-foreground w-full"
+          >
+            Load more...
+          </Button>
+        ) : null}
+      </div>
+    )
+  }
 
   const note = items[index]
   if (!note) return null
@@ -129,7 +158,30 @@ const SearchRow = memo(({ index, style, ...props }: RowComponentProps<SearchItem
     onToggleSelect,
     onSearchResultClick,
     onTagClick,
+    hasMore,
+    isLoadingMore,
+    onLoadMore,
   } = props as unknown as SearchItemData
+
+  // Render Load More / Loading indicator at the end
+  if (index === items.length) {
+    return (
+      <div style={style} className="px-4 py-2 flex justify-center items-center">
+        {isLoadingMore ? (
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        ) : hasMore ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onLoadMore}
+            className="text-xs text-muted-foreground w-full"
+          >
+            Load more...
+          </Button>
+        ) : null}
+      </div>
+    )
+  }
 
   const note = items[index]
   if (!note) return null
@@ -191,6 +243,9 @@ export const NoteList = memo(function NoteList({
     onToggleSelect,
     onSelectNote,
     onTagClick,
+    hasMore,
+    isLoadingMore: isFetchingNextPage,
+    onLoadMore,
   }), [
     notes,
     selectedNoteId,
@@ -199,6 +254,9 @@ export const NoteList = memo(function NoteList({
     onToggleSelect,
     onSelectNote,
     onTagClick,
+    hasMore,
+    isFetchingNextPage,
+    onLoadMore,
   ])
 
   // Memoize item data for search results
@@ -209,6 +267,9 @@ export const NoteList = memo(function NoteList({
     onToggleSelect,
     onSearchResultClick,
     onTagClick,
+    hasMore: ftsHasMore ?? false,
+    isLoadingMore: ftsLoadingMore ?? false,
+    onLoadMore: onLoadMoreFts ?? (() => { }),
   }), [
     ftsData?.results,
     selectionMode,
@@ -216,6 +277,9 @@ export const NoteList = memo(function NoteList({
     onToggleSelect,
     onSearchResultClick,
     onTagClick,
+    ftsHasMore,
+    ftsLoadingMore,
+    onLoadMoreFts,
   ])
 
   // FTS Loading State (initial)
@@ -273,7 +337,7 @@ export const NoteList = memo(function NoteList({
               <VirtualList
                 height={height}
                 width={width}
-                rowCount={ftsData.results.length}
+                rowCount={ftsData.results.length + (ftsHasMore ? 1 : 0)}
                 rowHeight={dynamicSearchRowHeight}
                 rowProps={searchItemData}
                 overscanCount={3}
@@ -288,13 +352,6 @@ export const NoteList = memo(function NoteList({
             )}
           </AutoSizer>
         </div>
-
-        {/* Loading Indicator for FTS */}
-        {ftsLoadingMore && (
-          <div className="p-2 text-center flex-shrink-0 border-t bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <Loader2 className="w-4 h-4 animate-spin mx-auto text-muted-foreground" />
-          </div>
-        )}
       </div>
     )
   }
@@ -324,7 +381,7 @@ export const NoteList = memo(function NoteList({
             <VirtualList
               height={height}
               width={width}
-              rowCount={notes.length}
+              rowCount={notes.length + (hasMore ? 1 : 0)}
               rowHeight={dynamicRowHeight}
               rowProps={itemData}
               overscanCount={5}
@@ -339,24 +396,6 @@ export const NoteList = memo(function NoteList({
           )}
         </AutoSizer>
       </div>
-
-      {/* Loading Indicator / Load More Button */}
-      {(isFetchingNextPage || hasMore) && (
-        <div className="p-2 text-center flex-shrink-0 border-t bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          {isFetchingNextPage ? (
-            <Loader2 className="w-4 h-4 animate-spin mx-auto text-muted-foreground" />
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onLoadMore}
-              className="text-xs text-muted-foreground"
-            >
-              Load more...
-            </Button>
-          )}
-        </div>
-      )}
     </div>
   )
 })
