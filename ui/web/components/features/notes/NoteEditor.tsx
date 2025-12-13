@@ -69,7 +69,7 @@ export const NoteEditor = React.memo(function NoteEditor({
             onClick={onCancel}
             variant="outline"
           >
-            Cancel
+            Read
           </Button>
           <Button
             onClick={handleSave}
