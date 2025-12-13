@@ -53,6 +53,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@ui/we
 import { FontSize } from "@/extensions/FontSize"
 import { browser } from "@ui/web/adapters/browser"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
+import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
 type RichTextEditorProps = {
   content: string
@@ -451,16 +452,9 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 }
 
 const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
-  const debounceTimerRef = React.useRef<number | null>(null)
-
-  const debouncedOnChange = React.useCallback((html: string) => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-    }
-    debounceTimerRef.current = window.setTimeout(() => {
-      onChange(html)
-    }, DEBOUNCE_MS)
-  }, [onChange])
+  const debouncedOnChange = useDebouncedCallback((html: string) => {
+    onChange(html)
+  }, DEBOUNCE_MS)
   // Мемоизация конфигурации расширений для предотвращения пересоздания
   const editorExtensions: Extensions = React.useMemo(() => [
     StarterKit.configure({
@@ -515,14 +509,6 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
       editor.commands.setContent(content)
     }
   }, [content, editor])
-
-  React.useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-      }
-    }
-  }, [])
 
   return (
     <div className="border rounded-md bg-background">
