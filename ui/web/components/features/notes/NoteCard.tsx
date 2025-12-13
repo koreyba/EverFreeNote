@@ -46,6 +46,7 @@ export const NoteCard = memo(function NoteCard({
   if (variant === "compact") {
     return (
       <div
+        data-testid="note-card"
         onClick={onClick}
         className={`p-3 rounded-lg cursor-pointer transition-colors border h-full ${isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
           }`}
@@ -88,7 +89,7 @@ export const NoteCard = memo(function NoteCard({
   // Search variant - for search results (original structure)
   const searchNote = note as SearchResult
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer h-full" onClick={onClick}>
+    <Card data-testid="note-card" className="hover:shadow-md transition-shadow cursor-pointer h-full" onClick={onClick}>
       <CardHeader className="pb-3">
         <div className="flex items-start gap-3">
           {selectionMode && (
