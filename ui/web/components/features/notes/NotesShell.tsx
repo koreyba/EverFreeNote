@@ -122,8 +122,6 @@ function ListPane({ controller }: { controller: NoteAppController }) {
     ftsData,
     ftsHasMore,
     ftsLoadingMore,
-    observerTarget,
-    ftsObserverTarget,
     handleSelectNote,
     selectionMode,
     selectedNoteIds,
@@ -133,45 +131,35 @@ function ListPane({ controller }: { controller: NoteAppController }) {
   } = controller
 
   return (
-    <>
-      <NoteList
-        notes={notes as NoteRecord[]}
-        isLoading={notesQuery.isLoading}
-        selectedNoteId={selectedNote?.id}
-        selectionMode={selectionMode}
-        selectedIds={selectedNoteIds}
-        onToggleSelect={(note) => toggleNoteSelection(note.id)}
-        onSelectNote={handleSelectNote}
-        onTagClick={handleTagClick}
-        onLoadMore={() => notesQuery.fetchNextPage()}
-        hasMore={notesQuery.hasNextPage}
-        isFetchingNextPage={notesQuery.isFetchingNextPage}
-        ftsQuery={searchQuery}
-        ftsLoading={ftsSearchResult.isLoading}
-        showFTSResults={showFTSResults}
-        ftsData={
-          ftsData
-            ? {
-              total: ftsData.total,
-              executionTime: ftsData.executionTime,
-              results: ftsData.results,
-            }
-            : undefined
-        }
-        ftsHasMore={ftsHasMore}
-        ftsLoadingMore={ftsLoadingMore}
-        onLoadMoreFts={controller.loadMoreFts}
-        onSearchResultClick={handleSearchResultClick}
-      />
-
-      {/* Infinite Scroll Sentinel - unified for regular and FTS results */}
-      {notesQuery.hasNextPage && !showFTSResults && (
-        <div ref={observerTarget} className="h-1" />
-      )}
-      {ftsHasMore && showFTSResults && (
-        <div ref={ftsObserverTarget} className="h-1" />
-      )}
-    </>
+    <NoteList
+      notes={notes as NoteRecord[]}
+      isLoading={notesQuery.isLoading}
+      selectedNoteId={selectedNote?.id}
+      selectionMode={selectionMode}
+      selectedIds={selectedNoteIds}
+      onToggleSelect={(note) => toggleNoteSelection(note.id)}
+      onSelectNote={handleSelectNote}
+      onTagClick={handleTagClick}
+      onLoadMore={() => notesQuery.fetchNextPage()}
+      hasMore={notesQuery.hasNextPage}
+      isFetchingNextPage={notesQuery.isFetchingNextPage}
+      ftsQuery={searchQuery}
+      ftsLoading={ftsSearchResult.isLoading}
+      showFTSResults={showFTSResults}
+      ftsData={
+        ftsData
+          ? {
+            total: ftsData.total,
+            executionTime: ftsData.executionTime,
+            results: ftsData.results,
+          }
+          : undefined
+      }
+      ftsHasMore={ftsHasMore}
+      ftsLoadingMore={ftsLoadingMore}
+      onLoadMoreFts={controller.loadMoreFts}
+      onSearchResultClick={handleSearchResultClick}
+    />
   )
 }
 

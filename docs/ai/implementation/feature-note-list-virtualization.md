@@ -15,21 +15,22 @@ description: Technical implementation notes, patterns, and code guidelines
 ## Code Structure
 **How is the code organized?**
 
-- `NoteList` will wrap `AutoSizer` and `FixedSizeList`.
-- We will define a `Row` component (or render function) that receives `{ index, style }` from `react-window`.
-- Inside `Row`, we render `NoteCard`.
+- `NoteList` wraps `AutoSizer` and `List` (react-window v2).
+- `NoteRow` is a memoized component that receives `{ index, style, ...rowProps }` from react-window v2.
+- Inside `NoteRow`, we render `NoteCard`.
 
 ## Implementation Notes
 **Key technical details to remember:**
 
-### Virtualization Logic
-- **Item Data**: We need to pass the `notes` array and other props (selection state, handlers) to the `itemData` prop of `FixedSizeList`. This avoids creating new function closures for every row on every render.
-- **Infinite Scroll**: Use `onItemsRendered` to check if `visibleStopIndex` is close to `notes.length`. If so, call `onLoadMore`.
-- **Sizing**: The `NoteCard` height needs to be fixed. Let's measure the current compact card. It looks like ~100px. We can make it configurable or just hardcode it for now.
+### Virtualization Logic (react-window v2 API)
+- **Row Props**: Pass the `notes` array and other props (selection state, handlers) via `rowProps`. This is passed to `NoteRow` component along with `index` and `style`.
+- **Infinite Scroll**: Use `onRowsRendered` to check if `stopIndex` is close to `items.length`. If so, call `onLoadMore`.
+- **Sizing**: Row heights are fixed: 130px for compact view, 160px for search results.
 
 ### Patterns & Best Practices
-- **Memoization**: `itemData` should be memoized with `useMemo` to prevent re-renders of the entire list when unrelated props change.
-- **Style Passing**: The `style` prop passed to `Row` **MUST** be applied to the root element of the row (the wrapper around `NoteCard`) for positioning to work.
+- **Memoization**: `rowProps` (itemData) is memoized with `useMemo` to prevent re-renders when unrelated props change.
+- **Style Passing**: The `style` prop passed to `NoteRow` **MUST** be applied to the root element for positioning to work.
+- **Type Safety**: Due to TypeScript caching old react-window v1 types, we use `List as any` with documentation comment.
 
 ## Integration Points
 **How do pieces connect?**

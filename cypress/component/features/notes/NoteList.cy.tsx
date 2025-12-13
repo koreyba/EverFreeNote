@@ -63,7 +63,11 @@ describe('NoteList Component', () => {
   })
 
   it('renders regular list', () => {
-    cy.mount(<NoteList {...getBaseProps()} notes={mockNotes} />)
+    cy.mount(
+      <div style={{ height: 500, width: 500 }}>
+        <NoteList {...getBaseProps()} notes={mockNotes} />
+      </div>
+    )
     cy.contains('Note 1').should('be.visible')
     cy.contains('Note 2').should('be.visible')
   })
@@ -75,16 +79,18 @@ describe('NoteList Component', () => {
 
   it('renders FTS results', () => {
     cy.mount(
-      <NoteList
-        {...getBaseProps()}
-        ftsQuery='test'
-        showFTSResults={true}
-        ftsData={{
-          total: 1,
-          executionTime: 10,
-          results: mockFTSResults
-        }}
-      />
+      <div style={{ height: 500, width: 500 }}>
+        <NoteList
+          {...getBaseProps()}
+          ftsQuery='test'
+          showFTSResults={true}
+          ftsData={{
+            total: 1,
+            executionTime: 10,
+            results: mockFTSResults
+          }}
+        />
+      </div>
     )
     cy.contains('Found:').should('be.visible')
     cy.contains('1').should('be.visible')
@@ -95,10 +101,12 @@ describe('NoteList Component', () => {
   it('handles note selection', () => {
     const props = getBaseProps()
     cy.mount(
-      <NoteList
-        {...props}
-        notes={mockNotes}
-      />
+      <div style={{ height: 500, width: 500 }}>
+        <NoteList
+          {...props}
+          notes={mockNotes}
+        />
+      </div>
     )
     cy.contains('Note 1').click()
     cy.get('@onSelectNote').should('have.been.calledWith', Cypress.sinon.match.has('id', mockNotes[0].id))
@@ -126,11 +134,13 @@ describe('NoteList Component', () => {
       }
   
       cy.mount(
-        <NoteList
-          {...getBaseProps()}
-          showFTSResults
-          ftsData={ftsData}
-        />
+        <div style={{ height: 500, width: 500 }}>
+          <NoteList
+            {...getBaseProps()}
+            showFTSResults
+            ftsData={ftsData}
+          />
+        </div>
       )
   
       cy.contains('Found: 50').should('be.visible')
@@ -144,11 +154,13 @@ describe('NoteList Component', () => {
       }
   
       cy.mount(
-        <NoteList
-          {...getBaseProps()}
-          showFTSResults
-          ftsData={ftsData}
-        />
+        <div style={{ height: 500, width: 500 }}>
+          <NoteList
+            {...getBaseProps()}
+            showFTSResults
+            ftsData={ftsData}
+          />
+        </div>
       )
   
       cy.contains('Found: 2').should('be.visible')
