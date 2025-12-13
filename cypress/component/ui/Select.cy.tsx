@@ -49,7 +49,6 @@ describe('Select', () => {
     )
     
     cy.get('button').click()
-    cy.wait(500) 
     
     // Check for scroll down button.
     cy.get('.flex.cursor-default.items-center.justify-center.py-1').should('exist')

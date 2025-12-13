@@ -1,6 +1,7 @@
-import React from 'react'
+﻿import React from 'react'
 import { NoteCard } from '@ui/web/components/features/notes/NoteCard'
 import type { Note, SearchResult } from '@core/types/domain'
+import { ThemeProvider } from '@/components/theme-provider'
 
 describe('NoteCard Component', () => {
   const baseNote: Note = {
@@ -18,13 +19,15 @@ describe('NoteCard Component', () => {
     const onTagClick = cy.stub().as('onTagClick')
 
     cy.mount(
-      <NoteCard
-        note={baseNote}
-        variant="compact"
-        isSelected
-        onClick={onClick}
-        onTagClick={onTagClick}
-      />
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <NoteCard
+          note={baseNote}
+          variant='compact'
+          isSelected
+          onClick={onClick}
+          onTagClick={onTagClick}
+        />
+      </ThemeProvider>
     )
 
     cy.contains('My note').should('be.visible')
@@ -54,19 +57,21 @@ describe('NoteCard Component', () => {
     }
 
     cy.mount(
-      <NoteCard
-        note={searchNote}
-        variant="search"
-        onClick={onClick}
-        onTagClick={onTagClick}
-      />
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <NoteCard
+          note={searchNote}
+          variant='search'
+          onClick={onClick}
+          onTagClick={onTagClick}
+        />
+      </ThemeProvider>
     )
 
     cy.contains('73.4%').should('be.visible')
     cy.get('mark').should('contain.text', 'highlight')
     cy.contains('+1').should('be.visible')
 
-    cy.get('[data-cy="interactive-tag"]').first().click()
+    cy.get('[data-cy=\'interactive-tag\']').first().click()
     cy.get('@onTagClick').should('have.been.calledWith', 'a')
 
     cy.contains('Search hit').click()
@@ -75,13 +80,16 @@ describe('NoteCard Component', () => {
 
   it('falls back to placeholder title when missing in search variant', () => {
     cy.mount(
-      <NoteCard
-        note={{ ...baseNote, title: '', content: '', user_id: 'user-1' } as SearchResult}
-        variant="search"
-        onClick={cy.stub()}
-      />
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <NoteCard
+          note={{ ...baseNote, title: '', content: '', user_id: 'user-1' } as SearchResult}
+          variant='search'
+          onClick={cy.stub()}
+        />
+      </ThemeProvider>
     )
 
     cy.contains('Без названия').should('be.visible')
   })
 })
+

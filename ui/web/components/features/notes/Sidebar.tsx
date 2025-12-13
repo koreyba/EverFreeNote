@@ -19,6 +19,7 @@ import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
 import { DeleteAccountDialog } from "@/components/features/account/DeleteAccountDialog"
 import { User } from "@supabase/supabase-js"
 import { cn } from "@ui/web/lib/utils"
+import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
 interface SidebarProps {
   user: User
@@ -26,6 +27,7 @@ interface SidebarProps {
   notesTotal?: number
   pendingCount?: number
   failedCount?: number
+  isOffline: boolean
   selectionMode: boolean
   selectedCount: number
   bulkDeleting: boolean
@@ -55,6 +57,7 @@ export function Sidebar({
   notesTotal,
   pendingCount = 0,
   failedCount = 0,
+  isOffline,
   selectionMode,
   selectedCount,
   bulkDeleting,
@@ -79,25 +82,22 @@ export function Sidebar({
 }: SidebarProps) {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
-  const [isOffline, setIsOffline] = useState<boolean>(typeof window !== "undefined" ? !navigator.onLine : false)
-
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false)
-    const handleOffline = () => setIsOffline(true)
-
-    window.addEventListener("online", handleOnline)
-    window.addEventListener("offline", handleOffline)
-
-    return () => {
-      window.removeEventListener("online", handleOnline)
-      window.removeEventListener("offline", handleOffline)
-    }
-  }, [])
+  const [searchDraft, setSearchDraft] = useState(searchQuery)
+  const debouncedSearch = useDebouncedCallback(onSearch, 250)
 
   const handleBulkConfirm = async () => {
     await onBulkDelete()
     setBulkDialogOpen(false)
   }
+  useEffect(() => {
+    setSearchDraft(searchQuery)
+  }, [searchQuery])
+
+  const handleSearchChange = (value: string) => {
+    setSearchDraft(value)
+    debouncedSearch(value)
+  }
+
   const handleDeleteAccount = async () => {
     await onDeleteAccount()
     setDeleteAccountOpen(false)
@@ -163,8 +163,8 @@ export function Sidebar({
           <Input
             type="text"
             placeholder={filterByTag ? `Search in "${filterByTag}" notes...` : "Search notes..."}
-            value={searchQuery}
-            onChange={(e) => onSearch(e.target.value)}
+            value={searchDraft}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10 pr-8"
           />
           {searchQuery && (
@@ -234,7 +234,7 @@ export function Sidebar({
       </div>
 
       {/* Notes List Container */}
-      <div className="flex-1 overflow-y-auto" id="notes-list-container">
+      <div className="flex-1 overflow-hidden" id="notes-list-container">
         {children}
       </div>
 
@@ -302,4 +302,3 @@ export function Sidebar({
     </div>
   )
 }
-
