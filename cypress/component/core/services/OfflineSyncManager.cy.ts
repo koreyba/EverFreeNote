@@ -127,6 +127,23 @@ describe('OfflineSyncManager', () => {
       expect(upsertArgs[0].operation).to.equal('create')
     })
 
+    it('should persist compacted queue even if length is unchanged (to reset failed status)', async () => {
+      // Setup queue with a single FAILED item
+      const failedItem = { ...createItem('1', 'note-1', 'create'), status: 'failed' as const }
+      
+      ;(mockStorage.getQueue as unknown as sinon.SinonStub).resolves([failedItem])
+      ;(mockStorage.getPendingBatch as unknown as sinon.SinonStub).resolves([]) // Stop loop
+
+      await manager.drainQueue()
+
+      // compactQueue resets status to 'pending'.
+      // Even though length is still 1, we MUST save it to persist the 'pending' status.
+      expect(mockStorage.upsertQueue).to.have.been.called
+      const upsertArgs = (mockStorage.upsertQueue as unknown as sinon.SinonStub).firstCall.args[0]
+      expect(upsertArgs).to.have.length(1)
+      expect(upsertArgs[0].status).to.equal('pending')
+    })
+
     it('should process pending batch and remove successful items', async () => {
       const item = createItem('1', 'note-1')
       ;(mockStorage.getQueue as unknown as sinon.SinonStub).resolves([item])
