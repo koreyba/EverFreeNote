@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { Loader2, Zap } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -43,7 +44,7 @@ interface NoteListProps {
   onSearchResultClick: (note: SearchResult) => void
 }
 
-export function NoteList({
+export const NoteList = memo(function NoteList({
   notes,
   isLoading,
   selectedNoteId,
@@ -204,4 +205,4 @@ export function NoteList({
       )}
     </>
   )
-}
+})

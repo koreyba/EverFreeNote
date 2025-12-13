@@ -3,15 +3,12 @@ import { NoteEditor } from '@ui/web/components/features/notes/NoteEditor'
 
 describe('NoteEditor Component', () => {
   const getDefaultProps = () => ({
-    title: 'Test Title',
-    description: '<p>Test Description</p>',
-    tags: 'tag1, tag2',
+    initialTitle: 'Test Title',
+    initialDescription: '<p>Test Description</p>',
+    initialTags: 'tag1, tag2',
     isSaving: false,
-    onTitleChange: cy.stub(),
-    onDescriptionChange: cy.stub(),
-    onTagsChange: cy.stub(),
-    onSave: cy.stub(),
-    onCancel: cy.stub()
+    onSave: cy.stub().as('onSave'),
+    onCancel: cy.stub().as('onCancel')
   })
 
   it('renders in edit mode', () => {
@@ -20,48 +17,25 @@ describe('NoteEditor Component', () => {
     cy.contains('Editing').should('be.visible')
     cy.get('input[placeholder="Note title"]').should('have.value', 'Test Title')
     cy.get('input[placeholder="work, personal, ideas"]').should('have.value', 'tag1, tag2')
-    // RichTextEditor content check might be complex, but we can check if it renders
     cy.get('.ProseMirror').should('contain.text', 'Test Description')
   })
 
-  it('renders in new note mode', () => {
+  it('handles input changes and save', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
-    cy.contains('Editing').should('be.visible')
-  })
-
-  it('handles input changes', () => {
-    const props = getDefaultProps()
-    const onTitleChange = cy.spy().as('onTitleChange')
-    const onTagsChange = cy.spy().as('onTagsChange')
-
-    cy.mount(
-      <NoteEditor
-        {...props}
-        onTitleChange={onTitleChange}
-        onTagsChange={onTagsChange}
-      />
-    )
-
     cy.get('input[placeholder="Note title"]').clear().type('New Title')
-    cy.get('@onTitleChange').should('have.been.called')
-
     cy.get('input[placeholder="work, personal, ideas"]').clear().type('new tag')
-    cy.get('@onTagsChange').should('have.been.called')
+    
+    cy.contains('Save').click()
+    
+    cy.get('@onSave').should('have.been.calledWith', Cypress.sinon.match({
+      title: 'New Title',
+      tags: 'new tag'
+    }))
   })
 
   it('handles save and cancel actions', () => {
-    const props = getDefaultProps()
-    const onSave = cy.spy().as('onSave')
-    const onCancel = cy.spy().as('onCancel')
-
-    cy.mount(
-      <NoteEditor
-        {...props}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
-    )
+    cy.mount(<NoteEditor {...getDefaultProps()} />)
 
     cy.contains('Save').click()
     cy.get('@onSave').should('have.been.called')
@@ -71,7 +45,8 @@ describe('NoteEditor Component', () => {
   })
 
   it('shows saving state', () => {
-    cy.mount(<NoteEditor {...getDefaultProps()} isSaving={true} />)
+    const props = { ...getDefaultProps(), isSaving: true }
+    cy.mount(<NoteEditor {...props} />)
 
     cy.contains('Saving...').should('be.visible')
     cy.get('button').contains('Saving...').should('be.disabled')

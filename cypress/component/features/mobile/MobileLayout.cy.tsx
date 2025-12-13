@@ -21,7 +21,6 @@ describe('Mobile Layout Adaptation', () => {
       notesQuery: { isLoading: false, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: cy.stub() } as any,
       selectedNote: null,
       isEditing: false,
-      editForm: { title: '', description: '', tags: '' },
       searchQuery: '',
       filterByTag: null,
       deleteDialogOpen: false,
@@ -58,7 +57,6 @@ describe('Mobile Layout Adaptation', () => {
       handleTestLogin: cy.stub(),
       handleSkipAuth: cy.stub(),
       handleSignInWithGoogle: cy.stub(),
-      setEditForm: cy.stub(),
       invalidateNotes: cy.stub(),
       handleSearchResultClick: cy.stub(),
       enterSelectionMode: cy.stub(),
@@ -153,7 +151,6 @@ describe('Mobile Layout Adaptation', () => {
     cy.viewport('iphone-se2')
     const controller = createMockController({ 
       isEditing: true,
-      editForm: { title: 'New Note', description: '', tags: '' }
     })
     
     cy.mount(

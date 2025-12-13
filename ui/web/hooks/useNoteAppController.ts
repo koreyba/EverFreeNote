@@ -40,11 +40,6 @@ export function useNoteAppController() {
   const [searchQuery, setSearchQuery] = useState("")
   const [ftsSearchQuery, setFtsSearchQuery] = useState("")
   const [isEditing, setIsEditing] = useState(false)
-  const [editForm, setEditForm] = useState<EditFormState>({
-    title: "",
-    description: "",
-    tags: "",
-  })
   const [saving, setSaving] = useState(false)
   const [filterByTag, setFilterByTag] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -358,21 +353,21 @@ export function useNoteAppController() {
 
   // -- Handlers --
 
-  const handleSearch = (query: string) => {
+  const handleSearch = useCallback((query: string) => {
     setSearchQuery(query)
     setFtsSearchQuery(query)
-  }
+  }, [])
 
-  const handleTagClick = (tag: string) => {
+  const handleTagClick = useCallback((tag: string) => {
     setFilterByTag(tag)
     // Don't reset search - preserve search state when clicking tags
     setSelectedNote(null)
     setIsEditing(false)
-  }
+  }, [])
 
-  const handleClearTagFilter = () => {
+  const handleClearTagFilter = useCallback(() => {
     setFilterByTag(null)
-  }
+  }, [])
 
   const handleSignInWithGoogle = async () => {
     try {
@@ -496,23 +491,17 @@ export function useNoteAppController() {
     }
   }
 
-  const handleCreateNote = () => {
+  const handleCreateNote = useCallback(() => {
     setSelectedNote(null)
     setIsEditing(true)
-    setEditForm({ title: '', description: '', tags: '' })
-  }
+  }, [])
 
-  const handleEditNote = (note: NoteViewModel) => {
+  const handleEditNote = useCallback((note: NoteViewModel) => {
     setSelectedNote(note)
     setIsEditing(true)
-    setEditForm({
-      title: note.title,
-      description: note.description ?? note.content ?? '',
-      tags: note.tags?.join(', ') ?? '',
-    })
-  }
+  }, [])
 
-  const handleSaveNote = async () => {
+  const handleSaveNote = async (data: { title: string; description: string; tags: string }) => {
     if (!user) return
 
     const offlineMutation = async (
@@ -551,23 +540,31 @@ export function useNoteAppController() {
         updated_at: nowIso,
       }
       await offlineCache.saveNote(cached)
-      setOfflineOverlay(await offlineCache.loadNotes())
-      const queue = await offlineQueue.getQueue()
-      setPendingCount(queue.filter((q) => q.status === 'pending').length)
-      setFailedCount(queue.filter((q) => q.status === 'failed').length)
+      // Optimized: update local state instead of reloading from DB
+      setOfflineOverlay((prev) => {
+        const idx = prev.findIndex((n) => n.id === noteId)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = cached
+          return next
+        }
+        return [...prev, cached]
+      })
+      // Optimized: increment pending count
+      setPendingCount((prev) => prev + 1)
     }
 
     setSaving(true)
     try {
       let savedNote: NoteViewModel | null = null
-      const tags = editForm.tags
+      const tags = data.tags
         .split(',')
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0)
 
       const noteData = {
-        title: editForm.title.trim() || 'Untitled',
-        description: editForm.description.trim(),
+        title: data.title.trim() || 'Untitled',
+        description: data.description.trim(),
         tags,
       }
 
@@ -613,7 +610,6 @@ export function useNoteAppController() {
       if (savedNote) {
         setSelectedNote(savedNote)
       }
-      setEditForm({ title: '', description: '', tags: '' })
     } catch (error) {
       console.error('Error saving note:', error)
     } finally {
@@ -638,16 +634,24 @@ export function useNoteAppController() {
           clientUpdatedAt: new Date().toISOString(),
         })
         // Удаляем из кеша, чтобы карточка не дублировалась офлайн
-        await offlineCache.saveNote({
+        const cachedDelete: CachedNote = {
           id: noteToDelete.id,
           status: 'pending',
           deleted: true,
           updatedAt: new Date().toISOString(),
+        }
+        await offlineCache.saveNote(cachedDelete)
+        
+        setOfflineOverlay((prev) => {
+          const idx = prev.findIndex((n) => n.id === noteToDelete.id)
+          if (idx >= 0) {
+            const next = [...prev]
+            next[idx] = cachedDelete
+            return next
+          }
+          return [...prev, cachedDelete]
         })
-        setOfflineOverlay(await offlineCache.loadNotes())
-        const queue = await offlineQueue.getQueue()
-        setPendingCount(queue.filter((q) => q.status === 'pending').length)
-        setFailedCount(queue.filter((q) => q.status === 'failed').length)
+        setPendingCount((prev) => prev + 1)
         toast.success('Deletion queued offline')
       } else {
         await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
@@ -685,16 +689,16 @@ export function useNoteAppController() {
     }
   }
 
-  const handleSelectNote = (note: NoteViewModel | null) => {
+  const handleSelectNote = useCallback((note: NoteViewModel | null) => {
     setSelectedNote(note)
     setIsEditing(false)
-  }
+  }, [])
 
-  const handleSearchResultClick = (note: SearchResult) => {
+  const handleSearchResultClick = useCallback((note: SearchResult) => {
     // Don't reset search - keep search results visible when viewing a note
     setSelectedNote(note)
     setIsEditing(false)
-  }
+  }, [])
 
   const enterSelectionMode = () => {
     setSelectionMode(true)
@@ -708,10 +712,10 @@ export function useNoteAppController() {
     setSelectedNoteIds(new Set())
   }
 
-  const toggleNoteSelection = (noteId: string) => {
+  const toggleNoteSelection = useCallback((noteId: string) => {
     setSelectionMode(true)
     setSelectedNoteIds(prev => toggleSelection(prev, noteId))
-  }
+  }, [])
 
   const selectAllVisible = () => {
     const source = showFTSResults && aggregatedFtsData
@@ -725,10 +729,10 @@ export function useNoteAppController() {
     setSelectedNoteIds(clearSelectionSet())
   }
 
-  const loadMoreFts = () => {
+  const loadMoreFts = useCallback(() => {
     if (ftsLoadingMore || !ftsHasMore) return
     setFtsOffset((prev) => prev + ftsLimit)
-  }
+  }, [ftsLoadingMore, ftsHasMore, ftsLimit])
 
   const deleteSelectedNotes = async () => {
     if (!selectedNoteIds.size) return
@@ -745,18 +749,29 @@ export function useNoteAppController() {
           }))
         )
         // Mark all as deleted for optimistic UI
+        const now = new Date().toISOString()
+        const updates: CachedNote[] = []
         for (const id of ids) {
-          await offlineCache.saveNote({
+          const cached: CachedNote = {
             id,
             status: 'pending',
             deleted: true,
-            updatedAt: new Date().toISOString(),
-          })
+            updatedAt: now,
+          }
+          await offlineCache.saveNote(cached)
+          updates.push(cached)
         }
-        setOfflineOverlay(await offlineCache.loadNotes())
-        const queue = await offlineQueue.getQueue()
-        setPendingCount(queue.filter((q) => q.status === 'pending').length)
-        setFailedCount(queue.filter((q) => q.status === 'failed').length)
+        
+        setOfflineOverlay((prev) => {
+          const next = [...prev]
+          updates.forEach((u) => {
+            const idx = next.findIndex((n) => n.id === u.id)
+            if (idx >= 0) next[idx] = u
+            else next.push(u)
+          })
+          return next
+        })
+        setPendingCount((prev) => prev + ids.length)
         toast.success(`Queued deletion of ${ids.length} notes (offline)`)
       } else {
         const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync({ id, silent: true })))
@@ -785,8 +800,6 @@ export function useNoteAppController() {
     selectedNote,
     searchQuery,
     isEditing,
-    editForm,
-    setEditForm,
     saving,
     filterByTag,
     deleteDialogOpen,
