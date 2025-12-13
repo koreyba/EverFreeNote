@@ -37,7 +37,7 @@ describe('OfflineSyncManager', () => {
     }
 
     mockNetwork = {
-      isOnline: cy.stub().returns(true),
+      isOnline: cy.stub().returns(false),
       subscribe: cy.stub().returns(() => {}),
     }
 
@@ -58,11 +58,33 @@ describe('OfflineSyncManager', () => {
 
   it('should initialize with correct online state', () => {
     expect(mockNetwork.isOnline).to.have.been.called
-    expect((manager as unknown as { online: boolean }).online).to.be.true
+    expect((manager as unknown as { online: boolean }).online).to.be.false
   })
 
   it('should subscribe to network status changes', () => {
     expect(mockNetwork.subscribe).to.have.been.called
+  })
+
+  it('should drain queue on initialization if already online', () => {
+    // Create a new manager instance to test initialization logic
+    const localStorage = { ...mockStorage }
+    const localNetwork = { ...mockNetwork, isOnline: cy.stub().returns(true) }
+    
+    // Setup queue to have items so drainQueue actually does something visible
+    ;(localStorage.getQueue as unknown as sinon.SinonStub).resolves([createItem('1', 'note-1')])
+    
+    const localManager = new OfflineSyncManager(
+      localStorage,
+      performSyncStub,
+      localNetwork,
+      onSuccessStub
+    )
+    
+    // drainQueue is async and not awaited in constructor, so we need to wait a bit or check if it started
+    // Since it calls getQueue immediately, we can check that.
+    cy.wrap(localStorage.getQueue).should('have.been.called')
+    
+    localManager.dispose()
   })
 
   it('should drain queue when coming online', async () => {
@@ -76,6 +98,11 @@ describe('OfflineSyncManager', () => {
   })
 
   describe('drainQueue', () => {
+    beforeEach(() => {
+      // Ensure manager is online for drain tests
+      (manager as unknown as { online: boolean }).online = true
+    })
+
     it('should not drain if offline', async () => {
       manager.handleOffline()
       await manager.drainQueue()
@@ -155,6 +182,7 @@ describe('OfflineSyncManager', () => {
 
   describe('enqueue', () => {
     it('should enqueue item and trigger drain if online', async () => {
+      (manager as unknown as { online: boolean }).online = true
       const drainSpy = cy.spy(manager, 'drainQueue')
       const input = { noteId: '1', operation: 'create' as const, payload: {}, clientUpdatedAt: '' }
       
@@ -177,6 +205,7 @@ describe('OfflineSyncManager', () => {
   })
 
   it('should prevent parallel drain calls', async () => {
+    (manager as unknown as { online: boolean }).online = true
     const item = createItem('1', 'note-1')
     ;(mockStorage.getQueue as unknown as sinon.SinonStub).resolves([item])
     
@@ -206,6 +235,7 @@ describe('OfflineSyncManager', () => {
   })
 
   it('should use provided batchSize', async () => {
+    (manager as unknown as { online: boolean }).online = true
     const item = createItem('1', 'note-1')
     ;(mockStorage.getQueue as unknown as sinon.SinonStub).resolves([item])
     ;(mockStorage.getPendingBatch as unknown as sinon.SinonStub).resolves([])
@@ -216,6 +246,7 @@ describe('OfflineSyncManager', () => {
   })
 
   it('should use custom onSuccess callback', async () => {
+    (manager as unknown as { online: boolean }).online = true
     const item = createItem('1', 'note-1')
     ;(mockStorage.getQueue as unknown as sinon.SinonStub).resolves([item])
     
