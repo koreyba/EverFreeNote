@@ -1,14 +1,17 @@
 import React from 'react'
-import { AuthShell } from '@ui/web/components/features/auth/AuthShell'
+import { AuthShell } from '@/components/features/auth/AuthShell'
+import { ThemeProvider } from '@/components/theme-provider'
 
 describe('AuthShell Component', () => {
   it('renders correctly', () => {
     cy.mount(
-      <AuthShell
-        onTestLogin={cy.stub().as('onTestLogin')}
-        onSkipAuth={cy.stub().as('onSkipAuth')}
-        onGoogleAuth={cy.stub().as('onGoogleAuth')}
-      />
+      <ThemeProvider attribute="class" defaultTheme="light">
+        <AuthShell
+          onTestLogin={cy.stub().as('onTestLogin')}
+          onSkipAuth={cy.stub().as('onSkipAuth')}
+          onGoogleAuth={cy.stub().as('onGoogleAuth')}
+        />
+      </ThemeProvider>
     )
 
     cy.contains('EverFreeNote').should('be.visible')
@@ -22,11 +25,13 @@ describe('AuthShell Component', () => {
     const onGoogleAuth = cy.stub().as('onGoogleAuth')
 
     cy.mount(
-      <AuthShell
-        onTestLogin={onTestLogin}
-        onSkipAuth={onSkipAuth}
-        onGoogleAuth={onGoogleAuth}
-      />
+      <ThemeProvider attribute="class" defaultTheme="light">
+        <AuthShell
+          onTestLogin={onTestLogin}
+          onSkipAuth={onSkipAuth}
+          onGoogleAuth={onGoogleAuth}
+        />
+      </ThemeProvider>
     )
 
     // Assuming AuthForm renders buttons that trigger these actions
