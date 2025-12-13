@@ -234,7 +234,7 @@ export function Sidebar({
       </div>
 
       {/* Notes List Container */}
-      <div className="flex-1 overflow-y-auto" id="notes-list-container">
+      <div className="flex-1 overflow-hidden" id="notes-list-container">
         {children}
       </div>
 

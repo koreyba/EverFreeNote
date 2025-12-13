@@ -10,17 +10,21 @@ description: Define the technical architecture, components, and data models
 **What is the high-level system structure?**
 
 - We will modify the `NoteList` component to use `react-window` for virtualization.
-- `AutoSizer` (from `react-virtualized-auto-sizer` or similar pattern) will be used to determine the available width and height for the list within the sidebar.
-- The component hierarchy will change slightly:
+- `AutoSizer` (from `react-virtualized-auto-sizer`) will be used to determine the available width and height for the list within the sidebar.
+- The component hierarchy:
   ```mermaid
   graph TD
     Sidebar --> ListPane
     ListPane --> NoteList
     NoteList --> AutoSizer
-    AutoSizer --> FixedSizeList
-    FixedSizeList --> NoteCardRow
-    NoteCardRow --> NoteCard
+    AutoSizer --> List
+    List --> NoteRow
+    NoteRow --> NoteCard
   ```
+
+> **Note:** We use `react-window` v2.x which has a different API than v1.x:
+> - v1: `FixedSizeList`, `itemCount`, `itemSize`, `itemData`, `onItemsRendered`
+> - v2: `List`, `rowCount`, `rowHeight`, `rowProps`, `onRowsRendered`, `rowComponent`
 
 ## Data Models
 **What data do we need to manage?**
@@ -32,25 +36,27 @@ description: Define the technical architecture, components, and data models
 **How do components communicate?**
 
 - **Props**: `NoteList` props remain largely the same, but internal implementation changes.
-- **Scroll Events**: We need to listen to `onItemsRendered` from `FixedSizeList` to detect when the user has scrolled near the bottom to trigger `onLoadMore`.
+- **Scroll Events**: We listen to `onRowsRendered` from `List` (react-window v2) to detect when the user has scrolled near the bottom to trigger `onLoadMore`.
 
 ## Component Breakdown
 **What are the major building blocks?**
 
 - **`NoteList.tsx`**:
-  - Will wrap the list in `AutoSizer` to get dimensions.
-  - Will render `FixedSizeList`.
-  - Will handle the "Row" rendering logic (passing style and data).
+  - Wraps the list in `AutoSizer` to get dimensions.
+  - Renders `List` from react-window v2 with `rowComponent` prop.
+  - Handles the "Row" rendering logic via `NoteRow` component.
+  - Uses `rowProps` to pass data (items, handlers, selection state) to rows.
 - **`NoteCard.tsx`**:
-  - Needs to ensure it renders correctly within the fixed height container provided by `react-window`.
-  - Should probably have `height: 100%` to fill the row.
+  - Renders correctly within the fixed height container provided by `react-window`.
+  - Uses `height: 100%` to fill the row.
 
 ## Design Decisions
 **Why did we choose this approach?**
 
-- **`react-window`**: It is a lightweight, modern alternative to `react-virtualized`. It is already a dependency.
-- **`FixedSizeList`**: We will aim for a fixed item height (e.g., 100px or 120px) for the compact note card. This offers the best performance. If content is too long, it is already truncated in the current design.
+- **`react-window` v2**: Lightweight, modern virtualization library. Uses new API with `List`, `rowCount`, `rowHeight`, `rowProps`, `rowComponent`.
+- **Fixed row height**: 130px for compact view, 160px for search results. Fixed heights offer best performance with truncated content.
 - **`AutoSizer`**: Essential for making the list responsive to window resizing and sidebar width changes.
+- **Type handling**: Due to potential TypeScript cache issues with react-window v1 types, we use `as any` cast with clear documentation.
 
 ## Non-Functional Requirements
 **How should the system perform?**

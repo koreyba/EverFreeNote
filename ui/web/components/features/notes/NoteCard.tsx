@@ -47,10 +47,10 @@ export const NoteCard = memo(function NoteCard({
     return (
       <div
         onClick={onClick}
-        className={`p-3 rounded-lg cursor-pointer transition-colors border ${isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
+        className={`p-3 rounded-lg cursor-pointer transition-colors border h-full ${isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
           }`}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 h-full">
           {selectionMode && (
             <Checkbox
               checked={isSelected}
@@ -59,7 +59,7 @@ export const NoteCard = memo(function NoteCard({
               className="mt-1"
             />
           )}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex flex-col h-full">
             <h3 className="font-semibold truncate">{note.title}</h3>
             <p className="text-sm text-muted-foreground truncate mt-1">
               {note.description ? SanitizationService.stripHtml(note.description) : ""}
@@ -77,6 +77,7 @@ export const NoteCard = memo(function NoteCard({
                 ))}
               </div>
             )}
+            <div className="flex-1" />
             <p className="text-xs text-muted-foreground mt-2">{formatDate(note.updated_at)}</p>
           </div>
         </div>
@@ -84,10 +85,10 @@ export const NoteCard = memo(function NoteCard({
     )
   }
 
-  // Search variant - for search results
+  // Search variant - for search results (original structure)
   const searchNote = note as SearchResult
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
+    <Card className="hover:shadow-md transition-shadow cursor-pointer h-full" onClick={onClick}>
       <CardHeader className="pb-3">
         <div className="flex items-start gap-3">
           {selectionMode && (
