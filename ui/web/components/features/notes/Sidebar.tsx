@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { BookOpen, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,7 @@ import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
 import { DeleteAccountDialog } from "@/components/features/account/DeleteAccountDialog"
 import { User } from "@supabase/supabase-js"
 import { cn } from "@ui/web/lib/utils"
+import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
 interface SidebarProps {
   user: User
@@ -82,7 +83,7 @@ export function Sidebar({
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
   const [searchDraft, setSearchDraft] = useState(searchQuery)
-  const searchDebounceRef = useRef<number | null>(null)
+  const debouncedSearch = useDebouncedCallback(onSearch, 250)
 
   const handleBulkConfirm = async () => {
     await onBulkDelete()
@@ -94,19 +95,8 @@ export function Sidebar({
 
   const handleSearchChange = (value: string) => {
     setSearchDraft(value)
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current)
-    }
-    searchDebounceRef.current = window.setTimeout(() => {
-      onSearch(value)
-    }, 250)
+    debouncedSearch(value)
   }
-
-  useEffect(() => () => {
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current)
-    }
-  }, [])
 
   const handleDeleteAccount = async () => {
     await onDeleteAccount()

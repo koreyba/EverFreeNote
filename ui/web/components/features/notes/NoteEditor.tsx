@@ -5,6 +5,7 @@ import { Loader2, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor from "@/components/RichTextEditor"
+import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
 const INPUT_DEBOUNCE_MS = 250
 
@@ -26,42 +27,34 @@ export const NoteEditor = React.memo(function NoteEditor({
   onCancel
 }: NoteEditorProps) {
   const [description, setDescription] = React.useState(initialDescription)
-  const [titleCommitted, setTitleCommitted] = React.useState(initialTitle)
-  const [tagsCommitted, setTagsCommitted] = React.useState(initialTags)
+  const [titleState, setTitleState] = React.useState(initialTitle)
+  const [tagsState, setTagsState] = React.useState(initialTags)
   const [inputResetKey, setInputResetKey] = React.useState(0)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const tagsInputRef = React.useRef<HTMLInputElement | null>(null)
-  const titleDebounceRef = React.useRef<number | null>(null)
-  const tagsDebounceRef = React.useRef<number | null>(null)
+  const debouncedTitle = useDebouncedCallback((value: string) => setTitleState(value), INPUT_DEBOUNCE_MS)
+  const debouncedTags = useDebouncedCallback((value: string) => setTagsState(value), INPUT_DEBOUNCE_MS)
 
   // Sync with props if they change (e.g. switching notes)
   React.useEffect(() => {
     setDescription(initialDescription)
-    setTitleCommitted(initialTitle)
-    setTagsCommitted(initialTags)
+    setTitleState(initialTitle)
+    setTagsState(initialTags)
     setInputResetKey((k) => k + 1)
   }, [initialTitle, initialDescription, initialTags])
 
   const handleSave = () => {
-    const latestTitle = titleInputRef.current?.value ?? titleCommitted
-    const latestTags = tagsInputRef.current?.value ?? tagsCommitted
+    const latestTitle = titleInputRef.current?.value ?? titleState
+    const latestTags = tagsInputRef.current?.value ?? tagsState
     onSave({ title: latestTitle, description, tags: latestTags })
   }
 
   const handleTitleChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (titleDebounceRef.current) {
-      clearTimeout(titleDebounceRef.current)
-    }
-    titleDebounceRef.current = window.setTimeout(() => setTitleCommitted(value), INPUT_DEBOUNCE_MS)
+    debouncedTitle(e.target.value)
   }, [])
 
   const handleTagsChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (tagsDebounceRef.current) {
-      clearTimeout(tagsDebounceRef.current)
-    }
-    tagsDebounceRef.current = window.setTimeout(() => setTagsCommitted(value), INPUT_DEBOUNCE_MS)
+    debouncedTags(e.target.value)
   }, [])
 
   return (
