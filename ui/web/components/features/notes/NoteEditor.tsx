@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Tag } from "lucide-react"
+import { Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor from "@/components/RichTextEditor"
@@ -40,6 +40,7 @@ export const NoteEditor = React.memo(function NoteEditor({
   const [description, setDescription] = React.useState(initialDescription)
   const [titleState, setTitleState] = React.useState(initialTitle)
   const [tagsState, setTagsState] = React.useState(initialTags)
+  const [debouncedDescription, setDebouncedDescription] = React.useState(initialDescription)
   const [inputResetKey, setInputResetKey] = React.useState(0)
   const [showSaving, setShowSaving] = React.useState(false)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
@@ -48,6 +49,10 @@ export const NoteEditor = React.memo(function NoteEditor({
   const firstRenderRef = React.useRef(true)
   const debouncedTitle = useDebouncedCallback((value: string) => setTitleState(value), INPUT_DEBOUNCE_MS)
   const debouncedTags = useDebouncedCallback((value: string) => setTagsState(value), INPUT_DEBOUNCE_MS)
+  const debouncedDescriptionUpdate = useDebouncedCallback(
+    (value: string) => setDebouncedDescription(value),
+    autosaveDelayMs
+  )
   const debouncedAutoSave = useDebouncedCallback(
     async (payload: { noteId?: string; title: string; description: string; tags: string }) => {
       if (!onAutoSave) return
@@ -65,8 +70,14 @@ export const NoteEditor = React.memo(function NoteEditor({
     setDescription(initialDescription)
     setTitleState(initialTitle)
     setTagsState(initialTags)
+    setDebouncedDescription(initialDescription)
     setInputResetKey((k) => k + 1)
   }, [initialTitle, initialDescription, initialTags])
+
+  // Debounce description changes before triggering autosave effect
+  React.useEffect(() => {
+    debouncedDescriptionUpdate(description)
+  }, [description, debouncedDescriptionUpdate])
 
   React.useEffect(() => {
     return () => {
@@ -76,7 +87,12 @@ export const NoteEditor = React.memo(function NoteEditor({
 
   // Sync external auto-saving flag into local display state
   React.useEffect(() => {
-    setShowSaving(isAutoSaving)
+    if (isAutoSaving) {
+      setShowSaving(true)
+    } else {
+      const timer = setTimeout(() => setShowSaving(false), 500)
+      return () => clearTimeout(timer)
+    }
   }, [isAutoSaving])
 
   const handleSave = () => {
@@ -103,10 +119,10 @@ export const NoteEditor = React.memo(function NoteEditor({
     debouncedAutoSave({
       noteId,
       title: titleState,
-      description,
+      description: debouncedDescription,
       tags: tagsState,
     })
-  }, [titleState, tagsState, description, noteId, onAutoSave, debouncedAutoSave])
+  }, [titleState, tagsState, debouncedDescription, noteId, onAutoSave, debouncedAutoSave])
 
   return (
     <div className="flex-1 flex flex-col">
@@ -123,23 +139,20 @@ export const NoteEditor = React.memo(function NoteEditor({
             </Button>
           <Button
             onClick={handleSave}
-            disabled={isSaving || showSaving}
+            disabled={isSaving}
           >
-            {isSaving || showSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-                'Save'
-              )}
-            </Button>
-          </div>
-          {lastSavedAt && (
+            Save
+          </Button>
+        </div>
+          {(showSaving || isSaving) ? (
+            <div className="text-xs text-muted-foreground animate-pulse">
+              Saving...
+            </div>
+          ) : lastSavedAt ? (
             <div className="text-xs text-muted-foreground">
               Saved at {new Date(lastSavedAt).toLocaleTimeString()}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
