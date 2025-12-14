@@ -7,8 +7,16 @@ describe('NoteEditor Component', () => {
     initialDescription: '<p>Test Description</p>',
     initialTags: 'tag1, tag2',
     isSaving: false,
-    onSave: cy.stub().as('onSave'),
-    onCancel: cy.stub().as('onCancel')
+    onSave: (() => {
+      const stub = cy.stub()
+      cy.wrap(stub).as('onSave')
+      return stub
+    })(),
+    onCancel: (() => {
+      const stub = cy.stub()
+      cy.wrap(stub).as('onCancel')
+      return stub
+    })(),
   })
 
   it('renders in edit mode', () => {
@@ -50,5 +58,40 @@ describe('NoteEditor Component', () => {
 
     cy.contains('Saving...').should('be.visible')
     cy.get('button').contains('Saving...').should('be.disabled')
+  })
+
+  it('debounces autosave and disables Save during autosave window', () => {
+    cy.clock()
+    const onAutoSave = (() => {
+      const stub = cy.stub().resolves()
+      cy.wrap(stub).as('onAutoSave')
+      return stub
+    })()
+    const props = {
+      ...getDefaultProps(),
+      noteId: 'note-1',
+      onAutoSave,
+      autosaveDelayMs: 500, // shorter for test
+    }
+
+    cy.mount(<NoteEditor {...props} />)
+
+    cy.get('input[placeholder="Note title"]').clear().type('New Title')
+    cy.tick(400)
+    cy.get('@onAutoSave').should('not.have.been.called')
+
+    cy.tick(100) // total 500ms -> should trigger autosave once
+    cy.get('@onAutoSave').should('have.been.calledOnce')
+    cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
+      noteId: 'note-1',
+      title: 'New Title',
+    }))
+
+    // During autosave, Save button is disabled
+    cy.get('button').contains('Save').should('be.disabled')
+
+    // After min status window (500ms) it re-enables
+    cy.tick(500)
+    cy.get('button').contains('Save').should('not.be.disabled')
   })
 })

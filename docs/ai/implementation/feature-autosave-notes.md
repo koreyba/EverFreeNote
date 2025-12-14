@@ -9,54 +9,59 @@ description: Technical implementation notes, patterns, and code guidelines
 ## Development Setup
 **How do we get started?**
 
-- Reuse существующий dev env (`npm install`, `npm run dev`).
-- Убедиться, что IndexedDB доступен в браузере; fallback на localStorage покрыт адаптером.
+- Standard web dev setup: `npm install`, `npm run dev`. Ensure IndexedDB works in the browser; localStorage serves as fallback via `webOfflineStorageAdapter`.
 
 ## Code Structure
 **How is the code organized?**
 
-- UI: `ui/web/components/features/notes/NoteEditor.tsx`, `RichTextEditor.tsx`, `NotesShell`/`NoteList`.
+- UI: `ui/web/components/features/notes/NoteEditor.tsx`, `RichTextEditor.tsx`, `NotesShell`, `Sidebar`, `NoteList`.
 - Controller: `ui/web/hooks/useNoteAppController.ts`.
 - Offline: `OfflineCacheService`, `OfflineQueueService`, `OfflineSyncManager`, `applyNoteOverlay`.
-- Debounce util: `useDebouncedCallback`.
+- Utilities: `ui/web/hooks/useDebouncedCallback.ts`.
 
 ## Implementation Notes
 **Key technical details to remember:**
 
-### Core Features
-- Автосейв (debounce 1–2 c) в title/tags/body: вызывает handler контроллера с partial payload + clientUpdatedAt.
-- Handler: saveNote в OfflineCacheService (partial), обновить overlay (applyNoteOverlay), enqueue в OfflineQueueService (operation update), не дергать прямые мутации.
-- SyncManager сам дренирует; не вызывать drain вручную.
-- Save button: состояние Saving… пока автосейв выполняется/в очереди (pending), затем “Saved”.
+### Core Autosave Flow
+- Use `useDebouncedCallback` to debounce note field changes (~1.5s default, cap 1 autosave per ~2s).
+- Build partial payload with changed fields + `clientUpdatedAt` (+ id/version when available).
+- `handleAutoSave` steps:
+  1) Skip if no diff from latest cached/overlay values.
+  2) `offlineCache.saveNote(partial)` then `applyNoteOverlay` to update UI immediately.
+  3) `offlineQueue.enqueue({ operation: 'update', payload: partial, clientUpdatedAt })`; pendingCount increments; rely on SyncManager for draining/backoff/compaction.
+  4) Update `lastSavedAt`; keep Save disabled while autosave is in-flight; show Saving… for ≥500ms.
+
+### Manual Save
+- `handleSaveNote` continues to run full save logic but also updates overlay/cache/queue with `clientUpdatedAt`. Save button text: Saving…/Saved; Cancel renamed to Read (return to view mode).
 
 ### Patterns & Best Practices
-- Partial payload (только изменённые поля), clientUpdatedAt обязательный.
-- Debounce через `useDebouncedCallback`.
-- Не пересохранять без изменений (сравнивать last saved content).
+- Always go through controller; do not call Supabase directly from UI for autosave.
+- Keep payloads minimal; avoid sending full HTML on every change.
+- Maintain offline-first UX: overlay reflects edits instantly even when offline; counters show pending/failed.
+- Respect compaction/enforceLimit policies; do not bypass OfflineQueueService.
 
 ## Integration Points
 **How do pieces connect?**
 
-- NoteEditor → controller handler → cache + queue → overlay → UI обновляется.
-- OfflineSyncManager → Supabase mutations, обновляет cache/overlay via onSuccess (уже есть).
+- `NoteEditor` → debounced `onAutoSave` → `useNoteAppController.handleAutoSave` → offline cache + overlay → queue → `OfflineSyncManager` → Supabase.
+- `Sidebar`/`NoteList` read from overlay/cache and pending/failed counters; lastSavedAt shown near editor controls.
 
 ## Error Handling
 **How do we handle failures?**
 
-- enqueue errors: fallback toast? минимум — лог + инкремент failedCount.
-- Sync failures уже помечаются status failed; UI показывает failedCount.
-- Локальная запись: try/catch вокруг cache.saveNote; не блокировать ввод.
+- Catch/cache write failures; fallback to localStorage automatically via adapter.
+- Queue enqueue errors should surface as failedCount increment and optional toast/badge (reuse existing patterns).
+- Sync errors remain in queue with retry/backoff; UI shows failed/pending counts.
 
 ## Performance Considerations
 **How do we keep it fast?**
 
-- Debounce снижает частоту; partial payload минимизирует сериализацию.
-- Не пересобирать крупные HTML строки без изменений (контент equality check).
-- Полагаться на compaction + enforceLimit в storage.
+- Debounce to avoid per-keystroke queue writes; throttle to ~1 autosave/2s during continuous typing.
+- Partial payloads reduce serialization cost; overlay avoids re-render storms from full data reloads.
+- Minimum status display of 500ms prevents flicker while keeping the UI responsive.
 
 ## Security Notes
 **What security measures are in place?**
 
-- Нет новых секретов/эндпоинтов; RLS на Supabase прежний.
-- Санитизация контента уже в редакторе; автосейв не добавляет внешних вводов.
-
+- Keep all writes scoped to the authenticated user via existing Supabase RLS; autosave uses the same offline queue pipeline.
+- Avoid storing sensitive data outside IndexedDB/localStorage; no additional permissions or remote calls introduced.

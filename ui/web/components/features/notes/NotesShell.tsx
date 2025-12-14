@@ -56,6 +56,9 @@ export function NotesShell({ controller }: NotesShellProps) {
     pendingCount,
     failedCount,
     isOffline,
+    lastSavedAt,
+    handleAutoSave,
+    autoSaving,
     selectedNote,
     isEditing,
     handleSelectNote,
@@ -170,6 +173,8 @@ function EditorPane({ controller, onBack }: { controller: NoteAppController, onB
     selectedNote,
     isEditing,
     saving,
+    autoSaving,
+    lastSavedAt,
     handleSaveNote,
     handleSelectNote,
     handleEditNote,
@@ -184,11 +189,15 @@ function EditorPane({ controller, onBack }: { controller: NoteAppController, onB
   if (isEditing) {
     return (
       <NoteEditor
+        noteId={selectedNote?.id}
         initialTitle={selectedNote?.title ?? ""}
         initialDescription={selectedNote?.description ?? selectedNote?.content ?? ""}
         initialTags={selectedNote?.tags?.join(", ") ?? ""}
         isSaving={saving}
         onSave={handleSaveNote}
+        onAutoSave={controller.handleAutoSave}
+        isAutoSaving={autoSaving}
+        lastSavedAt={lastSavedAt}
         onCancel={() => {
           if (!selectedNote) {
             handleSelectNote(null)

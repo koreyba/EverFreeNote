@@ -11,65 +11,66 @@ description: Define the technical architecture, components, and data models
 
 ```mermaid
 graph TD
-  NoteEditor -->|onChange (debounce 1.5s)| Controller[useNoteAppController]
+  NoteEditor -->|onChange (debounce ~1.5s)| Controller[useNoteAppController]
   Controller --> Overlay[applyNoteOverlay + in-memory state]
   Controller --> Cache[OfflineCacheService (IndexedDB/localStorage)]
   Controller --> Queue[OfflineQueueService]
-  Queue --> SyncMgr[OfflineSyncManager (compaction+retry/backoff)]
+  Queue --> SyncMgr[OfflineSyncManager (compaction + retry/backoff)]
   SyncMgr --> Supabase[Supabase mutations]
   Cache --> UI[NoteList/NoteView/Sidebar]:::ui
   Overlay --> UI
-  UI --> Status["Save button state + pending/failed counters + (optional) last saved at"]
+  UI --> Status["Save/Read button state + pending/failed counters + last saved at"]
   classDef ui fill:#eef9ff,stroke:#7fb3ff
 ```
 
-- Автосейв триггерится из NoteEditor/RichTextEditor (title/tags/body) через debounced callback (по умолчанию 1.5 с, допустимо 1–2 с).
-- Контроллер принимает partial payload, записывает в OfflineCacheService и enqueue в OfflineQueueService; SyncManager дренирует очередь при онлайне (компактация + retry/backoff).
-- Overlay применяется для мгновенного UI (NoteList/NoteView/Sidebar), включая pending/failed счётчики.
+- Debounced autosave from NoteEditor/RichTextEditor (title/tags/body) uses `useDebouncedCallback` (default 1.5s, cap 1 autosave per ~2s) and only runs when a diff exists.
+- Autosave path: build partial payload (changed fields + `clientUpdatedAt` [+ id/version]), update `OfflineCacheService` + `applyNoteOverlay`, then enqueue to `OfflineQueueService`. No direct network calls.
+- `OfflineSyncManager` owns draining/batching/retry/backoff; autosave never calls drain manually.
+- UI surfaces `Saving…/Saved` (≥500ms), pending/failed counters, and `lastSavedAt`; Save button disabled while Saving…, Cancel relabeled to Read to exit edit mode.
 
 ## Data Models
 **What data do we need to manage?**
 
-- `CachedNote`: id, title?, description?, tags?, updatedAt, status (pending/failed/synced), pendingOps?, deleted?, content?; для автосейва обновляем только изменённые поля и updatedAt=clientUpdatedAt.
-- `MutationQueueItem`: id, noteId, operation (`update` для автосейва), payload (partial: changed fields), clientUpdatedAt, status (pending/failed/synced), lastError?, attempts?.
-- `SavedState` (в контроллере): lastSavedAt?, flags для отображения Saving/Saved, pendingCount/failedCount.
+- `CachedNote`: id, title?, description?, tags?, updatedAt, status (pending/failed/synced), pendingOps?, deleted?; `updatedAt` mirrors `clientUpdatedAt`.
+- `MutationQueueItem`: id, noteId, operation (`update`), payload (partial), `clientUpdatedAt`, status (pending/failed/synced), attempts?, lastError?.
+- `SavedState`: `lastSavedAt`, `isSavingAuto`, pendingCount, failedCount for UI indicators.
 
 ## API Design
 **How do components communicate?**
 
-- Внешних новых API нет: все сетевые мутации идут через Supabase клиент, вызываемый SyncManager.
-- Внутренние интерфейсы:
-  - `useDebouncedCallback(fn, delayMs)` — общая утилита для автосейва.
-  - `handleAutoSave(partial: { id; title?; description?; tags?; clientUpdatedAt: string; version?: string })` в useNoteAppController:
-    - Проверка diff (не отправлять, если нет изменений).
-    - `offlineCache.saveNote(partialCachedNote)` + обновление overlay.
-    - `offlineQueue.enqueue({ operation: 'update', payload: partial, clientUpdatedAt })`.
-    - Не вызывает сетевые мутации напрямую; SyncManager обрабатывает очередь.
-  - UI статус: Save button получает `isSavingAuto`/`lastSavedAt`/pending/failed для индикации.
+- `useDebouncedCallback(fn, delayMs)` ensures a function runs once after inactivity and resets on rapid input; cleans up on unmount.
+- `handleAutoSave(partial)` in `useNoteAppController`:
+  - Skip when no changes compared to latest overlay/cache snapshot.
+  - `offlineCache.saveNote(partial)` → `applyNoteOverlay` → `offlineQueue.enqueue({ operation: 'update', payload: partial, clientUpdatedAt })`.
+  - Update pending counters and `lastSavedAt`; rely on SyncManager for draining.
+- UI consumes `handleAutoSave`, `handleSaveNote` (manual), `lastSavedAt`, pending/failed counts.
 
 ## Component Breakdown
 **What are the major building blocks?**
 
 - Frontend:
-  - `NoteEditor` / `RichTextEditor`: собирают изменения title/tags/body, вызывают debounced autosave handler, показывают Saving…/Saved (минимум 500 мс отображения), опционально last-saved timestamp.
-  - `NoteList` / `NoteView`: отображают данные с overlay (включая pending/failed изменения).
-  - `Sidebar`: показывает pending/failed, может показывать last saved at (если решим).
-- Core services (reuse):
+  - `NoteEditor` / `RichTextEditor`: debounced autosave for title/tags/body; shows `Saving…/Saved` with 500ms minimum; Save disabled while autosaving; Read button exits edit mode.
+  - `Sidebar` / `NoteList`: render overlay/cached data, show pending/failed counters and last saved at (optional).
+- Core services:
   - `OfflineCacheService` (IndexedDB/localStorage), `OfflineQueueService`, `OfflineSyncManager`, `applyNoteOverlay`.
 
 ## Design Decisions
 **Why did we choose this approach?**
 
-- Offline-first: автосейвы всегда идут через локальный кеш + очередь; SyncManager отвечает за синхронизацию/компактацию/retry.
-- Debounce + throttling (1.5 с, не чаще 1 раз в 2 с) — баланс между UX и размером очереди.
-- Partial payload + clientUpdatedAt уменьшают объём очереди/кеша и ускоряют обработку.
-- LWW сохраняется как конфликт-стратегия; сервис уже ожидает её.
+- Offline-first: all writes cached locally + queued; network is best-effort via SyncManager (LWW conflicts already assumed).
+- Debounce + throttling reduces CPU and queue churn during typing; partial payloads keep storage/network light.
+- UI responsiveness via overlay avoids waiting for sync; clear status messaging reduces confusion.
+- Compaction/enforceLimit (~100) prevents unbounded queue growth; autosave does not bypass this policy.
 
 ## Non-Functional Requirements
 **How should the system perform?**
 
-- Перфоманс: автосейв (формирование partial + запись в кеш/очередь) не должен блокировать UI; сериализация partial должна занимать ≤ несколько мс; debounce ограничивает частоту (не чаще 1/2 с).
-- Надёжность: офлайн поддерживает ≥100 автосейвов (compaction/enforceLimit), восстановление после рефреша/закрытия.
-- UX: статус Saving…/Saved без мерцаний (≥500 мс видимости), ввод не блокируется.
-- Безопасность: нет новых эндпоинтов/секретов; доступ через текущий Supabase/RLS; сохраняем существующие проверки ввода/санитизацию.
+- Performance: no more than one autosave per ~1–2s while typing; partial payloads only; overlay update should be instantaneous to keep UI smooth offline.
+- Reliability: IndexedDB primary, localStorage fallback; autosave survives tab close/reopen; queue size bounded by compaction/limit.
+- UX: statuses visible ≥500ms; lastSavedAt shown; Save disabled while Saving…; Read button exits edit mode without discarding autosaved changes.
 
+## Constraints & Notes
+**Anything else to remember?**
+
+- SPA with export; no SSR/server listeners. Autosave logic must live entirely client-side.
+- Trust existing offline services; do not introduce direct Supabase calls from autosave.

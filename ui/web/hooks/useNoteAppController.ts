@@ -55,6 +55,8 @@ export function useNoteAppController() {
   const [pendingCount, setPendingCount] = useState(0)
   const [failedCount, setFailedCount] = useState(0)
   const [isOffline, setIsOffline] = useState<boolean>(typeof window !== 'undefined' ? !navigator.onLine : false)
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [autoSaving, setAutoSaving] = useState(false)
 
   // -- Dependencies --
   const { supabase, loading: providerLoading } = useSupabase()
@@ -176,6 +178,14 @@ export function useNoteAppController() {
     if (!offlineOverlay.length) return baseNotes
     return applyNoteOverlay(baseNotes, offlineOverlay) as NoteViewModel[]
   }, [baseNotes, offlineOverlay])
+
+  // Refs to avoid dependency cycles in handleAutoSave
+  const notesRef = useRef(notes)
+  const selectedNoteRef = useRef(selectedNote)
+  useEffect(() => {
+    notesRef.current = notes
+    selectedNoteRef.current = selectedNote
+  }, [notes, selectedNote])
 
   const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
     enabled: !!user && ftsSearchQuery.length >= 3,
@@ -522,6 +532,72 @@ export function useNoteAppController() {
     setIsEditing(true)
   }, [])
 
+  const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
+    if (!user) return
+    const targetId = data.noteId ?? selectedNoteRef.current?.id
+    if (!targetId) return
+
+    // Determine current baseline to diff against (use refs to avoid dependency cycle)
+    const current = notesRef.current.find(n => n.id === targetId) || selectedNoteRef.current
+    const nextTitle = data.title ?? current?.title ?? ''
+    const nextDescription = data.description ?? current?.description ?? ''
+    const nextTags = data.tags ?? (current?.tags?.join(', ') ?? '')
+
+    // Diff check: skip if unchanged
+    const sameTitle = current?.title === nextTitle
+    const sameDesc = (current?.description ?? '') === nextDescription
+    const sameTags = (current?.tags ?? []).join(', ') === nextTags
+    if (sameTitle && sameDesc && sameTags) return
+
+    setAutoSaving(true)
+    try {
+      const clientUpdatedAt = new Date().toISOString()
+      const partialPayload: Partial<NoteUpdate> = {
+        title: nextTitle,
+        description: nextDescription,
+        tags: nextTags
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean),
+      }
+
+      // Update offline cache + overlay immediately
+      const cached: CachedNote = {
+        id: targetId,
+        title: partialPayload.title,
+        description: partialPayload.description,
+        tags: partialPayload.tags,
+        updatedAt: clientUpdatedAt,
+        status: 'pending',
+      }
+
+      await offlineCache.saveNote(cached)
+      setOfflineOverlay((prev) => {
+        const idx = prev.findIndex((n) => n.id === targetId)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = { ...next[idx], ...cached }
+          return next
+        }
+        return [...prev, cached]
+      })
+
+      // Fire-and-forget enqueue to avoid blocking UI/autosave spinner on network/sync work
+      enqueueMutation({
+        noteId: targetId,
+        operation: 'update',
+        payload: partialPayload,
+        clientUpdatedAt,
+      }).catch((err) => {
+        console.error('Failed to enqueue autosave mutation', err)
+      })
+      setPendingCount((prev) => prev + 1)
+      setLastSavedAt(clientUpdatedAt)
+    } finally {
+      setAutoSaving(false)
+    }
+  }, [user, offlineCache, enqueueMutation])
+
   const handleSaveNote = async (data: { title: string; description: string; tags: string }) => {
     if (!user) return
 
@@ -600,12 +676,14 @@ export function useNoteAppController() {
             tags: noteData.tags,
           })
           toast.success('Saved offline (will sync when online)')
+          setLastSavedAt(new Date().toISOString())
         } else {
           const updated = await updateNoteMutation.mutateAsync({
             id: selectedNote.id,
             ...noteData,
           })
           savedNote = { ...selectedNote, ...updated }
+          setLastSavedAt(new Date().toISOString())
         }
       } else {
         const tempId = uuidv4()
@@ -618,12 +696,14 @@ export function useNoteAppController() {
             tags: noteData.tags,
           } as NoteViewModel)
           toast.success('Saved offline (will sync when online)')
+          setLastSavedAt(new Date().toISOString())
         } else {
           const created = await createNoteMutation.mutateAsync({
             ...noteData,
             userId: user.id,
           })
           savedNote = created as NoteViewModel
+          setLastSavedAt(new Date().toISOString())
         }
       }
 
@@ -849,6 +929,8 @@ export function useNoteAppController() {
     notesTotal,
     pendingCount,
     failedCount,
+    lastSavedAt,
+    autoSaving,
 
     // Handlers
     handleSearch,
@@ -862,6 +944,7 @@ export function useNoteAppController() {
     handleCreateNote,
     handleEditNote,
     handleSaveNote,
+    handleAutoSave,
     handleDeleteNote,
     confirmDeleteNote,
     handleRemoveTagFromNote,
@@ -876,7 +959,7 @@ export function useNoteAppController() {
     deleteSelectedNotes,
 
     // Helpers
-    invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
+    invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] }),
   }
 }
 

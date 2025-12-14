@@ -8,13 +8,19 @@ import RichTextEditor from "@/components/RichTextEditor"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
 const INPUT_DEBOUNCE_MS = 250
+const DEFAULT_AUTOSAVE_DELAY_MS = 1500
 
 interface NoteEditorProps {
+  noteId?: string
   initialTitle?: string
   initialDescription?: string
   initialTags?: string
   isSaving: boolean
   onSave: (data: { title: string; description: string; tags: string }) => void
+  onAutoSave?: (data: { noteId?: string; title: string; description: string; tags: string }) => Promise<void> | void
+  isAutoSaving?: boolean
+  autosaveDelayMs?: number
+  lastSavedAt?: string | null
   onCancel: () => void
 }
 
@@ -24,16 +30,35 @@ export const NoteEditor = React.memo(function NoteEditor({
   initialTags = "",
   isSaving,
   onSave,
-  onCancel
+  onAutoSave,
+  isAutoSaving = false,
+  autosaveDelayMs = DEFAULT_AUTOSAVE_DELAY_MS,
+  onCancel,
+  noteId,
+  lastSavedAt,
 }: NoteEditorProps) {
   const [description, setDescription] = React.useState(initialDescription)
   const [titleState, setTitleState] = React.useState(initialTitle)
   const [tagsState, setTagsState] = React.useState(initialTags)
   const [inputResetKey, setInputResetKey] = React.useState(0)
+  const [showSaving, setShowSaving] = React.useState(false)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const tagsInputRef = React.useRef<HTMLInputElement | null>(null)
+  const unmountedRef = React.useRef(false)
+  const firstRenderRef = React.useRef(true)
   const debouncedTitle = useDebouncedCallback((value: string) => setTitleState(value), INPUT_DEBOUNCE_MS)
   const debouncedTags = useDebouncedCallback((value: string) => setTagsState(value), INPUT_DEBOUNCE_MS)
+  const debouncedAutoSave = useDebouncedCallback(
+    async (payload: { noteId?: string; title: string; description: string; tags: string }) => {
+      if (!onAutoSave) return
+      try {
+        await onAutoSave(payload)
+      } catch {
+        // Errors handled upstream
+      }
+    },
+    autosaveDelayMs
+  )
 
   // Sync with props if they change (e.g. switching notes)
   React.useEffect(() => {
@@ -42,6 +67,17 @@ export const NoteEditor = React.memo(function NoteEditor({
     setTagsState(initialTags)
     setInputResetKey((k) => k + 1)
   }, [initialTitle, initialDescription, initialTags])
+
+  React.useEffect(() => {
+    return () => {
+      unmountedRef.current = true
+    }
+  }, [])
+
+  // Sync external auto-saving flag into local display state
+  React.useEffect(() => {
+    setShowSaving(isAutoSaving)
+  }, [isAutoSaving])
 
   const handleSave = () => {
     const latestTitle = titleInputRef.current?.value ?? titleState
@@ -57,33 +93,53 @@ export const NoteEditor = React.memo(function NoteEditor({
     debouncedTags(e.target.value)
   }, [debouncedTags])
 
+  // Trigger debounced autosave when any field changes (skip initial mount)
+  React.useEffect(() => {
+    if (!onAutoSave) return
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false
+      return
+    }
+    debouncedAutoSave({
+      noteId,
+      title: titleState,
+      description,
+      tags: tagsState,
+    })
+  }, [titleState, tagsState, description, noteId, onAutoSave, debouncedAutoSave])
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Editor Header */}
-      <div className="p-4 border-b bg-card flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-muted-foreground">
-          Editing
-        </h2>
-        <div className="flex gap-2">
-          <Button
-            onClick={onCancel}
-            variant="outline"
-          >
-            Read
-          </Button>
+      <div className="p-4 border-b bg-card flex items-start justify-between">
+        <h2 className="text-lg font-semibold text-muted-foreground">Editing</h2>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex gap-2">
+            <Button
+              onClick={onCancel}
+              variant="outline"
+            >
+              Read
+            </Button>
           <Button
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || showSaving}
           >
-            {isSaving ? (
+            {isSaving || showSaving ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Saving...
               </>
             ) : (
-              'Save'
-            )}
-          </Button>
+                'Save'
+              )}
+            </Button>
+          </div>
+          {lastSavedAt && (
+            <div className="text-xs text-muted-foreground">
+              Saved at {new Date(lastSavedAt).toLocaleTimeString()}
+            </div>
+          )}
         </div>
       </div>
 
