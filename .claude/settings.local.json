@@ -3,7 +3,9 @@
     "allow": [
       "Bash(*)",
       "Bash(npm install:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(cat:*)",
+      "Bash(npx cypress run:*)"
     ],
     "deny": [],
     "ask": [

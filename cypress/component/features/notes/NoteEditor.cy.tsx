@@ -12,9 +12,9 @@ describe('NoteEditor Component', () => {
       cy.wrap(stub).as('onSave')
       return stub
     })(),
-    onCancel: (() => {
+    onRead: (() => {
       const stub = cy.stub()
-      cy.wrap(stub).as('onCancel')
+      cy.wrap(stub).as('onRead')
       return stub
     })(),
   })
@@ -33,23 +33,23 @@ describe('NoteEditor Component', () => {
 
     cy.get('input[placeholder="Note title"]').clear().type('New Title')
     cy.get('input[placeholder="work, personal, ideas"]').clear().type('new tag')
-    
+
     cy.contains('Save').click()
-    
+
     cy.get('@onSave').should('have.been.calledWith', Cypress.sinon.match({
       title: 'New Title',
       tags: 'new tag'
     }))
   })
 
-  it('handles save and cancel actions', () => {
+  it('handles save and read actions', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
     cy.contains('Save').click()
     cy.get('@onSave').should('have.been.called')
 
     cy.contains('Read').click()
-    cy.get('@onCancel').should('have.been.called')
+    cy.get('@onRead').should('have.been.called')
   })
 
   it('shows saving state', () => {
@@ -96,16 +96,16 @@ describe('NoteEditor Component', () => {
     cy.mount(<NoteEditor {...props} />)
 
     cy.get('input[placeholder="Note title"]').clear().type('New Title')
-    
+
     // INPUT_DEBOUNCE_MS (250) + autosaveDelayMs (200) = 450ms
-    
+
     // Wait a bit less
-   // cy.wait(300)
-    cy.get('@onAutoSave').should('not.have.been.called', {timeout: 500})
+    // cy.wait(300)
+    cy.get('@onAutoSave').should('not.have.been.called', { timeout: 500 })
 
     // Wait enough
     //cy.wait(1000)
-    cy.get('@onAutoSave').should('have.been.calledOnce', {timeout: 1500})
+    cy.get('@onAutoSave').should('have.been.calledOnce', { timeout: 1500 })
     cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
       noteId: 'note-1',
       title: 'New Title',

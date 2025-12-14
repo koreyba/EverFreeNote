@@ -64,6 +64,14 @@ mark {
   max-width: none;
   /* Единый white-space для чтения и редактирования */
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  /* Legacy support */
+}
+
+.note-content *,
+.note-content .ProseMirror * {
+  overflow-wrap: anywhere;
 }
 
 .note-content h1,
@@ -228,11 +236,11 @@ mark {
 }
 
 /* Убираем отступы у первого и последнего элемента */
-.note-content > *:first-child {
+.note-content>*:first-child {
   margin-top: 0 !important;
 }
 
-.note-content > *:last-child {
+.note-content>*:last-child {
   margin-bottom: 0 !important;
 }
 
@@ -251,11 +259,11 @@ mark {
 }
 
 
-.note-content .ProseMirror > *:first-child {
+.note-content .ProseMirror>*:first-child {
   margin-top: 0 !important;
 }
 
-.note-content .ProseMirror > *:last-child {
+.note-content .ProseMirror>*:last-child {
   margin-bottom: 0 !important;
 }
 
