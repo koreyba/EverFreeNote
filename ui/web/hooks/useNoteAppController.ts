@@ -1,25 +1,16 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import type { User } from '@supabase/supabase-js'
 
-import { useSupabase } from '@ui/web/providers/SupabaseProvider'
-import { useNotesQuery, useFlattenedNotes, useSearchNotes } from './useNotesQuery'
+import { useNotesQuery, useFlattenedNotes } from './useNotesQuery'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import { useInfiniteScroll } from './useInfiniteScroll'
-import type { NoteViewModel, SearchResult, NoteInsert, NoteUpdate } from '@core/types/domain'
-import { AuthService } from '@core/services/auth'
-import { computeFtsHasMore, computeFtsTotal } from '@core/services/ftsPagination'
-import { clearSelection as clearSelectionSet, selectAll as selectAllSet, toggleSelection } from '@core/services/selection'
-import { webStorageAdapter } from '@ui/web/adapters/storage'
-import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
-import { webOAuthRedirectUri } from '@ui/web/config'
-import { featureFlags } from '@ui/web/featureFlags'
-import { OfflineQueueService } from '@core/services/offlineQueue'
-import { OfflineSyncManager } from '@core/services/offlineSyncManager'
-import { webNetworkStatus } from '@ui/web/adapters/networkStatus'
+import type { NoteViewModel, NoteInsert, NoteUpdate } from '@core/types/domain'
+import { useNoteAuth } from './useNoteAuth'
+import { useNoteSearch } from './useNoteSearch'
+import { useNoteSelection } from './useNoteSelection'
+import { useNoteSync } from './useNoteSync'
 import type { MutationQueueItemInput, CachedNote } from '@core/types/offline'
-import { OfflineCacheService } from '@core/services/offlineCache'
 import { v4 as uuidv4 } from 'uuid'
 import { applyNoteOverlay } from '@core/utils/overlay'
 
@@ -32,36 +23,49 @@ export type EditFormState = {
 type NotePayload = (Partial<NoteInsert> & { userId?: string }) | Partial<NoteUpdate>
 
 export function useNoteAppController() {
-  // -- State --
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [authLoading, setAuthLoading] = useState(false) // Local loading state for auth operations
-  const [selectedNote, setSelectedNote] = useState<NoteViewModel | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [ftsSearchQuery, setFtsSearchQuery] = useState("")
-  const [isEditing, setIsEditing] = useState(false)
+  // -- Sub-hooks --
+  const {
+    user,
+    loading: authLoadingState,
+    handleSignInWithGoogle,
+    handleTestLogin,
+    handleSkipAuth,
+    handleSignOut,
+    handleDeleteAccount,
+    deleteAccountLoading
+  } = useNoteAuth()
+
+  // -- Selection State --
+  const {
+    selectedNote,
+    setSelectedNote,
+    isEditing,
+    setIsEditing,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    noteToDelete,
+    setNoteToDelete,
+    selectedNoteIds,
+    selectionMode,
+    bulkDeleting,
+    setBulkDeleting,
+    handleSelectNote,
+    handleSearchResultClick,
+    handleEditNote,
+    handleCreateNote,
+    handleDeleteNote,
+    enterSelectionMode,
+    exitSelectionMode,
+    toggleNoteSelection,
+    selectAllVisible: selectAllVisibleCallback,
+    clearSelection,
+  } = useNoteSelection()
+
   const [saving, setSaving] = useState(false)
-  const [filterByTag, setFilterByTag] = useState<string | null>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [noteToDelete, setNoteToDelete] = useState<NoteViewModel | null>(null)
-  const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
-  const [bulkDeleting, setBulkDeleting] = useState(false)
-  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
-  const [ftsOffset, setFtsOffset] = useState(0)
-  const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
-  const ftsLimit = 50
-  // Offline queue state placeholders (будут подключены к offline storage/queue)
-  const [pendingCount, setPendingCount] = useState(0)
-  const [failedCount, setFailedCount] = useState(0)
-  const [isOffline, setIsOffline] = useState<boolean>(typeof window !== 'undefined' ? !navigator.onLine : false)
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [autoSaving, setAutoSaving] = useState(false)
 
   // -- Dependencies --
-  const { supabase, loading: providerLoading } = useSupabase()
   const queryClient = useQueryClient()
-  const authService = new AuthService(supabase)
 
   // -- Mutations (needed for sync manager) --
   const createNoteMutation = useCreateNote()
@@ -69,101 +73,49 @@ export function useNoteAppController() {
   const deleteNoteMutation = useDeleteNote()
   const removeTagMutation = useRemoveTag()
 
-  const offlineQueue = useMemo(() => new OfflineQueueService(webOfflineStorageAdapter), [])
-  const offlineCache = useMemo(() => new OfflineCacheService(webOfflineStorageAdapter), [])
-
-  // Refs for sync callbacks - stable references that delegate to current values
-  const userRef = useRef(user)
-  const createMutationRef = useRef(createNoteMutation)
-  const updateMutationRef = useRef(updateNoteMutation)
-  const deleteMutationRef = useRef(deleteNoteMutation)
-  const offlineCacheRef = useRef(offlineCache)
-  const offlineQueueRef = useRef(offlineQueue)
-
-  // Update refs when values change (not on every keystroke)
-  useEffect(() => {
-    userRef.current = user
-    createMutationRef.current = createNoteMutation
-    updateMutationRef.current = updateNoteMutation
-    deleteMutationRef.current = deleteNoteMutation
-    offlineCacheRef.current = offlineCache
-    offlineQueueRef.current = offlineQueue
-  }, [user, createNoteMutation, updateNoteMutation, deleteNoteMutation, offlineCache, offlineQueue])
-
-  // Stable callback refs - created once, always use current values via refs
-  const syncCallbacksRef = useRef({
-    performSync: async (item: MutationQueueItemInput) => {
-      const currentUser = userRef.current
-      if (!currentUser) {
-        throw new Error('User not authenticated - sync skipped')
-      }
-      if (item.operation === 'create') {
-        const payload = item.payload as Partial<NoteInsert> & { userId?: string }
-        await createMutationRef.current.mutateAsync({
-          title: payload.title ?? 'Untitled',
-          description: payload.description ?? '',
-          tags: payload.tags ?? [],
-          userId: payload.userId ?? currentUser.id,
-        })
-      } else if (item.operation === 'update') {
-        const payload = item.payload as Partial<NoteUpdate>
-        await updateMutationRef.current.mutateAsync({
-          id: item.noteId,
-          title: payload.title ?? 'Untitled',
-          description: payload.description ?? '',
-          tags: payload.tags ?? [],
-        })
-      } else if (item.operation === 'delete') {
-        await deleteMutationRef.current.mutateAsync({ id: item.noteId, silent: true })
-      }
-    },
-    onSuccess: async (item: MutationQueueItemInput) => {
-      await offlineCacheRef.current.deleteNote(item.noteId)
-      const cached = await offlineCacheRef.current.loadNotes()
-      setOfflineOverlay(cached)
-      const queue = await offlineQueueRef.current.getQueue()
-      setPendingCount(queue.filter((q) => q.status === 'pending').length)
-      setFailedCount(queue.filter((q) => q.status === 'failed').length)
-    },
+  // -- Sync & Offline --
+  const {
+    offlineOverlay,
+    setOfflineOverlay,
+    pendingCount,
+    setPendingCount,
+    failedCount,
+    setFailedCount,
+    isOffline,
+    lastSavedAt,
+    setLastSavedAt,
+    offlineCache,
+    enqueueMutation,
+    enqueueBatchAndDrainIfOnline,
+    offlineQueueRef
+  } = useNoteSync({
+    user,
+    createNoteMutation,
+    updateNoteMutation,
+    deleteNoteMutation
   })
 
-  // Create syncManager only ONCE using useRef (not useMemo with unstable deps)
-  const syncManagerRef = useRef<OfflineSyncManager | null>(null)
-  if (!syncManagerRef.current) {
-    syncManagerRef.current = new OfflineSyncManager(
-      webOfflineStorageAdapter,
-      // Wrapper delegates to ref - always uses current callback
-      (item) => syncCallbacksRef.current!.performSync(item),
-      webNetworkStatus,
-      (item) => syncCallbacksRef.current!.onSuccess(item)
-    )
-  }
-
-  const enqueueMutation = useCallback(
-    async (item: MutationQueueItemInput) => {
-      if (syncManagerRef.current) {
-        await syncManagerRef.current.enqueue(item)
-      } else {
-        await offlineQueue.enqueue(item)
-      }
-    },
-    [offlineQueue]
-  )
-
-  const enqueueBatchAndDrainIfOnline = useCallback(
-    async (items: MutationQueueItemInput[]) => {
-      await offlineQueue.enqueueMany(items)
-      if (syncManagerRef.current && !isOffline) {
-        await syncManagerRef.current.drainQueue()
-      }
-    },
-    [offlineQueue, isOffline]
-  )
-
   // Combine provider loading with local auth loading
-  const combinedLoading = loading || providerLoading || authLoading
+  const combinedLoading = authLoadingState
 
   // -- Queries --
+  const {
+    searchQuery,
+    filterByTag,
+    handleSearch,
+    handleTagClick: onTagClick,
+    handleClearTagFilter,
+    showFTSResults,
+    aggregatedFtsData,
+    ftsObserverTarget,
+    ftsHasMore,
+    ftsLoadingMore,
+    ftsAccumulatedResults,
+    loadMoreFts,
+    ftsSearchResult
+  } = useNoteSearch(user?.id)
+
+  // Re-establishing the notes query with the search params from useNoteSearch
   const notesQuery = useNotesQuery({
     userId: user?.id,
     searchQuery,
@@ -172,71 +124,13 @@ export function useNoteAppController() {
   })
 
   const baseNotes: NoteViewModel[] = useFlattenedNotes(notesQuery)
-  const [offlineOverlay, setOfflineOverlay] = useState<CachedNote[]>([])
 
   const notes: NoteViewModel[] = useMemo(() => {
     if (!offlineOverlay.length) return baseNotes
     return applyNoteOverlay(baseNotes, offlineOverlay) as NoteViewModel[]
   }, [baseNotes, offlineOverlay])
 
-  // Refs to avoid dependency cycles in handleAutoSave
-  const notesRef = useRef(notes)
-  const selectedNoteRef = useRef(selectedNote)
-  useEffect(() => {
-    notesRef.current = notes
-    selectedNoteRef.current = selectedNote
-  }, [notes, selectedNote])
-
-  const ftsSearchResult = useSearchNotes(ftsSearchQuery, user?.id, {
-    enabled: !!user && ftsSearchQuery.length >= 3,
-    selectedTag: filterByTag,
-    offset: ftsOffset,
-    limit: ftsLimit
-  })
-
-  const ftsData = ftsSearchResult.data
-  // Server now handles tag filtering via filter_tag RPC parameter
-  const ftsResultsRaw: SearchResult[] = useMemo(() => ftsData?.results ?? [], [ftsData?.results])
-
-  // Accumulate FTS pages for "load more"
-  useEffect(() => {
-    // reset on query/tag change
-    setFtsOffset(0)
-    setFtsAccumulatedResults([])
-  }, [ftsSearchQuery, filterByTag])
-
-  useEffect(() => {
-    if (!ftsSearchResult.data) return
-    setFtsAccumulatedResults((prev) => {
-      if (ftsOffset === 0) {
-        if (prev.length === ftsResultsRaw.length) {
-          const prevIds = new Set(prev.map((n) => n.id))
-          const same = ftsResultsRaw.every((n) => prevIds.has(n.id))
-          if (same) return prev
-        }
-        return ftsResultsRaw
-      }
-      const next = [...prev]
-      const seen = new Set(prev.map((item) => item.id))
-      ftsResultsRaw.forEach((item) => {
-        if (!seen.has(item.id)) {
-          next.push(item)
-        }
-      })
-      return next
-    })
-  }, [ftsSearchResult.data, ftsOffset, ftsResultsRaw, ftsSearchQuery, filterByTag])
-
-  // Server now returns tag-filtered total, so we can use it directly
-  const ftsTotalKnown = typeof ftsData?.total === 'number' && ftsData.total >= 0 ? ftsData.total : undefined
-  const lastFtsPageSize = ftsResultsRaw.length
-  // Simple hasMore: use server-provided total (now tag-aware) or fallback to page size check
-  const ftsHasMore = !!ftsData && lastFtsPageSize > 0 &&
-    computeFtsHasMore(ftsTotalKnown, ftsAccumulatedResults.length, lastFtsPageSize, ftsLimit)
-  const ftsTotal = computeFtsTotal(ftsTotalKnown, ftsAccumulatedResults.length, ftsHasMore)
-  const ftsLoadingMore = ftsSearchResult.isFetching && ftsOffset > 0
-
-  // Total count of notes (from first page, falls back to loaded count)
+  // Total count of notes
   const totalNotes = useMemo(() => {
     const pages = notesQuery.data?.pages
     if (pages?.length) {
@@ -245,16 +139,6 @@ export function useNoteAppController() {
     }
     return notes.length
   }, [notesQuery.data?.pages, notes.length]) ?? 0
-
-  const showFTSResults = ftsSearchQuery.length >= 3 &&
-    !!ftsData &&
-    !ftsData.error
-
-  const aggregatedFtsData = showFTSResults ? {
-    ...ftsData,
-    results: ftsAccumulatedResults,
-    total: ftsTotal
-  } : undefined
 
   const notesDisplayed = showFTSResults && aggregatedFtsData ? aggregatedFtsData.results.length : notes.length
   const baseTotal = showFTSResults && aggregatedFtsData ? aggregatedFtsData.total : totalNotes
@@ -269,268 +153,20 @@ export function useNoteAppController() {
     { threshold: 0.8, rootMargin: '200px' }
   )
 
-  // FTS Infinite Scroll
-  const loadMoreFtsCallback = useCallback(() => {
-    setFtsOffset((prev) => prev + ftsLimit)
-  }, [ftsLimit])
-
-  const ftsObserverTarget = useInfiniteScroll(
-    loadMoreFtsCallback,
-    ftsHasMore,
-    ftsLoadingMore,
-    { threshold: 0.8, rootMargin: '200px' }
-  )
-
-  // -- Auth Effects --
-  useEffect(() => {
-    const checkAuth = async () => {
-      await webStorageAdapter.removeItem('testUser')
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user || null)
-      setLoading(false)
-    }
-
-    checkAuth()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setUser(session?.user || null)
-      }
-    )
-
-    return () => subscription.unsubscribe()
-  }, [supabase])
-
-  // -- Offline queue counts (persisted) --
-  useEffect(() => {
-    const loadQueueState = async () => {
-      const queue = await offlineQueue.getQueue()
-      let cached = await offlineCache.loadNotes()
-      if (!queue.length && cached.length) {
-        // Очистка временных заметок, если очередь пуста (например, compaction выкинул create+delete)
-        const idsToRemove = cached.filter((c) => c.status !== 'synced' || c.deleted).map((c) => c.id)
-        if (idsToRemove.length) {
-          for (const id of idsToRemove) {
-            await offlineCache.deleteNote(id)
-          }
-          cached = await offlineCache.loadNotes()
-        }
-      }
-      setOfflineOverlay(cached)
-      setPendingCount(queue.filter((q) => q.status === 'pending').length)
-      setFailedCount(queue.filter((q) => q.status === 'failed').length)
-    }
-    void loadQueueState()
-  }, [offlineQueue, offlineCache])
-
-  // Dispose syncManager only on unmount (it's now a singleton)
-  useEffect(() => {
-    return () => {
-      syncManagerRef.current?.dispose()
-    }
-  }, [])
-
-  // Handle online/offline state changes (sync is triggered by syncManager internally)
-  useEffect(() => {
-    let updateInterval: ReturnType<typeof setInterval> | null = null
-
-    const updateQueueState = async () => {
-      const queue = await offlineQueue.getQueue()
-      let cached = await offlineCache.loadNotes()
-      if (!queue.length && cached.length) {
-        const idsToRemove = cached.filter((c) => c.status !== 'synced' || c.deleted).map((c) => c.id)
-        if (idsToRemove.length) {
-          for (const id of idsToRemove) {
-            await offlineCache.deleteNote(id)
-          }
-          cached = await offlineCache.loadNotes()
-        }
-      }
-      setOfflineOverlay(cached)
-      const pending = queue.filter((q) => q.status === 'pending').length
-      const failed = queue.filter((q) => q.status === 'failed').length
-      setPendingCount(pending)
-      setFailedCount(failed)
-      // Stop polling when queue is empty
-      if (pending === 0 && updateInterval) {
-        clearInterval(updateInterval)
-        updateInterval = null
-      }
-    }
-
-    const handleOnline = () => {
-      setIsOffline(false)
-      // Poll for updates while sync is in progress
-      updateInterval = setInterval(updateQueueState, 1000)
-      // Also update immediately and after a delay
-      void updateQueueState()
-      setTimeout(() => void updateQueueState(), 2000)
-    }
-    const handleOffline = () => {
-      setIsOffline(true)
-      if (updateInterval) {
-        clearInterval(updateInterval)
-        updateInterval = null
-      }
-    }
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-      if (updateInterval) clearInterval(updateInterval)
-    }
-  }, [offlineQueue, offlineCache])
-
-  // -- Handlers --
-
-  const handleSearch = useCallback((query: string) => {
-    setSearchQuery(query)
-    setFtsSearchQuery(query)
-  }, [])
-
   const handleTagClick = useCallback((tag: string) => {
-    setFilterByTag(tag)
-    // Don't reset search - preserve search state when clicking tags
+    onTagClick(tag)
     setSelectedNote(null)
     setIsEditing(false)
-  }, [])
+  }, [onTagClick, setSelectedNote, setIsEditing])
 
-  const handleClearTagFilter = useCallback(() => {
-    setFilterByTag(null)
-  }, [])
+  // Refs to avoid dependency cycles in handleAutoSave
+  const notesRef = useRef(notes)
+  const selectedNoteRef = useRef(selectedNote)
+  useEffect(() => {
+    notesRef.current = notes
+    selectedNoteRef.current = selectedNote
+  }, [notes, selectedNote])
 
-  const handleSignInWithGoogle = async () => {
-    try {
-      const { error } = await authService.signInWithGoogle(webOAuthRedirectUri)
-      if (error) console.error('Error signing in:', error)
-    } catch (error) {
-      console.error('Error signing in:', error)
-    }
-  }
-
-  const handleTestLogin = async () => {
-    if (!featureFlags.testAuth) {
-      toast.error('Test authentication is disabled in this environment')
-      return
-    }
-
-    try {
-      setAuthLoading(true) // Show loading indicator immediately
-      const { data, error } = await authService.signInWithPassword(
-        'test@example.com',
-        'testpassword123'
-      )
-
-      if (error) {
-        toast.error('Failed to login as test user: ' + error.message)
-        setAuthLoading(false)
-        return
-      }
-
-      if (data?.user) {
-        setUser(data.user)
-        toast.success('Logged in as test user!')
-        // loading from SupabaseProvider will be updated via onAuthStateChange
-      }
-    } catch {
-      toast.error('Failed to login as test user')
-    } finally {
-      setAuthLoading(false)
-    }
-  }
-
-  const handleSkipAuth = async () => {
-    if (!featureFlags.testAuth) {
-      toast.error('Test authentication is disabled in this environment')
-      return
-    }
-
-    try {
-      setAuthLoading(true) // Show loading indicator immediately
-      const { data, error } = await authService.signInWithPassword(
-        'skip-auth@example.com',
-        'testpassword123'
-      )
-
-      if (error) {
-        toast.error('Failed to login as skip-auth user: ' + error.message)
-        setAuthLoading(false)
-        return
-      }
-
-      if (data?.user) {
-        setUser(data.user)
-        toast.success('Logged in as skip-auth user!')
-        // loading from SupabaseProvider will be updated via onAuthStateChange
-      }
-    } catch {
-      toast.error('Failed to login as skip-auth user')
-    } finally {
-      setAuthLoading(false)
-    }
-  }
-
-  const handleSignOut = async () => {
-    try {
-      await authService.signOut()
-      await webStorageAdapter.removeItem('testUser')
-      setUser(null)
-      queryClient.removeQueries({ queryKey: ['notes'] })
-      setSelectedNote(null)
-    } catch (error) {
-      console.error('Error signing out:', error)
-    }
-  }
-
-  const handleDeleteAccount = async () => {
-    if (!user) return
-    setDeleteAccountLoading(true)
-    try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !sessionData.session?.access_token) {
-        throw new Error("Unable to get session token for deletion")
-      }
-      const token = sessionData.session.access_token
-      const functionsUrl = process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
-      if (!functionsUrl) {
-        throw new Error("Functions URL is not configured (set NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL)")
-      }
-
-      const response = await fetch(`${functionsUrl}/functions/v1/delete-account`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ deleteNotes: true }),
-      })
-
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        const message = payload?.error || `Delete function error (${response.status})`
-        throw new Error(message)
-      }
-
-      toast.success("Account deleted")
-      await handleSignOut()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to delete account"
-      toast.error(message)
-    } finally {
-      setDeleteAccountLoading(false)
-    }
-  }
-
-  const handleCreateNote = useCallback(() => {
-    setSelectedNote(null)
-    setIsEditing(true)
-  }, [])
-
-  const handleEditNote = useCallback((note: NoteViewModel) => {
-    setSelectedNote(note)
-    setIsEditing(true)
-  }, [])
 
   const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
     if (!user) return
@@ -599,7 +235,16 @@ export function useNoteAppController() {
       clearTimeout(guard)
       setAutoSaving(false)
     }
-  }, [user, offlineCache, enqueueMutation])
+  }, [
+    user,
+    offlineCache,
+    enqueueMutation,
+    offlineQueueRef,
+    setPendingCount,
+    setFailedCount,
+    setLastSavedAt,
+    setOfflineOverlay
+  ])
 
   const handleSaveNote = async (data: { title: string; description: string; tags: string }) => {
     if (!user) return
@@ -721,10 +366,6 @@ export function useNoteAppController() {
     }
   }
 
-  const handleDeleteNote = (note: NoteViewModel) => {
-    setNoteToDelete(note)
-    setDeleteDialogOpen(true)
-  }
 
   const confirmDeleteNote = async () => {
     if (!noteToDelete) return
@@ -745,7 +386,7 @@ export function useNoteAppController() {
           updatedAt: new Date().toISOString(),
         }
         await offlineCache.saveNote(cachedDelete)
-        
+
         setOfflineOverlay((prev) => {
           const idx = prev.findIndex((n) => n.id === noteToDelete.id)
           if (idx >= 0) {
@@ -793,50 +434,13 @@ export function useNoteAppController() {
     }
   }
 
-  const handleSelectNote = useCallback((note: NoteViewModel | null) => {
-    setSelectedNote(note)
-    setIsEditing(false)
-  }, [])
-
-  const handleSearchResultClick = useCallback((note: SearchResult) => {
-    // Don't reset search - keep search results visible when viewing a note
-    setSelectedNote(note)
-    setIsEditing(false)
-  }, [])
-
-  const enterSelectionMode = () => {
-    setSelectionMode(true)
-    setSelectedNoteIds(new Set())
-    setIsEditing(false)
-    setSelectedNote(null)
-  }
-
-  const exitSelectionMode = () => {
-    setSelectionMode(false)
-    setSelectedNoteIds(new Set())
-  }
-
-  const toggleNoteSelection = useCallback((noteId: string) => {
-    setSelectionMode(true)
-    setSelectedNoteIds(prev => toggleSelection(prev, noteId))
-  }, [])
-
   const selectAllVisible = () => {
     const source = showFTSResults && aggregatedFtsData
       ? aggregatedFtsData.results
       : notes
-    setSelectionMode(true)
-    setSelectedNoteIds(selectAllSet(source.map((n) => n.id)))
+    selectAllVisibleCallback(source)
   }
 
-  const clearSelection = () => {
-    setSelectedNoteIds(clearSelectionSet())
-  }
-
-  const loadMoreFts = useCallback(() => {
-    if (ftsLoadingMore || !ftsHasMore) return
-    setFtsOffset((prev) => prev + ftsLimit)
-  }, [ftsLoadingMore, ftsHasMore, ftsLimit])
 
   const deleteSelectedNotes = async () => {
     if (!selectedNoteIds.size) return
@@ -865,7 +469,7 @@ export function useNoteAppController() {
           await offlineCache.saveNote(cached)
           updates.push(cached)
         }
-        
+
         setOfflineOverlay((prev) => {
           const next = [...prev]
           updates.forEach((u) => {
