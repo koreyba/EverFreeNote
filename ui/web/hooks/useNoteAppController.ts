@@ -550,6 +550,7 @@ export function useNoteAppController() {
     if (sameTitle && sameDesc && sameTags) return
 
     setAutoSaving(true)
+    const guard = setTimeout(() => setAutoSaving(false), 5000)
     try {
       const clientUpdatedAt = new Date().toISOString()
       const partialPayload: Partial<NoteUpdate> = {
@@ -583,17 +584,19 @@ export function useNoteAppController() {
       })
 
       // Fire-and-forget enqueue to avoid blocking UI/autosave spinner on network/sync work
-      enqueueMutation({
+      await enqueueMutation({
         noteId: targetId,
         operation: 'update',
         payload: partialPayload,
         clientUpdatedAt,
-      }).catch((err) => {
-        console.error('Failed to enqueue autosave mutation', err)
       })
-      setPendingCount((prev) => prev + 1)
+      // Refresh counts from queue to avoid drift/stuck pending
+      const queue = await offlineQueueRef.current.getQueue()
+      setPendingCount(queue.filter((q) => q.status === 'pending').length)
+      setFailedCount(queue.filter((q) => q.status === 'failed').length)
       setLastSavedAt(clientUpdatedAt)
     } finally {
+      clearTimeout(guard)
       setAutoSaving(false)
     }
   }, [user, offlineCache, enqueueMutation])

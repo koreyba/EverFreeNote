@@ -60,7 +60,7 @@ type RichTextEditorProps = {
   onChange: (html: string) => void
 }
 
-const DEBOUNCE_MS = 250
+const DEBOUNCE_MS = 1500
 
 type MenuBarProps = {
   editor: Editor | null
