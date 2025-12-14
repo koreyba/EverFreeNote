@@ -10,7 +10,7 @@ type SinonStub = any
 
 const TestComponent = () => {
   const controller = useNoteAppController()
-  
+
   return (
     <div>
       <div data-cy="loading">{controller.loading ? 'true' : 'false'}</div>
@@ -24,21 +24,21 @@ const TestComponent = () => {
 
       <button data-cy="login-btn" onClick={controller.handleTestLogin}>Login</button>
       <button data-cy="skip-auth-btn" onClick={controller.handleSkipAuth}>Skip Auth</button>
-      <button data-cy="sign-out-btn" onClick={controller.handleSignOut}>Sign Out</button>
+      <button data-cy="sign-out-btn" onClick={() => controller.handleSignOut()}>Sign Out</button>
       <button data-cy="google-login-btn" onClick={controller.handleSignInWithGoogle}>Google Login</button>
-      
+
       <button data-cy="create-note-btn" onClick={controller.handleCreateNote}>Create Note</button>
-      <button data-cy="edit-note-btn" onClick={() => controller.handleEditNote({ 
-        id: '1', 
-        title: 'Test Note', 
-        description: 'Desc', 
+      <button data-cy="edit-note-btn" onClick={() => controller.handleEditNote({
+        id: '1',
+        title: 'Test Note',
+        description: 'Desc',
         tags: [],
         created_at: '2023-01-01',
         updated_at: '2023-01-01',
         user_id: 'test-user'
       } as NoteViewModel)}>Edit Note</button>
-      <button data-cy="select-note-btn" onClick={() => controller.handleSelectNote({ 
-        id: '2', 
+      <button data-cy="select-note-btn" onClick={() => controller.handleSelectNote({
+        id: '2',
         title: 'Selected Note',
         description: '',
         tags: [],
@@ -47,23 +47,23 @@ const TestComponent = () => {
         user_id: 'test-user'
       } as NoteViewModel)}>Select Note</button>
       <button data-cy="search-btn" onClick={() => controller.handleSearch('test query')}>Search</button>
-      
+
       <button data-cy="save-note-btn" onClick={() => controller.handleSaveNote({
         title: 'New Note',
         description: 'New Description',
         tags: 'tag1, tag2'
       })}>Save Note</button>
-      <button data-cy="delete-note-btn" onClick={() => controller.handleDeleteNote({ 
-        id: '1', 
-        title: 'To Delete', 
-        description: '', 
+      <button data-cy="delete-note-btn" onClick={() => controller.handleDeleteNote({
+        id: '1',
+        title: 'To Delete',
+        description: '',
         tags: [],
         created_at: '2023-01-01',
         updated_at: '2023-01-01',
         user_id: 'test-user'
       } as NoteViewModel)}>Delete Note</button>
       <button data-cy="confirm-delete-btn" onClick={controller.confirmDeleteNote}>Confirm Delete</button>
-      
+
       <button data-cy="tag-click-btn" onClick={() => controller.handleTagClick('test-tag')}>Tag Click</button>
       <button data-cy="clear-tag-btn" onClick={controller.handleClearTagFilter}>Clear Tag</button>
       <button data-cy="search-result-click-btn" onClick={() => controller.handleSearchResultClick({
@@ -78,7 +78,7 @@ const TestComponent = () => {
         headline: 'Headline'
       })}>Search Result Click</button>
       <button data-cy="invalidate-btn" onClick={controller.invalidateNotes}>Invalidate</button>
-      
+
       <button data-cy="remove-tag-btn" onClick={() => controller.handleRemoveTagFromNote('1', 'tag1')}>Remove Tag</button>
     </div>
   )
@@ -138,10 +138,10 @@ describe('useNoteAppController', () => {
         </QueryProvider>
       </SupabaseTestProvider>
     )
-    
+
     cy.get('[data-cy="loading"]').should('contain', 'false')
     cy.get('[data-cy="user"]').should('contain', 'no-user')
-    
+
     cy.wrap(mockSupabase.auth.getSession).should('have.been.called')
   })
 
@@ -172,8 +172,8 @@ describe('useNoteAppController', () => {
   })
 
   it('handles sign out', () => {
-    ;(mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
-    
+    ; (mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
         <QueryProvider>
@@ -258,7 +258,7 @@ describe('useNoteAppController', () => {
 
   it('handles save note (create)', () => {
     // We need user to be logged in for save to work
-    ;(mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+    ; (mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
 
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
@@ -289,9 +289,9 @@ describe('useNoteAppController', () => {
 
     cy.get('[data-cy="delete-note-btn"]').click()
     cy.get('[data-cy="deleteDialogOpen"]').should('contain', 'true')
-    
+
     cy.get('[data-cy="confirm-delete-btn"]').click()
-    
+
     // Check if delete was called
     cy.wrap(mockQueryBuilder.delete).should('have.been.called')
     cy.wrap(mockQueryBuilder.eq).should('have.been.calledWith', 'id', '1')
@@ -308,7 +308,7 @@ describe('useNoteAppController', () => {
 
     cy.get('[data-cy="tag-click-btn"]').click()
     cy.get('[data-cy="filterByTag"]').should('contain', 'test-tag')
-    
+
     cy.get('[data-cy="clear-tag-btn"]').click()
     cy.get('[data-cy="filterByTag"]').should('contain', 'none')
   })
@@ -343,14 +343,14 @@ describe('useNoteAppController', () => {
 
   it('handles remove tag from note', () => {
     // Ensure user is logged in
-    ;(mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+    ; (mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
 
     // Mock supabase response for notes query
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockQueryBuilder.then = (resolve: (res: any) => void) => resolve({ 
-      data: [{ id: '1', title: 'Note 1', tags: ['tag1', 'tag2'], user_id: 'test-user' }], 
-      error: null, 
-      count: 1 
+    mockQueryBuilder.then = (resolve: (res: any) => void) => resolve({
+      data: [{ id: '1', title: 'Note 1', tags: ['tag1', 'tag2'], user_id: 'test-user' }],
+      error: null,
+      count: 1
     })
 
     cy.mount(
@@ -363,39 +363,39 @@ describe('useNoteAppController', () => {
 
     // Wait for user and notes to load
     cy.get('[data-cy="user"]').should('contain', 'test-user')
-    
+
     // Select the note first to verify state update
     cy.get('[data-cy="edit-note-btn"]').click()
     cy.get('[data-cy="selectedNote-id"]').should('contain', '1')
 
     cy.get('[data-cy="remove-tag-btn"]').click()
-    
+
     // Check if update was called with removed tag
     cy.wrap(mockQueryBuilder.update).should('have.been.called')
-    
+
     // Check if selected note tags updated in UI
     cy.get('[data-cy="selectedNote-tags"]').should('contain', 'tag2')
     cy.get('[data-cy="selectedNote-tags"]').should('not.contain', 'tag1')
   })
 
   it('handles remove tag error', () => {
-    ;(mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
+    ; (mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
 
     // Mock notes query success
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockQueryBuilder.then = (resolve: (res: any) => void) => resolve({ 
-      data: [{ id: '1', title: 'Note 1', tags: ['tag1', 'tag2'], user_id: 'test-user' }], 
-      error: null, 
-      count: 1 
+    mockQueryBuilder.then = (resolve: (res: any) => void) => resolve({
+      data: [{ id: '1', title: 'Note 1', tags: ['tag1', 'tag2'], user_id: 'test-user' }],
+      error: null,
+      count: 1
     })
 
     // Mock update failure
     const updateStub = cy.stub().returns({
-        eq: cy.stub().returns({
-            select: cy.stub().returns({
-                single: cy.stub().rejects(new Error('Update failed'))
-            })
+      eq: cy.stub().returns({
+        select: cy.stub().returns({
+          single: cy.stub().rejects(new Error('Update failed'))
         })
+      })
     })
     mockQueryBuilder.update = updateStub
 
@@ -409,14 +409,14 @@ describe('useNoteAppController', () => {
 
     cy.get('[data-cy="user"]').should('contain', 'test-user')
     cy.get('[data-cy="remove-tag-btn"]').click()
-    
+
     cy.wrap(updateStub).should('have.been.called')
   })
 
   it('handles null search results', () => {
     // Mock rpc to return null data
     (mockSupabase.rpc as unknown as SinonStub).resolves({ data: null, error: null })
-    
+
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
         <QueryProvider>
@@ -424,10 +424,10 @@ describe('useNoteAppController', () => {
         </QueryProvider>
       </SupabaseTestProvider>
     )
-    
+
     // Trigger search
     cy.get('[data-cy="search-btn"]').click()
-    
+
     // Check that it doesn't crash
     cy.get('[data-cy="searchQuery"]').should('contain', 'test query')
   })
