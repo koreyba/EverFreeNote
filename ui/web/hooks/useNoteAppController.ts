@@ -64,6 +64,7 @@ export function useNoteAppController() {
   const [saving, setSaving] = useState(false)
   const [autoSaving, setAutoSaving] = useState(false)
 
+
   // -- Dependencies --
   const queryClient = useQueryClient()
 
@@ -153,12 +154,6 @@ export function useNoteAppController() {
     { threshold: 0.8, rootMargin: '200px' }
   )
 
-  const handleTagClick = useCallback((tag: string) => {
-    onTagClick(tag)
-    setSelectedNote(null)
-    setIsEditing(false)
-  }, [onTagClick, setSelectedNote, setIsEditing])
-
   // Refs to avoid dependency cycles in handleAutoSave
   const notesRef = useRef(notes)
   const selectedNoteRef = useRef(selectedNote)
@@ -167,6 +162,11 @@ export function useNoteAppController() {
     selectedNoteRef.current = selectedNote
   }, [notes, selectedNote])
 
+  const handleTagClick = useCallback((tag: string) => {
+    onTagClick(tag)
+    setSelectedNote(null)
+    setIsEditing(false)
+  }, [onTagClick, setSelectedNote, setIsEditing])
 
   const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
     if (!user) return
@@ -355,7 +355,6 @@ export function useNoteAppController() {
         }
       }
 
-      setIsEditing(false)
       if (savedNote) {
         setSelectedNote(savedNote)
       }
@@ -366,6 +365,13 @@ export function useNoteAppController() {
     }
   }
 
+  const handleReadNote = async (data: { title: string; description: string; tags: string }) => {
+    await handleSaveNote(data)
+    if (!selectedNote) {
+      setSelectedNote(null)
+    }
+    setIsEditing(false)
+  }
 
   const confirmDeleteNote = async () => {
     if (!noteToDelete) return
@@ -508,6 +514,7 @@ export function useNoteAppController() {
     selectedNote,
     searchQuery,
     isEditing,
+    setIsEditing,
     saving,
     filterByTag,
     deleteDialogOpen,
@@ -551,6 +558,7 @@ export function useNoteAppController() {
     handleCreateNote,
     handleEditNote,
     handleSaveNote,
+    handleReadNote,
     handleAutoSave,
     handleDeleteNote,
     confirmDeleteNote,

@@ -173,7 +173,7 @@ function EditorPane({ controller, onBack }: { controller: NoteAppController, onB
     autoSaving,
     lastSavedAt,
     handleSaveNote,
-    handleSelectNote,
+    handleReadNote,
     handleEditNote,
     handleDeleteNote,
     handleRemoveTagFromNote,
@@ -192,16 +192,10 @@ function EditorPane({ controller, onBack }: { controller: NoteAppController, onB
         initialTags={selectedNote?.tags?.join(", ") ?? ""}
         isSaving={saving}
         onSave={handleSaveNote}
+        onRead={handleReadNote}
         onAutoSave={controller.handleAutoSave}
         isAutoSaving={autoSaving}
         lastSavedAt={lastSavedAt}
-        onCancel={() => {
-          if (!selectedNote) {
-            handleSelectNote(null)
-          } else {
-            handleSelectNote(selectedNote)
-          }
-        }}
       />
     )
   }

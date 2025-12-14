@@ -17,11 +17,11 @@ interface NoteEditorProps {
   initialTags?: string
   isSaving: boolean
   onSave: (data: { title: string; description: string; tags: string }) => void
+  onRead: (data: { title: string; description: string; tags: string }) => void
   onAutoSave?: (data: { noteId?: string; title: string; description: string; tags: string }) => Promise<void> | void
   isAutoSaving?: boolean
   autosaveDelayMs?: number
   lastSavedAt?: string | null
-  onCancel: () => void
 }
 
 export const NoteEditor = React.memo(function NoteEditor({
@@ -30,10 +30,10 @@ export const NoteEditor = React.memo(function NoteEditor({
   initialTags = "",
   isSaving,
   onSave,
+  onRead,
   onAutoSave,
   isAutoSaving = false,
   autosaveDelayMs = DEFAULT_AUTOSAVE_DELAY_MS,
-  onCancel,
   noteId,
   lastSavedAt,
 }: NoteEditorProps) {
@@ -101,6 +101,12 @@ export const NoteEditor = React.memo(function NoteEditor({
     onSave({ title: latestTitle, description, tags: latestTags })
   }
 
+  const handleRead = () => {
+    const latestTitle = titleInputRef.current?.value ?? titleState
+    const latestTags = tagsInputRef.current?.value ?? tagsState
+    onRead({ title: latestTitle, description, tags: latestTags })
+  }
+
   const handleTitleChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     debouncedTitle(e.target.value)
   }, [debouncedTitle])
@@ -132,18 +138,19 @@ export const NoteEditor = React.memo(function NoteEditor({
         <div className="flex flex-col items-end gap-1">
           <div className="flex gap-2">
             <Button
-              onClick={onCancel}
+              onClick={handleRead}
               variant="outline"
+              disabled={isSaving}
             >
               Read
             </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            Save
-          </Button>
-        </div>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              Save
+            </Button>
+          </div>
           {(showSaving || isSaving) ? (
             <div className="text-xs text-muted-foreground animate-pulse">
               Saving...
