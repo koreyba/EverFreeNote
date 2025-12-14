@@ -72,6 +72,9 @@ describe('Mobile Layout Adaptation', () => {
       isOffline: false,
       pendingCount: 0,
       failedCount: 0,
+      handleAutoSave: cy.stub(),
+      lastSavedAt: null,
+      autoSaving: false,
       
       ...overrides
     })
