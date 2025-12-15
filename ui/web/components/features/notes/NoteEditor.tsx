@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
-const DEFAULT_AUTOSAVE_DELAY_MS = 1500
+const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
 interface NoteEditorProps {
   noteId?: string
