@@ -274,71 +274,141 @@ export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
 
 ### 2. UI компоненты
 
-#### Rich Text Editor (с учетом ограничений RN)
+#### Rich Text Editor (WebView + TipTap)
 
 **Проблема:** TipTap использует DOM API, которого нет в React Native
 
-**Решение:** ✅ **@10play/tentap-editor** - современный редактор на базе TipTap
+**Решение:** ✅ **WebView с полным переиспользованием web RichTextEditor**
+
+**Архитектура:**
+1. Создается отдельная страница `app/editor-webview/page.tsx` с чистым редактором
+2. React Native компонент загружает эту страницу в WebView
+3. Коммуникация через `postMessage` bridge
 
 ```typescript
-// mobile/components/RichTextEditor.tsx
+// app/editor-webview/page.tsx - Новая страница
+'use client'
+import { RichTextEditor } from '@/components/editor/RichTextEditor'
+import { useEffect, useState } from 'react'
+
+export default function EditorWebViewPage() {
+  const [content, setContent] = useState('')
+
+  useEffect(() => {
+    // Listen for messages from React Native
+    const handleMessage = (event: MessageEvent) => {
+      const { type, payload } = event.data
+      
+      if (type === 'SET_CONTENT') {
+        setContent(payload)
+      }
+    }
+    
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
+  const handleChange = (html: string) => {
+    // Send to React Native
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'CONTENT_CHANGED',
+        payload: html
+      }))
+    }
+  }
+
+  return (
+    <div className="h-screen w-screen">
+      <RichTextEditor 
+        initialContent={content}
+        onChange={handleChange}
+      />
+    </div>
+  )
+}
+```
+
+```typescript
+// mobile/components/EditorWebView.tsx - React Native обертка
 import React, { useRef, useImperativeHandle, forwardRef } from 'react'
-import { KeyboardAvoidingView, Platform } from 'react-native'
-import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor'
-import type {
-  CoreBridge,
-  TenTapStartKit,
-} from '@10play/tentap-editor'
+import { View, StyleSheet } from 'react-native'
+import WebView from 'react-native-webview'
 
-export type RichTextEditorHandle = {
-  getHTML: () => Promise<string>
+export type EditorWebViewHandle = {
   setContent: (html: string) => void
+  getContent: () => string
 }
 
-type RichTextEditorProps = {
+type EditorWebViewProps = {
   initialContent: string
-  onContentChange?: () => void
+  onContentChange?: (html: string) => void
 }
 
-export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(
+export const EditorWebView = forwardRef<EditorWebViewHandle, EditorWebViewProps>(
   ({ initialContent, onContentChange }, ref) => {
-    const editor = useEditorBridge({
-      autofocus: true,
-      avoidIosKeyboard: true,
-      initialContent,
-      onChange: onContentChange,
-    })
+    const webViewRef = useRef<WebView>(null)
+    const currentContent = useRef(initialContent)
 
     useImperativeHandle(ref, () => ({
-      async getHTML() {
-        return await editor.getHTML()
-      },
       setContent(html: string) {
-        editor.setContent(html)
+        webViewRef.current?.postMessage(JSON.stringify({
+          type: 'SET_CONTENT',
+          payload: html
+        }))
       },
+      getContent() {
+        return currentContent.current
+      }
     }))
 
+    const handleMessage = (event: any) => {
+      const { type, payload } = JSON.parse(event.nativeEvent.data)
+      
+      if (type === 'CONTENT_CHANGED') {
+        currentContent.current = payload
+        onContentChange?.(payload)
+      }
+    }
+
+    // В продакшене - URL вашего сервера
+    // В разработке - localhost:3000
+    const editorUrl = __DEV__ 
+      ? 'http://localhost:3000/editor-webview'
+      : 'https://everfreenote.app/editor-webview'
+
     return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <Toolbar editor={editor} />
-        <RichText editor={editor} />
-      </KeyboardAvoidingView>
+      <View style={styles.container}>
+        <WebView
+          ref={webViewRef}
+          source={{ uri: editorUrl }}
+          onMessage={handleMessage}
+          javaScriptEnabled
+          domStorageEnabled
+          startInLoadingState
+        />
+      </View>
     )
   }
 )
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+})
 ```
 
 **Преимущества:**
-- ✅ Почти идентичный API к TipTap (easy migration знаний из web)
-- ✅ Нативная производительность
-- ✅ Поддержка всех форматирований (bold, italic, headings, lists, links, images)
-- ✅ TypeScript support
-- ✅ Активная поддержка (1k+ GitHub stars)
+- ✅ **100% переиспользование** существующего RichTextEditor
+- ✅ Все TipTap расширения работают без изменений
+- ✅ Единый источник правды для логики редактора
+- ✅ Легко поддерживать (фиксы применяются сразу везде)
+- ✅ Не нужно менять архитектуру проекта
 
-**GitHub:** https://github.com/10play/10tap-editor
+**Ограничения:**
+- ⚠️ Требуется запущенный Next.js сервер (или статичный экспорт)
+- ⚠️ Небольшая задержка при загрузке WebView (но потом работает плавно)
 
 #### Note List (Виртуализация)
 

@@ -42,14 +42,15 @@
 ## 🎯 Ключевые решения
 
 ### Технологический стек:
-- **React Native** 0.74+ (новая архитектура)
-- **Expo SDK 51+** (managed workflow)
-- **Expo Router** (file-based routing, аналог Next.js)
+- **React Native** 0.77.3 (новая архитектура)
+- **Expo SDK 54** (managed workflow)
+- **Expo Router 5.0** (file-based routing, аналог Next.js)
 - **NativeWind v4** (Tailwind CSS для RN)
 - **FlashList** (виртуализация списков)
-- **react-native-pell-rich-editor** (rich text editor для MVP)
+- **react-native-webview** + **TipTap** (100% переиспользование web редактора)
 - **TanStack Query v5** (кэширование серверного состояния)
-- **Supabase JS v2** (с AsyncStorage adapter)
+- **Supabase JS v2** (с SQLite adapter)
+- **expo-sqlite** (локальное хранилище заметок)
 
 ### Переиспользование core-слоя:
 ✅ **100% переиспользование:**
@@ -57,15 +58,17 @@
 - Все типы (domain types)
 - Все утилиты
 - ENEX экспорт/импорт
+- **RichTextEditor через WebView** (весь TipTap код, расширения, стили)
 
 ✅ **Адаптировано:**
-- Storage: AsyncStorage вместо localStorage
+- Storage: expo-sqlite вместо localStorage
 - OAuth: expo-web-browser вместо window.location
 - Navigation: Expo Router вместо Next.js router
 - Supabase client: mobile-specific config
+- RichTextEditor: WebView bridge для коммуникации с React Native
 
 ❌ **Не переиспользуется:**
-- UI компоненты (Radix UI → NativeWind компоненты)
+- UI компоненты списков и навигации (Radix UI → NativeWind компоненты)
 - Next.js специфичные файлы
 
 ### Архитектура:
@@ -83,20 +86,26 @@ Supabase (DB, Auth, Storage)
 
 ### Для начала разработки:
 
-1. **Инициализировать Expo проект:**
+1. **Создать страницу для WebView редактора:**
+   ```bash
+   mkdir app/editor-webview
+   touch app/editor-webview/page.tsx
+   ```
+
+2. **Инициализировать Expo проект:**
    ```bash
    npx create-expo-app mobile --template
    cd mobile
    npm install
    ```
 
-2. **Установить зависимости:**
+3. **Установить зависимости:**
    ```bash
    npm install expo-router expo-web-browser expo-linking expo-secure-store
-   npm install @react-native-async-storage/async-storage
+   npm install expo-sqlite
    npm install @tanstack/react-query @supabase/supabase-js
    npm install nativewind tailwindcss lucide-react-native
-   npm install react-native-pell-rich-editor @shopify/flash-list
+   npm install react-native-webview @shopify/flash-list
    npm install @react-native-community/netinfo
    ```
 
