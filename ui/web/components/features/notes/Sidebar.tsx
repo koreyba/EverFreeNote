@@ -95,7 +95,7 @@ export function Sidebar({
 
   const handleSearchChange = (value: string) => {
     setSearchDraft(value)
-    debouncedSearch(value)
+    debouncedSearch.call(value)
   }
 
   const handleDeleteAccount = async () => {
