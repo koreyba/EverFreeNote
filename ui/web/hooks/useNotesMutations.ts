@@ -46,7 +46,7 @@ const defaultCreateCallbacks: MutationCallbacks = {
 }
 
 const defaultUpdateCallbacks: MutationCallbacks = {
-  onSuccess: () => toast.success('Note updated successfully'),
+  // Success toast omitted to avoid noisy notifications during autosave
   onError: (err) => toast.error('Failed to update note: ' + err.message),
 }
 

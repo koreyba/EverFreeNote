@@ -88,15 +88,15 @@ export class OfflineSyncManager {
         const batch = await this.queue.getPendingBatch(batchSize)
         if (!batch.length) break
 
-        const successIds: string[] = []
         let hadProgress = false
 
         for (const item of batch) {
           try {
             await this.performSync(item)
-            // Sync successful - mark for removal
-            successIds.push(item.id)
+            // Sync successful - remove immediately so onSuccess sees accurate queue state
+            await this.queue.removeItems([item.id])
             hadProgress = true
+            
             // Call onSuccess for UI updates (errors here don't affect queue)
             const onSuccess = options?.onSuccess ?? this.defaultOnSuccess
             if (onSuccess) {
@@ -111,11 +111,6 @@ export class OfflineSyncManager {
             // Mark as failed but keep in queue for retry
             await this.queue.markStatus(item.id, 'failed', message)
           }
-        }
-
-        // Remove successfully synced items from queue
-        if (successIds.length > 0) {
-          await this.queue.removeItems(successIds)
         }
 
         // If no progress was made, stop to avoid infinite loop

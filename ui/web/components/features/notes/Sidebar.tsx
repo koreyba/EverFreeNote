@@ -95,7 +95,7 @@ export function Sidebar({
 
   const handleSearchChange = (value: string) => {
     setSearchDraft(value)
-    debouncedSearch(value)
+    debouncedSearch.call(value)
   }
 
   const handleDeleteAccount = async () => {
@@ -121,23 +121,26 @@ export function Sidebar({
           <ThemeToggle />
         </div>
 
-        {isOffline && (
-          <div className="mb-3 rounded-md border border-dashed bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-            Offline mode: cached notes available, search недоступен до восстановления сети.
-          </div>
-        )}
-        {(pendingCount ?? 0) > 0 || (failedCount ?? 0) > 0 ? (
-          <div className="mb-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-            {(pendingCount ?? 0) > 0 && (
-              <span className="rounded bg-muted px-2 py-1">Pending: {pendingCount}</span>
-            )}
-            {(failedCount ?? 0) > 0 && (
-              <span className="rounded bg-destructive/10 text-destructive px-2 py-1">
-                Failed: {failedCount}
-              </span>
-            )}
-          </div>
-        ) : null}
+        {/* Sync Status - always visible to prevent layout shift */}
+        <div className="mb-3 flex flex-wrap gap-2 text-xs">
+          {isOffline ? (
+            <span className="rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-1">
+              Offline mode
+            </span>
+          ) : (failedCount ?? 0) > 0 ? (
+            <span className="rounded bg-destructive/10 text-destructive px-2 py-1">
+              Sync failed: {failedCount}
+            </span>
+          ) : (pendingCount ?? 0) > 0 ? (
+            <span className="rounded bg-muted px-2 py-1 text-muted-foreground animate-pulse">
+              Syncing: {pendingCount}
+            </span>
+          ) : (
+            <span className="rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-1">
+              Synchronized
+            </span>
+          )}
+        </div>
 
         {/* Tag Filter Badge */}
         {filterByTag && (

@@ -1,89 +1,146 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Tag } from "lucide-react"
+import { Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import RichTextEditor from "@/components/RichTextEditor"
+import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
-const INPUT_DEBOUNCE_MS = 250
+const DEFAULT_AUTOSAVE_DELAY_MS = 500
+
+export interface NoteEditorHandle {
+  flushPendingSave: () => Promise<void>
+}
 
 interface NoteEditorProps {
+  noteId?: string
   initialTitle?: string
   initialDescription?: string
   initialTags?: string
   isSaving: boolean
   onSave: (data: { title: string; description: string; tags: string }) => void
-  onCancel: () => void
+  onRead: (data: { title: string; description: string; tags: string }) => void
+  onAutoSave?: (data: { noteId?: string; title: string; description: string; tags: string }) => Promise<void> | void
+  isAutoSaving?: boolean
+  autosaveDelayMs?: number
+  lastSavedAt?: string | null
 }
 
-export const NoteEditor = React.memo(function NoteEditor({
+export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor({
   initialTitle = "",
   initialDescription = "",
   initialTags = "",
   isSaving,
   onSave,
-  onCancel
-}: NoteEditorProps) {
-  const [description, setDescription] = React.useState(initialDescription)
-  const [titleState, setTitleState] = React.useState(initialTitle)
-  const [tagsState, setTagsState] = React.useState(initialTags)
+  onRead,
+  onAutoSave,
+  isAutoSaving = false,
+  autosaveDelayMs = DEFAULT_AUTOSAVE_DELAY_MS,
+  noteId,
+  lastSavedAt,
+}: NoteEditorProps, ref) {
   const [inputResetKey, setInputResetKey] = React.useState(0)
+  const [showSaving, setShowSaving] = React.useState(false)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const tagsInputRef = React.useRef<HTMLInputElement | null>(null)
-  const debouncedTitle = useDebouncedCallback((value: string) => setTitleState(value), INPUT_DEBOUNCE_MS)
-  const debouncedTags = useDebouncedCallback((value: string) => setTagsState(value), INPUT_DEBOUNCE_MS)
+  const editorRef = React.useRef<RichTextEditorHandle | null>(null)
+  const firstRenderRef = React.useRef(true)
 
-  // Sync with props if they change (e.g. switching notes)
+  // Helper to get current form data from refs (single source of truth)
+  const getFormData = React.useCallback(() => ({
+    title: titleInputRef.current?.value ?? initialTitle,
+    description: editorRef.current?.getHTML() ?? initialDescription,
+    tags: tagsInputRef.current?.value ?? initialTags,
+  }), [initialTitle, initialDescription, initialTags])
+
+  const debouncedAutoSave = useDebouncedCallback(
+    async () => {
+      if (!onAutoSave) return
+      try {
+        await onAutoSave({ noteId, ...getFormData() })
+      } catch {
+        // Errors handled upstream
+      }
+    },
+    autosaveDelayMs
+  )
+
+  // Sync editor content when switching notes
   React.useEffect(() => {
-    setDescription(initialDescription)
-    setTitleState(initialTitle)
-    setTagsState(initialTags)
+    editorRef.current?.setContent(initialDescription)
     setInputResetKey((k) => k + 1)
+    firstRenderRef.current = true
   }, [initialTitle, initialDescription, initialTags])
 
+  // Sync external auto-saving flag into local display state
+  React.useEffect(() => {
+    if (isAutoSaving) {
+      setShowSaving(true)
+    } else {
+      const timer = setTimeout(() => setShowSaving(false), 500)
+      return () => clearTimeout(timer)
+    }
+  }, [isAutoSaving])
+
   const handleSave = () => {
-    const latestTitle = titleInputRef.current?.value ?? titleState
-    const latestTags = tagsInputRef.current?.value ?? tagsState
-    onSave({ title: latestTitle, description, tags: latestTags })
+    debouncedAutoSave.cancel()
+    onSave(getFormData())
   }
 
-  const handleTitleChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    debouncedTitle(e.target.value)
-  }, [debouncedTitle])
+  const handleRead = () => {
+    debouncedAutoSave.cancel()
+    onRead(getFormData())
+  }
 
-  const handleTagsChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    debouncedTags(e.target.value)
-  }, [debouncedTags])
+  // Trigger debounced autosave on any content change
+  const handleContentChange = React.useCallback(() => {
+    if (!onAutoSave) return
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false
+      return
+    }
+    debouncedAutoSave.call()
+  }, [onAutoSave, debouncedAutoSave])
+
+  // Expose API for parent component to flush pending saves
+  React.useImperativeHandle(ref, () => ({
+    flushPendingSave: async () => {
+      if (!onAutoSave) return
+      debouncedAutoSave.flush()
+    }
+  }), [onAutoSave, debouncedAutoSave])
 
   return (
     <div className="flex-1 flex flex-col">
       {/* Editor Header */}
-      <div className="p-4 border-b bg-card flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-muted-foreground">
-          Editing
-        </h2>
-        <div className="flex gap-2">
-          <Button
-            onClick={onCancel}
-            variant="outline"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save'
-            )}
-          </Button>
+      <div className="p-4 border-b bg-card flex items-start justify-between">
+        <h2 className="text-lg font-semibold text-muted-foreground">Editing</h2>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex gap-2">
+            <Button
+              onClick={handleRead}
+              variant="outline"
+              disabled={isSaving}
+            >
+              Read
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              Save
+            </Button>
+          </div>
+          {(showSaving || isSaving) ? (
+            <div className="text-xs text-muted-foreground animate-pulse">
+              Saving...
+            </div>
+          ) : lastSavedAt ? (
+            <div className="text-xs text-muted-foreground">
+              Saved at {new Date(lastSavedAt).toLocaleTimeString()}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -97,7 +154,7 @@ export const NoteEditor = React.memo(function NoteEditor({
               type="text"
               placeholder="Note title"
               defaultValue={initialTitle}
-              onChange={handleTitleChange}
+              onChange={handleContentChange}
               className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-2xl font-bold leading-snug shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
@@ -112,17 +169,19 @@ export const NoteEditor = React.memo(function NoteEditor({
               type="text"
               placeholder="work, personal, ideas"
               defaultValue={initialTags}
-              onChange={handleTagsChange}
+              onChange={handleContentChange}
             />
           </div>
           <div>
             <RichTextEditor
-              content={description}
-              onChange={setDescription}
+              key={`editor-${inputResetKey}`}
+              ref={editorRef}
+              initialContent={initialDescription}
+              onContentChange={handleContentChange}
             />
           </div>
         </div>
       </div>
     </div>
   )
-})
+}))

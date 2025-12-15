@@ -246,6 +246,103 @@ describe('Sidebar Component', () => {
     cy.get('@onSignOut').should('have.been.called')
   })
 
+  describe('Sync Status Indicator', () => {
+    const createBaseProps = () => ({
+      user: mockUser,
+      filterByTag: null,
+      searchQuery: '',
+      onSearch: cy.stub(),
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
+      onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
+      children: <div data-testid="note-list">Note List Content</div>
+    })
+
+    it('shows "Synchronized" status when online with no pending or failed', () => {
+      const props = {
+        ...createBaseProps(),
+        isOffline: false,
+        pendingCount: 0,
+        failedCount: 0,
+      }
+      cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+      cy.contains('Synchronized').should('be.visible')
+      cy.contains('Synchronized').should('have.class', 'text-emerald-600')
+    })
+
+    it('shows "Syncing" status with count when pendingCount > 0', () => {
+      const props = {
+        ...createBaseProps(),
+        isOffline: false,
+        pendingCount: 3,
+        failedCount: 0,
+      }
+      cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+      cy.contains('Syncing: 3').should('be.visible')
+      cy.contains('Syncing: 3').should('have.class', 'animate-pulse')
+    })
+
+    it('shows "Sync failed" status with count when failedCount > 0', () => {
+      const props = {
+        ...createBaseProps(),
+        isOffline: false,
+        pendingCount: 0,
+        failedCount: 2,
+      }
+      cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+      cy.contains('Sync failed: 2').should('be.visible')
+      cy.contains('Sync failed: 2').should('have.class', 'text-destructive')
+    })
+
+    it('shows "Offline mode" status when isOffline is true', () => {
+      const props = {
+        ...createBaseProps(),
+        isOffline: true,
+        pendingCount: 0,
+        failedCount: 0,
+      }
+      cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+      cy.contains('Offline mode').should('be.visible')
+      cy.contains('Offline mode').should('have.class', 'text-amber-600')
+    })
+
+    it('prioritizes offline status over other statuses', () => {
+      const props = {
+        ...createBaseProps(),
+        isOffline: true,
+        pendingCount: 5,
+        failedCount: 3,
+      }
+      cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+      cy.contains('Offline mode').should('be.visible')
+      cy.contains('Syncing').should('not.exist')
+      cy.contains('Sync failed').should('not.exist')
+    })
+
+    it('prioritizes failed status over pending status', () => {
+      const props = {
+        ...createBaseProps(),
+        isOffline: false,
+        pendingCount: 5,
+        failedCount: 2,
+      }
+      cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+      cy.contains('Sync failed: 2').should('be.visible')
+      cy.contains('Syncing').should('not.exist')
+    })
+  })
+
   it('shows delete account dialog and requires acknowledgement', () => {
     const onDeleteAccount = cy.spy().as('onDeleteAccount')
     const props = {

@@ -36,6 +36,7 @@ import {
   ListOrdered,
   Outdent,
   Palette,
+  RemoveFormatting,
   Strikethrough,
   Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
@@ -53,14 +54,16 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@ui/we
 import { FontSize } from "@/extensions/FontSize"
 import { browser } from "@ui/web/adapters/browser"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
-import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
-type RichTextEditorProps = {
-  content: string
-  onChange: (html: string) => void
+export type RichTextEditorHandle = {
+  getHTML: () => string
+  setContent: (html: string) => void
 }
 
-const DEBOUNCE_MS = 250
+type RichTextEditorProps = {
+  initialContent: string
+  onContentChange?: () => void // Called when content changes (for triggering autosave)
+}
 
 type MenuBarProps = {
   editor: Editor | null
@@ -446,15 +449,27 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           </TooltipTrigger>
           <TooltipContent>Subscript</TooltipContent>
         </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-cy="clear-formatting-button"
+              variant="ghost"
+              size="sm"
+              onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
+            >
+              <RemoveFormatting className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Clear formatting</TooltipContent>
+        </Tooltip>
       </div>
     </TooltipProvider>
   )
 }
 
-const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
-  const debouncedOnChange = useDebouncedCallback((html: string) => {
-    onChange(html)
-  }, DEBOUNCE_MS)
+const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProps>(
+  ({ initialContent, onContentChange }, ref) => {
   // Мемоизация конфигурации расширений для предотвращения пересоздания
   const editorExtensions: Extensions = React.useMemo(() => [
     StarterKit.configure({
@@ -496,19 +511,20 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: editorExtensions,
-    content,
-    onUpdate: ({ editor }) => {
-      debouncedOnChange(editor.getHTML())
+    content: initialContent,
+    onUpdate: () => {
+      onContentChange?.()
     },
     editorProps,
   })
 
-  // Sync content when it changes externally (e.g. switching notes)
-  React.useEffect(() => {
-    if (editor && content !== undefined && content !== editor.getHTML()) {
-      editor.commands.setContent(content)
-    }
-  }, [content, editor])
+  // Expose methods via ref
+  React.useImperativeHandle(ref, () => ({
+    getHTML: () => editor?.getHTML() ?? "",
+    setContent: (html: string) => {
+      editor?.commands.setContent(html)
+    },
+  }), [editor])
 
   return (
     <div className="border rounded-md bg-background">
@@ -520,6 +536,8 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
       />
     </div>
   )
-}
+})
+
+RichTextEditor.displayName = "RichTextEditor"
 
 export default RichTextEditor
