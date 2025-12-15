@@ -5,7 +5,9 @@
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
       "Bash(cat:*)",
-      "Bash(npx cypress run:*)"
+      "Bash(npx cypress run:*)",
+      "Bash(cmd /c \"npx cypress run --component --spec cypress/component/editor/RichTextEditor.cy.tsx\")",
+      "Bash(npm run test:component -- --spec \"cypress/component/editor/RichTextEditor.cy.tsx\")"
     ],
     "deny": [],
     "ask": [
