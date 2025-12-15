@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Loader2 } from "lucide-react"
 import {
   AlertDialog,
@@ -15,7 +16,7 @@ import {
 import { cn } from "@ui/web/lib/utils"
 import { Sidebar } from "@/components/features/notes/Sidebar"
 import { NoteList } from "@/components/features/notes/NoteList"
-import { NoteEditor } from "@/components/features/notes/NoteEditor"
+import { NoteEditor, type NoteEditorHandle } from "@/components/features/notes/NoteEditor"
 import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
 import type { Note } from "@core/types/domain"
@@ -32,6 +33,8 @@ type NotesShellProps = {
 }
 
 export function NotesShell({ controller }: NotesShellProps) {
+  const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
+
   const {
     user,
     notesDisplayed,
@@ -92,7 +95,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
       >
-        <ListPane controller={controller} />
+        <ListPane controller={controller} noteEditorRef={noteEditorRef} />
       </Sidebar>
 
       <div
@@ -105,6 +108,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         <EditorPane
           controller={controller}
           onBack={() => handleSelectNote(null)}
+          noteEditorRef={noteEditorRef}
         />
       </div>
 
@@ -113,7 +117,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   )
 }
 
-function ListPane({ controller }: { controller: NoteAppController }) {
+function ListPane({ controller, noteEditorRef }: { controller: NoteAppController; noteEditorRef: React.RefObject<NoteEditorHandle | null> }) {
   const {
     notes,
     notesQuery,
@@ -140,7 +144,7 @@ function ListPane({ controller }: { controller: NoteAppController }) {
       selectionMode={selectionMode}
       selectedIds={selectedNoteIds}
       onToggleSelect={(note) => toggleNoteSelection(note.id)}
-      onSelectNote={handleSelectNote}
+      onSelectNote={(note) => handleSelectNote(note, noteEditorRef)}
       onTagClick={handleTagClick}
       onLoadMore={() => notesQuery.fetchNextPage()}
       hasMore={notesQuery.hasNextPage}
@@ -165,7 +169,7 @@ function ListPane({ controller }: { controller: NoteAppController }) {
   )
 }
 
-function EditorPane({ controller, onBack }: { controller: NoteAppController, onBack: () => void }) {
+function EditorPane({ controller, onBack, noteEditorRef }: { controller: NoteAppController; onBack: () => void; noteEditorRef: React.RefObject<NoteEditorHandle | null> }) {
   const {
     selectedNote,
     isEditing,
@@ -186,6 +190,7 @@ function EditorPane({ controller, onBack }: { controller: NoteAppController, onB
   if (isEditing) {
     return (
       <NoteEditor
+        ref={noteEditorRef}
         noteId={selectedNote?.id}
         initialTitle={selectedNote?.title ?? ""}
         initialDescription={selectedNote?.description ?? selectedNote?.content ?? ""}

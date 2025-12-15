@@ -97,10 +97,15 @@ export function useNoteAppController() {
   })
 
   // Wrap handlers to reset lastSavedAt when switching notes
-  const wrappedHandleSelectNote = useCallback((note: NoteViewModel | null) => {
+  const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null, editorRef?: React.RefObject<{ flushPendingSave: () => Promise<void> } | null>) => {
+    // Flush pending autosave before switching notes
+    if (isEditing && editorRef?.current) {
+      await editorRef.current.flushPendingSave()
+    }
+    
     handleSelectNote(note)
     setLastSavedAt(null)
-  }, [handleSelectNote, setLastSavedAt])
+  }, [handleSelectNote, setLastSavedAt, isEditing])
 
   const wrappedHandleCreateNote = useCallback(() => {
     handleCreateNote()
