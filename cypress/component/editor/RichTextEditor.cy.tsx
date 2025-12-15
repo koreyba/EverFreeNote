@@ -333,7 +333,8 @@ describe('RichTextEditor Component', () => {
     // Проверяем что список задач создан
     cy.get('@onContentChangeSpy').should('have.been.called')
     cy.get('[data-cy="editor-content"]').find('ul[data-type="taskList"]').should('exist')
-    cy.get('[data-cy="editor-content"]').find('li[data-type="taskItem"]').should('exist')
+    // TaskItem renders with data-checked attribute (true/false)
+    cy.get('[data-cy="editor-content"]').find('li[data-checked]').should('exist')
   })
 
   it('applies text alignment using TipTap TextAlign extension', () => {
@@ -708,5 +709,87 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="editor-content"]').find('strong').should('exist')
     cy.get('[data-cy="editor-content"]').find('em').should('exist')
     cy.get('[data-cy="editor-content"]').find('u').should('exist')
+  })
+
+  // Clear formatting tests
+  it('renders clear formatting button', () => {
+    cy.mount(
+      <RichTextEditor
+        initialContent=""
+        onContentChange={cy.stub()}
+      />
+    )
+
+    cy.get('[data-cy="clear-formatting-button"]').should('be.visible')
+  })
+
+  it('clears text marks (bold, italic, underline) when clicking clear formatting', () => {
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        initialContent=""
+        onContentChange={onContentChangeSpy}
+      />
+    )
+
+    // Type text and apply formatting
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Formatted text')
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+
+    // Apply bold, italic, underline
+    cy.get('[data-cy="bold-button"]').click()
+    cy.get('[data-cy="italic-button"]').click()
+    cy.get('[data-cy="underline-button"]').click()
+
+    // Verify formatting was applied
+    cy.get('[data-cy="editor-content"]').find('strong').should('exist')
+    cy.get('[data-cy="editor-content"]').find('em').should('exist')
+    cy.get('[data-cy="editor-content"]').find('u').should('exist')
+
+    // Select all and clear formatting
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="clear-formatting-button"]').click()
+
+    // Verify formatting was removed
+    cy.get('[data-cy="editor-content"]').find('strong').should('not.exist')
+    cy.get('[data-cy="editor-content"]').find('em').should('not.exist')
+    cy.get('[data-cy="editor-content"]').find('u').should('not.exist')
+    // Text should still exist
+    cy.get('[data-cy="editor-content"]').should('contain', 'Formatted text')
+  })
+
+  it('clears highlight and strikethrough when clicking clear formatting', () => {
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        initialContent=""
+        onContentChange={onContentChangeSpy}
+      />
+    )
+
+    // Type text and apply formatting
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Highlighted text')
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+
+    // Apply highlight and strikethrough
+    cy.get('[data-cy="highlight-button"]').click()
+    cy.get('[data-cy="strike-button"]').click()
+
+    // Verify formatting was applied
+    cy.get('[data-cy="editor-content"]').find('mark').should('exist')
+    cy.get('[data-cy="editor-content"]').find('s').should('exist')
+
+    // Select all and clear formatting
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="clear-formatting-button"]').click()
+
+    // Verify formatting was removed
+    cy.get('[data-cy="editor-content"]').find('mark').should('not.exist')
+    cy.get('[data-cy="editor-content"]').find('s').should('not.exist')
+    cy.get('[data-cy="editor-content"]').should('contain', 'Highlighted text')
   })
 })

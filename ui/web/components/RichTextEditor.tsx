@@ -36,6 +36,7 @@ import {
   ListOrdered,
   Outdent,
   Palette,
+  RemoveFormatting,
   Strikethrough,
   Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
@@ -447,6 +448,20 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             </Button>
           </TooltipTrigger>
           <TooltipContent>Subscript</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-cy="clear-formatting-button"
+              variant="ghost"
+              size="sm"
+              onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
+            >
+              <RemoveFormatting className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Clear formatting</TooltipContent>
         </Tooltip>
       </div>
     </TooltipProvider>
