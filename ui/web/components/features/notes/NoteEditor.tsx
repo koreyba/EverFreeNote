@@ -4,10 +4,9 @@ import * as React from "react"
 import { Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import RichTextEditor from "@/components/RichTextEditor"
+import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
-const INPUT_DEBOUNCE_MS = 250
 const DEFAULT_AUTOSAVE_DELAY_MS = 1500
 
 interface NoteEditorProps {
@@ -37,27 +36,25 @@ export const NoteEditor = React.memo(function NoteEditor({
   noteId,
   lastSavedAt,
 }: NoteEditorProps) {
-  const [description, setDescription] = React.useState(initialDescription)
-  const [titleState, setTitleState] = React.useState(initialTitle)
-  const [tagsState, setTagsState] = React.useState(initialTags)
-  const [debouncedDescription, setDebouncedDescription] = React.useState(initialDescription)
   const [inputResetKey, setInputResetKey] = React.useState(0)
   const [showSaving, setShowSaving] = React.useState(false)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const tagsInputRef = React.useRef<HTMLInputElement | null>(null)
-  const unmountedRef = React.useRef(false)
+  const editorRef = React.useRef<RichTextEditorHandle | null>(null)
   const firstRenderRef = React.useRef(true)
-  const debouncedTitle = useDebouncedCallback((value: string) => setTitleState(value), INPUT_DEBOUNCE_MS)
-  const debouncedTags = useDebouncedCallback((value: string) => setTagsState(value), INPUT_DEBOUNCE_MS)
-  const debouncedDescriptionUpdate = useDebouncedCallback(
-    (value: string) => setDebouncedDescription(value),
-    autosaveDelayMs
-  )
+
+  // Helper to get current form data from refs (single source of truth)
+  const getFormData = React.useCallback(() => ({
+    title: titleInputRef.current?.value ?? initialTitle,
+    description: editorRef.current?.getHTML() ?? initialDescription,
+    tags: tagsInputRef.current?.value ?? initialTags,
+  }), [initialTitle, initialDescription, initialTags])
+
   const debouncedAutoSave = useDebouncedCallback(
-    async (payload: { noteId?: string; title: string; description: string; tags: string }) => {
+    async () => {
       if (!onAutoSave) return
       try {
-        await onAutoSave(payload)
+        await onAutoSave({ noteId, ...getFormData() })
       } catch {
         // Errors handled upstream
       }
@@ -65,25 +62,12 @@ export const NoteEditor = React.memo(function NoteEditor({
     autosaveDelayMs
   )
 
-  // Sync with props if they change (e.g. switching notes)
+  // Sync editor content when switching notes
   React.useEffect(() => {
-    setDescription(initialDescription)
-    setTitleState(initialTitle)
-    setTagsState(initialTags)
-    setDebouncedDescription(initialDescription)
+    editorRef.current?.setContent(initialDescription)
     setInputResetKey((k) => k + 1)
+    firstRenderRef.current = true
   }, [initialTitle, initialDescription, initialTags])
-
-  // Debounce description changes before triggering autosave effect
-  React.useEffect(() => {
-    debouncedDescriptionUpdate(description)
-  }, [description, debouncedDescriptionUpdate])
-
-  React.useEffect(() => {
-    return () => {
-      unmountedRef.current = true
-    }
-  }, [])
 
   // Sync external auto-saving flag into local display state
   React.useEffect(() => {
@@ -96,39 +80,24 @@ export const NoteEditor = React.memo(function NoteEditor({
   }, [isAutoSaving])
 
   const handleSave = () => {
-    const latestTitle = titleInputRef.current?.value ?? titleState
-    const latestTags = tagsInputRef.current?.value ?? tagsState
-    onSave({ title: latestTitle, description, tags: latestTags })
+    debouncedAutoSave.cancel()
+    onSave(getFormData())
   }
 
   const handleRead = () => {
-    const latestTitle = titleInputRef.current?.value ?? titleState
-    const latestTags = tagsInputRef.current?.value ?? tagsState
-    onRead({ title: latestTitle, description, tags: latestTags })
+    debouncedAutoSave.cancel()
+    onRead(getFormData())
   }
 
-  const handleTitleChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    debouncedTitle(e.target.value)
-  }, [debouncedTitle])
-
-  const handleTagsChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    debouncedTags(e.target.value)
-  }, [debouncedTags])
-
-  // Trigger debounced autosave when any field changes (skip initial mount)
-  React.useEffect(() => {
+  // Trigger debounced autosave on any content change
+  const handleContentChange = React.useCallback(() => {
     if (!onAutoSave) return
     if (firstRenderRef.current) {
       firstRenderRef.current = false
       return
     }
-    debouncedAutoSave({
-      noteId,
-      title: titleState,
-      description: debouncedDescription,
-      tags: tagsState,
-    })
-  }, [titleState, tagsState, debouncedDescription, noteId, onAutoSave, debouncedAutoSave])
+    debouncedAutoSave.call()
+  }, [onAutoSave, debouncedAutoSave])
 
   return (
     <div className="flex-1 flex flex-col">
@@ -173,7 +142,7 @@ export const NoteEditor = React.memo(function NoteEditor({
               type="text"
               placeholder="Note title"
               defaultValue={initialTitle}
-              onChange={handleTitleChange}
+              onChange={handleContentChange}
               className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-2xl font-bold leading-snug shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
@@ -188,13 +157,15 @@ export const NoteEditor = React.memo(function NoteEditor({
               type="text"
               placeholder="work, personal, ideas"
               defaultValue={initialTags}
-              onChange={handleTagsChange}
+              onChange={handleContentChange}
             />
           </div>
           <div>
             <RichTextEditor
-              content={description}
-              onChange={setDescription}
+              key={`editor-${inputResetKey}`}
+              ref={editorRef}
+              initialContent={initialDescription}
+              onContentChange={handleContentChange}
             />
           </div>
         </div>
