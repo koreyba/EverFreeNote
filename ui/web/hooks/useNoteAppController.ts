@@ -96,6 +96,17 @@ export function useNoteAppController() {
     deleteNoteMutation
   })
 
+  // Wrap handlers to reset lastSavedAt when switching notes
+  const wrappedHandleSelectNote = useCallback((note: NoteViewModel | null) => {
+    handleSelectNote(note)
+    setLastSavedAt(null)
+  }, [handleSelectNote, setLastSavedAt])
+
+  const wrappedHandleCreateNote = useCallback(() => {
+    handleCreateNote()
+    setLastSavedAt(null)
+  }, [handleCreateNote, setLastSavedAt])
+
   // Combine provider loading with local auth loading
   const combinedLoading = authLoadingState
 
@@ -170,76 +181,134 @@ export function useNoteAppController() {
 
   const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
     if (!user) return
-    const targetId = data.noteId ?? selectedNoteRef.current?.id
-    if (!targetId) return
+
+    const existingId = data.noteId ?? selectedNoteRef.current?.id
+    const isNewNote = !existingId
 
     // Determine current baseline to diff against (use refs to avoid dependency cycle)
-    const current = notesRef.current.find(n => n.id === targetId) || selectedNoteRef.current
+    const current = existingId
+      ? (notesRef.current.find(n => n.id === existingId) || selectedNoteRef.current)
+      : null
     const nextTitle = data.title ?? current?.title ?? ''
     const nextDescription = data.description ?? current?.description ?? ''
     const nextTags = data.tags ?? (current?.tags?.join(', ') ?? '')
 
-    // Diff check: skip if unchanged
-    const sameTitle = current?.title === nextTitle
-    const sameDesc = (current?.description ?? '') === nextDescription
-    const sameTags = (current?.tags ?? []).join(', ') === nextTags
-    if (sameTitle && sameDesc && sameTags) return
+    // For new notes, skip if all fields are empty
+    if (isNewNote && !nextTitle.trim() && !nextDescription.trim() && !nextTags.trim()) return
+
+    // Diff check for existing notes: skip if unchanged
+    if (!isNewNote) {
+      const sameTitle = current?.title === nextTitle
+      const sameDesc = (current?.description ?? '') === nextDescription
+      const sameTags = (current?.tags ?? []).join(', ') === nextTags
+      if (sameTitle && sameDesc && sameTags) return
+    }
 
     setAutoSaving(true)
     const guard = setTimeout(() => setAutoSaving(false), 5000)
     try {
       const clientUpdatedAt = new Date().toISOString()
-      const partialPayload: Partial<NoteUpdate> = {
-        title: nextTitle,
-        description: nextDescription,
-        tags: nextTags
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean),
-      }
+      const parsedTags = nextTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean)
 
-      // Update offline cache + overlay immediately
-      const cached: CachedNote = {
-        id: targetId,
-        title: partialPayload.title,
-        description: partialPayload.description,
-        tags: partialPayload.tags,
-        updatedAt: clientUpdatedAt,
-        status: 'pending',
-      }
-
-      await offlineCache.saveNote(cached)
-      setOfflineOverlay((prev) => {
-        const idx = prev.findIndex((n) => n.id === targetId)
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = { ...next[idx], ...cached }
-          return next
+      if (isNewNote) {
+        // Create new note
+        const tempId = uuidv4()
+        const noteData = {
+          title: nextTitle.trim() || 'Untitled',
+          description: nextDescription.trim(),
+          tags: parsedTags,
+          userId: user.id,
         }
-        return [...prev, cached]
-      })
 
-      // Fire-and-forget enqueue to avoid blocking UI/autosave spinner on network/sync work
-      await enqueueMutation({
-        noteId: targetId,
-        operation: 'update',
-        payload: partialPayload,
-        clientUpdatedAt,
-      })
+        if (isOffline) {
+          // Offline create
+          const cached: CachedNote = {
+            id: tempId,
+            title: noteData.title,
+            description: noteData.description,
+            tags: noteData.tags,
+            updatedAt: clientUpdatedAt,
+            status: 'pending',
+          }
+          await offlineCache.saveNote(cached)
+          setOfflineOverlay((prev) => [...prev, cached])
+          await enqueueMutation({
+            noteId: tempId,
+            operation: 'create',
+            payload: noteData,
+            clientUpdatedAt,
+          })
+          setSelectedNote({
+            id: tempId,
+            title: noteData.title,
+            description: noteData.description,
+            tags: noteData.tags,
+          } as NoteViewModel)
+        } else {
+          // Online create
+          const created = await createNoteMutation.mutateAsync(noteData)
+          setSelectedNote(created as NoteViewModel)
+        }
+        setLastSavedAt(clientUpdatedAt)
+      } else {
+        // Update existing note
+        const targetId = existingId!
+        const partialPayload: Partial<NoteUpdate> = {
+          title: nextTitle,
+          description: nextDescription,
+          tags: parsedTags,
+        }
+
+        // Update offline cache + overlay immediately
+        const cached: CachedNote = {
+          id: targetId,
+          title: partialPayload.title,
+          description: partialPayload.description,
+          tags: partialPayload.tags,
+          updatedAt: clientUpdatedAt,
+          status: 'pending',
+        }
+
+        await offlineCache.saveNote(cached)
+        setOfflineOverlay((prev) => {
+          const idx = prev.findIndex((n) => n.id === targetId)
+          if (idx >= 0) {
+            const next = [...prev]
+            next[idx] = { ...next[idx], ...cached }
+            return next
+          }
+          return [...prev, cached]
+        })
+
+        // Fire-and-forget enqueue to avoid blocking UI/autosave spinner on network/sync work
+        await enqueueMutation({
+          noteId: targetId,
+          operation: 'update',
+          payload: partialPayload,
+          clientUpdatedAt,
+        })
+        setLastSavedAt(clientUpdatedAt)
+      }
+
       // Refresh counts from queue to avoid drift/stuck pending
       const queue = await offlineQueueRef.current.getQueue()
       setPendingCount(queue.filter((q) => q.status === 'pending').length)
       setFailedCount(queue.filter((q) => q.status === 'failed').length)
-      setLastSavedAt(clientUpdatedAt)
     } finally {
       clearTimeout(guard)
       setAutoSaving(false)
     }
   }, [
     user,
+    isOffline,
     offlineCache,
     enqueueMutation,
     offlineQueueRef,
+    createNoteMutation,
+    setSelectedNote,
     setPendingCount,
     setFailedCount,
     setLastSavedAt,
@@ -555,7 +624,7 @@ export function useNoteAppController() {
     handleSkipAuth,
     handleSignOut,
     handleDeleteAccount,
-    handleCreateNote,
+    handleCreateNote: wrappedHandleCreateNote,
     handleEditNote,
     handleSaveNote,
     handleReadNote,
@@ -563,7 +632,7 @@ export function useNoteAppController() {
     handleDeleteNote,
     confirmDeleteNote,
     handleRemoveTagFromNote,
-    handleSelectNote,
+    handleSelectNote: wrappedHandleSelectNote,
     handleSearchResultClick,
     enterSelectionMode,
     exitSelectionMode,
