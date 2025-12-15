@@ -126,7 +126,7 @@ gantt
    npm install nativewind
    npm install tailwindcss
    npm install lucide-react-native
-   npm install @10play/tentap-editor
+   npm install react-native-webview
    npm install @shopify/flash-list
    npm install react-native-reanimated
    npm install react-native-gesture-handler
@@ -553,51 +553,104 @@ export const NoteList = ({ notes, onNotePress, onTagPress }: NoteListProps) => {
 
 ---
 
-### Задача 3.3: Rich Text Editor
+### Задача 3.3: Rich Text Editor (WebView)
 **Приоритет:** Критический  
-**Оценка:** 10 часов  
+**Оценка:** 8 часов  
 **Статус:** Не начата
 
-**Решение:** @10play/tentap-editor (современный редактор на базе TipTap)
+**Решение:** WebView с полным переиспользованием существующего RichTextEditor
 
+**Подзадачи:**
+
+#### 3.3.1: Создать страницу для WebView
 ```typescript
-// components/RichTextEditor.tsx
-import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor'
+// app/editor-webview/page.tsx
+'use client'
+import { RichTextEditor } from '@/components/editor/RichTextEditor'
+import { useEffect, useState } from 'react'
 
-export const RichTextEditor = forwardRef<RichTextEditorHandle, Props>(
+export default function EditorWebViewPage() {
+  const [content, setContent] = useState('')
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const { type, payload } = event.data
+      if (type === 'SET_CONTENT') setContent(payload)
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
+  const handleChange = (html: string) => {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'CONTENT_CHANGED',
+        payload: html
+      }))
+    }
+  }
+
+  return (
+    <div className="h-screen w-screen">
+      <RichTextEditor initialContent={content} onChange={handleChange} />
+    </div>
+  )
+}
+```
+
+#### 3.3.2: Создать React Native обертку
+```typescript
+// mobile/components/EditorWebView.tsx
+import WebView from 'react-native-webview'
+
+export const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
   ({ initialContent, onContentChange }, ref) => {
-    const editor = useEditorBridge({
-      autofocus: true,
-      avoidIosKeyboard: true,
-      initialContent,
-      onChange: onContentChange,
-    })
-    
+    const webViewRef = useRef<WebView>(null)
+    const currentContent = useRef(initialContent)
+
     useImperativeHandle(ref, () => ({
-      async getHTML() {
-        return await editor.getHTML()
-      },
       setContent(html: string) {
-        editor.setContent(html)
+        webViewRef.current?.postMessage(JSON.stringify({
+          type: 'SET_CONTENT',
+          payload: html
+        }))
       },
+      getContent() {
+        return currentContent.current
+      }
     }))
-    
+
+    const handleMessage = (event: any) => {
+      const { type, payload } = JSON.parse(event.nativeEvent.data)
+      if (type === 'CONTENT_CHANGED') {
+        currentContent.current = payload
+        onContentChange?.(payload)
+      }
+    }
+
+    const editorUrl = __DEV__ 
+      ? 'http://localhost:3000/editor-webview'
+      : 'https://everfreenote.app/editor-webview'
+
     return (
-      <>
-        <Toolbar editor={editor} />
-        <RichText editor={editor} />
-      </>
+      <WebView
+        ref={webViewRef}
+        source={{ uri: editorUrl }}
+        onMessage={handleMessage}
+        javaScriptEnabled
+        domStorageEnabled
+      />
     )
   }
 )
 ```
 
 **Критерии приемки:**
-- ✅ Редактор отображается
-- ✅ Форматирование работает (bold, italic, headings, lists)
+- ✅ Редактор загружается в WebView
+- ✅ Все TipTap расширения работают
+- ✅ Bridge коммуникация работает (SET_CONTENT, CONTENT_CHANGED)
 - ✅ Автосохранение работает
-- ✅ Клавиатура не перекрывает контент
-- ✅ API схож с TipTap из web-версии
+- ✅ Производительность приемлемая (<500ms загрузка)
 
 ---
 
