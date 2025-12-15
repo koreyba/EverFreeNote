@@ -9,6 +9,10 @@ import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
+export interface NoteEditorHandle {
+  flushPendingSave: () => Promise<void>
+}
+
 interface NoteEditorProps {
   noteId?: string
   initialTitle?: string
@@ -23,7 +27,7 @@ interface NoteEditorProps {
   lastSavedAt?: string | null
 }
 
-export const NoteEditor = React.memo(function NoteEditor({
+export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor({
   initialTitle = "",
   initialDescription = "",
   initialTags = "",
@@ -35,7 +39,7 @@ export const NoteEditor = React.memo(function NoteEditor({
   autosaveDelayMs = DEFAULT_AUTOSAVE_DELAY_MS,
   noteId,
   lastSavedAt,
-}: NoteEditorProps) {
+}: NoteEditorProps, ref) {
   const [inputResetKey, setInputResetKey] = React.useState(0)
   const [showSaving, setShowSaving] = React.useState(false)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
@@ -98,6 +102,14 @@ export const NoteEditor = React.memo(function NoteEditor({
     }
     debouncedAutoSave.call()
   }, [onAutoSave, debouncedAutoSave])
+
+  // Expose API for parent component to flush pending saves
+  React.useImperativeHandle(ref, () => ({
+    flushPendingSave: async () => {
+      if (!onAutoSave) return
+      debouncedAutoSave.flush()
+    }
+  }), [onAutoSave, debouncedAutoSave])
 
   return (
     <div className="flex-1 flex flex-col">
@@ -172,4 +184,4 @@ export const NoteEditor = React.memo(function NoteEditor({
       </div>
     </div>
   )
-})
+}))
