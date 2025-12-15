@@ -4,6 +4,26 @@
 
 Нативное мобильное приложение для iOS и Android, построенное на React Native и Expo с максимальным переиспользованием core-слоя.
 
+## � Быстрый старт
+
+### Запуск проекта
+```powershell
+cd ui/mobile
+npm install --legacy-peer-deps
+npm start
+```
+
+**📖 Подробная инструкция:** [LAUNCH_GUIDE.md](./LAUNCH_GUIDE.md)
+
+### Проверка кода (ОБЯЗАТЕЛЬНО перед коммитом!)
+```powershell
+npm run validate  # TypeScript + ESLint
+```
+
+**📋 Правила валидации:** [VALIDATION_RULES.md](./VALIDATION_RULES.md)
+
+---
+
 ## 📚 Документация
 
 **Перед началом работы обязательно ознакомьтесь с:**
@@ -13,21 +33,33 @@
 3. **[План реализации](../../docs/ai/planning/implementation-mobile-app.md)** - пошаговый план с задачами, оценками и примерами кода
 4. **[Краткое резюме](../../docs/ai/MOBILE_APP_SUMMARY.md)** - quick start guide и чек-лист
 
+---
+
 ## 🏗️ Структура проекта
 
 ```
-mobile/                          # Будущая папка для React Native приложения
+ui/mobile/                       # React Native приложение (Expo)
 ├── app/                         # Expo Router (file-based routing)
 │   ├── (auth)/                  # Auth group
+│   │   └── login.tsx            # Экран входа
 │   ├── (tabs)/                  # Main tabs group
-│   ├── note/[id].tsx            # Note editor
-│   └── _layout.tsx              # Root layout
+│   │   ├── index.tsx            # Список заметок
+│   │   └── settings.tsx         # Настройки
+│   ├── note/[id].tsx            # Редактор заметки
+│   ├── _layout.tsx              # Root layout
+│   └── index.tsx                # Entry point
 ├── components/                  # React Native компоненты
-│   ├── NoteList.tsx
-│   ├── NoteCard.tsx
-│   ├── RichTextEditor.tsx
-│   └── ui/                      # Базовые UI компоненты
 ├── hooks/                       # React Native специфичные хуки
+├── adapters/                    # Platform adapters
+├── providers/                   # Context providers
+├── assets/                      # Изображения, шрифты
+├── app.json                     # Expo конфигурация
+├── package.json                 # Зависимости
+├── tsconfig.json                # TypeScript config
+├── eslint.config.mjs            # ESLint config
+├── LAUNCH_GUIDE.md              # 📖 Как запустить приложение
+└── VALIDATION_RULES.md          # 📋 Правила проверки кода
+```
 ├── adapters/                    # Платформенные адаптеры
 │   ├── storage.ts              # AsyncStorage adapter
 │   ├── oauth.ts                # Expo OAuth adapter

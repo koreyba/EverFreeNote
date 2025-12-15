@@ -13,6 +13,7 @@
 ## Documentation
 
 - **[Development Setup](docs/DEVELOPMENT_SETUP.md)** — local environment and tooling
+- **[Mobile App Guide](ui/mobile/README.md)** — React Native mobile app setup and development
 - **[GitHub Actions Pipelines](docs/GITHUB_ACTIONS_PIPELINES.md)** — CI/CD pipelines and running with Act
 - **[GitHub MCP Server Setup](docs/GITHUB_MCP_SETUP.md)** — connect Cursor to GitHub via MCP
 - **[Testing Guide](docs/run_test.md)** — how to run tests locally and in CI
