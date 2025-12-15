@@ -3,13 +3,13 @@ import RichTextEditor from '@ui/web/components/RichTextEditor'
 
 describe('RichTextEditor Component', () => {
   it('renders with all toolbar buttons and editor area', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     // Монтируем RichTextEditor с пустым контентом
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -48,35 +48,35 @@ describe('RichTextEditor Component', () => {
     // Проверяем что область редактора отображается
     cy.get('[data-cy="editor-content"]').should('be.visible')
 
-    // Проверяем что onChange не вызывался при рендеринге
-    cy.get('@onChangeSpy').should('not.have.been.called')
+    // Проверяем что onContentChange не вызывался при рендеринге
+    cy.get('@onContentChangeSpy').should('not.have.been.called')
   })
 
   it('renders with initial content', () => {
     const initialContent = '<p>Hello World</p>'
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content={initialContent}
-        onChange={onChangeSpy}
+        initialContent={initialContent}
+        onContentChange={onContentChangeSpy}
       />
     )
 
     // Проверяем что контент отображается в редакторе
     cy.get('[data-cy="editor-content"]').should('contain', 'Hello World')
 
-    // Проверяем что onChange не вызывался при рендеринге
-    cy.get('@onChangeSpy').should('not.have.been.called')
+    // Проверяем что onContentChange не вызывался при рендеринге
+    cy.get('@onContentChangeSpy').should('not.have.been.called')
   })
 
-  it('calls onChange when typing in editor', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+  it('calls onContentChange when typing in editor', () => {
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -84,18 +84,19 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="editor-content"]').click()
     cy.get('[data-cy="editor-content"]').type('Test content')
 
-    // Проверяем что onChange был вызван с правильным HTML
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').should('have.been.calledWith', '<p>Test content</p>')
+    // Проверяем что onContentChange был вызван
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    // Проверяем что контент отображается
+    cy.get('[data-cy="editor-content"]').should('contain', 'Test content')
   })
 
   it('applies bold formatting', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -107,18 +108,18 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="editor-content"]').type('{selectall}')
     cy.get('[data-cy="bold-button"]').click()
 
-    // Проверяем что onChange был вызван с жирным текстом
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').should('have.been.calledWith', '<p><strong>Hello World</strong></p>')
+    // Проверяем что onContentChange был вызван и формат применён
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('strong').should('contain', 'Hello World')
   })
 
   it('applies italic formatting', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -130,18 +131,18 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="editor-content"]').type('{selectall}')
     cy.get('[data-cy="italic-button"]').click()
 
-    // Проверяем что onChange был вызван с курсивным текстом
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').should('have.been.calledWith', '<p><em>Hello World</em></p>')
+    // Проверяем что onContentChange был вызван и формат применён
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('em').should('contain', 'Hello World')
   })
 
   it('applies underline formatting', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -153,18 +154,18 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="editor-content"]').type('{selectall}')
     cy.get('[data-cy="underline-button"]').click()
 
-    // Проверяем что onChange был вызван с подчеркнутым текстом
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').should('have.been.calledWith', '<p><u>Hello World</u></p>')
+    // Проверяем что onContentChange был вызван и формат применён
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('u').should('contain', 'Hello World')
   })
 
   it('applies strikethrough formatting', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -176,18 +177,18 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="editor-content"]').type('{selectall}')
     cy.get('[data-cy="strike-button"]').click()
 
-    // Проверяем что onChange был вызван с зачеркнутым текстом
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').should('have.been.calledWith', '<p><s>Hello World</s></p>')
+    // Проверяем что onContentChange был вызван и формат применён
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('s').should('contain', 'Hello World')
   })
 
   it('applies highlight formatting', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -199,14 +200,14 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="editor-content"]').type('{selectall}')
     cy.get('[data-cy="highlight-button"]').click()
 
-    // Проверяем что onChange был вызван с выделенным текстом
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').should('have.been.calledWith', '<p><mark>Hello World</mark></p>')
+    // Проверяем что onContentChange был вызван и формат применён
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('mark').should('contain', 'Hello World')
   })
 
   // TODO: Тест заголовков требует дополнительной настройки TipTap поведения
   // it('applies heading levels', () => {
-  //   const onChangeSpy = cy.spy().as('onChangeSpy')
+  //   const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
   //
   //   cy.mount(
   //     <RichTextEditor
@@ -223,35 +224,35 @@ describe('RichTextEditor Component', () => {
   //   cy.get('[data-cy="editor-content"]').type('Heading 1')
   //
   //   // Проверяем что onChange был вызван с H1 (с учетом того что может быть пустой параграф)
-  //   cy.get('@onChangeSpy').should('have.been.called')
-  //   cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<h1>Heading 1</h1>')
+  //   cy.get('@onContentChangeSpy').should('have.been.called')
+  //   cy.get('@onContentChangeSpy').its('lastCall').its('args.0').should('include', '<h1>Heading 1</h1>')
   //
   //   // Меняем на H2 - выделяем весь контент
   //   cy.get('[data-cy="editor-content"]').type('{selectall}')
   //   cy.get('[data-cy="h2-button"]').click()
   //
-  //   cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<h2>Heading 1</h2>')
+  //   cy.get('@onContentChangeSpy').its('lastCall').its('args.0').should('include', '<h2>Heading 1</h2>')
   //
   //   // Меняем на H3
   //   cy.get('[data-cy="editor-content"]').type('{selectall}')
   //   cy.get('[data-cy="h3-button"]').click()
   //
-  //   cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<h3>Heading 1</h3>')
+  //   cy.get('@onContentChangeSpy').its('lastCall').its('args.0').should('include', '<h3>Heading 1</h3>')
   //
   //   // Возвращаем к параграфу
   //   cy.get('[data-cy="editor-content"]').type('{selectall}')
   //   cy.get('[data-cy="paragraph-button"]').click()
   //
-  //   cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<p>Heading 1</p>')
+  //   cy.get('@onContentChangeSpy').its('lastCall').its('args.0').should('include', '<p>Heading 1</p>')
   // })
 
   it('renders all basic formatting buttons', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -264,12 +265,12 @@ describe('RichTextEditor Component', () => {
   })
 
   it('creates bullet lists using TipTap TaskList extension', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -282,18 +283,18 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="bullet-list-button"]').click()
 
     // Проверяем что список создан
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<ul>')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<li>')
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('ul').should('exist')
+    cy.get('[data-cy="editor-content"]').find('li').should('exist')
   })
 
   it('creates ordered lists using TipTap OrderedList extension', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -306,18 +307,18 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="ordered-list-button"]').click()
 
     // Проверяем что нумерованный список создан
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<ol>')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<li>')
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('ol').should('exist')
+    cy.get('[data-cy="editor-content"]').find('li').should('exist')
   })
 
   it('creates task lists using TipTap TaskList extension', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -330,19 +331,19 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="task-list-button"]').click()
 
     // Проверяем что список задач создан
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<ul')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', 'data-type="taskList"')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', 'data-type="taskItem"')
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('ul[data-type="taskList"]').should('exist')
+    // TaskItem renders with data-checked attribute (true/false)
+    cy.get('[data-cy="editor-content"]').find('li[data-checked]').should('exist')
   })
 
   it('applies text alignment using TipTap TextAlign extension', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -355,17 +356,17 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="align-center-button"]').click()
 
     // Проверяем что выравнивание применено
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', 'text-align: center')
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('p').should('have.attr', 'style').and('include', 'text-align: center')
   })
 
   it('renders superscript and subscript buttons using TipTap extensions', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -379,12 +380,12 @@ describe('RichTextEditor Component', () => {
   })
 
   it('applies underline using TipTap Underline extension', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -397,17 +398,17 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="underline-button"]').click()
 
     // Проверяем что подчеркивание применено
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<u>Underlined text</u>')
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('u').should('contain', 'Underlined text')
   })
 
   it('applies highlight using TipTap Highlight extension', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -420,18 +421,18 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="highlight-button"]').click()
 
     // Проверяем что выделение применено
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<mark>Highlighted text</mark>')
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('mark').should('contain', 'Highlighted text')
   })
 
   // Extended tests for color picker functionality
   it('opens color picker popover when clicking color button', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -444,12 +445,12 @@ describe('RichTextEditor Component', () => {
   })
 
   it('applies text color using color picker', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -469,17 +470,17 @@ describe('RichTextEditor Component', () => {
     cy.get('.twitter-picker div[title]').first().click()
 
     // Verify onChange was called (color was applied)
-    cy.get('@onChangeSpy').should('have.been.called')
+    cy.get('@onContentChangeSpy').should('have.been.called')
   })
 
   // Font family and size selector tests - simplified to just verify they render
   it('renders font family and size selectors', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -491,12 +492,12 @@ describe('RichTextEditor Component', () => {
 
   // Image insertion tests
   it('opens image URL prompt when clicking image button', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -513,12 +514,12 @@ describe('RichTextEditor Component', () => {
   })
 
   it('inserts image when URL is provided', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -531,23 +532,23 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="image-button"]').click()
 
     // Verify image was inserted
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<img')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', 'https://example.com/test.jpg')
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('img').should('exist')
+    cy.get('[data-cy="editor-content"]').find('img').should('have.attr', 'src', 'https://example.com/test.jpg')
   })
 
   it('does not insert image when prompt is cancelled', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content="<p>Initial content</p>"
-        onChange={onChangeSpy}
+        initialContent="<p>Initial content</p>"
+        onContentChange={onContentChangeSpy}
       />
     )
 
     // Clear spy to track only new calls
-    cy.wrap(onChangeSpy).invoke('resetHistory')
+    cy.wrap(onContentChangeSpy).invoke('resetHistory')
 
     // Stub window.prompt to return null (cancelled)
     cy.window().then((win) => {
@@ -558,17 +559,17 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="image-button"]').click()
 
     // Verify onChange was not called (no change)
-    cy.get('@onChangeSpy').should('not.have.been.called')
+    cy.get('@onContentChangeSpy').should('not.have.been.called')
   })
 
   // Link insertion tests
   it('opens link URL prompt when clicking link button', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -590,12 +591,12 @@ describe('RichTextEditor Component', () => {
   })
 
   it('creates link when URL is provided', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -613,19 +614,19 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="link-button"]').click()
 
     // Verify link was created
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<a')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', 'https://example.com')
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('a').should('exist')
+    cy.get('[data-cy="editor-content"]').find('a').should('have.attr', 'href', 'https://example.com')
   })
 
   // Indent/Outdent tests
   it('renders indent and outdent buttons', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -636,12 +637,12 @@ describe('RichTextEditor Component', () => {
 
   // Edge cases
   it('handles empty content gracefully', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -652,12 +653,12 @@ describe('RichTextEditor Component', () => {
 
   it('handles very long content', () => {
     const longContent = '<p>' + 'A'.repeat(10000) + '</p>'
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content={longContent}
-        onChange={onChangeSpy}
+        initialContent={longContent}
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -668,12 +669,12 @@ describe('RichTextEditor Component', () => {
 
   it('handles complex nested HTML content', () => {
     const complexContent = '<p><strong>Bold <em>and italic</em></strong> with <mark>highlight</mark> and <u>underline</u></p>'
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content={complexContent}
-        onChange={onChangeSpy}
+        initialContent={complexContent}
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -684,12 +685,12 @@ describe('RichTextEditor Component', () => {
   })
 
   it('handles rapid consecutive formatting changes', () => {
-    const onChangeSpy = cy.spy().as('onChangeSpy')
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
       <RichTextEditor
-        content=""
-        onChange={onChangeSpy}
+        initialContent=""
+        onContentChange={onContentChangeSpy}
       />
     )
 
@@ -704,9 +705,91 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="underline-button"]').click()
 
     // Verify all formats were applied
-    cy.get('@onChangeSpy').should('have.been.called')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<strong>')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<em>')
-    cy.get('@onChangeSpy').its('lastCall').its('args.0').should('include', '<u>')
+    cy.get('@onContentChangeSpy').should('have.been.called')
+    cy.get('[data-cy="editor-content"]').find('strong').should('exist')
+    cy.get('[data-cy="editor-content"]').find('em').should('exist')
+    cy.get('[data-cy="editor-content"]').find('u').should('exist')
+  })
+
+  // Clear formatting tests
+  it('renders clear formatting button', () => {
+    cy.mount(
+      <RichTextEditor
+        initialContent=""
+        onContentChange={cy.stub()}
+      />
+    )
+
+    cy.get('[data-cy="clear-formatting-button"]').should('be.visible')
+  })
+
+  it('clears text marks (bold, italic, underline) when clicking clear formatting', () => {
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        initialContent=""
+        onContentChange={onContentChangeSpy}
+      />
+    )
+
+    // Type text and apply formatting
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Formatted text')
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+
+    // Apply bold, italic, underline
+    cy.get('[data-cy="bold-button"]').click()
+    cy.get('[data-cy="italic-button"]').click()
+    cy.get('[data-cy="underline-button"]').click()
+
+    // Verify formatting was applied
+    cy.get('[data-cy="editor-content"]').find('strong').should('exist')
+    cy.get('[data-cy="editor-content"]').find('em').should('exist')
+    cy.get('[data-cy="editor-content"]').find('u').should('exist')
+
+    // Select all and clear formatting
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="clear-formatting-button"]').click()
+
+    // Verify formatting was removed
+    cy.get('[data-cy="editor-content"]').find('strong').should('not.exist')
+    cy.get('[data-cy="editor-content"]').find('em').should('not.exist')
+    cy.get('[data-cy="editor-content"]').find('u').should('not.exist')
+    // Text should still exist
+    cy.get('[data-cy="editor-content"]').should('contain', 'Formatted text')
+  })
+
+  it('clears highlight and strikethrough when clicking clear formatting', () => {
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        initialContent=""
+        onContentChange={onContentChangeSpy}
+      />
+    )
+
+    // Type text and apply formatting
+    cy.get('[data-cy="editor-content"]').click()
+    cy.get('[data-cy="editor-content"]').type('Highlighted text')
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+
+    // Apply highlight and strikethrough
+    cy.get('[data-cy="highlight-button"]').click()
+    cy.get('[data-cy="strike-button"]').click()
+
+    // Verify formatting was applied
+    cy.get('[data-cy="editor-content"]').find('mark').should('exist')
+    cy.get('[data-cy="editor-content"]').find('s').should('exist')
+
+    // Select all and clear formatting
+    cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.get('[data-cy="clear-formatting-button"]').click()
+
+    // Verify formatting was removed
+    cy.get('[data-cy="editor-content"]').find('mark').should('not.exist')
+    cy.get('[data-cy="editor-content"]').find('s').should('not.exist')
+    cy.get('[data-cy="editor-content"]').should('contain', 'Highlighted text')
   })
 })

@@ -21,6 +21,7 @@ describe('Mobile Layout Adaptation', () => {
       notesQuery: { isLoading: false, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: cy.stub() } as any,
       selectedNote: null,
       isEditing: false,
+      setIsEditing: cy.stub(),
       searchQuery: '',
       filterByTag: null,
       deleteDialogOpen: false,
@@ -45,6 +46,7 @@ describe('Mobile Layout Adaptation', () => {
       handleCreateNote: cy.stub(),
       handleEditNote: cy.stub(),
       handleSaveNote: cy.stub(),
+      handleReadNote: cy.stub(),
       handleDeleteNote: cy.stub(),
       confirmDeleteNote: cy.stub(),
       setDeleteDialogOpen: cy.stub(),
@@ -72,6 +74,9 @@ describe('Mobile Layout Adaptation', () => {
       isOffline: false,
       pendingCount: 0,
       failedCount: 0,
+      handleAutoSave: cy.stub(),
+      lastSavedAt: null,
+      autoSaving: false,
       
       ...overrides
     })
