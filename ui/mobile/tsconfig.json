@@ -14,15 +14,20 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@core/*": ["../../core/*"],
-      "@ui/mobile/*": ["./*"]
+      "@core/*": [
+        "../../core/*"
+      ],
+      "@ui/mobile/*": [
+        "./*"
+      ]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "nativewind-env.d.ts"
   ],
   "exclude": [
     "node_modules"
