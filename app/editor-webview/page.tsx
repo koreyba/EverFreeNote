@@ -1,7 +1,8 @@
 'use client'
 
-import RichTextEditor from '@/ui/web/components/RichTextEditor'
+import * as React from 'react'
 import { useEffect, useState } from 'react'
+import RichTextEditor, { type RichTextEditorHandle } from '@/ui/web/components/RichTextEditor'
 
 declare global {
   interface Window {
@@ -12,7 +13,8 @@ declare global {
 }
 
 export default function EditorWebViewPage() {
-  const [content, setContent] = useState('')
+  const [initialContent, setInitialContent] = useState('')
+  const editorRef = React.useRef<RichTextEditorHandle>(null)
 
   useEffect(() => {
     // Listen for messages from React Native
@@ -21,7 +23,25 @@ export default function EditorWebViewPage() {
         const { type, payload } = JSON.parse(event.data)
 
         if (type === 'SET_CONTENT') {
-          setContent(payload)
+          if (editorRef.current) {
+            editorRef.current.setContent(payload)
+          } else {
+            setInitialContent(payload)
+          }
+        } else if (type === 'GET_CONTENT') {
+          if (window.ReactNativeWebView && editorRef.current) {
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({
+                type: 'CONTENT_RESPONSE',
+                payload: editorRef.current.getHTML()
+              })
+            )
+          }
+        } else if (type === 'COMMAND') {
+          if (editorRef.current) {
+            const { method, args = [] } = payload
+            editorRef.current.runCommand(method, ...args)
+          }
         }
       } catch (error) {
         console.error('Failed to parse message:', error)
@@ -41,19 +61,24 @@ export default function EditorWebViewPage() {
   }, [])
 
   const handleChange = () => {
-    // onContentChange is triggered, but we need to get HTML from editor ref
-    // For now, this is just a signal that content changed
-    // The WebView will get content when needed via getHTML message
-    if (window.ReactNativeWebView) {
+    if (window.ReactNativeWebView && editorRef.current) {
       window.ReactNativeWebView.postMessage(
-        JSON.stringify({ type: 'CONTENT_CHANGED' })
+        JSON.stringify({
+          type: 'CONTENT_CHANGED',
+          payload: editorRef.current.getHTML() // Also send content on every change for auto-save support
+        })
       )
     }
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden">
-      <RichTextEditor initialContent={content} onContentChange={handleChange} />
+    <div className="h-screen w-screen overflow-hidden bg-background">
+      <RichTextEditor
+        ref={editorRef}
+        initialContent={initialContent}
+        onContentChange={handleChange}
+        hideToolbar={true}
+      />
     </div>
   )
 }
