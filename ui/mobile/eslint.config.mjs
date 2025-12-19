@@ -16,6 +16,14 @@ export default [
         },
         project: './tsconfig.json',
       },
+      globals: {
+        console: 'readonly',
+        fetch: 'readonly',
+        process: 'readonly',
+        __dirname: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': tsPlugin,

@@ -58,11 +58,13 @@ import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 export type RichTextEditorHandle = {
   getHTML: () => string
   setContent: (html: string) => void
+  runCommand: (command: string, ...args: any[]) => void
 }
 
 type RichTextEditorProps = {
   initialContent: string
   onContentChange?: () => void // Called when content changes (for triggering autosave)
+  hideToolbar?: boolean
 }
 
 type MenuBarProps = {
@@ -469,74 +471,81 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 }
 
 const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProps>(
-  ({ initialContent, onContentChange }, ref) => {
-  // Мемоизация конфигурации расширений для предотвращения пересоздания
-  const editorExtensions: Extensions = React.useMemo(() => [
-    StarterKit.configure({
-      bulletList: {},
-      orderedList: {},
-      listItem: {},
-      heading: false,
-      link: false,
-      underline: false,
-    }),
-    Heading.configure({
-      levels: [1, 2, 3],
-    }),
-    Underline,
-    Highlight.configure({ multicolor: true }),
-    TextAlign.configure({ types: ["heading", "paragraph"] }),
-    Superscript,
-    Subscript,
-    TaskList,
-    TaskItem.configure({ nested: true }),
-    Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
-    Image.configure({
-      inline: true,
-      allowBase64: true,
-    }),
-    TextStyle,
-    Color,
-    FontFamily,
-    FontSize,
-  ], [])
+  ({ initialContent, onContentChange, hideToolbar = false }, ref) => {
+    // Мемоизация конфигурации расширений для предотвращения пересоздания
+    const editorExtensions: Extensions = React.useMemo(() => [
+      StarterKit.configure({
+        bulletList: {},
+        orderedList: {},
+        listItem: {},
+        heading: false,
+        link: false,
+        underline: false,
+      }),
+      Heading.configure({
+        levels: [1, 2, 3],
+      }),
+      Underline,
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Superscript,
+      Subscript,
+      TaskList,
+      TaskItem.configure({ nested: true }),
+      Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
+      Image.configure({
+        inline: true,
+        allowBase64: true,
+      }),
+      TextStyle,
+      Color,
+      FontFamily,
+      FontSize,
+    ], [])
 
-  // Мемоизация editorProps для предотвращения ре-рендеров
-  const editorProps = React.useMemo(() => ({
-    attributes: {
-      class: "focus:outline-none",
-    },
-  }), [])
+    // Мемоизация editorProps для предотвращения ре-рендеров
+    const editorProps = React.useMemo(() => ({
+      attributes: {
+        class: "focus:outline-none",
+      },
+    }), [])
 
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: editorExtensions,
-    content: initialContent,
-    onUpdate: () => {
-      onContentChange?.()
-    },
-    editorProps,
+    const editor = useEditor({
+      immediatelyRender: false,
+      extensions: editorExtensions,
+      content: initialContent,
+      onUpdate: () => {
+        onContentChange?.()
+      },
+      editorProps,
+    })
+
+    // Expose methods via ref
+    React.useImperativeHandle(ref, () => ({
+      getHTML: () => editor?.getHTML() ?? "",
+      setContent: (html: string) => {
+        editor?.commands.setContent(html)
+      },
+      runCommand: (command: string, ...args: any[]) => {
+        if (!editor) return
+        const cmd = (editor.chain().focus() as any)[command]
+        if (typeof cmd === 'function') {
+          cmd(...args).run()
+        }
+      },
+    }), [editor])
+
+    return (
+      <div className={`bg-background ${hideToolbar ? '' : 'border rounded-md'}`}>
+        {!hideToolbar && <MenuBar editor={editor} />}
+        <EditorContent
+          data-cy="editor-content"
+          editor={editor}
+          className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-6 py-4`}
+        />
+      </div>
+    )
   })
-
-  // Expose methods via ref
-  React.useImperativeHandle(ref, () => ({
-    getHTML: () => editor?.getHTML() ?? "",
-    setContent: (html: string) => {
-      editor?.commands.setContent(html)
-    },
-  }), [editor])
-
-  return (
-    <div className="border rounded-md bg-background">
-      <MenuBar editor={editor} />
-      <EditorContent
-        data-cy="editor-content"
-        editor={editor}
-        className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-6 py-4`}
-      />
-    </div>
-  )
-})
 
 RichTextEditor.displayName = "RichTextEditor"
 

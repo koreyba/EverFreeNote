@@ -1,31 +1,110 @@
-import { View, Text, StyleSheet } from 'react-native'
-import { useLocalSearchParams } from 'expo-router'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { View, TextInput, StyleSheet, ActivityIndicator, Text, KeyboardAvoidingView, Platform } from 'react-native'
+import { useLocalSearchParams, Stack } from 'expo-router'
+import { useNote, useUpdateNote } from '@ui/mobile/hooks'
+import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
+import { EditorToolbar } from '@ui/mobile/components/EditorToolbar'
 
 export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const { data: note, isLoading, error } = useNote(id)
+  const { mutate: updateNote } = useUpdateNote()
+
+  const editorRef = useRef<EditorWebViewHandle>(null)
+  const [title, setTitle] = useState('')
+  const saveTimeout = useRef<any>(null)
+
+  useEffect(() => {
+    if (note) {
+      setTitle(note.title || '')
+    }
+  }, [note])
+
+  const debouncedUpdate = useCallback((updates: { title?: string; description?: string }) => {
+    if (saveTimeout.current) clearTimeout(saveTimeout.current)
+
+    saveTimeout.current = setTimeout(() => {
+      updateNote({ id, updates })
+    }, 1000)
+  }, [id, updateNote])
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle)
+    debouncedUpdate({ title: newTitle })
+  }
+
+  const handleContentChange = (html: string) => {
+    debouncedUpdate({ description: html })
+  }
+
+  const handleToolbarCommand = (method: string, args?: any[]) => {
+    editorRef.current?.runCommand(method, args)
+  }
+
+  if (isLoading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#4285F4" />
+      </View>
+    )
+  }
+
+  if (error || !note) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>Ошибка загрузки заметки</Text>
+      </View>
+    )
+  }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Редактор заметки #{id}</Text>
-      <Text style={styles.subtext}>Здесь будет WebView с редактором</Text>
-    </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.container}
+    >
+      <Stack.Screen options={{ title: 'Редактирование' }} />
+      <View style={styles.header}>
+        <TextInput
+          style={styles.titleInput}
+          value={title}
+          onChangeText={handleTitleChange}
+          placeholder="Название заметки"
+          placeholderTextColor="#999"
+        />
+      </View>
+      <EditorToolbar onCommand={handleToolbarCommand} />
+      <EditorWebView
+        ref={editorRef}
+        initialContent={note.description || ''}
+        onContentChange={handleContentChange}
+      />
+    </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#fff',
   },
-  text: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 8,
+  header: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  subtext: {
-    fontSize: 14,
-    color: '#666',
+  titleInput: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    padding: 0,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: 'red',
   },
 })

@@ -7,7 +7,7 @@ type Note = Tables<'notes'>
 const sanitizeOrValue = (value: string) => value.replace(/,/g, ' ')
 
 export class NoteService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: SupabaseClient) { }
 
   async getNotes(
     userId: string,
@@ -25,6 +25,7 @@ export class NoteService {
     let query = this.supabase
       .from('notes')
       .select('id, title, description, tags, created_at, updated_at', { count: 'exact' })
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false })
       .range(start, end)
 
@@ -86,6 +87,17 @@ export class NoteService {
     const { error } = await this.supabase.from('notes').delete().eq('id', id)
     if (error) throw error
     return id
+  }
+
+  async getNote(id: string) {
+    const { data, error } = await this.supabase
+      .from('notes')
+      .select('id, title, description, tags, created_at, updated_at')
+      .eq('id', id)
+      .single()
+
+    if (error) throw error
+    return data as Note
   }
 
   async getNotesByIds(noteIds: string[], userId: string) {
