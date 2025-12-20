@@ -74,6 +74,12 @@ export class DatabaseService {
     async saveNotes(notes: Note[]) {
         const db = await this.init()
         for (const note of notes) {
+            // Skip notes without user_id to avoid constraint violations
+            if (!note.user_id) {
+                console.warn(`[DatabaseService] Skipping note ${note.id} because user_id is missing`);
+                continue;
+            }
+
             await db.runAsync(
                 `INSERT OR REPLACE INTO notes (id, title, description, tags, user_id, created_at, updated_at, is_synced) 
          VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,

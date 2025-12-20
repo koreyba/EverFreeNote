@@ -1,15 +1,22 @@
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native'
+import { useRouter } from 'expo-router'
 import { useSupabase } from '@ui/mobile/providers'
 import { useState } from 'react'
+import { featureFlags } from '@ui/mobile/featureFlags'
+import { AuthService } from '@core/services/auth'
 
 export default function LoginScreen() {
   const { client } = useSupabase()
-  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  const [loadingGoogle, setLoadingGoogle] = useState(false)
+  const [loadingTest, setLoadingTest] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const loading = loadingGoogle || loadingTest
 
   const handleGoogleLogin = async () => {
     try {
-      setLoading(true)
+      setLoadingGoogle(true)
       setError(null)
 
       const { error } = await client.auth.signInWithOAuth({
@@ -20,12 +27,36 @@ export default function LoginScreen() {
       })
 
       if (error) throw error
-
-      // OAuth flow will handle redirection via deep linking
     } catch (err) {
       console.error('Login error:', err)
       setError(err instanceof Error ? err.message : 'Ошибка входа')
-      setLoading(false)
+    } finally {
+      setLoadingGoogle(false)
+    }
+  }
+
+  const handleTestLogin = async () => {
+    if (!featureFlags.testAuth) return
+
+    try {
+      setLoadingTest(true)
+      setError(null)
+      const authService = new AuthService(client)
+      console.log('[Login] Attempting test login...');
+      const { data, error } = await authService.signInWithPassword(
+        'test@example.com',
+        'testpassword123'
+      )
+
+      if (error) throw error
+
+      console.log('[Login] Test login success:', data.user?.email);
+      router.replace('/(tabs)')
+    } catch (err) {
+      console.error('Test login error:', err)
+      setError(err instanceof Error ? err.message : 'Ошибка тестового входа')
+    } finally {
+      setLoadingTest(false)
     }
   }
 
@@ -41,12 +72,26 @@ export default function LoginScreen() {
         onPress={() => void handleGoogleLogin()}
         disabled={loading}
       >
-        {loading ? (
+        {loadingGoogle ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.buttonText}>Войти через Google</Text>
         )}
       </Pressable>
+
+      {featureFlags.testAuth && (
+        <Pressable
+          style={[styles.testButton, loading && styles.buttonDisabled]}
+          onPress={() => void handleTestLogin()}
+          disabled={loading}
+        >
+          {loadingTest ? (
+            <ActivityIndicator color="#4285F4" />
+          ) : (
+            <Text style={styles.testButtonText}>Тестовый вход</Text>
+          )}
+        </Pressable>
+      )}
     </View>
   )
 }
@@ -80,6 +125,19 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  testButton: {
+    marginTop: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4285F4',
+  },
+  testButtonText: {
+    color: '#4285F4',
     fontSize: 16,
     fontWeight: '600',
   },
