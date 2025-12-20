@@ -37,7 +37,7 @@ export function useNotes(options: {
       // Fallback to local DB
       const localNotes = await databaseService.getLocalNotes(user.id)
       return {
-        notes: localNotes as any,
+        notes: localNotes as Note[],
         totalCount: localNotes.length,
         hasMore: false,
         nextCursor: undefined
@@ -70,7 +70,7 @@ export function useNote(id: string) {
 
       // Fallback to local DB
       const localNotes = await databaseService.getLocalNotes(user.id)
-      return localNotes.find(n => n.id === id) || null
+      return localNotes.find(n => n.id === id) ?? null
     },
     enabled: !!user?.id && !!id,
     staleTime: 1000 * 60,
@@ -95,7 +95,7 @@ export function useCreateNote() {
         await manager.enqueue({
           noteId: id,
           operation: 'create',
-          payload: { ...note, user_id: user.id } as any,
+          payload: { ...note, user_id: user.id } as Partial<Note>,
           clientUpdatedAt: new Date().toISOString()
         })
 
@@ -106,9 +106,9 @@ export function useCreateNote() {
           user_id: user.id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        } as any])
+        } as Note])
 
-        return { id, ...note } as any
+        return { id, ...note } as Note
       }
     },
     onSuccess: () => {
@@ -132,10 +132,10 @@ export function useUpdateNote() {
       updates: Partial<Pick<Note, 'title' | 'description' | 'tags'>>
     }) => {
       // Local update first for immediate response
-      const localNotes = await databaseService.getLocalNotes(user?.id || '')
+      const localNotes = await databaseService.getLocalNotes(user?.id ?? '')
       const existing = localNotes.find(n => n.id === id)
       if (existing) {
-        await databaseService.saveNotes([{ ...existing, ...updates, updated_at: new Date().toISOString() } as any])
+        await databaseService.saveNotes([{ ...existing, ...updates, updated_at: new Date().toISOString() } as Note])
       }
 
       if (isOnline) {
@@ -145,10 +145,10 @@ export function useUpdateNote() {
         await manager.enqueue({
           noteId: id,
           operation: 'update',
-          payload: updates as any,
+          payload: updates as Partial<Note>,
           clientUpdatedAt: new Date().toISOString()
         })
-        return { id, ...updates } as any
+        return { id, ...updates } as Note
       }
     },
     onSuccess: () => {
@@ -167,7 +167,7 @@ export function useDeleteNote() {
   return useMutation({
     mutationFn: async (id: string) => {
       // Mark as deleted locally
-      await databaseService.saveNotes([{ id, is_deleted: 1 } as any])
+      await databaseService.saveNotes([{ id, is_deleted: 1 } as unknown as Note])
 
       if (isOnline) {
         return await noteService.deleteNote(id)

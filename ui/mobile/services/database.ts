@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite'
 import type { Note } from '@core/types/domain'
+import type { MutationQueueItem } from '@core/types/offline'
 
 const DB_NAME = 'everfreenote.db'
 
@@ -76,7 +77,7 @@ export class DatabaseService {
             await db.runAsync(
                 `INSERT OR REPLACE INTO notes (id, title, description, tags, user_id, created_at, updated_at, is_synced) 
          VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-                [note.id, note.title || '', note.description || '', JSON.stringify(note.tags || []), note.user_id, note.created_at, note.updated_at]
+                [note.id, note.title ?? '', note.description ?? '', JSON.stringify(note.tags ?? []), note.user_id, note.created_at, note.updated_at]
             )
         }
     }
@@ -91,19 +92,28 @@ export class DatabaseService {
 
     async getQueue() {
         const db = await this.init()
-        const rows = await db.getAllAsync<any>('SELECT * FROM mutation_queue ORDER BY clientUpdatedAt ASC')
+        const rows = await db.getAllAsync<{
+            id: string,
+            noteId: string,
+            operation: string,
+            payload: string,
+            clientUpdatedAt: string,
+            status: string,
+            attempts: number,
+            lastError?: string
+        }>('SELECT * FROM mutation_queue ORDER BY clientUpdatedAt ASC')
         return rows.map(r => ({
             ...r,
             payload: JSON.parse(r.payload)
-        }))
+        })) as MutationQueueItem[]
     }
 
-    async upsertQueueItem(item: any) {
+    async upsertQueueItem(item: MutationQueueItem) {
         const db = await this.init()
         await db.runAsync(
             `INSERT OR REPLACE INTO mutation_queue (id, noteId, operation, payload, clientUpdatedAt, status, attempts, lastError) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [item.id, item.noteId, item.operation, JSON.stringify(item.payload), item.clientUpdatedAt, item.status, item.attempts || 0, item.lastError]
+            [item.id, item.noteId, item.operation, JSON.stringify(item.payload), item.clientUpdatedAt, item.status, item.attempts ?? 0, item.lastError ?? null]
         )
     }
 
@@ -118,7 +128,7 @@ export class DatabaseService {
         const db = await this.init()
         await db.runAsync(
             'UPDATE mutation_queue SET status = ?, lastError = ?, attempts = attempts + 1 WHERE id = ?',
-            [status, lastError || null, id]
+            [status, lastError ?? null, id]
         )
     }
 

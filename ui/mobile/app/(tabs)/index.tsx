@@ -4,6 +4,7 @@ import { FlashList } from '@shopify/flash-list'
 import { useNotes, useCreateNote } from '@ui/mobile/hooks'
 import { format } from 'date-fns'
 import { Plus } from 'lucide-react-native'
+import type { Note } from '@core/types/domain'
 
 export default function NotesScreen() {
   const router = useRouter()
@@ -20,16 +21,16 @@ export default function NotesScreen() {
     })
   }
 
-  const renderNote = ({ item }: { item: any }) => (
+  const renderNote = ({ item }: { item: Note }) => (
     <Pressable
       style={styles.noteCard}
       onPress={() => router.push(`/note/${item.id}`)}
     >
       <Text style={styles.noteTitle} numberOfLines={1}>
-        {item.title || 'Без названия'}
+        {item.title ?? 'Без названия'}
       </Text>
       <Text style={styles.noteDescription} numberOfLines={2}>
-        {(item.description || '').replace(/<[^>]*>/g, '')}
+        {(item.description ?? '').replace(/<[^>]*>/g, '')}
       </Text>
       <Text style={styles.noteDate}>
         {format(new Date(item.updated_at), 'dd.MM.yyyy HH:mm')}

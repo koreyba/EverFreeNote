@@ -5,7 +5,7 @@ export class MobileNetworkStatusProvider implements NetworkStatusProvider {
     private online: boolean = true
 
     constructor() {
-        NetInfo.fetch().then(state => {
+        void NetInfo.fetch().then(state => {
             this.online = !!state.isConnected
         })
     }

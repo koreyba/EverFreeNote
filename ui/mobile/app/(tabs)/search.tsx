@@ -4,6 +4,11 @@ import { useRouter } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
 import { useSearch } from '@ui/mobile/hooks'
 import { Search, X } from 'lucide-react-native'
+import type { Note } from '@core/types/domain'
+
+interface FtsResult extends Note {
+    snippet?: string
+}
 
 export default function SearchScreen() {
     const router = useRouter()
@@ -12,13 +17,13 @@ export default function SearchScreen() {
 
     const results = data?.results ?? []
 
-    const renderItem = ({ item }: { item: any }) => (
+    const renderItem = ({ item }: { item: FtsResult }) => (
         <Pressable
             style={styles.card}
             onPress={() => router.push(`/note/${item.id}`)}
         >
-            <Text style={styles.title} numberOfLines={1}>{item.title || 'Без названия'}</Text>
-            <Text style={styles.snippet} numberOfLines={2}>{item.snippet || item.description || ''}</Text>
+            <Text style={styles.title} numberOfLines={1}>{item.title ?? 'Без названия'}</Text>
+            <Text style={styles.snippet} numberOfLines={2}>{item.snippet ?? item.description ?? ''}</Text>
         </Pressable>
     )
 
@@ -53,11 +58,11 @@ export default function SearchScreen() {
             )}
 
             <FlashList
-                data={results as any}
+                data={results as FtsResult[]}
                 renderItem={renderItem}
-                // @ts-ignore
+                // @ts-expect-error FlashList types mismatch in some versions
                 estimatedItemSize={80}
-                keyExtractor={(item: any) => item.id}
+                keyExtractor={(item: FtsResult) => item.id}
                 contentContainerStyle={styles.list}
             />
         </View>
