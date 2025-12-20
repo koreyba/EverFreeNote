@@ -6,6 +6,18 @@ import { databaseService } from '@ui/mobile/services/database'
 import { useNetworkStatus } from './useNetworkStatus'
 import type { Note } from '@core/types/domain'
 
+const generateUuidV4 = (): string => {
+  const cryptoObj = (globalThis as unknown as { crypto?: { randomUUID?: () => string } }).crypto
+  if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
+    return cryptoObj.randomUUID()
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16)
+    const value = char === 'x' ? random : (random & 0x3) | 0x8
+    return value.toString(16)
+  })
+}
+
 export function useNotes(options: {
   page?: number
   pageSize?: number
@@ -90,12 +102,12 @@ export function useCreateNote() {
       if (isOnline) {
         return await noteService.createNote({ ...note, userId: user.id })
       } else {
-        const id = Math.random().toString(36).substring(2, 15) // Temporary ID
+        const id = generateUuidV4()
         const manager = mobileSyncService.getManager()
         await manager.enqueue({
           noteId: id,
           operation: 'create',
-          payload: { ...note, user_id: user.id } as Partial<Note>,
+          payload: { id, ...note, user_id: user.id } as Partial<Note>,
           clientUpdatedAt: new Date().toISOString()
         })
 
@@ -105,8 +117,10 @@ export function useCreateNote() {
           ...note,
           user_id: user.id,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        } as Note])
+          updated_at: new Date().toISOString(),
+          is_synced: 0,
+          is_deleted: 0,
+        }])
 
         return { id, ...note } as Note
       }
@@ -135,7 +149,12 @@ export function useUpdateNote() {
       const localNotes = await databaseService.getLocalNotes(user?.id ?? '')
       const existing = localNotes.find(n => n.id === id)
       if (existing) {
-        await databaseService.saveNotes([{ ...existing, ...updates, updated_at: new Date().toISOString() } as Note])
+        await databaseService.saveNotes([{
+          ...existing,
+          ...updates,
+          updated_at: new Date().toISOString(),
+          is_synced: 0,
+        }])
       }
 
       if (isOnline) {
@@ -159,15 +178,16 @@ export function useUpdateNote() {
 }
 
 export function useDeleteNote() {
-  const { client } = useSupabase()
+  const { client, user } = useSupabase()
   const queryClient = useQueryClient()
   const noteService = new NoteService(client)
   const isOnline = useNetworkStatus()
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Mark as deleted locally
-      await databaseService.saveNotes([{ id, is_deleted: 1 } as unknown as Note])
+      if (!user?.id) throw new Error('User not authenticated')
+
+      await databaseService.markDeleted(id, user.id)
 
       if (isOnline) {
         return await noteService.deleteNote(id)

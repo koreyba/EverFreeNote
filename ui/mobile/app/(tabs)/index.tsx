@@ -57,6 +57,18 @@ export default function NotesScreen() {
     )
   }
 
+  if (!isLoading && !error && notes.length === 0) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.emptyTitle}>????? ??? ??? ???????</Text>
+        <Text style={styles.emptySubtitle}>???????? ?????? ?????? ??????? ??? ?????? ?????.</Text>
+        <Pressable style={styles.primaryButton} onPress={handleCreateNote}>
+          <Text style={styles.primaryButtonText}>??????? ???????</Text>
+        </Pressable>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.container}>
       <FlashList
@@ -64,6 +76,8 @@ export default function NotesScreen() {
         renderItem={renderNote}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        // @ts-expect-error FlashList types mismatch in some versions
+        estimatedItemSize={96}
         onRefresh={() => void refetch()}
         refreshing={isLoading}
       />
@@ -130,6 +144,30 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  primaryButton: {
+    backgroundColor: '#4285F4',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  primaryButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

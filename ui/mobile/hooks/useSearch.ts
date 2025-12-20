@@ -27,11 +27,7 @@ export function useSearch(query: string) {
             // Offline or error fallback: Use SQLite FTS5
             const results = await databaseService.searchNotes(query, user.id)
             return {
-                results: results.map(r => ({
-                    ...r,
-                    rank: 0, // Rank not easily available from simple getAllAsync without complex SQL
-                    snippet: r.description?.substring(0, 100) || ''
-                })),
+                results,
                 total: results.length,
                 method: 'local_fts'
             }

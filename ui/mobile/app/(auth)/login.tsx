@@ -4,6 +4,7 @@ import { useSupabase } from '@ui/mobile/providers'
 import { useState } from 'react'
 import { featureFlags } from '@ui/mobile/featureFlags'
 import { AuthService } from '@core/services/auth'
+import { oauthAdapter } from '@ui/mobile/adapters'
 
 export default function LoginScreen() {
   const { client } = useSupabase()
@@ -19,14 +20,13 @@ export default function LoginScreen() {
       setLoadingGoogle(true)
       setError(null)
 
-      const { error } = await client.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: 'everfreenote://auth/callback',
-        },
-      })
+      const authService = new AuthService(client)
+      const { data, error } = await authService.signInWithGoogle('everfreenote://auth/callback')
 
       if (error) throw error
+      if (!data.url) throw new Error('Missing OAuth URL')
+
+      await oauthAdapter.startOAuth(data.url)
     } catch (err) {
       console.error('Login error:', err)
       setError(err instanceof Error ? err.message : 'Ошибка входа')
@@ -42,15 +42,13 @@ export default function LoginScreen() {
       setLoadingTest(true)
       setError(null)
       const authService = new AuthService(client)
-      console.log('[Login] Attempting test login...');
-      const { data, error } = await authService.signInWithPassword(
+      const { error } = await authService.signInWithPassword(
         'test@example.com',
         'testpassword123'
       )
 
       if (error) throw error
 
-      console.log('[Login] Test login success:', data.user?.email);
       router.replace('/(tabs)')
     } catch (err) {
       console.error('Test login error:', err)

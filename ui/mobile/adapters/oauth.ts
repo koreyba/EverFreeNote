@@ -6,13 +6,13 @@ import type { OAuthAdapter } from '@core/adapters/oauth'
  * Opens OAuth flow in system browser or in-app browser
  */
 export const oauthAdapter: OAuthAdapter = {
-  async startOAuth(redirectUri: string): Promise<void> {
+  async startOAuth(authUrl: string): Promise<void> {
     try {
       // Warm up browser for better UX (optional but recommended)
       await WebBrowser.warmUpAsync()
 
       // Open OAuth URL in browser
-      const result = await WebBrowser.openAuthSessionAsync(redirectUri, 'everfreenote://')
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, 'everfreenote://')
 
       // Cool down browser
       await WebBrowser.coolDownAsync()

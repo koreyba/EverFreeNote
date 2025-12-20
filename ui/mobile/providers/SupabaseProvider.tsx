@@ -27,7 +27,6 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Get initial session
     void client.auth.getSession().then(({ data: { session } }) => {
-      console.log('[SupabaseProvider] Initial session:', session?.user?.email);
       setSession(session)
       setUser(session?.user ?? null)
       if (session) mobileSyncService.init(client)
@@ -37,8 +36,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = client.auth.onAuthStateChange((event, session) => {
-      console.log('[SupabaseProvider] Auth event:', event, session?.user?.email);
+    } = client.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session) mobileSyncService.init(client)
