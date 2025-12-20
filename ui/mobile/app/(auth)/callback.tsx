@@ -14,24 +14,28 @@ export default function CallbackScreen() {
 
   const handleCallback = async () => {
     try {
-      // Extract tokens from URL params
-      const accessToken = params.access_token as string
-      const refreshToken = params.refresh_token as string
+      const code = params.code as string | undefined
+      const accessToken = params.access_token as string | undefined
+      const refreshToken = params.refresh_token as string | undefined
+
+      if (code) {
+        const { error } = await client.auth.exchangeCodeForSession(code)
+        if (error) throw error
+        router.replace('/(tabs)')
+        return
+      }
 
       if (accessToken && refreshToken) {
-        // Set session from tokens
         const { error } = await client.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         })
-
         if (error) throw error
-
-        // Navigate to main app
         router.replace('/(tabs)')
-      } else {
-        throw new Error('Missing tokens in callback')
+        return
       }
+
+      throw new Error('Missing code/tokens in callback')
     } catch (error) {
       console.error('Callback error:', error)
       // Navigate back to login on error

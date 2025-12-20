@@ -1,10 +1,11 @@
 import { Redirect, Tabs } from 'expo-router'
 import { useAuth } from '@ui/mobile/providers'
 import { ActivityIndicator, View, Text } from 'react-native'
-import { useNetworkStatus } from '@ui/mobile/hooks'
+import { useNetworkStatus, useOfflineSync } from '@ui/mobile/hooks'
 
 export default function TabsLayout() {
   const { isAuthenticated, loading } = useAuth()
+  useOfflineSync()
 
   if (loading) {
     return (

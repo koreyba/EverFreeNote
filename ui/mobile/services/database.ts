@@ -4,6 +4,17 @@ import type { MutationQueueItem } from '@core/types/offline'
 
 const DB_NAME = 'everfreenote.db'
 
+type LocalNoteRow = Omit<Note, 'tags'> & {
+    tags: string
+    is_synced: number
+    is_deleted: number
+}
+
+type LocalNote = Note & {
+    is_synced?: number
+    is_deleted?: number
+}
+
 export class DatabaseService {
     private db: SQLite.SQLiteDatabase | null = null
 
@@ -71,7 +82,24 @@ export class DatabaseService {
         return this.db
     }
 
-    async saveNotes(notes: Note[]) {
+    private mapRowToNote(row: LocalNoteRow): Note {
+        return {
+            ...row,
+            tags: this.parseTags(row.tags),
+        }
+    }
+
+    private parseTags(tags: string | null): string[] {
+        if (!tags) return []
+        try {
+            const parsed = JSON.parse(tags)
+            return Array.isArray(parsed) ? parsed.map(String) : []
+        } catch {
+            return []
+        }
+    }
+
+    async saveNotes(notes: LocalNote[]) {
         const db = await this.init()
         for (const note of notes) {
             // Skip notes without user_id to avoid constraint violations
@@ -80,20 +108,33 @@ export class DatabaseService {
                 continue;
             }
 
+            const tagsJson = typeof note.tags === 'string' ? note.tags : JSON.stringify(note.tags ?? [])
+            const isSynced = typeof note.is_synced === 'number' ? note.is_synced : 1
+            const isDeleted = typeof note.is_deleted === 'number' ? note.is_deleted : 0
+
             await db.runAsync(
-                `INSERT OR REPLACE INTO notes (id, title, description, tags, user_id, created_at, updated_at, is_synced) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-                [note.id, note.title ?? '', note.description ?? '', JSON.stringify(note.tags ?? []), note.user_id, note.created_at, note.updated_at]
+                `INSERT OR REPLACE INTO notes (id, title, description, tags, user_id, created_at, updated_at, is_synced, is_deleted) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [note.id, note.title ?? '', note.description ?? '', tagsJson, note.user_id, note.created_at, note.updated_at, isSynced, isDeleted]
             )
         }
     }
 
     async getLocalNotes(userId: string) {
         const db = await this.init()
-        return await db.getAllAsync<Note & { is_synced: number }>(
+        const rows = await db.getAllAsync<LocalNoteRow>(
             'SELECT * FROM notes WHERE user_id = ? AND is_deleted = 0 ORDER BY updated_at DESC',
             [userId]
         )
+        return rows.map((r) => this.mapRowToNote(r))
+    }
+
+    async markDeleted(noteId: string, userId: string) {
+        const db = await this.init()
+        await db.runAsync('UPDATE notes SET is_deleted = 1, is_synced = 0 WHERE id = ? AND user_id = ?', [
+            noteId,
+            userId,
+        ])
     }
 
     async getQueue() {
@@ -140,14 +181,23 @@ export class DatabaseService {
 
     async searchNotes(query: string, userId: string) {
         const db = await this.init()
-        // Simple FTS5 search
-        return await db.getAllAsync<Note>(
-            `SELECT n.* FROM notes n
-       JOIN notes_search s ON n.rowid = s.rowid
-       WHERE notes_search MATCH ? AND n.user_id = ? AND n.is_deleted = 0
-       ORDER BY rank`,
+        const rows = await db.getAllAsync<LocalNoteRow & { snippet: string | null; rank: number }>(
+            `SELECT n.*, 
+              snippet(notes_search, -1, '<mark>', '</mark>', '…', 10) as snippet,
+              bm25(notes_search) as rank
+            FROM notes n
+            JOIN notes_search ON n.rowid = notes_search.rowid
+            WHERE notes_search MATCH ? AND n.user_id = ? AND n.is_deleted = 0
+            ORDER BY bm25(notes_search)
+            LIMIT 50`,
             [query, userId]
         )
+
+        return rows.map((r) => ({
+            ...this.mapRowToNote(r),
+            snippet: r.snippet ?? undefined,
+            rank: r.rank,
+        }))
     }
 }
 
