@@ -10,6 +10,10 @@ export function getSupabaseConfig(): SupabaseConfig {
   const anonKey =
     Constants.expoConfig?.extra?.supabaseAnonKey ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
 
+  console.log('[SupabaseConfig] FROM ENV:', process.env.EXPO_PUBLIC_SUPABASE_URL);
+  console.log('[SupabaseConfig] FROM EXTRA:', Constants.expoConfig?.extra?.supabaseUrl);
+  console.log('[SupabaseConfig] FINAL URL:', url);
+
   if (!url || !anonKey) {
     throw new Error(
       'Missing Supabase configuration. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env file'
