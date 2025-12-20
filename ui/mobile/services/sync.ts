@@ -3,6 +3,7 @@ import { mobileOfflineStorageAdapter } from '../adapters/offlineStorage'
 import { mobileNetworkStatusProvider } from '../adapters/networkStatus'
 import { NoteService } from '@core/services/notes'
 import type { MutationQueueItem } from '@core/types/offline'
+import type { Note } from '@core/types/domain'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export class MobileSyncService {
@@ -15,14 +16,16 @@ export class MobileSyncService {
 
         const performSync = async (item: MutationQueueItem) => {
             switch (item.operation) {
-                case 'create':
+                case 'create': {
+                    const payload = item.payload as Partial<Note> & { user_id?: string }
                     await noteService.createNote({
-                        title: item.payload.title || '',
-                        description: item.payload.description || '',
-                        tags: item.payload.tags || [],
-                        userId: (item.payload as any).user_id // Need to ensure userId is in payload
+                        title: payload.title ?? '',
+                        description: payload.description ?? '',
+                        tags: payload.tags ?? [],
+                        userId: payload.user_id ?? ''
                     })
                     break
+                }
                 case 'update':
                     await noteService.updateNote(item.noteId, item.payload)
                     break

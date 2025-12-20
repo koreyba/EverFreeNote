@@ -58,7 +58,7 @@ import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 export type RichTextEditorHandle = {
   getHTML: () => string
   setContent: (html: string) => void
-  runCommand: (command: string, ...args: any[]) => void
+  runCommand: (command: string, ...args: unknown[]) => void
 }
 
 type RichTextEditorProps = {
@@ -526,9 +526,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       setContent: (html: string) => {
         editor?.commands.setContent(html)
       },
-      runCommand: (command: string, ...args: any[]) => {
+      runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
-        const cmd = (editor.chain().focus() as any)[command]
+        const cmd = (editor.chain().focus() as unknown as Record<string, (...a: unknown[]) => { run: () => void }>)[command]
         if (typeof cmd === 'function') {
           cmd(...args).run()
         }

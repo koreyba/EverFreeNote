@@ -13,10 +13,10 @@ import {
 } from 'lucide-react-native'
 
 type Props = {
-    onCommand: (method: string, args?: any[]) => void
+    onCommand: (method: string, args?: unknown[]) => void
 }
 
-const ToolbarButton = ({ icon: Icon, onPress }: { icon: any, onPress: () => void }) => (
+const ToolbarButton = ({ icon: Icon, onPress }: { icon: React.ElementType, onPress: () => void }) => (
     <TouchableOpacity style={styles.button} onPress={onPress}>
         <Icon size={20} color="#333" />
     </TouchableOpacity>

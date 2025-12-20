@@ -12,7 +12,7 @@ export default function NoteEditorScreen() {
 
   const editorRef = useRef<EditorWebViewHandle>(null)
   const [title, setTitle] = useState('')
-  const saveTimeout = useRef<any>(null)
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (note) {
@@ -37,7 +37,7 @@ export default function NoteEditorScreen() {
     debouncedUpdate({ description: html })
   }
 
-  const handleToolbarCommand = (method: string, args?: any[]) => {
+  const handleToolbarCommand = (method: string, args?: unknown[]) => {
     editorRef.current?.runCommand(method, args)
   }
 

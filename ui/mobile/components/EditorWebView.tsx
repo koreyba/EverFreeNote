@@ -6,7 +6,7 @@ import Constants from 'expo-constants'
 export type EditorWebViewHandle = {
     setContent: (html: string) => void
     getContent: () => Promise<string>
-    runCommand: (method: string, args?: any[]) => void
+    runCommand: (method: string, args?: unknown[]) => void
 }
 
 type Props = {
@@ -32,7 +32,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     pendingContent.current = html
                 }
             },
-            runCommand(method: string, args: any[] = []) {
+            runCommand(method: string, args: unknown[] = []) {
                 webViewRef.current?.postMessage(
                     JSON.stringify({ type: 'COMMAND', payload: { method, args } })
                 )
