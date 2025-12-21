@@ -2,6 +2,7 @@ import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { StyleSheet, View, ActivityIndicator, Text } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import Constants from 'expo-constants'
+import { getSupabaseConfig } from '@ui/mobile/adapters'
 
 const chunkSizeChars = 30_000
 
@@ -90,6 +91,24 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             return 'https://everfreenote.app/editor-webview'
         })()
 
+        const injectedJavaScriptBeforeContentLoaded = (() => {
+            const devHost = Constants.expoConfig?.hostUri?.split(':').shift() ?? null
+            let supabaseUrl: string | null = null
+            try {
+                supabaseUrl = getSupabaseConfig().url
+            } catch {
+                supabaseUrl = null
+            }
+
+            return `
+              window.__EVERFREENOTE_MOBILE__ = {
+                devHost: ${JSON.stringify(devHost)},
+                supabaseUrl: ${JSON.stringify(supabaseUrl)},
+              };
+              true;
+            `
+        })()
+
         const handleMessage = (event: WebViewMessageEvent) => {
             try {
                 const { type, payload } = JSON.parse(event.nativeEvent.data) as { type?: string; payload?: unknown }
@@ -149,6 +168,11 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         }
                         break
                     }
+                    case 'IMAGE_ERROR': {
+                        const p = payload as { src?: unknown; message?: unknown }
+                        console.error('[EditorWebView] Image failed to load:', p?.src, p?.message)
+                        break
+                    }
                 }
             } catch (error) {
                 console.error('[EditorWebView] Failed to parse message:', error)
@@ -164,6 +188,8 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     javaScriptEnabled
                     domStorageEnabled
                     style={styles.webview}
+                    injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
+                    mixedContentMode="always"
                     onLoadStart={() => {
                         setLoadError(null)
                     }}

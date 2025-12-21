@@ -19,6 +19,58 @@ export default function EditorWebViewPage() {
   const chunkBuffers = React.useRef<Record<string, { baseType: string; total: number; chunks: string[] }>>({})
 
   useEffect(() => {
+    const getMobileConfig = () => {
+      const cfg = (window as unknown as { __EVERFREENOTE_MOBILE__?: { devHost?: string | null; supabaseUrl?: string | null } }).__EVERFREENOTE_MOBILE__
+      return {
+        devHost: cfg?.devHost ?? null,
+        supabaseUrl: cfg?.supabaseUrl ?? null,
+      }
+    }
+
+    const normalizeOrigin = (url: string | null) => {
+      if (!url) return null
+      try {
+        return new URL(url).origin
+      } catch {
+        return null
+      }
+    }
+
+    const rewriteHtmlImageSources = (html: string) => {
+      const { devHost, supabaseUrl } = getMobileConfig()
+      const supabaseOrigin = normalizeOrigin(supabaseUrl)
+      if (!devHost && !supabaseOrigin) return html
+
+      const container = document.createElement('div')
+      container.innerHTML = html
+
+      const imgs = Array.from(container.querySelectorAll('img'))
+      for (const img of imgs) {
+        const src = img.getAttribute('src')
+        if (!src) continue
+
+        // 1) Make relative Supabase Storage URLs absolute (common after ENEX conversions / sanitization)
+        if (supabaseOrigin && src.startsWith('/storage/v1/')) {
+          img.setAttribute('src', `${supabaseOrigin}${src}`)
+          continue
+        }
+
+        // 2) Replace localhost/127.0.0.1 URLs with the dev machine host (phone can't reach its own localhost)
+        try {
+          const url = new URL(src)
+          if (['localhost', '127.0.0.1', '0.0.0.0'].includes(url.hostname) && devHost) {
+            url.hostname = devHost
+            img.setAttribute('src', url.toString())
+            continue
+          }
+        } catch {
+          // Not an absolute URL; leave as-is.
+        }
+      }
+
+      return container.innerHTML
+    }
+
     const sendTextToNative = (type: string, text: string) => {
       if (!window.ReactNativeWebView) return
 
@@ -46,11 +98,12 @@ export default function EditorWebViewPage() {
     }
 
     const applySetContent = (html: string) => {
+      const rewritten = rewriteHtmlImageSources(html)
       suppressNextChange.current = true
       if (editorRef.current) {
-        editorRef.current.setContent(html)
+        editorRef.current.setContent(rewritten)
       } else {
-        setInitialContent(html)
+        setInitialContent(rewritten)
       }
     }
 
@@ -110,6 +163,29 @@ export default function EditorWebViewPage() {
     // Android WebView historically dispatches messages on `document` instead of `window`.
     document.addEventListener('message', handleMessage as unknown as EventListener)
 
+    // Surface broken image URLs to native for debugging.
+    // This helps catch cases like `localhost` URLs in stored note HTML.
+    let reported = 0
+    const maxReports = 5
+    const onErrorCapture = (event: Event) => {
+      if (!window.ReactNativeWebView) return
+      if (reported >= maxReports) return
+
+      const target = event.target
+      if (!(target instanceof HTMLImageElement)) return
+
+      const src = target.currentSrc || target.src || target.getAttribute('src') || ''
+      if (!src) return
+
+      reported += 1
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'IMAGE_ERROR',
+        payload: { src, message: 'img error' },
+      }))
+    }
+
+    window.addEventListener('error', onErrorCapture, true)
+
     // Notify React Native that page is ready
     if (window.ReactNativeWebView) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'READY' }))
@@ -118,6 +194,7 @@ export default function EditorWebViewPage() {
     return () => {
       window.removeEventListener('message', handleMessage)
       document.removeEventListener('message', handleMessage as unknown as EventListener)
+      window.removeEventListener('error', onErrorCapture, true)
     }
   }, [])
 
