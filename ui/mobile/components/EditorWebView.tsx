@@ -1,9 +1,9 @@
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View, ActivityIndicator, Text } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import Constants from 'expo-constants'
 import { getSupabaseConfig } from '@ui/mobile/adapters'
-import { colors } from '@ui/mobile/lib/theme'
+import { useTheme } from '@ui/mobile/providers'
 
 const chunkSizeChars = 30_000
 
@@ -27,11 +27,14 @@ type Props = {
 const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
     ({ initialContent = '', onContentChange, onReady, loadingFallback }, ref) => {
         const webViewRef = useRef<WebView>(null)
+        const { colors, colorScheme } = useTheme()
+        const styles = useMemo(() => createStyles(colors), [colors])
         const [isReady, setIsReady] = useState(false)
         const [loadError, setLoadError] = useState<string | null>(null)
         const pendingContent = useRef<string | null>(initialContent)
         const contentResolver = useRef<((html: string) => void) | null>(null)
         const pendingChunks = useRef<Record<string, { total: number; chunks: string[] }>>({})
+        const pendingTheme = useRef(colorScheme)
 
         const post = (message: { type: string; payload?: unknown }) => {
             webViewRef.current?.postMessage(JSON.stringify(message))
@@ -103,9 +106,19 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             }
 
             return `
+              (function() {
+                var theme = ${JSON.stringify(colorScheme)};
+                try { localStorage.setItem('everfreenote-theme', theme); } catch (e) {}
+                if (theme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              })();
               window.__EVERFREENOTE_MOBILE__ = {
                 devHost: ${JSON.stringify(devHost)},
                 supabaseUrl: ${JSON.stringify(supabaseUrl)},
+                theme: ${JSON.stringify(colorScheme)},
               };
               true;
             `
@@ -121,6 +134,9 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         if (pendingContent.current !== null) {
                             sendText('SET_CONTENT', pendingContent.current)
                             pendingContent.current = null
+                        }
+                        if (pendingTheme.current) {
+                            post({ type: 'SET_THEME', payload: pendingTheme.current })
                         }
                         setIsReady(true)
                         onReady?.()
@@ -181,6 +197,13 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             }
         }
 
+        useEffect(() => {
+            pendingTheme.current = colorScheme
+            if (isReady) {
+                post({ type: 'SET_THEME', payload: colorScheme })
+            }
+        }, [colorScheme, isReady])
+
         return (
             <View style={styles.container}>
                 <WebView
@@ -219,7 +242,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                 {!loadError && !isReady && (
                     <View style={loadingFallback ? styles.fallbackContainer : styles.loadingContainer}>
                         {loadingFallback ?? (
-                            <ActivityIndicator size="large" color={colors.light.primary} />
+                            <ActivityIndicator size="large" color={colors.primary} />
                         )}
                     </View>
                 )}
@@ -228,7 +251,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
     }
 )
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
     container: {
         flex: 1,
     },
@@ -237,33 +260,33 @@ const styles = StyleSheet.create({
     },
     loadingContainer: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: colors.light.background,
+        backgroundColor: colors.background,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 16,
     },
     fallbackContainer: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: colors.light.background,
+        backgroundColor: colors.background,
     },
     errorTitle: {
         fontSize: 16,
         fontFamily: 'Inter_700Bold',
-        color: colors.light.destructive,
+        color: colors.destructive,
         marginBottom: 8,
         textAlign: 'center',
     },
     errorSubtitle: {
         fontSize: 13,
         fontFamily: 'Inter_400Regular',
-        color: colors.light.mutedForeground,
+        color: colors.mutedForeground,
         marginBottom: 8,
         textAlign: 'center',
     },
     errorUrl: {
         fontSize: 12,
         fontFamily: 'Inter_400Regular',
-        color: colors.light.mutedForeground,
+        color: colors.mutedForeground,
         textAlign: 'center',
     },
 })

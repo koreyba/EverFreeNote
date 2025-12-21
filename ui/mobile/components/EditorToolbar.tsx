@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { ScrollView, Pressable, StyleSheet, View } from 'react-native'
 import {
     Bold,
@@ -11,25 +11,28 @@ import {
     Quote,
     Code
 } from 'lucide-react-native'
-import { colors } from '@ui/mobile/lib/theme'
+import { useTheme } from '@ui/mobile/providers'
 
 type Props = {
     onCommand: (method: string, args?: unknown[]) => void
 }
 
-const ToolbarButton = ({ icon: Icon, onPress }: { icon: React.ElementType, onPress: () => void }) => (
-    <Pressable
-        style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-        ]}
-        onPress={onPress}
-    >
-        <Icon size={20} color={colors.light.foreground} />
-    </Pressable>
-)
-
 export const EditorToolbar = ({ onCommand }: Props) => {
+    const { colors } = useTheme()
+    const styles = useMemo(() => createStyles(colors), [colors])
+
+    const ToolbarButton = ({ icon: Icon, onPress }: { icon: React.ElementType, onPress: () => void }) => (
+        <Pressable
+            style={({ pressed }) => [
+                styles.button,
+                pressed && styles.buttonPressed,
+            ]}
+            onPress={onPress}
+        >
+            <Icon size={20} color={colors.foreground} />
+        </Pressable>
+    )
+
     return (
         <View style={styles.container}>
             <ScrollView
@@ -54,14 +57,14 @@ export const EditorToolbar = ({ onCommand }: Props) => {
     )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
     container: {
         height: 48,
-        backgroundColor: colors.light.background,
+        backgroundColor: colors.background,
         borderTopWidth: 1,
-        borderTopColor: colors.light.border,
+        borderTopColor: colors.border,
         borderBottomWidth: 1,
-        borderBottomColor: colors.light.border,
+        borderBottomColor: colors.border,
     },
     scrollContent: {
         paddingHorizontal: 8,
@@ -76,12 +79,12 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     buttonPressed: {
-        backgroundColor: colors.light.accent,
+        backgroundColor: colors.accent,
     },
     divider: {
         width: 1,
         height: 24,
-        backgroundColor: colors.light.border,
+        backgroundColor: colors.border,
         marginHorizontal: 8,
     },
 })

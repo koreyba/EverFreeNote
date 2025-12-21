@@ -1,20 +1,22 @@
 import { View, Text, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
-import { useSupabase } from '@ui/mobile/providers'
-import { useState } from 'react'
+import { useSupabase, useTheme } from '@ui/mobile/providers'
+import { useMemo, useState } from 'react'
 import { featureFlags } from '@ui/mobile/featureFlags'
 import { AuthService } from '@core/services/auth'
 import { oauthAdapter } from '@ui/mobile/adapters'
 import { Button } from '@ui/mobile/components/ui'
-import { colors } from '@ui/mobile/lib/theme'
+import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 
 export default function LoginScreen() {
   const { client } = useSupabase()
+  const { colors } = useTheme()
   const router = useRouter()
   const [loadingGoogle, setLoadingGoogle] = useState(false)
   const [loadingTest, setLoadingTest] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const styles = useMemo(() => createStyles(colors), [colors])
   const loading = loadingGoogle || loadingTest
 
   const handleGoogleLogin = async () => {
@@ -62,6 +64,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
+      <ThemeToggle style={styles.themeToggle} />
       <Text style={styles.title}>EverFreeNote</Text>
       <Text style={styles.subtitle}>Ваши заметки всегда с вами</Text>
 
@@ -92,24 +95,24 @@ export default function LoginScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: colors.light.background,
+    backgroundColor: colors.background,
   },
   title: {
     fontSize: 32,
     fontFamily: 'Inter_700Bold',
-    color: colors.light.foreground,
+    color: colors.foreground,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
-    color: colors.light.mutedForeground,
+    color: colors.mutedForeground,
     marginBottom: 40,
   },
   button: {
@@ -123,8 +126,13 @@ const styles = StyleSheet.create({
   },
   error: {
     fontFamily: 'Inter_400Regular',
-    color: colors.light.destructive,
+    color: colors.destructive,
     marginBottom: 16,
     textAlign: 'center',
+  },
+  themeToggle: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
   },
 })

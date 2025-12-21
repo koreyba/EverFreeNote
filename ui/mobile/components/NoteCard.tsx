@@ -1,6 +1,7 @@
 import { Pressable, Text, StyleSheet } from 'react-native'
 import { format } from 'date-fns'
-import { colors } from '@ui/mobile/lib/theme'
+import { useTheme } from '@ui/mobile/providers'
+import { useMemo } from 'react'
 import type { Note } from '@core/types/domain'
 
 interface NoteCardProps {
@@ -9,6 +10,8 @@ interface NoteCardProps {
 }
 
 export function NoteCard({ note, onPress }: NoteCardProps) {
+  const { colors } = useTheme()
+  const styles = useMemo(() => createStyles(colors), [colors])
   const description = (note.description ?? '').replace(/<[^>]*>/g, '')
 
   return (
@@ -34,14 +37,14 @@ export function NoteCard({ note, onPress }: NoteCardProps) {
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   card: {
-    backgroundColor: colors.light.card,
+    backgroundColor: colors.card,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: colors.light.border,
+    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -49,24 +52,24 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardPressed: {
-    backgroundColor: colors.light.accent,
+    backgroundColor: colors.accent,
   },
   title: {
     fontSize: 18,
     fontFamily: 'Inter_700Bold',
-    color: colors.light.foreground,
+    color: colors.foreground,
     marginBottom: 6,
   },
   description: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
-    color: colors.light.mutedForeground,
+    color: colors.mutedForeground,
     marginBottom: 8,
     lineHeight: 20,
   },
   date: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
-    color: colors.light.mutedForeground,
+    color: colors.mutedForeground,
   },
 })

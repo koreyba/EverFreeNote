@@ -3,7 +3,7 @@ import { Stack } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { SupabaseProvider } from '@ui/mobile/providers'
+import { SupabaseProvider, ThemeProvider, useTheme } from '@ui/mobile/providers'
 import {
   useFonts,
   Inter_400Regular,
@@ -26,6 +26,11 @@ const queryClient = new QueryClient({
   },
 })
 
+function ThemedStatusBar() {
+  const { colorScheme } = useTheme()
+  return <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -47,8 +52,9 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <SupabaseProvider>
-        <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <SupabaseProvider>
+          <QueryClientProvider client={queryClient}>
           <Stack
             screenOptions={{
               headerShown: false,
@@ -66,9 +72,10 @@ export default function RootLayout() {
               }}
             />
           </Stack>
-          <StatusBar style="auto" />
-        </QueryClientProvider>
-      </SupabaseProvider>
+            <ThemedStatusBar />
+          </QueryClientProvider>
+        </SupabaseProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   )
 }

@@ -6,9 +6,8 @@ import { useSearch } from '@ui/mobile/hooks'
 import { useQueryClient } from '@tanstack/react-query'
 import { Search, X } from 'lucide-react-native'
 import type { Note } from '@core/types/domain'
-import { useSupabase } from '@ui/mobile/providers'
+import { useSupabase, useTheme } from '@ui/mobile/providers'
 import { addSearchHistoryItem, clearSearchHistory, getSearchHistory } from '@ui/mobile/services/searchHistory'
-import { colors } from '@ui/mobile/lib/theme'
 
 type SearchResultItem = Note & {
     snippet?: string | null
@@ -20,6 +19,8 @@ const stripHtml = (value: string) => value.replace(/<[^>]*>/g, '')
 export default function SearchScreen() {
     const router = useRouter()
     const queryClient = useQueryClient()
+    const { colors } = useTheme()
+    const styles = useMemo(() => createStyles(colors), [colors])
     const [query, setQuery] = useState('')
     const { data, isLoading } = useSearch(query)
     const { user } = useSupabase()
@@ -75,7 +76,7 @@ export default function SearchScreen() {
                 </Text>
             )
         }
-    }, [])
+    }, [styles])
 
     const renderItem = ({ item }: { item: SearchResultItem }) => (
         <Pressable
@@ -100,18 +101,18 @@ export default function SearchScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.searchBar}>
-                <Search size={20} color={colors.light.mutedForeground} style={styles.searchIcon} />
+                <Search size={20} color={colors.mutedForeground} style={styles.searchIcon} />
                 <TextInput
                     style={styles.input}
                     placeholder="Поиск заметок..."
-                    placeholderTextColor={colors.light.mutedForeground}
+                    placeholderTextColor={colors.mutedForeground}
                     value={query}
                     onChangeText={setQuery}
                     autoFocus
                 />
                 {query.length > 0 && (
                     <Pressable onPress={() => setQuery('')}>
-                        <X size={20} color={colors.light.mutedForeground} />
+                        <X size={20} color={colors.mutedForeground} />
                     </Pressable>
                 )}
             </View>
@@ -148,7 +149,7 @@ export default function SearchScreen() {
 
             {isLoading && (
                 <View style={styles.center}>
-                    <ActivityIndicator color={colors.light.primary} />
+                    <ActivityIndicator color={colors.primary} />
                 </View>
             )}
 
@@ -170,15 +171,15 @@ export default function SearchScreen() {
     )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.light.background,
+        backgroundColor: colors.background,
     },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.light.muted,
+        backgroundColor: colors.muted,
         margin: 16,
         paddingHorizontal: 12,
         borderRadius: 8,
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         fontFamily: 'Inter_400Regular',
-        color: colors.light.foreground,
+        color: colors.foreground,
     },
     list: {
         padding: 16,
@@ -199,25 +200,25 @@ const styles = StyleSheet.create({
     card: {
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: colors.light.border,
+        borderBottomColor: colors.border,
     },
     cardPressed: {
-        backgroundColor: colors.light.accent,
+        backgroundColor: colors.accent,
     },
     title: {
         fontSize: 16,
         fontFamily: 'Inter_600SemiBold',
-        color: colors.light.foreground,
+        color: colors.foreground,
         marginBottom: 4,
     },
     snippet: {
         fontSize: 14,
         fontFamily: 'Inter_400Regular',
-        color: colors.light.mutedForeground,
+        color: colors.mutedForeground,
     },
     snippetHighlight: {
-        color: colors.light.primary,
-        backgroundColor: colors.light.secondary,
+        color: colors.primary,
+        backgroundColor: colors.secondary,
         fontFamily: 'Inter_500Medium',
     },
     center: {
@@ -225,17 +226,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     empty: {
-        color: colors.light.mutedForeground,
+        color: colors.mutedForeground,
         fontSize: 16,
         fontFamily: 'Inter_400Regular',
     },
     historyContainer: {
         marginHorizontal: 16,
         marginBottom: 8,
-        backgroundColor: colors.light.card,
+        backgroundColor: colors.card,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: colors.light.border,
+        borderColor: colors.border,
         overflow: 'hidden',
     },
     historyHeader: {
@@ -245,30 +246,30 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: colors.light.border,
+        borderBottomColor: colors.border,
     },
     historyTitle: {
         fontSize: 14,
         fontFamily: 'Inter_700Bold',
-        color: colors.light.foreground,
+        color: colors.foreground,
     },
     historyClear: {
         fontSize: 13,
         fontFamily: 'Inter_600SemiBold',
-        color: colors.light.primary,
+        color: colors.primary,
     },
     historyItem: {
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: colors.light.muted,
+        borderBottomColor: colors.muted,
     },
     historyItemPressed: {
-        backgroundColor: colors.light.accent,
+        backgroundColor: colors.accent,
     },
     historyText: {
         fontFamily: 'Inter_400Regular',
-        color: colors.light.foreground,
+        color: colors.foreground,
         fontSize: 14,
     },
 })
