@@ -2,8 +2,10 @@ import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-nati
 import { useRouter } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
 import { useNotes, useCreateNote } from '@ui/mobile/hooks'
-import { format } from 'date-fns'
 import { Plus } from 'lucide-react-native'
+import { NoteCard } from '@ui/mobile/components/NoteCard'
+import { Button } from '@ui/mobile/components/ui'
+import { colors } from '@ui/mobile/lib/theme'
 import type { Note } from '@core/types/domain'
 
 export default function NotesScreen() {
@@ -22,26 +24,16 @@ export default function NotesScreen() {
   }
 
   const renderNote = ({ item }: { item: Note }) => (
-    <Pressable
-      style={styles.noteCard}
+    <NoteCard
+      note={item}
       onPress={() => router.push(`/note/${item.id}`)}
-    >
-      <Text style={styles.noteTitle} numberOfLines={1}>
-        {item.title ?? 'Без названия'}
-      </Text>
-      <Text style={styles.noteDescription} numberOfLines={2}>
-        {(item.description ?? '').replace(/<[^>]*>/g, '')}
-      </Text>
-      <Text style={styles.noteDate}>
-        {format(new Date(item.updated_at), 'dd.MM.yyyy HH:mm')}
-      </Text>
-    </Pressable>
+    />
   )
 
   if (isLoading && notes.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#4285F4" />
+        <ActivityIndicator size="large" color={colors.light.primary} />
       </View>
     )
   }
@@ -50,9 +42,9 @@ export default function NotesScreen() {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorText}>Ошибка загрузки заметок</Text>
-        <Pressable style={styles.retryButton} onPress={() => void refetch()}>
-          <Text style={styles.retryButtonText}>Повторить</Text>
-        </Pressable>
+        <Button onPress={() => void refetch()}>
+          Повторить
+        </Button>
       </View>
     )
   }
@@ -60,11 +52,13 @@ export default function NotesScreen() {
   if (!isLoading && !error && notes.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyTitle}>????? ??? ??? ???????</Text>
-        <Text style={styles.emptySubtitle}>???????? ?????? ?????? ??????? ??? ?????? ?????.</Text>
-        <Pressable style={styles.primaryButton} onPress={handleCreateNote}>
-          <Text style={styles.primaryButtonText}>??????? ???????</Text>
-        </Pressable>
+        <Text style={styles.emptyTitle}>Пока нет заметок</Text>
+        <Text style={styles.emptySubtitle}>
+          Создайте первую заметку, чтобы начать работу.
+        </Text>
+        <Button onPress={handleCreateNote}>
+          Создать заметку
+        </Button>
       </View>
     )
   }
@@ -82,7 +76,7 @@ export default function NotesScreen() {
         refreshing={isLoading}
       />
       <Pressable style={styles.fab} onPress={handleCreateNote}>
-        <Plus size={32} color="#fff" />
+        <Plus size={28} color={colors.light.primaryForeground} />
       </Pressable>
     </View>
   )
@@ -91,86 +85,37 @@ export default function NotesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.light.background,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: colors.light.background,
   },
   list: {
     padding: 16,
   },
-  noteCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  noteTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 6,
-  },
-  noteDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  noteDate: {
-    fontSize: 12,
-    color: '#999',
-  },
   errorText: {
     fontSize: 16,
-    color: '#666',
+    fontFamily: 'Inter_400Regular',
+    color: colors.light.mutedForeground,
     marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#4285F4',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
+    fontFamily: 'Inter_700Bold',
+    color: colors.light.foreground,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#666',
+    fontFamily: 'Inter_400Regular',
+    color: colors.light.mutedForeground,
     marginBottom: 16,
     textAlign: 'center',
-  },
-  primaryButton: {
-    backgroundColor: '#4285F4',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   fab: {
     position: 'absolute',
@@ -179,7 +124,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4285F4',
+    backgroundColor: colors.light.primary,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,

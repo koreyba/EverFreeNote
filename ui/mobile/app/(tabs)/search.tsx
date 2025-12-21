@@ -7,6 +7,7 @@ import { Search, X } from 'lucide-react-native'
 import type { Note } from '@core/types/domain'
 import { useSupabase } from '@ui/mobile/providers'
 import { addSearchHistoryItem, clearSearchHistory, getSearchHistory } from '@ui/mobile/services/searchHistory'
+import { colors } from '@ui/mobile/lib/theme'
 
 type SearchResultItem = Note & {
     snippet?: string | null
@@ -76,7 +77,10 @@ export default function SearchScreen() {
 
     const renderItem = ({ item }: { item: SearchResultItem }) => (
         <Pressable
-            style={styles.card}
+            style={({ pressed }) => [
+                styles.card,
+                pressed && styles.cardPressed,
+            ]}
             onPress={() => router.push(`/note/${item.id}`)}
         >
             <Text style={styles.title} numberOfLines={1}>{item.title ?? 'Без названия'}</Text>
@@ -91,17 +95,18 @@ export default function SearchScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.searchBar}>
-                <Search size={20} color="#999" style={styles.searchIcon} />
+                <Search size={20} color={colors.light.mutedForeground} style={styles.searchIcon} />
                 <TextInput
                     style={styles.input}
                     placeholder="Поиск заметок..."
+                    placeholderTextColor={colors.light.mutedForeground}
                     value={query}
                     onChangeText={setQuery}
                     autoFocus
                 />
                 {query.length > 0 && (
                     <Pressable onPress={() => setQuery('')}>
-                        <X size={20} color="#999" />
+                        <X size={20} color={colors.light.mutedForeground} />
                     </Pressable>
                 )}
             </View>
@@ -109,20 +114,23 @@ export default function SearchScreen() {
             {query.trim().length === 0 && history.length > 0 && (
                 <View style={styles.historyContainer}>
                     <View style={styles.historyHeader}>
-                        <Text style={styles.historyTitle}>??????? ???????</Text>
+                        <Text style={styles.historyTitle}>История поиска</Text>
                         <Pressable
                             onPress={() => {
                                 if (!user?.id) return
                                 void clearSearchHistory(user.id).then(() => setHistory([]))
                             }}
                         >
-                            <Text style={styles.historyClear}>???????</Text>
+                            <Text style={styles.historyClear}>Очистить</Text>
                         </Pressable>
                     </View>
                     {history.map((item) => (
                         <Pressable
                             key={item}
-                            style={styles.historyItem}
+                            style={({ pressed }) => [
+                                styles.historyItem,
+                                pressed && styles.historyItemPressed,
+                            ]}
                             onPress={() => setQuery(item)}
                         >
                             <Text style={styles.historyText} numberOfLines={1}>
@@ -135,7 +143,7 @@ export default function SearchScreen() {
 
             {isLoading && (
                 <View style={styles.center}>
-                    <ActivityIndicator color="#4285F4" />
+                    <ActivityIndicator color={colors.light.primary} />
                 </View>
             )}
 
@@ -160,12 +168,12 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: colors.light.background,
     },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: colors.light.muted,
         margin: 16,
         paddingHorizontal: 12,
         borderRadius: 8,
@@ -177,7 +185,8 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         fontSize: 16,
-        color: '#333',
+        fontFamily: 'Inter_400Regular',
+        color: colors.light.foreground,
     },
     list: {
         padding: 16,
@@ -185,37 +194,43 @@ const styles = StyleSheet.create({
     card: {
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: colors.light.border,
+    },
+    cardPressed: {
+        backgroundColor: colors.light.accent,
     },
     title: {
         fontSize: 16,
-        fontWeight: '600',
-        color: '#333',
+        fontFamily: 'Inter_600SemiBold',
+        color: colors.light.foreground,
         marginBottom: 4,
     },
     snippet: {
         fontSize: 14,
-        color: '#666',
+        fontFamily: 'Inter_400Regular',
+        color: colors.light.mutedForeground,
     },
     snippetHighlight: {
-        color: '#111',
-        backgroundColor: '#ffeb3b',
+        color: colors.light.primary,
+        backgroundColor: colors.light.secondary,
+        fontFamily: 'Inter_500Medium',
     },
     center: {
         marginTop: 32,
         alignItems: 'center',
     },
     empty: {
-        color: '#999',
+        color: colors.light.mutedForeground,
         fontSize: 16,
+        fontFamily: 'Inter_400Regular',
     },
     historyContainer: {
         marginHorizontal: 16,
         marginBottom: 8,
-        backgroundColor: '#fff',
+        backgroundColor: colors.light.card,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: colors.light.border,
         overflow: 'hidden',
     },
     historyHeader: {
@@ -225,26 +240,30 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: colors.light.border,
     },
     historyTitle: {
         fontSize: 14,
-        fontWeight: '700',
-        color: '#333',
+        fontFamily: 'Inter_700Bold',
+        color: colors.light.foreground,
     },
     historyClear: {
         fontSize: 13,
-        fontWeight: '600',
-        color: '#4285F4',
+        fontFamily: 'Inter_600SemiBold',
+        color: colors.light.primary,
     },
     historyItem: {
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: '#f3f3f3',
+        borderBottomColor: colors.light.muted,
+    },
+    historyItemPressed: {
+        backgroundColor: colors.light.accent,
     },
     historyText: {
-        color: '#333',
+        fontFamily: 'Inter_400Regular',
+        color: colors.light.foreground,
         fontSize: 14,
     },
 })

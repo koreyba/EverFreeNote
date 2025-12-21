@@ -3,6 +3,7 @@ import { StyleSheet, View, ActivityIndicator, Text } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import Constants from 'expo-constants'
 import { getSupabaseConfig } from '@ui/mobile/adapters'
+import { colors } from '@ui/mobile/lib/theme'
 
 const chunkSizeChars = 30_000
 
@@ -216,7 +217,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                 )}
                 {!loadError && !isReady && (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color="#4285F4" />
+                        <ActivityIndicator size="large" color={colors.light.primary} />
                     </View>
                 )}
             </View>
@@ -233,27 +234,29 @@ const styles = StyleSheet.create({
     },
     loadingContainer: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: '#fff',
+        backgroundColor: colors.light.background,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 16,
     },
     errorTitle: {
         fontSize: 16,
-        fontWeight: '700',
-        color: '#d32f2f',
+        fontFamily: 'Inter_700Bold',
+        color: colors.light.destructive,
         marginBottom: 8,
         textAlign: 'center',
     },
     errorSubtitle: {
         fontSize: 13,
-        color: '#555',
+        fontFamily: 'Inter_400Regular',
+        color: colors.light.mutedForeground,
         marginBottom: 8,
         textAlign: 'center',
     },
     errorUrl: {
         fontSize: 12,
-        color: '#777',
+        fontFamily: 'Inter_400Regular',
+        color: colors.light.mutedForeground,
         textAlign: 'center',
     },
 })
