@@ -1,10 +1,12 @@
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSupabase } from '@ui/mobile/providers'
 import { useState } from 'react'
 import { featureFlags } from '@ui/mobile/featureFlags'
 import { AuthService } from '@core/services/auth'
 import { oauthAdapter } from '@ui/mobile/adapters'
+import { Button } from '@ui/mobile/components/ui'
+import { colors } from '@ui/mobile/lib/theme'
 
 export default function LoginScreen() {
   const { client } = useSupabase()
@@ -65,30 +67,26 @@ export default function LoginScreen() {
 
       {error && <Text style={styles.error}>{error}</Text>}
 
-      <Pressable
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={() => void handleGoogleLogin()}
+      <Button
+        size="lg"
+        loading={loadingGoogle}
         disabled={loading}
+        onPress={() => void handleGoogleLogin()}
+        style={styles.button}
       >
-        {loadingGoogle ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Войти через Google</Text>
-        )}
-      </Pressable>
+        Войти через Google
+      </Button>
 
       {featureFlags.testAuth && (
-        <Pressable
-          style={[styles.testButton, loading && styles.buttonDisabled]}
-          onPress={() => void handleTestLogin()}
+        <Button
+          variant="outline"
+          loading={loadingTest}
           disabled={loading}
+          onPress={() => void handleTestLogin()}
+          style={styles.testButton}
         >
-          {loadingTest ? (
-            <ActivityIndicator color="#4285F4" />
-          ) : (
-            <Text style={styles.testButtonText}>Тестовый вход</Text>
-          )}
-        </Pressable>
+          Тестовый вход
+        </Button>
       )}
     </View>
   )
@@ -100,47 +98,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: colors.light.background,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontFamily: 'Inter_700Bold',
+    color: colors.light.foreground,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    fontFamily: 'Inter_400Regular',
+    color: colors.light.mutedForeground,
     marginBottom: 40,
   },
   button: {
-    backgroundColor: '#4285F4',
     paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    minWidth: 200,
   },
   testButton: {
     marginTop: 16,
     paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#4285F4',
-  },
-  testButtonText: {
-    color: '#4285F4',
-    fontSize: 16,
-    fontWeight: '600',
+    minWidth: 200,
   },
   error: {
-    color: '#f44336',
+    fontFamily: 'Inter_400Regular',
+    color: colors.light.destructive,
     marginBottom: 16,
     textAlign: 'center',
   },

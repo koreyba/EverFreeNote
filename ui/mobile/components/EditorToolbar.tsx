@@ -1,5 +1,5 @@
 import React from 'react'
-import { ScrollView, TouchableOpacity, StyleSheet, View } from 'react-native'
+import { ScrollView, Pressable, StyleSheet, View } from 'react-native'
 import {
     Bold,
     Italic,
@@ -11,15 +11,22 @@ import {
     Quote,
     Code
 } from 'lucide-react-native'
+import { colors } from '@ui/mobile/lib/theme'
 
 type Props = {
     onCommand: (method: string, args?: unknown[]) => void
 }
 
 const ToolbarButton = ({ icon: Icon, onPress }: { icon: React.ElementType, onPress: () => void }) => (
-    <TouchableOpacity style={styles.button} onPress={onPress}>
-        <Icon size={20} color="#333" />
-    </TouchableOpacity>
+    <Pressable
+        style={({ pressed }) => [
+            styles.button,
+            pressed && styles.buttonPressed,
+        ]}
+        onPress={onPress}
+    >
+        <Icon size={20} color={colors.light.foreground} />
+    </Pressable>
 )
 
 export const EditorToolbar = ({ onCommand }: Props) => {
@@ -50,11 +57,11 @@ export const EditorToolbar = ({ onCommand }: Props) => {
 const styles = StyleSheet.create({
     container: {
         height: 48,
-        backgroundColor: '#fff',
+        backgroundColor: colors.light.background,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: colors.light.border,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: colors.light.border,
     },
     scrollContent: {
         paddingHorizontal: 8,
@@ -66,12 +73,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginHorizontal: 2,
-        borderRadius: 4,
+        borderRadius: 8,
+    },
+    buttonPressed: {
+        backgroundColor: colors.light.accent,
     },
     divider: {
         width: 1,
         height: 24,
-        backgroundColor: '#eee',
+        backgroundColor: colors.light.border,
         marginHorizontal: 8,
     },
 })
