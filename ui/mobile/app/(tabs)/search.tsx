@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
 import { useSearch } from '@ui/mobile/hooks'
+import { useQueryClient } from '@tanstack/react-query'
 import { Search, X } from 'lucide-react-native'
 import type { Note } from '@core/types/domain'
 import { useSupabase } from '@ui/mobile/providers'
@@ -18,6 +19,7 @@ const stripHtml = (value: string) => value.replace(/<[^>]*>/g, '')
 
 export default function SearchScreen() {
     const router = useRouter()
+    const queryClient = useQueryClient()
     const [query, setQuery] = useState('')
     const { data, isLoading } = useSearch(query)
     const { user } = useSupabase()
@@ -81,7 +83,10 @@ export default function SearchScreen() {
                 styles.card,
                 pressed && styles.cardPressed,
             ]}
-            onPress={() => router.push(`/note/${item.id}`)}
+            onPress={() => {
+                queryClient.setQueryData(['note', item.id], item)
+                router.push(`/note/${item.id}`)
+            }}
         >
             <Text style={styles.title} numberOfLines={1}>{item.title ?? 'Без названия'}</Text>
             {renderSnippet(item) ?? (

@@ -21,10 +21,11 @@ type Props = {
     initialContent?: string
     onContentChange?: (html: string) => void
     onReady?: () => void
+    loadingFallback?: React.ReactNode
 }
 
 const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
-    ({ initialContent = '', onContentChange, onReady }, ref) => {
+    ({ initialContent = '', onContentChange, onReady, loadingFallback }, ref) => {
         const webViewRef = useRef<WebView>(null)
         const [isReady, setIsReady] = useState(false)
         const [loadError, setLoadError] = useState<string | null>(null)
@@ -117,12 +118,12 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
 
                 switch (type) {
                     case 'READY':
-                        setIsReady(true)
-                        onReady?.()
                         if (pendingContent.current !== null) {
                             sendText('SET_CONTENT', pendingContent.current)
                             pendingContent.current = null
                         }
+                        setIsReady(true)
+                        onReady?.()
                         break
                     case 'CONTENT_CHANGED':
                         onContentChange?.(String(payload ?? ''))
@@ -216,8 +217,10 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     </View>
                 )}
                 {!loadError && !isReady && (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={colors.light.primary} />
+                    <View style={loadingFallback ? styles.fallbackContainer : styles.loadingContainer}>
+                        {loadingFallback ?? (
+                            <ActivityIndicator size="large" color={colors.light.primary} />
+                        )}
                     </View>
                 )}
             </View>
@@ -238,6 +241,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 16,
+    },
+    fallbackContainer: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: colors.light.background,
     },
     errorTitle: {
         fontSize: 16,

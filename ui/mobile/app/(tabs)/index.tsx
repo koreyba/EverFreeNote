@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-nati
 import { useRouter } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
 import { useNotes, useCreateNote } from '@ui/mobile/hooks'
+import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react-native'
 import { NoteCard } from '@ui/mobile/components/NoteCard'
 import { Button } from '@ui/mobile/components/ui'
@@ -10,6 +11,7 @@ import type { Note } from '@core/types/domain'
 
 export default function NotesScreen() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { data, isLoading, error, refetch } = useNotes()
   const { mutate: createNote } = useCreateNote()
 
@@ -18,15 +20,21 @@ export default function NotesScreen() {
   const handleCreateNote = () => {
     createNote({ title: 'Новая заметка', description: '', tags: [] }, {
       onSuccess: (newNote) => {
+        queryClient.setQueryData(['note', newNote.id], newNote)
         router.push(`/note/${newNote.id}`)
       }
     })
   }
 
+  const handleOpenNote = (note: Note) => {
+    queryClient.setQueryData(['note', note.id], note)
+    router.push(`/note/${note.id}`)
+  }
+
   const renderNote = ({ item }: { item: Note }) => (
     <NoteCard
       note={item}
-      onPress={() => router.push(`/note/${item.id}`)}
+      onPress={() => handleOpenNote(item)}
     />
   )
 
