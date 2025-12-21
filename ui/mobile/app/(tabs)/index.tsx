@@ -12,10 +12,10 @@ import type { Note } from '@core/types/domain'
 export default function NotesScreen() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { data, isLoading, error, refetch } = useNotes()
+  const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isRefetching } = useNotes()
   const { mutate: createNote } = useCreateNote()
 
-  const notes = data?.notes ?? []
+  const notes = data?.pages.flatMap((page) => page.notes) ?? []
 
   const handleCreateNote = () => {
     createNote({ title: 'Новая заметка', description: '', tags: [] }, {
@@ -81,7 +81,19 @@ export default function NotesScreen() {
         // @ts-expect-error FlashList types mismatch in some versions
         estimatedItemSize={96}
         onRefresh={() => void refetch()}
-        refreshing={isLoading}
+        refreshing={isRefetching && !isFetchingNextPage}
+        onEndReached={() => {
+          if (!hasNextPage || isFetchingNextPage) return
+          void fetchNextPage()
+        }}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color={colors.light.primary} />
+            </View>
+          ) : null
+        }
       />
       <Pressable style={styles.fab} onPress={handleCreateNote}>
         <Plus size={28} color={colors.light.primaryForeground} />
@@ -140,5 +152,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+  },
+  footerLoader: {
+    paddingVertical: 16,
   },
 })

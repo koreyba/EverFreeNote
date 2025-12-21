@@ -1,10 +1,17 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query'
 import { useSupabase } from '@ui/mobile/providers'
 import { NoteService } from '@core/services/notes'
 import { mobileSyncService } from '@ui/mobile/services/sync'
 import { databaseService } from '@ui/mobile/services/database'
 import { useNetworkStatus } from './useNetworkStatus'
 import type { Note } from '@core/types/domain'
+
+type NotesPage = {
+  notes: Note[]
+  totalCount: number
+  hasMore: boolean
+  nextCursor?: number
+}
 
 const generateUuidV4 = (): string => {
   const cryptoObj = (globalThis as unknown as { crypto?: { randomUUID?: () => string } }).crypto
@@ -19,7 +26,6 @@ const generateUuidV4 = (): string => {
 }
 
 export function useNotes(options: {
-  page?: number
   pageSize?: number
   tag?: string | null
   searchQuery?: string
@@ -28,14 +34,30 @@ export function useNotes(options: {
   const noteService = new NoteService(client)
   const isOnline = useNetworkStatus()
 
-  return useQuery({
-    queryKey: ['notes', user?.id, options],
-    queryFn: async () => {
+  const pageSize = options.pageSize ?? 50
+  const keyOptions = {
+    pageSize,
+    tag: options.tag ?? null,
+    searchQuery: options.searchQuery ?? '',
+  }
+
+  const queryKey = ['notes', user?.id, keyOptions] as const
+
+  return useInfiniteQuery<NotesPage, Error, InfiniteData<NotesPage>, typeof queryKey, number>({
+    queryKey,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    queryFn: async ({ pageParam }) => {
       if (!user?.id) throw new Error('User not authenticated')
 
       try {
         if (isOnline) {
-          const result = await noteService.getNotes(user.id, options)
+          const result = await noteService.getNotes(user.id, {
+            page: pageParam,
+            pageSize,
+            tag: options.tag,
+            searchQuery: options.searchQuery,
+          })
           // Cache results in local DB
           if (result.notes.length > 0) {
             await databaseService.saveNotes(result.notes)
@@ -46,13 +68,22 @@ export function useNotes(options: {
         console.warn('Failed to fetch from Supabase, falling back to local DB:', error)
       }
 
-      // Fallback to local DB
+      if (pageParam !== 0) {
+        return {
+          notes: [] as Note[],
+          totalCount: 0,
+          hasMore: false,
+          nextCursor: undefined,
+        }
+      }
+
+      // Fallback to local DB (first page only)
       const localNotes = await databaseService.getLocalNotes(user.id)
       return {
         notes: localNotes as Note[],
         totalCount: localNotes.length,
         hasMore: false,
-        nextCursor: undefined
+        nextCursor: undefined,
       }
     },
     enabled: !!user?.id,
