@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import {
   Pressable,
   Text,
@@ -15,7 +16,7 @@ interface ButtonProps extends Omit<PressableProps, 'style'> {
   variant?: ButtonVariant
   size?: ButtonSize
   loading?: boolean
-  children: React.ReactNode
+  children: ReactNode
   style?: ViewStyle
   textStyle?: TextStyle
 }
@@ -83,17 +84,18 @@ export function Button({
 }: ButtonProps) {
   const variantStyle = variantStyles[variant]
   const sizeStyle = sizeStyles[size]
+  const isDisabled = disabled === true || loading === true
 
   return (
     <Pressable
-      disabled={disabled || loading}
+      disabled={isDisabled}
       style={({ pressed }) => [
         {
           borderRadius: 8,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: disabled ? 0.5 : 1,
+          opacity: isDisabled ? 0.5 : 1,
         },
         variantStyle.base,
         sizeStyle.container,

@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import RichTextEditor, { type RichTextEditorHandle } from '@/ui/web/components/RichTextEditor'
+import RichTextEditorWebView, { type RichTextEditorWebViewHandle } from '@/ui/web/components/RichTextEditorWebView'
 
 declare global {
   interface Window {
@@ -14,7 +14,7 @@ declare global {
 
 export default function EditorWebViewPage() {
   const [initialContent, setInitialContent] = useState('')
-  const editorRef = React.useRef<RichTextEditorHandle>(null)
+  const editorRef = React.useRef<RichTextEditorWebViewHandle>(null)
   const suppressNextChange = React.useRef(false)
   const chunkBuffers = React.useRef<Record<string, { baseType: string; total: number; chunks: string[] }>>({})
 
@@ -233,11 +233,10 @@ export default function EditorWebViewPage() {
 
   return (
     <div className="h-screen w-screen overflow-auto bg-background">
-      <RichTextEditor
+      <RichTextEditorWebView
         ref={editorRef}
         initialContent={initialContent}
         onContentChange={handleChange}
-        hideToolbar={true}
       />
     </div>
   )

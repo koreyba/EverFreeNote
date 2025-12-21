@@ -27,6 +27,11 @@ This is useful when:
 ## Large notes
 Very large note bodies are transferred between the native app and the editor page using chunked `postMessage` messages to avoid platform message-size limits.
 
+## Perceived loading time
+In **Expo Go / dev** the embedded editor can take noticeable time to become interactive because it is a `WebView` loading a web page (and in dev, the web bundles are typically not cached aggressively).
+
+To make opening a note feel instant, the mobile note screen shows a fast **plain-text preview** of the note body while the editor `WebView` is still loading. The editor becomes editable once the `WebView` is ready.
+
 ## Images
 If images show in web but are broken on the phone, the stored `<img src="...">` may point to `localhost` / `127.0.0.1` (reachable only from your dev machine browser, not from the phone).
 

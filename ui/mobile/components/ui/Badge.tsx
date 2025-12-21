@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { colors } from '@ui/mobile/lib/theme'
 
@@ -5,7 +6,7 @@ type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline'
 
 interface BadgeProps {
   variant?: BadgeVariant
-  children: React.ReactNode
+  children: ReactNode
   style?: ViewStyle
   textStyle?: TextStyle
 }
