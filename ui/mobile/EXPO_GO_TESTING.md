@@ -26,3 +26,8 @@ This is useful when:
 
 ## Large notes
 Very large note bodies are transferred between the native app and the editor page using chunked `postMessage` messages to avoid platform message-size limits.
+
+## Images
+If images show in web but are broken on the phone, the stored `<img src="...">` may point to `localhost` / `127.0.0.1` (reachable only from your dev machine browser, not from the phone).
+
+The mobile editor page rewrites common `localhost` image URLs to the Expo dev host automatically, and it can also rewrite relative `/storage/v1/...` URLs to the configured Supabase origin.
