@@ -1,7 +1,13 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react'
-import { StyleSheet, View, ActivityIndicator } from 'react-native'
+import { StyleSheet, View, ActivityIndicator, Text } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import Constants from 'expo-constants'
+
+const chunkSizeChars = 30_000
+
+type ChunkStartPayload = { transferId: string; total: number }
+type ChunkPayload = { transferId: string; index: number; chunk: string }
+type ChunkEndPayload = { transferId: string }
 
 export type EditorWebViewHandle = {
     setContent: (html: string) => void
@@ -19,30 +25,47 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
     ({ initialContent = '', onContentChange, onReady }, ref) => {
         const webViewRef = useRef<WebView>(null)
         const [isReady, setIsReady] = useState(false)
+        const [loadError, setLoadError] = useState<string | null>(null)
         const pendingContent = useRef<string | null>(initialContent)
         const contentResolver = useRef<((html: string) => void) | null>(null)
+        const pendingChunks = useRef<Record<string, { total: number; chunks: string[] }>>({})
+
+        const post = (message: { type: string; payload?: unknown }) => {
+            webViewRef.current?.postMessage(JSON.stringify(message))
+        }
+
+        const sendText = (type: string, text: string) => {
+            if (text.length <= chunkSizeChars) {
+                post({ type, payload: text })
+                return
+            }
+
+            const transferId = `${type}_${Date.now()}_${Math.random().toString(16).slice(2)}`
+            const total = Math.ceil(text.length / chunkSizeChars)
+            post({ type: `${type}_CHUNK_START`, payload: { transferId, total } satisfies ChunkStartPayload })
+            for (let index = 0; index < total; index++) {
+                const start = index * chunkSizeChars
+                const chunk = text.slice(start, start + chunkSizeChars)
+                post({ type: `${type}_CHUNK`, payload: { transferId, index, chunk } satisfies ChunkPayload })
+            }
+            post({ type: `${type}_CHUNK_END`, payload: { transferId } satisfies ChunkEndPayload })
+        }
 
         useImperativeHandle(ref, () => ({
             setContent(html: string) {
                 if (isReady) {
-                    webViewRef.current?.postMessage(
-                        JSON.stringify({ type: 'SET_CONTENT', payload: html })
-                    )
+                    sendText('SET_CONTENT', html)
                 } else {
                     pendingContent.current = html
                 }
             },
             runCommand(method: string, args: unknown[] = []) {
-                webViewRef.current?.postMessage(
-                    JSON.stringify({ type: 'COMMAND', payload: { method, args } })
-                )
+                post({ type: 'COMMAND', payload: { method, args } })
             },
             async getContent() {
                 return new Promise<string>((resolve) => {
                     contentResolver.current = resolve
-                    webViewRef.current?.postMessage(
-                        JSON.stringify({ type: 'GET_CONTENT' })
-                    )
+                    post({ type: 'GET_CONTENT' })
                     // Add timeout just in case
                     setTimeout(() => {
                         if (contentResolver.current === resolve) {
@@ -54,39 +77,83 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             },
         }))
 
+        const editorUrl = (() => {
+            const configured = process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL?.trim()
+            if (configured) return configured
+
+            if (__DEV__) {
+                const host = Constants.expoConfig?.hostUri?.split(':').shift()
+                if (host && host.length > 0) return `http://${host}:3000/editor-webview`
+                return 'http://localhost:3000/editor-webview'
+            }
+
+            return 'https://everfreenote.app/editor-webview'
+        })()
+
         const handleMessage = (event: WebViewMessageEvent) => {
             try {
-                const { type, payload } = JSON.parse(event.nativeEvent.data)
+                const { type, payload } = JSON.parse(event.nativeEvent.data) as { type?: string; payload?: unknown }
+                if (!type) return
 
                 switch (type) {
                     case 'READY':
                         setIsReady(true)
                         onReady?.()
                         if (pendingContent.current !== null) {
-                            webViewRef.current?.postMessage(
-                                JSON.stringify({ type: 'SET_CONTENT', payload: pendingContent.current })
-                            )
+                            sendText('SET_CONTENT', pendingContent.current)
                             pendingContent.current = null
                         }
                         break
                     case 'CONTENT_CHANGED':
-                        onContentChange?.(payload)
+                        onContentChange?.(String(payload ?? ''))
                         break
                     case 'CONTENT_RESPONSE':
                         if (contentResolver.current) {
-                            contentResolver.current(payload)
+                            contentResolver.current(String(payload ?? ''))
                             contentResolver.current = null
                         }
                         break
+                    case 'CONTENT_CHANGED_CHUNK_START':
+                    case 'CONTENT_RESPONSE_CHUNK_START': {
+                        const p = payload as Partial<ChunkStartPayload>
+                        if (!p.transferId || typeof p.total !== 'number') return
+                        pendingChunks.current[p.transferId] = { total: p.total, chunks: [] }
+                        break
+                    }
+                    case 'CONTENT_CHANGED_CHUNK':
+                    case 'CONTENT_RESPONSE_CHUNK': {
+                        const p = payload as Partial<ChunkPayload>
+                        if (!p.transferId || typeof p.index !== 'number' || typeof p.chunk !== 'string') return
+                        const entry = pendingChunks.current[p.transferId]
+                        if (!entry) return
+                        entry.chunks[p.index] = p.chunk
+                        break
+                    }
+                    case 'CONTENT_CHANGED_CHUNK_END':
+                    case 'CONTENT_RESPONSE_CHUNK_END': {
+                        const p = payload as Partial<ChunkEndPayload>
+                        if (!p.transferId) return
+                        const entry = pendingChunks.current[p.transferId]
+                        if (!entry) return
+
+                        const text = entry.chunks.join('')
+                        delete pendingChunks.current[p.transferId]
+
+                        if (type === 'CONTENT_CHANGED_CHUNK_END') {
+                            onContentChange?.(text)
+                        } else if (type === 'CONTENT_RESPONSE_CHUNK_END') {
+                            if (contentResolver.current) {
+                                contentResolver.current(text)
+                                contentResolver.current = null
+                            }
+                        }
+                        break
+                    }
                 }
             } catch (error) {
                 console.error('[EditorWebView] Failed to parse message:', error)
             }
         }
-
-        const editorUrl = __DEV__
-            ? `http://${Constants.expoConfig?.hostUri?.split(':').shift()}:3000/editor-webview`
-            : 'https://everfreenote.app/editor-webview'
 
         return (
             <View style={styles.container}>
@@ -97,8 +164,31 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     javaScriptEnabled
                     domStorageEnabled
                     style={styles.webview}
+                    onLoadStart={() => {
+                        setLoadError(null)
+                    }}
+                    onError={(syntheticEvent) => {
+                        const description = syntheticEvent.nativeEvent.description
+                        setLoadError(description || 'WebView failed to load editor page')
+                    }}
+                    onHttpError={(syntheticEvent) => {
+                        const statusCode = syntheticEvent.nativeEvent.statusCode
+                        const description = syntheticEvent.nativeEvent.description
+                        setLoadError(`HTTP ${statusCode}: ${description || 'Failed to load editor page'}`)
+                    }}
                 />
-                {!isReady && (
+                {!!loadError && (
+                    <View style={styles.loadingContainer}>
+                        <Text style={styles.errorTitle}>Editor failed to load</Text>
+                        <Text style={styles.errorSubtitle} numberOfLines={3}>
+                            {loadError}
+                        </Text>
+                        <Text style={styles.errorUrl} numberOfLines={2}>
+                            {editorUrl}
+                        </Text>
+                    </View>
+                )}
+                {!loadError && !isReady && (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color="#4285F4" />
                     </View>
@@ -120,6 +210,25 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
+        paddingHorizontal: 16,
+    },
+    errorTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#d32f2f',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    errorSubtitle: {
+        fontSize: 13,
+        color: '#555',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    errorUrl: {
+        fontSize: 12,
+        color: '#777',
+        textAlign: 'center',
     },
 })
 
