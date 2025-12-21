@@ -4,7 +4,8 @@ import { useLocalSearchParams, Stack } from 'expo-router'
 import { useNote, useUpdateNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
 import { EditorToolbar } from '@ui/mobile/components/EditorToolbar'
-import { colors } from '@ui/mobile/lib/theme'
+import { useTheme } from '@ui/mobile/providers'
+import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 
 const decodeHtmlEntities = (value: string) => {
   return value
@@ -39,6 +40,8 @@ const htmlToPlainText = (html: string) => {
 }
 
 function NoteBodyPreview({ html }: { html: string }) {
+  const { colors } = useTheme()
+  const styles = useMemo(() => createPreviewStyles(colors), [colors])
   const text = useMemo(() => htmlToPlainText(html), [html])
 
   if (!text) {
@@ -64,6 +67,8 @@ export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { data: note, isLoading, error } = useNote(id)
   const { mutate: updateNote } = useUpdateNote()
+  const { colors } = useTheme()
+  const styles = useMemo(() => createStyles(colors), [colors])
 
   const editorRef = useRef<EditorWebViewHandle>(null)
   const [title, setTitle] = useState('')
@@ -99,7 +104,7 @@ export default function NoteEditorScreen() {
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.light.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     )
   }
@@ -117,14 +122,21 @@ export default function NoteEditorScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
-      <Stack.Screen options={{ title: 'Редактирование' }} />
+      <Stack.Screen
+        options={{
+          title: 'Редактирование',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.foreground,
+          headerRight: () => <ThemeToggle style={styles.headerToggle} />,
+        }}
+      />
       <View style={styles.header}>
         <TextInput
           style={styles.titleInput}
           value={title}
           onChangeText={handleTitleChange}
           placeholder="Название заметки"
-          placeholderTextColor={colors.light.mutedForeground}
+          placeholderTextColor={colors.mutedForeground}
         />
       </View>
       <EditorToolbar onCommand={handleToolbarCommand} />
@@ -138,33 +150,39 @@ export default function NoteEditorScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.light.background,
+    backgroundColor: colors.background,
   },
   header: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
+    borderBottomColor: colors.border,
   },
   titleInput: {
     fontSize: 22,
     fontFamily: 'Inter_700Bold',
-    color: colors.light.foreground,
+    color: colors.foreground,
     padding: 0,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.light.background,
+    backgroundColor: colors.background,
   },
   errorText: {
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
-    color: colors.light.destructive,
+    color: colors.destructive,
   },
+  headerToggle: {
+    marginRight: 12,
+  },
+})
+
+const createPreviewStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   previewScroll: {
     flex: 1,
     paddingHorizontal: 16,
@@ -176,7 +194,7 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
-    color: colors.light.foreground,
+    color: colors.foreground,
     lineHeight: 22,
   },
   previewEmpty: {
@@ -188,7 +206,7 @@ const styles = StyleSheet.create({
   previewEmptyText: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
-    color: colors.light.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: 'center',
   },
 })

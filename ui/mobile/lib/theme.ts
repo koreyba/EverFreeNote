@@ -140,9 +140,10 @@ export const radius = {
 } as const
 
 // Export a helper to get current theme colors
-export type ThemeMode = 'light' | 'dark'
+export type ColorScheme = 'light' | 'dark'
+export type ThemeMode = ColorScheme | 'system'
 
-export const getThemeColors = (mode: ThemeMode) => colors[mode]
+export const getThemeColors = (scheme: ColorScheme) => colors[scheme]
 
 // Default export for convenience
 export default {

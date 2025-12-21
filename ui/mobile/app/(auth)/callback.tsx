@@ -1,11 +1,14 @@
 import { useEffect } from 'react'
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { useSupabase } from '@ui/mobile/providers'
+import { useSupabase, useTheme } from '@ui/mobile/providers'
+import { useMemo } from 'react'
 
 export default function CallbackScreen() {
   const router = useRouter()
   const { client } = useSupabase()
+  const { colors } = useTheme()
+  const styles = useMemo(() => createStyles(colors), [colors])
   const params = useLocalSearchParams()
 
   useEffect(() => {
@@ -45,22 +48,22 @@ export default function CallbackScreen() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#4285F4" />
+      <ActivityIndicator size="large" color={colors.primary} />
       <Text style={styles.text}>Завершение входа...</Text>
     </View>
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   text: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: colors.mutedForeground,
   },
 })

@@ -7,7 +7,7 @@ import {
   type TextStyle,
   ActivityIndicator,
 } from 'react-native'
-import { colors } from '@ui/mobile/lib/theme'
+import { useTheme } from '@ui/mobile/providers'
 
 type ButtonVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost'
 type ButtonSize = 'default' | 'sm' | 'lg' | 'icon'
@@ -21,37 +21,39 @@ interface ButtonProps extends Omit<PressableProps, 'style'> {
   textStyle?: TextStyle
 }
 
-const variantStyles: Record<ButtonVariant, { base: ViewStyle; pressed: ViewStyle; text: TextStyle }> = {
+const getVariantStyles = (
+  colors: ReturnType<typeof useTheme>['colors']
+): Record<ButtonVariant, { base: ViewStyle; pressed: ViewStyle; text: TextStyle }> => ({
   default: {
-    base: { backgroundColor: colors.light.primary },
-    pressed: { backgroundColor: '#15803d' }, // green-700
-    text: { color: colors.light.primaryForeground },
+    base: { backgroundColor: colors.primary },
+    pressed: { backgroundColor: colors.ring },
+    text: { color: colors.primaryForeground },
   },
   destructive: {
-    base: { backgroundColor: colors.light.destructive },
-    pressed: { backgroundColor: '#b91c1c' }, // red-700
-    text: { color: colors.light.destructiveForeground },
+    base: { backgroundColor: colors.destructive },
+    pressed: { backgroundColor: colors.destructive },
+    text: { color: colors.destructiveForeground },
   },
   outline: {
     base: {
       backgroundColor: 'transparent',
       borderWidth: 1,
-      borderColor: colors.light.border,
+      borderColor: colors.border,
     },
-    pressed: { backgroundColor: colors.light.accent },
-    text: { color: colors.light.foreground },
+    pressed: { backgroundColor: colors.accent },
+    text: { color: colors.foreground },
   },
   secondary: {
-    base: { backgroundColor: colors.light.secondary },
-    pressed: { backgroundColor: '#dcfce7' }, // green-100
-    text: { color: colors.light.secondaryForeground },
+    base: { backgroundColor: colors.secondary },
+    pressed: { backgroundColor: colors.accent },
+    text: { color: colors.secondaryForeground },
   },
   ghost: {
     base: { backgroundColor: 'transparent' },
-    pressed: { backgroundColor: colors.light.accent },
-    text: { color: colors.light.foreground },
+    pressed: { backgroundColor: colors.accent },
+    text: { color: colors.foreground },
   },
-}
+})
 
 const sizeStyles: Record<ButtonSize, { container: ViewStyle; text: TextStyle }> = {
   default: {
@@ -82,6 +84,8 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  const { colors } = useTheme()
+  const variantStyles = getVariantStyles(colors)
   const variantStyle = variantStyles[variant]
   const sizeStyle = sizeStyles[size]
   const isDisabled = disabled === true || loading === true

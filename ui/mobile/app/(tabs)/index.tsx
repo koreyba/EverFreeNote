@@ -6,12 +6,15 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react-native'
 import { NoteCard } from '@ui/mobile/components/NoteCard'
 import { Button } from '@ui/mobile/components/ui'
-import { colors } from '@ui/mobile/lib/theme'
+import { useTheme } from '@ui/mobile/providers'
+import { useMemo } from 'react'
 import type { Note } from '@core/types/domain'
 
 export default function NotesScreen() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { colors } = useTheme()
+  const styles = useMemo(() => createStyles(colors), [colors])
   const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isRefetching } = useNotes()
   const { mutate: createNote } = useCreateNote()
 
@@ -41,7 +44,7 @@ export default function NotesScreen() {
   if (isLoading && notes.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.light.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     )
   }
@@ -90,29 +93,29 @@ export default function NotesScreen() {
         ListFooterComponent={
           isFetchingNextPage ? (
             <View style={styles.footerLoader}>
-              <ActivityIndicator size="small" color={colors.light.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : null
         }
       />
       <Pressable style={styles.fab} onPress={handleCreateNote}>
-        <Plus size={28} color={colors.light.primaryForeground} />
+        <Plus size={28} color={colors.primaryForeground} />
       </Pressable>
     </View>
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.light.background,
+    backgroundColor: colors.background,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: colors.light.background,
+    backgroundColor: colors.background,
   },
   list: {
     padding: 16,
@@ -120,20 +123,20 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
-    color: colors.light.mutedForeground,
+    color: colors.mutedForeground,
     marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
     fontFamily: 'Inter_700Bold',
-    color: colors.light.foreground,
+    color: colors.foreground,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
-    color: colors.light.mutedForeground,
+    color: colors.mutedForeground,
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -144,7 +147,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.light.primary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,

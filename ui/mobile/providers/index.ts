@@ -3,3 +3,4 @@
  */
 
 export { SupabaseProvider, useSupabase, useAuth } from './SupabaseProvider'
+export { ThemeProvider, useTheme } from './ThemeProvider'

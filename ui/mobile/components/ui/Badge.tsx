@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native'
-import { colors } from '@ui/mobile/lib/theme'
+import { useTheme } from '@ui/mobile/providers'
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline'
 
@@ -11,30 +11,34 @@ interface BadgeProps {
   textStyle?: TextStyle
 }
 
-const variantStyles: Record<BadgeVariant, { container: ViewStyle; text: TextStyle }> = {
+const getVariantStyles = (
+  colors: ReturnType<typeof useTheme>['colors']
+): Record<BadgeVariant, { container: ViewStyle; text: TextStyle }> => ({
   default: {
-    container: { backgroundColor: colors.light.primary },
-    text: { color: colors.light.primaryForeground },
+    container: { backgroundColor: colors.primary },
+    text: { color: colors.primaryForeground },
   },
   secondary: {
-    container: { backgroundColor: colors.light.secondary },
-    text: { color: colors.light.secondaryForeground },
+    container: { backgroundColor: colors.secondary },
+    text: { color: colors.secondaryForeground },
   },
   destructive: {
-    container: { backgroundColor: colors.light.destructive },
-    text: { color: colors.light.destructiveForeground },
+    container: { backgroundColor: colors.destructive },
+    text: { color: colors.destructiveForeground },
   },
   outline: {
     container: {
       backgroundColor: 'transparent',
       borderWidth: 1,
-      borderColor: colors.light.border,
+      borderColor: colors.border,
     },
-    text: { color: colors.light.foreground },
+    text: { color: colors.foreground },
   },
-}
+})
 
 export function Badge({ variant = 'default', children, style, textStyle }: BadgeProps) {
+  const { colors } = useTheme()
+  const variantStyles = getVariantStyles(colors)
   const variantStyle = variantStyles[variant]
 
   return (

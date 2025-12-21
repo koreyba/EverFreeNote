@@ -20,10 +20,27 @@ export default function EditorWebViewPage() {
 
   useEffect(() => {
     const getMobileConfig = () => {
-      const cfg = (window as unknown as { __EVERFREENOTE_MOBILE__?: { devHost?: string | null; supabaseUrl?: string | null } }).__EVERFREENOTE_MOBILE__
+      const cfg = (window as unknown as { __EVERFREENOTE_MOBILE__?: { devHost?: string | null; supabaseUrl?: string | null; theme?: string | null } }).__EVERFREENOTE_MOBILE__
       return {
         devHost: cfg?.devHost ?? null,
         supabaseUrl: cfg?.supabaseUrl ?? null,
+        theme: cfg?.theme ?? null,
+      }
+    }
+
+    const applyTheme = (theme: string | null) => {
+      if (theme !== 'dark' && theme !== 'light') return
+
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+
+      try {
+        localStorage.setItem('everfreenote-theme', theme)
+      } catch {
+        // Ignore storage errors in restricted contexts.
       }
     }
 
@@ -107,6 +124,11 @@ export default function EditorWebViewPage() {
       }
     }
 
+    const { theme } = getMobileConfig()
+    if (theme) {
+      applyTheme(theme)
+    }
+
     // Listen for messages from React Native
     const handleMessage = (event: MessageEvent) => {
       try {
@@ -124,6 +146,8 @@ export default function EditorWebViewPage() {
 
         if (type === 'SET_CONTENT') {
           applySetContent(String(payload ?? ''))
+        } else if (type === 'SET_THEME') {
+          applyTheme(String(payload ?? ''))
         } else if (type === 'GET_CONTENT') {
           if (editorRef.current) {
             sendTextToNative('CONTENT_RESPONSE', editorRef.current.getHTML())

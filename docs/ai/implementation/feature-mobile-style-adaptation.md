@@ -24,6 +24,7 @@ description: Technical implementation notes, patterns, and code guidelines for m
 ### Core Features
 - **Design Tokens**: Every color used should be defined in `tailwind.config.js`. Avoid `bg-[#ffffff]` in components if `bg-background` can be used.
 - **Component Standardization**: All buttons should use the `Button` component, not `Pressable` with ad-hoc styles.
+- **Theme Mode**: Mobile uses `ThemeProvider` with persisted `mode` (`light`/`dark`/`system`) and `useTheme()` for colors. Avoid importing static `colors` in screens.
 
 ### Patterns & Best Practices
 - **Consistency**: Use the same spacing scale (p-2, p-4, etc.) as the web where possible.
