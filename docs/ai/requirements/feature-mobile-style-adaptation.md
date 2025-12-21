@@ -13,16 +13,39 @@ description: Clarify the problem space, gather requirements, and define success 
 - Interactive elements (buttons, cards, inputs) do not follow a unified design system.
 - Lack of a single source of truth for styles in the mobile app makes it difficult to maintain and update the design consistently.
 
+### Current State Analysis (Audited)
+
+**Web Version** (source of truth):
+- Uses Tailwind CSS v4 with OKLCH color system
+- Primary color: `oklch(60% 0.18 145)` (Emerald green)
+- Font: Inter (Google Fonts)
+- CSS variables defined in `@theme` block in `app/globals.css`
+- Full dark mode support
+
+**Mobile Version** (current issues):
+- Uses NativeWind v4.2.1 with Tailwind v3.4.19
+- `tailwind.config.js` is empty (no theme customization)
+- Colors are hardcoded in components:
+  - Primary buttons: `#4285F4` (Google Blue - NOT emerald!)
+  - Text: `#333`, `#666`, `#999`
+  - Borders: `#eee`
+  - Background: `#fff`
+- No design tokens or theme file
+- No dark mode support
+- Font: System default (Inter not configured)
+
 ## Goals & Objectives
 **What do we want to achieve?**
 
-- **Primary goals**: 
+- **Primary goals**:
   - Align mobile app aesthetics (colors, typography, spacing, components) with the web version.
   - Implement a centralized design system for the mobile app using Tailwind CSS (NativeWind).
   - Adopt the "Emerald & Dark Gray" color palette from the web.
+  - Replace all hardcoded hex colors (`#4285F4`, `#333`, etc.) with theme tokens.
 - **Secondary goals**:
   - Improve UI/UX consistency across all primary screens (Login, Note List, Note Editor, Search).
   - Ensure reusability of style tokens and components.
+  - Add dark mode support (matching web).
 - **Non-goals**:
   - Changing the core functionality of the mobile app.
   - Implementing full feature parity where mobile-specific constraints exist.
@@ -38,22 +61,53 @@ description: Clarify the problem space, gather requirements, and define success 
 **How will we know when we're done?**
 
 - **Acceptance criteria**:
-  - Mobile app uses the same color palette as the web (Primary: `oklch(60% 0.18 145)`, Secondary: `oklch(97% 0.01 145)`, Background: `oklch(100% 0 0)`).
+  - Mobile app uses the same color palette as the web:
+    - Primary: Emerald `oklch(60% 0.18 145)` → HEX `#16a34a` (or closest NativeWind-compatible equivalent)
+    - Secondary: `oklch(97% 0.01 145)` → HEX `#f0fdf4`
+    - Background: `oklch(100% 0 0)` → `#ffffff`
+    - Foreground: `oklch(20% 0.01 256)` → `#1f2937`
   - Typography matches the web (Inter font family, line-height body: 1.75, heading: 1.25).
   - Key components (Button, NoteCard, Input, Header) are visually identical (or adapted for mobile) to their web counterparts.
   - Search highlighting matches web styles (`mark` styling).
   - Accessibility: All new color combinations must meet WCAG AA contrast ratios.
-  - No hardcoded hex codes for colors in the components; all colors come from the Tailwind theme (using CSS variables or a reliable conversion strategy for `oklch`).
+  - No hardcoded hex codes for colors in the components; all colors come from the Tailwind theme.
+  - Dark mode toggle available (optional for MVP, but architecture should support it).
 
 ## Constraints & Assumptions
 **What limitations do we need to work within?**
 
-- **Technical constraints**: NativeWind v4 limitations compared to full Tailwind (e.g., some CSS properties aren't supported in React Native).
-- **Assumptions**: The web design system is the "source of truth".
+- **Technical constraints**:
+  - NativeWind v4 uses Tailwind v3 syntax (not v4 `@theme` blocks)
+  - OKLCH colors need conversion to HEX/RGB for React Native
+  - Some CSS properties aren't supported in React Native (e.g., `color-mix()`)
+- **Assumptions**:
+  - The web design system (`app/globals.css`) is the "source of truth"
+  - We will create a `lib/theme.ts` file with color constants converted from OKLCH
+
+## Implementation Approach
+
+### Phase 1: Theme Foundation
+1. Create `lib/theme.ts` with converted color values from web
+2. Update `tailwind.config.js` with semantic color names
+3. Update `app/global.css` with CSS variables (if NativeWind supports)
+
+### Phase 2: Component Migration
+Files to update (replace hardcoded colors with theme tokens):
+- `app/(tabs)/index.tsx` - Notes list, FAB button
+- `app/(tabs)/search.tsx` - Search results
+- `app/note/[id].tsx` - Note editor screen
+- `components/EditorToolbar.tsx` - Toolbar buttons
+- `components/EditorWebView.tsx` - Loading/error states
+
+### Phase 3: Typography
+1. Configure Inter font in Expo
+2. Apply consistent font sizes and line-heights
 
 ## Questions & Open Items
-**What do we still need to clarify?**
+**Resolved:**
+- ✅ Dark mode: Yes, architecture should support it (web has full dark mode)
+- ✅ TipTap editor styles: WebView uses web CSS, so should inherit web styles automatically
 
-- Do we need to support a dark mode in mobile if web has it?
-- Are there specific mobile-only UI states (e.g., active/pressed states) that need unique styling?
-- Should the TipTap editor styles inside the WebView be synchronized with the native mobile design system?
+**Open:**
+- Mobile-specific pressed/active states - use React Native's `Pressable` style callbacks
+- Performance impact of loading Inter font on mobile
