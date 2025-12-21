@@ -31,6 +31,32 @@ function ThemedStatusBar() {
   return <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 }
 
+function ThemedStack() {
+  const { colors } = useTheme()
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        contentStyle: {
+          backgroundColor: colors.background,
+        },
+      }}
+    >
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="note/[id]"
+        options={{
+          headerShown: true,
+          presentation: 'modal',
+        }}
+      />
+    </Stack>
+  )
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -55,23 +81,7 @@ export default function RootLayout() {
       <ThemeProvider>
         <SupabaseProvider>
           <QueryClientProvider client={queryClient}>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: 'slide_from_right',
-            }}
-          >
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="note/[id]"
-              options={{
-                headerShown: true,
-                title: 'Редактирование',
-                presentation: 'modal',
-              }}
-            />
-          </Stack>
+            <ThemedStack />
             <ThemedStatusBar />
           </QueryClientProvider>
         </SupabaseProvider>
@@ -79,3 +89,5 @@ export default function RootLayout() {
     </SafeAreaProvider>
   )
 }
+
+
