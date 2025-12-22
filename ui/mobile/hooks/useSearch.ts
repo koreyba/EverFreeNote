@@ -86,13 +86,13 @@ export function useSearch(query: string, options: { tag?: string | null } = {}) 
 
             // Offline or error fallback: Use SQLite FTS5
             if (!trimmed && tag) {
-                const notes = await databaseService.getLocalNotes(user.id)
-                const filtered = notes.filter((note) => note.tags?.includes(tag))
-                const total = filtered.length
-                const paged = filtered.slice(offset, offset + PAGE_SIZE)
-                const hasMore = offset + paged.length < total
+                const { notes, total } = await databaseService.getLocalNotesByTag(user.id, tag, {
+                    limit: PAGE_SIZE,
+                    offset,
+                })
+                const hasMore = offset + notes.length < total
                 return {
-                    results: paged as SearchResultItem[],
+                    results: notes as SearchResultItem[],
                     total,
                     hasMore,
                     nextCursor: hasMore ? pageParam + 1 : undefined,
@@ -103,12 +103,12 @@ export function useSearch(query: string, options: { tag?: string | null } = {}) 
             const results = await databaseService.searchNotes(trimmed, user.id, {
                 limit: PAGE_SIZE,
                 offset,
+                tag,
             })
-            const filteredResults = tag ? results.filter((note) => note.tags?.includes(tag)) : results
             const baseHasMore = results.length === PAGE_SIZE
             return {
-                results: filteredResults as SearchResultItem[],
-                total: filteredResults.length,
+                results: results as SearchResultItem[],
+                total: offset + results.length,
                 hasMore: baseHasMore,
                 nextCursor: baseHasMore ? pageParam + 1 : undefined,
                 method: 'local_fts',

@@ -27,7 +27,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### Phase 3: Integration & Polish
 - [x] Task 3.1: Add tag display and filter in search results (Notes: search results render TagList; TagFilterBar added; search uses paginated loading)
-- [x] Task 3.2: Add tag filter interactions (tap chip to filter, clear filter) (Notes: tag taps route to search with tag param; Clear Tags removes filter; search uses tag-aware query)
+- [x] Task 3.2: Add tag filter interactions (tap chip to filter, clear filter) (Notes: tag taps route to search with tag param; Clear Tags removes filter; search uses tag-aware query and offline note_tags table)
 - [x] Task 3.3: UI polish for long/many tags and empty states (Notes: maxVisible + overflow count; TagChip truncation; empty state shown for tag-only searches)
 
 ## Dependencies
