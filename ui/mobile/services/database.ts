@@ -17,6 +17,13 @@ type LocalNote = Note & {
 
 export class DatabaseService {
     private db: SQLite.SQLiteDatabase | null = null
+    private writeQueue: Promise<void> = Promise.resolve()
+
+    private enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+        const run = this.writeQueue.then(task, task)
+        this.writeQueue = run.then(() => undefined, () => undefined)
+        return run
+    }
 
     async init() {
         if (this.db) return this.db
@@ -161,25 +168,36 @@ export class DatabaseService {
     }
 
     async saveNotes(notes: LocalNote[]) {
-        const db = await this.init()
-        for (const note of notes) {
-            // Skip notes without user_id to avoid constraint violations
-            if (!note.user_id) {
-                console.warn(`[DatabaseService] Skipping note ${note.id} because user_id is missing`);
-                continue;
-            }
+        return this.enqueueWrite(async () => {
+            const db = await this.init()
+            if (notes.length === 0) return
 
-            const tagsJson = typeof note.tags === 'string' ? note.tags : JSON.stringify(note.tags ?? [])
-            const isSynced = typeof note.is_synced === 'number' ? note.is_synced : 1
-            const isDeleted = typeof note.is_deleted === 'number' ? note.is_deleted : 0
+            await db.execAsync('BEGIN')
+            try {
+                for (const note of notes) {
+                    // Skip notes without user_id to avoid constraint violations
+                    if (!note.user_id) {
+                        console.warn(`[DatabaseService] Skipping note ${note.id} because user_id is missing`);
+                        continue;
+                    }
 
-            await db.runAsync(
-                `INSERT OR REPLACE INTO notes (id, title, description, tags, user_id, created_at, updated_at, is_synced, is_deleted) 
+                    const tagsJson = typeof note.tags === 'string' ? note.tags : JSON.stringify(note.tags ?? [])
+                    const isSynced = typeof note.is_synced === 'number' ? note.is_synced : 1
+                    const isDeleted = typeof note.is_deleted === 'number' ? note.is_deleted : 0
+
+                    await db.runAsync(
+                        `INSERT OR REPLACE INTO notes (id, title, description, tags, user_id, created_at, updated_at, is_synced, is_deleted) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [note.id, note.title ?? '', note.description ?? '', tagsJson, note.user_id, note.created_at, note.updated_at, isSynced, isDeleted]
-            )
-            await this.replaceNoteTags(note.id, note.tags, db)
-        }
+                        [note.id, note.title ?? '', note.description ?? '', tagsJson, note.user_id, note.created_at, note.updated_at, isSynced, isDeleted]
+                    )
+                    await this.replaceNoteTags(note.id, note.tags, db)
+                }
+                await db.execAsync('COMMIT')
+            } catch (error) {
+                await db.execAsync('ROLLBACK')
+                throw error
+            }
+        })
     }
 
     async getLocalNotes(userId: string) {
@@ -282,12 +300,13 @@ export class DatabaseService {
         const db = await this.init()
         const limit = options.limit ?? 50
         const offset = options.offset ?? 0
+        const trimmed = query.trim()
         const tag = options.tag && options.tag.trim().length > 0 ? options.tag : null
         const tagJoin = tag ? 'JOIN note_tags nt ON nt.note_id = n.id' : ''
         const tagWhere = tag ? 'AND nt.tag = ?' : ''
         const params = tag
-            ? [query, userId, tag, limit, offset]
-            : [query, userId, limit, offset]
+            ? [trimmed, userId, tag, limit, offset]
+            : [trimmed, userId, limit, offset]
         const rows = await db.getAllAsync<LocalNoteRow & { snippet: string | null; rank: number }>(
             `SELECT n.*, 
               snippet(notes_search, -1, '<mark>', '</mark>', '...', 10) as snippet,
@@ -301,6 +320,30 @@ export class DatabaseService {
             LIMIT ? OFFSET ?`,
             params
         )
+
+        if (rows.length === 0 && trimmed.length > 0) {
+            const like = `%${trimmed}%`
+            const fallbackParams = tag
+                ? [userId, tag, like, like, limit, offset]
+                : [userId, like, like, limit, offset]
+            const fallbackRows = await db.getAllAsync<LocalNoteRow>(
+                `SELECT n.*
+                 FROM notes n
+                 ${tagJoin}
+                 WHERE n.user_id = ? AND n.is_deleted = 0
+                 ${tagWhere}
+                 AND (n.title LIKE ? OR n.description LIKE ?)
+                 ORDER BY n.updated_at DESC
+                 LIMIT ? OFFSET ?`,
+                fallbackParams
+            )
+
+            return fallbackRows.map((r) => ({
+                ...this.mapRowToNote(r),
+                snippet: null,
+                rank: null,
+            }))
+        }
 
         return rows.map((r) => ({
             ...this.mapRowToNote(r),
