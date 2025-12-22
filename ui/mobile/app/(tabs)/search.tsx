@@ -8,14 +8,13 @@ import { Search, X } from 'lucide-react-native'
 import type { Note } from '@core/types/domain'
 import { useSupabase, useTheme } from '@ui/mobile/providers'
 import { addSearchHistoryItem, clearSearchHistory, getSearchHistory } from '@ui/mobile/services/searchHistory'
-import { TagFilterBar, TagList } from '@ui/mobile/components/tags'
+import { TagFilterBar } from '@ui/mobile/components/tags'
+import { NoteCard } from '@ui/mobile/components/NoteCard'
 
 type SearchResultItem = Note & {
     snippet?: string | null
     headline?: string | null
 }
-
-const stripHtml = (value: string) => value.replace(/<[^>]*>/g, '')
 
 export default function SearchScreen() {
     const router = useRouter()
@@ -73,66 +72,16 @@ export default function SearchScreen() {
 
     const results = data?.pages.flatMap((page) => page.results) ?? []
 
-    const renderSnippet = useMemo(() => {
-        return (item: SearchResultItem) => {
-            const raw = item.headline ?? item.snippet ?? item.description ?? ''
-            if (!raw) return null
-
-            const parts = raw.split(/(<mark>|<\/mark>)/g)
-            let highlighted = false
-
-            return (
-                <Text style={styles.snippet} numberOfLines={2}>
-                    {parts.map((part, index) => {
-                        if (part === '<mark>') {
-                            highlighted = true
-                            return null
-                        }
-                        if (part === '</mark>') {
-                            highlighted = false
-                            return null
-                        }
-
-                        const clean = stripHtml(part)
-                        if (!clean) return null
-                        return (
-                            <Text key={index} style={highlighted ? styles.snippetHighlight : undefined}>
-                                {clean}
-                            </Text>
-                        )
-                    })}
-                </Text>
-            )
-        }
-    }, [styles])
-
     const renderItem = ({ item }: { item: SearchResultItem }) => (
-        <Pressable
-            style={({ pressed }) => [
-                styles.card,
-                pressed && styles.cardPressed,
-            ]}
+        <NoteCard
+            note={item}
+            variant="search"
             onPress={() => {
-                queryClient.setQueryData(['note', item.id], item)
+                queryClient.setQueryData(["note", item.id], item)
                 router.push(`/note/${item.id}`)
             }}
-        >
-            <Text style={styles.title} numberOfLines={1}>{item.title ?? 'Без названия'}</Text>
-            {renderSnippet(item) ?? (
-                <Text style={styles.snippet} numberOfLines={2}>
-                    {stripHtml(item.description ?? '')}
-                </Text>
-            )}
-            {!!item.tags?.length && (
-                <TagList
-                    tags={item.tags}
-                    onTagPress={handleTagPress}
-                    maxVisible={5}
-                    showOverflowCount
-                    style={styles.tagList}
-                />
-            )}
-        </Pressable>
+            onTagPress={handleTagPress}
+        />
     )
 
     return (
@@ -257,33 +206,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     list: {
         padding: 16,
     },
-    card: {
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    cardPressed: {
-        backgroundColor: colors.accent,
-    },
-    title: {
-        fontSize: 16,
-        fontFamily: 'Inter_600SemiBold',
-        color: colors.foreground,
-        marginBottom: 4,
-    },
-    snippet: {
-        fontSize: 14,
-        fontFamily: 'Inter_400Regular',
-        color: colors.mutedForeground,
-    },
-    snippetHighlight: {
-        color: colors.primary,
-        backgroundColor: colors.secondary,
-        fontFamily: 'Inter_500Medium',
-    },
-    tagList: {
-        marginTop: 8,
-    },
     footerLoader: {
         paddingVertical: 16,
         alignItems: 'center',
@@ -340,3 +262,5 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
         fontSize: 14,
     },
 })
+
+

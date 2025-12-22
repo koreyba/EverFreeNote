@@ -18,6 +18,7 @@ description: Clarify the problem space, gather requirements, and define success 
 
 - Primary: Parity with web tags (view, add, remove, filter) on mobile.
 - Primary: Show tags in note list cards, note detail, and search results.
+- Primary: Limit tag display in list/search cards to 5 chips with an overflow count for the rest.
 - Primary: Make tags tappable to filter notes by tag.
 - Primary: Only one active tag filter at a time (single-tag mode).
 - Primary: Paginate tag-filtered and search results on mobile.
