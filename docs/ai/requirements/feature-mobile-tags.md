@@ -20,6 +20,7 @@ description: Clarify the problem space, gather requirements, and define success 
 - Primary: Show tags in note list cards, note detail, and search results.
 - Primary: Make tags tappable to filter notes by tag.
 - Primary: Only one active tag filter at a time (single-tag mode).
+- Primary: Paginate tag-filtered and search results on mobile.
 - Secondary: Keep interactions fast and consistent with mobile UI patterns.
 - Secondary: Reuse existing core tag mechanisms without backend changes.
 - Non-goal: Modify core data model or storage.
@@ -45,6 +46,7 @@ description: Clarify the problem space, gather requirements, and define success 
 - Tapping a tag applies a filter and the list updates correctly.
 - Only one tag filter can be active at a time; selecting a different tag replaces the filter.
 - A visible "Clear Tags" control resets the filter and restores all notes.
+- Tag-filtered and search results load additional pages on scroll.
 - Tag behavior matches the web app for the same notes.
 - No crashes or major regressions in note list scrolling or search.
 
@@ -56,11 +58,10 @@ description: Clarify the problem space, gather requirements, and define success 
 - Use existing note update flows for tag persistence.
 - Assume tags are already stored with notes in the core model.
 - Match mobile web UI behaviors where possible (chip style, clear filter control, search placeholder hinting the active tag).
+- Tag filter state is local to the search screen route (not persisted across sessions).
+- Tags are trimmed on input; duplicate tags are prevented case-insensitively while preserving the original casing.
 
 ## Questions & Open Items
 **What do we still need to clarify?**
 
-- Should tag filters persist across screens/sessions?
-- Should tags be normalized (case/trim) the same way as web, and where is that logic?
 - Is there a maximum tag count/length we should enforce in the UI?
-- When tapping a tag inside a note detail, should it navigate to the list/search with that filter, or filter locally?

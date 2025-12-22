@@ -34,10 +34,15 @@ export default function NotesScreen() {
     router.push(`/note/${note.id}`)
   }
 
+  const handleTagPress = (tag: string) => {
+    router.push({ pathname: '/(tabs)/search', params: { tag } })
+  }
+
   const renderNote = ({ item }: { item: Note }) => (
     <NoteCard
       note={item}
       onPress={() => handleOpenNote(item)}
+      onTagPress={handleTagPress}
     />
   )
 

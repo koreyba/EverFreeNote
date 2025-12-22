@@ -1,6 +1,6 @@
 import { View, TextInput, StyleSheet, ActivityIndicator, Text, Pressable } from 'react-native'
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
 import { useSearch } from '@ui/mobile/hooks'
 import { useQueryClient } from '@tanstack/react-query'
@@ -8,6 +8,7 @@ import { Search, X } from 'lucide-react-native'
 import type { Note } from '@core/types/domain'
 import { useSupabase, useTheme } from '@ui/mobile/providers'
 import { addSearchHistoryItem, clearSearchHistory, getSearchHistory } from '@ui/mobile/services/searchHistory'
+import { TagFilterBar, TagList } from '@ui/mobile/components/tags'
 
 type SearchResultItem = Note & {
     snippet?: string | null
@@ -21,8 +22,16 @@ export default function SearchScreen() {
     const queryClient = useQueryClient()
     const { colors } = useTheme()
     const styles = useMemo(() => createStyles(colors), [colors])
+    const params = useLocalSearchParams<{ tag?: string }>()
     const [query, setQuery] = useState('')
-    const { data, isLoading } = useSearch(query)
+    const [activeTag, setActiveTag] = useState<string | null>(null)
+    const {
+        data,
+        isLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useSearch(query, { tag: activeTag })
     const { user } = useSupabase()
     const [history, setHistory] = useState<string[]>([])
 
@@ -30,6 +39,14 @@ export default function SearchScreen() {
         if (!user?.id) return
         void getSearchHistory(user.id).then(setHistory)
     }, [user?.id])
+
+    useEffect(() => {
+        if (typeof params.tag === 'string' && params.tag.trim().length > 0) {
+            setActiveTag(params.tag)
+        } else {
+            setActiveTag(null)
+        }
+    }, [params.tag])
 
     useEffect(() => {
         if (!user?.id) return
@@ -43,7 +60,18 @@ export default function SearchScreen() {
         return () => clearTimeout(timeout)
     }, [query, user?.id])
 
-    const results = data?.results ?? []
+    const handleTagPress = (tag: string) => {
+        if (tag === activeTag) return
+        setActiveTag(tag)
+        router.setParams({ tag })
+    }
+
+    const handleClearTagFilter = () => {
+        setActiveTag(null)
+        router.setParams({ tag: '' })
+    }
+
+    const results = data?.pages.flatMap((page) => page.results) ?? []
 
     const renderSnippet = useMemo(() => {
         return (item: SearchResultItem) => {
@@ -95,16 +123,26 @@ export default function SearchScreen() {
                     {stripHtml(item.description ?? '')}
                 </Text>
             )}
+            {!!item.tags?.length && (
+                <TagList
+                    tags={item.tags}
+                    onTagPress={handleTagPress}
+                    maxVisible={5}
+                    showOverflowCount
+                    style={styles.tagList}
+                />
+            )}
         </Pressable>
     )
 
     return (
         <View style={styles.container}>
-            <View style={styles.searchBar}>
+            <TagFilterBar tag={activeTag} onClear={handleClearTagFilter} style={styles.tagFilter} />
+            <View style={[styles.searchBar, activeTag && styles.searchBarWithTag]}>
                 <Search size={20} color={colors.mutedForeground} style={styles.searchIcon} />
                 <TextInput
                     style={styles.input}
-                    placeholder="Поиск заметок..."
+                    placeholder={activeTag ? `Search in "${activeTag}" notes...` : 'Search notes...'}
                     placeholderTextColor={colors.mutedForeground}
                     value={query}
                     onChangeText={setQuery}
@@ -117,7 +155,7 @@ export default function SearchScreen() {
                 )}
             </View>
 
-            {query.trim().length === 0 && history.length > 0 && (
+            {query.trim().length === 0 && history.length > 0 && !activeTag && (
                 <View style={styles.historyContainer}>
                     <View style={styles.historyHeader}>
                         <Text style={styles.historyTitle}>История поиска</Text>
@@ -147,13 +185,13 @@ export default function SearchScreen() {
                 </View>
             )}
 
-            {isLoading && (
+            {isLoading && results.length === 0 && (
                 <View style={styles.center}>
                     <ActivityIndicator color={colors.primary} />
                 </View>
             )}
 
-            {!isLoading && query.length >= 2 && results.length === 0 && (
+            {!isLoading && (query.length >= 2 || !!activeTag) && results.length === 0 && (
                 <View style={styles.center}>
                     <Text style={styles.empty}>Ничего не найдено</Text>
                 </View>
@@ -163,9 +201,21 @@ export default function SearchScreen() {
                 data={results as SearchResultItem[]}
                 renderItem={renderItem}
                 // @ts-expect-error FlashList types mismatch in some versions
-                estimatedItemSize={80}
+                estimatedItemSize={96}
                 keyExtractor={(item: SearchResultItem) => item.id}
                 contentContainerStyle={styles.list}
+                onEndReached={() => {
+                    if (!hasNextPage || isFetchingNextPage) return
+                    void fetchNextPage()
+                }}
+                onEndReachedThreshold={0.4}
+                ListFooterComponent={
+                    isFetchingNextPage ? (
+                        <View style={styles.footerLoader}>
+                            <ActivityIndicator size="small" color={colors.primary} />
+                        </View>
+                    ) : null
+                }
             />
         </View>
     )
@@ -176,14 +226,24 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
         flex: 1,
         backgroundColor: colors.background,
     },
+    tagFilter: {
+        marginHorizontal: 16,
+        marginTop: 16,
+        marginBottom: 4,
+    },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: colors.muted,
-        margin: 16,
+        marginHorizontal: 16,
+        marginBottom: 16,
+        marginTop: 16,
         paddingHorizontal: 12,
         borderRadius: 8,
         height: 48,
+    },
+    searchBarWithTag: {
+        marginTop: 8,
     },
     searchIcon: {
         marginRight: 8,
@@ -220,6 +280,13 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
         color: colors.primary,
         backgroundColor: colors.secondary,
         fontFamily: 'Inter_500Medium',
+    },
+    tagList: {
+        marginTop: 8,
+    },
+    footerLoader: {
+        paddingVertical: 16,
+        alignItems: 'center',
     },
     center: {
         marginTop: 32,
