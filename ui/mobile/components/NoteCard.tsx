@@ -52,6 +52,7 @@ export function NoteCard({ note, onPress, onTagPress, variant = 'list' }: NoteCa
   const styles = useMemo(() => createStyles(colors), [colors])
   const description = stripHtml(note.description ?? '')
   const searchSnippet = note.headline ?? note.snippet ?? note.description ?? ''
+  const hasSearchSnippet = stripHtml(searchSnippet).length > 0
 
   return (
     <Pressable
@@ -64,14 +65,14 @@ export function NoteCard({ note, onPress, onTagPress, variant = 'list' }: NoteCa
       <Text style={styles.title} numberOfLines={1}>
         {note.title ?? 'Без названия'}
       </Text>
-      {description.length > 0 && (
-        variant === 'search'
-          ? renderHighlightedText(searchSnippet, styles)
-          : (
-            <Text style={styles.description} numberOfLines={2}>
-              {description}
-            </Text>
-          )
+      {variant === 'search' ? (
+        hasSearchSnippet ? renderHighlightedText(searchSnippet, styles) : null
+      ) : (
+        description.length > 0 ? (
+          <Text style={styles.description} numberOfLines={2}>
+            {description}
+          </Text>
+        ) : null
       )}
       {!!note.tags?.length && (
         <TagList
