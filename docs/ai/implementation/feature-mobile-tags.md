@@ -43,6 +43,7 @@ description: Technical implementation notes, patterns, and code guidelines
 - Use existing note read/update hooks to persist tag changes.
 - Use existing search/list hooks to apply tag filters.
 - Keep tag UI components theme-aware and consistent with existing styles.
+- Offline search relies on `note_tags` in SQLite for tag-filtered queries and pagination.
 
 ## Error Handling
 **How do we handle failures?**

@@ -27,6 +27,7 @@ description: Define the technical architecture, components, and data models
 - Use existing core models (no schema changes).
 - Note entity contains tags as an array of strings (match web behavior).
 - Tag values follow the same normalization rules as web (trim and drop empty entries); UI dedupes tags case-insensitively on input.
+- Mobile offline uses a local `note_tags` table (`note_id`, `tag`) to enable accurate tag filtering and pagination.
 
 ## API Design
 **How do components communicate?**

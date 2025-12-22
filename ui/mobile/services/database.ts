@@ -39,6 +39,15 @@ export class DatabaseService {
         is_deleted INTEGER DEFAULT 0
       );
 
+      CREATE TABLE IF NOT EXISTS note_tags (
+        note_id TEXT NOT NULL,
+        tag TEXT NOT NULL,
+        PRIMARY KEY (note_id, tag)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_note_tags_tag ON note_tags (tag);
+      CREATE INDEX IF NOT EXISTS idx_note_tags_note ON note_tags (note_id);
+
       CREATE TABLE IF NOT EXISTS mutation_queue (
         id TEXT PRIMARY KEY NOT NULL,
         noteId TEXT NOT NULL,
@@ -79,6 +88,8 @@ export class DatabaseService {
       END;
     `)
 
+        await this.backfillNoteTags(this.db)
+
         return this.db
     }
 
@@ -96,6 +107,56 @@ export class DatabaseService {
             return Array.isArray(parsed) ? parsed.map(String) : []
         } catch {
             return []
+        }
+    }
+
+    private normalizeTags(tags: string | string[] | null | undefined): string[] {
+        const parsed = typeof tags === 'string' ? this.parseTags(tags) : tags ?? []
+        const seen = new Set<string>()
+        const result: string[] = []
+
+        for (const tag of parsed) {
+            const trimmed = String(tag).trim()
+            if (!trimmed) continue
+            const key = trimmed.toLowerCase()
+            if (seen.has(key)) continue
+            seen.add(key)
+            result.push(trimmed)
+        }
+
+        return result
+    }
+
+    private async replaceNoteTags(
+        noteId: string,
+        tags: string | string[] | null | undefined,
+        db?: SQLite.SQLiteDatabase
+    ) {
+        const database = db ?? await this.init()
+        await database.runAsync('DELETE FROM note_tags WHERE note_id = ?', [noteId])
+        const normalized = this.normalizeTags(tags)
+        for (const tag of normalized) {
+            await database.runAsync('INSERT INTO note_tags (note_id, tag) VALUES (?, ?)', [noteId, tag])
+        }
+    }
+
+    private async removeNoteTags(noteId: string, db?: SQLite.SQLiteDatabase) {
+        const database = db ?? await this.init()
+        await database.runAsync('DELETE FROM note_tags WHERE note_id = ?', [noteId])
+    }
+
+    private async backfillNoteTags(db: SQLite.SQLiteDatabase) {
+        const rows = await db.getAllAsync<{ count: number }>('SELECT COUNT(*) as count FROM note_tags')
+        const existing = rows[0]?.count ?? 0
+        if (existing > 0) return
+
+        const notes = await db.getAllAsync<{ id: string; tags: string | null }>('SELECT id, tags FROM notes')
+        for (const note of notes) {
+            const tags = this.normalizeTags(note.tags)
+            if (tags.length === 0) continue
+            for (const tag of tags) {
+                await db.runAsync('INSERT INTO note_tags (note_id, tag) VALUES (?, ?)', [note.id, tag])
+            }
         }
     }
 
@@ -117,6 +178,7 @@ export class DatabaseService {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [note.id, note.title ?? '', note.description ?? '', tagsJson, note.user_id, note.created_at, note.updated_at, isSynced, isDeleted]
             )
+            await this.replaceNoteTags(note.id, note.tags, db)
         }
     }
 
@@ -129,12 +191,45 @@ export class DatabaseService {
         return rows.map((r) => this.mapRowToNote(r))
     }
 
+    async getLocalNotesByTag(
+        userId: string,
+        tag: string,
+        options: { limit?: number; offset?: number } = {}
+    ) {
+        const db = await this.init()
+        const limit = options.limit ?? 50
+        const offset = options.offset ?? 0
+        const rows = await db.getAllAsync<LocalNoteRow>(
+            `SELECT n.*
+             FROM notes n
+             JOIN note_tags nt ON nt.note_id = n.id
+             WHERE n.user_id = ? AND n.is_deleted = 0 AND nt.tag = ?
+             ORDER BY n.updated_at DESC
+             LIMIT ? OFFSET ?`,
+            [userId, tag, limit, offset]
+        )
+        const totalRows = await db.getAllAsync<{ count: number }>(
+            `SELECT COUNT(*) as count
+             FROM notes n
+             JOIN note_tags nt ON nt.note_id = n.id
+             WHERE n.user_id = ? AND n.is_deleted = 0 AND nt.tag = ?`,
+            [userId, tag]
+        )
+        const total = totalRows[0]?.count ?? 0
+
+        return {
+            notes: rows.map((r) => this.mapRowToNote(r)),
+            total,
+        }
+    }
+
     async markDeleted(noteId: string, userId: string) {
         const db = await this.init()
         await db.runAsync('UPDATE notes SET is_deleted = 1, is_synced = 0 WHERE id = ? AND user_id = ?', [
             noteId,
             userId,
         ])
+        await this.removeNoteTags(noteId, db)
     }
 
     async getQueue() {
@@ -179,20 +274,32 @@ export class DatabaseService {
         )
     }
 
-    async searchNotes(query: string, userId: string, options: { limit?: number; offset?: number } = {}) {
+    async searchNotes(
+        query: string,
+        userId: string,
+        options: { limit?: number; offset?: number; tag?: string | null } = {}
+    ) {
         const db = await this.init()
         const limit = options.limit ?? 50
         const offset = options.offset ?? 0
+        const tag = options.tag && options.tag.trim().length > 0 ? options.tag : null
+        const tagJoin = tag ? 'JOIN note_tags nt ON nt.note_id = n.id' : ''
+        const tagWhere = tag ? 'AND nt.tag = ?' : ''
+        const params = tag
+            ? [query, userId, tag, limit, offset]
+            : [query, userId, limit, offset]
         const rows = await db.getAllAsync<LocalNoteRow & { snippet: string | null; rank: number }>(
             `SELECT n.*, 
               snippet(notes_search, -1, '<mark>', '</mark>', '...', 10) as snippet,
               bm25(notes_search) as rank
             FROM notes n
             JOIN notes_search ON n.rowid = notes_search.rowid
+            ${tagJoin}
             WHERE notes_search MATCH ? AND n.user_id = ? AND n.is_deleted = 0
+            ${tagWhere}
             ORDER BY bm25(notes_search)
             LIMIT ? OFFSET ?`,
-            [query, userId, limit, offset]
+            params
         )
 
         return rows.map((r) => ({
