@@ -6,15 +6,52 @@ import { useMemo } from 'react'
 import type { Note } from '@core/types/domain'
 
 interface NoteCardProps {
-  note: Note
+  note: Note & {
+    snippet?: string | null
+    headline?: string | null
+  }
   onPress: () => void
   onTagPress?: (tag: string) => void
+  variant?: 'list' | 'search'
 }
 
-export function NoteCard({ note, onPress, onTagPress }: NoteCardProps) {
+const stripHtml = (value: string) => value.replace(/<[^>]*>/g, '')
+
+const renderHighlightedText = (raw: string, styles: ReturnType<typeof createStyles>) => {
+  if (!raw) return null
+
+  const parts = raw.split(/(<mark>|<\/mark>)/g)
+  let highlighted = false
+
+  return (
+    <Text style={styles.description} numberOfLines={2}>
+      {parts.map((part, index) => {
+        if (part === '<mark>') {
+          highlighted = true
+          return null
+        }
+        if (part === '</mark>') {
+          highlighted = false
+          return null
+        }
+
+        const clean = stripHtml(part)
+        if (!clean) return null
+        return (
+          <Text key={index} style={highlighted ? styles.descriptionHighlight : undefined}>
+            {clean}
+          </Text>
+        )
+      })}
+    </Text>
+  )
+}
+
+export function NoteCard({ note, onPress, onTagPress, variant = 'list' }: NoteCardProps) {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
-  const description = (note.description ?? '').replace(/<[^>]*>/g, '')
+  const description = stripHtml(note.description ?? '')
+  const searchSnippet = note.headline ?? note.snippet ?? note.description ?? ''
 
   return (
     <Pressable
@@ -28,15 +65,19 @@ export function NoteCard({ note, onPress, onTagPress }: NoteCardProps) {
         {note.title ?? 'Без названия'}
       </Text>
       {description.length > 0 && (
-        <Text style={styles.description} numberOfLines={2}>
-          {description}
-        </Text>
+        variant === 'search'
+          ? renderHighlightedText(searchSnippet, styles)
+          : (
+            <Text style={styles.description} numberOfLines={2}>
+              {description}
+            </Text>
+          )
       )}
       {!!note.tags?.length && (
         <TagList
           tags={note.tags}
           onTagPress={onTagPress}
-          maxVisible={3}
+          maxVisible={5}
           showOverflowCount
           style={styles.tags}
         />
@@ -77,6 +118,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     color: colors.mutedForeground,
     marginBottom: 8,
     lineHeight: 20,
+  },
+  descriptionHighlight: {
+    color: colors.primary,
+    backgroundColor: colors.secondary,
+    fontFamily: 'Inter_500Medium',
   },
   tags: {
     marginBottom: 6,

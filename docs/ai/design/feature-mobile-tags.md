@@ -47,6 +47,7 @@ description: Define the technical architecture, components, and data models
   - TagList (read-only display)
   - TagInput (add/remove tags)
   - TagFilterBar (active filter and clear action on search screen)
+  - NoteCard uses TagList with `maxVisible=5` and an overflow count for list/search cards.
 - Data hooks/services: reuse existing note/tag logic from core and mobile hooks.
 
 ## Design Decisions
