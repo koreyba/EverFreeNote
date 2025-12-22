@@ -20,7 +20,7 @@ description: Define testing approach, test cases, and quality assurance
 ### Tag UI Components
 - [ ] TagChip: renders label, handles press.
 - [ ] TagList: handles empty state and long lists.
-- [ ] TagInput: validates input, prevents duplicates, clears on submit.
+- [ ] TagInput: validates input, prevents duplicates (case-insensitive), clears on submit.
 
 ### Screens
 - [ ] Note detail: add/remove tags updates state.
@@ -34,6 +34,7 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Remove tag -> note updated -> tag disappears in all views.
 - [ ] Tap tag chip -> filter applied -> results update.
 - [ ] Filter cleared -> full list restored.
+- [ ] Search pagination loads additional results when scrolling.
 
 ## End-to-End Tests
 **What user flows need validation?**

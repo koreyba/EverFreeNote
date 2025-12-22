@@ -1,15 +1,17 @@
 import { Pressable, Text, StyleSheet } from 'react-native'
 import { format } from 'date-fns'
 import { useTheme } from '@ui/mobile/providers'
+import { TagList } from '@ui/mobile/components/tags/TagList'
 import { useMemo } from 'react'
 import type { Note } from '@core/types/domain'
 
 interface NoteCardProps {
   note: Note
   onPress: () => void
+  onTagPress?: (tag: string) => void
 }
 
-export function NoteCard({ note, onPress }: NoteCardProps) {
+export function NoteCard({ note, onPress, onTagPress }: NoteCardProps) {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const description = (note.description ?? '').replace(/<[^>]*>/g, '')
@@ -29,6 +31,15 @@ export function NoteCard({ note, onPress }: NoteCardProps) {
         <Text style={styles.description} numberOfLines={2}>
           {description}
         </Text>
+      )}
+      {!!note.tags?.length && (
+        <TagList
+          tags={note.tags}
+          onTagPress={onTagPress}
+          maxVisible={3}
+          showOverflowCount
+          style={styles.tags}
+        />
       )}
       <Text style={styles.date}>
         {format(new Date(note.updated_at), 'dd.MM.yyyy HH:mm')}
@@ -66,6 +77,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     color: colors.mutedForeground,
     marginBottom: 8,
     lineHeight: 20,
+  },
+  tags: {
+    marginBottom: 6,
   },
   date: {
     fontSize: 12,

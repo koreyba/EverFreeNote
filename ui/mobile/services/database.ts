@@ -179,18 +179,20 @@ export class DatabaseService {
         )
     }
 
-    async searchNotes(query: string, userId: string) {
+    async searchNotes(query: string, userId: string, options: { limit?: number; offset?: number } = {}) {
         const db = await this.init()
+        const limit = options.limit ?? 50
+        const offset = options.offset ?? 0
         const rows = await db.getAllAsync<LocalNoteRow & { snippet: string | null; rank: number }>(
             `SELECT n.*, 
-              snippet(notes_search, -1, '<mark>', '</mark>', '…', 10) as snippet,
+              snippet(notes_search, -1, '<mark>', '</mark>', '...', 10) as snippet,
               bm25(notes_search) as rank
             FROM notes n
             JOIN notes_search ON n.rowid = notes_search.rowid
             WHERE notes_search MATCH ? AND n.user_id = ? AND n.is_deleted = 0
             ORDER BY bm25(notes_search)
-            LIMIT 50`,
-            [query, userId]
+            LIMIT ? OFFSET ?`,
+            [query, userId, limit, offset]
         )
 
         return rows.map((r) => ({
@@ -202,3 +204,5 @@ export class DatabaseService {
 }
 
 export const databaseService = new DatabaseService()
+
+

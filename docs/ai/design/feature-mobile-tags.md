@@ -26,7 +26,7 @@ description: Define the technical architecture, components, and data models
 
 - Use existing core models (no schema changes).
 - Note entity contains tags as an array of strings (match web behavior).
-- Tag values follow the same normalization rules as web (trim/case/dedup).
+- Tag values follow the same normalization rules as web (trim and drop empty entries); UI dedupes tags case-insensitively on input.
 
 ## API Design
 **How do components communicate?**
@@ -35,6 +35,7 @@ description: Define the technical architecture, components, and data models
 - Mobile UI calls existing core services/hooks to read/update notes with tags.
 - Tag filtering uses the same query/filter mechanism as web (core-owned).
 - Navigation passes a `tag` filter parameter to the search screen; the search screen is the single source of truth for filtering UI.
+- Filter state is not persisted beyond the search route/session.
 
 ## Component Breakdown
 **What are the major building blocks?**
@@ -64,3 +65,4 @@ description: Define the technical architecture, components, and data models
 - Filtering must update results quickly without blocking UI.
 - Maintain existing caching and offline behavior.
 - Ensure touch targets and contrast meet accessibility needs.
+- Search results should load incrementally (pagination) to avoid large payloads.

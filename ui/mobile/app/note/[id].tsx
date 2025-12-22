@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { View, TextInput, StyleSheet, ActivityIndicator, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
-import { useLocalSearchParams, Stack } from 'expo-router'
+import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
 import { useNote, useUpdateNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
 import { EditorToolbar } from '@ui/mobile/components/EditorToolbar'
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
+import { TagInput } from '@ui/mobile/components/tags/TagInput'
 
 const decodeHtmlEntities = (value: string) => {
   return value
@@ -67,20 +68,23 @@ export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { data: note, isLoading, error } = useNote(id)
   const { mutate: updateNote } = useUpdateNote()
+  const router = useRouter()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
 
   const editorRef = useRef<EditorWebViewHandle>(null)
   const [title, setTitle] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (note) {
       setTitle(note.title || '')
+      setTags(note.tags ?? [])
     }
   }, [note])
 
-  const debouncedUpdate = useCallback((updates: { title?: string; description?: string }) => {
+  const debouncedUpdate = useCallback((updates: { title?: string; description?: string; tags?: string[] }) => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
 
     saveTimeout.current = setTimeout(() => {
@@ -95,6 +99,15 @@ export default function NoteEditorScreen() {
 
   const handleContentChange = (html: string) => {
     debouncedUpdate({ description: html })
+  }
+
+  const handleTagsChange = (nextTags: string[]) => {
+    setTags(nextTags)
+    debouncedUpdate({ tags: nextTags })
+  }
+
+  const handleTagPress = (tag: string) => {
+    router.push({ pathname: '/(tabs)/search', params: { tag } })
   }
 
   const handleToolbarCommand = (method: string, args?: unknown[]) => {
@@ -138,6 +151,12 @@ export default function NoteEditorScreen() {
           placeholder="Название заметки"
           placeholderTextColor={colors.mutedForeground}
         />
+        <TagInput
+          tags={tags}
+          onChangeTags={handleTagsChange}
+          onTagPress={handleTagPress}
+          style={styles.tags}
+        />
       </View>
       <EditorToolbar onCommand={handleToolbarCommand} />
       <EditorWebView
@@ -165,6 +184,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     fontFamily: 'Inter_700Bold',
     color: colors.foreground,
     padding: 0,
+  },
+  tags: {
+    marginTop: 12,
   },
   centerContainer: {
     flex: 1,

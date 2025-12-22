@@ -27,6 +27,10 @@ description: Technical implementation notes, patterns, and code guidelines
 - Tag display: add tag chips to note list cards, note detail, and search results.
 - Tag editing: add input to create tags, and allow removal on note detail.
 - Tag filtering: on chip tap, apply filter in list/search views.
+  - Mobile uses the search screen as the filter surface (`tag` route param).
+  - Shared UI lives in `ui/mobile/components/tags` (TagChip, TagList, TagInput, TagFilterBar).
+  - Tag input dedupes case-insensitively to prevent duplicates.
+  - Search uses paginated loading for tag-only and query-based results.
 
 ### Patterns & Best Practices
 - Reuse core tag normalization/validation utilities if they exist.

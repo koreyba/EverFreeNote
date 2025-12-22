@@ -17,18 +17,18 @@ description: Break down work into actionable tasks and estimate timeline
 **What specific work needs to be done?**
 
 ### Phase 1: Foundation
-- [ ] Task 1.1: Review core tag mechanisms and existing web behavior
-- [ ] Task 1.2: Add shared Tag UI components for mobile (chips, list, input)
+- [x] Task 1.1: Review core tag mechanisms and existing web behavior (Notes: tags are string[], filtering uses contains('tags',[tag]) in core notes/search; web uses InteractiveTag, clear tag filter, search placeholder includes active tag; tags input is comma-separated + trim)
+- [x] Task 1.2: Add shared Tag UI components for mobile (chips, list, input) (Notes: added TagChip, TagList, TagInput, TagFilterBar components under ui/mobile/components/tags)
 
 ### Phase 2: Core Features
-- [ ] Task 2.1: Render tags in note list cards
-- [ ] Task 2.2: Render tags in note detail/editor and allow add/remove
-- [ ] Task 2.3: Persist tag changes through existing note update flow
+- [x] Task 2.1: Render tags in note list cards (Notes: NoteCard renders TagList with up to 3 tags)
+- [x] Task 2.2: Render tags in note detail/editor and allow add/remove (Notes: TagInput added to note header with remove support; input dedupes tags case-insensitively)
+- [x] Task 2.3: Persist tag changes through existing note update flow (Notes: debounced update now includes tags)
 
 ### Phase 3: Integration & Polish
-- [ ] Task 3.1: Add tag display and filter in search results
-- [ ] Task 3.2: Add tag filter interactions (tap chip to filter, clear filter)
-- [ ] Task 3.3: UI polish for long/many tags and empty states
+- [x] Task 3.1: Add tag display and filter in search results (Notes: search results render TagList; TagFilterBar added; search uses paginated loading)
+- [x] Task 3.2: Add tag filter interactions (tap chip to filter, clear filter) (Notes: tag taps route to search with tag param; Clear Tags removes filter; search uses tag-aware query)
+- [x] Task 3.3: UI polish for long/many tags and empty states (Notes: maxVisible + overflow count; TagChip truncation; empty state shown for tag-only searches)
 
 ## Dependencies
 **What needs to happen in what order?**
