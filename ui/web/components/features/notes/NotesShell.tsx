@@ -21,6 +21,7 @@ import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
+import { normalizeTagList } from "@ui/web/lib/tags"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -181,7 +182,13 @@ function EditorPane({ controller, onBack, noteEditorRef }: { controller: NoteApp
     handleEditNote,
     handleDeleteNote,
     handleRemoveTagFromNote,
+    notes,
   } = controller
+
+  const availableTags = React.useMemo(() => {
+    const collected = notes.flatMap((note) => note.tags ?? [])
+    return normalizeTagList(collected)
+  }, [notes])
 
   if (!selectedNote && !isEditing) {
     return <EmptyState />
@@ -195,6 +202,7 @@ function EditorPane({ controller, onBack, noteEditorRef }: { controller: NoteApp
         initialTitle={selectedNote?.title ?? ""}
         initialDescription={selectedNote?.description ?? selectedNote?.content ?? ""}
         initialTags={selectedNote?.tags?.join(", ") ?? ""}
+        availableTags={availableTags}
         isSaving={saving}
         onSave={handleSaveNote}
         onRead={handleReadNote}

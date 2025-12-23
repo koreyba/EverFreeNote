@@ -17,7 +17,8 @@ description: Clarify the problem space, gather requirements, and define success 
 
 - Primary: Suggest existing tags after 3 typed characters so users can select a consistent tag.
 - Primary: Render tags in edit mode using the same chip UI as read mode (including the remove control).
-- Primary: Allow backspace to remove the last tag while editing when the input is empty.
+- Primary: Require two backspace presses to remove the last tag while editing when the input is empty.
+- Primary: Tag input changes do not trigger autosave; tags are saved on manual save, note switch, or autosave triggered by title/body edits.
 - Primary: Preserve the existing ability to remove tags in read mode.
 - Primary: Sort suggestions alphabetically.
 - Secondary: Keep the UI consistent with the current web tag style and interaction patterns.
@@ -31,7 +32,8 @@ description: Clarify the problem space, gather requirements, and define success 
 - As a web user, I want to see existing tag suggestions after I type three characters so I can pick a consistent tag.
 - As a web user, I want added tags to use the same chip UI as in read mode so the behavior is consistent.
 - As a web user, I want to add a tag by typing and pressing comma or Enter so I can work quickly from the keyboard.
-- As a web user, I want to remove the last tag with backspace when the tag input is empty so I can edit quickly from the keyboard.
+- As a web user, I want to remove the last tag with backspace only after a second press so I avoid accidental deletions.
+- As a web user, if I typed a tag but did not confirm it, saving or leaving the note should still keep it.
 - As a web user reading a note, I want tag removal to work the same way it does today.
 - Edge cases: duplicate tags, long tag names, tags with spaces/punctuation, many tags, tags that match by prefix, case differences.
 
@@ -44,9 +46,10 @@ description: Clarify the problem space, gather requirements, and define success 
 - Suggestions match by prefix only.
 - Selecting a suggestion adds the tag without creating duplicates.
 - Edit mode uses the same chip rendering as read mode, with the X control to remove a tag.
-- Backspace removes the last tag only in edit mode when the input is empty.
+- Backspace removes the last tag only on the second press in edit mode when the input is empty.
 - Read mode retains the existing tag removal behavior (X control remains available).
-- Tags can be added via comma or Enter only (no space, no blur auto-add) and are normalized consistently.
+- Tags are added via comma or Enter; if a tag is pending, save/leave commits it and autosave from non-tag edits may include it. Space/blur alone do not add tags.
+- Autosave is not triggered by tag input alone.
 - No regressions to existing note edit/save flows.
 
 ## Constraints & Assumptions
@@ -57,7 +60,7 @@ description: Clarify the problem space, gather requirements, and define success 
 - No changes to backend APIs or database schema.
 - Tag suggestion threshold is fixed at three characters.
 - Suggestion list excludes already selected tags and is limited to 3 items.
-- Suggestion ordering uses most recently used tags first.
+- Suggestion ordering is alphabetical.
 - Suggestions use prefix matching only.
 - Tag normalization trims whitespace, collapses multiple spaces to one, and lowercases for storage and duplicate checks.
 - Existing tags are normalized on edit/save only (no migration).

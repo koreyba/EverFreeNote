@@ -18,18 +18,20 @@ description: Define testing approach, test cases, and quality assurance
 **What individual components need testing?**
 
 ### Tag suggestion hook (`useTagSuggestions`)
-- [ ] Returns no suggestions below 3 characters.
-- [ ] Filters by prefix only.
-- [ ] Excludes tags already selected on the note.
-- [ ] Sorts alphabetically and limits to 3.
+- [x] Returns no suggestions below 3 characters. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Filters by prefix only. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Excludes tags already selected on the note. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Sorts alphabetically and limits to 3. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 
 ### Tag input UI (new component or `NoteEditor` integration)
-- [ ] Adds tag when suggestion clicked.
-- [ ] Adds tag via comma and Enter.
-- [ ] Does not add tag on space or blur.
-- [ ] Normalizes tags to avoid duplicates (trim, collapse spaces, lowercase).
-- [ ] Backspace removes last tag only when input is empty.
-- [ ] Edit mode uses the same chip UI as read mode and the remove icon removes the tag.
+- [x] Adds tag when suggestion clicked. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Adds tag via comma and Enter. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Does not add tag on space or blur. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Normalizes tags to avoid duplicates (trim, collapse spaces, lowercase). (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Backspace removes last tag only on the second press when input is empty. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Edit mode uses the same chip UI as read mode and the remove icon removes the tag. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Pending tag is committed on autosave. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Tag input changes do not trigger autosave. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 
 ## Integration Tests
 **How do we test component interactions?**
@@ -49,7 +51,7 @@ description: Define testing approach, test cases, and quality assurance
 ## Test Data
 **What data do we use for testing?**
 
-- Notes fixture with overlapping tags and varying recency.
+- Notes fixture with overlapping tags and alphabetical ordering.
 - Ensure at least 4 candidate tags to validate the limit of 3.
 
 ## Test Reporting & Coverage
