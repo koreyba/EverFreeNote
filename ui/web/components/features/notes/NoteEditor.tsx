@@ -48,7 +48,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [inputResetKey, setInputResetKey] = React.useState(0)
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
-  const [tagInput, setTagInput] = React.useState("")
+  const [tagQuery, setTagQuery] = React.useState("")
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const tagInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
@@ -62,8 +62,13 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     tags: buildTagString(selectedTags),
   }), [initialTitle, initialDescription, selectedTags])
 
+  const debouncedTagQuery = useDebouncedCallback((value: string) => {
+    setTagQuery(normalizeTag(value))
+  }, 320)
+
   const commitPendingTag = React.useCallback(() => {
-    const pendingParts = normalizeTagList(tagInput.split(","))
+    const pendingValue = tagInputRef.current?.value ?? ""
+    const pendingParts = normalizeTagList(pendingValue.split(","))
     if (!pendingParts.length) {
       backspaceArmedRef.current = false
       return buildTagString(selectedTags)
@@ -71,10 +76,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
     const merged = normalizeTagList([...selectedTags, ...pendingParts])
     setSelectedTags(merged)
-    setTagInput("")
+    if (tagInputRef.current) {
+      tagInputRef.current.value = ""
+    }
+    debouncedTagQuery.cancel()
+    setTagQuery("")
     backspaceArmedRef.current = false
     return buildTagString(merged)
-  }, [selectedTags, tagInput])
+  }, [selectedTags, debouncedTagQuery])
 
   const debouncedAutoSave = useDebouncedCallback(
     async () => {
@@ -94,7 +103,11 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     editorRef.current?.setContent(initialDescription)
     setInputResetKey((k) => k + 1)
     setSelectedTags(parseTagString(initialTags))
-    setTagInput("")
+    if (tagInputRef.current) {
+      tagInputRef.current.value = ""
+    }
+    debouncedTagQuery.cancel()
+    setTagQuery("")
     backspaceArmedRef.current = false
     firstRenderRef.current = true
   }, [initialTitle, initialDescription, initialTags])
@@ -131,11 +144,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     debouncedAutoSave.call()
   }, [onAutoSave, debouncedAutoSave])
 
-  const normalizedQuery = React.useMemo(() => normalizeTag(tagInput), [tagInput])
   const suggestions = useTagSuggestions({
     allTags: availableTags,
     selectedTags,
-    query: normalizedQuery,
+    query: tagQuery,
   })
 
   const addTags = React.useCallback((nextTags: string[]) => {
@@ -151,10 +163,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       }
       return merged
     })
-    setTagInput("")
+    if (tagInputRef.current) {
+      tagInputRef.current.value = ""
+    }
+    debouncedTagQuery.cancel()
+    setTagQuery("")
     backspaceArmedRef.current = false
     tagInputRef.current?.focus()
-  }, [])
+  }, [debouncedTagQuery])
 
   const removeTag = React.useCallback((tagToRemove: string) => {
     setSelectedTags((prev) => prev.filter((tag) => tag !== tagToRemove))
@@ -162,19 +178,30 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   }, [])
 
   const handleTagInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value
     backspaceArmedRef.current = false
-    setTagInput(event.target.value)
+    if (!nextValue) {
+      debouncedTagQuery.cancel()
+      setTagQuery("")
+      return
+    }
+    debouncedTagQuery.call(nextValue)
+  }
+
+  const handleTagInputBlur = () => {
+    commitPendingTag()
   }
 
   const handleTagInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const currentValue = tagInputRef.current?.value ?? ""
     if (event.key === "Enter" || event.key === ",") {
       event.preventDefault()
-      const parts = tagInput.split(",")
+      const parts = currentValue.split(",")
       addTags(parts)
       return
     }
 
-    if (event.key === "Backspace" && tagInput.length === 0 && selectedTags.length > 0) {
+    if (event.key === "Backspace" && currentValue.length === 0 && selectedTags.length > 0) {
       event.preventDefault()
       const lastTag = selectedTags[selectedTags.length - 1]
       if (backspaceArmedRef.current) {
@@ -269,9 +296,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
                   key={`tags-${inputResetKey}`}
                   ref={tagInputRef}
                   type="text"
-                  value={tagInput}
                   onChange={handleTagInputChange}
                   onKeyDown={handleTagInputKeyDown}
+                  onBlur={handleTagInputBlur}
                   placeholder="work, personal, ideas"
                   className="flex-1 min-w-[140px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
@@ -283,6 +310,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
                       key={suggestion}
                       type="button"
                       className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => addTags([suggestion])}
                     >
                       {suggestion}

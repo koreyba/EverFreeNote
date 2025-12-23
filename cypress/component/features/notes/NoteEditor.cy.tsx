@@ -152,14 +152,15 @@ describe('NoteEditor Component', () => {
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
   })
 
-  it('does not add a tag on space or blur', () => {
+  it('commits a pending tag on blur but not on space alone', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
     cy.get('input[placeholder="work, personal, ideas"]').type('space ')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 2)
 
     cy.get('input[placeholder="Note title"]').click()
-    cy.get('[data-cy="interactive-tag"]').should('have.length', 2)
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
+    cy.contains('[data-cy="interactive-tag"]', 'space').should('be.visible')
   })
 
   it('commits pending tag on autosave', () => {

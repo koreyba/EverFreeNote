@@ -19,6 +19,15 @@ description: Baseline unit/component/integration testing setup for the React Nat
 - [x] detectLanguage: empty input, cyrillic, latin.
 - [x] ftsLanguage: ru/en/uk mapping.
 
+## Component Tests
+
+### ui/mobile/components/tags
+- [x] TagChip: renders label, onPress, onRemove.
+- [x] TagList: empty list, overflow count, onTagPress.
+
+### ui/mobile/components/NoteCard
+- [x] NoteCard: title/date, description sanitization, search snippet, tags, onPress.
+
 ## Integration Tests
 
 ### app/(tabs)/settings.tsx

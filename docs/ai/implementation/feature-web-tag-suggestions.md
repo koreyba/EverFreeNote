@@ -36,7 +36,7 @@ description: Technical implementation notes, patterns, and code guidelines
   - Render selected tags using the same chip component as read mode.
   - Keep a small text input for new tag entry and suggestions.
   - Add tags via comma or Enter only; no auto-add on blur or space.
-  - Commit pending tags on save/leave; autosave can include pending tags from non-tag edits.
+  - Commit pending tags on save/leave/blur; autosave can include pending tags from non-tag edits.
   - Store normalized tags (trim, collapse spaces, lowercase) on edit/save; no migration.
   - Support backspace removal on the second press when the input is empty.
   - Do not trigger autosave on tag input or tag add/remove events.
@@ -47,6 +47,8 @@ description: Technical implementation notes, patterns, and code guidelines
 - Memoize suggestion lists to avoid recalculating on each keystroke.
 - Keep the source of truth for tags in the editor component and emit a comma-separated string for existing save logic.
 - Keep UI behavior consistent with existing `InteractiveTag` styles.
+- Debounce tag suggestion query and keep the tag input uncontrolled to reduce re-renders while typing.
+- Ensure remove icons are always visible on mobile viewports (responsive classes in `InteractiveTag`).
 
 ## Integration Points
 **How do pieces connect?**

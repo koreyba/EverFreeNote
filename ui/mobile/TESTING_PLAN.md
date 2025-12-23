@@ -363,3 +363,23 @@ describe('NotesScreen', () => {
 
 - Для unit и integration использовать `/writing-test` с целью 100% покрытия.
 - После каждого набора тестов фиксировать coverage и пробелы в `docs/ai/testing/`.
+
+## Coverage backlog (initial list)
+
+Priority P0 (tags + notes):
+- [x] Components: `TagChip`, `TagList`
+- [x] Components: `NoteCard`
+- [ ] Screens: `app/(tabs)/index.tsx`, `app/(tabs)/search.tsx`, `app/note/[id].tsx`
+- [ ] Hooks: `useNotes`, `useSearch`
+- [ ] Mobile services: `services/database.ts`, `services/searchHistory.ts`, `services/sync.ts`
+- [ ] Core: `@core/services/notes`, `@core/services/search`, `@core/utils/search`
+
+Priority P1 (auth + settings + theme):
+- [ ] Screens: `app/(auth)/login.tsx`, `app/(auth)/callback.tsx`, `app/(tabs)/settings.tsx`
+- [ ] Providers: `ThemeProvider`, `SupabaseProvider`
+- [ ] Adapters: `adapters/config.ts`, `adapters/oauth.ts`, `adapters/storage.ts`
+
+Priority P2 (editor + infra):
+- [ ] Components: `EditorToolbar`, `EditorWebView`
+- [ ] Adapters: `adapters/offlineStorage.ts`, `adapters/networkStatus.ts`, `adapters/supabaseClient.ts`
+- [ ] Lib: `lib/theme.ts`

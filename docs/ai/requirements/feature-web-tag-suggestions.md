@@ -17,6 +17,7 @@ description: Clarify the problem space, gather requirements, and define success 
 
 - Primary: Suggest existing tags after 3 typed characters so users can select a consistent tag.
 - Primary: Render tags in edit mode using the same chip UI as read mode (including the remove control).
+- Primary: On mobile web, tag remove icons are always visible (no hover required).
 - Primary: Require two backspace presses to remove the last tag while editing when the input is empty.
 - Primary: Tag input changes do not trigger autosave; tags are saved on manual save, note switch, or autosave triggered by title/body edits.
 - Primary: Preserve the existing ability to remove tags in read mode.
@@ -46,9 +47,10 @@ description: Clarify the problem space, gather requirements, and define success 
 - Suggestions match by prefix only.
 - Selecting a suggestion adds the tag without creating duplicates.
 - Edit mode uses the same chip rendering as read mode, with the X control to remove a tag.
+- On mobile web, the X control is visible without hover.
 - Backspace removes the last tag only on the second press in edit mode when the input is empty.
 - Read mode retains the existing tag removal behavior (X control remains available).
-- Tags are added via comma or Enter; if a tag is pending, save/leave commits it and autosave from non-tag edits may include it. Space/blur alone do not add tags.
+- Tags are added via comma or Enter; if a tag is pending, save/leave/blur commits it and autosave from non-tag edits may include it. Space alone does not add tags.
 - Autosave is not triggered by tag input alone.
 - No regressions to existing note edit/save flows.
 

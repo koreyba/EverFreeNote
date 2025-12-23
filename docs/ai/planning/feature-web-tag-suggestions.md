@@ -22,7 +22,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### Phase 2: Core Features
 - [x] Task 2.1: Build tag input component with chip rendering and suggestion list. (Notes: NoteEditor now renders InteractiveTag chips with inline input and suggestion list.)
-- [x] Task 2.2: Wire tag selection/add/backspace behavior in edit mode (comma/Enter only). (Notes: added comma/Enter commit, pending tag commits on save/leave/autosave from non-tag edits, double-backspace removes last tag, suggestions after 3 chars, prefix match, limit 3, alpha sort; tag input does not trigger autosave.)
+- [x] Task 2.2: Wire tag selection/add/backspace behavior in edit mode (comma/Enter only). (Notes: added comma/Enter commit, pending tag commits on save/leave/blur/autosave from non-tag edits, double-backspace removes last tag, suggestions after 3 chars, prefix match, limit 3, alpha sort; tag input does not trigger autosave.)
 - [x] Task 2.3: Preserve tag removal behavior in read mode (no regression). (Notes: NoteView still uses InteractiveTag with onRemove; no changes required.)
 
 ### Phase 3: Integration & Polish
