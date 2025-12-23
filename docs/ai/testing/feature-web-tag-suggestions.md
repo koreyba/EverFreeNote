@@ -32,6 +32,7 @@ description: Define testing approach, test cases, and quality assurance
 - [x] Edit mode uses the same chip UI as read mode and the remove icon removes the tag. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 - [x] Pending tag is committed on autosave. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 - [x] Tag input changes do not trigger autosave. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Pending tag is committed on blur. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 
 ## Integration Tests
 **How do we test component interactions?**
@@ -67,6 +68,7 @@ description: Define testing approach, test cases, and quality assurance
 - Check suggestion dropdown placement and keyboard usability.
 - Verify read mode removal still works as before.
 - Confirm tag chips wrap correctly with long tag names.
+- Confirm remove icons are always visible on mobile viewports.
 
 ## Performance Testing
 **How do we validate performance?**
