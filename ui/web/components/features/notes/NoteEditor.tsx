@@ -232,7 +232,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   }), [commitPendingTag, getFormData, noteId, onAutoSave, debouncedAutoSave])
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex min-h-0 flex-col">
       {/* Editor Header */}
       <div className="p-4 border-b bg-card flex items-start justify-between">
         <h2 className="text-lg font-semibold text-muted-foreground">Editing</h2>
@@ -265,8 +265,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       </div>
 
       {/* Editor Form */}
-      <div className="flex-1 overflow-y-auto p-6 bg-card">
-        <div className="max-w-4xl mx-auto space-y-4">
+      <div className="flex-1 overflow-y-auto bg-card">
+        <div className="max-w-4xl mx-auto px-6 pt-6 space-y-4">
           <div>
             <Input
               key={`title-${inputResetKey}`}
@@ -320,14 +320,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               )}
             </div>
           </div>
-          <div>
-            <RichTextEditor
-              key={`editor-${inputResetKey}`}
-              ref={editorRef}
-              initialContent={initialDescription}
-              onContentChange={handleContentChange}
-            />
-          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-6 pb-6">
+          <RichTextEditor
+            key={`editor-${inputResetKey}`}
+            ref={editorRef}
+            initialContent={initialDescription}
+            onContentChange={handleContentChange}
+          />
         </div>
       </div>
     </div>
