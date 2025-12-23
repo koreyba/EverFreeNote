@@ -24,6 +24,9 @@ export default function SettingsScreen() {
           return (
             <Pressable
               key={option.value}
+              accessibilityRole="button"
+              accessibilityLabel={`Theme option ${option.label}`}
+              accessibilityState={{ selected: isSelected }}
               style={({ pressed }) => [
                 styles.option,
                 pressed && styles.optionPressed,
@@ -120,4 +123,3 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     backgroundColor: colors.primary,
   },
 })
-

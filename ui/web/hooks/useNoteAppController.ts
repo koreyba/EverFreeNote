@@ -13,6 +13,7 @@ import { useNoteSync } from './useNoteSync'
 import type { MutationQueueItemInput, CachedNote } from '@core/types/offline'
 import { v4 as uuidv4 } from 'uuid'
 import { applyNoteOverlay } from '@core/utils/overlay'
+import { parseTagString } from '@ui/web/lib/tags'
 
 export type EditFormState = {
   title: string
@@ -97,10 +98,10 @@ export function useNoteAppController() {
   })
 
   // Wrap handlers to reset lastSavedAt when switching notes
-  const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null, editorRef?: React.RefObject<{ flushPendingSave: () => Promise<void> } | null>) => {
+  const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null, editorRef?: React.RefObject<{ flushPendingSave: (options?: { includePendingTag?: boolean }) => Promise<void> } | null>) => {
     // Flush pending autosave before switching notes
     if (isEditing && editorRef?.current) {
-      await editorRef.current.flushPendingSave()
+      await editorRef.current.flushPendingSave({ includePendingTag: true })
     }
     
     handleSelectNote(note)
@@ -213,10 +214,7 @@ export function useNoteAppController() {
     const guard = setTimeout(() => setAutoSaving(false), 5000)
     try {
       const clientUpdatedAt = new Date().toISOString()
-      const parsedTags = nextTags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean)
+      const parsedTags = parseTagString(nextTags)
 
       if (isNewNote) {
         // Create new note
@@ -376,10 +374,7 @@ export function useNoteAppController() {
     setSaving(true)
     try {
       let savedNote: NoteViewModel | null = null
-      const tags = data.tags
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0)
+      const tags = parseTagString(data.tags)
 
       const noteData = {
         title: data.title.trim() || 'Untitled',

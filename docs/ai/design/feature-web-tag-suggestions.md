@@ -58,8 +58,11 @@ graph TD
 - Normalize tags for matching/dup prevention using trimmed lowercase tokens and collapsed spaces.
 - Keep tags persistence compatible by emitting a comma-separated string to existing save/autosave handlers.
 - Add tags via comma or Enter to preserve keyboard-first workflow.
+- Commit a pending tag on save or when leaving the note (autosave can include it).
 - Store normalized tags (trim, collapse spaces, lowercase) when a note is edited/saved; no global migration.
 - Limit suggestions to 3 items, prefix-only match, and exclude already selected tags to reduce noise.
+- Require a double-backspace to remove the last tag when the input is empty.
+- Tag input changes do not trigger autosave; only title/body edits can.
 - Preserve the existing remove controls in read mode; do not disable them as part of this feature.
 
 ## Non-Functional Requirements

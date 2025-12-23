@@ -19,6 +19,9 @@ description: Technical implementation notes, patterns, and code guidelines
 - `ui/web/components/features/notes/NoteView.tsx`: read mode view.
 - `ui/web/components/InteractiveTag.tsx`: chip rendering with optional remove icon.
 - `ui/web/hooks/useTagSuggestions.ts`: new hook for tag suggestions (cache-derived).
+- `ui/web/lib/tags.ts`: tag normalization and parsing helpers.
+- `ui/web/components/features/notes/NotesShell.tsx`: passes normalized available tags to the editor.
+- `ui/web/hooks/useNoteAppController.ts`: normalizes tags on save/autosave.
 
 ## Implementation Notes
 **Key technical details to remember:**
@@ -33,8 +36,10 @@ description: Technical implementation notes, patterns, and code guidelines
   - Render selected tags using the same chip component as read mode.
   - Keep a small text input for new tag entry and suggestions.
   - Add tags via comma or Enter only; no auto-add on blur or space.
+  - Commit pending tags on save/leave; autosave can include pending tags from non-tag edits.
   - Store normalized tags (trim, collapse spaces, lowercase) on edit/save; no migration.
-  - Support backspace removal when the input is empty.
+  - Support backspace removal on the second press when the input is empty.
+  - Do not trigger autosave on tag input or tag add/remove events.
 - Read mode:
   - Keep the existing remove handler so tag deletion remains available.
 
