@@ -101,7 +101,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
       <div
         className={cn(
-          "flex-1 flex flex-col h-full overflow-y-auto",
+          "flex-1 flex min-h-0 flex-col h-full overflow-hidden",
           !showEditor ? "hidden md:flex" : "w-full"
         )}
         data-testid="editor-container"

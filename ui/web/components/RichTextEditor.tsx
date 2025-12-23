@@ -88,7 +88,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="flex flex-wrap items-center gap-1 p-2 border-b bg-muted/30">
+      <div className="sticky top-[-1px] z-20 flex flex-wrap items-center gap-1 border-b bg-card p-2 shadow-sm">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -536,7 +536,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     }), [editor])
 
     return (
-      <div className={`bg-background ${hideToolbar ? '' : 'border rounded-md'}`}>
+      <div className={`bg-background ${hideToolbar ? '' : 'border border-t-0 rounded-b-md rounded-t-none'}`}>
         {!hideToolbar && <MenuBar editor={editor} />}
         <EditorContent
           data-cy="editor-content"

@@ -46,7 +46,7 @@ export const NoteView = React.memo(function NoteView({
   }), [note.created_at, note.updated_at])
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex min-h-0 flex-col">
       {/* Note View Header */}
       <div className="p-4 border-b bg-card flex items-center justify-between">
         <div className="flex items-center gap-2">
