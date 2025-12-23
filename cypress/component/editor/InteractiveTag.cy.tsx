@@ -10,26 +10,14 @@ describe('InteractiveTag Component', () => {
     cy.contains(tagText).should('be.visible')
   })
 
-  it('shows close button on hover', () => {
+  it('shows close button styles for hover and mobile', () => {
     const tagText = 'hover-test'
     cy.mount(<InteractiveTag tag={tagText} onRemove={() => {}} />)
 
-    // Проверяем что кнопка X изначально не видна (opacity: 0)
-    cy.get('.remove-tag').should('have.class', 'opacity-0')
-
-    // Наводим курсор на тег
-    cy.contains(tagText).trigger('mouseover')
-
-    // Теперь кнопка X должна быть видна (opacity: 100)
     cy.get('.remove-tag').should('have.class', 'opacity-100')
-
-    // Убираем курсор
-    cy.contains(tagText).trigger('mouseout')
-
-    // Кнопка X должна исчезнуть (opacity: 0)
-    cy.get('.remove-tag').should('have.class', 'opacity-0')
+    cy.get('.remove-tag').should('have.class', 'md:opacity-0')
+    cy.get('.remove-tag').should('have.class', 'md:group-hover:opacity-100')
   })
-
   it('calls onClick when tag is clicked', () => {
     const tagText = 'click-test'
     const onClickSpy = cy.spy().as('onClickSpy')
