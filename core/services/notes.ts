@@ -7,7 +7,7 @@ type Note = Tables<'notes'>
 const sanitizeOrValue = (value: string) => value.replace(/,/g, ' ')
 
 export class NoteService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: SupabaseClient) { }
 
   async getNotes(
     userId: string,
@@ -24,7 +24,8 @@ export class NoteService {
 
     let query = this.supabase
       .from('notes')
-      .select('id, title, description, tags, created_at, updated_at', { count: 'exact' })
+      .select('id, title, description, tags, created_at, updated_at, user_id', { count: 'exact' })
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false })
       .range(start, end)
 
@@ -49,11 +50,12 @@ export class NoteService {
     }
   }
 
-  async createNote(note: Pick<Note, 'title' | 'description' | 'tags'> & { userId: string }) {
+  async createNote(note: Pick<Note, 'title' | 'description' | 'tags'> & { userId: string; id?: string }) {
     const { data, error } = await this.supabase
       .from('notes')
       .insert([
         {
+          ...(note.id ? { id: note.id } : {}),
           title: note.title,
           description: note.description,
           tags: note.tags,
@@ -88,12 +90,23 @@ export class NoteService {
     return id
   }
 
+  async getNote(id: string) {
+    const { data, error } = await this.supabase
+      .from('notes')
+      .select('id, title, description, tags, created_at, updated_at, user_id')
+      .eq('id', id)
+      .single()
+
+    if (error) throw error
+    return data as Note
+  }
+
   async getNotesByIds(noteIds: string[], userId: string) {
     if (!noteIds.length) return []
 
     const { data, error } = await this.supabase
       .from('notes')
-      .select('id, title, description, tags, created_at, updated_at')
+      .select('id, title, description, tags, created_at, updated_at, user_id')
       .eq('user_id', userId)
       .in('id', noteIds)
       .order('updated_at', { ascending: false })

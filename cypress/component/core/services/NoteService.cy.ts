@@ -53,7 +53,7 @@ describe('core/services/NoteService', () => {
 
       expect(mockSupabase.from).to.have.been.calledWith('notes')
       expect(mockQueryBuilder.select).to.have.been.calledWith(
-        'id, title, description, tags, created_at, updated_at',
+        'id, title, description, tags, created_at, updated_at, user_id',
         { count: 'exact' }
       )
       expect(mockQueryBuilder.range).to.have.been.calledWith(0, 49)
