@@ -6,6 +6,7 @@ describe('NoteEditor Component', () => {
     initialTitle: 'Test Title',
     initialDescription: '<p>Test Description</p>',
     initialTags: 'tag1, tag2',
+    availableTags: ['tag1', 'tag2', 'work', 'world', 'personal'],
     isSaving: false,
     onSave: (() => {
       const stub = cy.stub()
@@ -24,7 +25,8 @@ describe('NoteEditor Component', () => {
 
     cy.contains('Editing').should('be.visible')
     cy.get('input[placeholder="Note title"]').should('have.value', 'Test Title')
-    cy.get('input[placeholder="work, personal, ideas"]').should('have.value', 'tag1, tag2')
+    cy.get('input[placeholder="work, personal, ideas"]').should('have.value', '')
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 2)
     cy.get('.ProseMirror').should('contain.text', 'Test Description')
   })
 
@@ -32,13 +34,13 @@ describe('NoteEditor Component', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
     cy.get('input[placeholder="Note title"]').clear().type('New Title')
-    cy.get('input[placeholder="work, personal, ideas"]').clear().type('new tag')
+    cy.get('input[placeholder="work, personal, ideas"]').type('New Tag{enter}')
 
     cy.contains('Save').click()
 
     cy.get('@onSave').should('have.been.calledWith', Cypress.sinon.match({
       title: 'New Title',
-      tags: 'new tag'
+      tags: 'tag1, tag2, new tag'
     }))
   })
 
@@ -110,5 +112,100 @@ describe('NoteEditor Component', () => {
       noteId: 'note-1',
       title: 'New Title',
     }))
+  })
+
+  it('shows suggestions after 3 characters and applies selection', () => {
+    cy.mount(<NoteEditor {...getDefaultProps()} />)
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('wo')
+    cy.contains('button', 'work').should('not.exist')
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('r')
+    cy.contains('button', 'work').should('be.visible')
+    cy.contains('button', 'world').should('be.visible')
+
+    cy.contains('button', 'work').click()
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
+  })
+
+  it('excludes already selected tags from suggestions', () => {
+    cy.mount(<NoteEditor {...getDefaultProps()} />)
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('tag')
+    cy.contains('button', 'tag1').should('not.exist')
+    cy.contains('button', 'tag2').should('not.exist')
+  })
+
+  it('adds tags via comma/enter and removes with backspace on second press', () => {
+    cy.mount(<NoteEditor {...getDefaultProps()} />)
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('New  Tag,')
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
+    cy.contains('[data-cy="interactive-tag"]', 'new tag').should('be.visible')
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('next{enter}')
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 4)
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('{backspace}')
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 4)
+    cy.get('input[placeholder="work, personal, ideas"]').type('{backspace}')
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
+  })
+
+  it('commits a pending tag on blur but not on space alone', () => {
+    cy.mount(<NoteEditor {...getDefaultProps()} />)
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('space ')
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 2)
+
+    cy.get('input[placeholder="Note title"]').click()
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
+    cy.contains('[data-cy="interactive-tag"]', 'space').should('be.visible')
+  })
+
+  it('commits pending tag on autosave', () => {
+    const onAutoSave = (() => {
+      const stub = cy.stub().resolves()
+      cy.wrap(stub).as('onAutoSave')
+      return stub
+    })()
+    const props = {
+      ...getDefaultProps(),
+      noteId: 'note-1',
+      onAutoSave,
+      autosaveDelayMs: 200,
+    }
+
+    cy.mount(<NoteEditor {...props} />)
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('Pending Tag')
+    cy.get('input[placeholder="Note title"]').type(' updated')
+
+    cy.get('@onAutoSave').should('have.been.calledOnce', { timeout: 1500 })
+    cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
+      noteId: 'note-1',
+      tags: 'tag1, tag2, pending tag'
+    }))
+  })
+
+  it('does not autosave when only tags change', () => {
+    const onAutoSave = (() => {
+      const stub = cy.stub().resolves()
+      cy.wrap(stub).as('onAutoSave')
+      return stub
+    })()
+    const props = {
+      ...getDefaultProps(),
+      noteId: 'note-1',
+      onAutoSave,
+      autosaveDelayMs: 200,
+    }
+
+    cy.mount(<NoteEditor {...props} />)
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('onlytag{enter}')
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
+
+    cy.get('@onAutoSave').should('not.have.been.called', { timeout: 800 })
   })
 })

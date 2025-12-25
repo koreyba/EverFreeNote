@@ -2,12 +2,30 @@ import * as WebBrowser from 'expo-web-browser'
 import type { OAuthAdapter } from '@core/adapters/oauth'
 
 /**
- * Placeholder OAuth adapter for RN/Expo.
- * TODO: Integrate with real Supabase signInWithOAuth flow (generate provider URL, open it, handle callback via deep link).
+ * Mobile OAuth adapter using expo-web-browser
+ * Opens OAuth flow in system browser or in-app browser
  */
-export const mobileOAuthAdapter: OAuthAdapter = {
-  async startOAuth(authUrl: string) {
-    // Open auth URL in custom tab; expect redirect back to deep link
-    await WebBrowser.openAuthSessionAsync(authUrl, authUrl)
+export const oauthAdapter: OAuthAdapter = {
+  async startOAuth(authUrl: string): Promise<void> {
+    try {
+      // Warm up browser for better UX (optional but recommended)
+      await WebBrowser.warmUpAsync()
+
+      // Open OAuth URL in browser
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, 'everfreenote://')
+
+      // Cool down browser
+      await WebBrowser.coolDownAsync()
+
+      if (result.type === 'cancel') {
+        // User cancelled authentication - silent log removed
+      } else if (result.type === 'success') {
+        // Authentication successful - URL handling is done via deep linking
+        // see app/(auth)/callback.tsx
+      }
+    } catch (error) {
+      console.error('[OAuth] Error starting OAuth flow:', error)
+      throw error
+    }
   },
 }

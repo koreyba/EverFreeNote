@@ -27,7 +27,7 @@ describe('core/services/SearchService', () => {
 
   describe('searchNotes', () => {
     it('uses FTS when available', async () => {
-      const mockData = [{ id: '1', title: 'Test', rank: 0.5 }]
+      const mockData = [{ id: '1', title: 'Test', rank: 0.5, user_id: 'user-1', description: '', headline: null, content: null }]
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ; (mockSupabase.rpc as any).resolves({ data: mockData, error: null })
 

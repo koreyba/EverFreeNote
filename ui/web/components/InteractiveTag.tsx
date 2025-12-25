@@ -21,8 +21,6 @@ export default function InteractiveTag({
   showIcon = true,
   className,
 }: InteractiveTagProps) {
-  const [isHovered, setIsHovered] = React.useState(false)
-
   const handleTagClick = (event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation() // Prevent card onClick from firing
     const target = event.target as HTMLElement | null
@@ -44,8 +42,6 @@ export default function InteractiveTag({
         className
       )}
       onClick={handleTagClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       {showIcon && <Tag className="w-3 h-3 mr-1" />}
       {tag}
@@ -55,7 +51,7 @@ export default function InteractiveTag({
           type="button"
           className={cn(
             "remove-tag ml-2 p-0.5 rounded-full transition-opacity duration-200 hover:bg-destructive/20 hover:text-destructive",
-            isHovered ? "opacity-100" : "opacity-0"
+            "opacity-100 md:opacity-0 md:group-hover:opacity-100"
           )}
           onClick={handleRemoveClick}
           title={`Remove tag "${tag}"`}

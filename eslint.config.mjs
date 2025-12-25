@@ -25,6 +25,7 @@ export default defineConfig([
       'act-artifacts/**',
       'out/**',
       'next-env.d.ts',
+      'ui/mobile/**', // Ignore mobile project
     ],
   },
   

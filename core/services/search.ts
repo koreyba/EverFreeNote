@@ -57,13 +57,28 @@ export class SearchService {
           // If FTS found results, return them.
           // If FTS found nothing (0 results), fall through to ILIKE fallback to support substring search
           if (rows.length > 0) {
+            // Normalize RPC output:
+            // - Supabase function returns `content` instead of `description` (legacy compatibility)
+            // - It doesn't return `user_id`, but our domain expects it consistently
+            const normalizedRows: FtsSearchResult[] = rows.map((row) => ({
+              ...(row as unknown as Tables<'notes'>),
+              user_id: userId,
+              description:
+                (row as unknown as { description?: string | null }).description ??
+                (row as unknown as { content?: string | null }).content ??
+                '',
+              rank: row.rank,
+              headline: row.headline ?? null,
+              content: (row as unknown as { content?: string | null }).content ?? null,
+            }))
+
             const totalFromDb = rows[0]?.total_count
             const inferredTotal = typeof totalFromDb === 'number'
               ? totalFromDb
               : rows.length + offset
 
             return {
-              results: rows,
+              results: normalizedRows,
               total: inferredTotal,
               method: 'fts',
             }
