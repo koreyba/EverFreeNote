@@ -74,7 +74,7 @@ export function TagChip({
           onPress={handleRemove}
           hitSlop={6}
         >
-          <X size={12} color={colors.destructive} />
+          <X size={12} color={colors.mutedForeground} />
         </Pressable>
       )}
     </Pressable>

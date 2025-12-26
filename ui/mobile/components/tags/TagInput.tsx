@@ -9,6 +9,7 @@ type TagInputProps = {
   onChangeTags: (tags: string[]) => void
   onTagPress?: (tag: string) => void
   label?: string
+  placeholder?: string
   disabled?: boolean
   style?: ViewStyle
 }
@@ -40,6 +41,7 @@ export function TagInput({
   onChangeTags,
   onTagPress,
   label = 'Tags',
+  placeholder = 'Add tags using button on the right side:',
   disabled = false,
   style,
 }: TagInputProps) {
@@ -89,6 +91,10 @@ export function TagInput({
           keyboardShouldPersistTaps="handled"
           style={styles.scrollView}
         >
+          {tags.length === 0 && !isEditing && (
+            <Text style={styles.placeholder}>{placeholder}</Text>
+          )}
+
           {tags.map((tag, index) => (
             <TagChip
               key={`${tag}-${index}`}
@@ -153,6 +159,12 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     flexDirection: 'row',
     alignItems: 'center',
     paddingRight: 8,
+  },
+  placeholder: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: colors.mutedForeground,
+    paddingVertical: 4,
   },
   inputChip: {
     flexDirection: 'row',
