@@ -255,12 +255,26 @@ export default function EditorWebViewPage() {
     }
   }
 
+  const handleFocus = () => {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'EDITOR_FOCUS' }))
+    }
+  }
+
+  const handleBlur = () => {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'EDITOR_BLUR' }))
+    }
+  }
+
   return (
     <div className="h-screen w-screen overflow-auto bg-background">
       <RichTextEditorWebView
         ref={editorRef}
         initialContent={initialContent}
         onContentChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       />
     </div>
   )

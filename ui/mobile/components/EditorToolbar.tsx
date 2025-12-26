@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { ScrollView, Pressable, StyleSheet, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
     Bold,
     Italic,
@@ -19,6 +20,7 @@ type Props = {
 
 export const EditorToolbar = ({ onCommand }: Props) => {
     const { colors } = useTheme()
+    const insets = useSafeAreaInsets()
     const styles = useMemo(() => createStyles(colors), [colors])
 
     const ToolbarButton = ({ icon: Icon, onPress }: { icon: React.ElementType, onPress: () => void }) => (
@@ -34,7 +36,7 @@ export const EditorToolbar = ({ onCommand }: Props) => {
     )
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingBottom: insets.bottom }]}>
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -59,16 +61,14 @@ export const EditorToolbar = ({ onCommand }: Props) => {
 
 const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
     container: {
-        height: 48,
         backgroundColor: colors.background,
         borderTopWidth: 1,
         borderTopColor: colors.border,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
     },
     scrollContent: {
         paddingHorizontal: 8,
         alignItems: 'center',
+        height: 48,
     },
     button: {
         width: 40,
