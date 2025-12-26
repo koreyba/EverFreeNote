@@ -8,6 +8,7 @@ interface SupabaseContextValue {
   user: User | null
   session: Session | null
   loading: boolean
+  signOut: () => Promise<void>
 }
 
 const SupabaseContext = createContext<SupabaseContextValue | undefined>(undefined)
@@ -23,6 +24,10 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const signOut = async () => {
+    await client.auth.signOut()
+  }
 
   useEffect(() => {
     // Get initial session
@@ -49,7 +54,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   }, [client])
 
   return (
-    <SupabaseContext.Provider value={{ client, user, session, loading }}>
+    <SupabaseContext.Provider value={{ client, user, session, loading, signOut }}>
       {children}
     </SupabaseContext.Provider>
   )
@@ -64,6 +69,6 @@ export function useSupabase(): SupabaseContextValue {
 }
 
 export function useAuth() {
-  const { user, session, loading } = useSupabase()
-  return { user, session, loading, isAuthenticated: !!user }
+  const { user, session, loading, signOut } = useSupabase()
+  return { user, session, loading, isAuthenticated: !!user, signOut }
 }
