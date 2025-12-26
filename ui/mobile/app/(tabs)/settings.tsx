@@ -1,10 +1,11 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native'
 import { useMemo } from 'react'
-import { useTheme } from '@ui/mobile/providers'
+import { useTheme, useAuth } from '@ui/mobile/providers'
 import type { ThemeMode } from '@ui/mobile/lib/theme'
 
 export default function SettingsScreen() {
   const { colors, mode, setMode, colorScheme } = useTheme()
+  const { signOut } = useAuth()
   const styles = useMemo(() => createStyles(colors), [colors])
 
   const options: { value: ThemeMode; label: string; description: string }[] = [
@@ -45,6 +46,18 @@ export default function SettingsScreen() {
           )
         })}
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Sign out"
+        style={({ pressed }) => [
+          styles.signOutButton,
+          pressed && styles.signOutButtonPressed,
+        ]}
+        onPress={() => void signOut()}
+      >
+        <Text style={styles.signOutText}>Sign Out</Text>
+      </Pressable>
     </View>
   )
 }
@@ -121,5 +134,20 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     height: 10,
     borderRadius: 5,
     backgroundColor: colors.primary,
+  },
+  signOutButton: {
+    marginTop: 24,
+    backgroundColor: colors.destructive,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  signOutButtonPressed: {
+    opacity: 0.8,
+  },
+  signOutText: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: colors.destructiveForeground,
   },
 })
