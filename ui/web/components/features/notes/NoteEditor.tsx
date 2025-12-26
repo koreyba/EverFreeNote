@@ -1,19 +1,18 @@
 "use client"
 
 import * as React from "react"
-import { Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
-import InteractiveTag from "@/components/InteractiveTag"
+import { TagInput } from "@/components/TagInput"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
 export interface NoteEditorHandle {
-  flushPendingSave: (options?: { includePendingTag?: boolean }) => Promise<void>
+  flushPendingSave: () => Promise<void>
 }
 
 interface NoteEditorProps {
@@ -50,10 +49,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
-  const tagInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
   const firstRenderRef = React.useRef(true)
-  const backspaceArmedRef = React.useRef(false)
 
   // Helper to get current form data from refs (single source of truth)
   const getFormData = React.useCallback(() => ({
@@ -66,31 +63,12 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     setTagQuery(normalizeTag(value))
   }, 320)
 
-  const commitPendingTag = React.useCallback(() => {
-    const pendingValue = tagInputRef.current?.value ?? ""
-    const pendingParts = normalizeTagList(pendingValue.split(","))
-    if (!pendingParts.length) {
-      backspaceArmedRef.current = false
-      return buildTagString(selectedTags)
-    }
-
-    const merged = normalizeTagList([...selectedTags, ...pendingParts])
-    setSelectedTags(merged)
-    if (tagInputRef.current) {
-      tagInputRef.current.value = ""
-    }
-    debouncedTagQuery.cancel()
-    setTagQuery("")
-    backspaceArmedRef.current = false
-    return buildTagString(merged)
-  }, [selectedTags, debouncedTagQuery])
 
   const debouncedAutoSave = useDebouncedCallback(
     async () => {
       if (!onAutoSave) return
       try {
-        const tags = commitPendingTag()
-        await onAutoSave({ noteId, ...getFormData(), tags })
+        await onAutoSave({ noteId, ...getFormData() })
       } catch {
         // Errors handled upstream
       }
@@ -103,12 +81,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     editorRef.current?.setContent(initialDescription)
     setInputResetKey((k) => k + 1)
     setSelectedTags(parseTagString(initialTags))
-    if (tagInputRef.current) {
-      tagInputRef.current.value = ""
-    }
     debouncedTagQuery.cancel()
     setTagQuery("")
-    backspaceArmedRef.current = false
     firstRenderRef.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTitle, initialDescription, initialTags])
@@ -125,14 +99,12 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
   const handleSave = () => {
     debouncedAutoSave.cancel()
-    const tags = commitPendingTag()
-    onSave({ ...getFormData(), tags })
+    onSave(getFormData())
   }
 
   const handleRead = () => {
     debouncedAutoSave.cancel()
-    const tags = commitPendingTag()
-    onRead({ ...getFormData(), tags })
+    onRead(getFormData())
   }
 
   // Trigger debounced autosave on any content change
@@ -164,73 +136,26 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       }
       return merged
     })
-    if (tagInputRef.current) {
-      tagInputRef.current.value = ""
-    }
     debouncedTagQuery.cancel()
     setTagQuery("")
-    backspaceArmedRef.current = false
-    tagInputRef.current?.focus()
-  }, [debouncedTagQuery])
+    // Trigger autosave when tags change
+    debouncedAutoSave.call()
+  }, [debouncedTagQuery, debouncedAutoSave])
 
   const removeTag = React.useCallback((tagToRemove: string) => {
     setSelectedTags((prev) => prev.filter((tag) => tag !== tagToRemove))
-    backspaceArmedRef.current = false
-  }, [])
+    // Trigger autosave when tags change
+    debouncedAutoSave.call()
+  }, [debouncedAutoSave])
 
-  const handleTagInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const nextValue = event.target.value
-    backspaceArmedRef.current = false
-    if (!nextValue) {
-      debouncedTagQuery.cancel()
-      setTagQuery("")
-      return
-    }
-    debouncedTagQuery.call(nextValue)
-  }
-
-  const handleTagInputBlur = () => {
-    commitPendingTag()
-  }
-
-  const handleTagInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    const currentValue = tagInputRef.current?.value ?? ""
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault()
-      const parts = currentValue.split(",")
-      addTags(parts)
-      return
-    }
-
-    if (event.key === "Backspace" && currentValue.length === 0 && selectedTags.length > 0) {
-      event.preventDefault()
-      const lastTag = selectedTags[selectedTags.length - 1]
-      if (backspaceArmedRef.current) {
-        backspaceArmedRef.current = false
-        if (lastTag) removeTag(lastTag)
-      } else {
-        backspaceArmedRef.current = true
-      }
-      return
-    }
-
-    if (event.key !== "Backspace") {
-      backspaceArmedRef.current = false
-    }
-  }
 
   // Expose API for parent component to flush pending saves
   React.useImperativeHandle(ref, () => ({
-    flushPendingSave: async (options) => {
+    flushPendingSave: async () => {
       if (!onAutoSave) return
-      if (options?.includePendingTag) {
-        const tags = commitPendingTag()
-        await onAutoSave({ noteId, ...getFormData(), tags })
-        return
-      }
       debouncedAutoSave.flush()
     }
-  }), [commitPendingTag, getFormData, noteId, onAutoSave, debouncedAutoSave])
+  }), [onAutoSave, debouncedAutoSave])
 
   return (
     <div className="flex-1 flex min-h-0 flex-col">
@@ -279,48 +204,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-2xl font-bold leading-snug shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
-          <div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <Tag className="w-4 h-4" />
-              <span>Tags:</span>
-            </div>
-            <div className="relative">
-              <div className="min-h-[44px] w-full rounded-md border border-input bg-transparent px-2 py-2 flex flex-wrap gap-2">
-                {selectedTags.map((tag) => (
-                  <InteractiveTag
-                    key={tag}
-                    tag={tag}
-                    onRemove={removeTag}
-                  />
-                ))}
-                <input
-                  key={`tags-${inputResetKey}`}
-                  ref={tagInputRef}
-                  type="text"
-                  onChange={handleTagInputChange}
-                  onKeyDown={handleTagInputKeyDown}
-                  onBlur={handleTagInputBlur}
-                  placeholder="work, personal, ideas"
-                  className="flex-1 min-w-[140px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                />
-              </div>
-              {suggestions.length > 0 && (
-                <div className="mt-2 w-full rounded-md border border-input bg-popover text-popover-foreground shadow">
-                  {suggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => addTags([suggestion])}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <TagInput
+            tags={selectedTags}
+            onAddTags={addTags}
+            onRemoveTag={removeTag}
+            suggestions={suggestions}
+            onQueryChange={debouncedTagQuery.call}
+            placeholder="work, personal, ideas"
+          />
         </div>
         <div className="max-w-4xl mx-auto px-6 pb-6">
           <RichTextEditor

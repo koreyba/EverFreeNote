@@ -91,13 +91,18 @@ export const NoteView = React.memo(function NoteView({
           </h1>
           
           {note.tags && note.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div
+              className="mb-6 flex gap-2 overflow-x-auto pb-1"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <style jsx>{`div::-webkit-scrollbar { display: none; }`}</style>
               {note.tags.map((tag, index) => (
                 <InteractiveTag
                   key={index}
                   tag={tag}
                   onClick={onTagClick}
                   onRemove={onRemoveTag}
+                  className="shrink-0"
                 />
               ))}
             </div>
