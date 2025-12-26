@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, ScrollView, Keyboard } from 'react-native'
+import { View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard, ScrollView } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
 import { useNote, useUpdateNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
@@ -40,26 +40,22 @@ const htmlToPlainText = (html: string) => {
   return decoded.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-function NoteBodyPreview({ html }: { html: string }) {
-  const { colors } = useTheme()
+function NoteBodyPreview({ html, colors }: { html: string; colors: ReturnType<typeof useTheme>['colors'] }) {
   const styles = useMemo(() => createPreviewStyles(colors), [colors])
   const text = useMemo(() => htmlToPlainText(html), [html])
 
+  // Пустой контейнер для пустых заметок - без текста "Empty note"
   if (!text) {
-    return (
-      <View style={styles.previewEmpty}>
-        <Text style={styles.previewEmptyText}>Empty note</Text>
-      </View>
-    )
+    return <View style={styles.container} />
   }
 
   return (
     <ScrollView
-      style={styles.previewScroll}
-      contentContainerStyle={styles.previewScrollContent}
-      showsVerticalScrollIndicator={true}
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.previewText}>{text}</Text>
+      <Text style={styles.text}>{text}</Text>
     </ScrollView>
   )
 }
@@ -181,7 +177,7 @@ export default function NoteEditorScreen() {
         onContentChange={handleContentChange}
         onFocus={() => setIsEditorFocused(true)}
         onBlur={() => setIsEditorFocused(false)}
-        loadingFallback={<NoteBodyPreview html={note.description || ''} />}
+        loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
       />
       {isEditorFocused && (
         <View style={[styles.toolbarContainer, { bottom: keyboardHeight }]}>
@@ -232,31 +228,24 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   },
 })
 
+// Стили превью максимально соответствуют WebView редактору:
+// - px-6 py-4 = 24px horizontal, 16px vertical
+// - font-size: 12pt (~16px)
+// - line-height: 1.75 (16 * 1.75 = 28)
+// - bg-background
 const createPreviewStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
-  previewScroll: {
+  container: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: colors.background,
   },
-  previewScrollContent: {
-    paddingBottom: 24,
+  contentContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
-  previewText: {
+  text: {
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
     color: colors.foreground,
-    lineHeight: 22,
-  },
-  previewEmpty: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    justifyContent: 'center',
-  },
-  previewEmptyText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: colors.mutedForeground,
-    textAlign: 'center',
+    lineHeight: 28,
   },
 })
