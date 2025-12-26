@@ -1,35 +1,177 @@
 ---
 phase: implementation
 title: Edge Functions Guideline
-description: SPA integration rules for server logic
+description: How to run and deploy Supabase Edge Functions for this project
 ---
 
 # Edge Functions Guideline
 
-## Rule of thumb
-- Приложение собирается как SPA/static export. **Не используем Next API routes** для серверной логики.
-- Любые серверные операции (удаление аккаунта, служебные действия с данными) выносим в Supabase Edge Functions.
-- Клиент общается с Edge Functions через `supabase.functions.invoke(...)`; сервисные ключи остаются на стороне Supabase.
+Эта инструкция описывает запуск Edge Functions локально и деплой на staging/production.
 
-## Delete Account flow (пример)
-- Функция `delete-account` в `supabase/functions/delete-account/index.ts`:
-  - Берёт `Authorization: Bearer <access_token>` от клиента.
-  - Через service role key удаляет все заметки пользователя и вызывает `auth.admin.deleteUser(uid)`.
-  - Возвращает `{ success: true }` либо `{ error: string }`.
-- Клиент:
-  - Вызывает `supabase.functions.invoke("delete-account")`.
-  - При успехе выполняет `signOut()` и показывает тост.
+## Список функций
+- `delete-account`
+- `save-session`
+- `get-sessions`
+- `search-sessions`
+- `update-session`
 
-## Настройка окружения
-- На Supabase (prod) должны быть заданы `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` для Edge Functions.
-- На клиенте нужны только публичные ключи: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-- Чтобы функции ходили на прод-проект, задайте `NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL` (иначе вызовы пойдут на `NEXT_PUBLIC_SUPABASE_URL`). Если функция там не задеплоена, будет 404.
+## Первый сетап (пре-кондишены, делается один раз)
+1) Установить Supabase CLI (через npx он уже доступен).
+2) Иметь значения:
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `COACHING_USER_ID`
+3) Добавить переменные в `.env.local` для локального запуска:
+```
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+COACHING_USER_ID=<uuid>
+```
 
-## Деплой Edge Functions
-1) Установить Supabase CLI.
-2) `supabase functions deploy delete-account`
-3) В Supabase Dashboard добавить secrets (например, SERVICE_ROLE_KEY) и права, если нужно.
+## Локальный запуск (каждый раз по необходимости)
+1) Поднять локальный Supabase:
+```
+npm run db:start
+```
 
-## Типичные ошибки
-- 404 при вызове функции: функция не задеплоена на проект/URL, куда смотрит клиент. Решение: задеплоить `delete-account` и/или задать `NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL` на правильный проект (или запустить `supabase functions serve delete-account` в dev).
-- Нет доступа: на функции не передан Bearer токен или включены неверные проверки JWT. Проверьте `Authorization` и настройки функции.
+2) Запустить функции:
+```
+npx supabase functions serve save-session get-sessions search-sessions update-session delete-account --env-file .env.local
+```
+
+4) Локальные URL:
+```
+http://127.0.0.1:54321/functions/v1/<function-name>
+```
+
+## Деплой на staging
+Проект staging: `yabcuywqxgjlruuyhwin`
+
+### Каждый новый деплой (всегда)
+1) Явно переключиться на staging проект (чтобы не ошибиться с текущим):
+```
+npx supabase link --project-ref yabcuywqxgjlruuyhwin
+```
+
+2) Проверить секреты (если менялись — обновить):
+```
+npx supabase secrets set SUPABASE_URL=https://yabcuywqxgjlruuyhwin.supabase.co
+npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+npx supabase secrets set COACHING_USER_ID=<uuid>
+```
+
+3) Деплой функций:
+```
+npx supabase functions deploy save-session
+npx supabase functions deploy get-sessions
+npx supabase functions deploy search-sessions
+npx supabase functions deploy update-session
+npx supabase functions deploy delete-account
+```
+
+## Деплой на production
+Проект production: `pmlloiywmuglbjkhrggo`
+
+### Каждый новый деплой (всегда)
+1) Явно переключиться на prod проект (чтобы не ошибиться с текущим):
+```
+npx supabase link --project-ref pmlloiywmuglbjkhrggo
+```
+
+2) Проверить секреты (если менялись — обновить):
+```
+npx supabase secrets set SUPABASE_URL=https://pmlloiywmuglbjkhrggo.supabase.co
+npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+npx supabase secrets set COACHING_USER_ID=<uuid>
+```
+
+3) Деплой функций:
+```
+npx supabase functions deploy save-session
+npx supabase functions deploy get-sessions
+npx supabase functions deploy search-sessions
+npx supabase functions deploy update-session
+npx supabase functions deploy delete-account
+```
+
+## Как переключаться между проектами
+1) Посмотреть доступные проекты:
+```
+npx supabase projects list
+```
+
+2) Выбрать текущий проект:
+```
+npx supabase link --project-ref <project_ref>
+```
+
+3) Проверить текущий проект:
+```
+npx supabase status
+```
+
+## Готовые адреса для Claude (copy-paste)
+### Staging (yabcuywqxgjlruuyhwin)
+Base URL:
+```
+https://yabcuywqxgjlruuyhwin.supabase.co
+```
+
+Headers:
+```
+apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhYmN1eXdxeGdqbHJ1dXlod2luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2ODAyNDIsImV4cCI6MjA4MDI1NjI0Mn0.rlv-VFL7Ted3TE5-AT4QooDEOt4LdZEtnnZP94KjhFY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhYmN1eXdxeGdqbHJ1dXlod2luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2ODAyNDIsImV4cCI6MjA4MDI1NjI0Mn0.rlv-VFL7Ted3TE5-AT4QooDEOt4LdZEtnnZP94KjhFY
+Content-Type: application/json
+```
+
+Endpoints:
+```
+POST https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1/save-session
+POST https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1/update-session
+GET  https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1/get-sessions?limit=3
+GET  https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1/search-sessions?q=embodiment&limit=5
+```
+
+Примеры тела для `update-session`:
+```
+// Полная замена
+{ "id": "<note_id>", "mode": "replace", "content": "Новый полный текст" }
+
+// Дополнение в конец
+{ "id": "<note_id>", "mode": "append", "append": "Добавка к сессии" }
+
+// Дополнение + обновление темы
+{ "id": "<note_id>", "mode": "append", "append": "Добавка", "topic": "Новая тема" }
+```
+
+### Production (pmlloiywmuglbjkhrggo)
+Base URL:
+```
+https://pmlloiywmuglbjkhrggo.supabase.co
+```
+
+Headers:
+```
+apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtbGxvaXl3bXVnbGJqa2hyZ2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTM5ODksImV4cCI6MjA3NTc4OTk4OX0.w0nQ2o4V2I35NujqOTgAfE3QSU1nYIJqTsTSCGT6UDw
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtbGxvaXl3bXVnbGJqa2hyZ2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTM5ODksImV4cCI6MjA3NTc4OTk4OX0.w0nQ2o4V2I35NujqOTgAfE3QSU1nYIJqTsTSCGT6UDw
+Content-Type: application/json
+```
+
+Endpoints:
+```
+POST https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1/save-session
+POST https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1/update-session
+GET  https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1/get-sessions?limit=3
+GET  https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1/search-sessions?q=embodiment&limit=5
+```
+
+Примеры тела для `update-session`:
+```
+// Полная замена
+{ "id": "<note_id>", "mode": "replace", "content": "Новый полный текст" }
+
+// Дополнение в конец
+{ "id": "<note_id>", "mode": "append", "append": "Добавка к сессии" }
+
+// Дополнение + обновление темы
+{ "id": "<note_id>", "mode": "append", "append": "Добавка", "topic": "Новая тема" }
+```
