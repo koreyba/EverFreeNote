@@ -81,38 +81,44 @@ export function TagInput({
   return (
     <View style={style}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        {tags.map((tag, index) => (
-          <TagChip
-            key={`${tag}-${index}`}
-            tag={tag}
-            onPress={onTagPress}
-            onRemove={handleRemove}
-          />
-        ))}
-
-        {isEditing ? (
-          <View style={styles.inputChip}>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              value={draft}
-              onChangeText={setDraft}
-              onSubmitEditing={handleAdd}
-              onBlur={handleBlur}
-              placeholder="tag name"
-              placeholderTextColor={colors.mutedForeground}
-              returnKeyType="done"
-              autoCapitalize="none"
-              autoCorrect={false}
+      <View style={styles.container}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          style={styles.scrollView}
+        >
+          {tags.map((tag, index) => (
+            <TagChip
+              key={`${tag}-${index}`}
+              tag={tag}
+              onPress={onTagPress}
+              onRemove={handleRemove}
             />
-          </View>
-        ) : (
+          ))}
+
+          {isEditing && (
+            <View style={styles.inputChip}>
+              <TextInput
+                ref={inputRef}
+                style={styles.input}
+                value={draft}
+                onChangeText={setDraft}
+                onSubmitEditing={handleAdd}
+                onBlur={handleBlur}
+                placeholder="tag name"
+                placeholderTextColor={colors.mutedForeground}
+                returnKeyType="done"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Fixed add button - always visible */}
+        {!isEditing && (
           <Pressable
             style={({ pressed }) => [
               styles.addButton,
@@ -124,7 +130,7 @@ export function TagInput({
             <Plus size={14} color={colors.primary} />
           </Pressable>
         )}
-      </ScrollView>
+      </View>
     </View>
   )
 }
@@ -136,9 +142,17 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     color: colors.mutedForeground,
     marginBottom: 8,
   },
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingRight: 8,
   },
   inputChip: {
     flexDirection: 'row',
@@ -171,7 +185,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginLeft: 8,
   },
   addButtonPressed: {
     backgroundColor: colors.accent,
