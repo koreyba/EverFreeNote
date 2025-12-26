@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Plus, X, Tag } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
 import { cn } from "@ui/web/lib/utils"
 
 type TagInputProps = {
@@ -30,9 +31,9 @@ export function TagInput({
 }: TagInputProps) {
   const [isEditing, setIsEditing] = React.useState(false)
   const [inputValue, setInputValue] = React.useState("")
+  const [backspaceArmed, setBackspaceArmed] = React.useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
-  const backspaceArmedRef = React.useRef(false)
 
   const handleStartEditing = () => {
     if (disabled) return
@@ -49,7 +50,7 @@ export function TagInput({
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
     setInputValue(value)
-    backspaceArmedRef.current = false
+    setBackspaceArmed(false)
     onQueryChange?.(value)
   }
 
@@ -64,7 +65,7 @@ export function TagInput({
     }
     setInputValue("")
     onQueryChange?.("")
-    backspaceArmedRef.current = false
+    setBackspaceArmed(false)
   }
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -79,24 +80,24 @@ export function TagInput({
       setIsEditing(false)
       setInputValue("")
       onQueryChange?.("")
-      backspaceArmedRef.current = false
+      setBackspaceArmed(false)
       return
     }
 
     if (event.key === "Backspace" && inputValue.length === 0 && tags.length > 0) {
       event.preventDefault()
       const lastTag = tags[tags.length - 1]
-      if (backspaceArmedRef.current) {
-        backspaceArmedRef.current = false
+      if (backspaceArmed) {
+        setBackspaceArmed(false)
         if (lastTag) onRemoveTag(lastTag)
       } else {
-        backspaceArmedRef.current = true
+        setBackspaceArmed(true)
       }
       return
     }
 
     if (event.key !== "Backspace") {
-      backspaceArmedRef.current = false
+      setBackspaceArmed(false)
     }
   }
 
@@ -105,7 +106,7 @@ export function TagInput({
       commitTags(inputValue)
     }
     setIsEditing(false)
-    backspaceArmedRef.current = false
+    setBackspaceArmed(false)
   }
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -115,8 +116,7 @@ export function TagInput({
     inputRef.current?.focus()
   }
 
-  const handleTagClick = (event: React.MouseEvent, tag: string) => {
-    event.stopPropagation()
+  const handleTagClick = (tag: string) => {
     onTagClick?.(tag)
   }
 
@@ -126,29 +126,26 @@ export function TagInput({
   }
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative overflow-hidden", className)}>
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
         <Tag className="w-4 h-4" />
         <span>Tags:</span>
       </div>
 
-      <div className="flex items-center gap-2">
-        {/* Scrollable tags area */}
-        <div
+      <div className="flex items-center gap-2 max-w-full">
+        <HorizontalTagScroll
           ref={scrollContainerRef}
-          className="flex-1 min-w-0 flex items-center gap-2 py-2 overflow-x-auto"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="flex-1 min-w-0 py-2"
         >
-          <style jsx>{`div::-webkit-scrollbar { display: none; }`}</style>
           {tags.map((tag) => (
             <Badge
               key={tag}
               variant="secondary"
               className={cn(
                 "shrink-0 cursor-pointer transition-all duration-200 hover:bg-accent hover:text-accent-foreground group relative",
-                backspaceArmedRef.current && tag === tags[tags.length - 1] && "ring-2 ring-destructive"
+                backspaceArmed && tag === tags[tags.length - 1] && "ring-2 ring-destructive"
               )}
-              onClick={(e) => handleTagClick(e, tag)}
+              onClick={() => handleTagClick(tag)}
             >
               <Tag className="w-3 h-3 mr-1" />
               {tag}
@@ -179,7 +176,7 @@ export function TagInput({
               disabled={disabled}
             />
           )}
-        </div>
+        </HorizontalTagScroll>
 
         {/* Fixed add button */}
         {!isEditing && (
