@@ -110,7 +110,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     setTagQuery("")
     backspaceArmedRef.current = false
     firstRenderRef.current = true
-  }, [initialTitle, initialDescription, initialTags])
+  }, [initialTitle, initialDescription, initialTags, debouncedTagQuery])
 
   // Sync external auto-saving flag into local display state
   React.useEffect(() => {
