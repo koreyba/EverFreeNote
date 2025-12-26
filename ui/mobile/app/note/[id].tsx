@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { View, TextInput, StyleSheet, ActivityIndicator, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, ScrollView, Keyboard } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
 import { useNote, useUpdateNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
@@ -75,7 +75,24 @@ export default function NoteEditorScreen() {
   const editorRef = useRef<EditorWebViewHandle>(null)
   const [title, setTitle] = useState('')
   const [tags, setTags] = useState<string[]>([])
+  const [isEditorFocused, setIsEditorFocused] = useState(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    )
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardHeight(0)
+    )
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
 
   useEffect(() => {
     if (note) {
@@ -131,10 +148,7 @@ export default function NoteEditorScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <Stack.Screen
         options={{
           title: 'Редактирование',
@@ -150,22 +164,31 @@ export default function NoteEditorScreen() {
           onChangeText={handleTitleChange}
           placeholder="Название заметки"
           placeholderTextColor={colors.mutedForeground}
+          multiline
+          scrollEnabled={false}
         />
         <TagInput
           tags={tags}
           onChangeTags={handleTagsChange}
           onTagPress={handleTagPress}
+          label=""
           style={styles.tags}
         />
       </View>
-      <EditorToolbar onCommand={handleToolbarCommand} />
       <EditorWebView
         ref={editorRef}
         initialContent={note.description || ''}
         onContentChange={handleContentChange}
+        onFocus={() => setIsEditorFocused(true)}
+        onBlur={() => setIsEditorFocused(false)}
         loadingFallback={<NoteBodyPreview html={note.description || ''} />}
       />
-    </KeyboardAvoidingView>
+      {isEditorFocused && (
+        <View style={[styles.toolbarContainer, { bottom: keyboardHeight }]}>
+          <EditorToolbar onCommand={handleToolbarCommand} />
+        </View>
+      )}
+    </View>
   )
 }
 
@@ -201,6 +224,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   },
   headerToggle: {
     marginRight: 12,
+  },
+  toolbarContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
 })
 

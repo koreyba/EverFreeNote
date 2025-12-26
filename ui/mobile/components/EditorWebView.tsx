@@ -21,11 +21,13 @@ type Props = {
     initialContent?: string
     onContentChange?: (html: string) => void
     onReady?: () => void
+    onFocus?: () => void
+    onBlur?: () => void
     loadingFallback?: React.ReactNode
 }
 
 const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
-    ({ initialContent = '', onContentChange, onReady, loadingFallback }, ref) => {
+    ({ initialContent = '', onContentChange, onReady, onFocus, onBlur, loadingFallback }, ref) => {
         const webViewRef = useRef<WebView>(null)
         const { colors, colorScheme } = useTheme()
         const styles = useMemo(() => createStyles(colors), [colors])
@@ -191,6 +193,12 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         console.error('[EditorWebView] Image failed to load:', p?.src, p?.message)
                         break
                     }
+                    case 'EDITOR_FOCUS':
+                        onFocus?.()
+                        break
+                    case 'EDITOR_BLUR':
+                        onBlur?.()
+                        break
                 }
             } catch (error) {
                 console.error('[EditorWebView] Failed to parse message:', error)
