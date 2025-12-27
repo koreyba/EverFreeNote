@@ -100,11 +100,11 @@ export function useSearch(query: string, options: { tag?: string | null } = {}) 
             }
 
             const results = await databaseService.searchNotes(trimmed, user.id, {
-                limit: PAGE_SIZE,
+                limit: SEARCH_CONFIG.PAGE_SIZE,
                 offset,
                 tag,
             })
-            const baseHasMore = results.length === PAGE_SIZE
+            const baseHasMore = results.length === SEARCH_CONFIG.PAGE_SIZE
             return {
                 results: results as SearchResultItem[],
                 total: offset + results.length,

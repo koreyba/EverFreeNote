@@ -9,6 +9,7 @@ export function getSupabaseConfig(): SupabaseConfig {
   const url = Constants.expoConfig?.extra?.supabaseUrl ?? process.env.EXPO_PUBLIC_SUPABASE_URL
   const anonKey =
     Constants.expoConfig?.extra?.supabaseAnonKey ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+  const functionsUrl = Constants.expoConfig?.extra?.supabaseFunctionsUrl ?? process.env.EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL
 
   if (!url || !anonKey) {
     throw new Error(
@@ -19,5 +20,6 @@ export function getSupabaseConfig(): SupabaseConfig {
   return {
     url,
     anonKey,
+    functionsUrl: functionsUrl ?? url,
   }
 }
