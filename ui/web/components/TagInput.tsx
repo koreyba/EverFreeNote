@@ -141,6 +141,7 @@ export function TagInput({
             <Badge
               key={tag}
               variant="secondary"
+              data-cy="interactive-tag"
               className={cn(
                 "shrink-0 cursor-pointer transition-all duration-200 hover:bg-accent hover:text-accent-foreground group relative",
                 backspaceArmed && tag === tags[tags.length - 1] && "ring-2 ring-destructive"

@@ -25,7 +25,7 @@ describe('NoteEditor Component', () => {
 
     cy.contains('Editing').should('be.visible')
     cy.get('input[placeholder="Note title"]').should('have.value', 'Test Title')
-    cy.get('input[placeholder="work, personal, ideas"]').should('have.value', '')
+    cy.get('button[title="Add tag"]').should('be.visible')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 2)
     cy.get('.ProseMirror').should('contain.text', 'Test Description')
   })
@@ -34,6 +34,7 @@ describe('NoteEditor Component', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
     cy.get('input[placeholder="Note title"]').clear().type('New Title')
+    cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('New Tag{enter}')
 
     cy.contains('Save').click()
@@ -117,6 +118,7 @@ describe('NoteEditor Component', () => {
   it('shows suggestions after 3 characters and applies selection', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
+    cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('wo')
     cy.contains('button', 'work').should('not.exist')
 
@@ -131,6 +133,7 @@ describe('NoteEditor Component', () => {
   it('excludes already selected tags from suggestions', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
+    cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('tag')
     cy.contains('button', 'tag1').should('not.exist')
     cy.contains('button', 'tag2').should('not.exist')
@@ -139,6 +142,7 @@ describe('NoteEditor Component', () => {
   it('adds tags via comma/enter and removes with backspace on second press', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
+    cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('New  Tag,')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
     cy.contains('[data-cy="interactive-tag"]', 'new tag').should('be.visible')
@@ -155,6 +159,7 @@ describe('NoteEditor Component', () => {
   it('commits a pending tag on blur but not on space alone', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
+    cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('space ')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 2)
 
@@ -178,6 +183,7 @@ describe('NoteEditor Component', () => {
 
     cy.mount(<NoteEditor {...props} />)
 
+    cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('Pending Tag')
     cy.get('input[placeholder="Note title"]').type(' updated')
 
@@ -203,6 +209,7 @@ describe('NoteEditor Component', () => {
 
     cy.mount(<NoteEditor {...props} />)
 
+    cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('onlytag{enter}')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
 
