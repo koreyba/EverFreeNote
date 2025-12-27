@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import type { SupabaseClient, User, Session } from '@supabase/supabase-js'
 import { getSupabaseConfig, supabaseClientFactory, secureStorageAdapter } from '@ui/mobile/adapters'
 import { mobileSyncService } from '../services/sync'
+import { AuthService } from '@core/services/auth'
 
 interface SupabaseContextValue {
   client: SupabaseClient
@@ -9,6 +10,7 @@ interface SupabaseContextValue {
   session: Session | null
   loading: boolean
   signOut: () => Promise<void>
+  deleteAccount: () => Promise<void>
 }
 
 const SupabaseContext = createContext<SupabaseContextValue | undefined>(undefined)
@@ -27,6 +29,12 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await client.auth.signOut()
+  }
+
+  const deleteAccount = async () => {
+    const authService = new AuthService(client)
+    await authService.deleteAccount()
+    await signOut()
   }
 
   useEffect(() => {
@@ -54,7 +62,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   }, [client])
 
   return (
-    <SupabaseContext.Provider value={{ client, user, session, loading, signOut }}>
+    <SupabaseContext.Provider value={{ client, user, session, loading, signOut, deleteAccount }}>
       {children}
     </SupabaseContext.Provider>
   )
@@ -69,6 +77,6 @@ export function useSupabase(): SupabaseContextValue {
 }
 
 export function useAuth() {
-  const { user, session, loading, signOut } = useSupabase()
-  return { user, session, loading, isAuthenticated: !!user, signOut }
+  const { user, session, loading, signOut, deleteAccount } = useSupabase()
+  return { user, session, loading, isAuthenticated: !!user, signOut, deleteAccount }
 }

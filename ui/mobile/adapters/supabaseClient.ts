@@ -17,7 +17,7 @@ export const supabaseClientFactory: SupabaseClientFactory = {
         storage: deps.storage,
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false, // Mobile doesn't use URL for session detection
+        detectSessionInUrl: false,
       },
       global: {
         fetch: deps.fetch ?? fetch,
