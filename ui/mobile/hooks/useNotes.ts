@@ -212,7 +212,6 @@ export function useDeleteNote() {
   const { client, user } = useSupabase()
   const queryClient = useQueryClient()
   const noteService = new NoteService(client)
-  const isOnline = useNetworkStatus()
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -220,7 +219,11 @@ export function useDeleteNote() {
 
       await databaseService.markDeleted(id, user.id)
 
-      if (isOnline) {
+      // Check network status at execution time, not at hook render time
+      const netInfo = await import('@react-native-community/netinfo').then(m => m.default.fetch())
+      const isCurrentlyOnline = netInfo.isConnected && netInfo.isInternetReachable
+
+      if (isCurrentlyOnline) {
         return await noteService.deleteNote(id)
       } else {
         const manager = mobileSyncService.getManager()
@@ -233,8 +236,41 @@ export function useDeleteNote() {
         return id
       }
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['notes'] })
+    onMutate: async (id) => {
+      // Cancel queries to prevent old data from overwriting our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['notes'] })
+
+      // Snapshot the previous value
+      const previousNotes = queryClient.getQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'] })
+
+      // Optimistically update all matching queries
+      queryClient.setQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'] }, (data) => {
+        if (!data) return data
+        return {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            notes: page.notes.filter((note) => note.id !== id),
+            totalCount: Math.max(0, page.totalCount - 1),
+          })),
+        }
+      })
+
+      return { previousNotes }
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousNotes) {
+        // Rollback all queries
+        context.previousNotes.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
+    },
+    onSettled: (_, error) => {
+      // Refetch only if there was an error to ensure consistency
+      if (error) {
+        void queryClient.invalidateQueries({ queryKey: ['notes'] })
+      }
     },
   })
 }

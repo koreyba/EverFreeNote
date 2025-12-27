@@ -3,7 +3,8 @@ import { Stack } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { SupabaseProvider, ThemeProvider, useTheme } from '@ui/mobile/providers'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { SupabaseProvider, ThemeProvider, useTheme, SwipeProvider } from '@ui/mobile/providers'
 import {
   useFonts,
   Inter_400Regular,
@@ -77,17 +78,19 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <SupabaseProvider>
-          <QueryClientProvider client={queryClient}>
-            <ThemedStack />
-            <ThemedStatusBar />
-          </QueryClientProvider>
-        </SupabaseProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <SupabaseProvider>
+            <QueryClientProvider client={queryClient}>
+              <SwipeProvider>
+                <ThemedStack />
+                <ThemedStatusBar />
+              </SwipeProvider>
+            </QueryClientProvider>
+          </SupabaseProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }
-
-

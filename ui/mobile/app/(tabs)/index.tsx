@@ -1,14 +1,16 @@
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
-import { useNotes, useCreateNote } from '@ui/mobile/hooks'
-import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react-native'
-import { NoteCard } from '@ui/mobile/components/NoteCard'
+import { SwipeableNoteCard } from '@ui/mobile/components/SwipeableNoteCard'
 import { Button } from '@ui/mobile/components/ui'
 import { useTheme } from '@ui/mobile/providers'
 import { useMemo } from 'react'
 import type { Note } from '@core/types/domain'
+import { useNotes, useCreateNote, useDeleteNote } from '@ui/mobile/hooks'
+import { useSwipeContext } from '@ui/mobile/providers'
+import { useQueryClient } from '@tanstack/react-query'
+
 
 export default function NotesScreen() {
   const router = useRouter()
@@ -17,6 +19,8 @@ export default function NotesScreen() {
   const styles = useMemo(() => createStyles(colors), [colors])
   const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isRefetching } = useNotes()
   const { mutate: createNote } = useCreateNote()
+  const { mutate: deleteNote } = useDeleteNote()
+  const { closeAll } = useSwipeContext()
 
   const notes = data?.pages.flatMap((page) => page.notes) ?? []
 
@@ -38,11 +42,16 @@ export default function NotesScreen() {
     router.push({ pathname: '/(tabs)/search', params: { tag } })
   }
 
+  const handleDeleteNote = (id: string) => {
+    deleteNote(id)
+  }
+
   const renderNote = ({ item }: { item: Note }) => (
-    <NoteCard
+    <SwipeableNoteCard
       note={item}
       onPress={() => handleOpenNote(item)}
       onTagPress={handleTagPress}
+      onDelete={handleDeleteNote}
     />
   )
 
@@ -90,6 +99,7 @@ export default function NotesScreen() {
         estimatedItemSize={96}
         onRefresh={() => void refetch()}
         refreshing={isRefetching && !isFetchingNextPage}
+        onScrollBeginDrag={closeAll}
         onEndReached={() => {
           if (!hasNextPage || isFetchingNextPage) return
           void fetchNextPage()

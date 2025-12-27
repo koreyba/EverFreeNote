@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard, ScrollView } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
-import { useNote, useUpdateNote } from '@ui/mobile/hooks'
+import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
 import { EditorToolbar } from '@ui/mobile/components/EditorToolbar'
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
+import { Trash2 } from 'lucide-react-native'
+import { Pressable } from 'react-native'
 
 const decodeHtmlEntities = (value: string) => {
   return value
@@ -64,6 +66,7 @@ export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { data: note, isLoading, error } = useNote(id)
   const { mutate: updateNote } = useUpdateNote()
+  const { mutate: deleteNote, isPending: isDeleting } = useDeleteNote()
   const router = useRouter()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
@@ -127,6 +130,14 @@ export default function NoteEditorScreen() {
     editorRef.current?.runCommand(method, args)
   }
 
+  const handleDelete = () => {
+    deleteNote(id, {
+      onSuccess: () => {
+        router.back()
+      },
+    })
+  }
+
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -150,7 +161,25 @@ export default function NoteEditorScreen() {
           title: 'Редактирование',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
-          headerRight: () => <ThemeToggle style={styles.headerToggle} />,
+          headerRight: () => (
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={handleDelete}
+                disabled={isDeleting}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  (pressed || isDeleting) && { opacity: 0.5 }
+                ]}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color={colors.destructive} />
+                ) : (
+                  <Trash2 color={colors.destructive} size={20} />
+                )}
+              </Pressable>
+              <ThemeToggle style={styles.headerToggle} />
+            </View>
+          ),
         }}
       />
       <View style={styles.header}>
@@ -219,7 +248,15 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     color: colors.destructive,
   },
   headerToggle: {
+    marginLeft: 12,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginRight: 12,
+  },
+  headerButton: {
+    padding: 8,
   },
   toolbarContainer: {
     position: 'absolute',
