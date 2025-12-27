@@ -1,0 +1,6 @@
+export const SEARCH_CONFIG = {
+  PAGE_SIZE: 50,
+  MIN_QUERY_LENGTH: 3,
+  MAX_QUERY_LENGTH: 1000,
+  DEBOUNCE_MS: 300,
+} as const

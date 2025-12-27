@@ -4,8 +4,7 @@ import { useSupabase } from '@ui/mobile/providers'
 import { SearchService } from '@core/services/search'
 import { NoteService } from '@core/services/notes'
 import { useNetworkStatus } from './useNetworkStatus'
-
-const PAGE_SIZE = 50
+import { SEARCH_CONFIG } from '@core/constants/search'
 
 type SearchResultItem = {
     id: string
@@ -45,14 +44,14 @@ export function useSearch(query: string, options: { tag?: string | null } = {}) 
             if (!user?.id) throw new Error('User not authenticated')
             if (!trimmed && !tag) return { results: [], total: 0, hasMore: false }
 
-            const offset = pageParam * PAGE_SIZE
+            const offset = pageParam * SEARCH_CONFIG.PAGE_SIZE
 
             if (isOnline) {
                 try {
                     if (trimmed) {
                         const result = await searchService.searchNotes(user.id, trimmed, {
                             tag,
-                            limit: PAGE_SIZE,
+                            limit: SEARCH_CONFIG.PAGE_SIZE,
                             offset,
                         })
                         const results = (result.results ?? []) as SearchResultItem[]
@@ -70,7 +69,7 @@ export function useSearch(query: string, options: { tag?: string | null } = {}) 
                     const result = await noteService.getNotes(user.id, {
                         tag: tag ?? null,
                         page: pageParam,
-                        pageSize: PAGE_SIZE,
+                        pageSize: SEARCH_CONFIG.PAGE_SIZE,
                     })
                     return {
                         results: result.notes as SearchResultItem[],
@@ -87,7 +86,7 @@ export function useSearch(query: string, options: { tag?: string | null } = {}) 
             // Offline or error fallback: Use SQLite FTS5
             if (!trimmed && tag) {
                 const { notes, total } = await databaseService.getLocalNotesByTag(user.id, tag, {
-                    limit: PAGE_SIZE,
+                    limit: SEARCH_CONFIG.PAGE_SIZE,
                     offset,
                 })
                 const hasMore = offset + notes.length < total
