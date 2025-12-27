@@ -3,11 +3,10 @@ import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
 import { SearchService, SearchResult } from '@core/services/search'
 import { useState, useEffect, useMemo } from 'react'
+import { SEARCH_CONFIG } from '@core/constants/search'
 
 import type { Tables } from '@/supabase/types'
 
-const PAGE_SIZE = 50 // Optimized for smooth infinite scroll (larger pages = fewer requests)
-const SEARCH_DEBOUNCE_MS = 300 // Debounce search input
 const SEARCH_STALE_TIME_MS = 30000 // Cache search results for 30s
 
 type Note = Tables<'notes'>
@@ -44,7 +43,7 @@ export function useNotesQuery({ userId, searchQuery = '', selectedTag = null, en
       
       return noteService.getNotes(userId!, {
         page,
-        pageSize: PAGE_SIZE,
+        pageSize: SEARCH_CONFIG.PAGE_SIZE,
         tag: selectedTag,
         searchQuery
       })
@@ -138,10 +137,10 @@ export function useSearchNotes(query: string, userId?: string, options: SearchOp
   } = options
 
   // Debounce query to avoid excessive API calls
-  const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
+  const debouncedQuery = useDebounce(query, SEARCH_CONFIG.DEBOUNCE_MS)
 
   // Validate query length (min 3 characters)
-  const isValidQuery = Boolean(debouncedQuery && debouncedQuery.trim().length >= 3 && userId)
+  const isValidQuery = Boolean(debouncedQuery && debouncedQuery.trim().length >= SEARCH_CONFIG.MIN_QUERY_LENGTH && userId)
 
   return useQuery<SearchQueryResult>({
     queryKey: ['notes', 'search', debouncedQuery, language, minRank, limit, offset, selectedTag, userId],
