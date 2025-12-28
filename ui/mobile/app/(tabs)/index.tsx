@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react-native'
 import { SwipeableNoteCard } from '@ui/mobile/components/SwipeableNoteCard'
 import { Button } from '@ui/mobile/components/ui'
 import { useTheme } from '@ui/mobile/providers'
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import type { Note } from '@core/types/domain'
 import { useNotes, useCreateNote, useDeleteNote } from '@ui/mobile/hooks'
 import { useSwipeContext } from '@ui/mobile/providers'
@@ -24,36 +24,47 @@ export default function NotesScreen() {
 
   const notes = data?.pages.flatMap((page) => page.notes) ?? []
 
-  const handleCreateNote = () => {
-    createNote({ title: 'Новая заметка', description: '', tags: [] }, {
+  const handleCreateNote = useCallback(() => {
+    createNote({ title: 'New note', description: '', tags: [] }, {
       onSuccess: (newNote) => {
         queryClient.setQueryData(['note', newNote.id], newNote)
         router.push(`/note/${newNote.id}`)
       }
     })
-  }
+  }, [createNote, queryClient, router])
 
-  const handleOpenNote = (note: Note) => {
+  const handleOpenNote = useCallback((note: Note) => {
     queryClient.setQueryData(['note', note.id], note)
     router.push(`/note/${note.id}`)
-  }
+  }, [queryClient, router])
 
-  const handleTagPress = (tag: string) => {
+  const handleTagPress = useCallback((tag: string) => {
     router.push({ pathname: '/(tabs)/search', params: { tag } })
-  }
+  }, [router])
 
-  const handleDeleteNote = (id: string) => {
+  const handleDeleteNote = useCallback((id: string) => {
     deleteNote(id)
-  }
+  }, [deleteNote])
 
-  const renderNote = ({ item }: { item: Note }) => (
+  const keyExtractor = useCallback((item: Note) => item.id, [])
+
+  const handleRefresh = useCallback(() => {
+    void refetch()
+  }, [refetch])
+
+  const handleEndReached = useCallback(() => {
+    if (!hasNextPage || isFetchingNextPage) return
+    void fetchNextPage()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  const renderNote = useCallback(({ item }: { item: Note }) => (
     <SwipeableNoteCard
       note={item}
-      onPress={() => handleOpenNote(item)}
+      onPress={handleOpenNote}
       onTagPress={handleTagPress}
       onDelete={handleDeleteNote}
     />
-  )
+  ), [handleOpenNote, handleTagPress, handleDeleteNote])
 
   if (isLoading && notes.length === 0) {
     return (
@@ -66,9 +77,9 @@ export default function NotesScreen() {
   if (error && notes.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>Ошибка загрузки заметок</Text>
+        <Text style={styles.errorText}>Error loading notes</Text>
         <Button onPress={() => void refetch()}>
-          Повторить
+          Try again
         </Button>
       </View>
     )
@@ -77,12 +88,12 @@ export default function NotesScreen() {
   if (!isLoading && !error && notes.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyTitle}>Пока нет заметок</Text>
+        <Text style={styles.emptyTitle}>No notes yet</Text>
         <Text style={styles.emptySubtitle}>
-          Создайте первую заметку, чтобы начать работу.
+          Create your first note to get started.
         </Text>
         <Button onPress={handleCreateNote}>
-          Создать заметку
+          Create note
         </Button>
       </View>
     )
@@ -93,17 +104,15 @@ export default function NotesScreen() {
       <FlashList
         data={notes}
         renderItem={renderNote}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.list}
-        // @ts-expect-error FlashList types mismatch in some versions
-        estimatedItemSize={96}
-        onRefresh={() => void refetch()}
+        // @ts-expect-error FlashList types mismatch
+        estimatedItemSize={140}
+        drawDistance={500}
+        onRefresh={handleRefresh}
         refreshing={isRefetching && !isFetchingNextPage}
         onScrollBeginDrag={closeAll}
-        onEndReached={() => {
-          if (!hasNextPage || isFetchingNextPage) return
-          void fetchNextPage()
-        }}
+        onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
         ListFooterComponent={
           isFetchingNextPage ? (

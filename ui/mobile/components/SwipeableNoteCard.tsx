@@ -1,39 +1,51 @@
-import React, { useRef, useEffect, useState } from 'react'
-import { View, StyleSheet, Pressable, Animated as RNAnimated } from 'react-native'
-import { Swipeable } from 'react-native-gesture-handler'
+import React, { useRef, useEffect, memo, useCallback, useMemo } from 'react'
+import { View, StyleSheet, Pressable } from 'react-native'
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable'
 import { Trash2 } from 'lucide-react-native'
-import Animated, {
-    useSharedValue,
+import Reanimated, {
     useAnimatedStyle,
-    withTiming,
-    runOnJS,
-    Easing,
+    type SharedValue,
 } from 'react-native-reanimated'
 import { useTheme, useSwipeContext } from '@ui/mobile/providers'
 import { NoteCard } from './NoteCard'
 import type { Note } from '@core/types/domain'
+
+type ThemeColors = ReturnType<typeof useTheme>['colors']
 
 interface SwipeableNoteCardProps {
     note: Note & {
         snippet?: string | null
         headline?: string | null
     }
-    onPress: () => void
+    onPress: (note: Note) => void
     onTagPress?: (tag: string) => void
     onDelete: (id: string) => void
 }
 
-const ITEM_HEIGHT = 120 // Approximate height of NoteCard + margin
+interface RightActionProps {
+    drag: SharedValue<number>
+    onDelete: () => void
+    colors: ThemeColors
+}
 
-export function SwipeableNoteCard({ note, onPress, onTagPress, onDelete }: SwipeableNoteCardProps) {
+const RightAction = memo(function RightAction({ drag, onDelete, colors }: RightActionProps) {
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateX: drag.value + 80 }],
+    }))
+
+    return (
+        <Reanimated.View style={[styles.deleteAction, { backgroundColor: colors.destructive }, animatedStyle]}>
+            <Pressable onPress={onDelete} style={styles.deleteContent}>
+                <Trash2 color={colors.destructiveForeground} size={24} />
+            </Pressable>
+        </Reanimated.View>
+    )
+})
+
+export const SwipeableNoteCard = memo(function SwipeableNoteCard({ note, onPress, onTagPress, onDelete }: SwipeableNoteCardProps) {
     const { colors } = useTheme()
     const { register, unregister, onSwipeStart } = useSwipeContext()
-    const swipeableRef = useRef<Swipeable>(null)
-    const [isRemoving, setIsRemoving] = useState(false)
-
-    // Reanimated shared values
-    const height = useSharedValue(ITEM_HEIGHT)
-    const opacity = useSharedValue(1)
+    const swipeableRef = useRef<SwipeableMethods>(null)
 
     useEffect(() => {
         if (swipeableRef.current) {
@@ -42,78 +54,50 @@ export function SwipeableNoteCard({ note, onPress, onTagPress, onDelete }: Swipe
         return () => unregister(note.id)
     }, [note.id, register, unregister])
 
-    const animatedContainerStyle = useAnimatedStyle(() => ({
-        height: height.value,
-        opacity: opacity.value,
-        overflow: 'hidden',
-    }))
-
-    const handleDelete = () => {
-        setIsRemoving(true)
+    const handleDelete = useCallback(() => {
         swipeableRef.current?.close()
+        onDelete(note.id)
+    }, [onDelete, note.id])
 
-        // Animate collapse
-        height.value = withTiming(0, {
-            duration: 250,
-            easing: Easing.out(Easing.ease),
-        })
-        opacity.value = withTiming(0, {
-            duration: 200,
-            easing: Easing.out(Easing.ease),
-        }, () => {
-            runOnJS(onDelete)(note.id)
-        })
-    }
+    const handlePress = useCallback(() => {
+        onPress(note)
+    }, [onPress, note])
 
-    const renderRightActions = (
-        _progress: import('react-native').Animated.AnimatedInterpolation<number>,
-        dragX: import('react-native').Animated.AnimatedInterpolation<number>
-    ) => {
-        const trans = dragX.interpolate({
-            inputRange: [-80, 0],
-            outputRange: [0, 80],
-            extrapolate: 'clamp',
-        })
+    const handleSwipeStart = useCallback(() => {
+        onSwipeStart(note.id)
+    }, [onSwipeStart, note.id])
 
-        return (
-            <Pressable
-                onPress={handleDelete}
-                disabled={isRemoving}
-                style={[styles.deleteAction, isRemoving && { opacity: 0.7 }]}
-            >
-                <RNAnimated.View style={[styles.deleteContent, { transform: [{ translateX: trans }] }]}>
-                    <Trash2 color="#fff" size={24} />
-                </RNAnimated.View>
-            </Pressable>
-        )
-    }
+    const renderRightActions = useCallback(
+        (_progress: SharedValue<number>, drag: SharedValue<number>) => (
+            <RightAction drag={drag} onDelete={handleDelete} colors={colors} />
+        ),
+        [handleDelete, colors]
+    )
+
+    const containerStyle = useMemo(() => ({ backgroundColor: colors.background }), [colors.background])
 
     return (
-        <Animated.View style={animatedContainerStyle}>
-            <Swipeable
-                key={note.id}
-                ref={swipeableRef}
-                renderRightActions={renderRightActions}
-                friction={2}
-                rightThreshold={40}
-                onSwipeableWillOpen={() => onSwipeStart(note.id)}
-                enabled={!isRemoving}
-            >
-                <View style={{ backgroundColor: colors.background }}>
-                    <NoteCard
-                        note={note}
-                        onPress={isRemoving ? () => { } : onPress}
-                        onTagPress={isRemoving ? undefined : onTagPress}
-                    />
-                </View>
-            </Swipeable>
-        </Animated.View>
+        <ReanimatedSwipeable
+            ref={swipeableRef}
+            renderRightActions={renderRightActions}
+            friction={2}
+            rightThreshold={40}
+            onSwipeableWillOpen={handleSwipeStart}
+            overshootRight={false}
+        >
+            <View style={containerStyle}>
+                <NoteCard
+                    note={note}
+                    onPress={handlePress}
+                    onTagPress={onTagPress}
+                />
+            </View>
+        </ReanimatedSwipeable>
     )
-}
+})
 
 const styles = StyleSheet.create({
     deleteAction: {
-        backgroundColor: '#ef4444',
         justifyContent: 'center',
         alignItems: 'center',
         width: 80,
@@ -121,6 +105,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     deleteContent: {
+        width: '100%',
         height: '100%',
         justifyContent: 'center',
         alignItems: 'center',

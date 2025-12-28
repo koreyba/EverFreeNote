@@ -1,8 +1,8 @@
+import { memo, useMemo } from 'react'
 import { Pressable, Text, StyleSheet } from 'react-native'
 import { format } from 'date-fns'
 import { useTheme } from '@ui/mobile/providers'
 import { TagList } from '@ui/mobile/components/tags/TagList'
-import { useMemo } from 'react'
 import type { Note } from '@core/types/domain'
 
 interface NoteCardProps {
@@ -47,7 +47,7 @@ const renderHighlightedText = (raw: string, styles: ReturnType<typeof createStyl
   )
 }
 
-export function NoteCard({ note, onPress, onTagPress, variant = 'list' }: NoteCardProps) {
+export const NoteCard = memo(function NoteCard({ note, onPress, onTagPress, variant = 'list' }: NoteCardProps) {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const description = stripHtml(note.description ?? '')
@@ -88,7 +88,7 @@ export function NoteCard({ note, onPress, onTagPress, variant = 'list' }: NoteCa
       </Text>
     </Pressable>
   )
-}
+})
 
 const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   card: {

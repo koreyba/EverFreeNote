@@ -109,14 +109,14 @@ export default function SearchScreen() {
             {query.trim().length === 0 && history.length > 0 && !activeTag && (
                 <View style={styles.historyContainer}>
                     <View style={styles.historyHeader}>
-                        <Text style={styles.historyTitle}>История поиска</Text>
+                        <Text style={styles.historyTitle}>Search History</Text>
                         <Pressable
                             onPress={() => {
                                 if (!user?.id) return
                                 void clearSearchHistory(user.id).then(() => setHistory([]))
                             }}
                         >
-                            <Text style={styles.historyClear}>Очистить</Text>
+                            <Text style={styles.historyClear}>Clear</Text>
                         </Pressable>
                     </View>
                     {history.map((item) => (
@@ -144,7 +144,7 @@ export default function SearchScreen() {
 
             {!isLoading && (query.length >= 2 || !!activeTag) && results.length === 0 && (
                 <View style={styles.center}>
-                    <Text style={styles.empty}>Ничего не найдено</Text>
+                    <Text style={styles.empty}>Nothing found</Text>
                 </View>
             )}
 

@@ -149,7 +149,7 @@ export default function NoteEditorScreen() {
   if (error || !note) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>Ошибка загрузки заметки</Text>
+        <Text style={styles.errorText}>Error loading note</Text>
       </View>
     )
   }
@@ -158,7 +158,7 @@ export default function NoteEditorScreen() {
     <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: 'Редактирование',
+          title: 'Edit',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
           headerRight: () => (
@@ -187,7 +187,7 @@ export default function NoteEditorScreen() {
           style={styles.titleInput}
           value={title}
           onChangeText={handleTitleChange}
-          placeholder="Название заметки"
+          placeholder="Note title"
           placeholderTextColor={colors.mutedForeground}
           multiline
           scrollEnabled={false}
