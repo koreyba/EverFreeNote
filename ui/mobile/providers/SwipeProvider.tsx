@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useCallback, useRef, ReactNode } from 'react'
-import { Swipeable } from 'react-native-gesture-handler'
+import React, { createContext, useContext, useCallback, useRef, useMemo, ReactNode } from 'react'
+import { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable'
 
 interface SwipeContextValue {
-    register: (id: string, ref: Swipeable) => void
+    register: (id: string, ref: SwipeableMethods) => void
     unregister: (id: string) => void
     onSwipeStart: (id: string) => void
     closeAll: () => void
@@ -11,10 +11,10 @@ interface SwipeContextValue {
 const SwipeContext = createContext<SwipeContextValue | null>(null)
 
 export function SwipeProvider({ children }: { children: ReactNode }) {
-    const swipeables = useRef<Map<string, Swipeable>>(new Map())
+    const swipeables = useRef<Map<string, SwipeableMethods>>(new Map())
     const activeId = useRef<string | null>(null)
 
-    const register = useCallback((id: string, ref: Swipeable) => {
+    const register = useCallback((id: string, ref: SwipeableMethods) => {
         swipeables.current.set(id, ref)
     }, [])
 
@@ -40,8 +40,10 @@ export function SwipeProvider({ children }: { children: ReactNode }) {
         activeId.current = id
     }, [])
 
+    const value = useMemo(() => ({ register, unregister, onSwipeStart, closeAll }), [register, unregister, onSwipeStart, closeAll])
+
     return (
-        <SwipeContext.Provider value={{ register, unregister, onSwipeStart, closeAll }}>
+        <SwipeContext.Provider value={value}>
             {children}
         </SwipeContext.Provider>
     )

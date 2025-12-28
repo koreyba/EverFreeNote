@@ -1,8 +1,24 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useCallback } from 'react'
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSupabase, useTheme } from '@ui/mobile/providers'
-import { useMemo } from 'react'
+
+// Validate auth code format (typically alphanumeric, 20-100 chars)
+const isValidAuthCode = (code: string): boolean => {
+  if (typeof code !== 'string') return false
+  if (code.length < 20 || code.length > 200) return false
+  // Auth codes are typically base64url encoded or alphanumeric with dashes
+  return /^[A-Za-z0-9_-]+$/.test(code)
+}
+
+// Validate JWT format (3 base64url parts separated by dots)
+const isValidJWT = (token: string): boolean => {
+  if (typeof token !== 'string') return false
+  const parts = token.split('.')
+  if (parts.length !== 3) return false
+  // Each part should be base64url encoded
+  return parts.every(part => /^[A-Za-z0-9_-]+$/.test(part))
+}
 
 export default function CallbackScreen() {
   const router = useRouter()
@@ -11,24 +27,28 @@ export default function CallbackScreen() {
   const styles = useMemo(() => createStyles(colors), [colors])
   const params = useLocalSearchParams()
 
-  useEffect(() => {
-    void handleCallback()
-  }, [])
-
-  const handleCallback = async () => {
+  const handleCallback = useCallback(async () => {
     try {
       const code = params.code as string | undefined
       const accessToken = params.access_token as string | undefined
       const refreshToken = params.refresh_token as string | undefined
 
+      // Validate and use auth code flow (preferred)
       if (code) {
+        if (!isValidAuthCode(code)) {
+          throw new Error('Invalid auth code format')
+        }
         const { error } = await client.auth.exchangeCodeForSession(code)
         if (error) throw error
         router.replace('/(tabs)')
         return
       }
 
+      // Validate and use token flow (fallback)
       if (accessToken && refreshToken) {
+        if (!isValidJWT(accessToken) || !isValidJWT(refreshToken)) {
+          throw new Error('Invalid token format')
+        }
         const { error } = await client.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
@@ -40,11 +60,17 @@ export default function CallbackScreen() {
 
       throw new Error('Missing code/tokens in callback')
     } catch (error) {
-      console.error('Callback error:', error)
-      // Navigate back to login on error
+      // Don't log full error details in production to avoid leaking sensitive info
+      if (__DEV__) {
+        console.error('Callback error:', error)
+      }
       router.replace('/(auth)/login')
     }
-  }
+  }, [client.auth, params.access_token, params.code, params.refresh_token, router])
+
+  useEffect(() => {
+    void handleCallback()
+  }, [handleCallback])
 
   return (
     <View style={styles.container}>
