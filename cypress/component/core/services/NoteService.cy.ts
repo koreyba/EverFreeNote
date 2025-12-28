@@ -1,4 +1,4 @@
-import { NoteService } from '@/core/services/notes'
+import { NoteService } from '@core/services/notes'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Helper type for Sinon stubs
