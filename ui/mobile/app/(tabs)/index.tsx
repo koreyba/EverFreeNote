@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native'
 import { useRouter } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
 import { Plus } from 'lucide-react-native'
@@ -43,7 +43,11 @@ export default function NotesScreen() {
   }, [router])
 
   const handleDeleteNote = useCallback((id: string) => {
-    deleteNote(id)
+    deleteNote(id, {
+      onError: () => {
+        Alert.alert('Error', 'Failed to delete note. Please try again.')
+      }
+    })
   }, [deleteNote])
 
   const keyExtractor = useCallback((item: Note) => item.id, [])

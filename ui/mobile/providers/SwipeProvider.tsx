@@ -27,7 +27,7 @@ export function SwipeProvider({ children }: { children: ReactNode }) {
 
     const closeAll = useCallback(() => {
         swipeables.current.forEach((ref) => {
-            ref.close()
+            ref?.close()
         })
         activeId.current = null
     }, [])
