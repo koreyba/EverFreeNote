@@ -100,7 +100,7 @@ mobile/                          # Новая папка для React Native п�
 ├── constants/
 │   ├── theme.ts                # Цвета, шрифты (синхронизированы с web)
 │   └── config.ts
-├── app.json                     # Expo config
+├── app.config.ts                # Expo config
 ├── package.json
 └── tsconfig.json
 
@@ -208,7 +208,7 @@ export const mobileOAuthAdapter: OAuthAdapter = {
 
 **Deep Linking настройка:**
 ```json
-// app.json
+// app.config.ts
 {
   "expo": {
     "scheme": "everfreenote",

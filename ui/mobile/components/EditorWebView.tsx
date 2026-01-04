@@ -86,7 +86,10 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         }))
 
         const editorUrl = (() => {
-            const configured = process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL?.trim()
+            const configuredFromExtra = Constants.expoConfig?.extra?.editorWebViewUrl
+            const configured =
+                (typeof configuredFromExtra === 'string' ? configuredFromExtra.trim() : '') ||
+                process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL?.trim()
             if (configured) return configured
 
             if (__DEV__) {
@@ -95,7 +98,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                 return 'http://localhost:3000/editor-webview'
             }
 
-            return 'https://everfreenote.app/editor-webview'
+            return 'https://everfreenote.pages.dev/editor-webview'
         })()
 
         const injectedJavaScriptBeforeContentLoaded = (() => {

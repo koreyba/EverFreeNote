@@ -1,5 +1,33 @@
 # Mobile UI layer (React Native / Expo)
 
+## App variants (dev / stage / prod)
+
+This project uses three app variants that can be installed side by side on Android:
+- dev: EverFreeNote Dev (com.everfreenote.app.dev)
+- stage: EverFreeNote Stage (com.everfreenote.app.stage)
+- prod: EverFreeNote (com.everfreenote.app)
+
+Select the variant with APP_VARIANT before running Expo.
+
+PowerShell:
+```powershell
+$env:APP_VARIANT="dev"; npm start
+$env:APP_VARIANT="stage"; npm start
+$env:APP_VARIANT="prod"; npm start
+```
+
+CMD:
+```cmd
+set APP_VARIANT=dev&& npm start
+set APP_VARIANT=stage&& npm start
+set APP_VARIANT=prod&& npm start
+```
+
+Stage WebView URL is branch-specific. Set it when needed:
+```powershell
+$env:EXPO_PUBLIC_EDITOR_WEBVIEW_URL="https://<branch>.everfreenote.pages.dev/editor-webview"
+```
+
 ## 📱 О проекте
 
 Нативное мобильное приложение для iOS и Android, построенное на React Native и Expo с максимальным переиспользованием core-слоя.
@@ -53,7 +81,7 @@ ui/mobile/                       # React Native приложение (Expo)
 ├── adapters/                    # Platform adapters
 ├── providers/                   # Context providers
 ├── assets/                      # Изображения, шрифты
-├── app.json                     # Expo конфигурация
+├── app.config.ts                # Expo конфигурация
 ├── package.json                 # Зависимости
 ├── tsconfig.json                # TypeScript config
 ├── eslint.config.mjs            # ESLint config
@@ -69,7 +97,7 @@ ui/mobile/                       # React Native приложение (Expo)
 ├── constants/
 │   ├── theme.ts                # Цвета, шрифты (синхронизированы с web)
 │   └── config.ts
-└── app.json                     # Expo config
+└── app.config.ts                # Expo config
 ```
 
 ## 🚀 Быстрый старт
