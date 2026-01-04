@@ -35,7 +35,12 @@ const RightAction = memo(function RightAction({ drag, onDelete, colors }: RightA
 
     return (
         <Reanimated.View style={[styles.deleteAction, { backgroundColor: colors.destructive }, animatedStyle]}>
-            <Pressable onPress={onDelete} style={styles.deleteContent}>
+            <Pressable
+                onPress={onDelete}
+                style={styles.deleteContent}
+                accessibilityLabel="Delete note"
+                accessibilityRole="button"
+            >
                 <Trash2 color={colors.destructiveForeground} size={24} />
             </Pressable>
         </Reanimated.View>

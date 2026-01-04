@@ -126,17 +126,17 @@ export default function NoteEditorScreen() {
     router.push({ pathname: '/(tabs)/search', params: { tag } })
   }
 
-  const handleToolbarCommand = (method: string, args?: unknown[]) => {
+  const handleToolbarCommand = useCallback((method: string, args?: unknown[]) => {
     editorRef.current?.runCommand(method, args)
-  }
+  }, [])
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     deleteNote(id, {
       onSuccess: () => {
         router.back()
       },
     })
-  }
+  }, [deleteNote, id, router])
 
   if (isLoading) {
     return (
