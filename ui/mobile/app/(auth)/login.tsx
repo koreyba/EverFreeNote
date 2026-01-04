@@ -4,7 +4,7 @@ import { useSupabase, useTheme } from '@ui/mobile/providers'
 import { useMemo, useState } from 'react'
 import { featureFlags } from '@ui/mobile/featureFlags'
 import { AuthService } from '@core/services/auth'
-import { oauthAdapter } from '@ui/mobile/adapters'
+import { getOAuthRedirectUrl, oauthAdapter } from '@ui/mobile/adapters'
 import { Button } from '@ui/mobile/components/ui'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -50,7 +50,8 @@ export default function LoginScreen() {
       setError(null)
 
       const authService = new AuthService(client)
-      const { data, error } = await authService.signInWithGoogle('everfreenote://auth/callback')
+      const redirectUrl = getOAuthRedirectUrl()
+      const { data, error } = await authService.signInWithGoogle(redirectUrl)
 
       if (error) throw error
       if (!data.url) throw new Error('Missing OAuth URL')

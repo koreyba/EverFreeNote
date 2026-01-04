@@ -206,7 +206,7 @@ gantt
    cd mobile
    ```
 
-2. Настроить `app.json`
+2. Настроить `app.config.ts`
    ```json
    {
      "expo": {
@@ -590,7 +590,7 @@ export const useSupabase = () => useContext(SupabaseContext)
 
 **Шаги:**
 1. Настроить схему `everfreenote://`
-2. Зарегистрировать в app.json
+2. Зарегистрировать в app.config.ts
 3. Обработать callback URL
 4. Добавить в Supabase redirect URL
 

@@ -233,7 +233,7 @@ description: Разработка нативного мобильного при
 - [ ] **ПРИОРИТЕТ 1:** Создать proof-of-concept для @10play/tentap-editor (2 дня)
 - [ ] **ПРИОРИТЕТ 1:** Зарегистрировать `everfreenote://auth/callback` в Supabase redirect URIs
 - [ ] **ПРИОРИТЕТ 2:** Протестировать OAuth flow с Supabase в Expo
-- [ ] **ПРИОРИТЕТ 2:** Настроить deep linking схему в app.json
+- [ ] **ПРИОРИТЕТ 2:** Настроить deep linking схему в app.config.ts
 - [ ] **ПРИОРИТЕТ 3:** Создать базовую структуру проекта mobile app
 - [ ] **ПРИОРИТЕТ 3:** Адаптировать core-адаптеры для React Native
 - [ ] **ПРИОРИТЕТ 4:** Настроить Sentry для crash reporting
