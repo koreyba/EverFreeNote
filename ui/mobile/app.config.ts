@@ -17,6 +17,12 @@ type VariantConfig = {
   requireEditorWebViewUrl?: boolean
 }
 
+// For dev: MUST set EXPO_PUBLIC_SUPABASE_URL in .env (use your computer's local IP, not 127.0.0.1)
+const devSupabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''
+if (!devSupabaseUrl) {
+  console.warn('⚠️  EXPO_PUBLIC_SUPABASE_URL is not set in .env - dev build will not connect to Supabase')
+}
+
 const variants: Record<AppVariant, VariantConfig> = {
   dev: {
     name: 'EverFreeNote Dev',
@@ -25,10 +31,10 @@ const variants: Record<AppVariant, VariantConfig> = {
     androidPackage: 'com.everfreenote.app.dev',
     icon: './assets/icon-dev.png',
     adaptiveIcon: './assets/adaptive-icon-dev.png',
-    supabaseUrl: 'http://127.0.0.1:54321',
+    supabaseUrl: devSupabaseUrl,
     supabaseAnonKey:
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
-    supabaseFunctionsUrl: 'http://127.0.0.1:54321/functions/v1',
+    supabaseFunctionsUrl: `${devSupabaseUrl}/functions/v1`,
   },
   stage: {
     name: 'EverFreeNote Stage',
@@ -40,7 +46,7 @@ const variants: Record<AppVariant, VariantConfig> = {
     supabaseUrl: 'https://yabcuywqxgjlruuyhwin.supabase.co',
     supabasePublishableKey: 'sb_publishable_N_ZnirEdste9qYdS5--ThQ_oJrj1JmI',
     supabaseFunctionsUrl: 'https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1',
-    requireEditorWebViewUrl: true,
+    editorWebViewUrl: 'https://stage.everfreenote.pages.dev/editor-webview',
   },
   prod: {
     name: 'EverFreeNote',
