@@ -14,6 +14,7 @@ type VariantConfig = {
   supabasePublishableKey?: string
   supabaseFunctionsUrl: string
   editorWebViewUrl?: string
+  requireEditorWebViewUrl?: boolean
 }
 
 const variants: Record<AppVariant, VariantConfig> = {
@@ -24,10 +25,10 @@ const variants: Record<AppVariant, VariantConfig> = {
     androidPackage: 'com.everfreenote.app.dev',
     icon: './assets/icon-dev.png',
     adaptiveIcon: './assets/adaptive-icon-dev.png',
-    supabaseUrl: 'http://192.168.0.11:54321',
+    supabaseUrl: 'http://127.0.0.1:54321',
     supabaseAnonKey:
       'REDACTED_JWT',
-    supabaseFunctionsUrl: 'http://192.168.0.11:54321/functions/v1',
+    supabaseFunctionsUrl: 'http://127.0.0.1:54321/functions/v1',
   },
   stage: {
     name: 'EverFreeNote Stage',
@@ -39,6 +40,7 @@ const variants: Record<AppVariant, VariantConfig> = {
     supabaseUrl: 'https://yabcuywqxgjlruuyhwin.supabase.co',
     supabasePublishableKey: 'REDACTED_PUBLISHABLE',
     supabaseFunctionsUrl: 'https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1',
+    requireEditorWebViewUrl: true,
   },
   prod: {
     name: 'EverFreeNote',
@@ -73,11 +75,26 @@ const resolveVariant = (): AppVariant => {
   return process.env.NODE_ENV === 'production' ? 'prod' : 'dev'
 }
 
+const resolveStageWebViewUrl = (): string => {
+  const rawBranch = (process.env.EXPO_PUBLIC_STAGE_BRANCH ?? '').trim()
+  const rawDomain = (process.env.EXPO_PUBLIC_STAGE_DOMAIN ?? '').trim()
+  if (!rawBranch || !rawDomain) return ''
+
+  const domain = rawDomain.replace(/^https?:\/\//i, '')
+  if (!domain) return ''
+
+  return `https://${rawBranch}.${domain}/editor-webview`
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = resolveVariant()
   const variantConfig = variants[variant]
   const editorWebViewOverride = (process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL ?? '').trim()
+  const stageWebViewUrl = resolveStageWebViewUrl()
   const oauthRedirectOverride = (process.env.EXPO_PUBLIC_OAUTH_REDIRECT_URL ?? '').trim()
+  const resolvedEditorWebViewUrl =
+    editorWebViewOverride ||
+    (variant === 'stage' && stageWebViewUrl ? stageWebViewUrl : variantConfig.editorWebViewUrl)
 
   return {
     ...config,
@@ -127,7 +144,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       supabaseAnonKey: variantConfig.supabaseAnonKey,
       supabasePublishableKey: variantConfig.supabasePublishableKey,
       supabaseFunctionsUrl: variantConfig.supabaseFunctionsUrl,
-      editorWebViewUrl: editorWebViewOverride || variantConfig.editorWebViewUrl,
+      editorWebViewUrl: resolvedEditorWebViewUrl,
+      requireEditorWebViewUrl: variantConfig.requireEditorWebViewUrl ?? false,
       oauthRedirectUrl: oauthRedirectOverride || `${variantConfig.scheme}://auth/callback`,
     },
   }
