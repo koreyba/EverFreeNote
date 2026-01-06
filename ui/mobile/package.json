@@ -3,10 +3,16 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "expo start --dev-client",
-    "android:dev": "cd android && gradlew installDevDebug",
-    "android:stage": "cd android && gradlew installStageDebug",
-    "android:prod": "cd android && gradlew installProdDebug",
+    "dev": "cross-env APP_VARIANT=dev expo start --dev-client",
+    "start:dev": "cross-env APP_VARIANT=dev expo start --dev-client",
+    "start:stage": "cross-env APP_VARIANT=stage expo start --dev-client",
+    "start:prod": "cross-env APP_VARIANT=prod expo start --dev-client",
+    "android:dev": "cross-env APP_VARIANT=dev expo run:android --variant devDebug --app-id com.everfreenote.app.dev",
+    "android:stage": "cross-env APP_VARIANT=stage expo run:android --variant stageDebug --app-id com.everfreenote.app.stage",
+    "android:prod": "cross-env APP_VARIANT=prod expo run:android --variant prodDebug --app-id com.everfreenote.app",
+    "adb:kill": "adb kill-server",
+    "adb:start": "adb start-server",
+    "adb:restart": "adb kill-server && adb start-server",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -50,6 +56,7 @@
     "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "@testing-library/react-native": "^13.0.1",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.1.0",
