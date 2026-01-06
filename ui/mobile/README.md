@@ -34,6 +34,14 @@ $env:EXPO_PUBLIC_STAGE_BRANCH="<branch>"
 $env:EXPO_PUBLIC_STAGE_DOMAIN="everfreenote.pages.dev"
 ```
 
+Android builds use product flavors. Example install commands:
+```powershell
+cd ui/mobile/android
+.\gradlew installDevDebug
+.\gradlew installStageDebug
+.\gradlew installProdDebug
+```
+
 ## 📱 О проекте
 
 Нативное мобильное приложение для iOS и Android, построенное на React Native и Expo с максимальным переиспользованием core-слоя.

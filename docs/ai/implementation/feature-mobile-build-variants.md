@@ -13,6 +13,12 @@ description: Mobile app variants (dev/stage/prod) for side-by-side installs
 - Use `ui/mobile/app.config.ts` to switch variant via `APP_VARIANT`.
 - Each variant has its own app name, Android package, scheme, and Supabase config.
 - Stage WebView URL can be overridden per branch via `EXPO_PUBLIC_EDITOR_WEBVIEW_URL` or built from `EXPO_PUBLIC_STAGE_BRANCH` + `EXPO_PUBLIC_STAGE_DOMAIN`.
+- Android uses product flavors (`dev`, `stage`, `prod`) in `android/app/build.gradle`.
+
+## Android build examples
+- Dev: `.\gradlew installDevDebug` (from `ui/mobile/android`)
+- Stage: `.\gradlew installStageDebug`
+- Prod: `.\gradlew installProdDebug`
 
 ## Notes
 - iOS bundle identifier remains unchanged for now (Android-only side-by-side).
