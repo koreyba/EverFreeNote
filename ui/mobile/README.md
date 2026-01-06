@@ -28,6 +28,12 @@ Stage WebView URL is branch-specific. Set it when needed:
 $env:EXPO_PUBLIC_EDITOR_WEBVIEW_URL="https://<branch>.everfreenote.pages.dev/editor-webview"
 ```
 
+Or provide branch + domain to assemble the URL:
+```powershell
+$env:EXPO_PUBLIC_STAGE_BRANCH="<branch>"
+$env:EXPO_PUBLIC_STAGE_DOMAIN="everfreenote.pages.dev"
+```
+
 ## 📱 О проекте
 
 Нативное мобильное приложение для iOS и Android, построенное на React Native и Expo с максимальным переиспользованием core-слоя.

@@ -86,11 +86,14 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         }))
 
         const editorUrl = (() => {
-            const configuredFromExtra = Constants.expoConfig?.extra?.editorWebViewUrl
+            const extra = Constants.expoConfig?.extra
+            const configuredFromExtra = extra?.editorWebViewUrl
             const configured =
                 (typeof configuredFromExtra === 'string' ? configuredFromExtra.trim() : '') ||
                 process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL?.trim()
             if (configured) return configured
+
+            if (extra?.requireEditorWebViewUrl === true) return ''
 
             if (__DEV__) {
                 const host = Constants.expoConfig?.hostUri?.split(':').shift()
@@ -214,6 +217,20 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                 post({ type: 'SET_THEME', payload: colorScheme })
             }
         }, [colorScheme, isReady])
+
+        if (!editorUrl) {
+            return (
+                <View style={styles.container}>
+                    <View style={styles.loadingContainer}>
+                        <Text style={styles.errorTitle}>Editor URL missing</Text>
+                        <Text style={styles.errorSubtitle}>
+                            Set EXPO_PUBLIC_EDITOR_WEBVIEW_URL or EXPO_PUBLIC_STAGE_BRANCH +
+                            EXPO_PUBLIC_STAGE_DOMAIN for the stage build.
+                        </Text>
+                    </View>
+                </View>
+            )
+        }
 
         return (
             <View style={styles.container}>
