@@ -10,7 +10,9 @@
       "Bash(npm run test:component -- --spec \"cypress/component/editor/RichTextEditor.cy.tsx\")",
       "Bash(npm run type-check:*)",
       "Bash(npm test:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(adb devices:*)",
+      "Bash(adb:*)"
     ],
     "deny": [],
     "ask": [

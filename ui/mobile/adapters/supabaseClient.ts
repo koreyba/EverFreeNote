@@ -18,6 +18,7 @@ export const supabaseClientFactory: SupabaseClientFactory = {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
+        flowType: 'pkce',
       },
       global: {
         fetch: deps.fetch ?? fetch,

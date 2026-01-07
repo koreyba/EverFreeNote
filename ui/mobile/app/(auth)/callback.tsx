@@ -29,6 +29,10 @@ export default function CallbackScreen() {
 
   const handleCallback = useCallback(async () => {
     try {
+      if (__DEV__) {
+        console.warn('[Callback] Received params:', JSON.stringify(params))
+      }
+
       const code = params.code as string | undefined
       const accessToken = params.access_token as string | undefined
       const refreshToken = params.refresh_token as string | undefined
