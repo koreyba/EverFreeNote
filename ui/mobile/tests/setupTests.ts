@@ -43,6 +43,20 @@ jest.mock('@react-native-community/netinfo', () => ({
   addEventListener: jest.fn(() => jest.fn()),
 }))
 
+jest.mock('@ui/mobile/adapters/networkStatus', () => ({
+  mobileNetworkStatusProvider: {
+    isOnline: jest.fn(() => true),
+    subscribe: jest.fn(() => {
+      // Return unsubscribe function
+      return jest.fn()
+    }),
+  },
+}))
+
+jest.mock('@ui/mobile/hooks/useNetworkStatus', () => ({
+  useNetworkStatus: jest.fn(() => true), // Online by default
+}))
+
 jest.spyOn(ReactNative, 'useColorScheme').mockReturnValue('light')
 
 const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>

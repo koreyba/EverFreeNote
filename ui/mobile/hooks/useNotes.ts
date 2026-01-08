@@ -4,6 +4,7 @@ import { NoteService } from '@core/services/notes'
 import { mobileSyncService } from '@ui/mobile/services/sync'
 import { databaseService } from '@ui/mobile/services/database'
 import { useNetworkStatus } from './useNetworkStatus'
+import { mobileNetworkStatusProvider } from '@ui/mobile/adapters/networkStatus'
 import type { Note } from '@core/types/domain'
 
 type NotesPage = {
@@ -219,9 +220,8 @@ export function useDeleteNote() {
 
       await databaseService.markDeleted(id, user.id)
 
-      // Check network status at execution time, not at hook render time
-      const netInfo = await import('@react-native-community/netinfo').then(m => m.default.fetch())
-      const isCurrentlyOnline = netInfo.isConnected && netInfo.isInternetReachable
+      // Check network status at execution time using adapter
+      const isCurrentlyOnline = mobileNetworkStatusProvider.isOnline()
 
       if (isCurrentlyOnline) {
         return await noteService.deleteNote(id)
