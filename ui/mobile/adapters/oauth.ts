@@ -1,5 +1,6 @@
 import * as WebBrowser from 'expo-web-browser'
 import type { OAuthAdapter } from '@core/adapters/oauth'
+import { getOAuthRedirectUrl } from './config'
 
 /**
  * Mobile OAuth adapter using expo-web-browser
@@ -8,11 +9,12 @@ import type { OAuthAdapter } from '@core/adapters/oauth'
 export const oauthAdapter: OAuthAdapter = {
   async startOAuth(authUrl: string): Promise<void> {
     try {
+      const redirectUrl = getOAuthRedirectUrl()
       // Warm up browser for better UX (optional but recommended)
       await WebBrowser.warmUpAsync()
 
       // Open OAuth URL in browser
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, 'everfreenote://')
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl)
 
       // Cool down browser
       await WebBrowser.coolDownAsync()

@@ -4,6 +4,7 @@ import * as React from "react"
 import { Edit2, Trash2, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
+import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
 
 import { SanitizationService } from "@core/services/sanitizer"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
@@ -91,15 +92,18 @@ export const NoteView = React.memo(function NoteView({
           </h1>
           
           {note.tags && note.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {note.tags.map((tag, index) => (
-                <InteractiveTag
-                  key={index}
-                  tag={tag}
-                  onClick={onTagClick}
-                  onRemove={onRemoveTag}
-                />
-              ))}
+            <div className="mb-6 overflow-hidden">
+              <HorizontalTagScroll className="pb-1">
+                {note.tags.map((tag, index) => (
+                  <InteractiveTag
+                    key={index}
+                    tag={tag}
+                    onClick={onTagClick}
+                    onRemove={onRemoveTag}
+                    className="shrink-0"
+                  />
+                ))}
+              </HorizontalTagScroll>
             </div>
           )}
           

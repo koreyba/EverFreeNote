@@ -210,9 +210,19 @@ export default function EditorWebViewPage() {
 
     window.addEventListener('error', onErrorCapture, true)
 
-    // Notify React Native that page is ready
-    if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'READY' }))
+    // Notify React Native that page is ready (after fonts load)
+    const notifyReady = () => {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'READY' }))
+      }
+    }
+
+    // Wait for fonts to load to prevent FOUT (Flash of Unstyled Text)
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(notifyReady).catch(notifyReady)
+    } else {
+      // Fallback for browsers without FontFaceSet API
+      notifyReady()
     }
 
     return () => {
@@ -255,12 +265,26 @@ export default function EditorWebViewPage() {
     }
   }
 
+  const handleFocus = () => {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'EDITOR_FOCUS' }))
+    }
+  }
+
+  const handleBlur = () => {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'EDITOR_BLUR' }))
+    }
+  }
+
   return (
     <div className="h-screen w-screen overflow-auto bg-background">
       <RichTextEditorWebView
         ref={editorRef}
         initialContent={initialContent}
         onContentChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       />
     </div>
   )

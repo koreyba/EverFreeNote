@@ -57,15 +57,15 @@ const getVariantStyles = (
 
 const sizeStyles: Record<ButtonSize, { container: ViewStyle; text: TextStyle }> = {
   default: {
-    container: { height: 40, paddingHorizontal: 16, paddingVertical: 8 },
+    container: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10 },
     text: { fontSize: 14 },
   },
   sm: {
-    container: { height: 36, paddingHorizontal: 12, paddingVertical: 6 },
+    container: { minHeight: 36, paddingHorizontal: 12, paddingVertical: 6 },
     text: { fontSize: 13 },
   },
   lg: {
-    container: { height: 44, paddingHorizontal: 24, paddingVertical: 10 },
+    container: { minHeight: 52, paddingHorizontal: 24, paddingVertical: 12 },
     text: { fontSize: 16 },
   },
   icon: {

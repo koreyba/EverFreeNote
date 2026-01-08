@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { View, TextInput, StyleSheet, ActivityIndicator, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard, ScrollView } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
-import { useNote, useUpdateNote } from '@ui/mobile/hooks'
+import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
 import { EditorToolbar } from '@ui/mobile/components/EditorToolbar'
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
+import { Trash2 } from 'lucide-react-native'
+import { Pressable } from 'react-native'
 
 const decodeHtmlEntities = (value: string) => {
   return value
@@ -40,26 +42,22 @@ const htmlToPlainText = (html: string) => {
   return decoded.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-function NoteBodyPreview({ html }: { html: string }) {
-  const { colors } = useTheme()
+function NoteBodyPreview({ html, colors }: { html: string; colors: ReturnType<typeof useTheme>['colors'] }) {
   const styles = useMemo(() => createPreviewStyles(colors), [colors])
   const text = useMemo(() => htmlToPlainText(html), [html])
 
+  // Пустой контейнер для пустых заметок - без текста "Empty note"
   if (!text) {
-    return (
-      <View style={styles.previewEmpty}>
-        <Text style={styles.previewEmptyText}>Empty note</Text>
-      </View>
-    )
+    return <View style={styles.container} />
   }
 
   return (
     <ScrollView
-      style={styles.previewScroll}
-      contentContainerStyle={styles.previewScrollContent}
-      showsVerticalScrollIndicator={true}
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.previewText}>{text}</Text>
+      <Text style={styles.text}>{text}</Text>
     </ScrollView>
   )
 }
@@ -68,6 +66,7 @@ export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { data: note, isLoading, error } = useNote(id)
   const { mutate: updateNote } = useUpdateNote()
+  const { mutate: deleteNote, isPending: isDeleting } = useDeleteNote()
   const router = useRouter()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
@@ -75,7 +74,24 @@ export default function NoteEditorScreen() {
   const editorRef = useRef<EditorWebViewHandle>(null)
   const [title, setTitle] = useState('')
   const [tags, setTags] = useState<string[]>([])
+  const [isEditorFocused, setIsEditorFocused] = useState(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    )
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardHeight(0)
+    )
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
 
   useEffect(() => {
     if (note) {
@@ -110,9 +126,17 @@ export default function NoteEditorScreen() {
     router.push({ pathname: '/(tabs)/search', params: { tag } })
   }
 
-  const handleToolbarCommand = (method: string, args?: unknown[]) => {
+  const handleToolbarCommand = useCallback((method: string, args?: unknown[]) => {
     editorRef.current?.runCommand(method, args)
-  }
+  }, [])
+
+  const handleDelete = useCallback(() => {
+    deleteNote(id, {
+      onSuccess: () => {
+        router.back()
+      },
+    })
+  }, [deleteNote, id, router])
 
   if (isLoading) {
     return (
@@ -125,22 +149,37 @@ export default function NoteEditorScreen() {
   if (error || !note) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>Ошибка загрузки заметки</Text>
+        <Text style={styles.errorText}>Error loading note</Text>
       </View>
     )
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: 'Редактирование',
+          title: 'Edit',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
-          headerRight: () => <ThemeToggle style={styles.headerToggle} />,
+          headerRight: () => (
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={handleDelete}
+                disabled={isDeleting}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  (pressed || isDeleting) && { opacity: 0.5 }
+                ]}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color={colors.destructive} />
+                ) : (
+                  <Trash2 color={colors.destructive} size={20} />
+                )}
+              </Pressable>
+              <ThemeToggle style={styles.headerToggle} />
+            </View>
+          ),
         }}
       />
       <View style={styles.header}>
@@ -148,24 +187,33 @@ export default function NoteEditorScreen() {
           style={styles.titleInput}
           value={title}
           onChangeText={handleTitleChange}
-          placeholder="Название заметки"
+          placeholder="Note title"
           placeholderTextColor={colors.mutedForeground}
+          multiline
+          scrollEnabled={false}
         />
         <TagInput
           tags={tags}
           onChangeTags={handleTagsChange}
           onTagPress={handleTagPress}
+          label=""
           style={styles.tags}
         />
       </View>
-      <EditorToolbar onCommand={handleToolbarCommand} />
       <EditorWebView
         ref={editorRef}
         initialContent={note.description || ''}
         onContentChange={handleContentChange}
-        loadingFallback={<NoteBodyPreview html={note.description || ''} />}
+        onFocus={() => setIsEditorFocused(true)}
+        onBlur={() => setIsEditorFocused(false)}
+        loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
       />
-    </KeyboardAvoidingView>
+      {isEditorFocused && (
+        <View style={[styles.toolbarContainer, { bottom: keyboardHeight }]}>
+          <EditorToolbar onCommand={handleToolbarCommand} />
+        </View>
+      )}
+    </View>
   )
 }
 
@@ -200,35 +248,41 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     color: colors.destructive,
   },
   headerToggle: {
+    marginLeft: 12,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginRight: 12,
+  },
+  headerButton: {
+    padding: 8,
+  },
+  toolbarContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
 })
 
+// Стили превью максимально соответствуют WebView редактору:
+// - px-6 py-4 = 24px horizontal, 16px vertical
+// - font-size: 12pt (~16px)
+// - line-height: 1.75 (16 * 1.75 = 28)
+// - bg-background
 const createPreviewStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
-  previewScroll: {
+  container: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: colors.background,
   },
-  previewScrollContent: {
-    paddingBottom: 24,
+  contentContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
-  previewText: {
+  text: {
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
     color: colors.foreground,
-    lineHeight: 22,
-  },
-  previewEmpty: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    justifyContent: 'center',
-  },
-  previewEmptyText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: colors.mutedForeground,
-    textAlign: 'center',
+    lineHeight: 28,
   },
 })
