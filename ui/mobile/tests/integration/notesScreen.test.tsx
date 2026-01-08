@@ -3,8 +3,15 @@
  * Tests swipe-to-delete from notes list, error alerts, and list updates
  */
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
+import {
+  createQueryWrapper,
+  createTestQueryClient,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '../testUtils'
 import { Alert } from 'react-native'
 
 // Mock Alert
@@ -166,6 +173,7 @@ const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
 
 describe('NotesScreen - Delete Functionality', () => {
   let queryClient: QueryClient
+  let wrapper: ReturnType<typeof createQueryWrapper>
 
   const mockNotes = [
     {
@@ -188,17 +196,9 @@ describe('NotesScreen - Delete Functionality', () => {
     },
   ]
 
-  const createWrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
-
   beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    })
+    queryClient = createTestQueryClient()
+    wrapper = createQueryWrapper(queryClient)
 
     mockNoteService.prototype.getNotes = jest.fn().mockResolvedValue({
       notes: mockNotes,
@@ -211,9 +211,13 @@ describe('NotesScreen - Delete Functionality', () => {
     jest.clearAllMocks()
   })
 
+  afterEach(() => {
+    queryClient.clear()
+  })
+
   describe('Swipe to delete', () => {
     it('renders delete buttons for each note', async () => {
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -224,7 +228,7 @@ describe('NotesScreen - Delete Functionality', () => {
     })
 
     it('deletes note when swipe delete is triggered', async () => {
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -239,7 +243,7 @@ describe('NotesScreen - Delete Functionality', () => {
     })
 
     it('removes deleted note from list', async () => {
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -257,7 +261,7 @@ describe('NotesScreen - Delete Functionality', () => {
     })
 
     it('deletes correct note when multiple notes exist', async () => {
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('Second Note')).toBeTruthy()
@@ -283,7 +287,7 @@ describe('NotesScreen - Delete Functionality', () => {
       const error = new Error('Network error')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -304,7 +308,7 @@ describe('NotesScreen - Delete Functionality', () => {
       const error = new Error('Deletion failed')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -331,7 +335,7 @@ describe('NotesScreen - Delete Functionality', () => {
         .mockRejectedValueOnce(error)
         .mockResolvedValueOnce('note-1')
 
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -361,7 +365,7 @@ describe('NotesScreen - Delete Functionality', () => {
 
   describe('Navigation integration', () => {
     it('navigates to note editor when note is pressed', async () => {
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -373,7 +377,7 @@ describe('NotesScreen - Delete Functionality', () => {
     })
 
     it('does not navigate when delete button is pressed', async () => {
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -388,7 +392,7 @@ describe('NotesScreen - Delete Functionality', () => {
 
   describe('Create note integration', () => {
     it('renders create note button', async () => {
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -409,7 +413,7 @@ describe('NotesScreen - Delete Functionality', () => {
         user_id: 'test-user-id',
       })
 
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -432,7 +436,7 @@ describe('NotesScreen - Delete Functionality', () => {
         totalCount: 1,
       })
 
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -460,13 +464,13 @@ describe('NotesScreen - Delete Functionality', () => {
 
       mockNoteService.prototype.getNotes = jest.fn().mockReturnValue(notesPromise)
 
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       expect(screen.getByTestId('activity-indicator')).toBeTruthy()
     })
 
     it('hides loading indicator after notes are loaded', async () => {
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()
@@ -478,7 +482,7 @@ describe('NotesScreen - Delete Functionality', () => {
 
   describe('Accessibility', () => {
     it('has correct accessibility labels for delete buttons', async () => {
-      render(<NotesScreen />, { wrapper: createWrapper })
+      render(<NotesScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('First Note')).toBeTruthy()

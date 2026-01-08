@@ -1,6 +1,5 @@
-import { renderHook, waitFor } from '@testing-library/react-native'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import React from 'react'
+import type { QueryClient } from '@tanstack/react-query'
+import { createQueryWrapper, createTestQueryClient, renderHook, waitFor } from '../testUtils'
 import { useSearch } from '@ui/mobile/hooks/useSearch'
 import { databaseService } from '@ui/mobile/services/database'
 import { SearchService } from '@core/services/search'
@@ -26,29 +25,12 @@ const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
 
 describe('hooks/useSearch', () => {
   let queryClient: QueryClient
-
-  const createWrapper = () => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          gcTime: 0,
-        },
-      },
-    })
-
-    return ({ children }: { children: React.ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    )
-  }
+  let wrapper: ReturnType<typeof createQueryWrapper>
 
   beforeEach(() => {
     jest.clearAllMocks()
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
-    })
+    queryClient = createTestQueryClient()
+    wrapper = createQueryWrapper(queryClient)
   })
 
   afterEach(() => {
@@ -76,7 +58,7 @@ describe('hooks/useSearch', () => {
       mockSearchService.prototype.searchNotes = mockSearchNotes
 
       const { result } = renderHook(() => useSearch('test query'), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -100,7 +82,7 @@ describe('hooks/useSearch', () => {
       mockSearchService.prototype.searchNotes = mockSearchNotes
 
       const { result } = renderHook(() => useSearch('test', { tag: 'work' }), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -122,7 +104,7 @@ describe('hooks/useSearch', () => {
       mockSearchService.prototype.searchNotes = mockSearchNotes
 
       const { result } = renderHook(() => useSearch('test', { tag: '  ' }), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -136,7 +118,7 @@ describe('hooks/useSearch', () => {
 
     it('returns empty results for empty query without tag', () => {
       const { result } = renderHook(() => useSearch(''), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       // Query is disabled for empty search without tag
@@ -162,7 +144,7 @@ describe('hooks/useSearch', () => {
       mockNoteService.prototype.getNotes = mockGetNotes
 
       const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -200,7 +182,7 @@ describe('hooks/useSearch', () => {
       mockDatabaseService.searchNotes.mockResolvedValue(mockLocalSearch)
 
       const { result } = renderHook(() => useSearch('test'), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -230,7 +212,7 @@ describe('hooks/useSearch', () => {
       })
 
       const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -246,7 +228,7 @@ describe('hooks/useSearch', () => {
   describe('Query enabling', () => {
     it('is disabled for query shorter than 2 characters without tag', () => {
       const { result } = renderHook(() => useSearch('a'), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       expect(result.current.fetchStatus).toBe('idle')
@@ -260,7 +242,7 @@ describe('hooks/useSearch', () => {
       })
 
       const { result } = renderHook(() => useSearch('ab'), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => expect(result.current.fetchStatus).not.toBe('idle'))
@@ -274,7 +256,7 @@ describe('hooks/useSearch', () => {
       })
 
       const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => expect(result.current.fetchStatus).not.toBe('idle'))
@@ -288,7 +270,7 @@ describe('hooks/useSearch', () => {
       })
 
       const { result } = renderHook(() => useSearch('test'), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       expect(result.current.fetchStatus).toBe('idle')
@@ -320,7 +302,7 @@ describe('hooks/useSearch', () => {
       })
 
       const { result } = renderHook(() => useSearch('test'), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -349,7 +331,7 @@ describe('hooks/useSearch', () => {
       })
 
       const { result } = renderHook(() => useSearch('test'), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))

@@ -2,9 +2,18 @@
  * Integration tests for notes flow: search, create, edit, delete with offline sync
  * Tests interaction between multiple services and components
  */
-import { renderHook, waitFor, act } from '@testing-library/react-native'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import React from 'react'
+import type { QueryClient } from '@tanstack/react-query'
+import {
+  act,
+  createInMemoryOfflineStorage,
+  createNetworkStatusController,
+  createQueryWrapper,
+  createTestQueryClient,
+  renderHook,
+  TEST_USER_ID,
+  waitFor,
+} from '../testUtils'
+import { OfflineSyncManager } from '@core/services/offlineSyncManager'
 
 // Mock NetInfo BEFORE any other imports
 jest.mock('@react-native-community/netinfo', () => ({
@@ -25,6 +34,11 @@ jest.mock('@react-native-community/netinfo', () => ({
 // Mock other dependencies
 jest.mock('@ui/mobile/services/database')
 jest.mock('@core/services/notes')
+jest.mock('@ui/mobile/services/sync', () => ({
+  mobileSyncService: {
+    getManager: jest.fn(),
+  },
+}))
 jest.mock('@ui/mobile/providers', () => ({
   useSupabase: jest.fn(() => ({
     client: {
@@ -49,41 +63,50 @@ jest.mock('@ui/mobile/providers', () => ({
   })),
 }))
 
-import { useNotes } from '@ui/mobile/hooks/useNotes'
+import { useCreateNote, useNotes } from '@ui/mobile/hooks/useNotes'
 import { useSearch } from '@ui/mobile/hooks/useSearch'
 import { databaseService } from '@ui/mobile/services/database'
 import { NoteService } from '@core/services/notes'
+import { mobileSyncService } from '@ui/mobile/services/sync'
 
 const mockDatabaseService = databaseService as jest.Mocked<typeof databaseService>
 const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
+const mockGetManager = mobileSyncService.getManager as jest.Mock
 
 describe('Notes Flow Integration', () => {
   let queryClient: QueryClient
-
-  const createWrapper = () => {
-    return ({ children }: { children: React.ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    )
-  }
+  let wrapper: ReturnType<typeof createQueryWrapper>
 
   beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    })
+    queryClient = createTestQueryClient()
+    wrapper = createQueryWrapper(queryClient)
 
     // Setup mocks
     mockDatabaseService.searchNotes = jest.fn().mockResolvedValue([])
     mockDatabaseService.saveNotes = jest.fn().mockResolvedValue(undefined)
     mockDatabaseService.markDeleted = jest.fn().mockResolvedValue(undefined)
+    mockDatabaseService.getLocalNotes = jest.fn().mockResolvedValue([])
+    mockDatabaseService.getLocalNotesByTag = jest.fn().mockResolvedValue({ notes: [], total: 0 })
 
     mockNoteService.prototype.getNotes = jest.fn().mockResolvedValue({ notes: [], hasMore: false, totalCount: 0 })
+    mockNoteService.prototype.createNote = jest.fn().mockResolvedValue({
+      id: 'created-note-id',
+      title: 'Created',
+      description: '',
+      tags: [],
+      created_at: '2025-01-01T10:00:00.000Z',
+      updated_at: '2025-01-01T10:00:00.000Z',
+      user_id: TEST_USER_ID,
+    })
     mockNoteService.prototype.deleteNote = jest.fn().mockResolvedValue('deleted-id')
+    mockGetManager.mockReset()
+
+    const { useNetworkStatus } = require('@ui/mobile/hooks/useNetworkStatus')
+    useNetworkStatus.mockReturnValue(true)
   })
 
   afterEach(() => {
+    queryClient.clear()
     jest.clearAllMocks()
   })
 
@@ -91,7 +114,7 @@ describe('Notes Flow Integration', () => {
     it('searches notes and then fetches full list', async () => {
       // First render: search hook
       const { result: searchResult } = renderHook(() => useSearch('test query', { tag: null }), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => {
@@ -104,7 +127,7 @@ describe('Notes Flow Integration', () => {
 
       // Second render: fetch all notes
       const { result: notesResult } = renderHook(() => useNotes(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => {
@@ -112,7 +135,7 @@ describe('Notes Flow Integration', () => {
       })
 
       // Both queries should coexist in cache
-      const searchCache = queryClient.getQueryData(['search', 'test-user-id', 'test query', null])
+      const searchCache = queryClient.getQueryData(['search', TEST_USER_ID, 'test query', null])
       // Notes query uses complex key with options object, so just check it exists in cache
       const allQueries = queryClient.getQueryCache().getAll()
       const notesQuery = allQueries.find((q) => q.queryKey[0] === 'notes')
@@ -123,8 +146,71 @@ describe('Notes Flow Integration', () => {
   })
 
   describe('Offline to online sync flow', () => {
-    it.skip('queues changes offline and syncs when online', async () => {
-      // This test requires complex network status mocking - skipped for now
+    it('queues changes offline and syncs when online', async () => {
+      const { useNetworkStatus } = require('@ui/mobile/hooks/useNetworkStatus')
+      useNetworkStatus.mockReturnValue(false)
+
+      const { provider, setOnline } = createNetworkStatusController(false)
+      const storage = createInMemoryOfflineStorage()
+      const performSync = jest.fn(async (item) => {
+        if (item.operation !== 'create') {
+          return
+        }
+        const payload = item.payload as { title?: string; description?: string; tags?: string[]; user_id?: string }
+        await mockNoteService.prototype.createNote({
+          id: item.noteId,
+          title: payload.title ?? '',
+          description: payload.description ?? '',
+          tags: payload.tags ?? [],
+          userId: payload.user_id ?? '',
+        })
+      })
+
+      const manager = new OfflineSyncManager(storage, performSync, provider)
+      mockGetManager.mockReturnValue(manager)
+
+      const { result } = renderHook(() => useCreateNote(), { wrapper })
+
+      await act(async () => {
+        result.current.mutate({
+          title: 'Offline note',
+          description: 'Offline content',
+          tags: ['offline'],
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      const queued = await storage.getQueue()
+      expect(queued).toHaveLength(1)
+      expect(queued[0].operation).toBe('create')
+      expect(queued[0].payload).toEqual(expect.objectContaining({ title: 'Offline note' }))
+      expect(mockNoteService.prototype.createNote).not.toHaveBeenCalled()
+      expect(mockDatabaseService.saveNotes).toHaveBeenCalledWith([
+        expect.objectContaining({
+          title: 'Offline note',
+          user_id: TEST_USER_ID,
+          is_synced: 0,
+          is_deleted: 0,
+        }),
+      ])
+
+      setOnline(true)
+
+      await waitFor(() => {
+        expect(performSync).toHaveBeenCalled()
+      })
+
+      expect(mockNoteService.prototype.createNote).toHaveBeenCalled()
+
+      await waitFor(async () => {
+        const state = await manager.getState()
+        expect(state.queueSize).toBe(0)
+      })
+
+      manager.dispose()
     })
   })
 
@@ -133,7 +219,7 @@ describe('Notes Flow Integration', () => {
       const { result, rerender } = renderHook(
         ({ query, tag }: { query: string; tag: string | null }) => useSearch(query, { tag }),
         {
-          wrapper: createWrapper(),
+          wrapper,
           initialProps: { query: 'test', tag: null },
         }
       )
@@ -150,8 +236,8 @@ describe('Notes Flow Integration', () => {
       })
 
       // Should create separate cache entry for filtered search
-      const unfiltered = queryClient.getQueryData(['search', 'test-user-id', 'test', null])
-      const filtered = queryClient.getQueryData(['search', 'test-user-id', 'test', 'important'])
+      const unfiltered = queryClient.getQueryData(['search', TEST_USER_ID, 'test', null])
+      const filtered = queryClient.getQueryData(['search', TEST_USER_ID, 'test', 'important'])
 
       expect(unfiltered).toBeDefined()
       expect(filtered).toBeDefined()
@@ -162,7 +248,7 @@ describe('Notes Flow Integration', () => {
     it('invalidates search cache when notes are updated', async () => {
       // Setup initial search
       const { result: searchResult } = renderHook(() => useSearch('test', { tag: null }), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => {
@@ -182,15 +268,51 @@ describe('Notes Flow Integration', () => {
   })
 
   describe('Error recovery flow', () => {
-    it.skip('falls back to offline mode when network fails', async () => {
-      // This test requires complex network status mocking - skipped for now
+    it('falls back to offline mode when network fails', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+      const { useNetworkStatus } = require('@ui/mobile/hooks/useNetworkStatus')
+      useNetworkStatus.mockReturnValue(true)
+
+      const localNotes = [
+        {
+          id: 'local-note-1',
+          title: 'Local Note',
+          description: 'Local content',
+          tags: ['local'],
+          created_at: '2025-01-01T10:00:00.000Z',
+          updated_at: '2025-01-01T10:00:00.000Z',
+          user_id: TEST_USER_ID,
+        },
+      ]
+
+      mockNoteService.prototype.getNotes = jest.fn().mockRejectedValue(new Error('Network down'))
+      mockDatabaseService.getLocalNotes = jest.fn().mockResolvedValue(localNotes)
+
+      const { result } = renderHook(() => useNotes(), { wrapper })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      const notes = result.current.data?.pages.flatMap((page) => page.notes) ?? []
+      expect(notes).toHaveLength(1)
+      expect(notes[0].id).toBe('local-note-1')
+      expect(mockDatabaseService.getLocalNotes).toHaveBeenCalledWith(TEST_USER_ID)
+      expect(mockNoteService.prototype.getNotes).toHaveBeenCalledWith(TEST_USER_ID, {
+        page: 0,
+        pageSize: 50,
+        searchQuery: undefined,
+        tag: undefined,
+      })
+
+      warnSpy.mockRestore()
     })
   })
 
   describe('Pagination with search', () => {
     it('loads more search results on scroll', async () => {
       const { result } = renderHook(() => useSearch('test query', { tag: null }), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await waitFor(() => {
@@ -209,7 +331,7 @@ describe('Notes Flow Integration', () => {
       })
 
       // Should have multiple pages in cache
-      const cacheData = queryClient.getQueryData(['search', 'test-user-id', 'test query', null]) as unknown as { pages?: unknown[] }
+      const cacheData = queryClient.getQueryData(['search', TEST_USER_ID, 'test query', null]) as unknown as { pages?: unknown[] }
       expect(cacheData?.pages).toBeDefined()
     })
   })

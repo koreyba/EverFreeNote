@@ -63,6 +63,9 @@ jest.mock('@ui/mobile/hooks/useNetworkStatus', () => ({
 }))
 
 jest.spyOn(ReactNative, 'useColorScheme').mockReturnValue('light')
+jest.spyOn(ReactNative.Keyboard, 'addListener').mockImplementation((_eventType, _listener) => {
+  return { remove: jest.fn() } as unknown as ReactNative.EmitterSubscription
+})
 
 const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>
 mockAsyncStorage.setItem.mockResolvedValue(undefined)
