@@ -9,4 +9,6 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/../$1',
   },
   clearMocks: true,
+  // React Native/Expo tests can leave native listeners open; force exit prevents hangs.
+  forceExit: true,
 }

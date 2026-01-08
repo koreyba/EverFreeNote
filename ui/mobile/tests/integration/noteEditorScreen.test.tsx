@@ -2,9 +2,16 @@
  * Screen tests for NoteEditorScreen
  * Tests delete button functionality, navigation after deletion, loading states
  */
-import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
+import type { QueryClient } from '@tanstack/react-query'
+import {
+  createQueryWrapper,
+  createTestQueryClient,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '../testUtils'
 
 // Mock expo-router
 const mockPush = jest.fn()
@@ -19,7 +26,7 @@ jest.mock('expo-router', () => ({
   }),
   useLocalSearchParams: () => ({ id: 'test-note-id' }),
   Stack: {
-    Screen: ({ children, options }: { children: React.ReactNode; options?: { headerRight?: () => React.ReactNode; headerLeft?: () => React.ReactNode } }) => {
+    Screen: ({ children, options }: { children: ReactNode; options?: { headerRight?: () => ReactNode; headerLeft?: () => ReactNode } }) => {
       const { View } = require('react-native')
       return (
         <View>
@@ -167,18 +174,11 @@ const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
 
 describe('NoteEditorScreen - Delete Functionality', () => {
   let queryClient: QueryClient
-
-  const createWrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
+  let wrapper: ReturnType<typeof createQueryWrapper>
 
   beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    })
+    queryClient = createTestQueryClient()
+    wrapper = createQueryWrapper(queryClient)
 
     mockNoteService.prototype.getNote = jest.fn().mockResolvedValue({
       id: 'test-note-id',
@@ -204,9 +204,14 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     jest.clearAllMocks()
   })
 
+  afterEach(() => {
+    queryClient.clear()
+  })
+
+
   describe('Delete button', () => {
     it('renders delete button in header', async () => {
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -218,7 +223,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     })
 
     it('calls delete mutation when delete button is pressed', async () => {
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -233,7 +238,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     })
 
     it('navigates back after successful deletion', async () => {
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -255,7 +260,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       mockNoteService.prototype.deleteNote = jest.fn().mockReturnValue(deletePromise)
 
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -287,7 +292,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       mockNoteService.prototype.deleteNote = jest.fn().mockReturnValue(deletePromise)
 
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -317,7 +322,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       const error = new Error('Deletion failed')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -338,7 +343,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       const error = new Error('Deletion failed')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -369,20 +374,23 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       mockNoteService.prototype.getNote = jest.fn().mockReturnValue(notePromise)
 
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       // Should show loading indicator
       expect(screen.getByTestId('activity-indicator')).toBeTruthy()
     })
 
     it('shows error message when note fails to load', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
       mockNoteService.prototype.getNote = jest.fn().mockRejectedValue(new Error('Failed to load'))
 
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('Error loading note')).toBeTruthy()
       })
+
+      warnSpy.mockRestore()
     })
 
     it('does not show delete button when note is loading', () => {
@@ -392,27 +400,30 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       mockNoteService.prototype.getNote = jest.fn().mockReturnValue(notePromise)
 
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       expect(screen.queryByLabelText('Delete note')).toBeNull()
     })
 
     it('does not show delete button when note fails to load', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
       mockNoteService.prototype.getNote = jest.fn().mockRejectedValue(new Error('Failed to load'))
 
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByText('Error loading note')).toBeTruthy()
       })
 
       expect(screen.queryByLabelText('Delete note')).toBeNull()
+
+      warnSpy.mockRestore()
     })
   })
 
   describe('Integration with editor', () => {
     it('loads note data into editor', async () => {
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByDisplayValue('Test Note')).toBeTruthy()
@@ -422,7 +433,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     })
 
     it('preserves unsaved changes when delete button is pressed', async () => {
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -444,7 +455,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
   describe('Accessibility', () => {
     it('has correct accessibility label on delete button', async () => {
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -455,7 +466,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     })
 
     it('delete button is accessible via accessibility tools', async () => {
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -468,7 +479,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
   describe('Header configuration', () => {
     it('shows correct header title', async () => {
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
@@ -479,7 +490,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     })
 
     it('includes theme toggle in header', async () => {
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.getByTestId('theme-toggle')).toBeTruthy()
@@ -487,7 +498,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     })
 
     it('positions delete button and theme toggle in header actions', async () => {
-      render(<NoteEditorScreen />, { wrapper: createWrapper })
+      render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()

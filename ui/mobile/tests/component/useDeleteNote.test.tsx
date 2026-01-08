@@ -130,6 +130,7 @@ describe('useDeleteNote', () => {
   })
 
   afterEach(() => {
+    queryClient.clear()
     jest.clearAllMocks()
   })
 

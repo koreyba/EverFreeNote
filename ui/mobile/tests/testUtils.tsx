@@ -5,6 +5,7 @@
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { Note } from '@core/types/domain'
+import type { CachedNote, MutationQueueItem, OfflineStorageAdapter } from '@core/types/offline'
 
 // Re-export testing library utilities
 export { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native'
@@ -107,8 +108,9 @@ export function createMockNoteService(state: MockNoteServiceState) {
 
       // Apply tag filter if provided
       let filteredNotes = activeNotes
-      if (_options?.tag) {
-        filteredNotes = activeNotes.filter(note => note.tags?.includes(_options.tag!))
+      const tag = _options?.tag
+      if (tag) {
+        filteredNotes = activeNotes.filter(note => note.tags?.includes(tag))
       }
 
       // Apply search filter if provided
@@ -184,6 +186,29 @@ export function createMockNetworkStatus(isOnline: boolean = true) {
 }
 
 /**
+ * Creates a controllable network status provider for sync tests.
+ */
+export function createNetworkStatusController(initialOnline: boolean = true) {
+  let online = initialOnline
+  const listeners = new Set<(value: boolean) => void>()
+
+  const provider = {
+    isOnline: jest.fn(() => online),
+    subscribe: jest.fn((callback: (value: boolean) => void) => {
+      listeners.add(callback)
+      return () => listeners.delete(callback)
+    }),
+  }
+
+  const setOnline = (value: boolean) => {
+    online = value
+    listeners.forEach((callback) => callback(online))
+  }
+
+  return { provider, setOnline }
+}
+
+/**
  * Creates mock for sync service
  */
 export function createMockSyncService() {
@@ -254,4 +279,78 @@ export const TEST_USER_ID = 'test-user-id'
  */
 export async function flushPromises(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 0))
+}
+
+/**
+ * In-memory OfflineStorageAdapter for sync tests.
+ */
+export function createInMemoryOfflineStorage(): jest.Mocked<OfflineStorageAdapter> {
+  let queue: MutationQueueItem[] = []
+  let notes: CachedNote[] = []
+
+  const upsertNote = (note: CachedNote) => {
+    const index = notes.findIndex((item) => item.id === note.id)
+    if (index >= 0) {
+      notes[index] = { ...notes[index], ...note }
+    } else {
+      notes.push(note)
+    }
+  }
+
+  return {
+    loadNotes: jest.fn(async () => [...notes]),
+    saveNote: jest.fn(async (note) => {
+      upsertNote(note)
+    }),
+    saveNotes: jest.fn(async (items) => {
+      items.forEach(upsertNote)
+    }),
+    deleteNote: jest.fn(async (noteId) => {
+      notes = notes.filter((item) => item.id !== noteId)
+    }),
+    markSynced: jest.fn(async (noteId, updatedAt) => {
+      const existing = notes.find((item) => item.id === noteId)
+      if (existing) {
+        existing.status = 'synced'
+        existing.updatedAt = updatedAt
+      }
+    }),
+    enforceLimit: jest.fn(async () => undefined),
+    clearAll: jest.fn(async () => {
+      queue = []
+      notes = []
+    }),
+    getQueue: jest.fn(async () => [...queue]),
+    upsertQueueItem: jest.fn(async (item) => {
+      const index = queue.findIndex((entry) => entry.id === item.id)
+      if (index >= 0) {
+        queue[index] = { ...queue[index], ...item }
+      } else {
+        queue.push(item)
+      }
+    }),
+    upsertQueue: jest.fn(async (items) => {
+      queue = items.map((item) => ({ ...item }))
+    }),
+    popQueueBatch: jest.fn(async (batchSize) => {
+      const batch = queue.slice(0, batchSize)
+      const batchIds = new Set(batch.map((item) => item.id))
+      queue = queue.filter((item) => !batchIds.has(item.id))
+      return batch
+    }),
+    getPendingBatch: jest.fn(async (batchSize) => (
+      queue.filter((item) => item.status === 'pending').slice(0, batchSize)
+    )),
+    removeQueueItems: jest.fn(async (ids) => {
+      const idSet = new Set(ids)
+      queue = queue.filter((item) => !idSet.has(item.id))
+    }),
+    markQueueItemStatus: jest.fn(async (id, status, lastError) => {
+      const existing = queue.find((item) => item.id === id)
+      if (existing) {
+        existing.status = status
+        existing.lastError = lastError
+      }
+    }),
+  }
 }

@@ -191,6 +191,7 @@ describe('Note Deletion Integration Tests', () => {
   })
 
   afterEach(() => {
+    queryClient.clear()
     jest.clearAllMocks()
   })
 
