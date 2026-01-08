@@ -2,10 +2,16 @@
  * Integration tests for note deletion flow
  * Tests deletion from list view, editor view, with sync, and cache management
  */
-import { renderHook, waitFor, act } from '@testing-library/react-native'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import React from 'react'
+import { QueryClient } from '@tanstack/react-query'
 import type { Note } from '@core/types/domain'
+import {
+  act,
+  createQueryWrapper,
+  createTestQueryClient,
+  renderHook,
+  TEST_USER_ID,
+  waitFor,
+} from '../testUtils'
 
 // Mock NetInfo before other imports
 jest.mock('@react-native-community/netinfo', () => ({
@@ -84,8 +90,6 @@ import { useNotes, useDeleteNote } from '@ui/mobile/hooks/useNotes'
 import { NoteService } from '@core/services/notes'
 
 const mockNoteServiceClass = NoteService as jest.MockedClass<typeof NoteService>
-const TEST_USER_ID = 'test-user-id'
-
 // Type mocked functions
 const mockMarkDeleted = databaseService.markDeleted as jest.Mock
 const mockSaveNotes = databaseService.saveNotes as jest.Mock
@@ -100,17 +104,24 @@ const getMockEnqueue = () => {
 
 describe('Note Deletion Integration Tests', () => {
   let queryClient: QueryClient
+  let wrapper: ReturnType<typeof createQueryWrapper>
   let mockNotes: Note[]
   let deletedIds: Set<string>
+  const renderNotesAndDelete = (options?: { pageSize?: number; tag?: string | null; searchQuery?: string }) => {
+    return renderHook(() => {
+      const notes = useNotes(options)
+      const deleteNote = useDeleteNote()
+      return { notes, deleteNote }
+    }, { wrapper })
+  }
 
-  const createWrapper = () => {
-    return function Wrapper({ children }: { children: React.ReactNode }) {
-      return (
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      )
-    }
+  const renderNotesAndDeleteWithFilters = () => {
+    return renderHook(() => {
+      const allNotes = useNotes()
+      const tagFiltered = useNotes({ tag: 'tag1' })
+      const deleteNote = useDeleteNote()
+      return { allNotes, tagFiltered, deleteNote }
+    }, { wrapper })
   }
 
   beforeEach(() => {
@@ -175,12 +186,8 @@ describe('Note Deletion Integration Tests', () => {
     })
 
     // Create fresh QueryClient
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, staleTime: 0, gcTime: 0 },
-        mutations: { retry: false },
-      },
-    })
+    queryClient = createTestQueryClient()
+    wrapper = createQueryWrapper(queryClient)
   })
 
   afterEach(() => {
@@ -189,100 +196,91 @@ describe('Note Deletion Integration Tests', () => {
 
   describe('Delete from notes list', () => {
     it('deletes note and updates list', async () => {
-      const wrapper = createWrapper()
-
-      // First, fetch notes
-      const { result: notesResult } = renderHook(() => useNotes(), { wrapper })
+      const { result } = renderNotesAndDelete()
 
       await waitFor(() => {
-        expect(notesResult.current.isSuccess).toBe(true)
+        expect(result.current.notes.isSuccess).toBe(true)
       })
 
-      const initialNotes = notesResult.current.data?.pages.flatMap(p => p.notes) ?? []
+      const initialNotes = result.current.notes.data?.pages.flatMap(p => p.notes) ?? []
       expect(initialNotes).toHaveLength(3)
 
       // Now delete a note
-      const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
-
       await act(async () => {
-        deleteResult.current.mutate('note-2')
+        result.current.deleteNote.mutate('note-2')
       })
 
       await waitFor(() => {
-        expect(deleteResult.current.isSuccess).toBe(true)
+        expect(result.current.deleteNote.isSuccess).toBe(true)
       })
 
       // Check that notes list was updated (optimistic update)
-      const updatedNotes = notesResult.current.data?.pages.flatMap(p => p.notes) ?? []
-      expect(updatedNotes).toHaveLength(2)
-      expect(updatedNotes.find(n => n.id === 'note-2')).toBeUndefined()
-      expect(updatedNotes.find(n => n.id === 'note-1')).toBeDefined()
-      expect(updatedNotes.find(n => n.id === 'note-3')).toBeDefined()
+      await waitFor(() => {
+        const updatedNotes = result.current.notes.data?.pages.flatMap(p => p.notes) ?? []
+        expect(updatedNotes).toHaveLength(2)
+        expect(updatedNotes.find(n => n.id === 'note-2')).toBeUndefined()
+        expect(updatedNotes.find(n => n.id === 'note-1')).toBeDefined()
+        expect(updatedNotes.find(n => n.id === 'note-3')).toBeDefined()
+      })
     })
 
     it('maintains list order after deletion', async () => {
-      const wrapper = createWrapper()
-
-      const { result: notesResult } = renderHook(() => useNotes(), { wrapper })
+      const { result } = renderNotesAndDelete()
 
       await waitFor(() => {
-        expect(notesResult.current.isSuccess).toBe(true)
+        expect(result.current.notes.isSuccess).toBe(true)
       })
-
-      const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
 
       // Delete middle note
       await act(async () => {
-        deleteResult.current.mutate('note-2')
+        result.current.deleteNote.mutate('note-2')
       })
 
       await waitFor(() => {
-        expect(deleteResult.current.isSuccess).toBe(true)
+        expect(result.current.deleteNote.isSuccess).toBe(true)
       })
 
       // Check list immediately (optimistic update should have taken effect)
-      const updatedNotes = notesResult.current.data?.pages.flatMap(p => p.notes) ?? []
-      expect(updatedNotes.length).toBe(2)
-      expect(updatedNotes[0].id).toBe('note-1')
-      expect(updatedNotes[1].id).toBe('note-3')
+      await waitFor(() => {
+        const updatedNotes = result.current.notes.data?.pages.flatMap(p => p.notes) ?? []
+        expect(updatedNotes.length).toBe(2)
+        expect(updatedNotes[0].id).toBe('note-1')
+        expect(updatedNotes[1].id).toBe('note-3')
+      })
     })
 
     it('deletes multiple notes sequentially', async () => {
-      const wrapper = createWrapper()
-
-      const { result: notesResult } = renderHook(() => useNotes(), { wrapper })
+      const { result } = renderNotesAndDelete()
 
       await waitFor(() => {
-        expect(notesResult.current.isSuccess).toBe(true)
+        expect(result.current.notes.isSuccess).toBe(true)
       })
-
-      const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
 
       // Delete first note
       await act(async () => {
-        deleteResult.current.mutate('note-1')
+        result.current.deleteNote.mutate('note-1')
       })
 
       await waitFor(() => {
-        expect(deleteResult.current.isSuccess).toBe(true)
+        expect(result.current.deleteNote.isSuccess).toBe(true)
       })
 
       // Check optimistic update
-      let updatedNotes = notesResult.current.data?.pages.flatMap(p => p.notes) ?? []
-      expect(updatedNotes.length).toBe(2)
+      await waitFor(() => {
+        const updatedNotes = result.current.notes.data?.pages.flatMap(p => p.notes) ?? []
+        expect(updatedNotes.length).toBe(2)
+      })
 
       // Delete third note
       await act(async () => {
-        deleteResult.current.mutate('note-3')
+        result.current.deleteNote.mutate('note-3')
       })
 
       await waitFor(() => {
-        expect(deleteResult.current.isSuccess).toBe(true)
+        const updatedNotes = result.current.notes.data?.pages.flatMap(p => p.notes) ?? []
+        expect(updatedNotes.length).toBe(1)
+        expect(updatedNotes[0].id).toBe('note-2')
       })
-
-      updatedNotes = notesResult.current.data?.pages.flatMap(p => p.notes) ?? []
-      expect(updatedNotes.length).toBe(1)
-      expect(updatedNotes[0].id).toBe('note-2')
     })
   })
 
@@ -292,7 +290,6 @@ describe('Note Deletion Integration Tests', () => {
     })
 
     it('queues deletion when offline and syncs when online', async () => {
-      const wrapper = createWrapper()
       const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
 
       await act(async () => {
@@ -323,7 +320,6 @@ describe('Note Deletion Integration Tests', () => {
       // Start offline
       mockIsOnline.mockReturnValue(false)
 
-      const wrapper = createWrapper()
       const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
 
       // Delete while offline
@@ -356,28 +352,26 @@ describe('Note Deletion Integration Tests', () => {
       const error = new Error('Network error')
       mockNoteServiceClass.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
-      const wrapper = createWrapper()
-
-      const { result: notesResult } = renderHook(() => useNotes(), { wrapper })
+      const { result } = renderNotesAndDelete()
 
       await waitFor(() => {
-        expect(notesResult.current.isSuccess).toBe(true)
+        expect(result.current.notes.isSuccess).toBe(true)
       })
-
-      const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
 
       await act(async () => {
-        deleteResult.current.mutate('note-1')
+        result.current.deleteNote.mutate('note-1')
       })
 
       await waitFor(() => {
-        expect(deleteResult.current.isError).toBe(true)
+        expect(result.current.deleteNote.isError).toBe(true)
       })
 
       // Note should be restored in cache (rollback)
-      const notes = notesResult.current.data?.pages.flatMap(p => p.notes) ?? []
-      expect(notes).toHaveLength(3)
-      expect(notes.find(n => n.id === 'note-1')).toBeDefined()
+      await waitFor(() => {
+        const notes = result.current.notes.data?.pages.flatMap(p => p.notes) ?? []
+        expect(notes).toHaveLength(3)
+        expect(notes.find(n => n.id === 'note-1')).toBeDefined()
+      })
     })
 
     it('calls onError callback when deletion fails', async () => {
@@ -386,7 +380,6 @@ describe('Note Deletion Integration Tests', () => {
 
       const onError = jest.fn()
 
-      const wrapper = createWrapper()
       const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
 
       await act(async () => {
@@ -405,118 +398,108 @@ describe('Note Deletion Integration Tests', () => {
 
   describe('Cache management', () => {
     it('updates all query variations when deleting', async () => {
-      const wrapper = createWrapper()
-
-      // Create queries with different filters
-      const { result: allNotesResult } = renderHook(() => useNotes(), { wrapper })
-      const { result: tagFilteredResult } = renderHook(() => useNotes({ tag: 'tag1' }), { wrapper })
+      const { result } = renderNotesAndDeleteWithFilters()
 
       await waitFor(() => {
-        expect(allNotesResult.current.isSuccess).toBe(true)
-        expect(tagFilteredResult.current.isSuccess).toBe(true)
+        expect(result.current.allNotes.isSuccess).toBe(true)
+        expect(result.current.tagFiltered.isSuccess).toBe(true)
       })
-
-      const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
 
       // Delete note with tag1
       await act(async () => {
-        deleteResult.current.mutate('note-1')
+        result.current.deleteNote.mutate('note-1')
       })
 
       await waitFor(() => {
-        expect(deleteResult.current.isSuccess).toBe(true)
+        expect(result.current.deleteNote.isSuccess).toBe(true)
       })
 
       // Both queries should be updated optimistically
-      const allNotes = allNotesResult.current.data?.pages.flatMap(p => p.notes) ?? []
-      const tagFiltered = tagFilteredResult.current.data?.pages.flatMap(p => p.notes) ?? []
+      await waitFor(() => {
+        const allNotes = result.current.allNotes.data?.pages.flatMap(p => p.notes) ?? []
+        const tagFiltered = result.current.tagFiltered.data?.pages.flatMap(p => p.notes) ?? []
 
-      expect(allNotes.find(n => n.id === 'note-1')).toBeUndefined()
-      expect(tagFiltered.find(n => n.id === 'note-1')).toBeUndefined()
+        expect(allNotes.find(n => n.id === 'note-1')).toBeUndefined()
+        expect(tagFiltered.find(n => n.id === 'note-1')).toBeUndefined()
+      })
     })
 
     it('does not affect unrelated queries', async () => {
-      const wrapper = createWrapper()
-
-      const { result: notesResult } = renderHook(() => useNotes(), { wrapper })
+      const { result } = renderNotesAndDelete()
 
       await waitFor(() => {
-        expect(notesResult.current.isSuccess).toBe(true)
+        expect(result.current.notes.isSuccess).toBe(true)
       })
 
       // Set some unrelated query data
       queryClient.setQueryData(['other-data'], { value: 'test' })
 
-      const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
-
       await act(async () => {
-        deleteResult.current.mutate('note-1')
+        result.current.deleteNote.mutate('note-1')
       })
 
       await waitFor(() => {
-        expect(deleteResult.current.isSuccess).toBe(true)
+        expect(result.current.deleteNote.isSuccess).toBe(true)
       })
 
       // Unrelated query should be unchanged
-      expect(queryClient.getQueryData(['other-data'])).toEqual({ value: 'test' })
+      await waitFor(() => {
+        expect(queryClient.getQueryData(['other-data'])).toEqual({ value: 'test' })
+      })
     })
 
     it('handles empty list after deleting last note', async () => {
       // Setup with single note
       mockNotes = [mockNotes[0]]
 
-      const wrapper = createWrapper()
-
-      const { result: notesResult } = renderHook(() => useNotes(), { wrapper })
+      const { result } = renderNotesAndDelete()
 
       await waitFor(() => {
-        expect(notesResult.current.isSuccess).toBe(true)
+        expect(result.current.notes.isSuccess).toBe(true)
       })
 
-      expect(notesResult.current.data?.pages[0].notes.length).toBe(1)
-
-      const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
+      expect(result.current.notes.data?.pages[0].notes.length).toBe(1)
 
       await act(async () => {
-        deleteResult.current.mutate('note-1')
+        result.current.deleteNote.mutate('note-1')
       })
 
       await waitFor(() => {
-        expect(deleteResult.current.isSuccess).toBe(true)
+        expect(result.current.deleteNote.isSuccess).toBe(true)
       })
 
-      const notes = notesResult.current.data?.pages.flatMap(p => p.notes) ?? []
-      expect(notes).toHaveLength(0)
-      expect(notesResult.current.data?.pages[0].totalCount).toBe(0)
+      await waitFor(() => {
+        const notes = result.current.notes.data?.pages.flatMap(p => p.notes) ?? []
+        expect(notes).toHaveLength(0)
+        expect(result.current.notes.data?.pages[0].totalCount).toBe(0)
+      })
     })
   })
 
   describe('Pagination with deletion', () => {
     it('removes note from paginated results', async () => {
-      const wrapper = createWrapper()
-
-      const { result: notesResult } = renderHook(() => useNotes(), { wrapper })
+      const { result } = renderNotesAndDelete()
 
       await waitFor(() => {
-        expect(notesResult.current.isSuccess).toBe(true)
-        expect(notesResult.current.data?.pages[0].notes.length).toBe(3)
+        expect(result.current.notes.isSuccess).toBe(true)
+        expect(result.current.notes.data?.pages[0].notes.length).toBe(3)
       })
 
       // Delete note from list
-      const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
-
       await act(async () => {
-        deleteResult.current.mutate('note-1')
+        result.current.deleteNote.mutate('note-1')
       })
 
       await waitFor(() => {
-        expect(deleteResult.current.isSuccess).toBe(true)
+        expect(result.current.deleteNote.isSuccess).toBe(true)
       })
 
       // Verify deletion via optimistic update
-      const allNotes = notesResult.current.data?.pages.flatMap(p => p.notes) ?? []
-      expect(allNotes.length).toBe(2)
-      expect(allNotes.find(n => n.id === 'note-1')).toBeUndefined()
+      await waitFor(() => {
+        const allNotes = result.current.notes.data?.pages.flatMap(p => p.notes) ?? []
+        expect(allNotes.length).toBe(2)
+        expect(allNotes.find(n => n.id === 'note-1')).toBeUndefined()
+      })
     })
   })
 
@@ -527,17 +510,25 @@ describe('Note Deletion Integration Tests', () => {
         resolveGetNotes = resolve
       })
 
-      mockNoteServiceClass.prototype.getNotes = jest.fn().mockReturnValue(getNotePromise)
+      mockNoteServiceClass.prototype.getNotes = jest.fn()
+        .mockImplementationOnce(() => getNotePromise)
+        .mockImplementation((_userId: string, options?: { tag?: string | null }) => {
+          let filteredNotes = mockNotes.filter(note => !deletedIds.has(note.id))
+          if (options?.tag) {
+            const tag = options.tag
+            filteredNotes = filteredNotes.filter(note => note.tags?.includes(tag))
+          }
+          return Promise.resolve({
+            notes: filteredNotes,
+            hasMore: false,
+            totalCount: filteredNotes.length,
+          })
+        })
 
-      const wrapper = createWrapper()
-
-      const { result: notesResult } = renderHook(() => useNotes(), { wrapper })
-
-      // Start deletion while fetch is pending
-      const { result: deleteResult } = renderHook(() => useDeleteNote(), { wrapper })
+      const { result } = renderNotesAndDelete()
 
       await act(async () => {
-        deleteResult.current.mutate('note-1')
+        result.current.deleteNote.mutate('note-1')
       })
 
       // Now resolve the fetch
@@ -552,13 +543,15 @@ describe('Note Deletion Integration Tests', () => {
       })
 
       await waitFor(() => {
-        expect(notesResult.current.isSuccess).toBe(true)
-        expect(deleteResult.current.isSuccess).toBe(true)
+        expect(result.current.notes.isSuccess).toBe(true)
+        expect(result.current.deleteNote.isSuccess).toBe(true)
       })
 
       // Note should still be deleted from cache
-      const notes = notesResult.current.data?.pages.flatMap(p => p.notes) ?? []
-      expect(notes.find(n => n.id === 'note-1')).toBeUndefined()
+      await waitFor(() => {
+        const notes = result.current.notes.data?.pages.flatMap(p => p.notes) ?? []
+        expect(notes.find(n => n.id === 'note-1')).toBeUndefined()
+      })
     })
   })
 })

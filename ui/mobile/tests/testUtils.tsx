@@ -19,7 +19,7 @@ export function createTestQueryClient(): QueryClient {
       queries: {
         retry: false,
         staleTime: 0,
-        gcTime: 0,
+        gcTime: Infinity,
       },
       mutations: {
         retry: false,
