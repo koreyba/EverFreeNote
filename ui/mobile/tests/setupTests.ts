@@ -31,7 +31,15 @@ jest.mock('expo-router', () => ({
 }))
 
 jest.mock('@react-native-community/netinfo', () => ({
-  fetch: jest.fn(() => Promise.resolve({ isConnected: true })),
+  default: {
+    fetch: jest.fn(() =>
+      Promise.resolve({
+        isConnected: true,
+        isInternetReachable: true,
+      })
+    ),
+    addEventListener: jest.fn(() => jest.fn()),
+  },
   addEventListener: jest.fn(() => jest.fn()),
 }))
 
@@ -42,3 +50,26 @@ mockAsyncStorage.setItem.mockResolvedValue(undefined)
 mockAsyncStorage.getItem.mockResolvedValue(null)
 
 globalThis.fetch = jest.fn() as unknown as typeof fetch
+
+jest.mock('isomorphic-dompurify', () => ({
+  __esModule: true,
+  default: {
+    sanitize: jest.fn((html: string, config?: { ALLOWED_TAGS?: string[] }) => {
+      if (!config?.ALLOWED_TAGS) {
+        return html
+      }
+      if (config.ALLOWED_TAGS.length === 0) {
+        // stripHtml - remove all tags
+        return html.replace(/<[^>]*>/g, '')
+      }
+      // Basic sanitization mock - remove dangerous tags
+      return html
+        .replace(/<script[^>]*>.*?<\/script>/gi, '')
+        .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '')
+        .replace(/on\w+="[^"]*"/gi, '')
+        .replace(/on\w+='[^']*'/gi, '')
+        .replace(/javascript:/gi, '')
+        .replace(/<(object|embed|form|input|button)[^>]*>/gi, '')
+    }),
+  },
+}))
