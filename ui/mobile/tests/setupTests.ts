@@ -1,10 +1,15 @@
-import { cleanup } from '@testing-library/react-native'
+import { act, cleanup } from '@testing-library/react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as ReactNative from 'react-native'
+import { notifyManager } from '@tanstack/react-query'
 
 afterEach(() => {
   cleanup()
   jest.clearAllMocks()
+})
+
+notifyManager.setNotifyFunction((notify) => {
+  act(notify)
 })
 
 jest.mock('@react-native-async-storage/async-storage', () =>

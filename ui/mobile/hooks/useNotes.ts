@@ -242,6 +242,8 @@ export function useDeleteNote() {
 
       // Snapshot the previous value
       const previousNotes = queryClient.getQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'] })
+      const activeNotes = queryClient.getQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'], type: 'active' })
+      const shouldRefetch = activeNotes.some(([, data]) => !data)
 
       // Optimistically update all matching queries
       queryClient.setQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'] }, (data) => {
@@ -256,7 +258,7 @@ export function useDeleteNote() {
         }
       })
 
-      return { previousNotes }
+      return { previousNotes, shouldRefetch }
     },
     onError: (_err, _id, context) => {
       if (context?.previousNotes) {
@@ -266,9 +268,9 @@ export function useDeleteNote() {
         })
       }
     },
-    onSettled: (_, error) => {
-      // Refetch only if there was an error to ensure consistency
-      if (error) {
+    onSettled: (_, error, _id, context) => {
+      // Refetch if an error occurred or we canceled an in-flight query without cache
+      if (error || context?.shouldRefetch) {
         void queryClient.invalidateQueries({ queryKey: ['notes'] })
       }
     },

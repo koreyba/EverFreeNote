@@ -2,10 +2,15 @@
  * Hook tests for useDeleteNote
  * Tests online/offline modes, optimistic updates, error handling, and cache invalidation
  */
-import { renderHook, waitFor, act } from '@testing-library/react-native'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { InfiniteData } from '@tanstack/react-query'
-import React from 'react'
+import type { InfiniteData, QueryClient } from '@tanstack/react-query'
+import {
+  act,
+  createQueryWrapper,
+  createTestQueryClient,
+  renderHook,
+  TEST_USER_ID,
+  waitFor,
+} from '../testUtils'
 
 // Mock NetInfo BEFORE other imports
 jest.mock('@react-native-community/netinfo', () => ({
@@ -70,7 +75,6 @@ import { useDeleteNote } from '@ui/mobile/hooks/useNotes'
 import { NoteService } from '@core/services/notes'
 
 const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
-const TEST_USER_ID = 'test-user-id'
 
 // Type the mocked functions
 const mockMarkDeleted = databaseService.markDeleted as jest.Mock
@@ -94,24 +98,11 @@ type NotesPage = {
 
 describe('useDeleteNote', () => {
   let queryClient: QueryClient
-
-  const createWrapper = () => {
-    return function Wrapper({ children }: { children: React.ReactNode }) {
-      return (
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      )
-    }
-  }
+  let wrapper: ReturnType<typeof createQueryWrapper>
 
   beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, staleTime: 0, gcTime: 0 },
-        mutations: { retry: false },
-      },
-    })
+    queryClient = createTestQueryClient()
+    wrapper = createQueryWrapper(queryClient)
 
     // Reset all mocks
     mockMarkDeleted.mockClear().mockResolvedValue(undefined)
@@ -145,7 +136,7 @@ describe('useDeleteNote', () => {
   describe('Online deletion', () => {
     it('deletes note successfully when online', async () => {
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -174,7 +165,7 @@ describe('useDeleteNote', () => {
       })
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -193,7 +184,7 @@ describe('useDeleteNote', () => {
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -215,7 +206,7 @@ describe('useDeleteNote', () => {
 
     it('queues deletion when offline', async () => {
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -240,7 +231,7 @@ describe('useDeleteNote', () => {
 
     it('marks note as deleted in local database when offline', async () => {
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -261,7 +252,7 @@ describe('useDeleteNote', () => {
       })
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -285,7 +276,7 @@ describe('useDeleteNote', () => {
       const cancelQueriesSpy = jest.spyOn(queryClient, 'cancelQueries')
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -303,7 +294,7 @@ describe('useDeleteNote', () => {
       // No cache data set - mutation should still work
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -322,7 +313,7 @@ describe('useDeleteNote', () => {
       const getQueriesDataSpy = jest.spyOn(queryClient, 'getQueriesData')
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -360,7 +351,7 @@ describe('useDeleteNote', () => {
       queryClient.setQueryData(['notes', TEST_USER_ID, { pageSize: 50, tag: null, searchQuery: '' }], initialData)
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -390,7 +381,7 @@ describe('useDeleteNote', () => {
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries')
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -408,7 +399,7 @@ describe('useDeleteNote', () => {
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries')
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -432,7 +423,7 @@ describe('useDeleteNote', () => {
       })
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -475,7 +466,7 @@ describe('useDeleteNote', () => {
       queryClient.setQueryData(['notes', TEST_USER_ID, { pageSize: 50, tag: null, searchQuery: '' }], initialData)
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -505,7 +496,7 @@ describe('useDeleteNote', () => {
       const onSuccess = jest.fn()
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
@@ -516,7 +507,7 @@ describe('useDeleteNote', () => {
         expect(result.current.isSuccess).toBe(true)
       })
 
-      expect(onSuccess).toHaveBeenCalledWith('note-1', 'note-1', expect.anything())
+      expect(onSuccess).toHaveBeenCalledWith('note-1', 'note-1', expect.anything(), expect.anything())
     })
 
     it('calls onError callback when provided', async () => {
@@ -526,7 +517,7 @@ describe('useDeleteNote', () => {
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
       const { result } = renderHook(() => useDeleteNote(), {
-        wrapper: createWrapper(),
+        wrapper,
       })
 
       await act(async () => {
