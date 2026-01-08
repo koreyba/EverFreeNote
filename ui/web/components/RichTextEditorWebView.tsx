@@ -28,12 +28,14 @@ export type RichTextEditorWebViewHandle = {
 type RichTextEditorWebViewProps = {
   initialContent: string
   onContentChange?: () => void
+  onFocus?: () => void
+  onBlur?: () => void
 }
 
 const RichTextEditorWebView = React.forwardRef<
   RichTextEditorWebViewHandle,
   RichTextEditorWebViewProps
->(({ initialContent, onContentChange }, ref) => {
+>(({ initialContent, onContentChange, onFocus, onBlur }, ref) => {
   const editorExtensions: Extensions = React.useMemo(
     () => [
       StarterKit.configure({
@@ -82,6 +84,12 @@ const RichTextEditorWebView = React.forwardRef<
     content: initialContent,
     onUpdate: () => {
       onContentChange?.()
+    },
+    onFocus: () => {
+      onFocus?.()
+    },
+    onBlur: () => {
+      onBlur?.()
     },
     editorProps,
   })

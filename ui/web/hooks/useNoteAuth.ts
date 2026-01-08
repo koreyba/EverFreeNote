@@ -112,49 +112,26 @@ export function useNoteAuth() {
         }
     }
 
-    const handleSignOut = async (onSignOut?: () => void) => {
+    const handleSignOut = async (callback?: () => void) => {
         try {
             await authService.signOut()
             await webStorageAdapter.removeItem('testUser')
             setUser(null)
             queryClient.removeQueries({ queryKey: ['notes'] })
-            if (onSignOut) onSignOut()
+            if (typeof callback === 'function') callback()
         } catch (error) {
             console.error('Error signing out:', error)
         }
     }
 
-    const handleDeleteAccount = async (onDelete?: () => void) => {
+    const handleDeleteAccount = async (callback?: () => void) => {
         if (!user) return
         setDeleteAccountLoading(true)
         try {
-            const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-            if (sessionError || !sessionData.session?.access_token) {
-                throw new Error("Unable to get session token for deletion")
-            }
-            const token = sessionData.session.access_token
-            const functionsUrl = process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
-            if (!functionsUrl) {
-                throw new Error("Functions URL is not configured (set NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL)")
-            }
-
-            const response = await fetch(`${functionsUrl}/functions/v1/delete-account`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ deleteNotes: true }),
-            })
-
-            const payload = await response.json().catch(() => ({}))
-            if (!response.ok) {
-                const message = payload?.error || `Delete function error (${response.status})`
-                throw new Error(message)
-            }
+            await authService.deleteAccount()
 
             toast.success("Account deleted")
-            await handleSignOut(onDelete)
+            await handleSignOut(callback)
         } catch (error) {
             const message = error instanceof Error ? error.message : "Failed to delete account"
             toast.error(message)

@@ -520,6 +520,16 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       editorProps,
     })
 
+    const handleEditorContainerMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+      if (!editor) return
+      const target = event.target
+      if (target instanceof HTMLElement && target.closest(".ProseMirror")) {
+        return
+      }
+      event.preventDefault()
+      editor.chain().focus("start").run()
+    }, [editor])
+
     // Expose methods via ref
     React.useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() ?? "",
@@ -538,11 +548,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     return (
       <div className={`bg-background ${hideToolbar ? '' : 'border border-t-0 rounded-b-md rounded-t-none'}`}>
         {!hideToolbar && <MenuBar editor={editor} />}
-        <EditorContent
-          data-cy="editor-content"
-          editor={editor}
-          className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-6 py-4`}
-        />
+        <div onMouseDown={handleEditorContainerMouseDown}>
+          <EditorContent
+            data-cy="editor-content"
+            editor={editor}
+            className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-6 py-4`}
+          />
+        </div>
       </div>
     )
   })

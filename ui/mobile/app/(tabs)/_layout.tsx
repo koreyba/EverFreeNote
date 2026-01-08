@@ -10,6 +10,7 @@ export default function TabsLayout() {
   const { isAuthenticated, loading } = useAuth()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
+  const isOnline = useNetworkStatus()
   useOfflineSync()
 
   if (loading) {
@@ -23,8 +24,6 @@ export default function TabsLayout() {
   if (!isAuthenticated) {
     return <Redirect href="/(auth)/login" />
   }
-
-  const isOnline = useNetworkStatus()
 
   return (
     <View style={styles.container}>

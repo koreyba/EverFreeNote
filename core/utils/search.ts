@@ -1,4 +1,5 @@
 import type { Tables, FtsSearchResult } from '@/supabase/types'
+import { SEARCH_CONFIG } from '../constants/search'
 
 const FTS_LANGUAGES = {
   ru: 'russian',
@@ -8,21 +9,18 @@ const FTS_LANGUAGES = {
 
 export type LanguageCode = keyof typeof FTS_LANGUAGES
 
-const MAX_QUERY_LENGTH = 1000
-const MIN_QUERY_LENGTH = 3
-
 export function buildTsQuery(query: string): string | null {
   if (!query || typeof query !== 'string') {
     return null
   }
 
-  if (query.length > MAX_QUERY_LENGTH) {
+  if (query.length > SEARCH_CONFIG.MAX_QUERY_LENGTH) {
     return null
   }
 
   const trimmed = query.trim()
 
-  if (trimmed.length < MIN_QUERY_LENGTH) {
+  if (trimmed.length < SEARCH_CONFIG.MIN_QUERY_LENGTH) {
     return null
   }
 
@@ -43,6 +41,11 @@ export function buildTsQuery(query: string): string | null {
 
   return words.map((word) => `${word}:*`).join(' & ')
 }
+
+export function shouldUpdateTagFilter(currentTag: string | null, newTag: string | null): boolean {
+  return currentTag !== newTag
+}
+
 
 export function detectLanguage(query: string): LanguageCode {
   if (!query) return 'ru'

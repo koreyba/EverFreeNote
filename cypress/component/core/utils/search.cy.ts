@@ -1,4 +1,4 @@
-import { buildTsQuery, detectLanguage, ftsLanguage, mapNotesToFtsResult } from '@/core/utils/search'
+import { buildTsQuery, detectLanguage, ftsLanguage, mapNotesToFtsResult } from '@core/utils/search'
 import type { Tables } from '@/supabase/types'
 
 describe('core/utils/search', () => {

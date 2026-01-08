@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export class AuthService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: SupabaseClient) { }
 
   async signInWithGoogle(redirectTo: string) {
     return this.supabase.auth.signInWithOAuth({
@@ -20,5 +20,17 @@ export class AuthService {
 
   async getSession() {
     return this.supabase.auth.getSession()
+  }
+
+  async deleteAccount() {
+    const { data, error } = await this.supabase.functions.invoke('delete-account', {
+      body: { deleteNotes: true },
+    })
+
+    if (error) {
+      throw new Error(error.message || 'Failed to delete account')
+    }
+
+    return data
   }
 }

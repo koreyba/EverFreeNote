@@ -1,4 +1,4 @@
-import { AuthService } from '@/core/services/auth'
+import { AuthService } from '@core/services/auth'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 describe('core/services/AuthService', () => {

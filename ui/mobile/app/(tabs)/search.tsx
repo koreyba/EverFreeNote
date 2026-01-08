@@ -10,6 +10,8 @@ import { useSupabase, useTheme } from '@ui/mobile/providers'
 import { addSearchHistoryItem, clearSearchHistory, getSearchHistory } from '@ui/mobile/services/searchHistory'
 import { TagFilterBar } from '@ui/mobile/components/tags'
 import { NoteCard } from '@ui/mobile/components/NoteCard'
+import { SEARCH_CONFIG } from '@core/constants/search'
+import { shouldUpdateTagFilter } from '@core/utils/search'
 
 type SearchResultItem = Note & {
     snippet?: string | null
@@ -50,7 +52,7 @@ export default function SearchScreen() {
     useEffect(() => {
         if (!user?.id) return
         const trimmed = query.trim()
-        if (trimmed.length < 2) return
+        if (trimmed.length < SEARCH_CONFIG.MIN_QUERY_LENGTH) return
 
         const timeout = setTimeout(() => {
             void addSearchHistoryItem(user.id, trimmed).then(setHistory)
@@ -60,7 +62,7 @@ export default function SearchScreen() {
     }, [query, user?.id])
 
     const handleTagPress = (tag: string) => {
-        if (tag === activeTag) return
+        if (!shouldUpdateTagFilter(activeTag, tag)) return
         setActiveTag(tag)
         router.setParams({ tag })
     }
@@ -107,14 +109,14 @@ export default function SearchScreen() {
             {query.trim().length === 0 && history.length > 0 && !activeTag && (
                 <View style={styles.historyContainer}>
                     <View style={styles.historyHeader}>
-                        <Text style={styles.historyTitle}>История поиска</Text>
+                        <Text style={styles.historyTitle}>Search History</Text>
                         <Pressable
                             onPress={() => {
                                 if (!user?.id) return
                                 void clearSearchHistory(user.id).then(() => setHistory([]))
                             }}
                         >
-                            <Text style={styles.historyClear}>Очистить</Text>
+                            <Text style={styles.historyClear}>Clear</Text>
                         </Pressable>
                     </View>
                     {history.map((item) => (
@@ -142,7 +144,7 @@ export default function SearchScreen() {
 
             {!isLoading && (query.length >= 2 || !!activeTag) && results.length === 0 && (
                 <View style={styles.center}>
-                    <Text style={styles.empty}>Ничего не найдено</Text>
+                    <Text style={styles.empty}>Nothing found</Text>
                 </View>
             )}
 

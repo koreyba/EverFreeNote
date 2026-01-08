@@ -1,8 +1,28 @@
 import React from 'react'
 import { fireEvent, screen, waitFor } from '@testing-library/react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import SettingsScreen from '@ui/mobile/app/(tabs)/settings'
 import { renderWithProviders } from '../utils/renderWithProviders'
+
+// Мок должен быть объявлен до импорта SettingsScreen (jest hoisting)
+jest.mock('@ui/mobile/providers/SupabaseProvider', () => ({
+  useSupabase: () => ({
+    client: {},
+    user: null,
+    session: null,
+    loading: false,
+    signOut: jest.fn(),
+  }),
+  useAuth: () => ({
+    user: null,
+    session: null,
+    loading: false,
+    isAuthenticated: false,
+    signOut: jest.fn(),
+  }),
+  SupabaseProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+
+import SettingsScreen from '@ui/mobile/app/(tabs)/settings'
 
 describe('SettingsScreen', () => {
   it('updates the current mode when an option is selected', async () => {

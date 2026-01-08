@@ -4,6 +4,8 @@ import { useSearchNotes } from './useNotesQuery'
 import { useInfiniteScroll } from './useInfiniteScroll'
 import type { SearchResult } from '@core/types/domain'
 import { computeFtsHasMore, computeFtsTotal } from '@core/services/ftsPagination'
+import { SEARCH_CONFIG } from '@core/constants/search'
+import { shouldUpdateTagFilter } from '@core/utils/search'
 
 export function useNoteSearch(userId: string | undefined) {
     // -- State --
@@ -12,7 +14,7 @@ export function useNoteSearch(userId: string | undefined) {
     const [filterByTag, setFilterByTag] = useState<string | null>(null)
     const [ftsOffset, setFtsOffset] = useState(0)
     const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
-    const ftsLimit = 50
+    const ftsLimit = SEARCH_CONFIG.PAGE_SIZE
     const lastProcessedDataRef = useRef<string>('')
 
     // -- Logic --
@@ -26,15 +28,19 @@ export function useNoteSearch(userId: string | undefined) {
     }, [])
 
     const handleTagClick = useCallback((tag: string) => {
+        if (!shouldUpdateTagFilter(filterByTag, tag)) return
         setFilterByTag(tag)
         setFtsOffset(0)
         setFtsAccumulatedResults([])
         lastProcessedDataRef.current = ''
         // Don't reset search - preserve search state when clicking tags
-    }, [])
+    }, [filterByTag])
 
     const handleClearTagFilter = useCallback(() => {
         setFilterByTag(null)
+        setFtsOffset(0)
+        setFtsAccumulatedResults([])
+        lastProcessedDataRef.current = ''
     }, [])
 
     // -- FTS Query --

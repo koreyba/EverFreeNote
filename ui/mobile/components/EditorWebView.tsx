@@ -21,11 +21,13 @@ type Props = {
     initialContent?: string
     onContentChange?: (html: string) => void
     onReady?: () => void
+    onFocus?: () => void
+    onBlur?: () => void
     loadingFallback?: React.ReactNode
 }
 
 const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
-    ({ initialContent = '', onContentChange, onReady, loadingFallback }, ref) => {
+    ({ initialContent = '', onContentChange, onReady, onFocus, onBlur, loadingFallback }, ref) => {
         const webViewRef = useRef<WebView>(null)
         const { colors, colorScheme } = useTheme()
         const styles = useMemo(() => createStyles(colors), [colors])
@@ -84,8 +86,14 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         }))
 
         const editorUrl = (() => {
-            const configured = process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL?.trim()
+            const extra = Constants.expoConfig?.extra
+            const configuredFromExtra = extra?.editorWebViewUrl
+            const configured =
+                (typeof configuredFromExtra === 'string' ? configuredFromExtra.trim() : '') ||
+                process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL?.trim()
             if (configured) return configured
+
+            if (extra?.requireEditorWebViewUrl === true) return ''
 
             if (__DEV__) {
                 const host = Constants.expoConfig?.hostUri?.split(':').shift()
@@ -93,7 +101,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                 return 'http://localhost:3000/editor-webview'
             }
 
-            return 'https://everfreenote.app/editor-webview'
+            return 'https://everfreenote.pages.dev/editor-webview'
         })()
 
         const injectedJavaScriptBeforeContentLoaded = (() => {
@@ -191,6 +199,12 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         console.error('[EditorWebView] Image failed to load:', p?.src, p?.message)
                         break
                     }
+                    case 'EDITOR_FOCUS':
+                        onFocus?.()
+                        break
+                    case 'EDITOR_BLUR':
+                        onBlur?.()
+                        break
                 }
             } catch (error) {
                 console.error('[EditorWebView] Failed to parse message:', error)
@@ -203,6 +217,20 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                 post({ type: 'SET_THEME', payload: colorScheme })
             }
         }, [colorScheme, isReady])
+
+        if (!editorUrl) {
+            return (
+                <View style={styles.container}>
+                    <View style={styles.loadingContainer}>
+                        <Text style={styles.errorTitle}>Editor URL missing</Text>
+                        <Text style={styles.errorSubtitle}>
+                            Set EXPO_PUBLIC_EDITOR_WEBVIEW_URL or EXPO_PUBLIC_STAGE_BRANCH +
+                            EXPO_PUBLIC_STAGE_DOMAIN for the stage build.
+                        </Text>
+                    </View>
+                </View>
+            )
+        }
 
         return (
             <View style={styles.container}>
