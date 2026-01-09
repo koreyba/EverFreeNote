@@ -74,7 +74,6 @@ npm run android:prod     # Build and install prod variant
 
 ### Start Metro bundler (if app is already installed)
 ```bash
-npm run dev              # Start Metro for dev variant
 npm run start:dev        # Same as above
 npm run start:stage      # Start Metro for stage variant
 npm run start:prod       # Start Metro for prod variant

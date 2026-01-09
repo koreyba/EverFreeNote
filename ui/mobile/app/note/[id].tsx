@@ -79,6 +79,14 @@ export default function NoteEditorScreen() {
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    return () => {
+      if (saveTimeout.current) {
+        clearTimeout(saveTimeout.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => setKeyboardHeight(e.endCoordinates.height)
@@ -141,7 +149,7 @@ export default function NoteEditorScreen() {
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.primary} testID="activity-indicator" />
       </View>
     )
   }
@@ -166,13 +174,15 @@ export default function NoteEditorScreen() {
               <Pressable
                 onPress={handleDelete}
                 disabled={isDeleting}
+                accessibilityLabel="Delete note"
+                accessibilityRole="button"
                 style={({ pressed }) => [
                   styles.headerButton,
                   (pressed || isDeleting) && { opacity: 0.5 }
                 ]}
               >
                 {isDeleting ? (
-                  <ActivityIndicator size="small" color={colors.destructive} />
+                  <ActivityIndicator size="small" color={colors.destructive} testID="activity-indicator" />
                 ) : (
                   <Trash2 color={colors.destructive} size={20} />
                 )}

@@ -1,15 +1,15 @@
-import { View, TextInput, StyleSheet, ActivityIndicator, Text, Pressable } from 'react-native'
-import { useEffect, useMemo, useState } from 'react'
+import { View, TextInput, StyleSheet, ActivityIndicator, Text, Pressable, Alert } from 'react-native'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
-import { useSearch } from '@ui/mobile/hooks'
+import { useSearch, useDeleteNote } from '@ui/mobile/hooks'
 import { useQueryClient } from '@tanstack/react-query'
 import { Search, X } from 'lucide-react-native'
 import type { Note } from '@core/types/domain'
-import { useSupabase, useTheme } from '@ui/mobile/providers'
+import { useSupabase, useTheme, useSwipeContext } from '@ui/mobile/providers'
 import { addSearchHistoryItem, clearSearchHistory, getSearchHistory } from '@ui/mobile/services/searchHistory'
 import { TagFilterBar } from '@ui/mobile/components/tags'
-import { NoteCard } from '@ui/mobile/components/NoteCard'
+import { SwipeableNoteCard } from '@ui/mobile/components/SwipeableNoteCard'
 import { SEARCH_CONFIG } from '@core/constants/search'
 import { shouldUpdateTagFilter } from '@core/utils/search'
 
@@ -34,6 +34,8 @@ export default function SearchScreen() {
         isFetchingNextPage,
     } = useSearch(query, { tag: activeTag })
     const { user } = useSupabase()
+    const { mutate: deleteNote } = useDeleteNote()
+    const { closeAll } = useSwipeContext()
     const [history, setHistory] = useState<string[]>([])
 
     useEffect(() => {
@@ -72,17 +74,27 @@ export default function SearchScreen() {
         router.setParams({ tag: '' })
     }
 
+    const handleDeleteNote = useCallback((id: string) => {
+        deleteNote(id, {
+            onError: () => {
+                Alert.alert('Error', 'Failed to delete note. Please try again.')
+            }
+        })
+    }, [deleteNote])
+
+    const handleNotePress = useCallback((note: Note) => {
+        queryClient.setQueryData(["note", note.id], note)
+        router.push(`/note/${note.id}`)
+    }, [queryClient, router])
+
     const results = data?.pages.flatMap((page) => page.results) ?? []
 
     const renderItem = ({ item }: { item: SearchResultItem }) => (
-        <NoteCard
+        <SwipeableNoteCard
             note={item}
-            variant="search"
-            onPress={() => {
-                queryClient.setQueryData(["note", item.id], item)
-                router.push(`/note/${item.id}`)
-            }}
+            onPress={handleNotePress}
             onTagPress={handleTagPress}
+            onDelete={handleDeleteNote}
         />
     )
 
@@ -155,6 +167,7 @@ export default function SearchScreen() {
                 estimatedItemSize={96}
                 keyExtractor={(item: SearchResultItem) => item.id}
                 contentContainerStyle={styles.list}
+                onScrollBeginDrag={closeAll}
                 onEndReached={() => {
                     if (!hasNextPage || isFetchingNextPage) return
                     void fetchNextPage()
