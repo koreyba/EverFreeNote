@@ -48,7 +48,7 @@ description: Clarify the problem space, gather requirements, and define success 
 - Assumptions: clipboardData provides text/plain and often text/html on web; mobile webview may only provide text/plain.
 - Size threshold: above 100k characters, skip markdown parsing and insert as plain text for stability.
 - Scope constraints: phase 1 supports extended markdown only (no tables or task lists); only formatting supported by current TipTap extensions and sanitizer allowlist is preserved.
-- Security constraints: allow only http/https images; disallow data URIs; inline styles are restricted to a small safe allowlist.
+- Security constraints: allow only http/https images; disallow data URIs; inline styles are restricted to a small safe allowlist; links allow http/https/mailto plus anchors/relative URLs.
 - Markdown scope (phase 1, supported): headings h1-h6, paragraphs, bullet/ordered lists, blockquotes, inline code, code blocks, links, bold/italic/strikethrough, horizontal rules (---).
 - Markdown scope (phase 1, not supported): tables, task lists, footnotes, definition lists, embedded HTML blocks beyond sanitizer allowlist.
 

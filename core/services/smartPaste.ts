@@ -97,33 +97,48 @@ export const SmartPasteService = {
     const detection = SmartPasteService.detectPasteType(payload, config)
     const warnings = [...detection.warnings]
 
-    if (detection.type === 'html' && payload.html) {
-      const sanitized = sanitizePasteHtml(payload.html)
-      return { html: sanitized, type: 'html', warnings, detection }
-    }
-
-    if (detection.type === 'markdown' && payload.text) {
-      if (payload.text.length > config.maxLength) {
-        warnings.push('plain:oversized-text')
-        const html = plainTextToHtml(payload.text)
-        return { html: sanitizePasteHtml(html), type: 'plain', warnings, detection }
+    try {
+      if (detection.type === 'html' && payload.html) {
+        const sanitized = sanitizePasteHtml(payload.html)
+        return { html: sanitized, type: 'html', warnings, detection }
       }
 
-      if (containsUnsupportedMarkdown(payload.text)) {
-        warnings.push('plain:unsupported-markdown')
-        const cleaned = stripMarkdownSyntax(payload.text)
-        const html = plainTextToHtml(cleaned)
-        return { html: sanitizePasteHtml(html), type: 'plain', warnings, detection }
+      if (detection.type === 'markdown' && payload.text) {
+        if (payload.text.length > config.maxLength) {
+          warnings.push('plain:oversized-text')
+          const html = plainTextToHtml(payload.text)
+          return { html: sanitizePasteHtml(html), type: 'plain', warnings, detection }
+        }
+
+        if (containsUnsupportedMarkdown(payload.text)) {
+          warnings.push('plain:unsupported-markdown')
+          const cleaned = stripMarkdownSyntax(payload.text)
+          const html = plainTextToHtml(cleaned)
+          return { html: sanitizePasteHtml(html), type: 'plain', warnings, detection }
+        }
+
+        const rendered = markdown.render(payload.text)
+        return { html: sanitizePasteHtml(rendered), type: 'markdown', warnings, detection }
       }
 
-      const rendered = markdown.render(payload.text)
-      return { html: sanitizePasteHtml(rendered), type: 'markdown', warnings, detection }
+      const text = payload.text ?? SanitizationService.stripHtml(payload.html ?? '')
+      const plainHtml = plainTextToHtml(text)
+      return { html: sanitizePasteHtml(plainHtml), type: 'plain', warnings, detection }
+    } catch {
+      warnings.push('plain:parse-failed')
+      const fallbackText = payload.text ?? safeStripHtml(payload.html ?? '')
+      const fallbackHtml = plainTextToHtml(fallbackText)
+      return { html: fallbackHtml, type: 'plain', warnings, detection }
     }
-
-    const text = payload.text ?? SanitizationService.stripHtml(payload.html ?? '')
-    const plainHtml = plainTextToHtml(text)
-    return { html: sanitizePasteHtml(plainHtml), type: 'plain', warnings, detection }
   },
+}
+
+function safeStripHtml(html: string): string {
+  try {
+    return SanitizationService.stripHtml(html)
+  } catch {
+    return ''
+  }
 }
 
 function isHtmlMeaningful(html: string): boolean {
@@ -258,7 +273,7 @@ function filterUnsafeUrls(html: string): string {
   const links = Array.from(doc.querySelectorAll('a[href]'))
   for (const link of links) {
     const href = link.getAttribute('href') ?? ''
-    if (!isAllowedProtocol(href, ALLOWED_LINK_PROTOCOLS)) {
+    if (!isAllowedLinkProtocol(href, ALLOWED_LINK_PROTOCOLS)) {
       link.removeAttribute('href')
     }
   }
@@ -266,7 +281,7 @@ function filterUnsafeUrls(html: string): string {
   const images = Array.from(doc.querySelectorAll('img[src]'))
   for (const img of images) {
     const src = img.getAttribute('src') ?? ''
-    if (!isAllowedProtocol(src, ALLOWED_IMAGE_PROTOCOLS)) {
+    if (!isAllowedImageProtocol(src, ALLOWED_IMAGE_PROTOCOLS)) {
       img.remove()
     }
   }
@@ -274,9 +289,35 @@ function filterUnsafeUrls(html: string): string {
   return doc.body.innerHTML
 }
 
-function isAllowedProtocol(value: string, allowed: string[]): boolean {
+function isAllowedLinkProtocol(value: string, allowed: string[]): boolean {
   const trimmed = value.trim()
   if (!trimmed) return false
+  if (trimmed.startsWith('//')) {
+    return false
+  }
+  if (
+    trimmed.startsWith('#') ||
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('./') ||
+    trimmed.startsWith('../') ||
+    trimmed.startsWith('?')
+  ) {
+    return true
+  }
+  try {
+    const parsed = new URL(trimmed)
+    return allowed.includes(parsed.protocol)
+  } catch {
+    return false
+  }
+}
+
+function isAllowedImageProtocol(value: string, allowed: string[]): boolean {
+  const trimmed = value.trim()
+  if (!trimmed) return false
+  if (trimmed.startsWith('//')) {
+    return false
+  }
   try {
     const parsed = new URL(trimmed)
     return allowed.includes(parsed.protocol)
