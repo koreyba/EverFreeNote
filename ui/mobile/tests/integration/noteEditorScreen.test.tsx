@@ -318,7 +318,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
   })
 
   describe('Delete error handling', () => {
-    it('does not navigate back when deletion fails', async () => {
+    it('navigates back when API fails but fallback succeeds', async () => {
       const error = new Error('Deletion failed')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
@@ -335,11 +335,13 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         expect(mockNoteService.prototype.deleteNote).toHaveBeenCalled()
       })
 
-      // Should NOT navigate back on error
-      expect(mockBack).not.toHaveBeenCalled()
+      // Should navigate back - fallback to queue succeeded
+      await waitFor(() => {
+        expect(mockBack).toHaveBeenCalled()
+      })
     })
 
-    it('re-enables delete button after error', async () => {
+    it('completes deletion via fallback when API fails', async () => {
       const error = new Error('Deletion failed')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
@@ -356,13 +358,10 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         expect(mockNoteService.prototype.deleteNote).toHaveBeenCalled()
       })
 
-      // Wait for error to be processed - loading indicator should be gone
+      // Deletion should succeed via fallback - user navigates away
       await waitFor(() => {
-        expect(screen.queryByTestId('activity-indicator')).toBeNull()
+        expect(mockBack).toHaveBeenCalled()
       })
-
-      // Delete button should still be available
-      expect(screen.getByLabelText('Delete note')).toBeTruthy()
     })
   })
 

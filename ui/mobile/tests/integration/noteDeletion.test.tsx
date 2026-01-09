@@ -349,9 +349,47 @@ describe('Note Deletion Integration Tests', () => {
   })
 
   describe('Delete with error handling', () => {
-    it('shows error and restores note on deletion failure', async () => {
+    it('falls back to queue when API deletion fails', async () => {
       const error = new Error('Network error')
       mockNoteServiceClass.prototype.deleteNote = jest.fn().mockRejectedValue(error)
+
+      const { result } = renderNotesAndDelete()
+
+      await waitFor(() => {
+        expect(result.current.notes.isSuccess).toBe(true)
+      })
+
+      await act(async () => {
+        result.current.deleteNote.mutate('note-1')
+      })
+
+      // Should succeed via fallback to queue
+      await waitFor(() => {
+        expect(result.current.deleteNote.isSuccess).toBe(true)
+      })
+
+      // Note should be deleted from cache (optimistic update stays)
+      await waitFor(() => {
+        const notes = result.current.notes.data?.pages.flatMap(p => p.notes) ?? []
+        expect(notes).toHaveLength(2)
+        expect(notes.find(n => n.id === 'note-1')).toBeUndefined()
+      })
+
+      // Should have enqueued for later sync
+      expect(getMockEnqueue()).toHaveBeenCalledWith(
+        expect.objectContaining({
+          noteId: 'note-1',
+          operation: 'delete',
+        })
+      )
+    })
+
+    it('restores note on queue error (offline)', async () => {
+      mockIsOnline.mockReturnValue(false)
+      const error = new Error('Queue full')
+      mockGetManager.mockReturnValue({
+        enqueue: jest.fn().mockRejectedValue(error),
+      })
 
       const { result } = renderNotesAndDelete()
 
@@ -375,9 +413,12 @@ describe('Note Deletion Integration Tests', () => {
       })
     })
 
-    it('calls onError callback when deletion fails', async () => {
-      const error = new Error('Deletion failed')
-      mockNoteServiceClass.prototype.deleteNote = jest.fn().mockRejectedValue(error)
+    it('calls onError callback when queue fails (offline)', async () => {
+      mockIsOnline.mockReturnValue(false)
+      const error = new Error('Queue full')
+      mockGetManager.mockReturnValue({
+        enqueue: jest.fn().mockRejectedValue(error),
+      })
 
       const onError = jest.fn()
 
