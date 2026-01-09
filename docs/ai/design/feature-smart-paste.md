@@ -79,7 +79,7 @@ description: Define the technical architecture, components, and data models
 - Always sanitize after conversion; do not trust clipboard HTML even from known sources.
 - Markdown scope is extended, not full: no tables or task lists in phase 1; unsupported constructs are downgraded to plain text or simple lists.
 - Heading levels are supported up to h1-h6 to match editor configuration.
-- Allowed URL protocols: `http`, `https`, `mailto`; other protocols are stripped.
+- Allowed URL protocols: `http`, `https`, `mailto`, plus anchors/relative URLs (`#`, `/`, `./`, `../`, `?`). Other protocols are stripped.
 - Inline style allowlist (phase 1): `font-weight`, `font-style`, `text-decoration`. Color/background-color are stripped to avoid theme clashes.
 - Downgrade rule: unsupported markdown converts to plain text with line breaks preserved (never raw markdown).
 - Size guard: if input exceeds 100k characters, skip markdown parsing and insert as plain text to keep editor responsive.
@@ -94,6 +94,6 @@ description: Define the technical architecture, components, and data models
 
 - Performance: avoid heavy parsing for very large content; short-circuit to plain text for oversized pastes if needed.
 - Scalability: pipeline is local and linear in input size; no server impact.
-- Security: DOMPurify sanitization, allowed tags/attrs only, safe URL protocols (http/https/mailto), no scriptable attributes, style allowlist.
+- Security: DOMPurify sanitization, allowed tags/attrs only, safe URL protocols (http/https/mailto + anchors/relative), no scriptable attributes, style allowlist.
 - Allowed HTML tags (phase 1, aligned with sanitizer): b, i, em, strong, a, p, br, hr, ul, ol, li, h1, h2, h3, h4, h5, h6, blockquote, code, pre, span, div, img, mark, u, s, strike.
 - Reliability: if parsing fails, fall back to plain text insert and keep editor responsive.

@@ -75,7 +75,7 @@ description: Technical implementation notes, patterns, and code guidelines
 **What security measures are in place?**
 
 - Input validation: treat clipboard as untrusted input; sanitize all HTML.
-- Enforce safe URL protocols for links and images (http/https/mailto) via sanitizer configuration; drop images with non-http/https sources.
+- Enforce safe URL protocols for links and images (http/https/mailto + anchors/relative for links); drop images with non-http/https sources.
 - Limit inline styles to a safe allowlist: font-weight, font-style, text-decoration; strip colors to avoid theme conflicts.
 - Markdown support list (phase 1): headings h1-h6, paragraphs, bullet/ordered lists, blockquotes, inline code, code blocks, links, bold/italic/strikethrough, horizontal rules.
 - UI toolbar: add horizontal rule button that triggers `setHorizontalRule` on the editor (web + mobile toolbar).

@@ -39,13 +39,14 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Paste HTML from web page fixture and verify sanitized HTML inserted.
 - [ ] Paste markdown from AI chat fixture and verify formatted HTML inserted.
 - [ ] Paste plain text with newlines and verify paragraph + line break behavior.
-- [ ] Failure mode: markdown parser throws -> fallback to plain text insert.
+- [ ] Failure mode: markdown parser or sanitizer throws -> fallback to plain text insert.
 - [ ] Oversized paste (>100k chars) skips markdown parsing and inserts plain text.
 - [ ] Paste markdown with images and verify only http/https sources remain.
 - [ ] Sanitize script tags and inline event handlers from HTML.
 - [ ] Normalize simple div blocks into paragraphs.
 - [ ] Escape raw HTML when content is treated as plain text.
 - [ ] Handle unclosed fenced code blocks without crashing.
+- [ ] Preserve anchor/relative links while stripping unsafe protocols.
 
 ## End-to-End Tests
 **What user flows need validation?**
@@ -71,7 +72,7 @@ description: Define testing approach, test cases, and quality assurance
 - Manual testing outcomes and sign-off recorded per release.
 - Latest quick check: `npx tsc --noEmit` (update date after implementation).
 - Latest validation: `npm run validate` (ui/mobile) (pass, 2026-01-09).
-- Latest targeted tests: `npm test -- tests/unit/core-services-sanitizer.test.ts tests/unit/core-services-smartPaste.test.ts tests/integration/smartPaste.integration.test.ts` (pass, 2026-01-09).
+- Latest targeted tests: `npm test -- tests/unit/core-services-smartPaste.test.ts tests/integration/smartPaste.integration.test.ts` (pass, 2026-01-09).
 
 ## Manual Testing
 **What requires human validation?**
