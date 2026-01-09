@@ -303,6 +303,23 @@ describe('core/services/smartPaste', () => {
       expect(result.html).toContain('Title')
     })
 
+    it('renders all markdown heading levels', () => {
+      const payload = {
+        html: null,
+        text: '# H1\n\n## H2\n\n### H3\n\n#### H4\n\n##### H5\n\n###### H6',
+        types: ['text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+      expect(result.type).toBe('markdown')
+      expect(result.html).toContain('<h1>')
+      expect(result.html).toContain('<h2>')
+      expect(result.html).toContain('<h3>')
+      expect(result.html).toContain('<h4>')
+      expect(result.html).toContain('<h5>')
+      expect(result.html).toContain('<h6>')
+    })
+
     it('treats non-structural HTML as plain text when no markdown is present', () => {
       const payload = {
         html: '<span>Loose text</span>',
