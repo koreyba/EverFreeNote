@@ -180,7 +180,7 @@ describe('useDeleteNote', () => {
       expect(callOrder).toEqual(['markDeleted', 'deleteNote'])
     })
 
-    it('handles deletion error from API', async () => {
+    it('falls back to queue when API deletion fails', async () => {
       const error = new Error('API deletion failed')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
@@ -192,11 +192,22 @@ describe('useDeleteNote', () => {
         result.current.mutate('note-1')
       })
 
+      // Should succeed via fallback to queue
       await waitFor(() => {
-        expect(result.current.isError).toBe(true)
+        expect(result.current.isSuccess).toBe(true)
       })
 
-      expect(result.current.error).toBe(error)
+      // Should have tried API first
+      expect(mockNoteService.prototype.deleteNote).toHaveBeenCalledWith('note-1')
+      // Should have enqueued for later sync
+      expect(getMockEnqueue()).toHaveBeenCalledWith(
+        expect.objectContaining({
+          noteId: 'note-1',
+          operation: 'delete',
+          payload: {},
+        })
+      )
+      expect(result.current.data).toBe('note-1')
     })
   })
 
@@ -331,9 +342,13 @@ describe('useDeleteNote', () => {
   })
 
   describe('Error recovery', () => {
-    it('rolls back optimistic update on error', async () => {
-      const error = new Error('Deletion failed')
-      mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
+    it('rolls back optimistic update on queue error (offline)', async () => {
+      // Simulate offline with queue error
+      mockIsOnline.mockReturnValue(false)
+      const error = new Error('Queue full')
+      mockGetManager.mockReturnValue({
+        enqueue: jest.fn().mockRejectedValue(error),
+      })
 
       const initialData: InfiniteData<NotesPage> = {
         pages: [
@@ -375,9 +390,13 @@ describe('useDeleteNote', () => {
       expect(cacheData?.pages[0].notes.find(n => n.id === 'note-1')).toBeDefined()
     })
 
-    it('invalidates queries on error', async () => {
-      const error = new Error('Deletion failed')
-      mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
+    it('invalidates queries on queue error', async () => {
+      // Simulate offline with queue error
+      mockIsOnline.mockReturnValue(false)
+      const error = new Error('Queue full')
+      mockGetManager.mockReturnValue({
+        enqueue: jest.fn().mockRejectedValue(error),
+      })
 
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries')
 
@@ -511,11 +530,15 @@ describe('useDeleteNote', () => {
       expect(onSuccess).toHaveBeenCalledWith('note-1', 'note-1', expect.anything(), expect.anything())
     })
 
-    it('calls onError callback when provided', async () => {
-      const error = new Error('Deletion failed')
+    it('calls onError callback when queue fails (offline)', async () => {
+      // Simulate offline with queue error
+      mockIsOnline.mockReturnValue(false)
+      const error = new Error('Queue full')
       const onError = jest.fn()
 
-      mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
+      mockGetManager.mockReturnValue({
+        enqueue: jest.fn().mockRejectedValue(error),
+      })
 
       const { result } = renderHook(() => useDeleteNote(), {
         wrapper,
@@ -532,6 +555,28 @@ describe('useDeleteNote', () => {
       expect(onError).toHaveBeenCalledTimes(1)
       expect(onError.mock.calls[0][0]).toBe(error)
       expect(onError.mock.calls[0][1]).toBe('note-1')
+    })
+
+    it('does not call onError when API fails but fallback succeeds', async () => {
+      const error = new Error('API deletion failed')
+      const onError = jest.fn()
+
+      mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
+
+      const { result } = renderHook(() => useDeleteNote(), {
+        wrapper,
+      })
+
+      await act(async () => {
+        result.current.mutate('note-1', { onError })
+      })
+
+      // Should succeed via fallback
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(onError).not.toHaveBeenCalled()
     })
   })
 })

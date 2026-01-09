@@ -209,6 +209,14 @@ export function useUpdateNote() {
   })
 }
 
+type SearchPage = {
+  results: { id: string }[]
+  total: number
+  hasMore: boolean
+  nextCursor?: number
+  method?: string
+}
+
 export function useDeleteNote() {
   const { client, user } = useSupabase()
   const queryClient = useQueryClient()
@@ -224,7 +232,20 @@ export function useDeleteNote() {
       const isCurrentlyOnline = mobileNetworkStatusProvider.isOnline()
 
       if (isCurrentlyOnline) {
-        return await noteService.deleteNote(id)
+        try {
+          return await noteService.deleteNote(id)
+        } catch {
+          // Fallback: if online delete fails (e.g., captive portal, network error),
+          // enqueue for later sync to prevent data loss
+          const manager = mobileSyncService.getManager()
+          await manager.enqueue({
+            noteId: id,
+            operation: 'delete',
+            payload: {},
+            clientUpdatedAt: new Date().toISOString()
+          })
+          return id
+        }
       } else {
         const manager = mobileSyncService.getManager()
         await manager.enqueue({
@@ -239,13 +260,15 @@ export function useDeleteNote() {
     onMutate: async (id) => {
       // Cancel queries to prevent old data from overwriting our optimistic update
       await queryClient.cancelQueries({ queryKey: ['notes'] })
+      await queryClient.cancelQueries({ queryKey: ['search'] })
 
-      // Snapshot the previous value
+      // Snapshot the previous values
       const previousNotes = queryClient.getQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'] })
+      const previousSearch = queryClient.getQueriesData<InfiniteData<SearchPage>>({ queryKey: ['search'] })
       const activeNotes = queryClient.getQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'], type: 'active' })
       const shouldRefetch = activeNotes.some(([, data]) => !data)
 
-      // Optimistically update all matching queries
+      // Optimistically update all notes queries
       queryClient.setQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'] }, (data) => {
         if (!data) return data
         return {
@@ -258,12 +281,31 @@ export function useDeleteNote() {
         }
       })
 
-      return { previousNotes, shouldRefetch }
+      // Optimistically update all search queries
+      queryClient.setQueriesData<InfiniteData<SearchPage>>({ queryKey: ['search'] }, (data) => {
+        if (!data) return data
+        return {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            results: page.results.filter((result) => result.id !== id),
+            total: Math.max(0, page.total - 1),
+          })),
+        }
+      })
+
+      return { previousNotes, previousSearch, shouldRefetch }
     },
     onError: (_err, _id, context) => {
       if (context?.previousNotes) {
-        // Rollback all queries
+        // Rollback notes queries
         context.previousNotes.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
+      if (context?.previousSearch) {
+        // Rollback search queries
+        context.previousSearch.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data)
         })
       }
@@ -272,6 +314,7 @@ export function useDeleteNote() {
       // Refetch if an error occurred or we canceled an in-flight query without cache
       if (error || context?.shouldRefetch) {
         void queryClient.invalidateQueries({ queryKey: ['notes'] })
+        void queryClient.invalidateQueries({ queryKey: ['search'] })
       }
     },
   })

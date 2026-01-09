@@ -14,7 +14,7 @@
     "launch:dev": "adb shell am start -n com.everfreenote.app.dev/com.everfreenote.app.MainActivity",
     "launch:stage": "adb shell am start -n com.everfreenote.app.stage/com.everfreenote.app.MainActivity",
     "launch:prod": "adb shell am start -n com.everfreenote.app/com.everfreenote.app.MainActivity",
-    "adb:connect": "adb connect 192.168.0.17:40347",
+    "adb:connect": "adb connect 192.168.0.17:41073",
     "adb:kill": "adb kill-server",
     "adb:start": "adb start-server",
     "adb:restart": "adb kill-server && adb start-server",

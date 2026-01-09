@@ -283,7 +283,7 @@ describe('NotesScreen - Delete Functionality', () => {
   })
 
   describe('Delete error handling', () => {
-    it('shows alert when deletion fails', async () => {
+    it('falls back to queue when API deletion fails (no alert shown)', async () => {
       const error = new Error('Network error')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
@@ -296,15 +296,21 @@ describe('NotesScreen - Delete Functionality', () => {
       const deleteButton = screen.getByTestId('delete-button-note-1')
       fireEvent.press(deleteButton)
 
+      // Wait for API call
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Error',
-          'Failed to delete note. Please try again.'
-        )
+        expect(mockNoteService.prototype.deleteNote).toHaveBeenCalled()
+      })
+
+      // No alert should be shown - fallback to queue succeeded
+      expect(Alert.alert).not.toHaveBeenCalled()
+
+      // Note should be removed (optimistic update stays)
+      await waitFor(() => {
+        expect(screen.queryByText('First Note')).toBeNull()
       })
     })
 
-    it('restores note in list when deletion fails', async () => {
+    it('keeps note deleted when API fails but fallback succeeds', async () => {
       const error = new Error('Deletion failed')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
@@ -317,23 +323,20 @@ describe('NotesScreen - Delete Functionality', () => {
       const deleteButton = screen.getByTestId('delete-button-note-1')
       fireEvent.press(deleteButton)
 
-      // Wait for error to be processed
+      // Wait for API call and fallback
       await waitFor(() => {
         expect(mockNoteService.prototype.deleteNote).toHaveBeenCalled()
       })
 
-      // After error/rollback, note should still be visible
+      // Note should be deleted (fallback succeeded, optimistic update stays)
       await waitFor(() => {
-        expect(screen.getByText('First Note')).toBeTruthy()
+        expect(screen.queryByText('First Note')).toBeNull()
       })
     })
 
-    it('allows retrying deletion after error', async () => {
+    it('deletes successfully on first attempt via fallback', async () => {
       const error = new Error('Network error')
-      mockNoteService.prototype.deleteNote = jest
-        .fn()
-        .mockRejectedValueOnce(error)
-        .mockResolvedValueOnce('note-1')
+      mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
       render(<NotesScreen />, { wrapper })
 
@@ -343,23 +346,20 @@ describe('NotesScreen - Delete Functionality', () => {
 
       const deleteButton = screen.getByTestId('delete-button-note-1')
 
-      // First attempt - fails
+      // First attempt - API fails but fallback succeeds
       fireEvent.press(deleteButton)
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalled()
+        expect(mockNoteService.prototype.deleteNote).toHaveBeenCalled()
       })
 
-      // Note should still be visible after error
-      expect(screen.getByText('First Note')).toBeTruthy()
-
-      // Second attempt - succeeds
-      fireEvent.press(deleteButton)
-
-      // Wait for deletion to be called twice
+      // Note should be deleted (no retry needed - fallback worked)
       await waitFor(() => {
-        expect(mockNoteService.prototype.deleteNote).toHaveBeenCalledTimes(2)
+        expect(screen.queryByText('First Note')).toBeNull()
       })
+
+      // No alert shown
+      expect(Alert.alert).not.toHaveBeenCalled()
     })
   })
 
