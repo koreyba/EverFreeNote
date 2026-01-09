@@ -83,6 +83,12 @@ describe('core/services/sanitizer', () => {
       expect(result).toContain('<pre>preformatted</pre>')
     })
 
+    it('allows horizontal rule', () => {
+      const html = '<hr />'
+      const result = SanitizationService.sanitize(html)
+      expect(result).toContain('<hr')
+    })
+
     it('allows text formatting tags', () => {
       const html = '<em>Emphasis</em> <strong>Strong</strong> <mark>Marked</mark> <u>Underline</u>'
       const result = SanitizationService.sanitize(html)
@@ -178,9 +184,18 @@ describe('core/services/sanitizer', () => {
       const html = '<p>Text</p><script>alert("XSS")</script><p>More text</p>'
       const result = SanitizationService.stripHtml(html)
       expect(result).not.toContain('<script>')
+      expect(result).not.toContain('alert("XSS")')
       expect(result).toContain('Text')
       expect(result).toContain('More text')
-      // Note: stripHtml removes tags but our mock doesn't remove content inside script tags
+    })
+
+    it('removes styles and their content', () => {
+      const html = '<p>Text</p><style>body{color:red}</style><p>More text</p>'
+      const result = SanitizationService.stripHtml(html)
+      expect(result).not.toContain('<style>')
+      expect(result).not.toContain('color:red')
+      expect(result).toContain('Text')
+      expect(result).toContain('More text')
     })
 
     it('handles plain text', () => {

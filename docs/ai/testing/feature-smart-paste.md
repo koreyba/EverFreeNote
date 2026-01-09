@@ -24,12 +24,14 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Test case 3: falls back to plain text when HTML is empty or markdown confidence is low.
 - [ ] Additional coverage: malformed HTML and oversized content fallbacks.
 - [ ] Additional coverage: unsupported markdown downgraded to plain text with preserved line breaks.
+- [ ] Additional coverage: stripHtml removes script/style content before plain fallback.
 
 ### Markdown Conversion Adapter
 - [ ] Test case 1: markdown headings and lists convert to expected HTML tags.
 - [ ] Test case 2: inline formatting (bold/italic/links) maps correctly.
 - [ ] Additional coverage: code fences and blockquotes.
 - [ ] Additional coverage: tables/task lists are downgraded or stripped in phase 1.
+- [ ] Additional coverage: horizontal rules (`---`) render as `<hr>`.
 
 ## Integration Tests
 **How do we test component interactions?**
@@ -40,6 +42,10 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Failure mode: markdown parser throws -> fallback to plain text insert.
 - [ ] Oversized paste (>100k chars) skips markdown parsing and inserts plain text.
 - [ ] Paste markdown with images and verify only http/https sources remain.
+- [ ] Sanitize script tags and inline event handlers from HTML.
+- [ ] Normalize simple div blocks into paragraphs.
+- [ ] Escape raw HTML when content is treated as plain text.
+- [ ] Handle unclosed fenced code blocks without crashing.
 
 ## End-to-End Tests
 **What user flows need validation?**
@@ -53,6 +59,7 @@ description: Define testing approach, test cases, and quality assurance
 **What data do we use for testing?**
 
 - Fixtures: curated clipboard payloads for HTML/markdown/plain sources.
+- Fixture location: `core/tests/fixtures/clipboard` (ai-chat-markdown.md, google-docs.html, web-article.html, plain.txt).
 - Mocks: clipboardData and TipTap editor insert command.
 - No database setup required.
 
@@ -63,12 +70,16 @@ description: Define testing approach, test cases, and quality assurance
 - Record any gaps and rationale in this doc after implementation.
 - Manual testing outcomes and sign-off recorded per release.
 - Latest quick check: `npx tsc --noEmit` (update date after implementation).
+- Latest validation: `npm run validate` (ui/mobile) (pass, 2026-01-09).
+- Latest targeted tests: `npm test -- tests/unit/core-services-sanitizer.test.ts tests/unit/core-services-smartPaste.test.ts tests/integration/smartPaste.integration.test.ts` (pass, 2026-01-09).
 
 ## Manual Testing
 **What requires human validation?**
 
 - UI/UX checklist: confirm formatting preservation, no raw markdown, and safe content.
 - UI/UX checklist: verify data URI images are removed and inline styles outside allowlist are stripped.
+- UI/UX checklist: horizontal rule renders as a divider, no extra blank paragraphs.
+- UI/UX checklist: Google Docs paste respects theme colors (no forced black/white text).
 - Compatibility: Chrome, Safari, Firefox; iOS/Android webview behavior if applicable.
 - Smoke tests after deployment: paste from 3 canonical sources.
 

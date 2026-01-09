@@ -32,7 +32,7 @@ description: Define the technical architecture, components, and data models
   - PastePayload: { html: string | null, text: string | null, types: string[], sourceHint?: string }
   - PasteResult: { html: string, type: "html" | "markdown" | "plain", warnings: string[] }
 - Data flow: clipboard event -> payload -> detection -> conversion -> sanitize/normalize -> insert HTML.
-- Supported markdown scope (phase 1): headings (h1-h3), paragraphs, bullet/ordered lists, blockquotes, inline code, code blocks, links, and emphasis/strikethrough.
+- Supported markdown scope (phase 1): headings (h1-h6), paragraphs, bullet/ordered lists, blockquotes, inline code, code blocks, links, emphasis/strikethrough, and horizontal rules.
 
 ## API Design
 **How do components communicate?**
@@ -42,6 +42,23 @@ description: Define the technical architecture, components, and data models
   - detectPasteType(payload): { type, confidence, reason[] }
   - resolvePaste(payload): PasteResult
   - applyPaste(editor, result): void
+- Proposed interface shape:
+  ```ts
+  type PasteDetection = {
+    type: "html" | "markdown" | "plain"
+    confidence: number
+    reasons: string[]
+    warnings: string[]
+  }
+
+  type SmartPasteOptions = {
+    maxLength: number
+    markdownScoreThreshold: number
+  }
+
+  function detectPasteType(payload: PastePayload, options: SmartPasteOptions): PasteDetection
+  function resolvePaste(payload: PastePayload, options: SmartPasteOptions): PasteResult
+  ```
 - Inputs: ClipboardEvent with clipboardData types; outputs: sanitized HTML for TipTap insertion.
 
 ## Component Breakdown
@@ -61,15 +78,15 @@ description: Define the technical architecture, components, and data models
 - Normalize HTML structure (div->p, remove wrappers) for consistent rendering and search.
 - Always sanitize after conversion; do not trust clipboard HTML even from known sources.
 - Markdown scope is extended, not full: no tables or task lists in phase 1; unsupported constructs are downgraded to plain text or simple lists.
-- Heading levels are limited to h1-h3 to match current editor configuration.
+- Heading levels are supported up to h1-h6 to match editor configuration.
 - Allowed URL protocols: `http`, `https`, `mailto`; other protocols are stripped.
-- Inline style allowlist (phase 1): `color`, `background-color`, `font-weight`, `text-decoration`. All other styles removed.
+- Inline style allowlist (phase 1): `font-weight`, `font-style`, `text-decoration`. Color/background-color are stripped to avoid theme clashes.
 - Downgrade rule: unsupported markdown converts to plain text with line breaks preserved (never raw markdown).
 - Size guard: if input exceeds 100k characters, skip markdown parsing and insert as plain text to keep editor responsive.
-- HTML meaningfulness heuristic: treat HTML as meaningful only when it contains structural tags (p, br, ul/ol/li, h1-h3, blockquote, pre, code, img, a). Otherwise prefer markdown/plain.
-- TipTap extension alignment: supported markdown features map to existing extensions (Heading h1-h3, BulletList/OrderedList, Blockquote via StarterKit, CodeBlock via StarterKit, Link, Bold/Italic/Strike). Task lists and tables are excluded in phase 1.
+- HTML meaningfulness heuristic: treat HTML as meaningful only when it contains structural tags (p, br, hr, ul/ol/li, h1-h6, blockquote, pre, code, img, a). Otherwise prefer markdown/plain.
+- TipTap extension alignment: supported markdown features map to existing extensions (Heading h1-h6, HorizontalRule via StarterKit, BulletList/OrderedList, Blockquote via StarterKit, CodeBlock via StarterKit, Link, Bold/Italic/Strike). Task lists and tables are excluded in phase 1.
 - Images are preserved only for http/https sources; data URIs are removed.
-- Inline styles are limited to a safe allowlist (e.g., color/background-color/font-weight/text-decoration).
+- Inline styles are limited to a safe allowlist (font-weight/font-style/text-decoration); colors are stripped to avoid theme conflicts.
 - Alternative considered: always trust HTML when present. Rejected due to AI chat and some apps producing low-quality or empty HTML.
 
 ## Non-Functional Requirements
@@ -78,5 +95,5 @@ description: Define the technical architecture, components, and data models
 - Performance: avoid heavy parsing for very large content; short-circuit to plain text for oversized pastes if needed.
 - Scalability: pipeline is local and linear in input size; no server impact.
 - Security: DOMPurify sanitization, allowed tags/attrs only, safe URL protocols (http/https/mailto), no scriptable attributes, style allowlist.
-- Allowed HTML tags (phase 1, aligned with sanitizer): b, i, em, strong, a, p, br, ul, ol, li, h1, h2, h3, h4, h5, h6, blockquote, code, pre, span, div, img, mark, u, s, strike.
+- Allowed HTML tags (phase 1, aligned with sanitizer): b, i, em, strong, a, p, br, hr, ul, ol, li, h1, h2, h3, h4, h5, h6, blockquote, code, pre, span, div, img, mark, u, s, strike.
 - Reliability: if parsing fails, fall back to plain text insert and keep editor responsive.

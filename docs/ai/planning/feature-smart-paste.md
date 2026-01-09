@@ -9,27 +9,27 @@ description: Break down work into actionable tasks and estimate timeline
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] Milestone 1: Requirements + design approved for smart-paste
-- [ ] Milestone 2: Core smart-paste pipeline implemented with unit tests
+- [x] Milestone 1: Requirements + design approved for smart-paste
+- [x] Milestone 2: Core smart-paste pipeline implemented with unit tests
 - [ ] Milestone 3: Editor integration, QA validation, and doc updates complete
 
 ## Task Breakdown
 **What specific work needs to be done?**
 
 ### Phase 1: Foundation
-- [ ] Task 1.1: Choose markdown parsing approach (markdown-it selected)
-- [ ] Task 1.2: Define SmartPasteService interface and detection heuristics
-- [ ] Task 1.3: Create clipboard fixtures for common sources (AI chats, web pages, Google Docs)
+- [x] Task 1.1: Choose markdown parsing approach (markdown-it selected) (Notes: markdown-it confirmed)
+- [x] Task 1.2: Define SmartPasteService interface and detection heuristics (Notes: interface + heuristics documented; size guard and downgrade rules added)
+- [x] Task 1.3: Create clipboard fixtures for common sources (AI chats, web pages, Google Docs) (Notes: fixtures added in core/tests/fixtures/clipboard)
 
 ### Phase 2: Core Features
-- [ ] Task 2.1: Implement HTML path (sanitize + normalize)
-- [ ] Task 2.2: Implement markdown path (parse to HTML + sanitize)
-- [ ] Task 2.3: Implement plain text path (paragraph + line break mapping)
-- [ ] Task 2.4: Add selection-safe insert into TipTap editor
+- [x] Task 2.1: Implement HTML path (sanitize + normalize) (Notes: sanitize + normalize + style/url filtering)
+- [x] Task 2.2: Implement markdown path (parse to HTML + sanitize) (Notes: markdown-it render + heading downgrade + sanitize)
+- [x] Task 2.3: Implement plain text path (paragraph + line break mapping) (Notes: escape + paragraph mapping)
+- [x] Task 2.4: Add selection-safe insert into TipTap editor (Notes: handlePaste -> insertContent)
 
 ### Phase 3: Integration & Polish
-- [ ] Task 3.1: Wire paste handling in web and mobile editor surfaces
-- [ ] Task 3.2: Add unit + integration tests for detection and conversion paths
+- [x] Task 3.1: Wire paste handling in web and mobile editor surfaces (Notes: RichTextEditor + RichTextEditorWebView)
+- [x] Task 3.2: Add unit + integration tests for detection and conversion paths (Notes: unit + integration tests added for fixtures, downgrade rules, and hr)
 - [ ] Task 3.3: Manual QA checklist across key sources and devices
 
 ## Dependencies
