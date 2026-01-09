@@ -1,8 +1,9 @@
 import { Redirect, Tabs } from 'expo-router'
 import { useAuth, useTheme } from '@ui/mobile/providers'
 import { ActivityIndicator, View, Text, StyleSheet } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNetworkStatus, useOfflineSync } from '@ui/mobile/hooks'
-import { FileText, Search, Settings } from 'lucide-react-native'
+import { FileText, Search, Settings, WifiOff } from 'lucide-react-native'
 import { useMemo } from 'react'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 
@@ -11,6 +12,7 @@ export default function TabsLayout() {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const isOnline = useNetworkStatus()
+  const insets = useSafeAreaInsets()
   useOfflineSync()
 
   if (loading) {
@@ -28,10 +30,13 @@ export default function TabsLayout() {
   return (
     <View style={styles.container}>
       {!isOnline && (
-        <View style={styles.offlineBanner}>
-          <Text style={styles.offlineText}>
-            Вы работаете оффлайн. Изменения сохранятся локально.
-          </Text>
+        <View style={[styles.offlineBanner, { paddingTop: insets.top + 6 }]}>
+          <View style={styles.offlineContent}>
+            <WifiOff size={14} color={colors.mutedForeground} />
+            <Text style={styles.offlineText}>
+              Offline mode. Changes are saved locally and will sync when you're back online.
+            </Text>
+          </View>
         </View>
       )}
       <Tabs
@@ -91,16 +96,35 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     backgroundColor: colors.background,
   },
   offlineBanner: {
-    backgroundColor: colors.destructive,
-    paddingVertical: 4,
+    backgroundColor: colors.muted,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
     alignItems: 'center',
   },
+  offlineContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    maxWidth: '100%',
+  },
   offlineText: {
-    color: colors.destructiveForeground,
+    color: colors.mutedForeground,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
+    marginLeft: 6,
+    textAlign: 'center',
+    lineHeight: 16,
+    flexShrink: 1,
   },
   headerToggle: {
     marginRight: 12,
   },
 })
+
