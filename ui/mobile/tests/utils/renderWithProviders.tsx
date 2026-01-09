@@ -1,8 +1,9 @@
 import React from 'react'
 import { render } from '@testing-library/react-native'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ThemeProvider } from '@ui/mobile/providers/ThemeProvider'
+import { createTestQueryClient } from '../testUtils'
 
 // Мокаем useAuth из SupabaseProvider
 jest.mock('@ui/mobile/providers/SupabaseProvider', () => ({
@@ -24,11 +25,7 @@ jest.mock('@ui/mobile/providers/SupabaseProvider', () => ({
 }))
 
 export function renderWithProviders(ui: React.ReactElement) {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-    },
-  })
+  const queryClient = createTestQueryClient()
 
   return render(
     <SafeAreaProvider>

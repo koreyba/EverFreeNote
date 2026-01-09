@@ -73,7 +73,7 @@ export default function NotesScreen() {
   if (isLoading && notes.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.primary} testID="activity-indicator" />
       </View>
     )
   }
@@ -106,6 +106,7 @@ export default function NotesScreen() {
   return (
     <View style={styles.container}>
       <FlashList
+        testID="flash-list"
         data={notes}
         renderItem={renderNote}
         keyExtractor={keyExtractor}
@@ -126,7 +127,12 @@ export default function NotesScreen() {
           ) : null
         }
       />
-      <Pressable style={styles.fab} onPress={handleCreateNote}>
+      <Pressable
+        style={styles.fab}
+        onPress={handleCreateNote}
+        accessibilityLabel="Create new note"
+        accessibilityRole="button"
+      >
         <Plus size={28} color={colors.primaryForeground} />
       </Pressable>
     </View>

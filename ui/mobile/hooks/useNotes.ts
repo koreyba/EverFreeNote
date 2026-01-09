@@ -4,6 +4,7 @@ import { NoteService } from '@core/services/notes'
 import { mobileSyncService } from '@ui/mobile/services/sync'
 import { databaseService } from '@ui/mobile/services/database'
 import { useNetworkStatus } from './useNetworkStatus'
+import { mobileNetworkStatusProvider } from '@ui/mobile/adapters/networkStatus'
 import type { Note } from '@core/types/domain'
 
 type NotesPage = {
@@ -208,6 +209,14 @@ export function useUpdateNote() {
   })
 }
 
+type SearchPage = {
+  results: { id: string }[]
+  total: number
+  hasMore: boolean
+  nextCursor?: number
+  method?: string
+}
+
 export function useDeleteNote() {
   const { client, user } = useSupabase()
   const queryClient = useQueryClient()
@@ -219,12 +228,24 @@ export function useDeleteNote() {
 
       await databaseService.markDeleted(id, user.id)
 
-      // Check network status at execution time, not at hook render time
-      const netInfo = await import('@react-native-community/netinfo').then(m => m.default.fetch())
-      const isCurrentlyOnline = netInfo.isConnected && netInfo.isInternetReachable
+      // Check network status at execution time using adapter
+      const isCurrentlyOnline = mobileNetworkStatusProvider.isOnline()
 
       if (isCurrentlyOnline) {
-        return await noteService.deleteNote(id)
+        try {
+          return await noteService.deleteNote(id)
+        } catch {
+          // Fallback: if online delete fails (e.g., captive portal, network error),
+          // enqueue for later sync to prevent data loss
+          const manager = mobileSyncService.getManager()
+          await manager.enqueue({
+            noteId: id,
+            operation: 'delete',
+            payload: {},
+            clientUpdatedAt: new Date().toISOString()
+          })
+          return id
+        }
       } else {
         const manager = mobileSyncService.getManager()
         await manager.enqueue({
@@ -239,11 +260,15 @@ export function useDeleteNote() {
     onMutate: async (id) => {
       // Cancel queries to prevent old data from overwriting our optimistic update
       await queryClient.cancelQueries({ queryKey: ['notes'] })
+      await queryClient.cancelQueries({ queryKey: ['search'] })
 
-      // Snapshot the previous value
+      // Snapshot the previous values
       const previousNotes = queryClient.getQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'] })
+      const previousSearch = queryClient.getQueriesData<InfiniteData<SearchPage>>({ queryKey: ['search'] })
+      const activeNotes = queryClient.getQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'], type: 'active' })
+      const shouldRefetch = activeNotes.some(([, data]) => !data)
 
-      // Optimistically update all matching queries
+      // Optimistically update all notes queries
       queryClient.setQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'] }, (data) => {
         if (!data) return data
         return {
@@ -256,20 +281,40 @@ export function useDeleteNote() {
         }
       })
 
-      return { previousNotes }
+      // Optimistically update all search queries
+      queryClient.setQueriesData<InfiniteData<SearchPage>>({ queryKey: ['search'] }, (data) => {
+        if (!data) return data
+        return {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            results: page.results.filter((result) => result.id !== id),
+            total: Math.max(0, page.total - 1),
+          })),
+        }
+      })
+
+      return { previousNotes, previousSearch, shouldRefetch }
     },
     onError: (_err, _id, context) => {
       if (context?.previousNotes) {
-        // Rollback all queries
+        // Rollback notes queries
         context.previousNotes.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data)
         })
       }
+      if (context?.previousSearch) {
+        // Rollback search queries
+        context.previousSearch.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
     },
-    onSettled: (_, error) => {
-      // Refetch only if there was an error to ensure consistency
-      if (error) {
+    onSettled: (_, error, _id, context) => {
+      // Refetch if an error occurred or we canceled an in-flight query without cache
+      if (error || context?.shouldRefetch) {
         void queryClient.invalidateQueries({ queryKey: ['notes'] })
+        void queryClient.invalidateQueries({ queryKey: ['search'] })
       }
     },
   })

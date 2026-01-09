@@ -1,10 +1,15 @@
-import { cleanup } from '@testing-library/react-native'
+import { act, cleanup } from '@testing-library/react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as ReactNative from 'react-native'
+import { notifyManager } from '@tanstack/react-query'
 
 afterEach(() => {
   cleanup()
   jest.clearAllMocks()
+})
+
+notifyManager.setNotifyFunction((notify) => {
+  act(notify)
 })
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -31,14 +36,62 @@ jest.mock('expo-router', () => ({
 }))
 
 jest.mock('@react-native-community/netinfo', () => ({
-  fetch: jest.fn(() => Promise.resolve({ isConnected: true })),
+  default: {
+    fetch: jest.fn(() =>
+      Promise.resolve({
+        isConnected: true,
+        isInternetReachable: true,
+      })
+    ),
+    addEventListener: jest.fn(() => jest.fn()),
+  },
   addEventListener: jest.fn(() => jest.fn()),
 }))
 
+jest.mock('@ui/mobile/adapters/networkStatus', () => ({
+  mobileNetworkStatusProvider: {
+    isOnline: jest.fn(() => true),
+    subscribe: jest.fn(() => {
+      // Return unsubscribe function
+      return jest.fn()
+    }),
+  },
+}))
+
+jest.mock('@ui/mobile/hooks/useNetworkStatus', () => ({
+  useNetworkStatus: jest.fn(() => true), // Online by default
+}))
+
 jest.spyOn(ReactNative, 'useColorScheme').mockReturnValue('light')
+jest.spyOn(ReactNative.Keyboard, 'addListener').mockImplementation((_eventType, _listener) => {
+  return { remove: jest.fn() } as unknown as ReactNative.EmitterSubscription
+})
 
 const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>
 mockAsyncStorage.setItem.mockResolvedValue(undefined)
 mockAsyncStorage.getItem.mockResolvedValue(null)
 
 globalThis.fetch = jest.fn() as unknown as typeof fetch
+
+jest.mock('isomorphic-dompurify', () => ({
+  __esModule: true,
+  default: {
+    sanitize: jest.fn((html: string, config?: { ALLOWED_TAGS?: string[] }) => {
+      if (!config?.ALLOWED_TAGS) {
+        return html
+      }
+      if (config.ALLOWED_TAGS.length === 0) {
+        // stripHtml - remove all tags
+        return html.replace(/<[^>]*>/g, '')
+      }
+      // Basic sanitization mock - remove dangerous tags
+      return html
+        .replace(/<script[^>]*>.*?<\/script>/gi, '')
+        .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '')
+        .replace(/on\w+="[^"]*"/gi, '')
+        .replace(/on\w+='[^']*'/gi, '')
+        .replace(/javascript:/gi, '')
+        .replace(/<(object|embed|form|input|button)[^>]*>/gi, '')
+    }),
+  },
+}))
