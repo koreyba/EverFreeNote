@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { EditorContent, useEditor, type Extensions } from "@tiptap/react"
+import { EditorContent, useEditor, type Editor, type Extensions } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Underline from "@tiptap/extension-underline"
 import Highlight from "@tiptap/extension-highlight"
@@ -18,6 +18,7 @@ import FontFamily from "@tiptap/extension-font-family"
 import Heading from "@tiptap/extension-heading"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { FontSize } from "@/extensions/FontSize"
+import { SmartPasteService } from "@core/services/smartPaste"
 
 export type RichTextEditorWebViewHandle = {
   getHTML: () => string
@@ -36,6 +37,7 @@ const RichTextEditorWebView = React.forwardRef<
   RichTextEditorWebViewHandle,
   RichTextEditorWebViewProps
 >(({ initialContent, onContentChange, onFocus, onBlur }, ref) => {
+  const editorRef = React.useRef<Editor | null>(null)
   const editorExtensions: Extensions = React.useMemo(
     () => [
       StarterKit.configure({
@@ -47,7 +49,7 @@ const RichTextEditorWebView = React.forwardRef<
         underline: false,
       }),
       Heading.configure({
-        levels: [1, 2, 3],
+        levels: [1, 2, 3, 4, 5, 6],
       }),
       Underline,
       Highlight.configure({ multicolor: true }),
@@ -69,13 +71,28 @@ const RichTextEditorWebView = React.forwardRef<
     []
   )
 
+  const handlePaste = React.useCallback((_: unknown, event: ClipboardEvent) => {
+    if (!event.clipboardData) return false
+    const editor = editorRef.current
+    if (!editor) return false
+
+    const payload = SmartPasteService.buildPayload(event)
+    if (!payload.html && !payload.text) return false
+
+    const result = SmartPasteService.resolvePaste(payload)
+    event.preventDefault()
+    editor.chain().focus().insertContent(result.html).run()
+    return true
+  }, [])
+
   const editorProps = React.useMemo(
     () => ({
       attributes: {
         class: "focus:outline-none",
       },
+      handlePaste,
     }),
-    []
+    [handlePaste]
   )
 
   const editor = useEditor({
@@ -93,6 +110,15 @@ const RichTextEditorWebView = React.forwardRef<
     },
     editorProps,
   })
+
+  React.useEffect(() => {
+    editorRef.current = editor
+    return () => {
+      if (editorRef.current === editor) {
+        editorRef.current = null
+      }
+    }
+  }, [editor])
 
   React.useImperativeHandle(
     ref,

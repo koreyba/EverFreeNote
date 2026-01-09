@@ -32,6 +32,20 @@ description: Technical implementation notes, patterns, and code guidelines
   - Plain text: escape -> paragraph + line break mapping -> sanitize -> insert.
 - Insert strategy: use TipTap `insertContent` with HTML to preserve selection and undo history.
 
+### Detection Heuristics (Phase 1)
+- HTML meaningful if it contains structural tags: p, br, hr, ul, ol, li, h1-h6, blockquote, pre, code, img, a.
+- Markdown scoring (threshold = 3):
+  - Heading (# to ######) at line start: +3
+  - List item (-, *, +, 1.) at line start: +2
+  - Blockquote (>): +2
+  - Horizontal rule (---, ***, ___) on its own line: +3
+  - Fenced code (``` or ~~~): +3
+  - Inline code (`code`): +1
+  - Link ([text](url)): +1
+  - Emphasis (**bold**, _italic_, ~~strike~~): +1
+- Unsupported markdown (tables or task lists) -> downgrade to plain text with line breaks.
+- Size guard: if input > 100k characters, bypass markdown parsing and treat as plain text.
+
 ### Patterns & Best Practices
 - Prefer deterministic, testable functions (detect/convert/normalize).
 - Reuse `SanitizationService` and `normalizeHtml` to keep output aligned with existing imports.
@@ -42,7 +56,7 @@ description: Technical implementation notes, patterns, and code guidelines
 
 - Integration points: `editorProps.handlePaste` in TipTap to intercept paste and route through SmartPasteService.
 - No database changes; output HTML is stored through existing note update flows.
-- Third-party: markdown-it config should map to allowed tags (headings h1-h3, lists, code, blockquotes) and exclude tables/task lists in phase 1.
+- Third-party: markdown-it config should map to allowed tags (headings h1-h6, hr, lists, code, blockquotes) and exclude tables/task lists in phase 1.
 
 ## Error Handling
 **How do we handle failures?**
@@ -62,6 +76,7 @@ description: Technical implementation notes, patterns, and code guidelines
 
 - Input validation: treat clipboard as untrusted input; sanitize all HTML.
 - Enforce safe URL protocols for links and images (http/https/mailto) via sanitizer configuration; drop images with non-http/https sources.
-- Limit inline styles to a safe allowlist: color, background-color, font-weight, text-decoration; strip all other styles.
-- Markdown support list (phase 1): headings h1-h3, paragraphs, bullet/ordered lists, blockquotes, inline code, code blocks, links, bold/italic/strikethrough.
+- Limit inline styles to a safe allowlist: font-weight, font-style, text-decoration; strip colors to avoid theme conflicts.
+- Markdown support list (phase 1): headings h1-h6, paragraphs, bullet/ordered lists, blockquotes, inline code, code blocks, links, bold/italic/strikethrough, horizontal rules.
+- UI toolbar: add horizontal rule button that triggers `setHorizontalRule` on the editor (web + mobile toolbar).
 - No auth or secrets involved.
