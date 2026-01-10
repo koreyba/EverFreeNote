@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import RichTextEditorWebView, { type RichTextEditorWebViewHandle } from '@/ui/web/components/RichTextEditorWebView'
+import { consumeChunkedMessage, sendChunkedText, type ChunkBufferStore } from '@core/utils/editorWebViewBridge'
 
 declare global {
   interface Window {
@@ -17,7 +18,7 @@ export default function EditorWebViewPage() {
   const editorRef = React.useRef<RichTextEditorWebViewHandle>(null)
   const lastKnownHtmlRef = React.useRef<string | null>(null)
   const pendingBaselineRef = React.useRef(false)
-  const chunkBuffers = React.useRef<Record<string, { baseType: string; total: number; chunks: string[] }>>({})
+  const chunkBuffers = React.useRef<ChunkBufferStore>({})
 
   useEffect(() => {
     const getMobileConfig = () => {
@@ -91,27 +92,10 @@ export default function EditorWebViewPage() {
 
     const sendTextToNative = (type: string, text: string) => {
       if (!window.ReactNativeWebView) return
-
-      const chunkSize = 30_000
-      if (text.length <= chunkSize) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type, payload: text }))
-        return
-      }
-
-      const transferId = `${type}_${Date.now()}_${Math.random().toString(16).slice(2)}`
-      const total = Math.ceil(text.length / chunkSize)
-      window.ReactNativeWebView.postMessage(
-        JSON.stringify({ type: `${type}_CHUNK_START`, payload: { transferId, total } })
-      )
-      for (let index = 0; index < total; index++) {
-        const start = index * chunkSize
-        const chunk = text.slice(start, start + chunkSize)
-        window.ReactNativeWebView.postMessage(
-          JSON.stringify({ type: `${type}_CHUNK`, payload: { transferId, index, chunk } })
-        )
-      }
-      window.ReactNativeWebView.postMessage(
-        JSON.stringify({ type: `${type}_CHUNK_END`, payload: { transferId } })
+      sendChunkedText(
+        (message) => window.ReactNativeWebView?.postMessage(JSON.stringify(message)),
+        type,
+        text
       )
     }
 
@@ -146,6 +130,13 @@ export default function EditorWebViewPage() {
         if (!raw) return
 
         const { type, payload } = JSON.parse(raw) as { type?: string; payload?: unknown }
+        if (!type) return
+
+        const chunked = consumeChunkedMessage(type, payload, chunkBuffers.current)
+        if (chunked?.baseType === 'SET_CONTENT') {
+          applySetContent(chunked.text)
+          return
+        }
 
         if (type === 'SET_CONTENT') {
           applySetContent(String(payload ?? ''))
@@ -162,24 +153,6 @@ export default function EditorWebViewPage() {
               editorRef.current.runCommand(method, ...(Array.isArray(args) ? args : []))
             }
           }
-        } else if (type === 'SET_CONTENT_CHUNK_START') {
-          const p = payload as { transferId?: string; total?: number }
-          if (!p.transferId || typeof p.total !== 'number') return
-          chunkBuffers.current[p.transferId] = { baseType: 'SET_CONTENT', total: p.total, chunks: [] }
-        } else if (type === 'SET_CONTENT_CHUNK') {
-          const p = payload as { transferId?: string; index?: number; chunk?: string }
-          if (!p.transferId || typeof p.index !== 'number' || typeof p.chunk !== 'string') return
-          const entry = chunkBuffers.current[p.transferId]
-          if (!entry) return
-          entry.chunks[p.index] = p.chunk
-        } else if (type === 'SET_CONTENT_CHUNK_END') {
-          const p = payload as { transferId?: string }
-          if (!p.transferId) return
-          const entry = chunkBuffers.current[p.transferId]
-          if (!entry) return
-          const html = entry.chunks.join('')
-          delete chunkBuffers.current[p.transferId]
-          applySetContent(html)
         }
       } catch (error) {
         console.error('Failed to parse message:', error)
@@ -249,26 +222,11 @@ export default function EditorWebViewPage() {
       lastKnownHtmlRef.current = html
       // Send full content for autosave support (chunked if large)
       if (window.ReactNativeWebView) {
-        const chunkSize = 30_000
-        if (html.length <= chunkSize) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'CONTENT_CHANGED', payload: html }))
-        } else {
-          const transferId = `CONTENT_CHANGED_${Date.now()}_${Math.random().toString(16).slice(2)}`
-          const total = Math.ceil(html.length / chunkSize)
-          window.ReactNativeWebView.postMessage(
-            JSON.stringify({ type: 'CONTENT_CHANGED_CHUNK_START', payload: { transferId, total } })
-          )
-          for (let index = 0; index < total; index++) {
-            const start = index * chunkSize
-            const chunk = html.slice(start, start + chunkSize)
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({ type: 'CONTENT_CHANGED_CHUNK', payload: { transferId, index, chunk } })
-            )
-          }
-          window.ReactNativeWebView.postMessage(
-            JSON.stringify({ type: 'CONTENT_CHANGED_CHUNK_END', payload: { transferId } })
-          )
-        }
+        sendChunkedText(
+          (message) => window.ReactNativeWebView?.postMessage(JSON.stringify(message)),
+          'CONTENT_CHANGED',
+          html
+        )
       }
     }
   }
@@ -286,26 +244,11 @@ export default function EditorWebViewPage() {
         const html = editorRef.current.getHTML()
         if (html !== lastKnownHtmlRef.current) {
           lastKnownHtmlRef.current = html
-          const chunkSize = 30_000
-          if (html.length <= chunkSize) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'CONTENT_ON_BLUR', payload: html }))
-          } else {
-            const transferId = `CONTENT_ON_BLUR_${Date.now()}_${Math.random().toString(16).slice(2)}`
-            const total = Math.ceil(html.length / chunkSize)
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({ type: 'CONTENT_ON_BLUR_CHUNK_START', payload: { transferId, total } })
-            )
-            for (let index = 0; index < total; index++) {
-              const start = index * chunkSize
-              const chunk = html.slice(start, start + chunkSize)
-              window.ReactNativeWebView.postMessage(
-                JSON.stringify({ type: 'CONTENT_ON_BLUR_CHUNK', payload: { transferId, index, chunk } })
-              )
-            }
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({ type: 'CONTENT_ON_BLUR_CHUNK_END', payload: { transferId } })
-            )
-          }
+          sendChunkedText(
+            (message) => window.ReactNativeWebView?.postMessage(JSON.stringify(message)),
+            'CONTENT_ON_BLUR',
+            html
+          )
         }
       }
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'EDITOR_BLUR' }))

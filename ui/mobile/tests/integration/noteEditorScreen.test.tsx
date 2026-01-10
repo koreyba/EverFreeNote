@@ -623,5 +623,28 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       jest.useRealTimers()
     })
+
+    it('flushes pending content on unmount', async () => {
+      const { unmount } = render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onContentChange?.('<p>Pending content</p>')
+      })
+
+      act(() => {
+        unmount()
+      })
+
+      await waitFor(() => {
+        expect(mockNoteService.prototype.updateNote).toHaveBeenCalledWith(
+          'test-note-id',
+          expect.objectContaining({ description: '<p>Pending content</p>' })
+        )
+      })
+    })
   })
 })

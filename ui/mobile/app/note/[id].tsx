@@ -80,13 +80,25 @@ export default function NoteEditorScreen() {
   const pendingContentRef = useRef<string | null>(null)
   const lastSavedContentRef = useRef<string | null>(null)
 
+  const flushPendingContent = useCallback(() => {
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current)
+      saveTimeout.current = null
+    }
+    if (pendingContentRef.current !== null) {
+      if (pendingContentRef.current !== lastSavedContentRef.current) {
+        updateNote({ id, updates: { description: pendingContentRef.current } })
+        lastSavedContentRef.current = pendingContentRef.current
+      }
+      pendingContentRef.current = null
+    }
+  }, [id, updateNote])
+
   useEffect(() => {
     return () => {
-      if (saveTimeout.current) {
-        clearTimeout(saveTimeout.current)
-      }
+      flushPendingContent()
     }
-  }, [])
+  }, [flushPendingContent])
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -148,18 +160,8 @@ export default function NoteEditorScreen() {
   const handleEditorBlur = useCallback(() => {
     setIsEditorFocused(false)
     // Flush any pending save immediately when editor loses focus
-    if (saveTimeout.current) {
-      clearTimeout(saveTimeout.current)
-      saveTimeout.current = null
-    }
-    if (pendingContentRef.current !== null) {
-      if (pendingContentRef.current !== lastSavedContentRef.current) {
-        updateNote({ id, updates: { description: pendingContentRef.current } })
-        lastSavedContentRef.current = pendingContentRef.current
-      }
-      pendingContentRef.current = null
-    }
-  }, [id, updateNote])
+    flushPendingContent()
+  }, [flushPendingContent])
 
   const handleToolbarCommand = useCallback((method: string, args?: unknown[]) => {
     editorRef.current?.runCommand(method, args)
