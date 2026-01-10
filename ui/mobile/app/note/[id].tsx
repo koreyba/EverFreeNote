@@ -77,6 +77,8 @@ export default function NoteEditorScreen() {
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingContentRef = useRef<string | null>(null)
+  const lastSavedContentRef = useRef<string | null>(null)
 
   useEffect(() => {
     return () => {
@@ -105,6 +107,8 @@ export default function NoteEditorScreen() {
     if (note) {
       setTitle(note.title || '')
       setTags(note.tags ?? [])
+      lastSavedContentRef.current = note.description ?? ''
+      pendingContentRef.current = null
     }
   }, [note])
 
@@ -113,6 +117,12 @@ export default function NoteEditorScreen() {
 
     saveTimeout.current = setTimeout(() => {
       updateNote({ id, updates })
+      if (typeof updates.description === 'string') {
+        lastSavedContentRef.current = updates.description
+        if (pendingContentRef.current === updates.description) {
+          pendingContentRef.current = null
+        }
+      }
     }, 1000)
   }, [id, updateNote])
 
@@ -122,6 +132,7 @@ export default function NoteEditorScreen() {
   }
 
   const handleContentChange = (html: string) => {
+    pendingContentRef.current = html
     debouncedUpdate({ description: html })
   }
 
@@ -133,6 +144,22 @@ export default function NoteEditorScreen() {
   const handleTagPress = (tag: string) => {
     router.push({ pathname: '/(tabs)/search', params: { tag } })
   }
+
+  const handleEditorBlur = useCallback(() => {
+    setIsEditorFocused(false)
+    // Flush any pending save immediately when editor loses focus
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current)
+      saveTimeout.current = null
+    }
+    if (pendingContentRef.current !== null) {
+      if (pendingContentRef.current !== lastSavedContentRef.current) {
+        updateNote({ id, updates: { description: pendingContentRef.current } })
+        lastSavedContentRef.current = pendingContentRef.current
+      }
+      pendingContentRef.current = null
+    }
+  }, [id, updateNote])
 
   const handleToolbarCommand = useCallback((method: string, args?: unknown[]) => {
     editorRef.current?.runCommand(method, args)
@@ -215,7 +242,7 @@ export default function NoteEditorScreen() {
         initialContent={note.description || ''}
         onContentChange={handleContentChange}
         onFocus={() => setIsEditorFocused(true)}
-        onBlur={() => setIsEditorFocused(false)}
+        onBlur={handleEditorBlur}
         loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
       />
       {isEditorFocused && (

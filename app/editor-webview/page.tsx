@@ -15,7 +15,8 @@ declare global {
 export default function EditorWebViewPage() {
   const [initialContent, setInitialContent] = useState('')
   const editorRef = React.useRef<RichTextEditorWebViewHandle>(null)
-  const suppressNextChange = React.useRef(false)
+  const lastKnownHtmlRef = React.useRef<string | null>(null)
+  const pendingBaselineRef = React.useRef(false)
   const chunkBuffers = React.useRef<Record<string, { baseType: string; total: number; chunks: string[] }>>({})
 
   useEffect(() => {
@@ -116,11 +117,13 @@ export default function EditorWebViewPage() {
 
     const applySetContent = (html: string) => {
       const rewritten = rewriteHtmlImageSources(html)
-      suppressNextChange.current = true
       if (editorRef.current) {
         editorRef.current.setContent(rewritten)
+        lastKnownHtmlRef.current = editorRef.current.getHTML()
       } else {
         setInitialContent(rewritten)
+        pendingBaselineRef.current = true
+        lastKnownHtmlRef.current = rewritten
       }
     }
 
@@ -232,13 +235,18 @@ export default function EditorWebViewPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!pendingBaselineRef.current) return
+    if (!editorRef.current) return
+    lastKnownHtmlRef.current = editorRef.current.getHTML()
+    pendingBaselineRef.current = false
+  })
+
   const handleChange = () => {
-    if (suppressNextChange.current) {
-      suppressNextChange.current = false
-      return
-    }
     if (editorRef.current) {
       const html = editorRef.current.getHTML()
+      if (html === lastKnownHtmlRef.current) return
+      lastKnownHtmlRef.current = html
       // Send full content for autosave support (chunked if large)
       if (window.ReactNativeWebView) {
         const chunkSize = 30_000
@@ -273,6 +281,33 @@ export default function EditorWebViewPage() {
 
   const handleBlur = () => {
     if (window.ReactNativeWebView) {
+      // Safety net: send content on blur to ensure nothing is lost
+      if (editorRef.current) {
+        const html = editorRef.current.getHTML()
+        if (html !== lastKnownHtmlRef.current) {
+          lastKnownHtmlRef.current = html
+          const chunkSize = 30_000
+          if (html.length <= chunkSize) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'CONTENT_ON_BLUR', payload: html }))
+          } else {
+            const transferId = `CONTENT_ON_BLUR_${Date.now()}_${Math.random().toString(16).slice(2)}`
+            const total = Math.ceil(html.length / chunkSize)
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({ type: 'CONTENT_ON_BLUR_CHUNK_START', payload: { transferId, total } })
+            )
+            for (let index = 0; index < total; index++) {
+              const start = index * chunkSize
+              const chunk = html.slice(start, start + chunkSize)
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ type: 'CONTENT_ON_BLUR_CHUNK', payload: { transferId, index, chunk } })
+              )
+            }
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({ type: 'CONTENT_ON_BLUR_CHUNK_END', payload: { transferId } })
+            )
+          }
+        }
+      }
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'EDITOR_BLUR' }))
     }
   }
