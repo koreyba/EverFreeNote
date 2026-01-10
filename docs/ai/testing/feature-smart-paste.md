@@ -33,6 +33,11 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Additional coverage: tables/task lists are downgraded or stripped in phase 1.
 - [ ] Additional coverage: horizontal rules (`---`) render as `<hr>`.
 
+### Editor WebView Bridge
+- [ ] Test case 1: chunked sends and reassembly work for large payloads.
+- [ ] Test case 2: short payloads send as single message.
+- [ ] Additional coverage: ignores malformed chunk payloads gracefully.
+
 ## Integration Tests
 **How do we test component interactions?**
 
@@ -47,6 +52,11 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Escape raw HTML when content is treated as plain text.
 - [ ] Handle unclosed fenced code blocks without crashing.
 - [ ] Preserve anchor/relative links while stripping unsafe protocols.
+- [x] Mobile: new note + paste -> back (UI + hardware) -> reopen note keeps content.
+- [x] Mobile: new note + typing -> back (UI + hardware) -> reopen note keeps content.
+- [x] Mobile: existing note + paste/typing -> back (UI + hardware) -> reopen note keeps content.
+- [x] Web: new note + paste/typing -> navigate away (save/read/new note/other note) -> reopen note keeps content.
+- [x] Web: existing note + paste/typing -> navigate away -> reopen note keeps content.
 
 ## End-to-End Tests
 **What user flows need validation?**
@@ -72,7 +82,8 @@ description: Define testing approach, test cases, and quality assurance
 - Manual testing outcomes and sign-off recorded per release.
 - Latest quick check: `npx tsc --noEmit` (update date after implementation).
 - Latest validation: `npm run validate` (ui/mobile) (pass, 2026-01-09).
-- Latest targeted tests: `npm test -- tests/unit/core-services-smartPaste.test.ts tests/integration/smartPaste.integration.test.ts` (pass, 2026-01-09).
+- Latest targeted tests: `npm test -- tests/integration/noteSaveExit.test.tsx` (pass, 2026-01-10).
+- Latest targeted tests: `npx cypress run --component --spec cypress/component/features/notes/NoteEditorSaveExit.cy.tsx` (failed to run: Cypress returned exit code 1 with no output, 2026-01-10).
 
 ## Manual Testing
 **What requires human validation?**
