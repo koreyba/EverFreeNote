@@ -40,6 +40,13 @@ class FakeElement {
     return this.attributes[name] ?? null
   }
 
+  setAttribute(name: string, value: string): void {
+    this.attributes[name] = value
+    const updated = buildTag(this.tag, this.attributes)
+    this.doc.replaceTag(this.original, updated)
+    this.original = updated
+  }
+
   removeAttribute(name: string): void {
     delete this.attributes[name]
     const updated = buildTag(this.tag, this.attributes)
@@ -66,6 +73,9 @@ class FakeDocument {
     if (selector === 'img[src]') {
       return this.buildElements('img', 'src')
     }
+    if (selector === '[style]') {
+      return this.buildAllElementsWithAttribute('style')
+    }
     return []
   }
 
@@ -84,6 +94,15 @@ class FakeDocument {
       .map(match => match[0])
       .filter(match => Object.prototype.hasOwnProperty.call(parseAttributes(match), attribute))
       .map(match => new FakeElement(tag, match, this))
+  }
+
+  private buildAllElementsWithAttribute(attribute: string): FakeElement[] {
+    const pattern = /<([a-zA-Z0-9:-]+)\b[^>]*>/g
+    const matches = Array.from(this.body.innerHTML.matchAll(pattern))
+    return matches
+      .map(match => ({ tag: match[1], full: match[0] }))
+      .filter(item => Object.prototype.hasOwnProperty.call(parseAttributes(item.full), attribute))
+      .map(item => new FakeElement(item.tag, item.full, this))
   }
 }
 
@@ -189,7 +208,7 @@ describe('core/services/smartPaste', () => {
       const result = SmartPasteService.resolvePaste(payload)
       expect(result.type).toBe('plain')
       expect(result.html).toContain('<p>')
-      expect(result.html).not.toContain('|')
+      expect(result.html).toContain('|')
       expect(result.warnings).toContain('plain:unsupported-markdown')
     })
 
@@ -202,8 +221,29 @@ describe('core/services/smartPaste', () => {
 
       const result = SmartPasteService.resolvePaste(payload)
       expect(result.type).toBe('plain')
-      expect(result.html).not.toContain('[ ]')
-      expect(result.html).not.toContain('[x]')
+      expect(result.html).toContain('[ ]')
+      expect(result.html).toContain('[x]')
+    })
+
+    it('filters inline styles using allowlist when DOMParser is present', () => {
+      const previous = globalThis.DOMParser
+      globalThis.DOMParser = FakeDOMParser as unknown as typeof DOMParser
+
+      const payload = {
+        html: '<p><span style="color: red; font-weight: bold; unknown: value;">Styled</span></p>',
+        text: null,
+        types: ['text/html'],
+      }
+
+      try {
+        const result = SmartPasteService.resolvePaste(payload)
+        expect(result.type).toBe('html')
+        expect(result.html).toContain('font-weight: bold')
+        expect(result.html).not.toContain('color: red')
+        expect(result.html).not.toContain('unknown:')
+      } finally {
+        globalThis.DOMParser = previous
+      }
     })
 
     it('removes disallowed styles when DOMParser is unavailable', () => {
@@ -288,6 +328,28 @@ describe('core/services/smartPaste', () => {
         expect(result.html).not.toContain('mailto:test@example.com')
       } finally {
         globalThis.DOMParser = previous
+      }
+    })
+
+    it('filters unsafe URLs using regex when DOMParser is unavailable', () => {
+      // Simulate environment without DOMParser
+      const originalDOMParser = globalThis.DOMParser
+      globalThis.DOMParser = undefined as unknown as typeof DOMParser
+
+      const payload = {
+        html: '<a href="javascript:alert(1)">Bad Link</a><img src="file:///etc/passwd" /><a href="https://good.com">Good</a>',
+        text: null,
+        types: ['text/html'],
+      }
+
+      try {
+        const result = SmartPasteService.resolvePaste(payload)
+        expect(result.type).toBe('html')
+        expect(result.html).toContain('href="https://good.com"')
+        expect(result.html).not.toContain('javascript:')
+        expect(result.html).not.toContain('file:')
+      } finally {
+        globalThis.DOMParser = originalDOMParser
       }
     })
 
