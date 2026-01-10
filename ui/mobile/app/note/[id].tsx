@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard, ScrollView } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
 import { EditorToolbar } from '@ui/mobile/components/EditorToolbar'
@@ -70,6 +71,7 @@ export default function NoteEditorScreen() {
   const router = useRouter()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
+  const insets = useSafeAreaInsets()
 
   const editorRef = useRef<EditorWebViewHandle>(null)
   const [title, setTitle] = useState('')
@@ -175,6 +177,8 @@ export default function NoteEditorScreen() {
     })
   }, [deleteNote, id, router])
 
+  const editorPaddingBottom = Math.max(insets.bottom, 0)
+
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -239,14 +243,16 @@ export default function NoteEditorScreen() {
           style={styles.tags}
         />
       </View>
-      <EditorWebView
-        ref={editorRef}
-        initialContent={note.description || ''}
-        onContentChange={handleContentChange}
-        onFocus={() => setIsEditorFocused(true)}
-        onBlur={handleEditorBlur}
-        loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
-      />
+      <View style={[styles.editorContainer, { paddingBottom: editorPaddingBottom }]}>
+        <EditorWebView
+          ref={editorRef}
+          initialContent={note.description || ''}
+          onContentChange={handleContentChange}
+          onFocus={() => setIsEditorFocused(true)}
+          onBlur={handleEditorBlur}
+          loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
+        />
+      </View>
       {isEditorFocused && (
         <View style={[styles.toolbarContainer, { bottom: keyboardHeight }]}>
           <EditorToolbar onCommand={handleToolbarCommand} />
@@ -260,6 +266,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  editorContainer: {
+    flex: 1,
   },
   header: {
     padding: 16,
