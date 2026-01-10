@@ -2,9 +2,7 @@
  * Tests for EditorWebView message handling
  * Specifically tests CONTENT_ON_BLUR safety net feature
  */
-import React from 'react'
 import { render, waitFor } from '@testing-library/react-native'
-import { View } from 'react-native'
 
 // Mock WebView
 const mockPostMessage = jest.fn()

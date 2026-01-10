@@ -108,10 +108,15 @@ export function useNoteAppController() {
     setLastSavedAt(null)
   }, [handleSelectNote, setLastSavedAt, isEditing])
 
-  const wrappedHandleCreateNote = useCallback(() => {
+  const wrappedHandleCreateNote = useCallback(async (
+    editorRef?: React.RefObject<{ flushPendingSave: (options?: { includePendingTag?: boolean }) => Promise<void> } | null>
+  ) => {
+    if (isEditing && editorRef?.current) {
+      await editorRef.current.flushPendingSave({ includePendingTag: true })
+    }
     handleCreateNote()
     setLastSavedAt(null)
-  }, [handleCreateNote, setLastSavedAt])
+  }, [handleCreateNote, setLastSavedAt, isEditing])
 
   // Combine provider loading with local auth loading
   const combinedLoading = authLoadingState
