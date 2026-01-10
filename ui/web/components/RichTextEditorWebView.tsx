@@ -38,6 +38,7 @@ const RichTextEditorWebView = React.forwardRef<
   RichTextEditorWebViewProps
 >(({ initialContent, onContentChange, onFocus, onBlur }, ref) => {
   const editorRef = React.useRef<Editor | null>(null)
+  const suppressNextUpdateRef = React.useRef(false)
   const editorExtensions: Extensions = React.useMemo(
     () => [
       StarterKit.configure({
@@ -81,9 +82,42 @@ const RichTextEditorWebView = React.forwardRef<
 
     const result = SmartPasteService.resolvePaste(payload)
     event.preventDefault()
+    suppressNextUpdateRef.current = true
     editor.chain().focus().insertContent(result.html).run()
+
+    // Explicitly trigger onContentChange after paste
+    // Mobile WebView may not reliably fire onUpdate after insertContent
+    onContentChange?.()
+
     return true
-  }, [])
+  }, [onContentChange])
+
+  // Handle clicks in empty space below content - focus at document end
+  const handleClick = React.useCallback(
+    (_view: unknown, _pos: number, event: MouseEvent) => {
+      const editor = editorRef.current
+      if (!editor) return false
+
+      const editorDom = editor.view.dom
+      const lastChild = editorDom.lastElementChild
+
+      if (lastChild) {
+        const lastRect = lastChild.getBoundingClientRect()
+        // If click is below the last content element, focus at end
+        if (event.clientY > lastRect.bottom) {
+          editor.commands.focus('end')
+          return true
+        }
+      } else {
+        // Empty document - focus at end
+        editor.commands.focus('end')
+        return true
+      }
+
+      return false
+    },
+    []
+  )
 
   const editorProps = React.useMemo(
     () => ({
@@ -91,8 +125,9 @@ const RichTextEditorWebView = React.forwardRef<
         class: "focus:outline-none",
       },
       handlePaste,
+      handleClick,
     }),
-    [handlePaste]
+    [handlePaste, handleClick]
   )
 
   const editor = useEditor({
@@ -100,6 +135,10 @@ const RichTextEditorWebView = React.forwardRef<
     extensions: editorExtensions,
     content: initialContent,
     onUpdate: () => {
+      if (suppressNextUpdateRef.current) {
+        suppressNextUpdateRef.current = false
+        return
+      }
       onContentChange?.()
     },
     onFocus: () => {
@@ -125,7 +164,7 @@ const RichTextEditorWebView = React.forwardRef<
     () => ({
       getHTML: () => editor?.getHTML() ?? "",
       setContent: (html: string) => {
-        editor?.commands.setContent(html)
+        editor?.commands.setContent(html, { emitUpdate: false })
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
@@ -147,7 +186,7 @@ const RichTextEditorWebView = React.forwardRef<
     <div className="bg-background">
       <EditorContent
         editor={editor}
-        className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-6 py-4`}
+        className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-6 py-4 [&_.tiptap]:min-h-[350px] [&_.tiptap]:cursor-text`}
       />
     </div>
   )

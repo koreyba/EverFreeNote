@@ -50,7 +50,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [tagQuery, setTagQuery] = React.useState("")
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
-  const firstRenderRef = React.useRef(true)
 
   // Helper to get current form data from refs (single source of truth)
   const getFormData = React.useCallback(() => ({
@@ -83,7 +82,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     setSelectedTags(parseTagString(initialTags))
     debouncedTagQuery.cancel()
     setTagQuery("")
-    firstRenderRef.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTitle, initialDescription, initialTags])
 
@@ -110,10 +108,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   // Trigger debounced autosave on any content change
   const handleContentChange = React.useCallback(() => {
     if (!onAutoSave) return
-    if (firstRenderRef.current) {
-      firstRenderRef.current = false
-      return
-    }
     debouncedAutoSave.call()
   }, [onAutoSave, debouncedAutoSave])
 

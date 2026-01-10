@@ -205,6 +205,34 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     case 'EDITOR_BLUR':
                         onBlur?.()
                         break
+                    case 'CONTENT_ON_BLUR':
+                        // Safety net: content sent on blur ensures nothing is lost
+                        onContentChange?.(String(payload ?? ''))
+                        break
+                    case 'CONTENT_ON_BLUR_CHUNK_START': {
+                        const p = payload as Partial<ChunkStartPayload>
+                        if (!p.transferId || typeof p.total !== 'number') return
+                        pendingChunks.current[p.transferId] = { total: p.total, chunks: [] }
+                        break
+                    }
+                    case 'CONTENT_ON_BLUR_CHUNK': {
+                        const p = payload as Partial<ChunkPayload>
+                        if (!p.transferId || typeof p.index !== 'number' || typeof p.chunk !== 'string') return
+                        const entry = pendingChunks.current[p.transferId]
+                        if (!entry) return
+                        entry.chunks[p.index] = p.chunk
+                        break
+                    }
+                    case 'CONTENT_ON_BLUR_CHUNK_END': {
+                        const p = payload as Partial<ChunkEndPayload>
+                        if (!p.transferId) return
+                        const entry = pendingChunks.current[p.transferId]
+                        if (!entry) return
+                        const text = entry.chunks.join('')
+                        delete pendingChunks.current[p.transferId]
+                        onContentChange?.(text)
+                        break
+                    }
                 }
             } catch (error) {
                 console.error('[EditorWebView] Failed to parse message:', error)
