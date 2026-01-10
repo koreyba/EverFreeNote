@@ -1,6 +1,6 @@
 import MarkdownIt from 'markdown-it'
 import { SanitizationService } from '@core/services/sanitizer'
-import { normalizeHtml } from '@core/utils/normalize-html'
+import { normalizeHtml, plainTextToHtml } from '@core/utils/normalize-html'
 
 export type PasteType = 'html' | 'markdown' | 'plain'
 
@@ -112,8 +112,8 @@ export const SmartPasteService = {
 
         if (containsUnsupportedMarkdown(payload.text)) {
           warnings.push('plain:unsupported-markdown')
-          const cleaned = stripMarkdownSyntax(payload.text)
-          const html = plainTextToHtml(cleaned)
+          // Fallback to plain text wrapper without stripping characters (Strategy 2)
+          const html = plainTextToHtml(payload.text)
           return { html: sanitizePasteHtml(html), type: 'plain', warnings, detection }
         }
 
@@ -204,26 +204,6 @@ function containsUnsupportedMarkdown(text: string): boolean {
   return false
 }
 
-function stripMarkdownSyntax(text: string): string {
-  let result = text
-
-  result = result.replace(/^\s*```.*$/gm, '')
-  result = result.replace(/^\s*~~~.*$/gm, '')
-  result = result.replace(/^\s*#{1,6}\s+/gm, '')
-  result = result.replace(/^\s*>\s?/gm, '')
-  result = result.replace(/^\s*[-*+]\s+\[[ xX]\]\s+/gm, '- ')
-  result = result.replace(/^\s*[-*+]\s+/gm, '')
-  result = result.replace(/^\s*\d+\.\s+/gm, '')
-  result = result.replace(/\|/g, ' ')
-
-  result = result.replace(/~~([^~]+)~~/g, '$1')
-  result = result.replace(/(\*\*|__)([^*_]+)\1/g, '$2')
-  result = result.replace(/(\*|_)([^*_]+)\1/g, '$2')
-  result = result.replace(/`([^`]+)`/g, '$1')
-
-  return result
-}
-
 function sanitizePasteHtml(html: string): string {
   const sanitized = SanitizationService.sanitize(html)
   const withoutStyles = filterInlineStyles(sanitized)
@@ -266,7 +246,15 @@ function filterInlineStyles(html: string): string {
 
 function filterUnsafeUrls(html: string): string {
   if (typeof DOMParser === 'undefined') {
-    return html
+    // Regex fallback for environments without DOMParser (e.g. React Native)
+    return html.replace(/\s(href|src)=(?:"([^"]*)"|'([^']*)')/gi, (match, attr, val1, val2) => {
+      const val = val1 || val2 || ''
+      const isAllowed =
+        attr.toLowerCase() === 'href'
+          ? isAllowedLinkProtocol(val, ALLOWED_LINK_PROTOCOLS)
+          : isAllowedImageProtocol(val, ALLOWED_IMAGE_PROTOCOLS)
+      return isAllowed ? match : ''
+    })
   }
 
   const doc = new DOMParser().parseFromString(html, 'text/html')
@@ -324,22 +312,4 @@ function isAllowedImageProtocol(value: string, allowed: string[]): boolean {
   } catch {
     return false
   }
-}
-
-function plainTextToHtml(text: string): string {
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-  const paragraphs = normalized.split(/\n{2,}/)
-  return paragraphs
-    .map(section => escapeHtml(section).replace(/\n/g, '<br />'))
-    .map(section => `<p>${section}</p>`)
-    .join('')
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
 }

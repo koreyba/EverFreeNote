@@ -35,3 +35,21 @@ function normalizeDivsToP(html: string): string {
     return `<p${attrs}>${content}</p>`
   })
 }
+
+export function plainTextToHtml(text: string): string {
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const paragraphs = normalized.split(/\n{2,}/)
+  return paragraphs
+    .map(section => escapeHtml(section).replace(/\n/g, '<br />'))
+    .map(section => `<p>${section}</p>`)
+    .join('')
+}
+
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
