@@ -7,6 +7,9 @@
 .idea/
 .vscode/
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # Dependencies
 node_modules/
 /node_modules
@@ -65,6 +68,9 @@ dump.rdb
 .DS_Store
 *.pem
 
+# Windows reserved device names (prevent accidental creation)
+nul
+
 # Python
 __pycache__/
 *pyc*
@@ -100,3 +106,8 @@ android-sdk/ node_modules/@next/swc-linux-arm64-gnu/next-swc.linux-arm64-gnu.nod
 node_modules/@next/swc-linux-arm64-musl/next-swc.linux-arm64-musl.node
 node_modules/@next/swc-linux-arm64-gnu/next-swc.linux-arm64-gnu.node
 /.nyc_output/out.json
+/.playwright-mcp/editor-webview-after-click.png
+/.playwright-mcp/editor-webview-after-fix.png
+/.playwright-mcp/editor-webview-screenshot.png
+/.playwright-mcp/editor-webview-with-content.png
+/.playwright-mcp/editor-webview-working.png

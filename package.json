@@ -22,7 +22,6 @@
     "perf:measure": "node scripts/measure-performance.js",
     "perf:test": "node scripts/test-migrations.js",
     "cypress": "cypress open",
-    "cypress:run": "cypress run --record --key 887877f9-57fe-4a5f-9b82-b7409fa18b46",
     "test:component": "cypress run --component --spec 'cypress/component/**/*.cy.{js,jsx,ts,tsx}'",
     "test:component:coverage": "cypress run --component --spec 'cypress/component/**/*.cy.{js,jsx,ts,tsx}' --env codeCoverage=true",
     "test:component:watch": "cypress open --component",
