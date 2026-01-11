@@ -486,6 +486,75 @@ describe('SearchScreen - Delete Functionality', () => {
       const cached = queryClient.getQueryData(['note', 'search-note-1'])
       expect(cached).toEqual(expect.objectContaining({ title: 'Updated Title' }))
     })
+
+    it('open from search -> edit -> return keeps search results updated', async () => {
+      const { unmount } = render(<SearchScreen />, { wrapper })
+
+      const searchInput = screen.getByPlaceholderText('Search notes...')
+      fireEvent.changeText(searchInput, 'keyword')
+
+      await waitFor(() => {
+        expect(screen.getByText('Search Result 1')).toBeTruthy()
+      })
+
+      // Open from search list
+      fireEvent.press(screen.getByTestId('note-press-search-note-1'))
+      expect(mockPush).toHaveBeenCalledWith('/note/search-note-1')
+
+      // In real navigation, SearchScreen is no longer visible.
+      // Unmount to simulate navigating to the editor screen.
+      unmount()
+
+      // Simulate editor saving updated fields
+      const updatedResults = mockSearchResults.map((r) =>
+        r.id === 'search-note-1'
+          ? { ...r, title: 'Updated Title', tags: ['tag9'], description: 'Updated content' }
+          : r
+      )
+      mockSearchService.prototype.searchNotes = jest.fn().mockResolvedValue({
+        results: updatedResults,
+        total: updatedResults.length,
+        hasMore: false,
+        method: 'fts',
+      })
+      mockNoteService.prototype.updateNote = jest.fn().mockResolvedValue({
+        id: 'search-note-1',
+        title: 'Updated Title',
+        description: 'Updated content',
+        tags: ['tag9'],
+      })
+
+      const { result } = renderHook(() => useUpdateNote(), { wrapper })
+      await act(async () => {
+        await result.current.mutateAsync({
+          id: 'search-note-1',
+          updates: { title: 'Updated Title', description: 'Updated content', tags: ['tag9'] },
+        })
+      })
+
+      // Cache should have the updated title for search queries.
+      await waitFor(() => {
+        const queries = queryClient.getQueriesData({ queryKey: ['search'] })
+        expect(queries.length).toBeGreaterThan(0)
+      })
+
+      const searchQueries = queryClient.getQueriesData({ queryKey: ['search'] })
+      const anyUpdated = searchQueries.some(([, data]) => {
+        const d = data as { pages?: Array<{ results?: Array<{ id: string; title?: string | null }> }> } | undefined
+        return d?.pages?.some((p) => p.results?.some((r) => r.id === 'search-note-1' && r.title === 'Updated Title'))
+      })
+      expect(anyUpdated).toBe(true)
+
+      // Remount SearchScreen to simulate returning to it later and ensure the list stays consistent.
+      render(<SearchScreen />, { wrapper })
+
+      const searchInput2 = screen.getByPlaceholderText('Search notes...')
+      fireEvent.changeText(searchInput2, 'keyword')
+
+      await waitFor(() => {
+        expect(screen.getByText('Updated Title')).toBeTruthy()
+      })
+    })
   })
 
   describe('Empty state after deletion', () => {

@@ -79,28 +79,67 @@ export default function NoteEditorScreen() {
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingContentRef = useRef<string | null>(null)
-  const lastSavedContentRef = useRef<string | null>(null)
 
-  const flushPendingContent = useCallback(() => {
+  type PendingUpdates = { title?: string; description?: string; tags?: string[] }
+
+  const pendingUpdatesRef = useRef<PendingUpdates>({})
+  const lastSavedRef = useRef<{ title: string; description: string; tags: string[] }>({
+    title: '',
+    description: '',
+    tags: [],
+  })
+
+  const areStringArraysEqual = (a: string[], b: string[]) => {
+    if (a === b) return true
+    if (a.length !== b.length) return false
+    for (let i = 0; i < a.length; i += 1) {
+      if (a[i] !== b[i]) return false
+    }
+    return true
+  }
+
+  const flushPendingUpdates = useCallback(() => {
     if (saveTimeout.current) {
       clearTimeout(saveTimeout.current)
       saveTimeout.current = null
     }
-    if (pendingContentRef.current !== null) {
-      if (pendingContentRef.current !== lastSavedContentRef.current) {
-        updateNote({ id, updates: { description: pendingContentRef.current } })
-        lastSavedContentRef.current = pendingContentRef.current
-      }
-      pendingContentRef.current = null
+
+    const pending = pendingUpdatesRef.current
+    const nextUpdates: PendingUpdates = {}
+
+    if (typeof pending.title === 'string' && pending.title !== lastSavedRef.current.title) {
+      nextUpdates.title = pending.title
     }
+
+    if (typeof pending.description === 'string' && pending.description !== lastSavedRef.current.description) {
+      nextUpdates.description = pending.description
+    }
+
+    if (Array.isArray(pending.tags) && !areStringArraysEqual(pending.tags, lastSavedRef.current.tags)) {
+      nextUpdates.tags = pending.tags
+    }
+
+    if (Object.keys(nextUpdates).length === 0) {
+      pendingUpdatesRef.current = {}
+      return
+    }
+
+    updateNote({ id, updates: nextUpdates })
+
+    lastSavedRef.current = {
+      title: typeof nextUpdates.title === 'string' ? nextUpdates.title : lastSavedRef.current.title,
+      description: typeof nextUpdates.description === 'string' ? nextUpdates.description : lastSavedRef.current.description,
+      tags: Array.isArray(nextUpdates.tags) ? nextUpdates.tags : lastSavedRef.current.tags,
+    }
+
+    pendingUpdatesRef.current = {}
   }, [id, updateNote])
 
   useEffect(() => {
     return () => {
-      flushPendingContent()
+      flushPendingUpdates()
     }
-  }, [flushPendingContent])
+  }, [flushPendingUpdates])
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -121,24 +160,43 @@ export default function NoteEditorScreen() {
     if (note) {
       setTitle(note.title || '')
       setTags(note.tags ?? [])
-      lastSavedContentRef.current = note.description ?? ''
-      pendingContentRef.current = null
+      lastSavedRef.current = {
+        title: note.title ?? '',
+        description: note.description ?? '',
+        tags: note.tags ?? [],
+      }
+      pendingUpdatesRef.current = {}
     }
   }, [note])
 
-  const debouncedUpdate = useCallback((updates: { title?: string; description?: string; tags?: string[] }) => {
-    if (saveTimeout.current) clearTimeout(saveTimeout.current)
+  const debouncedUpdate = useCallback((updates: PendingUpdates) => {
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates }
 
+    // Drop unchanged fields early to avoid redundant network calls on flush.
+    if (
+      typeof pendingUpdatesRef.current.title === 'string' &&
+      pendingUpdatesRef.current.title === lastSavedRef.current.title
+    ) {
+      delete pendingUpdatesRef.current.title
+    }
+    if (
+      typeof pendingUpdatesRef.current.description === 'string' &&
+      pendingUpdatesRef.current.description === lastSavedRef.current.description
+    ) {
+      delete pendingUpdatesRef.current.description
+    }
+    if (
+      Array.isArray(pendingUpdatesRef.current.tags) &&
+      areStringArraysEqual(pendingUpdatesRef.current.tags, lastSavedRef.current.tags)
+    ) {
+      delete pendingUpdatesRef.current.tags
+    }
+
+    if (saveTimeout.current) clearTimeout(saveTimeout.current)
     saveTimeout.current = setTimeout(() => {
-      updateNote({ id, updates })
-      if (typeof updates.description === 'string') {
-        lastSavedContentRef.current = updates.description
-        if (pendingContentRef.current === updates.description) {
-          pendingContentRef.current = null
-        }
-      }
+      flushPendingUpdates()
     }, 1000)
-  }, [id, updateNote])
+  }, [flushPendingUpdates])
 
   const handleTitleChange = (newTitle: string) => {
     setTitle(newTitle)
@@ -146,7 +204,6 @@ export default function NoteEditorScreen() {
   }
 
   const handleContentChange = (html: string) => {
-    pendingContentRef.current = html
     debouncedUpdate({ description: html })
   }
 
@@ -162,8 +219,8 @@ export default function NoteEditorScreen() {
   const handleEditorBlur = useCallback(() => {
     setIsEditorFocused(false)
     // Flush any pending save immediately when editor loses focus
-    flushPendingContent()
-  }, [flushPendingContent])
+    flushPendingUpdates()
+  }, [flushPendingUpdates])
 
   const handleToolbarCommand = useCallback((method: string, args?: unknown[]) => {
     editorRef.current?.runCommand(method, args)

@@ -8,6 +8,7 @@ import {
   createMockNoteServiceState,
   createQueryWrapper,
   createTestQueryClient,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -115,6 +116,10 @@ const mockEditorCallbacks: {
   onContentChange?: (html: string) => void
 } = {}
 
+const mockTagCallbacks: {
+  onChangeTags?: (next: string[]) => void
+} = {}
+
 const mockEditorState: {
   initialContent: string
 } = {
@@ -164,8 +169,9 @@ jest.mock('@ui/mobile/components/ThemeToggle', () => ({
 }))
 
 jest.mock('@ui/mobile/components/tags/TagInput', () => ({
-  TagInput: ({ tags }: { tags: string[] }) => {
+  TagInput: ({ tags, onChangeTags }: { tags: string[]; onChangeTags?: (next: string[]) => void }) => {
     const { View, Text } = require('react-native')
+    mockTagCallbacks.onChangeTags = onChangeTags
     return (
       <View testID="tag-input">
         {tags.map((tag: string) => (
@@ -227,6 +233,7 @@ describe('NoteEditorScreen - save on exit', () => {
     queryClient = createTestQueryClient()
     mockEditorCallbacks.onContentChange = undefined
     mockEditorState.initialContent = ''
+    mockTagCallbacks.onChangeTags = undefined
     mockUseLocalSearchParams.mockReturnValue({ id: 'note-id' })
     jest.clearAllMocks()
   })
@@ -297,6 +304,62 @@ describe('NoteEditorScreen - save on exit', () => {
       await waitFor(() => {
         expect(mockEditorState.initialContent).toBe(html)
       })
+      reopened.unmount()
+    })
+  })
+
+  describe.each(exitModes)('multi-field edits within debounce window with %s', (exitMode) => {
+    it('saves title + tags + description together and restores on reopen', async () => {
+      const note = createMockNote({
+        id: 'note-multi',
+        title: 'Original Title',
+        description: '<p>Original</p>',
+        tags: ['tag1'],
+      })
+      const state = setupNoteState(note)
+
+      const { unmount } = renderNoteEditor(note.id)
+      await waitForEditorReady()
+
+      mockNoteService.prototype.updateNote.mockClear()
+
+      const titleInput = screen.getByDisplayValue('Original Title')
+
+      act(() => {
+        // 1) Title change
+        fireEvent.changeText(titleInput, 'New Title')
+        // 2) Tags change
+        mockTagCallbacks.onChangeTags?.(['tag2', 'tag3'])
+        // 3) Content change
+        mockEditorCallbacks.onContentChange?.('<p>New Content</p>')
+      })
+
+      act(() => {
+        simulateExit(exitMode, unmount)
+      })
+
+      await waitFor(() => {
+        expect(mockNoteService.prototype.updateNote).toHaveBeenCalledTimes(1)
+      })
+
+      await waitFor(() => {
+        expect(state.updatedNotes.get(note.id)).toEqual(
+          expect.objectContaining({
+            title: 'New Title',
+            tags: ['tag2', 'tag3'],
+            description: '<p>New Content</p>',
+          })
+        )
+      })
+
+      const reopened = renderNoteEditor(note.id)
+      await waitForEditorReady()
+
+      await waitFor(() => {
+        expect(mockEditorState.initialContent).toBe('<p>New Content</p>')
+        expect(screen.getByDisplayValue('New Title')).toBeTruthy()
+      })
+
       reopened.unmount()
     })
   })
