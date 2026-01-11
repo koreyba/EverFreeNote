@@ -1,5 +1,6 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 import type { Note } from '@core/types/domain'
+import { getUpdatedAtMs } from '@core/utils/noteSnapshot'
 
 type NotesPage = {
   notes: Note[]
@@ -10,12 +11,6 @@ type SearchPage<T extends Note = Note> = {
 }
 
 type NotePatch = Partial<Pick<Note, 'title' | 'description' | 'tags' | 'updated_at'>>
-
-const getUpdatedAtMs = (note?: { updated_at?: string | null }): number => {
-  if (!note?.updated_at) return Number.NEGATIVE_INFINITY
-  const timestamp = Date.parse(note.updated_at)
-  return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp
-}
 
 const applyPatch = <T extends Note>(note: T, patch: NotePatch): T => {
   if (Object.keys(patch).length === 0) return note

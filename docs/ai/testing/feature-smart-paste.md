@@ -38,6 +38,11 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Test case 2: short payloads send as single message.
 - [ ] Additional coverage: ignores malformed chunk payloads gracefully.
 
+### Note snapshot utilities
+- [x] Test case 1: getUpdatedAtMs handles missing or invalid timestamps.
+- [x] Test case 2: pickLatestNote chooses the newest updated note.
+- [x] Additional coverage: mergeNoteFields skips undefined overrides.
+
 ## Integration Tests
 **How do we test component interactions?**
 
@@ -58,6 +63,7 @@ description: Define testing approach, test cases, and quality assurance
 - [x] Mobile: search results -> edit note -> back -> reopen note shows latest content.
 - [x] Web: new note + paste/typing -> navigate away (save/read/new note/other note) -> reopen note keeps content.
 - [x] Web: existing note + paste/typing -> navigate away -> reopen note keeps content.
+- [x] Web: search results -> edit note -> reopen from search shows latest content.
 
 ## End-to-End Tests
 **What user flows need validation?**
@@ -87,6 +93,8 @@ description: Define testing approach, test cases, and quality assurance
 - Latest targeted tests: `npx cypress run --component --spec cypress/component/features/notes/NoteEditorSaveExit.cy.tsx` (failed to run: Cypress returned exit code 1 with no output, 2026-01-10).
 - Latest targeted tests: `npm test -- noteCache.test.ts` (ui/mobile) (pass, 2026-01-10).
 - Latest targeted tests: `npm test -- searchScreen.test.tsx` (ui/mobile) (pass, 2026-01-10).
+- Latest targeted tests: `npx cypress run --component --spec cypress/component/core/utils/noteSnapshot.cy.ts` (not run yet).
+- Latest targeted tests: `npx cypress run --component --spec cypress/component/features/notes/NoteSearchFreshness.cy.tsx` (not run yet).
 
 ## Manual Testing
 **What requires human validation?**
