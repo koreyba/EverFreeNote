@@ -573,12 +573,20 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
 
     const handleEditorContainerMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
       if (!editor) return
+
       const target = event.target
-      if (target instanceof HTMLElement && target.closest(".ProseMirror")) {
-        return
-      }
+      if (!(target instanceof HTMLElement)) return
+
+      const editorRoot = editor.view.dom as unknown as HTMLElement
+
+      // If the user clicked inside actual content (e.g. a paragraph/text node), let ProseMirror
+      // handle caret placement (don't override mid-text clicks).
+      if (editorRoot.contains(target) && editorRoot !== target) return
+
+      // Otherwise it's a "background" click (padding/empty area). Match mobile UX:
+      // move caret to the end for non-empty notes.
       event.preventDefault()
-      editor.chain().focus("start").run()
+      editor.chain().focus('end').run()
     }, [editor])
 
     // Expose methods via ref

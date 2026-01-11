@@ -90,6 +90,81 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="editor-content"]').should('contain', 'Test content')
   })
 
+  it('moves caret to end when clicking empty area of a non-empty note', () => {
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
+
+    cy.mount(
+      <RichTextEditor
+        initialContent="<p>Hello</p>"
+        onContentChange={onContentChangeSpy}
+      />
+    )
+
+    // Click "background" (empty space) and type a char.
+    // If caret is placed at end, it should append.
+    cy.get('[data-cy="editor-content"]').click('bottomRight')
+    cy.get('[data-cy="editor-content"]').type('X')
+
+    cy.get('[data-cy="editor-content"]').find('p').first().should('contain.text', 'HelloX')
+  })
+
+  it('does not override caret when clicking inside text', () => {
+    const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
+
+    const selectionSignature = (sel: Selection | null) => {
+      if (!sel || !sel.anchorNode) return 'null'
+      const node = sel.anchorNode
+      const textLen = node.textContent?.length ?? 0
+      return `${node.nodeType}:${node.nodeName}:${sel.anchorOffset}:${textLen}`
+    }
+
+    cy.mount(
+      <RichTextEditor
+        initialContent="<p>Hello</p>"
+        onContentChange={onContentChangeSpy}
+      />
+    )
+
+    // First put caret at end (background click), then click inside the paragraph near the start.
+    // If we wrongly override all clicks, the next character would append at the end.
+    cy.get('[data-cy="editor-content"]').click('bottomRight')
+    cy.get('[data-cy="editor-content"]').type('Z')
+
+    let endSignature = ''
+    cy.document().then((doc) => {
+      endSignature = selectionSignature(doc.getSelection())
+      expect(endSignature).to.not.eq('null')
+    })
+
+    // Click on the first character using DOM Range coordinates (reliable "text" click).
+    // Then assert selection moved away from the end (i.e. we didn't force focus('end')).
+    cy.get('[data-cy="editor-content"]').then(($root) => {
+      const root = $root[0] as HTMLElement
+      const p = root.querySelector('p') as HTMLElement | null
+      const textNode = p?.firstChild
+      expect(textNode, 'paragraph text node exists').to.exist
+
+      const doc = root.ownerDocument
+      const range = doc.createRange()
+      range.setStart(textNode as ChildNode, 0)
+      range.setEnd(textNode as ChildNode, 1)
+
+      const charRect = range.getBoundingClientRect()
+      const pRect = (p as HTMLElement).getBoundingClientRect()
+
+      const x = Math.max(1, Math.floor(charRect.left - pRect.left + 1))
+      const y = Math.max(1, Math.floor(charRect.top - pRect.top + charRect.height / 2))
+
+      cy.wrap(p).click(x, y)
+    })
+
+    cy.document().then((doc) => {
+      const afterSignature = selectionSignature(doc.getSelection())
+      expect(afterSignature).to.not.eq('null')
+      expect(afterSignature, 'selection changes after in-text click').to.not.eq(endSignature)
+    })
+  })
+
   it('applies bold formatting', () => {
     const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 

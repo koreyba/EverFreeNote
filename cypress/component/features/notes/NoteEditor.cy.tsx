@@ -215,4 +215,62 @@ describe('NoteEditor Component', () => {
 
     cy.get('@onAutoSave').should('not.have.been.called', { timeout: 800 })
   })
+
+  it('does not interrupt typing when autosave updates props / assigns noteId', () => {
+    const onAutoSave = cy.stub().callsFake(async () => undefined)
+
+    function Wrapper() {
+      const [state, setState] = React.useState({
+        noteId: undefined as string | undefined,
+        title: 'Draft',
+        description: '<p></p>',
+        tags: '',
+      })
+
+      const handleAutoSave = async (payload: { noteId?: string; title: string; description: string; tags: string }) => {
+        onAutoSave(payload)
+
+        // Simulate the controller: first autosave creates the note and assigns an id,
+        // subsequent autosaves keep updating the selected note fields.
+        setState((prev) => ({
+          noteId: prev.noteId ?? 'note-1',
+          title: payload.title,
+          description: payload.description,
+          tags: payload.tags,
+        }))
+      }
+
+      return (
+        <div>
+          <div data-cy="note-id">{state.noteId ?? 'none'}</div>
+          <NoteEditor
+            noteId={state.noteId}
+            initialTitle={state.title}
+            initialDescription={state.description}
+            initialTags={state.tags}
+            availableTags={[]}
+            isSaving={false}
+            onSave={() => undefined}
+            onRead={() => undefined}
+            onAutoSave={handleAutoSave}
+            autosaveDelayMs={50}
+          />
+        </div>
+      )
+    }
+
+    cy.mount(<Wrapper />)
+
+    cy.get('[data-cy="editor-content"]').click().type('Hello')
+
+    // Wait for first autosave to assign an id
+    cy.get('[data-cy="note-id"]').should('have.text', 'note-1')
+
+    // If autosave caused a remount/blur, focus would be lost and typing would require another click.
+    cy.focused().should('have.class', 'ProseMirror')
+    cy.focused().type('World')
+
+    cy.get('[data-cy="editor-content"]').should('contain.text', 'HelloWorld')
+    cy.wrap(onAutoSave).should('have.been.called')
+  })
 })
