@@ -489,6 +489,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProps>(
   ({ initialContent, onContentChange, hideToolbar = false }, ref) => {
     const editorRef = React.useRef<Editor | null>(null)
+    const suppressNextUpdateRef = React.useRef(false)
     // Мемоизация конфигурации расширений для предотвращения пересоздания
     const editorExtensions: Extensions = React.useMemo(() => [
       StarterKit.configure({
@@ -531,9 +532,14 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
 
       const result = SmartPasteService.resolvePaste(payload)
       event.preventDefault()
+      suppressNextUpdateRef.current = true
       editor.chain().focus().insertContent(result.html).run()
+
+      // Explicitly trigger onContentChange after paste.
+      // Some environments may not reliably fire onUpdate after insertContent.
+      onContentChange?.()
       return true
-    }, [])
+    }, [onContentChange])
 
     const editorProps = React.useMemo(() => ({
       attributes: {
@@ -547,6 +553,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       extensions: editorExtensions,
       content: initialContent,
       onUpdate: () => {
+        if (suppressNextUpdateRef.current) {
+          suppressNextUpdateRef.current = false
+          return
+        }
         onContentChange?.()
       },
       editorProps,
@@ -575,7 +585,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     React.useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() ?? "",
       setContent: (html: string) => {
-        editor?.commands.setContent(html)
+        // Avoid triggering autosave on programmatic content sync (switching notes)
+        editor?.commands.setContent(html, { emitUpdate: false })
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
