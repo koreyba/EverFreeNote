@@ -94,14 +94,14 @@ const TestHarness = ({ initialSelectedId = 'note-1' }: { initialSelectedId?: str
     })
   }, [getNextNewNoteId, selectedId])
 
-  const flushAndSelect = React.useCallback((nextId: string | null) => {
-    editorRef.current?.flushPendingSave()
+  const flushAndSelect = React.useCallback(async (nextId: string | null) => {
+    await editorRef.current?.flushPendingSave()
     setSelectedId(nextId)
     setIsEditing(true)
   }, [])
 
-  const handleNewNote = React.useCallback(() => {
-    editorRef.current?.flushPendingSave()
+  const handleNewNote = React.useCallback(async () => {
+    await editorRef.current?.flushPendingSave()
     setSelectedId(null)
     setIsEditing(true)
   }, [])
@@ -123,7 +123,7 @@ const TestHarness = ({ initialSelectedId = 'note-1' }: { initialSelectedId?: str
           <button
             key={note.id}
             data-cy={`select-note-${note.id}`}
-            onClick={() => flushAndSelect(note.id)}
+            onClick={() => void flushAndSelect(note.id)}
           >
             {note.title}
           </button>
