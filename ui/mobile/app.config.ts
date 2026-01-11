@@ -118,7 +118,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.everfreenote.app',
+      bundleIdentifier: variantConfig.androidPackage,
     },
     android: {
       adaptiveIcon: {

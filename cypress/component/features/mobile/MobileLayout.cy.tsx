@@ -77,8 +77,11 @@ describe('Mobile Layout Adaptation', () => {
       handleAutoSave: cy.stub(),
       lastSavedAt: null,
       autoSaving: false,
-      
-      ...overrides
+
+      ...overrides,
+
+      // Required by controller type (used by NotesShell to register editor ref)
+      registerNoteEditorRef: overrides.registerNoteEditorRef ?? cy.stub(),
     })
 
     mockSupabase = {

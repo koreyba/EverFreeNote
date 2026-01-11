@@ -9,7 +9,7 @@ export class SanitizationService {
   static sanitize(html: string): string {
     return DOMPurify.sanitize(html, {
       ALLOWED_TAGS: [
-        'b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li',
+        'b', 'i', 'em', 'strong', 'a', 'p', 'br', 'hr', 'ul', 'ol', 'li',
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre',
         'span', 'div', 'img', 'mark', 'u', 's', 'strike',
       ],
@@ -24,6 +24,14 @@ export class SanitizationService {
    * Useful for generating plain text previews or search indexing.
    */
   static stripHtml(html: string): string {
-    return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] })
+    const withoutDangerousBlocks = stripDangerousBlocks(html)
+    return DOMPurify.sanitize(withoutDangerousBlocks, { ALLOWED_TAGS: [] })
   }
+}
+
+function stripDangerousBlocks(html: string): string {
+  // Remove script/style blocks so their text does not leak into plain output.
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
 }

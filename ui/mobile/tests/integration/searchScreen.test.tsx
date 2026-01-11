@@ -7,8 +7,10 @@ import type { QueryClient } from '@tanstack/react-query'
 import {
   createQueryWrapper,
   createTestQueryClient,
+  act,
   fireEvent,
   render,
+  renderHook,
   screen,
   waitFor,
 } from '../testUtils'
@@ -183,6 +185,7 @@ jest.mock('@shopify/flash-list', () => ({
 import SearchScreen from '@ui/mobile/app/(tabs)/search'
 import { NoteService } from '@core/services/notes'
 import { SearchService } from '@core/services/search'
+import { useOpenNote, useUpdateNote } from '@ui/mobile/hooks'
 
 const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
 const mockSearchService = SearchService as jest.MockedClass<typeof SearchService>
@@ -243,6 +246,16 @@ describe('SearchScreen - Delete Functionality', () => {
     })
 
     mockNoteService.prototype.deleteNote = jest.fn().mockResolvedValue('deleted-note-id')
+    mockNoteService.prototype.updateNote = jest.fn().mockResolvedValue({
+      id: 'search-note-1',
+      title: 'Updated Title',
+      description: 'Updated content',
+    })
+    mockNoteService.prototype.getNotes = jest.fn().mockResolvedValue({
+      notes: mockSearchResults,
+      totalCount: mockSearchResults.length,
+      hasMore: false,
+    })
 
     jest.clearAllMocks()
   })
@@ -421,6 +434,126 @@ describe('SearchScreen - Delete Functionality', () => {
 
       // Navigation should not be triggered by delete
       expect(mockPush).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Search results stay in sync after edit', () => {
+    it('reflects updated title after note edit', async () => {
+      render(<SearchScreen />, { wrapper })
+
+      const searchInput = screen.getByPlaceholderText('Search notes...')
+      fireEvent.changeText(searchInput, 'keyword')
+
+      await waitFor(() => {
+        expect(screen.getByText('Search Result 1')).toBeTruthy()
+      })
+
+      const { result } = renderHook(() => useUpdateNote(), { wrapper })
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          id: 'search-note-1',
+          updates: { title: 'Updated Title' },
+        })
+      })
+
+      await waitFor(() => {
+        const noteCache = queryClient.getQueryData(['note', 'search-note-1']) as { title?: string } | undefined
+        expect(noteCache?.title).toBe('Updated Title')
+      })
+
+      await act(async () => {
+        queryClient.setQueryData([
+          'search',
+          'test-user-id',
+          'keyword',
+          null,
+        ], {
+          pages: [{
+            results: mockSearchResults,
+            total: mockSearchResults.length,
+            hasMore: false,
+          }],
+          pageParams: [0],
+        })
+      })
+
+      const { result: openNote } = renderHook(() => useOpenNote(), { wrapper })
+
+      await act(async () => {
+        openNote.current(mockSearchResults[0])
+      })
+      const cached = queryClient.getQueryData(['note', 'search-note-1'])
+      expect(cached).toEqual(expect.objectContaining({ title: 'Updated Title' }))
+    })
+
+    it('open from search -> edit -> return keeps search results updated', async () => {
+      const { unmount } = render(<SearchScreen />, { wrapper })
+
+      const searchInput = screen.getByPlaceholderText('Search notes...')
+      fireEvent.changeText(searchInput, 'keyword')
+
+      await waitFor(() => {
+        expect(screen.getByText('Search Result 1')).toBeTruthy()
+      })
+
+      // Open from search list
+      fireEvent.press(screen.getByTestId('note-press-search-note-1'))
+      expect(mockPush).toHaveBeenCalledWith('/note/search-note-1')
+
+      // In real navigation, SearchScreen is no longer visible.
+      // Unmount to simulate navigating to the editor screen.
+      unmount()
+
+      // Simulate editor saving updated fields
+      const updatedResults = mockSearchResults.map((r) =>
+        r.id === 'search-note-1'
+          ? { ...r, title: 'Updated Title', tags: ['tag9'], description: 'Updated content' }
+          : r
+      )
+      mockSearchService.prototype.searchNotes = jest.fn().mockResolvedValue({
+        results: updatedResults,
+        total: updatedResults.length,
+        hasMore: false,
+        method: 'fts',
+      })
+      mockNoteService.prototype.updateNote = jest.fn().mockResolvedValue({
+        id: 'search-note-1',
+        title: 'Updated Title',
+        description: 'Updated content',
+        tags: ['tag9'],
+      })
+
+      const { result } = renderHook(() => useUpdateNote(), { wrapper })
+      await act(async () => {
+        await result.current.mutateAsync({
+          id: 'search-note-1',
+          updates: { title: 'Updated Title', description: 'Updated content', tags: ['tag9'] },
+        })
+      })
+
+      // Cache should have the updated title for search queries.
+      await waitFor(() => {
+        const queries = queryClient.getQueriesData({ queryKey: ['search'] })
+        expect(queries.length).toBeGreaterThan(0)
+      })
+
+      const searchQueries = queryClient.getQueriesData({ queryKey: ['search'] })
+      const anyUpdated = searchQueries.some(([, data]) => {
+        const d = data as { pages?: Array<{ results?: Array<{ id: string; title?: string | null }> }> } | undefined
+        return d?.pages?.some((p) => p.results?.some((r) => r.id === 'search-note-1' && r.title === 'Updated Title'))
+      })
+      expect(anyUpdated).toBe(true)
+
+      // Remount SearchScreen to simulate returning to it later and ensure the list stays consistent.
+      render(<SearchScreen />, { wrapper })
+
+      const searchInput2 = screen.getByPlaceholderText('Search notes...')
+      fireEvent.changeText(searchInput2, 'keyword')
+
+      await waitFor(() => {
+        expect(screen.getByText('Updated Title')).toBeTruthy()
+      })
     })
   })
 

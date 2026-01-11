@@ -6,6 +6,7 @@ import { databaseService } from '@ui/mobile/services/database'
 import { useNetworkStatus } from './useNetworkStatus'
 import { mobileNetworkStatusProvider } from '@ui/mobile/adapters/networkStatus'
 import type { Note } from '@core/types/domain'
+import { updateNoteCaches } from '@ui/mobile/utils/noteCache'
 
 type NotesPage = {
   notes: Note[]
@@ -202,9 +203,15 @@ export function useUpdateNote() {
         return { id, ...updates } as Note
       }
     },
+    onMutate: ({ id, updates }) => {
+      const updatedAt = new Date().toISOString()
+      updateNoteCaches(queryClient, id, updates, { updatedAt })
+      return { updatedAt }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['notes'] })
       void queryClient.invalidateQueries({ queryKey: ['note'] })
+      void queryClient.invalidateQueries({ queryKey: ['search'] })
     },
   })
 }

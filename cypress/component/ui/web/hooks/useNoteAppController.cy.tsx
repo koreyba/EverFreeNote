@@ -4,12 +4,20 @@ import { QueryProvider } from '@ui/web/components/providers/QueryProvider'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { NoteViewModel } from '@core/types/domain'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SinonStub = any
 
+let flushSpy: SinonStub | null = null
+
 const TestComponent = () => {
   const controller = useNoteAppController()
+  const editorRef = React.useRef<NoteEditorHandle | null>({
+    flushPendingSave: async () => {
+      flushSpy?.()
+    },
+  })
 
   return (
     <div>
@@ -46,6 +54,7 @@ const TestComponent = () => {
         updated_at: '2023-01-01',
         user_id: 'test-user'
       } as NoteViewModel)}>Select Note</button>
+      <button data-cy="select-null-note-btn" onClick={() => controller.handleSelectNote(null)}>Select Null Note</button>
       <button data-cy="search-btn" onClick={() => controller.handleSearch('test query')}>Search</button>
 
       <button data-cy="save-note-btn" onClick={() => controller.handleSaveNote({
@@ -80,6 +89,8 @@ const TestComponent = () => {
       <button data-cy="invalidate-btn" onClick={controller.invalidateNotes}>Invalidate</button>
 
       <button data-cy="remove-tag-btn" onClick={() => controller.handleRemoveTagFromNote('1', 'tag1')}>Remove Tag</button>
+
+      <button data-cy="register-editor-ref-btn" onClick={() => controller.registerNoteEditorRef(editorRef)}>Register Editor Ref</button>
     </div>
   )
 }
@@ -103,6 +114,7 @@ describe('useNoteAppController', () => {
   let mockQueryBuilder: MockQueryBuilder
 
   beforeEach(() => {
+    flushSpy = cy.stub()
     mockQueryBuilder = {
       select: cy.stub().returnsThis(),
       order: cy.stub().returnsThis(),
@@ -128,6 +140,101 @@ describe('useNoteAppController', () => {
       from: cy.stub().returns(mockQueryBuilder),
       rpc: cy.stub().resolves({ data: [], error: null })
     } as unknown as SupabaseClient
+  })
+
+  it('flushes pending editor save when selecting a note while editing', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="register-editor-ref-btn"]').click()
+
+    cy.get('[data-cy="select-note-btn"]').click()
+
+    cy.then(() => {
+      expect(flushSpy).to.have.been.called
+    })
+  })
+
+  it('flushes pending editor save when clicking a search result while editing', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="register-editor-ref-btn"]').click()
+
+    cy.get('[data-cy="search-result-click-btn"]').click()
+
+    cy.then(() => {
+      expect(flushSpy).to.have.been.called
+    })
+  })
+
+  it('flushes pending editor save when creating a note while editing', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="register-editor-ref-btn"]').click()
+
+    cy.get('[data-cy="create-note-btn"]').click()
+
+    cy.then(() => {
+      expect(flushSpy).to.have.been.called
+    })
+  })
+
+  it('flushes pending editor save when clicking a tag while editing', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="register-editor-ref-btn"]').click()
+
+    cy.get('[data-cy="tag-click-btn"]').click()
+
+    cy.then(() => {
+      expect(flushSpy).to.have.been.called
+    })
+  })
+
+  it('flushes pending editor save when selecting null (back) while editing', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="register-editor-ref-btn"]').click()
+
+    cy.get('[data-cy="select-null-note-btn"]').click()
+
+    cy.then(() => {
+      expect(flushSpy).to.have.been.called
+    })
   })
 
   it('initializes with loading state and checks auth', () => {

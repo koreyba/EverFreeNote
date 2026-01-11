@@ -4,12 +4,7 @@ import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import Constants from 'expo-constants'
 import { getSupabaseConfig } from '@ui/mobile/adapters'
 import { useTheme } from '@ui/mobile/providers'
-
-const chunkSizeChars = 30_000
-
-type ChunkStartPayload = { transferId: string; total: number }
-type ChunkPayload = { transferId: string; index: number; chunk: string }
-type ChunkEndPayload = { transferId: string }
+import { consumeChunkedMessage, sendChunkedText, type ChunkBufferStore } from '@core/utils/editorWebViewBridge'
 
 export type EditorWebViewHandle = {
     setContent: (html: string) => void
@@ -35,7 +30,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         const [loadError, setLoadError] = useState<string | null>(null)
         const pendingContent = useRef<string | null>(initialContent)
         const contentResolver = useRef<((html: string) => void) | null>(null)
-        const pendingChunks = useRef<Record<string, { total: number; chunks: string[] }>>({})
+        const pendingChunks = useRef<ChunkBufferStore>({})
         const pendingTheme = useRef(colorScheme)
 
         const post = (message: { type: string; payload?: unknown }) => {
@@ -43,20 +38,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         }
 
         const sendText = (type: string, text: string) => {
-            if (text.length <= chunkSizeChars) {
-                post({ type, payload: text })
-                return
-            }
-
-            const transferId = `${type}_${Date.now()}_${Math.random().toString(16).slice(2)}`
-            const total = Math.ceil(text.length / chunkSizeChars)
-            post({ type: `${type}_CHUNK_START`, payload: { transferId, total } satisfies ChunkStartPayload })
-            for (let index = 0; index < total; index++) {
-                const start = index * chunkSizeChars
-                const chunk = text.slice(start, start + chunkSizeChars)
-                post({ type: `${type}_CHUNK`, payload: { transferId, index, chunk } satisfies ChunkPayload })
-            }
-            post({ type: `${type}_CHUNK_END`, payload: { transferId } satisfies ChunkEndPayload })
+            sendChunkedText(post, type, text)
         }
 
         useImperativeHandle(ref, () => ({
@@ -137,6 +119,21 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                 const { type, payload } = JSON.parse(event.nativeEvent.data) as { type?: string; payload?: unknown }
                 if (!type) return
 
+                const chunked = consumeChunkedMessage(type, payload, pendingChunks.current)
+                if (chunked) {
+                    if (chunked.baseType === 'CONTENT_CHANGED' || chunked.baseType === 'CONTENT_ON_BLUR') {
+                        onContentChange?.(chunked.text)
+                        return
+                    }
+                    if (chunked.baseType === 'CONTENT_RESPONSE') {
+                        if (contentResolver.current) {
+                            contentResolver.current(chunked.text)
+                            contentResolver.current = null
+                        }
+                        return
+                    }
+                }
+
                 switch (type) {
                     case 'READY':
                         if (pendingContent.current !== null) {
@@ -158,42 +155,6 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                             contentResolver.current = null
                         }
                         break
-                    case 'CONTENT_CHANGED_CHUNK_START':
-                    case 'CONTENT_RESPONSE_CHUNK_START': {
-                        const p = payload as Partial<ChunkStartPayload>
-                        if (!p.transferId || typeof p.total !== 'number') return
-                        pendingChunks.current[p.transferId] = { total: p.total, chunks: [] }
-                        break
-                    }
-                    case 'CONTENT_CHANGED_CHUNK':
-                    case 'CONTENT_RESPONSE_CHUNK': {
-                        const p = payload as Partial<ChunkPayload>
-                        if (!p.transferId || typeof p.index !== 'number' || typeof p.chunk !== 'string') return
-                        const entry = pendingChunks.current[p.transferId]
-                        if (!entry) return
-                        entry.chunks[p.index] = p.chunk
-                        break
-                    }
-                    case 'CONTENT_CHANGED_CHUNK_END':
-                    case 'CONTENT_RESPONSE_CHUNK_END': {
-                        const p = payload as Partial<ChunkEndPayload>
-                        if (!p.transferId) return
-                        const entry = pendingChunks.current[p.transferId]
-                        if (!entry) return
-
-                        const text = entry.chunks.join('')
-                        delete pendingChunks.current[p.transferId]
-
-                        if (type === 'CONTENT_CHANGED_CHUNK_END') {
-                            onContentChange?.(text)
-                        } else if (type === 'CONTENT_RESPONSE_CHUNK_END') {
-                            if (contentResolver.current) {
-                                contentResolver.current(text)
-                                contentResolver.current = null
-                            }
-                        }
-                        break
-                    }
                     case 'IMAGE_ERROR': {
                         const p = payload as { src?: unknown; message?: unknown }
                         console.error('[EditorWebView] Image failed to load:', p?.src, p?.message)
@@ -204,6 +165,10 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         break
                     case 'EDITOR_BLUR':
                         onBlur?.()
+                        break
+                    case 'CONTENT_ON_BLUR':
+                        // Safety net: content sent on blur ensures nothing is lost
+                        onContentChange?.(String(payload ?? ''))
                         break
                 }
             } catch (error) {
