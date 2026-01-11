@@ -10,6 +10,7 @@ import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
 import { Trash2 } from 'lucide-react-native'
 import { Pressable } from 'react-native'
+import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 
 const decodeHtmlEntities = (value: string) => {
   return value
@@ -78,11 +79,12 @@ export default function NoteEditorScreen() {
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
-  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
+    title: '',
+    description: '',
+    tags: [],
+  })
 
-  type PendingUpdates = { title?: string; description?: string; tags?: string[] }
-
-  const pendingUpdatesRef = useRef<PendingUpdates>({})
   const lastSavedRef = useRef<{ title: string; description: string; tags: string[] }>({
     title: '',
     description: '',
@@ -98,46 +100,31 @@ export default function NoteEditorScreen() {
     return true
   }
 
-  const flushPendingUpdates = useCallback(() => {
-    if (saveTimeout.current) {
-      clearTimeout(saveTimeout.current)
-      saveTimeout.current = null
-    }
+  const buildPatch = useCallback((next: { title: string; description: string; tags: string[] }) => {
+    const patch: { title?: string; description?: string; tags?: string[] } = {}
+    if (next.title !== lastSavedRef.current.title) patch.title = next.title
+    if (next.description !== lastSavedRef.current.description) patch.description = next.description
+    if (!areStringArraysEqual(next.tags, lastSavedRef.current.tags)) patch.tags = next.tags
+    return patch
+  }, [])
 
-    const pending = pendingUpdatesRef.current
-    const nextUpdates: PendingUpdates = {}
+  const saverRef = useRef<ReturnType<typeof createDebouncedLatest<{ title: string; description: string; tags: string[] }>> | null>(null)
+  saverRef.current ??= createDebouncedLatest({
+      delayMs: 1000,
+      isEqual: (a, b) => a.title === b.title && a.description === b.description && areStringArraysEqual(a.tags, b.tags),
+      onFlush: (next) => {
+        const patch = buildPatch(next)
+        if (Object.keys(patch).length === 0) return
+        updateNote({ id, updates: patch })
+        lastSavedRef.current = next
+      },
+    })
 
-    if (typeof pending.title === 'string' && pending.title !== lastSavedRef.current.title) {
-      nextUpdates.title = pending.title
-    }
-
-    if (typeof pending.description === 'string' && pending.description !== lastSavedRef.current.description) {
-      nextUpdates.description = pending.description
-    }
-
-    if (Array.isArray(pending.tags) && !areStringArraysEqual(pending.tags, lastSavedRef.current.tags)) {
-      nextUpdates.tags = pending.tags
-    }
-
-    if (Object.keys(nextUpdates).length === 0) {
-      pendingUpdatesRef.current = {}
-      return
-    }
-
-    updateNote({ id, updates: nextUpdates })
-
-    lastSavedRef.current = {
-      title: typeof nextUpdates.title === 'string' ? nextUpdates.title : lastSavedRef.current.title,
-      description: typeof nextUpdates.description === 'string' ? nextUpdates.description : lastSavedRef.current.description,
-      tags: Array.isArray(nextUpdates.tags) ? nextUpdates.tags : lastSavedRef.current.tags,
-    }
-
-    pendingUpdatesRef.current = {}
-  }, [id, updateNote])
+  const flushPendingUpdates = useCallback(() => saverRef.current?.flush(), [])
 
   useEffect(() => {
     return () => {
-      flushPendingUpdates()
+      void flushPendingUpdates()
     }
   }, [flushPendingUpdates])
 
@@ -165,51 +152,30 @@ export default function NoteEditorScreen() {
         description: note.description ?? '',
         tags: note.tags ?? [],
       }
-      pendingUpdatesRef.current = {}
+      latestDraftRef.current = lastSavedRef.current
+      saverRef.current?.reset(lastSavedRef.current)
     }
   }, [note])
 
-  const debouncedUpdate = useCallback((updates: PendingUpdates) => {
-    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates }
-
-    // Drop unchanged fields early to avoid redundant network calls on flush.
-    if (
-      typeof pendingUpdatesRef.current.title === 'string' &&
-      pendingUpdatesRef.current.title === lastSavedRef.current.title
-    ) {
-      delete pendingUpdatesRef.current.title
-    }
-    if (
-      typeof pendingUpdatesRef.current.description === 'string' &&
-      pendingUpdatesRef.current.description === lastSavedRef.current.description
-    ) {
-      delete pendingUpdatesRef.current.description
-    }
-    if (
-      Array.isArray(pendingUpdatesRef.current.tags) &&
-      areStringArraysEqual(pendingUpdatesRef.current.tags, lastSavedRef.current.tags)
-    ) {
-      delete pendingUpdatesRef.current.tags
-    }
-
-    if (saveTimeout.current) clearTimeout(saveTimeout.current)
-    saveTimeout.current = setTimeout(() => {
-      flushPendingUpdates()
-    }, 1000)
-  }, [flushPendingUpdates])
+  const scheduleSave = useCallback(() => {
+    saverRef.current?.schedule({ ...latestDraftRef.current })
+  }, [])
 
   const handleTitleChange = (newTitle: string) => {
     setTitle(newTitle)
-    debouncedUpdate({ title: newTitle })
+    latestDraftRef.current = { ...latestDraftRef.current, title: newTitle }
+    scheduleSave()
   }
 
   const handleContentChange = (html: string) => {
-    debouncedUpdate({ description: html })
+    latestDraftRef.current = { ...latestDraftRef.current, description: html }
+    scheduleSave()
   }
 
   const handleTagsChange = (nextTags: string[]) => {
     setTags(nextTags)
-    debouncedUpdate({ tags: nextTags })
+    latestDraftRef.current = { ...latestDraftRef.current, tags: nextTags }
+    scheduleSave()
   }
 
   const handleTagPress = (tag: string) => {
@@ -219,7 +185,7 @@ export default function NoteEditorScreen() {
   const handleEditorBlur = useCallback(() => {
     setIsEditorFocused(false)
     // Flush any pending save immediately when editor loses focus
-    flushPendingUpdates()
+    void flushPendingUpdates()
   }, [flushPendingUpdates])
 
   const handleToolbarCommand = useCallback((method: string, args?: unknown[]) => {

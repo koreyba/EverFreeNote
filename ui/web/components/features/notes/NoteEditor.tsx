@@ -8,6 +8,7 @@ import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { TagInput } from "@/components/TagInput"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
+import { createDebouncedLatest } from "@core/utils/debouncedLatest"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
@@ -51,37 +52,73 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
 
+  const selectedTagsRef = React.useRef<string[]>(selectedTags)
+  React.useEffect(() => {
+    selectedTagsRef.current = selectedTags
+  }, [selectedTags])
+
+  const onAutoSaveRef = React.useRef(onAutoSave)
+  React.useEffect(() => {
+    onAutoSaveRef.current = onAutoSave
+  }, [onAutoSave])
+
+  const noteIdRef = React.useRef(noteId)
+  React.useEffect(() => {
+    noteIdRef.current = noteId
+  }, [noteId])
+
   // Helper to get current form data from refs (single source of truth)
   const getFormData = React.useCallback(() => ({
     title: titleInputRef.current?.value ?? initialTitle,
     description: editorRef.current?.getHTML() ?? initialDescription,
-    tags: buildTagString(selectedTags),
-  }), [initialTitle, initialDescription, selectedTags])
+    tags: buildTagString(selectedTagsRef.current),
+  }), [initialTitle, initialDescription])
+
+  type AutoSavePayload = { noteId?: string; title: string; description: string; tags: string }
+  const getAutoSavePayload = React.useCallback((overrides: Partial<AutoSavePayload> = {}): AutoSavePayload => {
+    return {
+      noteId: noteIdRef.current,
+      ...getFormData(),
+      ...overrides,
+    }
+  }, [getFormData])
 
   const debouncedTagQuery = useDebouncedCallback((value: string) => {
     setTagQuery(normalizeTag(value))
   }, 320)
 
 
-  const debouncedAutoSave = useDebouncedCallback(
-    async () => {
-      if (!onAutoSave) return
-      try {
-        await onAutoSave({ noteId, ...getFormData() })
-      } catch {
-        // Errors handled upstream
-      }
-    },
-    autosaveDelayMs
-  )
+  const debouncedAutoSave = React.useMemo(() => {
+    return createDebouncedLatest<AutoSavePayload>({
+      delayMs: autosaveDelayMs,
+      isEqual: (a, b) => a.noteId === b.noteId && a.title === b.title && a.description === b.description && a.tags === b.tags,
+      onFlush: async (payload) => {
+        const handler = onAutoSaveRef.current
+        if (!handler) return
+        try {
+          await handler(payload)
+        } catch {
+          // Errors handled upstream
+        }
+      },
+    })
+  }, [autosaveDelayMs])
 
   // Sync editor content when switching notes
   React.useEffect(() => {
     editorRef.current?.setContent(initialDescription)
     setInputResetKey((k) => k + 1)
-    setSelectedTags(parseTagString(initialTags))
+    const parsed = parseTagString(initialTags)
+    setSelectedTags(parsed)
+    selectedTagsRef.current = parsed
     debouncedTagQuery.cancel()
     setTagQuery("")
+    debouncedAutoSave.reset({
+      noteId,
+      title: initialTitle,
+      description: initialDescription,
+      tags: buildTagString(parsed),
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTitle, initialDescription, initialTags])
 
@@ -107,9 +144,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
   // Trigger debounced autosave on any content change
   const handleContentChange = React.useCallback(() => {
-    if (!onAutoSave) return
-    debouncedAutoSave.call()
-  }, [onAutoSave, debouncedAutoSave])
+    if (!onAutoSaveRef.current) return
+    debouncedAutoSave.schedule(getAutoSavePayload())
+  }, [debouncedAutoSave, getAutoSavePayload])
 
   const suggestions = useTagSuggestions({
     allTags: availableTags,
@@ -120,36 +157,42 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const addTags = React.useCallback((nextTags: string[]) => {
     const normalized = normalizeTagList(nextTags)
     if (normalized.length === 0) return
-    setSelectedTags((prev) => {
-      const existing = new Set(prev)
-      const merged = [...prev]
+    const prev = selectedTagsRef.current
+    const existing = new Set(prev)
+    const merged = [...prev]
       for (const tag of normalized) {
         if (existing.has(tag)) continue
         existing.add(tag)
         merged.push(tag)
       }
-      return merged
-    })
+    selectedTagsRef.current = merged
+    setSelectedTags(merged)
     debouncedTagQuery.cancel()
     setTagQuery("")
     // Trigger autosave when tags change
-    debouncedAutoSave.call()
-  }, [debouncedTagQuery, debouncedAutoSave])
+    if (onAutoSaveRef.current) {
+      debouncedAutoSave.schedule(getAutoSavePayload({ tags: buildTagString(merged) }))
+    }
+  }, [debouncedTagQuery, debouncedAutoSave, getAutoSavePayload])
 
   const removeTag = React.useCallback((tagToRemove: string) => {
-    setSelectedTags((prev) => prev.filter((tag) => tag !== tagToRemove))
+    const next = selectedTagsRef.current.filter((tag) => tag !== tagToRemove)
+    selectedTagsRef.current = next
+    setSelectedTags(next)
     // Trigger autosave when tags change
-    debouncedAutoSave.call()
-  }, [debouncedAutoSave])
+    if (onAutoSaveRef.current) {
+      debouncedAutoSave.schedule(getAutoSavePayload({ tags: buildTagString(next) }))
+    }
+  }, [debouncedAutoSave, getAutoSavePayload])
 
 
   // Expose API for parent component to flush pending saves
   React.useImperativeHandle(ref, () => ({
     flushPendingSave: async () => {
-      if (!onAutoSave) return
-      debouncedAutoSave.flush()
+      if (!onAutoSaveRef.current) return
+      await debouncedAutoSave.flush()
     }
-  }), [onAutoSave, debouncedAutoSave])
+  }), [debouncedAutoSave])
 
   return (
     <div className="flex-1 flex min-h-0 flex-col">
