@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useNotesQuery, useFlattenedNotes } from './useNotesQuery'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import { useInfiniteScroll } from './useInfiniteScroll'
-import type { NoteViewModel, NoteInsert, NoteUpdate } from '@core/types/domain'
+import type { NoteViewModel, NoteInsert, NoteUpdate, SearchResult } from '@core/types/domain'
 import { useNoteAuth } from './useNoteAuth'
 import { useNoteSearch } from './useNoteSearch'
 import { useNoteSelection } from './useNoteSelection'
@@ -13,6 +13,7 @@ import { useNoteSync } from './useNoteSync'
 import type { MutationQueueItemInput, CachedNote } from '@core/types/offline'
 import { v4 as uuidv4 } from 'uuid'
 import { applyNoteOverlay } from '@core/utils/overlay'
+import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
 import { parseTagString } from '@ui/web/lib/tags'
 
 export type EditFormState = {
@@ -153,6 +154,25 @@ export function useNoteAppController() {
     return applyNoteOverlay(baseNotes, offlineOverlay) as NoteViewModel[]
   }, [baseNotes, offlineOverlay])
 
+  const notesById = useMemo(() => {
+    return new Map(notes.map((note) => [note.id, note]))
+  }, [notes])
+
+  const resolveSearchResult = useCallback((note: SearchResult): SearchResult => {
+    const latest = pickLatestNote([notesById.get(note.id), note])
+    if (!latest) return note
+    return mergeNoteFields(note, latest)
+  }, [notesById])
+
+  const mergedFtsData = useMemo(() => {
+    if (!aggregatedFtsData) return undefined
+    if (!aggregatedFtsData.results.length) return aggregatedFtsData
+    return {
+      ...aggregatedFtsData,
+      results: aggregatedFtsData.results.map(resolveSearchResult)
+    }
+  }, [aggregatedFtsData, resolveSearchResult])
+
   // Total count of notes
   const totalNotes = useMemo(() => {
     const pages = notesQuery.data?.pages
@@ -163,8 +183,8 @@ export function useNoteAppController() {
     return notes.length
   }, [notesQuery.data?.pages, notes.length]) ?? 0
 
-  const notesDisplayed = showFTSResults && aggregatedFtsData ? aggregatedFtsData.results.length : notes.length
-  const baseTotal = showFTSResults && aggregatedFtsData ? aggregatedFtsData.total : totalNotes
+  const notesDisplayed = showFTSResults && mergedFtsData ? mergedFtsData.results.length : notes.length
+  const baseTotal = showFTSResults && mergedFtsData ? mergedFtsData.total : totalNotes
   const notesTotal = baseTotal
   const selectedCount = selectedNoteIds.size
 
@@ -515,11 +535,15 @@ export function useNoteAppController() {
   }
 
   const selectAllVisible = () => {
-    const source = showFTSResults && aggregatedFtsData
-      ? aggregatedFtsData.results
+    const source = showFTSResults && mergedFtsData
+      ? mergedFtsData.results
       : notes
     selectAllVisibleCallback(source)
   }
+
+  const wrappedHandleSearchResultClick = useCallback((note: SearchResult) => {
+    handleSearchResultClick(resolveSearchResult(note))
+  }, [handleSearchResultClick, resolveSearchResult])
 
 
   const deleteSelectedNotes = async () => {
@@ -605,7 +629,7 @@ export function useNoteAppController() {
     notes,
     notesQuery,
     ftsSearchResult,
-    ftsData: aggregatedFtsData,
+    ftsData: mergedFtsData,
     ftsResults: ftsAccumulatedResults,
     ftsHasMore,
     ftsLoadingMore,
@@ -638,7 +662,7 @@ export function useNoteAppController() {
     confirmDeleteNote,
     handleRemoveTagFromNote,
     handleSelectNote: wrappedHandleSelectNote,
-    handleSearchResultClick,
+    handleSearchResultClick: wrappedHandleSearchResultClick,
     enterSelectionMode,
     exitSelectionMode,
     toggleNoteSelection,
