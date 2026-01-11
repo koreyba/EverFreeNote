@@ -15,6 +15,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { applyNoteOverlay } from '@core/utils/overlay'
 import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
 import { parseTagString } from '@ui/web/lib/tags'
+import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 
 export type EditFormState = {
   title: string
@@ -66,6 +67,20 @@ export function useNoteAppController() {
   const [saving, setSaving] = useState(false)
   const [autoSaving, setAutoSaving] = useState(false)
 
+  // Editor ref is registered by UI (NotesShell) and used here to guarantee flush on navigation.
+  const noteEditorRef = useRef<React.RefObject<NoteEditorHandle | null> | null>(null)
+
+  const registerNoteEditorRef = useCallback((ref: React.RefObject<NoteEditorHandle | null>) => {
+    noteEditorRef.current = ref
+  }, [])
+
+  const flushPendingEditorSave = useCallback(async () => {
+    if (!isEditing) return
+    const handle = noteEditorRef.current?.current
+    if (!handle) return
+    await handle.flushPendingSave()
+  }, [isEditing])
+
 
   // -- Dependencies --
   const queryClient = useQueryClient()
@@ -98,26 +113,27 @@ export function useNoteAppController() {
     deleteNoteMutation
   })
 
-  // Wrap handlers to reset lastSavedAt when switching notes
-  const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null, editorRef?: React.RefObject<{ flushPendingSave: (options?: { includePendingTag?: boolean }) => Promise<void> } | null>) => {
-    // Flush pending autosave before switching notes
-    if (isEditing && editorRef?.current) {
-      await editorRef.current.flushPendingSave({ includePendingTag: true })
+  // Wrap handlers to reset lastSavedAt when switching notes and flush pending autosave
+  const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null) => {
+    await flushPendingEditorSave()
+
+    // If user clicks the note that's already open, don't overwrite selectedNote with a potentially stale instance.
+    // Just exit editing mode (after flush) and keep the current selectedNote snapshot.
+    if (note?.id && selectedNoteRef.current?.id === note.id) {
+      setIsEditing(false)
+      setLastSavedAt(null)
+      return
     }
-    
+
     handleSelectNote(note)
     setLastSavedAt(null)
-  }, [handleSelectNote, setLastSavedAt, isEditing])
+  }, [flushPendingEditorSave, handleSelectNote, setLastSavedAt, setIsEditing])
 
-  const wrappedHandleCreateNote = useCallback(async (
-    editorRef?: React.RefObject<{ flushPendingSave: (options?: { includePendingTag?: boolean }) => Promise<void> } | null>
-  ) => {
-    if (isEditing && editorRef?.current) {
-      await editorRef.current.flushPendingSave({ includePendingTag: true })
-    }
+  const wrappedHandleCreateNote = useCallback(async () => {
+    await flushPendingEditorSave()
     handleCreateNote()
     setLastSavedAt(null)
-  }, [handleCreateNote, setLastSavedAt, isEditing])
+  }, [flushPendingEditorSave, handleCreateNote, setLastSavedAt])
 
   // Combine provider loading with local auth loading
   const combinedLoading = authLoadingState
@@ -204,11 +220,13 @@ export function useNoteAppController() {
     selectedNoteRef.current = selectedNote
   }, [notes, selectedNote])
 
-  const handleTagClick = useCallback((tag: string) => {
+  const handleTagClick = useCallback(async (tag: string) => {
+    await flushPendingEditorSave()
     onTagClick(tag)
     setSelectedNote(null)
     setIsEditing(false)
-  }, [onTagClick, setSelectedNote, setIsEditing])
+    setLastSavedAt(null)
+  }, [flushPendingEditorSave, onTagClick, setSelectedNote, setIsEditing, setLastSavedAt])
 
   const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
     if (!user) return
@@ -289,6 +307,18 @@ export function useNoteAppController() {
           description: nextDescription,
           tags: parsedTags,
         }
+
+        // Keep currently selected note in sync immediately (prevents stale NoteView after leaving editor)
+        setSelectedNote((prev) => {
+          if (!prev || prev.id !== targetId) return prev
+          return {
+            ...prev,
+            title: partialPayload.title ?? prev.title,
+            description: partialPayload.description ?? (prev.description ?? ''),
+            tags: partialPayload.tags ?? prev.tags,
+            updated_at: clientUpdatedAt,
+          } as NoteViewModel
+        })
 
         // Update offline cache + overlay immediately
         const cached: CachedNote = {
@@ -541,9 +571,18 @@ export function useNoteAppController() {
     selectAllVisibleCallback(source)
   }
 
-  const wrappedHandleSearchResultClick = useCallback((note: SearchResult) => {
+  const wrappedHandleSearchResultClick = useCallback(async (note: SearchResult) => {
+    await flushPendingEditorSave()
+
+    if (note?.id && selectedNoteRef.current?.id === note.id) {
+      setIsEditing(false)
+      setLastSavedAt(null)
+      return
+    }
+
     handleSearchResultClick(resolveSearchResult(note))
-  }, [handleSearchResultClick, resolveSearchResult])
+    setLastSavedAt(null)
+  }, [flushPendingEditorSave, handleSearchResultClick, resolveSearchResult, setLastSavedAt, setIsEditing])
 
 
   const deleteSelectedNotes = async () => {
@@ -606,6 +645,7 @@ export function useNoteAppController() {
   }
 
   return {
+      registerNoteEditorRef,
     // State
     user,
     loading: combinedLoading,
