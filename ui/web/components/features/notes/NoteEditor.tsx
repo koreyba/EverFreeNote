@@ -110,11 +110,21 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     lastResetNoteIdRef.current = nextNoteId
 
     // New note id assignment (undefined -> id) happens during autosave create.
-    // Treat it as the same editing session: keep focus/selection as-is and just
-    // update the debounced baseline to the new id.
+    // Treat it as the same editing session ONLY if the incoming props match the
+    // current form state (otherwise this is a real switch from "new note" to an
+    // existing note and we must sync content).
     if (!prevNoteId && nextNoteId) {
-      debouncedAutoSave.reset(getAutoSavePayload({ noteId: nextNoteId }))
-      return
+      const current = getFormData()
+      const incomingTags = buildTagString(parseTagString(initialTags))
+      const isSameEditingSession =
+        current.title === initialTitle &&
+        current.description === initialDescription &&
+        current.tags === incomingTags
+
+      if (isSameEditingSession) {
+        debouncedAutoSave.reset(getAutoSavePayload({ noteId: nextNoteId }))
+        return
+      }
     }
 
     editorRef.current?.setContent(initialDescription)
