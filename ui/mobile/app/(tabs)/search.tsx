@@ -2,8 +2,7 @@ import { View, TextInput, StyleSheet, ActivityIndicator, Text, Pressable, Alert 
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
-import { useSearch, useDeleteNote } from '@ui/mobile/hooks'
-import { useQueryClient } from '@tanstack/react-query'
+import { useSearch, useDeleteNote, useOpenNote } from '@ui/mobile/hooks'
 import { Search, X } from 'lucide-react-native'
 import type { Note } from '@core/types/domain'
 import { useSupabase, useTheme, useSwipeContext } from '@ui/mobile/providers'
@@ -20,7 +19,6 @@ type SearchResultItem = Note & {
 
 export default function SearchScreen() {
     const router = useRouter()
-    const queryClient = useQueryClient()
     const { colors } = useTheme()
     const styles = useMemo(() => createStyles(colors), [colors])
     const params = useLocalSearchParams<{ tag?: string }>()
@@ -82,10 +80,11 @@ export default function SearchScreen() {
         })
     }, [deleteNote])
 
+    const openNote = useOpenNote()
+
     const handleNotePress = useCallback((note: Note) => {
-        queryClient.setQueryData(["note", note.id], note)
-        router.push(`/note/${note.id}`)
-    }, [queryClient, router])
+        openNote(note)
+    }, [openNote])
 
     const results = data?.pages.flatMap((page) => page.results) ?? []
 

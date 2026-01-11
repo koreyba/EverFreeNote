@@ -55,6 +55,7 @@ description: Define testing approach, test cases, and quality assurance
 - [x] Mobile: new note + paste -> back (UI + hardware) -> reopen note keeps content.
 - [x] Mobile: new note + typing -> back (UI + hardware) -> reopen note keeps content.
 - [x] Mobile: existing note + paste/typing -> back (UI + hardware) -> reopen note keeps content.
+- [x] Mobile: search results -> edit note -> back -> reopen note shows latest content.
 - [x] Web: new note + paste/typing -> navigate away (save/read/new note/other note) -> reopen note keeps content.
 - [x] Web: existing note + paste/typing -> navigate away -> reopen note keeps content.
 
@@ -84,6 +85,8 @@ description: Define testing approach, test cases, and quality assurance
 - Latest validation: `npm run validate` (ui/mobile) (pass, 2026-01-09).
 - Latest targeted tests: `npm test -- tests/integration/noteSaveExit.test.tsx` (pass, 2026-01-10).
 - Latest targeted tests: `npx cypress run --component --spec cypress/component/features/notes/NoteEditorSaveExit.cy.tsx` (failed to run: Cypress returned exit code 1 with no output, 2026-01-10).
+- Latest targeted tests: `npm test -- noteCache.test.ts` (ui/mobile) (pass, 2026-01-10).
+- Latest targeted tests: `npm test -- searchScreen.test.tsx` (ui/mobile) (pass, 2026-01-10).
 
 ## Manual Testing
 **What requires human validation?**
