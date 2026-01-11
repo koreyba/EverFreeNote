@@ -56,6 +56,7 @@ import { FontSize } from "@/extensions/FontSize"
 import { browser } from "@ui/web/adapters/browser"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { SmartPasteService } from "@core/services/smartPaste"
+import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
 
 export type RichTextEditorHandle = {
   getHTML: () => string
@@ -583,10 +584,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       // handle caret placement (don't override mid-text clicks).
       if (editorRoot.contains(target) && editorRoot !== target) return
 
-      // Otherwise it's a "background" click (padding/empty area). Match mobile UX:
-      // move caret to the end for non-empty notes.
-      event.preventDefault()
-      editor.chain().focus('end').run()
+      const result = placeCaretFromCoords(editor.view, event.clientX, event.clientY)
+      if (result.handled) {
+        event.preventDefault()
+      }
     }, [editor])
 
     // Expose methods via ref

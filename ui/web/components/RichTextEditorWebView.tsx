@@ -19,6 +19,7 @@ import Heading from "@tiptap/extension-heading"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { FontSize } from "@/extensions/FontSize"
 import { SmartPasteService } from "@core/services/smartPaste"
+import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
 
 export type RichTextEditorWebViewHandle = {
   getHTML: () => string
@@ -92,29 +93,25 @@ const RichTextEditorWebView = React.forwardRef<
     return true
   }, [onContentChange])
 
-  // Handle clicks in empty space below content - focus at document end
+  // Handle background clicks (padding/gaps) in a ProseMirror-native way.
+  // This prevents "jump to end" when clicking internal vertical gaps (e.g. after headings),
+  // while still allowing bottom-tail clicks to append at the end.
   const handleClick = React.useCallback(
     (_view: unknown, _pos: number, event: MouseEvent) => {
       const editor = editorRef.current
       if (!editor) return false
 
-      const editorDom = editor.view.dom
-      const lastChild = editorDom.lastElementChild
+      const target = event.target
+      const root = editor.view.dom
 
-      if (lastChild) {
-        const lastRect = lastChild.getBoundingClientRect()
-        // If click is below the last content element, focus at end
-        if (event.clientY > lastRect.bottom) {
-          editor.commands.focus('end')
-          return true
-        }
-      } else {
-        // Empty document - focus at end
-        editor.commands.focus('end')
-        return true
+      // Only take over when clicking the editor root/background.
+      // For clicks inside actual content nodes, let ProseMirror handle caret placement.
+      if (target instanceof HTMLElement && root.contains(target) && target !== root) {
+        return false
       }
 
-      return false
+      const result = placeCaretFromCoords(editor.view, event.clientX, event.clientY)
+      return result.handled
     },
     []
   )

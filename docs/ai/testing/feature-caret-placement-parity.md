@@ -18,28 +18,37 @@ description: Define testing approach, test cases, and quality assurance
 **What individual components need testing?**
 
 ### Component/Module 1
-- [ ] Test case 1: `placeCaretFromCoords` returns “handled=false” when coords are outside and fallback is not applicable
-- [ ] Test case 2: `placeCaretFromCoords` returns “handled=true” and dispatches selection when `posAtCoords` returns a position
-- [ ] Additional coverage: start/end fallback logic using editor bounds
+- [x] `placeCaretFromCoords` returns “handled=false” when coords are inside bounds and `posAtCoords` returns null
+- [x] `placeCaretFromCoords` returns “handled=true” and dispatches selection when `posAtCoords` returns a position
+- [x] Covers start/end fallback logic using editor bounds
+- [x] Defensive behavior: exceptions return noop
+
+Implementation: `ui/mobile/tests/unit/core-utils-prosemirrorCaret.test.ts`
 
 ### Component/Module 2
-- [ ] Web handler calls the helper only for background clicks
-- [ ] Web handler does not interfere with inside-text clicks
-- [ ] Mobile handler maps touch coordinates correctly
+- [x] Web handler calls the helper only for background/root clicks
+- [x] Web handler does not interfere with inside-text clicks
+- [x] WebView/mobile editor uses the same helper for parity (background/root clicks only)
 
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] Web: click in an internal vertical gap between blocks should not jump to end
-- [ ] Web: click below last block should place caret at end
-- [ ] Mobile/WebView: same scenarios as Web (depending on available harness)
+- [x] Web: click in an internal vertical gap between blocks should not jump to end
+- [x] Web: click below last block should place caret at end
+- [x] Web: click above first block places caret at start
+- [x] Web: right-of-line click inside paragraph stays native and edits that paragraph
+- [x] Mobile/WebView: parity checks for internal gap + bottom tail + above-first-block + right-of-line
+
+Specs:
+- `cypress/component/editor/RichTextEditor.cy.tsx`
+- `cypress/component/RichTextEditorWebView.cy.tsx`
 
 ## End-to-End Tests
 **What user flows need validation?**
 
-- [ ] User flow 1: Edit note with headings and paragraphs; click in mid-gap; type; inserted near gap
-- [ ] User flow 2: Scroll to bottom; click empty bottom area; type; appended at end
-- [ ] Regression of adjacent features: clicking inside text still places caret normally
+- [x] User flow: headings + paragraphs; click in mid-gap; type; inserted near gap
+- [x] User flow: click empty bottom area; type; appended at end
+- [x] Regression: clicking inside text still places caret normally
 
 ## Test Data
 **What data do we use for testing?**
@@ -53,6 +62,11 @@ description: Define testing approach, test cases, and quality assurance
 - `npm run validate`
 - Targeted Cypress component specs (web + webview)
 - Record any flake risks and mitigations
+
+Commands:
+- `cd ui/mobile && npm test -- core-utils-prosemirrorCaret.test.ts`
+- `npx cypress run --component --spec cypress/component/editor/RichTextEditor.cy.tsx`
+- `npx cypress run --component --spec cypress/component/RichTextEditorWebView.cy.tsx`
 
 ## Manual Testing
 **What requires human validation?**
