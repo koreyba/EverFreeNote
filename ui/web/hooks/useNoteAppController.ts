@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useNotesQuery, useFlattenedNotes } from './useNotesQuery'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import { useInfiniteScroll } from './useInfiniteScroll'
-import type { NoteViewModel, NoteInsert, NoteUpdate } from '@core/types/domain'
+import type { NoteViewModel, NoteInsert, NoteUpdate, SearchResult } from '@core/types/domain'
 import { useNoteAuth } from './useNoteAuth'
 import { useNoteSearch } from './useNoteSearch'
 import { useNoteSelection } from './useNoteSelection'
@@ -13,7 +13,9 @@ import { useNoteSync } from './useNoteSync'
 import type { MutationQueueItemInput, CachedNote } from '@core/types/offline'
 import { v4 as uuidv4 } from 'uuid'
 import { applyNoteOverlay } from '@core/utils/overlay'
+import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
 import { parseTagString } from '@ui/web/lib/tags'
+import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 
 export type EditFormState = {
   title: string
@@ -65,6 +67,20 @@ export function useNoteAppController() {
   const [saving, setSaving] = useState(false)
   const [autoSaving, setAutoSaving] = useState(false)
 
+  // Editor ref is registered by UI (NotesShell) and used here to guarantee flush on navigation.
+  const noteEditorRef = useRef<React.RefObject<NoteEditorHandle | null> | null>(null)
+
+  const registerNoteEditorRef = useCallback((ref: React.RefObject<NoteEditorHandle | null>) => {
+    noteEditorRef.current = ref
+  }, [])
+
+  const flushPendingEditorSave = useCallback(async () => {
+    if (!isEditing) return
+    const handle = noteEditorRef.current?.current
+    if (!handle) return
+    await handle.flushPendingSave()
+  }, [isEditing])
+
 
   // -- Dependencies --
   const queryClient = useQueryClient()
@@ -97,21 +113,27 @@ export function useNoteAppController() {
     deleteNoteMutation
   })
 
-  // Wrap handlers to reset lastSavedAt when switching notes
-  const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null, editorRef?: React.RefObject<{ flushPendingSave: (options?: { includePendingTag?: boolean }) => Promise<void> } | null>) => {
-    // Flush pending autosave before switching notes
-    if (isEditing && editorRef?.current) {
-      await editorRef.current.flushPendingSave({ includePendingTag: true })
+  // Wrap handlers to reset lastSavedAt when switching notes and flush pending autosave
+  const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null) => {
+    await flushPendingEditorSave()
+
+    // If user clicks the note that's already open, don't overwrite selectedNote with a potentially stale instance.
+    // Just exit editing mode (after flush) and keep the current selectedNote snapshot.
+    if (note?.id && selectedNoteRef.current?.id === note.id) {
+      setIsEditing(false)
+      setLastSavedAt(null)
+      return
     }
-    
+
     handleSelectNote(note)
     setLastSavedAt(null)
-  }, [handleSelectNote, setLastSavedAt, isEditing])
+  }, [flushPendingEditorSave, handleSelectNote, setLastSavedAt, setIsEditing])
 
-  const wrappedHandleCreateNote = useCallback(() => {
+  const wrappedHandleCreateNote = useCallback(async () => {
+    await flushPendingEditorSave()
     handleCreateNote()
     setLastSavedAt(null)
-  }, [handleCreateNote, setLastSavedAt])
+  }, [flushPendingEditorSave, handleCreateNote, setLastSavedAt])
 
   // Combine provider loading with local auth loading
   const combinedLoading = authLoadingState
@@ -148,6 +170,25 @@ export function useNoteAppController() {
     return applyNoteOverlay(baseNotes, offlineOverlay) as NoteViewModel[]
   }, [baseNotes, offlineOverlay])
 
+  const notesById = useMemo(() => {
+    return new Map(notes.map((note) => [note.id, note]))
+  }, [notes])
+
+  const resolveSearchResult = useCallback((note: SearchResult): SearchResult => {
+    const latest = pickLatestNote([notesById.get(note.id), note])
+    if (!latest) return note
+    return mergeNoteFields(note, latest)
+  }, [notesById])
+
+  const mergedFtsData = useMemo(() => {
+    if (!aggregatedFtsData) return undefined
+    if (!aggregatedFtsData.results.length) return aggregatedFtsData
+    return {
+      ...aggregatedFtsData,
+      results: aggregatedFtsData.results.map(resolveSearchResult)
+    }
+  }, [aggregatedFtsData, resolveSearchResult])
+
   // Total count of notes
   const totalNotes = useMemo(() => {
     const pages = notesQuery.data?.pages
@@ -158,8 +199,8 @@ export function useNoteAppController() {
     return notes.length
   }, [notesQuery.data?.pages, notes.length]) ?? 0
 
-  const notesDisplayed = showFTSResults && aggregatedFtsData ? aggregatedFtsData.results.length : notes.length
-  const baseTotal = showFTSResults && aggregatedFtsData ? aggregatedFtsData.total : totalNotes
+  const notesDisplayed = showFTSResults && mergedFtsData ? mergedFtsData.results.length : notes.length
+  const baseTotal = showFTSResults && mergedFtsData ? mergedFtsData.total : totalNotes
   const notesTotal = baseTotal
   const selectedCount = selectedNoteIds.size
 
@@ -179,11 +220,13 @@ export function useNoteAppController() {
     selectedNoteRef.current = selectedNote
   }, [notes, selectedNote])
 
-  const handleTagClick = useCallback((tag: string) => {
+  const handleTagClick = useCallback(async (tag: string) => {
+    await flushPendingEditorSave()
     onTagClick(tag)
     setSelectedNote(null)
     setIsEditing(false)
-  }, [onTagClick, setSelectedNote, setIsEditing])
+    setLastSavedAt(null)
+  }, [flushPendingEditorSave, onTagClick, setSelectedNote, setIsEditing, setLastSavedAt])
 
   const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
     if (!user) return
@@ -264,6 +307,18 @@ export function useNoteAppController() {
           description: nextDescription,
           tags: parsedTags,
         }
+
+        // Keep currently selected note in sync immediately (prevents stale NoteView after leaving editor)
+        setSelectedNote((prev) => {
+          if (!prev || prev.id !== targetId) return prev
+          return {
+            ...prev,
+            title: partialPayload.title ?? prev.title,
+            description: partialPayload.description ?? (prev.description ?? ''),
+            tags: partialPayload.tags ?? prev.tags,
+            updated_at: clientUpdatedAt,
+          } as NoteViewModel
+        })
 
         // Update offline cache + overlay immediately
         const cached: CachedNote = {
@@ -510,11 +565,24 @@ export function useNoteAppController() {
   }
 
   const selectAllVisible = () => {
-    const source = showFTSResults && aggregatedFtsData
-      ? aggregatedFtsData.results
+    const source = showFTSResults && mergedFtsData
+      ? mergedFtsData.results
       : notes
     selectAllVisibleCallback(source)
   }
+
+  const wrappedHandleSearchResultClick = useCallback(async (note: SearchResult) => {
+    await flushPendingEditorSave()
+
+    if (note?.id && selectedNoteRef.current?.id === note.id) {
+      setIsEditing(false)
+      setLastSavedAt(null)
+      return
+    }
+
+    handleSearchResultClick(resolveSearchResult(note))
+    setLastSavedAt(null)
+  }, [flushPendingEditorSave, handleSearchResultClick, resolveSearchResult, setLastSavedAt, setIsEditing])
 
 
   const deleteSelectedNotes = async () => {
@@ -577,6 +645,7 @@ export function useNoteAppController() {
   }
 
   return {
+      registerNoteEditorRef,
     // State
     user,
     loading: combinedLoading,
@@ -600,7 +669,7 @@ export function useNoteAppController() {
     notes,
     notesQuery,
     ftsSearchResult,
-    ftsData: aggregatedFtsData,
+    ftsData: mergedFtsData,
     ftsResults: ftsAccumulatedResults,
     ftsHasMore,
     ftsLoadingMore,
@@ -633,7 +702,7 @@ export function useNoteAppController() {
     confirmDeleteNote,
     handleRemoveTagFromNote,
     handleSelectNote: wrappedHandleSelectNote,
-    handleSearchResultClick,
+    handleSearchResultClick: wrappedHandleSearchResultClick,
     enterSelectionMode,
     exitSelectionMode,
     toggleNoteSelection,

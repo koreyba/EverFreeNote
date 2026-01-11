@@ -7,36 +7,33 @@ import { Button } from '@ui/mobile/components/ui'
 import { useTheme } from '@ui/mobile/providers'
 import { useMemo, useCallback } from 'react'
 import type { Note } from '@core/types/domain'
-import { useNotes, useCreateNote, useDeleteNote } from '@ui/mobile/hooks'
+import { useNotes, useCreateNote, useDeleteNote, useOpenNote } from '@ui/mobile/hooks'
 import { useSwipeContext } from '@ui/mobile/providers'
-import { useQueryClient } from '@tanstack/react-query'
 
 
 export default function NotesScreen() {
   const router = useRouter()
-  const queryClient = useQueryClient()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isRefetching } = useNotes()
   const { mutate: createNote } = useCreateNote()
   const { mutate: deleteNote } = useDeleteNote()
   const { closeAll } = useSwipeContext()
+  const openNote = useOpenNote()
 
   const notes = data?.pages.flatMap((page) => page.notes) ?? []
 
   const handleCreateNote = useCallback(() => {
     createNote({ title: 'New note', description: '', tags: [] }, {
       onSuccess: (newNote) => {
-        queryClient.setQueryData(['note', newNote.id], newNote)
-        router.push(`/note/${newNote.id}`)
+        openNote(newNote)
       }
     })
-  }, [createNote, queryClient, router])
+  }, [createNote, openNote])
 
   const handleOpenNote = useCallback((note: Note) => {
-    queryClient.setQueryData(['note', note.id], note)
-    router.push(`/note/${note.id}`)
-  }, [queryClient, router])
+    openNote(note)
+  }, [openNote])
 
   const handleTagPress = useCallback((tag: string) => {
     router.push({ pathname: '/(tabs)/search', params: { tag } })

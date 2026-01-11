@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard, ScrollView } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
 import { EditorToolbar } from '@ui/mobile/components/EditorToolbar'
@@ -9,6 +10,7 @@ import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
 import { Trash2 } from 'lucide-react-native'
 import { Pressable } from 'react-native'
+import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 
 const decodeHtmlEntities = (value: string) => {
   return value
@@ -70,21 +72,61 @@ export default function NoteEditorScreen() {
   const router = useRouter()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
+  const insets = useSafeAreaInsets()
 
   const editorRef = useRef<EditorWebViewHandle>(null)
   const [title, setTitle] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
-  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
+    title: '',
+    description: '',
+    tags: [],
+  })
+
+  const lastSavedRef = useRef<{ title: string; description: string; tags: string[] }>({
+    title: '',
+    description: '',
+    tags: [],
+  })
+
+  const areStringArraysEqual = (a: string[], b: string[]) => {
+    if (a === b) return true
+    if (a.length !== b.length) return false
+    for (let i = 0; i < a.length; i += 1) {
+      if (a[i] !== b[i]) return false
+    }
+    return true
+  }
+
+  const buildPatch = useCallback((next: { title: string; description: string; tags: string[] }) => {
+    const patch: { title?: string; description?: string; tags?: string[] } = {}
+    if (next.title !== lastSavedRef.current.title) patch.title = next.title
+    if (next.description !== lastSavedRef.current.description) patch.description = next.description
+    if (!areStringArraysEqual(next.tags, lastSavedRef.current.tags)) patch.tags = next.tags
+    return patch
+  }, [])
+
+  const saverRef = useRef<ReturnType<typeof createDebouncedLatest<{ title: string; description: string; tags: string[] }>> | null>(null)
+  saverRef.current ??= createDebouncedLatest({
+      delayMs: 1000,
+      isEqual: (a, b) => a.title === b.title && a.description === b.description && areStringArraysEqual(a.tags, b.tags),
+      onFlush: (next) => {
+        const patch = buildPatch(next)
+        if (Object.keys(patch).length === 0) return
+        updateNote({ id, updates: patch })
+        lastSavedRef.current = next
+      },
+    })
+
+  const flushPendingUpdates = useCallback(() => saverRef.current?.flush(), [])
 
   useEffect(() => {
     return () => {
-      if (saveTimeout.current) {
-        clearTimeout(saveTimeout.current)
-      }
+      void flushPendingUpdates()
     }
-  }, [])
+  }, [flushPendingUpdates])
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -105,34 +147,46 @@ export default function NoteEditorScreen() {
     if (note) {
       setTitle(note.title || '')
       setTags(note.tags ?? [])
+      lastSavedRef.current = {
+        title: note.title ?? '',
+        description: note.description ?? '',
+        tags: note.tags ?? [],
+      }
+      latestDraftRef.current = lastSavedRef.current
+      saverRef.current?.reset(lastSavedRef.current)
     }
   }, [note])
 
-  const debouncedUpdate = useCallback((updates: { title?: string; description?: string; tags?: string[] }) => {
-    if (saveTimeout.current) clearTimeout(saveTimeout.current)
-
-    saveTimeout.current = setTimeout(() => {
-      updateNote({ id, updates })
-    }, 1000)
-  }, [id, updateNote])
+  const scheduleSave = useCallback(() => {
+    saverRef.current?.schedule({ ...latestDraftRef.current })
+  }, [])
 
   const handleTitleChange = (newTitle: string) => {
     setTitle(newTitle)
-    debouncedUpdate({ title: newTitle })
+    latestDraftRef.current = { ...latestDraftRef.current, title: newTitle }
+    scheduleSave()
   }
 
   const handleContentChange = (html: string) => {
-    debouncedUpdate({ description: html })
+    latestDraftRef.current = { ...latestDraftRef.current, description: html }
+    scheduleSave()
   }
 
   const handleTagsChange = (nextTags: string[]) => {
     setTags(nextTags)
-    debouncedUpdate({ tags: nextTags })
+    latestDraftRef.current = { ...latestDraftRef.current, tags: nextTags }
+    scheduleSave()
   }
 
   const handleTagPress = (tag: string) => {
     router.push({ pathname: '/(tabs)/search', params: { tag } })
   }
+
+  const handleEditorBlur = useCallback(() => {
+    setIsEditorFocused(false)
+    // Flush any pending save immediately when editor loses focus
+    void flushPendingUpdates()
+  }, [flushPendingUpdates])
 
   const handleToolbarCommand = useCallback((method: string, args?: unknown[]) => {
     editorRef.current?.runCommand(method, args)
@@ -145,6 +199,8 @@ export default function NoteEditorScreen() {
       },
     })
   }, [deleteNote, id, router])
+
+  const editorPaddingBottom = Math.max(insets.bottom, 0)
 
   if (isLoading) {
     return (
@@ -210,14 +266,16 @@ export default function NoteEditorScreen() {
           style={styles.tags}
         />
       </View>
-      <EditorWebView
-        ref={editorRef}
-        initialContent={note.description || ''}
-        onContentChange={handleContentChange}
-        onFocus={() => setIsEditorFocused(true)}
-        onBlur={() => setIsEditorFocused(false)}
-        loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
-      />
+      <View style={[styles.editorContainer, { paddingBottom: editorPaddingBottom }]}>
+        <EditorWebView
+          ref={editorRef}
+          initialContent={note.description || ''}
+          onContentChange={handleContentChange}
+          onFocus={() => setIsEditorFocused(true)}
+          onBlur={handleEditorBlur}
+          loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
+        />
+      </View>
       {isEditorFocused && (
         <View style={[styles.toolbarContainer, { bottom: keyboardHeight }]}>
           <EditorToolbar onCommand={handleToolbarCommand} />
@@ -231,6 +289,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  editorContainer: {
+    flex: 1,
   },
   header: {
     padding: 16,

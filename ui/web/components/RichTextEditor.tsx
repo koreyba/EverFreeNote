@@ -34,6 +34,7 @@ import {
   Link2,
   List,
   ListOrdered,
+  Minus,
   Outdent,
   Palette,
   RemoveFormatting,
@@ -54,6 +55,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@ui/we
 import { FontSize } from "@/extensions/FontSize"
 import { browser } from "@ui/web/adapters/browser"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
+import { SmartPasteService } from "@core/services/smartPaste"
 
 export type RichTextEditorHandle = {
   getHTML: () => string
@@ -282,6 +284,20 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              data-cy="horizontal-rule-button"
+              variant="ghost"
+              size="sm"
+              onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            >
+              <Minus className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Horizontal rule</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
               data-cy="bullet-list-button"
               variant={editor.isActive("bulletList") ? "secondary" : "ghost"}
               size="sm"
@@ -472,6 +488,8 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 
 const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProps>(
   ({ initialContent, onContentChange, hideToolbar = false }, ref) => {
+    const editorRef = React.useRef<Editor | null>(null)
+    const suppressNextUpdateRef = React.useRef(false)
     // Мемоизация конфигурации расширений для предотвращения пересоздания
     const editorExtensions: Extensions = React.useMemo(() => [
       StarterKit.configure({
@@ -483,7 +501,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
         underline: false,
       }),
       Heading.configure({
-        levels: [1, 2, 3],
+        levels: [1, 2, 3, 4, 5, 6],
       }),
       Underline,
       Highlight.configure({ multicolor: true }),
@@ -504,37 +522,79 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     ], [])
 
     // Мемоизация editorProps для предотвращения ре-рендеров
+    const handlePaste = React.useCallback((_: unknown, event: ClipboardEvent) => {
+      if (!event.clipboardData) return false
+      const editor = editorRef.current
+      if (!editor) return false
+
+      const payload = SmartPasteService.buildPayload(event)
+      if (!payload.html && !payload.text) return false
+
+      const result = SmartPasteService.resolvePaste(payload)
+      event.preventDefault()
+      suppressNextUpdateRef.current = true
+      editor.chain().focus().insertContent(result.html).run()
+
+      // Explicitly trigger onContentChange after paste.
+      // Some environments may not reliably fire onUpdate after insertContent.
+      onContentChange?.()
+      return true
+    }, [onContentChange])
+
     const editorProps = React.useMemo(() => ({
       attributes: {
         class: "focus:outline-none",
       },
-    }), [])
+      handlePaste,
+    }), [handlePaste])
 
     const editor = useEditor({
       immediatelyRender: false,
       extensions: editorExtensions,
       content: initialContent,
       onUpdate: () => {
+        if (suppressNextUpdateRef.current) {
+          suppressNextUpdateRef.current = false
+          return
+        }
         onContentChange?.()
       },
       editorProps,
     })
 
+    React.useEffect(() => {
+      editorRef.current = editor
+      return () => {
+        if (editorRef.current === editor) {
+          editorRef.current = null
+        }
+      }
+    }, [editor])
+
     const handleEditorContainerMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
       if (!editor) return
+
       const target = event.target
-      if (target instanceof HTMLElement && target.closest(".ProseMirror")) {
-        return
-      }
+      if (!(target instanceof HTMLElement)) return
+
+      const editorRoot = editor.view.dom as unknown as HTMLElement
+
+      // If the user clicked inside actual content (e.g. a paragraph/text node), let ProseMirror
+      // handle caret placement (don't override mid-text clicks).
+      if (editorRoot.contains(target) && editorRoot !== target) return
+
+      // Otherwise it's a "background" click (padding/empty area). Match mobile UX:
+      // move caret to the end for non-empty notes.
       event.preventDefault()
-      editor.chain().focus("start").run()
+      editor.chain().focus('end').run()
     }, [editor])
 
     // Expose methods via ref
     React.useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() ?? "",
       setContent: (html: string) => {
-        editor?.commands.setContent(html)
+        // Avoid triggering autosave on programmatic content sync (switching notes)
+        editor?.commands.setContent(html, { emitUpdate: false })
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return

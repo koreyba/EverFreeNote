@@ -36,6 +36,10 @@ type NotesShellProps = {
 export function NotesShell({ controller }: NotesShellProps) {
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
 
+  React.useEffect(() => {
+    controller.registerNoteEditorRef(noteEditorRef)
+  }, [controller])
+
   const {
     user,
     notesDisplayed,
@@ -96,7 +100,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
       >
-        <ListPane controller={controller} noteEditorRef={noteEditorRef} />
+        <ListPane controller={controller} />
       </Sidebar>
 
       <div
@@ -118,7 +122,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   )
 }
 
-function ListPane({ controller, noteEditorRef }: { controller: NoteAppController; noteEditorRef: React.RefObject<NoteEditorHandle | null> }) {
+function ListPane({ controller }: { controller: NoteAppController }) {
   const {
     notes,
     notesQuery,
@@ -145,7 +149,7 @@ function ListPane({ controller, noteEditorRef }: { controller: NoteAppController
       selectionMode={selectionMode}
       selectedIds={selectedNoteIds}
       onToggleSelect={(note) => toggleNoteSelection(note.id)}
-      onSelectNote={(note) => handleSelectNote(note, noteEditorRef)}
+      onSelectNote={(note) => handleSelectNote(note)}
       onTagClick={handleTagClick}
       onLoadMore={() => notesQuery.fetchNextPage()}
       hasMore={notesQuery.hasNextPage}

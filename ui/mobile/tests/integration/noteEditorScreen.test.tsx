@@ -5,6 +5,7 @@
 import type { ReactNode } from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import {
+  act,
   createQueryWrapper,
   createTestQueryClient,
   fireEvent,
@@ -115,15 +116,24 @@ jest.mock('@ui/mobile/services/sync', () => ({
 }))
 
 // Mock components
+const mockEditorCallbacks: {
+  onContentChange?: (html: string) => void
+  onBlur?: () => void
+} = {}
+
 jest.mock('@ui/mobile/components/EditorWebView', () => {
   const React = require('react')
   const { View, Text } = require('react-native')
-  
-  return React.forwardRef((_props: unknown, ref: unknown) => {
+
+  return React.forwardRef((props: { onContentChange?: (html: string) => void; onBlur?: () => void }, ref: unknown) => {
+    // Store callbacks for test access
+    mockEditorCallbacks.onContentChange = props.onContentChange
+    mockEditorCallbacks.onBlur = props.onBlur
+
     React.useImperativeHandle(ref, () => ({
       runCommand: jest.fn(),
     }))
-    
+
     return (
       <View testID="editor-webview">
         <Text>Editor Content</Text>
@@ -505,6 +515,136 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       expect(screen.getByLabelText('Delete note')).toBeTruthy()
       expect(screen.getByTestId('theme-toggle')).toBeTruthy()
+    })
+  })
+
+  describe('Content save on blur', () => {
+    it('flushes pending content save when editor loses focus', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      // Simulate content change (this would normally come from paste or typing)
+      act(() => {
+        mockEditorCallbacks.onContentChange?.('<p>Pasted content</p>')
+      })
+
+      // Simulate blur - this should trigger immediate save
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      await waitFor(() => {
+        expect(mockNoteService.prototype.updateNote).toHaveBeenCalledWith(
+          'test-note-id',
+          expect.objectContaining({ description: '<p>Pasted content</p>' })
+        )
+      })
+    })
+
+    it('does not call updateNote on blur if no pending content', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      // Clear any previous calls
+      mockNoteService.prototype.updateNote.mockClear()
+
+      // Simulate blur without any content change
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      // Give time for any async operations
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // updateNote should not be called since there's no pending content
+      expect(mockNoteService.prototype.updateNote).not.toHaveBeenCalled()
+    })
+
+    it('does not call updateNote on blur after debounced save flushes', async () => {
+      jest.useFakeTimers()
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onContentChange?.('<p>Saved content</p>')
+      })
+
+      act(() => {
+        jest.advanceTimersByTime(1000)
+      })
+
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      await waitFor(() => {
+        expect(mockNoteService.prototype.updateNote).toHaveBeenCalledTimes(1)
+      })
+
+      jest.useRealTimers()
+    })
+
+    it('clears pending timeout on blur to avoid duplicate saves', async () => {
+      jest.useFakeTimers()
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      // Simulate content change - this starts debounce timer
+      act(() => {
+        mockEditorCallbacks.onContentChange?.('<p>New content</p>')
+      })
+
+      // Immediately blur - should flush and clear timeout
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      // Advance timers past debounce period
+      jest.advanceTimersByTime(2000)
+
+      await waitFor(() => {
+        // Should be called exactly once (from blur), not twice (blur + debounce)
+        expect(mockNoteService.prototype.updateNote).toHaveBeenCalledTimes(1)
+      })
+
+      jest.useRealTimers()
+    })
+
+    it('flushes pending content on unmount', async () => {
+      const { unmount } = render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onContentChange?.('<p>Pending content</p>')
+      })
+
+      act(() => {
+        unmount()
+      })
+
+      await waitFor(() => {
+        expect(mockNoteService.prototype.updateNote).toHaveBeenCalledWith(
+          'test-note-id',
+          expect.objectContaining({ description: '<p>Pending content</p>' })
+        )
+      })
     })
   })
 })

@@ -9,6 +9,7 @@ import {
     ListOrdered,
     Heading1,
     Heading2,
+    Minus,
     Quote,
     Code
 } from 'lucide-react-native'
@@ -48,6 +49,7 @@ export const EditorToolbar = ({ onCommand }: Props) => {
                 <View style={styles.divider} />
                 <ToolbarButton icon={Heading1} onPress={() => onCommand('toggleHeading', [{ level: 1 }])} />
                 <ToolbarButton icon={Heading2} onPress={() => onCommand('toggleHeading', [{ level: 2 }])} />
+                <ToolbarButton icon={Minus} onPress={() => onCommand('setHorizontalRule')} />
                 <View style={styles.divider} />
                 <ToolbarButton icon={List} onPress={() => onCommand('toggleBulletList')} />
                 <ToolbarButton icon={ListOrdered} onPress={() => onCommand('toggleOrderedList')} />
