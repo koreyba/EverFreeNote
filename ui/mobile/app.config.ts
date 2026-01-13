@@ -95,7 +95,10 @@ const resolveStageWebViewUrl = (): string => {
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = resolveVariant()
   const variantConfig = variants[variant]
-  const editorWebViewOverride = (process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL ?? '').trim()
+  // Dev convenience: allow overriding the editor WebView URL from the local .env.
+  // Important: do NOT let this override leak into stage/prod release builds.
+  const editorWebViewOverride =
+    variant === 'dev' ? (process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL ?? '').trim() : ''
   const stageWebViewUrl = resolveStageWebViewUrl()
   const oauthRedirectOverride = (process.env.EXPO_PUBLIC_OAUTH_REDIRECT_URL ?? '').trim()
   const resolvedEditorWebViewUrl =
