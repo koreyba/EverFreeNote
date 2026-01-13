@@ -1,6 +1,7 @@
 // SPA static export
 const nextConfig = {
   output: 'export', // Required for SPA
+  reactStrictMode: true, // Enable strict mode for better debugging
   images: {
     unoptimized: true,
   },
