@@ -2,9 +2,11 @@ import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, use
 import { StyleSheet, View, ActivityIndicator, Text } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import Constants from 'expo-constants'
+import NetInfo from '@react-native-community/netinfo'
 import { getSupabaseConfig } from '@ui/mobile/adapters'
 import { useTheme } from '@ui/mobile/providers'
 import { consumeChunkedMessage, sendChunkedText, type ChunkBufferStore } from '@core/utils/editorWebViewBridge'
+import { getLocalBundleUrl } from '@ui/mobile/utils/localBundle'
 
 export type EditorWebViewHandle = {
     setContent: (html: string) => void
@@ -28,10 +30,19 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         const styles = useMemo(() => createStyles(colors), [colors])
         const [isReady, setIsReady] = useState(false)
         const [loadError, setLoadError] = useState<string | null>(null)
+        const [isConnected, setIsConnected] = useState(true)
         const pendingContent = useRef<string | null>(initialContent)
         const contentResolver = useRef<((html: string) => void) | null>(null)
         const pendingChunks = useRef<ChunkBufferStore>({})
         const pendingTheme = useRef(colorScheme)
+
+        // Track network connectivity
+        useEffect(() => {
+            const unsubscribe = NetInfo.addEventListener(state => {
+                setIsConnected(state.isConnected ?? true)
+            })
+            return unsubscribe
+        }, [])
 
         const post = (message: { type: string; payload?: unknown }) => {
             webViewRef.current?.postMessage(JSON.stringify(message))
@@ -68,23 +79,40 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         }))
 
         const editorUrl = (() => {
-            const extra = Constants.expoConfig?.extra
-            const configuredFromExtra = extra?.editorWebViewUrl
-            const configuredFromEnv =
-                extra?.appVariant === 'dev' ? process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL?.trim() : ''
-            const configured =
-                (typeof configuredFromExtra === 'string' ? configuredFromExtra.trim() : '') || configuredFromEnv
-            if (configured) return configured
-
-            if (extra?.requireEditorWebViewUrl === true) return ''
-
+            // Simplified URL selection logic:
+            // - Dev mode (__DEV__): Always use localhost (web dev server)
+            // - Production (!__DEV__): Always try local bundle first, fallback to remote
+            
             if (__DEV__) {
+                // Dev mode: Use localhost web server
+                const extra = Constants.expoConfig?.extra
+                const configuredFromExtra = extra?.editorWebViewUrl
+                const configuredFromEnv =
+                    extra?.appVariant === 'dev' ? process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL?.trim() : ''
+                const configured =
+                    (typeof configuredFromExtra === 'string' ? configuredFromExtra.trim() : '') || configuredFromEnv
+                
+                if (configured) return configured
+                
+                // Auto-detect dev server from Expo
                 const host = Constants.expoConfig?.hostUri?.split(':').shift()
-                if (host && host.length > 0) return `http://${host}:3000/editor-webview`
+                if (host && host.length > 0) {
+                    return `http://${host}:3000/editor-webview`
+                }
                 return 'http://localhost:3000/editor-webview'
             }
-
-            return 'https://everfreenote.pages.dev/editor-webview'
+            
+            // Production mode: Try local bundle first, fallback to remote
+            const localBundleUrl = getLocalBundleUrl()
+            if (localBundleUrl) {
+                console.log('[EditorWebView] Using local bundle:', localBundleUrl)
+                return localBundleUrl
+            }
+            
+            // Fallback: Remote URL (Cloudflare Pages)
+            const remoteUrl = 'https://everfreenote.pages.dev/editor-webview'
+            console.log('[EditorWebView] Local bundle not available, using remote:', remoteUrl)
+            return remoteUrl
         })()
 
         const injectedJavaScriptBeforeContentLoaded = (() => {
@@ -110,6 +138,8 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                 devHost: ${JSON.stringify(devHost)},
                 supabaseUrl: ${JSON.stringify(supabaseUrl)},
                 theme: ${JSON.stringify(colorScheme)},
+                isConnected: ${JSON.stringify(isConnected)},
+                platform: ${JSON.stringify(Constants.platform?.os || 'unknown')},
               };
               true;
             `
@@ -183,6 +213,12 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                 post({ type: 'SET_THEME', payload: colorScheme })
             }
         }, [colorScheme, isReady])
+
+        useEffect(() => {
+            if (isReady) {
+                post({ type: 'NETWORK_STATUS', payload: isConnected })
+            }
+        }, [isConnected, isReady])
 
         if (!editorUrl) {
             return (
