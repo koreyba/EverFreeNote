@@ -250,12 +250,18 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     }}
                     onError={(syntheticEvent) => {
                         const description = syntheticEvent.nativeEvent.description
+                        console.error('[EditorWebView] Load error:', description)
                         setLoadError(description || 'WebView failed to load editor page')
                     }}
                     onHttpError={(syntheticEvent) => {
                         const statusCode = syntheticEvent.nativeEvent.statusCode
                         const description = syntheticEvent.nativeEvent.description
+                        console.error('[EditorWebView] HTTP error:', statusCode, description)
                         setLoadError(`HTTP ${statusCode}: ${description || 'Failed to load editor page'}`)
+                    }}
+                    onConsoleMessage={(event) => {
+                        const { level, message } = event.nativeEvent
+                        console.log(`[WebView Console ${level}]:`, message)
                     }}
                 />
                 {!!loadError && (
