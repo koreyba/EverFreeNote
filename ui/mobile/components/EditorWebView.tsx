@@ -77,13 +77,8 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
 
             if (extra?.requireEditorWebViewUrl === true) return ''
 
-            if (__DEV__) {
-                const host = Constants.expoConfig?.hostUri?.split(':').shift()
-                if (host && host.length > 0) return `http://${host}:3000/editor-webview`
-                return 'http://localhost:3000/editor-webview'
-            }
-
-            return 'https://everfreenote.pages.dev/editor-webview'
+            // Default to local bundle (offline-first)
+            return 'file:///android_asset/web-editor/index.html'
         })()
 
         const injectedJavaScriptBeforeContentLoaded = (() => {
