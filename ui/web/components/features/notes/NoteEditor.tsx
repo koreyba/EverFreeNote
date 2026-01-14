@@ -140,7 +140,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       description: initialDescription,
       tags: buildTagString(parsed),
     })
-  }, [noteId, initialTitle, initialDescription, initialTags, debouncedAutoSave, debouncedTagQuery, getAutoSavePayload])
+  }, [noteId, initialTitle, initialDescription, initialTags, debouncedAutoSave, debouncedTagQuery, getAutoSavePayload, getFormData])
 
   // Sync external auto-saving flag into local display state
   React.useEffect(() => {
