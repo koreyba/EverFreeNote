@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-require-imports */
 
 /**
  * JS version of the test-users seeder to make `npm run db:init-users` work
