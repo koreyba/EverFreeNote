@@ -2,6 +2,8 @@
 const nextConfig = {
   output: 'export', // Required for SPA
   reactStrictMode: true, // Enable strict mode for better debugging
+  // Use relative paths for assets - required for file:// protocol in mobile WebView
+  assetPrefix: './',
   images: {
     unoptimized: true,
   },

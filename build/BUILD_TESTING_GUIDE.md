@@ -39,16 +39,61 @@ node build/copy-web-bundle.js
    iOS: 1.56 MB
 ```
 
-**Verify:**
+**Verify files were copied:**
+
 ```powershell
-# Android
+# Android - check structure
 Get-ChildItem ui\mobile\android\app\src\main\assets\web-editor\
 
-# iOS  
+# iOS
 Get-ChildItem ui\mobile\ios\EverFreeNote\WebEditor\
 ```
 
-Should see: `index.html` and `_next/` directory with chunks.
+Should see: `index.html` and `_next/` directory.
+
+```powershell
+# Android - list all files with sizes
+Get-ChildItem ui\mobile\android\app\src\main\assets\web-editor\ -Recurse |
+  Where-Object { !$_.PSIsContainer } |
+  Select-Object @{N='Path';E={$_.FullName -replace '.*web-editor\\', ''}}, @{N='Size';E={'{0:N0} KB' -f ($_.Length/1KB)}}
+
+# Verify key files exist
+@(
+  'ui\mobile\android\app\src\main\assets\web-editor\index.html',
+  'ui\mobile\android\app\src\main\assets\web-editor\_next\static\chunks'
+) | ForEach-Object {
+  $exists = Test-Path $_
+  Write-Host "$([char]0x2714) $_" -ForegroundColor $(if($exists){'Green'}else{'Red'})
+}
+
+# Verify HTML uses relative paths (should see "./_next/", not "/_next/")
+Select-String -Path ui\mobile\android\app\src\main\assets\web-editor\index.html -Pattern '\./_next' |
+  Select-Object -First 1 | ForEach-Object { Write-Host "✓ Relative paths: OK" -ForegroundColor Green }
+
+# Count chunks and show total size
+$chunks = Get-ChildItem ui\mobile\android\app\src\main\assets\web-editor\_next\static\chunks\ -File
+Write-Host "Chunks: $($chunks.Count) files, $('{0:N2}' -f (($chunks | Measure-Object Length -Sum).Sum/1MB)) MB"
+```
+
+**Bash/Linux/macOS:**
+
+```bash
+# List all files with sizes
+find ui/mobile/android/app/src/main/assets/web-editor -type f -exec ls -lh {} \; | awk '{print $9, $5}'
+
+# Verify key files exist
+for f in "ui/mobile/android/app/src/main/assets/web-editor/index.html" \
+         "ui/mobile/android/app/src/main/assets/web-editor/_next/static/chunks"; do
+  [ -e "$f" ] && echo "✓ $f" || echo "✗ $f (MISSING)"
+done
+
+# Verify relative paths in HTML
+grep -q '\./_next' ui/mobile/android/app/src/main/assets/web-editor/index.html && echo "✓ Relative paths: OK"
+
+# Count chunks and total size
+echo "Chunks: $(ls ui/mobile/android/app/src/main/assets/web-editor/_next/static/chunks/ | wc -l) files"
+du -sh ui/mobile/android/app/src/main/assets/web-editor/
+```
 
 ### 3. Build Mobile App
 

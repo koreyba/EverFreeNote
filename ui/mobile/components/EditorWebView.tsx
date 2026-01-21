@@ -79,36 +79,55 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         }))
 
         const editorUrl = (() => {
-            // Simplified URL selection logic:
-            // - Dev mode (__DEV__): Always use localhost (web dev server)
-            // - Production (!__DEV__): Always try local bundle first, fallback to remote
-            
+            // URL selection priority:
+            // 1. EXPO_PUBLIC_EDITOR_WEBVIEW_URL env var (refreshes on Metro restart)
+            // 2. App config extra.editorWebViewUrl (baked into APK)
+            // 3. Dev: auto-detect localhost / Prod: local bundle or remote
+
+            const extra = Constants.expoConfig?.extra
+
+            // Priority 1: Env var (updated by Metro on each start, not cached in APK)
+            // This allows dev builds to use local bundle for offline testing
+            const configuredFromEnv = (process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL ?? '').trim()
+
+            // Priority 2: App config (baked into APK at build time)
+            const configuredFromExtra =
+                typeof extra?.editorWebViewUrl === 'string' ? extra.editorWebViewUrl.trim() : ''
+
+            console.log('[EditorWebView DEBUG] __DEV__:', __DEV__)
+            console.log('[EditorWebView DEBUG] configuredFromEnv:', configuredFromEnv)
+            console.log('[EditorWebView DEBUG] configuredFromExtra:', configuredFromExtra)
+
+            // Env var takes priority (allows overriding APK config without rebuild)
+            if (configuredFromEnv) {
+                console.log('[EditorWebView] Using env var URL:', configuredFromEnv)
+                return configuredFromEnv
+            }
+
+            if (configuredFromExtra) {
+                console.log('[EditorWebView] Using app config URL:', configuredFromExtra)
+                return configuredFromExtra
+            }
+
             if (__DEV__) {
-                // Dev mode: Use localhost web server
-                const extra = Constants.expoConfig?.extra
-                const configuredFromExtra = extra?.editorWebViewUrl
-                const configuredFromEnv =
-                    extra?.appVariant === 'dev' ? process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL?.trim() : ''
-                const configured =
-                    (typeof configuredFromExtra === 'string' ? configuredFromExtra.trim() : '') || configuredFromEnv
-                
-                if (configured) return configured
-                
-                // Auto-detect dev server from Expo
+                // Dev mode fallback: auto-detect dev server from Expo
                 const host = Constants.expoConfig?.hostUri?.split(':').shift()
                 if (host && host.length > 0) {
-                    return `http://${host}:3000/editor-webview`
+                    const devUrl = `http://${host}:3000/editor-webview`
+                    console.log('[EditorWebView] Using auto-detected localhost:', devUrl)
+                    return devUrl
                 }
+                console.log('[EditorWebView] Fallback to localhost:3000')
                 return 'http://localhost:3000/editor-webview'
             }
-            
+
             // Production mode: Try local bundle first, fallback to remote
             const localBundleUrl = getLocalBundleUrl()
             if (localBundleUrl) {
                 console.log('[EditorWebView] Using local bundle:', localBundleUrl)
                 return localBundleUrl
             }
-            
+
             // Fallback: Remote URL (Cloudflare Pages)
             const remoteUrl = 'https://everfreenote.pages.dev/editor-webview'
             console.log('[EditorWebView] Local bundle not available, using remote:', remoteUrl)
@@ -259,7 +278,8 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         console.error('[EditorWebView] HTTP error:', statusCode, description)
                         setLoadError(`HTTP ${statusCode}: ${description || 'Failed to load editor page'}`)
                     }}
-                    onConsoleMessage={(event) => {
+                    // @ts-expect-error - onConsoleMessage exists in native code but not in TS types
+                    onConsoleMessage={(event: { nativeEvent: { level: string; message: string } }) => {
                         const { level, message } = event.nativeEvent
                         console.log(`[WebView Console ${level}]:`, message)
                     }}
