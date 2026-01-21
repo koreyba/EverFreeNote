@@ -126,7 +126,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             }
             readyTimeoutRef.current = setTimeout(() => {
                 fallbackToLocal('ready-timeout', 'WebView READY timeout')
-            }, 1000)
+            }, 2000)
 
             return () => {
                 if (readyTimeoutRef.current) {

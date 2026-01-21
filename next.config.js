@@ -1,9 +1,11 @@
 // SPA static export
+const isDev = process.env.NODE_ENV !== 'production'
+
 const nextConfig = {
   output: 'export', // Required for SPA
   reactStrictMode: true, // Enable strict mode for better debugging
-  // Use relative paths for assets - required for file:// protocol in mobile WebView
-  assetPrefix: './',
+  // Use absolute assets in dev server; keep relative paths for static export + file://
+  assetPrefix: isDev ? '' : './',
   images: {
     unoptimized: true,
   },
