@@ -4,17 +4,12 @@ import { Platform } from 'react-native'
  * Check if the local web editor bundle should be available
  * Note: For Android, we can't directly check asset existence at runtime,
  * so we assume it exists if the build process included it.
- * For iOS, we similarly assume it's bundled if in production.
+ * For iOS, we similarly assume it's bundled if included in the app.
  * 
  * @returns boolean - True if bundle should be available
  */
 export function shouldLocalBundleExist(): boolean {
-  // In __DEV__ mode, we always use localhost server, not local bundle
-  if (__DEV__) {
-    return false
-  }
-  
-  // In production, local bundle should exist for both platforms
+  // Local bundle should exist for both platforms when included in the build.
   return Platform.OS === 'android' || Platform.OS === 'ios'
 }
 

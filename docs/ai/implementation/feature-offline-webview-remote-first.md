@@ -40,6 +40,11 @@ Feature: offline-webview-remote-first
 **Key technical details to remember:**
 
 ### Core Features
+- Source-selection policy (remote-first)
+  - Try remote URL when online and configured.
+  - If READY is not received within 1 second, fallback to local once.
+  - If `onError` or `onHttpError` fires, fallback to local once.
+  - If connectivity drops after READY, keep the current editor; apply local on next load.
 - Feature 1: Remote-first selection
   - Derive `remoteUrl` from app config (dev/stage/prod)
   - Use NetInfo for online/offline state
