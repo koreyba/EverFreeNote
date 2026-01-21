@@ -53,8 +53,10 @@ async function copyBundle() {
  * @returns {string[]} Array of chunk filenames (e.g., ['abc123.js', 'def456.css'])
  */
 function extractUsedChunks(html) {
-  // Match: /_next/static/chunks/abc123.js or /_next/static/chunks/abc123.css
-  const regex = /\/_next\/static\/chunks\/([a-f0-9]+\.(?:js|css))/gi;
+  // Match: ./_next/static/chunks/abc123.js or /_next/static/chunks/abc123.css
+  // Supports both relative (./) and absolute (/) paths
+  // Captures any valid filename (letters, numbers, hyphens, underscores)
+  const regex = /\.?\/_next\/static\/chunks\/([a-zA-Z0-9_-]+\.(?:js|css))/gi;
   const chunks = new Set();
   let match;
   
