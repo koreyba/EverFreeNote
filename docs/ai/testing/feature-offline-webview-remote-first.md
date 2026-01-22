@@ -20,20 +20,23 @@ Feature: offline-webview-remote-first
 **What individual components need testing?**
 
 ### Source Selection Helper
-- [ ] Test case 1: Online -> remote selected with reason `online`
-- [ ] Test case 2: Offline -> local selected with reason `offline`
-- [ ] Test case 3: Missing local -> error state with reason `missing-local`
+- [x] Test case 1: Online -> remote selected (`ui/mobile/tests/component/editorWebViewSource.test.tsx`)
+- [x] Test case 2: Offline -> local selected (`ui/mobile/tests/component/editorWebViewSource.test.tsx`)
+- [x] Test case 3: Missing local/remote -> error UI (`ui/mobile/tests/component/editorWebViewSource.test.tsx`)
 
 ### Fallback Handling
-- [ ] Test case 1: Remote load error triggers one-time fallback to local
-- [ ] Test case 2: Subsequent errors do not loop back to remote
-- [ ] Additional coverage: HTTP error -> fallback reason `http-error`
-- [ ] Additional coverage: READY timeout -> fallback reason `ready-timeout`
+- [x] Test case 1: Remote load error triggers one-time fallback to local (`ui/mobile/tests/component/editorWebViewSource.test.tsx`)
+- [x] Test case 2: Subsequent errors do not loop back to remote (`ui/mobile/tests/component/editorWebViewSource.test.tsx`)
+- [x] Additional coverage: HTTP error -> fallback reason `http-error` (`ui/mobile/tests/component/editorWebViewSource.test.tsx`)
+- [x] Additional coverage: READY timeout -> fallback reason `ready-timeout` (`ui/mobile/tests/component/editorWebViewSource.test.tsx`)
 
 ### Dev Badge
-- [ ] Test case 1: Badge renders only for dev variant
-- [ ] Test case 2: Popup shows source, URL, and reason
-- [ ] Additional coverage: Tap toggles popup visibility
+- [x] Test case 1: Badge renders only for dev variant (`ui/mobile/tests/component/editorWebViewSource.test.tsx`)
+- [x] Test case 2: Popup shows source + reason (`ui/mobile/tests/component/editorWebViewSource.test.tsx`)
+- [x] Additional coverage: Tap toggles popup visibility (`ui/mobile/tests/component/editorWebViewSource.test.tsx`)
+
+### Local Bundle Helpers
+- [x] Platform-specific bundle URL selection (`ui/mobile/tests/unit/localBundle.test.ts`)
 
 ## Integration Tests
 **How do we test component interactions?**
@@ -65,6 +68,7 @@ Feature: offline-webview-remote-first
 - Coverage commands and thresholds: `cd ui/mobile && npm run test -- --coverage`
 - Coverage gaps: record any files below 100% with rationale
 - Manual testing outcomes and sign-off
+- Latest run: `cd ui/mobile && npm run test` (pass, warns about EditorWebView console output and force-exit due to open handles)
 
 ## Manual Testing
 **What requires human validation?**
