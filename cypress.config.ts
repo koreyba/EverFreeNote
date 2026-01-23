@@ -12,6 +12,14 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       // Add code coverage for component tests
       require('@cypress/code-coverage/task')(on, config)
+
+      on('task', {
+        log(message) {
+          console.log(message)
+          return null
+        },
+      })
+
       return config
     },
     viewportWidth: 1280,

@@ -82,6 +82,22 @@ Cypress.on('window:before:load', (win) => {
       dispatchEvent: cy.stub(),
     }),
   })
+
+  // Log browser console errors to terminal
+  const originalError = win.console.error;
+  win.console.error = (...args) => {
+    cy.task('log', `[BROWSER ERROR] ${args.join(' ')}`);
+    originalError(...args);
+  };
+
+  // Mock ResizeObserver for components that use it (e.g. Radix UI, Virtual lists)
+  if (!win.ResizeObserver) {
+    (win as any).ResizeObserver = class ResizeObserver {
+      observe() { }
+      unobserve() { }
+      disconnect() { }
+    };
+  }
 })
 
 Cypress.Commands.add('mockSupabase', () => {
