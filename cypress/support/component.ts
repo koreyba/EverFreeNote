@@ -98,6 +98,15 @@ Cypress.on('window:before:load', (win) => {
       disconnect() { }
     };
   }
+
+  // Catch uncaught errors that prevent test registration
+  win.addEventListener('error', (event) => {
+    cy.task('log', `[UNCAUGHT ERROR] ${event.message} at ${event.filename}:${event.lineno}`);
+  });
+
+  win.addEventListener('unhandledrejection', (event) => {
+    cy.task('log', `[UNHANDLED REJECTION] ${event.reason}`);
+  });
 })
 
 Cypress.Commands.add('mockSupabase', () => {
