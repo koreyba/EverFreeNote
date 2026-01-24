@@ -1,6 +1,6 @@
 import React from 'react'
-import { SupabaseProvider, useSupabase } from '@ui/web/providers/SupabaseProvider'
-import { webSupabaseClientFactory } from '@ui/web/adapters/supabaseClient'
+import { SupabaseProvider, useSupabase } from '../../../../ui/web/providers/SupabaseProvider'
+import { webSupabaseClientFactory } from '../../../../ui/web/adapters/supabaseClient'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 type SinonStub = ReturnType<typeof cy.stub>

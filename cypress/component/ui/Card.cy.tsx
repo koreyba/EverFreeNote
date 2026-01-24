@@ -1,6 +1,6 @@
 import React from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@ui/web/components/ui/card'
-import { Button } from '@ui/web/components/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../../ui/web/components/ui/card'
+import { Button } from '../../../ui/web/components/ui/button'
 
 describe('Card Component', () => {
   it('renders basic card structure', () => {

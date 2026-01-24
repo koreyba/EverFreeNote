@@ -1,5 +1,5 @@
-import { OfflineQueueService } from '@core/services/offlineQueue'
-import type { OfflineStorageAdapter, MutationQueueItem } from '@core/types/offline'
+import { OfflineQueueService } from '../../../../core/services/offlineQueue'
+import type { OfflineStorageAdapter, MutationQueueItem } from '../../../../core/types/offline'
 
 describe('OfflineQueueService', () => {
   let service: OfflineQueueService

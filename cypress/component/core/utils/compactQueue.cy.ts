@@ -1,5 +1,5 @@
-import { compactQueue } from '@core/utils/compactQueue'
-import type { MutationQueueItem } from '@core/types/offline'
+import { compactQueue } from '../../../../core/utils/compactQueue'
+import type { MutationQueueItem } from '../../../../core/types/offline'
 
 describe('compactQueue', () => {
   const baseItem: Omit<MutationQueueItem, 'id' | 'operation' | 'clientUpdatedAt' | 'payload'> = {

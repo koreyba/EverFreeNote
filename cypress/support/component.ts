@@ -92,6 +92,7 @@ Cypress.on('window:before:load', (win) => {
 
   // Mock ResizeObserver for components that use it (e.g. Radix UI, Virtual lists)
   if (!win.ResizeObserver) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (win as any).ResizeObserver = class ResizeObserver {
       observe() { }
       unobserve() { }

@@ -1,4 +1,4 @@
-import { browser } from '@ui/web/adapters/browser';
+import { browser } from '../../../../ui/web/adapters/browser';
 
 describe('WebBrowserAdapter', () => {
   it('calls window.alert', () => {

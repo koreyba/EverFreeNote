@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNoteAppController } from '../../../ui/web/hooks/useNoteAppController'
-import { QueryProvider } from '@ui/web/components/providers/QueryProvider'
-import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
+import { QueryProvider } from '../../../ui/web/components/providers/QueryProvider'
+import { SupabaseTestProvider } from '../../../ui/web/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const TestComponent = () => {

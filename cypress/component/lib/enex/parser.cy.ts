@@ -1,4 +1,4 @@
-import { EnexParser } from '@core/enex/parser'
+import { EnexParser } from '../../../../core/enex/parser'
 
 describe('EnexParser', () => {
   const parser = new EnexParser()

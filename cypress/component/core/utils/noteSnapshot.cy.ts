@@ -1,4 +1,4 @@
-import { getUpdatedAtMs, mergeNoteFields, pickLatestNote, type NoteFields } from '@core/utils/noteSnapshot'
+import { getUpdatedAtMs, mergeNoteFields, pickLatestNote, type NoteFields } from '../../../../core/utils/noteSnapshot'
 
 describe('core/utils/noteSnapshot', () => {
   it('returns negative infinity for missing or invalid updated_at', () => {

@@ -1,9 +1,9 @@
 import React from 'react'
 import type { User } from '@supabase/supabase-js'
 
-import { NotesShell } from '@ui/web/components/features/notes/NotesShell'
-import type { NoteViewModel } from '@core/types/domain'
-import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
+import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
+import type { NoteViewModel } from '../../../../core/types/domain'
+import type { NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
 
 const pastePlainText = (text: string) => {
   cy.get('[data-cy="editor-content"]').click()
@@ -169,7 +169,7 @@ const buildController = () => {
       ftsResults: [],
     }
 
-    return <NotesShell controller={controller as unknown as import('@ui/web/hooks/useNoteAppController').NoteAppController} />
+    return <NotesShell controller={controller as unknown as import('../../../../ui/web/hooks/useNoteAppController').NoteAppController} />
   }
 
   return Harness
