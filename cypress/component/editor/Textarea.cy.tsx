@@ -1,5 +1,5 @@
 import React from 'react'
-import { Textarea } from '@ui/web/components/ui/textarea'
+import { Textarea } from '../../../ui/web/components/ui/textarea'
 
 describe('Textarea Component', () => {
   it('renders with default props', () => {

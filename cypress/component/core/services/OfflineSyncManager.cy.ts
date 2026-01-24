@@ -1,5 +1,5 @@
-import { OfflineSyncManager } from '@core/services/offlineSyncManager'
-import type { OfflineStorageAdapter, NetworkStatusProvider, MutationQueueItem } from '@core/types/offline'
+import { OfflineSyncManager } from '../../../../core/services/offlineSyncManager'
+import type { OfflineStorageAdapter, NetworkStatusProvider, MutationQueueItem } from '../../../../core/types/offline'
 
 describe('OfflineSyncManager', () => {
   let manager: OfflineSyncManager

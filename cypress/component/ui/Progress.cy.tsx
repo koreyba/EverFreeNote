@@ -1,5 +1,5 @@
 import React from 'react'
-import { Progress } from '@ui/web/components/ui/progress'
+import { Progress } from '../../../ui/web/components/ui/progress'
 
 describe('Progress Component', () => {
   it('renders with default value', () => {

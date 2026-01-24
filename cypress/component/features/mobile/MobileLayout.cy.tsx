@@ -1,9 +1,9 @@
 import React from 'react'
-import { NotesShell } from '@ui/web/components/features/notes/NotesShell'
-import type { NoteAppController } from '@ui/web/hooks/useNoteAppController'
-import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
+import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
+import type { NoteAppController } from '../../../../ui/web/hooks/useNoteAppController'
+import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ThemeProvider } from '@ui/web/components/theme-provider'
+import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
 
 describe('Mobile Layout Adaptation', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

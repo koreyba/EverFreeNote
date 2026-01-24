@@ -1,5 +1,5 @@
 import React from 'react'
-import AuthForm from '@ui/web/components/AuthForm'
+import AuthForm from '../../../ui/web/components/AuthForm'
 
 describe('AuthForm Component', () => {
   it('renders all authentication buttons and elements', () => {
