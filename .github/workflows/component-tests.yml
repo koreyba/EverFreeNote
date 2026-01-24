@@ -57,7 +57,17 @@ jobs:
       - name: Run component tests
         id: component-tests
         continue-on-error: true
-        run: npm run test:component
+        env:
+          DEBUG: "cypress:server:specs,cypress:server:project,cypress:webpack"
+        run: |
+          echo "::group::Cypress Debug Output"
+          npm run test:component -- --reporter spec 2>&1 | tee cypress_output.log
+          echo "::endgroup::"
+          
+          # Check for specs with 0 tests
+          echo "::group::Specs with potential issues"
+          grep -E "^\s+[✔✖].*\s+0ms\s+" cypress_output.log || echo "No 0ms specs found"
+          echo "::endgroup::"
       
       - name: Generate test summary
         if: always()
