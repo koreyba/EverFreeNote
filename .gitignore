@@ -106,6 +106,10 @@ agenthub/agents/youtube/db
 
 # Mobile development
 android-sdk/
+ui/mobile/android/app/src/main/assets/web-editor/
+ui/mobile/ios/EverFreeNote/WebEditor/
+TEST_SUMMARY.md
+TESTING_LOG.md node_modules/@next/swc-linux-arm64-gnu/next-swc.linux-arm64-gnu.node
 node_modules/@next/swc-linux-arm64-gnu/next-swc.linux-arm64-gnu.node
 node_modules/@next/swc-linux-arm64-musl/next-swc.linux-arm64-musl.node
 
