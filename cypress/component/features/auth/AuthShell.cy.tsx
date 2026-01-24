@@ -1,6 +1,6 @@
 import React from 'react'
-import { AuthShell } from '@/components/features/auth/AuthShell'
-import { ThemeProvider } from '@/components/theme-provider'
+import { AuthShell } from '../../../../ui/web/components/features/auth/AuthShell'
+import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
 
 describe('AuthShell Component', () => {
   it('renders correctly', () => {
@@ -37,11 +37,11 @@ describe('AuthShell Component', () => {
     // Assuming AuthForm renders buttons that trigger these actions
     // We can check if the buttons exist and click them
     // Note: AuthForm implementation details might vary, but usually it has buttons
-    
+
     // Check for Test Login button (if visible in AuthForm)
     // Since AuthForm is a separate component, we are testing integration here slightly
     // But mainly we want to ensure AuthShell renders it.
-    
+
     // Let's verify the structure wrapper
     cy.get('.min-h-screen').should('exist')
     cy.get('.shadow-lg').should('exist')
