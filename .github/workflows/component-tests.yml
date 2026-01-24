@@ -2,7 +2,7 @@ name: Component Tests
 
 on:
   push:
-    branches: [main, develop, github-actions-setup, features/*]
+    branches: [main, develop, github-actions-setup]
   pull_request:
   workflow_dispatch:
 
@@ -35,18 +35,7 @@ jobs:
       - name: Run component tests
         id: component-tests
         continue-on-error: true
-        env:
-          # Keep debug logs for now to monitor stability
-          DEBUG: "cypress:server:specs,cypress:server:project,cypress:webpack"
-        run: |
-          echo "::group::Cypress Debug Output"
-          npm run test:component -- --reporter spec 2>&1 | tee cypress_output.log
-          echo "::endgroup::"
-          
-          # Check for specs with 0 tests
-          echo "::group::Specs with potential issues"
-          grep -E "^\s+[✔✖].*\s+0ms\s+" cypress_output.log || echo "No 0ms specs found"
-          echo "::endgroup::"
+        run: npm run test:component -- --reporter spec
       
       - name: Generate test summary
         if: always()
