@@ -32,6 +32,11 @@ export default defineConfig({
     },
     experimentalMemoryManagement: true,
     numTestsKeptInMemory: 0,
+    // Increase timeouts for CI stability
+    pageLoadTimeout: 120000,
+    defaultCommandTimeout: 10000,
+    requestTimeout: 10000,
+    responseTimeout: 60000,
   },
   env: {
     codeCoverage: {
