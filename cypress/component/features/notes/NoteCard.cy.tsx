@@ -1,7 +1,7 @@
 ﻿import React from 'react'
-import { NoteCard } from '@ui/web/components/features/notes/NoteCard'
-import type { Note, SearchResult } from '@core/types/domain'
-import { ThemeProvider } from '@/components/theme-provider'
+import { NoteCard } from '../../../../ui/web/components/features/notes/NoteCard'
+import type { Note, SearchResult } from '../../../../core/types/domain'
+import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
 
 describe('NoteCard Component', () => {
   const baseNote: Note = {
