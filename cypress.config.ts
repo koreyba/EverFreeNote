@@ -30,6 +30,8 @@ export default defineConfig({
       runMode: 0,
       openMode: 0,
     },
+    experimentalMemoryManagement: true,
+    numTestsKeptInMemory: 0,
   },
   env: {
     codeCoverage: {
