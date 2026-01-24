@@ -18,30 +18,30 @@ const IOS_DEST = path.join(__dirname, '../ui/mobile/ios/EverFreeNote/WebEditor')
 
 async function copyBundle() {
   console.log('📦 Copying web editor bundle to mobile assets...');
-  
+
   // Verify source exists
   if (!fs.existsSync(SOURCE_HTML)) {
     throw new Error(`Source not found: ${SOURCE_HTML}\nRun 'npm run build' first.`);
   }
-  
+
   // Parse index.html to extract referenced files
   const html = await fs.readFile(SOURCE_HTML, 'utf-8');
   const usedChunks = extractUsedChunks(html);
-  
+
   console.log(`  Found ${usedChunks.length} referenced chunks`);
-  
+
   // Copy to Android
   console.log('  → Android assets');
   await copyBundleToDestination(ANDROID_DEST, html, usedChunks);
-  
+
   // Copy to iOS
   console.log('  → iOS bundle');
   await copyBundleToDestination(IOS_DEST, html, usedChunks);
-  
+
   // Log bundle size
   const androidSize = await getFolderSize(ANDROID_DEST);
   const iosSize = await getFolderSize(IOS_DEST);
-  
+
   console.log(`✅ Bundle copied successfully`);
   console.log(`   Android: ${(androidSize / 1024 / 1024).toFixed(2)} MB`);
   console.log(`   iOS: ${(iosSize / 1024 / 1024).toFixed(2)} MB`);
@@ -59,17 +59,17 @@ function extractUsedChunks(html) {
   const regex = /\.?\/_next\/static\/chunks\/([a-zA-Z0-9_-]+\.(?:js|css))/gi;
   const chunks = new Set();
   let match;
-  
+
   while ((match = regex.exec(html)) !== null) {
     chunks.add(match[1]); // Extract filename only
   }
-  
+
   // Also extract build ID for manifest files
   const buildIdMatch = html.match(/<!--([a-zA-Z0-9_-]+)-->/);
   if (buildIdMatch) {
     chunks.add(`_buildId:${buildIdMatch[1]}`);
   }
-  
+
   return Array.from(chunks);
 }
 
@@ -83,14 +83,28 @@ async function copyBundleToDestination(dest, html, usedChunks) {
   // Clean destination
   await fs.remove(dest);
   await fs.ensureDir(dest);
-  
+
   // Copy index.html
   await fs.writeFile(path.join(dest, 'index.html'), html);
-  
+
   // Copy _next directory structure
   const nextDest = path.join(dest, '_next');
   await fs.ensureDir(path.join(nextDest, 'static', 'chunks'));
-  
+
+  // Copy static CSS directory if it exists (robustness for different Next.js builds)
+  const sourceCss = path.join(SOURCE_NEXT, 'static', 'css');
+  const destCss = path.join(nextDest, 'static', 'css');
+  if (await fs.pathExists(sourceCss)) {
+    await fs.copy(sourceCss, destCss);
+  }
+
+  // Copy static media directory if it exists (for images/fonts referenced in CSS/JS)
+  const sourceMedia = path.join(SOURCE_NEXT, 'static', 'media');
+  const destMedia = path.join(nextDest, 'static', 'media');
+  if (await fs.pathExists(sourceMedia)) {
+    await fs.copy(sourceMedia, destMedia);
+  }
+
   // Copy only used chunks
   for (const chunk of usedChunks) {
     if (chunk.startsWith('_buildId:')) {
@@ -104,7 +118,7 @@ async function copyBundleToDestination(dest, html, usedChunks) {
       // Copy chunk file
       const srcChunk = path.join(SOURCE_NEXT, 'static', 'chunks', chunk);
       const destChunk = path.join(nextDest, 'static', 'chunks', chunk);
-      
+
       if (fs.existsSync(srcChunk)) {
         await fs.copy(srcChunk, destChunk);
       } else {
@@ -121,13 +135,13 @@ async function copyBundleToDestination(dest, html, usedChunks) {
  */
 async function getFolderSize(folderPath) {
   let size = 0;
-  
+
   if (!fs.existsSync(folderPath)) {
     return 0;
   }
-  
+
   const files = await fs.readdir(folderPath, { withFileTypes: true });
-  
+
   for (const file of files) {
     const filePath = path.join(folderPath, file.name);
     if (file.isDirectory()) {
@@ -137,7 +151,7 @@ async function getFolderSize(folderPath) {
       size += stats.size;
     }
   }
-  
+
   return size;
 }
 

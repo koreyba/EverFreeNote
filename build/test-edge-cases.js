@@ -3,6 +3,7 @@
  */
 
 const fs = require('fs-extra');
+const path = require('path');
 const { copyBundle } = require('./copy-web-bundle');
 
 let testResults = [];
@@ -32,7 +33,7 @@ async function testEdgeCases() {
   const androidFiles = await fs.readdir('ui/mobile/android/app/src/main/assets/web-editor/_next/static/chunks');
   const allChunks = await fs.readdir('out/_next/static/chunks');
   const jsChunks = allChunks.filter(f => f.endsWith('.js'));
-  
+
   if (androidFiles.length <= jsChunks.length) {
     logTest('  ↳ File count check', 'pass', `${androidFiles.length} files vs ${jsChunks.length} available`);
   } else {
@@ -53,7 +54,7 @@ async function testEdgeCases() {
   const chunkMatches = androidHtml.matchAll(/\/_next\/static\/chunks\/([a-f0-9]+\.(?:js|css))/gi);
   let allExist = true;
   let missingChunks = [];
-  
+
   for (const match of chunkMatches) {
     const chunk = match[1];
     const chunkPath = `ui/mobile/android/app/src/main/assets/web-editor/_next/static/chunks/${chunk}`;
@@ -62,7 +63,7 @@ async function testEdgeCases() {
       missingChunks.push(chunk);
     }
   }
-  
+
   if (allExist) {
     logTest('  ↳ Chunk existence', 'pass', 'All referenced chunks present');
   } else {
@@ -78,14 +79,42 @@ async function testEdgeCases() {
     logTest('  ↳ HTML equality', 'fail', 'Platform HTML differs');
   }
 
-  // Test 6: Test error handling (simulate missing source)
-  logTest('Test 6: Error handling', 'skip');
+  // Test 6: Verify optional static directories are copied
+  logTest('Test 7: Optional static directories', 'pass');
+  try {
+    const testCssDir = 'out/_next/static/css';
+    const testMediaDir = 'out/_next/static/media';
+    await fs.ensureDir(testCssDir);
+    await fs.writeFile(path.join(testCssDir, 'test.css'), 'body { color: blue; }');
+    await fs.ensureDir(testMediaDir);
+    await fs.writeFile(path.join(testMediaDir, 'test.png'), 'fake image');
+
+    await copyBundle();
+
+    const androidCss = 'ui/mobile/android/app/src/main/assets/web-editor/_next/static/css/test.css';
+    const androidMedia = 'ui/mobile/android/app/src/main/assets/web-editor/_next/static/media/test.png';
+
+    if (fs.existsSync(androidCss) && fs.existsSync(androidMedia)) {
+      logTest('  ↳ CSS/Media folders', 'pass', 'Optional folders successfully copied');
+    } else {
+      logTest('  ↳ CSS/Media folders', 'fail', 'Optional folders missing in destination');
+    }
+
+    // Clean up
+    await fs.remove(testCssDir);
+    await fs.remove(testMediaDir);
+  } catch (error) {
+    logTest('  ↳ CSS/Media folders', 'fail', error.message);
+  }
+
+  // Test 7: Test error handling (simulate missing source)
+  logTest('Test 8: Error handling', 'skip');
   const backup = 'out/editor-webview/index.html.backup';
   try {
     // Backup and remove source
     if (fs.existsSync('out/editor-webview/index.html')) {
       await fs.move('out/editor-webview/index.html', backup);
-      
+
       try {
         await copyBundle();
         logTest('  ↳ Missing source error', 'fail', 'Should have thrown error');
@@ -96,7 +125,7 @@ async function testEdgeCases() {
           logTest('  ↳ Missing source error', 'fail', `Wrong error: ${error.message}`);
         }
       }
-      
+
       // Restore
       await fs.move(backup, 'out/editor-webview/index.html');
     }
@@ -112,7 +141,7 @@ async function testEdgeCases() {
   console.log(`   Passed: ${passed}`);
   console.log(`   Failed: ${failed}`);
   console.log(`   Skipped: ${skipped}\n`);
-  
+
   return failed === 0;
 }
 
