@@ -16,16 +16,19 @@ if (!SERVICE_ROLE_KEY) {
   console.error('Missing SUPABASE_SERVICE_KEY in environment')
   process.exit(1)
 }
+const serviceRoleKey = SERVICE_ROLE_KEY
+
 const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD
 if (!TEST_USER_PASSWORD) {
   console.error('Missing TEST_USER_PASSWORD in environment')
   process.exit(1)
 }
+const testUserPassword = TEST_USER_PASSWORD
 
 const TEST_USERS = [
   {
     email: 'test@example.com',
-    password: TEST_USER_PASSWORD,
+    password: testUserPassword,
     notes: [
       {
         title: 'Test User Note',
@@ -36,7 +39,7 @@ const TEST_USERS = [
   },
   {
     email: 'skip-auth@example.com',
-    password: TEST_USER_PASSWORD,
+    password: testUserPassword,
     notes: [
       {
         title: 'Welcome to EverFreeNote',
@@ -55,7 +58,7 @@ const TEST_USERS = [
 ]
 
 async function ensureUser(email: string, password: string) {
-  const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+  const supabaseAdmin = createClient(SUPABASE_URL, serviceRoleKey)
   const { data: existing, error: fetchError } = await supabaseAdmin.auth.admin.listUsers()
   if (fetchError) throw fetchError
 
@@ -74,7 +77,7 @@ async function ensureUser(email: string, password: string) {
 }
 
 async function insertNotes(userId: string, notes: typeof TEST_USERS[number]['notes']) {
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+  const supabase = createClient(SUPABASE_URL, serviceRoleKey)
   for (const note of notes) {
     const { error } = await supabase.from('notes').insert({
       user_id: userId,
@@ -89,7 +92,7 @@ async function insertNotes(userId: string, notes: typeof TEST_USERS[number]['not
 }
 
 async function main() {
-  const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  const supabaseAdmin = createClient(SUPABASE_URL, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 

@@ -5,8 +5,8 @@ dotenv.config({ path: '.env.local' })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const testAuthEmail = process.env.TEST_USER_EMAIL
-const testAuthPassword = process.env.TEST_USER_PASSWORD
+const testAuthEmail = process.env.TEST_USER_EMAIL ?? ''
+const testAuthPassword = process.env.TEST_USER_PASSWORD ?? ''
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase credentials in .env.local')
