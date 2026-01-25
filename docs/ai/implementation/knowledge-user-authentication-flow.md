@@ -83,7 +83,7 @@ const { data: { subscription } } = supabase.auth.onAuthStateChange(
 const handleTestLogin = async () => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email: 'test@example.com',
-    password: 'testpassword123'
+    password: '<test-password>'
   })
   
   if (error) {
@@ -101,7 +101,7 @@ const handleTestLogin = async () => {
 const handleSkipAuth = async () => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email: 'skip-auth@example.com',
-    password: 'testpassword123'
+    password: '<test-password>'
   })
   // ... same error handling
 }
@@ -410,7 +410,7 @@ const { data, error } = await supabase.auth.signUp({
 // В setup файле тестов
 const { data, error } = await supabase.auth.admin.createUser({
   email: 'test@example.com',
-  password: 'testpassword123',
+  password: '<test-password>',
   email_confirm: true  // Сразу подтвержденный email
 })
 ```
@@ -457,7 +457,7 @@ WHERE NOT EXISTS (
 1. **Password Storage:**
    - ✅ Используется bcrypt через Supabase
    - ✅ Пароли никогда не хранятся в plain text
-   - ⚠️ Тестовый пароль `testpassword123` слишком простой для production
+   - ⚠️ Тестовый пароль `<test-password>` слишком простой для production
 
 2. **Session Management:**
    - ✅ Supabase автоматически управляет JWT токенами

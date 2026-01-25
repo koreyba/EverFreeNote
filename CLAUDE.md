@@ -52,8 +52,8 @@ npm run test
 ### Test Users
 ```bash
 # Default test credentials (created automatically by seed.sql)
-# Email: test@example.com / Password: testpassword123
-# Email: skip-auth@example.com / Password: testpassword123
+# Email: test@example.com / Password: <test-password>
+# Email: skip-auth@example.com / Password: <test-password>
 
 # Manually initialize test users
 npm run db:init-users
@@ -287,8 +287,8 @@ The app uses **PostgreSQL full-text search with ILIKE fallback**:
 - Component tests use Cypress Component Testing
 - E2E tests use Cypress
 - Test users are automatically created by `seed.sql`
-- Use `test@example.com` / `testpassword123` for persistent testing
-- Use `skip-auth@example.com` / `testpassword123` for quick testing with sample data
+- Use `test@example.com` / `<test-password>` for persistent testing
+- Use `skip-auth@example.com` / `<test-password>` for quick testing with sample data
 
 ---
 

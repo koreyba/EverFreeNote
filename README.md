@@ -53,8 +53,8 @@ Open http://localhost:3000
 **Supabase Studio**: http://localhost:54323
 
 ### Test Users
-- `skip-auth@example.com` / `testpassword123`
-- `test@example.com` / `testpassword123`
+- `skip-auth@example.com` / `<test-password>`
+- `test@example.com` / `<test-password>`
 
 ### Stop Services
 ```bash
