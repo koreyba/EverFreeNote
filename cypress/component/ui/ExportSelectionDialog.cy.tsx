@@ -1,7 +1,7 @@
 import React from 'react'
-import { ExportSelectionDialog } from '@ui/web/components/ExportSelectionDialog'
-import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
-import { NoteService } from '@core/services/notes'
+import { ExportSelectionDialog } from '../../../ui/web/components/ExportSelectionDialog'
+import { SupabaseTestProvider } from '../../../ui/web/providers/SupabaseProvider'
+import { NoteService } from '../../../core/services/notes'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SinonStub = any

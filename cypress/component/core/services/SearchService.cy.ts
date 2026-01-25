@@ -1,4 +1,4 @@
-import { SearchService } from '@core/services/search'
+import { SearchService } from '../../../../core/services/search'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 describe('core/services/SearchService', () => {

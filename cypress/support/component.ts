@@ -82,6 +82,32 @@ Cypress.on('window:before:load', (win) => {
       dispatchEvent: cy.stub(),
     }),
   })
+
+  // Log browser console errors to terminal
+  const originalError = win.console.error;
+  win.console.error = (...args) => {
+    cy.task('log', `[BROWSER ERROR] ${args.join(' ')}`);
+    originalError(...args);
+  };
+
+  // Mock ResizeObserver for components that use it (e.g. Radix UI, Virtual lists)
+  if (!win.ResizeObserver) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (win as any).ResizeObserver = class ResizeObserver {
+      observe() { }
+      unobserve() { }
+      disconnect() { }
+    };
+  }
+
+  // Catch uncaught errors that prevent test registration
+  win.addEventListener('error', (event) => {
+    cy.task('log', `[UNCAUGHT ERROR] ${event.message} at ${event.filename}:${event.lineno}`);
+  });
+
+  win.addEventListener('unhandledrejection', (event) => {
+    cy.task('log', `[UNHANDLED REJECTION] ${event.reason}`);
+  });
 })
 
 Cypress.Commands.add('mockSupabase', () => {

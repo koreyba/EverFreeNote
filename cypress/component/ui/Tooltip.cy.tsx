@@ -1,6 +1,6 @@
 import React from 'react'
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@ui/web/components/ui/tooltip'
-import { Button } from '@ui/web/components/ui/button'
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../../../ui/web/components/ui/tooltip'
+import { Button } from '../../../ui/web/components/ui/button'
 
 describe('Tooltip Component', () => {
   it('renders tooltip trigger', () => {

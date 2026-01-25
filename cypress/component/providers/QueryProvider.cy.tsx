@@ -1,5 +1,5 @@
 import React from 'react'
-import { QueryProvider } from '@ui/web/components/providers/QueryProvider'
+import { QueryProvider } from '../../../ui/web/components/providers/QueryProvider'
 import { useQuery } from '@tanstack/react-query'
 
 describe('QueryProvider Component', () => {

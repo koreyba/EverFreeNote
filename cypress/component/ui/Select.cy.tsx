@@ -7,7 +7,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from '@ui/web/components/ui/select'
+} from '../../../ui/web/components/ui/select'
 
 describe('Select', () => {
   it('renders and opens', () => {

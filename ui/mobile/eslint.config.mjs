@@ -77,6 +77,9 @@ export default [
     ignores: [
       'node_modules/**',
       '.expo/**',
+      'android/app/build/**',
+      'android/app/src/main/assets/web-editor/**',
+      'ios/**/WebEditor/**',
       'expo-env.d.ts',
       '*.config.js',
       '*.config.mjs',
