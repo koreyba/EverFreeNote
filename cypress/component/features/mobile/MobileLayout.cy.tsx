@@ -1,14 +1,14 @@
 import React from 'react'
-import { NotesShell } from '@ui/web/components/features/notes/NotesShell'
-import type { NoteAppController } from '@ui/web/hooks/useNoteAppController'
-import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
+import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
+import type { NoteAppController } from '../../../../ui/web/hooks/useNoteAppController'
+import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ThemeProvider } from '@/components/theme-provider'
+import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
 
 describe('Mobile Layout Adaptation', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mockUser = { id: 'test-user', email: 'test@example.com' } as any
-  
+
   let createMockController: (overrides?: Partial<NoteAppController>) => NoteAppController
   let mockSupabase: SupabaseClient
 
@@ -41,7 +41,7 @@ describe('Mobile Layout Adaptation', () => {
       ftsObserverTarget: { current: null },
       observerTarget: { current: null },
       deleteAccountLoading: false,
-      
+
       handleSelectNote: cy.stub().as('handleSelectNote'),
       handleCreateNote: cy.stub(),
       handleEditNote: cy.stub(),
@@ -97,10 +97,10 @@ describe('Mobile Layout Adaptation', () => {
         then: (resolve: any) => resolve({ data: [], error: null })
       }),
       storage: {
-          from: cy.stub().returns({
-            upload: cy.stub().resolves({ data: { path: '' }, error: null }),
-            getPublicUrl: cy.stub().returns({ data: { publicUrl: 'https://example.com' }, error: null }),
-          }),
+        from: cy.stub().returns({
+          upload: cy.stub().resolves({ data: { path: '' }, error: null }),
+          getPublicUrl: cy.stub().returns({ data: { publicUrl: 'https://example.com' }, error: null }),
+        }),
       },
     } as unknown as SupabaseClient
   })
@@ -108,7 +108,7 @@ describe('Mobile Layout Adaptation', () => {
   it('shows sidebar and hides editor on mobile by default', () => {
     cy.viewport('iphone-se2')
     const controller = createMockController()
-    
+
     cy.mount(
       <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
         <SupabaseTestProvider supabase={mockSupabase}>
@@ -119,24 +119,24 @@ describe('Mobile Layout Adaptation', () => {
 
     // Sidebar content should be visible (not hidden)
     cy.get('[data-testid=\'sidebar-container\']').should('not.have.class', 'hidden')
-    
+
     // Editor should be hidden
     cy.get('[data-testid=\'editor-container\']').should('have.class', 'hidden')
   })
 
   it('shows editor and hides sidebar when note is selected on mobile', () => {
     cy.viewport('iphone-se2')
-    const selectedNote = { 
-      id: '1', 
-      title: 'Test Note', 
-      description: 'Content', 
+    const selectedNote = {
+      id: '1',
+      title: 'Test Note',
+      description: 'Content',
       tags: [],
-      created_at: new Date().toISOString(), 
+      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       user_id: 'test-user'
     }
     const controller = createMockController({ selectedNote })
-    
+
     cy.mount(
       <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
         <SupabaseTestProvider supabase={mockSupabase}>
@@ -150,17 +150,17 @@ describe('Mobile Layout Adaptation', () => {
 
     // Editor (NoteView) should be visible
     cy.get('[data-testid=\'editor-container\']').should('not.have.class', 'hidden')
-    
+
     cy.contains('Test Note').should('exist') // Content title
     cy.contains('Reading').should('exist') // Header status
   })
 
   it('shows Editing status in editor', () => {
     cy.viewport('iphone-se2')
-    const controller = createMockController({ 
+    const controller = createMockController({
       isEditing: true,
     })
-    
+
     cy.mount(
       <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
         <SupabaseTestProvider supabase={mockSupabase}>
@@ -174,17 +174,17 @@ describe('Mobile Layout Adaptation', () => {
 
   it('shows back button in NoteView on mobile', () => {
     cy.viewport('iphone-se2')
-    const selectedNote = { 
-      id: '1', 
-      title: 'Test Note', 
-      description: 'Content', 
+    const selectedNote = {
+      id: '1',
+      title: 'Test Note',
+      description: 'Content',
       tags: [],
-      created_at: new Date().toISOString(), 
+      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       user_id: 'test-user'
     }
     const controller = createMockController({ selectedNote })
-    
+
     cy.mount(
       <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
         <SupabaseTestProvider supabase={mockSupabase}>
@@ -195,7 +195,7 @@ describe('Mobile Layout Adaptation', () => {
 
     // Back button (ChevronLeft) should exist
     cy.get('.lucide-chevron-left').should('exist')
-    
+
     // Click back button
     cy.get('.lucide-chevron-left').parent().click()
     cy.get('@handleSelectNote').should('have.been.calledWith', null)
@@ -203,17 +203,17 @@ describe('Mobile Layout Adaptation', () => {
 
   it('hides back button on desktop', () => {
     cy.viewport(1024, 768)
-    const selectedNote = { 
-      id: '1', 
-      title: 'Test Note', 
-      description: 'Content', 
+    const selectedNote = {
+      id: '1',
+      title: 'Test Note',
+      description: 'Content',
       tags: [],
-      created_at: new Date().toISOString(), 
+      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       user_id: 'test-user'
     }
     const controller = createMockController({ selectedNote })
-    
+
     cy.mount(
       <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
         <SupabaseTestProvider supabase={mockSupabase}>

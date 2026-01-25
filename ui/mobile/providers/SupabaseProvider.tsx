@@ -38,25 +38,54 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Get initial session
-    void client.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session) mobileSyncService.init(client)
-      setLoading(false)
-    })
+    let mounted = true
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+    // Get initial session with timeout
+    const initSession = async () => {
+      try {
+        // Set timeout to prevent indefinite hang
+        const sessionPromise = client.auth.getSession()
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Session check timeout')), 5000)
+        })
+
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise])
+        
+        if (mounted) {
+          setSession(session)
+          setUser(session?.user ?? null)
+          if (session) mobileSyncService.init(client)
+          setLoading(false)
+        }
+      } catch (error) {
+        // Network error or timeout - app should still work offline
+        console.warn('[SupabaseProvider] Failed to get session:', error)
+        if (mounted) {
+          setSession(null)
+          setUser(null)
+          setLoading(false)
+        }
+      }
+    }
+
+    void initSession()
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = client.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session) mobileSyncService.init(client)
-      setLoading(false)
+      if (mounted) {
+        setSession(session)
+        setUser(session?.user ?? null)
+        if (session) mobileSyncService.init(client)
+        setLoading(false)
+      }
     })
 
     return () => {
+      mounted = false
+      clearTimeout(timeoutId)
       subscription.unsubscribe()
     }
   }, [client])

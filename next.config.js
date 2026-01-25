@@ -1,6 +1,12 @@
 // SPA static export
+const isDev = process.env.NODE_ENV !== 'production'
+const assetPrefix = process.env.NEXT_PUBLIC_ASSET_PREFIX ?? ''
+
 const nextConfig = {
   output: 'export', // Required for SPA
+  reactStrictMode: true, // Enable strict mode for better debugging
+  // Use absolute assets in dev server; keep relative paths for static export + file://
+  assetPrefix: isDev ? '' : assetPrefix,
   images: {
     unoptimized: true,
   },

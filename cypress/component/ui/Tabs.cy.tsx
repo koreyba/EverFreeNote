@@ -1,5 +1,5 @@
 import React from 'react'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@ui/web/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../ui/web/components/ui/tabs'
 
 describe('Tabs Component', () => {
   it('renders tabs with triggers and content', () => {

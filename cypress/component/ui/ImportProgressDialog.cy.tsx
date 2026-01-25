@@ -1,5 +1,5 @@
 import React from 'react'
-import { ImportProgressDialog } from '@ui/web/components/ImportProgressDialog'
+import { ImportProgressDialog } from '../../../ui/web/components/ImportProgressDialog'
 
 describe('ImportProgressDialog', () => {
   const defaultProgress = {

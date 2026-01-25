@@ -1,5 +1,5 @@
 import React from 'react'
-import { NoteEditor, type NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
+import { NoteEditor, type NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
 
 type TestNote = {
   id: string

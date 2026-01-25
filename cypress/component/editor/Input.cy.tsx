@@ -1,5 +1,5 @@
 import React from 'react'
-import { Input } from '@ui/web/components/ui/input'
+import { Input } from '../../../ui/web/components/ui/input'
 
 describe('Input Component', () => {
   it('renders with default props', () => {
