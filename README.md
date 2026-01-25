@@ -112,6 +112,13 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
+Optional:
+```bash
+# Use "./" only when building the mobile WebView bundle (file:// assets).
+# Leave empty for web deploys so assets load from /_next/.
+NEXT_PUBLIC_ASSET_PREFIX=./
+```
+
 ---
 
 ## License

@@ -49,6 +49,13 @@ npm run android:prod
 
 > **Note:** For **stage** and **prod** builds, Next.js is NOT needed — they use cloud-hosted editor. Only **dev** builds require local Next.js.
 
+### Mobile WebView bundle note
+When generating the local WebView bundle (offline assets), we build the web app with a relative asset prefix:
+```bash
+NEXT_PUBLIC_ASSET_PREFIX=./
+```
+This is already set in `prepare:webview-bundle` inside `ui/mobile/package.json`. For web deploys, keep it empty so assets load from `/_next/`.
+
 ---
 
 ## App Variants

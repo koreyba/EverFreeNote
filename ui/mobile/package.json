@@ -7,7 +7,7 @@
     "start:dev:offline": "cross-env APP_VARIANT=dev EXPO_PUBLIC_APP_VARIANT=dev EXPO_PUBLIC_EDITOR_WEBVIEW_URL=file:///android_asset/web-editor/index.html expo start --dev-client --lan --scheme everfreenote-dev",
     "start:stage": "cross-env APP_VARIANT=stage EXPO_PUBLIC_APP_VARIANT=stage expo start --dev-client --lan --scheme everfreenote-stage",
     "start:prod": "cross-env APP_VARIANT=prod EXPO_PUBLIC_APP_VARIANT=prod expo start --dev-client --lan --scheme everfreenote",
-    "prepare:webview-bundle": "npm --prefix ../.. run build && node ../../build/copy-web-bundle.js",
+    "prepare:webview-bundle": "cross-env NEXT_PUBLIC_ASSET_PREFIX=./ npm --prefix ../.. run build && node ../../build/copy-web-bundle.js",
     "preandroid:dev": "npm run prepare:webview-bundle",
     "preandroid:stage": "npm run prepare:webview-bundle",
     "preandroid:stage:release": "npm run prepare:webview-bundle",
