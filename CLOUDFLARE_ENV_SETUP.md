@@ -25,7 +25,7 @@ Production сайт показывает ошибку:
 **Пример:**
 ```
 Project URL: https://abcdefgh.supabase.co
-anon public: REDACTED_JWT
+anon public: <your-supabase-anon-key>
 ```
 
 ---
@@ -142,7 +142,7 @@ git push
 ```bash
 # .env.local (для локальной разработки)
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=REDACTED_JWT
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
 ```
 
 Этот файл **не коммитится** в git и используется только локально.

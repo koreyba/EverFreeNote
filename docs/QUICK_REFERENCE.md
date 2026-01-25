@@ -5,10 +5,10 @@
 ### Credentials
 ```
 Email: test@example.com
-Password: testpassword123
+Password: <test-password>
 
 Email: skip-auth@example.com  
-Password: testpassword123
+Password: <test-password>
 ```
 
 ### How to Create/Restore Test Users

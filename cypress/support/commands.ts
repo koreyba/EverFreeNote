@@ -10,6 +10,14 @@ type NoteInput = {
   tags?: string | string[]
 }
 
+const getSupabaseAnonKey = (): string | null => {
+  const key =
+    Cypress.env('SUPABASE_ANON_KEY') ||
+    Cypress.env('NEXT_PUBLIC_SUPABASE_ANON_KEY') ||
+    Cypress.env('EXPO_PUBLIC_SUPABASE_ANON_KEY')
+  return typeof key === 'string' && key.trim() ? key.trim() : null
+}
+
 // ============================================
 // E2E Custom Commands
 // ============================================
@@ -99,12 +107,18 @@ Cypress.Commands.add('assertTagExists', (tag: string) => {
 // ============================================
 
 Cypress.Commands.add('createNotesViaAPI', (notes: NoteInput[]) => {
+  const supabaseAnonKey = getSupabaseAnonKey()
+  if (!supabaseAnonKey) {
+    cy.log('SUPABASE_ANON_KEY not set; skipping API note creation')
+    return
+  }
+
   cy.request({
     method: 'GET',
     url: 'http://localhost:54321/auth/v1/user',
     headers: {
-      apikey: Cypress.env('SUPABASE_ANON_KEY') || 'REDACTED_JWT',
-      Authorization: `Bearer ${Cypress.env('SUPABASE_ANON_KEY') || 'REDACTED_JWT'}`,
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
     },
     failOnStatusCode: false,
   }).then(() => {
@@ -141,7 +155,7 @@ Cypress.Commands.add('createNotesViaAPI', (notes: NoteInput[]) => {
         method: 'POST',
         url: 'http://localhost:54321/rest/v1/notes',
         headers: {
-          apikey: Cypress.env('SUPABASE_ANON_KEY') || 'REDACTED_JWT',
+          apikey: supabaseAnonKey,
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           Prefer: 'return=minimal',
@@ -153,6 +167,12 @@ Cypress.Commands.add('createNotesViaAPI', (notes: NoteInput[]) => {
 })
 
 Cypress.Commands.add('deleteAllNotesViaAPI', () => {
+  const supabaseAnonKey = getSupabaseAnonKey()
+  if (!supabaseAnonKey) {
+    cy.log('SUPABASE_ANON_KEY not set; skipping API cleanup')
+    return
+  }
+
   cy.window().then((win) => {
     const session = JSON.parse(win.localStorage.getItem('sb-localhost-auth-token') || '{}') as {
       access_token?: string
@@ -170,7 +190,7 @@ Cypress.Commands.add('deleteAllNotesViaAPI', () => {
       method: 'DELETE',
       url: `http://localhost:54321/rest/v1/notes?user_id=eq.${userId}`,
       headers: {
-        apikey: Cypress.env('SUPABASE_ANON_KEY') || 'REDACTED_JWT',
+        apikey: supabaseAnonKey,
         Authorization: `Bearer ${accessToken}`,
       },
     })

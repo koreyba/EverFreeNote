@@ -18,10 +18,22 @@ type VariantConfig = {
 }
 
 // For dev: MUST set EXPO_PUBLIC_SUPABASE_URL in .env (use your computer's local IP, not 127.0.0.1)
-const devSupabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''
+const devSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').trim()
+const devSupabaseAnonKey = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '').trim()
 if (!devSupabaseUrl) {
   console.warn('⚠️  EXPO_PUBLIC_SUPABASE_URL is not set in .env - dev build will not connect to Supabase')
 }
+if (!devSupabaseAnonKey) {
+  console.warn('⚠️  EXPO_PUBLIC_SUPABASE_ANON_KEY is not set in .env - dev build may not authenticate')
+}
+
+const stageSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL_STAGE ?? '').trim()
+const stageSupabasePublishableKey = (process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_STAGE ?? '').trim()
+const stageEditorWebViewUrl = (process.env.EXPO_PUBLIC_STAGE_EDITOR_WEBVIEW_URL ?? '').trim()
+
+const prodSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL_PROD ?? '').trim()
+const prodSupabasePublishableKey = (process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_PROD ?? '').trim()
+const prodEditorWebViewUrl = (process.env.EXPO_PUBLIC_PROD_EDITOR_WEBVIEW_URL ?? '').trim()
 
 const variants: Record<AppVariant, VariantConfig> = {
   dev: {
@@ -32,9 +44,8 @@ const variants: Record<AppVariant, VariantConfig> = {
     icon: './assets/icon-dev.png',
     adaptiveIcon: './assets/adaptive-icon-dev.png',
     supabaseUrl: devSupabaseUrl,
-    supabaseAnonKey:
-      'REDACTED_JWT',
-    supabaseFunctionsUrl: `${devSupabaseUrl}/functions/v1`,
+    supabaseAnonKey: devSupabaseAnonKey,
+    supabaseFunctionsUrl: devSupabaseUrl ? `${devSupabaseUrl}/functions/v1` : '',
   },
   stage: {
     name: 'EverFreeNote Stage',
@@ -43,10 +54,10 @@ const variants: Record<AppVariant, VariantConfig> = {
     androidPackage: 'com.everfreenote.app.stage',
     icon: './assets/icon-stage.png',
     adaptiveIcon: './assets/adaptive-icon-stage.png',
-    supabaseUrl: 'https://yabcuywqxgjlruuyhwin.supabase.co',
-    supabasePublishableKey: 'REDACTED_PUBLISHABLE',
-    supabaseFunctionsUrl: 'https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1',
-    editorWebViewUrl: 'https://stage.everfreenote.pages.dev/editor-webview',
+    supabaseUrl: stageSupabaseUrl,
+    supabasePublishableKey: stageSupabasePublishableKey,
+    supabaseFunctionsUrl: stageSupabaseUrl ? `${stageSupabaseUrl}/functions/v1` : '',
+    editorWebViewUrl: stageEditorWebViewUrl,
   },
   prod: {
     name: 'EverFreeNote',
@@ -55,10 +66,10 @@ const variants: Record<AppVariant, VariantConfig> = {
     androidPackage: 'com.everfreenote.app',
     icon: './assets/icon.png',
     adaptiveIcon: './assets/adaptive-icon.png',
-    supabaseUrl: 'https://pmlloiywmuglbjkhrggo.supabase.co',
-    supabasePublishableKey: 'REDACTED_PUBLISHABLE',
-    supabaseFunctionsUrl: 'https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1',
-    editorWebViewUrl: 'https://everfreenote.pages.dev/editor-webview',
+    supabaseUrl: prodSupabaseUrl,
+    supabasePublishableKey: prodSupabasePublishableKey,
+    supabaseFunctionsUrl: prodSupabaseUrl ? `${prodSupabaseUrl}/functions/v1` : '',
+    editorWebViewUrl: prodEditorWebViewUrl,
   },
 }
 

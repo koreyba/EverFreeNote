@@ -34,13 +34,13 @@ After running `npx supabase start`, two test users are automatically created:
 
 ### 1. Test User (Persistent)
 - **Email:** `test@example.com`
-- **Password:** `testpassword123`
+- **Password:** `<test-password>`
 - **Purpose:** For testing with persistent data
 - **Button:** 🧪 Test Login (Persistent)
 
 ### 2. Skip Auth User (Quick Test)
 - **Email:** `skip-auth@example.com`
-- **Password:** `testpassword123`
+- **Password:** `<test-password>`
 - **Purpose:** For quick testing without worrying about data
 - **Button:** 🚀 Skip Authentication (Quick Test)
 - **Has sample notes** for immediate testing

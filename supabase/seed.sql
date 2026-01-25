@@ -10,8 +10,8 @@
 --   http://127.0.0.1:54323 → Authentication → Users → Add user
 --
 -- Test users:
---   - test@example.com / testpassword123
---   - skip-auth@example.com / testpassword123
+--   - test@example.com / <test-password>
+--   - skip-auth@example.com / <test-password>
 --
 -- Sample notes are created automatically by the init-test-users.js script.
 

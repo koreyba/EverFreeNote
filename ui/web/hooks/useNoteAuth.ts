@@ -9,6 +9,11 @@ import { webStorageAdapter } from '@ui/web/adapters/storage'
 import { webOAuthRedirectUri } from '@ui/web/config'
 import { featureFlags } from '@ui/web/featureFlags'
 
+const testAuthEmail = process.env.NEXT_PUBLIC_TEST_AUTH_EMAIL ?? ''
+const testAuthPassword = process.env.NEXT_PUBLIC_TEST_AUTH_PASSWORD ?? ''
+const skipAuthEmail = process.env.NEXT_PUBLIC_SKIP_AUTH_EMAIL ?? ''
+const skipAuthPassword = process.env.NEXT_PUBLIC_SKIP_AUTH_PASSWORD ?? ''
+
 export function useNoteAuth() {
     const { supabase, loading: providerLoading } = useSupabase()
     const queryClient = useQueryClient()
@@ -58,11 +63,16 @@ export function useNoteAuth() {
             return
         }
 
+        if (!testAuthEmail || !testAuthPassword) {
+            toast.error('Test auth credentials are not configured')
+            return
+        }
+
         try {
             setAuthLoading(true)
             const { data, error } = await authService.signInWithPassword(
-                'test@example.com',
-                'testpassword123'
+                testAuthEmail,
+                testAuthPassword
             )
 
             if (error) {
@@ -88,11 +98,16 @@ export function useNoteAuth() {
             return
         }
 
+        if (!skipAuthEmail || !skipAuthPassword) {
+            toast.error('Skip-auth credentials are not configured')
+            return
+        }
+
         try {
             setAuthLoading(true)
             const { data, error } = await authService.signInWithPassword(
-                'skip-auth@example.com',
-                'testpassword123'
+                skipAuthEmail,
+                skipAuthPassword
             )
 
             if (error) {
