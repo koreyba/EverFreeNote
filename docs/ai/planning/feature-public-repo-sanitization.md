@@ -17,21 +17,21 @@ description: Break down work into actionable tasks and estimate timeline
 **What specific work needs to be done?**
 
 ### Phase 1: Foundation
-- [ ] Task 1.1: Inventory config files and identify sensitive values
-- [ ] Task 1.2: Run gitleaks scan across repo and git history; document findings
+- [x] Task 1.1: Inventory config files and identify sensitive values
+- [x] Task 1.2: Run gitleaks scan across repo and git history; document findings
 
 ### Phase 2: Core Features
-- [ ] Task 2.1: Replace secrets in tracked files with env var references
-- [ ] Task 2.2: Add .env.example and document required env vars
-- [ ] Task 2.3: Update GitHub Actions workflows to inject secrets from GitHub Secrets
+- [x] Task 2.1: Replace secrets in tracked files with env var references
+- [x] Task 2.2: Add .env.example and document required env vars
+- [x] Task 2.3: Update GitHub Actions workflows to inject secrets from GitHub Secrets
 - [ ] Task 2.4: Rotate any exposed credentials and update integrations
-- [ ] Task 2.5: Rewrite git history if secrets are found
-- [ ] Task 2.6: Configure Cloudflare Pages environment variables for deployment
+- [x] Task 2.5: Rewrite git history if secrets are found
+- [x] Task 2.6: Configure Cloudflare Pages environment variables for deployment
 
 ### Phase 3: Integration & Polish
-- [ ] Task 3.1: Add automated gitleaks scanning (CI or pre-commit)
-- [ ] Task 3.2: Update README and setup docs with safe configuration steps
-- [ ] Task 3.3: Verify clean scans and app boot with example config
+- [x] Task 3.1: Add automated gitleaks scanning (CI or pre-commit)
+- [x] Task 3.2: Update README and setup docs with safe configuration steps
+- [x] Task 3.3: Verify clean scans and app boot with example config
 
 ## Dependencies
 **What needs to happen in what order?**

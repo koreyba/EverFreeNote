@@ -17,9 +17,15 @@ This will:
 - Start Supabase Auth service
 - Start Supabase Storage service
 - Apply all migrations
-- **Automatically create test users** via `supabase/seed.sql`
 
-### 3. Start Development Server
+### 3. Create Test Users (Optional)
+```bash
+cp .env.example .env.local
+# Fill SUPABASE_SERVICE_KEY and TEST_USER_PASSWORD
+npm run db:init-users
+```
+
+### 4. Start Development Server
 ```bash
 npm run dev
 ```
@@ -30,7 +36,7 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## Test Users
 
-After running `npx supabase start`, two test users are automatically created:
+After running `npm run db:init-users`, two test users are created:
 
 ### 1. Test User (Persistent)
 - **Email:** `test@example.com`
@@ -57,7 +63,7 @@ npx supabase db reset
 This will:
 1. Drop all tables
 2. Re-apply all migrations from `supabase/migrations/`
-3. Run `supabase/seed.sql` to create test users and sample data
+3. Run `supabase/seed.sql` for sample notes (test users are created by `npm run db:init-users`)
 
 **⚠️ Warning:** This deletes ALL local data!
 
@@ -77,7 +83,8 @@ npx supabase migration new migration_name
 
 ### How Test Users Are Created
 
-Test users are created in `supabase/seed.sql` which runs automatically after migrations.
+Test users are created by `scripts/init-test-users.ts` using Supabase Admin API.
+The script requires `SUPABASE_SERVICE_KEY` and `TEST_USER_PASSWORD`.
 
 **Why seed.sql instead of migrations?**
 - ✅ Seed data is separate from schema changes
@@ -100,7 +107,7 @@ const { createClient } = require('@supabase/supabase-js')
 
 const supabase = createClient(
   'http://127.0.0.1:54321',
-  'SERVICE_ROLE_KEY' // Get from `npx supabase status`
+  'SUPABASE_SERVICE_KEY' // Get from `npx supabase status`
 )
 
 await supabase.auth.admin.createUser({
@@ -115,7 +122,7 @@ Open browser console on [http://localhost:3000](http://localhost:3000) and run:
 
 ```javascript
 const supabaseUrl = 'http://127.0.0.1:54321';
-const serviceRoleKey = 'YOUR_SERVICE_ROLE_KEY'; // From `npx supabase status`
+const serviceRoleKey = 'YOUR_SUPABASE_SERVICE_KEY'; // From `npx supabase status`
 
 await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
   method: 'POST',
@@ -173,13 +180,30 @@ This will re-apply the migration that creates the `note-images` bucket.
 
 ## Environment Variables
 
-The app uses Supabase local development by default. No `.env` file needed!
+Local development works without env files, but test auth and scripts require them.
+Start from the template:
 
-When deploying to production, create `.env.local`:
+```bash
+cp .env.example .env.local
+```
+
+Core variables:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+For test users and scripts:
+
+```env
+SUPABASE_SERVICE_KEY=your-service-role-key
+TEST_USER_PASSWORD=your-test-password
+NEXT_PUBLIC_TEST_AUTH_EMAIL=test@example.com
+NEXT_PUBLIC_TEST_AUTH_PASSWORD=your-test-password
+NEXT_PUBLIC_SKIP_AUTH_EMAIL=skip-auth@example.com
+NEXT_PUBLIC_SKIP_AUTH_PASSWORD=your-test-password
+NEXT_PUBLIC_ENABLE_TEST_AUTH=true
 ```
 
 ---
@@ -255,4 +279,5 @@ supabase/
 ---
 
 **Last Updated:** 2025-01-20
+
 

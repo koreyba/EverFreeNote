@@ -24,6 +24,9 @@ This will:
 - ✅ Add sample notes for testing
 - ✅ Skip if users already exist (idempotent)
 
+Requires `SUPABASE_SERVICE_KEY` and `TEST_USER_PASSWORD` in `.env.local`.
+
+
 **Why not use seed.sql?**
 - Password hashing must be done by Supabase Auth service
 - SQL cannot create proper bcrypt hashes
@@ -65,6 +68,9 @@ This script uses Supabase Admin API to create:
 - Sample notes for testing
 - All necessary auth records (users + identities)
 
+It reads `SUPABASE_SERVICE_KEY` and `TEST_USER_PASSWORD` from `.env.local`.
+
+
 **Why a script instead of seed.sql?**
 - Password hashing requires Supabase Auth service
 - SQL cannot generate proper bcrypt hashes
@@ -83,7 +89,7 @@ This script uses Supabase Admin API to create:
 ### Via Browser Console
 ```javascript
 const url = 'http://127.0.0.1:54321';
-const key = 'SERVICE_ROLE_KEY'; // From `npx supabase status`
+const key = 'SUPABASE_SERVICE_KEY'; // From `npx supabase status`
 
 await fetch(`${url}/auth/v1/admin/users`, {
   method: 'POST',
@@ -108,10 +114,14 @@ await fetch(`${url}/auth/v1/admin/users`, {
 |---------|----------|
 | "Invalid credentials" | Run `npx supabase db reset` |
 | "Table not found" | Run `npx supabase stop` then `npx supabase start` |
-| Lost test data | Expected after `db reset`. Use seed.sql to recreate |
+| Lost test data | Expected after `db reset`. Run `npm run db:init-users` |
 | Images not uploading | Run `npx supabase db reset` to recreate storage bucket |
 
 ---
 
 **See also:** [Development Setup Guide](./DEVELOPMENT_SETUP.md)
+
+
+
+
 

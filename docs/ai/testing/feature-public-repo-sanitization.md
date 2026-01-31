@@ -61,7 +61,7 @@ description: Define testing approach, test cases, and quality assurance
 - Coverage gaps (files or functions below 100% and rationale)
 - Links to test reports or dashboards
 - Manual testing outcomes and sign-off
-- Latest quick check: `npx tsc --noEmit` (pending)
+- Latest quick check: secret pattern scan via `rg` (pass)
 
 ## Manual Testing
 **What requires human validation?**
