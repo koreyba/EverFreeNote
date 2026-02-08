@@ -5,9 +5,15 @@ dotenv.config({ path: '.env.local' })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const testAuthEmail = process.env.TEST_USER_EMAIL ?? ''
+const testAuthPassword = process.env.TEST_USER_PASSWORD ?? ''
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase credentials in .env.local')
+  process.exit(1)
+}
+if (!testAuthEmail || !testAuthPassword) {
+  console.error('Missing TEST_USER_EMAIL or TEST_USER_PASSWORD in environment')
   process.exit(1)
 }
 
@@ -101,8 +107,8 @@ async function runBenchmark() {
   console.log('🚀 Starting FTS Performance Benchmark\n')
 
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email: 'test@example.com',
-    password: 'testpassword123',
+    email: testAuthEmail,
+    password: testAuthPassword,
   })
 
   if (authError || !authData.user) {

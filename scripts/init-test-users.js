@@ -18,14 +18,21 @@ if (process.env.NEXT_PUBLIC_ENABLE_TEST_AUTH !== 'true') {
 
 // Use Supabase local API port (see supabase/config.toml -> [api].port)
 const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:54321'
-const SERVICE_ROLE_KEY =
-  process.env.SUPABASE_SERVICE_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_KEY
+if (!SERVICE_ROLE_KEY) {
+  console.error('Missing SUPABASE_SERVICE_KEY in environment')
+  process.exit(1)
+}
+const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD
+if (!TEST_USER_PASSWORD) {
+  console.error('Missing TEST_USER_PASSWORD in environment')
+  process.exit(1)
+}
 
 const TEST_USERS = [
   {
     email: 'test@example.com',
-    password: 'testpassword123',
+    password: TEST_USER_PASSWORD,
     notes: [
       {
         title: 'Test User Note',
@@ -36,7 +43,7 @@ const TEST_USERS = [
   },
   {
     email: 'skip-auth@example.com',
-    password: 'testpassword123',
+    password: TEST_USER_PASSWORD,
     notes: [
       {
         title: 'Welcome to EverFreeNote',
