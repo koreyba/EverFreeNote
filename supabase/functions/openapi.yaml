@@ -1,0 +1,572 @@
+openapi: 3.0.3
+info:
+  title: EverFreeNote Edge Functions API
+  description: |
+    Supabase Edge Functions for EverFreeNote.
+
+    **Base URL:** `{supabaseUrl}/functions/v1`
+
+    ## Authentication
+
+    Two auth models are used:
+
+    - **Bearer Token** — pass user JWT in `Authorization: Bearer <token>`.
+      Used by: `create-note`, `get-notes`, `delete-note`, `delete-account`.
+
+    - **Server-side (COACHING_USER_ID)** — no auth header needed, user is resolved from env variable.
+      Used by: `get-sessions`, `save-session`, `update-session`, `search-sessions`.
+
+    ### Getting a Bearer Token (local dev)
+
+    ```bash
+    curl -s http://localhost:54321/auth/v1/token?grant_type=password \
+      -H "apikey: <anon-key>" \
+      -H "Content-Type: application/json" \
+      -d '{"email":"test@example.com","password":"testpassword123"}' \
+      | jq -r '.access_token'
+    ```
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:54321/functions/v1
+    description: Local Supabase
+  - url: https://{project-ref}.supabase.co/functions/v1
+    description: Production Supabase
+
+tags:
+  - name: Notes
+    description: General-purpose note CRUD (Bearer token auth)
+  - name: Coaching Sessions
+    description: Coaching session management (server-side auth via COACHING_USER_ID)
+  - name: Account
+    description: Account management
+
+paths:
+  # ── Notes ──────────────────────────────────────────────
+
+  /create-note:
+    post:
+      tags: [Notes]
+      summary: Create a note
+      description: |
+        Creates a new note for the authenticated user.
+        All fields are optional — defaults: title="Untitled", description="", tags=[].
+        You can pass a custom UUID `id` for predictable test data.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteRequest"
+            examples:
+              minimal:
+                summary: Minimal (all defaults)
+                value: {}
+              full:
+                summary: Full example
+                value:
+                  id: "11111111-1111-1111-1111-111111111111"
+                  title: "My Test Note"
+                  description: "<p>Hello world</p>"
+                  tags: ["test", "automation"]
+      responses:
+        "200":
+          description: Note created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  note:
+                    $ref: "#/components/schemas/Note"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /get-notes:
+    get:
+      tags: [Notes]
+      summary: Get notes
+      description: |
+        Fetch notes for the authenticated user.
+
+        - **By ID:** `?id=<uuid>` — returns a single note or 404.
+        - **By title:** `?title=Exact+Title` — filters by exact title match.
+        - **List all:** no filters — returns up to `limit` notes ordered by `updated_at DESC`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          description: Note UUID. If provided, returns a single note.
+          schema:
+            type: string
+            format: uuid
+        - name: title
+          in: query
+          description: Exact title match filter.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Max notes to return (1–100).
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Notes fetched
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    title: Single note (when id param is used)
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      note:
+                        $ref: "#/components/schemas/Note"
+                  - type: object
+                    title: Note list
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      notes:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Note"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /delete-note:
+    post:
+      tags: [Notes]
+      summary: Delete a note
+      description: |
+        Deletes a note by ID. The note must belong to the authenticated user.
+        Returns 404 if the note doesn't exist or belongs to another user.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Note ID to delete
+            example:
+              id: "11111111-1111-1111-1111-111111111111"
+      responses:
+        "200":
+          description: Note deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  id:
+                    type: string
+                    format: uuid
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Coaching Sessions ──────────────────────────────────
+
+  /get-sessions:
+    get:
+      tags: [Coaching Sessions]
+      summary: Get coaching sessions
+      description: |
+        Returns recent coaching sessions (notes tagged `claude-therapy`).
+        Auth is server-side via `COACHING_USER_ID` env variable — no Bearer token needed.
+      parameters:
+        - name: limit
+          in: query
+          description: Max sessions to return (1–20).
+          schema:
+            type: integer
+            default: 3
+            minimum: 1
+            maximum: 20
+      responses:
+        "200":
+          description: Sessions fetched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  sessions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Note"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /save-session:
+    post:
+      tags: [Coaching Sessions]
+      summary: Create a coaching session
+      description: |
+        Creates a new note with tag `claude-therapy`.
+        Title is auto-generated: `Session YYYY-MM-DD - {topic}`.
+        Content limit: 50 KB.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [topic, content]
+              properties:
+                topic:
+                  type: string
+                  description: Session topic (used in title)
+                content:
+                  type: string
+                  description: Session content (HTML). Alias `description` also accepted.
+            example:
+              topic: "Anxiety management"
+              content: "<p>Today we discussed...</p>"
+      responses:
+        "200":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  note:
+                    $ref: "#/components/schemas/Note"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /update-session:
+    post:
+      tags: [Coaching Sessions]
+      summary: Update a coaching session
+      description: |
+        Updates title and/or content of a coaching session.
+        Two modes: `replace` (full content replacement) or `append` (add to existing).
+        Content limit: 50 KB.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, mode]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Session note ID
+                mode:
+                  type: string
+                  enum: [replace, append]
+                  description: Update mode
+                topic:
+                  type: string
+                  description: New topic (updates title). Optional.
+                content:
+                  type: string
+                  description: New content (for `replace` mode)
+                append:
+                  type: string
+                  description: Text to append (for `append` mode)
+            examples:
+              replace:
+                summary: Replace content
+                value:
+                  id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+                  mode: "replace"
+                  topic: "New topic"
+                  content: "<p>Replaced content</p>"
+              append:
+                summary: Append content
+                value:
+                  id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+                  mode: "append"
+                  append: "<p>Additional notes</p>"
+      responses:
+        "200":
+          description: Session updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  note:
+                    $ref: "#/components/schemas/Note"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /search-sessions:
+    get:
+      tags: [Coaching Sessions]
+      summary: Full-text search sessions
+      description: |
+        Searches coaching sessions using PostgreSQL full-text search.
+        Query must be 3–1000 characters. Supports prefix matching.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query (3–1000 chars)
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 1000
+        - name: limit
+          in: query
+          description: Max results (1–20).
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 20
+        - name: offset
+          in: query
+          description: Results offset for pagination.
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: min_rank
+          in: query
+          description: Minimum FTS relevance rank.
+          schema:
+            type: number
+            format: float
+            default: 0.1
+            minimum: 0
+        - name: lang
+          in: query
+          description: Search language.
+          schema:
+            type: string
+            enum: [ru, en, uk]
+            default: ru
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  query:
+                    type: string
+                    description: Original search query
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FtsSearchResult"
+                  total:
+                    type: integer
+                    description: Total matching results
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Account ────────────────────────────────────────────
+
+  /delete-account:
+    post:
+      tags: [Account]
+      summary: Delete user account
+      description: |
+        Permanently deletes the authenticated user's account and all their notes.
+        This action is irreversible.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Account deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Supabase user JWT token.
+        Get one via `POST /auth/v1/token?grant_type=password` with email/password.
+
+  schemas:
+    Note:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: "My Note"
+        description:
+          type: string
+          example: "<p>Note content</p>"
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["personal"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FtsSearchResult:
+      allOf:
+        - $ref: "#/components/schemas/Note"
+        - type: object
+          properties:
+            rank:
+              type: number
+              format: float
+              description: FTS relevance score
+            headline:
+              type: string
+              description: Highlighted snippet
+            content:
+              type: string
+              description: Matched content
+            total_count:
+              type: integer
+              description: Total matching rows
+
+    CreateNoteRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Optional custom UUID. Auto-generated if omitted.
+        title:
+          type: string
+          default: "Untitled"
+        description:
+          type: string
+          default: ""
+        tags:
+          type: array
+          items:
+            type: string
+          default: []
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Missing required field"
+
+    Unauthorized:
+      description: Unauthorized — missing or invalid Bearer token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Unauthorized"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Note not found"
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Failed to perform operation"
