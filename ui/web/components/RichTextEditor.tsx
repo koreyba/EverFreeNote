@@ -528,6 +528,14 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       const editor = editorRef.current
       if (!editor) return false
 
+      // If the clipboard comes from ProseMirror itself (intra-editor copy/paste),
+      // let ProseMirror handle it natively. It uses the data-pm-slice attribute
+      // to merge content correctly without creating extra empty paragraphs.
+      const rawHtml = event.clipboardData.getData('text/html')
+      if (rawHtml && rawHtml.includes('data-pm-slice')) {
+        return false
+      }
+
       const payload = SmartPasteService.buildPayload(event)
       if (!payload.html && !payload.text) return false
 

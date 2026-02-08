@@ -40,6 +40,9 @@ const ALLOWED_LINK_PROTOCOLS = ['http:', 'https:', 'mailto:']
 const ALLOWED_IMAGE_PROTOCOLS = ['http:', 'https:']
 // Exclude colors to avoid theme clashes from sources like Google Docs.
 const STYLE_ALLOWLIST = new Set(['font-weight', 'font-style', 'text-decoration'])
+// Matches HTML that is exactly one <p>...</p> element (used to unwrap ProseMirror clipboard wrappers).
+const SINGLE_PARAGRAPH_PATTERN = /^<p[^>]*>([\s\S]*)<\/p>$/i
+const BLOCK_ELEMENT_PATTERN = /<(p|div|ul|ol|li|h[1-6]|blockquote|pre|table|hr)[\s>/]/i
 
 const markdown = new MarkdownIt({
   html: false,
@@ -100,7 +103,8 @@ export const SmartPasteService = {
     try {
       if (detection.type === 'html' && payload.html) {
         const sanitized = sanitizePasteHtml(payload.html)
-        return { html: sanitized, type: 'html', warnings, detection }
+        const html = unwrapSingleParagraph(sanitized)
+        return { html, type: 'html', warnings, detection }
       }
 
       if (detection.type === 'markdown' && payload.text) {
@@ -202,6 +206,20 @@ function containsUnsupportedMarkdown(text: string): boolean {
   }
 
   return false
+}
+
+function unwrapSingleParagraph(html: string): string {
+  const trimmed = html.trim()
+  const match = trimmed.match(SINGLE_PARAGRAPH_PATTERN)
+  if (!match) return html
+
+  const inner = match[1]
+  // Don't unwrap if inner content has block elements.
+  // For multi-paragraph input the greedy regex captures "First</p><p>Second"
+  // as inner — BLOCK_ELEMENT_PATTERN detects the nested <p> and bails out.
+  if (BLOCK_ELEMENT_PATTERN.test(inner)) return html
+
+  return inner
 }
 
 function sanitizePasteHtml(html: string): string {
