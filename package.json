@@ -17,6 +17,7 @@
     "db:migration:list": "supabase migration list",
     "db:status": "supabase status",
     "db:studio": "supabase studio",
+    "functions:serve": "supabase functions serve --no-verify-jwt --env-file .env.local",
     "db:init-users": "node scripts/init-test-users.js",
     "perf:generate": "node scripts/generate-test-notes.js",
     "perf:measure": "node scripts/measure-performance.js",
@@ -127,7 +128,7 @@
     "nyc": "^17.1.0",
     "picocolors": "^1.0.1",
     "postcss": "^8",
-    "supabase": "^2.70.5",
+    "supabase": "^2.76.3",
     "tailwindcss": "^4.1.14",
     "typescript": "5.9.3"
   }
