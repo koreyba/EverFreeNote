@@ -256,8 +256,6 @@ describe('SearchScreen - Delete Functionality', () => {
       totalCount: mockSearchResults.length,
       hasMore: false,
     })
-
-    jest.clearAllMocks()
   })
 
   afterEach(() => {
@@ -647,12 +645,21 @@ describe('SearchScreen - Delete Functionality', () => {
     it('handles multiple sequential deletions in search results', async () => {
       // Reset params to ensure clean state
       mockLocalSearchParams = {}
-      // Fresh mocks for this test
-      mockSearchService.prototype.searchNotes = jest.fn().mockResolvedValue({
-        results: mockSearchResults,
-        total: mockSearchResults.length,
-        hasMore: false,
-        method: 'fts',
+
+      // Track deleted IDs so refetches after mutation return correct results
+      const deletedIds = new Set<string>()
+      mockSearchService.prototype.searchNotes = jest.fn().mockImplementation(() => {
+        const remaining = mockSearchResults.filter((r) => !deletedIds.has(r.id))
+        return Promise.resolve({
+          results: remaining,
+          total: remaining.length,
+          hasMore: false,
+          method: 'fts',
+        })
+      })
+      mockNoteService.prototype.deleteNote = jest.fn().mockImplementation((id: string) => {
+        deletedIds.add(id)
+        return Promise.resolve(id)
       })
 
       render(<SearchScreen />, { wrapper })
@@ -671,6 +678,10 @@ describe('SearchScreen - Delete Functionality', () => {
         expect(screen.queryByText('Search Result 1')).toBeNull()
       })
 
+      // Let React Query settle (mutation callbacks + refetch from first deletion)
+      // Without this, the refetch can overwrite the second deletion's optimistic update.
+      await act(async () => {})
+
       // Delete second note
       fireEvent.press(screen.getByTestId('delete-button-search-note-2'))
 
@@ -684,7 +695,7 @@ describe('SearchScreen - Delete Functionality', () => {
       // Verify both deletions were called
       expect(mockNoteService.prototype.deleteNote).toHaveBeenCalledWith('search-note-1')
       expect(mockNoteService.prototype.deleteNote).toHaveBeenCalledWith('search-note-2')
-    }, 15000) // Increased timeout for sequential operations
+    }, 15000)
   })
 
   describe('Swipe context integration', () => {

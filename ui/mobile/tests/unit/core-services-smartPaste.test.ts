@@ -394,4 +394,97 @@ describe('core/services/smartPaste', () => {
       expect(result.html).toContain('<p>Just text</p>')
     })
   })
+
+  describe('ProseMirror clipboard HTML (editor copy-paste)', () => {
+    it('unwraps single-paragraph HTML to inline content for inline-safe pasting', () => {
+      // When copying a word from ProseMirror, clipboard wraps it in <p>.
+      // Pasting <p>word</p> inside an existing paragraph splits it.
+      // The service should return content without wrapping <p>.
+      const payload = {
+        html: '<p>copied word</p>',
+        text: 'copied word',
+        types: ['text/html', 'text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+      expect(result.html).not.toMatch(/<p>/)
+      expect(result.html).toContain('copied word')
+    })
+
+    it('preserves inline formatting when unwrapping single-paragraph HTML', () => {
+      const payload = {
+        html: '<p><strong>bold</strong> text</p>',
+        text: 'bold text',
+        types: ['text/html', 'text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+      expect(result.html).toContain('<strong>')
+      expect(result.html).toContain('bold')
+      expect(result.html).toContain('text')
+      expect(result.html).not.toMatch(/^<p>/)
+    })
+
+    it('preserves italic formatting when unwrapping single-paragraph HTML', () => {
+      const payload = {
+        html: '<p><em>italic</em> word</p>',
+        text: 'italic word',
+        types: ['text/html', 'text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+      expect(result.html).toContain('<em>')
+      expect(result.html).not.toMatch(/^<p>/)
+    })
+
+    it('preserves mixed inline formatting when unwrapping single-paragraph HTML', () => {
+      const payload = {
+        html: '<p>Normal <strong>bold</strong> and <em>italic</em> text</p>',
+        text: 'Normal bold and italic text',
+        types: ['text/html', 'text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+      expect(result.html).toContain('<strong>')
+      expect(result.html).toContain('<em>')
+      expect(result.html).not.toMatch(/^<p>/)
+    })
+
+    it('keeps multi-paragraph HTML structure intact', () => {
+      const payload = {
+        html: '<p>First</p><p>Second</p>',
+        text: 'First\nSecond',
+        types: ['text/html', 'text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+      expect(result.type).toBe('html')
+      expect(result.html).toContain('<p>')
+    })
+
+    it('keeps list structure intact', () => {
+      const payload = {
+        html: '<ul><li>Item 1</li><li>Item 2</li></ul>',
+        text: 'Item 1\nItem 2',
+        types: ['text/html', 'text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+      expect(result.type).toBe('html')
+      expect(result.html).toContain('<ul>')
+      expect(result.html).toContain('<li>')
+    })
+
+    it('keeps heading structure intact', () => {
+      const payload = {
+        html: '<h1>Title</h1><p>Content</p>',
+        text: 'Title\nContent',
+        types: ['text/html', 'text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+      expect(result.type).toBe('html')
+      expect(result.html).toContain('<h1>')
+    })
+  })
 })

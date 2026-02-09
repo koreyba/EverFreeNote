@@ -63,6 +63,11 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     noteIdRef.current = noteId
   }, [noteId])
 
+  // Tracks whether an autosave-create (noteId=undefined) is in-flight.
+  // Used by the sync effect to distinguish "autosave assigned an ID" from
+  // "user navigated to a different note" when noteId changes undefined → id.
+  const pendingCreateRef = React.useRef(false)
+
   // Helper to get current form data from refs (single source of truth)
   const getFormData = React.useCallback(() => ({
     title: titleInputRef.current?.value ?? initialTitle,
@@ -113,19 +118,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     // Treat it as the same editing session ONLY if the incoming props match the
     // current form state (otherwise this is a real switch from "new note" to an
     // existing note and we must sync content).
-    if (!prevNoteId && nextNoteId) {
-      const current = getFormData()
-      const incomingTags = buildTagString(parseTagString(initialTags))
-      const isSameEditingSession =
-        current.title === initialTitle &&
-        current.description === initialDescription &&
-        current.tags === incomingTags
-
-      if (isSameEditingSession) {
-        debouncedAutoSave.reset(getAutoSavePayload({ noteId: nextNoteId }))
-        return
-      }
+    if (!prevNoteId && nextNoteId && pendingCreateRef.current) {
+      // Autosave just created this note and assigned a server ID.
+      // Same editing session — don't reset editor content.
+      pendingCreateRef.current = false
+      debouncedAutoSave.reset(getAutoSavePayload({ noteId: nextNoteId }))
+      return
     }
+    pendingCreateRef.current = false
 
     editorRef.current?.setContent(initialDescription)
     setInputResetKey((k) => k + 1)
@@ -165,6 +165,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   // Trigger debounced autosave on any content change
   const handleContentChange = React.useCallback(() => {
     if (!onAutoSave) return
+    // Mark that we're editing a new note so the sync effect knows
+    // an upcoming undefined→id transition is from autosave, not navigation.
+    if (!noteIdRef.current) pendingCreateRef.current = true
     debouncedAutoSave.schedule(getAutoSavePayload())
   }, [debouncedAutoSave, getAutoSavePayload, onAutoSave])
 
@@ -191,6 +194,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     setTagQuery("")
     // Trigger autosave when tags change
     if (onAutoSave) {
+      if (!noteIdRef.current) pendingCreateRef.current = true
       debouncedAutoSave.schedule(getAutoSavePayload({ tags: buildTagString(merged) }))
     }
   }, [debouncedTagQuery, debouncedAutoSave, getAutoSavePayload, onAutoSave])
@@ -201,6 +205,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     setSelectedTags(next)
     // Trigger autosave when tags change
     if (onAutoSave) {
+      if (!noteIdRef.current) pendingCreateRef.current = true
       debouncedAutoSave.schedule(getAutoSavePayload({ tags: buildTagString(next) }))
     }
   }, [debouncedAutoSave, getAutoSavePayload, onAutoSave])
