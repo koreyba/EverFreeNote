@@ -678,6 +678,10 @@ describe('SearchScreen - Delete Functionality', () => {
         expect(screen.queryByText('Search Result 1')).toBeNull()
       })
 
+      // Let React Query settle (mutation callbacks + refetch from first deletion)
+      // Without this, the refetch can overwrite the second deletion's optimistic update.
+      await act(async () => {})
+
       // Delete second note
       fireEvent.press(screen.getByTestId('delete-button-search-note-2'))
 
