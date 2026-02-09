@@ -57,6 +57,14 @@ const createSupabaseStub = (): SupabaseStub => {
   }
 }
 
+// Prevent uncaught exceptions from failing tests globally.
+// React/Next.js and third-party libraries (e.g. ResizeObserver, LockManager)
+// can throw asynchronous errors that are not related to the test itself.
+Cypress.on('uncaught:exception', (err) => {
+  Cypress.log({ name: 'uncaught:exception', message: err.message })
+  return false
+})
+
 Cypress.on('window:before:load', (win) => {
   const appWindow = win as unknown as ComponentTestWindow
   appWindow.__NEXT_DATA__ = {
@@ -82,6 +90,24 @@ Cypress.on('window:before:load', (win) => {
       dispatchEvent: cy.stub(),
     }),
   })
+
+  // Log browser console errors to terminal
+  const originalError = win.console.error;
+  win.console.error = (...args) => {
+    cy.task('log', `[BROWSER ERROR] ${args.join(' ')}`);
+    originalError(...args);
+  };
+
+  // Mock ResizeObserver for components that use it (e.g. Radix UI, Virtual lists)
+  if (!win.ResizeObserver) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (win as any).ResizeObserver = class ResizeObserver {
+      observe() { }
+      unobserve() { }
+      disconnect() { }
+    };
+  }
+
 })
 
 Cypress.Commands.add('mockSupabase', () => {

@@ -11,6 +11,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { BookOpen } from 'lucide-react-native'
 import Svg, { Path } from 'react-native-svg'
 
+const testAuthEmail = process.env.EXPO_PUBLIC_TEST_AUTH_EMAIL ?? ''
+const testAuthPassword = process.env.EXPO_PUBLIC_TEST_AUTH_PASSWORD ?? ''
+
 const GoogleIcon = ({ size = 20 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
@@ -69,12 +72,17 @@ export default function LoginScreen() {
     if (!featureFlags.testAuth) return
 
     try {
+      if (!testAuthEmail || !testAuthPassword) {
+        setError('Тестовые учетные данные не настроены')
+        return
+      }
+
       setLoadingTest(true)
       setError(null)
       const authService = new AuthService(client)
       const { error } = await authService.signInWithPassword(
-        'test@example.com',
-        'testpassword123'
+        testAuthEmail,
+        testAuthPassword
       )
 
       if (error) throw error

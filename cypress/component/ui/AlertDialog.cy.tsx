@@ -9,8 +9,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@ui/web/components/ui/alert-dialog'
-import { Button } from '@ui/web/components/ui/button'
+} from '../../../ui/web/components/ui/alert-dialog'
+import { Button } from '../../../ui/web/components/ui/button'
 
 describe('AlertDialog Component', () => {
   it('renders trigger button', () => {

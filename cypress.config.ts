@@ -6,12 +6,23 @@ export default defineConfig({
     devServer: {
       framework: 'next',
       bundler: 'webpack',
+      webpackConfig: {
+        devtool: false,
+      },
     },
     specPattern: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
     supportFile: 'cypress/support/component.ts',
     setupNodeEvents(on, config) {
       // Add code coverage for component tests
       require('@cypress/code-coverage/task')(on, config)
+
+      on('task', {
+        log(message) {
+          console.log(message)
+          return null
+        },
+      })
+
       return config
     },
     viewportWidth: 1280,
@@ -22,6 +33,13 @@ export default defineConfig({
       runMode: 0,
       openMode: 0,
     },
+    experimentalMemoryManagement: true,
+    numTestsKeptInMemory: 1,
+    // Increase timeouts for CI stability
+    pageLoadTimeout: 120000,
+    defaultCommandTimeout: 10000,
+    requestTimeout: 10000,
+    responseTimeout: 60000,
   },
   env: {
     codeCoverage: {

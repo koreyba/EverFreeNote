@@ -1,7 +1,7 @@
 import React from 'react'
-import { NoteList } from '@ui/web/components/features/notes/NoteList'
-import type { Note, SearchResult } from '@core/types/domain'
-import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
+import { NoteList } from '../../../../ui/web/components/features/notes/NoteList'
+import type { Note, SearchResult } from '../../../../core/types/domain'
+import { mergeNoteFields, pickLatestNote } from '../../../../core/utils/noteSnapshot'
 
 const latestNote: Note = {
   id: 'note-1',

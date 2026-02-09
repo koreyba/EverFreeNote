@@ -22,7 +22,12 @@ npm install
 ```
 
 ### 3. Configure environment
-Edit `.env` file:
+Copy `.env.example` to `.env` and edit:
+```bash
+cp .env.example .env
+```
+
+Example:
 ```env
 # Your computer's local IP (not 127.0.0.1!)
 # Find it with: ipconfig | grep IPv4
@@ -48,6 +53,13 @@ npm run android:prod
 ```
 
 > **Note:** For **stage** and **prod** builds, Next.js is NOT needed — they use cloud-hosted editor. Only **dev** builds require local Next.js.
+
+### Mobile WebView bundle note
+When generating the local WebView bundle (offline assets), we build the web app with a relative asset prefix:
+```bash
+NEXT_PUBLIC_ASSET_PREFIX=./
+```
+This is already set in `prepare:webview-bundle` inside `ui/mobile/package.json`. For web deploys, keep it empty so assets load from `/_next/`.
 
 ---
 
@@ -93,6 +105,7 @@ npm run test:coverage    # Run tests with coverage
 | File | Purpose |
 |------|---------|
 | `.env` | Dev environment variables (local Supabase URL) |
+| `.env.example` | Template for local env variables |
 | `app.config.ts` | Expo config with all variants (dev/stage/prod) |
 | `android/app/build.gradle` | Android product flavors |
 
@@ -141,7 +154,8 @@ ui/mobile/
 ├── hooks/                  # Custom hooks
 ├── assets/                 # Icons, images, fonts
 ├── android/                # Native Android code
-├── .env                    # Environment variables (dev only)
+??? .env                    # Environment variables (dev only)
+??? .env.example            # Env template
 ├── app.config.ts           # Expo configuration
 └── package.json            # Dependencies and scripts
 ```
@@ -153,3 +167,4 @@ ui/mobile/
 - [LAUNCH_GUIDE.md](./LAUNCH_GUIDE.md) - Detailed launch instructions
 - [VALIDATION_RULES.md](./VALIDATION_RULES.md) - Code quality rules
 - [TESTING_PLAN.md](./TESTING_PLAN.md) - Testing strategy
+

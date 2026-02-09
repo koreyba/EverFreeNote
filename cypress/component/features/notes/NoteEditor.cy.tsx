@@ -1,5 +1,5 @@
 import React from 'react'
-import { NoteEditor } from '@ui/web/components/features/notes/NoteEditor'
+import { NoteEditor } from '../../../../ui/web/components/features/notes/NoteEditor'
 
 describe('NoteEditor Component', () => {
   const getDefaultProps = () => ({
@@ -272,5 +272,168 @@ describe('NoteEditor Component', () => {
 
     cy.get('[data-cy="editor-content"]').should('contain.text', 'HelloWorld')
     cy.wrap(onAutoSave).should('have.been.called')
+  })
+})
+
+/**
+ * Race condition tests: new note creation with slow network.
+ *
+ * These tests simulate the real controller flow where createNoteMutation.mutateAsync()
+ * takes time to complete. While the request is in-flight, the user continues typing.
+ * The server responds with the STALE payload (captured at debounce-flush time),
+ * which causes noteId to change from undefined → UUID and initialDescription/initialTitle
+ * props to carry stale values. The NoteEditor sync effect must NOT reset the editor
+ * to those stale values.
+ *
+ * The controllable-promise pattern lets us deterministically:
+ *   1. Wait for the autosave to start  (cy.get inflight = true)
+ *   2. Type while the request is in-flight
+ *   3. Resolve the "network request"    (cy.then → resolve)
+ *   4. Wait for the response to land    (cy.get noteId = server-uuid-1)
+ *   5. Assert editor content is intact
+ */
+describe('NoteEditor – autosave race condition on new note create', () => {
+
+  type AutoSavePayload = {
+    noteId?: string
+    title: string
+    description: string
+    tags: string
+  }
+
+  /**
+   * Factory that builds a Wrapper simulating the controller's create-note flow
+   * with a controllable "network delay" for the create mutation.
+   */
+  function createWrapper(initialState?: { title?: string; description?: string; tags?: string }) {
+    let _resolveCreate: (() => void) | null = null
+
+    function Wrapper() {
+      const [state, setState] = React.useState({
+        noteId: undefined as string | undefined,
+        title: initialState?.title ?? '',
+        description: initialState?.description ?? '',
+        tags: initialState?.tags ?? '',
+      })
+      const [inflight, setInflight] = React.useState(false)
+      const createCalledRef = React.useRef(false)
+
+      const handleAutoSave = React.useCallback(
+        async (payload: AutoSavePayload) => {
+          // Only the first call triggers the delayed create; skip concurrent calls
+          if (createCalledRef.current) return
+          if (!state.noteId) {
+            createCalledRef.current = true
+            // Capture payload NOW — this is what the server receives
+            const serverSnapshot = { ...payload }
+            setInflight(true)
+
+            // Pause until the test resolves the "network request"
+            await new Promise<void>((r) => { _resolveCreate = r })
+
+            // Simulate: server returns the note with a real ID,
+            // but title/description/tags are from the SNAPSHOT (stale)
+            setState({
+              noteId: 'server-uuid-1',
+              title: serverSnapshot.title,
+              description: serverSnapshot.description,
+              tags: serverSnapshot.tags,
+            })
+            setInflight(false)
+          }
+        },
+        [state.noteId],
+      )
+
+      return (
+        <div>
+          <div data-cy="note-id">{state.noteId ?? 'none'}</div>
+          <div data-cy="inflight">{String(inflight)}</div>
+          <NoteEditor
+            noteId={state.noteId}
+            initialTitle={state.title}
+            initialDescription={state.description}
+            initialTags={state.tags}
+            availableTags={[]}
+            isSaving={false}
+            onSave={() => undefined}
+            onRead={() => undefined}
+            onAutoSave={handleAutoSave}
+            autosaveDelayMs={50}
+          />
+        </div>
+      )
+    }
+
+    return { Wrapper, resolveCreate: () => _resolveCreate?.() }
+  }
+
+  it('preserves body text typed while create-autosave is in-flight', () => {
+    const { Wrapper, resolveCreate } = createWrapper()
+    cy.mount(<Wrapper />)
+
+    // Type title → triggers debounced autosave that captures {title, description: ""}
+    cy.get('input[placeholder="Note title"]').type('My Title')
+
+    // Wait for autosave to fire and hit the "network"
+    cy.get('[data-cy="inflight"]').should('have.text', 'true')
+
+    // While the create request is in-flight, type body text
+    cy.get('[data-cy="editor-content"]').click().type('Body during flight')
+
+    // "Server responds" with stale snapshot (description: "")
+    cy.then(() => resolveCreate())
+
+    // Wait for the response to be processed
+    cy.get('[data-cy="note-id"]').should('have.text', 'server-uuid-1')
+    cy.get('[data-cy="inflight"]').should('have.text', 'false')
+
+    // Body text typed during in-flight MUST be preserved
+    cy.get('[data-cy="editor-content"]').should('contain.text', 'Body during flight')
+    cy.get('input[placeholder="Note title"]').should('have.value', 'My Title')
+  })
+
+  it('preserves body continuation typed during in-flight create', () => {
+    // Start with pre-existing body content
+    const { Wrapper, resolveCreate } = createWrapper({
+      description: '<p>Initial body </p>',
+    })
+    cy.mount(<Wrapper />)
+
+    cy.get('[data-cy="editor-content"]').should('contain.text', 'Initial body')
+
+    // Type title → autosave captures {title, description: "Initial body "}
+    cy.get('input[placeholder="Note title"]').type('Title')
+    cy.get('[data-cy="inflight"]').should('have.text', 'true')
+
+    // While in-flight, append more body text
+    cy.get('[data-cy="editor-content"]').click().type('Extra text')
+
+    // Server responds with stale snapshot (only "Initial body ")
+    cy.then(() => resolveCreate())
+    cy.get('[data-cy="note-id"]').should('have.text', 'server-uuid-1')
+
+    // Both original AND newly typed body text MUST be preserved
+    cy.get('[data-cy="editor-content"]').should('contain.text', 'Initial body')
+    cy.get('[data-cy="editor-content"]').should('contain.text', 'Extra text')
+  })
+
+  it('preserves title changes made during in-flight create', () => {
+    const { Wrapper, resolveCreate } = createWrapper()
+    cy.mount(<Wrapper />)
+
+    // Type title → autosave captures {title: "Hello"}
+    cy.get('input[placeholder="Note title"]').type('Hello')
+    cy.get('[data-cy="inflight"]').should('have.text', 'true')
+
+    // While in-flight, append to title
+    cy.get('input[placeholder="Note title"]').type(' World')
+
+    // Server responds with stale snapshot (title: "Hello")
+    cy.then(() => resolveCreate())
+    cy.get('[data-cy="note-id"]').should('have.text', 'server-uuid-1')
+
+    // Full title "Hello World" MUST be preserved
+    cy.get('input[placeholder="Note title"]').should('have.value', 'Hello World')
   })
 })

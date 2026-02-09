@@ -1,8 +1,8 @@
 import React from 'react'
-import { Button } from '@ui/web/components/ui/button'
-import { Input } from '@ui/web/components/ui/input'
-import { Textarea } from '@ui/web/components/ui/textarea'
-import { Label } from '@ui/web/components/ui/label'
+import { Button } from '../../../ui/web/components/ui/button'
+import { Input } from '../../../ui/web/components/ui/input'
+import { Textarea } from '../../../ui/web/components/ui/textarea'
+import { Label } from '../../../ui/web/components/ui/label'
 
 interface NoteFormProps {
   onSubmit: (data: { title: string; content: string }) => void

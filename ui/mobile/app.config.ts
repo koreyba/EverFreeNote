@@ -18,10 +18,22 @@ type VariantConfig = {
 }
 
 // For dev: MUST set EXPO_PUBLIC_SUPABASE_URL in .env (use your computer's local IP, not 127.0.0.1)
-const devSupabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''
+const devSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').trim()
+const devSupabaseAnonKey = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '').trim()
 if (!devSupabaseUrl) {
   console.warn('⚠️  EXPO_PUBLIC_SUPABASE_URL is not set in .env - dev build will not connect to Supabase')
 }
+if (!devSupabaseAnonKey) {
+  console.warn('⚠️  EXPO_PUBLIC_SUPABASE_ANON_KEY is not set in .env - dev build may not authenticate')
+}
+
+const stageSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL_STAGE ?? '').trim()
+const stageSupabasePublishableKey = (process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_STAGE ?? '').trim()
+const stageEditorWebViewUrl = (process.env.EXPO_PUBLIC_STAGE_EDITOR_WEBVIEW_URL ?? '').trim()
+
+const prodSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL_PROD ?? '').trim()
+const prodSupabasePublishableKey = (process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_PROD ?? '').trim()
+const prodEditorWebViewUrl = (process.env.EXPO_PUBLIC_PROD_EDITOR_WEBVIEW_URL ?? '').trim()
 
 const variants: Record<AppVariant, VariantConfig> = {
   dev: {
@@ -32,9 +44,8 @@ const variants: Record<AppVariant, VariantConfig> = {
     icon: './assets/icon-dev.png',
     adaptiveIcon: './assets/adaptive-icon-dev.png',
     supabaseUrl: devSupabaseUrl,
-    supabaseAnonKey:
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
-    supabaseFunctionsUrl: `${devSupabaseUrl}/functions/v1`,
+    supabaseAnonKey: devSupabaseAnonKey,
+    supabaseFunctionsUrl: devSupabaseUrl ? `${devSupabaseUrl}/functions/v1` : '',
   },
   stage: {
     name: 'EverFreeNote Stage',
@@ -43,10 +54,10 @@ const variants: Record<AppVariant, VariantConfig> = {
     androidPackage: 'com.everfreenote.app.stage',
     icon: './assets/icon-stage.png',
     adaptiveIcon: './assets/adaptive-icon-stage.png',
-    supabaseUrl: 'https://yabcuywqxgjlruuyhwin.supabase.co',
-    supabasePublishableKey: 'sb_publishable_N_ZnirEdste9qYdS5--ThQ_oJrj1JmI',
-    supabaseFunctionsUrl: 'https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1',
-    editorWebViewUrl: 'https://stage.everfreenote.pages.dev/editor-webview',
+    supabaseUrl: stageSupabaseUrl,
+    supabasePublishableKey: stageSupabasePublishableKey,
+    supabaseFunctionsUrl: stageSupabaseUrl ? `${stageSupabaseUrl}/functions/v1` : '',
+    editorWebViewUrl: stageEditorWebViewUrl,
   },
   prod: {
     name: 'EverFreeNote',
@@ -55,10 +66,10 @@ const variants: Record<AppVariant, VariantConfig> = {
     androidPackage: 'com.everfreenote.app',
     icon: './assets/icon.png',
     adaptiveIcon: './assets/adaptive-icon.png',
-    supabaseUrl: 'https://pmlloiywmuglbjkhrggo.supabase.co',
-    supabasePublishableKey: 'sb_publishable_FIrv4LN4QtDnpNbc3N2isg_NJQu5JKK',
-    supabaseFunctionsUrl: 'https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1',
-    editorWebViewUrl: 'https://everfreenote.pages.dev/editor-webview',
+    supabaseUrl: prodSupabaseUrl,
+    supabasePublishableKey: prodSupabasePublishableKey,
+    supabaseFunctionsUrl: prodSupabaseUrl ? `${prodSupabaseUrl}/functions/v1` : '',
+    editorWebViewUrl: prodEditorWebViewUrl,
   },
 }
 
@@ -95,7 +106,13 @@ const resolveStageWebViewUrl = (): string => {
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = resolveVariant()
   const variantConfig = variants[variant]
-  const editorWebViewOverride = (process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL ?? '').trim()
+  // Dev convenience: allow overriding the editor WebView URL from the local .env.
+  // Important: do NOT let this override leak into stage/prod release builds.
+  const devEditorWebViewUrl = (process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL ?? '').trim()
+  if (variant === 'dev' && !devEditorWebViewUrl) {
+    console.warn('Warning: EXPO_PUBLIC_EDITOR_WEBVIEW_URL is not set for dev builds (full /editor-webview URL required).')
+  }
+  const editorWebViewOverride = variant === 'dev' ? devEditorWebViewUrl : ''
   const stageWebViewUrl = resolveStageWebViewUrl()
   const oauthRedirectOverride = (process.env.EXPO_PUBLIC_OAUTH_REDIRECT_URL ?? '').trim()
   const resolvedEditorWebViewUrl =

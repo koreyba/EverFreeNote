@@ -63,5 +63,14 @@ export default defineConfig([
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
+  
+  // Override for Node.js scripts (CommonJS)
+  {
+    files: ['scripts/*.js', 'build/*.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-var-requires': 'off',
+    },
+  },
 ]);
 

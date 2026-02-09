@@ -44,17 +44,17 @@ http://127.0.0.1:54321/functions/v1/<function-name>
 ```
 
 ## Деплой на staging
-Проект staging: `yabcuywqxgjlruuyhwin`
+Проект staging: `<staging-project-ref>`
 
 ### Каждый новый деплой (всегда)
 1) Явно переключиться на staging проект (чтобы не ошибиться с текущим):
 ```
-npx supabase link --project-ref yabcuywqxgjlruuyhwin
+npx supabase link --project-ref <staging-project-ref>
 ```
 
 2) Проверить секреты (если менялись — обновить):
 ```
-npx supabase secrets set SUPABASE_URL=https://yabcuywqxgjlruuyhwin.supabase.co
+npx supabase secrets set SUPABASE_URL=https://<staging-project-ref>.supabase.co
 npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
 npx supabase secrets set COACHING_USER_ID=<uuid>
 ```
@@ -69,17 +69,17 @@ npx supabase functions deploy delete-account
 ```
 
 ## Деплой на production
-Проект production: `pmlloiywmuglbjkhrggo`
+Проект production: `<production-project-ref>`
 
 ### Каждый новый деплой (всегда)
 1) Явно переключиться на prod проект (чтобы не ошибиться с текущим):
 ```
-npx supabase link --project-ref pmlloiywmuglbjkhrggo
+npx supabase link --project-ref <production-project-ref>
 ```
 
 2) Проверить секреты (если менялись — обновить):
 ```
-npx supabase secrets set SUPABASE_URL=https://pmlloiywmuglbjkhrggo.supabase.co
+npx supabase secrets set SUPABASE_URL=https://<production-project-ref>.supabase.co
 npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
 npx supabase secrets set COACHING_USER_ID=<uuid>
 ```
@@ -110,25 +110,25 @@ npx supabase status
 ```
 
 ## Готовые адреса для Claude (copy-paste)
-### Staging (yabcuywqxgjlruuyhwin)
+### Staging (<staging-project-ref>)
 Base URL:
 ```
-https://yabcuywqxgjlruuyhwin.supabase.co
+https://<staging-project-ref>.supabase.co
 ```
 
 Headers:
 ```
-apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhYmN1eXdxeGdqbHJ1dXlod2luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2ODAyNDIsImV4cCI6MjA4MDI1NjI0Mn0.rlv-VFL7Ted3TE5-AT4QooDEOt4LdZEtnnZP94KjhFY
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhYmN1eXdxeGdqbHJ1dXlod2luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2ODAyNDIsImV4cCI6MjA4MDI1NjI0Mn0.rlv-VFL7Ted3TE5-AT4QooDEOt4LdZEtnnZP94KjhFY
+apikey: <staging-anon-key>
+Authorization: Bearer <staging-anon-key>
 Content-Type: application/json
 ```
 
 Endpoints:
 ```
-POST https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1/save-session
-POST https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1/update-session
-GET  https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1/get-sessions?limit=3
-GET  https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1/search-sessions?q=embodiment&limit=5
+POST https://<staging-project-ref>.supabase.co/functions/v1/save-session
+POST https://<staging-project-ref>.supabase.co/functions/v1/update-session
+GET  https://<staging-project-ref>.supabase.co/functions/v1/get-sessions?limit=3
+GET  https://<staging-project-ref>.supabase.co/functions/v1/search-sessions?q=embodiment&limit=5
 ```
 
 Примеры тела для `update-session`:
@@ -143,25 +143,25 @@ GET  https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1/search-sessions?q=emb
 { "id": "<note_id>", "mode": "append", "append": "Добавка", "topic": "Новая тема" }
 ```
 
-### Production (pmlloiywmuglbjkhrggo)
+### Production (<production-project-ref>)
 Base URL:
 ```
-https://pmlloiywmuglbjkhrggo.supabase.co
+https://<production-project-ref>.supabase.co
 ```
 
 Headers:
 ```
-apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtbGxvaXl3bXVnbGJqa2hyZ2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTM5ODksImV4cCI6MjA3NTc4OTk4OX0.w0nQ2o4V2I35NujqOTgAfE3QSU1nYIJqTsTSCGT6UDw
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtbGxvaXl3bXVnbGJqa2hyZ2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTM5ODksImV4cCI6MjA3NTc4OTk4OX0.w0nQ2o4V2I35NujqOTgAfE3QSU1nYIJqTsTSCGT6UDw
+apikey: <production-anon-key>
+Authorization: Bearer <production-anon-key>
 Content-Type: application/json
 ```
 
 Endpoints:
 ```
-POST https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1/save-session
-POST https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1/update-session
-GET  https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1/get-sessions?limit=3
-GET  https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1/search-sessions?q=embodiment&limit=5
+POST https://<production-project-ref>.supabase.co/functions/v1/save-session
+POST https://<production-project-ref>.supabase.co/functions/v1/update-session
+GET  https://<production-project-ref>.supabase.co/functions/v1/get-sessions?limit=3
+GET  https://<production-project-ref>.supabase.co/functions/v1/search-sessions?q=embodiment&limit=5
 ```
 
 Примеры тела для `update-session`:

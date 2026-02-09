@@ -1,5 +1,5 @@
 import React from 'react'
-import { Checkbox } from '@ui/web/components/ui/checkbox'
+import { Checkbox } from '../../../ui/web/components/ui/checkbox'
 
 describe('Checkbox Component', () => {
   it('renders checkbox in unchecked state by default', () => {

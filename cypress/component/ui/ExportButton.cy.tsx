@@ -1,8 +1,8 @@
 import React from 'react'
-import { ExportButton } from '@ui/web/components/ExportButton'
-import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
-import { ExportService } from '@core/enex/export-service'
-import { NoteService } from '@core/services/notes'
+import { ExportButton } from '../../../ui/web/components/ExportButton'
+import { SupabaseTestProvider } from '../../../ui/web/providers/SupabaseProvider'
+import { ExportService } from '../../../core/enex/export-service'
+import { NoteService } from '../../../core/services/notes'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SinonStub = any

@@ -53,8 +53,8 @@ Open http://localhost:3000
 **Supabase Studio**: http://localhost:54323
 
 ### Test Users
-- `skip-auth@example.com` / `testpassword123`
-- `test@example.com` / `testpassword123`
+- `skip-auth@example.com` / `<test-password>`
+- `test@example.com` / `<test-password>`
 
 ### Stop Services
 ```bash
@@ -110,6 +110,13 @@ Deploy the `out/` folder to:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+Optional:
+```bash
+# Use "./" only when building the mobile WebView bundle (file:// assets).
+# Leave empty for web deploys so assets load from /_next/.
+NEXT_PUBLIC_ASSET_PREFIX=./
 ```
 
 ---
