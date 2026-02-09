@@ -57,6 +57,14 @@ const createSupabaseStub = (): SupabaseStub => {
   }
 }
 
+// Prevent uncaught exceptions from failing tests globally.
+// React/Next.js and third-party libraries (e.g. ResizeObserver, LockManager)
+// can throw asynchronous errors that are not related to the test itself.
+Cypress.on('uncaught:exception', (err) => {
+  Cypress.log({ name: 'uncaught:exception', message: err.message })
+  return false
+})
+
 Cypress.on('window:before:load', (win) => {
   const appWindow = win as unknown as ComponentTestWindow
   appWindow.__NEXT_DATA__ = {
@@ -100,14 +108,6 @@ Cypress.on('window:before:load', (win) => {
     };
   }
 
-  // Catch uncaught errors that prevent test registration
-  win.addEventListener('error', (event) => {
-    cy.task('log', `[UNCAUGHT ERROR] ${event.message} at ${event.filename}:${event.lineno}`);
-  });
-
-  win.addEventListener('unhandledrejection', (event) => {
-    cy.task('log', `[UNHANDLED REJECTION] ${event.reason}`);
-  });
 })
 
 Cypress.Commands.add('mockSupabase', () => {

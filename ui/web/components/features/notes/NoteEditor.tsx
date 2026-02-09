@@ -194,6 +194,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     setTagQuery("")
     // Trigger autosave when tags change
     if (onAutoSave) {
+      if (!noteIdRef.current) pendingCreateRef.current = true
       debouncedAutoSave.schedule(getAutoSavePayload({ tags: buildTagString(merged) }))
     }
   }, [debouncedTagQuery, debouncedAutoSave, getAutoSavePayload, onAutoSave])
@@ -204,6 +205,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     setSelectedTags(next)
     // Trigger autosave when tags change
     if (onAutoSave) {
+      if (!noteIdRef.current) pendingCreateRef.current = true
       debouncedAutoSave.schedule(getAutoSavePayload({ tags: buildTagString(next) }))
     }
   }, [debouncedAutoSave, getAutoSavePayload, onAutoSave])
