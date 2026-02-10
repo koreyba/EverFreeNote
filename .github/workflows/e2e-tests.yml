@@ -3,6 +3,17 @@
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'Cloudflare preview URL to test against'
+        required: true
+        type: string
+      e2e_branch:
+        description: 'E2E repo branch (leave empty for auto-detect / master)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -11,13 +22,48 @@ permissions:
   checks: read
 
 concurrency:
-  group: e2e-pr-${{ github.event.pull_request.number }}
+  group: e2e-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
+  resolve-e2e-branch:
+    name: Resolve E2E branch
+    runs-on: ubuntu-latest
+    outputs:
+      e2e_ref: ${{ steps.resolve.outputs.e2e_ref }}
+
+    steps:
+      - name: Determine E2E test branch
+        id: resolve
+        env:
+          INPUT_BRANCH: ${{ inputs.e2e_branch }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+
+          # Priority: manual input > matching PR branch name > master
+          if [ -n "${INPUT_BRANCH}" ]; then
+            echo "Using manually specified branch: ${INPUT_BRANCH}"
+            echo "e2e_ref=${INPUT_BRANCH}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ -n "${PR_HEAD_REF}" ]; then
+            echo "Checking if branch '${PR_HEAD_REF}' exists in EverFreeNote-e2e..."
+            if git ls-remote --exit-code --heads "https://github.com/koreyba/EverFreeNote-e2e.git" "refs/heads/${PR_HEAD_REF}" > /dev/null 2>&1; then
+              echo "Found matching branch: ${PR_HEAD_REF}"
+              echo "e2e_ref=${PR_HEAD_REF}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "No matching branch found"
+          fi
+
+          echo "Using default branch: master"
+          echo "e2e_ref=master" >> "$GITHUB_OUTPUT"
+
   wait-cloudflare-preview:
     name: Wait for Cloudflare Preview
-    if: ${{ !github.event.pull_request.draft }}
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 35
     outputs:
@@ -116,19 +162,24 @@ jobs:
 
   run-e2e:
     name: Run Playwright E2E
-    needs: wait-cloudflare-preview
+    needs: [resolve-e2e-branch, wait-cloudflare-preview]
+    if: |
+      always() &&
+      needs.resolve-e2e-branch.result == 'success' &&
+      (needs.wait-cloudflare-preview.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.wait-cloudflare-preview.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      BASE_URL: ${{ needs.wait-cloudflare-preview.outputs.preview_url }}
+      BASE_URL: ${{ needs.wait-cloudflare-preview.outputs.preview_url || inputs.preview_url }}
       SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+      E2E_REF: ${{ needs.resolve-e2e-branch.outputs.e2e_ref }}
 
     steps:
       - name: Checkout E2E repository
         uses: actions/checkout@v4
         with:
           repository: koreyba/EverFreeNote-e2e
-          ref: master
+          ref: ${{ needs.resolve-e2e-branch.outputs.e2e_ref }}
           path: e2e
 
       - name: Setup Node.js
@@ -165,7 +216,7 @@ jobs:
 
           const summaryFile = process.env.GITHUB_STEP_SUMMARY;
           const previewUrl = process.env.BASE_URL || 'n/a';
-          const repoRef = 'koreyba/EverFreeNote-e2e@master';
+          const repoRef = 'koreyba/EverFreeNote-e2e@' + (process.env.E2E_REF || 'master');
           const overallOutcome = process.env.E2E_STEP_OUTCOME || 'unknown';
 
           const reportPath = path.resolve('e2e', 'results.json');
