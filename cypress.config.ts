@@ -26,8 +26,6 @@ export default defineConfig({
       runMode: 2,
       openMode: 0,
     },
-    experimentalMemoryManagement: true,
-    numTestsKeptInMemory: 1,
     // Increase timeouts for CI stability
     pageLoadTimeout: 120000,
     defaultCommandTimeout: 10000,

@@ -48,6 +48,12 @@ jobs:
 
           const resultsPath = path.resolve('cypress', 'results', 'component-results.json');
           const exitCodePath = path.resolve('cypress', 'results', 'component-exit-code.txt');
+          const runOptions = {
+            component: true,
+            browser: 'electron',
+            spec: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
+            reporter: 'spec',
+          };
 
           const writeExitCode = (code) => {
             fs.writeFileSync(exitCodePath, String(code), 'utf8');
@@ -57,38 +63,121 @@ jobs:
             fs.writeFileSync(resultsPath, JSON.stringify(payload, null, 2), 'utf8');
           };
 
+          const getSpecName = (run) => run?.spec?.relative || run?.spec?.name || 'unknown spec';
+
+          const getRunTestsCount = (run) => {
+            const statsTests = Number(run?.stats?.tests);
+            if (Number.isFinite(statsTests)) return statsTests;
+            if (Array.isArray(run?.tests)) return run.tests.length;
+            return 0;
+          };
+
+          const collectZeroTestSpecs = (runs) =>
+            (runs || [])
+              .filter((run) => getRunTestsCount(run) === 0)
+              .map((run) => getSpecName(run));
+
+          const aggregateTotals = (runs) => {
+            return (runs || []).reduce((acc, run) => {
+              const stats = run?.stats || {};
+              acc.totalSuites += Number(stats.suites || 0);
+              acc.totalTests += Number(stats.tests || 0);
+              acc.totalPassed += Number(stats.passes || 0);
+              acc.totalFailed += Number(stats.failures || 0);
+              acc.totalPending += Number(stats.pending || 0);
+              acc.totalSkipped += Number(stats.skipped || 0);
+              acc.totalDuration += Number(stats.duration || 0);
+              return acc;
+            }, {
+              totalSuites: 0,
+              totalTests: 0,
+              totalPassed: 0,
+              totalFailed: 0,
+              totalPending: 0,
+              totalSkipped: 0,
+              totalDuration: 0,
+            });
+          };
+
+          const attachDerivedTotals = (results) => {
+            const runs = Array.isArray(results?.runs) ? results.runs : [];
+            return {
+              ...(results || {}),
+              runs,
+              ...aggregateTotals(runs),
+            };
+          };
+
+          const mergeResults = (primary, retry, retriedSpecs) => {
+            const retriedSet = new Set(retriedSpecs);
+            const primaryRuns = (primary.runs || []).filter((run) => !retriedSet.has(getSpecName(run)));
+            const retryRuns = retry.runs || [];
+            const mergedRuns = [...primaryRuns, ...retryRuns];
+            const status =
+              primary.status === 'finished' && retry.status === 'finished'
+                ? 'finished'
+                : 'error';
+
+            return {
+              ...primary,
+              runs: mergedRuns,
+              status,
+              ...aggregateTotals(mergedRuns),
+            };
+          };
+
           (async () => {
             try {
-              const results = await cypress.run({
-                component: true,
-                browser: 'electron',
-                spec: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
-                reporter: 'spec',
-              });
+              const primaryResults = attachDerivedTotals(await cypress.run(runOptions));
+              const zeroTestSpecsInitial = collectZeroTestSpecs(primaryResults.runs);
 
-              persistResults(results ?? { status: 'unknown' });
+              let retryResults = null;
+              let zeroTestSpecsAfterRetry = [...zeroTestSpecsInitial];
 
-              const totalFailed = typeof results?.totalFailed === 'number' ? results.totalFailed : 0;
-              const hasFatalRunError = results?.status && results.status !== 'finished';
-              const zeroTestSpecs = (results?.runs || [])
-                .filter((run) => {
-                  const statsTests = Number(run?.stats?.tests);
-                  if (Number.isFinite(statsTests)) return statsTests === 0;
-                  return Array.isArray(run?.tests) && run.tests.length === 0;
-                })
-                .map((run) => run.spec?.relative || run.spec?.name || 'unknown spec');
+              if (zeroTestSpecsInitial.length > 0) {
+                console.warn(`Detected ${zeroTestSpecsInitial.length} specs with zero registered tests on primary run. Retrying those specs in a fresh Cypress run...`);
+                for (const specName of zeroTestSpecsInitial) {
+                  console.warn(` - ${specName}`);
+                }
 
-              const exitCode = totalFailed > 0 || hasFatalRunError || zeroTestSpecs.length > 0 ? 1 : 0;
+                retryResults = attachDerivedTotals(await cypress.run({
+                  ...runOptions,
+                  spec: zeroTestSpecsInitial.join(','),
+                }));
+
+                const retryZeroSet = new Set(collectZeroTestSpecs(retryResults.runs));
+                zeroTestSpecsAfterRetry = zeroTestSpecsInitial.filter((specName) => retryZeroSet.has(specName));
+              }
+
+              const finalResults = retryResults
+                ? mergeResults(primaryResults, retryResults, zeroTestSpecsInitial)
+                : primaryResults;
+
+              const persistedResults = {
+                ...finalResults,
+                zeroTestSpecsInitial,
+                retriedZeroTestSpecs: zeroTestSpecsInitial,
+                zeroTestSpecsAfterRetry,
+                retryAttempted: zeroTestSpecsInitial.length > 0,
+              };
+
+              persistResults(persistedResults);
+
+              const totalFailed = Number(persistedResults?.totalFailed || 0);
+              const hasFatalRunError = persistedResults?.status && persistedResults.status !== 'finished';
+              const exitCode = totalFailed > 0 || hasFatalRunError || zeroTestSpecsAfterRetry.length > 0 ? 1 : 0;
               writeExitCode(exitCode);
 
               if (exitCode !== 0) {
-                console.error(`Component tests completed with failure status. totalFailed=${totalFailed}, status=${results?.status}`);
-                if (zeroTestSpecs.length > 0) {
-                  console.error(`Detected specs with zero registered tests (${zeroTestSpecs.length}):`);
-                  for (const specName of zeroTestSpecs) {
+                console.error(`Component tests completed with failure status. totalFailed=${totalFailed}, status=${persistedResults?.status}`);
+                if (zeroTestSpecsAfterRetry.length > 0) {
+                  console.error(`Specs still have zero registered tests after retry (${zeroTestSpecsAfterRetry.length}):`);
+                  for (const specName of zeroTestSpecsAfterRetry) {
                     console.error(` - ${specName}`);
                   }
                 }
+              } else if (zeroTestSpecsInitial.length > 0) {
+                console.log(`Recovered ${zeroTestSpecsInitial.length} zero-test specs after automatic retry.`);
               }
 
               // Keep this step green and fail exactly once in a dedicated final step.
@@ -164,7 +253,7 @@ jobs:
 
           const failedTitles = [];
           const runLevelErrors = [];
-          const zeroTestSpecs = [];
+          const zeroTestSpecsFromRuns = [];
 
           for (const run of results?.runs || []) {
             const statsTests = Number(run?.stats?.tests);
@@ -172,7 +261,7 @@ jobs:
               ? statsTests === 0
               : Array.isArray(run?.tests) && run.tests.length === 0;
             if (hasZeroTests) {
-              zeroTestSpecs.push(run.spec?.relative || run.spec?.name || 'unknown spec');
+              zeroTestSpecsFromRuns.push(run.spec?.relative || run.spec?.name || 'unknown spec');
             }
 
             if (run?.error) {
@@ -189,6 +278,19 @@ jobs:
             }
           }
 
+          const zeroTestSpecsInitial = Array.isArray(results?.zeroTestSpecsInitial)
+            ? results.zeroTestSpecsInitial
+            : zeroTestSpecsFromRuns;
+          const retriedZeroTestSpecs = Array.isArray(results?.retriedZeroTestSpecs)
+            ? results.retriedZeroTestSpecs
+            : [];
+          const zeroTestSpecsAfterRetry = Array.isArray(results?.zeroTestSpecsAfterRetry)
+            ? results.zeroTestSpecsAfterRetry
+            : zeroTestSpecsFromRuns;
+          const recoveredZeroTestSpecs = zeroTestSpecsInitial.filter(
+            (spec) => !zeroTestSpecsAfterRetry.includes(spec)
+          );
+
           const headline = exitCode === 0 ? 'Component Tests Passed' : 'Component Tests Failed';
 
           let md = '';
@@ -200,7 +302,9 @@ jobs:
           md += `| Failed | ${failed} |\n`;
           md += `| Pending | ${pending} |\n`;
           md += `| Skipped | ${skipped} |\n`;
-          md += `| Zero-test specs | ${zeroTestSpecs.length} |\n`;
+          md += `| Zero-test specs (initial) | ${zeroTestSpecsInitial.length} |\n`;
+          md += `| Zero-test specs (after retry) | ${zeroTestSpecsAfterRetry.length} |\n`;
+          md += `| Recovered by retry | ${recoveredZeroTestSpecs.length} |\n`;
           md += `| Screenshot artifacts | ${screenshots.length} |\n`;
           md += `| Video artifacts | ${videos.length} |\n\n`;
 
@@ -236,14 +340,38 @@ jobs:
             md += '\n</details>\n';
           }
 
-          if (zeroTestSpecs.length > 0) {
+          if (retriedZeroTestSpecs.length > 0) {
             md += '\n<details>\n';
-            md += `<summary>Specs with zero registered tests (${zeroTestSpecs.length})</summary>\n\n`;
-            for (const spec of zeroTestSpecs.slice(0, 30)) {
+            md += `<summary>Retried zero-test specs (${retriedZeroTestSpecs.length})</summary>\n\n`;
+            for (const spec of retriedZeroTestSpecs.slice(0, 30)) {
               md += `- \`${spec}\`\n`;
             }
-            if (zeroTestSpecs.length > 30) {
-              md += `\n- ... and ${zeroTestSpecs.length - 30} more\n`;
+            if (retriedZeroTestSpecs.length > 30) {
+              md += `\n- ... and ${retriedZeroTestSpecs.length - 30} more\n`;
+            }
+            md += '\n</details>\n';
+          }
+
+          if (recoveredZeroTestSpecs.length > 0) {
+            md += '\n<details>\n';
+            md += `<summary>Recovered zero-test specs (${recoveredZeroTestSpecs.length})</summary>\n\n`;
+            for (const spec of recoveredZeroTestSpecs.slice(0, 30)) {
+              md += `- \`${spec}\`\n`;
+            }
+            if (recoveredZeroTestSpecs.length > 30) {
+              md += `\n- ... and ${recoveredZeroTestSpecs.length - 30} more\n`;
+            }
+            md += '\n</details>\n';
+          }
+
+          if (zeroTestSpecsAfterRetry.length > 0) {
+            md += '\n<details>\n';
+            md += `<summary>Specs still with zero tests after retry (${zeroTestSpecsAfterRetry.length})</summary>\n\n`;
+            for (const spec of zeroTestSpecsAfterRetry.slice(0, 30)) {
+              md += `- \`${spec}\`\n`;
+            }
+            if (zeroTestSpecsAfterRetry.length > 30) {
+              md += `\n- ... and ${zeroTestSpecsAfterRetry.length - 30} more\n`;
             }
             md += '\n</details>\n';
           }
