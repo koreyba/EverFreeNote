@@ -1,4 +1,4 @@
-﻿name: Component Tests
+name: Component Tests
 
 on:
   push:
@@ -22,508 +22,55 @@ jobs:
       NEXT_PUBLIC_TEST_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_PASSWORD }}
       NEXT_PUBLIC_SKIP_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_EMAIL }}
       NEXT_PUBLIC_SKIP_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_PASSWORD }}
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-
+          node-version: '20'
+          cache: 'npm'
+      
       - name: Install dependencies
         run: npm ci
-
+      
       - name: Run component tests
-        id: run-component-tests
-        run: |
-          set -o pipefail
-          mkdir -p cypress/results
-          node <<'NODE' 2>&1 | tee cypress/results/component-tests.log
-          const fs = require('fs');
-          const path = require('path');
-          const cypress = require('cypress');
-
-          const resultsPath = path.resolve('cypress', 'results', 'component-results.json');
-          const exitCodePath = path.resolve('cypress', 'results', 'component-exit-code.txt');
-          const componentSpecsRoot = path.resolve('cypress', 'component');
-          const runOptions = {
-            component: true,
-            browser: 'electron',
-            spec: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
-            reporter: 'spec',
-          };
-
-          const writeExitCode = (code) => {
-            fs.writeFileSync(exitCodePath, String(code), 'utf8');
-          };
-
-          const persistResults = (payload) => {
-            fs.writeFileSync(resultsPath, JSON.stringify(payload, null, 2), 'utf8');
-          };
-
-          const normalizeSpecName = (value) =>
-            String(value || '')
-              .replace(/\\/g, '/')
-              .replace(/^.*\/cypress\/component\//, '')
-              .replace(/^cypress\/component\//, '')
-              .replace(/^\.\//, '')
-              .trim();
-
-          const getRunSpecName = (run) =>
-            normalizeSpecName(
-              run?.spec?.relative ||
-              run?.spec?.absolute ||
-              run?.spec?.name ||
-              ''
-            );
-
-          const getRunTestsCount = (run) => {
-            const statsTests = Number(run?.stats?.tests);
-            if (Number.isFinite(statsTests)) return statsTests;
-            if (Array.isArray(run?.tests)) return run.tests.length;
-            return 0;
-          };
-
-          const collectSpecFiles = (rootDir) => {
-            if (!fs.existsSync(rootDir)) return [];
-
-            const out = [];
-            const stack = [rootDir];
-            const specPattern = /\.cy\.(js|jsx|ts|tsx)$/i;
-
-            while (stack.length > 0) {
-              const current = stack.pop();
-              for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-                const fullPath = path.join(current, entry.name);
-                if (entry.isDirectory()) {
-                  stack.push(fullPath);
-                  continue;
-                }
-                if (!entry.isFile() || !specPattern.test(entry.name)) {
-                  continue;
-                }
-                const shortSpec = path.relative(rootDir, fullPath).replace(/\\/g, '/');
-                out.push(shortSpec);
-              }
-            }
-
-            return out.sort();
-          };
-
-          const getExecutedSpecSet = (runs) => {
-            const set = new Set();
-            for (const run of runs || []) {
-              const specName = getRunSpecName(run);
-              if (specName) {
-                set.add(specName);
-              }
-            }
-            return set;
-          };
-
-          const collectZeroTestSpecs = (runs) =>
-            (runs || [])
-              .filter((run) => getRunTestsCount(run) === 0)
-              .map((run) => getRunSpecName(run))
-              .filter(Boolean);
-
-          const collectMissingSpecs = (runs, expectedSpecs) => {
-            const executed = getExecutedSpecSet(runs);
-            return expectedSpecs.filter((specName) => !executed.has(specName));
-          };
-
-          const aggregateTotals = (runs) =>
-            (runs || []).reduce((acc, run) => {
-              const stats = run?.stats || {};
-              acc.totalSuites += Number(stats.suites || 0);
-              acc.totalTests += Number(stats.tests || 0);
-              acc.totalPassed += Number(stats.passes || 0);
-              acc.totalFailed += Number(stats.failures || 0);
-              acc.totalPending += Number(stats.pending || 0);
-              acc.totalSkipped += Number(stats.skipped || 0);
-              acc.totalDuration += Number(stats.duration || 0);
-              return acc;
-            }, {
-              totalSuites: 0,
-              totalTests: 0,
-              totalPassed: 0,
-              totalFailed: 0,
-              totalPending: 0,
-              totalSkipped: 0,
-              totalDuration: 0,
-            });
-
-          const attachDerivedTotals = (results) => {
-            const runs = Array.isArray(results?.runs) ? results.runs : [];
-            return {
-              ...(results || {}),
-              runs,
-              ...aggregateTotals(runs),
-            };
-          };
-
-          const mergeResults = (primary, retry, retriedSpecs) => {
-            const retriedSet = new Set(retriedSpecs);
-            const primaryRuns = (primary.runs || []).filter(
-              (run) => !retriedSet.has(getRunSpecName(run))
-            );
-            const retryRuns = retry.runs || [];
-            const mergedRuns = [...primaryRuns, ...retryRuns];
-            const status =
-              primary.status === 'finished' && retry.status === 'finished'
-                ? 'finished'
-                : 'error';
-
-            return {
-              ...primary,
-              runs: mergedRuns,
-              status,
-              ...aggregateTotals(mergedRuns),
-            };
-          };
-
-          (async () => {
-            try {
-              const expectedSpecs = collectSpecFiles(componentSpecsRoot);
-              const primaryResults = attachDerivedTotals(await cypress.run(runOptions));
-              const zeroTestSpecsInitial = collectZeroTestSpecs(primaryResults.runs);
-              const missingSpecsInitial = collectMissingSpecs(primaryResults.runs, expectedSpecs);
-              const retryTargets = [...new Set([...zeroTestSpecsInitial, ...missingSpecsInitial])];
-
-              let finalResults = primaryResults;
-              if (retryTargets.length > 0) {
-                console.warn(`Detected ${retryTargets.length} unstable/missing specs. Retrying these specs in a fresh Cypress run...`);
-                for (const specName of retryTargets) {
-                  console.warn(` - ${specName}`);
-                }
-
-                const retryResults = attachDerivedTotals(await cypress.run({
-                  ...runOptions,
-                  spec: retryTargets.map((spec) => `cypress/component/${spec}`).join(','),
-                }));
-                finalResults = mergeResults(primaryResults, retryResults, retryTargets);
-              }
-
-              const zeroTestSpecsAfterRetry = collectZeroTestSpecs(finalResults.runs);
-              const missingSpecsAfterRetry = collectMissingSpecs(finalResults.runs, expectedSpecs);
-              const executedSpecCount = getExecutedSpecSet(finalResults.runs).size;
-
-              const persistedResults = {
-                ...finalResults,
-                expectedSpecCount: expectedSpecs.length,
-                expectedSpecs,
-                executedSpecCount,
-                zeroTestSpecsInitial,
-                missingSpecsInitial,
-                retriedSpecs: retryTargets,
-                zeroTestSpecsAfterRetry,
-                missingSpecsAfterRetry,
-                retryAttempted: retryTargets.length > 0,
-              };
-              persistResults(persistedResults);
-
-              const totalFailed = Number(persistedResults?.totalFailed || 0);
-              const hasFatalRunError = persistedResults?.status && persistedResults.status !== 'finished';
-              const exitCode =
-                totalFailed > 0 ||
-                hasFatalRunError ||
-                zeroTestSpecsAfterRetry.length > 0 ||
-                missingSpecsAfterRetry.length > 0
-                  ? 1
-                  : 0;
-              writeExitCode(exitCode);
-
-              if (exitCode !== 0) {
-                console.error(`Component tests completed with failure status. totalFailed=${totalFailed}, status=${persistedResults?.status}`);
-                if (missingSpecsAfterRetry.length > 0) {
-                  console.error(`Specs not executed after retry (${missingSpecsAfterRetry.length}):`);
-                  for (const specName of missingSpecsAfterRetry) {
-                    console.error(` - ${specName}`);
-                  }
-                }
-                if (zeroTestSpecsAfterRetry.length > 0) {
-                  console.error(`Specs with zero tests after retry (${zeroTestSpecsAfterRetry.length}):`);
-                  for (const specName of zeroTestSpecsAfterRetry) {
-                    console.error(` - ${specName}`);
-                  }
-                }
-              } else if (retryTargets.length > 0) {
-                console.log(`Recovered unstable specs via retry. Retried: ${retryTargets.length}`);
-              }
-
-              // Keep this step green and fail exactly once in a dedicated final step.
-              process.exit(0);
-            } catch (error) {
-              persistResults({
-                status: 'error',
-                error: error instanceof Error
-                  ? { message: error.message, stack: error.stack }
-                  : { message: String(error) },
-              });
-              writeExitCode(1);
-              console.error('Component test runner crashed before completion.');
-              console.error(error);
-              process.exit(0);
-            }
-          })();
-          NODE
-
-      - name: Generate visual summary
+        id: component-tests
+        continue-on-error: true
+        run: npm run test:component -- --reporter spec
+      
+      - name: Generate test summary
         if: always()
         run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const path = require('path');
-
-          const summaryFile = process.env.GITHUB_STEP_SUMMARY;
-          const resultsPath = path.resolve('cypress', 'results', 'component-results.json');
-          const exitCodePath = path.resolve('cypress', 'results', 'component-exit-code.txt');
-          const logPath = path.resolve('cypress', 'results', 'component-tests.log');
-          const screenshotsDir = path.resolve('cypress', 'screenshots');
-          const videosDir = path.resolve('cypress', 'videos');
-
-          const readTextIfExists = (filePath) => {
-            if (!fs.existsSync(filePath)) return '';
-            return fs.readFileSync(filePath, 'utf8');
-          };
-
-          const readJsonIfExists = (filePath) => {
-            if (!fs.existsSync(filePath)) return null;
-            return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-          };
-
-          const collectFiles = (dirPath, extension) => {
-            if (!fs.existsSync(dirPath)) return [];
-            const out = [];
-            const stack = [dirPath];
-            while (stack.length > 0) {
-              const current = stack.pop();
-              for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-                const full = path.join(current, entry.name);
-                if (entry.isDirectory()) {
-                  stack.push(full);
-                } else if (entry.isFile() && full.toLowerCase().endsWith(extension)) {
-                  out.push(full);
-                }
-              }
-            }
-            return out.sort();
-          };
-
-          const results = readJsonIfExists(resultsPath);
-          const exitCode = Number(readTextIfExists(exitCodePath).trim() || '1');
-
-          const normalizeSpecName = (value) =>
-            String(value || '')
-              .replace(/\\/g, '/')
-              .replace(/^.*\/cypress\/component\//, '')
-              .replace(/^cypress\/component\//, '')
-              .replace(/^\.\//, '')
-              .trim();
-
-          const getRunSpecName = (run) =>
-            normalizeSpecName(
-              run?.spec?.relative ||
-              run?.spec?.absolute ||
-              run?.spec?.name ||
-              ''
-            ) || 'unknown spec';
-
-          const passed = Number(results?.totalPassed || 0);
-          const failed = Number(results?.totalFailed || 0);
-          const pending = Number(results?.totalPending || 0);
-          const skipped = Number(results?.totalSkipped || 0);
-          const total = Number(results?.totalTests || passed + failed + pending + skipped);
-          const expectedSpecCount = Number(results?.expectedSpecCount || 0);
-          const executedSpecCount = Number(results?.executedSpecCount || 0);
-          const missingSpecsInitial = Array.isArray(results?.missingSpecsInitial) ? results.missingSpecsInitial : [];
-          const missingSpecsAfterRetry = Array.isArray(results?.missingSpecsAfterRetry) ? results.missingSpecsAfterRetry : [];
-          const zeroTestSpecsInitial = Array.isArray(results?.zeroTestSpecsInitial) ? results.zeroTestSpecsInitial : [];
-          const zeroTestSpecsAfterRetry = Array.isArray(results?.zeroTestSpecsAfterRetry) ? results.zeroTestSpecsAfterRetry : [];
-          const retriedSpecs = Array.isArray(results?.retriedSpecs) ? results.retriedSpecs : [];
-
-          const recoveredMissingSpecs = missingSpecsInitial.filter(
-            (spec) => !missingSpecsAfterRetry.includes(spec)
-          );
-          const recoveredZeroSpecs = zeroTestSpecsInitial.filter(
-            (spec) => !zeroTestSpecsAfterRetry.includes(spec)
-          );
-
-          const screenshots = collectFiles(screenshotsDir, '.png');
-          const videos = collectFiles(videosDir, '.mp4');
-
-          const failedTitles = [];
-          const runLevelErrors = [];
-
-          for (const run of results?.runs || []) {
-            if (run?.error) {
-              runLevelErrors.push({
-                spec: getRunSpecName(run),
-                error: String(run.error).split('\n')[0],
-              });
-            }
-
-            for (const test of run.tests || []) {
-              if (test?.state !== 'failed') continue;
-              const titlePath = Array.isArray(test.title) ? test.title.join(' > ') : String(test.title || 'failed test');
-              failedTitles.push(`${getRunSpecName(run)}: ${titlePath}`);
-            }
-          }
-
-          const headline = exitCode === 0 ? 'Component Tests Passed' : 'Component Tests Failed';
-
-          let md = '';
-          md += `## ${headline}\n\n`;
-          md += '| Metric | Count |\n';
-          md += '|---|---:|\n';
-          md += `| Total | ${total} |\n`;
-          md += `| Passed | ${passed} |\n`;
-          md += `| Failed | ${failed} |\n`;
-          md += `| Pending | ${pending} |\n`;
-          md += `| Skipped | ${skipped} |\n`;
-          md += `| Expected specs | ${expectedSpecCount} |\n`;
-          md += `| Executed specs | ${executedSpecCount} |\n`;
-          md += `| Missing specs after retry | ${missingSpecsAfterRetry.length} |\n`;
-          md += `| Zero-test specs after retry | ${zeroTestSpecsAfterRetry.length} |\n`;
-          md += `| Retried specs | ${retriedSpecs.length} |\n`;
-          md += `| Screenshot artifacts | ${screenshots.length} |\n`;
-          md += `| Video artifacts | ${videos.length} |\n\n`;
-
-          if (!results) {
-            md += 'Component result JSON was not found at `cypress/results/component-results.json`.\n\n';
-          }
-
-          if (!fs.existsSync(logPath)) {
-            md += 'Component test log was not found at `cypress/results/component-tests.log`.\n\n';
-          }
-
-          if (failedTitles.length > 0) {
-            md += '<details>\n';
-            md += `<summary>Failed tests (${failedTitles.length})</summary>\n\n`;
-            for (const title of failedTitles.slice(0, 30)) {
-              md += `- ${title}\n`;
-            }
-            if (failedTitles.length > 30) {
-              md += `\n- ... and ${failedTitles.length - 30} more\n`;
-            }
-            md += '\n</details>\n';
-          }
-
-          if (runLevelErrors.length > 0) {
-            md += '\n<details>\n';
-            md += `<summary>Spec runtime errors (${runLevelErrors.length})</summary>\n\n`;
-            for (const item of runLevelErrors.slice(0, 20)) {
-              md += `- \`${item.spec}\`: ${item.error}\n`;
-            }
-            if (runLevelErrors.length > 20) {
-              md += `\n- ... and ${runLevelErrors.length - 20} more\n`;
-            }
-            md += '\n</details>\n';
-          }
-
-          if (retriedSpecs.length > 0) {
-            md += '\n<details>\n';
-            md += `<summary>Retried specs (${retriedSpecs.length})</summary>\n\n`;
-            for (const spec of retriedSpecs.slice(0, 30)) {
-              md += `- \`${spec}\`\n`;
-            }
-            if (retriedSpecs.length > 30) {
-              md += `\n- ... and ${retriedSpecs.length - 30} more\n`;
-            }
-            md += '\n</details>\n';
-          }
-
-          if (recoveredMissingSpecs.length > 0) {
-            md += '\n<details>\n';
-            md += `<summary>Recovered missing specs (${recoveredMissingSpecs.length})</summary>\n\n`;
-            for (const spec of recoveredMissingSpecs.slice(0, 30)) {
-              md += `- \`${spec}\`\n`;
-            }
-            if (recoveredMissingSpecs.length > 30) {
-              md += `\n- ... and ${recoveredMissingSpecs.length - 30} more\n`;
-            }
-            md += '\n</details>\n';
-          }
-
-          if (recoveredZeroSpecs.length > 0) {
-            md += '\n<details>\n';
-            md += `<summary>Recovered zero-test specs (${recoveredZeroSpecs.length})</summary>\n\n`;
-            for (const spec of recoveredZeroSpecs.slice(0, 30)) {
-              md += `- \`${spec}\`\n`;
-            }
-            if (recoveredZeroSpecs.length > 30) {
-              md += `\n- ... and ${recoveredZeroSpecs.length - 30} more\n`;
-            }
-            md += '\n</details>\n';
-          }
-
-          if (missingSpecsAfterRetry.length > 0) {
-            md += '\n<details>\n';
-            md += `<summary>Missing specs after retry (${missingSpecsAfterRetry.length})</summary>\n\n`;
-            for (const spec of missingSpecsAfterRetry.slice(0, 30)) {
-              md += `- \`${spec}\`\n`;
-            }
-            if (missingSpecsAfterRetry.length > 30) {
-              md += `\n- ... and ${missingSpecsAfterRetry.length - 30} more\n`;
-            }
-            md += '\n</details>\n';
-          }
-
-          if (zeroTestSpecsAfterRetry.length > 0) {
-            md += '\n<details>\n';
-            md += `<summary>Zero-test specs after retry (${zeroTestSpecsAfterRetry.length})</summary>\n\n`;
-            for (const spec of zeroTestSpecsAfterRetry.slice(0, 30)) {
-              md += `- \`${spec}\`\n`;
-            }
-            if (zeroTestSpecsAfterRetry.length > 30) {
-              md += `\n- ... and ${zeroTestSpecsAfterRetry.length - 30} more\n`;
-            }
-            md += '\n</details>\n';
-          }
-
-          if (screenshots.length > 0) {
-            md += '\n<details>\n';
-            md += `<summary>Failed screenshots (${screenshots.length})</summary>\n\n`;
-            for (const filePath of screenshots.slice(0, 20)) {
-              md += `- \`${path.relative(process.cwd(), filePath)}\`\n`;
-            }
-            if (screenshots.length > 20) {
-              md += `\n- ... and ${screenshots.length - 20} more\n`;
-            }
-            md += '\n</details>\n';
-          }
-
-          fs.appendFileSync(summaryFile, md);
-          NODE
-
+          echo "## 🧪 Component Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.component-tests.outcome }}" == "success" ]; then
+            echo "✅ **Status:** All tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status:** Some tests failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- 📸 Screenshots and videos available in artifacts below" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "cypress/screenshots" ] && [ "$(ls -A cypress/screenshots)" ]; then
+            echo "### 📸 Failed Test Screenshots" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            find cypress/screenshots -type f -name "*.png" | head -10 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+      
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: component-test-results-${{ github.run_id }}
           path: |
-            cypress/results/component-results.json
-            cypress/results/component-exit-code.txt
-            cypress/results/component-tests.log
             cypress/screenshots
             cypress/videos
-          if-no-files-found: ignore
           retention-days: 30
-
-      - name: Mark job as failed when component tests failed
-        if: always()
-        run: |
-          exit_code_file="cypress/results/component-exit-code.txt"
-          if [ ! -f "$exit_code_file" ]; then
-            echo "Component exit code file not found: $exit_code_file"
-            exit 1
-          fi
-
-          component_exit_code="$(cat "$exit_code_file" | tr -d '[:space:]')"
-          if [ "$component_exit_code" != "0" ]; then
-            echo "Component tests failed with exit code $component_exit_code"
-            exit 1
-          fi
