@@ -36,6 +36,14 @@ jobs:
           deadline=$((SECONDS + 1800))
           interval=15
 
+          extract_pages_url() {
+            local raw="$1"
+            printf '%s\n' "$raw" |
+              grep -Eo "https://[^\"'<>[:space:]]+" |
+              grep -E "\.pages\.dev(/|$)" |
+              head -n1 || true
+          }
+
           echo "Waiting for Cloudflare preview deployment for commit: $SHA"
 
           while [ "$SECONDS" -lt "$deadline" ]; do
@@ -55,9 +63,11 @@ jobs:
                   echo "deployment=$deployment_id state=$state url=$environment_url desc=$description"
                 fi
 
-                if [ "$state" = "success" ] && [ -n "$environment_url" ]; then
-                  echo "Preview is ready: $environment_url"
-                  echo "preview_url=$environment_url" >> "$GITHUB_OUTPUT"
+                normalized_environment_url="$(extract_pages_url "$environment_url")"
+
+                if [ "$state" = "success" ] && [ -n "$normalized_environment_url" ]; then
+                  echo "Preview is ready: $normalized_environment_url"
+                  echo "preview_url=$normalized_environment_url" >> "$GITHUB_OUTPUT"
                   exit 0
                 fi
 
@@ -78,15 +88,17 @@ jobs:
             if [ "$cf_count" -gt 0 ]; then
               echo "Found Cloudflare check-runs: $cf_count"
 
-              failed_count="$(echo "$cf_checks" | jq '[.[] | select(.status == "completed" and (.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled" or .conclusion == "action_required"))] | length')"
-              if [ "$failed_count" -gt 0 ]; then
+              latest_cf_checks="$(echo "$cf_checks" | jq '[map(. + {key: (((.app.slug // "") + "::" + (.name // "")) )}) | sort_by(.key, .completed_at // .started_at // "", .id) | group_by(.key) | map(last) | .[]]')"
+              latest_failed_count="$(echo "$latest_cf_checks" | jq '[.[] | select(.status == "completed" and (.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled" or .conclusion == "action_required"))] | length')"
+
+              if [ "$latest_failed_count" -gt 0 ]; then
                 echo "Cloudflare check-run failed for commit $SHA"
-                echo "$cf_checks" | jq -r '.[] | "name=\(.name) status=\(.status) conclusion=\(.conclusion) details=\(.details_url)"'
+                echo "$latest_cf_checks" | jq -r '.[] | "name=\(.name) status=\(.status) conclusion=\(.conclusion) details=\(.details_url)"'
                 exit 1
               fi
 
-              success_payload="$(echo "$cf_checks" | jq -r '.[] | select(.status == "completed" and .conclusion == "success") | [.output.title // "", .output.summary // "", .details_url // ""] | join("\n")')"
-              preview_url="$(printf '%s\n' "$success_payload" | grep -Eo 'https://[^ ]+\.pages\.dev' | head -n1 || true)"
+              success_payload="$(echo "$latest_cf_checks" | jq -r '.[] | select(.status == "completed" and .conclusion == "success") | [.output.title // "", .output.summary // "", .details_url // ""] | join("\n")')"
+              preview_url="$(extract_pages_url "$success_payload")"
 
               if [ -n "$preview_url" ]; then
                 echo "Preview URL resolved from check-run: $preview_url"
