@@ -36,7 +36,7 @@ const _unused = 123
 
 // ❌ ОШИБКА: не все пути возвращают значение
 function getValue(x: number) {
-  if (x > 0) {
+  if (x > 0) { 
     return x
   }
   // отсутствует return для x <= 0
