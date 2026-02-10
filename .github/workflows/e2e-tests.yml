@@ -1,137 +1,158 @@
-name: E2E Tests
+﻿name: E2E Tests (PR Preview)
 
 on:
-  workflow_dispatch:
-    inputs:
-      build_id:
-        description: 'Build artifact ID (e.g., build-123456789) or leave empty to build'
-        required: false
-        type: string
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
-  actions: read
   contents: read
+  pull-requests: read
+  deployments: read
+  checks: read
+
+concurrency:
+  group: e2e-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
-  e2e-tests:
+  wait-cloudflare-preview:
+    name: Wait for Cloudflare Preview
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    environment: Stage
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
-      NEXT_PUBLIC_ENABLE_TEST_AUTH: ${{ vars.NEXT_PUBLIC_ENABLE_TEST_AUTH }}
-      NEXT_PUBLIC_TEST_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_EMAIL }}
-      NEXT_PUBLIC_TEST_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_PASSWORD }}
-      NEXT_PUBLIC_SKIP_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_EMAIL }}
-      NEXT_PUBLIC_SKIP_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_PASSWORD }}
-    
+    timeout-minutes: 35
+    outputs:
+      preview_url: ${{ steps.wait.outputs.preview_url }}
+
     steps:
-      - name: Checkout code
+      - name: Wait for successful Cloudflare deployment status
+        id: wait
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          deadline=$((SECONDS + 1800))
+          interval=15
+
+          echo "Waiting for Cloudflare preview deployment for commit: $SHA"
+
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            deployments_json="$(gh api "repos/$REPO/deployments?sha=$SHA&per_page=100" 2>/dev/null || echo '[]')"
+            deployment_count="$(echo "$deployments_json" | jq 'length')"
+
+            if [ "$deployment_count" -gt 0 ]; then
+              while IFS= read -r deployment_id; do
+                statuses_json="$(gh api "repos/$REPO/deployments/$deployment_id/statuses?per_page=100" 2>/dev/null || echo '[]')"
+                latest_status="$(echo "$statuses_json" | jq 'first')"
+                state="$(echo "$latest_status" | jq -r '.state // empty')"
+                environment_url="$(echo "$latest_status" | jq -r '.environment_url // empty')"
+                description="$(echo "$latest_status" | jq -r '.description // empty')"
+                log_url="$(echo "$latest_status" | jq -r '.log_url // empty')"
+
+                if [ -n "$state" ]; then
+                  echo "deployment=$deployment_id state=$state url=$environment_url desc=$description"
+                fi
+
+                if [ "$state" = "success" ] && [ -n "$environment_url" ]; then
+                  echo "Preview is ready: $environment_url"
+                  echo "preview_url=$environment_url" >> "$GITHUB_OUTPUT"
+                  exit 0
+                fi
+
+                if [ "$state" = "failure" ] || [ "$state" = "error" ]; then
+                  echo "A deployment reported $state for deployment $deployment_id"
+                  if [ -n "$log_url" ]; then
+                    echo "Deployment log: $log_url"
+                  fi
+                fi
+              done < <(echo "$deployments_json" | jq -r 'sort_by(.created_at) | reverse | .[].id')
+            fi
+
+            # Fallback to Cloudflare check-runs when deployment statuses are unavailable.
+            checks_json="$(gh api "repos/$REPO/commits/$SHA/check-runs?per_page=100" 2>/dev/null || echo '{"check_runs":[]}')"
+            cf_checks="$(echo "$checks_json" | jq '[.check_runs[] | select((.name | ascii_downcase | contains("cloudflare")) or ((.app.slug // "") | ascii_downcase | contains("cloudflare")))]')"
+            cf_count="$(echo "$cf_checks" | jq 'length')"
+
+            if [ "$cf_count" -gt 0 ]; then
+              echo "Found Cloudflare check-runs: $cf_count"
+
+              failed_count="$(echo "$cf_checks" | jq '[.[] | select(.status == "completed" and (.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled" or .conclusion == "action_required"))] | length')"
+              if [ "$failed_count" -gt 0 ]; then
+                echo "Cloudflare check-run failed for commit $SHA"
+                echo "$cf_checks" | jq -r '.[] | "name=\(.name) status=\(.status) conclusion=\(.conclusion) details=\(.details_url)"'
+                exit 1
+              fi
+
+              success_payload="$(echo "$cf_checks" | jq -r '.[] | select(.status == "completed" and .conclusion == "success") | [.output.title // "", .output.summary // "", .details_url // ""] | join("\n")')"
+              preview_url="$(printf '%s\n' "$success_payload" | grep -Eo 'https://[^ ]+\.pages\.dev' | head -n1 || true)"
+
+              if [ -n "$preview_url" ]; then
+                echo "Preview URL resolved from check-run: $preview_url"
+                echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+
+            echo "Cloudflare preview not ready yet, retrying in ${interval}s..."
+            sleep "$interval"
+          done
+
+          echo "Timed out waiting for Cloudflare preview deployment for commit $SHA"
+          exit 1
+
+  run-e2e:
+    name: Run Playwright E2E
+    needs: wait-cloudflare-preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BASE_URL: ${{ needs.wait-cloudflare-preview.outputs.preview_url }}
+      SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+
+    steps:
+      - name: Checkout E2E repository
         uses: actions/checkout@v4
-      
+        with:
+          repository: koreyba/EverFreeNote-e2e
+          ref: main
+          path: e2e
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
       - name: Install dependencies
+        working-directory: e2e
         run: npm ci
-      
-      - name: Build project (if no build_id provided)
-        if: ${{ inputs.build_id == '' }}
-        run: |
-          echo "🔨 No build_id provided, building project..."
-          npm run build
-      
-      - name: Download build artifact via GitHub API
-        if: ${{ inputs.build_id != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Extract run_id from build_id (format: build-123456)
-          RUN_ID="${{ inputs.build_id }}"
-          RUN_ID="${RUN_ID#build-}"
-          
-          echo "📦 Downloading artifact from run $RUN_ID"
-          gh run download $RUN_ID -n ${{ inputs.build_id }} -D ./out
-      
-      - name: Validate artifact
-        run: |
-          if [ ! -d "./out" ] || [ -z "$(ls -A ./out)" ]; then
-            echo "❌ Error: Artifact is empty or missing"
-            exit 1
-          fi
-          echo "✅ Artifact validated successfully"
-          ls -la ./out
-      
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-      
-      - name: Start Supabase
-        run: |
-          npx supabase start
-          npx supabase status
-      
-      - name: Wait for Supabase
-        run: |
-          timeout 60 bash -c 'until curl -f http://localhost:54321/rest/v1/ 2>/dev/null; do echo "⏳ Waiting for Supabase..."; sleep 2; done'
-          echo "✅ Supabase is ready"
-      
-      - name: Install serve
-        run: npm install -g serve
-      
-      - name: Start Next.js server
-        run: |
-          serve ./out -l 3000 &
-          sleep 5
-          curl -f http://localhost:3000 || (echo "❌ Server failed to start" && exit 1)
-          echo "✅ Server started successfully"
-      
+
+      - name: Install Playwright browsers
+        working-directory: e2e
+        run: npx playwright install --with-deps
+
       - name: Run E2E tests
-        id: e2e-tests
-        continue-on-error: true
-        run: npm run test:e2e
-        env:
-          CYPRESS_BASE_URL: http://localhost:3000
-      
-      - name: Generate test summary
+        working-directory: e2e
+        run: npm run test
+
+      - name: Add run summary
         if: always()
         run: |
-          echo "## 🧪 E2E Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ steps.e2e-tests.outcome }}" == "success" ]; then
-            echo "✅ **Status:** All tests passed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Status:** Some tests failed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Test Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- 📸 Screenshots and videos available in artifacts below" >> $GITHUB_STEP_SUMMARY
-          echo "- 🔗 Build artifact: \`${{ inputs.build_id }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -d "cypress/screenshots" ] && [ "$(ls -A cypress/screenshots)" ]; then
-            echo "### 📸 Failed Test Screenshots" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            find cypress/screenshots -type f -name "*.png" | head -10 >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          fi
-      
-      - name: Upload test results
+          echo "## E2E execution" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Preview URL: $BASE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Test repository: koreyba/EverFreeNote-e2e@main" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-test-results-${{ github.run_id }}
+          name: playwright-report-${{ github.run_id }}
           path: |
-            cypress/screenshots
-            cypress/videos
-          retention-days: 30
-      
-      - name: Stop Supabase
-        if: always()
-        run: npx supabase stop
+            e2e/playwright-report
+            e2e/test-results
+          if-no-files-found: ignore
+          retention-days: 14
