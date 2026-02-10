@@ -38,23 +38,72 @@ jobs:
 
       - name: Run component tests
         id: run-component-tests
-        continue-on-error: true
         run: |
           set -o pipefail
           mkdir -p cypress/results
-          npm run test:component -- --reporter spec 2>&1 | tee cypress/results/component-tests.log
+          node <<'NODE' 2>&1 | tee cypress/results/component-tests.log
+          const fs = require('fs');
+          const path = require('path');
+          const cypress = require('cypress');
+
+          const resultsPath = path.resolve('cypress', 'results', 'component-results.json');
+          const exitCodePath = path.resolve('cypress', 'results', 'component-exit-code.txt');
+
+          const writeExitCode = (code) => {
+            fs.writeFileSync(exitCodePath, String(code), 'utf8');
+          };
+
+          const persistResults = (payload) => {
+            fs.writeFileSync(resultsPath, JSON.stringify(payload, null, 2), 'utf8');
+          };
+
+          (async () => {
+            try {
+              const results = await cypress.run({
+                component: true,
+                browser: 'electron',
+                spec: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
+                reporter: 'spec',
+              });
+
+              persistResults(results ?? { status: 'unknown' });
+
+              const totalFailed = typeof results?.totalFailed === 'number' ? results.totalFailed : 0;
+              const hasFatalRunError = results?.status && results.status !== 'finished';
+              const exitCode = totalFailed > 0 || hasFatalRunError ? 1 : 0;
+              writeExitCode(exitCode);
+
+              if (exitCode !== 0) {
+                console.error(`Component tests completed with failure status. totalFailed=${totalFailed}, status=${results?.status}`);
+              }
+
+              // Keep this step green and fail exactly once in a dedicated final step.
+              process.exit(0);
+            } catch (error) {
+              persistResults({
+                status: 'error',
+                error: error instanceof Error
+                  ? { message: error.message, stack: error.stack }
+                  : { message: String(error) },
+              });
+              writeExitCode(1);
+              console.error('Component test runner crashed before completion.');
+              console.error(error);
+              process.exit(0);
+            }
+          })();
+          NODE
 
       - name: Generate visual summary
         if: always()
-        env:
-          COMPONENT_STEP_OUTCOME: ${{ steps.run-component-tests.outcome }}
         run: |
           node <<'NODE'
           const fs = require('fs');
           const path = require('path');
 
           const summaryFile = process.env.GITHUB_STEP_SUMMARY;
-          const outcome = process.env.COMPONENT_STEP_OUTCOME || 'unknown';
+          const resultsPath = path.resolve('cypress', 'results', 'component-results.json');
+          const exitCodePath = path.resolve('cypress', 'results', 'component-exit-code.txt');
           const logPath = path.resolve('cypress', 'results', 'component-tests.log');
           const screenshotsDir = path.resolve('cypress', 'screenshots');
           const videosDir = path.resolve('cypress', 'videos');
@@ -62,6 +111,11 @@ jobs:
           const readTextIfExists = (filePath) => {
             if (!fs.existsSync(filePath)) return '';
             return fs.readFileSync(filePath, 'utf8');
+          };
+
+          const readJsonIfExists = (filePath) => {
+            if (!fs.existsSync(filePath)) return null;
+            return JSON.parse(fs.readFileSync(filePath, 'utf8'));
           };
 
           const collectFiles = (dirPath, extension) => {
@@ -82,26 +136,37 @@ jobs:
             return out.sort();
           };
 
-          const log = readTextIfExists(logPath);
-          const lastMatchInt = (regex) => {
-            const matches = [...log.matchAll(regex)];
-            if (matches.length === 0) return 0;
-            return Number(matches[matches.length - 1][1]);
-          };
+          const results = readJsonIfExists(resultsPath);
+          const exitCode = Number(readTextIfExists(exitCodePath).trim() || '1');
 
-          const passed = lastMatchInt(/([0-9]+)\s+passing\b/gi);
-          const failed = lastMatchInt(/([0-9]+)\s+failing\b/gi);
-          const pending = lastMatchInt(/([0-9]+)\s+pending\b/gi);
-          const total = passed + failed + pending;
+          const passed = Number(results?.totalPassed || 0);
+          const failed = Number(results?.totalFailed || 0);
+          const pending = Number(results?.totalPending || 0);
+          const skipped = Number(results?.totalSkipped || 0);
+          const total = Number(results?.totalTests || passed + failed + pending + skipped);
 
           const screenshots = collectFiles(screenshotsDir, '.png');
           const videos = collectFiles(videosDir, '.mp4');
 
-          const failedTitles = [...new Set(
-            [...log.matchAll(/^\s+\d+\)\s(.+)$/gm)].map((match) => match[1].trim())
-          )];
+          const failedTitles = [];
+          const runLevelErrors = [];
 
-          const headline = outcome === 'success' ? 'Component Tests Passed' : 'Component Tests Failed';
+          for (const run of results?.runs || []) {
+            if (run?.error) {
+              runLevelErrors.push({
+                spec: run.spec?.relative || run.spec?.name || 'unknown spec',
+                error: String(run.error).split('\n')[0],
+              });
+            }
+
+            for (const test of run.tests || []) {
+              if (test?.state !== 'failed') continue;
+              const titlePath = Array.isArray(test.title) ? test.title.join(' > ') : String(test.title || 'failed test');
+              failedTitles.push(`${run.spec?.relative || run.spec?.name || 'unknown spec'}: ${titlePath}`);
+            }
+          }
+
+          const headline = exitCode === 0 ? 'Component Tests Passed' : 'Component Tests Failed';
 
           let md = '';
           md += `## ${headline}\n\n`;
@@ -111,8 +176,13 @@ jobs:
           md += `| Passed | ${passed} |\n`;
           md += `| Failed | ${failed} |\n`;
           md += `| Pending | ${pending} |\n`;
+          md += `| Skipped | ${skipped} |\n`;
           md += `| Screenshot artifacts | ${screenshots.length} |\n`;
           md += `| Video artifacts | ${videos.length} |\n\n`;
+
+          if (!results) {
+            md += 'Component result JSON was not found at `cypress/results/component-results.json`.\n\n';
+          }
 
           if (!fs.existsSync(logPath)) {
             md += 'Component test log was not found at `cypress/results/component-tests.log`.\n\n';
@@ -126,6 +196,18 @@ jobs:
             }
             if (failedTitles.length > 30) {
               md += `\n- ... and ${failedTitles.length - 30} more\n`;
+            }
+            md += '\n</details>\n';
+          }
+
+          if (runLevelErrors.length > 0) {
+            md += '\n<details>\n';
+            md += `<summary>Spec runtime errors (${runLevelErrors.length})</summary>\n\n`;
+            for (const item of runLevelErrors.slice(0, 20)) {
+              md += `- \`${item.spec}\`: ${item.error}\n`;
+            }
+            if (runLevelErrors.length > 20) {
+              md += `\n- ... and ${runLevelErrors.length - 20} more\n`;
             }
             md += '\n</details>\n';
           }
@@ -151,6 +233,8 @@ jobs:
         with:
           name: component-test-results-${{ github.run_id }}
           path: |
+            cypress/results/component-results.json
+            cypress/results/component-exit-code.txt
             cypress/results/component-tests.log
             cypress/screenshots
             cypress/videos
@@ -158,5 +242,16 @@ jobs:
           retention-days: 30
 
       - name: Mark job as failed when component tests failed
-        if: steps.run-component-tests.outcome != 'success'
-        run: exit 1
+        if: always()
+        run: |
+          exit_code_file="cypress/results/component-exit-code.txt"
+          if [ ! -f "$exit_code_file" ]; then
+            echo "Component exit code file not found: $exit_code_file"
+            exit 1
+          fi
+
+          component_exit_code="$(cat "$exit_code_file" | tr -d '[:space:]')"
+          if [ "$component_exit_code" != "0" ]; then
+            echo "Component tests failed with exit code $component_exit_code"
+            exit 1
+          fi

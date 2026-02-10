@@ -3,6 +3,7 @@
 import './commands'
 import '@testing-library/cypress/add-commands'
 import '@cypress/code-coverage/support'
+import { registerGlobalErrorHandling } from './setup/error-handling'
 
 // Define a minimal Stub type based on usage to avoid 'any'
 type SinonStub = {
@@ -57,13 +58,7 @@ const createSupabaseStub = (): SupabaseStub => {
   }
 }
 
-// Prevent uncaught exceptions from failing tests globally.
-// React/Next.js and third-party libraries (e.g. ResizeObserver, LockManager)
-// can throw asynchronous errors that are not related to the test itself.
-Cypress.on('uncaught:exception', (err) => {
-  Cypress.log({ name: 'uncaught:exception', message: err.message })
-  return false
-})
+registerGlobalErrorHandling()
 
 Cypress.on('window:before:load', (win) => {
   const appWindow = win as unknown as ComponentTestWindow
@@ -91,13 +86,6 @@ Cypress.on('window:before:load', (win) => {
     }),
   })
 
-  // Log browser console errors to terminal
-  const originalError = win.console.error;
-  win.console.error = (...args) => {
-    cy.task('log', `[BROWSER ERROR] ${args.join(' ')}`);
-    originalError(...args);
-  };
-
   // Mock ResizeObserver for components that use it (e.g. Radix UI, Virtual lists)
   if (!win.ResizeObserver) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,7 +93,7 @@ Cypress.on('window:before:load', (win) => {
       observe() { }
       unobserve() { }
       disconnect() { }
-    };
+    }
   }
 
 })
