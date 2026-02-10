@@ -72,9 +72,10 @@ describe('SupabaseProvider', () => {
     )
 
     // Simulate the specific unhandled rejection
+    // Use a resolved promise to avoid creating a real unhandled rejected Promise in the spec runtime.
     const event = new PromiseRejectionEvent('unhandledrejection', {
-      promise: Promise.reject(new Error('Navigator LockManager lock')),
-      reason: 'Navigator LockManager lock'
+      promise: Promise.resolve(),
+      reason: new Error('Navigator LockManager lock'),
     })
     
     window.dispatchEvent(event)
