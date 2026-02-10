@@ -1,7 +1,6 @@
 const IGNORED_EXCEPTION_PATTERNS: RegExp[] = [
   /ResizeObserver loop limit exceeded/i,
   /ResizeObserver loop completed with undelivered notifications/i,
-  /Navigator LockManager lock/i,
 ]
 
 const isIgnoredException = (message: string): boolean =>

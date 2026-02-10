@@ -70,11 +70,25 @@ jobs:
 
               const totalFailed = typeof results?.totalFailed === 'number' ? results.totalFailed : 0;
               const hasFatalRunError = results?.status && results.status !== 'finished';
-              const exitCode = totalFailed > 0 || hasFatalRunError ? 1 : 0;
+              const zeroTestSpecs = (results?.runs || [])
+                .filter((run) => {
+                  const statsTests = Number(run?.stats?.tests);
+                  if (Number.isFinite(statsTests)) return statsTests === 0;
+                  return Array.isArray(run?.tests) && run.tests.length === 0;
+                })
+                .map((run) => run.spec?.relative || run.spec?.name || 'unknown spec');
+
+              const exitCode = totalFailed > 0 || hasFatalRunError || zeroTestSpecs.length > 0 ? 1 : 0;
               writeExitCode(exitCode);
 
               if (exitCode !== 0) {
                 console.error(`Component tests completed with failure status. totalFailed=${totalFailed}, status=${results?.status}`);
+                if (zeroTestSpecs.length > 0) {
+                  console.error(`Detected specs with zero registered tests (${zeroTestSpecs.length}):`);
+                  for (const specName of zeroTestSpecs) {
+                    console.error(` - ${specName}`);
+                  }
+                }
               }
 
               // Keep this step green and fail exactly once in a dedicated final step.
@@ -150,8 +164,17 @@ jobs:
 
           const failedTitles = [];
           const runLevelErrors = [];
+          const zeroTestSpecs = [];
 
           for (const run of results?.runs || []) {
+            const statsTests = Number(run?.stats?.tests);
+            const hasZeroTests = Number.isFinite(statsTests)
+              ? statsTests === 0
+              : Array.isArray(run?.tests) && run.tests.length === 0;
+            if (hasZeroTests) {
+              zeroTestSpecs.push(run.spec?.relative || run.spec?.name || 'unknown spec');
+            }
+
             if (run?.error) {
               runLevelErrors.push({
                 spec: run.spec?.relative || run.spec?.name || 'unknown spec',
@@ -177,6 +200,7 @@ jobs:
           md += `| Failed | ${failed} |\n`;
           md += `| Pending | ${pending} |\n`;
           md += `| Skipped | ${skipped} |\n`;
+          md += `| Zero-test specs | ${zeroTestSpecs.length} |\n`;
           md += `| Screenshot artifacts | ${screenshots.length} |\n`;
           md += `| Video artifacts | ${videos.length} |\n\n`;
 
@@ -208,6 +232,18 @@ jobs:
             }
             if (runLevelErrors.length > 20) {
               md += `\n- ... and ${runLevelErrors.length - 20} more\n`;
+            }
+            md += '\n</details>\n';
+          }
+
+          if (zeroTestSpecs.length > 0) {
+            md += '\n<details>\n';
+            md += `<summary>Specs with zero registered tests (${zeroTestSpecs.length})</summary>\n\n`;
+            for (const spec of zeroTestSpecs.slice(0, 30)) {
+              md += `- \`${spec}\`\n`;
+            }
+            if (zeroTestSpecs.length > 30) {
+              md += `\n- ... and ${zeroTestSpecs.length - 30} more\n`;
             }
             md += '\n</details>\n';
           }

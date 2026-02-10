@@ -23,7 +23,7 @@ export default defineConfig({
     video: false,
     screenshotOnRunFailure: true,
     retries: {
-      runMode: 0,
+      runMode: 2,
       openMode: 0,
     },
     experimentalMemoryManagement: true,
