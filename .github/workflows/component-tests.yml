@@ -1,4 +1,4 @@
-name: Component Tests
+﻿name: Component Tests
 
 on:
   push:
@@ -22,55 +22,141 @@ jobs:
       NEXT_PUBLIC_TEST_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_PASSWORD }}
       NEXT_PUBLIC_SKIP_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_EMAIL }}
       NEXT_PUBLIC_SKIP_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_PASSWORD }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      
+          node-version: "20"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run component tests
-        id: component-tests
+        id: run-component-tests
         continue-on-error: true
-        run: npm run test:component -- --reporter spec
-      
-      - name: Generate test summary
-        if: always()
         run: |
-          echo "## 🧪 Component Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ steps.component-tests.outcome }}" == "success" ]; then
-            echo "✅ **Status:** All tests passed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Status:** Some tests failed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Test Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- 📸 Screenshots and videos available in artifacts below" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -d "cypress/screenshots" ] && [ "$(ls -A cypress/screenshots)" ]; then
-            echo "### 📸 Failed Test Screenshots" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            find cypress/screenshots -type f -name "*.png" | head -10 >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          fi
-      
+          set -o pipefail
+          mkdir -p cypress/results
+          npm run test:component -- --reporter spec 2>&1 | tee cypress/results/component-tests.log
+
+      - name: Generate visual summary
+        if: always()
+        env:
+          COMPONENT_STEP_OUTCOME: ${{ steps.run-component-tests.outcome }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+          const outcome = process.env.COMPONENT_STEP_OUTCOME || 'unknown';
+          const logPath = path.resolve('cypress', 'results', 'component-tests.log');
+          const screenshotsDir = path.resolve('cypress', 'screenshots');
+          const videosDir = path.resolve('cypress', 'videos');
+
+          const readTextIfExists = (filePath) => {
+            if (!fs.existsSync(filePath)) return '';
+            return fs.readFileSync(filePath, 'utf8');
+          };
+
+          const collectFiles = (dirPath, extension) => {
+            if (!fs.existsSync(dirPath)) return [];
+            const out = [];
+            const stack = [dirPath];
+            while (stack.length > 0) {
+              const current = stack.pop();
+              for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+                const full = path.join(current, entry.name);
+                if (entry.isDirectory()) {
+                  stack.push(full);
+                } else if (entry.isFile() && full.toLowerCase().endsWith(extension)) {
+                  out.push(full);
+                }
+              }
+            }
+            return out.sort();
+          };
+
+          const log = readTextIfExists(logPath);
+          const lastMatchInt = (regex) => {
+            const matches = [...log.matchAll(regex)];
+            if (matches.length === 0) return 0;
+            return Number(matches[matches.length - 1][1]);
+          };
+
+          const passed = lastMatchInt(/([0-9]+)\s+passing\b/gi);
+          const failed = lastMatchInt(/([0-9]+)\s+failing\b/gi);
+          const pending = lastMatchInt(/([0-9]+)\s+pending\b/gi);
+          const total = passed + failed + pending;
+
+          const screenshots = collectFiles(screenshotsDir, '.png');
+          const videos = collectFiles(videosDir, '.mp4');
+
+          const failedTitles = [...new Set(
+            [...log.matchAll(/^\s+\d+\)\s(.+)$/gm)].map((match) => match[1].trim())
+          )];
+
+          const headline = outcome === 'success' ? 'Component Tests Passed' : 'Component Tests Failed';
+
+          let md = '';
+          md += `## ${headline}\n\n`;
+          md += '| Metric | Count |\n';
+          md += '|---|---:|\n';
+          md += `| Total | ${total} |\n`;
+          md += `| Passed | ${passed} |\n`;
+          md += `| Failed | ${failed} |\n`;
+          md += `| Pending | ${pending} |\n`;
+          md += `| Screenshot artifacts | ${screenshots.length} |\n`;
+          md += `| Video artifacts | ${videos.length} |\n\n`;
+
+          if (!fs.existsSync(logPath)) {
+            md += 'Component test log was not found at `cypress/results/component-tests.log`.\n\n';
+          }
+
+          if (failedTitles.length > 0) {
+            md += '<details>\n';
+            md += `<summary>Failed tests (${failedTitles.length})</summary>\n\n`;
+            for (const title of failedTitles.slice(0, 30)) {
+              md += `- ${title}\n`;
+            }
+            if (failedTitles.length > 30) {
+              md += `\n- ... and ${failedTitles.length - 30} more\n`;
+            }
+            md += '\n</details>\n';
+          }
+
+          if (screenshots.length > 0) {
+            md += '\n<details>\n';
+            md += `<summary>Failed screenshots (${screenshots.length})</summary>\n\n`;
+            for (const filePath of screenshots.slice(0, 20)) {
+              md += `- \`${path.relative(process.cwd(), filePath)}\`\n`;
+            }
+            if (screenshots.length > 20) {
+              md += `\n- ... and ${screenshots.length - 20} more\n`;
+            }
+            md += '\n</details>\n';
+          }
+
+          fs.appendFileSync(summaryFile, md);
+          NODE
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: component-test-results-${{ github.run_id }}
           path: |
+            cypress/results/component-tests.log
             cypress/screenshots
             cypress/videos
+          if-no-files-found: ignore
           retention-days: 30
+
+      - name: Mark job as failed when component tests failed
+        if: steps.run-component-tests.outcome != 'success'
+        run: exit 1

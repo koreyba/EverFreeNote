@@ -675,7 +675,11 @@ describe('SearchScreen - Delete Functionality', () => {
       fireEvent.press(screen.getByTestId('delete-button-search-note-1'))
 
       await waitFor(() => {
-        expect(screen.queryByText('Search Result 1')).toBeNull()
+        expect(mockNoteService.prototype.deleteNote).toHaveBeenCalledWith('search-note-1')
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('search-result-search-note-1')).toBeNull()
       })
 
       // Let React Query settle (mutation callbacks + refetch from first deletion)
@@ -686,7 +690,11 @@ describe('SearchScreen - Delete Functionality', () => {
       fireEvent.press(screen.getByTestId('delete-button-search-note-2'))
 
       await waitFor(() => {
-        expect(screen.queryByText('Search Result 2')).toBeNull()
+        expect(mockNoteService.prototype.deleteNote).toHaveBeenCalledWith('search-note-2')
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('search-result-search-note-2')).toBeNull()
       })
 
       // Third note should still be visible
