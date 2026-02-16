@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressBridgeError, WordPressExportService } from "@core/services/wordpressExport"
-import { normalizeExportTags, slugifyLatin, validateWordPressSlug } from "@ui/web/lib/wordpress"
+import { WordPressSettingsService } from "@core/services/wordpressSettings"
+import { getPublishedTagForSite, normalizeExportTags, slugifyLatin, validateWordPressSlug } from "@ui/web/lib/wordpress"
 
 type WordPressExportNote = {
   id: string
@@ -28,12 +29,15 @@ type WordPressExportDialogProps = {
 export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExportDialogProps) {
   const { supabase } = useSupabase()
   const exportService = React.useMemo(() => new WordPressExportService(supabase), [supabase])
+  const settingsService = React.useMemo(() => new WordPressSettingsService(supabase), [supabase])
 
   const [categories, setCategories] = React.useState<Array<{ id: number; name: string }>>([])
   const [selectedCategoryIds, setSelectedCategoryIds] = React.useState<Set<number>>(new Set())
   const [tags, setTags] = React.useState<string[]>([])
   const [newTag, setNewTag] = React.useState("")
   const [slug, setSlug] = React.useState("")
+  const [publishedTag, setPublishedTag] = React.useState<string | null>(null)
+  const [shouldAddPublishedTag, setShouldAddPublishedTag] = React.useState(true)
 
   const [loadingCategories, setLoadingCategories] = React.useState(false)
   const [categoryError, setCategoryError] = React.useState<string | null>(null)
@@ -69,6 +73,7 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
     setTags(normalizeExportTags(note.tags ?? []))
     setNewTag("")
     setSlug(slugifyLatin(note.title || ""))
+    setShouldAddPublishedTag(true)
     setErrorMessage(null)
     setCategoryError(null)
     setSuccess(null)
@@ -93,11 +98,22 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
     }
   }, [exportService])
 
+  const loadPublishedTag = React.useCallback(async () => {
+    try {
+      const status = await settingsService.getStatus()
+      const siteUrl = status.integration?.siteUrl ?? ""
+      setPublishedTag(getPublishedTagForSite(siteUrl))
+    } catch {
+      setPublishedTag(null)
+    }
+  }, [settingsService])
+
   React.useEffect(() => {
     if (!open) return
     resetForm()
     void loadCategories()
-  }, [loadCategories, open, resetForm])
+    void loadPublishedTag()
+  }, [loadCategories, loadPublishedTag, open, resetForm])
 
   const toggleCategory = (id: number) => {
     setSelectedCategoryIds((previous) => {
@@ -154,6 +170,21 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
         slug: slug.trim(),
         status: "publish",
       })
+
+      if (publishedTag && shouldAddPublishedTag) {
+        const nextTags = normalizeExportTags([...(note.tags ?? []), publishedTag])
+        const hasTag = (note.tags ?? []).some((tag) => tag.toLocaleLowerCase() === publishedTag.toLocaleLowerCase())
+        if (!hasTag) {
+          const { error } = await supabase
+            .from("notes")
+            .update({ tags: nextTags })
+            .eq("id", note.id)
+
+          if (error) {
+            setErrorMessage(`Post published, but failed to update note tag: ${error.message}`)
+          }
+        }
+      }
 
       setSuccess({
         postId: response.postId,
@@ -281,6 +312,20 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
               )}
             </div>
           </div>
+
+          {publishedTag ? (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="wp-add-published-tag"
+                checked={shouldAddPublishedTag}
+                onCheckedChange={(checked) => setShouldAddPublishedTag(Boolean(checked))}
+                disabled={submitting}
+              />
+              <Label htmlFor="wp-add-published-tag" className="cursor-pointer">
+                Add published tag to the note
+              </Label>
+            </div>
+          ) : null}
 
           {errorMessage ? (
             <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

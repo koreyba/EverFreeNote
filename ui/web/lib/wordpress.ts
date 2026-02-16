@@ -106,3 +106,18 @@ export const normalizeExportTags = (tags: string[]): string[] => {
 
   return normalized
 }
+
+export const getPublishedTagForSite = (siteUrl: string): string | null => {
+  const raw = siteUrl.trim().toLowerCase()
+  if (!raw) return null
+
+  const withScheme = /^https?:\/\//.test(raw) ? raw : `https://${raw}`
+
+  try {
+    const hostname = new URL(withScheme).hostname.replace(/\.+$/, '')
+    if (!hostname) return null
+    return `${hostname}_published`
+  } catch {
+    return null
+  }
+}

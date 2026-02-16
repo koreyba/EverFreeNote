@@ -174,5 +174,10 @@ description: Technical implementation notes, patterns, and code guidelines
     - `ui/web/components/features/notes/NoteEditor.tsx` (near `Read`)
   - Added settings entry and dialog mount in `ui/web/components/features/notes/Sidebar.tsx`.
   - Added status loading and propagation in `ui/web/components/features/notes/NotesShell.tsx`.
+  - Added post-success local note tagging in `ui/web/components/features/wordpress/WordPressExportDialog.tsx`:
+    - On successful publish only, append `<site-domain>_published` to original note tags.
+    - Site domain is derived from configured WordPress `siteUrl` (via `wordpress-settings-status`).
+    - UI checkbox `Add published tag to the note` controls this behavior and is enabled by default.
+    - Export failure path does not mutate note tags.
 - Scope guard
   - No mobile UI/components were modified for this feature.

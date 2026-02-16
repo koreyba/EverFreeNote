@@ -133,11 +133,32 @@ description: Define testing approach, test cases, and quality assurance
   - `npm run type-check` : passed.
   - Targeted ESLint on changed/new files: passed.
 - Added component/unit coverage
+  - `cypress/component/core/services/wordpressSettings.cy.ts`
+    - `getStatus` success path
+    - fallback to unconfigured state for invalid payload
+    - error extraction from `message` and `msg` response fields
+    - invalid upsert payload handling
+  - `cypress/component/core/services/wordpressExport.cy.ts`
+    - categories fetch request contract
+    - bridge error normalization (`code`, `message` / `msg`, `details`)
+    - default `status=publish` in export payload
+    - malformed response and generic invoke error handling
+  - `cypress/component/features/wordpress/WordPressExportDialog.cy.tsx`
+    - modal category loading + remembered selection
+    - per-change category preference persistence
+    - export-only tag editing behavior (no mutation of source note tags)
+    - successful export appends `<domain>_published` tag to original note
+    - checkbox `Add published tag to the note` is enabled by default
+    - disabling checkbox prevents note-tag update after successful export
+    - failed export does not update original note tags
+    - slug validation before submit
+    - inline bridge error rendering for export failures
   - `cypress/component/ui/web/lib/wordpress.cy.ts`
     - `slugifyLatin` transliteration
     - `slugifyLatin` fallback behavior
     - slug validation format rules
     - export-tag normalization behavior
+    - site-published tag generation from WordPress site URL
   - Updated `cypress/component/features/notes/NoteView.cy.tsx`
     - verifies WordPress export button visibility when integration is configured
     - verifies button hidden when integration is not configured

@@ -1,4 +1,9 @@
-import { normalizeExportTags, slugifyLatin, validateWordPressSlug } from '../../../../../ui/web/lib/wordpress'
+import {
+  getPublishedTagForSite,
+  normalizeExportTags,
+  slugifyLatin,
+  validateWordPressSlug,
+} from '../../../../../ui/web/lib/wordpress'
 
 describe('ui/web/lib/wordpress', () => {
   it('slugifyLatin transliterates cyrillic to latin slug', () => {
@@ -19,5 +24,15 @@ describe('ui/web/lib/wordpress', () => {
   it('normalizeExportTags trims, deduplicates and keeps order', () => {
     const tags = normalizeExportTags([' work ', 'Work', '', 'personal'])
     expect(tags).to.deep.equal(['work', 'personal'])
+  })
+
+  it('getPublishedTagForSite builds site published tag from url', () => {
+    expect(getPublishedTagForSite('https://stage.dkoreiba.com/')).to.equal('stage.dkoreiba.com_published')
+    expect(getPublishedTagForSite('stage.dkoreiba.com')).to.equal('stage.dkoreiba.com_published')
+  })
+
+  it('getPublishedTagForSite returns null for invalid url input', () => {
+    expect(getPublishedTagForSite('')).to.equal(null)
+    expect(getPublishedTagForSite('://bad-url')).to.equal(null)
   })
 })
