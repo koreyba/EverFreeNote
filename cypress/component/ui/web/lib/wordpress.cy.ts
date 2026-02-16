@@ -7,7 +7,7 @@ import {
 
 describe('ui/web/lib/wordpress', () => {
   it('slugifyLatin transliterates cyrillic to latin slug', () => {
-    const slug = slugifyLatin('?????? ???')
+    const slug = slugifyLatin('\u041f\u0440\u0438\u0432\u0435\u0442 \u043c\u0438\u0440')
     expect(slug).to.equal('privet-mir')
   })
 

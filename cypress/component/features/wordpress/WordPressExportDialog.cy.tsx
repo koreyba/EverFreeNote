@@ -105,9 +105,14 @@ describe('features/wordpress/WordPressExportDialog', () => {
 
     mountDialog(supabase)
 
-    cy.contains('Loading categories...').should('be.visible')
     cy.contains('Tech').should('be.visible')
     cy.contains('Life').should('be.visible')
+    cy.wrap(invoke).should('have.been.calledWith', 'wordpress-bridge', {
+      body: { action: 'get_categories' },
+    })
+    cy.wrap(invoke).should('have.been.calledWith', 'wordpress-settings-status', {
+      body: {},
+    })
     cy.contains('label', 'Life').find('[role="checkbox"]').should('have.attr', 'data-state', 'checked')
     cy.contains('label', 'Tech').find('[role="checkbox"]').should('have.attr', 'data-state', 'unchecked')
   })
@@ -149,18 +154,17 @@ describe('features/wordpress/WordPressExportDialog', () => {
 
     mountDialog(supabase)
 
-    cy.contains('label', 'Tech').click()
+    cy.contains('label', 'Tech').find('[role="checkbox"]').click()
 
-    cy.wrap(upsert).should(
-      'have.been.calledWith',
-      Cypress.sinon.match({
-        user_id: 'user-1',
-        remembered_category_ids: Cypress.sinon.match(
-          (ids: number[]) => Array.isArray(ids) && ids.includes(1) && ids.includes(2)
-        ),
-      }),
-      { onConflict: 'user_id' }
-    )
+    cy.wrap(upsert).should('have.been.called')
+    cy.wrap(upsert).then((stub) => {
+      const firstCallArgs = stub.getCall(0).args
+      expect(firstCallArgs[0]).to.deep.include({ user_id: 'user-1' })
+      expect(firstCallArgs[0].remembered_category_ids).to.satisfy(
+        (ids: number[]) => Array.isArray(ids) && ids.includes(1) && ids.includes(2)
+      )
+      expect(firstCallArgs[1]).to.deep.equal({ onConflict: 'user_id' })
+    })
   })
 
   it('edits export tags without mutating source note tags and submits with overrides', () => {
@@ -326,7 +330,115 @@ describe('features/wordpress/WordPressExportDialog', () => {
     cy.contains('button', 'Export').click()
 
     cy.contains('Slug is required.').should('be.visible')
-    cy.wrap(invoke).should('have.callCount', 1)
+    cy.wrap(invoke).should('have.callCount', 2)
+    cy.wrap(invoke).then((stub) => {
+      const calledExportNote = stub
+        .getCalls()
+        .some((call: { args: unknown[] }) => {
+          const args = call.args as [string, { body?: InvokePayload }]
+          return args[0] === 'wordpress-bridge' && args[1]?.body?.action === 'export_note'
+        })
+      expect(calledExportNote).to.equal(false)
+    })
+  })
+
+  it('shows warning when post published but note tag update fails', () => {
+    const invoke = cy.stub().callsFake((name: string, params: { body: InvokePayload }) => {
+      if (name === 'wordpress-settings-status') {
+        return Promise.resolve({
+          data: {
+            configured: true,
+            integration: {
+              siteUrl: 'https://stage.dkoreiba.com/',
+              wpUsername: 'editor',
+              enabled: true,
+              hasPassword: true,
+            },
+          },
+          error: null,
+        })
+      }
+      if (name === 'wordpress-bridge' && params.body.action === 'get_categories') {
+        return Promise.resolve({
+          data: {
+            categories: [],
+            rememberedCategoryIds: [],
+          },
+          error: null,
+        })
+      }
+      if (name === 'wordpress-bridge' && params.body.action === 'export_note') {
+        return Promise.resolve({
+          data: {
+            postId: 12,
+            postUrl: 'https://example.com/post/12',
+            slug: params.body.slug,
+          },
+          error: null,
+        })
+      }
+
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    const update = cy.stub().returnsThis()
+    const eq = cy.stub().resolves({ error: { message: 'RLS blocked update' } })
+    const { supabase } = createSupabaseForDialog({ invoke, update, eq })
+
+    mountDialog(supabase)
+
+    cy.contains('button', 'Export').click()
+    cy.contains('Post published, but failed to update note tag: RLS blocked update').should('be.visible')
+    cy.contains('Post published (ID: 12).').should('be.visible')
+  })
+
+  it('hides published-tag checkbox when site url is unavailable', () => {
+    const invoke = cy.stub().callsFake((name: string, params: { body: InvokePayload }) => {
+      if (name === 'wordpress-settings-status') {
+        return Promise.resolve({
+          data: {
+            configured: true,
+            integration: {
+              siteUrl: '',
+              wpUsername: 'editor',
+              enabled: true,
+              hasPassword: true,
+            },
+          },
+          error: null,
+        })
+      }
+      if (name === 'wordpress-bridge' && params.body.action === 'get_categories') {
+        return Promise.resolve({
+          data: {
+            categories: [],
+            rememberedCategoryIds: [],
+          },
+          error: null,
+        })
+      }
+      if (name === 'wordpress-bridge' && params.body.action === 'export_note') {
+        return Promise.resolve({
+          data: {
+            postId: 13,
+            postUrl: 'https://example.com/post/13',
+            slug: params.body.slug,
+          },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    const update = cy.stub().returnsThis()
+    const { supabase } = createSupabaseForDialog({ invoke, update })
+
+    mountDialog(supabase)
+
+    cy.contains('Add published tag to the note').should('not.exist')
+    cy.contains('button', 'Export').click()
+    cy.wrap(update).should('not.have.been.called')
+    cy.contains('Post published (ID: 13).').should('be.visible')
   })
 
   it('renders bridge export error inside the dialog', () => {

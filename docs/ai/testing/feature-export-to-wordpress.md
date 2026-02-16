@@ -150,9 +150,16 @@ description: Define testing approach, test cases, and quality assurance
     - successful export appends `<domain>_published` tag to original note
     - checkbox `Add published tag to the note` is enabled by default
     - disabling checkbox prevents note-tag update after successful export
+    - missing/invalid site URL hides `Add published tag to the note` checkbox
+    - DB update failure after successful publish is shown as inline warning
     - failed export does not update original note tags
     - slug validation before submit
     - inline bridge error rendering for export failures
+  - `cypress/component/features/wordpress/WordPressSettingsDialog.cy.tsx`
+    - loads existing integration values from status endpoint
+    - required field validation (site URL, username, initial app password)
+    - save flow (URL normalization + success state + password field reset)
+    - save error rendering from backend response
   - `cypress/component/ui/web/lib/wordpress.cy.ts`
     - `slugifyLatin` transliteration
     - `slugifyLatin` fallback behavior
