@@ -156,7 +156,9 @@ describe('NoteView Component', () => {
     }
 
     cy.mount(<NoteView {...props} />)
-    cy.contains('button', 'Export to WP').should('not.be.visible')
+    cy.contains('button', 'Export to WP')
+      .should('have.class', 'hidden')
+      .and('have.class', 'md:inline-flex')
     cy.get('button[aria-label="More actions"]').should('be.visible')
   })
 
