@@ -23,8 +23,14 @@ const readErrorMessage = async (error: unknown, fallback: string) => {
     if (context && typeof context.json === 'function') {
       try {
         const payload = await context.json()
-        if (payload && typeof payload === 'object' && typeof payload.message === 'string') {
-          return payload.message
+        if (payload && typeof payload === 'object') {
+          const message =
+            typeof payload.message === 'string'
+              ? payload.message
+              : typeof payload.msg === 'string'
+                ? payload.msg
+                : null
+          if (message) return message
         }
       } catch {
         // Ignore parse failure and continue fallback chain.

@@ -43,7 +43,12 @@ const parseInvokeError = async (error: unknown): Promise<WordPressBridgeError> =
         const body = await context.json()
         if (body && typeof body === 'object') {
           const code = typeof body.code === 'string' ? body.code : 'bridge_error'
-          const message = typeof body.message === 'string' ? body.message : 'WordPress export failed'
+          const message =
+            typeof body.message === 'string'
+              ? body.message
+              : typeof body.msg === 'string'
+                ? body.msg
+                : 'WordPress export failed'
           const details = 'details' in body ? body.details : undefined
           return new WordPressBridgeError(message, code, details)
         }

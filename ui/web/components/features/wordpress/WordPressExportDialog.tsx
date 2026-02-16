@@ -41,6 +41,30 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [success, setSuccess] = React.useState<{ postUrl: string; postId: number } | null>(null)
 
+  const persistCategoryPreference = React.useCallback(
+    async (ids: number[]) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { error } = await supabase
+        .from("wordpress_export_preferences")
+        .upsert(
+          {
+            user_id: user.id,
+            remembered_category_ids: ids,
+          },
+          { onConflict: "user_id" }
+        )
+
+      if (error) {
+        throw error
+      }
+    },
+    [supabase]
+  )
+
   const resetForm = React.useCallback(() => {
     setTags(normalizeExportTags(note.tags ?? []))
     setNewTag("")
@@ -83,6 +107,10 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
       } else {
         next.add(id)
       }
+      void persistCategoryPreference(Array.from(next)).catch((error) => {
+        const message = error instanceof Error ? error.message : "Failed to save category preference"
+        setCategoryError(message)
+      })
       return next
     })
   }
