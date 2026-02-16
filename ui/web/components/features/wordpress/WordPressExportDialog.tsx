@@ -1,11 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { AlertCircle, CheckCircle2, ExternalLink, Plus, RefreshCw, X } from "lucide-react"
+import { AlertCircle, AlertTriangle, CheckCircle2, ExternalLink, Plus, RefreshCw, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
@@ -35,6 +36,7 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
   const [selectedCategoryIds, setSelectedCategoryIds] = React.useState<Set<number>>(new Set())
   const [tags, setTags] = React.useState<string[]>([])
   const [newTag, setNewTag] = React.useState("")
+  const [title, setTitle] = React.useState("")
   const [slug, setSlug] = React.useState("")
   const [publishedTag, setPublishedTag] = React.useState<string | null>(null)
   const [shouldAddPublishedTag, setShouldAddPublishedTag] = React.useState(true)
@@ -70,6 +72,7 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
   )
 
   const resetForm = React.useCallback(() => {
+    setTitle(note.title || "")
     setTags(normalizeExportTags(note.tags ?? []))
     setNewTag("")
     setSlug(slugifyLatin(note.title || ""))
@@ -167,6 +170,7 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
         noteId: note.id,
         categoryIds: Array.from(selectedCategoryIds),
         tags,
+        title,
         slug: slug.trim(),
         status: "publish",
       })
@@ -212,10 +216,24 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-1">
-            <Label>Note</Label>
-            <p className="text-sm text-muted-foreground">{note.title || "Untitled"}</p>
+          <div className="space-y-2">
+            <Label htmlFor="wp-export-title">Title</Label>
+            <Input
+              id="wp-export-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Untitled"
+              disabled={submitting}
+            />
           </div>
+
+          <Alert className="border-amber-500/30 bg-amber-500/10 text-foreground [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Export uses the last synchronized note content from the database. Make sure your latest edits are saved
+              and synced before publishing. Title, slug and tags in this dialog affect export only.
+            </AlertDescription>
+          </Alert>
 
           <div className="space-y-2">
             <Label htmlFor="wp-export-slug">Slug</Label>

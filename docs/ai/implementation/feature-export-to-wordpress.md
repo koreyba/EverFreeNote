@@ -59,6 +59,7 @@ description: Technical implementation notes, patterns, and code guidelines
 
 - Feature 3: Lightweight export modal
   - On open: request categories + remembered selection.
+  - Editable title: initialize from note title; local modal state only.
   - Editable tags: initialize from note tags; local modal state only.
   - Slug: prefill latinized title, allow manual edits.
   - Submit: call export action and show success/error inline.

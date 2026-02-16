@@ -39,7 +39,7 @@ graph TD
       - `NoteEditor` header near `Read`.
   - `WP Export Modal`:
     - Fetches categories from backend bridge.
-    - Allows category selection, tag edits, slug edit.
+    - Allows export-only title edit, category selection, tag edits, slug edit.
     - Shows inline progress/errors.
   - `wordpress-bridge` Edge Function:
     - Protects credentials from client exposure.
@@ -78,6 +78,7 @@ graph TD
     - `updated_at timestamptz not null default now()`
   - Export payload (client -> bridge)
     - `noteId: string`
+    - `title?: string` (optional export-only override)
     - `categoryIds: number[]`
     - `tags: string[]`
     - `slug: string`
@@ -116,7 +117,7 @@ graph TD
   - `get_categories` response:
     - `{ categories: Array<{ id: number; name: string }>, rememberedCategoryIds: number[] }`
   - `export_note` request:
-    - `{ action: "export_note", noteId: string, categoryIds: number[], tags: string[], slug: string, status: "publish" }`
+    - `{ action: "export_note", noteId: string, title?: string, categoryIds: number[], tags: string[], slug: string, status: "publish" }`
   - `export_note` success response:
     - `{ postId: number, postUrl: string, slug: string }`
   - Error response (normalized):
@@ -148,7 +149,7 @@ graph TD
     - Rendered per note entry point.
     - Hidden when integration settings are absent/disabled.
   - `WordPressExportDialog` (new, web):
-    - Category selector, editable tags list, editable slug field.
+    - Editable title field, category selector, editable tags list, editable slug field.
     - Inline loading + error states.
   - Existing components to modify:
     - `ui/web/components/features/notes/NoteEditor.tsx` (button near `Read`)

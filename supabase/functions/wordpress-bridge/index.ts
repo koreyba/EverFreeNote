@@ -550,7 +550,7 @@ serve(async (req: Request) => {
   }
 
   const authHeader = req.headers.get("Authorization")
-  const token = authHeader?.replace("Bearer ", "")
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : ""
   if (!token) {
     return jsonResponse({ code: "unauthorized", message: "Unauthorized" }, 401)
   }
@@ -582,6 +582,7 @@ serve(async (req: Request) => {
       ])
 
       return jsonResponse({
+        action: "get_categories",
         categories,
         rememberedCategoryIds,
       })
@@ -591,7 +592,9 @@ serve(async (req: Request) => {
       const noteId = typeof payload.noteId === "string" ? payload.noteId.trim() : ""
       const slug = validateSlug(typeof payload.slug === "string" ? payload.slug : "")
       const categoryIds = normalizeCategoryIds(payload.categoryIds)
+      const hasExplicitTags = Array.isArray(payload.tags)
       const exportTags = normalizeTags(payload.tags)
+      const exportTitle = typeof payload.title === "string" ? payload.title.trim() : ""
 
       if (!noteId) {
         throw new BridgeError({
@@ -627,11 +630,11 @@ serve(async (req: Request) => {
 
       await ensureSlugIsAvailable(integration, slug)
 
-      const tags = exportTags.length > 0 ? exportTags : normalizeTags(note.tags)
+      const tags = hasExplicitTags ? exportTags : normalizeTags(note.tags)
       const tagIds = tags.length > 0 ? await resolveTagIds(integration, tags) : []
 
       const postBody = {
-        title: note.title || "Untitled",
+        title: exportTitle || note.title || "Untitled",
         content: note.description || "",
         status: "publish",
         slug,
@@ -668,6 +671,7 @@ serve(async (req: Request) => {
       await saveRememberedCategoryIds(supabaseAdmin, userId, categoryIds)
 
       return jsonResponse({
+        action: "export_note",
         postId,
         postUrl,
         slug: createdSlug,

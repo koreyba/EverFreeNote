@@ -88,15 +88,15 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   }, [getFormData])
 
   const getExportNote = React.useCallback(() => {
-    if (!noteIdRef.current) return null
+    if (!noteId) return null
     const formData = getFormData()
     return {
-      id: noteIdRef.current,
+      id: noteId,
       title: formData.title.trim() || "Untitled",
       description: formData.description,
       tags: [...selectedTagsRef.current],
     }
-  }, [getFormData])
+  }, [getFormData, noteId])
 
   const debouncedTagQuery = useDebouncedCallback((value: string) => {
     setTagQuery(normalizeTag(value))

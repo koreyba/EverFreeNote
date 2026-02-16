@@ -35,6 +35,7 @@ description: Clarify the problem space, gather requirements, and define success 
   - On export click, show lightweight popup that:
     - Loads available WordPress categories.
     - Lets user choose categories.
+    - Lets user edit title for export (without mutating note title in EverFreeNote).
     - Lets user edit tags for export (without mutating note tags in EverFreeNote).
     - Suggests slug from note title (latin transliteration) with manual edit.
   - Persist selected categories so popup preselects them next time.
@@ -59,6 +60,7 @@ description: Clarify the problem space, gather requirements, and define success 
 - As a user, I want to choose categories in a popup fetched from my blog so that the post is filed correctly.
 - As a user, I want selected categories to be remembered so repeated exports are faster.
 - As a user, I want to adjust export tags in popup so WordPress post tags can differ from notebook tags.
+- As a user, I want to adjust export title in popup so WordPress post title can differ from notebook title.
 - As a user, I want to edit a suggested slug so URL is clean and under my control.
 - As a user, I want clear error messages (including slug conflict) so I can fix issues without guessing.
 
@@ -69,7 +71,7 @@ description: Clarify the problem space, gather requirements, and define success 
     - in edit mode near `Read`.
   - User opens popup from note export button.
   - App fetches categories and renders preselected remembered categories.
-  - User adjusts categories/tags/slug and confirms export.
+  - User adjusts title/categories/tags/slug and confirms export.
   - App creates WordPress post and returns success or specific error.
 
 - Edge cases to consider

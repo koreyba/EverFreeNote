@@ -10,6 +10,7 @@ type InvokePayload = {
   categoryIds?: number[]
   tags?: string[]
   slug?: string
+  title?: string
   status?: string
 }
 
@@ -105,6 +106,7 @@ describe('features/wordpress/WordPressExportDialog', () => {
 
     mountDialog(supabase)
 
+    cy.contains('Export uses the last synchronized note content from the database.').should('be.visible')
     cy.contains('Tech').should('be.visible')
     cy.contains('Life').should('be.visible')
     cy.wrap(invoke).should('have.been.calledWith', 'wordpress-bridge', {
@@ -167,8 +169,9 @@ describe('features/wordpress/WordPressExportDialog', () => {
     })
   })
 
-  it('edits export tags without mutating source note tags and submits with overrides', () => {
+  it('edits export title and tags without mutating source note and submits overrides', () => {
     const originalTags = [...note.tags]
+    const originalTitle = note.title
     const invoke = cy.stub().callsFake((name: string, params: { body: InvokePayload }) => {
       if (name === 'wordpress-settings-status') {
         return Promise.resolve({
@@ -214,6 +217,7 @@ describe('features/wordpress/WordPressExportDialog', () => {
 
     mountDialog(supabase)
 
+    cy.get('#wp-export-title').clear().type('Edited export title')
     cy.get('button[aria-label="Remove tag work"]').click()
     cy.get('input[placeholder="Add tag"]').type('draft{enter}')
     cy.contains('button', 'Export').click()
@@ -227,6 +231,7 @@ describe('features/wordpress/WordPressExportDialog', () => {
             body.action === 'export_note' &&
             body.noteId === 'note-1' &&
             body.status === 'publish' &&
+            body.title === 'Edited export title' &&
             Array.isArray(body.tags) &&
             body.tags.includes('ideas') &&
             body.tags.includes('draft') &&
@@ -236,6 +241,7 @@ describe('features/wordpress/WordPressExportDialog', () => {
       })
     )
 
+    expect(note.title).to.equal(originalTitle)
     expect(note.tags).to.deep.equal(originalTags)
     cy.wrap(update).should('have.been.calledWith', {
       tags: ['work', 'ideas', 'stage.dkoreiba.com_published'],

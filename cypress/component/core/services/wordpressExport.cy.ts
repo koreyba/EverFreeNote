@@ -57,6 +57,29 @@ describe('core/services/WordPressExportService', () => {
     }
   })
 
+  it('getCategories throws invalid_response for malformed category payload', async () => {
+    const invoke = cy.stub().resolves({
+      data: {
+        categories: { id: 1, name: 'News' },
+        rememberedCategoryIds: [1],
+      },
+      error: null,
+    })
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const service = new WordPressExportService(supabase)
+
+    try {
+      await service.getCategories()
+      expect.fail('Expected getCategories to throw')
+    } catch (error) {
+      expect((error as WordPressBridgeError).code).to.equal('invalid_response')
+      expect((error as WordPressBridgeError).message).to.equal('Invalid categories response')
+    }
+  })
+
   it('getCategories uses msg field when message is absent', async () => {
     const invoke = cy.stub().resolves({
       data: null,
@@ -113,6 +136,42 @@ describe('core/services/WordPressExportService', () => {
         categoryIds: [1, 2],
         tags: ['one', 'two'],
         slug: 'my-post',
+        title: undefined,
+        status: 'publish',
+      },
+    })
+  })
+
+  it('exportNote forwards optional export-only title override', async () => {
+    const invoke = cy.stub().resolves({
+      data: {
+        postId: 100,
+        postUrl: 'https://example.com/post/100',
+        slug: 'my-post',
+      },
+      error: null,
+    })
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const service = new WordPressExportService(supabase)
+    await service.exportNote({
+      noteId: 'note-1',
+      categoryIds: [1],
+      tags: ['one'],
+      slug: 'my-post',
+      title: 'Export title only',
+    })
+
+    expect(invoke).to.have.been.calledWith('wordpress-bridge', {
+      body: {
+        action: 'export_note',
+        noteId: 'note-1',
+        categoryIds: [1],
+        tags: ['one'],
+        slug: 'my-post',
+        title: 'Export title only',
         status: 'publish',
       },
     })
@@ -138,6 +197,59 @@ describe('core/services/WordPressExportService', () => {
       expect((error as WordPressBridgeError).code).to.equal('invalid_response')
       expect((error as WordPressBridgeError).message).to.equal('Invalid export response')
     }
+  })
+
+  it('exportNote throws invalid_response when required fields have invalid types', async () => {
+    const invoke = cy.stub().resolves({
+      data: {
+        postId: 'abc',
+        postUrl: 123,
+        slug: null,
+      },
+      error: null,
+    })
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const service = new WordPressExportService(supabase)
+
+    try {
+      await service.exportNote({
+        noteId: 'note-1',
+        categoryIds: [],
+        tags: [],
+        slug: 'my-post',
+      })
+      expect.fail('Expected exportNote to throw')
+    } catch (error) {
+      expect((error as WordPressBridgeError).code).to.equal('invalid_response')
+      expect((error as WordPressBridgeError).message).to.equal('Invalid export response')
+    }
+  })
+
+  it('exportNote accepts numeric string postId and normalizes to number', async () => {
+    const invoke = cy.stub().resolves({
+      data: {
+        postId: '42',
+        postUrl: 'https://example.com/post/42',
+        slug: 'my-post',
+      },
+      error: null,
+    })
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const service = new WordPressExportService(supabase)
+    const result = await service.exportNote({
+      noteId: 'note-1',
+      categoryIds: [],
+      tags: [],
+      slug: 'my-post',
+    })
+
+    expect(result.postId).to.equal(42)
   })
 
   it('exportNote falls back to bridge_error for plain Error invoke failures', async () => {

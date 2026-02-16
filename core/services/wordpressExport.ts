@@ -15,6 +15,7 @@ export type ExportNoteToWordPressPayload = {
   categoryIds: number[]
   tags: string[]
   slug: string
+  title?: string
   status?: 'publish'
 }
 
@@ -32,6 +33,69 @@ export class WordPressBridgeError extends Error {
   ) {
     super(message)
     this.name = 'WordPressBridgeError'
+  }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object'
+
+const parsePostId = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isInteger(parsed) && parsed > 0) return parsed
+  }
+
+  return null
+}
+
+const parseCategoriesResponse = (data: unknown): WordPressCategoriesResponse | null => {
+  if (!isRecord(data)) return null
+  const categories = data.categories
+  const rememberedCategoryIds = data.rememberedCategoryIds
+
+  if (!Array.isArray(categories) || !Array.isArray(rememberedCategoryIds)) {
+    return null
+  }
+
+  const normalizedCategories: WordPressCategory[] = []
+  for (const category of categories) {
+    if (!isRecord(category)) return null
+    if (typeof category.name !== 'string') return null
+    const id = parsePostId(category.id)
+    if (!id) return null
+    normalizedCategories.push({ id, name: category.name })
+  }
+
+  const normalizedRememberedIds: number[] = []
+  for (const categoryId of rememberedCategoryIds) {
+    const id = parsePostId(categoryId)
+    if (!id) return null
+    normalizedRememberedIds.push(id)
+  }
+
+  return {
+    categories: normalizedCategories,
+    rememberedCategoryIds: normalizedRememberedIds,
+  }
+}
+
+const parseExportResponse = (data: unknown): ExportNoteToWordPressResponse | null => {
+  if (!isRecord(data)) return null
+  if (typeof data.postUrl !== 'string' || typeof data.slug !== 'string') {
+    return null
+  }
+
+  const postId = parsePostId(data.postId)
+  if (!postId) return null
+
+  return {
+    postId,
+    postUrl: data.postUrl,
+    slug: data.slug,
   }
 }
 
@@ -79,11 +143,12 @@ export class WordPressExportService {
       throw await parseInvokeError(error)
     }
 
-    if (!data || typeof data !== 'object') {
+    const parsed = parseCategoriesResponse(data)
+    if (!parsed) {
       throw new WordPressBridgeError('Invalid categories response', 'invalid_response')
     }
 
-    return data as WordPressCategoriesResponse
+    return parsed
   }
 
   async exportNote(payload: ExportNoteToWordPressPayload): Promise<ExportNoteToWordPressResponse> {
@@ -94,6 +159,7 @@ export class WordPressExportService {
         categoryIds: payload.categoryIds,
         tags: payload.tags,
         slug: payload.slug,
+        title: payload.title,
         status: payload.status ?? 'publish',
       },
     })
@@ -102,10 +168,11 @@ export class WordPressExportService {
       throw await parseInvokeError(error)
     }
 
-    if (!data || typeof data !== 'object') {
+    const parsed = parseExportResponse(data)
+    if (!parsed) {
       throw new WordPressBridgeError('Invalid export response', 'invalid_response')
     }
 
-    return data as ExportNoteToWordPressResponse
+    return parsed
   }
 }

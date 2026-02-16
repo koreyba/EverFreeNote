@@ -42,7 +42,7 @@ serve(async (req: Request) => {
   }
 
   const authHeader = req.headers.get("Authorization")
-  const token = authHeader?.replace("Bearer ", "")
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : ""
   if (!token) {
     return jsonResponse({ code: "unauthorized", message: "Unauthorized" }, 401)
   }
@@ -87,7 +87,7 @@ serve(async (req: Request) => {
       },
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to load WordPress settings"
-    return jsonResponse({ code: "settings_status_failed", message }, 500)
+    console.error("WordPress settings status failed", error)
+    return jsonResponse({ code: "settings_status_failed", message: "Failed to load WordPress settings" }, 500)
   }
 })

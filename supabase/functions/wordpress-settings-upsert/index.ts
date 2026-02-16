@@ -114,7 +114,8 @@ serve(async (req: Request) => {
   const siteUrl = normalizeSiteUrl(rawSiteUrl)
 
   const authHeader = req.headers.get("Authorization")
-  const token = authHeader?.replace("Bearer ", "")
+  const tokenMatch = authHeader?.match(/^Bearer\s+(.+)$/i)
+  const token = tokenMatch?.[1]?.trim() ?? ""
   if (!token) {
     return jsonResponse({ code: "unauthorized", message: "Unauthorized" }, 401)
   }

@@ -146,6 +146,7 @@ description: Define testing approach, test cases, and quality assurance
   - `cypress/component/features/wordpress/WordPressExportDialog.cy.tsx`
     - modal category loading + remembered selection
     - per-change category preference persistence
+    - export-only title editing behavior (no mutation of source note title)
     - export-only tag editing behavior (no mutation of source note tags)
     - successful export appends `<domain>_published` tag to original note
     - checkbox `Add published tag to the note` is enabled by default

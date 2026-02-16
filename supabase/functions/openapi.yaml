@@ -587,12 +587,53 @@ paths:
                         type: string
                     slug:
                       type: string
+                    title:
+                      type: string
+                      description: Optional export-only title override. Does not change note title in app DB.
                     status:
                       type: string
                       enum: [publish]
       responses:
         "200":
           description: Action completed
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [action, categories, rememberedCategoryIds]
+                    properties:
+                      action:
+                        type: string
+                        enum: [get_categories]
+                      categories:
+                        type: array
+                        items:
+                          type: object
+                          required: [id, name]
+                          properties:
+                            id:
+                              type: integer
+                            name:
+                              type: string
+                      rememberedCategoryIds:
+                        type: array
+                        items:
+                          type: integer
+                  - type: object
+                    required: [action, postId, postUrl, slug]
+                    properties:
+                      action:
+                        type: string
+                        enum: [export_note]
+                      postId:
+                        type: integer
+                      postUrl:
+                        type: string
+                      slug:
+                        type: string
+                discriminator:
+                  propertyName: action
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":

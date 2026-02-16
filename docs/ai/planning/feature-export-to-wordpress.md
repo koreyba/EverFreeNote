@@ -10,7 +10,7 @@ description: Break down work into actionable tasks and estimate timeline
 **What are the major checkpoints?**
 
 - [x] Milestone 1: Finalize requirements/design docs and confirm remaining open questions
-- [x] Milestone 2: Deliver backend foundation (DB schema, RLS, wordpress bridge)
+- [x] Milestone 2: Deliver backend foundation (DB schema, RLS, WordPress bridge)
 - [x] Milestone 3: Deliver web UI flow (settings + per-note export modal + error handling)
 - [ ] Milestone 4: Complete tests, verification, and documentation updates (Cypress execution blocked in current environment)
 
