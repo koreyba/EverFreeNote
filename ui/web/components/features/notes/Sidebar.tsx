@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BookOpen, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
+import { BookOpen, Globe, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +17,7 @@ import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
 import { DeleteAccountDialog } from "@/components/features/account/DeleteAccountDialog"
+import { WordPressSettingsDialog } from "@/components/features/wordpress/WordPressSettingsDialog"
 import { User } from "@supabase/supabase-js"
 import { cn } from "@ui/web/lib/utils"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
@@ -46,6 +47,8 @@ interface SidebarProps {
   deleteAccountLoading?: boolean
   onImportComplete: () => void
   onExportComplete?: (success: boolean, exportedCount: number) => void
+  wordpressConfigured?: boolean
+  onWordPressConfiguredChange?: (configured: boolean) => void
   children: React.ReactNode // For the NoteList
   className?: string
   "data-testid"?: string
@@ -76,12 +79,15 @@ export function Sidebar({
   deleteAccountLoading = false,
   onImportComplete,
   onExportComplete,
+  wordpressConfigured = false,
+  onWordPressConfiguredChange,
   children,
   className,
   "data-testid": dataTestId
 }: SidebarProps) {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+  const [wordPressSettingsOpen, setWordPressSettingsOpen] = useState(false)
   const [searchDraft, setSearchDraft] = useState(searchQuery)
   const debouncedSearch = useDebouncedCallback(onSearch, 250)
 
@@ -266,6 +272,15 @@ export function Sidebar({
               className="w-56 space-y-2 p-3 bg-popover text-popover-foreground border border-border shadow-xl backdrop-blur"
             >
               <div className="space-y-2">
+                <Button
+                  variant={wordpressConfigured ? "secondary" : "outline"}
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setWordPressSettingsOpen(true)}
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  WordPress settings
+                </Button>
                 <ImportButton onImportComplete={onImportComplete} />
                 <ExportButton onExportComplete={onExportComplete} />
                 <Button
@@ -301,6 +316,11 @@ export function Sidebar({
         onOpenChange={setDeleteAccountOpen}
         onConfirm={handleDeleteAccount}
         loading={deleteAccountLoading}
+      />
+      <WordPressSettingsDialog
+        open={wordPressSettingsOpen}
+        onOpenChange={setWordPressSettingsOpen}
+        onConfiguredChange={onWordPressConfiguredChange}
       />
     </div>
   )

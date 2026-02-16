@@ -127,3 +127,32 @@ description: Define testing approach, test cases, and quality assurance
   - Low: minor UX issues.
 - Regression testing strategy
   - Re-run ENEX export/import and note CRUD tests after merge.
+
+## Current Verification Status (2026-02-16)
+- Automated checks completed
+  - `npm run type-check` : passed.
+  - Targeted ESLint on changed/new files: passed.
+- Added component/unit coverage
+  - `cypress/component/ui/web/lib/wordpress.cy.ts`
+    - `slugifyLatin` transliteration
+    - `slugifyLatin` fallback behavior
+    - slug validation format rules
+    - export-tag normalization behavior
+  - Updated `cypress/component/features/notes/NoteView.cy.tsx`
+    - verifies WordPress export button visibility when integration is configured
+    - verifies button hidden when integration is not configured
+  - Updated `cypress/component/features/notes/NoteEditor.cy.tsx`
+    - verifies WordPress export button appears for configured note with id
+    - verifies button hidden for new note without id
+- Blocked in current environment
+  - Cypress runtime could not start (`Cypress.exe: bad option: --smoke-test`), so new/updated component specs were added but not executed in this session.
+- Remaining manual checks before release
+  - Full UI flow against real WordPress staging:
+    - settings save/update
+    - categories load in export modal
+    - slug conflict error path
+    - tag add/remove export-only behavior
+    - successful publish with `status=publish`
+  - WordPress compatibility smoke:
+    - 6.8.3
+    - 6.9.1

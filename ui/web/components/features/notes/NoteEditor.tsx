@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { TagInput } from "@/components/TagInput"
+import { ExportToWordPressButton } from "@/components/features/wordpress/ExportToWordPressButton"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { createDebouncedLatest } from "@core/utils/debouncedLatest"
@@ -29,6 +30,7 @@ interface NoteEditorProps {
   isAutoSaving?: boolean
   autosaveDelayMs?: number
   lastSavedAt?: string | null
+  wordpressConfigured?: boolean
 }
 
 export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor({
@@ -44,6 +46,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   noteId,
   lastSavedAt,
   availableTags = [],
+  wordpressConfigured = false,
 }: NoteEditorProps, ref) {
   const [inputResetKey, setInputResetKey] = React.useState(0)
   const [showSaving, setShowSaving] = React.useState(false)
@@ -81,6 +84,17 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       noteId: noteIdRef.current,
       ...getFormData(),
       ...overrides,
+    }
+  }, [getFormData])
+
+  const getExportNote = React.useCallback(() => {
+    if (!noteIdRef.current) return null
+    const formData = getFormData()
+    return {
+      id: noteIdRef.current,
+      title: formData.title.trim() || "Untitled",
+      description: formData.description,
+      tags: [...selectedTagsRef.current],
     }
   }, [getFormData])
 
@@ -226,6 +240,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         <h2 className="text-lg font-semibold text-muted-foreground">Editing</h2>
         <div className="flex flex-col items-end gap-1">
           <div className="flex gap-2">
+            {wordpressConfigured && noteId ? (
+              <ExportToWordPressButton getNote={getExportNote} />
+            ) : null}
             <Button
               onClick={handleRead}
               variant="outline"

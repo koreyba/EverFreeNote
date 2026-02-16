@@ -141,3 +141,38 @@ description: Technical implementation notes, patterns, and code guidelines
 - Secrets management
   - Store encryption key in edge function secrets/env.
   - Redact sensitive fields from logs and API responses.
+
+## Implementation Status (2026-02-16)
+- Database
+  - Added migration `supabase/migrations/20260216100000_add_wordpress_integration.sql`.
+  - Created tables:
+    - `public.wordpress_integrations`
+    - `public.wordpress_export_preferences`
+  - Added owner-only RLS policies for both tables.
+  - Added `updated_at` triggers for both tables.
+- Supabase types
+  - Updated `supabase/types.ts` with both WordPress tables.
+- Edge functions
+  - Added `supabase/functions/wordpress-settings-status/index.ts`.
+  - Added `supabase/functions/wordpress-settings-upsert/index.ts`.
+  - Added `supabase/functions/wordpress-bridge/index.ts`.
+  - Added per-function `deno.json` and `import_map.json`.
+  - `wordpress-bridge` supports:
+    - `action: "get_categories"`
+    - `action: "export_note"`
+  - Password-at-rest is encrypted/decrypted using `WP_CREDENTIALS_KEY`.
+- Core services
+  - Added `core/services/wordpressSettings.ts`.
+  - Added `core/services/wordpressExport.ts` with normalized bridge error handling.
+- Web UI
+  - Added `ui/web/components/features/wordpress/WordPressSettingsDialog.tsx`.
+  - Added `ui/web/components/features/wordpress/WordPressExportDialog.tsx`.
+  - Added `ui/web/components/features/wordpress/ExportToWordPressButton.tsx`.
+  - Added slug/tag helpers in `ui/web/lib/wordpress.ts`.
+  - Integrated button visibility + placement:
+    - `ui/web/components/features/notes/NoteView.tsx` (near `Edit/Delete`)
+    - `ui/web/components/features/notes/NoteEditor.tsx` (near `Read`)
+  - Added settings entry and dialog mount in `ui/web/components/features/notes/Sidebar.tsx`.
+  - Added status loading and propagation in `ui/web/components/features/notes/NotesShell.tsx`.
+- Scope guard
+  - No mobile UI/components were modified for this feature.

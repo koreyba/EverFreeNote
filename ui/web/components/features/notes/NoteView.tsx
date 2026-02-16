@@ -5,6 +5,7 @@ import { Edit2, Trash2, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
+import { ExportToWordPressButton } from "@/components/features/wordpress/ExportToWordPressButton"
 
 import { SanitizationService } from "@core/services/sanitizer"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
@@ -24,6 +25,7 @@ interface NoteViewProps {
   onTagClick: (tag: string) => void
   onRemoveTag: (tag: string) => void
   onBack?: () => void
+  wordpressConfigured?: boolean
 }
 
 export const NoteView = React.memo(function NoteView({
@@ -32,7 +34,8 @@ export const NoteView = React.memo(function NoteView({
   onDelete,
   onTagClick,
   onRemoveTag,
-  onBack
+  onBack,
+  wordpressConfigured = false,
 }: NoteViewProps) {
   // Мемоизация санитизированного контента для предотвращения повторной обработки
   const sanitizedContent = React.useMemo(
@@ -45,6 +48,13 @@ export const NoteView = React.memo(function NoteView({
     created: new Date(note.created_at).toLocaleString(),
     updated: new Date(note.updated_at).toLocaleString()
   }), [note.created_at, note.updated_at])
+
+  const getExportNote = React.useCallback(() => ({
+    id: note.id,
+    title: note.title,
+    description: note.description || note.content || '',
+    tags: note.tags ?? [],
+  }), [note.content, note.description, note.id, note.tags, note.title])
 
   return (
     <div className="flex-1 flex min-h-0 flex-col">
@@ -64,6 +74,9 @@ export const NoteView = React.memo(function NoteView({
           <h2 className="text-lg font-semibold text-muted-foreground">Reading</h2>
         </div>
         <div className="flex gap-2">
+          {wordpressConfigured ? (
+            <ExportToWordPressButton getNote={getExportNote} />
+          ) : null}
           <Button
             onClick={onEdit}
             variant="outline"

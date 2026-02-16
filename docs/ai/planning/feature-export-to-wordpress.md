@@ -9,35 +9,35 @@ description: Break down work into actionable tasks and estimate timeline
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] Milestone 1: Finalize requirements/design docs and confirm remaining open questions
-- [ ] Milestone 2: Deliver backend foundation (DB schema, RLS, wordpress bridge)
-- [ ] Milestone 3: Deliver web UI flow (settings + per-note export modal + error handling)
-- [ ] Milestone 4: Complete tests, verification, and documentation updates
+- [x] Milestone 1: Finalize requirements/design docs and confirm remaining open questions
+- [x] Milestone 2: Deliver backend foundation (DB schema, RLS, wordpress bridge)
+- [x] Milestone 3: Deliver web UI flow (settings + per-note export modal + error handling)
+- [ ] Milestone 4: Complete tests, verification, and documentation updates (Cypress execution blocked in current environment)
 
 ## Task Breakdown
 **What specific work needs to be done?**
 
 ### Phase 1: Foundation
-- [ ] Task 1.1: Add DB migrations for `wordpress_integrations` and `wordpress_export_preferences`
-- [ ] Task 1.2: Add/update Supabase generated types for new tables
-- [ ] Task 1.3: Implement RLS policies and ownership guards
-- [ ] Task 1.4: Create core services for settings/preferences CRUD
+- [x] Task 1.1: Add DB migrations for `wordpress_integrations` and `wordpress_export_preferences`
+- [x] Task 1.2: Add/update Supabase generated types for new tables
+- [x] Task 1.3: Implement RLS policies and ownership guards
+- [x] Task 1.4: Create core services for settings/preferences CRUD
 
 ### Phase 2: Core Features
-- [ ] Task 2.1: Implement `wordpress-bridge` Edge Function (`get_categories`, `export_note`)
-- [ ] Task 2.2: Implement WordPress API client utility in bridge with normalized errors
-- [ ] Task 2.3: Build web `WordPressSettingsSection` and save/validation flow
-- [ ] Task 2.4: Add per-note `Export to WordPress` trigger visibility logic (web-only)
-- [ ] Task 2.4.1: Place export trigger in `NoteView` header near `Edit/Delete`
-- [ ] Task 2.4.2: Place export trigger in `NoteEditor` header near `Read`
-- [ ] Task 2.5: Build lightweight export modal (categories, editable tags, editable slug, inline errors)
-- [ ] Task 2.6: Persist and restore remembered category selection
+- [x] Task 2.1: Implement `wordpress-bridge` Edge Function (`get_categories`, `export_note`)
+- [x] Task 2.2: Implement WordPress API client utility in bridge with normalized errors
+- [x] Task 2.3: Build web `WordPressSettingsSection` and save/validation flow
+- [x] Task 2.4: Add per-note `Export to WordPress` trigger visibility logic (web-only)
+- [x] Task 2.4.1: Place export trigger in `NoteView` header near `Edit/Delete`
+- [x] Task 2.4.2: Place export trigger in `NoteEditor` header near `Read`
+- [x] Task 2.5: Build lightweight export modal (categories, editable tags, editable slug, inline errors)
+- [x] Task 2.6: Persist and restore remembered category selection
 
 ### Phase 3: Integration & Polish
-- [ ] Task 3.1: Wire final UX states (loading/success/failure/retry)
-- [ ] Task 3.2: Add slug validation and duplicate-slug manual-fix messaging (no auto-suffix)
-- [ ] Task 3.3: Ensure no mobile code path is affected (explicit guard / no UI changes)
-- [ ] Task 3.4: Update docs/ai implementation/testing files with final behavior and coverage
+- [x] Task 3.1: Wire final UX states (loading/success/failure/retry)
+- [x] Task 3.2: Add slug validation and duplicate-slug manual-fix messaging (no auto-suffix)
+- [x] Task 3.3: Ensure no mobile code path is affected (explicit guard / no UI changes)
+- [x] Task 3.4: Update docs/ai implementation/testing files with final behavior and coverage
 
 ## Dependencies
 **What needs to happen in what order?**
