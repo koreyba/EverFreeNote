@@ -207,7 +207,7 @@ export function WordPressExportDialog({ open, onOpenChange, note }: WordPressExp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px]">
+      <DialogContent className="w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto p-4 sm:max-w-[720px] sm:p-6">
         <DialogHeader>
           <DialogTitle>Export to WordPress</DialogTitle>
           <DialogDescription>

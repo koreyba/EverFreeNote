@@ -1,12 +1,18 @@
 "use client"
 
 import * as React from "react"
+import { MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { TagInput } from "@/components/TagInput"
-import { ExportToWordPressButton } from "@/components/features/wordpress/ExportToWordPressButton"
+import {
+  ExportToWordPressButton,
+  type ExportableWordPressNote,
+} from "@/components/features/wordpress/ExportToWordPressButton"
+import { WordPressExportDialog } from "@/components/features/wordpress/WordPressExportDialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { createDebouncedLatest } from "@core/utils/debouncedLatest"
@@ -52,6 +58,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
+  const [exportDialogNote, setExportDialogNote] = React.useState<ExportableWordPressNote | null>(null)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
   const lastResetNoteIdRef = React.useRef<string | undefined>(noteId)
@@ -97,6 +105,11 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       tags: [...selectedTagsRef.current],
     }
   }, [getFormData, noteId])
+
+  const handleExportRequest = React.useCallback((exportNote: ExportableWordPressNote) => {
+    setExportDialogNote(exportNote)
+    setExportDialogOpen(true)
+  }, [])
 
   const debouncedTagQuery = useDebouncedCallback((value: string) => {
     setTagQuery(normalizeTag(value))
@@ -241,7 +254,11 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         <div className="flex flex-col items-end gap-1">
           <div className="flex gap-2">
             {wordpressConfigured && noteId ? (
-              <ExportToWordPressButton getNote={getExportNote} />
+              <ExportToWordPressButton
+                getNote={getExportNote}
+                onRequestExport={handleExportRequest}
+                className="hidden md:inline-flex"
+              />
             ) : null}
             <Button
               onClick={handleRead}
@@ -256,6 +273,22 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             >
               Save
             </Button>
+            {wordpressConfigured && noteId ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="md:hidden" aria-label="More actions">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <ExportToWordPressButton
+                    getNote={getExportNote}
+                    onRequestExport={handleExportRequest}
+                    triggerVariant="menu-item"
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </div>
           {(showSaving || isSaving) ? (
             <div className="text-xs text-muted-foreground animate-pulse">
@@ -301,6 +334,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
           />
         </div>
       </div>
+      {exportDialogNote ? (
+        <WordPressExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} note={exportDialogNote} />
+      ) : null}
     </div>
   )
 }))

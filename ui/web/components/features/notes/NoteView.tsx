@@ -1,11 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { Edit2, Trash2, ChevronLeft } from "lucide-react"
+import { Edit2, Trash2, ChevronLeft, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import InteractiveTag from "@/components/InteractiveTag"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
-import { ExportToWordPressButton } from "@/components/features/wordpress/ExportToWordPressButton"
+import {
+  ExportToWordPressButton,
+  type ExportableWordPressNote,
+} from "@/components/features/wordpress/ExportToWordPressButton"
+import { WordPressExportDialog } from "@/components/features/wordpress/WordPressExportDialog"
 
 import { SanitizationService } from "@core/services/sanitizer"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
@@ -56,6 +61,14 @@ export const NoteView = React.memo(function NoteView({
     tags: note.tags ?? [],
   }), [note.content, note.description, note.id, note.tags, note.title])
 
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
+  const [exportDialogNote, setExportDialogNote] = React.useState<ExportableWordPressNote | null>(null)
+
+  const handleExportRequest = React.useCallback((exportNote: ExportableWordPressNote) => {
+    setExportDialogNote(exportNote)
+    setExportDialogOpen(true)
+  }, [])
+
   return (
     <div className="flex-1 flex min-h-0 flex-col">
       {/* Note View Header */}
@@ -75,7 +88,11 @@ export const NoteView = React.memo(function NoteView({
         </div>
         <div className="flex gap-2">
           {wordpressConfigured ? (
-            <ExportToWordPressButton getNote={getExportNote} />
+            <ExportToWordPressButton
+              getNote={getExportNote}
+              onRequestExport={handleExportRequest}
+              className="hidden md:inline-flex"
+            />
           ) : null}
           <Button
             onClick={onEdit}
@@ -94,6 +111,22 @@ export const NoteView = React.memo(function NoteView({
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
           </Button>
+          {wordpressConfigured ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="md:hidden" aria-label="More actions">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <ExportToWordPressButton
+                  getNote={getExportNote}
+                  onRequestExport={handleExportRequest}
+                  triggerVariant="menu-item"
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
       </div>
 
@@ -131,6 +164,9 @@ export const NoteView = React.memo(function NoteView({
           </div>
         </div>
       </div>
+      {exportDialogNote ? (
+        <WordPressExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} note={exportDialogNote} />
+      ) : null}
     </div>
   )
 })
