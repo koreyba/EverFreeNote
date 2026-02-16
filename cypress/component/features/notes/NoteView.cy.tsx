@@ -83,4 +83,32 @@ describe('NoteView Component', () => {
     // Scope the check to the content area to avoid finding Next.js/Cypress scripts
     cy.get('.prose script').should('not.exist')
   })
+
+  it('shows export button when WordPress is configured', () => {
+    const props = {
+      note: mockNote,
+      onEdit: cy.stub(),
+      onDelete: cy.stub(),
+      onTagClick: cy.stub(),
+      onRemoveTag: cy.stub(),
+      wordpressConfigured: true,
+    }
+
+    cy.mount(<NoteView {...props} />)
+    cy.contains('button', 'Export to WP').should('be.visible')
+  })
+
+  it('hides export button when WordPress is not configured', () => {
+    const props = {
+      note: mockNote,
+      onEdit: cy.stub(),
+      onDelete: cy.stub(),
+      onTagClick: cy.stub(),
+      onRemoveTag: cy.stub(),
+      wordpressConfigured: false,
+    }
+
+    cy.mount(<NoteView {...props} />)
+    cy.contains('button', 'Export to WP').should('not.exist')
+  })
 })

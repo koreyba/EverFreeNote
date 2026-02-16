@@ -273,6 +273,27 @@ describe('NoteEditor Component', () => {
     cy.get('[data-cy="editor-content"]').should('contain.text', 'HelloWorld')
     cy.wrap(onAutoSave).should('have.been.called')
   })
+
+  it('shows export button when WordPress is configured and note has id', () => {
+    const props = {
+      ...getDefaultProps(),
+      noteId: 'note-1',
+      wordpressConfigured: true,
+    }
+
+    cy.mount(<NoteEditor {...props} />)
+    cy.contains('button', 'Export to WP').should('be.visible')
+  })
+
+  it('hides export button for new notes without id', () => {
+    const props = {
+      ...getDefaultProps(),
+      wordpressConfigured: true,
+    }
+
+    cy.mount(<NoteEditor {...props} />)
+    cy.contains('button', 'Export to WP').should('not.exist')
+  })
 })
 
 /**

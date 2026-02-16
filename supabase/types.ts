@@ -39,6 +39,54 @@ export type Database = {
         }
         Relationships: []
       }
+      wordpress_export_preferences: {
+        Row: {
+          user_id: string
+          remembered_category_ids: number[]
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          remembered_category_ids?: number[]
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          remembered_category_ids?: number[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      wordpress_integrations: {
+        Row: {
+          user_id: string
+          site_url: string
+          wp_username: string
+          wp_app_password_encrypted: string
+          enabled: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          site_url: string
+          wp_username: string
+          wp_app_password_encrypted: string
+          enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          site_url?: string
+          wp_username?: string
+          wp_app_password_encrypted?: string
+          enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
