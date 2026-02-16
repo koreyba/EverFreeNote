@@ -108,7 +108,7 @@ export function WordPressSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px]">
+      <DialogContent className="w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto p-4 sm:max-w-[560px] sm:p-6">
         <DialogHeader>
           <DialogTitle>WordPress integration</DialogTitle>
           <DialogDescription>
