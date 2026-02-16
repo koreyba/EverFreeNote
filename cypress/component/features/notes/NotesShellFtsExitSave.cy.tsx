@@ -1,9 +1,10 @@
 import React from 'react'
-import type { User } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
 import type { NoteViewModel, SearchResult } from '../../../../core/types/domain'
 import type { NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
+import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 
 const pastePlainText = (text: string) => {
   cy.get('[data-cy="editor-content"]').click()
@@ -18,6 +19,15 @@ const pastePlainText = (text: string) => {
 type FakeController = Record<string, unknown>
 
 const buildController = () => {
+  const supabase = {
+    functions: {
+      invoke: cy.stub().resolves({
+        data: { configured: false, integration: null },
+        error: null,
+      }),
+    },
+  } as unknown as SupabaseClient
+
   const user: User = {
     id: 'test-user',
     app_metadata: {},
@@ -194,7 +204,11 @@ const buildController = () => {
       ftsResults: ftsResults,
     }
 
-    return <NotesShell controller={controller as unknown as import('../../../../ui/web/hooks/useNoteAppController').NoteAppController} />
+    return (
+      <SupabaseTestProvider supabase={supabase}>
+        <NotesShell controller={controller as unknown as import('../../../../ui/web/hooks/useNoteAppController').NoteAppController} />
+      </SupabaseTestProvider>
+    )
   }
 
   return Harness

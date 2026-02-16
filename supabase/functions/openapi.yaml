@@ -40,6 +40,8 @@ tags:
     description: Coaching session management (server-side auth via COACHING_USER_ID)
   - name: Account
     description: Account management
+  - name: WordPress
+    description: WordPress integration (settings and export bridge)
 
 paths:
   # ── Notes ──────────────────────────────────────────────
@@ -447,6 +449,209 @@ paths:
                     example: true
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── WordPress ───────────────────────────────────────────────
+
+  /wordpress-settings-status:
+    post:
+      tags: [WordPress]
+      summary: Get WordPress integration status
+      description: |
+        Returns whether WordPress integration is configured for the authenticated user,
+        along with safe metadata (without exposing credentials).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Status fetched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured:
+                    type: boolean
+                  integration:
+                    type: object
+                    nullable: true
+                    properties:
+                      siteUrl:
+                        type: string
+                      wpUsername:
+                        type: string
+                      enabled:
+                        type: boolean
+                      hasPassword:
+                        type: boolean
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /wordpress-settings-upsert:
+    post:
+      tags: [WordPress]
+      summary: Create or update WordPress integration settings
+      description: |
+        Saves per-user WordPress integration settings. Password is encrypted at rest.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [siteUrl, wpUsername]
+              properties:
+                siteUrl:
+                  type: string
+                  example: "https://example.com"
+                wpUsername:
+                  type: string
+                  example: "editor-user"
+                applicationPassword:
+                  type: string
+                  description: "Optional for updates if password is already stored"
+                enabled:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Settings saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured:
+                    type: boolean
+                  integration:
+                    type: object
+                    properties:
+                      siteUrl:
+                        type: string
+                      wpUsername:
+                        type: string
+                      enabled:
+                        type: boolean
+                      hasPassword:
+                        type: boolean
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /wordpress-bridge:
+    post:
+      tags: [WordPress]
+      summary: WordPress bridge actions
+      description: |
+        Supports two actions:
+        - `get_categories` to fetch available WordPress categories and remembered category IDs.
+        - `export_note` to publish one note as a WordPress post.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [action]
+                  properties:
+                    action:
+                      type: string
+                      enum: [get_categories]
+                - type: object
+                  required: [action, noteId, categoryIds, tags, slug]
+                  properties:
+                    action:
+                      type: string
+                      enum: [export_note]
+                    noteId:
+                      type: string
+                      format: uuid
+                    categoryIds:
+                      type: array
+                      items:
+                        type: integer
+                    tags:
+                      type: array
+                      items:
+                        type: string
+                    slug:
+                      type: string
+                    title:
+                      type: string
+                      description: Optional export-only title override. Does not change note title in app DB.
+                    status:
+                      type: string
+                      enum: [publish]
+      responses:
+        "200":
+          description: Action completed
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [action, categories, rememberedCategoryIds]
+                    properties:
+                      action:
+                        type: string
+                        enum: [get_categories]
+                      categories:
+                        type: array
+                        items:
+                          type: object
+                          required: [id, name]
+                          properties:
+                            id:
+                              type: integer
+                            name:
+                              type: string
+                      rememberedCategoryIds:
+                        type: array
+                        items:
+                          type: integer
+                  - type: object
+                    required: [action, postId, postUrl, slug]
+                    properties:
+                      action:
+                        type: string
+                        enum: [export_note]
+                      postId:
+                        type: integer
+                      postUrl:
+                        type: string
+                      slug:
+                        type: string
+                discriminator:
+                  propertyName: action
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict (e.g. duplicate slug)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "slug_conflict"
+                  message:
+                    type: string
         "500":
           $ref: "#/components/responses/ServerError"
 

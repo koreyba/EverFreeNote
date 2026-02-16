@@ -22,6 +22,8 @@ import { EmptyState } from "@/components/features/notes/EmptyState"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { normalizeTagList } from "@ui/web/lib/tags"
+import { useSupabase } from "@ui/web/providers/SupabaseProvider"
+import { WordPressSettingsService } from "@core/services/wordpressSettings"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -35,6 +37,9 @@ type NotesShellProps = {
 
 export function NotesShell({ controller }: NotesShellProps) {
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
+  const { supabase } = useSupabase()
+  const wordpressSettingsService = React.useMemo(() => new WordPressSettingsService(supabase), [supabase])
+  const [wordpressConfigured, setWordpressConfigured] = React.useState(false)
 
   React.useEffect(() => {
     controller.registerNoteEditorRef(noteEditorRef)
@@ -69,6 +74,19 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleSelectNote,
   } = controller
 
+  const refreshWordPressStatus = React.useCallback(async () => {
+    try {
+      const status = await wordpressSettingsService.getStatus()
+      setWordpressConfigured(status.configured)
+    } catch {
+      setWordpressConfigured(false)
+    }
+  }, [wordpressSettingsService])
+
+  React.useEffect(() => {
+    void refreshWordPressStatus()
+  }, [refreshWordPressStatus, user?.id])
+
   const showEditor = !!(selectedNote || isEditing)
 
   return (
@@ -97,6 +115,8 @@ export function NotesShell({ controller }: NotesShellProps) {
         onDeleteAccount={handleDeleteAccount}
         deleteAccountLoading={deleteAccountLoading}
         onImportComplete={invalidateNotes}
+        wordpressConfigured={wordpressConfigured}
+        onWordPressConfiguredChange={setWordpressConfigured}
         className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
       >
@@ -114,6 +134,7 @@ export function NotesShell({ controller }: NotesShellProps) {
           controller={controller}
           onBack={() => handleSelectNote(null)}
           noteEditorRef={noteEditorRef}
+          wordpressConfigured={wordpressConfigured}
         />
       </div>
 
@@ -174,7 +195,17 @@ function ListPane({ controller }: { controller: NoteAppController }) {
   )
 }
 
-function EditorPane({ controller, onBack, noteEditorRef }: { controller: NoteAppController; onBack: () => void; noteEditorRef: React.RefObject<NoteEditorHandle | null> }) {
+function EditorPane({
+  controller,
+  onBack,
+  noteEditorRef,
+  wordpressConfigured,
+}: {
+  controller: NoteAppController
+  onBack: () => void
+  noteEditorRef: React.RefObject<NoteEditorHandle | null>
+  wordpressConfigured: boolean
+}) {
   const {
     selectedNote,
     isEditing,
@@ -213,6 +244,7 @@ function EditorPane({ controller, onBack, noteEditorRef }: { controller: NoteApp
         onAutoSave={controller.handleAutoSave}
         isAutoSaving={autoSaving}
         lastSavedAt={lastSavedAt}
+        wordpressConfigured={wordpressConfigured}
       />
     )
   }
@@ -226,6 +258,7 @@ function EditorPane({ controller, onBack, noteEditorRef }: { controller: NoteApp
         onTagClick={controller.handleTagClick}
         onRemoveTag={(tag) => handleRemoveTagFromNote(selectedNote.id, tag)}
         onBack={onBack}
+        wordpressConfigured={wordpressConfigured}
       />
     )
   }

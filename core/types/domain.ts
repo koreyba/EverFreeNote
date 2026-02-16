@@ -13,3 +13,6 @@ export type NoteViewModel = Note & {
   headline?: string | null
   rank?: number | null
 }
+
+export type WordPressIntegration = Tables<'wordpress_integrations'>
+export type WordPressExportPreferences = Tables<'wordpress_export_preferences'>
