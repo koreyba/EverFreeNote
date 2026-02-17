@@ -50,6 +50,31 @@ export default defineConfig({
 
           if (tests === 0) {
             console.warn(`[ct-debug] zero-tests ${spec.relative}`)
+
+            // Dump compact run metadata for zero-tests cases.
+            // Cypress often keeps extra diagnostics in results/runs that are not printed by default reporter.
+            const safeResults = results as unknown as {
+              startedTestsAt?: string
+              endedTestsAt?: string
+              runs?: Array<{ error?: unknown; stats?: unknown; tests?: unknown[] }>
+              reporterStats?: unknown
+              error?: unknown
+            }
+
+            const zeroMeta = {
+              spec: spec.relative,
+              startedTestsAt: safeResults.startedTestsAt,
+              endedTestsAt: safeResults.endedTestsAt,
+              runsLength: safeResults.runs?.length ?? 0,
+              runErrorCount: safeResults.runs?.filter((run) => Boolean(run?.error)).length ?? 0,
+              runErrors: safeResults.runs
+                ?.map((run, idx) => ({ idx, error: run?.error }))
+                .filter((item) => Boolean(item.error)),
+              topLevelError: safeResults.error,
+              reporterStats: safeResults.reporterStats,
+            }
+
+            console.warn(`[ct-debug] zero-tests-meta ${JSON.stringify(zeroMeta)}`)
           }
         })
       }

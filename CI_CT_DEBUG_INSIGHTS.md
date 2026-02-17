@@ -18,6 +18,7 @@ _Last updated: 2026-02-17_
 - В следующем прогоне: `zero-tests = 5`, но `support-loaded/runtime-config/runnables-probe/first-test = 0` и `received runnables null = 0`.
 - Вывод: этот прогон нельзя использовать для проверки browser-probe гипотез; либо изменения не попали в ран, либо browser-side probe не печатался.
 - Также выявлен дефект парсера summary: per-spec срез фильтровал только строки с полным путём spec, из-за этого `received runnables null` мог не попасть в блок даже если был в логе.
+- На следующем ране: per-spec блок уже показал `received runnables null` для `VirtualNoteList`, но общий счетчик был `0` из-за ANSI escape-кодов в сырых логах.
 
 ## Instrumentation Added
 - CI пишет полный лог в `cypress/cypress-run.log` и загружает его артефактом.
@@ -37,6 +38,8 @@ _Last updated: 2026-02-17_
 - Summary now warns when `zero-tests > 0` but `support-loaded = 0`.
 - Summary also warns when instrumentation version marker is missing (stale run safeguard).
 - Summary per-spec parser fixed: now extracts full `Running: <spec>` block and then filters markers inside it.
+- Summary now analyzes ANSI-stripped log (`cypress-run.clean.log`) to avoid false zero counts.
+- Added server-side `zero-tests-meta` dump in `after:spec` to capture hidden `results` fields for zero-tests specs.
 - Workflow switched to focused debug mode: runs only known flaky specs via `CT_DEBUG_SPEC_LIST`.
 
 ## Focused Spec List (Current)
@@ -80,6 +83,8 @@ _Statuses: `in_progress` | `confirmed` | `rejected`_
 - `in_progress` `H-010`: проблема не связана с разрывом socket-соединения; основной сбой внутри runner lifecycle/spec evaluation.
 - `in_progress` `H-011`: some runs produce zero-tests while low-level debug markers are absent; instrumentation capture path itself is flaky/stale between runs.
 - `confirmed` `H-012`: summary parser bug could hide `received runnables null` despite its presence in raw log.
+- `confirmed` `H-013`: ANSI coloring in raw runner output can break exact grep counts for markers (`received runnables null`).
+- `in_progress` `H-014`: root cause may be visible in hidden `after:spec` results payload (`runs[].error` / `topLevelError`) even when standard reporter shows `0 passing` only.
 
 ## Next Run Checklist
 - Сравнить для одних и тех же namespace:

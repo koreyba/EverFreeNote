@@ -64,26 +64,29 @@ jobs:
             exit 0
           fi
 
+          CLEAN_LOG="cypress/cypress-run.clean.log"
+          perl -pe 's/\e\[[0-9;?]*[ -\/]*[@-~]//g' cypress/cypress-run.log > "$CLEAN_LOG" || cp cypress/cypress-run.log "$CLEAN_LOG"
+
           echo "### CT Debug Markers" >> $GITHUB_STEP_SUMMARY
 
-          for pattern in "Invalid Host/Origin header" "[webpack-dev-server] Disconnected!" "[ct-debug] instrumentation-version" "[ct-debug] zero-tests" "[ct-debug] uncaught:exception (propagated)" "received runnables null" "received runnables {" "[ct-debug] support-loaded" "[ct-debug] runtime-config" "[ct-debug] runnables-probe" "[ct-debug] first-test" "[ct-debug] window-error" "[ct-debug] unhandled-rejection" "cypress:server:socket-base socket-disconnect" "cypress:server:socket-base socket-error"; do
-            count=$(grep -F -c "$pattern" cypress/cypress-run.log || true)
+          for pattern in "Invalid Host/Origin header" "[webpack-dev-server] Disconnected!" "[ct-debug] instrumentation-version" "[ct-debug] zero-tests" "[ct-debug] zero-tests-meta" "[ct-debug] uncaught:exception (propagated)" "received runnables null" "received runnables {" "[ct-debug] support-loaded" "[ct-debug] runtime-config" "[ct-debug] runnables-probe" "[ct-debug] first-test" "[ct-debug] window-error" "[ct-debug] unhandled-rejection" "cypress:server:socket-base socket-disconnect" "cypress:server:socket-base socket-error"; do
+            count=$(grep -F -c "$pattern" "$CLEAN_LOG" || true)
             echo "- \`$pattern\`: $count" >> $GITHUB_STEP_SUMMARY
           done
 
-          ZERO_TESTS_COUNT=$(grep -F -c "[ct-debug] zero-tests" cypress/cypress-run.log || true)
-          INSTRUMENTATION_VERSION_COUNT=$(grep -F -c "[ct-debug] instrumentation-version" cypress/cypress-run.log || true)
-          SUPPORT_LOADED_COUNT=$(grep -F -c "[ct-debug] support-loaded" cypress/cypress-run.log || true)
+          ZERO_TESTS_COUNT=$(grep -F -c "[ct-debug] zero-tests" "$CLEAN_LOG" || true)
+          INSTRUMENTATION_VERSION_COUNT=$(grep -F -c "[ct-debug] instrumentation-version" "$CLEAN_LOG" || true)
+          SUPPORT_LOADED_COUNT=$(grep -F -c "[ct-debug] support-loaded" "$CLEAN_LOG" || true)
           if [ "$INSTRUMENTATION_VERSION_COUNT" -eq 0 ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "⚠️ Instrumentation version marker is missing. This run likely did not use the latest committed debug config." >> $GITHUB_STEP_SUMMARY
           fi
           if [ "$ZERO_TESTS_COUNT" -gt 0 ] && [ "$SUPPORT_LOADED_COUNT" -eq 0 ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ Browser-side probe markers are missing while zero-tests occurred. This run likely used stale debug code or probe output is not being captured." >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ Browser-side probe markers are missing while zero-tests occurred. In runMode they may not be emitted to terminal log; use server-side markers (`received runnables`) as primary signal." >> $GITHUB_STEP_SUMMARY
           fi
 
-          ZERO_SPECS=$(grep -F "[ct-debug] zero-tests " cypress/cypress-run.log | sed -E 's/^.*zero-tests //g' | sort -u || true)
+          ZERO_SPECS=$(grep -F "[ct-debug] zero-tests " "$CLEAN_LOG" | sed -E 's/^.*zero-tests //g' | sort -u || true)
           if [ -n "$ZERO_SPECS" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "#### Zero-Tests Per-Spec Diagnostics" >> $GITHUB_STEP_SUMMARY
@@ -98,12 +101,12 @@ jobs:
                   capture = (index($0, target) > 0)
                 }
                 capture { print }
-              ' cypress/cypress-run.log)
+              ' "$CLEAN_LOG")
               echo "" >> $GITHUB_STEP_SUMMARY
               echo "- \`$spec\`" >> $GITHUB_STEP_SUMMARY
               echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
               if [ -n "$spec_block" ]; then
-                printf "%s\n" "$spec_block" | grep -E "\\[ct-debug\\]|received runnables|socket-disconnect|socket-error|before:spec|after:spec|Running:" | head -80 >> $GITHUB_STEP_SUMMARY || true
+                printf "%s\n" "$spec_block" | grep -E "\\[ct-debug\\]|received runnables|socket-disconnect|socket-error|before:spec|after:spec|Running:|zero-tests-meta" | head -120 >> $GITHUB_STEP_SUMMARY || true
               else
                 echo "(no block found for spec)" >> $GITHUB_STEP_SUMMARY
               fi
@@ -111,11 +114,11 @@ jobs:
             done <<< "$ZERO_SPECS"
           fi
 
-          if grep -F -q "Invalid Host/Origin header" cypress/cypress-run.log; then
+          if grep -F -q "Invalid Host/Origin header" "$CLEAN_LOG"; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "#### Invalid Host/Origin Samples" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            grep -F "Invalid Host/Origin header" cypress/cypress-run.log | head -20 >> $GITHUB_STEP_SUMMARY
+            grep -F "Invalid Host/Origin header" "$CLEAN_LOG" | head -20 >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
       
@@ -152,4 +155,5 @@ jobs:
             cypress/screenshots
             cypress/videos
             cypress/cypress-run.log
+            cypress/cypress-run.clean.log
           retention-days: 30
