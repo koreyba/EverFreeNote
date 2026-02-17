@@ -22,6 +22,14 @@ export const registerGlobalErrorHandling = (): void => {
       return false
     }
 
+    // Keep non-ignored exceptions visible in CI logs; do not suppress them.
+    // eslint-disable-next-line no-console
+    console.error('[ct-debug] uncaught:exception (propagated)', {
+      message,
+      name: err?.name,
+      stack: err?.stack,
+    })
+
     return undefined
   })
 }

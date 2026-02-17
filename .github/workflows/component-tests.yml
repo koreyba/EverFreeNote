@@ -40,7 +40,8 @@ jobs:
         id: component-tests
         continue-on-error: true
         env:
-          DEBUG: cypress:webpack-dev-server:webpack
+          DEBUG: cypress:webpack-dev-server:*,cypress:server:specs,cypress:server:request,cypress:network:agent
+          ELECTRON_EXTRA_LAUNCH_ARGS: --enable-logging --v=1
         run: |
           mkdir -p cypress
           npm run test:component -- --reporter spec 2>&1 | tee cypress/cypress-run.log

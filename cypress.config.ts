@@ -16,6 +16,30 @@ export default defineConfig({
       // Add code coverage for component tests
       require('@cypress/code-coverage/task')(on, config)
 
+      const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
+
+      if (isCi) {
+        on('before:spec', (spec) => {
+          console.log(`[ct-debug] before:spec ${spec.relative}`)
+        })
+
+        on('after:spec', (spec, results) => {
+          if (!results) {
+            console.log(`[ct-debug] after:spec ${spec.relative} results=undefined`)
+            return
+          }
+
+          const { tests, passes, failures, pending, skipped, duration } = results.stats
+          console.log(
+            `[ct-debug] after:spec ${spec.relative} tests=${tests} passes=${passes} failures=${failures} pending=${pending} skipped=${skipped} durationMs=${duration}`,
+          )
+
+          if (tests === 0) {
+            console.warn(`[ct-debug] zero-tests ${spec.relative}`)
+          }
+        })
+      }
+
       return config
     },
     viewportWidth: 1280,
