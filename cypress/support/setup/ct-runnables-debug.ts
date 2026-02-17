@@ -3,8 +3,6 @@ type MinimalMochaSuite = {
   suites?: MinimalMochaSuite[]
 }
 
-const toBool = (value: unknown): boolean => value === true || value === 'true' || value === 1 || value === '1'
-
 const countTests = (suite?: MinimalMochaSuite): number => {
   if (!suite) return 0
   const own = Array.isArray(suite.tests) ? suite.tests.length : 0
@@ -39,9 +37,6 @@ const logRunnerSnapshot = (stage: string, spec: string): void => {
 }
 
 export const registerCtRunnablesDebug = (): void => {
-  const isCi = toBool(Cypress.env('CI')) || toBool(Cypress.env('GITHUB_ACTIONS'))
-  if (!isCi) return
-
   const spec = Cypress.spec?.relative ?? 'unknown-spec'
 
   // eslint-disable-next-line no-console

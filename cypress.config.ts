@@ -1,5 +1,7 @@
 import { defineConfig } from "cypress"
 
+const CT_DEBUG_INSTRUMENTATION_VERSION = 'ct-debug-2026-02-17-v3'
+
 export default defineConfig({
   projectId: '76trp2',
   component: {
@@ -29,6 +31,8 @@ export default defineConfig({
       const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
 
       if (isCi) {
+        console.log(`[ct-debug] instrumentation-version ${CT_DEBUG_INSTRUMENTATION_VERSION}`)
+
         on('before:spec', (spec) => {
           console.log(`[ct-debug] before:spec ${spec.relative}`)
         })

@@ -58,10 +58,22 @@ jobs:
 
           echo "### CT Debug Markers" >> $GITHUB_STEP_SUMMARY
 
-          for pattern in "Invalid Host/Origin header" "[webpack-dev-server] Disconnected!" "[ct-debug] zero-tests" "[ct-debug] uncaught:exception (propagated)" "cypress:server:project received runnables null" "cypress:server:project received runnables {" "[ct-debug] support-loaded" "[ct-debug] runtime-config" "[ct-debug] runnables-probe" "[ct-debug] first-test" "[ct-debug] window-error" "[ct-debug] unhandled-rejection" "cypress:server:socket-base socket-disconnect" "cypress:server:socket-base socket-error"; do
+          for pattern in "Invalid Host/Origin header" "[webpack-dev-server] Disconnected!" "[ct-debug] instrumentation-version" "[ct-debug] zero-tests" "[ct-debug] uncaught:exception (propagated)" "received runnables null" "received runnables {" "[ct-debug] support-loaded" "[ct-debug] runtime-config" "[ct-debug] runnables-probe" "[ct-debug] first-test" "[ct-debug] window-error" "[ct-debug] unhandled-rejection" "cypress:server:socket-base socket-disconnect" "cypress:server:socket-base socket-error"; do
             count=$(grep -F -c "$pattern" cypress/cypress-run.log || true)
             echo "- \`$pattern\`: $count" >> $GITHUB_STEP_SUMMARY
           done
+
+          ZERO_TESTS_COUNT=$(grep -F -c "[ct-debug] zero-tests" cypress/cypress-run.log || true)
+          INSTRUMENTATION_VERSION_COUNT=$(grep -F -c "[ct-debug] instrumentation-version" cypress/cypress-run.log || true)
+          SUPPORT_LOADED_COUNT=$(grep -F -c "[ct-debug] support-loaded" cypress/cypress-run.log || true)
+          if [ "$INSTRUMENTATION_VERSION_COUNT" -eq 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Instrumentation version marker is missing. This run likely did not use the latest committed debug config." >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "$ZERO_TESTS_COUNT" -gt 0 ] && [ "$SUPPORT_LOADED_COUNT" -eq 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Browser-side probe markers are missing while zero-tests occurred. This run likely used stale debug code or probe output is not being captured." >> $GITHUB_STEP_SUMMARY
+          fi
 
           ZERO_SPECS=$(grep -F "[ct-debug] zero-tests " cypress/cypress-run.log | sed -E 's/^.*zero-tests //g' | sort -u || true)
           if [ -n "$ZERO_SPECS" ]; then
@@ -69,10 +81,24 @@ jobs:
             echo "#### Zero-Tests Per-Spec Diagnostics" >> $GITHUB_STEP_SUMMARY
             while IFS= read -r spec; do
               [ -z "$spec" ] && continue
+              short_spec="${spec#cypress/component/}"
+              spec_block=$(awk -v target="$short_spec" '
+                /^[[:space:]]*Running:/ {
+                  if (capture && index($0, target) == 0) {
+                    exit
+                  }
+                  capture = (index($0, target) > 0)
+                }
+                capture { print }
+              ' cypress/cypress-run.log)
               echo "" >> $GITHUB_STEP_SUMMARY
               echo "- \`$spec\`" >> $GITHUB_STEP_SUMMARY
               echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              grep -F "$spec" cypress/cypress-run.log | grep -E "\\[ct-debug\\]|received runnables|socket-disconnect|socket-error|before:spec|after:spec|Running:" | head -40 >> $GITHUB_STEP_SUMMARY || true
+              if [ -n "$spec_block" ]; then
+                printf "%s\n" "$spec_block" | grep -E "\\[ct-debug\\]|received runnables|socket-disconnect|socket-error|before:spec|after:spec|Running:" | head -80 >> $GITHUB_STEP_SUMMARY || true
+              else
+                echo "(no block found for spec)" >> $GITHUB_STEP_SUMMARY
+              fi
               echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
             done <<< "$ZERO_SPECS"
           fi
