@@ -74,19 +74,27 @@ jobs:
             echo "- \`$pattern\`: $count" >> $GITHUB_STEP_SUMMARY
           done
 
+          ZERO_SPECS=$(grep -F "[ct-debug] zero-tests " "$CLEAN_LOG" | sed -E 's/^.*zero-tests //g' | sort -u || true)
+          ZERO_SPEC_COUNT=$(printf "%s\n" "$ZERO_SPECS" | sed '/^$/d' | wc -l | tr -d ' ')
+          echo "- \`zero-tests unique specs\`: ${ZERO_SPEC_COUNT}" >> $GITHUB_STEP_SUMMARY
+
           ZERO_TESTS_COUNT=$(grep -F -c "[ct-debug] zero-tests" "$CLEAN_LOG" || true)
           INSTRUMENTATION_VERSION_COUNT=$(grep -F -c "[ct-debug] instrumentation-version" "$CLEAN_LOG" || true)
           SUPPORT_LOADED_COUNT=$(grep -F -c "[ct-debug] support-loaded" "$CLEAN_LOG" || true)
+          RUNNABLES_NULL_COUNT=$(grep -F -c "received runnables null" "$CLEAN_LOG" || true)
           if [ "$INSTRUMENTATION_VERSION_COUNT" -eq 0 ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "⚠️ Instrumentation version marker is missing. This run likely did not use the latest committed debug config." >> $GITHUB_STEP_SUMMARY
           fi
           if [ "$ZERO_TESTS_COUNT" -gt 0 ] && [ "$SUPPORT_LOADED_COUNT" -eq 0 ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "ℹ️ Browser-side probe markers are missing while zero-tests occurred. In runMode they may not be emitted to terminal log; use server-side markers (`received runnables`) as primary signal." >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ Browser-side probe markers are missing while zero-tests occurred. In runMode they may not be emitted to terminal log; use server-side marker: received runnables null." >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "$ZERO_TESTS_COUNT" -gt 0 ] && [ "$RUNNABLES_NULL_COUNT" -lt "$ZERO_TESTS_COUNT" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ Some zero-tests specs have no nearby 'received runnables null' line in parsed output. This can happen due log slicing boundaries; inspect full cypress-run.clean.log artifact." >> $GITHUB_STEP_SUMMARY
           fi
 
-          ZERO_SPECS=$(grep -F "[ct-debug] zero-tests " "$CLEAN_LOG" | sed -E 's/^.*zero-tests //g' | sort -u || true)
           if [ -n "$ZERO_SPECS" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "#### Zero-Tests Per-Spec Diagnostics" >> $GITHUB_STEP_SUMMARY
@@ -102,6 +110,14 @@ jobs:
                 }
                 capture { print }
               ' "$CLEAN_LOG")
+              if [ -z "$spec_block" ]; then
+                spec_zero_line=$(grep -F -n "[ct-debug] zero-tests $spec" "$CLEAN_LOG" | head -1 | cut -d: -f1)
+                if [ -n "$spec_zero_line" ]; then
+                  start_line=$((spec_zero_line > 80 ? spec_zero_line - 80 : 1))
+                  end_line=$((spec_zero_line + 40))
+                  spec_block=$(sed -n "${start_line},${end_line}p" "$CLEAN_LOG")
+                fi
+              fi
               echo "" >> $GITHUB_STEP_SUMMARY
               echo "- \`$spec\`" >> $GITHUB_STEP_SUMMARY
               echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

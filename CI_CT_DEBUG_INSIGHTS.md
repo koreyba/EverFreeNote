@@ -19,6 +19,10 @@ _Last updated: 2026-02-17_
 - Вывод: этот прогон нельзя использовать для проверки browser-probe гипотез; либо изменения не попали в ран, либо browser-side probe не печатался.
 - Также выявлен дефект парсера summary: per-spec срез фильтровал только строки с полным путём spec, из-за этого `received runnables null` мог не попасть в блок даже если был в логе.
 - На следующем ране: per-spec блок уже показал `received runnables null` для `VirtualNoteList`, но общий счетчик был `0` из-за ANSI escape-кодов в сырых логах.
+- Последний фокус-прогон: `zero-tests = 2`, `received runnables null = 1`, `received runnables { = 9`.
+- `zero-tests-meta` для `editor/Input.cy.tsx`: `runsLength=0`, `runErrorCount=0`, `topLevelError=null`, `reporterStats.tests=0`.
+- Это указывает на завершение спека без сформированного Mocha graph и без зафиксированной test-level ошибки.
+- Важно: raw count `[ct-debug] zero-tests` может включать дубли строк; ориентируемся на `zero-tests unique specs`.
 
 ## Instrumentation Added
 - CI пишет полный лог в `cypress/cypress-run.log` и загружает его артефактом.
@@ -40,6 +44,10 @@ _Last updated: 2026-02-17_
 - Summary per-spec parser fixed: now extracts full `Running: <spec>` block and then filters markers inside it.
 - Summary now analyzes ANSI-stripped log (`cypress-run.clean.log`) to avoid false zero counts.
 - Added server-side `zero-tests-meta` dump in `after:spec` to capture hidden `results` fields for zero-tests specs.
+- Added fallback per-spec slicing around `[ct-debug] zero-tests <spec>` when `Running:` block match is missing.
+- Added marker-consistency note when `zero-tests > runnables-null`.
+- Added explicit `zero-tests unique specs` metric in summary to separate real missing-tests specs from duplicated marker lines.
+- Added CT experiment flag: `justInTimeCompile: false`.
 - Workflow switched to focused debug mode: runs only known flaky specs via `CT_DEBUG_SPEC_LIST`.
 
 ## Focused Spec List (Current)
@@ -85,6 +93,7 @@ _Statuses: `in_progress` | `confirmed` | `rejected`_
 - `confirmed` `H-012`: summary parser bug could hide `received runnables null` despite its presence in raw log.
 - `confirmed` `H-013`: ANSI coloring in raw runner output can break exact grep counts for markers (`received runnables null`).
 - `in_progress` `H-014`: root cause may be visible in hidden `after:spec` results payload (`runs[].error` / `topLevelError`) even when standard reporter shows `0 passing` only.
+- `in_progress` `H-015`: `justInTimeCompile` race causes intermittent empty runnables; verify impact with `justInTimeCompile: false`.
 
 ## Next Run Checklist
 - Сравнить для одних и тех же namespace:
