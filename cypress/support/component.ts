@@ -4,6 +4,7 @@ import './commands'
 import '@testing-library/cypress/add-commands'
 import '@cypress/code-coverage/support'
 import { registerGlobalErrorHandling } from './setup/error-handling'
+import { registerCtRunnablesDebug } from './setup/ct-runnables-debug'
 
 // Define a minimal Stub type based on usage to avoid 'any'
 type SinonStub = {
@@ -59,6 +60,7 @@ const createSupabaseStub = (): SupabaseStub => {
 }
 
 registerGlobalErrorHandling()
+registerCtRunnablesDebug()
 
 Cypress.on('window:before:load', (win) => {
   const appWindow = win as unknown as ComponentTestWindow

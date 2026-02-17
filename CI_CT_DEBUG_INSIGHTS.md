@@ -1,37 +1,63 @@
-# CI Component Tests Debug Insights
+﻿# CI Component Tests Debug Insights
 _Last updated: 2026-02-17_
 
 ## Confirmed
-- Проблема воспроизводится в GitHub Actions (CT), локально не воспроизводится.
-- Симптом нестабилен: разные spec-файлы случайно дают `Tests: 0`.
-- В проблемных файлах тесты реально есть (`describe/it`), это не пустые спеки.
-- В части кейсов перед `0 tests` webpack успешно компилирует spec, а запросы к JS-ассетам возвращают `200`.
-- Есть кейсы `0 tests` без `uncaught:exception` в логе.
-- `Invalid Host/Origin header` + `Disconnected/Reconnect` встречается рядом с частью `0 tests`, но не со всеми.
-- `Cannot stat .../Cache/Cache_Data/...` встречается и в успешных спеках; считаем это шумом.
-- Глобальный `uncaught:exception` подавляет только `ResizeObserver*`; остальные ошибки не подавляются.
-- По итогам полного CI-прогона: `zero-tests = 11`, при этом `Invalid Host/Origin header = 0`, `Disconnected = 0`, `uncaught:exception (propagated) = 0`.
+- Проблема воспроизводится только в GitHub Actions (CT), локально не воспроизводится.
+- Симптом нестабилен: случайные spec-файлы дают `Tests: 0`.
+- В проблемных spec-файлах тесты реально есть (`describe/it` присутствуют).
+- При части `0 tests` webpack-компиляция успешна и JS-ассеты отдаются с `200`.
+- `Cannot stat .../Cache/Cache_Data/...` встречается и в успешных спеках; считаем шумом.
+- Есть полный прогон с `zero-tests = 11` при `Invalid Host/Origin header = 0`, `Disconnected = 0`, `uncaught:exception (propagated) = 0`.
+- В падающих спеках есть `cypress:server:project received runnables null` прямо перед `0 passing`.
+- В успешных спеках есть `cypress:server:project received runnables { ... }`.
+- В Cypress 15.9.0 `normalizeAll(...)` возвращает `undefined`, если в `runner.suite` нет тестов (`hasTests === false`).
+- Следовательно, `runnables null` — это следствие пустого Mocha suite на момент нормализации, а не само по себе сетевой сбой.
 
 ## Instrumentation Added
-- В CI включен расширенный `DEBUG` для webpack/server/network.
-- Полный вывод раннера сохраняется в `cypress/cypress-run.log` и загружается как artifact.
-- Добавлены маркеры `[ct-debug] before:spec` / `[ct-debug] after:spec` + явный `[ct-debug] zero-tests`.
+- CI пишет полный лог в `cypress/cypress-run.log` и загружает его артефактом.
+- Добавлены маркеры `[ct-debug] before:spec`, `[ct-debug] after:spec`, `[ct-debug] zero-tests`.
 - Добавлен шаг `Analyze CT debug markers` в `GITHUB_STEP_SUMMARY`.
+- Расширены DEBUG namespace: webpack/server/network + `cypress:server:socket-base`.
+- Добавлен CI-only probe в support:
+- `[ct-debug] runtime-config`
+- `[ct-debug] runnables-probe` (immediate / t+0ms / t+200ms)
+- `[ct-debug] first-test`
+- `[ct-debug] window-error`
+- `[ct-debug] unhandled-rejection`
 
 ## Hypotheses Log
 _Statuses: `in_progress` | `confirmed` | `rejected`_
 
-- `rejected` `H-001`: Проблема вызвана пустыми/невалидными spec-файлами.
-  - Проверка: в проблемных spec-файлах есть валидные `describe/it`.
-- `rejected` `H-002`: Проблема вызвана глобальным подавлением ошибок (`uncaught:exception`).
-  - Проверка: глобально подавляются только `ResizeObserver*`; остальные ошибки не подавляются.
-- `rejected` `H-003`: Корень в `Invalid Host/Origin header` и последующем reconnect.
-  - Проверка: есть полный прогон с `zero-tests = 11` и нулем по `Invalid Host/Origin`/`Disconnected`.
-- `in_progress` `H-004`: Сбой в стадии регистрации/инициализации spec в Cypress CT runtime после успешной компиляции.
-  - Наблюдение: есть `0 tests` при успешной сборке и `200` по JS-ассетам.
-- `in_progress` `H-005`: Сбой происходит между `before:spec` и выполнением spec-кода (runner-ct / spec controller / iframe handshake).
-  - Наблюдение: `before:spec` есть, compile OK, сетевые запросы 200, но `after:spec tests=0`.
+- `rejected` `H-001`: проблема в пустых/невалидных spec-файлах.
+- Проверка: в проблемных файлах есть валидные `describe/it`.
 
-## Next
-- Дождаться полного прогона и сверить `CT Debug Markers` со списком `zero-tests`.
-- При необходимости добавить более узкие debug namespaces (`runner-ct`, `controllers:spec`, `iframes`, `socket-ct`, `open_project`).
+- `rejected` `H-002`: проблема из-за глобального подавления ошибок `uncaught:exception`.
+- Проверка: подавляются только `ResizeObserver*`; остальные ошибки не подавляются.
+
+- `rejected` `H-003`: корень в `Invalid Host/Origin header` + reconnect.
+- Проверка: был прогон с `zero-tests > 0` и нулем по этим маркерам.
+
+- `in_progress` `H-004`: сбой в стадии регистрации/инициализации spec после компиляции.
+- Сигнал: compile/network OK, но `tests=0`.
+
+- `in_progress` `H-005`: сбой между `before:spec` и фактической регистрацией Mocha runnables.
+- Сигнал: `before:spec` есть, `after:spec tests=0`.
+
+- `confirmed` `H-006`: ключевой симптом — `runnables null` из runner слоя.
+
+- `in_progress` `H-007`: upstream-причина до `normalizeAll` (suite пустой к моменту нормализации).
+
+- `in_progress` `H-008`: spec не исполняется/падает до деклараций тестов.
+
+- `in_progress` `H-009`: spec сначала регистрируется, но suite очищается/фильтруется до `set:runnables:and:maybe:record:tests`.
+
+## Next Run Checklist
+- Сравнить для одних и тех же namespace:
+- проблемный spec (`runnables null`)
+- успешный spec (`runnables { ... }`)
+- Проверить в проблемных спеках последовательность:
+- `[ct-debug] runtime-config`
+- `[ct-debug] runnables-probe ... tests=...`
+- `[ct-debug] first-test` (есть/нет)
+- `cypress:server:project received runnables null`
+- Проверить `socket-base socket-disconnect/socket-error` рядом по времени с `runnables null`.

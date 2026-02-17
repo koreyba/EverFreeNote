@@ -40,7 +40,7 @@ jobs:
         id: component-tests
         continue-on-error: true
         env:
-          DEBUG: cypress:webpack-dev-server:*,cypress:server:specs,cypress:server:request,cypress:network:agent,cypress:server:runner-ct,cypress:server:controllers:spec,cypress:server:iframes,cypress:server:socket-ct,cypress:server:open_project,cypress:server:project,cypress:server:preprocessor
+          DEBUG: cypress:webpack-dev-server:*,cypress:server:specs,cypress:server:request,cypress:network:agent,cypress:server:runner-ct,cypress:server:controllers:spec,cypress:server:iframes,cypress:server:socket-ct,cypress:server:socket-base,cypress:server:open_project,cypress:server:project,cypress:server:preprocessor
           HOST: localhost
         run: |
           mkdir -p cypress
@@ -58,7 +58,7 @@ jobs:
 
           echo "### CT Debug Markers" >> $GITHUB_STEP_SUMMARY
 
-          for pattern in "Invalid Host/Origin header" "[webpack-dev-server] Disconnected!" "[ct-debug] zero-tests" "[ct-debug] uncaught:exception (propagated)"; do
+          for pattern in "Invalid Host/Origin header" "[webpack-dev-server] Disconnected!" "[ct-debug] zero-tests" "[ct-debug] uncaught:exception (propagated)" "cypress:server:project received runnables null" "cypress:server:project received runnables {" "[ct-debug] runtime-config" "[ct-debug] runnables-probe" "[ct-debug] first-test" "[ct-debug] window-error" "[ct-debug] unhandled-rejection" "cypress:server:socket-base socket-disconnect" "cypress:server:socket-base socket-error"; do
             count=$(grep -F -c "$pattern" cypress/cypress-run.log || true)
             echo "- \`$pattern\`: $count" >> $GITHUB_STEP_SUMMARY
           done
