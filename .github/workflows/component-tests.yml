@@ -40,7 +40,7 @@ jobs:
         id: component-tests
         continue-on-error: true
         env:
-          DEBUG: cypress:webpack-dev-server:*,cypress:server:specs,cypress:server:request,cypress:network:agent
+          DEBUG: cypress:webpack-dev-server:*,cypress:server:specs,cypress:server:request,cypress:network:agent,cypress:server:runner-ct,cypress:server:controllers:spec,cypress:server:iframes,cypress:server:socket-ct,cypress:server:open_project,cypress:server:project,cypress:server:preprocessor
           HOST: localhost
         run: |
           mkdir -p cypress
