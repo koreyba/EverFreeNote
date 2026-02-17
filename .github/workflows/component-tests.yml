@@ -22,6 +22,9 @@ jobs:
       NEXT_PUBLIC_TEST_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_PASSWORD }}
       NEXT_PUBLIC_SKIP_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_EMAIL }}
       NEXT_PUBLIC_SKIP_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_PASSWORD }}
+      # Temporary focused debug run: flaky zero-tests specs only.
+      # Keep as a comma-separated list for Cypress --spec.
+      CT_DEBUG_SPEC_LIST: cypress/component/features/notes/NoteView.cy.tsx,cypress/component/ui/ExportProgressDialog.cy.tsx,cypress/component/ui/Tabs.cy.tsx,cypress/component/ui/web/adapters/storage.cy.ts,cypress/component/unit/searchUtils.cy.ts,cypress/component/editor/Form.cy.tsx,cypress/component/editor/Input.cy.tsx,cypress/component/editor/RichTextEditorPaste.cy.tsx,cypress/component/VirtualNoteList.cy.tsx,cypress/component/core/utils/search.cy.ts
     
     steps:
       - name: Checkout code
@@ -44,7 +47,12 @@ jobs:
           HOST: localhost
         run: |
           mkdir -p cypress
-          npm run test:component -- --reporter spec 2>&1 | tee cypress/cypress-run.log
+          if [ -n "${CT_DEBUG_SPEC_LIST}" ]; then
+            echo "[ct-debug] spec-list ${CT_DEBUG_SPEC_LIST}" | tee cypress/cypress-run.log
+            npx cypress run --component --browser electron --spec "${CT_DEBUG_SPEC_LIST}" --reporter spec 2>&1 | tee -a cypress/cypress-run.log
+          else
+            npm run test:component -- --reporter spec 2>&1 | tee cypress/cypress-run.log
+          fi
           exit ${PIPESTATUS[0]}
 
       - name: Analyze CT debug markers

@@ -37,6 +37,19 @@ _Last updated: 2026-02-17_
 - Summary now warns when `zero-tests > 0` but `support-loaded = 0`.
 - Summary also warns when instrumentation version marker is missing (stale run safeguard).
 - Summary per-spec parser fixed: now extracts full `Running: <spec>` block and then filters markers inside it.
+- Workflow switched to focused debug mode: runs only known flaky specs via `CT_DEBUG_SPEC_LIST`.
+
+## Focused Spec List (Current)
+- `cypress/component/features/notes/NoteView.cy.tsx`
+- `cypress/component/ui/ExportProgressDialog.cy.tsx`
+- `cypress/component/ui/Tabs.cy.tsx`
+- `cypress/component/ui/web/adapters/storage.cy.ts`
+- `cypress/component/unit/searchUtils.cy.ts`
+- `cypress/component/editor/Form.cy.tsx`
+- `cypress/component/editor/Input.cy.tsx`
+- `cypress/component/editor/RichTextEditorPaste.cy.tsx`
+- `cypress/component/VirtualNoteList.cy.tsx`
+- `cypress/component/core/utils/search.cy.ts`
 
 ## Hypotheses Log
 _Statuses: `in_progress` | `confirmed` | `rejected`_
