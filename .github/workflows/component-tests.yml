@@ -58,10 +58,24 @@ jobs:
 
           echo "### CT Debug Markers" >> $GITHUB_STEP_SUMMARY
 
-          for pattern in "Invalid Host/Origin header" "[webpack-dev-server] Disconnected!" "[ct-debug] zero-tests" "[ct-debug] uncaught:exception (propagated)" "cypress:server:project received runnables null" "cypress:server:project received runnables {" "[ct-debug] runtime-config" "[ct-debug] runnables-probe" "[ct-debug] first-test" "[ct-debug] window-error" "[ct-debug] unhandled-rejection" "cypress:server:socket-base socket-disconnect" "cypress:server:socket-base socket-error"; do
+          for pattern in "Invalid Host/Origin header" "[webpack-dev-server] Disconnected!" "[ct-debug] zero-tests" "[ct-debug] uncaught:exception (propagated)" "cypress:server:project received runnables null" "cypress:server:project received runnables {" "[ct-debug] support-loaded" "[ct-debug] runtime-config" "[ct-debug] runnables-probe" "[ct-debug] first-test" "[ct-debug] window-error" "[ct-debug] unhandled-rejection" "cypress:server:socket-base socket-disconnect" "cypress:server:socket-base socket-error"; do
             count=$(grep -F -c "$pattern" cypress/cypress-run.log || true)
             echo "- \`$pattern\`: $count" >> $GITHUB_STEP_SUMMARY
           done
+
+          ZERO_SPECS=$(grep -F "[ct-debug] zero-tests " cypress/cypress-run.log | sed -E 's/^.*zero-tests //g' | sort -u || true)
+          if [ -n "$ZERO_SPECS" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### Zero-Tests Per-Spec Diagnostics" >> $GITHUB_STEP_SUMMARY
+            while IFS= read -r spec; do
+              [ -z "$spec" ] && continue
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "- \`$spec\`" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              grep -F "$spec" cypress/cypress-run.log | grep -E "\\[ct-debug\\]|received runnables|socket-disconnect|socket-error|before:spec|after:spec|Running:" | head -40 >> $GITHUB_STEP_SUMMARY || true
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            done <<< "$ZERO_SPECS"
+          fi
 
           if grep -F -q "Invalid Host/Origin header" cypress/cypress-run.log; then
             echo "" >> $GITHUB_STEP_SUMMARY

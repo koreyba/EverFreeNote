@@ -45,6 +45,9 @@ export const registerCtRunnablesDebug = (): void => {
   const spec = Cypress.spec?.relative ?? 'unknown-spec'
 
   // eslint-disable-next-line no-console
+  console.error(`[ct-debug] support-loaded spec=${spec}`)
+
+  // eslint-disable-next-line no-console
   console.error(
     `[ct-debug] runtime-config spec=${spec} isInteractive=${String(Cypress.config('isInteractive'))} isTextTerminal=${String(Cypress.config('isTextTerminal'))}`,
   )

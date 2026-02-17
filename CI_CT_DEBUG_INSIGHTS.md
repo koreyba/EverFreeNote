@@ -12,13 +12,16 @@ _Last updated: 2026-02-17_
 - В успешных спеках есть `cypress:server:project received runnables { ... }`.
 - В Cypress 15.9.0 `normalizeAll(...)` возвращает `undefined`, если в `runner.suite` нет тестов (`hasTests === false`).
 - Следовательно, `runnables null` — это следствие пустого Mocha suite на момент нормализации, а не само по себе сетевой сбой.
+- По паре логов (`FontSize` pass vs `Form` zero-tests): в обоих кейсах есть `socket connected`, а в проблемном кейсе нет явного `socket-disconnect/socket-error` вокруг `runnables null`.
 
 ## Instrumentation Added
 - CI пишет полный лог в `cypress/cypress-run.log` и загружает его артефактом.
 - Добавлены маркеры `[ct-debug] before:spec`, `[ct-debug] after:spec`, `[ct-debug] zero-tests`.
 - Добавлен шаг `Analyze CT debug markers` в `GITHUB_STEP_SUMMARY`.
+- В summary добавлен авто-блок `Zero-Tests Per-Spec Diagnostics` (сжатый срез по каждому zero-tests spec).
 - Расширены DEBUG namespace: webpack/server/network + `cypress:server:socket-base`.
 - Добавлен CI-only probe в support:
+- `[ct-debug] support-loaded`
 - `[ct-debug] runtime-config`
 - `[ct-debug] runnables-probe` (immediate / t+0ms / t+200ms)
 - `[ct-debug] first-test`
@@ -50,6 +53,8 @@ _Statuses: `in_progress` | `confirmed` | `rejected`_
 - `in_progress` `H-008`: spec не исполняется/падает до деклараций тестов.
 
 - `in_progress` `H-009`: spec сначала регистрируется, но suite очищается/фильтруется до `set:runnables:and:maybe:record:tests`.
+
+- `in_progress` `H-010`: проблема не связана с разрывом socket-соединения; основной сбой внутри runner lifecycle/spec evaluation.
 
 ## Next Run Checklist
 - Сравнить для одних и тех же namespace:
