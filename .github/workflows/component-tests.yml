@@ -41,11 +41,35 @@ jobs:
         continue-on-error: true
         env:
           DEBUG: cypress:webpack-dev-server:*,cypress:server:specs,cypress:server:request,cypress:network:agent
-          ELECTRON_EXTRA_LAUNCH_ARGS: --enable-logging --v=1
+          HOST: localhost
         run: |
           mkdir -p cypress
           npm run test:component -- --reporter spec 2>&1 | tee cypress/cypress-run.log
           exit ${PIPESTATUS[0]}
+
+      - name: Analyze CT debug markers
+        if: always()
+        run: |
+          if [ ! -f "cypress/cypress-run.log" ]; then
+            echo "### CT Debug Markers" >> $GITHUB_STEP_SUMMARY
+            echo "- cypress/cypress-run.log not found" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          echo "### CT Debug Markers" >> $GITHUB_STEP_SUMMARY
+
+          for pattern in "Invalid Host/Origin header" "[webpack-dev-server] Disconnected!" "[ct-debug] zero-tests" "[ct-debug] uncaught:exception (propagated)"; do
+            count=$(grep -F -c "$pattern" cypress/cypress-run.log || true)
+            echo "- \`$pattern\`: $count" >> $GITHUB_STEP_SUMMARY
+          done
+
+          if grep -F -q "Invalid Host/Origin header" cypress/cypress-run.log; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### Invalid Host/Origin Samples" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            grep -F "Invalid Host/Origin header" cypress/cypress-run.log | head -20 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
       
       - name: Generate test summary
         if: always()

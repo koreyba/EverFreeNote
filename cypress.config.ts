@@ -8,6 +8,16 @@ export default defineConfig({
       bundler: 'webpack',
       webpackConfig: {
         devtool: false,
+        // Reduce host/origin mismatch noise in CI websocket handshake.
+        devServer: {
+          allowedHosts: 'all',
+          host: 'localhost',
+          client: {
+            webSocketURL: {
+              hostname: 'localhost',
+            },
+          },
+        },
       },
     },
     specPattern: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
