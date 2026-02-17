@@ -1,27 +1,17 @@
 import { defineConfig } from "cypress"
 
-const CT_DEBUG_INSTRUMENTATION_VERSION = 'ct-debug-2026-02-17-v3'
-
 export default defineConfig({
   projectId: '76trp2',
   component: {
-    // Debug experiment: avoid JIT compile race in CT that may lead to empty runnables.
+    // Required for CI stability.
+    // With JIT enabled, Cypress CT can intermittently finish spec evaluation with an empty Mocha suite
+    // in GitHub Actions (`received runnables null` / `Tests: 0`) because of a spec registration race.
     justInTimeCompile: false,
     devServer: {
       framework: 'next',
       bundler: 'webpack',
       webpackConfig: {
         devtool: false,
-        // Reduce host/origin mismatch noise in CI websocket handshake.
-        devServer: {
-          allowedHosts: 'all',
-          host: 'localhost',
-          client: {
-            webSocketURL: {
-              hostname: 'localhost',
-            },
-          },
-        },
       },
     },
     specPattern: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
@@ -29,57 +19,6 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       // Add code coverage for component tests
       require('@cypress/code-coverage/task')(on, config)
-
-      const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
-
-      if (isCi) {
-        console.log(`[ct-debug] instrumentation-version ${CT_DEBUG_INSTRUMENTATION_VERSION}`)
-
-        on('before:spec', (spec) => {
-          console.log(`[ct-debug] before:spec ${spec.relative}`)
-        })
-
-        on('after:spec', (spec, results) => {
-          if (!results) {
-            console.log(`[ct-debug] after:spec ${spec.relative} results=undefined`)
-            return
-          }
-
-          const { tests, passes, failures, pending, skipped, duration } = results.stats
-          console.log(
-            `[ct-debug] after:spec ${spec.relative} tests=${tests} passes=${passes} failures=${failures} pending=${pending} skipped=${skipped} durationMs=${duration}`,
-          )
-
-          if (tests === 0) {
-            console.warn(`[ct-debug] zero-tests ${spec.relative}`)
-
-            // Dump compact run metadata for zero-tests cases.
-            // Cypress often keeps extra diagnostics in results/runs that are not printed by default reporter.
-            const safeResults = results as unknown as {
-              startedTestsAt?: string
-              endedTestsAt?: string
-              runs?: Array<{ error?: unknown; stats?: unknown; tests?: unknown[] }>
-              reporterStats?: unknown
-              error?: unknown
-            }
-
-            const zeroMeta = {
-              spec: spec.relative,
-              startedTestsAt: safeResults.startedTestsAt,
-              endedTestsAt: safeResults.endedTestsAt,
-              runsLength: safeResults.runs?.length ?? 0,
-              runErrorCount: safeResults.runs?.filter((run) => Boolean(run?.error)).length ?? 0,
-              runErrors: safeResults.runs
-                ?.map((run, idx) => ({ idx, error: run?.error }))
-                .filter((item) => Boolean(item.error)),
-              topLevelError: safeResults.error,
-              reporterStats: safeResults.reporterStats,
-            }
-
-            console.warn(`[ct-debug] zero-tests-meta ${JSON.stringify(zeroMeta)}`)
-          }
-        })
-      }
 
       return config
     },

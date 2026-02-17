@@ -22,146 +22,48 @@ jobs:
       NEXT_PUBLIC_TEST_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_PASSWORD }}
       NEXT_PUBLIC_SKIP_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_EMAIL }}
       NEXT_PUBLIC_SKIP_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_PASSWORD }}
-      # Temporary focused debug run: flaky zero-tests specs only.
-      # Keep as a comma-separated list for Cypress --spec.
-      CT_DEBUG_SPEC_LIST: cypress/component/features/notes/NoteView.cy.tsx,cypress/component/ui/ExportProgressDialog.cy.tsx,cypress/component/ui/Tabs.cy.tsx,cypress/component/ui/web/adapters/storage.cy.ts,cypress/component/unit/searchUtils.cy.ts,cypress/component/editor/Form.cy.tsx,cypress/component/editor/Input.cy.tsx,cypress/component/editor/RichTextEditorPaste.cy.tsx,cypress/component/VirtualNoteList.cy.tsx,cypress/component/core/utils/search.cy.ts
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run component tests
         id: component-tests
         continue-on-error: true
-        env:
-          DEBUG: cypress:webpack-dev-server:*,cypress:server:specs,cypress:server:request,cypress:network:agent,cypress:server:runner-ct,cypress:server:controllers:spec,cypress:server:iframes,cypress:server:socket-ct,cypress:server:socket-base,cypress:server:open_project,cypress:server:project,cypress:server:preprocessor
-          HOST: localhost
-        run: |
-          mkdir -p cypress
-          if [ -n "${CT_DEBUG_SPEC_LIST}" ]; then
-            echo "[ct-debug] spec-list ${CT_DEBUG_SPEC_LIST}" | tee cypress/cypress-run.log
-            npx cypress run --component --browser electron --spec "${CT_DEBUG_SPEC_LIST}" --reporter spec 2>&1 | tee -a cypress/cypress-run.log
-          else
-            npm run test:component -- --reporter spec 2>&1 | tee cypress/cypress-run.log
-          fi
-          exit ${PIPESTATUS[0]}
+        run: npm run test:component -- --reporter spec
 
-      - name: Analyze CT debug markers
-        if: always()
-        run: |
-          if [ ! -f "cypress/cypress-run.log" ]; then
-            echo "### CT Debug Markers" >> $GITHUB_STEP_SUMMARY
-            echo "- cypress/cypress-run.log not found" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-
-          CLEAN_LOG="cypress/cypress-run.clean.log"
-          perl -pe 's/\e\[[0-9;?]*[ -\/]*[@-~]//g' cypress/cypress-run.log > "$CLEAN_LOG" || cp cypress/cypress-run.log "$CLEAN_LOG"
-
-          echo "### CT Debug Markers" >> $GITHUB_STEP_SUMMARY
-
-          for pattern in "Invalid Host/Origin header" "[webpack-dev-server] Disconnected!" "[ct-debug] instrumentation-version" "[ct-debug] zero-tests" "[ct-debug] zero-tests-meta" "[ct-debug] uncaught:exception (propagated)" "received runnables null" "received runnables {" "[ct-debug] support-loaded" "[ct-debug] runtime-config" "[ct-debug] runnables-probe" "[ct-debug] first-test" "[ct-debug] window-error" "[ct-debug] unhandled-rejection" "cypress:server:socket-base socket-disconnect" "cypress:server:socket-base socket-error"; do
-            count=$(grep -F -c "$pattern" "$CLEAN_LOG" || true)
-            echo "- \`$pattern\`: $count" >> $GITHUB_STEP_SUMMARY
-          done
-
-          ZERO_SPECS=$(grep -F "[ct-debug] zero-tests " "$CLEAN_LOG" | sed -E 's/^.*zero-tests //g' | sort -u || true)
-          ZERO_SPEC_COUNT=$(printf "%s\n" "$ZERO_SPECS" | sed '/^$/d' | wc -l | tr -d ' ')
-          echo "- \`zero-tests unique specs\`: ${ZERO_SPEC_COUNT}" >> $GITHUB_STEP_SUMMARY
-
-          ZERO_TESTS_COUNT=$(grep -F -c "[ct-debug] zero-tests" "$CLEAN_LOG" || true)
-          INSTRUMENTATION_VERSION_COUNT=$(grep -F -c "[ct-debug] instrumentation-version" "$CLEAN_LOG" || true)
-          SUPPORT_LOADED_COUNT=$(grep -F -c "[ct-debug] support-loaded" "$CLEAN_LOG" || true)
-          RUNNABLES_NULL_COUNT=$(grep -F -c "received runnables null" "$CLEAN_LOG" || true)
-          if [ "$INSTRUMENTATION_VERSION_COUNT" -eq 0 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ Instrumentation version marker is missing. This run likely did not use the latest committed debug config." >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "$ZERO_TESTS_COUNT" -gt 0 ] && [ "$SUPPORT_LOADED_COUNT" -eq 0 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "ℹ️ Browser-side probe markers are missing while zero-tests occurred. In runMode they may not be emitted to terminal log; use server-side marker: received runnables null." >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "$ZERO_TESTS_COUNT" -gt 0 ] && [ "$RUNNABLES_NULL_COUNT" -lt "$ZERO_TESTS_COUNT" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "ℹ️ Some zero-tests specs have no nearby 'received runnables null' line in parsed output. This can happen due log slicing boundaries; inspect full cypress-run.clean.log artifact." >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ -n "$ZERO_SPECS" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "#### Zero-Tests Per-Spec Diagnostics" >> $GITHUB_STEP_SUMMARY
-            while IFS= read -r spec; do
-              [ -z "$spec" ] && continue
-              short_spec="${spec#cypress/component/}"
-              spec_block=$(awk -v target="$short_spec" '
-                /^[[:space:]]*Running:/ {
-                  if (capture && index($0, target) == 0) {
-                    exit
-                  }
-                  capture = (index($0, target) > 0)
-                }
-                capture { print }
-              ' "$CLEAN_LOG")
-              if [ -z "$spec_block" ]; then
-                spec_zero_line=$(grep -F -n "[ct-debug] zero-tests $spec" "$CLEAN_LOG" | head -1 | cut -d: -f1)
-                if [ -n "$spec_zero_line" ]; then
-                  start_line=$((spec_zero_line > 80 ? spec_zero_line - 80 : 1))
-                  end_line=$((spec_zero_line + 40))
-                  spec_block=$(sed -n "${start_line},${end_line}p" "$CLEAN_LOG")
-                fi
-              fi
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "- \`$spec\`" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              if [ -n "$spec_block" ]; then
-                printf "%s\n" "$spec_block" | grep -E "\\[ct-debug\\]|received runnables|socket-disconnect|socket-error|before:spec|after:spec|Running:|zero-tests-meta" | head -120 >> $GITHUB_STEP_SUMMARY || true
-              else
-                echo "(no block found for spec)" >> $GITHUB_STEP_SUMMARY
-              fi
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            done <<< "$ZERO_SPECS"
-          fi
-
-          if grep -F -q "Invalid Host/Origin header" "$CLEAN_LOG"; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "#### Invalid Host/Origin Samples" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            grep -F "Invalid Host/Origin header" "$CLEAN_LOG" | head -20 >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          fi
-      
       - name: Generate test summary
         if: always()
         run: |
-          echo "## 🧪 Component Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "## Component Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ steps.component-tests.outcome }}" == "success" ]; then
-            echo "✅ **Status:** All tests passed" >> $GITHUB_STEP_SUMMARY
+            echo "Status: all tests passed" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Status:** Some tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "Status: some tests failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Test Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- 📸 Screenshots and videos available in artifacts below" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
+          echo "Test artifacts: screenshots and videos are uploaded below" >> $GITHUB_STEP_SUMMARY
+
           if [ -d "cypress/screenshots" ] && [ "$(ls -A cypress/screenshots)" ]; then
-            echo "### 📸 Failed Test Screenshots" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Failed test screenshots:" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
             find cypress/screenshots -type f -name "*.png" | head -10 >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
-      
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -170,6 +72,4 @@ jobs:
           path: |
             cypress/screenshots
             cypress/videos
-            cypress/cypress-run.log
-            cypress/cypress-run.clean.log
           retention-days: 30

@@ -1,108 +1,47 @@
-﻿# CI Component Tests Debug Insights
+# CI Component Tests Debug Insights
 _Last updated: 2026-02-17_
 
-## Confirmed
-- Проблема воспроизводится только в GitHub Actions (CT), локально не воспроизводится.
-- Симптом нестабилен: случайные spec-файлы дают `Tests: 0`.
-- В проблемных spec-файлах тесты реально есть (`describe/it` присутствуют).
-- При части `0 tests` webpack-компиляция успешна и JS-ассеты отдаются с `200`.
-- `Cannot stat .../Cache/Cache_Data/...` встречается и в успешных спеках; считаем шумом.
-- Есть полный прогон с `zero-tests = 11` при `Invalid Host/Origin header = 0`, `Disconnected = 0`, `uncaught:exception (propagated) = 0`.
-- В падающих спеках есть `cypress:server:project received runnables null` прямо перед `0 passing`.
-- В успешных спеках есть `cypress:server:project received runnables { ... }`.
-- В Cypress 15.9.0 `normalizeAll(...)` возвращает `undefined`, если в `runner.suite` нет тестов (`hasTests === false`).
-- Следовательно, `runnables null` — это следствие пустого Mocha suite на момент нормализации, а не само по себе сетевой сбой.
-- По паре логов (`FontSize` pass vs `Form` zero-tests): в обоих кейсах есть `socket connected`, а в проблемном кейсе нет явного `socket-disconnect/socket-error` вокруг `runnables null`.
-- Доп. падение `ui/ExportProgressDialog.cy.tsx` подтверждает тот же паттерн: `socket connected` + успешные asset requests + `received runnables null` + `Tests: 0`.
-- Причина отсутствия новых browser-маркеров (`support-loaded`, `runnables-probe`) в прошлом ране: gating был через `Cypress.env('CI')`, который в browser runtime часто пустой.
-- В следующем прогоне: `zero-tests = 5`, но `support-loaded/runtime-config/runnables-probe/first-test = 0` и `received runnables null = 0`.
-- Вывод: этот прогон нельзя использовать для проверки browser-probe гипотез; либо изменения не попали в ран, либо browser-side probe не печатался.
-- Также выявлен дефект парсера summary: per-spec срез фильтровал только строки с полным путём spec, из-за этого `received runnables null` мог не попасть в блок даже если был в логе.
-- На следующем ране: per-spec блок уже показал `received runnables null` для `VirtualNoteList`, но общий счетчик был `0` из-за ANSI escape-кодов в сырых логах.
-- Последний фокус-прогон: `zero-tests = 2`, `received runnables null = 1`, `received runnables { = 9`.
-- `zero-tests-meta` для `editor/Input.cy.tsx`: `runsLength=0`, `runErrorCount=0`, `topLevelError=null`, `reporterStats.tests=0`.
-- Это указывает на завершение спека без сформированного Mocha graph и без зафиксированной test-level ошибки.
-- Важно: raw count `[ct-debug] zero-tests` может включать дубли строк; ориентируемся на `zero-tests unique specs`.
+## Final Verdict
+- Root cause: flaky race in Cypress Component Testing with `justInTimeCompile: true` on GitHub Actions.
+- Manifestation: random specs with real tests occasionally end with empty Mocha graph and `cypress:server:project received runnables null`, then `Tests: 0`.
+- Confirmation: after switching to `component.justInTimeCompile: false`, focused debug reruns stopped reproducing the issue.
 
-## Instrumentation Added
-- CI пишет полный лог в `cypress/cypress-run.log` и загружает его артефактом.
-- Добавлены маркеры `[ct-debug] before:spec`, `[ct-debug] after:spec`, `[ct-debug] zero-tests`.
-- Добавлен маркер версии инструментирования: `[ct-debug] instrumentation-version ct-debug-2026-02-17-v3`.
-- Добавлен шаг `Analyze CT debug markers` в `GITHUB_STEP_SUMMARY`.
-- В summary добавлен авто-блок `Zero-Tests Per-Spec Diagnostics` (сжатый срез по каждому zero-tests spec).
-- Расширены DEBUG namespace: webpack/server/network + `cypress:server:socket-base`.
-- Добавлен CI-only probe в support:
-- `[ct-debug] support-loaded`
-- `[ct-debug] runtime-config`
-- `[ct-debug] runnables-probe` (immediate / t+0ms / t+200ms)
-- `[ct-debug] first-test`
-- `[ct-debug] window-error`
-- `[ct-debug] unhandled-rejection`
-- Probe gating removed: browser-side probe now logs unconditionally to avoid false negatives in CI.
-- Summary now warns when `zero-tests > 0` but `support-loaded = 0`.
-- Summary also warns when instrumentation version marker is missing (stale run safeguard).
-- Summary per-spec parser fixed: now extracts full `Running: <spec>` block and then filters markers inside it.
-- Summary now analyzes ANSI-stripped log (`cypress-run.clean.log`) to avoid false zero counts.
-- Added server-side `zero-tests-meta` dump in `after:spec` to capture hidden `results` fields for zero-tests specs.
-- Added fallback per-spec slicing around `[ct-debug] zero-tests <spec>` when `Running:` block match is missing.
-- Added marker-consistency note when `zero-tests > runnables-null`.
-- Added explicit `zero-tests unique specs` metric in summary to separate real missing-tests specs from duplicated marker lines.
-- Added CT experiment flag: `justInTimeCompile: false`.
-- Important config fix: `justInTimeCompile` must be under `component` section (root-level key breaks run with `JIT_COMPONENT_TESTING` validation error).
-- Workflow switched to focused debug mode: runs only known flaky specs via `CT_DEBUG_SPEC_LIST`.
+## Verified Evidence
+- Failing specs: compile/network were OK, but right before finish there was `received runnables null` and `0 passing`.
+- Passing specs: `received runnables { ... }` was present.
+- `normalizeAll(...)` path in Cypress returns empty/undefined when suite has no tests at normalization time.
+- This points to runner lifecycle/spec registration timing, not to missing files or transport failure.
+- Focused run after fix: `zero-tests = 0`, `received runnables null = 0`, `received runnables { = 10`.
+- Second rerun after fix: passed (user-confirmed).
 
-## Focused Spec List (Current)
-- `cypress/component/features/notes/NoteView.cy.tsx`
-- `cypress/component/ui/ExportProgressDialog.cy.tsx`
-- `cypress/component/ui/Tabs.cy.tsx`
-- `cypress/component/ui/web/adapters/storage.cy.ts`
-- `cypress/component/unit/searchUtils.cy.ts`
-- `cypress/component/editor/Form.cy.tsx`
-- `cypress/component/editor/Input.cy.tsx`
-- `cypress/component/editor/RichTextEditorPaste.cy.tsx`
-- `cypress/component/VirtualNoteList.cy.tsx`
-- `cypress/component/core/utils/search.cy.ts`
+## Permanent Fix (Mandatory)
+- File: `cypress.config.ts`
+- Setting: `component.justInTimeCompile: false`
+- Why mandatory for this project:
+  - with JIT enabled, CI had intermittent spec-registration race that produced empty runnables (`Tests: 0`),
+  - with JIT disabled, spec build/registration became deterministic and the flaky zero-tests symptom disappeared.
 
 ## Hypotheses Log
-_Statuses: `in_progress` | `confirmed` | `rejected`_
+_Statuses: `confirmed` | `rejected`_
 
-- `rejected` `H-001`: проблема в пустых/невалидных spec-файлах.
-- Проверка: в проблемных файлах есть валидные `describe/it`.
+- `rejected` H-001: invalid/empty spec files.
+- `rejected` H-002: global `uncaught:exception` suppression hides failures.
+- `rejected` H-003: `Invalid Host/Origin` reconnect path is primary cause.
+- `confirmed` H-004: failure is on registration/runner side after compile, before runnable normalization.
+- `confirmed` H-005: issue occurs between `before:spec` and runnable creation.
+- `confirmed` H-006: key runtime marker is `received runnables null`.
+- `confirmed` H-007: upstream state before `normalizeAll` is empty suite.
+- `rejected` H-008: dominant cause is top-level import crash in spec.
+- `rejected` H-009: dominant cause is post-registration suite wipe/filtering.
+- `confirmed` H-010: socket disconnect/error is not primary trigger in observed failures.
+- `confirmed` H-011: part of browser-probe instrumentation was non-deterministic in runMode logs.
+- `confirmed` H-012: summary parser could hide `received runnables null` lines.
+- `confirmed` H-013: ANSI coloring could break naive marker grep counts.
+- `rejected` H-014: hidden `results` payload carried a meaningful top-level test error for zero-tests cases.
+- `confirmed` H-015: `justInTimeCompile` race hypothesis; disabling JIT removed flaky zero-tests in reruns.
 
-- `rejected` `H-002`: проблема из-за глобального подавления ошибок `uncaught:exception`.
-- Проверка: подавляются только `ResizeObserver*`; остальные ошибки не подавляются.
-
-- `rejected` `H-003`: корень в `Invalid Host/Origin header` + reconnect.
-- Проверка: был прогон с `zero-tests > 0` и нулем по этим маркерам.
-
-- `in_progress` `H-004`: сбой в стадии регистрации/инициализации spec после компиляции.
-- Сигнал: compile/network OK, но `tests=0`.
-
-- `in_progress` `H-005`: сбой между `before:spec` и фактической регистрацией Mocha runnables.
-- Сигнал: `before:spec` есть, `after:spec tests=0`.
-
-- `confirmed` `H-006`: ключевой симптом — `runnables null` из runner слоя.
-
-- `in_progress` `H-007`: upstream-причина до `normalizeAll` (suite пустой к моменту нормализации).
-
-- `in_progress` `H-008`: spec не исполняется/падает до деклараций тестов.
-
-- `in_progress` `H-009`: spec сначала регистрируется, но suite очищается/фильтруется до `set:runnables:and:maybe:record:tests`.
-
-- `in_progress` `H-010`: проблема не связана с разрывом socket-соединения; основной сбой внутри runner lifecycle/spec evaluation.
-- `in_progress` `H-011`: some runs produce zero-tests while low-level debug markers are absent; instrumentation capture path itself is flaky/stale between runs.
-- `confirmed` `H-012`: summary parser bug could hide `received runnables null` despite its presence in raw log.
-- `confirmed` `H-013`: ANSI coloring in raw runner output can break exact grep counts for markers (`received runnables null`).
-- `in_progress` `H-014`: root cause may be visible in hidden `after:spec` results payload (`runs[].error` / `topLevelError`) even when standard reporter shows `0 passing` only.
-- `in_progress` `H-015`: `justInTimeCompile` race causes intermittent empty runnables; verify impact with `justInTimeCompile: false`.
-
-## Next Run Checklist
-- Сравнить для одних и тех же namespace:
-- проблемный spec (`runnables null`)
-- успешный spec (`runnables { ... }`)
-- Проверить в проблемных спеках последовательность:
-- `[ct-debug] runtime-config`
-- `[ct-debug] runnables-probe ... tests=...`
-- `[ct-debug] first-test` (есть/нет)
-- `cypress:server:project received runnables null`
-- Проверить `socket-base socket-disconnect/socket-error` рядом по времени с `runnables null`.
+## Cleanup After Debug
+- Removed temporary CI marker-analysis step and focused `CT_DEBUG_SPEC_LIST` mode.
+- Removed temporary server/browser probe logs (`ct-runnables-debug`).
+- Removed temporary zero-tests meta dumping from Cypress node events.
+- Kept only the permanent `justInTimeCompile: false` fix plus explanatory comment.
