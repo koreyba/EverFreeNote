@@ -39,7 +39,12 @@ jobs:
       - name: Run component tests
         id: component-tests
         continue-on-error: true
-        run: npm run test:component -- --reporter spec
+        env:
+          DEBUG: cypress:webpack-dev-server:webpack
+        run: |
+          mkdir -p cypress
+          npm run test:component -- --reporter spec 2>&1 | tee cypress/cypress-run.log
+          exit ${PIPESTATUS[0]}
       
       - name: Generate test summary
         if: always()
@@ -73,4 +78,5 @@ jobs:
           path: |
             cypress/screenshots
             cypress/videos
+            cypress/cypress-run.log
           retention-days: 30
