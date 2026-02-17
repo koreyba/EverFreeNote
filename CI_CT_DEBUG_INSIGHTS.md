@@ -48,6 +48,7 @@ _Last updated: 2026-02-17_
 - Added marker-consistency note when `zero-tests > runnables-null`.
 - Added explicit `zero-tests unique specs` metric in summary to separate real missing-tests specs from duplicated marker lines.
 - Added CT experiment flag: `justInTimeCompile: false`.
+- Important config fix: `justInTimeCompile` must be under `component` section (root-level key breaks run with `JIT_COMPONENT_TESTING` validation error).
 - Workflow switched to focused debug mode: runs only known flaky specs via `CT_DEBUG_SPEC_LIST`.
 
 ## Focused Spec List (Current)

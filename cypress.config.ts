@@ -4,9 +4,9 @@ const CT_DEBUG_INSTRUMENTATION_VERSION = 'ct-debug-2026-02-17-v3'
 
 export default defineConfig({
   projectId: '76trp2',
-  // Debug experiment: avoid JIT compile race in CT that may lead to empty runnables.
-  justInTimeCompile: false,
   component: {
+    // Debug experiment: avoid JIT compile race in CT that may lead to empty runnables.
+    justInTimeCompile: false,
     devServer: {
       framework: 'next',
       bundler: 'webpack',
