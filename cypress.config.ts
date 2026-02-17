@@ -3,6 +3,10 @@ import { defineConfig } from "cypress"
 export default defineConfig({
   projectId: '76trp2',
   component: {
+    // Required for CI stability.
+    // With JIT enabled, Cypress CT can intermittently finish spec evaluation with an empty Mocha suite
+    // in GitHub Actions (`received runnables null` / `Tests: 0`) because of a spec registration race.
+    justInTimeCompile: false,
     devServer: {
       framework: 'next',
       bundler: 'webpack',
