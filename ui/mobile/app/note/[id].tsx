@@ -44,6 +44,8 @@ const htmlToPlainText = (html: string) => {
   return decoded.replace(/\n{3,}/g, '\n\n').trim()
 }
 
+const EDITOR_TOOLBAR_HEIGHT = 49
+
 function NoteBodyPreview({ html, colors }: { html: string; colors: ReturnType<typeof useTheme>['colors'] }) {
   const styles = useMemo(() => createPreviewStyles(colors), [colors])
   const text = useMemo(() => htmlToPlainText(html), [html])
@@ -200,7 +202,10 @@ export default function NoteEditorScreen() {
     })
   }, [deleteNote, id, router])
 
-  const editorPaddingBottom = Math.max(insets.bottom, 0)
+  const safeAreaBottomInset = Math.max(insets.bottom, 0)
+  const editorPaddingBottom = isEditorFocused
+    ? safeAreaBottomInset + EDITOR_TOOLBAR_HEIGHT
+    : safeAreaBottomInset
 
   if (isLoading) {
     return (
@@ -266,7 +271,7 @@ export default function NoteEditorScreen() {
           style={styles.tags}
         />
       </View>
-      <View style={[styles.editorContainer, { paddingBottom: editorPaddingBottom }]}>
+      <View testID="note-editor-container" style={[styles.editorContainer, { paddingBottom: editorPaddingBottom }]}>
         <EditorWebView
           ref={editorRef}
           initialContent={note.description || ''}
