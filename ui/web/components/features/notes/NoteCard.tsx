@@ -35,7 +35,7 @@ export const NoteCard = memo(function NoteCard({
   onTagClick,
 }: NoteCardProps) {
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US", {
+    return new Date(date).toLocaleDateString("ru-RU", {
       year: "numeric",
       month: variant === "search" ? "short" : "numeric",
       day: "numeric",
