@@ -18,8 +18,11 @@ interface SwipeableNoteCardProps {
         headline?: string | null
     }
     onPress: (note: Note) => void
+    onLongPress?: () => void
     onTagPress?: (tag: string) => void
     onDelete: (id: string) => void
+    isSelectionMode?: boolean
+    isSelected?: boolean
 }
 
 interface RightActionProps {
@@ -47,17 +50,26 @@ const RightAction = memo(function RightAction({ drag, onDelete, colors }: RightA
     )
 })
 
-export const SwipeableNoteCard = memo(function SwipeableNoteCard({ note, onPress, onTagPress, onDelete }: SwipeableNoteCardProps) {
+export const SwipeableNoteCard = memo(function SwipeableNoteCard({
+    note,
+    onPress,
+    onLongPress,
+    onTagPress,
+    onDelete,
+    isSelectionMode = false,
+    isSelected = false,
+}: SwipeableNoteCardProps) {
     const { colors } = useTheme()
     const { register, unregister, onSwipeStart } = useSwipeContext()
     const swipeableRef = useRef<SwipeableMethods>(null)
 
     useEffect(() => {
+        if (isSelectionMode) return
         if (swipeableRef.current) {
             register(note.id, swipeableRef.current)
         }
         return () => unregister(note.id)
-    }, [note.id, register, unregister])
+    }, [note.id, register, unregister, isSelectionMode])
 
     const handleDelete = useCallback(() => {
         swipeableRef.current?.close()
@@ -81,6 +93,19 @@ export const SwipeableNoteCard = memo(function SwipeableNoteCard({ note, onPress
 
     const containerStyle = useMemo(() => ({ backgroundColor: colors.background }), [colors.background])
 
+    if (isSelectionMode) {
+        return (
+            <NoteCard
+                note={note}
+                onPress={handlePress}
+                onLongPress={onLongPress}
+                onTagPress={onTagPress}
+                isSelectionMode
+                isSelected={isSelected}
+            />
+        )
+    }
+
     return (
         <ReanimatedSwipeable
             ref={swipeableRef}
@@ -94,6 +119,7 @@ export const SwipeableNoteCard = memo(function SwipeableNoteCard({ note, onPress
                 <NoteCard
                     note={note}
                     onPress={handlePress}
+                    onLongPress={onLongPress}
                     onTagPress={onTagPress}
                 />
             </View>

@@ -26,6 +26,7 @@ jest.mock('expo-router', () => ({
     push: mockPush,
     back: mockBack,
   }),
+  useNavigation: () => ({ setOptions: jest.fn() }),
 }))
 
 // Mock providers

@@ -18,13 +18,13 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### Phase 1: Хуки
 
-- [ ] **1.1** Создать `ui/mobile/hooks/useBulkSelection.ts`
+- [x] **1.1** Создать `ui/mobile/hooks/useBulkSelection.ts`
   - State: `isActive: boolean`, `selectedIds: Set<string>`
   - Methods: `activate(id)`, `toggle(id)`, `selectAll(ids)`, `clear()`, `deactivate()`
   - `activate(id)` устанавливает `isActive=true` и добавляет `id` в `selectedIds`
   - `deactivate()` сбрасывает всё
 
-- [ ] **1.2** Создать `ui/mobile/hooks/useBulkDeleteNotes.ts`
+- [x] **1.2** Создать `ui/mobile/hooks/useBulkDeleteNotes.ts`
   - Принимает `onComplete?: () => void` (вызывается всегда, после partial failure тоже)
   - Внутри использует `useDeleteNote()` (из существующих хуков)
   - Возвращает `bulkDelete(ids: string[]): Promise<void>` и `isPending: boolean`
@@ -33,18 +33,18 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### Phase 2: UI компоненты
 
-- [ ] **2.1** Обновить `NoteCard` — добавить selection mode props
+- [x] **2.1** Обновить `NoteCard` — добавить selection mode props
   - Новые props: `isSelectionMode?: boolean`, `isSelected?: boolean`
   - Когда `isSelectionMode=true`: показать чекбокс слева (View с border/filled circle)
   - NoteCard остаётся "тупым" компонентом: просто вызывает переданный `onPress`/`onLongPress` без собственной логики
   - Визуальный стиль выбранной карточки: лёгкий accent background
 
-- [ ] **2.2** Обновить `SwipeableNoteCard` — отключить swipe в selection mode
+- [x] **2.2** Обновить `SwipeableNoteCard` — отключить swipe в selection mode
   - Новый prop: `isSelectionMode?: boolean`
   - Когда `isSelectionMode=true`: не рендерить `ReanimatedSwipeable`, рендерить `NoteCard` напрямую
   - Long press пробрасывается в NoteCard
 
-- [ ] **2.3** Создать `ui/mobile/components/BulkActionBar.tsx`
+- [x] **2.3** Создать `ui/mobile/components/BulkActionBar.tsx`
   - Props: `selectedCount: number`, `totalCount: number`, `onSelectAll: () => void`, `onDeselectAll: () => void`, `onDelete: () => void`, `isPending: boolean`
   - Layout: горизонтальная панель с `position: absolute`, bottom над tab bar
   - Кнопка 1: "Select All (N)" (N = totalCount) если выбраны не все; "Deselect All" если выбраны все

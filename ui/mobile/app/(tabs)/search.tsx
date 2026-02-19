@@ -1,14 +1,16 @@
-import { View, TextInput, StyleSheet, ActivityIndicator, Text, Pressable, Alert } from 'react-native'
+import { View, TextInput, StyleSheet, ActivityIndicator, Text, Pressable, Alert, BackHandler } from 'react-native'
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
-import { useSearch, useDeleteNote, useOpenNote } from '@ui/mobile/hooks'
+import { useSearch, useDeleteNote, useOpenNote, useBulkSelection, useBulkDeleteNotes } from '@ui/mobile/hooks'
 import { Search, X } from 'lucide-react-native'
+import * as Haptics from 'expo-haptics'
 import type { Note } from '@core/types/domain'
 import { useSupabase, useTheme, useSwipeContext } from '@ui/mobile/providers'
 import { addSearchHistoryItem, clearSearchHistory, getSearchHistory } from '@ui/mobile/services/searchHistory'
 import { TagFilterBar } from '@ui/mobile/components/tags'
 import { SwipeableNoteCard } from '@ui/mobile/components/SwipeableNoteCard'
+import { BulkActionBar } from '@ui/mobile/components/BulkActionBar'
 import { SEARCH_CONFIG } from '@core/constants/search'
 import { shouldUpdateTagFilter } from '@core/utils/search'
 
@@ -19,6 +21,7 @@ type SearchResultItem = Note & {
 
 export default function SearchScreen() {
     const router = useRouter()
+    const navigation = useNavigation()
     const { colors } = useTheme()
     const styles = useMemo(() => createStyles(colors), [colors])
     const params = useLocalSearchParams<{ tag?: string }>()
@@ -35,6 +38,14 @@ export default function SearchScreen() {
     const { mutate: deleteNote } = useDeleteNote()
     const { closeAll } = useSwipeContext()
     const [history, setHistory] = useState<string[]>([])
+
+    const { isActive, selectedIds, activate, toggle, selectAll, deactivate } = useBulkSelection()
+    const { bulkDelete, isPending: isBulkDeleting } = useBulkDeleteNotes()
+
+    const results = data?.pages.flatMap((page) => page.results) ?? []
+
+    // extraData is required for FlashList to re-render items when selection changes
+    const selectionExtraData = useMemo(() => ({ isActive, selectedIds }), [isActive, selectedIds])
 
     useEffect(() => {
         if (!user?.id) return
@@ -61,16 +72,49 @@ export default function SearchScreen() {
         return () => clearTimeout(timeout)
     }, [query, user?.id])
 
-    const handleTagPress = (tag: string) => {
+    // Reset selection mode when search query changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { if (isActive) deactivate() }, [query])
+
+    // Transform header when selection mode is active
+    useEffect(() => {
+        navigation.setOptions({
+            title: isActive ? `${selectedIds.size} selected` : 'Search',
+            headerLeft: isActive
+                ? () => (
+                    <Pressable
+                        onPress={deactivate}
+                        style={styles.headerCancel}
+                        accessibilityRole="button"
+                        accessibilityLabel="Cancel selection"
+                    >
+                        <Text style={styles.headerCancelText}>Cancel</Text>
+                    </Pressable>
+                )
+                : undefined,
+        })
+    }, [isActive, selectedIds.size, navigation, deactivate, styles])
+
+    // Intercept Android back button to exit selection mode
+    useEffect(() => {
+        if (!isActive) return
+        const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+            deactivate()
+            return true
+        })
+        return () => sub.remove()
+    }, [isActive, deactivate])
+
+    const handleTagPress = useCallback((tag: string) => {
         if (!shouldUpdateTagFilter(activeTag, tag)) return
         setActiveTag(tag)
         router.setParams({ tag })
-    }
+    }, [activeTag, router])
 
-    const handleClearTagFilter = () => {
+    const handleClearTagFilter = useCallback(() => {
         setActiveTag(null)
         router.setParams({ tag: '' })
-    }
+    }, [router])
 
     const handleDeleteNote = useCallback((id: string) => {
         deleteNote(id, {
@@ -86,16 +130,39 @@ export default function SearchScreen() {
         openNote(note)
     }, [openNote])
 
-    const results = data?.pages.flatMap((page) => page.results) ?? []
+    const handleBulkDelete = useCallback(() => {
+        const count = selectedIds.size
+        Alert.alert(
+            'Delete notes',
+            `Delete ${count} note${count === 1 ? '' : 's'}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await bulkDelete([...selectedIds])
+                        deactivate()
+                    },
+                },
+            ]
+        )
+    }, [selectedIds, bulkDelete, deactivate])
 
-    const renderItem = ({ item }: { item: SearchResultItem }) => (
+    const renderItem = useCallback(({ item }: { item: SearchResultItem }) => (
         <SwipeableNoteCard
             note={item}
-            onPress={handleNotePress}
-            onTagPress={handleTagPress}
+            onPress={isActive ? (note: Note) => toggle(note.id) : handleNotePress}
+            onLongPress={isActive ? undefined : () => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                activate(item.id)
+            }}
+            onTagPress={isActive ? undefined : handleTagPress}
             onDelete={handleDeleteNote}
+            isSelectionMode={isActive}
+            isSelected={selectedIds.has(item.id)}
         />
-    )
+    ), [isActive, selectedIds, activate, toggle, handleNotePress, handleTagPress, handleDeleteNote])
 
     return (
         <View style={styles.container}>
@@ -172,6 +239,7 @@ export default function SearchScreen() {
                     void fetchNextPage()
                 }}
                 onEndReachedThreshold={0.4}
+                extraData={selectionExtraData}
                 ListFooterComponent={
                     isFetchingNextPage ? (
                         <View style={styles.footerLoader}>
@@ -180,6 +248,16 @@ export default function SearchScreen() {
                     ) : null
                 }
             />
+            {isActive && (
+                <BulkActionBar
+                    selectedCount={selectedIds.size}
+                    totalCount={results.length}
+                    onSelectAll={() => selectAll(results.map(n => n.id))}
+                    onDeselectAll={() => selectAll([])}
+                    onDelete={handleBulkDelete}
+                    isPending={isBulkDeleting}
+                />
+            )}
         </View>
     )
 }
@@ -275,6 +353,13 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
         color: colors.foreground,
         fontSize: 14,
     },
+    headerCancel: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
+    headerCancelText: {
+        fontSize: 16,
+        fontFamily: 'Inter_400Regular',
+        color: colors.primary,
+    },
 })
-
-

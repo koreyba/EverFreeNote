@@ -1,18 +1,21 @@
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native'
-import { useRouter } from 'expo-router'
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, BackHandler } from 'react-native'
+import { useRouter, useNavigation } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
 import { Plus } from 'lucide-react-native'
+import * as Haptics from 'expo-haptics'
 import { SwipeableNoteCard } from '@ui/mobile/components/SwipeableNoteCard'
+import { BulkActionBar } from '@ui/mobile/components/BulkActionBar'
 import { Button } from '@ui/mobile/components/ui'
 import { useTheme } from '@ui/mobile/providers'
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useEffect } from 'react'
 import type { Note } from '@core/types/domain'
-import { useNotes, useCreateNote, useDeleteNote, useOpenNote } from '@ui/mobile/hooks'
+import { useNotes, useCreateNote, useDeleteNote, useOpenNote, useBulkSelection, useBulkDeleteNotes } from '@ui/mobile/hooks'
 import { useSwipeContext } from '@ui/mobile/providers'
 
 
 export default function NotesScreen() {
   const router = useRouter()
+  const navigation = useNavigation()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isRefetching } = useNotes()
@@ -21,7 +24,42 @@ export default function NotesScreen() {
   const { closeAll } = useSwipeContext()
   const openNote = useOpenNote()
 
+  const { isActive, selectedIds, activate, toggle, selectAll, deactivate } = useBulkSelection()
+  const { bulkDelete, isPending: isBulkDeleting } = useBulkDeleteNotes()
+
   const notes = data?.pages.flatMap((page) => page.notes) ?? []
+
+  // extraData is required for FlashList to re-render items when selection changes
+  const selectionExtraData = useMemo(() => ({ isActive, selectedIds }), [isActive, selectedIds])
+
+  // Transform header when selection mode is active
+  useEffect(() => {
+    navigation.setOptions({
+      title: isActive ? `${selectedIds.size} selected` : 'Notes',
+      headerLeft: isActive
+        ? () => (
+            <Pressable
+              onPress={deactivate}
+              style={styles.headerCancel}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel selection"
+            >
+              <Text style={styles.headerCancelText}>Cancel</Text>
+            </Pressable>
+          )
+        : undefined,
+    })
+  }, [isActive, selectedIds.size, navigation, deactivate, styles, colors])
+
+  // Intercept Android back button to exit selection mode
+  useEffect(() => {
+    if (!isActive) return
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      deactivate()
+      return true
+    })
+    return () => sub.remove()
+  }, [isActive, deactivate])
 
   const handleCreateNote = useCallback(() => {
     createNote({ title: 'New note', description: '', tags: [] }, {
@@ -47,6 +85,25 @@ export default function NotesScreen() {
     })
   }, [deleteNote])
 
+  const handleBulkDelete = useCallback(() => {
+    const count = selectedIds.size
+    Alert.alert(
+      'Delete notes',
+      `Delete ${count} note${count === 1 ? '' : 's'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await bulkDelete([...selectedIds])
+            deactivate()
+          },
+        },
+      ]
+    )
+  }, [selectedIds, bulkDelete, deactivate])
+
   const keyExtractor = useCallback((item: Note) => item.id, [])
 
   const handleRefresh = useCallback(() => {
@@ -61,11 +118,17 @@ export default function NotesScreen() {
   const renderNote = useCallback(({ item }: { item: Note }) => (
     <SwipeableNoteCard
       note={item}
-      onPress={handleOpenNote}
-      onTagPress={handleTagPress}
+      onPress={isActive ? (note: Note) => toggle(note.id) : handleOpenNote}
+      onLongPress={isActive ? undefined : () => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        activate(item.id)
+      }}
+      onTagPress={isActive ? undefined : handleTagPress}
       onDelete={handleDeleteNote}
+      isSelectionMode={isActive}
+      isSelected={selectedIds.has(item.id)}
     />
-  ), [handleOpenNote, handleTagPress, handleDeleteNote])
+  ), [isActive, selectedIds, activate, toggle, handleOpenNote, handleTagPress, handleDeleteNote])
 
   if (isLoading && notes.length === 0) {
     return (
@@ -116,6 +179,7 @@ export default function NotesScreen() {
         onScrollBeginDrag={closeAll}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
+        extraData={selectionExtraData}
         ListFooterComponent={
           isFetchingNextPage ? (
             <View style={styles.footerLoader}>
@@ -124,14 +188,26 @@ export default function NotesScreen() {
           ) : null
         }
       />
-      <Pressable
-        style={styles.fab}
-        onPress={handleCreateNote}
-        accessibilityLabel="Create new note"
-        accessibilityRole="button"
-      >
-        <Plus size={28} color={colors.primaryForeground} />
-      </Pressable>
+      {!isActive && (
+        <Pressable
+          style={styles.fab}
+          onPress={handleCreateNote}
+          accessibilityLabel="Create new note"
+          accessibilityRole="button"
+        >
+          <Plus size={28} color={colors.primaryForeground} />
+        </Pressable>
+      )}
+      {isActive && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          totalCount={notes.length}
+          onSelectAll={() => selectAll(notes.map(n => n.id))}
+          onDeselectAll={() => selectAll([])}
+          onDelete={handleBulkDelete}
+          isPending={isBulkDeleting}
+        />
+      )}
     </View>
   )
 }
@@ -189,5 +265,14 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   },
   footerLoader: {
     paddingVertical: 16,
+  },
+  headerCancel: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  headerCancelText: {
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+    color: colors.primary,
   },
 })

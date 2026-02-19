@@ -16,6 +16,18 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 )
 
+jest.mock('react-native-reanimated', () => {
+  const { View } = require('react-native')
+  return {
+    __esModule: true,
+    default: { View },
+    useAnimatedStyle: () => ({}),
+    useSharedValue: (initial: unknown) => ({ value: initial }),
+    withTiming: (value: unknown) => value,
+    withSpring: (value: unknown) => value,
+  }
+})
+
 jest.mock('expo-font', () => ({
   useFonts: () => [true, null],
 }))
@@ -31,8 +43,9 @@ jest.mock('react-native-safe-area-context', () => {
 })
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn(), setParams: jest.fn() }),
   useLocalSearchParams: () => ({}),
+  useNavigation: () => ({ setOptions: jest.fn() }),
 }))
 
 jest.mock('@react-native-community/netinfo', () => ({

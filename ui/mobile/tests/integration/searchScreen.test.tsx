@@ -30,6 +30,7 @@ jest.mock('expo-router', () => ({
     setParams: mockSetParams,
   }),
   useLocalSearchParams: () => mockLocalSearchParams,
+  useNavigation: () => ({ setOptions: jest.fn() }),
 }))
 
 // Mock useNetworkStatus
