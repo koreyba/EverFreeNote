@@ -4,7 +4,7 @@ import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
-import { EditorToolbar } from '@ui/mobile/components/EditorToolbar'
+import { EditorToolbar, TOOLBAR_CONTENT_HEIGHT } from '@ui/mobile/components/EditorToolbar'
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
@@ -200,7 +200,9 @@ export default function NoteEditorScreen() {
     })
   }, [deleteNote, id, router])
 
-  const editorPaddingBottom = Math.max(insets.bottom, 0)
+  const editorPaddingBottom = isEditorFocused
+    ? keyboardHeight + TOOLBAR_CONTENT_HEIGHT + insets.bottom
+    : Math.max(insets.bottom, 0)
 
   if (isLoading) {
     return (

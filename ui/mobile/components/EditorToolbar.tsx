@@ -15,6 +15,8 @@ import {
 } from 'lucide-react-native'
 import { useTheme } from '@ui/mobile/providers'
 
+export const TOOLBAR_CONTENT_HEIGHT = 48
+
 type Props = {
     onCommand: (method: string, args?: unknown[]) => void
 }
@@ -70,7 +72,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     scrollContent: {
         paddingHorizontal: 8,
         alignItems: 'center',
-        height: 48,
+        height: TOOLBAR_CONTENT_HEIGHT,
     },
     button: {
         width: 40,
