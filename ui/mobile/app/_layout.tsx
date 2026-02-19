@@ -4,7 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import Toast from 'react-native-toast-message'
+import type { ToastConfig } from 'react-native-toast-message'
 import { SupabaseProvider, ThemeProvider, useTheme, SwipeProvider } from '@ui/mobile/providers'
+import { SnackbarToast } from '@ui/mobile/components/SnackbarToast'
 import {
   useFonts,
   Inter_400Regular,
@@ -17,6 +20,11 @@ import './global.css'
 
 // Prevent splash screen from auto-hiding before fonts load
 void SplashScreen.preventAutoHideAsync()
+
+const toastConfig: ToastConfig = {
+  success: (props) => <SnackbarToast {...props} />,
+  error: (props) => <SnackbarToast {...props} />,
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +94,13 @@ export default function RootLayout() {
               <SwipeProvider>
                 <ThemedStack />
                 <ThemedStatusBar />
+                <Toast
+                  config={toastConfig}
+                  position="bottom"
+                  bottomOffset={80}
+                  visibilityTime={2500}
+                  onPress={() => Toast.hide()}
+                />
               </SwipeProvider>
             </QueryClientProvider>
           </SupabaseProvider>

@@ -62,7 +62,7 @@ export default function LoginScreen() {
       await oauthAdapter.startOAuth(data.url)
     } catch (err) {
       console.error('Login error:', err)
-      setError(err instanceof Error ? err.message : 'Ошибка входа')
+      setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
       setLoadingGoogle(false)
     }
@@ -73,7 +73,7 @@ export default function LoginScreen() {
 
     try {
       if (!testAuthEmail || !testAuthPassword) {
-        setError('Тестовые учетные данные не настроены')
+        setError('Test credentials are not configured')
         return
       }
 
@@ -90,7 +90,7 @@ export default function LoginScreen() {
       router.replace('/(tabs)')
     } catch (err) {
       console.error('Test login error:', err)
-      setError(err instanceof Error ? err.message : 'Ошибка тестового входа')
+      setError(err instanceof Error ? err.message : 'Test login failed')
     } finally {
       setLoadingTest(false)
     }
@@ -107,7 +107,7 @@ export default function LoginScreen() {
 
         <Text style={styles.title}>EverFreeNote</Text>
         <Text style={styles.subtitle}>
-          Ваши заметки всегда с вами. Безопасно, просто и синхронизировано.
+          Your notes are always with you. Secure, simple, and synchronized.
         </Text>
 
         {error && <Text style={styles.error}>{error}</Text>}
@@ -122,7 +122,7 @@ export default function LoginScreen() {
           >
             <View style={styles.buttonContent}>
               {!loadingGoogle && <View style={styles.googleIconWrapper}><GoogleIcon /></View>}
-              <Text style={styles.googleButtonText}>Войти через Google</Text>
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
             </View>
           </Button>
 
@@ -130,7 +130,7 @@ export default function LoginScreen() {
             <>
               <View style={styles.dividerContainer}>
                 <View style={styles.divider} />
-                <Text style={styles.dividerText}>или попробуйте приложение</Text>
+                <Text style={styles.dividerText}>or try the app</Text>
                 <View style={styles.divider} />
               </View>
 
@@ -142,7 +142,7 @@ export default function LoginScreen() {
                   onPress={() => void handleTestLogin()}
                   style={styles.testButton}
                 >
-                  Тестовый вход (Постоянный)
+                  Test Login (Persistent)
                 </Button>
               </View>
             </>
@@ -152,7 +152,7 @@ export default function LoginScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Продолжая, вы соглашаетесь с Условиями обслуживания и Политикой конфиденциальности.
+          By continuing, you agree to the Terms of Service and Privacy Policy.
         </Text>
       </View>
     </View>

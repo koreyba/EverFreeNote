@@ -89,7 +89,7 @@ describe('NoteCard Component', () => {
       </ThemeProvider>
     )
 
-    cy.contains('Без названия').should('be.visible')
+    cy.contains('Untitled').should('be.visible')
   })
 })
 

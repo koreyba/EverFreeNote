@@ -54,18 +54,6 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
   })
 })
 
-// Mock reanimated
-jest.mock('react-native-reanimated', () => {
-  const { View } = require('react-native')
-  
-  return {
-    __esModule: true,
-    default: {
-      View,
-    },
-    useAnimatedStyle: () => ({}),
-  }
-})
 
 const mockNote: Note = {
   id: 'note-1',
