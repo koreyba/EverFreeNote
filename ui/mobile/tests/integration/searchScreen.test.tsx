@@ -120,24 +120,52 @@ jest.mock('@ui/mobile/services/sync', () => ({
 
 // Mock SwipeableNoteCard with simplified implementation
 jest.mock('@ui/mobile/components/SwipeableNoteCard', () => ({
-  SwipeableNoteCard: ({ note, onPress, onDelete }: {
+  SwipeableNoteCard: ({
+    note, onPress, onLongPress, onDelete, isSelectionMode, isSelected,
+  }: {
     note: { id: string; title: string };
     onPress: (note: { id: string; title: string }) => void;
+    onLongPress?: () => void;
     onDelete: (id: string) => void;
+    isSelectionMode?: boolean;
+    isSelected?: boolean;
   }) => {
     const { View, Text, Pressable } = require('react-native')
     return (
       <View testID={`search-result-${note.id}`}>
-        <Pressable onPress={() => onPress(note)} testID={`note-press-${note.id}`}>
-          <Text>{note.title}</Text>
-        </Pressable>
         <Pressable
-          testID={`delete-button-${note.id}`}
-          onPress={() => onDelete(note.id)}
-          accessibilityLabel={`Delete ${note.title}`}
+          onPress={() => onPress(note)}
+          onLongPress={onLongPress}
+          testID={`note-press-${note.id}`}
         >
-          <Text>Delete</Text>
+          <Text>{note.title}</Text>
+          {isSelectionMode && (
+            <Text testID={`note-checkbox-${note.id}`}>
+              {isSelected ? 'checked' : 'unchecked'}
+            </Text>
+          )}
         </Pressable>
+        {!isSelectionMode && (
+          <Pressable
+            testID={`delete-button-${note.id}`}
+            onPress={() => onDelete(note.id)}
+            accessibilityLabel={`Delete ${note.title}`}
+          >
+            <Text>Delete</Text>
+          </Pressable>
+        )}
+      </View>
+    )
+  },
+}))
+
+// Mock BulkActionBar
+jest.mock('@ui/mobile/components/BulkActionBar', () => ({
+  BulkActionBar: ({ selectedCount }: { selectedCount: number }) => {
+    const { View, Text } = require('react-native')
+    return (
+      <View testID="bulk-action-bar">
+        <Text>{selectedCount} selected</Text>
       </View>
     )
   },
@@ -722,6 +750,27 @@ describe('SearchScreen - Delete Functionality', () => {
         expect(screen.getByTestId('search-result-search-note-2')).toBeTruthy()
         expect(screen.getByTestId('search-result-search-note-3')).toBeTruthy()
       })
+    })
+  })
+
+  describe('Selection mode — query reset', () => {
+    it('exits selection mode when search query changes', async () => {
+      render(<SearchScreen />, { wrapper })
+
+      const searchInput = screen.getByPlaceholderText('Search notes...')
+      fireEvent.changeText(searchInput, 'keyword')
+
+      await waitFor(() => expect(screen.getByText('Search Result 1')).toBeTruthy())
+
+      // Long press to activate selection mode
+      fireEvent(screen.getByTestId('note-press-search-note-1'), 'longPress')
+
+      await waitFor(() => expect(screen.getByTestId('bulk-action-bar')).toBeTruthy())
+
+      // Change query → selection mode should reset
+      fireEvent.changeText(searchInput, 'other')
+
+      await waitFor(() => expect(screen.queryByTestId('bulk-action-bar')).toBeNull())
     })
   })
 })

@@ -28,6 +28,15 @@ jest.mock('react-native-reanimated', () => {
   }
 })
 
+jest.mock('@react-navigation/bottom-tabs', () => ({
+  useBottomTabBarHeight: () => 50,
+}))
+
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+}))
+
 jest.mock('expo-font', () => ({
   useFonts: () => [true, null],
 }))

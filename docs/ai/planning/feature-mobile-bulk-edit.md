@@ -8,11 +8,11 @@ description: Break down work into actionable tasks and estimate timeline
 
 ## Milestones
 
-- [ ] Milestone 1: Selection state infrastructure (хуки)
-- [ ] Milestone 2: UI компоненты (NoteCard checkbox, BulkActionBar)
-- [ ] Milestone 3: Интеграция в index и search экраны
-- [ ] Milestone 4: Bulk delete с подтверждением
-- [ ] Milestone 5: Полировка (анимации, haptics, accessibility)
+- [x] Milestone 1: Selection state infrastructure (хуки)
+- [x] Milestone 2: UI компоненты (NoteCard checkbox, BulkActionBar)
+- [x] Milestone 3: Интеграция в index и search экраны
+- [x] Milestone 4: Bulk delete с подтверждением
+- [x] Milestone 5: Полировка (анимации, haptics, accessibility)
 
 ## Task Breakdown
 
@@ -55,36 +55,36 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### Phase 3: Интеграция в index экран
 
-- [ ] **3.1** Подключить `useBulkSelection` в `app/(tabs)/index.tsx`
+- [x] **3.1** Подключить `useBulkSelection` в `app/(tabs)/index.tsx`
   - Добавить хук в тело компонента
   - Прокидывать `isSelectionMode`, `isSelected`, `onLongPress`, `onPress` в `SwipeableNoteCard`
   - Добавить `extraData={{ isActive, selectedIds }}` в FlashList (для корректного ре-рендера)
 
-- [ ] **3.2** Трансформация header в index при selection mode
-  - `Stack.Screen options` динамически: если `isActive` → title = "N selected", headerLeft = Cancel
+- [x] **3.2** Трансформация header в index при selection mode
+  - `navigation.setOptions()` динамически: если `isActive` → title = "N selected", headerLeft = Cancel
   - Cancel: `deactivate()`
 
-- [ ] **3.3** Добавить `BulkActionBar` в layout index
+- [x] **3.3** Добавить `BulkActionBar` в layout index
   - Рендерить только если `isActive`
-  - Позиционировать абсолютно над tab bar (нужно знать высоту tab bar или использовать `insets`)
+  - Позиционирование через `useBottomTabBarHeight()` + `useSafeAreaInsets()`
   - Передавать `onDelete` → alert → `bulkDelete([...selectedIds])` → `deactivate()`
 
 ### Phase 4: Интеграция в search экран
 
-- [ ] **4.1** Подключить `useBulkSelection` в `app/(tabs)/search.tsx`
+- [x] **4.1** Подключить `useBulkSelection` в `app/(tabs)/search.tsx`
   - Аналогично index
-  - `useEffect(() => { deactivate() }, [query])` — сброс при смене запроса
+  - `useEffect(() => { if (isActive) deactivate() }, [query])` — сброс при смене запроса
 
-- [ ] **4.2** Трансформация header и BulkActionBar аналогично index
+- [x] **4.2** Трансформация header и BulkActionBar аналогично index
 
 ### Phase 5: Полировка
 
-- [ ] **5.1** Haptic feedback при long press — `Haptics.impactAsync(ImpactFeedbackStyle.Medium)` в `activate()`
-- [ ] **5.0** BackHandler для Android в index.tsx и search.tsx — перехват hardware back button для выхода из selection mode
-- [ ] **5.2** Slide-up анимация BulkActionBar (Animated.Value или Reanimated useSharedValue)
-- [ ] **5.3** Анимация появления чекбоксов в NoteCard (opacity + translateX)
-- [ ] **5.4** Accessibility: `accessibilityLabel`, `accessibilityRole` на кнопках и чекбоксах
-- [ ] **5.5** Убедиться что `extraData` в FlashList корректно передаётся (иначе карточки не ре-рендерятся)
+- [x] **5.1** Haptic feedback при long press — `Haptics.impactAsync(ImpactFeedbackStyle.Medium)`
+- [x] **5.0** BackHandler для Android в index.tsx и search.tsx — перехват hardware back button
+- [x] **5.2** Slide-up анимация BulkActionBar (Reanimated `useSharedValue` + `withSpring`)
+- [x] **5.3** Анимация появления чекбоксов в NoteCard (opacity + translateX, `withTiming`)
+- [x] **5.4** Accessibility: `accessibilityLabel`, `accessibilityRole` на кнопках и чекбоксах
+- [x] **5.5** `extraData` в FlashList корректно передаётся через `useMemo`
 
 ## Dependencies
 
