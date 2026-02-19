@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, BackHandler } from 'react-native'
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, BackHandler, ScrollView, RefreshControl } from 'react-native'
 import { useRouter, useNavigation } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
 import { Plus } from 'lucide-react-native'
@@ -7,7 +7,7 @@ import { SwipeableNoteCard } from '@ui/mobile/components/SwipeableNoteCard'
 import { BulkActionBar } from '@ui/mobile/components/BulkActionBar'
 import { Button } from '@ui/mobile/components/ui'
 import { useTheme } from '@ui/mobile/providers'
-import { useMemo, useCallback, useEffect } from 'react'
+import { useMemo, useCallback, useEffect, useState } from 'react'
 import type { Note } from '@core/types/domain'
 import { useNotes, useCreateNote, useDeleteNote, useOpenNote, useBulkSelection, useBulkDeleteNotes } from '@ui/mobile/hooks'
 import { useSwipeContext } from '@ui/mobile/providers'
@@ -18,7 +18,7 @@ export default function NotesScreen() {
   const navigation = useNavigation()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
-  const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isRefetching } = useNotes()
+  const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useNotes()
   const { mutate: createNote } = useCreateNote()
   const { mutate: deleteNote } = useDeleteNote()
   const { closeAll } = useSwipeContext()
@@ -26,6 +26,7 @@ export default function NotesScreen() {
 
   const { isActive, selectedIds, activate, toggle, selectAll, clear, deactivate } = useBulkSelection()
   const { bulkDelete, isPending: isBulkDeleting } = useBulkDeleteNotes()
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false)
 
   const notes = data?.pages.flatMap((page) => page.notes) ?? []
 
@@ -104,16 +105,19 @@ export default function NotesScreen() {
           onPress: async () => {
             await bulkDelete([...selectedIds])
             deactivate()
+            setIsManualRefreshing(true)
+            void refetch().finally(() => setIsManualRefreshing(false))
           },
         },
       ]
     )
-  }, [selectedIds, bulkDelete, deactivate])
+  }, [selectedIds, bulkDelete, deactivate, refetch])
 
   const keyExtractor = useCallback((item: Note) => item.id, [])
 
   const handleRefresh = useCallback(() => {
-    void refetch()
+    setIsManualRefreshing(true)
+    void refetch().finally(() => setIsManualRefreshing(false))
   }, [refetch])
 
   const handleEndReached = useCallback(() => {
@@ -136,7 +140,7 @@ export default function NotesScreen() {
     />
   ), [isActive, selectedIds, activate, toggle, handleOpenNote, handleTagPress, handleDeleteNote])
 
-  if (isLoading && notes.length === 0) {
+  if ((isLoading || isManualRefreshing) && notes.length === 0) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={colors.primary} testID="activity-indicator" />
@@ -155,9 +159,19 @@ export default function NotesScreen() {
     )
   }
 
-  if (!isLoading && !error && notes.length === 0) {
+  if (!isLoading && !isManualRefreshing && !error && notes.length === 0) {
     return (
-      <View style={styles.centerContainer}>
+      <ScrollView
+        contentContainerStyle={styles.centerContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={isManualRefreshing}
+            onRefresh={handleRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
         <Text style={styles.emptyTitle}>No notes yet</Text>
         <Text style={styles.emptySubtitle}>
           Create your first note to get started.
@@ -165,7 +179,7 @@ export default function NotesScreen() {
         <Button onPress={handleCreateNote}>
           Create note
         </Button>
-      </View>
+      </ScrollView>
     )
   }
 
@@ -181,7 +195,7 @@ export default function NotesScreen() {
         estimatedItemSize={140}
         drawDistance={500}
         onRefresh={handleRefresh}
-        refreshing={isRefetching && !isFetchingNextPage}
+        refreshing={isManualRefreshing}
         onScrollBeginDrag={closeAll}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}

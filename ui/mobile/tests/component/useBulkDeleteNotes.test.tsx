@@ -83,14 +83,28 @@ describe('useBulkDeleteNotes', () => {
     expect(mockMutateAsync).not.toHaveBeenCalled()
   })
 
-  it('does not show toast when all deletions succeed', async () => {
+  it('shows success toast when all deletions succeed', async () => {
     const { result } = renderHook(() => useBulkDeleteNotes())
 
     await act(async () => {
       await result.current.bulkDelete(['a', 'b'])
     })
 
-    expect(Toast.show).not.toHaveBeenCalled()
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success', text1: 'Deleted 2 notes' })
+    )
+  })
+
+  it('uses singular form in success toast for single deletion', async () => {
+    const { result } = renderHook(() => useBulkDeleteNotes())
+
+    await act(async () => {
+      await result.current.bulkDelete(['a'])
+    })
+
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success', text1: 'Deleted 1 note' })
+    )
   })
 
   it('uses plural form in toast message for multiple failures', async () => {
