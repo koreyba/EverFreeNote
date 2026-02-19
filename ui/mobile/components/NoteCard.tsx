@@ -95,7 +95,8 @@ export const NoteCard = memo(function NoteCard({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={400}
-      accessibilityRole="button"
+      accessibilityRole={isSelectionMode ? 'checkbox' : 'button'}
+      accessibilityState={isSelectionMode ? { checked: isSelected } : undefined}
     >
       <View style={styles.row}>
         {isSelectionMode && (

@@ -24,13 +24,19 @@ export default function NotesScreen() {
   const { closeAll } = useSwipeContext()
   const openNote = useOpenNote()
 
-  const { isActive, selectedIds, activate, toggle, selectAll, deactivate } = useBulkSelection()
+  const { isActive, selectedIds, activate, toggle, selectAll, clear, deactivate } = useBulkSelection()
   const { bulkDelete, isPending: isBulkDeleting } = useBulkDeleteNotes()
 
   const notes = data?.pages.flatMap((page) => page.notes) ?? []
 
   // extraData is required for FlashList to re-render items when selection changes
   const selectionExtraData = useMemo(() => ({ isActive, selectedIds }), [isActive, selectedIds])
+
+  // Pad list bottom so BulkActionBar doesn't obscure the last item
+  const listContentStyle = useMemo(
+    () => ({ padding: 16, paddingBottom: isActive ? 80 : 16 }),
+    [isActive]
+  )
 
   // Transform header when selection mode is active
   useEffect(() => {
@@ -170,7 +176,7 @@ export default function NotesScreen() {
         data={notes}
         renderItem={renderNote}
         keyExtractor={keyExtractor}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={listContentStyle}
         // @ts-expect-error FlashList types mismatch
         estimatedItemSize={140}
         drawDistance={500}
@@ -203,7 +209,7 @@ export default function NotesScreen() {
           selectedCount={selectedIds.size}
           totalCount={notes.length}
           onSelectAll={() => selectAll(notes.map(n => n.id))}
-          onDeselectAll={() => selectAll([])}
+          onDeselectAll={clear}
           onDelete={handleBulkDelete}
           isPending={isBulkDeleting}
         />
@@ -223,9 +229,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     alignItems: 'center',
     padding: 20,
     backgroundColor: colors.background,
-  },
-  list: {
-    padding: 16,
   },
   errorText: {
     fontSize: 16,

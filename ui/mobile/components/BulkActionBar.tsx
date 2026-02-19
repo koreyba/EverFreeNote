@@ -61,10 +61,10 @@ export function BulkActionBar({
         onPress={onDelete}
         disabled={deleteDisabled}
         accessibilityRole="button"
-        accessibilityLabel={`Delete ${selectedCount} notes`}
+        accessibilityLabel={`Delete ${selectedCount} note${selectedCount === 1 ? '' : 's'}`}
         accessibilityState={{ disabled: deleteDisabled }}
       >
-        <Text style={[styles.deleteButtonText, deleteDisabled && styles.deleteButtonTextDisabled]}>
+        <Text style={styles.deleteButtonText}>
           Delete
         </Text>
       </Pressable>
@@ -116,9 +116,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   deleteButtonText: {
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
-    color: colors.destructiveForeground,
-  },
-  deleteButtonTextDisabled: {
     color: colors.destructiveForeground,
   },
 })

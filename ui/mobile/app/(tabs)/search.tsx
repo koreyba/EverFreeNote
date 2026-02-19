@@ -39,13 +39,19 @@ export default function SearchScreen() {
     const { closeAll } = useSwipeContext()
     const [history, setHistory] = useState<string[]>([])
 
-    const { isActive, selectedIds, activate, toggle, selectAll, deactivate } = useBulkSelection()
+    const { isActive, selectedIds, activate, toggle, selectAll, clear, deactivate } = useBulkSelection()
     const { bulkDelete, isPending: isBulkDeleting } = useBulkDeleteNotes()
 
     const results = data?.pages.flatMap((page) => page.results) ?? []
 
     // extraData is required for FlashList to re-render items when selection changes
     const selectionExtraData = useMemo(() => ({ isActive, selectedIds }), [isActive, selectedIds])
+
+    // Pad list bottom so BulkActionBar doesn't obscure the last item
+    const listContentStyle = useMemo(
+        () => ({ padding: 16, paddingBottom: isActive ? 80 : 16 }),
+        [isActive]
+    )
 
     useEffect(() => {
         if (!user?.id) return
@@ -72,7 +78,9 @@ export default function SearchScreen() {
         return () => clearTimeout(timeout)
     }, [query, user?.id])
 
-    // Reset selection mode when search query changes
+    // Reset selection mode when search query changes.
+    // Intentionally excludes `isActive` and `deactivate` from deps — we only want to
+    // trigger on new search input, not on every re-render where isActive/deactivate change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { if (isActive) deactivate() }, [query])
 
@@ -232,7 +240,7 @@ export default function SearchScreen() {
                 // @ts-expect-error FlashList types mismatch in some versions
                 estimatedItemSize={96}
                 keyExtractor={(item: SearchResultItem) => item.id}
-                contentContainerStyle={styles.list}
+                contentContainerStyle={listContentStyle}
                 onScrollBeginDrag={closeAll}
                 onEndReached={() => {
                     if (!hasNextPage || isFetchingNextPage) return
@@ -253,7 +261,7 @@ export default function SearchScreen() {
                     selectedCount={selectedIds.size}
                     totalCount={results.length}
                     onSelectAll={() => selectAll(results.map(n => n.id))}
-                    onDeselectAll={() => selectAll([])}
+                    onDeselectAll={clear}
                     onDelete={handleBulkDelete}
                     isPending={isBulkDeleting}
                 />
@@ -294,9 +302,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
         fontSize: 16,
         fontFamily: 'Inter_400Regular',
         color: colors.foreground,
-    },
-    list: {
-        padding: 16,
     },
     footerLoader: {
         paddingVertical: 16,
