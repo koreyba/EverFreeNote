@@ -1,7 +1,5 @@
 import React, { useMemo, useEffect } from 'react'
 import { Text, Pressable, StyleSheet } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated'
 import { useTheme } from '@ui/mobile/providers'
 
@@ -23,8 +21,6 @@ export function BulkActionBar({
   isPending,
 }: BulkActionBarProps) {
   const { colors } = useTheme()
-  const insets = useSafeAreaInsets()
-  const tabBarHeight = useBottomTabBarHeight()
   const styles = useMemo(() => createStyles(colors), [colors])
 
   const translateY = useSharedValue(100)
@@ -40,7 +36,7 @@ export function BulkActionBar({
   const deleteDisabled = selectedCount === 0 || isPending
 
   return (
-    <Animated.View style={[styles.container, { bottom: tabBarHeight, paddingBottom: insets.bottom > 0 ? 0 : 8 }, animatedStyle]}>
+    <Animated.View style={[styles.container, animatedStyle]}>
       <Pressable
         style={styles.selectButton}
         onPress={allSelected ? onDeselectAll : onSelectAll}
@@ -75,6 +71,7 @@ export function BulkActionBar({
 const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   container: {
     position: 'absolute',
+    bottom: 0,
     left: 0,
     right: 0,
     flexDirection: 'row',
