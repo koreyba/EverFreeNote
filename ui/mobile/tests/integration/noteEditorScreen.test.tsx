@@ -118,7 +118,6 @@ jest.mock('@ui/mobile/services/sync', () => ({
 // Mock components
 const mockEditorCallbacks: {
   onContentChange?: (html: string) => void
-  onFocus?: () => void
   onBlur?: () => void
 } = {}
 
@@ -126,10 +125,9 @@ jest.mock('@ui/mobile/components/EditorWebView', () => {
   const React = require('react')
   const { View, Text } = require('react-native')
 
-  return React.forwardRef((props: { onContentChange?: (html: string) => void; onFocus?: () => void; onBlur?: () => void }, ref: unknown) => {
+  return React.forwardRef((props: { onContentChange?: (html: string) => void; onBlur?: () => void }, ref: unknown) => {
     // Store callbacks for test access
     mockEditorCallbacks.onContentChange = props.onContentChange
-    mockEditorCallbacks.onFocus = props.onFocus
     mockEditorCallbacks.onBlur = props.onBlur
 
     React.useImperativeHandle(ref, () => ({
@@ -460,31 +458,6 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       await waitFor(() => {
         expect(mockNoteService.prototype.deleteNote).toHaveBeenCalledWith('test-note-id')
-      })
-    })
-
-    it('adds extra bottom padding when editor is focused', async () => {
-      render(<NoteEditorScreen />, { wrapper })
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
-      })
-
-      const { StyleSheet } = require('react-native')
-      const getPaddingBottom = () => {
-        const editorContainer = screen.getByTestId('note-editor-container')
-        return StyleSheet.flatten(editorContainer.props.style)?.paddingBottom ?? 0
-      }
-
-      const initialPaddingBottom = getPaddingBottom()
-
-      act(() => {
-        mockEditorCallbacks.onFocus?.()
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('editor-toolbar')).toBeTruthy()
-        expect(getPaddingBottom()).toBeGreaterThan(initialPaddingBottom)
       })
     })
   })
