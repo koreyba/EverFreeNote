@@ -34,9 +34,9 @@ description: Break down work into actionable tasks and estimate timeline
 ### Phase 2: UI компоненты
 
 - [ ] **2.1** Обновить `NoteCard` — добавить selection mode props
-  - Новые props: `isSelectionMode?: boolean`, `isSelected?: boolean`, `onLongPress?: () => void`
-  - Когда `isSelectionMode=true`: показать чекбокс слева (View с border/filled circle или Checkbox-like icon)
-  - `onPress` в selection mode: вызывает `onLongPress` callback (переключение выбора), НЕ навигацию
+  - Новые props: `isSelectionMode?: boolean`, `isSelected?: boolean`
+  - Когда `isSelectionMode=true`: показать чекбокс слева (View с border/filled circle)
+  - NoteCard остаётся "тупым" компонентом: просто вызывает переданный `onPress`/`onLongPress` без собственной логики
   - Визуальный стиль выбранной карточки: лёгкий accent background
 
 - [ ] **2.2** Обновить `SwipeableNoteCard` — отключить swipe в selection mode
@@ -88,7 +88,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 ## Dependencies
 
-- **1.2 зависит от 1.1** — useBulkDeleteNotes использует useBulkSelection.deactivate в onSuccess
+- **1.1 и 1.2 независимы** — хуки не вызывают друг друга; `deactivate` вызывается на уровне экрана после `bulkDelete` resolves
 - **2.1, 2.2 параллельно** — независимые компоненты
 - **2.3 независимо** — BulkActionBar можно делать параллельно с 2.1/2.2
 - **3.x зависит от 1.x и 2.x** — интеграция после готовности хуков и компонентов
@@ -96,9 +96,10 @@ description: Break down work into actionable tasks and estimate timeline
 - **5.x зависит от 3.x и 4.x** — полировка в конце
 
 **Внешние зависимости:**
-- `expo-haptics` — уже в проекте (используется в других местах)
+- `expo-haptics` — уже в проекте
 - `react-native-gesture-handler` — уже в проекте (SwipeableNoteCard)
 - `react-native-reanimated` — уже в проекте
+- `react-native-toast-message` — **новая зависимость**, нужно установить (`npm install react-native-toast-message`)
 
 ## Timeline & Estimates
 
