@@ -35,7 +35,7 @@ export const NoteCard = memo(function NoteCard({
   onTagClick,
 }: NoteCardProps) {
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("ru-RU", {
+    return new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
       month: variant === "search" ? "short" : "numeric",
       day: "numeric",
@@ -102,7 +102,7 @@ export const NoteCard = memo(function NoteCard({
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <CardTitle className="text-lg line-clamp-2">{note.title || "Без названия"}</CardTitle>
+              <CardTitle className="text-lg line-clamp-2">{note.title || "Untitled"}</CardTitle>
               <div className="flex gap-1 flex-shrink-0">
                 {searchNote.rank !== undefined && searchNote.rank !== null && (
                   <Badge variant="secondary" className="text-xs">

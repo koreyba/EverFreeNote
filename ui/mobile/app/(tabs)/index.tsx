@@ -41,22 +41,28 @@ export default function NotesScreen() {
 
   // Transform header when selection mode is active
   useEffect(() => {
+    if (isActive) {
+      navigation.setOptions({
+        title: `${selectedIds.size} selected`,
+        headerLeft: () => (
+          <Pressable
+            onPress={deactivate}
+            style={styles.headerCancel}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel selection"
+          >
+            <Text style={styles.headerCancelText}>Cancel</Text>
+          </Pressable>
+        ),
+      })
+      return
+    }
+
     navigation.setOptions({
-      title: isActive ? `${selectedIds.size} selected` : 'Notes',
-      headerLeft: isActive
-        ? () => (
-            <Pressable
-              onPress={deactivate}
-              style={styles.headerCancel}
-              accessibilityRole="button"
-              accessibilityLabel="Cancel selection"
-            >
-              <Text style={styles.headerCancelText}>Cancel</Text>
-            </Pressable>
-          )
-        : undefined,
+      title: undefined,
+      headerLeft: undefined,
     })
-  }, [isActive, selectedIds.size, navigation, deactivate, styles, colors])
+  }, [isActive, selectedIds.size, navigation, deactivate, styles])
 
   // Intercept Android back button to exit selection mode
   useEffect(() => {
@@ -162,6 +168,7 @@ export default function NotesScreen() {
   if (!isLoading && !isManualRefreshing && !error && notes.length === 0) {
     return (
       <ScrollView
+        testID="empty-state-scroll"
         contentContainerStyle={styles.centerContainer}
         refreshControl={
           <RefreshControl

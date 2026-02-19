@@ -58,24 +58,24 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Заметки',
-            tabBarLabel: 'Заметки',
+            title: 'Notes',
+            tabBarLabel: 'Notes',
             tabBarIcon: ({ color }) => <FileText size={24} color={color} />,
           }}
         />
         <Tabs.Screen
           name="search"
           options={{
-            title: 'Поиск',
-            tabBarLabel: 'Поиск',
+            title: 'Search',
+            tabBarLabel: 'Search',
             tabBarIcon: ({ color }) => <Search size={24} color={color} />,
           }}
         />
         <Tabs.Screen
           name="settings"
           options={{
-            title: 'Настройки',
-            tabBarLabel: 'Настройки',
+            title: 'Settings',
+            tabBarLabel: 'Settings',
             tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
           }}
         />

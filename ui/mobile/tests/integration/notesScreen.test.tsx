@@ -5,6 +5,7 @@
 import React from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import {
+  act,
   createQueryWrapper,
   createTestQueryClient,
   fireEvent,
@@ -124,22 +125,53 @@ jest.mock('@ui/mobile/services/sync', () => ({
 
 // Mock SwipeableNoteCard with simplified implementation
 jest.mock('@ui/mobile/components/SwipeableNoteCard', () => ({
-  SwipeableNoteCard: ({ note, onPress, onDelete }: { 
-    note: { id: string; title: string }; 
+  SwipeableNoteCard: ({
+    note, onPress, onLongPress, onDelete, isSelectionMode, isSelected,
+  }: {
+    note: { id: string; title: string };
     onPress: (note: { id: string; title: string }) => void;
+    onLongPress?: () => void;
     onDelete: (id: string) => void;
+    isSelectionMode?: boolean;
+    isSelected?: boolean;
   }) => {
     const { View, Text, Pressable } = require('react-native')
     return (
       <View testID={`note-card-${note.id}`}>
-        <Pressable onPress={() => onPress(note)}>
-          <Text>{note.title}</Text>
-        </Pressable>
         <Pressable
-          testID={`delete-button-${note.id}`}
-          onPress={() => onDelete(note.id)}
-          accessibilityLabel={`Delete ${note.title}`}
+          testID={`note-press-${note.id}`}
+          onPress={() => onPress(note)}
+          onLongPress={onLongPress}
         >
+          <Text>{note.title}</Text>
+          {isSelectionMode && (
+            <Text testID={`note-checkbox-${note.id}`}>
+              {isSelected ? 'checked' : 'unchecked'}
+            </Text>
+          )}
+        </Pressable>
+        {!isSelectionMode && (
+          <Pressable
+            testID={`delete-button-${note.id}`}
+            onPress={() => onDelete(note.id)}
+            accessibilityLabel={`Delete ${note.title}`}
+          >
+            <Text>Delete</Text>
+          </Pressable>
+        )}
+      </View>
+    )
+  },
+}))
+
+// Mock BulkActionBar
+jest.mock('@ui/mobile/components/BulkActionBar', () => ({
+  BulkActionBar: ({ selectedCount, onDelete }: { selectedCount: number; onDelete: () => void }) => {
+    const { View, Text, Pressable } = require('react-native')
+    return (
+      <View testID="bulk-action-bar">
+        <Text>{selectedCount} selected</Text>
+        <Pressable testID="bulk-delete-button" onPress={onDelete}>
           <Text>Delete</Text>
         </Pressable>
       </View>
@@ -494,6 +526,92 @@ describe('NotesScreen - Delete Functionality', () => {
 
       expect(deleteButton1).toBeTruthy()
       expect(deleteButton2).toBeTruthy()
+    })
+  })
+
+  describe('Pull-to-refresh on empty state', () => {
+    it('triggers refetch and shows notes after pull-to-refresh on empty state', async () => {
+      mockNoteService.prototype.getNotes = jest.fn()
+        .mockResolvedValueOnce({ notes: [], hasMore: false, totalCount: 0 })
+        .mockResolvedValueOnce({ notes: mockNotes, hasMore: false, totalCount: mockNotes.length })
+
+      render(<NotesScreen />, { wrapper })
+
+      await waitFor(() => expect(screen.getByText('No notes yet')).toBeTruthy())
+
+      const scrollView = screen.getByTestId('empty-state-scroll')
+      act(() => scrollView.props.refreshControl.props.onRefresh())
+
+      await waitFor(() => expect(screen.getByText('First Note')).toBeTruthy())
+    })
+
+    it('shows loading indicator while refreshing from empty state', async () => {
+      let resolveRefetch!: (value: unknown) => void
+      const refetchPromise = new Promise(resolve => { resolveRefetch = resolve })
+
+      mockNoteService.prototype.getNotes = jest.fn()
+        .mockResolvedValueOnce({ notes: [], hasMore: false, totalCount: 0 })
+        .mockReturnValueOnce(refetchPromise)
+
+      render(<NotesScreen />, { wrapper })
+
+      await waitFor(() => expect(screen.getByText('No notes yet')).toBeTruthy())
+
+      const scrollView = screen.getByTestId('empty-state-scroll')
+      act(() => scrollView.props.refreshControl.props.onRefresh())
+
+      await waitFor(() => expect(screen.getByTestId('activity-indicator')).toBeTruthy())
+
+      resolveRefetch({ notes: mockNotes, hasMore: false, totalCount: mockNotes.length })
+      await waitFor(() => expect(screen.getByText('First Note')).toBeTruthy())
+    })
+  })
+
+  describe('Bulk delete', () => {
+    it('calls refetch after bulk delete completes', async () => {
+      mockNoteService.prototype.getNotes = jest.fn()
+        .mockResolvedValueOnce({ notes: mockNotes, hasMore: false, totalCount: mockNotes.length })
+        .mockResolvedValueOnce({ notes: mockNotes, hasMore: false, totalCount: mockNotes.length })
+      mockNoteService.prototype.deleteNote = jest.fn().mockResolvedValue('deleted')
+
+      render(<NotesScreen />, { wrapper })
+
+      await waitFor(() => expect(screen.getByText('First Note')).toBeTruthy())
+
+      fireEvent(screen.getByTestId('note-press-note-1'), 'longPress')
+      await waitFor(() => expect(screen.getByTestId('bulk-action-bar')).toBeTruthy())
+
+      fireEvent.press(screen.getByTestId('bulk-delete-button'))
+
+      const alertCall = (Alert.alert as jest.Mock).mock.calls[0]
+      const deleteAction = alertCall[2].find((b: { text: string }) => b.text === 'Delete')
+      await act(async () => { await deleteAction.onPress() })
+
+      await waitFor(() => {
+        expect(mockNoteService.prototype.getNotes).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    it('shows empty state after bulk delete when server has no more notes', async () => {
+      mockNoteService.prototype.getNotes = jest.fn()
+        .mockResolvedValueOnce({ notes: mockNotes, hasMore: false, totalCount: mockNotes.length })
+        .mockResolvedValueOnce({ notes: [], hasMore: false, totalCount: 0 })
+      mockNoteService.prototype.deleteNote = jest.fn().mockResolvedValue('deleted')
+
+      render(<NotesScreen />, { wrapper })
+
+      await waitFor(() => expect(screen.getByText('First Note')).toBeTruthy())
+
+      fireEvent(screen.getByTestId('note-press-note-1'), 'longPress')
+      await waitFor(() => expect(screen.getByTestId('bulk-action-bar')).toBeTruthy())
+
+      fireEvent.press(screen.getByTestId('bulk-delete-button'))
+
+      const alertCall = (Alert.alert as jest.Mock).mock.calls[0]
+      const deleteAction = alertCall[2].find((b: { text: string }) => b.text === 'Delete')
+      await act(async () => { await deleteAction.onPress() })
+
+      await waitFor(() => expect(screen.getByText('No notes yet')).toBeTruthy())
     })
   })
 })

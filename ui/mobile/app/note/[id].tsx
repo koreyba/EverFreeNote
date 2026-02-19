@@ -48,7 +48,7 @@ function NoteBodyPreview({ html, colors }: { html: string; colors: ReturnType<ty
   const styles = useMemo(() => createPreviewStyles(colors), [colors])
   const text = useMemo(() => htmlToPlainText(html), [html])
 
-  // Пустой контейнер для пустых заметок - без текста "Empty note"
+  // Render an empty container for blank notes, without "Empty note" placeholder text.
   if (!text) {
     return <View style={styles.container} />
   }
@@ -338,7 +338,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   },
 })
 
-// Стили превью максимально соответствуют WebView редактору:
+// Preview styles are aligned with the WebView editor:
 // - px-6 py-4 = 24px horizontal, 16px vertical
 // - font-size: 12pt (~16px)
 // - line-height: 1.75 (16 * 1.75 = 28)

@@ -86,10 +86,10 @@ export default function SearchScreen() {
 
     // Transform header when selection mode is active
     useEffect(() => {
-        navigation.setOptions({
-            title: isActive ? `${selectedIds.size} selected` : 'Search',
-            headerLeft: isActive
-                ? () => (
+        if (isActive) {
+            navigation.setOptions({
+                title: `${selectedIds.size} selected`,
+                headerLeft: () => (
                     <Pressable
                         onPress={deactivate}
                         style={styles.headerCancel}
@@ -98,8 +98,14 @@ export default function SearchScreen() {
                     >
                         <Text style={styles.headerCancelText}>Cancel</Text>
                     </Pressable>
-                )
-                : undefined,
+                ),
+            })
+            return
+        }
+
+        navigation.setOptions({
+            title: undefined,
+            headerLeft: undefined,
         })
     }, [isActive, selectedIds.size, navigation, deactivate, styles])
 
