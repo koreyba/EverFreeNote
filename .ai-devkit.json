@@ -11,5 +11,12 @@
     "monitoring"
   ],
   "createdAt": "2025-10-20T08:10:00.763Z",
-  "updatedAt": "2025-10-20T08:10:00.977Z"
+  "updatedAt": "2026-02-19T13:54:42.915Z",
+  "environments": [
+    "claude",
+    "github",
+    "gemini",
+    "codex",
+    "antigravity"
+  ]
 }
