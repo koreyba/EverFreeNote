@@ -46,9 +46,20 @@ description: Define testing approach, test cases, and quality assurance
 - [x] **Payload false:** `SELECTION_CHANGE` message with `false` → calls `onSelectionChange(false)`.
 - [x] **No callback prop:** `SELECTION_CHANGE` without `onSelectionChange` → no crash.
 
-### `applySelectionAsMarkdown` utility (`ui/web/lib/editor.ts`)
+### `applySelectionAsMarkdown` utility + `RichTextEditor` MD button (`ui/web/lib/editor.ts`, `ui/web/components/RichTextEditor.tsx`)
 
-> No web jest config — covered by manual QA and indirectly via SmartPasteService tests.
+> Tests: `cypress/component/editor/RichTextEditorApplyMarkdown.cy.tsx`
+
+- [x] **Button visible:** `[data-cy="apply-markdown-button"]` renders in toolbar.
+- [x] **Disabled without selection:** button is `disabled` by default.
+- [x] **Enabled after selection:** `{selectall}` → button becomes active.
+- [x] **Disabled after deselect:** collapsing selection → button disabled again.
+- [x] **Low-score text → rendered list:** plain markdown below auto-detection threshold is rendered as `<ul>/<li>` after clicking MD button.
+- [x] **Heading markdown rendered:** `# Title` text → `<h1>` element after applying.
+- [x] **XSS stripped:** `<script>` in markdown input is removed from output.
+- [x] **onContentChange called:** callback fires after successful apply.
+- [x] **Plain text no crash:** text without markdown syntax → no crash, content preserved.
+- [x] **Early return — no selection:** force-clicking disabled button does not modify content or call onChange.
 
 ## Integration Tests
 
@@ -61,8 +72,8 @@ description: Define testing approach, test cases, and quality assurance
 ## End-to-End Tests
 **What user flows need validation?**
 
-- [ ] **Web flow:** select plain markdown text in editor → click "Apply as Markdown" → selection replaced with rendered markdown (heading/list visible).
-- [ ] **Button disabled with no selection:** click elsewhere to deselect → button becomes disabled.
+- [x] **Web flow:** select plain markdown text in editor → click "Apply as Markdown" → selection replaced with rendered markdown (heading/list visible). *(Cypress: RichTextEditorApplyMarkdown.cy.tsx)*
+- [x] **Button disabled with no selection:** click elsewhere to deselect → button becomes disabled. *(Cypress)*
 - [ ] **Mobile flow:** same action via mobile toolbar button.
 - [ ] **Undo:** `Ctrl+Z` after applying → selection content restored to plain text.
 - [ ] **Regression — normal paste:** pasting content without using the button still uses auto-detection.
