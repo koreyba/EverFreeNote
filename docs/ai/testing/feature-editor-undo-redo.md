@@ -1,0 +1,83 @@
+---
+phase: testing
+title: Testing Strategy
+description: Define testing approach, test cases, and quality assurance
+---
+
+# Testing Strategy — Editor Undo/Redo Controls
+
+## Test Coverage Goals
+- Unit tests: 100% новых/изменённых компонентов
+- Integration: undo/redo через WebView bridge
+- E2E: ключевые пользовательские сценарии
+- Manual: визуальный контроль на реальных устройствах
+
+## Unit Tests
+
+### MenuBar (RichTextEditor.tsx)
+- [ ] Кнопки Undo и Redo рендерятся в начале тулбара
+- [ ] Кнопка Undo вызывает `editor.chain().focus().undo().run()` по клику
+- [ ] Кнопка Redo вызывает `editor.chain().focus().redo().run()` по клику
+- [ ] Кнопка Undo задизаблена, когда `editor.can().undo()` = false
+- [ ] Кнопка Redo задизаблена, когда `editor.can().redo()` = false
+- [ ] Tooltip Undo показывает "Undo (Ctrl+Z)"
+- [ ] Tooltip Redo показывает "Redo (Ctrl+Shift+Z)"
+
+### note/[id].tsx (мобайл)
+- [ ] `Stack.Screen title` равен '' (пустая строка, не 'Edit')
+- [ ] `headerLeft` содержит кнопки Undo2 и Redo2
+- [ ] Кнопка Undo2 вызывает `editorRef.current?.runCommand('undo')`
+- [ ] Кнопка Redo2 вызывает `editorRef.current?.runCommand('redo')`
+- [ ] Кнопка "назад" вызывает `router.back()`
+
+## Integration Tests
+- [ ] Undo отменяет последнее изменение текста в редакторе (веб)
+- [ ] Redo повторяет отменённое изменение (веб)
+- [ ] Последовательность: ввод текста → Undo → Redo восстанавливает текст (веб)
+- [ ] Undo через WebView bridge: команда доходит до TipTap (мобайл)
+- [ ] Redo через WebView bridge: команда доходит до TipTap (мобайл)
+
+## End-to-End Tests
+- [ ] Веб: пользователь набирает текст → кликает Undo → текст исчезает
+- [ ] Веб: кликает Redo → текст возвращается
+- [ ] Веб mobile viewport: тулбар скроллится, Undo/Redo доступны первыми
+- [ ] Мобайл: открывает заметку → нажимает Undo в шапке → изменение отменяется
+
+## Test Data
+- Простой текст: "Hello World" — для базового undo/redo
+- Форматирование: жирный текст — проверка отмены форматирования
+- Пустой редактор — проверка disabled-state (Undo недоступен)
+
+## Test Reporting & Coverage
+- Запуск: `npm run test -- --coverage` (веб), `npm run test` (мобайл)
+- Покрытие: 100% новых строк в `RichTextEditor.tsx` и `note/[id].tsx`
+
+## Manual Testing
+**Чеклист для ручного тестирования:**
+
+### Веб Desktop
+- [ ] Кнопки Undo/Redo видны в тулбаре (самые первые)
+- [ ] Undo задизаблен при открытии новой заметки
+- [ ] После ввода текста Undo становится активным
+- [ ] Ctrl+Z и кнопка Undo дают одинаковый результат
+- [ ] Ctrl+Shift+Z и кнопка Redo дают одинаковый результат
+
+### Веб Mobile Viewport (DevTools)
+- [ ] Тулбар показывает Undo/Redo первыми на всех breakpoints
+- [ ] Кнопки нажимаемы на тач-экране (размер >= 44px)
+
+### Мобайл-нейтив Android
+- [ ] Шапка: нет надписи "Edit"
+- [ ] Шапка: кнопка ← (назад) + ↩ (undo) + ↪ (redo)
+- [ ] Нажатие ↩ отменяет последний ввод
+- [ ] Нажатие ↪ повторяет отменённый ввод
+- [ ] Кнопка ← возвращает к списку заметок
+
+### Мобайл-нейтив iOS
+- [ ] Те же проверки, что для Android
+
+## Performance Testing
+- Undo/Redo должны отрабатывать мгновенно (< 50ms) — проверить в DevTools Performance.
+
+## Bug Tracking
+- Приоритет багов: P1 — undo/redo не работает; P2 — неверный disabled-state; P3 — визуальные проблемы.
