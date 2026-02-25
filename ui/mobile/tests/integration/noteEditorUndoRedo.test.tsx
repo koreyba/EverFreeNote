@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import {
+  act,
   createMockNote,
   createMockNoteService,
   createMockNoteServiceState,
@@ -109,12 +110,20 @@ jest.mock('@ui/mobile/services/sync', () => ({
 
 // Capture runCommand mock at module scope to assert on it
 const mockRunCommand = jest.fn()
+type HistoryState = { canUndo: boolean; canRedo: boolean }
+let emitHistoryState: ((state: HistoryState) => void) | null = null
 
 jest.mock('@ui/mobile/components/EditorWebView', () => {
   const React = require('react')
   const { View, Text } = require('react-native')
 
-  return React.forwardRef((_props: unknown, ref: unknown) => {
+  return React.forwardRef((props: { onHistoryStateChange?: (state: HistoryState) => void }, ref: unknown) => {
+    emitHistoryState = props.onHistoryStateChange ?? null
+
+    React.useEffect(() => {
+      props.onHistoryStateChange?.({ canUndo: false, canRedo: false })
+    }, [props.onHistoryStateChange])
+
     React.useImperativeHandle(ref, () => ({
       runCommand: mockRunCommand,
     }))
@@ -175,10 +184,17 @@ const waitForEditorReady = async () => {
   })
 }
 
+const setHistoryState = async (state: HistoryState) => {
+  await act(async () => {
+    emitHistoryState?.(state)
+  })
+}
+
 describe('NoteEditorScreen — Undo/Redo header buttons', () => {
   beforeEach(() => {
     mockRunCommand.mockClear()
     mockBack.mockClear()
+    emitHistoryState = null
   })
 
   it('renders headerLeft with back, undo, and redo buttons', async () => {
@@ -202,9 +218,48 @@ describe('NoteEditorScreen — Undo/Redo header buttons', () => {
     expect(screen.queryByText('Edit')).toBeNull()
   })
 
+  it('undo and redo buttons are disabled by default when history is empty', async () => {
+    renderScreen()
+    await waitForEditorReady()
+
+    const undo = screen.getByLabelText('Undo')
+    const redo = screen.getByLabelText('Redo')
+
+    expect(undo.props.accessibilityState?.disabled).toBe(true)
+    expect(redo.props.accessibilityState?.disabled).toBe(true)
+  })
+
+  it('updates undo/redo disabled state when history state changes', async () => {
+    renderScreen()
+    await waitForEditorReady()
+
+    await setHistoryState({ canUndo: true, canRedo: false })
+    expect(screen.getByLabelText('Undo').props.accessibilityState?.disabled).toBe(false)
+    expect(screen.getByLabelText('Redo').props.accessibilityState?.disabled).toBe(true)
+
+    await setHistoryState({ canUndo: true, canRedo: true })
+    expect(screen.getByLabelText('Undo').props.accessibilityState?.disabled).toBe(false)
+    expect(screen.getByLabelText('Redo').props.accessibilityState?.disabled).toBe(false)
+
+    await setHistoryState({ canUndo: false, canRedo: false })
+    expect(screen.getByLabelText('Undo').props.accessibilityState?.disabled).toBe(true)
+    expect(screen.getByLabelText('Redo').props.accessibilityState?.disabled).toBe(true)
+  })
+
+  it('disabled undo and redo buttons do not dispatch commands', async () => {
+    renderScreen()
+    await waitForEditorReady()
+
+    fireEvent.press(screen.getByLabelText('Undo'))
+    fireEvent.press(screen.getByLabelText('Redo'))
+
+    expect(mockRunCommand).not.toHaveBeenCalled()
+  })
+
   it('pressing Undo button calls runCommand("undo") on editor', async () => {
     renderScreen()
     await waitForEditorReady()
+    await setHistoryState({ canUndo: true, canRedo: false })
 
     fireEvent.press(screen.getByLabelText('Undo'))
 
@@ -215,6 +270,7 @@ describe('NoteEditorScreen — Undo/Redo header buttons', () => {
   it('pressing Redo button calls runCommand("redo") on editor', async () => {
     renderScreen()
     await waitForEditorReady()
+    await setHistoryState({ canUndo: false, canRedo: true })
 
     fireEvent.press(screen.getByLabelText('Redo'))
 
@@ -234,6 +290,7 @@ describe('NoteEditorScreen — Undo/Redo header buttons', () => {
   it('undo and redo do not interfere with each other', async () => {
     renderScreen()
     await waitForEditorReady()
+    await setHistoryState({ canUndo: true, canRedo: true })
 
     fireEvent.press(screen.getByLabelText('Undo'))
     fireEvent.press(screen.getByLabelText('Redo'))

@@ -153,3 +153,10 @@ import { Trash2, ChevronLeft } from 'lucide-react-native'
 ## Performance Considerations
 - Undo/Redo — синхронные операции ProseMirror, без задержек.
 - Disabled-state на вебе пересчитывается при каждом ре-рендере TipTap — это нормально, TipTap оптимизирован.
+
+## 2026 Mobile Fix Addendum
+- Mobile header undo/redo now uses explicit `canUndo/canRedo` state from WebView bridge.
+- New bridge event: `HISTORY_STATE` with payload `{ canUndo: boolean, canRedo: boolean }`.
+- `EditorWebView` forwards this state to `note/[id].tsx`, and header buttons are disabled when history is unavailable.
+- Initial content synchronization in `RichTextEditorWebView.setContent` is dispatched with `addToHistory: false`.
+- This prevents the first undo after opening a note from wiping the whole note body.

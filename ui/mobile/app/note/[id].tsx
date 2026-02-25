@@ -79,6 +79,7 @@ export default function NoteEditorScreen() {
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
+  const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
     title: '',
@@ -148,6 +149,7 @@ export default function NoteEditorScreen() {
     if (note) {
       setTitle(note.title || '')
       setTags(note.tags ?? [])
+      setHistoryState({ canUndo: false, canRedo: false })
       lastSavedRef.current = {
         title: note.title ?? '',
         description: note.description ?? '',
@@ -242,19 +244,31 @@ export default function NoteEditorScreen() {
               </Pressable>
               <Pressable
                 onPress={() => editorRef.current?.runCommand('undo')}
+                disabled={!historyState.canUndo}
                 accessibilityLabel="Undo"
                 accessibilityRole="button"
-                style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+                accessibilityState={{ disabled: !historyState.canUndo }}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  !historyState.canUndo && styles.headerButtonDisabled,
+                  pressed && historyState.canUndo && { opacity: 0.5 },
+                ]}
               >
-                <Undo2 color={colors.foreground} size={20} />
+                <Undo2 color={historyState.canUndo ? colors.foreground : colors.mutedForeground} size={20} />
               </Pressable>
               <Pressable
                 onPress={() => editorRef.current?.runCommand('redo')}
+                disabled={!historyState.canRedo}
                 accessibilityLabel="Redo"
                 accessibilityRole="button"
-                style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+                accessibilityState={{ disabled: !historyState.canRedo }}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  !historyState.canRedo && styles.headerButtonDisabled,
+                  pressed && historyState.canRedo && { opacity: 0.5 },
+                ]}
               >
-                <Redo2 color={colors.foreground} size={20} />
+                <Redo2 color={historyState.canRedo ? colors.foreground : colors.mutedForeground} size={20} />
               </Pressable>
             </View>
           ),
@@ -307,6 +321,7 @@ export default function NoteEditorScreen() {
           onFocus={() => setIsEditorFocused(true)}
           onBlur={handleEditorBlur}
           onSelectionChange={setHasSelection}
+          onHistoryStateChange={setHistoryState}
           loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
         />
       </View>
@@ -367,6 +382,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   },
   headerButton: {
     padding: 8,
+  },
+  headerButtonDisabled: {
+    opacity: 0.35,
   },
   toolbarContainer: {
     position: 'absolute',

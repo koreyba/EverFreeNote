@@ -260,6 +260,56 @@ describe('EditorWebView message handling', () => {
     })
   })
 
+  describe('HISTORY_STATE handling', () => {
+    it('calls onHistoryStateChange with canUndo/canRedo from payload', async () => {
+      const onHistoryStateChange = jest.fn()
+
+      render(
+        <EditorWebView
+          initialContent=""
+          onHistoryStateChange={onHistoryStateChange}
+        />
+      )
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('HISTORY_STATE', { canUndo: true, canRedo: false })
+
+      expect(onHistoryStateChange).toHaveBeenCalledWith({ canUndo: true, canRedo: false })
+    })
+
+    it('coerces missing HISTORY_STATE fields to false', async () => {
+      const onHistoryStateChange = jest.fn()
+
+      render(
+        <EditorWebView
+          initialContent=""
+          onHistoryStateChange={onHistoryStateChange}
+        />
+      )
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('HISTORY_STATE', null)
+
+      expect(onHistoryStateChange).toHaveBeenCalledWith({ canUndo: false, canRedo: false })
+    })
+
+    it('does not throw when onHistoryStateChange is not provided', async () => {
+      render(<EditorWebView initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      expect(() => sendMessage('HISTORY_STATE', { canUndo: true, canRedo: true })).not.toThrow()
+    })
+  })
+
   describe('EDITOR_BLUR handling', () => {
     it('calls onBlur when EDITOR_BLUR message is received', async () => {
       const onBlur = jest.fn()

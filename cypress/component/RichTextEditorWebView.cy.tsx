@@ -139,4 +139,33 @@ describe('RichTextEditorWebView', () => {
       expect(text.trim().endsWith('Y')).to.eq(true)
     })
   })
+
+  it('does not clear baseline content on first undo after setContent', () => {
+    const Harness = () => {
+      const ref = React.useRef<{
+        setContent: (html: string) => void
+        runCommand: (command: string) => void
+      } | null>(null)
+
+      return (
+        <div>
+          <button data-cy="set-content" onClick={() => ref.current?.setContent('<p>Baseline</p>')}>
+            Set content
+          </button>
+          <button data-cy="undo" onClick={() => ref.current?.runCommand('undo')}>
+            Undo
+          </button>
+          <RichTextEditorWebView ref={ref} initialContent="" />
+        </div>
+      )
+    }
+
+    cy.mount(<Harness />)
+
+    cy.get('[data-cy="set-content"]').click()
+    cy.get('.ProseMirror').should('contain', 'Baseline')
+
+    cy.get('[data-cy="undo"]').click()
+    cy.get('.ProseMirror').should('contain', 'Baseline')
+  })
 })

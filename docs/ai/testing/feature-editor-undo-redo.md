@@ -81,3 +81,12 @@ description: Define testing approach, test cases, and quality assurance
 
 ## Bug Tracking
 - Приоритет багов: P1 — undo/redo не работает; P2 — неверный disabled-state; P3 — визуальные проблемы.
+
+## 2026-02-25 Mobile Undo/Redo Regression Coverage
+- Added integration tests for mobile header undo/redo disabled state driven by history (`canUndo/canRedo`).
+- Added component tests for `HISTORY_STATE` message handling in `EditorWebView`.
+- Added Cypress component regression test for `RichTextEditorWebView`: first undo after `setContent` must not clear baseline content.
+
+### Execution status
+- `npm --prefix ui/mobile test -- noteEditorUndoRedo.test.tsx editorWebViewMessages.test.tsx` passed.
+- Cypress component run in this environment failed before test output with native process exit `-1073741795`; spec execution could not be verified here.
