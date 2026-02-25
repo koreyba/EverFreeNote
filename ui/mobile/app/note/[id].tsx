@@ -8,7 +8,7 @@ import { EditorToolbar, TOOLBAR_CONTENT_HEIGHT } from '@ui/mobile/components/Edi
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
-import { Trash2 } from 'lucide-react-native'
+import { Trash2, ChevronLeft, Undo2, Redo2 } from 'lucide-react-native'
 import { Pressable } from 'react-native'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 
@@ -226,9 +226,38 @@ export default function NoteEditorScreen() {
     <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: 'Edit',
+          title: '',
+          headerBackVisible: false,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
+          headerLeft: () => (
+            <View style={styles.headerLeftActions}>
+              <Pressable
+                onPress={() => router.back()}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+              >
+                <ChevronLeft color={colors.foreground} size={24} />
+              </Pressable>
+              <Pressable
+                onPress={() => editorRef.current?.runCommand('undo')}
+                accessibilityLabel="Undo"
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+              >
+                <Undo2 color={colors.foreground} size={20} />
+              </Pressable>
+              <Pressable
+                onPress={() => editorRef.current?.runCommand('redo')}
+                accessibilityLabel="Redo"
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+              >
+                <Redo2 color={colors.foreground} size={20} />
+              </Pressable>
+            </View>
+          ),
           headerRight: () => (
             <View style={styles.headerActions}>
               <Pressable
@@ -330,6 +359,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 12,
+  },
+  headerLeftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 4,
   },
   headerButton: {
     padding: 8,

@@ -23,6 +23,8 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Undo,
+  Redo,
   CheckSquare,
   Heading1,
   Heading2,
@@ -95,6 +97,40 @@ const MenuBar = ({ editor, hasSelection, onApplyMarkdown }: MenuBarProps) => {
   return (
     <TooltipProvider delayDuration={150}>
       <div className="sticky top-[-1px] z-20 flex flex-wrap items-center gap-1 border-b bg-card p-2 shadow-sm">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-cy="undo-button"
+              variant="ghost"
+              size="sm"
+              onClick={() => editor.chain().focus().undo().run()}
+              disabled={!editor.can().undo()}
+              aria-label="Undo"
+            >
+              <Undo className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-cy="redo-button"
+              variant="ghost"
+              size="sm"
+              onClick={() => editor.chain().focus().redo().run()}
+              disabled={!editor.can().redo()}
+              aria-label="Redo"
+            >
+              <Redo className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Redo (Ctrl+Shift+Z)</TooltipContent>
+        </Tooltip>
+
+        <div className="w-px h-5 bg-border mx-0.5" />
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

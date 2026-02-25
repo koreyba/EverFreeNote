@@ -17,19 +17,19 @@ description: Break down work into actionable tasks and estimate timeline
 **What specific work needs to be done?**
 
 ### Phase 1: Веб — RichTextEditor.tsx
-- [ ] Task 1.1: Импортировать иконки `Undo` и `Redo` из `lucide-react` в `RichTextEditor.tsx`
-- [ ] Task 1.2: Добавить кнопки Undo/Redo в начало `MenuBar` (перед Bold), с разделителем после
-- [ ] Task 1.3: Кнопка Undo: `onClick={() => editor.chain().focus().undo().run()}`, `disabled={!editor.can().undo()}`
-- [ ] Task 1.4: Кнопка Redo: `onClick={() => editor.chain().focus().redo().run()}`, `disabled={!editor.can().redo()}`
-- [ ] Task 1.5: Добавить Tooltip "Undo (Ctrl+Z)" и "Redo (Ctrl+Shift+Z)" по аналогии с остальными кнопками
+- [x] Task 1.1: Импортировать иконки `Undo` и `Redo` из `lucide-react` в `RichTextEditor.tsx`
+- [x] Task 1.2: Добавить кнопки Undo/Redo в начало `MenuBar` (перед Bold), с разделителем после
+- [x] Task 1.3: Кнопка Undo: `onClick={() => editor.chain().focus().undo().run()}`, `disabled={!editor.can().undo()}`
+- [x] Task 1.4: Кнопка Redo: `onClick={() => editor.chain().focus().redo().run()}`, `disabled={!editor.can().redo()}`
+- [x] Task 1.5: Добавить Tooltip "Undo (Ctrl+Z)" и "Redo (Ctrl+Shift+Z)" по аналогии с остальными кнопками
 - [ ] Task 1.6: Проверить визуально — desktop и mobile viewport
 
 ### Phase 2: Мобайл-нейтив — note/[id].tsx
-- [ ] Task 2.1: Импортировать `Undo2`, `Redo2` из `lucide-react-native` и `useRouter` (уже есть) в `note/[id].tsx`
-- [ ] Task 2.2: Убрать `title: 'Edit'` → `title: ''` в `Stack.Screen options`
-- [ ] Task 2.3: Добавить `headerLeft` — кастомный компонент с кнопкой "назад" (через `router.back()`) и двумя кнопками Undo/Redo
-- [ ] Task 2.4: Undo: `editorRef.current?.runCommand('undo')`, Redo: `editorRef.current?.runCommand('redo')`
-- [ ] Task 2.5: Стилизовать кнопки по аналогии с `headerButton` из существующих стилей
+- [x] Task 2.1: Импортировать `Undo2`, `Redo2`, `ChevronLeft` из `lucide-react-native` в `note/[id].tsx`
+- [x] Task 2.2: Убрать `title: 'Edit'` → `title: ''` в `Stack.Screen options`
+- [x] Task 2.3: Добавить `headerLeft` — кастомный компонент с кнопкой "назад" (`router.back()`) и двумя кнопками Undo/Redo
+- [x] Task 2.4: Undo: `editorRef.current?.runCommand('undo')`, Redo: `editorRef.current?.runCommand('redo')`
+- [x] Task 2.5: Стилизовать кнопки — добавлен стиль `headerLeftActions`, переиспользован `headerButton`
 - [ ] Task 2.6: Проверить на Android-эмуляторе / реальном устройстве
 
 ### Phase 3: Тесты и финализация
