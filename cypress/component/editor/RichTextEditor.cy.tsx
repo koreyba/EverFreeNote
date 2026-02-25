@@ -1066,6 +1066,89 @@ describe('RichTextEditor Component', () => {
       cy.get('[data-cy="editor-content"]').find('strong').should('exist')
     })
 
+    it('redo button restores formatting after keyboard undo', () => {
+      cy.mount(
+        <RichTextEditor initialContent="" onContentChange={cy.stub()} />
+      )
+
+      cy.get('[data-cy="editor-content"]').click()
+      cy.get('[data-cy="editor-content"]').type('Hello')
+      cy.get('[data-cy="editor-content"]').type('{selectall}')
+      cy.get('[data-cy="bold-button"]').click()
+      cy.get('[data-cy="editor-content"]').find('strong').should('exist')
+
+      // Use keyboard undo to preserve redo stack in TipTap 3.x
+      cy.get('[data-cy="editor-content"]').type('{ctrl}z')
+      cy.get('[data-cy="editor-content"]').find('strong').should('not.exist')
+
+      // Force a React re-render without mutating history entries:
+      // toggle selection state only so disabled={!editor.can().redo()} is recalculated.
+      cy.get('[data-cy="editor-content"]').type('{selectall}')
+      cy.get('[data-cy="editor-content"]').type('{rightarrow}')
+
+      cy.get('[data-cy="redo-button"]').should('not.be.disabled')
+      cy.get('[data-cy="redo-button"]').click()
+      cy.get('[data-cy="editor-content"]').find('strong').should('exist')
+    })
+
+    it('redo button becomes disabled after redoing the latest undone step', () => {
+      cy.mount(
+        <RichTextEditor initialContent="" onContentChange={cy.stub()} />
+      )
+
+      cy.get('[data-cy="editor-content"]').click()
+      cy.get('[data-cy="editor-content"]').type('Hello')
+      cy.get('[data-cy="editor-content"]').type('{selectall}')
+      cy.get('[data-cy="bold-button"]').click()
+
+      // Use keyboard undo to preserve redo stack in TipTap 3.x
+      cy.get('[data-cy="editor-content"]').type('{ctrl}z')
+
+      // Re-render toolbar state via selection-only changes (no history mutation).
+      cy.get('[data-cy="editor-content"]').type('{selectall}')
+      cy.get('[data-cy="editor-content"]').type('{rightarrow}')
+
+      cy.get('[data-cy="redo-button"]').should('not.be.disabled')
+
+      cy.get('[data-cy="redo-button"]').click()
+      cy.get('[data-cy="editor-content"]').find('strong').should('exist')
+      cy.get('[data-cy="redo-button"]').should('be.disabled')
+    })
+
+    it('redo button reapplies multiple formatting steps in order', () => {
+      cy.mount(
+        <RichTextEditor initialContent="" onContentChange={cy.stub()} />
+      )
+
+      cy.get('[data-cy="editor-content"]').click()
+      cy.get('[data-cy="editor-content"]').type('Hello')
+      cy.get('[data-cy="editor-content"]').type('{selectall}')
+      cy.get('[data-cy="bold-button"]').click()
+      cy.get('[data-cy="italic-button"]').click()
+      cy.get('[data-cy="editor-content"]').find('strong').should('exist')
+      cy.get('[data-cy="editor-content"]').find('em').should('exist')
+
+      // Use keyboard undo to preserve redo stack in TipTap 3.x
+      cy.get('[data-cy="editor-content"]').type('{ctrl}z')
+      cy.get('[data-cy="editor-content"]').type('{ctrl}z')
+      cy.get('[data-cy="editor-content"]').find('strong').should('not.exist')
+      cy.get('[data-cy="editor-content"]').find('em').should('not.exist')
+
+      // Re-render toolbar state via selection-only changes (no history mutation).
+      cy.get('[data-cy="editor-content"]').type('{selectall}')
+      cy.get('[data-cy="editor-content"]').type('{rightarrow}')
+
+      cy.get('[data-cy="redo-button"]').should('not.be.disabled')
+      cy.get('[data-cy="redo-button"]').click()
+      cy.get('[data-cy="editor-content"]').find('strong').should('exist')
+      cy.get('[data-cy="editor-content"]').find('em').should('not.exist')
+
+      cy.get('[data-cy="redo-button"]').should('not.be.disabled')
+      cy.get('[data-cy="redo-button"]').click()
+      cy.get('[data-cy="editor-content"]').find('strong').should('exist')
+      cy.get('[data-cy="editor-content"]').find('em').should('exist')
+    })
+
     it('undo button has correct tooltip text', () => {
       cy.mount(
         <RichTextEditor initialContent="" onContentChange={cy.stub()} />
