@@ -255,6 +255,12 @@ export default function EditorWebViewPage() {
     }
   }
 
+  const handleSelectionChange = (hasSelection: boolean) => {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SELECTION_CHANGE', payload: hasSelection }))
+    }
+  }
+
   return (
     <div className="h-screen w-screen overflow-auto bg-background">
       <RichTextEditorWebView
@@ -263,6 +269,7 @@ export default function EditorWebViewPage() {
         onContentChange={handleChange}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        onSelectionChange={handleSelectionChange}
       />
     </div>
   )

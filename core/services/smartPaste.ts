@@ -95,46 +95,60 @@ export const SmartPasteService = {
     return { type: 'plain', confidence: 0.6, reasons, warnings }
   },
 
-  resolvePaste(payload: PastePayload, options: SmartPasteOptions = {}): PasteResult {
+  resolvePaste(
+    payload: PastePayload,
+    options: SmartPasteOptions = {},
+    forcedType?: PasteType,
+  ): PasteResult {
     const config = { ...DEFAULT_OPTIONS, ...options }
-    const detection = SmartPasteService.detectPasteType(payload, config)
-    const warnings = [...detection.warnings]
-
-    try {
-      if (detection.type === 'html' && payload.html) {
-        const sanitized = sanitizePasteHtml(payload.html)
-        const html = unwrapSingleParagraph(sanitized)
-        return { html, type: 'html', warnings, detection }
-      }
-
-      if (detection.type === 'markdown' && payload.text) {
-        if (payload.text.length > config.maxLength) {
-          warnings.push('plain:oversized-text')
-          const html = plainTextToHtml(payload.text)
-          return { html: sanitizePasteHtml(html), type: 'plain', warnings, detection }
-        }
-
-        if (containsUnsupportedMarkdown(payload.text)) {
-          warnings.push('plain:unsupported-markdown')
-          // Fallback to plain text wrapper without stripping characters (Strategy 2)
-          const html = plainTextToHtml(payload.text)
-          return { html: sanitizePasteHtml(html), type: 'plain', warnings, detection }
-        }
-
-        const rendered = markdown.render(payload.text)
-        return { html: sanitizePasteHtml(rendered), type: 'markdown', warnings, detection }
-      }
-
-      const text = payload.text ?? SanitizationService.stripHtml(payload.html ?? '')
-      const plainHtml = plainTextToHtml(text)
-      return { html: sanitizePasteHtml(plainHtml), type: 'plain', warnings, detection }
-    } catch {
-      warnings.push('plain:parse-failed')
-      const fallbackText = payload.text ?? safeStripHtml(payload.html ?? '')
-      const fallbackHtml = plainTextToHtml(fallbackText)
-      return { html: fallbackHtml, type: 'plain', warnings, detection }
-    }
+    const detection: PasteDetection = forcedType
+      ? { type: forcedType, confidence: 1.0, reasons: ['forced-by-user'], warnings: [] }
+      : SmartPasteService.detectPasteType(payload, config)
+    return resolvePasteInternal(payload, detection, config)
   },
+}
+
+function resolvePasteInternal(
+  payload: PastePayload,
+  detection: PasteDetection,
+  config: Required<SmartPasteOptions>,
+): PasteResult {
+  const warnings = [...detection.warnings]
+
+  try {
+    if (detection.type === 'html' && payload.html) {
+      const sanitized = sanitizePasteHtml(payload.html)
+      const html = unwrapSingleParagraph(sanitized)
+      return { html, type: 'html', warnings, detection }
+    }
+
+    if (detection.type === 'markdown' && payload.text) {
+      if (payload.text.length > config.maxLength) {
+        warnings.push('plain:oversized-text')
+        const html = plainTextToHtml(payload.text)
+        return { html: sanitizePasteHtml(html), type: 'plain', warnings, detection }
+      }
+
+      if (containsUnsupportedMarkdown(payload.text)) {
+        warnings.push('plain:unsupported-markdown')
+        // Fallback to plain text wrapper without stripping characters (Strategy 2)
+        const html = plainTextToHtml(payload.text)
+        return { html: sanitizePasteHtml(html), type: 'plain', warnings, detection }
+      }
+
+      const rendered = markdown.render(payload.text)
+      return { html: sanitizePasteHtml(rendered), type: 'markdown', warnings, detection }
+    }
+
+    const text = payload.text ?? SanitizationService.stripHtml(payload.html ?? '')
+    const plainHtml = plainTextToHtml(text)
+    return { html: sanitizePasteHtml(plainHtml), type: 'plain', warnings, detection }
+  } catch {
+    warnings.push('plain:parse-failed')
+    const fallbackText = payload.text ?? safeStripHtml(payload.html ?? '')
+    const fallbackHtml = plainTextToHtml(fallbackText)
+    return { html: fallbackHtml, type: 'plain', warnings, detection }
+  }
 }
 
 function safeStripHtml(html: string): string {

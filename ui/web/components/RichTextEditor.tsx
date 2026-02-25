@@ -72,12 +72,14 @@ type RichTextEditorProps = {
 
 type MenuBarProps = {
   editor: Editor | null
+  hasSelection: boolean
+  onApplyMarkdown: () => void
 }
 
 const fontFamilies = ["Sans Serif", "Serif", "Monospace", "Cursive"]
 const fontSizes = ["10", "11", "12", "13", "14", "15", "18", "24", "30", "36"]
 
-const MenuBar = ({ editor }: MenuBarProps) => {
+const MenuBar = ({ editor, hasSelection, onApplyMarkdown }: MenuBarProps) => {
   if (!editor) {
     return null
   }
@@ -482,6 +484,22 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           </TooltipTrigger>
           <TooltipContent>Clear formatting</TooltipContent>
         </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-cy="apply-markdown-button"
+              variant="ghost"
+              size="sm"
+              onClick={onApplyMarkdown}
+              disabled={!hasSelection}
+              aria-label="Apply as Markdown"
+            >
+              MD
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Apply as Markdown</TooltipContent>
+        </Tooltip>
       </div>
     </TooltipProvider>
   )
@@ -491,6 +509,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
   ({ initialContent, onContentChange, hideToolbar = false }, ref) => {
     const editorRef = React.useRef<Editor | null>(null)
     const suppressNextUpdateRef = React.useRef(false)
+    const [hasSelection, setHasSelection] = React.useState(false)
     // Мемоизация конфигурации расширений для предотвращения пересоздания
     const editorExtensions: Extensions = React.useMemo(() => [
       StarterKit.configure({
@@ -521,6 +540,19 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       FontFamily,
       FontSize,
     ], [])
+
+    const applySelectionAsMarkdown = React.useCallback(() => {
+      const editor = editorRef.current
+      if (!editor) return
+      const { from, to } = editor.state.selection
+      if (from === to) return
+      const selectedText = editor.state.doc.textBetween(from, to, '\n')
+      const payload = { text: selectedText, html: null, types: ['text/plain'] as string[] }
+      const result = SmartPasteService.resolvePaste(payload, undefined, 'markdown')
+      if (!result.html) return
+      editor.chain().focus().deleteRange({ from, to }).insertContent(result.html).run()
+      onContentChange?.()
+    }, [onContentChange])
 
     // Мемоизация editorProps для предотвращения ре-рендеров
     const handlePaste = React.useCallback((_: unknown, event: ClipboardEvent) => {
@@ -567,6 +599,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
           return
         }
         onContentChange?.()
+      },
+      onSelectionUpdate: ({ editor: e }) => {
+        const { from, to } = e.state.selection
+        setHasSelection(from !== to)
       },
       editorProps,
     })
@@ -616,7 +652,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
 
     return (
       <div className={`bg-background ${hideToolbar ? '' : 'border border-t-0 rounded-b-md rounded-t-none'}`}>
-        {!hideToolbar && <MenuBar editor={editor} />}
+        {!hideToolbar && <MenuBar editor={editor} hasSelection={hasSelection} onApplyMarkdown={applySelectionAsMarkdown} />}
         <div onMouseDown={handleEditorContainerMouseDown}>
           <EditorContent
             data-cy="editor-content"

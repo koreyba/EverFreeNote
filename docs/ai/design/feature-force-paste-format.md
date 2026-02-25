@@ -27,9 +27,11 @@ flowchart TD
 
 **Key components:**
 - `SmartPasteService` (core service) — receives `forcedType = 'markdown'`, skips detection, runs existing markdown pipeline.
-- `ApplyMarkdownButton` (new UI component) — disabled when selection is empty; triggers `applySelectionAsMarkdown` on click.
-- `RichTextEditor` / `RichTextEditorWebView` (existing) — adds `applySelectionAsMarkdown` handler; renders the button.
-- `EditorToolbar` (mobile, existing) — renders the new button.
+- `RichTextEditor` (existing) — adds `applySelectionAsMarkdown` handler + `hasSelection` state + button inlined in `MenuBar`.
+- `RichTextEditorWebView` (existing) — adds `applySelectionAsMarkdown` (dispatched via `runCommand`); emits `onSelectionChange`.
+- `app/editor-webview/page.tsx` (Next.js bridge page) — forwards `onSelectionChange` to native via `SELECTION_CHANGE` postMessage.
+- `EditorWebView` (native wrapper) — handles `SELECTION_CHANGE` message, calls `onSelectionChange` prop.
+- `EditorToolbar` (mobile, existing) — renders the new button, receives `hasSelection` from native screen.
 
 ## Data Models
 **What data do we need to manage?**
@@ -62,7 +64,17 @@ ref.current.runCommand('applySelectionAsMarkdown')
 
 Inside `RichTextEditorWebView`, `runCommand` dispatches to TipTap's `editor.chain().focus()[command](...args).run()`. The `applySelectionAsMarkdown` action is registered as a custom TipTap command so it is reachable via `runCommand`.
 
-**`hasSelection` on mobile:** Bridging WebView selection state to the native toolbar requires extending `RichTextEditorWebViewProps` with an `onSelectionChange` callback. The WebView fires it on `selectionUpdate`; the native screen passes the boolean down to `EditorToolbar`. This is the only new prop crossing the boundary. The button is disabled in the native toolbar when `hasSelection = false`.
+**`hasSelection` on mobile — full bridge chain:**
+
+```
+RichTextEditorWebView (web, onSelectionUpdate)
+  → onSelectionChange(bool) prop
+  → app/editor-webview/page.tsx: postMessage({ type: 'SELECTION_CHANGE', payload: bool })
+  → EditorWebView.tsx handleMessage: case 'SELECTION_CHANGE' → onSelectionChange?.(bool)
+  → ui/mobile/app/note/[id].tsx: setHasSelection(bool) → <EditorToolbar hasSelection={hasSelection} />
+```
+
+On editor blur, `hasSelection` is reset to `false` to ensure the button is disabled when the editor is not active.
 
 ### SmartPasteService interface extension
 
@@ -118,33 +130,26 @@ const applySelectionAsMarkdown = useCallback(() => {
 }, [editor, onContentChange])
 ```
 
-### `ApplyMarkdownButton` props
-
-```typescript
-interface ApplyMarkdownButtonProps {
-  disabled: boolean   // true when selection is empty
-  onClick: () => void
-}
-```
-
-The parent editor component tracks whether the selection is non-empty to drive the `disabled` prop. TipTap fires `onSelectionUpdate` on every selection change.
+The parent editor component tracks whether the selection is non-empty via `onSelectionUpdate`. TipTap fires it on every selection change. The button is inlined in `MenuBar` (web) and `EditorToolbar` (mobile) — no separate component file.
 
 ## Component Breakdown
 **What are the major building blocks?**
 
 ### New components
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `ApplyMarkdownButton` | `ui/web/components/` | Web toolbar button, disabled when no selection |
+None — the button is inlined in the existing `MenuBar` component inside `RichTextEditor`.
 
 ### Modified components
 
 | Component | File | Change |
 |-----------|------|--------|
-| `SmartPasteService` | `core/services/smartPaste.ts` | Add optional `forcedType` to `resolvePaste`; extract pipeline into private helper |
-| `RichTextEditor` | `ui/web/components/RichTextEditor.tsx` | Add `applySelectionAsMarkdown` handler + `hasSelection` state + render button |
-| `RichTextEditorWebView` | `ui/web/components/RichTextEditorWebView.tsx` | Register `applySelectionAsMarkdown` as custom TipTap command (callable via `runCommand`); add `onSelectionChange` prop |
+| `SmartPasteService` | `core/services/smartPaste.ts` | Add optional `forcedType` to `resolvePaste`; extract pipeline into module-level helper |
+| `RichTextEditor` | `ui/web/components/RichTextEditor.tsx` | Add `applySelectionAsMarkdown` handler + `hasSelection` state + button inlined in `MenuBar` |
+| `RichTextEditorWebView` | `ui/web/components/RichTextEditorWebView.tsx` | Add `applySelectionAsMarkdown` (dispatched via `runCommand` early-return); add `onSelectionChange` prop |
+| `app/editor-webview/page.tsx` | `app/editor-webview/page.tsx` | Forward `onSelectionChange` to native via `SELECTION_CHANGE` postMessage |
+| `EditorWebView` | `ui/mobile/components/EditorWebView.tsx` | Add `onSelectionChange` prop; handle `SELECTION_CHANGE` message |
+| `ui/mobile/app/note/[id].tsx` | `ui/mobile/app/note/[id].tsx` | Add `hasSelection` state; wire `onSelectionChange`; pass `hasSelection` to `EditorToolbar` |
+| `EditorToolbar` | `ui/mobile/components/EditorToolbar.tsx` | Add `hasSelection` prop + MD button with disabled state |
 | `EditorToolbar` | `ui/mobile/components/EditorToolbar.tsx` | Add button with `disabled` prop wired to `hasSelection` from native screen |
 
 ## Design Decisions

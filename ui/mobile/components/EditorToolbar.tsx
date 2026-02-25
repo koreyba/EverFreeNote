@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { ScrollView, Pressable, StyleSheet, View } from 'react-native'
+import { ScrollView, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
     Bold,
@@ -19,9 +19,10 @@ export const TOOLBAR_CONTENT_HEIGHT = 48
 
 type Props = {
     onCommand: (method: string, args?: unknown[]) => void
+    hasSelection?: boolean
 }
 
-export const EditorToolbar = ({ onCommand }: Props) => {
+export const EditorToolbar = ({ onCommand, hasSelection = false }: Props) => {
     const { colors } = useTheme()
     const insets = useSafeAreaInsets()
     const styles = useMemo(() => createStyles(colors), [colors])
@@ -58,6 +59,20 @@ export const EditorToolbar = ({ onCommand }: Props) => {
                 <View style={styles.divider} />
                 <ToolbarButton icon={Quote} onPress={() => onCommand('toggleBlockquote')} />
                 <ToolbarButton icon={Code} onPress={() => onCommand('toggleCodeBlock')} />
+                <View style={styles.divider} />
+                <Pressable
+                    accessibilityLabel="Apply as Markdown"
+                    accessibilityState={{ disabled: !hasSelection }}
+                    disabled={!hasSelection}
+                    style={({ pressed }) => [
+                        styles.button,
+                        pressed && hasSelection && styles.buttonPressed,
+                        !hasSelection && styles.buttonDisabled,
+                    ]}
+                    onPress={() => onCommand('applySelectionAsMarkdown')}
+                >
+                    <Text style={styles.mdLabel}>MD</Text>
+                </Pressable>
             </ScrollView>
         </View>
     )
@@ -84,6 +99,14 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     },
     buttonPressed: {
         backgroundColor: colors.accent,
+    },
+    buttonDisabled: {
+        opacity: 0.35,
+    },
+    mdLabel: {
+        fontSize: 13,
+        fontWeight: '600' as const,
+        color: colors.foreground,
     },
     divider: {
         width: 1,
