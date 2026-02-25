@@ -65,6 +65,21 @@ describe('RichTextEditor — Apply as Markdown button', () => {
       cy.get('[data-cy="editor-content"]').find('h1').should('exist').and('contain.text', 'Main Title')
     })
 
+    it('preserves paragraph breaks between blocks after applying markdown', () => {
+      // Regression for \n vs \n\n bug: single \n collapsed all paragraphs into one
+      mountEditor('<p>**First block**</p><p>**Second block**</p><p>**Third block**</p>')
+
+      cy.get('[data-cy="editor-content"]').click()
+      cy.get('.ProseMirror').type('{selectall}')
+      cy.get('[data-cy="apply-markdown-button"]').click()
+
+      // Must have 3 separate strong elements, not one merged paragraph
+      cy.get('[data-cy="editor-content"]').find('strong').should('have.length', 3)
+      cy.get('[data-cy="editor-content"]').should('contain.text', 'First block')
+      cy.get('[data-cy="editor-content"]').should('contain.text', 'Second block')
+      cy.get('[data-cy="editor-content"]').should('contain.text', 'Third block')
+    })
+
     it('strips XSS tags from forced markdown input', () => {
       mountEditor('<p># Title\n\n<script>alert(1)</script>\n\nParagraph</p>')
 
