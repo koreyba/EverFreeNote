@@ -20,6 +20,7 @@ type Props = {
     onReady?: () => void
     onFocus?: () => void
     onBlur?: () => void
+    onSelectionChange?: (hasSelection: boolean) => void
     loadingFallback?: React.ReactNode
 }
 
@@ -63,7 +64,7 @@ const formatDebugValue = (value: string | null) => {
 }
 
 const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
-    ({ initialContent = '', onContentChange, onReady, onFocus, onBlur, loadingFallback }, ref) => {
+    ({ initialContent = '', onContentChange, onReady, onFocus, onBlur, onSelectionChange, loadingFallback }, ref) => {
         const webViewRef = useRef<WebView>(null)
         const { colors, colorScheme } = useTheme()
         const styles = useMemo(() => createStyles(colors), [colors])
@@ -279,6 +280,9 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         break
                     case 'EDITOR_BLUR':
                         onBlur?.()
+                        break
+                    case 'SELECTION_CHANGE':
+                        onSelectionChange?.(Boolean(payload))
                         break
                     case 'CONTENT_ON_BLUR':
                         // Safety net: content sent on blur ensures nothing is lost

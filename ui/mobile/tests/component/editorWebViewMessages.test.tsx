@@ -210,6 +210,56 @@ describe('EditorWebView message handling', () => {
     })
   })
 
+  describe('SELECTION_CHANGE handling', () => {
+    it('calls onSelectionChange(true) when payload is true', async () => {
+      const onSelectionChange = jest.fn()
+
+      render(
+        <EditorWebView
+          initialContent=""
+          onSelectionChange={onSelectionChange}
+        />
+      )
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('SELECTION_CHANGE', true)
+
+      expect(onSelectionChange).toHaveBeenCalledWith(true)
+    })
+
+    it('calls onSelectionChange(false) when payload is false', async () => {
+      const onSelectionChange = jest.fn()
+
+      render(
+        <EditorWebView
+          initialContent=""
+          onSelectionChange={onSelectionChange}
+        />
+      )
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('SELECTION_CHANGE', false)
+
+      expect(onSelectionChange).toHaveBeenCalledWith(false)
+    })
+
+    it('does not throw when onSelectionChange is not provided', async () => {
+      render(<EditorWebView initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      expect(() => sendMessage('SELECTION_CHANGE', true)).not.toThrow()
+    })
+  })
+
   describe('EDITOR_BLUR handling', () => {
     it('calls onBlur when EDITOR_BLUR message is received', async () => {
       const onBlur = jest.fn()
