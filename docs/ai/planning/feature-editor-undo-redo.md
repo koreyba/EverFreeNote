@@ -33,8 +33,8 @@ description: Break down work into actionable tasks and estimate timeline
 - [ ] Task 2.6: Проверить на Android-эмуляторе / реальном устройстве
 
 ### Phase 3: Тесты и финализация
-- [ ] Task 3.1: Написать unit-тест для `MenuBar` — кнопки Undo/Redo рендерятся, вызывают нужные команды
-- [ ] Task 3.2: Написать unit-тест для `note/[id].tsx` — `headerLeft` содержит undo/redo кнопки
+- [x] Task 3.1: Cypress тесты для `MenuBar` — 7 тест-кейсов в `cypress/component/editor/RichTextEditor.cy.tsx`
+- [x] Task 3.2: Jest тесты для `note/[id].tsx` — 6 тест-кейсов в `ui/mobile/tests/integration/noteEditorUndoRedo.test.tsx` (6/6 ✅)
 - [ ] Task 3.3: Ручное тестирование по чеклисту (см. `docs/ai/testing/feature-editor-undo-redo.md`)
 - [ ] Task 3.4: Code review
 

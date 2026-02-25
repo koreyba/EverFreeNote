@@ -77,7 +77,6 @@ describe('NoteList Virtualization', () => {
     cy.get('div[style*="overflow"]').should('exist').scrollTo('bottom', { ensureScrollable: false, duration: 100 })
     
     // Wait for virtualization to catch up
-    //cy.wait(200)
     
     // Now the last note should be visible
     cy.contains('Note 99').should('be.visible')

@@ -147,12 +147,8 @@ describe('NoteEditor Component', () => {
 
     // INPUT_DEBOUNCE_MS (250) + autosaveDelayMs (200) = 450ms
 
-    // Wait a bit less
-    // cy.wait(300)
     cy.get('@onAutoSave').should('not.have.been.called', { timeout: 500 })
 
-    // Wait enough
-    //cy.wait(1000)
     cy.get('@onAutoSave').should('have.been.calledOnce', { timeout: 1500 })
     cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
       noteId: 'note-1',
