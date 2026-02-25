@@ -74,3 +74,11 @@ description: Clarify the problem space, gather requirements, and define success 
 - Autosave create transition (`undefined -> id` for the same draft) must keep the same editor session and preserve focus/caret.
 - The reset mechanism is an editor remount (new session key), not `setContent` mutation on the existing editor instance.
 - Acceptance check: after switching A -> B, both undo and redo are disabled until user edits note B.
+
+## 2026-02-26 Mobile History State Alignment Addendum
+- This addendum supersedes earlier MVP assumptions where mobile undo/redo was always active.
+- Mobile undo/redo disabled state is no longer an open MVP item; it is implemented and required.
+- `canUndo/canRedo` must be delivered from the WebView editor to React Native through bridge message `HISTORY_STATE`.
+- Mobile header buttons must be disabled when history is unavailable and enabled when history is available.
+- A refetch/autosave refresh of the same note (`note.id` unchanged) must not reset the displayed history state to disabled.
+- History state reset is allowed only on a real note switch (`note.id` changes to another note).

@@ -104,3 +104,14 @@ description: Define testing approach, test cases, and quality assurance
 
 ### Why this test matters
 - It protects the architectural rule: history reset is guaranteed by note-session remount boundaries, not by in-place editor mutation.
+
+## 2026-02-26 Mobile Same-Note Refresh Regression Coverage
+
+### Added integration test
+- File: `ui/mobile/tests/integration/noteEditorUndoRedo.test.tsx`
+- Scenario: undo is enabled, then the same note is refreshed in query cache (`['note', 'note-id']` with unchanged id).
+- Assertion: undo remains enabled after refresh.
+
+### Why this test matters
+- It protects against a mobile-specific regression where autosave/refetch of the same note incorrectly reset header history state to disabled.
+- It verifies that history UI reset is tied to note identity change, not to any note object refresh.

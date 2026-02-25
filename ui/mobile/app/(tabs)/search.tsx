@@ -1,5 +1,5 @@
 import { View, TextInput, StyleSheet, ActivityIndicator, Text, Pressable, Alert, BackHandler } from 'react-native'
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
 import { useSearch, useDeleteNote, useOpenNote, useBulkSelection, useBulkDeleteNotes } from '@ui/mobile/hooks'
@@ -78,11 +78,12 @@ export default function SearchScreen() {
         return () => clearTimeout(timeout)
     }, [query, user?.id])
 
-    // Reset selection mode when search query changes.
-    // Intentionally excludes `isActive` and `deactivate` from deps — we only want to
-    // trigger on new search input, not on every re-render where isActive/deactivate change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { if (isActive) deactivate() }, [query])
+    const previousQueryRef = useRef(query)
+    useEffect(() => {
+        if (previousQueryRef.current === query) return
+        previousQueryRef.current = query
+        if (isActive) deactivate()
+    }, [query, isActive, deactivate])
 
     // Transform header when selection mode is active
     useEffect(() => {
@@ -154,9 +155,11 @@ export default function SearchScreen() {
                 {
                     text: 'Delete',
                     style: 'destructive',
-                    onPress: async () => {
-                        await bulkDelete([...selectedIds])
-                        deactivate()
+                    onPress: () => {
+                        void (async () => {
+                            await bulkDelete([...selectedIds])
+                            deactivate()
+                        })()
                     },
                 },
             ]

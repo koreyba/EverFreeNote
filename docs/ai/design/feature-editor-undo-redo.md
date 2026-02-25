@@ -138,3 +138,21 @@ Generic-обработчик в `RichTextEditorWebView.tsx` поддержива
 ### Important Clarification
 - Do not use `setContent` on the existing editor instance as the primary switch mechanism.
 - Use remount for note switch boundaries; use direct content updates only for in-session operations.
+
+## 2026-02-26 Mobile History Bridge Design Addendum
+
+This addendum supersedes earlier MVP notes that described mobile undo/redo as always-active without bridge-driven disabled state.
+
+### Bridge contract
+- `RichTextEditorWebView` emits history state snapshots: `{ canUndo: boolean, canRedo: boolean }`.
+- `EditorWebViewPage` deduplicates repeated `HISTORY_STATE` payloads before posting to React Native.
+- `EditorWebView` forwards `HISTORY_STATE` to `note/[id].tsx` via `onHistoryStateChange`.
+- `note/[id].tsx` stores the state and drives header button `disabled` and `accessibilityState`.
+
+### Command execution rule
+- `undo` and `redo` must use explicit commands (`editor.commands.undo()` / `editor.commands.redo()`).
+- They must not be routed through generic `chain().focus()[command]().run()` because focus transactions can invalidate redo stack behavior.
+
+### Refresh boundary rule (mobile)
+- On same-note refresh (query invalidation/autosave refetch with identical `note.id`), keep current history UI state.
+- Reset history UI state only when note identity changes.

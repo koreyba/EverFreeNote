@@ -175,7 +175,8 @@ function renderScreen() {
   const queryClient = createTestQueryClient()
   const Wrapper = createQueryWrapper(queryClient)
 
-  return render(<NoteEditorScreen />, { wrapper: Wrapper })
+  const renderResult = render(<NoteEditorScreen />, { wrapper: Wrapper })
+  return { ...renderResult, queryClient }
 }
 
 const waitForEditorReady = async () => {
@@ -300,5 +301,26 @@ describe('NoteEditorScreen — Undo/Redo header buttons', () => {
     expect(mockRunCommand).toHaveBeenNthCalledWith(1, 'undo')
     expect(mockRunCommand).toHaveBeenNthCalledWith(2, 'redo')
     expect(mockRunCommand).toHaveBeenNthCalledWith(3, 'undo')
+  })
+
+  it('keeps undo enabled when the same note is refreshed after autosave', async () => {
+    const { queryClient } = renderScreen()
+    await waitForEditorReady()
+
+    await setHistoryState({ canUndo: true, canRedo: false })
+    expect(screen.getByLabelText('Undo').props.accessibilityState?.disabled).toBe(false)
+
+    await act(async () => {
+      queryClient.setQueryData(
+        ['note', 'note-id'],
+        createMockNote({
+          id: 'note-id',
+          title: 'Test Note',
+          description: '',
+        })
+      )
+    })
+
+    expect(screen.getByLabelText('Undo').props.accessibilityState?.disabled).toBe(false)
   })
 })

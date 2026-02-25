@@ -81,6 +81,7 @@ export default function NoteEditorScreen() {
   const [hasSelection, setHasSelection] = useState(false)
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const lastHydratedNoteIdRef = useRef<string | null>(null)
   const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
     title: '',
     description: '',
@@ -147,9 +148,13 @@ export default function NoteEditorScreen() {
 
   useEffect(() => {
     if (note) {
+      const hasNoteSwitched = lastHydratedNoteIdRef.current !== note.id
+      if (hasNoteSwitched) {
+        setHistoryState({ canUndo: false, canRedo: false })
+        lastHydratedNoteIdRef.current = note.id
+      }
       setTitle(note.title || '')
       setTags(note.tags ?? [])
-      setHistoryState({ canUndo: false, canRedo: false })
       lastSavedRef.current = {
         title: note.title ?? '',
         description: note.description ?? '',

@@ -167,3 +167,28 @@ import { Trash2, ChevronLeft } from 'lucide-react-native'
 - `editorSessionKey` is used in both title input key and `RichTextEditor` key to remount and clear per-note undo/redo history.
 - On autosave create transition (`undefined -> id` for the same draft), it does not increment session key.
 - `NoteEditor` no longer calls `editorRef.current?.setContent(initialDescription)` during note switch; remount is the single reset path.
+
+## 2026-02-26 Mobile Autosave Refresh Fix Addendum
+
+### Scope clarification
+- The implementation footprint is broader than the original "2 files" MVP note.
+- Undo/redo behavior now depends on coordinated updates across:
+  - `ui/mobile/app/note/[id].tsx`
+  - `ui/mobile/components/EditorWebView.tsx`
+  - `app/editor-webview/page.tsx`
+  - `ui/web/components/RichTextEditorWebView.tsx`
+
+### Key mobile fix
+- `note/[id].tsx` keeps `historyState` stable across same-note refreshes.
+- Introduced `lastHydratedNoteIdRef` guard:
+  - if `note.id` changed, reset history UI state to `{ canUndo: false, canRedo: false }`
+  - if `note.id` is the same, do not reset history UI state
+- This prevents undo button from becoming permanently disabled after autosave refetch.
+
+### Current command path
+- Header press -> `editorRef.current?.runCommand('undo' | 'redo')`
+- Bridge -> WebView command
+- Editor execution:
+  - `undo` -> `editor.commands.undo()`
+  - `redo` -> `editor.commands.redo()`
+- Generic `chain().focus()` path remains only for non-history commands.
