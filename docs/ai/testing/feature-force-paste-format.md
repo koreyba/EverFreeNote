@@ -17,29 +17,46 @@ description: Define testing approach, test cases, and quality assurance
 
 ### SmartPasteService — forced type override (`core/services/smartPaste.ts`)
 
-- [ ] **Forced markdown — low-score text:** payload with text scoring below threshold + `forcedType = 'markdown'` → `result.type === 'markdown'`, output contains rendered tags (`<h1>`, `<ul>`, etc.).
-- [ ] **Detection skipped:** when `forcedType` is provided, `detectPasteType` is NOT called (spy/mock).
-- [ ] **Sanitization still runs:** forced markdown output has script tags stripped, unsafe URLs removed.
-- [ ] **Empty text:** `forcedType = 'markdown'`, `payload.text = ''` → `result.html` is empty string, no error.
-- [ ] **No forced type — auto-detection unchanged:** `resolvePaste(payload)` without `forcedType` produces same result as before (regression guard for all existing test cases).
+> Tests: `ui/mobile/tests/unit/core-services-smartPaste.test.ts`
 
-### `ApplyMarkdownButton` (`ui/web/components/ApplyMarkdownButton.tsx`)
+- [x] **Forced markdown — low-score text:** payload with text scoring below threshold + `forcedType = 'markdown'` → `result.type === 'markdown'`, output contains rendered tags (`<ul>`, `<li>`).
+- [x] **Detection skipped:** when `forcedType` is provided, `detectPasteType` is NOT called (spy/mock).
+- [x] **Sanitization still runs:** forced markdown output has script tags stripped, unsafe URLs removed.
+- [x] **Empty text:** `forcedType = 'markdown'`, `payload.text = ''` → no error thrown.
+- [x] **No forced type — auto-detection unchanged:** `resolvePaste(payload)` without `forcedType` produces same result as before.
+- [x] **Detection metadata:** `result.detection.confidence === 1.0`, `reasons` contains `'forced-by-user'`.
 
-- [ ] **Disabled state:** `disabled=true` → button has `disabled` attribute, not clickable.
-- [ ] **Enabled state:** `disabled=false` → button is interactive.
-- [ ] **onClick fires:** simulating click calls `onClick` callback once.
+### `EditorToolbar` — MD button (`ui/mobile/components/EditorToolbar.tsx`)
 
-### `EditorToolbar` — new button (`ui/mobile/components/EditorToolbar.tsx`)
+> Tests: `ui/mobile/tests/component/editorToolbar.test.tsx`
 
-- [ ] **Renders disabled when no selection:** `hasSelection=false` → button is disabled/dimmed.
-- [ ] **Renders enabled when selection exists:** `hasSelection=true` → button is active.
-- [ ] **Callback fires:** pressing button calls `onApplyMarkdown`.
+- [x] **Renders MD button:** button with `accessibilityLabel="Apply as Markdown"` is present.
+- [x] **Disabled by default:** no `hasSelection` prop → `accessibilityState.disabled === true`.
+- [x] **Disabled when hasSelection=false:** `accessibilityState.disabled === true`.
+- [x] **Enabled when hasSelection=true:** `accessibilityState.disabled === false`.
+- [x] **Callback fires when enabled:** pressing with `hasSelection=true` calls `onCommand('applySelectionAsMarkdown')`.
+- [x] **No callback when disabled:** pressing with `hasSelection=false` does NOT call `onCommand`.
+- [x] **Label text:** button shows "MD" text.
+
+### `EditorWebView` — SELECTION_CHANGE bridge (`ui/mobile/components/EditorWebView.tsx`)
+
+> Tests: `ui/mobile/tests/component/editorWebViewMessages.test.tsx`
+
+- [x] **Payload true:** `SELECTION_CHANGE` message with `true` → calls `onSelectionChange(true)`.
+- [x] **Payload false:** `SELECTION_CHANGE` message with `false` → calls `onSelectionChange(false)`.
+- [x] **No callback prop:** `SELECTION_CHANGE` without `onSelectionChange` → no crash.
+
+### `applySelectionAsMarkdown` utility (`ui/web/lib/editor.ts`)
+
+> No web jest config — covered by manual QA and indirectly via SmartPasteService tests.
 
 ## Integration Tests
 
-- [ ] **Forced markdown — low-score fixture:** `force-markdown.txt` content with `forcedType = 'markdown'` → result HTML contains `<h1>`, `<ul>` etc.
-- [ ] **Same fixture without forced type:** auto-detects as `'plain'` (confirms fixture is genuinely below threshold).
-- [ ] **Existing fixtures unaffected:** all 4 existing integration fixtures produce same output as before (regression).
+> Tests: `ui/mobile/tests/integration/smartPaste.integration.test.ts`
+
+- [x] **Forced markdown — low-score fixture:** `force-markdown.txt` with `forcedType = 'markdown'` → result HTML contains `<ul>`, `<li>`, `'Buy milk'`.
+- [x] **Same fixture without forced type:** auto-detects as `'plain'` (confirms fixture is genuinely below threshold).
+- [x] **Existing fixtures unaffected:** all 4 existing integration fixtures produce same output as before (regression).
 
 ## End-to-End Tests
 **What user flows need validation?**
