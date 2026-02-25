@@ -78,6 +78,7 @@ export default function NoteEditorScreen() {
   const [title, setTitle] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
+  const [hasSelection, setHasSelection] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
     title: '',
@@ -184,6 +185,7 @@ export default function NoteEditorScreen() {
 
   const handleEditorBlur = useCallback(() => {
     setIsEditorFocused(false)
+    setHasSelection(false)
     // Flush any pending save immediately when editor loses focus
     void flushPendingUpdates()
   }, [flushPendingUpdates])
@@ -275,12 +277,13 @@ export default function NoteEditorScreen() {
           onContentChange={handleContentChange}
           onFocus={() => setIsEditorFocused(true)}
           onBlur={handleEditorBlur}
+          onSelectionChange={setHasSelection}
           loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
         />
       </View>
       {isEditorFocused && (
         <View style={[styles.toolbarContainer, { bottom: keyboardHeight }]}>
-          <EditorToolbar onCommand={handleToolbarCommand} />
+          <EditorToolbar onCommand={handleToolbarCommand} hasSelection={hasSelection} />
         </View>
       )}
     </View>

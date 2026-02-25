@@ -20,6 +20,7 @@ import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { FontSize } from "@/extensions/FontSize"
 import { SmartPasteService } from "@core/services/smartPaste"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
+import { applySelectionAsMarkdown } from "@ui/web/lib/editor"
 
 export type RichTextEditorWebViewHandle = {
   getHTML: () => string
@@ -32,14 +33,22 @@ type RichTextEditorWebViewProps = {
   onContentChange?: () => void
   onFocus?: () => void
   onBlur?: () => void
+  onSelectionChange?: (hasSelection: boolean) => void
 }
 
 const RichTextEditorWebView = React.forwardRef<
   RichTextEditorWebViewHandle,
   RichTextEditorWebViewProps
->(({ initialContent, onContentChange, onFocus, onBlur }, ref) => {
+>(({ initialContent, onContentChange, onFocus, onBlur, onSelectionChange }, ref) => {
   const editorRef = React.useRef<Editor | null>(null)
   const suppressNextUpdateRef = React.useRef(false)
+
+  const handleApplySelectionAsMarkdown = React.useCallback(() => {
+    const editor = editorRef.current
+    if (!editor) return
+    applySelectionAsMarkdown(editor, onContentChange)
+  }, [onContentChange])
+
   const editorExtensions: Extensions = React.useMemo(
     () => [
       StarterKit.configure({
@@ -138,6 +147,10 @@ const RichTextEditorWebView = React.forwardRef<
       }
       onContentChange?.()
     },
+    onSelectionUpdate: ({ editor: e }) => {
+      const { from, to } = e.state.selection
+      onSelectionChange?.(from !== to)
+    },
     onFocus: () => {
       onFocus?.()
     },
@@ -165,6 +178,10 @@ const RichTextEditorWebView = React.forwardRef<
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
+        if (command === 'applySelectionAsMarkdown') {
+          handleApplySelectionAsMarkdown()
+          return
+        }
         const cmd = (
           editor.chain().focus() as unknown as Record<
             string,
@@ -176,7 +193,7 @@ const RichTextEditorWebView = React.forwardRef<
         }
       },
     }),
-    [editor]
+    [editor, handleApplySelectionAsMarkdown]
   )
 
   return (

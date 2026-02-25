@@ -101,4 +101,23 @@ describe('smartPaste integration', () => {
     expect(result.type).toBe('markdown')
     expect(result.html).toContain('<hr')
   })
+
+  describe('forced markdown — force-markdown.txt fixture', () => {
+    it('auto-detects fixture as plain (confirms low markdown score)', () => {
+      const text = readFixture('force-markdown.txt')
+      const result = SmartPasteService.resolvePaste({ html: null, text, types: ['text/plain'] })
+
+      expect(result.type).toBe('plain')
+    })
+
+    it('renders fixture as markdown when forcedType is provided', () => {
+      const text = readFixture('force-markdown.txt')
+      const result = SmartPasteService.resolvePaste({ html: null, text, types: ['text/plain'] }, undefined, 'markdown')
+
+      expect(result.type).toBe('markdown')
+      expect(result.html).toContain('<ul>')
+      expect(result.html).toContain('<li>')
+      expect(result.html).toContain('Buy milk')
+    })
+  })
 })

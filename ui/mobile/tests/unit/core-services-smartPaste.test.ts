@@ -487,4 +487,84 @@ describe('core/services/smartPaste', () => {
       expect(result.html).toContain('<h1>')
     })
   })
+
+  describe('resolvePaste — forced type override', () => {
+    it('renders markdown when forcedType overrides low-score text', () => {
+      const payload = {
+        html: null,
+        text: 'Notes\n\n- Buy milk\n- Call dentist',
+        types: ['text/plain'],
+      }
+
+      // Without forced type: score is too low → plain
+      const auto = SmartPasteService.resolvePaste(payload)
+      expect(auto.type).toBe('plain')
+
+      // With forcedType: rendered as markdown
+      const forced = SmartPasteService.resolvePaste(payload, undefined, 'markdown')
+      expect(forced.type).toBe('markdown')
+      expect(forced.html).toContain('<ul>')
+      expect(forced.html).toContain('<li>')
+    })
+
+    it('sets detection to forced-by-user when forcedType is provided', () => {
+      const payload = {
+        html: null,
+        text: 'Hello world',
+        types: ['text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload, undefined, 'markdown')
+      expect(result.detection.confidence).toBe(1.0)
+      expect(result.detection.reasons).toContain('forced-by-user')
+    })
+
+    it('sanitizes output even when forced type is used', () => {
+      const payload = {
+        html: null,
+        text: '# Title\n\n<script>alert(1)</script>\n\nParagraph.',
+        types: ['text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload, undefined, 'markdown')
+      expect(result.html).not.toContain('<script>')
+      expect(result.html).toContain('<h1>')
+      expect(result.html).toContain('Paragraph')
+    })
+
+    it('returns empty html without error when text is empty string', () => {
+      const payload = {
+        html: null,
+        text: '',
+        types: ['text/plain'],
+      }
+
+      expect(() => SmartPasteService.resolvePaste(payload, undefined, 'markdown')).not.toThrow()
+    })
+
+    it('does not call detectPasteType when forcedType is provided', () => {
+      const spy = jest.spyOn(SmartPasteService, 'detectPasteType')
+      const payload = {
+        html: null,
+        text: '# Heading\n\nContent',
+        types: ['text/plain'],
+      }
+
+      SmartPasteService.resolvePaste(payload, undefined, 'markdown')
+      expect(spy).not.toHaveBeenCalled()
+      spy.mockRestore()
+    })
+
+    it('auto-detection is unchanged when forcedType is not provided', () => {
+      const payload = {
+        html: null,
+        text: '# Heading\n\nContent with **bold** and lists:\n\n- item',
+        types: ['text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+      expect(result.type).toBe('markdown')
+      expect(result.detection.reasons).not.toContain('forced-by-user')
+    })
+  })
 })
