@@ -57,6 +57,7 @@ import { browser } from "@ui/web/adapters/browser"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { SmartPasteService } from "@core/services/smartPaste"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
+import { applySelectionAsMarkdown } from "@ui/web/lib/editor"
 
 export type RichTextEditorHandle = {
   getHTML: () => string
@@ -541,17 +542,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       FontSize,
     ], [])
 
-    const applySelectionAsMarkdown = React.useCallback(() => {
+    const handleApplySelectionAsMarkdown = React.useCallback(() => {
       const editor = editorRef.current
       if (!editor) return
-      const { from, to } = editor.state.selection
-      if (from === to) return
-      const selectedText = editor.state.doc.textBetween(from, to, '\n')
-      const payload = { text: selectedText, html: null, types: ['text/plain'] as string[] }
-      const result = SmartPasteService.resolvePaste(payload, undefined, 'markdown')
-      if (!result.html) return
-      editor.chain().focus().deleteRange({ from, to }).insertContent(result.html).run()
-      onContentChange?.()
+      applySelectionAsMarkdown(editor, onContentChange)
     }, [onContentChange])
 
     // Мемоизация editorProps для предотвращения ре-рендеров
@@ -652,7 +646,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
 
     return (
       <div className={`bg-background ${hideToolbar ? '' : 'border border-t-0 rounded-b-md rounded-t-none'}`}>
-        {!hideToolbar && <MenuBar editor={editor} hasSelection={hasSelection} onApplyMarkdown={applySelectionAsMarkdown} />}
+        {!hideToolbar && <MenuBar editor={editor} hasSelection={hasSelection} onApplyMarkdown={handleApplySelectionAsMarkdown} />}
         <div onMouseDown={handleEditorContainerMouseDown}>
           <EditorContent
             data-cy="editor-content"
