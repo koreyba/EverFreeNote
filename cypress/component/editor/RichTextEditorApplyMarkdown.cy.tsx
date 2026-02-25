@@ -42,9 +42,9 @@ describe('RichTextEditor — Apply as Markdown button', () => {
 
   describe('markdown rendering', () => {
     it('converts selected low-score markdown text to rendered list', () => {
-      // This text scores below the auto-detection threshold (bullet list only = 2pts < 3)
-      // so without forcedType it would be detected as plain text
-      mountEditor('<p>Project notes\n\n- Buy milk\n- Call dentist\n- Review PR</p>')
+      // Separate <p> elements mirror how TipTap stores plain-pasted text.
+      // \n\n inside a single <p> is collapsed by the HTML parser and loses structure.
+      mountEditor('<p>Project notes</p><p>- Buy milk</p><p>- Call dentist</p><p>- Review PR</p>')
 
       cy.get('[data-cy="editor-content"]').click()
       cy.get('.ProseMirror').type('{selectall}')
@@ -65,8 +65,25 @@ describe('RichTextEditor — Apply as Markdown button', () => {
       cy.get('[data-cy="editor-content"]').find('h1').should('exist').and('contain.text', 'Main Title')
     })
 
+    it('preserves paragraph breaks between blocks after applying markdown', () => {
+      // Regression for \n vs \n\n bug: single \n collapsed all paragraphs into one
+      mountEditor('<p>**First block**</p><p>**Second block**</p><p>**Third block**</p>')
+
+      cy.get('[data-cy="editor-content"]').click()
+      cy.get('.ProseMirror').type('{selectall}')
+      cy.get('[data-cy="apply-markdown-button"]').click()
+
+      // Must have 3 separate strong elements, not one merged paragraph
+      cy.get('[data-cy="editor-content"]').find('strong').should('have.length', 3)
+      cy.get('[data-cy="editor-content"]').should('contain.text', 'First block')
+      cy.get('[data-cy="editor-content"]').should('contain.text', 'Second block')
+      cy.get('[data-cy="editor-content"]').should('contain.text', 'Third block')
+    })
+
     it('strips XSS tags from forced markdown input', () => {
-      mountEditor('<p># Title\n\n<script>alert(1)</script>\n\nParagraph</p>')
+      // Use HTML-escaped script tag so TipTap stores it as literal text, not strips it as a tag.
+      // textBetween then extracts the raw string, which SmartPasteService must sanitize.
+      mountEditor('<p># Title</p><p>&lt;script&gt;alert(1)&lt;/script&gt;</p><p>Paragraph</p>')
 
       cy.get('[data-cy="editor-content"]').click()
       cy.get('.ProseMirror').type('{selectall}')
