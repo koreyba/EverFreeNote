@@ -14,6 +14,7 @@ import {
 
 const mockBack = jest.fn()
 const mockPush = jest.fn()
+const mockRouteParams: { id: string } = { id: 'note-id' }
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -21,7 +22,7 @@ jest.mock('expo-router', () => ({
     back: mockBack,
     replace: jest.fn(),
   }),
-  useLocalSearchParams: () => ({ id: 'note-id' }),
+  useLocalSearchParams: () => mockRouteParams,
   Stack: {
     Screen: ({ children, options }: { children?: ReactNode; options?: { title?: string; headerLeft?: () => ReactNode; headerRight?: () => ReactNode } }) => {
       const { View } = require('react-native')
@@ -164,8 +165,10 @@ import { NoteService } from '@core/services/notes'
 const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
 
 function renderScreen() {
-  const note = createMockNote({ id: 'note-id', title: 'Test Note', description: '' })
-  const state = createMockNoteServiceState([note])
+  const state = createMockNoteServiceState([
+    createMockNote({ id: 'note-id', title: 'Test Note', description: '' }),
+    createMockNote({ id: 'note-id-2', title: 'Other Note', description: '<p>Other</p>' }),
+  ])
   const service = createMockNoteService(state)
 
   mockNoteService.prototype.getNote = service.getNote
@@ -196,6 +199,7 @@ describe('NoteEditorScreen — Undo/Redo header buttons', () => {
     mockRunCommand.mockClear()
     mockBack.mockClear()
     emitHistoryState = null
+    mockRouteParams.id = 'note-id'
   })
 
   it('renders headerLeft with back, undo, and redo buttons', async () => {
@@ -322,5 +326,23 @@ describe('NoteEditorScreen — Undo/Redo header buttons', () => {
     })
 
     expect(screen.getByLabelText('Undo').props.accessibilityState?.disabled).toBe(false)
+  })
+
+  it('resets undo/redo state when route switches to a different note', async () => {
+    const screenRender = renderScreen()
+    await waitForEditorReady()
+
+    await setHistoryState({ canUndo: true, canRedo: true })
+    expect(screen.getByLabelText('Undo').props.accessibilityState?.disabled).toBe(false)
+    expect(screen.getByLabelText('Redo').props.accessibilityState?.disabled).toBe(false)
+
+    mockRouteParams.id = 'note-id-2'
+    await act(async () => {
+      screenRender.rerender(<NoteEditorScreen />)
+    })
+    await waitForEditorReady()
+
+    expect(screen.getByLabelText('Undo').props.accessibilityState?.disabled).toBe(true)
+    expect(screen.getByLabelText('Redo').props.accessibilityState?.disabled).toBe(true)
   })
 })

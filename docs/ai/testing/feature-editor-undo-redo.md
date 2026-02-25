@@ -115,3 +115,20 @@ description: Define testing approach, test cases, and quality assurance
 ### Why this test matters
 - It protects against a mobile-specific regression where autosave/refetch of the same note incorrectly reset header history state to disabled.
 - It verifies that history UI reset is tied to note identity change, not to any note object refresh.
+
+## 2026-02-26 Additional Regression Scenarios
+
+### Added mobile integration scenario
+- File: `ui/mobile/tests/integration/noteEditorUndoRedo.test.tsx`
+- Scenario: route switches from note A to note B.
+- Assertions:
+  - Before switch: undo/redo can be enabled by history events.
+  - After switch: header undo/redo are reset to disabled.
+
+### Added bridge component scenario
+- File: `cypress/component/editor/EditorWebViewPageBridge.cy.tsx`
+- Scenario: `HISTORY_STATE` transitions across type/undo/redo.
+- Assertions:
+  - Consecutive duplicates are deduplicated.
+  - Real state transitions are emitted.
+  - A non-consecutive repeated state (e.g. back to `[true, false]`) is emitted again.
