@@ -160,3 +160,10 @@ import { Trash2, ChevronLeft } from 'lucide-react-native'
 - `EditorWebView` forwards this state to `note/[id].tsx`, and header buttons are disabled when history is unavailable.
 - Initial content synchronization in `RichTextEditorWebView.setContent` is dispatched with `addToHistory: false`.
 - This prevents the first undo after opening a note from wiping the whole note body.
+
+## 2026-02-26 Web Note Switch Implementation Addendum
+- `ui/web/components/features/notes/NoteEditor.tsx` now treats note switching as an editor session boundary.
+- On real note change (`noteId` changes between existing notes), it increments a dedicated `editorSessionKey`.
+- `editorSessionKey` is used in both title input key and `RichTextEditor` key to remount and clear per-note undo/redo history.
+- On autosave create transition (`undefined -> id` for the same draft), it does not increment session key.
+- `NoteEditor` no longer calls `editorRef.current?.setContent(initialDescription)` during note switch; remount is the single reset path.

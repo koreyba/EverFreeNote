@@ -200,6 +200,14 @@ const RichTextEditorWebView = React.forwardRef<
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
+        if (command === "undo") {
+          editor.commands.undo()
+          return
+        }
+        if (command === "redo") {
+          editor.commands.redo()
+          return
+        }
         if (command === 'applySelectionAsMarkdown') {
           handleApplySelectionAsMarkdown()
           return

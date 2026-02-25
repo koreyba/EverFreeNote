@@ -1,5 +1,5 @@
 import React from 'react'
-import RichTextEditorWebView from '../../ui/web/components/RichTextEditorWebView'
+import RichTextEditorWebView, { type RichTextEditorWebViewHandle } from '../../ui/web/components/RichTextEditorWebView'
 
 describe('RichTextEditorWebView', () => {
   it('renders with full screen height and captures clicks below content', () => {
@@ -142,10 +142,7 @@ describe('RichTextEditorWebView', () => {
 
   it('does not clear baseline content on first undo after setContent', () => {
     const Harness = () => {
-      const ref = React.useRef<{
-        setContent: (html: string) => void
-        runCommand: (command: string) => void
-      } | null>(null)
+      const ref = React.useRef<RichTextEditorWebViewHandle | null>(null)
 
       return (
         <div>

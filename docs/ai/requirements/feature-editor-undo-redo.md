@@ -68,3 +68,9 @@ description: Clarify the problem space, gather requirements, and define success 
 - **Закрыто:** Tooltips на вебе — реализуем ("Undo (Ctrl+Z)" / "Redo (Ctrl+Shift+Z)").
 - **Закрыто:** Автосохранение после undo — срабатывает автоматически через существующий `onUpdate` → debounce pipeline.
 - **Открыто:** Нужен ли disabled-state на мобайл-нейтив в будущем? (потребует расширения bridge-протокола для передачи `can().undo()` из WebView в React Native — отложено после MVP).
+
+## 2026-02-26 Web Note Switch History Reset Addendum
+- Web must reset editor history only on real note transitions (`noteId` changed to another existing note).
+- Autosave create transition (`undefined -> id` for the same draft) must keep the same editor session and preserve focus/caret.
+- The reset mechanism is an editor remount (new session key), not `setContent` mutation on the existing editor instance.
+- Acceptance check: after switching A -> B, both undo and redo are disabled until user edits note B.

@@ -90,3 +90,17 @@ description: Define testing approach, test cases, and quality assurance
 ### Execution status
 - `npm --prefix ui/mobile test -- noteEditorUndoRedo.test.tsx editorWebViewMessages.test.tsx` passed.
 - Cypress component run in this environment failed before test output with native process exit `-1073741795`; spec execution could not be verified here.
+
+## 2026-02-26 Web Note Switch History Reset Coverage
+
+### Added component test
+- File: `cypress/component/features/notes/NoteEditor.cy.tsx`
+- Scenario: switch between two existing notes (A -> B) after creating undo history in note A.
+- Assertions:
+  - Before switch: undo becomes enabled after editing note A.
+  - After switch: title/content from note B are rendered.
+  - After switch: undo and redo are both disabled (fresh history for note B).
+  - After switch: content typed in note A is not present in note B.
+
+### Why this test matters
+- It protects the architectural rule: history reset is guaranteed by note-session remount boundaries, not by in-place editor mutation.

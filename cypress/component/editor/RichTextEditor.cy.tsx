@@ -1046,9 +1046,7 @@ describe('RichTextEditor Component', () => {
     })
 
     it('keyboard undo reverts formatting; keyboard redo restores it', () => {
-      // The undo BUTTON calls editor.chain().focus().undo(), where focus() dispatches
-      // a transaction that clears the redo stack. Keyboard shortcuts bypass focus() and
-      // go directly through ProseMirror's keymap, keeping the redo stack intact.
+      // Keyboard path should remain fully functional alongside toolbar buttons.
       cy.mount(
         <RichTextEditor initialContent="" onContentChange={cy.stub()} />
       )
@@ -1077,14 +1075,9 @@ describe('RichTextEditor Component', () => {
       cy.get('[data-cy="bold-button"]').click()
       cy.get('[data-cy="editor-content"]').find('strong').should('exist')
 
-      // Use keyboard undo to preserve redo stack in TipTap 3.x
+      // Create one redo entry.
       cy.get('[data-cy="editor-content"]').type('{ctrl}z')
       cy.get('[data-cy="editor-content"]').find('strong').should('not.exist')
-
-      // Force a React re-render without mutating history entries:
-      // toggle selection state only so disabled={!editor.can().redo()} is recalculated.
-      cy.get('[data-cy="editor-content"]').type('{selectall}')
-      cy.get('[data-cy="editor-content"]').type('{rightarrow}')
 
       cy.get('[data-cy="redo-button"]').should('not.be.disabled')
       cy.get('[data-cy="redo-button"]').click()
@@ -1101,13 +1094,8 @@ describe('RichTextEditor Component', () => {
       cy.get('[data-cy="editor-content"]').type('{selectall}')
       cy.get('[data-cy="bold-button"]').click()
 
-      // Use keyboard undo to preserve redo stack in TipTap 3.x
+      // Create one redo entry.
       cy.get('[data-cy="editor-content"]').type('{ctrl}z')
-
-      // Re-render toolbar state via selection-only changes (no history mutation).
-      cy.get('[data-cy="editor-content"]').type('{selectall}')
-      cy.get('[data-cy="editor-content"]').type('{rightarrow}')
-
       cy.get('[data-cy="redo-button"]').should('not.be.disabled')
 
       cy.get('[data-cy="redo-button"]').click()
@@ -1128,15 +1116,11 @@ describe('RichTextEditor Component', () => {
       cy.get('[data-cy="editor-content"]').find('strong').should('exist')
       cy.get('[data-cy="editor-content"]').find('em').should('exist')
 
-      // Use keyboard undo to preserve redo stack in TipTap 3.x
+      // Create two redo entries.
       cy.get('[data-cy="editor-content"]').type('{ctrl}z')
       cy.get('[data-cy="editor-content"]').type('{ctrl}z')
       cy.get('[data-cy="editor-content"]').find('strong').should('not.exist')
       cy.get('[data-cy="editor-content"]').find('em').should('not.exist')
-
-      // Re-render toolbar state via selection-only changes (no history mutation).
-      cy.get('[data-cy="editor-content"]').type('{selectall}')
-      cy.get('[data-cy="editor-content"]').type('{rightarrow}')
 
       cy.get('[data-cy="redo-button"]').should('not.be.disabled')
       cy.get('[data-cy="redo-button"]').click()
@@ -1171,8 +1155,7 @@ describe('RichTextEditor Component', () => {
         <RichTextEditor initialContent="" onContentChange={cy.stub()} />
       )
 
-      // Enable redo by using keyboard undo (bypasses button's focus() chain that
-      // clears the redo stack). After keyboard undo, TipTap correctly enables redo.
+      // Enable redo by creating an undone step first.
       cy.get('[data-cy="editor-content"]').click()
       cy.get('[data-cy="editor-content"]').type('Hello')
       cy.get('[data-cy="editor-content"]').type('{selectall}')

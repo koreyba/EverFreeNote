@@ -7,6 +7,7 @@ import {
   type Editor,
   type Extensions,
 } from "@tiptap/react"
+import { createDocument } from "@tiptap/core"
 import StarterKit from "@tiptap/starter-kit"
 import Underline from "@tiptap/extension-underline"
 import Highlight from "@tiptap/extension-highlight"
@@ -75,14 +76,32 @@ type RichTextEditorProps = {
 
 type MenuBarProps = {
   editor: Editor | null
+  historyState: HistoryState
+  onUndo: () => void
+  onRedo: () => void
   hasSelection: boolean
   onApplyMarkdown: () => void
 }
 
+type HistoryState = {
+  canUndo: boolean
+  canRedo: boolean
+}
+
+const EMPTY_HISTORY_STATE: HistoryState = { canUndo: false, canRedo: false }
+
+const areHistoryStatesEqual = (left: HistoryState, right: HistoryState) =>
+  left.canUndo === right.canUndo && left.canRedo === right.canRedo
+
+const getHistoryState = (editor: Editor): HistoryState => ({
+  canUndo: editor.can().undo(),
+  canRedo: editor.can().redo(),
+})
+
 const fontFamilies = ["Sans Serif", "Serif", "Monospace", "Cursive"]
 const fontSizes = ["10", "11", "12", "13", "14", "15", "18", "24", "30", "36"]
 
-const MenuBar = ({ editor, hasSelection, onApplyMarkdown }: MenuBarProps) => {
+const MenuBar = ({ editor, historyState, onUndo, onRedo, hasSelection, onApplyMarkdown }: MenuBarProps) => {
   if (!editor) {
     return null
   }
@@ -103,8 +122,8 @@ const MenuBar = ({ editor, hasSelection, onApplyMarkdown }: MenuBarProps) => {
               data-cy="undo-button"
               variant="ghost"
               size="sm"
-              onClick={() => editor.chain().focus().undo().run()}
-              disabled={!editor.can().undo()}
+              onClick={onUndo}
+              disabled={!historyState.canUndo}
               aria-label="Undo"
             >
               <Undo className="w-4 h-4" />
@@ -119,8 +138,8 @@ const MenuBar = ({ editor, hasSelection, onApplyMarkdown }: MenuBarProps) => {
               data-cy="redo-button"
               variant="ghost"
               size="sm"
-              onClick={() => editor.chain().focus().redo().run()}
-              disabled={!editor.can().redo()}
+              onClick={onRedo}
+              disabled={!historyState.canRedo}
               aria-label="Redo"
             >
               <Redo className="w-4 h-4" />
@@ -547,6 +566,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     const editorRef = React.useRef<Editor | null>(null)
     const suppressNextUpdateRef = React.useRef(false)
     const [hasSelection, setHasSelection] = React.useState(false)
+    const [historyState, setHistoryState] = React.useState<HistoryState>(EMPTY_HISTORY_STATE)
+    const updateHistoryState = React.useCallback((next: HistoryState) => {
+      setHistoryState((prev) => (areHistoryStatesEqual(prev, next) ? prev : next))
+    }, [])
     // Мемоизация конфигурации расширений для предотвращения пересоздания
     const editorExtensions: Extensions = React.useMemo(() => [
       StarterKit.configure({
@@ -583,6 +606,14 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       if (!editor) return
       applySelectionAsMarkdown(editor, onContentChange)
     }, [onContentChange])
+
+    const handleUndo = React.useCallback(() => {
+      editorRef.current?.commands.undo()
+    }, [])
+
+    const handleRedo = React.useCallback(() => {
+      editorRef.current?.commands.redo()
+    }, [])
 
     // Мемоизация editorProps для предотвращения ре-рендеров
     const handlePaste = React.useCallback((_: unknown, event: ClipboardEvent) => {
@@ -623,6 +654,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       immediatelyRender: false,
       extensions: editorExtensions,
       content: initialContent,
+      onCreate: ({ editor: e }) => {
+        updateHistoryState(getHistoryState(e))
+      },
+      onTransaction: ({ editor: e }) => {
+        updateHistoryState(getHistoryState(e))
+      },
       onUpdate: () => {
         if (suppressNextUpdateRef.current) {
           suppressNextUpdateRef.current = false
@@ -639,12 +676,15 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
 
     React.useEffect(() => {
       editorRef.current = editor
+      if (!editor) {
+        updateHistoryState(EMPTY_HISTORY_STATE)
+      }
       return () => {
         if (editorRef.current === editor) {
           editorRef.current = null
         }
       }
-    }, [editor])
+    }, [editor, updateHistoryState])
 
     const handleEditorContainerMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
       if (!editor) return
@@ -668,11 +708,26 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     React.useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() ?? "",
       setContent: (html: string) => {
-        // Avoid triggering autosave on programmatic content sync (switching notes)
-        editor?.commands.setContent(html, { emitUpdate: false })
+        if (!editor) return
+        const document = createDocument(html, editor.schema, editor.options.parseOptions, {
+          errorOnInvalidContent: editor.options.enableContentCheck,
+        })
+        const tr = editor.state.tr
+          .replaceWith(0, editor.state.doc.content.size, document)
+          .setMeta("preventUpdate", true)
+          .setMeta("addToHistory", false)
+        editor.view.dispatch(tr)
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
+        if (command === "undo") {
+          editor.commands.undo()
+          return
+        }
+        if (command === "redo") {
+          editor.commands.redo()
+          return
+        }
         const cmd = (editor.chain().focus() as unknown as Record<string, (...a: unknown[]) => { run: () => void }>)[command]
         if (typeof cmd === 'function') {
           cmd(...args).run()
@@ -682,7 +737,16 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
 
     return (
       <div className={`bg-background ${hideToolbar ? '' : 'border border-t-0 rounded-b-md rounded-t-none'}`}>
-        {!hideToolbar && <MenuBar editor={editor} hasSelection={hasSelection} onApplyMarkdown={handleApplySelectionAsMarkdown} />}
+        {!hideToolbar && (
+          <MenuBar
+            editor={editor}
+            historyState={historyState}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            hasSelection={hasSelection}
+            onApplyMarkdown={handleApplySelectionAsMarkdown}
+          />
+        )}
         <div onMouseDown={handleEditorContainerMouseDown}>
           <EditorContent
             data-cy="editor-content"

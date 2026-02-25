@@ -3,9 +3,11 @@ import EditorWebViewPage from '../../../app/editor-webview/page'
 
 describe('EditorWebViewPage bridge', () => {
   it('deduplicates HISTORY_STATE messages sent to React Native', () => {
+    const nativePostMessage = cy.stub().as('nativePostMessage')
+
     cy.window().then((win) => {
       ;(win as unknown as { ReactNativeWebView?: { postMessage: (msg: string) => void } }).ReactNativeWebView = {
-        postMessage: cy.stub().as('nativePostMessage'),
+        postMessage: nativePostMessage,
       }
     })
 
@@ -13,21 +15,21 @@ describe('EditorWebViewPage bridge', () => {
     cy.get('.ProseMirror').should('exist')
 
     const extractHistoryStates = () => {
-      return cy.get('@nativePostMessage').then((stub) => {
-        const calls = (stub as sinon.SinonStub).getCalls()
-        return calls
-          .map((call) => {
-            try {
-              return JSON.parse(String(call.args[0]))
-            } catch {
-              return null
-            }
-          })
-          .filter((message): message is { type: string; payload: { canUndo: boolean; canRedo: boolean } } =>
-            Boolean(message && message.type === 'HISTORY_STATE')
-          )
-          .map((message) => [Boolean(message.payload.canUndo), Boolean(message.payload.canRedo)])
-      })
+      const calls = nativePostMessage.getCalls()
+      const states = calls
+        .map((call) => {
+          try {
+            return JSON.parse(String(call.args[0]))
+          } catch {
+            return null
+          }
+        })
+        .filter((message): message is { type: string; payload: { canUndo: boolean; canRedo: boolean } } =>
+          Boolean(message && message.type === 'HISTORY_STATE')
+        )
+        .map((message) => [Boolean(message.payload.canUndo), Boolean(message.payload.canRedo)] as [boolean, boolean])
+
+      return cy.wrap(states, { log: false })
     }
 
     // Initial state should be emitted exactly once.

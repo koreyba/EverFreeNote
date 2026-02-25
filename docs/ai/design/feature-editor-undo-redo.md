@@ -123,3 +123,18 @@ Generic-обработчик в `RichTextEditorWebView.tsx` поддержива
 - Мобайл bridge: задержка 50–150ms на реальных устройствах — приемлемо. Порог деградации UX: > 300ms (не ожидается при обычных условиях).
 - Нет дополнительных сетевых запросов, нет изменений в БД непосредственно при undo/redo.
 - Автосохранение **должно** срабатывать после undo/redo: TipTap вызывает `onUpdate` → `onContentChange()` → `debouncedAutoSave.schedule()`. Это ожидаемое и корректное поведение — откатившееся состояние сохраняется автоматически.
+
+## 2026-02-26 Web Note Switch History Reset Addendum
+
+### Session Boundary Rule
+- `NoteEditor` owns an explicit editor session key.
+- When user navigates to another existing note (`noteId` truly changes), session key increments and `RichTextEditor` remounts.
+- Remount is the source of truth for history reset across notes.
+
+### Non-Remount Rule
+- During autosave create (`undefined -> id` assignment for the same draft), session key is not changed.
+- This preserves in-flight typing UX and avoids focus loss.
+
+### Important Clarification
+- Do not use `setContent` on the existing editor instance as the primary switch mechanism.
+- Use remount for note switch boundaries; use direct content updates only for in-session operations.
