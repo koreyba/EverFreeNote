@@ -54,7 +54,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   availableTags = [],
   wordpressConfigured = false,
 }: NoteEditorProps, ref) {
-  const [inputResetKey, setInputResetKey] = React.useState(0)
+  const [editorSessionKey, setEditorSessionKey] = React.useState(0)
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
@@ -131,9 +131,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     })
   }, [autosaveDelayMs, onAutoSave])
 
-  // Sync editor content when switching notes.
-  // Important: don't reset/remount the editor on autosave-driven prop updates,
-  // otherwise the caret/focus gets lost mid-typing.
+  // Start a new editor session only when user actually switches notes.
+  // A session remount clears TipTap undo/redo history between notes.
+  // Important: do not remount on autosave-driven undefined -> id assignment,
+  // otherwise caret/focus gets lost mid-typing.
   React.useEffect(() => {
     const prevNoteId = lastResetNoteIdRef.current
     const nextNoteId = noteId
@@ -154,8 +155,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     }
     pendingCreateRef.current = false
 
-    editorRef.current?.setContent(initialDescription)
-    setInputResetKey((k) => k + 1)
+    setEditorSessionKey((k) => k + 1)
     const parsed = parseTagString(initialTags)
     setSelectedTags(parsed)
     selectedTagsRef.current = parsed
@@ -167,7 +167,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       description: initialDescription,
       tags: buildTagString(parsed),
     })
-  }, [noteId, initialTitle, initialDescription, initialTags, debouncedAutoSave, debouncedTagQuery, getAutoSavePayload, getFormData])
+  }, [noteId, initialTitle, initialDescription, initialTags, debouncedAutoSave, debouncedTagQuery, getAutoSavePayload])
 
   // Sync external auto-saving flag into local display state
   React.useEffect(() => {
@@ -307,7 +307,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         <div className="max-w-4xl mx-auto px-6 pt-6 space-y-4">
           <div>
             <Input
-              key={`title-${inputResetKey}`}
+              key={`title-${editorSessionKey}`}
               ref={titleInputRef}
               type="text"
               placeholder="Note title"
@@ -327,7 +327,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         </div>
         <div className="max-w-4xl mx-auto px-6 pb-6">
           <RichTextEditor
-            key={`editor-${inputResetKey}`}
+            key={`editor-${editorSessionKey}`}
             ref={editorRef}
             initialContent={initialDescription}
             onContentChange={handleContentChange}

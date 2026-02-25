@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { EditorContent, useEditor, type Editor, type Extensions } from "@tiptap/react"
+import { createDocument } from "@tiptap/core"
 import StarterKit from "@tiptap/starter-kit"
 import Underline from "@tiptap/extension-underline"
 import Highlight from "@tiptap/extension-highlight"
@@ -34,12 +35,13 @@ type RichTextEditorWebViewProps = {
   onFocus?: () => void
   onBlur?: () => void
   onSelectionChange?: (hasSelection: boolean) => void
+  onHistoryStateChange?: (state: { canUndo: boolean; canRedo: boolean }) => void
 }
 
 const RichTextEditorWebView = React.forwardRef<
   RichTextEditorWebViewHandle,
   RichTextEditorWebViewProps
->(({ initialContent, onContentChange, onFocus, onBlur, onSelectionChange }, ref) => {
+>(({ initialContent, onContentChange, onFocus, onBlur, onSelectionChange, onHistoryStateChange }, ref) => {
   const editorRef = React.useRef<Editor | null>(null)
   const suppressNextUpdateRef = React.useRef(false)
 
@@ -140,6 +142,18 @@ const RichTextEditorWebView = React.forwardRef<
     immediatelyRender: false,
     extensions: editorExtensions,
     content: initialContent,
+    onCreate: ({ editor: e }) => {
+      onHistoryStateChange?.({
+        canUndo: e.can().undo(),
+        canRedo: e.can().redo(),
+      })
+    },
+    onTransaction: ({ editor: e }) => {
+      onHistoryStateChange?.({
+        canUndo: e.can().undo(),
+        canRedo: e.can().redo(),
+      })
+    },
     onUpdate: () => {
       if (suppressNextUpdateRef.current) {
         suppressNextUpdateRef.current = false
@@ -174,10 +188,26 @@ const RichTextEditorWebView = React.forwardRef<
     () => ({
       getHTML: () => editor?.getHTML() ?? "",
       setContent: (html: string) => {
-        editor?.commands.setContent(html, { emitUpdate: false })
+        if (!editor) return
+        const document = createDocument(html, editor.schema, editor.options.parseOptions, {
+          errorOnInvalidContent: editor.options.enableContentCheck,
+        })
+        const tr = editor.state.tr
+          .replaceWith(0, editor.state.doc.content.size, document)
+          .setMeta("preventUpdate", true)
+          .setMeta("addToHistory", false)
+        editor.view.dispatch(tr)
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
+        if (command === "undo") {
+          editor.commands.undo()
+          return
+        }
+        if (command === "redo") {
+          editor.commands.redo()
+          return
+        }
         if (command === 'applySelectionAsMarkdown') {
           handleApplySelectionAsMarkdown()
           return

@@ -8,7 +8,7 @@ import { EditorToolbar, TOOLBAR_CONTENT_HEIGHT } from '@ui/mobile/components/Edi
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
-import { Trash2 } from 'lucide-react-native'
+import { Trash2, ChevronLeft, Undo2, Redo2 } from 'lucide-react-native'
 import { Pressable } from 'react-native'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 
@@ -79,7 +79,9 @@ export default function NoteEditorScreen() {
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
+  const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const lastHydratedNoteIdRef = useRef<string | null>(null)
   const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
     title: '',
     description: '',
@@ -146,6 +148,11 @@ export default function NoteEditorScreen() {
 
   useEffect(() => {
     if (note) {
+      const hasNoteSwitched = lastHydratedNoteIdRef.current !== note.id
+      if (hasNoteSwitched) {
+        setHistoryState({ canUndo: false, canRedo: false })
+        lastHydratedNoteIdRef.current = note.id
+      }
       setTitle(note.title || '')
       setTags(note.tags ?? [])
       lastSavedRef.current = {
@@ -226,9 +233,50 @@ export default function NoteEditorScreen() {
     <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: 'Edit',
+          title: '',
+          headerBackVisible: false,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
+          headerLeft: () => (
+            <View style={styles.headerLeftActions}>
+              <Pressable
+                onPress={() => router.back()}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+              >
+                <ChevronLeft color={colors.foreground} size={24} />
+              </Pressable>
+              <Pressable
+                onPress={() => editorRef.current?.runCommand('undo')}
+                disabled={!historyState.canUndo}
+                accessibilityLabel="Undo"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !historyState.canUndo }}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  !historyState.canUndo && styles.headerButtonDisabled,
+                  pressed && historyState.canUndo && { opacity: 0.5 },
+                ]}
+              >
+                <Undo2 color={historyState.canUndo ? colors.foreground : colors.mutedForeground} size={20} />
+              </Pressable>
+              <Pressable
+                onPress={() => editorRef.current?.runCommand('redo')}
+                disabled={!historyState.canRedo}
+                accessibilityLabel="Redo"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !historyState.canRedo }}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  !historyState.canRedo && styles.headerButtonDisabled,
+                  pressed && historyState.canRedo && { opacity: 0.5 },
+                ]}
+              >
+                <Redo2 color={historyState.canRedo ? colors.foreground : colors.mutedForeground} size={20} />
+              </Pressable>
+            </View>
+          ),
           headerRight: () => (
             <View style={styles.headerActions}>
               <Pressable
@@ -278,6 +326,7 @@ export default function NoteEditorScreen() {
           onFocus={() => setIsEditorFocused(true)}
           onBlur={handleEditorBlur}
           onSelectionChange={setHasSelection}
+          onHistoryStateChange={setHistoryState}
           loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
         />
       </View>
@@ -331,8 +380,16 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     alignItems: 'center',
     marginRight: 12,
   },
+  headerLeftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
   headerButton: {
     padding: 8,
+  },
+  headerButtonDisabled: {
+    opacity: 0.35,
   },
   toolbarContainer: {
     position: 'absolute',

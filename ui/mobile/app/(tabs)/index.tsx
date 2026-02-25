@@ -108,11 +108,13 @@ export default function NotesScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            await bulkDelete([...selectedIds])
-            deactivate()
-            setIsManualRefreshing(true)
-            void refetch().finally(() => setIsManualRefreshing(false))
+          onPress: () => {
+            void (async () => {
+              await bulkDelete([...selectedIds])
+              deactivate()
+              setIsManualRefreshing(true)
+              void refetch().finally(() => setIsManualRefreshing(false))
+            })()
           },
         },
       ]

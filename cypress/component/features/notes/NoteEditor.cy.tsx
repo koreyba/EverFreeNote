@@ -147,12 +147,8 @@ describe('NoteEditor Component', () => {
 
     // INPUT_DEBOUNCE_MS (250) + autosaveDelayMs (200) = 450ms
 
-    // Wait a bit less
-    // cy.wait(300)
     cy.get('@onAutoSave').should('not.have.been.called', { timeout: 500 })
 
-    // Wait enough
-    //cy.wait(1000)
     cy.get('@onAutoSave').should('have.been.calledOnce', { timeout: 1500 })
     cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
       noteId: 'note-1',
@@ -317,6 +313,61 @@ describe('NoteEditor Component', () => {
 
     cy.get('[data-cy="editor-content"]').should('contain.text', 'HelloWorld')
     cy.wrap(onAutoSave).should('have.been.called')
+  })
+
+  it('resets editor undo/redo history when switching between different notes', () => {
+    function Wrapper() {
+      const [active, setActive] = React.useState<'a' | 'b'>('a')
+      const note = active === 'a'
+        ? {
+            id: 'note-a',
+            title: 'Note A',
+            description: '<p>Alpha body</p>',
+            tags: 'alpha',
+          }
+        : {
+            id: 'note-b',
+            title: 'Note B',
+            description: '<p>Beta body</p>',
+            tags: 'beta',
+          }
+
+      return (
+        <div>
+          <button type="button" data-cy="switch-note" onClick={() => setActive((prev) => (prev === 'a' ? 'b' : 'a'))}>
+            Switch note
+          </button>
+          <NoteEditor
+            noteId={note.id}
+            initialTitle={note.title}
+            initialDescription={note.description}
+            initialTags={note.tags}
+            availableTags={[]}
+            isSaving={false}
+            onSave={() => undefined}
+            onRead={() => undefined}
+          />
+        </div>
+      )
+    }
+
+    cy.mount(<Wrapper />)
+
+    cy.get('[data-cy="editor-content"]').should('contain.text', 'Alpha body')
+    cy.get('[data-cy="undo-button"]').should('be.disabled')
+    cy.get('[data-cy="redo-button"]').should('be.disabled')
+
+    // Create history in note A.
+    cy.get('[data-cy="editor-content"]').click().type('{end} edited')
+    cy.get('[data-cy="undo-button"]').should('not.be.disabled')
+
+    // Switch to note B and verify new editor session starts with clean history.
+    cy.get('[data-cy="switch-note"]').click()
+    cy.get('input[placeholder="Note title"]').should('have.value', 'Note B')
+    cy.get('[data-cy="editor-content"]').should('contain.text', 'Beta body')
+    cy.get('[data-cy="editor-content"]').should('not.contain.text', 'edited')
+    cy.get('[data-cy="undo-button"]').should('be.disabled')
+    cy.get('[data-cy="redo-button"]').should('be.disabled')
   })
 
   it('shows export button when WordPress is configured and note has id', () => {
