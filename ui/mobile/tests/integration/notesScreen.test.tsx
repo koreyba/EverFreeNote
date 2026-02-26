@@ -540,7 +540,9 @@ describe('NotesScreen - Delete Functionality', () => {
       await waitFor(() => expect(screen.getByText('No notes yet')).toBeTruthy())
 
       const scrollView = screen.getByTestId('empty-state-scroll')
-      act(() => scrollView.props.refreshControl.props.onRefresh())
+      await act(async () => {
+        await scrollView.props.refreshControl.props.onRefresh()
+      })
 
       await waitFor(() => expect(screen.getByText('First Note')).toBeTruthy())
     })
@@ -558,7 +560,9 @@ describe('NotesScreen - Delete Functionality', () => {
       await waitFor(() => expect(screen.getByText('No notes yet')).toBeTruthy())
 
       const scrollView = screen.getByTestId('empty-state-scroll')
-      act(() => scrollView.props.refreshControl.props.onRefresh())
+      await act(async () => {
+        await scrollView.props.refreshControl.props.onRefresh()
+      })
 
       await waitFor(() => expect(screen.getByTestId('activity-indicator')).toBeTruthy())
 

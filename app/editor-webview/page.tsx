@@ -17,8 +17,18 @@ export default function EditorWebViewPage() {
   const [initialContent, setInitialContent] = useState('')
   const editorRef = React.useRef<RichTextEditorWebViewHandle>(null)
   const lastKnownHtmlRef = React.useRef<string | null>(null)
+  const lastHistoryStateRef = React.useRef<{ canUndo: boolean; canRedo: boolean } | null>(null)
   const pendingBaselineRef = React.useRef(false)
   const chunkBuffers = React.useRef<ChunkBufferStore>({})
+
+  const handleHistoryStateChange = React.useCallback((state: { canUndo: boolean; canRedo: boolean }) => {
+    const prev = lastHistoryStateRef.current
+    if (prev && prev.canUndo === state.canUndo && prev.canRedo === state.canRedo) {
+      return
+    }
+    lastHistoryStateRef.current = state
+    window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'HISTORY_STATE', payload: state }))
+  }, [])
 
   useEffect(() => {
     const getMobileConfig = () => {
@@ -270,6 +280,7 @@ export default function EditorWebViewPage() {
         onFocus={handleFocus}
         onBlur={handleBlur}
         onSelectionChange={handleSelectionChange}
+        onHistoryStateChange={handleHistoryStateChange}
       />
     </div>
   )

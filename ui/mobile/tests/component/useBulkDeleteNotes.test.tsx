@@ -4,7 +4,7 @@ import Toast from 'react-native-toast-message'
 
 const mockMutateAsync = jest.fn()
 
-jest.mock('@ui/mobile/hooks/useNotes', () => ({
+jest.mock('@ui/mobile/hooks/useNotesMutations', () => ({
   useDeleteNote: () => ({
     mutateAsync: mockMutateAsync,
   }),

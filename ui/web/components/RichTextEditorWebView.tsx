@@ -1,23 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { EditorContent, useEditor, type Editor, type Extensions } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import Underline from "@tiptap/extension-underline"
-import Highlight from "@tiptap/extension-highlight"
-import TextAlign from "@tiptap/extension-text-align"
-import Superscript from "@tiptap/extension-superscript"
-import Subscript from "@tiptap/extension-subscript"
-import TaskList from "@tiptap/extension-task-list"
-import TaskItem from "@tiptap/extension-task-item"
-import Link from "@tiptap/extension-link"
-import Image from "@tiptap/extension-image"
-import { TextStyle } from "@tiptap/extension-text-style"
-import { Color } from "@tiptap/extension-color"
-import FontFamily from "@tiptap/extension-font-family"
-import Heading from "@tiptap/extension-heading"
+import { EditorContent, useEditor, type Editor } from "@tiptap/react"
+import { createDocument } from "@tiptap/core"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
-import { FontSize } from "@/extensions/FontSize"
+import { editorExtensions } from "./editorExtensions"
 import { SmartPasteService } from "@core/services/smartPaste"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
 import { applySelectionAsMarkdown } from "@ui/web/lib/editor"
@@ -34,12 +21,13 @@ type RichTextEditorWebViewProps = {
   onFocus?: () => void
   onBlur?: () => void
   onSelectionChange?: (hasSelection: boolean) => void
+  onHistoryStateChange?: (state: { canUndo: boolean; canRedo: boolean }) => void
 }
 
 const RichTextEditorWebView = React.forwardRef<
   RichTextEditorWebViewHandle,
   RichTextEditorWebViewProps
->(({ initialContent, onContentChange, onFocus, onBlur, onSelectionChange }, ref) => {
+>(({ initialContent, onContentChange, onFocus, onBlur, onSelectionChange, onHistoryStateChange }, ref) => {
   const editorRef = React.useRef<Editor | null>(null)
   const suppressNextUpdateRef = React.useRef(false)
 
@@ -48,39 +36,6 @@ const RichTextEditorWebView = React.forwardRef<
     if (!editor) return
     applySelectionAsMarkdown(editor, onContentChange)
   }, [onContentChange])
-
-  const editorExtensions: Extensions = React.useMemo(
-    () => [
-      StarterKit.configure({
-        bulletList: {},
-        orderedList: {},
-        listItem: {},
-        heading: false,
-        link: false,
-        underline: false,
-      }),
-      Heading.configure({
-        levels: [1, 2, 3, 4, 5, 6],
-      }),
-      Underline,
-      Highlight.configure({ multicolor: true }),
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Superscript,
-      Subscript,
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
-      Image.configure({
-        inline: true,
-        allowBase64: true,
-      }),
-      TextStyle,
-      Color,
-      FontFamily,
-      FontSize,
-    ],
-    []
-  )
 
   const handlePaste = React.useCallback((_: unknown, event: ClipboardEvent) => {
     if (!event.clipboardData) return false
@@ -140,6 +95,18 @@ const RichTextEditorWebView = React.forwardRef<
     immediatelyRender: false,
     extensions: editorExtensions,
     content: initialContent,
+    onCreate: ({ editor: e }) => {
+      onHistoryStateChange?.({
+        canUndo: e.can().undo(),
+        canRedo: e.can().redo(),
+      })
+    },
+    onTransaction: ({ editor: e }) => {
+      onHistoryStateChange?.({
+        canUndo: e.can().undo(),
+        canRedo: e.can().redo(),
+      })
+    },
     onUpdate: () => {
       if (suppressNextUpdateRef.current) {
         suppressNextUpdateRef.current = false
@@ -174,10 +141,26 @@ const RichTextEditorWebView = React.forwardRef<
     () => ({
       getHTML: () => editor?.getHTML() ?? "",
       setContent: (html: string) => {
-        editor?.commands.setContent(html, { emitUpdate: false })
+        if (!editor) return
+        const document = createDocument(html, editor.schema, editor.options.parseOptions, {
+          errorOnInvalidContent: editor.options.enableContentCheck,
+        })
+        const tr = editor.state.tr
+          .replaceWith(0, editor.state.doc.content.size, document)
+          .setMeta("preventUpdate", true)
+          .setMeta("addToHistory", false)
+        editor.view.dispatch(tr)
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
+        if (command === "undo") {
+          editor.commands.undo()
+          return
+        }
+        if (command === "redo") {
+          editor.commands.redo()
+          return
+        }
         if (command === 'applySelectionAsMarkdown') {
           handleApplySelectionAsMarkdown()
           return

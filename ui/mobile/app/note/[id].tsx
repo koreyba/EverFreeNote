@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard, ScrollView } from 'react-native'
+import { View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
@@ -8,61 +8,10 @@ import { EditorToolbar, TOOLBAR_CONTENT_HEIGHT } from '@ui/mobile/components/Edi
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
-import { Trash2 } from 'lucide-react-native'
+import { Trash2, ChevronLeft, Undo2, Redo2 } from 'lucide-react-native'
 import { Pressable } from 'react-native'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
-
-const decodeHtmlEntities = (value: string) => {
-  return value
-    .replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
-      const codePoint = Number.parseInt(String(hex), 16)
-      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match
-    })
-    .replace(/&#(\d+);/g, (match, num) => {
-      const codePoint = Number.parseInt(String(num), 10)
-      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match
-    })
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-}
-
-const htmlToPlainText = (html: string) => {
-  if (!html) return ''
-
-  const withLineBreaks = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p\s*>/gi, '\n\n')
-    .replace(/<\/div\s*>/gi, '\n')
-    .replace(/<\/li\s*>/gi, '\n')
-
-  const withoutTags = withLineBreaks.replace(/<[^>]+>/g, '')
-  const decoded = decodeHtmlEntities(withoutTags)
-  return decoded.replace(/\n{3,}/g, '\n\n').trim()
-}
-
-function NoteBodyPreview({ html, colors }: { html: string; colors: ReturnType<typeof useTheme>['colors'] }) {
-  const styles = useMemo(() => createPreviewStyles(colors), [colors])
-  const text = useMemo(() => htmlToPlainText(html), [html])
-
-  // Render an empty container for blank notes, without "Empty note" placeholder text.
-  if (!text) {
-    return <View style={styles.container} />
-  }
-
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={styles.text}>{text}</Text>
-    </ScrollView>
-  )
-}
+import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
 
 export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -79,7 +28,9 @@ export default function NoteEditorScreen() {
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
+  const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const lastHydratedNoteIdRef = useRef<string | null>(null)
   const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
     title: '',
     description: '',
@@ -146,6 +97,11 @@ export default function NoteEditorScreen() {
 
   useEffect(() => {
     if (note) {
+      const hasNoteSwitched = lastHydratedNoteIdRef.current !== note.id
+      if (hasNoteSwitched) {
+        setHistoryState({ canUndo: false, canRedo: false })
+        lastHydratedNoteIdRef.current = note.id
+      }
       setTitle(note.title || '')
       setTags(note.tags ?? [])
       lastSavedRef.current = {
@@ -226,9 +182,50 @@ export default function NoteEditorScreen() {
     <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: 'Edit',
+          title: '',
+          headerBackVisible: false,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
+          headerLeft: () => (
+            <View style={styles.headerLeftActions}>
+              <Pressable
+                onPress={() => router.back()}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+              >
+                <ChevronLeft color={colors.foreground} size={24} />
+              </Pressable>
+              <Pressable
+                onPress={() => editorRef.current?.runCommand('undo')}
+                disabled={!historyState.canUndo}
+                accessibilityLabel="Undo"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !historyState.canUndo }}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  !historyState.canUndo && styles.headerButtonDisabled,
+                  pressed && historyState.canUndo && { opacity: 0.5 },
+                ]}
+              >
+                <Undo2 color={historyState.canUndo ? colors.foreground : colors.mutedForeground} size={20} />
+              </Pressable>
+              <Pressable
+                onPress={() => editorRef.current?.runCommand('redo')}
+                disabled={!historyState.canRedo}
+                accessibilityLabel="Redo"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !historyState.canRedo }}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  !historyState.canRedo && styles.headerButtonDisabled,
+                  pressed && historyState.canRedo && { opacity: 0.5 },
+                ]}
+              >
+                <Redo2 color={historyState.canRedo ? colors.foreground : colors.mutedForeground} size={20} />
+              </Pressable>
+            </View>
+          ),
           headerRight: () => (
             <View style={styles.headerActions}>
               <Pressable
@@ -278,6 +275,7 @@ export default function NoteEditorScreen() {
           onFocus={() => setIsEditorFocused(true)}
           onBlur={handleEditorBlur}
           onSelectionChange={setHasSelection}
+          onHistoryStateChange={setHistoryState}
           loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
         />
       </View>
@@ -331,34 +329,20 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     alignItems: 'center',
     marginRight: 12,
   },
+  headerLeftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
   headerButton: {
     padding: 8,
+  },
+  headerButtonDisabled: {
+    opacity: 0.35,
   },
   toolbarContainer: {
     position: 'absolute',
     left: 0,
     right: 0,
-  },
-})
-
-// Preview styles are aligned with the WebView editor:
-// - px-6 py-4 = 24px horizontal, 16px vertical
-// - font-size: 12pt (~16px)
-// - line-height: 1.75 (16 * 1.75 = 28)
-// - bg-background
-const createPreviewStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  contentContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-  },
-  text: {
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: colors.foreground,
-    lineHeight: 28,
   },
 })

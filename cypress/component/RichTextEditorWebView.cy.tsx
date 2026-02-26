@@ -1,5 +1,5 @@
 import React from 'react'
-import RichTextEditorWebView from '../../ui/web/components/RichTextEditorWebView'
+import RichTextEditorWebView, { type RichTextEditorWebViewHandle } from '../../ui/web/components/RichTextEditorWebView'
 
 describe('RichTextEditorWebView', () => {
   it('renders with full screen height and captures clicks below content', () => {
@@ -138,5 +138,31 @@ describe('RichTextEditorWebView', () => {
     cy.get('.ProseMirror').find('p').eq(0).invoke('text').then((text) => {
       expect(text.trim().endsWith('Y')).to.eq(true)
     })
+  })
+
+  it('does not clear baseline content on first undo after setContent', () => {
+    const Harness = () => {
+      const ref = React.useRef<RichTextEditorWebViewHandle | null>(null)
+
+      return (
+        <div>
+          <button data-cy="set-content" onClick={() => ref.current?.setContent('<p>Baseline</p>')}>
+            Set content
+          </button>
+          <button data-cy="undo" onClick={() => ref.current?.runCommand('undo')}>
+            Undo
+          </button>
+          <RichTextEditorWebView ref={ref} initialContent="" />
+        </div>
+      )
+    }
+
+    cy.mount(<Harness />)
+
+    cy.get('[data-cy="set-content"]').click()
+    cy.get('.ProseMirror').should('contain', 'Baseline')
+
+    cy.get('[data-cy="undo"]').click()
+    cy.get('.ProseMirror').should('contain', 'Baseline')
   })
 })

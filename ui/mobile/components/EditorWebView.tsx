@@ -21,6 +21,7 @@ type Props = {
     onFocus?: () => void
     onBlur?: () => void
     onSelectionChange?: (hasSelection: boolean) => void
+    onHistoryStateChange?: (state: { canUndo: boolean; canRedo: boolean }) => void
     loadingFallback?: React.ReactNode
 }
 
@@ -64,7 +65,7 @@ const formatDebugValue = (value: string | null) => {
 }
 
 const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
-    ({ initialContent = '', onContentChange, onReady, onFocus, onBlur, onSelectionChange, loadingFallback }, ref) => {
+    ({ initialContent = '', onContentChange, onReady, onFocus, onBlur, onSelectionChange, onHistoryStateChange, loadingFallback }, ref) => {
         const webViewRef = useRef<WebView>(null)
         const { colors, colorScheme } = useTheme()
         const styles = useMemo(() => createStyles(colors), [colors])
@@ -284,6 +285,14 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     case 'SELECTION_CHANGE':
                         onSelectionChange?.(Boolean(payload))
                         break
+                    case 'HISTORY_STATE': {
+                        const p = payload as { canUndo?: unknown; canRedo?: unknown } | null
+                        onHistoryStateChange?.({
+                            canUndo: Boolean(p?.canUndo),
+                            canRedo: Boolean(p?.canRedo),
+                        })
+                        break
+                    }
                     case 'CONTENT_ON_BLUR':
                         // Safety net: content sent on blur ensures nothing is lost
                         onContentChange?.(String(payload ?? ''))
