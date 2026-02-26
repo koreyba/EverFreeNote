@@ -235,6 +235,32 @@ describe('NoteEditor Component', () => {
     }))
   })
 
+  it('cancels pending autosave when Save is clicked', () => {
+    const onAutoSave = (() => {
+      const stub = cy.stub().resolves()
+      cy.wrap(stub).as('onAutoSave')
+      return stub
+    })()
+    const props = {
+      ...getDefaultProps(),
+      noteId: 'note-1',
+      onAutoSave,
+      autosaveDelayMs: 500,
+    }
+
+    cy.mount(<NoteEditor {...props} />)
+
+    // Type to schedule a pending autosave
+    cy.get('input[placeholder="Note title"]').clear().type('Changed Title')
+
+    // Click Save before the debounce fires — this should cancel the pending autosave
+    cy.contains('button', 'Save').click()
+
+    // onSave should be called, but onAutoSave should NOT fire
+    cy.get('@onSave').should('have.been.calledOnce')
+    cy.get('@onAutoSave').should('not.have.been.called', { timeout: 1000 })
+  })
+
   it('does not autosave when only tags change', () => {
     const onAutoSave = (() => {
       const stub = cy.stub().resolves()

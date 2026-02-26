@@ -86,7 +86,8 @@ jest.mock('@core/services/notes')
 import { databaseService } from '@ui/mobile/services/database'
 import { mobileNetworkStatusProvider } from '@ui/mobile/adapters/networkStatus'
 import { mobileSyncService } from '@ui/mobile/services/sync'
-import { useNotes, useDeleteNote } from '@ui/mobile/hooks/useNotes'
+import { useNotes } from '@ui/mobile/hooks/useNotes'
+import { useDeleteNote } from '@ui/mobile/hooks/useNotesMutations'
 import { NoteService } from '@core/services/notes'
 
 const mockNoteServiceClass = NoteService as jest.MockedClass<typeof NoteService>

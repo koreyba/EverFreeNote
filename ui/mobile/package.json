@@ -18,7 +18,7 @@
     "android:stage:release": "cross-env APP_VARIANT=stage EXPO_PUBLIC_APP_VARIANT=stage expo run:android --variant stageRelease --app-id com.everfreenote.app.stage",
     "android:prod": "cross-env APP_VARIANT=prod EXPO_PUBLIC_APP_VARIANT=prod expo run:android --variant prodDebug --app-id com.everfreenote.app",
     "android:prod:release": "cross-env APP_VARIANT=prod EXPO_PUBLIC_APP_VARIANT=prod expo run:android --variant prodRelease --app-id com.everfreenote.app",
-    "adb:connect": "adb connect 192.168.0.17:46031",
+    "adb:connect": "adb connect 192.168.0.17:36567",
     "adb:pair": "adb pair 192.168.0.17:45619",
     "adb:kill": "adb kill-server",
     "adb:start": "adb start-server",

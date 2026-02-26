@@ -15,7 +15,7 @@ import { WordPressExportDialog } from "@/components/features/wordpress/WordPress
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
-import { createDebouncedLatest } from "@core/utils/debouncedLatest"
+import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
@@ -54,7 +54,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   availableTags = [],
   wordpressConfigured = false,
 }: NoteEditorProps, ref) {
-  const [editorSessionKey, setEditorSessionKey] = React.useState(0)
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
@@ -62,38 +61,59 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [exportDialogNote, setExportDialogNote] = React.useState<ExportableWordPressNote | null>(null)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
-  const lastResetNoteIdRef = React.useRef<string | undefined>(noteId)
 
   const selectedTagsRef = React.useRef<string[]>(selectedTags)
   React.useEffect(() => {
     selectedTagsRef.current = selectedTags
   }, [selectedTags])
 
-  const noteIdRef = React.useRef(noteId)
-  React.useEffect(() => {
-    noteIdRef.current = noteId
-  }, [noteId])
+  const debouncedTagQuery = useDebouncedCallback((value: string) => {
+    setTagQuery(normalizeTag(value))
+  }, 320)
 
-  // Tracks whether an autosave-create (noteId=undefined) is in-flight.
-  // Used by the sync effect to distinguish "autosave assigned an ID" from
-  // "user navigated to a different note" when noteId changes undefined → id.
-  const pendingCreateRef = React.useRef(false)
-
-  // Helper to get current form data from refs (single source of truth)
   const getFormData = React.useCallback(() => ({
     title: titleInputRef.current?.value ?? initialTitle,
     description: editorRef.current?.getHTML() ?? initialDescription,
     tags: buildTagString(selectedTagsRef.current),
   }), [initialTitle, initialDescription])
 
-  type AutoSavePayload = { noteId?: string; title: string; description: string; tags: string }
-  const getAutoSavePayload = React.useCallback((overrides: Partial<AutoSavePayload> = {}): AutoSavePayload => {
-    return {
-      noteId: noteIdRef.current,
-      ...getFormData(),
-      ...overrides,
+  const { editorSessionKey, handleContentChange, scheduleAutoSave, cancelAutoSave, flushPendingSave } =
+    useNoteEditorAutoSave({
+      noteId,
+      initialTitle,
+      initialDescription,
+      initialTags,
+      autosaveDelayMs,
+      onAutoSave,
+      getFormData,
+      cancelDebouncedTagQuery: debouncedTagQuery.cancel,
+      onNoteSwitch: () => {
+        const parsed = parseTagString(initialTags)
+        setSelectedTags(parsed)
+        selectedTagsRef.current = parsed
+        setTagQuery("")
+      },
+    })
+
+  // Sync external auto-saving flag into local display state
+  React.useEffect(() => {
+    if (isAutoSaving) {
+      setShowSaving(true)
+    } else {
+      const timer = setTimeout(() => setShowSaving(false), 500)
+      return () => clearTimeout(timer)
     }
-  }, [getFormData])
+  }, [isAutoSaving])
+
+  const handleSave = () => {
+    cancelAutoSave()
+    onSave(getFormData())
+  }
+
+  const handleRead = () => {
+    cancelAutoSave()
+    onRead(getFormData())
+  }
 
   const getExportNote = React.useCallback(() => {
     if (!noteId) return null
@@ -111,93 +131,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     setExportDialogOpen(true)
   }, [])
 
-  const debouncedTagQuery = useDebouncedCallback((value: string) => {
-    setTagQuery(normalizeTag(value))
-  }, 320)
-
-
-  const debouncedAutoSave = React.useMemo(() => {
-    return createDebouncedLatest<AutoSavePayload>({
-      delayMs: autosaveDelayMs,
-      isEqual: (a, b) => a.noteId === b.noteId && a.title === b.title && a.description === b.description && a.tags === b.tags,
-      onFlush: async (payload) => {
-        if (!onAutoSave) return
-        try {
-          await onAutoSave(payload)
-        } catch {
-          // Errors handled upstream
-        }
-      },
-    })
-  }, [autosaveDelayMs, onAutoSave])
-
-  // Start a new editor session only when user actually switches notes.
-  // A session remount clears TipTap undo/redo history between notes.
-  // Important: do not remount on autosave-driven undefined -> id assignment,
-  // otherwise caret/focus gets lost mid-typing.
-  React.useEffect(() => {
-    const prevNoteId = lastResetNoteIdRef.current
-    const nextNoteId = noteId
-
-    if (prevNoteId === nextNoteId) return
-    lastResetNoteIdRef.current = nextNoteId
-
-    // New note id assignment (undefined -> id) happens during autosave create.
-    // Treat it as the same editing session ONLY if the incoming props match the
-    // current form state (otherwise this is a real switch from "new note" to an
-    // existing note and we must sync content).
-    if (!prevNoteId && nextNoteId && pendingCreateRef.current) {
-      // Autosave just created this note and assigned a server ID.
-      // Same editing session — don't reset editor content.
-      pendingCreateRef.current = false
-      debouncedAutoSave.reset(getAutoSavePayload({ noteId: nextNoteId }))
-      return
-    }
-    pendingCreateRef.current = false
-
-    setEditorSessionKey((k) => k + 1)
-    const parsed = parseTagString(initialTags)
-    setSelectedTags(parsed)
-    selectedTagsRef.current = parsed
-    debouncedTagQuery.cancel()
-    setTagQuery("")
-    debouncedAutoSave.reset({
-      noteId,
-      title: initialTitle,
-      description: initialDescription,
-      tags: buildTagString(parsed),
-    })
-  }, [noteId, initialTitle, initialDescription, initialTags, debouncedAutoSave, debouncedTagQuery, getAutoSavePayload])
-
-  // Sync external auto-saving flag into local display state
-  React.useEffect(() => {
-    if (isAutoSaving) {
-      setShowSaving(true)
-    } else {
-      const timer = setTimeout(() => setShowSaving(false), 500)
-      return () => clearTimeout(timer)
-    }
-  }, [isAutoSaving])
-
-  const handleSave = () => {
-    debouncedAutoSave.cancel()
-    onSave(getFormData())
-  }
-
-  const handleRead = () => {
-    debouncedAutoSave.cancel()
-    onRead(getFormData())
-  }
-
-  // Trigger debounced autosave on any content change
-  const handleContentChange = React.useCallback(() => {
-    if (!onAutoSave) return
-    // Mark that we're editing a new note so the sync effect knows
-    // an upcoming undefined→id transition is from autosave, not navigation.
-    if (!noteIdRef.current) pendingCreateRef.current = true
-    debouncedAutoSave.schedule(getAutoSavePayload())
-  }, [debouncedAutoSave, getAutoSavePayload, onAutoSave])
-
   const suggestions = useTagSuggestions({
     allTags: availableTags,
     selectedTags,
@@ -210,41 +143,26 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     const prev = selectedTagsRef.current
     const existing = new Set(prev)
     const merged = [...prev]
-      for (const tag of normalized) {
-        if (existing.has(tag)) continue
-        existing.add(tag)
-        merged.push(tag)
-      }
+    for (const tag of normalized) {
+      if (existing.has(tag)) continue
+      existing.add(tag)
+      merged.push(tag)
+    }
     selectedTagsRef.current = merged
     setSelectedTags(merged)
     debouncedTagQuery.cancel()
     setTagQuery("")
-    // Trigger autosave when tags change
-    if (onAutoSave) {
-      if (!noteIdRef.current) pendingCreateRef.current = true
-      debouncedAutoSave.schedule(getAutoSavePayload({ tags: buildTagString(merged) }))
-    }
-  }, [debouncedTagQuery, debouncedAutoSave, getAutoSavePayload, onAutoSave])
+    scheduleAutoSave({ tags: buildTagString(merged) })
+  }, [debouncedTagQuery, scheduleAutoSave])
 
   const removeTag = React.useCallback((tagToRemove: string) => {
     const next = selectedTagsRef.current.filter((tag) => tag !== tagToRemove)
     selectedTagsRef.current = next
     setSelectedTags(next)
-    // Trigger autosave when tags change
-    if (onAutoSave) {
-      if (!noteIdRef.current) pendingCreateRef.current = true
-      debouncedAutoSave.schedule(getAutoSavePayload({ tags: buildTagString(next) }))
-    }
-  }, [debouncedAutoSave, getAutoSavePayload, onAutoSave])
+    scheduleAutoSave({ tags: buildTagString(next) })
+  }, [scheduleAutoSave])
 
-
-  // Expose API for parent component to flush pending saves
-  React.useImperativeHandle(ref, () => ({
-    flushPendingSave: async () => {
-      if (!onAutoSave) return
-      await debouncedAutoSave.flush()
-    }
-  }), [debouncedAutoSave, onAutoSave])
+  React.useImperativeHandle(ref, () => ({ flushPendingSave }), [flushPendingSave])
 
   return (
     <div className="flex-1 flex min-h-0 flex-col">
@@ -260,17 +178,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
                 className="hidden md:inline-flex"
               />
             ) : null}
-            <Button
-              onClick={handleRead}
-              variant="outline"
-              disabled={isSaving}
-            >
+            <Button onClick={handleRead} variant="outline" disabled={isSaving}>
               Read
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-            >
+            <Button onClick={handleSave} disabled={isSaving}>
               Save
             </Button>
             {wordpressConfigured && noteId ? (
@@ -291,9 +202,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             ) : null}
           </div>
           {(showSaving || isSaving) ? (
-            <div className="text-xs text-muted-foreground animate-pulse">
-              Saving...
-            </div>
+            <div className="text-xs text-muted-foreground animate-pulse">Saving...</div>
           ) : lastSavedAt ? (
             <div className="text-xs text-muted-foreground">
               Saved at {new Date(lastSavedAt).toLocaleTimeString()}
