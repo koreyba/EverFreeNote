@@ -1,12 +1,16 @@
+// Valid Unicode code points are integers in [0, 0x10FFFF].
+// Values outside this range cause String.fromCodePoint to throw RangeError.
+const isValidCodePoint = (n: number) => Number.isInteger(n) && n >= 0 && n <= 0x10ffff
+
 const decodeHtmlEntities = (value: string) => {
   return value
     .replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
       const codePoint = Number.parseInt(String(hex), 16)
-      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match
+      return isValidCodePoint(codePoint) ? String.fromCodePoint(codePoint) : match
     })
     .replace(/&#(\d+);/g, (match, num) => {
       const codePoint = Number.parseInt(String(num), 10)
-      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match
+      return isValidCodePoint(codePoint) ? String.fromCodePoint(codePoint) : match
     })
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')

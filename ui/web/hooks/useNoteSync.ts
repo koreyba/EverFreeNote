@@ -162,15 +162,28 @@ export function useNoteSync({
             }
         }
 
+        let delayedRefreshId: ReturnType<typeof setTimeout> | null = null
+
+        const clearDelayedRefresh = () => {
+            if (delayedRefreshId) {
+                clearTimeout(delayedRefreshId)
+                delayedRefreshId = null
+            }
+        }
+
         const handleOnline = () => {
             setIsOffline(false)
             updateInterval = setInterval(() => void refreshQueueState(clearUpdateInterval), 1000)
             void refreshQueueState(clearUpdateInterval)
-            setTimeout(() => void refreshQueueState(clearUpdateInterval), 2000)
+            delayedRefreshId = setTimeout(() => {
+                delayedRefreshId = null
+                void refreshQueueState(clearUpdateInterval)
+            }, 2000)
         }
         const handleOffline = () => {
             setIsOffline(true)
             clearUpdateInterval()
+            clearDelayedRefresh()
         }
         window.addEventListener('online', handleOnline)
         window.addEventListener('offline', handleOffline)
@@ -178,6 +191,7 @@ export function useNoteSync({
             window.removeEventListener('online', handleOnline)
             window.removeEventListener('offline', handleOffline)
             clearUpdateInterval()
+            clearDelayedRefresh()
         }
     }, [refreshQueueState])
 

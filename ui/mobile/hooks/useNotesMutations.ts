@@ -85,8 +85,9 @@ export function useUpdateNote() {
       id: string
       updates: Partial<Pick<Note, 'title' | 'description' | 'tags'>>
     }) => {
+      if (!user?.id) throw new Error('User not authenticated')
       // Local update first for immediate response
-      const localNotes = await databaseService.getLocalNotes(user?.id ?? '')
+      const localNotes = await databaseService.getLocalNotes(user.id)
       const existing = localNotes.find(n => n.id === id)
       if (existing) {
         await databaseService.saveNotes([{
@@ -217,6 +218,10 @@ export function useDeleteNote() {
       }
     },
     onSettled: (_, error, _id, context) => {
+      if (!error) {
+        // Remove stale single-note cache so detail views are reconciled after deletion
+        void queryClient.removeQueries({ queryKey: ['note', _id] })
+      }
       // Refetch if an error occurred or we canceled an in-flight query without cache
       if (error || context?.shouldRefetch) {
         void queryClient.invalidateQueries({ queryKey: ['notes'] })
