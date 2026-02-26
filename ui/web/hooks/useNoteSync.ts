@@ -121,25 +121,29 @@ export function useNoteSync({
         [offlineQueue, isOffline]
     )
 
-    useEffect(() => {
-        const loadQueueState = async () => {
-            const queue = await offlineQueue.getQueue()
-            let cached = await offlineCache.loadNotes()
-            if (!queue.length && cached.length) {
-                const idsToRemove = cached.filter((c) => c.status !== 'synced' || c.deleted).map((c) => c.id)
-                if (idsToRemove.length) {
-                    for (const id of idsToRemove) {
-                        await offlineCache.deleteNote(id)
-                    }
-                    cached = await offlineCache.loadNotes()
+    const refreshQueueState = useCallback(async (onPendingZero?: () => void) => {
+        const queue = await offlineQueue.getQueue()
+        let cached = await offlineCache.loadNotes()
+        if (!queue.length && cached.length) {
+            const idsToRemove = cached.filter((c) => c.status !== 'synced' || c.deleted).map((c) => c.id)
+            if (idsToRemove.length) {
+                for (const id of idsToRemove) {
+                    await offlineCache.deleteNote(id)
                 }
+                cached = await offlineCache.loadNotes()
             }
-            setOfflineOverlay(cached)
-            setPendingCount(queue.filter((q) => q.status === 'pending').length)
-            setFailedCount(queue.filter((q) => q.status === 'failed').length)
         }
-        void loadQueueState()
+        setOfflineOverlay(cached)
+        const pending = queue.filter((q) => q.status === 'pending').length
+        const failed = queue.filter((q) => q.status === 'failed').length
+        setPendingCount(pending)
+        setFailedCount(failed)
+        if (pending === 0) onPendingZero?.()
     }, [offlineQueue, offlineCache])
+
+    useEffect(() => {
+        void refreshQueueState()
+    }, [refreshQueueState])
 
     useEffect(() => {
         return () => {
@@ -150,24 +154,8 @@ export function useNoteSync({
     useEffect(() => {
         let updateInterval: ReturnType<typeof setInterval> | null = null
 
-        const updateQueueState = async () => {
-            const queue = await offlineQueue.getQueue()
-            let cached = await offlineCache.loadNotes()
-            if (!queue.length && cached.length) {
-                const idsToRemove = cached.filter((c) => c.status !== 'synced' || c.deleted).map((c) => c.id)
-                if (idsToRemove.length) {
-                    for (const id of idsToRemove) {
-                        await offlineCache.deleteNote(id)
-                    }
-                    cached = await offlineCache.loadNotes()
-                }
-            }
-            setOfflineOverlay(cached)
-            const pending = queue.filter((q) => q.status === 'pending').length
-            const failed = queue.filter((q) => q.status === 'failed').length
-            setPendingCount(pending)
-            setFailedCount(failed)
-            if (pending === 0 && updateInterval) {
+        const clearUpdateInterval = () => {
+            if (updateInterval) {
                 clearInterval(updateInterval)
                 updateInterval = null
             }
@@ -175,25 +163,22 @@ export function useNoteSync({
 
         const handleOnline = () => {
             setIsOffline(false)
-            updateInterval = setInterval(updateQueueState, 1000)
-            void updateQueueState()
-            setTimeout(() => void updateQueueState(), 2000)
+            updateInterval = setInterval(() => void refreshQueueState(clearUpdateInterval), 1000)
+            void refreshQueueState(clearUpdateInterval)
+            setTimeout(() => void refreshQueueState(clearUpdateInterval), 2000)
         }
         const handleOffline = () => {
             setIsOffline(true)
-            if (updateInterval) {
-                clearInterval(updateInterval)
-                updateInterval = null
-            }
+            clearUpdateInterval()
         }
         window.addEventListener('online', handleOnline)
         window.addEventListener('offline', handleOffline)
         return () => {
             window.removeEventListener('online', handleOnline)
             window.removeEventListener('offline', handleOffline)
-            if (updateInterval) clearInterval(updateInterval)
+            clearUpdateInterval()
         }
-    }, [offlineQueue, offlineCache])
+    }, [refreshQueueState])
 
     return {
         offlineOverlay,
