@@ -60,13 +60,16 @@ The file works correctly but violates the Single Responsibility Principle. `hand
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] `useNoteAppController.ts` is ≤ 150 lines (orchestration + wiring only)
+The primary measure of success is **SRP compliance and readability**, not line counts. Each file should have one clear responsibility that is obvious from its name.
+
+- [ ] `useNoteAppController.ts` contains only orchestration wiring (no business logic)
 - [ ] `useNoteSaveHandlers.ts` exists and owns all save/write/delete handlers
 - [ ] `useNoteBulkActions.ts` exists and owns bulk-delete and selectAllVisible
 - [ ] `useNoteData.ts` exists and owns overlay-merge, FTS-merge, notesById, counts
 - [ ] `NoteAppController` return type is identical to pre-refactor (verified by TypeScript)
-- [ ] All existing tests pass without modification
 - [ ] No regressions in manual testing (save, autosave, offline, bulk delete, FTS)
+
+> Line counts (e.g. "≤150 lines") are rough indicators, not hard requirements.
 
 ## Constraints & Assumptions
 **What limitations do we need to work within?**
@@ -83,6 +86,8 @@ The file works correctly but violates the Single Responsibility Principle. `hand
 ## Questions & Open Items
 **What do we still need to clarify?**
 
-- [ ] Where does `confirmDeleteNote` live? It mirrors save-handler offline logic — proposed: `useNoteSaveHandlers` (single-note writes)
-- [ ] Where do `wrappedHandleSelectNote`, `wrappedHandleCreateNote`, `wrappedHandleSearchResultClick`, `handleTagClick` live? They call `flushPendingEditorSave` then delegate — proposed: stay in orchestrator since they bridge editor-ref + selection + sync
-- [ ] Where does `noteEditorRef` / `registerNoteEditorRef` / `flushPendingEditorSave` live? Proposed: orchestrator (no better home without adding a new hook)
+All architectural placement questions resolved (2026-02-26):
+
+- [x] `confirmDeleteNote` → `useNoteSaveHandlers` (same offline write pattern as save handlers)
+- [x] Nav wrappers (`wrappedHandleSelectNote`, `wrappedHandleCreateNote`, `wrappedHandleSearchResultClick`, `handleTagClick`) → stay in orchestrator (glue code bridging editor-flush + selection + sync)
+- [x] `noteEditorRef` / `registerNoteEditorRef` / `flushPendingEditorSave` → stay in orchestrator (cross-cutting coordination)

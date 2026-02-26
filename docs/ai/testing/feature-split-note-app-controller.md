@@ -13,6 +13,18 @@ description: Define testing approach, test cases, and quality assurance
 - **End-to-end:** Existing E2E tests cover the user flows; no new E2E tests required (structural refactor only)
 - **Regression scope:** All pre-existing tests must continue to pass without modification
 
+## Test Files Written (2026-02-26)
+
+| File | Covers |
+|---|---|
+| `cypress/component/ui/web/hooks/useNoteData.cy.tsx` | overlay merge, notesById, selectedCount, FTS display counts, FTS+overlay merge |
+| `cypress/component/ui/web/hooks/useNoteSaveHandlers.cy.tsx` | insert/update calls, handleReadNote exits editing, confirmDeleteNote, autoSave skip conditions |
+| `cypress/component/ui/web/hooks/useNoteBulkActions.cy.tsx` | toggleNoteSelection, deleteSelectedNotes (online), exits selection, clears selectedNote |
+
+**Run command:** `npm run test:component` or `cypress open --component`
+
+> Note: Cypress requires a display/GPU. Cannot be run in the current headless bash environment (Electron exits with STATUS_ILLEGAL_INSTRUCTION). Run from a Windows terminal or CI with display support.
+
 ## Unit Tests
 
 ### `useNoteData`
