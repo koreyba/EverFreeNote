@@ -110,6 +110,7 @@ export function useNoteEditorAutoSave({
 
     // Real note switch: reset session key (remounts editor + title input) and notify caller.
     pendingCreateRef.current = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: signals a note switch, not a cascading render
     setEditorSessionKey((k) => k + 1)
     cancelDebouncedTagQuery()
     onNoteSwitch?.()

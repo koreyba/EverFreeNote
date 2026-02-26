@@ -142,6 +142,7 @@ export function useNoteSync({
     }, [offlineQueue, offlineCache])
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- setState calls inside refreshQueueState are async (after awaited I/O), not synchronous
         void refreshQueueState()
     }, [refreshQueueState])
 

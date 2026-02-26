@@ -54,14 +54,10 @@ export function useNoteData({
     }
   }, [aggregatedFtsData, resolveSearchResult])
 
-  const totalNotes = useMemo(() => {
-    const pages = notesQuery.data?.pages
-    if (pages?.length) {
-      const total = pages[0]?.totalCount
-      if (typeof total === 'number') return total
-    }
-    return notes.length
-  }, [notesQuery.data?.pages, notes.length]) ?? 0
+  const pages = notesQuery.data?.pages
+  const totalNotes = (pages?.length && typeof pages[0]?.totalCount === 'number')
+    ? pages[0].totalCount
+    : notes.length
 
   const notesDisplayed = showFTSResults && mergedFtsData ? mergedFtsData.results.length : notes.length
   const baseTotal = showFTSResults && mergedFtsData ? mergedFtsData.total : totalNotes

@@ -63,7 +63,8 @@ jest.mock('@ui/mobile/providers', () => ({
   })),
 }))
 
-import { useCreateNote, useNotes } from '@ui/mobile/hooks/useNotes'
+import { useNotes } from '@ui/mobile/hooks/useNotes'
+import { useCreateNote } from '@ui/mobile/hooks/useNotesMutations'
 import { useSearch } from '@ui/mobile/hooks/useSearch'
 import { databaseService } from '@ui/mobile/services/database'
 import { NoteService } from '@core/services/notes'

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import Toast from 'react-native-toast-message'
-import { useDeleteNote } from '@ui/mobile/hooks/useNotes'
+import { useDeleteNote } from '@ui/mobile/hooks/useNotesMutations'
 
 export function useBulkDeleteNotes() {
   const { mutateAsync: deleteNote } = useDeleteNote()
