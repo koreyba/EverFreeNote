@@ -1,14 +1,12 @@
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
-import type { NoteViewModel, NoteInsert, NoteUpdate } from '@core/types/domain'
-import type { MutationQueueItemInput, CachedNote } from '@core/types/offline'
+import type { NoteViewModel, NoteUpdate } from '@core/types/domain'
+import type { CachedNote } from '@core/types/offline'
 import { parseTagString } from '@ui/web/lib/tags'
 import type { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import type { useNoteSync } from './useNoteSync'
 import type { useNoteSelection } from './useNoteSelection'
-
-type NotePayload = (Partial<NoteInsert> & { userId?: string }) | Partial<NoteUpdate>
 
 type UseNoteSaveHandlersParams = {
   user: { id: string } | null
@@ -33,6 +31,18 @@ type UseNoteSaveHandlersParams = {
   notes: NoteViewModel[]
   notesRef: React.MutableRefObject<NoteViewModel[]>
   selectedNoteRef: React.MutableRefObject<NoteViewModel | null>
+}
+
+type OfflineWriteInput = {
+  operation: 'create' | 'update'
+  noteId: string
+  payload: {
+    title?: string
+    description?: string
+    tags?: string[]
+    userId?: string
+  }
+  clientUpdatedAt: string
 }
 
 /**
@@ -66,6 +76,40 @@ export function useNoteSaveHandlers({
   const [saving, setSaving] = useState(false)
   const [autoSaving, setAutoSaving] = useState(false)
 
+  /**
+   * Shared offline write path: persists note to local cache, upserts the overlay,
+   * enqueues the mutation for sync, and increments the pending count.
+   * Returns the CachedNote that was saved so callers can update selectedNote.
+   */
+  const executeOfflineWrite = useCallback(async ({
+    operation,
+    noteId,
+    payload,
+    clientUpdatedAt,
+  }: OfflineWriteInput): Promise<CachedNote> => {
+    const cached: CachedNote = {
+      id: noteId,
+      title: payload.title ?? 'Untitled',
+      description: payload.description,
+      tags: payload.tags,
+      updatedAt: clientUpdatedAt,
+      status: 'pending',
+    }
+    await offlineCache.saveNote(cached)
+    setOfflineOverlay((prev) => {
+      const idx = prev.findIndex((n) => n.id === noteId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = { ...next[idx], ...cached }
+        return next
+      }
+      return [...prev, cached]
+    })
+    await enqueueMutation({ noteId, operation, payload, clientUpdatedAt })
+    setPendingCount((prev) => prev + 1)
+    return cached
+  }, [offlineCache, setOfflineOverlay, enqueueMutation, setPendingCount])
+
   const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
     if (!user) return
 
@@ -98,7 +142,6 @@ export function useNoteSaveHandlers({
       const parsedTags = parseTagString(nextTags)
 
       if (isNewNote) {
-        // Create new note
         const tempId = uuidv4()
         const noteData = {
           title: nextTitle.trim() || 'Untitled',
@@ -108,37 +151,16 @@ export function useNoteSaveHandlers({
         }
 
         if (isOffline) {
-          // Offline create
-          const cached: CachedNote = {
-            id: tempId,
-            title: noteData.title,
-            description: noteData.description,
-            tags: noteData.tags,
-            updatedAt: clientUpdatedAt,
-            status: 'pending',
-          }
-          await offlineCache.saveNote(cached)
-          setOfflineOverlay((prev) => [...prev, cached])
-          await enqueueMutation({
-            noteId: tempId,
-            operation: 'create',
-            payload: noteData,
-            clientUpdatedAt,
-          })
-          setSelectedNote({
-            id: tempId,
-            title: noteData.title,
-            description: noteData.description,
-            tags: noteData.tags,
-          } as NoteViewModel)
+          await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: noteData, clientUpdatedAt })
+          setSelectedNote({ id: tempId, title: noteData.title, description: noteData.description, tags: noteData.tags } as NoteViewModel)
         } else {
-          // Online create
           const created = await createNoteMutation.mutateAsync(noteData)
           setSelectedNote(created as NoteViewModel)
         }
         setLastSavedAt(clientUpdatedAt)
       } else {
-        // Update existing note
+        // Update existing note.
+        // Always uses cache + enqueue regardless of isOffline — the sync system handles both cases.
         const targetId = existingId!
         const partialPayload: Partial<NoteUpdate> = {
           title: nextTitle,
@@ -146,7 +168,7 @@ export function useNoteSaveHandlers({
           tags: parsedTags,
         }
 
-        // Keep currently selected note in sync immediately (prevents stale NoteView after leaving editor)
+        // Optimistic selectedNote update first (prevents stale NoteView after leaving editor)
         setSelectedNote((prev) => {
           if (!prev || prev.id !== targetId) return prev
           return {
@@ -158,34 +180,7 @@ export function useNoteSaveHandlers({
           } as NoteViewModel
         })
 
-        // Update offline cache + overlay immediately
-        const cached: CachedNote = {
-          id: targetId,
-          title: partialPayload.title,
-          description: partialPayload.description,
-          tags: partialPayload.tags,
-          updatedAt: clientUpdatedAt,
-          status: 'pending',
-        }
-
-        await offlineCache.saveNote(cached)
-        setOfflineOverlay((prev) => {
-          const idx = prev.findIndex((n) => n.id === targetId)
-          if (idx >= 0) {
-            const next = [...prev]
-            next[idx] = { ...next[idx], ...cached }
-            return next
-          }
-          return [...prev, cached]
-        })
-
-        // Fire-and-forget enqueue to avoid blocking UI/autosave spinner on network/sync work
-        await enqueueMutation({
-          noteId: targetId,
-          operation: 'update',
-          payload: partialPayload,
-          clientUpdatedAt,
-        })
+        await executeOfflineWrite({ operation: 'update', noteId: targetId, payload: partialPayload, clientUpdatedAt })
         setLastSavedAt(clientUpdatedAt)
       }
 
@@ -200,15 +195,13 @@ export function useNoteSaveHandlers({
   }, [
     user,
     isOffline,
-    offlineCache,
-    enqueueMutation,
+    executeOfflineWrite,
     offlineQueueRef,
     createNoteMutation,
     setSelectedNote,
     setPendingCount,
     setFailedCount,
     setLastSavedAt,
-    setOfflineOverlay,
     notesRef,
     selectedNoteRef,
   ])
@@ -216,61 +209,11 @@ export function useNoteSaveHandlers({
   const handleSaveNote = async (data: { title: string; description: string; tags: string }) => {
     if (!user) return
 
-    const offlineMutation = async (
-      operation: MutationQueueItemInput['operation'],
-      noteId: string,
-      payload: NotePayload,
-      baseNote?: NoteViewModel | null
-    ) => {
-      const item: MutationQueueItemInput = {
-        noteId,
-        operation,
-        payload,
-        clientUpdatedAt: new Date().toISOString(),
-      }
-      await enqueueMutation(item)
-      // Сохраняем локальный кеш для overlay (офлайн отображение)
-      const nowIso = new Date().toISOString()
-      const createdIso =
-        (baseNote as { created_at?: string } | undefined)?.created_at ??
-        (baseNote as { createdAt?: string } | undefined)?.createdAt ??
-        nowIso
-      const cached: CachedNote = {
-        id: noteId,
-        title: payload.title ?? 'Untitled',
-        description: 'description' in payload ? payload.description : undefined,
-        tags: 'tags' in payload ? payload.tags : undefined,
-        content: 'description' in payload ? payload.description : undefined,
-        status: 'pending',
-        updatedAt: nowIso,
-        // created_at/updated_at нужны для корректных дат в офлайн-UI
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        created_at: createdIso,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        updated_at: nowIso,
-      }
-      await offlineCache.saveNote(cached)
-      // Optimized: update local state instead of reloading from DB
-      setOfflineOverlay((prev) => {
-        const idx = prev.findIndex((n) => n.id === noteId)
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = cached
-          return next
-        }
-        return [...prev, cached]
-      })
-      // Optimized: increment pending count
-      setPendingCount((prev) => prev + 1)
-    }
-
     setSaving(true)
     try {
       let savedNote: NoteViewModel | null = null
       const tags = parseTagString(data.tags)
-
+      const clientUpdatedAt = new Date().toISOString()
       const noteData = {
         title: data.title.trim() || 'Untitled',
         description: data.description.trim(),
@@ -279,43 +222,26 @@ export function useNoteSaveHandlers({
 
       if (selectedNote) {
         if (isOffline) {
-          await offlineMutation('update', selectedNote.id, noteData, selectedNote)
-          // Оптимистичное обновление выбранной заметки
-          setSelectedNote({
-            ...selectedNote,
-            title: noteData.title,
-            description: noteData.description,
-            tags: noteData.tags,
-          })
+          await executeOfflineWrite({ operation: 'update', noteId: selectedNote.id, payload: noteData, clientUpdatedAt })
+          setSelectedNote({ ...selectedNote, ...noteData })
           toast.success('Saved offline (will sync when online)')
-          setLastSavedAt(new Date().toISOString())
+          setLastSavedAt(clientUpdatedAt)
         } else {
-          const updated = await updateNoteMutation.mutateAsync({
-            id: selectedNote.id,
-            ...noteData,
-          })
+          const updated = await updateNoteMutation.mutateAsync({ id: selectedNote.id, ...noteData })
           savedNote = { ...selectedNote, ...updated }
-          setLastSavedAt(new Date().toISOString())
+          setLastSavedAt(clientUpdatedAt)
         }
       } else {
         const tempId = uuidv4()
         if (isOffline) {
-          await offlineMutation('create', tempId, { ...noteData, userId: user.id }, null)
-          setSelectedNote({
-            id: tempId,
-            title: noteData.title,
-            description: noteData.description,
-            tags: noteData.tags,
-          } as NoteViewModel)
+          await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: { ...noteData, userId: user.id }, clientUpdatedAt })
+          setSelectedNote({ id: tempId, ...noteData } as NoteViewModel)
           toast.success('Saved offline (will sync when online)')
-          setLastSavedAt(new Date().toISOString())
+          setLastSavedAt(clientUpdatedAt)
         } else {
-          const created = await createNoteMutation.mutateAsync({
-            ...noteData,
-            userId: user.id,
-          })
+          const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id })
           savedNote = created as NoteViewModel
-          setLastSavedAt(new Date().toISOString())
+          setLastSavedAt(clientUpdatedAt)
         }
       }
 
@@ -348,7 +274,6 @@ export function useNoteSaveHandlers({
           payload: {},
           clientUpdatedAt: new Date().toISOString(),
         })
-        // Удаляем из кеша, чтобы карточка не дублировалась офлайн
         const cachedDelete: CachedNote = {
           id: noteToDelete.id,
           status: 'pending',
@@ -356,7 +281,6 @@ export function useNoteSaveHandlers({
           updatedAt: new Date().toISOString(),
         }
         await offlineCache.saveNote(cachedDelete)
-
         setOfflineOverlay((prev) => {
           const idx = prev.findIndex((n) => n.id === noteToDelete.id)
           if (idx >= 0) {

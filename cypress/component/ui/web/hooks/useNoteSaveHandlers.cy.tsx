@@ -24,10 +24,12 @@ const TestComponent = () => {
       <div data-cy="saving">{controller.saving ? 'true' : 'false'}</div>
       <div data-cy="autoSaving">{controller.autoSaving ? 'true' : 'false'}</div>
       <div data-cy="selectedNote-id">{controller.selectedNote?.id ?? 'none'}</div>
+      <div data-cy="selectedNote-title">{controller.selectedNote?.title ?? 'none'}</div>
       <div data-cy="isEditing">{controller.isEditing ? 'true' : 'false'}</div>
       <div data-cy="deleteDialogOpen">{controller.deleteDialogOpen ? 'true' : 'false'}</div>
       <div data-cy="lastSavedAt">{controller.lastSavedAt ?? 'null'}</div>
       <div data-cy="user">{controller.user?.id ?? 'none'}</div>
+      <div data-cy="pendingCount">{controller.pendingCount}</div>
 
       <button data-cy="login-btn" onClick={controller.handleTestLogin}>Login</button>
 
@@ -242,5 +244,70 @@ describe('useNoteSaveHandlers', () => {
     cy.get('[data-cy="autosave-empty-btn"]').click()
 
     cy.wrap(mockQueryBuilder.insert).should('not.have.been.called')
+  })
+
+  it('executeOfflineWrite: handleSaveNote offline create does not call insert and sets selectedNote', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="user"]').should('contain', 'test-user')
+
+    // Trigger offline mode via native browser event
+    cy.window().then((win) => win.dispatchEvent(new win.Event('offline')))
+
+    cy.get('[data-cy="save-btn"]').click()
+
+    // Online mutation must NOT be called
+    cy.wrap(mockQueryBuilder.insert).should('not.have.been.called')
+    // selectedNote should be set to a temp uuid (non-empty, non-"none")
+    cy.get('[data-cy="selectedNote-id"]').should('not.contain', 'none')
+    cy.get('[data-cy="selectedNote-title"]').should('contain', 'Saved Title')
+  })
+
+  it('executeOfflineWrite: handleSaveNote offline update does not call update mutation', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="user"]').should('contain', 'test-user')
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('contain', 'note-1')
+
+    cy.window().then((win) => win.dispatchEvent(new win.Event('offline')))
+
+    cy.get('[data-cy="save-btn"]').click()
+
+    // Online mutation must NOT be called
+    cy.wrap(mockQueryBuilder.update).should('not.have.been.called')
+    // selectedNote title should be updated optimistically
+    cy.get('[data-cy="selectedNote-title"]').should('contain', 'Saved Title')
+  })
+
+  it('executeOfflineWrite: handleSaveNote offline save updates lastSavedAt', () => {
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="user"]').should('contain', 'test-user')
+    cy.get('[data-cy="lastSavedAt"]').should('contain', 'null')
+
+    cy.window().then((win) => win.dispatchEvent(new win.Event('offline')))
+
+    cy.get('[data-cy="save-btn"]').click()
+
+    cy.get('[data-cy="lastSavedAt"]').should('not.contain', 'null')
   })
 })
