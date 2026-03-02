@@ -65,6 +65,9 @@ async function main() {
       embedding: vectors[j],
     }))
 
+    // NOTE: This POC uses the original single-embedding schema (unique on note_id).
+    // The production schema (migration 20260302000002) is chunked (unique on note_id, chunk_index).
+    // This script is not compatible with the current production schema and is kept for reference only.
     const { error: upsertError } = await supabase
       .from('note_embeddings')
       .upsert(rows, { onConflict: 'note_id' })

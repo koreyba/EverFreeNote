@@ -1,4 +1,6 @@
-// @ts-nocheck
+// @ts-nocheck — Deno types (Deno.env, URL imports) are not available in the Node.js TypeScript
+// compiler used by the monorepo. There is no deno.json / import_map.json in this project.
+// The `declare const Deno` below is kept for editor IntelliSense only.
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
 
@@ -179,7 +181,9 @@ serve(async (req: Request) => {
 
     return jsonResponse({ chunkCount: chunks.length })
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Internal error"
-    return jsonResponse({ error: message }, 500)
+    console.error("[rag-index]", err)
+    const isGeminiError = err instanceof Error && err.message.startsWith("Gemini")
+    const userMessage = isGeminiError ? "Embedding service error — try again later" : "Internal error"
+    return jsonResponse({ error: userMessage }, 500)
   }
 })
