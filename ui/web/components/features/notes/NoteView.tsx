@@ -12,6 +12,7 @@ import {
 } from "@/components/features/wordpress/ExportToWordPressButton"
 import { WordPressExportDialog } from "@/components/features/wordpress/WordPressExportDialog"
 
+import { RagIndexPanel } from "@/components/features/notes/RagIndexPanel"
 import { SanitizationService } from "@core/services/sanitizer"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import type { Note } from "@core/types/domain"
@@ -86,7 +87,8 @@ export const NoteView = React.memo(function NoteView({
           )}
           <h2 className="text-lg font-semibold text-muted-foreground">Reading</h2>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
+          <RagIndexPanel noteId={note.id} />
           {wordpressConfigured ? (
             <ExportToWordPressButton
               getNote={getExportNote}
