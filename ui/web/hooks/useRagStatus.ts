@@ -18,10 +18,7 @@ export function useRagStatus(noteId: string | undefined): RagStatus {
   })
 
   useEffect(() => {
-    if (!noteId || !user) {
-      setStatus({ chunkCount: 0, indexedAt: null, isLoading: false })
-      return
-    }
+    if (!noteId || !user) return
 
     let cancelled = false
 
@@ -51,6 +48,11 @@ export function useRagStatus(noteId: string | undefined): RagStatus {
       clearInterval(interval)
     }
   }, [noteId, user, supabase])
+
+  // Derive the "no active note" state — avoids calling setState synchronously in the effect
+  if (!noteId || !user) {
+    return { chunkCount: 0, indexedAt: null, isLoading: false }
+  }
 
   return status
 }
