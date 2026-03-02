@@ -9,7 +9,7 @@
     "type-check": "tsc --noEmit",
     "eslint": "eslint . --max-warnings=0",
     "deno-check": "deno check supabase/functions/**/*.ts",
-    "validate": "npm run type-check && npm run eslint",
+    "validate": "npm run type-check && npm run eslint && npm run deno-check",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
