@@ -59,16 +59,17 @@ RAG indexing for notes is currently only possible via a standalone CLI script (`
 ## Constraints & Assumptions
 
 ### Technical constraints
-- `GEMINI_API_KEY` is a server-side secret → indexing must go through a Next.js API route, not a browser-only call
+- `GEMINI_API_KEY` is a server-side secret → indexing must go through a Supabase Edge Function, not a browser-only call
+- The app is a static SPA (`output: 'export'`) — Next.js API routes don't exist in the build; Supabase Edge Functions are used instead
 - Gemini free tier: 5 RPM / 20 RPD → indexing a single note is fast but repeated calls may hit rate limits
-- Existing architecture: client-side only (no existing API routes) → this feature introduces the first Next.js API route
 - `vector(1536)` schema and HNSW index already applied (migration `20260302000002`)
 - Chunking: 1500 chars, overlap 200, title + content
 
 ### Assumptions
 - The authenticated user's Supabase session is available browser-side for status polling
-- `GEMINI_API_KEY` is set in the Next.js environment (`.env.local`)
-- `note_embeddings` table is accessible from the Next.js server using the Supabase service role key
+- `GEMINI_API_KEY` is set as a Supabase secret (`supabase secrets set GEMINI_API_KEY=...`)
+- `SUPABASE_SERVICE_ROLE_KEY` is auto-injected into Edge Functions by Supabase infrastructure
+- `note_embeddings` is readable via anon key + user session (RLS to be added later)
 
 ## Questions & Open Items
 

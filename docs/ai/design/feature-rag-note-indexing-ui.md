@@ -126,10 +126,8 @@ supabase.from('note_embeddings')
 - Auth via JWT verification with service role client
 - Pattern matches all other existing Edge Functions in the project
 
-### `ui/web/lib/rag/` (server-side utilities)
-- `chunker.ts` — `stripHtml`, `chunkText`, `prepareNoteText`
-- `embeddings.ts` — Gemini `batchEmbedContents` via fetch (1536 dims)
-- `ragIndexService.ts` — `indexNote`, `deleteNoteIndex` (for potential future Node.js usage or testing)
+### Edge Function (`supabase/functions/rag-index/index.ts`)
+All chunking and embedding logic is self-contained inside the Edge Function (no shared browser-side lib needed). The `ui/web/lib/rag/` directory has been removed.
 
 ## Design Decisions
 

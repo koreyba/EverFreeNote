@@ -10,7 +10,7 @@ export interface RagStatus {
 const POLL_INTERVAL_MS = 3000
 
 export function useRagStatus(noteId: string | undefined): RagStatus {
-  const { supabase } = useSupabase()
+  const { supabase, user } = useSupabase()
   const [status, setStatus] = useState<RagStatus>({
     chunkCount: 0,
     indexedAt: null,
@@ -18,7 +18,7 @@ export function useRagStatus(noteId: string | undefined): RagStatus {
   })
 
   useEffect(() => {
-    if (!noteId) {
+    if (!noteId || !user) {
       setStatus({ chunkCount: 0, indexedAt: null, isLoading: false })
       return
     }
@@ -26,12 +26,17 @@ export function useRagStatus(noteId: string | undefined): RagStatus {
     let cancelled = false
 
     const fetchStatus = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('note_embeddings')
         .select('chunk_index, indexed_at')
         .eq('note_id', noteId)
+        .eq('user_id', user.id)
 
       if (cancelled) return
+      if (error) {
+        setStatus(prev => ({ ...prev, isLoading: false }))
+        return
+      }
 
       const chunkCount = data?.length ?? 0
       const indexedAt = chunkCount > 0 ? (data?.[0]?.indexed_at ?? null) : null
@@ -45,7 +50,7 @@ export function useRagStatus(noteId: string | undefined): RagStatus {
       cancelled = true
       clearInterval(interval)
     }
-  }, [noteId, supabase])
+  }, [noteId, user, supabase])
 
   return status
 }

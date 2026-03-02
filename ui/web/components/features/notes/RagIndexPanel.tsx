@@ -7,6 +7,19 @@ import { toast } from 'sonner'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { useRagStatus } from '@ui/web/hooks/useRagStatus'
 
+async function extractErrorMessage(err: unknown, fallback: string): Promise<string> {
+  if (!(err instanceof Error)) return fallback
+  // FunctionsHttpError wraps the actual Response in `context`
+  const ctx = (err as Error & { context?: unknown }).context
+  if (ctx instanceof Response) {
+    try {
+      const body = await ctx.json() as { error?: string }
+      if (body?.error) return body.error
+    } catch { /* fall through */ }
+  }
+  return err.message || fallback
+}
+
 interface RagIndexPanelProps {
   noteId: string
 }
@@ -30,7 +43,7 @@ export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
       if (error) throw error
       toast.success(`Indexed into ${(data as { chunkCount: number }).chunkCount} chunks`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Indexing failed')
+      toast.error(await extractErrorMessage(err, 'Indexing failed'))
     } finally {
       setOperation(null)
     }
@@ -45,7 +58,7 @@ export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
       if (error) throw error
       toast.success('RAG index removed')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(await extractErrorMessage(err, 'Delete failed'))
     } finally {
       setOperation(null)
     }
