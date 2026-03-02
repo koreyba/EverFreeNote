@@ -35,7 +35,7 @@ graph TD
     EF --> ADMIN
     ADMIN -->|fetch note| NE_TBL
     ADMIN -->|embedTexts via fetch| GEMINI
-    ADMIN -->|delete + insert chunks| EMB_TBL
+    ADMIN -->|upsert chunks + tail cleanup| EMB_TBL
 ```
 
 **Why Edge Functions, not Next.js API routes:**
@@ -78,9 +78,9 @@ interface RagStatus {
 1. Validate JWT → get userId
 2. Fetch note `title` + `description` from `notes` (ownership check via `user_id`)
 3. Strip HTML → prepend title → `chunkText(1500 chars, overlap 200)`
-4. Delete existing chunks for this note
-5. `batchEmbedContents` → Gemini REST API (`output_dimensionality: 1536`)
-6. Insert all chunks into `note_embeddings`
+4. `batchEmbedContents` → Gemini REST API (`output_dimensionality: 1536`)
+5. Upsert chunks into `note_embeddings` by `(note_id, chunk_index)`
+6. Delete stale tail chunks where `chunk_index >= newChunkCount`
 7. Return `{ chunkCount: N }`
 
 **action: 'delete'** flow:
@@ -99,6 +99,7 @@ supabase.from('note_embeddings')
   .select('chunk_index, indexed_at')
   .eq('note_id', noteId)
 ```
+RLS policy on `note_embeddings` enforces per-user isolation (`auth.uid() = user_id`) for these client reads.
 
 ## Component Breakdown
 
@@ -139,9 +140,9 @@ All chunking and embedding logic is self-contained inside the Edge Function (no 
 **Decision:** Poll every 3 seconds via `setInterval`.
 **Rationale:** Indexing a single note completes in 1–5 seconds. Supabase Realtime would add subscription setup/teardown complexity. Polling is simple and sufficient.
 
-### Delete + reinsert for reindexing
-**Decision:** Always delete existing chunks before inserting new ones.
-**Rationale:** Avoids stale chunks when a note shrinks (5 chunks → 3 after edits).
+### Upsert + tail cleanup for reindexing
+**Decision:** Upsert new chunks first, then delete stale tail chunks.
+**Rationale:** Preserves existing index if embedding generation or write fails; still removes stale chunks when a note shrinks (5 chunks → 3 after edits).
 
 ### Secrets stay server-side
 **Decision:** `SUPABASE_SERVICE_ROLE_KEY` and `GEMINI_API_KEY` only exist in the Edge Function environment.
@@ -152,4 +153,4 @@ All chunking and embedding logic is self-contained inside the Edge Function (no 
 - **Latency:** Indexing a typical note (<10 chunks) should complete in <5 seconds
 - **Rate limits:** Gemini free tier (5 RPM). Single-note indexing = 1 `batchEmbedContents` call.
 - **Security:** Secrets never reach the browser. User can only index/delete their own notes (userId validated in Edge Function).
-- **Reliability:** If Gemini fails, no partial data (delete happens before embed — note temporarily unindexed). Acceptable for v1.
+- **Reliability:** If Gemini/upsert fails, previous index remains searchable. Re-index only swaps chunks after new vectors are ready.

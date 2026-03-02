@@ -69,7 +69,7 @@ RAG indexing for notes is currently only possible via a standalone CLI script (`
 - The authenticated user's Supabase session is available browser-side for status polling
 - `GEMINI_API_KEY` is set as a Supabase secret (`supabase secrets set GEMINI_API_KEY=...`)
 - `SUPABASE_SERVICE_ROLE_KEY` is auto-injected into Edge Functions by Supabase infrastructure
-- `note_embeddings` is readable via anon key + user session (RLS to be added later)
+- `note_embeddings` is readable via anon key + user session, with RLS restricting reads to `auth.uid() = user_id`
 
 ## Questions & Open Items
 

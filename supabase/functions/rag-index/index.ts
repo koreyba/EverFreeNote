@@ -154,19 +154,23 @@ serve(async (req: Request) => {
     const text = prepareNoteText(note.title ?? "", note.description ?? "")
     const chunks = chunkText(text)
 
-    // Delete old chunks first
-    await supabaseAdmin
-      .from("note_embeddings")
-      .delete()
-      .eq("note_id", noteId)
-      .eq("user_id", userId)
-
-    if (chunks.length === 0) return jsonResponse({ chunkCount: 0 })
+    if (chunks.length === 0) {
+      const { error: clearError } = await supabaseAdmin
+        .from("note_embeddings")
+        .delete()
+        .eq("note_id", noteId)
+        .eq("user_id", userId)
+      if (clearError) throw clearError
+      return jsonResponse({ chunkCount: 0 })
+    }
 
     // Embed
     const vectors = await embedTexts(chunks.map((c) => c.content), geminiApiKey)
+    if (vectors.length !== chunks.length) {
+      throw new Error(`Gemini returned ${vectors.length} vectors for ${chunks.length} chunks`)
+    }
 
-    // Insert new chunks
+    // Upsert first so failed re-index never deletes a previously searchable note.
     const rows = chunks.map((chunk, i) => ({
       note_id: noteId,
       user_id: userId,
@@ -176,8 +180,19 @@ serve(async (req: Request) => {
       embedding: vectors[i],
     }))
 
-    const { error: insertError } = await supabaseAdmin.from("note_embeddings").insert(rows)
-    if (insertError) throw insertError
+    const { error: upsertError } = await supabaseAdmin
+      .from("note_embeddings")
+      .upsert(rows, { onConflict: "note_id,chunk_index" })
+    if (upsertError) throw upsertError
+
+    // Remove obsolete tail chunks when note becomes shorter after edits.
+    const { error: cleanupError } = await supabaseAdmin
+      .from("note_embeddings")
+      .delete()
+      .eq("note_id", noteId)
+      .eq("user_id", userId)
+      .gte("chunk_index", chunks.length)
+    if (cleanupError) throw cleanupError
 
     return jsonResponse({ chunkCount: chunks.length })
   } catch (err) {

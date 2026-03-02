@@ -82,9 +82,9 @@ export function createEmbeddings() {
 Key logic for `indexNote`:
 1. Fetch note from `notes` table (title + description)
 2. `stripHtml(description)` → prepend title → `chunkText()`
-3. `DELETE FROM note_embeddings WHERE note_id = ? AND user_id = ?`
-4. Batch embed all chunks via `embeddings.embedDocuments()`
-5. Upsert all rows into `note_embeddings`
+3. Batch embed all chunks via `embeddings.embedDocuments()`
+4. Upsert all rows into `note_embeddings` by `(note_id, chunk_index)`
+5. `DELETE FROM note_embeddings WHERE note_id = ? AND user_id = ? AND chunk_index >= newChunkCount`
 6. Return chunk count
 
 ### API Route (`app/api/notes/[id]/rag/route.ts`)

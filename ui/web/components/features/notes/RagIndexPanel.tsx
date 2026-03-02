@@ -96,6 +96,7 @@ export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
         size="sm"
         onClick={handleDelete}
         disabled={isBusy || !isIndexed}
+        data-cy="note-delete-index-button"
         className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
         title="Remove this note from the AI index"
       >
