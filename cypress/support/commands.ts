@@ -277,13 +277,18 @@ Cypress.Commands.add('mount', (component, options: SupabaseMountOptions = {}) =>
   }
 
   const wrapped = React.createElement(
-    SupabaseTestProvider,
+    SupabaseTestProvider as React.ComponentType<{
+      supabase: SupabaseClient
+      user?: User | null
+      loading?: boolean
+      children?: React.ReactNode
+    }>,
     {
       supabase: supabase ?? createDefaultSupabaseMock(),
       user: supabaseUser ?? { id: 'test-user' } as User,
       loading: supabaseLoading ?? false,
-      children: component,
     },
+    component,
   )
 
   return mount(wrapped, mountOptions)

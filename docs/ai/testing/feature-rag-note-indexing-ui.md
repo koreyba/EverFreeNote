@@ -36,6 +36,15 @@ description: Test cases for per-note RAG indexing controls
 - [ ] `DELETE /api/notes/[id]/rag`: removes all chunks, returns `{ deleted: true }`
 - [ ] `DELETE /api/notes/[id]/rag`: returns 401 without auth
 
+## Component Tests (mocked API, no network)
+
+File: `cypress/component/features/notes/RagIndexPanel.cy.tsx`
+
+- [x] Unindexed state: shows `RAG Index`, `Delete Index` disabled, status `Not indexed`
+- [x] Indexed state: shows `Re-index`, `Delete Index` enabled, status includes chunk count
+- [x] Index action: invokes `supabase.functions.invoke('rag-index', { action: 'index' })`
+- [x] Delete action: invokes `supabase.functions.invoke('rag-index', { action: 'delete' })`
+
 ## End-to-End Tests (manual)
 
 - [ ] Open a note in editor → "RAG Index" button visible
