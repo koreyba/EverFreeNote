@@ -245,6 +245,7 @@ function EditorPane({
         isAutoSaving={autoSaving}
         lastSavedAt={lastSavedAt}
         wordpressConfigured={wordpressConfigured}
+        onDelete={selectedNote ? () => handleDeleteNote(selectedNote) : undefined}
       />
     )
   }
