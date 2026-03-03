@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/compon
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
+import { RagIndexPanel } from "@/components/features/notes/RagIndexPanel"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
@@ -170,7 +171,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       <div className="p-4 border-b bg-card flex items-start justify-between">
         <h2 className="text-lg font-semibold text-muted-foreground">Editing</h2>
         <div className="flex flex-col items-end gap-1">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
+            {noteId ? <RagIndexPanel noteId={noteId} /> : null}
             {wordpressConfigured && noteId ? (
               <ExportToWordPressButton
                 getNote={getExportNote}

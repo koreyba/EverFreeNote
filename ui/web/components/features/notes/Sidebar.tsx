@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BookOpen, Globe, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
+import { BookOpen, Globe, KeyRound, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,7 @@ import { ExportButton } from "@/components/ExportButton"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
 import { DeleteAccountDialog } from "@/components/features/account/DeleteAccountDialog"
 import { WordPressSettingsDialog } from "@/components/features/wordpress/WordPressSettingsDialog"
+import { ApiKeysSettingsDialog } from "@/components/features/settings/ApiKeysSettingsDialog"
 import { User } from "@supabase/supabase-js"
 import { cn } from "@ui/web/lib/utils"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
@@ -88,6 +89,7 @@ export function Sidebar({
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
   const [wordPressSettingsOpen, setWordPressSettingsOpen] = useState(false)
+  const [apiKeysOpen, setApiKeysOpen] = useState(false)
   const [searchDraft, setSearchDraft] = useState(searchQuery)
   const debouncedSearch = useDebouncedCallback(onSearch, 250)
 
@@ -281,6 +283,15 @@ export function Sidebar({
                   <Globe className="w-4 h-4 mr-2" />
                   WordPress settings
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setApiKeysOpen(true)}
+                >
+                  <KeyRound className="w-4 h-4 mr-2" />
+                  API Keys
+                </Button>
                 <ImportButton onImportComplete={onImportComplete} />
                 <ExportButton onExportComplete={onExportComplete} />
                 <Button
@@ -321,6 +332,10 @@ export function Sidebar({
         open={wordPressSettingsOpen}
         onOpenChange={setWordPressSettingsOpen}
         onConfiguredChange={onWordPressConfiguredChange}
+      />
+      <ApiKeysSettingsDialog
+        open={apiKeysOpen}
+        onOpenChange={setApiKeysOpen}
       />
     </div>
   )

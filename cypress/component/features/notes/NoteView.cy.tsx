@@ -99,7 +99,7 @@ describe('NoteView Component', () => {
     cy.contains('Edit').click()
     cy.get('@onEdit').should('have.been.called')
 
-    cy.contains('Delete').click()
+    cy.get('[data-cy="note-delete-button"]').click()
     cy.get('@onDelete').should('have.been.called')
 
     // Test tag interaction if InteractiveTag supports it

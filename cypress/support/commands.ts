@@ -1,6 +1,9 @@
 /// <reference types="cypress" />
 
+import React from 'react'
 import { mount } from 'cypress/react'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
+import { SupabaseTestProvider } from '../../ui/web/providers/SupabaseProvider'
 
 type ImportStrategy = 'prefix' | 'skip'
 
@@ -9,6 +12,67 @@ type NoteInput = {
   content?: string
   tags?: string | string[]
 }
+
+type SupabaseMountOptions = Parameters<typeof mount>[1] & {
+  supabase?: SupabaseClient
+  supabaseUser?: User | null
+  supabaseLoading?: boolean
+  wrapWithSupabase?: boolean
+}
+
+const createThenableQueryBuilder = () => {
+  const result = { data: [], error: null } as { data: unknown[]; error: null }
+  const builder: Record<string, unknown> = {}
+
+  const chain = () => builder
+  builder.select = chain
+  builder.insert = chain
+  builder.update = chain
+  builder.delete = chain
+  builder.upsert = chain
+  builder.eq = chain
+  builder.neq = chain
+  builder.gte = chain
+  builder.gt = chain
+  builder.lte = chain
+  builder.lt = chain
+  builder.ilike = chain
+  builder.like = chain
+  builder.in = chain
+  builder.contains = chain
+  builder.order = chain
+  builder.limit = chain
+  builder.range = chain
+  builder.or = chain
+  builder.match = chain
+  builder.not = chain
+
+  builder.single = () => Promise.resolve({ data: null, error: null })
+  builder.maybeSingle = () => Promise.resolve({ data: null, error: null })
+
+  // Make chained builders awaitable to mimic Postgrest builders.
+  builder.then = (onFulfilled?: (value: typeof result) => unknown, onRejected?: (reason: unknown) => unknown) =>
+    Promise.resolve(result).then(onFulfilled, onRejected)
+  builder.catch = (onRejected?: (reason: unknown) => unknown) => Promise.resolve(result).catch(onRejected)
+  builder.finally = (onFinally?: () => void) => Promise.resolve(result).finally(onFinally)
+
+  return builder
+}
+
+const createDefaultSupabaseMock = (): SupabaseClient => ({
+  auth: {
+    getUser: () => Promise.resolve({ data: { user: { id: 'test-user' } }, error: null }),
+    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => undefined } } }),
+    signOut: () => Promise.resolve({ error: null }),
+    signInWithOAuth: () => Promise.resolve({ data: null, error: null }),
+  },
+  functions: {
+    invoke: () => Promise.resolve({ data: null, error: null }),
+  },
+  from: () => createThenableQueryBuilder(),
+  rpc: () => Promise.resolve({ data: null, error: null }),
+}) as unknown as SupabaseClient
 
 const getSupabaseAnonKey = (): string | null => {
   const key =
@@ -197,8 +261,38 @@ Cypress.Commands.add('deleteAllNotesViaAPI', () => {
   })
 })
 
-// For component testing
-Cypress.Commands.add('mount', mount)
+// For component testing:
+// wrap every mount with SupabaseTestProvider so feature components can use useSupabase().
+Cypress.Commands.add('mount', (component, options: SupabaseMountOptions = {}) => {
+  const {
+    supabase,
+    supabaseUser,
+    supabaseLoading,
+    wrapWithSupabase = true,
+    ...mountOptions
+  } = options
+
+  if (!wrapWithSupabase) {
+    return mount(component, mountOptions)
+  }
+
+  const wrapped = React.createElement(
+    SupabaseTestProvider as React.ComponentType<{
+      supabase: SupabaseClient
+      user?: User | null
+      loading?: boolean
+      children?: React.ReactNode
+    }>,
+    {
+      supabase: supabase ?? createDefaultSupabaseMock(),
+      user: supabaseUser ?? { id: 'test-user' } as User,
+      loading: supabaseLoading ?? false,
+    },
+    component,
+  )
+
+  return mount(wrapped, mountOptions)
+})
 
 // Custom command for rich text editor testing
 Cypress.Commands.add('typeInRichEditor', (content: string) => {
@@ -243,7 +337,7 @@ declare global {
       assertTagExists(tag: string): Chainable<void>
       createNotesViaAPI(notes: NoteInput[]): Chainable<void>
       deleteAllNotesViaAPI(): Chainable<void>
-      mount: typeof mount
+      mount(component: Parameters<typeof mount>[0], options?: SupabaseMountOptions): ReturnType<typeof mount>
       typeInRichEditor(content: string): Chainable<void>
       applyRichTextFormatting(buttonText: string): Chainable<void>
       selectTextInEditor(startOffset: number, endOffset: number): Chainable<void>
