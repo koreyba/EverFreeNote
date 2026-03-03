@@ -107,10 +107,11 @@ export const NoteView = React.memo(function NoteView({
             variant="outline"
             size="sm"
             data-cy="note-delete-button"
+            aria-label="Delete note"
             className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
           >
             <Trash2 className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Delete</span>
+            <span className="hidden sm:inline" aria-hidden="true">Delete</span>
           </Button>
           {/* More actions menu — always visible, contains RAG index controls + optional WP export */}
           <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>

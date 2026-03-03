@@ -2,6 +2,11 @@ import React from 'react'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { RagIndexPanel } from '../../../../ui/web/components/features/notes/RagIndexPanel'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '../../../../ui/web/components/ui/dropdown-menu'
 
 type EmbeddingRow = {
   chunk_index: number
@@ -165,6 +170,124 @@ describe('RagIndexPanel Component', () => {
     cy.wrap(invoke).should('have.been.calledWith', 'rag-index', {
       body: { noteId: 'note-1', action: 'delete' },
     })
+  })
+})
+
+describe('RagIndexPanel (variant=menu)', () => {
+  const testUser = { id: 'user-1' } as User
+
+  function mountMenuVariant({
+    rows = [] as EmbeddingRow[],
+    onMenuClose = cy.stub() as Cypress.Agent<sinon.SinonStub>,
+    invokeImpl,
+  }: {
+    rows?: EmbeddingRow[]
+    onMenuClose?: Cypress.Agent<sinon.SinonStub>
+    invokeImpl?: (name: string, params: unknown) => Promise<unknown>
+  } = {}) {
+    const { supabase } = createSupabaseForRag(rows, invokeImpl)
+    cy.mount(
+      <SupabaseTestProvider supabase={supabase} user={testUser}>
+        {/* defaultOpen keeps DropdownMenuContent mounted for the duration of the test */}
+        <DropdownMenu defaultOpen>
+          <DropdownMenuTrigger asChild>
+            <button type="button">Open</button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <RagIndexPanel noteId="note-1" variant="menu" onMenuClose={onMenuClose} />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SupabaseTestProvider>
+    )
+    return { supabase }
+  }
+
+  it('renders status label and action items when not indexed', () => {
+    mountMenuVariant({ rows: [] })
+    cy.contains('AI index: Not indexed').should('be.visible')
+    cy.contains('[role="menuitem"]', 'Index note').should('be.visible')
+    cy.get('[data-cy="note-delete-index-button"]').should('be.disabled')
+  })
+
+  it('renders indexed state with chunk count', () => {
+    const rows: EmbeddingRow[] = [
+      { chunk_index: 0, indexed_at: '2026-03-02T20:00:00.000Z' },
+      { chunk_index: 1, indexed_at: '2026-03-02T20:00:00.000Z' },
+    ]
+    mountMenuVariant({ rows })
+    cy.contains('2 chunks').should('be.visible')
+    cy.contains('[role="menuitem"]', 'Re-index').should('be.visible')
+    cy.get('[data-cy="note-delete-index-button"]').should('not.be.disabled')
+  })
+
+  it('keeps dropdown mounted while AlertDialog is shown (onSelect preventDefault)', () => {
+    // This is the core regression test for the bug where the confirm dialog
+    // would flash and disappear because DropdownMenuContent was unmounting before
+    // the AlertDialog could render.
+    const rows: EmbeddingRow[] = [{ chunk_index: 0, indexed_at: '2026-03-02T20:00:00.000Z' }]
+    const onMenuClose = cy.stub().as('onMenuClose')
+    mountMenuVariant({ rows, onMenuClose })
+
+    cy.get('[data-cy="note-delete-index-button"]').click()
+
+    // Dropdown must still be mounted — the item still exists in the DOM
+    cy.get('[data-cy="note-delete-index-button"]').should('exist')
+    // AlertDialog must be visible
+    cy.contains('Remove from AI index?').should('be.visible')
+    // onMenuClose must NOT have fired yet
+    cy.get('@onMenuClose').should('not.have.been.called')
+  })
+
+  it('calls onMenuClose when confirmation dialog is cancelled', () => {
+    const rows: EmbeddingRow[] = [{ chunk_index: 0, indexed_at: '2026-03-02T20:00:00.000Z' }]
+    const onMenuClose = cy.stub().as('onMenuClose')
+    mountMenuVariant({ rows, onMenuClose })
+
+    cy.get('[data-cy="note-delete-index-button"]').click()
+    cy.contains('Remove from AI index?').should('be.visible')
+    cy.contains('button', 'Cancel').click()
+
+    cy.get('@onMenuClose').should('have.been.calledOnce')
+  })
+
+  it('calls onMenuClose after confirmed delete', () => {
+    const rows: EmbeddingRow[] = [{ chunk_index: 0, indexed_at: '2026-03-02T20:00:00.000Z' }]
+    const onMenuClose = cy.stub().as('onMenuClose')
+    mountMenuVariant({
+      rows,
+      onMenuClose,
+      invokeImpl: async () => ({ data: { deleted: true }, error: null }),
+    })
+
+    cy.get('[data-cy="note-delete-index-button"]').click()
+    cy.get('[data-cy="note-delete-index-confirm"]').click()
+
+    cy.get('@onMenuClose').should('have.been.calledOnce')
+  })
+
+  it('invokes rag-index with action=index from menu item', () => {
+    const { supabase } = createSupabaseForRag([], async (name, params) => {
+      expect(name).to.eq('rag-index')
+      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'index' } })
+      return { data: { chunkCount: 2 }, error: null }
+    })
+    const onMenuClose = cy.stub().as('onMenuClose')
+    cy.mount(
+      <SupabaseTestProvider supabase={supabase} user={testUser}>
+        <DropdownMenu defaultOpen>
+          <DropdownMenuTrigger asChild><button type="button">Open</button></DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <RagIndexPanel noteId="note-1" variant="menu" onMenuClose={onMenuClose} />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SupabaseTestProvider>
+    )
+    cy.contains('[role="menuitem"]', 'Index note').click()
+    cy.wrap(supabase.functions.invoke).should('have.been.calledWith', 'rag-index', {
+      body: { noteId: 'note-1', action: 'index' },
+    })
+    // onMenuClose called after operation settles — dropdown closes only then
+    cy.get('@onMenuClose').should('have.been.calledOnce')
   })
 })
 

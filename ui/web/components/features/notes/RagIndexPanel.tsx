@@ -143,8 +143,13 @@ export function RagIndexPanel({ noteId, variant = 'inline', onMenuClose }: RagIn
         <DropdownMenuLabel className="px-2 py-1 text-xs font-normal text-muted-foreground">
           AI index: {statusText()}
         </DropdownMenuLabel>
+        {/*
+          onSelect preventDefault keeps the dropdown mounted for the duration of the
+          indexing request so operation state survives. onMenuClose is called in finally
+          to close the menu once the request settles, preventing concurrent requests.
+        */}
         <DropdownMenuItem
-          onClick={() => void handleIndex()}
+          onSelect={(e) => { e.preventDefault(); void handleIndex().finally(() => onMenuClose?.()) }}
           disabled={isBusy}
           title={isIndexed ? 'Re-index this note' : 'Index this note for AI search'}
         >
