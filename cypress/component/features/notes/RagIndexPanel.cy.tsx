@@ -206,7 +206,7 @@ describe('RagIndexPanel (variant=menu)', () => {
     mountMenuVariant({ rows: [] })
     cy.contains('AI index: Not indexed').should('be.visible')
     cy.contains('[role="menuitem"]', 'Index note').should('be.visible')
-    cy.get('[data-cy="note-delete-index-button"]').should('be.disabled')
+    cy.get('[data-cy="note-delete-index-button"]').should('have.attr', 'data-disabled')
   })
 
   it('renders indexed state with chunk count', () => {

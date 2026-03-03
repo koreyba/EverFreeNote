@@ -2,6 +2,7 @@ import React from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NoteEditor } from '../../../../ui/web/components/features/notes/NoteEditor'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
+import { createSupabaseForExportDialog } from './noteTestHelpers'
 
 /** Minimal Supabase stub for tests that open the "..." menu but don't need real WP/RAG responses.
  *  With user=null (SupabaseTestProvider default), useRagStatus returns early without querying. */
@@ -22,49 +23,6 @@ function createMinimalSupabase(): SupabaseClient {
       }),
     }),
   } as unknown as SupabaseClient
-}
-
-const createSupabaseForExportDialog = () => {
-  const invoke = cy.stub().callsFake((name: string, params: { body: { action?: string } }) => {
-    if (name === 'wordpress-settings-status') {
-      return Promise.resolve({
-        data: {
-          configured: true,
-          integration: {
-            siteUrl: 'https://stage.dkoreiba.com/',
-            wpUsername: 'editor',
-            enabled: true,
-            hasPassword: true,
-          },
-        },
-        error: null,
-      })
-    }
-    if (name === 'wordpress-bridge' && params.body.action === 'get_categories') {
-      return Promise.resolve({
-        data: {
-          categories: [{ id: 1, name: 'Tech' }],
-          rememberedCategoryIds: [],
-        },
-        error: null,
-      })
-    }
-    return Promise.resolve({ data: null, error: null })
-  })
-
-  const supabase = {
-    functions: { invoke },
-    auth: {
-      getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } } }),
-    },
-    from: cy.stub().returns({
-      upsert: cy.stub().resolves({ error: null }),
-      update: cy.stub().returnsThis(),
-      eq: cy.stub().resolves({ error: null }),
-    }),
-  } as unknown as SupabaseClient
-
-  return { supabase, invoke }
 }
 
 describe('NoteEditor Component', () => {

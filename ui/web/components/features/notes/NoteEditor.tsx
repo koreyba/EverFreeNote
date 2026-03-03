@@ -1,28 +1,15 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { TagInput } from "@/components/TagInput"
-import {
-  ExportToWordPressButton,
-  type ExportableWordPressNote,
-} from "@/components/features/wordpress/ExportToWordPressButton"
-import { WordPressExportDialog } from "@/components/features/wordpress/WordPressExportDialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
-import { RagIndexPanel } from "@/components/features/notes/RagIndexPanel"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
@@ -66,9 +53,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
-  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
-  const [exportDialogNote, setExportDialogNote] = React.useState<ExportableWordPressNote | null>(null)
-  const [moreMenuOpen, setMoreMenuOpen] = React.useState(false)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
 
@@ -136,11 +120,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     }
   }, [getFormData, noteId])
 
-  const handleExportRequest = React.useCallback((exportNote: ExportableWordPressNote) => {
-    setExportDialogNote(exportNote)
-    setExportDialogOpen(true)
-  }, [])
-
   const suggestions = useTagSuggestions({
     allTags: availableTags,
     selectedTags,
@@ -192,38 +171,12 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             </Button>
             {/* More actions menu — RAG controls, delete note, WordPress export */}
             {showMoreMenu && (
-              <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" aria-label="More actions">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[200px]">
-                  {noteId && <RagIndexPanel noteId={noteId} variant="menu" onMenuClose={() => setMoreMenuOpen(false)} />}
-                  {wordpressConfigured && noteId && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <ExportToWordPressButton
-                        getNote={getExportNote}
-                        onRequestExport={handleExportRequest}
-                        triggerVariant="menu-item"
-                      />
-                    </>
-                  )}
-                  {onDelete && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={onDelete}
-                        className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20"
-                      >
-                        <Trash2 />
-                        Delete note
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <MoreActionsMenu
+                noteId={noteId!}
+                wordpressConfigured={wordpressConfigured}
+                getExportNote={getExportNote}
+                onDelete={onDelete}
+              />
             )}
           </div>
           {(showSaving || isSaving) ? (
@@ -268,9 +221,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
           />
         </div>
       </div>
-      {exportDialogNote ? (
-        <WordPressExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} note={exportDialogNote} />
-      ) : null}
     </div>
   )
 }))

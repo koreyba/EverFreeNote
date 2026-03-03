@@ -1,23 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Edit2, Trash2, ChevronLeft, MoreHorizontal } from "lucide-react"
+import { Edit2, Trash2, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import InteractiveTag from "@/components/InteractiveTag"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
-import {
-  ExportToWordPressButton,
-  type ExportableWordPressNote,
-} from "@/components/features/wordpress/ExportToWordPressButton"
-import { WordPressExportDialog } from "@/components/features/wordpress/WordPressExportDialog"
-
-import { RagIndexPanel } from "@/components/features/notes/RagIndexPanel"
+import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { SanitizationService } from "@core/services/sanitizer"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import type { Note } from "@core/types/domain"
@@ -67,14 +55,6 @@ export const NoteView = React.memo(function NoteView({
     tags: note.tags ?? [],
   }), [note.content, note.description, note.id, note.tags, note.title])
 
-  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
-  const [exportDialogNote, setExportDialogNote] = React.useState<ExportableWordPressNote | null>(null)
-  const [moreMenuOpen, setMoreMenuOpen] = React.useState(false)
-
-  const handleExportRequest = React.useCallback((exportNote: ExportableWordPressNote) => {
-    setExportDialogNote(exportNote)
-    setExportDialogOpen(true)
-  }, [])
 
   return (
     <div className="flex-1 flex min-h-0 flex-col">
@@ -114,26 +94,11 @@ export const NoteView = React.memo(function NoteView({
             <span className="hidden sm:inline" aria-hidden="true">Delete</span>
           </Button>
           {/* More actions menu — always visible, contains RAG index controls + optional WP export */}
-          <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="More actions">
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[200px]">
-              <RagIndexPanel noteId={note.id} variant="menu" onMenuClose={() => setMoreMenuOpen(false)} />
-              {wordpressConfigured && (
-                <>
-                  <DropdownMenuSeparator />
-                  <ExportToWordPressButton
-                    getNote={getExportNote}
-                    onRequestExport={handleExportRequest}
-                    triggerVariant="menu-item"
-                  />
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <MoreActionsMenu
+            noteId={note.id}
+            wordpressConfigured={wordpressConfigured}
+            getExportNote={getExportNote}
+          />
         </div>
       </div>
 
@@ -171,9 +136,6 @@ export const NoteView = React.memo(function NoteView({
           </div>
         </div>
       </div>
-      {exportDialogNote ? (
-        <WordPressExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} note={exportDialogNote} />
-      ) : null}
     </div>
   )
 })
