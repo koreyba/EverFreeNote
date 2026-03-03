@@ -97,7 +97,7 @@ export function ApiKeysSettingsDialog({ open, onOpenChange }: ApiKeysSettingsDia
           </div>
 
           {configured ? (
-            <div className="rounded-md border border-emerald-600/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            <div className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">
               Gemini API key is configured.
             </div>
           ) : null}
