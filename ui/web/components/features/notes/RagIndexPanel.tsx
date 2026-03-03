@@ -3,6 +3,16 @@
 import { useState } from 'react'
 import { Database, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { useRagStatus } from '@ui/web/hooks/useRagStatus'
@@ -34,8 +44,9 @@ function parseChunkCount(data: unknown): number | null {
 
 export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
   const { supabase } = useSupabase()
-  const { chunkCount, indexedAt, isLoading } = useRagStatus(noteId)
+  const { chunkCount, indexedAt, isLoading, refresh } = useRagStatus(noteId)
   const [operation, setOperation] = useState<Operation>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   const isIndexed = chunkCount > 0
   const isBusy = operation !== null
@@ -44,16 +55,17 @@ export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
     setOperation('indexing')
     try {
       const { data, error } = await supabase.functions.invoke('rag-index', {
-        body: { noteId, action: 'index' },
+        body: { noteId, action: isIndexed ? 'reindex' : 'index' },
       })
       if (error) throw error
-      const chunkCount = parseChunkCount(data)
-      if (chunkCount === null) {
+      const count = parseChunkCount(data)
+      if (count === null) {
         console.warn('[rag-index] Unexpected response payload for index action', data)
         toast.success('Indexed successfully')
       } else {
-        toast.success(`Indexed into ${chunkCount} chunks`)
+        toast.success(`Indexed into ${count} chunks`)
       }
+      refresh()
     } catch (err) {
       toast.error(await extractErrorMessage(err, 'Indexing failed'))
     } finally {
@@ -69,6 +81,7 @@ export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
       })
       if (error) throw error
       toast.success('RAG index removed')
+      refresh()
     } catch (err) {
       toast.error(await extractErrorMessage(err, 'Delete failed'))
     } finally {
@@ -88,41 +101,63 @@ export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleIndex}
-        disabled={isBusy}
-        title={isIndexed ? 'Re-index this note' : 'Index this note for AI search'}
-      >
-        {operation === 'indexing' ? (
-          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-        ) : (
-          <Database className="w-3.5 h-3.5 mr-1.5" />
-        )}
-        {isIndexed ? 'Re-index' : 'RAG Index'}
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleDelete}
-        disabled={isBusy || !isIndexed}
-        data-cy="note-delete-index-button"
-        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-        title="Remove this note from the AI index"
-      >
-        {operation === 'deleting' ? (
-          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-        ) : (
-          <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-        )}
-        Delete Index
-      </Button>
-      <span className="text-xs text-muted-foreground min-w-[80px]">
-        {statusText()}
-      </span>
-    </div>
+    <>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleIndex}
+          disabled={isBusy}
+          title={isIndexed ? 'Re-index this note' : 'Index this note for AI search'}
+        >
+          {operation === 'indexing' ? (
+            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Database className="w-3.5 h-3.5 mr-1.5" />
+          )}
+          {isIndexed ? 'Re-index' : 'RAG Index'}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setDeleteConfirmOpen(true)}
+          disabled={isBusy || !isIndexed}
+          data-cy="note-delete-index-button"
+          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+          title="Remove this note from the AI index"
+        >
+          {operation === 'deleting' ? (
+            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+          )}
+          Delete Index
+        </Button>
+        <span className="text-xs text-muted-foreground min-w-[80px]">
+          {statusText()}
+        </span>
+      </div>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove from AI index?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove all embeddings for this note. You can re-index it at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              data-cy="note-delete-index-confirm"
+              onClick={() => { setDeleteConfirmOpen(false); void handleDelete() }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
-

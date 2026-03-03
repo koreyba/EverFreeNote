@@ -108,7 +108,44 @@ describe('RagIndexPanel Component', () => {
     })
   })
 
-  it('invokes rag-index with action=delete when indexed', () => {
+  it('invokes rag-index with action=reindex when already indexed', () => {
+    const rows: EmbeddingRow[] = [{ chunk_index: 0, indexed_at: '2026-03-02T20:00:00.000Z' }]
+    const { supabase, invoke } = createSupabaseForRag(rows, async (name: string, params: unknown) => {
+      expect(name).to.eq('rag-index')
+      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'reindex' } })
+      return { data: { chunkCount: 1 }, error: null }
+    })
+
+    cy.mount(
+      <SupabaseTestProvider supabase={supabase} user={testUser}>
+        <RagIndexPanel noteId="note-1" />
+      </SupabaseTestProvider>
+    )
+
+    cy.contains('button', 'Re-index').click()
+    cy.wrap(invoke).should('have.been.calledWith', 'rag-index', {
+      body: { noteId: 'note-1', action: 'reindex' },
+    })
+  })
+
+  it('shows confirmation dialog before deleting index', () => {
+    const rows: EmbeddingRow[] = [{ chunk_index: 0, indexed_at: '2026-03-02T20:00:00.000Z' }]
+    const { supabase, invoke } = createSupabaseForRag(rows)
+
+    cy.mount(
+      <SupabaseTestProvider supabase={supabase} user={testUser}>
+        <RagIndexPanel noteId="note-1" />
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="note-delete-index-button"]').should('not.be.disabled').click()
+    cy.contains('Remove from AI index?').should('be.visible')
+    // cancelling should not invoke the function
+    cy.contains('button', 'Cancel').click()
+    cy.wrap(invoke).should('not.have.been.called')
+  })
+
+  it('invokes rag-index with action=delete after confirming', () => {
     const rows: EmbeddingRow[] = [{ chunk_index: 0, indexed_at: '2026-03-02T20:00:00.000Z' }]
     const { supabase, invoke } = createSupabaseForRag(rows, async (name: string, params: unknown) => {
       expect(name).to.eq('rag-index')
@@ -123,6 +160,8 @@ describe('RagIndexPanel Component', () => {
     )
 
     cy.get('[data-cy="note-delete-index-button"]').should('not.be.disabled').click()
+    cy.contains('Remove from AI index?').should('be.visible')
+    cy.get('[data-cy="note-delete-index-confirm"]').click()
     cy.wrap(invoke).should('have.been.calledWith', 'rag-index', {
       body: { noteId: 'note-1', action: 'delete' },
     })

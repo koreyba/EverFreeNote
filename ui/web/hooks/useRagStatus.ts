@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 
 export interface RagStatus {
   chunkCount: number
   indexedAt: string | null
   isLoading: boolean
+  /** Call after an index/delete operation to immediately re-fetch instead of waiting for the next poll tick. */
+  refresh: () => void
 }
 
 const POLL_INTERVAL_MS = 3000
@@ -32,11 +34,13 @@ function getLatestIndexedAt(rows: RagStatusRow[] | null): string | null {
 
 export function useRagStatus(noteId: string | undefined): RagStatus {
   const { supabase, user } = useSupabase()
-  const [status, setStatus] = useState<RagStatus>({
+  const [status, setStatus] = useState<Omit<RagStatus, 'refresh'>>({
     chunkCount: 0,
     indexedAt: null,
     isLoading: true,
   })
+  const [refreshTick, setRefreshTick] = useState(0)
+  const refresh = useCallback(() => setRefreshTick((t) => t + 1), [])
 
   useEffect(() => {
     if (!noteId || !user) return
@@ -74,12 +78,12 @@ export function useRagStatus(noteId: string | undefined): RagStatus {
       cancelled = true
       clearInterval(interval)
     }
-  }, [noteId, user, supabase])
+  }, [noteId, user, supabase, refreshTick])
 
   // Derive the "no active note" state — avoids calling setState synchronously in the effect
   if (!noteId || !user) {
-    return { chunkCount: 0, indexedAt: null, isLoading: false }
+    return { chunkCount: 0, indexedAt: null, isLoading: false, refresh }
   }
 
-  return status
+  return { ...status, refresh }
 }
