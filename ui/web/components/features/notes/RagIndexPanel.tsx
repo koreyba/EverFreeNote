@@ -26,6 +26,12 @@ interface RagIndexPanelProps {
 
 type Operation = 'indexing' | 'deleting' | null
 
+function parseChunkCount(data: unknown): number | null {
+  if (!data || typeof data !== 'object') return null
+  const value = (data as { chunkCount?: unknown }).chunkCount
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
 export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
   const { supabase } = useSupabase()
   const { chunkCount, indexedAt, isLoading } = useRagStatus(noteId)
@@ -41,7 +47,13 @@ export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
         body: { noteId, action: 'index' },
       })
       if (error) throw error
-      toast.success(`Indexed into ${(data as { chunkCount: number }).chunkCount} chunks`)
+      const chunkCount = parseChunkCount(data)
+      if (chunkCount === null) {
+        console.warn('[rag-index] Unexpected response payload for index action', data)
+        toast.success('Indexed successfully')
+      } else {
+        toast.success(`Indexed into ${chunkCount} chunks`)
+      }
     } catch (err) {
       toast.error(await extractErrorMessage(err, 'Indexing failed'))
     } finally {
@@ -70,7 +82,7 @@ export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
     if (operation === 'deleting') return 'Removing...'
     if (isIndexed) {
       const time = indexedAt ? new Date(indexedAt).toLocaleTimeString() : ''
-      return `${chunkCount} chunks${time ? ` · ${time}` : ''}`
+      return `${chunkCount} chunks${time ? ` - ${time}` : ''}`
     }
     return 'Not indexed'
   }
@@ -113,3 +125,4 @@ export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
     </div>
   )
 }
+

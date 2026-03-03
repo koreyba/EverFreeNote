@@ -1,4 +1,4 @@
-// @ts-nocheck — Deno types (Deno.env, URL imports) are not available in the Node.js TypeScript
+// @ts-nocheck - Deno types (Deno.env, URL imports) are not available in the Node.js TypeScript
 // compiler used by the monorepo. There is no deno.json / import_map.json in this project.
 // The `declare const Deno` below is kept for editor IntelliSense only.
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
@@ -14,6 +14,7 @@ const EMBEDDING_MODEL = "models/gemini-embedding-001"
 const OUTPUT_DIMENSIONS = 1536
 const CHUNK_SIZE = 1500
 const CHUNK_OVERLAP = 200
+const MAX_CHUNKS_PER_NOTE = 128
 const GEMINI_TIMEOUT_MS = 10000
 const GEMINI_MAX_RETRIES = 3
 const GEMINI_RETRY_BASE_MS = 400
@@ -87,7 +88,8 @@ async function embedTexts(texts: string[], apiKey: string): Promise<number[][]> 
 
       const requestId = response.headers.get("x-request-id") ?? "n/a"
       if (!response.ok) {
-        const body = await response.text()
+        const rawBody = await response.text()
+        const bodySummary = rawBody ? `<redacted:${rawBody.length} chars>` : "<empty>"
         const retryable = response.status === 429 || response.status >= 500
         if (retryable && attempt < GEMINI_MAX_RETRIES) {
           const backoffMs = GEMINI_RETRY_BASE_MS * 2 ** (attempt - 1)
@@ -95,7 +97,7 @@ async function embedTexts(texts: string[], apiKey: string): Promise<number[][]> 
           continue
         }
         throw new Error(
-          `Gemini batchEmbedContents failed: status=${response.status} requestId=${requestId} body=${body}`
+          `Gemini batchEmbedContents failed: status=${response.status} requestId=${requestId} response=${bodySummary}`
         )
       }
 
@@ -164,8 +166,8 @@ serve(async (req: Request) => {
   if (!noteId || typeof noteId !== "string") {
     return jsonResponse({ error: "Missing noteId" }, 400)
   }
-  if (action !== "index" && action !== "delete") {
-    return jsonResponse({ error: "action must be 'index' or 'delete'" }, 400)
+  if (action !== "index" && action !== "reindex" && action !== "delete") {
+    return jsonResponse({ error: "action must be 'index', 'reindex', or 'delete'" }, 400)
   }
 
   // Verify note ownership
@@ -183,7 +185,7 @@ serve(async (req: Request) => {
       return jsonResponse({ deleted: true })
     }
 
-    // action === "index"
+    // action === "index" | "reindex"
     const { data: note, error: noteError } = await supabaseAdmin
       .from("notes")
       .select("title, description")
@@ -196,8 +198,16 @@ serve(async (req: Request) => {
 
     const text = prepareNoteText(note.title ?? "", note.description ?? "")
     const chunks = chunkText(text)
+    const droppedChunkCount = Math.max(0, chunks.length - MAX_CHUNKS_PER_NOTE)
+    const chunksForIndexing = droppedChunkCount > 0 ? chunks.slice(0, MAX_CHUNKS_PER_NOTE) : chunks
 
-    if (chunks.length === 0) {
+    if (droppedChunkCount > 0) {
+      console.warn(
+        `[rag-index] note ${noteId} produced ${chunks.length} chunks; processing first ${chunksForIndexing.length} and dropping ${droppedChunkCount}`
+      )
+    }
+
+    if (chunksForIndexing.length === 0) {
       const { error: clearError } = await supabaseAdmin
         .from("note_embeddings")
         .delete()
@@ -208,13 +218,13 @@ serve(async (req: Request) => {
     }
 
     // Embed
-    const vectors = await embedTexts(chunks.map((c) => c.content), geminiApiKey)
-    if (vectors.length !== chunks.length) {
-      throw new Error(`Gemini returned ${vectors.length} vectors for ${chunks.length} chunks`)
+    const vectors = await embedTexts(chunksForIndexing.map((c) => c.content), geminiApiKey)
+    if (vectors.length !== chunksForIndexing.length) {
+      throw new Error(`Gemini returned ${vectors.length} vectors for ${chunksForIndexing.length} chunks`)
     }
 
     // Upsert first so failed re-index never deletes a previously searchable note.
-    const rows = chunks.map((chunk, i) => ({
+    const rows = chunksForIndexing.map((chunk, i) => ({
       note_id: noteId,
       user_id: userId,
       chunk_index: i,
@@ -234,14 +244,17 @@ serve(async (req: Request) => {
       .delete()
       .eq("note_id", noteId)
       .eq("user_id", userId)
-      .gte("chunk_index", chunks.length)
+      .gte("chunk_index", chunksForIndexing.length)
     if (cleanupError) throw cleanupError
 
-    return jsonResponse({ chunkCount: chunks.length })
+    return jsonResponse({
+      chunkCount: chunksForIndexing.length,
+      droppedChunks: droppedChunkCount > 0 ? droppedChunkCount : undefined,
+    })
   } catch (err) {
     console.error("[rag-index]", err)
     const isGeminiError = err instanceof Error && err.message.startsWith("Gemini")
-    const userMessage = isGeminiError ? "Embedding service error — try again later" : "Internal error"
+    const userMessage = isGeminiError ? "Embedding service error - try again later" : "Internal error"
     return jsonResponse({ error: userMessage }, 500)
   }
 })

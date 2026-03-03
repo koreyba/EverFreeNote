@@ -1,11 +1,14 @@
--- Migrate note_embeddings to chunked schema with 1536-dim vectors.
+-- Create/update note_embeddings to chunked schema with 1536-dim vectors.
 -- Non-destructive strategy:
---   1) keep legacy table as backup (rename once)
---   2) create new chunked table if missing
---   3) create required indexes idempotently
+--   1) ensure pgvector extension exists
+--   2) keep legacy table as backup (rename once, when upgrading older schema)
+--   3) create new chunked table if missing
+--   4) create required indexes idempotently
 --
 -- Note: legacy 3072-dim vectors cannot be transformed to 1536 automatically.
 -- Re-indexing is required to populate the new table.
+
+CREATE EXTENSION IF NOT EXISTS vector;
 
 DO $$
 BEGIN
@@ -14,6 +17,11 @@ BEGIN
     FROM information_schema.tables
     WHERE table_schema = 'public'
       AND table_name = 'note_embeddings'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'note_embeddings_legacy_3072'
   ) AND NOT EXISTS (
     SELECT 1
     FROM information_schema.columns

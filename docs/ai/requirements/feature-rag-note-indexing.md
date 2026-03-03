@@ -1,65 +1,49 @@
 ---
 phase: requirements
-title: RAG Note Indexing (POC)
-description: Proof of concept for semantic search and retrieval-augmented generation over user notes
+title: RAG Note Indexing
+description: Requirements for per-note indexing, retrieval, and UI controls
 ---
 
-# RAG Note Indexing — POC
+# RAG Note Indexing
 
 ## Problem Statement
-**What problem are we solving?**
 
-- Полнотекстовый поиск (FTS) находит заметки только по точному совпадению слов. Если пользователь помнит смысл, но не точные слова — поиск не помогает.
-- Нет возможности задать вопрос по содержимому заметок и получить сформулированный ответ.
-- Пользователь: владелец заметок, который хочет взаимодействовать с накопленными знаниями через natural language.
+- FTS не покрывает семантический поиск: пользователь помнит смысл, но не точные слова.
+- Нужно быстро индексировать заметки в векторное хранилище и безопасно использовать их в RAG-потоке.
+- Пользователь должен понимать статус индексации по конкретной заметке и управлять им из UI.
 
-## Goals & Objectives
+## Goals
 
-**Основные цели (POC):**
-- Доказать работоспособность идеи: индексировать заметки через Gemini embeddings и отвечать на вопросы по ним.
-- Получить работающий локальный скрипт за минимальное время.
+- Индексация заметки в чанки и эмбеддинги через Supabase Edge Function `rag-index`.
+- Действия из UI: `index`, `reindex`, `delete`.
+- Автоматическое переиндексирование после изменения контента (debounced autosave path).
+- Изоляция данных между пользователями (RLS + фильтрация по `user_id`).
+- Production-ready поведение: отказоустойчивость, идемпотентность и наблюдаемость ошибок.
 
-**Вне scope (для POC):**
-- Интеграция в UI (кнопка, чат-интерфейс)
-- Автоматическое переиндексирование при изменении заметки
-- Поддержка мобильного приложения
-- Продакшн-деплой, мультипользовательность
-- Индексирование изображений и вложений
+## In Scope
 
-## User Stories & Use Cases
+- UI-интеграция в `NoteEditor` и `NoteView` (кнопки и статус RAG индекса).
+- Вызовы `supabase.functions.invoke('rag-index', { body: { noteId, action } })`.
+- Chunked indexing (несколько векторов на заметку) и хранение в `note_embeddings`.
+- Multi-user support с обязательной защитой доступа к `note_embeddings`.
+- Деплой в staging/production с миграциями и секретами Edge Function.
 
-- Как пользователь, я хочу задать вопрос "что я знаю о Х?" и получить ответ, собранный из моих заметок.
-- Как пользователь, я хочу найти заметки, семантически близкие к моему запросу, даже если я не помню точных слов.
-- Как пользователь, если мои заметки не содержат ответа на вопрос — я хочу получить явное сообщение об этом, а не выдуманный ответ.
+## Out of Scope
 
-**Сценарий POC:**
-1. Запускаем `ts-node scripts/rag-poc/index.ts` — индексируются все заметки пользователя
-2. Запускаем `ts-node scripts/rag-poc/query.ts "Что я знаю о React hooks?"` — получаем ответ в консоли
+- Индексация вложений/изображений/OCR.
+- Кросс-проектный/глобальный knowledge graph.
+- Offline inference на устройстве.
 
 ## Success Criteria
 
-- [ ] Скрипт индексирует заметки без ошибок (HTML → plain text → embedding → pgvector)
-- [ ] Similarity search возвращает релевантные заметки по семантическому запросу
-- [ ] Gemini LLM генерирует связный ответ на основе найденных заметок
-- [ ] В 3 из 5 тестовых запросов топ-1 результат RAG релевантен теме запроса
-- [ ] При отсутствии релевантных заметок система явно сообщает об этом (не галлюцинирует)
+- [ ] Для заметки корректно работает `index`/`reindex`/`delete` без рассинхронизации UI.
+- [ ] После изменения заметки индекс обновляется автоматически и не теряет данные при transient ошибках.
+- [ ] Таблица `note_embeddings` недоступна посторонним пользователям (проверено RLS).
+- [ ] Edge Function не логирует чувствительные upstream payloads и корректно обрабатывает retries/timeouts.
 
 ## Constraints & Assumptions
 
-**Технические:**
-- Backend: Supabase (PostgreSQL + pgvector) — free tier
-- Embeddings: Google Gemini `text-embedding-004` (768 dimensions)
-- LLM: Google Gemini `gemini-2.0-flash`
-- Framework: LangChain JS (`@langchain/google-genai`, `@langchain/community`)
-- Контент заметок хранится как HTML в поле `description`
-- Скрипт запускается локально, не деплоится
-
-**Допущения:**
-- pgvector расширение включено в Supabase (уже сделано для staging)
-- Gemini API ключ доступен
-
-## Questions & Open Items
-
-- [ ] Как локально включить pgvector для разработки? (пользователь уточняет)
-- [ ] Нужен ли фильтр по `user_id` в скрипте, или POC работает с одним захардкоженным пользователем?
-- [x] Оптимальный chunk strategy: **решено** — один вектор на заметку (чанкинг вне scope POC)
+- Embeddings: `models/gemini-embedding-001` с `outputDimensionality=1536`.
+- Индекс хранится в `public.note_embeddings` с chunk-level структурой (`chunk_index`, `char_offset`, `content`, `embedding`).
+- Сервисный ключ Supabase хранится только в secrets Edge Function, не в web `.env`.
+- Клиентские действия выполняются через аутентифицированную Supabase-сессию.

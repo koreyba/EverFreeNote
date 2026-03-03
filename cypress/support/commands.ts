@@ -337,7 +337,7 @@ declare global {
       assertTagExists(tag: string): Chainable<void>
       createNotesViaAPI(notes: NoteInput[]): Chainable<void>
       deleteAllNotesViaAPI(): Chainable<void>
-      mount: typeof mount
+      mount(component: Parameters<typeof mount>[0], options?: SupabaseMountOptions): ReturnType<typeof mount>
       typeInRichEditor(content: string): Chainable<void>
       applyRichTextFormatting(buttonText: string): Chainable<void>
       selectTextInEditor(startOffset: number, endOffset: number): Chainable<void>

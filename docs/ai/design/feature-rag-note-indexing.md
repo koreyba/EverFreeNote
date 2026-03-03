@@ -44,6 +44,7 @@ CREATE TABLE note_embeddings (
 
 Model choice:
 
+- POC model choices as of 2026-03-02.
 - Embeddings: `models/gemini-embedding-001` with `outputDimensionality=1536`
 - Generation: `gemini-2.0-flash`
 
@@ -102,4 +103,5 @@ Sources:
 ## Notes
 
 - This POC doc is historical for script-based exploration.
+- POC model choices above are date-bound (2026-03-02) and may differ from current production defaults.
 - UI feature implementation moved to Supabase Edge Function `supabase/functions/rag-index`.

@@ -75,4 +75,4 @@ Note: milestone checkboxes track outcome-level completion. The detailed Phase 1-
 
 - Date: 2026-03-02
 - Status: concept validated
-- Follow-up: UI integration moved to Edge Function based implementation
+- Follow-up: UI integration moved to Edge Function-based implementation

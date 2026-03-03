@@ -1,65 +1,66 @@
 ---
 phase: testing
-title: RAG Note Indexing — Testing (POC)
-description: Стратегия ручного тестирования POC
+title: RAG Note Indexing - Testing (POC)
+description: Manual validation strategy and closure criteria for the RAG POC
 ---
 
-# RAG Note Indexing — Testing (POC)
+# RAG Note Indexing - Testing (POC)
 
 ## Test Coverage Goals
 
-- Для POC: ручное тестирование качества ответов
-- Автоматизированные тесты — следующая итерация после подтверждения концепции
-- Ключевой критерий: ответы субъективно лучше, чем FTS по тем же запросам
+- Validate indexing correctness (`notes -> chunks -> embeddings -> note_embeddings`).
+- Validate retrieval relevance quality against baseline FTS on representative prompts.
+- Confirm failure handling for empty/missing context and upstream embedding errors.
+
+## Coverage results
+
+| Metric | Value |
+|---|---|
+| Test cases run | TBD |
+| Passed | TBD |
+| Failed | TBD |
+| Subjective comparison vs FTS | TBD |
 
 ## Manual Testing Checklist
 
-### Перед запуском
+### Preconditions
 
-- [ ] Миграции применены к staging Supabase
-- [ ] `.env` заполнен корректными значениями
-- [ ] `npm install` в `scripts/rag-poc/` прошёл без ошибок
+- [ ] Staging migrations are applied.
+- [ ] `.env` contains valid Supabase and Gemini credentials.
+- [ ] `scripts/rag-poc/` dependencies are installed.
 
-### Индексирование (`index.ts`)
+### Indexing (`index.ts`)
 
-- [ ] Скрипт запускается без ошибок
-- [ ] Прогресс-лог показывает количество обработанных заметок
-- [ ] Таблица `note_embeddings` в Supabase содержит записи после запуска
-- [ ] Повторный запуск не создаёт дублей (upsert работает корректно)
-- [ ] Заметки с пустым контентом пропускаются с предупреждением
+- [ ] Script runs without unhandled errors.
+- [ ] Progress output reports processed notes count.
+- [ ] `note_embeddings` rows are created/updated.
+- [ ] Re-running indexing is idempotent for already indexed notes.
+- [ ] Empty-content notes are skipped or cleaned up predictably.
 
-### Качество ответов (`query.ts`)
+### Query quality (`query.ts`)
 
-Для каждого запроса отметить: ✅ релевантно / ⚠️ частично / ❌ нерелевантно
+- [ ] Query on known topic returns relevant context.
+- [ ] Query on unknown topic returns explicit "not found" style result.
+- [ ] Synonym/paraphrase query still retrieves related notes.
+- [ ] Russian-language query quality is acceptable.
+- [ ] General query does not hallucinate unsupported facts.
 
-| Запрос | Найденные заметки | Ответ LLM | Оценка |
-|--------|------------------|-----------|--------|
-| Конкретный вопрос по известной теме | | | |
-| Запрос по теме, которой нет в заметках | | | |
-| Русскоязычный запрос | | | |
-| Вопрос с синонимами (не точные слова из заметки) | | | |
-| Размытый/общий вопрос | | | |
+### Comparison with FTS
 
-### Сравнение с FTS
+- [ ] Compare at least 3 prompts: RAG top results vs FTS top results.
+- [ ] Record where RAG improves relevance and where it regresses.
 
-- [ ] Для 3 запросов: сравнить топ результаты RAG vs FTS
-- [ ] Зафиксировать в таблице выше
+## Outstanding gaps
 
-## Test Data
+- [ ] Owner: AI feature team. Convert the top manual prompts into automated regression fixtures.
+  Next step: add deterministic fixtures and expected ranking assertions.
+- [ ] Owner: Backend team. Add latency/error observability for embedding and retrieval paths.
+  Next step: define acceptable SLO thresholds and alert rules.
+- [ ] Owner: QA. Fill final pass/fail numbers and attach evidence links.
+  Next step: update the coverage table after the next staging run.
 
-- Использовать реальные заметки staging аккаунта
-- Рекомендуется иметь минимум 10–20 заметок разных тематик для значимых результатов
+## POC Verdict
 
-## Bug Tracking
-
-| Проблема | Приоритет | Статус |
-|---------|-----------|--------|
-| | | |
-
-## POC Verdict (заполнить после тестирования)
-
-- [ ] Идея подтверждена → продолжаем, планируем UI интеграцию
-- [ ] Идея частично работает → нужны корректировки (описать ниже)
-- [ ] Идея не работает → причина
-
-**Заметки по результатам:**
+- [ ] Approved to continue into productized rollout.
+- [ ] Approved with follow-up fixes listed above.
+- [ ] Rejected (document blockers).

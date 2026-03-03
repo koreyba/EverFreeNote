@@ -8,9 +8,9 @@ description: Test cases for per-note RAG indexing controls
 
 ## Test Coverage Goals
 
-- Unit tests: `chunker.ts`, `ragIndexService.ts` (mocked Gemini + Supabase)
-- Integration tests: API route (`POST`, `DELETE`) with test DB
-- Manual: UI buttons, status polling, error states
+- Unit tests: UI hooks/components with mocked Supabase client and mocked Function invoke
+- Integration tests: `supabase.functions.invoke('rag-index', ...)` paths against test DB
+- Manual: UI buttons, status polling, and error states for function actions
 
 ## Unit Tests
 
@@ -29,12 +29,12 @@ description: Test cases for per-note RAG indexing controls
 
 ## Integration Tests
 
-- [ ] `POST /api/notes/[id]/rag`: returns 401 without auth
-- [ ] `POST /api/notes/[id]/rag`: returns 400 for non-existent note
-- [ ] `POST /api/notes/[id]/rag`: successfully indexes note, returns `{ chunkCount: N }`
-- [ ] `POST /api/notes/[id]/rag` (reindex): replaces old chunks, count reflects new content
-- [ ] `DELETE /api/notes/[id]/rag`: removes all chunks, returns `{ deleted: true }`
-- [ ] `DELETE /api/notes/[id]/rag`: returns 401 without auth
+- [ ] `supabase.functions.invoke('rag-index', { body: { noteId, action: 'index' } })`: returns 401 on missing/invalid auth
+- [ ] `supabase.functions.invoke('rag-index', { body: { noteId, action: 'index' } })`: returns 400 for invalid `noteId`
+- [ ] `supabase.functions.invoke('rag-index', { body: { noteId, action: 'index' } })`: returns `{ chunkCount: N }` on success
+- [ ] `supabase.functions.invoke('rag-index', { body: { noteId, action: 'reindex' } })`: aliases to full reindex flow and returns `{ chunkCount: N }`
+- [ ] `supabase.functions.invoke('rag-index', { body: { noteId, action: 'delete' } })`: removes chunks and returns `{ deleted: true }`
+- [ ] `supabase.functions.invoke('rag-index', { body: { noteId, action: 'index' } })`: returns 400 for unsupported action or missing payload fields
 
 ## Component Tests (mocked API, no network)
 
@@ -42,8 +42,8 @@ File: `cypress/component/features/notes/RagIndexPanel.cy.tsx`
 
 - [x] Unindexed state: shows `RAG Index`, `Delete Index` disabled, status `Not indexed`
 - [x] Indexed state: shows `Re-index`, `Delete Index` enabled, status includes chunk count
-- [x] Index action: invokes `supabase.functions.invoke('rag-index', { action: 'index' })`
-- [x] Delete action: invokes `supabase.functions.invoke('rag-index', { action: 'delete' })`
+- [x] Index action: invokes `supabase.functions.invoke('rag-index', { body: { noteId, action: 'index' } })`
+- [x] Delete action: invokes `supabase.functions.invoke('rag-index', { body: { noteId, action: 'delete' } })`
 
 ## End-to-End Tests (manual)
 
