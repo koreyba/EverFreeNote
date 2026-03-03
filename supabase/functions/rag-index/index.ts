@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck - Deno types (Deno.env, URL imports) are not available in the Node.js TypeScript
 // compiler used by the monorepo. There is no deno.json / import_map.json in this project.
 // The `declare const Deno` below is kept for editor IntelliSense only.
@@ -57,6 +58,36 @@ function chunkText(text: string): Array<{ content: string; charOffset: number }>
 function prepareNoteText(title: string, html: string): string {
   const body = stripHtml(html)
   return title.trim() ? `${title.trim()} ${body}` : body
+}
+
+// ---------------------------------------------------------------------------
+// AES-GCM decryption (mirrors api-keys-upsert / wordpress-bridge pattern)
+// ---------------------------------------------------------------------------
+const textDecoder = new TextDecoder()
+const _textEncoder = new TextEncoder()
+let _cachedCryptoKey: CryptoKey | null = null
+
+const _getCryptoKey = async (secret: string): Promise<CryptoKey> => {
+  if (_cachedCryptoKey) return _cachedCryptoKey
+  const hash = await crypto.subtle.digest("SHA-256", _textEncoder.encode(secret))
+  _cachedCryptoKey = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"])
+  return _cachedCryptoKey
+}
+
+const base64ToBytes = (b64: string): Uint8Array => {
+  const binary = atob(b64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
+const decryptValue = async (encrypted: string, secret: string): Promise<string> => {
+  const [ivRaw, dataRaw] = encrypted.split(":")
+  const iv = base64ToBytes(ivRaw)
+  const data = base64ToBytes(dataRaw)
+  const key = await _getCryptoKey(secret)
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data)
+  return textDecoder.decode(decrypted)
 }
 
 // ---------------------------------------------------------------------------
@@ -143,9 +174,9 @@ serve(async (req: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-  const geminiApiKey = Deno.env.get("GEMINI_API_KEY")
+  const encryptionSecret = Deno.env.get("AI_CREDENTIALS_KEY")
 
-  if (!supabaseUrl || !serviceRoleKey || !geminiApiKey) {
+  if (!supabaseUrl || !serviceRoleKey || !encryptionSecret) {
     return jsonResponse({ error: "Function not configured" }, 500)
   }
 
@@ -157,6 +188,29 @@ serve(async (req: Request) => {
   const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
   if (userError || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401)
   const userId = userData.user.id
+
+  // Fetch and decrypt the user's Gemini API key
+  const { data: apiKeyRow, error: apiKeyError } = await supabaseAdmin
+    .from("user_api_keys")
+    .select("gemini_api_key_encrypted")
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (apiKeyError) {
+    console.error("[rag-index] Failed to fetch api key", apiKeyError)
+    return jsonResponse({ error: "Internal error" }, 500)
+  }
+  if (!apiKeyRow?.gemini_api_key_encrypted) {
+    return jsonResponse({ error: "Gemini API key not configured. Add it in Settings → API Keys." }, 400)
+  }
+
+  let geminiApiKey: string
+  try {
+    geminiApiKey = await decryptValue(apiKeyRow.gemini_api_key_encrypted, encryptionSecret)
+  } catch (err) {
+    console.error("[rag-index] Failed to decrypt api key", err)
+    return jsonResponse({ error: "Internal error" }, 500)
+  }
 
   // Parse body
   let payload: { noteId?: string; action?: string } = {}
