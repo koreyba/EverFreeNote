@@ -50,7 +50,7 @@ note_embeddings (
   note_id      uuid FK → notes.id ON DELETE CASCADE,
   user_id      uuid FK → auth.users.id ON DELETE CASCADE,
   chunk_index  int  NOT NULL,   -- 0-based, order within note
-  char_offset  int  NOT NULL,   -- byte offset in plain text (for future highlighting)
+  char_offset  int  NOT NULL,   -- character offset in plain text (for future highlighting)
   content      text NOT NULL,   -- plain text chunk (title + body fragment)
   embedding    vector(1536) NOT NULL,
   indexed_at   timestamp with time zone DEFAULT now(),
@@ -110,12 +110,14 @@ RLS policy on `note_embeddings` enforces per-user isolation (`auth.uid() = user_
 - Renders: Index/Re-index button, Delete Index button, status text
 
 **UI states:**
+
 | State | Index button | Delete button | Status |
 |---|---|---|---|
 | Not indexed | enabled | disabled | "Not indexed" |
 | Indexing... | disabled + spinner | disabled | "Indexing..." |
 | Indexed | enabled (Re-index) | enabled | "N chunks · HH:MM:SS" |
 | Deleting... | disabled | disabled + spinner | "Removing..." |
+
 
 ### `useRagStatus` (`ui/web/hooks/useRagStatus.ts`)
 - Polls `note_embeddings` every 3 seconds via Supabase browser client
@@ -127,8 +129,7 @@ RLS policy on `note_embeddings` enforces per-user isolation (`auth.uid() = user_
 - Auth via JWT verification with service role client
 - Pattern matches all other existing Edge Functions in the project
 
-### Edge Function (`supabase/functions/rag-index/index.ts`)
-All chunking and embedding logic is self-contained inside the Edge Function (no shared browser-side lib needed). The `ui/web/lib/rag/` directory has been removed.
+- All chunking and embedding logic is self-contained in this Edge Function (no shared browser-side lib needed). The `ui/web/lib/rag/` directory was removed.
 
 ## Design Decisions
 

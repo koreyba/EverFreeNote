@@ -1,138 +1,136 @@
 ---
 phase: implementation
-title: RAG Note Indexing UI — Implementation Guide
-description: Technical notes for implementing per-note RAG controls in the web app
+title: RAG Note Indexing UI - Implementation Guide
+description: Technical notes for per-note RAG controls implemented with Supabase Edge Functions
 ---
 
 # Implementation Guide
 
+## Current Architecture
+
+RAG indexing for web notes is implemented through Supabase Edge Function `supabase/functions/rag-index/index.ts`.
+
+- Browser UI triggers `supabase.functions.invoke('rag-index', { body: { noteId, action } })`
+- Edge Function performs auth validation, chunking, embedding, and DB writes
+- Browser polls `note_embeddings` via `useRagStatus.ts` for live status
+
+The old Next.js API route flow is not used.
+
+- `app/api/notes/[id]/rag/route.ts`: legacy/stale reference, not the active path
+- `ui/web/lib/rag/chunker.ts`: legacy/stale reference
+- `ui/web/lib/rag/embeddings.ts`: legacy/stale reference
+- `ui/web/lib/rag/ragIndexService.ts`: legacy/stale reference
+
 ## Development Setup
 
-1. Add to `ui/web/package.json`:
-   ```json
-   "@langchain/google-genai": "^0.1.x",
-   "node-html-parser": "^6.x"
+1. Use project root env for browser-safe values only:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    ```
-2. Add to `ui/web/.env.local`:
+2. Configure Edge Function secrets in Supabase (server-side only):
+   ```bash
+   supabase secrets set GEMINI_API_KEY=...
+   supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...
    ```
-   GEMINI_API_KEY=your-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+3. Serve function locally with env file:
+   ```bash
+   supabase functions serve rag-index --env-file .env.local
    ```
-3. Migrations already applied locally (`20260302000002`, `20260302000003`)
 
-## Code Structure
+`SUPABASE_SERVICE_ROLE_KEY` must never be placed in a web-facing `.env` file such as `ui/web/.env.local`.
+It is read inside the function with:
 
-```
-ui/web/
-  app/api/notes/[id]/rag/
-    route.ts                          ← POST (index) + DELETE (remove)
-  lib/rag/
-    chunker.ts                        ← stripHtml + chunkText
-    embeddings.ts                     ← Gemini embeddings wrapper (1536 dims)
-    ragIndexService.ts                ← indexNote + deleteNoteIndex
-  hooks/
-    useRagStatus.ts                   ← polling hook (3s interval)
-  components/features/notes/
-    RagIndexPanel.tsx                 ← UI: buttons + status
-    NoteEditor.tsx                    ← (modified) add RagIndexPanel
-    NoteView.tsx                      ← (modified) add RagIndexPanel
+```ts
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
 ```
 
-## Implementation Notes
+## Code Structure (Current)
 
-### Chunker (`lib/rag/chunker.ts`)
-```typescript
-export function stripHtml(html: string): string {
-  const root = parse(html)
-  return root.textContent.replace(/\s+/g, ' ').trim()
-}
+```text
+supabase/functions/rag-index/
+  index.ts                <- Edge Function (auth + chunk + embed + upsert/cleanup)
 
-export function chunkText(
-  text: string,
-  chunkSize = 1500,
-  overlap = 200
-): Array<{ content: string; charOffset: number }> {
-  const chunks = []
-  let offset = 0
-  while (offset < text.length) {
-    const content = text.slice(offset, offset + chunkSize)
-    chunks.push({ content, charOffset: offset })
-    offset += chunkSize - overlap
-    if (content.length < chunkSize) break
-  }
-  return chunks
-}
+ui/web/hooks/
+  useRagStatus.ts         <- Polling of note_embeddings status for one note
+
+ui/web/components/features/notes/
+  RagIndexPanel.tsx       <- Index/Re-index/Delete Index controls
+  NoteEditor.tsx          <- Renders RagIndexPanel in editor header
+  NoteView.tsx            <- Renders RagIndexPanel in read view header
 ```
 
-### Embeddings (`lib/rag/embeddings.ts`)
-```typescript
-import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai'
+## Edge Function Details
 
-export function createEmbeddings() {
-  return new GoogleGenerativeAIEmbeddings({
-    apiKey: process.env.GEMINI_API_KEY!,
-    modelName: 'models/gemini-embedding-001',
-    taskType: 'RETRIEVAL_DOCUMENT',
-    outputDimensionality: 1536,
-  })
-}
-```
+File: `supabase/functions/rag-index/index.ts`
 
-### ragIndexService (`lib/rag/ragIndexService.ts`)
-Key logic for `indexNote`:
-1. Fetch note from `notes` table (title + description)
-2. `stripHtml(description)` → prepend title → `chunkText()`
-3. Batch embed all chunks via `embeddings.embedDocuments()`
-4. Upsert all rows into `note_embeddings` by `(note_id, chunk_index)`
-5. `DELETE FROM note_embeddings WHERE note_id = ? AND user_id = ? AND chunk_index >= newChunkCount`
-6. Return chunk count
+### action = index
 
-### API Route (`app/api/notes/[id]/rag/route.ts`)
-```typescript
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+1. Validate JWT and resolve `userId`
+2. Load note content from `notes`
+3. Convert HTML to plain text and split into chunks
+4. Call Gemini `batchEmbedContents`
+5. Upsert new chunks by `(note_id, chunk_index)`
+6. Delete stale tail chunks (`chunk_index >= newChunkCount`)
+7. Return `{ chunkCount }`
 
-export async function POST(req, { params }) {
-  // 1. Validate session
-  const supabase = createRouteHandlerClient({ cookies })
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+### action = delete
 
-  // 2. Service client for writes
-  const serviceClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+1. Validate JWT and resolve `userId`
+2. Delete rows from `note_embeddings` by `note_id` and `user_id`
+3. Return `{ deleted: true }`
 
-  const { chunkCount } = await indexNote(params.id, user.id, serviceClient)
-  return Response.json({ chunkCount })
-}
-```
+## Client Integration
 
-### useRagStatus hook
-```typescript
-useEffect(() => {
-  const fetch = async () => {
-    const { data } = await supabase
-      .from('note_embeddings')
-      .select('chunk_index, indexed_at')
-      .eq('note_id', noteId)
-    setStatus({ chunkCount: data?.length ?? 0, indexedAt: data?.[0]?.indexed_at ?? null })
-  }
-  fetch()
-  const interval = setInterval(fetch, 3000)
-  return () => clearInterval(interval)
-}, [noteId])
-```
+### `useRagStatus.ts`
 
-## Integration Points
+- Poll interval: 3 seconds
+- Query:
+  ```ts
+  supabase
+    .from("note_embeddings")
+    .select("chunk_index, indexed_at")
+    .eq("note_id", noteId)
+    .eq("user_id", user.id)
+  ```
+- Derives:
+  - `chunkCount`
+  - `indexedAt`
+  - `isLoading`
 
-- `NoteEditor.tsx` — add `<RagIndexPanel noteId={note.id} />` in header `div` after existing buttons
-- `NoteView.tsx` — same pattern
+### `RagIndexPanel.tsx`
+
+- Invokes:
+  ```ts
+  supabase.functions.invoke("rag-index", { body: { noteId, action: "index" } })
+  supabase.functions.invoke("rag-index", { body: { noteId, action: "delete" } })
+  ```
+- UI states:
+  - Not indexed
+  - Indexing
+  - Indexed
+  - Deleting
+
+### `NoteEditor.tsx` and `NoteView.tsx`
+
+- `NoteEditor.tsx`: renders panel when `noteId` exists
+- `NoteView.tsx`: renders panel for viewed note id
 
 ## Error Handling
 
-- API route: catch all errors, return `500` with `{ error: message }`
-- `RagIndexPanel`: on non-2xx response, set `error` state, display inline
-- Gemini PROHIBITED_CONTENT: shouldn't occur with single-chunk short content; if it does, surface error to user
+- Edge Function returns:
+  - `400` invalid input
+  - `401` unauthorized
+  - `404` note not found
+  - `500` embedding or DB errors
+- `RagIndexPanel.tsx` displays toast errors for failed index/delete actions
+
+## Notes for Reviewers
+
+- Active implementation is `supabase/functions/rag-index`
+- References to `route.ts` and `ragIndexService.ts` are intentionally marked as legacy in this guide
+- Status and action wiring should be reviewed in:
+  - `useRagStatus.ts`
+  - `RagIndexPanel.tsx`
+  - `NoteEditor.tsx`
+  - `NoteView.tsx`

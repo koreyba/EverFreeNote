@@ -7,7 +7,7 @@ DROP FUNCTION IF EXISTS public.match_notes(vector, uuid, int);
 
 CREATE OR REPLACE FUNCTION public.match_notes(
   query_embedding vector(1536),
-  match_user_id   uuid,
+  match_user_id   uuid DEFAULT NULL,
   match_count     int DEFAULT 5
 )
 RETURNS TABLE (
@@ -26,7 +26,8 @@ AS $$
     content,
     1 - (embedding <=> query_embedding) AS similarity
   FROM public.note_embeddings
-  WHERE user_id = match_user_id
+  WHERE user_id = auth.uid()
+    AND (match_user_id IS NULL OR match_user_id = auth.uid())
   ORDER BY embedding <=> query_embedding
-  LIMIT match_count;
+  LIMIT GREATEST(1, LEAST(match_count, 100));
 $$;

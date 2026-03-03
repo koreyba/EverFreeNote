@@ -22,7 +22,7 @@ RAG indexing for notes is currently only possible via a standalone CLI script (`
 - Show live indexing status (chunk count) with polling every 3 seconds
 
 ### Secondary goals
-- Reindexing (pressing "RAG Index" on an already-indexed note) should work cleanly (delete + reindex)
+- Reindexing (pressing "RAG Index" on an already-indexed note) should preserve existing searchable chunks on transient failures
 - Status must reflect actual DB state, not just local UI state
 
 ### Non-goals (explicitly out of scope)
@@ -52,9 +52,13 @@ RAG indexing for notes is currently only possible via a standalone CLI script (`
 - [ ] "Delete RAG Index" button is disabled when `chunk_count = 0`
 - [ ] Clicking "Delete RAG Index" removes all chunks for the note
 - [ ] Status indicator updates every 3 seconds showing current chunk count
-- [ ] Reindexing (delete old + insert new) works atomically
+- [ ] Reindexing uses safe replace semantics (upsert new chunks, then cleanup stale tail chunks) without dropping existing index on failures
 - [ ] Buttons are disabled during in-progress operations (no double-submit)
 - [ ] Errors are shown to user (toast or inline message)
+- [ ] `note_embeddings` RLS is enforced before rollout:
+  - anon role cannot read note-index status data
+  - authenticated users can read only their own rows (`auth.uid() = user_id`)
+  - verification exists (automated test or manual QA checklist with direct query checks)
 
 ## Constraints & Assumptions
 
@@ -69,7 +73,7 @@ RAG indexing for notes is currently only possible via a standalone CLI script (`
 - The authenticated user's Supabase session is available browser-side for status polling
 - `GEMINI_API_KEY` is set as a Supabase secret (`supabase secrets set GEMINI_API_KEY=...`)
 - `SUPABASE_SERVICE_ROLE_KEY` is auto-injected into Edge Functions by Supabase infrastructure
-- `note_embeddings` is readable via anon key + user session, with RLS restricting reads to `auth.uid() = user_id`
+- `note_embeddings` must remain protected by RLS at all times; no relaxed read path is allowed for note-index status data
 
 ## Questions & Open Items
 

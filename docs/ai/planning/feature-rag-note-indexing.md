@@ -1,89 +1,78 @@
 ---
 phase: planning
-title: RAG Note Indexing — Planning (POC)
-description: Пошаговый план реализации POC скрипта
+title: RAG Note Indexing - Planning (POC)
+description: Task breakdown and milestone tracking for script-based RAG proof of concept
 ---
 
-# RAG Note Indexing — Planning (POC)
+# RAG Note Indexing - Planning (POC)
 
 ## Milestones
 
-- [x] M1: Supabase готов к работе с векторами (pgvector + таблица + RPC)
-- [x] M2: Скрипт индексирования работает (заметки → embeddings → pgvector)
-- [x] M3: Скрипт запроса работает (вопрос → similarity search → LLM ответ)
-- [x] M4: POC задокументирован и проверен вручную
+- [x] M1: Supabase vector groundwork completed (table + RPC path)
+- [x] M2: Indexing script completed (notes -> embeddings -> pgvector)
+- [x] M3: Query script completed (question -> retrieval -> LLM answer)
+- [x] M4: POC manually validated and documented
+
+Note: milestone checkboxes track outcome-level completion. The detailed Phase 1-5 checklist below is retained as the original execution plan and is not backfilled retroactively.
 
 ## Task Breakdown
 
 ### Phase 1: Supabase Setup
 
-- [ ] 1.1: Включить pgvector локально (если нужно)
-- [ ] 1.2: Создать миграцию `note_embeddings` таблицы
-- [ ] 1.3: Создать миграцию `match_notes` RPC функции
-- [ ] 1.4: Применить миграции к staging окружению
+- [ ] 1.1 Enable pgvector locally if needed
+- [ ] 1.2 Create `note_embeddings` migration
+- [ ] 1.3 Create `match_notes` RPC migration
+- [ ] 1.4 Apply migrations to staging
 
-### Phase 2: Scaffold скрипта
+### Phase 2: Script Scaffold
 
-- [ ] 2.1: Создать папку `scripts/rag-poc/`
-- [ ] 2.2: Инициализировать `package.json` с зависимостями
-- [ ] 2.3: Настроить TypeScript (`tsconfig.json`)
-- [ ] 2.4: Написать `.env.example` и `README.md`
-- [ ] 2.5: Создать `lib/supabase.ts` — клиент для скриптов
-- [ ] 2.6: Создать `lib/html-utils.ts` — HTML → plain text
-- [ ] 2.7: Создать `lib/embeddings.ts` — обёртка Gemini embeddings
+- [ ] 2.1 Create `scripts/rag-poc/`
+- [ ] 2.2 Initialize `package.json` and dependencies
+- [ ] 2.3 Configure TypeScript
+- [ ] 2.4 Add `.env.example` and `README.md`
+- [ ] 2.5 Add `lib/supabase.ts`
+- [ ] 2.6 Add `lib/html-utils.ts`
+- [ ] 2.7 Add `lib/embeddings.ts`
 
-### Phase 3: Индексирование
+### Phase 3: Indexing
 
-- [ ] 3.1: Написать `index.ts` — получить все заметки пользователя из Supabase
-- [ ] 3.2: Добавить обработку HTML → plain text
-- [ ] 3.3: Добавить вызов Gemini embeddings
-- [ ] 3.4: Сохранить векторы через SupabaseVectorStore (upsert)
-- [ ] 3.5: Добавить progress logging и обработку ошибок
+- [ ] 3.1 Implement `index.ts` note fetch
+- [ ] 3.2 Implement HTML -> text conversion
+- [ ] 3.3 Implement Gemini embeddings call
+- [ ] 3.4 Persist vectors/upserts
+- [ ] 3.5 Add progress logging and error handling
 
-### Phase 4: Запрос и генерация
+### Phase 4: Query + Answer
 
-- [ ] 4.1: Написать `query.ts` — принять вопрос из аргументов CLI
-- [ ] 4.2: Эмбедить вопрос через Gemini
-- [ ] 4.3: Вызвать `match_notes` RPC для similarity search
-- [ ] 4.4: Сформировать prompt с найденными заметками как контекстом
-- [ ] 4.5: Вызвать Gemini LLM и вывести ответ + источники
+- [ ] 4.1 Implement `query.ts` CLI input
+- [ ] 4.2 Embed question
+- [ ] 4.3 Call `match_notes` RPC
+- [ ] 4.4 Build context prompt
+- [ ] 4.5 Generate answer and list sources
 
-### Phase 5: Проверка
+### Phase 5: Validation
 
-- [ ] 5.1: Проиндексировать реальные заметки staging аккаунта
-- [ ] 5.2: Задать 3–5 вопросов, проверить качество ответов
-- [ ] 5.3: Сравнить с текущим FTS поиском по тем же запросам
-- [ ] 5.4: Зафиксировать выводы в этом документе
+- [ ] 5.1 Index real staging notes
+- [ ] 5.2 Run 3-5 validation questions
+- [ ] 5.3 Compare with baseline FTS behavior
+- [ ] 5.4 Record conclusions
 
 ## Dependencies
 
-- pgvector включён в Supabase (**уже сделано для staging**)
-- Gemini API ключ (**уже есть**)
-- Phase 1 должна завершиться перед Phase 3
-- Phase 2 (scaffold) может выполняться параллельно с Phase 1
+- Gemini API key
+- Supabase project with pgvector
+- Migrations applied before indexing scripts
 
-## Risks & Mitigation
+## Risks and Mitigation
 
-| Риск | Вероятность | Митигация |
-|------|------------|-----------|
-| Rate limits Gemini free tier при индексировании большого количества заметок | Средняя | Добавить задержку между запросами (100–200ms) |
-| Длинные заметки превышают лимит токенов для embedding | Низкая | Обрезать до 2000 токенов (≈8000 символов) |
-| pgvector недоступен локально | Средняя | Разрабатывать и тестировать против staging Supabase |
-| Низкое качество ответов на русскоязычный контент | Неизвестно | Проверить в POC; при необходимости изменить prompt |
+| Risk | Probability | Mitigation |
+|---|---|---|
+| Gemini rate limits during indexing | Medium | Batch + delay between requests |
+| Long notes exceed practical embedding limits | Medium | Chunk text before embedding |
+| Low retrieval quality on some prompts | Medium | Tune `matchCount`, chunking, and prompt |
 
-## POC Outcomes
+## POC Outcome Snapshot
 
-- Дата тестирования: 2026-03-02
-- Количество проиндексированных заметок: 5 (из 782 доступных)
-- Качество ответов: ✅ Осмысленный ответ на русском, релевантные источники с similarity scores
-- Вывод: **Концепция подтверждена → продолжаем, следующий шаг — UI интеграция**
-
-### Технические находки в ходе POC
-
-| Проблема | Решение |
-|----------|---------|
-| `text-embedding-004` недоступен для API ключа | Используем `models/gemini-embedding-001` (3072 dims) |
-| HNSW index не поддерживает >2000 dims | Убрали индекс; для POC sequential scan достаточен |
-| `gemini-2.0-flash` / `gemini-2.0-flash-lite` quota=0 | Переключились на `gemini-2.5-flash` |
-| PROHIBITED_CONTENT при длинном контексте | Обрезаем контент до 500 символов на заметку |
-| LangChain `ChatGoogleGenerativeAI` не поддерживает `gemini-2.5-flash` | Заменили на прямой `@google/generative-ai` SDK |
+- Date: 2026-03-02
+- Status: concept validated
+- Follow-up: UI integration moved to Edge Function based implementation

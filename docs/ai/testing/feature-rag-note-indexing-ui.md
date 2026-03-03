@@ -66,3 +66,18 @@ File: `cypress/component/features/notes/RagIndexPanel.cy.tsx`
 
 - Use the existing local Supabase instance with test@example.com user
 - Notes already in DB (782 notes) are sufficient for testing
+
+## Test Coverage Results
+
+| Category | Tests Passed | Tests Failed | Coverage |
+|---|---:|---:|---|
+| Unit | TBD | TBD | TBD |
+| Integration | TBD | TBD | TBD |
+| End-to-End | TBD | TBD | TBD |
+
+## Outstanding Gaps
+
+- [ ] Record latest run results in the table above
+- [ ] Add integration coverage for error paths (Gemini/API failures)
+- [ ] Add explicit RLS verification checks for `note_embeddings`
+- [ ] Document any known flaky tests and stabilization plan

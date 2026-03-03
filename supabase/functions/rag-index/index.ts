@@ -14,6 +14,9 @@ const EMBEDDING_MODEL = "models/gemini-embedding-001"
 const OUTPUT_DIMENSIONS = 1536
 const CHUNK_SIZE = 1500
 const CHUNK_OVERLAP = 200
+const GEMINI_TIMEOUT_MS = 10000
+const GEMINI_MAX_RETRIES = 3
+const GEMINI_RETRY_BASE_MS = 400
 
 // ---------------------------------------------------------------------------
 // CORS
@@ -66,22 +69,62 @@ async function embedTexts(texts: string[], apiKey: string): Promise<number[][]> 
     outputDimensionality: OUTPUT_DIMENSIONS,
   }))
 
-  const response = await fetch(
-    `${GEMINI_API_BASE}/${EMBEDDING_MODEL}:batchEmbedContents?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requests }),
-    }
-  )
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-  if (!response.ok) {
-    const body = await response.text()
-    throw new Error(`Gemini batchEmbedContents failed: ${response.status} ${body}`)
+  for (let attempt = 1; attempt <= GEMINI_MAX_RETRIES; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
+    try {
+      const response = await fetch(
+        `${GEMINI_API_BASE}/${EMBEDDING_MODEL}:batchEmbedContents?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requests }),
+          signal: controller.signal,
+        }
+      )
+
+      const requestId = response.headers.get("x-request-id") ?? "n/a"
+      if (!response.ok) {
+        const body = await response.text()
+        const retryable = response.status === 429 || response.status >= 500
+        if (retryable && attempt < GEMINI_MAX_RETRIES) {
+          const backoffMs = GEMINI_RETRY_BASE_MS * 2 ** (attempt - 1)
+          await sleep(backoffMs)
+          continue
+        }
+        throw new Error(
+          `Gemini batchEmbedContents failed: status=${response.status} requestId=${requestId} body=${body}`
+        )
+      }
+
+      const data = await response.json()
+      if (!Array.isArray(data?.embeddings)) {
+        throw new Error("Gemini batchEmbedContents response missing embeddings array")
+      }
+      if (data.embeddings.length !== texts.length) {
+        throw new Error(
+          `Gemini embeddings count mismatch: input=${texts.length} returned=${data.embeddings.length} requestId=${requestId}`
+        )
+      }
+
+      return data.embeddings.map((e: { values: number[] }) => e.values)
+    } catch (error) {
+      const isAbort = error instanceof DOMException && error.name === "AbortError"
+      const isNetwork = error instanceof TypeError
+      if ((isAbort || isNetwork) && attempt < GEMINI_MAX_RETRIES) {
+        const backoffMs = GEMINI_RETRY_BASE_MS * 2 ** (attempt - 1)
+        await sleep(backoffMs)
+        continue
+      }
+      throw error
+    } finally {
+      clearTimeout(timeoutId)
+    }
   }
 
-  const data = await response.json()
-  return data.embeddings.map((e: { values: number[] }) => e.values)
+  throw new Error("Gemini batchEmbedContents failed after retries")
 }
 
 // ---------------------------------------------------------------------------
