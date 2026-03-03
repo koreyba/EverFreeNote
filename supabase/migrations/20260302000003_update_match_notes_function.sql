@@ -1,6 +1,7 @@
 -- Updated match_notes RPC for chunked embeddings
 -- Returns individual chunks ranked by cosine similarity.
 -- Aggregation (deduplication to note level) is handled in application layer.
+SET search_path TO public, extensions;
 
 -- DROP required because return type changed (added chunk_index, char_offset)
 DROP FUNCTION IF EXISTS public.match_notes(vector, uuid, int);

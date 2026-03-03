@@ -56,7 +56,7 @@ export function useRagStatus(noteId: string | undefined): RagStatus {
 
       if (cancelled) return
       if (error) {
-        setStatus({ chunkCount: 0, indexedAt: null, isLoading: false })
+        setStatus((prev) => ({ ...prev, isLoading: false }))
         return
       }
 

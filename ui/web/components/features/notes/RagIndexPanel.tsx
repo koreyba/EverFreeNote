@@ -77,9 +77,9 @@ export function RagIndexPanel({ noteId }: RagIndexPanelProps) {
   }
 
   const statusText = () => {
-    if (isLoading) return '...'
     if (operation === 'indexing') return 'Indexing...'
     if (operation === 'deleting') return 'Removing...'
+    if (isLoading) return '...'
     if (isIndexed) {
       const time = indexedAt ? new Date(indexedAt).toLocaleTimeString() : ''
       return `${chunkCount} chunks${time ? ` - ${time}` : ''}`

@@ -9,6 +9,7 @@
 -- Re-indexing is required to populate the new table.
 
 CREATE EXTENSION IF NOT EXISTS vector;
+SET search_path TO public, extensions;
 
 DO $$
 BEGIN
