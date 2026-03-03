@@ -97,7 +97,7 @@ export function ApiKeysSettingsDialog({ open, onOpenChange }: ApiKeysSettingsDia
           </div>
 
           {configured ? (
-            <div className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">
+            <div className="rounded-md border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-600/30 dark:bg-emerald-500/10 dark:text-emerald-300">
               Gemini API key is configured.
             </div>
           ) : null}
@@ -110,7 +110,7 @@ export function ApiKeysSettingsDialog({ open, onOpenChange }: ApiKeysSettingsDia
           ) : null}
 
           {successMessage ? (
-            <div className="flex items-start gap-2 rounded-md border border-emerald-600/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            <div className="flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-600/30 dark:bg-emerald-500/10 dark:text-emerald-300">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{successMessage}</span>
             </div>
