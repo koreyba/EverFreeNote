@@ -50,7 +50,11 @@ function chunkText(text: string): Array<{ content: string; charOffset: number }>
     const content = text.slice(offset, offset + CHUNK_SIZE)
     chunks.push({ content, charOffset: offset })
     if (content.length < CHUNK_SIZE) break
-    offset += CHUNK_SIZE - CHUNK_OVERLAP
+    const next = offset + CHUNK_SIZE - CHUNK_OVERLAP
+    // Stop if the next window would start beyond the end of the text —
+    // that would produce a chunk containing only already-covered overlap.
+    if (next >= text.length) break
+    offset = next
   }
   return chunks
 }
@@ -189,29 +193,6 @@ serve(async (req: Request) => {
   if (userError || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401)
   const userId = userData.user.id
 
-  // Fetch and decrypt the user's Gemini API key
-  const { data: apiKeyRow, error: apiKeyError } = await supabaseAdmin
-    .from("user_api_keys")
-    .select("gemini_api_key_encrypted")
-    .eq("user_id", userId)
-    .maybeSingle()
-
-  if (apiKeyError) {
-    console.error("[rag-index] Failed to fetch api key", apiKeyError)
-    return jsonResponse({ error: "Internal error" }, 500)
-  }
-  if (!apiKeyRow?.gemini_api_key_encrypted) {
-    return jsonResponse({ error: "Gemini API key not configured. Add it in Settings → API Keys." }, 400)
-  }
-
-  let geminiApiKey: string
-  try {
-    geminiApiKey = await decryptValue(apiKeyRow.gemini_api_key_encrypted, encryptionSecret)
-  } catch (err) {
-    console.error("[rag-index] Failed to decrypt api key", err)
-    return jsonResponse({ error: "Internal error" }, 500)
-  }
-
   // Parse body
   let payload: { noteId?: string; action?: string } = {}
   try { payload = await req.json() } catch { /* empty body */ }
@@ -229,6 +210,7 @@ serve(async (req: Request) => {
   if (!uuidRegex.test(noteId)) return jsonResponse({ error: "Invalid noteId" }, 400)
 
   try {
+    // Delete does not need the Gemini API key — handle it before the key lookup.
     if (action === "delete") {
       const { error } = await supabaseAdmin
         .from("note_embeddings")
@@ -239,7 +221,29 @@ serve(async (req: Request) => {
       return jsonResponse({ deleted: true })
     }
 
-    // action === "index" | "reindex"
+    // action === "index" | "reindex" — fetch and decrypt the user's Gemini API key.
+    const { data: apiKeyRow, error: apiKeyError } = await supabaseAdmin
+      .from("user_api_keys")
+      .select("gemini_api_key_encrypted")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (apiKeyError) {
+      console.error("[rag-index] Failed to fetch api key", apiKeyError)
+      return jsonResponse({ error: "Internal error" }, 500)
+    }
+    if (!apiKeyRow?.gemini_api_key_encrypted) {
+      return jsonResponse({ error: "Gemini API key not configured. Add it in Settings → API Keys." }, 400)
+    }
+
+    let geminiApiKey: string
+    try {
+      geminiApiKey = await decryptValue(apiKeyRow.gemini_api_key_encrypted, encryptionSecret)
+    } catch (err) {
+      console.error("[rag-index] Failed to decrypt api key", err)
+      return jsonResponse({ error: "Internal error" }, 500)
+    }
+
     const { data: note, error: noteError } = await supabaseAdmin
       .from("notes")
       .select("title, description")
