@@ -70,6 +70,11 @@ serve(async (req: Request) => {
 
   const rawGeminiKey = typeof payload.geminiApiKey === "string" ? payload.geminiApiKey.trim() : ""
 
+  const MAX_GEMINI_KEY_LENGTH = 256
+  if (rawGeminiKey.length > MAX_GEMINI_KEY_LENGTH) {
+    return jsonResponse({ error: `Gemini API key must not exceed ${MAX_GEMINI_KEY_LENGTH} characters` }, 400)
+  }
+
   try {
     // Fetch existing row to support "keep existing key" on empty input
     const { data: existing, error: fetchError } = await supabaseAdmin

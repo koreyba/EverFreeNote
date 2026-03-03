@@ -34,6 +34,7 @@ export function ApiKeysSettingsDialog({ open, onOpenChange }: ApiKeysSettingsDia
       const status = await service.getStatus()
       setConfigured(status.gemini.configured)
     } catch (error) {
+      setConfigured(false)
       setErrorMessage(error instanceof Error ? error.message : "Failed to load API key settings")
     } finally {
       setLoading(false)
