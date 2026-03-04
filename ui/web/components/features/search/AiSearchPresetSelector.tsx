@@ -17,7 +17,7 @@ export function AiSearchPresetSelector({ value, onChange }: AiSearchPresetSelect
     <ToggleGroup
       type="single"
       value={value}
-      onValueChange={(v) => { if (v) onChange(v as SearchPreset) }}
+      onValueChange={(v) => { if (v && PRESETS.some(p => p.value === v)) onChange(v as SearchPreset) }}
       className="justify-start gap-1"
       aria-label="Search precision"
     >

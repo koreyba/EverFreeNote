@@ -224,7 +224,7 @@ export function Sidebar({
             onKeyDown={handleSearchKeyDown}
             className="pl-10 pr-8"
           />
-          {searchQuery && (
+          {searchDraft && (
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
               <TooltipProvider>
                 <Tooltip>

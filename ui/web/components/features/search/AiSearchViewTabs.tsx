@@ -11,7 +11,7 @@ export function AiSearchViewTabs({ value, onChange }: AiSearchViewTabsProps) {
     <ToggleGroup
       type="single"
       value={value}
-      onValueChange={(v) => { if (v) onChange(v as ViewMode) }}
+      onValueChange={(v) => { if (v === 'note' || v === 'chunk') onChange(v) }}
       className="justify-start gap-1"
       aria-label="Result view mode"
     >

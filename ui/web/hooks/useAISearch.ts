@@ -101,7 +101,7 @@ export function useAISearch({
 
       if (error) throw new Error(error.message ?? 'AI Search failed')
 
-      const chunks = (data?.chunks ?? []) as RagChunk[]
+      const chunks = Array.isArray(data?.chunks) ? (data.chunks as RagChunk[]) : []
       return groupByNote(chunks)
     },
     enabled: queryEnabled,

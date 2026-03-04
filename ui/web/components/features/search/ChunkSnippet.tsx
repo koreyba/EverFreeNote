@@ -5,8 +5,9 @@ interface ChunkSnippetProps {
 }
 
 export function ChunkSnippet({ content, maxLength = 200 }: ChunkSnippetProps) {
-  const truncated = content.length > maxLength
-    ? content.slice(0, maxLength).trimEnd() + '…'
+  const clampedMax = Math.max(0, maxLength)
+  const truncated = content.length > clampedMax
+    ? content.slice(0, clampedMax).trimEnd() + '…'
     : content
 
   return (

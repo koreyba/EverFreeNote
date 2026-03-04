@@ -21,7 +21,7 @@ description: Technical notes for the rag-search Edge Function, useAISearch hook,
 
 ## Code Structure
 
-```
+```text
 core/
   constants/
     aiSearch.ts          # OFFSET_DELTA_THRESHOLD, slider anchors

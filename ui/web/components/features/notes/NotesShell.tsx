@@ -52,7 +52,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [controller])
 
   const { data: apiKeysStatus } = useQuery({
-    queryKey: ['apiKeysStatus'],
+    queryKey: ['apiKeysStatus', user?.id],
     queryFn: () => apiKeysService.getStatus(),
     staleTime: 5 * 60 * 1000,
   })
