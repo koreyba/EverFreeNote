@@ -6,6 +6,7 @@ import { ChevronLeft, Search, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
+
 import {
     Tooltip,
     TooltipContent,
@@ -177,55 +178,55 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             style={{ "--search-panel-width": `${panelWidth}px` } as React.CSSProperties}
             data-testid="search-results-panel"
         >
-            <div className="p-4 border-b shrink-0 space-y-3">
-                <div className="flex items-center justify-between">
-                    <Button variant="ghost" size="sm" className="h-7 px-1 md:hidden" onClick={onClose}>
+            <div className="px-3 pt-3 pb-2 border-b shrink-0 space-y-2">
+                {/* Search input row — Back (mobile) | input | X (desktop) */}
+                <TooltipProvider>
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" className="h-8 px-1.5 md:hidden shrink-0" onClick={onClose}>
                         <ChevronLeft className="w-4 h-4 mr-1" />
                         Back
                     </Button>
-                    <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2 md:mr-auto">
-                        <Search className="w-4 h-4" />
-                        Search
-                    </h2>
-                    <Button variant="ghost" size="icon" className="hidden md:inline-flex h-6 w-6" onClick={onClose}>
-                        <X className="w-4 h-4" />
-                    </Button>
-                </div>
 
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                        ref={inputRef}
-                        type="text"
-                        placeholder={filterByTag ? `Search in "${filterByTag}" notes...` : "Search notes..."}
-                        value={searchDraft}
-                        onChange={(e) => handleSearchChange(e.target.value)}
-                        onKeyDown={handleSearchKeyDown}
-                        className="pl-10 pr-8 bg-background"
-                    />
-                    {searchDraft && (
-                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-6 w-6 hover:bg-transparent"
-                                            onClick={handleClear}
-                                        >
-                                            <X className="w-4 h-4 text-gray-400 hover:text-foreground" />
-                                            <span className="sr-only">Clear Search</span>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Clear Search</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </div>
-                    )}
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+                        <Input
+                            ref={inputRef}
+                            type="text"
+                            placeholder={filterByTag ? `In "${filterByTag}"…` : "Search notes…"}
+                            value={searchDraft}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            onKeyDown={handleSearchKeyDown}
+                            className={cn(
+                                "pl-9 pr-7 h-9 bg-background transition-shadow",
+                                isAIEnabled && "ring-1 ring-primary/35 focus-visible:ring-primary/60"
+                            )}
+                        />
+                        {searchDraft && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+                                        onClick={handleClear}
+                                        aria-label="Clear search"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">Clear search</TooltipContent>
+                            </Tooltip>
+                        )}
+                    </div>
+
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8 shrink-0" onClick={onClose}>
+                                <X className="w-4 h-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">Close</TooltipContent>
+                    </Tooltip>
                 </div>
+                </TooltipProvider>
 
                 {filterByTag && (
                     <div className="flex items-center gap-2">
@@ -259,7 +260,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
             <div className="flex-1 overflow-y-auto min-h-0 bg-muted/10 relative">
                 {showAIResults ? (
-                    <div className="px-3 py-1">
+                    <div className="px-3 py-2">
                         {aiLoading && (
                             <div className="flex flex-col gap-3 py-2">
                                 {[1, 2, 3].map((i) => (
@@ -281,7 +282,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                         )}
                         {!aiLoading && !aiError && (
                             viewMode === 'chunk' ? (
-                                <ChunkSearchResults noteGroups={noteGroups} onOpenInContext={onOpenInContext} />
+                                <ChunkSearchResults noteGroups={noteGroups} onOpenInContext={onOpenInContext} query={aiSearchQuery} />
                             ) : (
                                 <NoteSearchResults
                                     noteGroups={noteGroups}
@@ -323,8 +324,18 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                         onSearchResultClick={handleSearchResultClick}
                     />
                 ) : (
-                    <div className="p-4 text-sm text-muted-foreground text-center pt-10">
-                        {searchDraft.trim().length > 0 ? "Press Enter to search..." : "Type to start searching..."}
+                    <div className="flex flex-col items-center gap-3 py-14 px-6 text-center">
+                        <div className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center">
+                            <Search className="h-5 w-5 text-muted-foreground/50" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground/70">
+                                {searchDraft.trim().length > 0 ? "Press Enter to search" : "Search your notes"}
+                            </p>
+                            {isAIEnabled && searchDraft.trim().length > 0 && (
+                                <p className="text-xs text-muted-foreground/45 mt-1">AI search uses semantic similarity</p>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

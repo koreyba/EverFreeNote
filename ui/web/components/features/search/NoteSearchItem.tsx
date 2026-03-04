@@ -1,6 +1,5 @@
 import { type KeyboardEvent, useState } from 'react'
-import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ChevronDown, ChevronUp, ArrowUpRight } from 'lucide-react'
 import InteractiveTag from '@/components/InteractiveTag'
 import { ChunkSnippet } from './ChunkSnippet'
 import { cn } from '@ui/web/lib/utils'
@@ -13,25 +12,16 @@ interface NoteSearchItemProps {
   onTagClick?: (tag: string) => void
 }
 
-function getScoreTone(score: number) {
-  if (score >= 0.8) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-  if (score >= 0.65) return 'border-amber-500/40 bg-amber-500/10 text-amber-300'
-  return 'border-border bg-muted/60 text-muted-foreground'
+function getAccentClass(score: number) {
+  if (score >= 0.8) return 'border-l-emerald-500'
+  if (score >= 0.65) return 'border-l-amber-500'
+  return 'border-l-border'
 }
 
-function ScoreBadge({ score, compact = false }: { score: number; compact?: boolean }) {
-  const pct = Math.round(score * 100)
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full border px-2 py-0.5 font-medium tabular-nums',
-        compact ? 'text-[10px]' : 'text-[11px]',
-        getScoreTone(score)
-      )}
-    >
-      {pct}%
-    </span>
-  )
+function getScoreClass(score: number) {
+  if (score >= 0.8) return 'text-emerald-400'
+  if (score >= 0.65) return 'text-amber-400'
+  return 'text-muted-foreground/60'
 }
 
 export function NoteSearchItem({ group, onOpenInContext, highlightQuery = '', onTagClick }: NoteSearchItemProps) {
@@ -52,127 +42,114 @@ export function NoteSearchItem({ group, onOpenInContext, highlightQuery = '', on
   }
 
   const handleChunkActivate = (charOffset: number, chunkLength: number) => {
-    // Allow selecting/copying snippet text without accidental navigation.
     if (hasActiveSelection()) return
     openChunkInContext(charOffset, chunkLength)
   }
 
-  const handleChunkKeyDown = (
-    event: KeyboardEvent<HTMLElement>,
-    charOffset: number,
-    chunkLength: number
-  ) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return
-    event.preventDefault()
+  const handleChunkKeyDown = (e: KeyboardEvent<HTMLElement>, charOffset: number, chunkLength: number) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
     openChunkInContext(charOffset, chunkLength)
   }
 
   return (
     <article
-      className="rounded-xl border border-border/70 bg-background/55 p-3 transition-colors hover:border-primary/35 hover:bg-background/75"
+      className={cn(
+        'rounded-lg border border-border/60 bg-card border-l-[3px] overflow-hidden transition-all hover:border-primary/30 hover:shadow-sm',
+        getAccentClass(group.topScore)
+      )}
       role="listitem"
     >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-[15px] font-semibold leading-snug text-foreground flex-1 line-clamp-2">
-          {group.noteTitle || 'Untitled'}
-        </h3>
-        <ScoreBadge score={group.topScore} />
-      </div>
-
-      {group.noteTags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {group.noteTags.map((tag) => (
-            <InteractiveTag
-              key={tag}
-              tag={tag}
-              onClick={onTagClick || (() => { })}
-              showIcon={false}
-              className="text-xs px-2 py-0.5"
-            />
-          ))}
+      <div className="px-3 pt-3 pb-2.5">
+        {/* Title + score */}
+        <div className="flex items-start gap-2 justify-between">
+          <h3 className="text-[13.5px] font-semibold leading-snug text-foreground flex-1 line-clamp-2">
+            {group.noteTitle || 'Untitled'}
+          </h3>
+          <span className={cn('text-[10px] font-medium tabular-nums shrink-0 mt-0.5', getScoreClass(group.topScore))}>
+            {Math.round(group.topScore * 100)}%
+          </span>
         </div>
-      )}
 
-      {topChunk && (
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label={`Open top fragment from "${group.noteTitle || 'Untitled'}" in context`}
-          className="group mt-2 rounded-lg border border-border/60 bg-muted/25 px-2.5 py-2 cursor-pointer transition-colors hover:border-primary/45 hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-          onClick={() => handleChunkActivate(topChunk.charOffset, topChunk.content.length)}
-          onKeyDown={(event) => handleChunkKeyDown(event, topChunk.charOffset, topChunk.content.length)}
-        >
-          <div className="mb-1 flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Best match
-            </span>
-            <ExternalLink className="h-3 w-3 text-muted-foreground transition-colors group-hover:text-primary" />
-          </div>
-          <ChunkSnippet
-            content={topChunk.content}
-            className="text-[13px] leading-6 text-foreground/85"
-            highlightQuery={highlightQuery}
-          />
-        </div>
-      )}
-
-      {hasMore && (
-        <div className="mt-2 flex items-center justify-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {expanded ? (
-              <>
-                <ChevronUp className="mr-1 h-3 w-3" />
-                Hide fragments
-              </>
-            ) : (
-              <>
-                <ChevronDown className="mr-1 h-3 w-3" />
-                {extraChunks.length} more fragment{extraChunks.length !== 1 ? 's' : ''}
-              </>
-            )}
-          </Button>
-        </div>
-      )}
-
-      {expanded && (extraChunks.length > 0 || group.hiddenCount > 0) && (
-        <div className="mt-2 border-t border-border/60 pt-2">
-          <div className="space-y-2">
-            {extraChunks.map((chunk, index) => (
-              <div
-                key={chunk.chunkIndex}
-                role="button"
-                tabIndex={0}
-                aria-label={`Open fragment ${index + 2} from "${group.noteTitle || 'Untitled'}" in context`}
-                className="group rounded-md border border-border/60 bg-muted/15 px-2.5 py-2 cursor-pointer transition-colors hover:border-primary/45 hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                onClick={() => handleChunkActivate(chunk.charOffset, chunk.content.length)}
-                onKeyDown={(event) => handleChunkKeyDown(event, chunk.charOffset, chunk.content.length)}
-              >
-                <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Fragment {index + 2}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <ScoreBadge score={chunk.similarity} compact />
-                    <ExternalLink className="h-3 w-3 text-muted-foreground transition-colors group-hover:text-primary" />
-                  </div>
-                </div>
-
-                <ChunkSnippet
-                  content={chunk.content}
-                  className="text-[12px] leading-5 text-foreground/80"
-                  highlightQuery={highlightQuery}
-                />
-              </div>
+        {/* Tags */}
+        {group.noteTags.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {group.noteTags.map((tag) => (
+              <InteractiveTag
+                key={tag}
+                tag={tag}
+                onClick={onTagClick || (() => {})}
+                showIcon={false}
+                className="text-[11px] px-1.5 py-0"
+              />
             ))}
           </div>
+        )}
 
+        {/* Top chunk */}
+        {topChunk && (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={`Open top fragment from "${group.noteTitle || 'Untitled'}" in context`}
+            className="group mt-2.5 rounded-md bg-muted/30 px-2.5 py-2 cursor-pointer border border-transparent transition-all hover:bg-muted/50 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            onClick={() => handleChunkActivate(topChunk.charOffset, topChunk.content.length)}
+            onKeyDown={(e) => handleChunkKeyDown(e, topChunk.charOffset, topChunk.content.length)}
+          >
+            <ChunkSnippet
+              content={topChunk.content}
+              className="text-[12.5px] leading-relaxed text-foreground/80"
+              highlightQuery={highlightQuery}
+            />
+            <div className="mt-1.5 flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity text-[10px] text-primary">
+              <ArrowUpRight className="h-2.5 w-2.5" />
+              <span>Open in context</span>
+            </div>
+          </div>
+        )}
+
+        {/* More fragments toggle */}
+        {hasMore && (
+          <button
+            className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {expanded
+              ? 'Hide fragments'
+              : `${extraChunks.length} more fragment${extraChunks.length !== 1 ? 's' : ''}`}
+          </button>
+        )}
+      </div>
+
+      {/* Expanded fragments — visually separated section */}
+      {expanded && (extraChunks.length > 0 || group.hiddenCount > 0) && (
+        <div className="border-t border-border/40 bg-muted/10 px-3 py-2 space-y-1.5">
+          {extraChunks.map((chunk, index) => (
+            <div
+              key={chunk.chunkIndex}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open fragment ${index + 2} from "${group.noteTitle || 'Untitled'}" in context`}
+              className="group rounded-md bg-background/60 px-2.5 py-2 cursor-pointer border border-border/40 transition-all hover:bg-background hover:border-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              onClick={() => handleChunkActivate(chunk.charOffset, chunk.content.length)}
+              onKeyDown={(e) => handleChunkKeyDown(e, chunk.charOffset, chunk.content.length)}
+            >
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground">Fragment {index + 2}</span>
+                <span className={cn('text-[10px] tabular-nums', getScoreClass(chunk.similarity))}>
+                  {Math.round(chunk.similarity * 100)}%
+                </span>
+              </div>
+              <ChunkSnippet
+                content={chunk.content}
+                className="text-[12px] leading-relaxed text-foreground/75"
+                highlightQuery={highlightQuery}
+              />
+            </div>
+          ))}
           {group.hiddenCount > 0 && (
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="pt-0.5 text-[11px] text-muted-foreground">
               +{group.hiddenCount} similar fragments hidden
             </p>
           )}
