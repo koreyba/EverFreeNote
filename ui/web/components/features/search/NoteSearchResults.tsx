@@ -9,15 +9,16 @@ interface NoteSearchResultsProps {
 export function NoteSearchResults({ noteGroups, onOpenInContext }: NoteSearchResultsProps) {
   if (noteGroups.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground px-1 py-3">
-        No results. Try Broad mode or use the&nbsp;
-        <span className="font-medium">…</span>&nbsp;menu on a note to index it.
-      </p>
+      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-4">
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          No results. Try Broad mode or use the <span className="font-medium">...</span> menu on a note to index it.
+        </p>
+      </div>
     )
   }
 
   return (
-    <div className="flex flex-col" role="list" aria-label="Note search results">
+    <div className="flex flex-col gap-2" role="list" aria-label="Note search results">
       {noteGroups.map((group) => (
         <NoteSearchItem
           key={group.noteId}

@@ -96,7 +96,6 @@ export function SearchResultsPanel({
         controller.handleSearch('')
         setSearchDraft('')
         setAiSearchQuery('')
-        onClose()
     }
 
     // Provide auto-focus on mount
