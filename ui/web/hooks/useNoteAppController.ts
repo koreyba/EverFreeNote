@@ -106,6 +106,8 @@ export function useNoteAppController() {
   const {
     searchQuery,
     filterByTag,
+    isSearchPanelOpen,
+    setIsSearchPanelOpen,
     handleSearch,
     handleTagClick: onTagClick,
     handleClearTagFilter,
@@ -257,6 +259,8 @@ export function useNoteAppController() {
     searchQuery,
     isEditing,
     setIsEditing,
+    isSearchPanelOpen,
+    setIsSearchPanelOpen,
     saving,
     filterByTag,
     deleteDialogOpen,

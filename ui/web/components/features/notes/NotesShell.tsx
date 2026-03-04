@@ -20,6 +20,7 @@ import { NoteList } from "@/components/features/notes/NoteList"
 import { NoteEditor, type NoteEditorHandle } from "@/components/features/notes/NoteEditor"
 import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
+import { SearchResultsPanel } from "@/components/features/notes/SearchResultsPanel"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { normalizeTagList } from "@ui/web/lib/tags"
@@ -86,6 +87,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     selectedNote,
     isEditing,
     handleSelectNote,
+    isSearchPanelOpen,
+    setIsSearchPanelOpen,
   } = controller
 
   const refreshWordPressStatus = React.useCallback(async () => {
@@ -166,8 +169,6 @@ export function NotesShell({ controller }: NotesShellProps) {
         onSelectAll={selectAllVisible}
         onClearSelection={clearSelection}
         onBulkDelete={deleteSelectedNotes}
-        searchQuery={searchQuery}
-        onSearch={handleSearch}
         onClearTagFilter={handleClearTagFilter}
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
@@ -176,13 +177,22 @@ export function NotesShell({ controller }: NotesShellProps) {
         onImportComplete={invalidateNotes}
         wordpressConfigured={wordpressConfigured}
         onWordPressConfiguredChange={setWordpressConfigured}
-        hasGeminiApiKey={hasGeminiApiKey}
-        onOpenInContext={handleOpenInContext}
-        className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
+        onOpenSearch={() => setIsSearchPanelOpen(true)}
+        className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
       >
         <ListPane controller={controller} />
       </Sidebar>
+
+      {isSearchPanelOpen && (
+        <SearchResultsPanel
+          controller={controller}
+          hasGeminiApiKey={hasGeminiApiKey}
+          onOpenInContext={handleOpenInContext}
+          onClose={() => setIsSearchPanelOpen(false)}
+          className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
+        />
+      )}
 
       <div
         className={cn(
@@ -209,12 +219,6 @@ function ListPane({ controller }: { controller: NoteAppController }) {
     notes,
     notesQuery,
     selectedNote,
-    searchQuery,
-    ftsSearchResult,
-    showFTSResults,
-    ftsData,
-    ftsHasMore,
-    ftsLoadingMore,
     handleSelectNote,
     selectionMode,
     selectedNoteIds,
@@ -236,22 +240,6 @@ function ListPane({ controller }: { controller: NoteAppController }) {
       onLoadMore={() => notesQuery.fetchNextPage()}
       hasMore={notesQuery.hasNextPage}
       isFetchingNextPage={notesQuery.isFetchingNextPage}
-      ftsQuery={searchQuery}
-      ftsLoading={ftsSearchResult.isLoading}
-      showFTSResults={showFTSResults}
-      ftsData={
-        ftsData
-          ? {
-            total: ftsData.total,
-            executionTime: ftsData.executionTime,
-            results: ftsData.results,
-          }
-          : undefined
-      }
-      ftsHasMore={ftsHasMore}
-      ftsLoadingMore={ftsLoadingMore}
-      onLoadMoreFts={controller.loadMoreFts}
-      onSearchResultClick={handleSearchResultClick}
     />
   )
 }

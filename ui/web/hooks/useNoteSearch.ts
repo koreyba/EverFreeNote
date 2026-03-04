@@ -14,6 +14,7 @@ export function useNoteSearch(userId: string | undefined) {
     const [filterByTag, setFilterByTag] = useState<string | null>(null)
     const [ftsOffset, setFtsOffset] = useState(0)
     const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
+    const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false)
     const ftsLimit = SEARCH_CONFIG.PAGE_SIZE
     const lastProcessedDataRef = useRef<string>('')
 
@@ -25,6 +26,9 @@ export function useNoteSearch(userId: string | undefined) {
         setFtsOffset(0)
         setFtsAccumulatedResults([])
         lastProcessedDataRef.current = ''
+        if (query.trim().length > 0) {
+            setIsSearchPanelOpen(true)
+        }
     }, [])
 
     const handleTagClick = useCallback((tag: string) => {
@@ -124,6 +128,8 @@ export function useNoteSearch(userId: string | undefined) {
         searchQuery,
         ftsSearchQuery, // exposed if needed
         filterByTag,
+        isSearchPanelOpen,
+        setIsSearchPanelOpen,
         handleSearch,
         handleTagClick,
         handleClearTagFilter,
