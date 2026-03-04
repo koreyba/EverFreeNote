@@ -302,6 +302,7 @@ function EditorPane({
         lastSavedAt={lastSavedAt}
         wordpressConfigured={wordpressConfigured}
         onDelete={selectedNote ? () => handleDeleteNote(selectedNote) : undefined}
+        onBack={onBack}
       />
     )
   }
