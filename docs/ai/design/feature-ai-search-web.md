@@ -131,14 +131,14 @@ The Edge Function:
 1. Extracts `userId` from the Supabase JWT (not from request body).
 2. Reads user's Gemini API key from `user_api_keys` using `userId`.
 3. Calls Gemini to embed `query` (model: `models/gemini-embedding-001`, dim 1536).
-4. Calls updated `match_notes` RPC with `(query_embedding, userId, topK, filterTag)` — tag filtering happens in SQL via `filter_tag = ANY(n.tags)`.
+4. Calls `match_notes` RPC with `(query_embedding, match_count, filter_tag)` — user scoping is handled inside the function via `auth.uid()`; tag filtering happens in SQL via `filter_tag = ANY(n.tags)`.
 5. `match_notes` returns chunks; Edge Function enriches result with `title` and `tags` via `SELECT id, title, tags FROM notes WHERE id = ANY(noteIds)`.
 6. Filters results by `similarity >= threshold` **in the Edge Function** (post-RPC, before returning).
 7. Returns chunk list.
 
 ### Strict ↔ Broad Preset Mapping
 
-3 дискретных состояния (не непрерывный слайдер):
+3 discrete states (not a continuous slider):
 
 | State | topK | threshold |
 |-------|------|-----------|
@@ -146,7 +146,7 @@ The Edge Function:
 | Neutral *(default)* | 15 | 0.55 |
 | Broad | 30 | 0.40 |
 
-UI: 3 кнопки/таба или segmented control (Strict / Neutral / Broad). Нет линейной интерполяции — каждое состояние передаёт фиксированные `topK` и `threshold`.
+UI: 3-button segmented control (Strict / Neutral / Broad). No linear interpolation — each state maps to fixed `topK` and `threshold` values.
 
 ## Component Breakdown
 

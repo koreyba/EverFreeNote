@@ -24,6 +24,7 @@ import { cn } from "@ui/web/lib/utils"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { useSearchMode } from "@ui/web/hooks/useSearchMode"
 import { useAISearch } from "@ui/web/hooks/useAISearch"
+import { AI_SEARCH_MIN_QUERY_LENGTH } from "@core/constants/aiSearch"
 import { AiSearchToggle } from "@/components/features/search/AiSearchToggle"
 import { AiSearchPresetSelector } from "@/components/features/search/AiSearchPresetSelector"
 import { AiSearchViewTabs } from "@/components/features/search/AiSearchViewTabs"
@@ -119,7 +120,7 @@ export function Sidebar({
     onOpenInContext?.(noteId, charOffset, chunkLength)
   }
 
-  const showAIResults = isAIEnabled && aiSearchQuery.trim().length >= 3
+  const showAIResults = isAIEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
 
   const handleBulkConfirm = async () => {
     await onBulkDelete()
