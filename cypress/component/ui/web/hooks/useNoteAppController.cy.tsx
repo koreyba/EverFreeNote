@@ -17,6 +17,7 @@ const TestComponent = () => {
     flushPendingSave: async () => {
       flushSpy?.()
     },
+    scrollToChunk: () => {},
   })
 
   return (

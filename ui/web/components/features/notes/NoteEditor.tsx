@@ -15,6 +15,7 @@ const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
 export interface NoteEditorHandle {
   flushPendingSave: () => Promise<void>
+  scrollToChunk: (charOffset: number, chunkLength: number) => void
 }
 
 interface NoteEditorProps {
@@ -151,7 +152,12 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     scheduleAutoSave({ tags: buildTagString(next) })
   }, [scheduleAutoSave])
 
-  React.useImperativeHandle(ref, () => ({ flushPendingSave }), [flushPendingSave])
+  React.useImperativeHandle(ref, () => ({
+    flushPendingSave,
+    scrollToChunk: (charOffset: number, chunkLength: number) => {
+      editorRef.current?.scrollToChunk(charOffset, chunkLength)
+    },
+  }), [flushPendingSave])
 
   // Show the "..." menu for existing notes (RAG + delete)
   const showMoreMenu = !!noteId

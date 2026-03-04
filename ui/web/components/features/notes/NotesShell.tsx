@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Loader2 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,7 @@ import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { normalizeTagList } from "@ui/web/lib/tags"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
+import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -39,14 +41,26 @@ export function NotesShell({ controller }: NotesShellProps) {
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
   const { supabase } = useSupabase()
   const wordpressSettingsService = React.useMemo(() => new WordPressSettingsService(supabase), [supabase])
+  const apiKeysService = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
   const [wordpressConfigured, setWordpressConfigured] = React.useState(false)
+
+  // Pending scroll: set when navigating to a different note via "Open in context"
+  const pendingScrollRef = React.useRef<{ noteId: string; charOffset: number; chunkLength: number } | null>(null)
 
   React.useEffect(() => {
     controller.registerNoteEditorRef(noteEditorRef)
   }, [controller])
 
+  const user = controller.user
+  const { data: apiKeysStatus } = useQuery({
+    queryKey: ['apiKeysStatus', user?.id],
+    queryFn: () => apiKeysService.getStatus(),
+    staleTime: 5 * 60 * 1000,
+    enabled: Boolean(user?.id),
+  })
+  const hasGeminiApiKey = apiKeysStatus?.gemini?.configured ?? false
+
   const {
-    user,
     notesDisplayed,
     notesTotal,
     selectionMode,
@@ -87,6 +101,51 @@ export function NotesShell({ controller }: NotesShellProps) {
     void refreshWordPressStatus()
   }, [refreshWordPressStatus, user?.id])
 
+  // Execute pending scroll once the editor has mounted for the target note
+  React.useEffect(() => {
+    const pending = pendingScrollRef.current
+    if (!pending || !isEditing || selectedNote?.id !== pending.noteId) return
+    const id = setTimeout(() => {
+      noteEditorRef.current?.scrollToChunk(pending.charOffset, pending.chunkLength)
+      pendingScrollRef.current = null
+    }, 150)
+    return () => clearTimeout(id)
+  }, [isEditing, selectedNote?.id])
+
+  const handleOpenInContext = React.useCallback(async (noteId: string, charOffset: number, chunkLength: number) => {
+    let note = controller.notes.find((n) => n.id === noteId)
+
+    if (!note) {
+      // Note not in the current paginated list — fetch it from the DB
+      try {
+        const { data } = await supabase
+          .from('notes')
+          .select('id, title, description, tags, created_at, updated_at, user_id')
+          .eq('id', noteId)
+          .maybeSingle()
+        if (!data) return
+        note = data as Note
+      } catch {
+        return
+      }
+    }
+    if (!note) return  // TypeScript: narrowing lost after await + let reassignment
+
+    // Adjust charOffset: rag-index prepends title + " " before the body text
+    const title = (note.title ?? '').trim()
+    const bodyOffset = title ? Math.max(0, charOffset - (title.length + 1)) : charOffset
+
+    if (controller.selectedNote?.id === noteId && controller.isEditing) {
+      // Already editing the right note — scroll immediately
+      noteEditorRef.current?.scrollToChunk(bodyOffset, chunkLength)
+      return
+    }
+
+    // Navigate to note in edit mode, then scroll once mounted
+    pendingScrollRef.current = { noteId, charOffset: bodyOffset, chunkLength }
+    controller.handleEditNote(note)
+  }, [controller, supabase])
+
   const showEditor = !!(selectedNote || isEditing)
 
   return (
@@ -117,6 +176,8 @@ export function NotesShell({ controller }: NotesShellProps) {
         onImportComplete={invalidateNotes}
         wordpressConfigured={wordpressConfigured}
         onWordPressConfiguredChange={setWordpressConfigured}
+        hasGeminiApiKey={hasGeminiApiKey}
+        onOpenInContext={handleOpenInContext}
         className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
       >

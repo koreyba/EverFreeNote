@@ -293,6 +293,13 @@ mark {
   pointer-events: none;
 }
 
+/* Chunk focus highlight — applied via NodeDecoration from scrollToChunk */
+.note-content .ProseMirror .chunk-focus {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 0.75rem;
+  margin-left: -0.75rem;
+}
+
 /* Dark theme overrides */
 .dark .note-content code {
   background-color: var(--color-muted);

@@ -55,11 +55,11 @@ describe('core/services/ApiKeysSettingsService', () => {
     const supabase = { functions: { invoke } } as unknown as SupabaseClient
 
     const service = new ApiKeysSettingsService(supabase)
-    const result = await service.upsert('AIzaSy-test-key')
+    const result = await service.upsert('test-gemini-key')
 
     expect(result).to.deep.equal({ gemini: { configured: true } })
     expect(invoke).to.have.been.calledWith('api-keys-upsert', {
-      body: { geminiApiKey: 'AIzaSy-test-key' },
+      body: { geminiApiKey: 'test-gemini-key' },
     })
   })
 
@@ -70,7 +70,7 @@ describe('core/services/ApiKeysSettingsService', () => {
     const service = new ApiKeysSettingsService(supabase)
 
     try {
-      await service.upsert('AIzaSy-test-key')
+      await service.upsert('test-gemini-key')
       expect.fail('Expected upsert to throw')
     } catch (error) {
       expect((error as Error).message).to.equal('Unexpected response while saving API key')
@@ -89,7 +89,7 @@ describe('core/services/ApiKeysSettingsService', () => {
     const service = new ApiKeysSettingsService(supabase)
 
     try {
-      await service.upsert('AIzaSy-test-key')
+      await service.upsert('test-gemini-key')
       expect.fail('Expected upsert to throw')
     } catch (error) {
       expect((error as Error).message).to.equal('Invalid JWT')

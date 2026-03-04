@@ -22,6 +22,14 @@ import { ApiKeysSettingsDialog } from "@/components/features/settings/ApiKeysSet
 import { User } from "@supabase/supabase-js"
 import { cn } from "@ui/web/lib/utils"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
+import { useSearchMode } from "@ui/web/hooks/useSearchMode"
+import { useAISearch } from "@ui/web/hooks/useAISearch"
+import { AI_SEARCH_MIN_QUERY_LENGTH } from "@core/constants/aiSearch"
+import { AiSearchToggle } from "@/components/features/search/AiSearchToggle"
+import { AiSearchPresetSelector } from "@/components/features/search/AiSearchPresetSelector"
+import { AiSearchViewTabs } from "@/components/features/search/AiSearchViewTabs"
+import { NoteSearchResults } from "@/components/features/search/NoteSearchResults"
+import { ChunkSearchResults } from "@/components/features/search/ChunkSearchResults"
 
 interface SidebarProps {
   user: User
@@ -50,6 +58,8 @@ interface SidebarProps {
   onExportComplete?: (success: boolean, exportedCount: number) => void
   wordpressConfigured?: boolean
   onWordPressConfiguredChange?: (configured: boolean) => void
+  hasGeminiApiKey?: boolean
+  onOpenInContext?: (noteId: string, charOffset: number, chunkLength: number) => void
   children: React.ReactNode // For the NoteList
   className?: string
   "data-testid"?: string
@@ -82,6 +92,8 @@ export function Sidebar({
   onExportComplete,
   wordpressConfigured = false,
   onWordPressConfiguredChange,
+  hasGeminiApiKey = true,
+  onOpenInContext,
   children,
   className,
   "data-testid": dataTestId
@@ -91,19 +103,53 @@ export function Sidebar({
   const [wordPressSettingsOpen, setWordPressSettingsOpen] = useState(false)
   const [apiKeysOpen, setApiKeysOpen] = useState(false)
   const [searchDraft, setSearchDraft] = useState(searchQuery)
+  // AI search fires only on Enter — not on every keystroke, to avoid unnecessary API calls.
+  const [aiSearchQuery, setAiSearchQuery] = useState(searchQuery)
   const debouncedSearch = useDebouncedCallback(onSearch, 250)
+
+  // AI Search state
+  const { isAIEnabled, preset, viewMode, setIsAIEnabled, setPreset, setViewMode } = useSearchMode()
+  const { noteGroups, isLoading: aiLoading, error: aiError, refetch: aiRefetch } = useAISearch({
+    query: aiSearchQuery,
+    preset,
+    filterTag: filterByTag,
+    isEnabled: isAIEnabled,
+  })
+
+  const handleOpenInContext = (noteId: string, charOffset: number, chunkLength: number) => {
+    onOpenInContext?.(noteId, charOffset, chunkLength)
+  }
+
+  const showAIResults = isAIEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
 
   const handleBulkConfirm = async () => {
     await onBulkDelete()
     setBulkDialogOpen(false)
   }
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: syncs external prop to local draft
     setSearchDraft(searchQuery)
+    // Only clear AI query when search is programmatically reset (e.g. X button, tag filter clear).
+    // Normal FTS debounce also changes searchQuery, so we must NOT sync on every change.
+    if (!searchQuery) setAiSearchQuery('')
   }, [searchQuery])
 
   const handleSearchChange = (value: string) => {
     setSearchDraft(value)
-    debouncedSearch.call(value)
+    if (!isAIEnabled) {
+      debouncedSearch.call(value)
+    }
+    // When AI is enabled, search fires only on Enter
+  }
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return
+    if (isAIEnabled) {
+      setAiSearchQuery(searchDraft)
+    } else {
+      debouncedSearch.cancel()
+      onSearch(searchDraft)
+    }
   }
 
   const handleDeleteAccount = async () => {
@@ -176,9 +222,10 @@ export function Sidebar({
             placeholder={filterByTag ? `Search in "${filterByTag}" notes...` : "Search notes..."}
             value={searchDraft}
             onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
             className="pl-10 pr-8"
           />
-          {searchQuery && (
+          {searchDraft && (
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
               <TooltipProvider>
                 <Tooltip>
@@ -199,6 +246,23 @@ export function Sidebar({
                 </Tooltip>
               </TooltipProvider>
             </div>
+          )}
+        </div>
+
+        {/* AI Search Controls */}
+        <div className="mt-2 flex flex-col gap-1.5">
+          <AiSearchToggle
+            enabled={isAIEnabled}
+            hasApiKey={hasGeminiApiKey}
+            onChange={setIsAIEnabled}
+          />
+          {isAIEnabled && (
+            <>
+              <AiSearchPresetSelector value={preset} onChange={setPreset} />
+              {showAIResults && noteGroups.length > 0 && (
+                <AiSearchViewTabs value={viewMode} onChange={setViewMode} />
+              )}
+            </>
           )}
         </div>
       </div>
@@ -245,8 +309,44 @@ export function Sidebar({
       </div>
 
       {/* Notes List Container */}
-      <div className="flex-1 overflow-hidden" id="notes-list-container">
-        {children}
+      <div className="flex-1 overflow-y-auto" id="notes-list-container">
+        {showAIResults ? (
+          <div className="px-3 py-1">
+            {aiLoading && (
+              <div className="flex flex-col gap-3 py-2" role="status" aria-label="Searching…">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-1.5">
+                    <div className="h-3 bg-muted animate-pulse rounded w-3/4" />
+                    <div className="h-2.5 bg-muted animate-pulse rounded w-full" />
+                    <div className="h-2.5 bg-muted animate-pulse rounded w-5/6" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {aiError && !aiLoading && (
+              <div className="py-2">
+                <p className="text-xs text-destructive">AI Search unavailable</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 text-xs px-0 mt-1"
+                  onClick={() => aiRefetch()}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+            {!aiLoading && !aiError && (
+              viewMode === 'chunk' ? (
+                <ChunkSearchResults noteGroups={noteGroups} onOpenInContext={handleOpenInContext} />
+              ) : (
+                <NoteSearchResults noteGroups={noteGroups} onOpenInContext={handleOpenInContext} />
+              )
+            )}
+          </div>
+        ) : (
+          children
+        )}
       </div>
 
       {/* User Profile */}
