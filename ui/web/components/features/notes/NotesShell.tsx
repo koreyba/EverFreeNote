@@ -73,8 +73,6 @@ export function NotesShell({ controller }: NotesShellProps) {
     clearSelection,
     deleteSelectedNotes,
     filterByTag,
-    searchQuery,
-    handleSearch,
     handleClearTagFilter,
     handleCreateNote,
     handleSignOut,
@@ -224,7 +222,6 @@ function ListPane({ controller }: { controller: NoteAppController }) {
     selectedNoteIds,
     toggleNoteSelection,
     handleTagClick,
-    handleSearchResultClick,
   } = controller
 
   return (

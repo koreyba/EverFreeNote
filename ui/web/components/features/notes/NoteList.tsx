@@ -52,9 +52,9 @@ interface NoteListProps {
   isFetchingNextPage: boolean
 
   // FTS Search Props
-  ftsQuery: string
-  ftsLoading: boolean
-  showFTSResults: boolean
+  ftsQuery?: string
+  ftsLoading?: boolean
+  showFTSResults?: boolean
   ftsData?: {
     total?: number
     executionTime?: number
@@ -63,8 +63,8 @@ interface NoteListProps {
   ftsHasMore?: boolean
   ftsLoadingMore?: boolean
   onLoadMoreFts?: () => void
-  onSearchResultClick: (note: SearchResult) => void
-  
+  onSearchResultClick?: (note: SearchResult) => void
+
   // Optional fixed dimensions for testing or specific layouts
   height?: number
   width?: number
@@ -242,14 +242,14 @@ export const NoteList = memo(function NoteList({
   onLoadMore,
   hasMore,
   isFetchingNextPage,
-  ftsQuery,
-  ftsLoading,
-  showFTSResults,
+  ftsQuery = "",
+  ftsLoading = false,
+  showFTSResults = false,
   ftsData,
   ftsHasMore = false,
   ftsLoadingMore = false,
   onLoadMoreFts,
-  onSearchResultClick,
+  onSearchResultClick = () => { },
   height: fixedHeight,
   width: fixedWidth,
 }: NoteListProps) {

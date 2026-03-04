@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useEffect, useState, useRef } from "react"
-import { Search, X } from "lucide-react"
+import { ChevronLeft, Search, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -74,11 +74,6 @@ export function SearchResultsPanel({
 
     const showAIResults = isAIEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
 
-    useEffect(() => {
-        setSearchDraft(searchQuery)
-        if (!searchQuery) setAiSearchQuery('')
-    }, [searchQuery])
-
     const handleSearchChange = (value: string) => {
         setSearchDraft(value)
         if (!isAIEnabled) {
@@ -101,6 +96,7 @@ export function SearchResultsPanel({
         controller.handleSearch('')
         setSearchDraft('')
         setAiSearchQuery('')
+        onClose()
     }
 
     // Provide auto-focus on mount
@@ -118,18 +114,18 @@ export function SearchResultsPanel({
     const MAX_WIDTH_PCT = 0.5 // 50% max width
     const STORAGE_KEY = "search-panel-width"
 
-    const [panelWidth, setPanelWidth] = useState<number>(350)
-
-    useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        if (stored) {
-            const parsed = parseInt(stored, 10)
-            if (!isNaN(parsed)) setPanelWidth(Math.max(MIN_WIDTH, parsed))
+    const [panelWidth, setPanelWidth] = useState<number>(() => {
+        if (typeof window === "undefined") return 350
+        const stored = window.localStorage.getItem(STORAGE_KEY)
+        const parsed = stored ? parseInt(stored, 10) : NaN
+        const maxPixelWidth = window.innerWidth * MAX_WIDTH_PCT
+        if (Number.isFinite(parsed)) {
+            return Math.max(MIN_WIDTH, Math.min(parsed, maxPixelWidth))
         }
-    }, [])
+        return 350
+    })
 
     const [isResizing, setIsResizing] = useState(false)
-    const resizeRef = useRef<HTMLDivElement>(null)
 
     const handlePointerDown = (e: React.PointerEvent) => {
         e.preventDefault()
@@ -166,17 +162,21 @@ export function SearchResultsPanel({
 
     return (
         <div
-            className={cn("relative flex flex-col h-full bg-card border-r z-10", className)}
-            style={{ width: `${panelWidth}px`, flexShrink: 0 }}
+            className={cn("relative flex flex-col h-full w-full md:w-[var(--search-panel-width)] shrink-0 bg-card border-r z-10 motion-safe:animate-in motion-safe:slide-in-from-left-2 motion-safe:duration-200", className)}
+            style={{ "--search-panel-width": `${panelWidth}px` } as React.CSSProperties}
             data-testid="search-results-panel"
         >
             <div className="p-4 border-b shrink-0 space-y-3">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                    <Button variant="ghost" size="sm" className="h-7 px-1 md:hidden" onClick={onClose}>
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        Back
+                    </Button>
+                    <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2 md:mr-auto">
                         <Search className="w-4 h-4" />
                         Search
                     </h2>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+                    <Button variant="ghost" size="icon" className="hidden md:inline-flex h-6 w-6" onClick={onClose}>
                         <X className="w-4 h-4" />
                     </Button>
                 </div>
@@ -296,9 +296,8 @@ export function SearchResultsPanel({
 
             {/* Resize Handle */}
             <div
-                ref={resizeRef}
                 className={cn(
-                    "absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 transition-colors z-20",
+                    "hidden md:block absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 transition-colors z-20",
                     isResizing && "bg-primary"
                 )}
                 onPointerDown={handlePointerDown}

@@ -52,8 +52,7 @@ describe('Sidebar Component', () => {
     const props = {
       user: mockUser,
       filterByTag: null,
-      searchQuery: '',
-      onSearch: cy.stub(),
+      onOpenSearch: cy.stub(),
       onClearTagFilter: cy.stub(),
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
@@ -77,8 +76,7 @@ describe('Sidebar Component', () => {
     const props = {
       user: mockUser,
       filterByTag: null,
-      searchQuery: '',
-      onSearch: cy.stub(),
+      onOpenSearch: cy.stub(),
       onClearTagFilter: cy.stub(),
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
@@ -100,8 +98,7 @@ describe('Sidebar Component', () => {
     const props = {
       user: mockUser,
       filterByTag: null,
-      searchQuery: '',
-      onSearch: cy.stub(),
+      onOpenSearch: cy.stub(),
       onClearTagFilter: cy.stub(),
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
@@ -119,13 +116,12 @@ describe('Sidebar Component', () => {
     cy.contains('Notes displayed: 5 out of unknown').should('be.visible')
   })
 
-  it('handles search input', () => {
-    const onSearch = cy.spy().as('onSearch')
+  it('opens search panel when trigger is clicked', () => {
+    const onOpenSearch = cy.spy().as('onOpenSearch')
     const props = {
       user: mockUser,
       filterByTag: null,
-      searchQuery: '',
-      onSearch,
+      onOpenSearch,
       onClearTagFilter: cy.stub(),
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
@@ -138,8 +134,8 @@ describe('Sidebar Component', () => {
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
 
-    cy.get('input[placeholder="Search notes..."]').type('test query')
-    cy.get('@onSearch').should('have.been.called')
+    cy.contains('Search notes...').click()
+    cy.get('@onOpenSearch').should('have.been.calledOnce')
   })
 
   it('shows tag filter when active', () => {
@@ -147,8 +143,7 @@ describe('Sidebar Component', () => {
     const props = {
       user: mockUser,
       filterByTag: "work",
-      searchQuery: '',
-      onSearch: cy.stub(),
+      onOpenSearch: cy.stub(),
       onClearTagFilter,
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
@@ -164,58 +159,7 @@ describe('Sidebar Component', () => {
     cy.contains('work').should('be.visible')
     cy.contains('Clear Tags').click()
     cy.get('@onClearTagFilter').should('have.been.called')
-    cy.get('input').should('have.attr', 'placeholder', 'Search in "work" notes...')
-  })
-
-  it('handles clear search button', () => {
-    const onSearch = cy.spy().as('onSearch')
-    const props = {
-      user: mockUser,
-      filterByTag: null,
-      searchQuery: 'test query',
-      onSearch,
-      onClearTagFilter: cy.stub(),
-      onCreateNote: cy.stub(),
-      onSignOut: cy.stub(),
-      onDeleteAccount: cy.stub(),
-      deleteAccountLoading: false,
-      onImportComplete: cy.stub(),
-      onExportComplete: cy.stub(),
-      ...createSelectionProps(),
-      children: <div data-testid="note-list">Note List Content</div>
-    }
-    cy.mount(wrapWithProvider(<Sidebar {...props} />))
-
-    // Button should be visible when there is a query
-    cy.get('button').find('.lucide-x').should('exist')
-    
-    // Tooltip check (might need trigger)
-    cy.get('button').find('.lucide-x').parent().trigger('mouseenter')
-    cy.contains('Clear Search').should('exist')
-
-    cy.get('button').find('.lucide-x').parent().click()
-    cy.get('@onSearch').should('have.been.calledWith', '')
-  })
-
-  it('does not show clear search button when query is empty', () => {
-    const props = {
-      user: mockUser,
-      filterByTag: null,
-      searchQuery: '',
-      onSearch: cy.stub(),
-      onClearTagFilter: cy.stub(),
-      onCreateNote: cy.stub(),
-      onSignOut: cy.stub(),
-      onDeleteAccount: cy.stub(),
-      deleteAccountLoading: false,
-      onImportComplete: cy.stub(),
-      onExportComplete: cy.stub(),
-      ...createSelectionProps(),
-      children: <div data-testid="note-list">Note List Content</div>
-    }
-    cy.mount(wrapWithProvider(<Sidebar {...props} />))
-
-    cy.get('button').find('.lucide-x').should('not.exist')
+    cy.contains('Search in "work" notes...').should('be.visible')
   })
 
   it('handles actions', () => {
@@ -224,8 +168,7 @@ describe('Sidebar Component', () => {
     const props = {
       user: mockUser,
       filterByTag: null,
-      searchQuery: '',
-      onSearch: cy.stub(),
+      onOpenSearch: cy.stub(),
       onClearTagFilter: cy.stub(),
       onCreateNote,
       onSignOut,
@@ -250,8 +193,7 @@ describe('Sidebar Component', () => {
     const createBaseProps = () => ({
       user: mockUser,
       filterByTag: null,
-      searchQuery: '',
-      onSearch: cy.stub(),
+      onOpenSearch: cy.stub(),
       onClearTagFilter: cy.stub(),
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),
@@ -348,8 +290,7 @@ describe('Sidebar Component', () => {
     const props = {
       user: mockUser,
       filterByTag: null,
-      searchQuery: '',
-      onSearch: cy.stub(),
+      onOpenSearch: cy.stub(),
       onClearTagFilter: cy.stub(),
       onCreateNote: cy.stub(),
       onSignOut: cy.stub(),

@@ -22,6 +22,8 @@ describe('Mobile Layout Adaptation', () => {
       selectedNote: null,
       isEditing: false,
       setIsEditing: cy.stub(),
+      isSearchPanelOpen: false,
+      setIsSearchPanelOpen: cy.stub(),
       searchQuery: '',
       filterByTag: null,
       deleteDialogOpen: false,

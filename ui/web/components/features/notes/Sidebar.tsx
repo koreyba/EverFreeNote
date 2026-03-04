@@ -1,15 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { BookOpen, Globe, KeyRound, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
+import { useState } from "react"
+import { BookOpen, Globe, KeyRound, LogOut, Plus, Search, Tag, Settings } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ImportButton } from "@/components/ImportButton"
@@ -68,8 +62,7 @@ export function Sidebar({
   onClearSelection,
   onBulkDelete,
   filterByTag,
-  searchQuery,
-  onSearch,
+  onOpenSearch,
   onClearTagFilter,
   onCreateNote,
   onSignOut,
@@ -161,23 +154,6 @@ export function Sidebar({
           <div className="flex w-full items-center h-10 px-3 pl-9 py-2 rounded-md border border-input bg-background/50 hover:bg-background/80 transition-colors text-sm text-muted-foreground text-left">
             {filterByTag ? `Search in "${filterByTag}" notes...` : "Search notes..."}
           </div>
-        </div>
-
-        {/* AI Search Controls */}
-        <div className="mt-2 flex flex-col gap-1.5">
-          <AiSearchToggle
-            enabled={isAIEnabled}
-            hasApiKey={hasGeminiApiKey}
-            onChange={setIsAIEnabled}
-          />
-          {isAIEnabled && (
-            <>
-              <AiSearchPresetSelector value={preset} onChange={setPreset} />
-              {showAIResults && noteGroups.length > 0 && (
-                <AiSearchViewTabs value={viewMode} onChange={setViewMode} />
-              )}
-            </>
-          )}
         </div>
       </div>
 

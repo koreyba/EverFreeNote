@@ -124,7 +124,8 @@ export function useNoteAppController() {
   // -- Notes query --
   const notesQuery = useNotesQuery({
     userId: user?.id,
-    searchQuery,
+    // Main notes list must stay stable while search is rendered in SearchResultsPanel.
+    searchQuery: '',
     selectedTag: filterByTag,
     enabled: !!user,
   })
