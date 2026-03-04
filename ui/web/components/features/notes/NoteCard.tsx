@@ -1,6 +1,7 @@
 "use client"
 
 import { memo } from "react"
+import type { MouseEvent } from "react"
 import { Badge } from "@ui/web/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/web/components/ui/card"
 import InteractiveTag from "@ui/web/components/InteractiveTag"
@@ -42,12 +43,30 @@ export const NoteCard = memo(function NoteCard({
     })
   }
 
+  const hasTextSelectionInside = (target: HTMLElement) => {
+    if (typeof window === "undefined") return false
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return false
+
+    const anchorNode = selection.anchorNode
+    const focusNode = selection.focusNode
+    return Boolean(
+      (anchorNode && target.contains(anchorNode)) ||
+      (focusNode && target.contains(focusNode))
+    )
+  }
+
+  const handleCardClick = (event: MouseEvent<HTMLElement>) => {
+    if (hasTextSelectionInside(event.currentTarget)) return
+    onClick()
+  }
+
   // Compact variant - for regular note list
   if (variant === "compact") {
     return (
       <div
         data-testid="note-card"
-        onClick={onClick}
+        onClick={handleCardClick}
         className={`p-3 rounded-lg cursor-pointer transition-colors border h-full ${isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
           }`}
       >
@@ -89,7 +108,7 @@ export const NoteCard = memo(function NoteCard({
   // Search variant - for search results (original structure)
   const searchNote = note as SearchResult
   return (
-    <Card data-testid="note-card" className="hover:shadow-md transition-shadow cursor-pointer h-full" onClick={onClick}>
+    <Card data-testid="note-card" className="hover:shadow-md transition-shadow cursor-pointer h-full" onClick={handleCardClick}>
       <CardHeader className="pb-3">
         <div className="flex items-start gap-3">
           {selectionMode && (

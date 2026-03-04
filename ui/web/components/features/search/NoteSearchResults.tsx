@@ -4,9 +4,11 @@ import type { RagNoteGroup } from '@core/types/ragSearch'
 interface NoteSearchResultsProps {
   noteGroups: RagNoteGroup[]
   onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+  query?: string
+  onTagClick?: (tag: string) => void
 }
 
-export function NoteSearchResults({ noteGroups, onOpenInContext }: NoteSearchResultsProps) {
+export function NoteSearchResults({ noteGroups, onOpenInContext, query = '', onTagClick }: NoteSearchResultsProps) {
   if (noteGroups.length === 0) {
     return (
       <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-4">
@@ -24,6 +26,8 @@ export function NoteSearchResults({ noteGroups, onOpenInContext }: NoteSearchRes
           key={group.noteId}
           group={group}
           onOpenInContext={onOpenInContext}
+          highlightQuery={query}
+          onTagClick={onTagClick}
         />
       ))}
     </div>

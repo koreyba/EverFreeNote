@@ -21,6 +21,7 @@ import { NoteEditor, type NoteEditorHandle } from "@/components/features/notes/N
 import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
 import { SearchResultsPanel } from "@/components/features/notes/SearchResultsPanel"
+import type { SearchResultsPanelHandle } from "@/components/features/notes/SearchResultsPanel"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { normalizeTagList } from "@ui/web/lib/tags"
@@ -40,6 +41,7 @@ type NotesShellProps = {
 
 export function NotesShell({ controller }: NotesShellProps) {
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
+  const searchPanelRef = React.useRef<SearchResultsPanelHandle | null>(null)
   const { supabase } = useSupabase()
   const wordpressSettingsService = React.useMemo(() => new WordPressSettingsService(supabase), [supabase])
   const apiKeysService = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
@@ -148,6 +150,13 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [controller, supabase])
 
   const showEditor = !!(selectedNote || isEditing)
+  const handleOpenSearchPanel = React.useCallback(() => {
+    if (isSearchPanelOpen) {
+      searchPanelRef.current?.focusInput()
+      return
+    }
+    setIsSearchPanelOpen(true)
+  }, [isSearchPanelOpen, setIsSearchPanelOpen])
 
   return (
     <div className="flex h-screen max-h-screen bg-muted/20 overflow-hidden">
@@ -175,7 +184,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         onImportComplete={invalidateNotes}
         wordpressConfigured={wordpressConfigured}
         onWordPressConfiguredChange={setWordpressConfigured}
-        onOpenSearch={() => setIsSearchPanelOpen(true)}
+        onOpenSearch={handleOpenSearchPanel}
         className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
       >
@@ -184,6 +193,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
       {isSearchPanelOpen && (
         <SearchResultsPanel
+          ref={searchPanelRef}
           controller={controller}
           hasGeminiApiKey={hasGeminiApiKey}
           onOpenInContext={handleOpenInContext}

@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { BookOpen, Globe, KeyRound, LogOut, Plus, Search, Tag, Settings } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { BookOpen, Globe, KeyRound, LogOut, Plus, Search, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -63,7 +62,6 @@ export function Sidebar({
   onBulkDelete,
   filterByTag,
   onOpenSearch,
-  onClearTagFilter,
   onCreateNote,
   onSignOut,
   onDeleteAccount,
@@ -129,24 +127,6 @@ export function Sidebar({
             </span>
           )}
         </div>
-
-        {/* Tag Filter Badge */}
-        {filterByTag && (
-          <div className="mb-3 flex items-center gap-2">
-            <Badge variant="outline" className="bg-accent text-accent-foreground">
-              <Tag className="w-3 h-3 mr-1" />
-              {filterByTag}
-            </Badge>
-            <Button
-              onClick={onClearTagFilter}
-              variant="ghost"
-              size="sm"
-              className="h-6 text-xs"
-            >
-              Clear Tags
-            </Button>
-          </div>
-        )}
 
         {/* Search */}
         <div className="relative cursor-pointer" onClick={onOpenSearch}>

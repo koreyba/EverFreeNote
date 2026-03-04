@@ -126,7 +126,8 @@ export function useNoteAppController() {
     userId: user?.id,
     // Main notes list must stay stable while search is rendered in SearchResultsPanel.
     searchQuery: '',
-    selectedTag: filterByTag,
+    // Tag filtering is now scoped to search panel results only.
+    selectedTag: null,
     enabled: !!user,
   })
 

@@ -37,8 +37,10 @@ export function useNoteSearch(userId: string | undefined) {
         setFtsOffset(0)
         setFtsAccumulatedResults([])
         lastProcessedDataRef.current = ''
+        // Tag filtering now belongs to the search panel context.
+        setIsSearchPanelOpen(true)
         // Don't reset search - preserve search state when clicking tags
-    }, [filterByTag])
+    }, [filterByTag, setIsSearchPanelOpen])
 
     const handleClearTagFilter = useCallback(() => {
         setFilterByTag(null)

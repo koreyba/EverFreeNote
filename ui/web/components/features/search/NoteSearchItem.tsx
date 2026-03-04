@@ -1,7 +1,7 @@
 import { type KeyboardEvent, useState } from 'react'
-import { ChevronDown, ChevronUp, ExternalLink, Tag } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import InteractiveTag from '@/components/InteractiveTag'
 import { ChunkSnippet } from './ChunkSnippet'
 import { cn } from '@ui/web/lib/utils'
 import type { RagNoteGroup } from '@core/types/ragSearch'
@@ -9,6 +9,8 @@ import type { RagNoteGroup } from '@core/types/ragSearch'
 interface NoteSearchItemProps {
   group: RagNoteGroup
   onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+  highlightQuery?: string
+  onTagClick?: (tag: string) => void
 }
 
 function getScoreTone(score: number) {
@@ -32,7 +34,7 @@ function ScoreBadge({ score, compact = false }: { score: number; compact?: boole
   )
 }
 
-export function NoteSearchItem({ group, onOpenInContext }: NoteSearchItemProps) {
+export function NoteSearchItem({ group, onOpenInContext, highlightQuery = '', onTagClick }: NoteSearchItemProps) {
   const [expanded, setExpanded] = useState(false)
 
   const topChunk = group.chunks[0]
@@ -80,14 +82,13 @@ export function NoteSearchItem({ group, onOpenInContext }: NoteSearchItemProps) 
       {group.noteTags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {group.noteTags.map((tag) => (
-            <Badge
+            <InteractiveTag
               key={tag}
-              variant="outline"
-              className="h-5 gap-1 rounded-md border-border/60 bg-muted/35 px-1.5 text-[11px] font-medium text-muted-foreground"
-            >
-              <Tag className="h-2.5 w-2.5" />
-              {tag}
-            </Badge>
+              tag={tag}
+              onClick={onTagClick || (() => { })}
+              showIcon={false}
+              className="text-xs px-2 py-0.5"
+            />
           ))}
         </div>
       )}
@@ -110,6 +111,7 @@ export function NoteSearchItem({ group, onOpenInContext }: NoteSearchItemProps) 
           <ChunkSnippet
             content={topChunk.content}
             className="text-[13px] leading-6 text-foreground/85"
+            highlightQuery={highlightQuery}
           />
         </div>
       )}
@@ -163,6 +165,7 @@ export function NoteSearchItem({ group, onOpenInContext }: NoteSearchItemProps) 
                 <ChunkSnippet
                   content={chunk.content}
                   className="text-[12px] leading-5 text-foreground/80"
+                  highlightQuery={highlightQuery}
                 />
               </div>
             ))}

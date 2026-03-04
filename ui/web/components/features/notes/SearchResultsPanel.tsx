@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react"
 import { ChevronLeft, Search, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import InteractiveTag from "@/components/InteractiveTag"
 import {
     Tooltip,
     TooltipContent,
@@ -34,13 +35,17 @@ interface SearchResultsPanelProps {
     className?: string
 }
 
-export function SearchResultsPanel({
+export interface SearchResultsPanelHandle {
+    focusInput: () => void
+}
+
+export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, SearchResultsPanelProps>(function SearchResultsPanel({
     controller,
     hasGeminiApiKey = true,
     onOpenInContext,
     onClose,
     className
-}: SearchResultsPanelProps) {
+}: SearchResultsPanelProps, ref) {
     const {
         searchQuery,
         filterByTag,
@@ -100,6 +105,13 @@ export function SearchResultsPanel({
 
     // Provide auto-focus on mount
     const inputRef = useRef<HTMLInputElement>(null)
+
+    React.useImperativeHandle(ref, () => ({
+        focusInput: () => {
+            inputRef.current?.focus()
+        }
+    }), [])
+
     useEffect(() => {
         // Slight delay to allow layout to settle before focusing
         const id = setTimeout(() => {
@@ -215,6 +227,25 @@ export function SearchResultsPanel({
                     )}
                 </div>
 
+                {filterByTag && (
+                    <div className="flex items-center gap-2">
+                        <InteractiveTag
+                            tag={filterByTag}
+                            onClick={controller.handleClearTagFilter}
+                            showIcon={false}
+                            className="text-xs px-2 py-0.5 max-w-[70%] truncate"
+                        />
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            onClick={controller.handleClearTagFilter}
+                        >
+                            Clear tag
+                        </Button>
+                    </div>
+                )}
+
                 {hasGeminiApiKey && (
                     <div className="flex flex-col gap-2 pt-1 border-t">
                         <div className="flex items-center justify-between pt-1">
@@ -252,7 +283,12 @@ export function SearchResultsPanel({
                             viewMode === 'chunk' ? (
                                 <ChunkSearchResults noteGroups={noteGroups} onOpenInContext={onOpenInContext} />
                             ) : (
-                                <NoteSearchResults noteGroups={noteGroups} onOpenInContext={onOpenInContext} />
+                                <NoteSearchResults
+                                    noteGroups={noteGroups}
+                                    onOpenInContext={onOpenInContext}
+                                    query={aiSearchQuery}
+                                    onTagClick={handleTagClick}
+                                />
                             )
                         )}
                     </div>
@@ -303,4 +339,4 @@ export function SearchResultsPanel({
             />
         </div>
     )
-}
+})
