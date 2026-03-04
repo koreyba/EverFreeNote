@@ -89,11 +89,19 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
     const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
+            debouncedSearch.cancel()
             if (isAIEnabled) {
+                const queryChanged = searchDraft.trim() !== aiSearchQuery.trim()
                 setAiSearchQuery(searchDraft)
-                controller.handleSearch(searchDraft) // Keep regular search query synced
+                controller.handleSearch(searchDraft)
+                // If query is the same, setAiSearchQuery won't re-trigger useAISearch — force refetch
+                if (!queryChanged) aiRefetch()
             } else {
                 controller.handleSearch(searchDraft)
+                // If query is the same, force a fresh FTS fetch
+                if (searchDraft.trim() === searchQuery.trim()) {
+                    ftsSearchResult?.refetch()
+                }
             }
         }
     }

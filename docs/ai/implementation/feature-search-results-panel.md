@@ -52,6 +52,25 @@ description: Technical implementation notes, patterns, and code guidelines
 - Avoid effect-driven synchronous state copies where not required (lint rule: `react-hooks/set-state-in-effect`).
 - Keep mobile behavior class-driven in shell composition instead of duplicating screens.
 
+### Architectural Decisions
+
+#### Main notes list does not filter by search query
+`useNoteAppController` passes `searchQuery: ''` (hardcoded) to `useNotesQuery`. This is intentional — the main list must stay stable while `SearchResultsPanel` is open. Before `SearchResultsPanel` was introduced, the main list accepted `searchQuery` and did an `ILIKE`-based search that worked from 2 characters. That path was removed to avoid:
+- Duplicate results (same results in two places)
+- Two concurrent DB requests per keystroke
+- UX confusion when closing the panel (list state changes)
+
+All search functionality now lives exclusively in `SearchResultsPanel`. The minimum query length is 3 characters (PostgreSQL FTS requirement). Client-side filtering of the already-loaded `notes` array could cover 1–2 chars, but this was not implemented as FTS at 3 chars is fast enough for the typical use case.
+
+#### `searchQuery` state removed from `useNoteSearch`
+`useNoteSearch` previously maintained two state variables — `searchQuery` and `ftsSearchQuery` — that were always set to the same value. `searchQuery` was a dead duplicate. It was removed; `ftsSearchQuery` is now returned under the name `searchQuery` for API compatibility.
+
+#### `handleSearch` only resets accumulated results on query change
+`handleSearch` used to unconditionally clear `ftsAccumulatedResults`. This caused a bug: pressing Enter when results were already showing would clear them, and since the React Query cache returned the same object reference (cache hit), the repopulation effect would not re-run. Fix: accumulation is only reset when `query.trim()` actually changes (tracked via `prevQueryRef`).
+
+#### Enter key triggers immediate search
+Pressing Enter cancels any pending debounce and fires the search immediately. If the query hasn't changed from the last committed search, a forced `refetch()` is issued (FTS via `ftsSearchResult.refetch()`, AI via `aiRefetch()`) so the user always gets a fresh result on explicit Enter.
+
 ## Integration Points
 **How do pieces connect?**
 

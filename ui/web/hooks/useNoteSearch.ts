@@ -9,7 +9,8 @@ import { shouldUpdateTagFilter } from '@core/utils/search'
 
 export function useNoteSearch(userId: string | undefined) {
     // -- State --
-    const [searchQuery, setSearchQuery] = useState("")
+    // Note: searchQuery was removed as a duplicate of ftsSearchQuery.
+    // Both were always set together; ftsSearchQuery is returned as searchQuery for API compatibility.
     const [ftsSearchQuery, setFtsSearchQuery] = useState("")
     const [filterByTag, setFilterByTag] = useState<string | null>(null)
     const [ftsOffset, setFtsOffset] = useState(0)
@@ -17,15 +18,23 @@ export function useNoteSearch(userId: string | undefined) {
     const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false)
     const ftsLimit = SEARCH_CONFIG.PAGE_SIZE
     const lastProcessedDataRef = useRef<string>('')
+    const prevQueryRef = useRef<string>('')
 
     // -- Logic --
 
     const handleSearch = useCallback((query: string) => {
-        setSearchQuery(query)
+        const isNewQuery = query.trim() !== prevQueryRef.current.trim()
+        prevQueryRef.current = query
         setFtsSearchQuery(query)
         setFtsOffset(0)
-        setFtsAccumulatedResults([])
-        lastProcessedDataRef.current = ''
+        // Only reset accumulated results when the query actually changes.
+        // Calling handleSearch with the same query (e.g. pressing Enter) must not
+        // clear results, because the React Query cache won't change reference and
+        // the repopulation effect won't re-run.
+        if (isNewQuery) {
+            setFtsAccumulatedResults([])
+            lastProcessedDataRef.current = ''
+        }
         if (query.trim().length > 0) {
             setIsSearchPanelOpen(true)
         }
@@ -127,8 +136,7 @@ export function useNoteSearch(userId: string | undefined) {
     )
 
     return {
-        searchQuery,
-        ftsSearchQuery, // exposed if needed
+        searchQuery: ftsSearchQuery,
         filterByTag,
         isSearchPanelOpen,
         setIsSearchPanelOpen,
