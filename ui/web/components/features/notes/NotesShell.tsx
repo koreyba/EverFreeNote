@@ -51,6 +51,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     controller.registerNoteEditorRef(noteEditorRef)
   }, [controller])
 
+  const user = controller.user
   const { data: apiKeysStatus } = useQuery({
     queryKey: ['apiKeysStatus', user?.id],
     queryFn: () => apiKeysService.getStatus(),
@@ -59,7 +60,6 @@ export function NotesShell({ controller }: NotesShellProps) {
   const hasGeminiApiKey = apiKeysStatus?.gemini?.configured ?? false
 
   const {
-    user,
     notesDisplayed,
     notesTotal,
     selectionMode,
