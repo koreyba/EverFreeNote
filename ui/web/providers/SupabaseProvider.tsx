@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { webSupabaseClientFactory } from "@ui/web/adapters/supabaseClient"
 import { webStorageAdapter } from "@ui/web/adapters/storage"
 import { supabaseConfig } from "@ui/web/config"
@@ -87,9 +88,12 @@ export function SupabaseTestProvider({
   user?: User | null
   loading?: boolean
 }) {
+  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }))
   return (
-    <SupabaseContext.Provider value={{ supabase, user, loading }}>
-      {children}
-    </SupabaseContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <SupabaseContext.Provider value={{ supabase, user, loading }}>
+        {children}
+      </SupabaseContext.Provider>
+    </QueryClientProvider>
   )
 }

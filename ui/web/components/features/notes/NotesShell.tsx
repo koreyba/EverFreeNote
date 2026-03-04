@@ -56,7 +56,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     queryFn: () => apiKeysService.getStatus(),
     staleTime: 5 * 60 * 1000,
   })
-  const hasGeminiApiKey = apiKeysStatus?.gemini.configured ?? false
+  const hasGeminiApiKey = apiKeysStatus?.gemini?.configured ?? false
 
   const {
     user,

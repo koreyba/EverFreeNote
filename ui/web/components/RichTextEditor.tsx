@@ -225,6 +225,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
           cmd(...args).run()
         }
       },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       scrollToChunk: (charOffset: number, _chunkLength: number) => {
         if (!editor) {
           // Editor not ready yet (TipTap still initializing) — queue for onCreate.

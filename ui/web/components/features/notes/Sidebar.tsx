@@ -126,6 +126,7 @@ export function Sidebar({
     setBulkDialogOpen(false)
   }
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: syncs external prop to local draft
     setSearchDraft(searchQuery)
     // Only clear AI query when search is programmatically reset (e.g. X button, tag filter clear).
     // Normal FTS debounce also changes searchQuery, so we must NOT sync on every change.
