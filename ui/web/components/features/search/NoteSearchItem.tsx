@@ -107,15 +107,17 @@ export function NoteSearchItem({ group, onOpenInContext, highlightQuery = '', on
 
         {/* More fragments toggle */}
         {hasMore && (
-          <button
-            className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            {expanded
-              ? 'Hide fragments'
-              : `${extraChunks.length} more fragment${extraChunks.length !== 1 ? 's' : ''}`}
-          </button>
+          <div className="mt-2 flex justify-end">
+            <button
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setExpanded((v) => !v)}
+            >
+              {expanded
+                ? 'Hide fragments'
+                : `${extraChunks.length} more fragment${extraChunks.length !== 1 ? 's' : ''}`}
+              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
+          </div>
         )}
       </div>
 

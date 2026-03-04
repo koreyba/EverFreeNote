@@ -93,6 +93,7 @@ interface SearchItemData {
   hasMore: boolean
   isLoadingMore: boolean
   onLoadMore: () => void
+  ftsQuery: string
 }
 
 // Row component for react-window (regular notes list)
@@ -165,12 +166,13 @@ const SearchRow = memo(({ index, style, ...props }: RowComponentProps<SearchItem
     hasMore,
     isLoadingMore,
     onLoadMore,
+    ftsQuery,
   } = props as unknown as SearchItemData
 
   // Render Load More / Loading indicator at the end
   if (index === items.length) {
     return (
-      <div style={style} className="px-4 py-2 flex justify-center items-center">
+      <div style={style} className="px-3 py-2 flex justify-center items-center">
         {isLoadingMore ? (
           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         ) : hasMore ? (
@@ -191,7 +193,7 @@ const SearchRow = memo(({ index, style, ...props }: RowComponentProps<SearchItem
   if (!note) return null
 
   return (
-    <div style={style} className="px-4 py-2">
+    <div style={style} className="px-3 py-1">
       <NoteCard
         note={note}
         variant="search"
@@ -204,6 +206,7 @@ const SearchRow = memo(({ index, style, ...props }: RowComponentProps<SearchItem
             : onSearchResultClick(note)
         }
         onTagClick={onTagClick}
+        highlightQuery={ftsQuery}
       />
     </div>
   )
@@ -296,6 +299,7 @@ export const NoteList = memo(function NoteList({
     hasMore: ftsHasMore ?? false,
     isLoadingMore: ftsLoadingMore ?? false,
     onLoadMore: onLoadMoreFts ?? (() => { }),
+    ftsQuery,
   }), [
     ftsData?.results,
     selectionMode,
@@ -306,6 +310,7 @@ export const NoteList = memo(function NoteList({
     ftsHasMore,
     ftsLoadingMore,
     onLoadMoreFts,
+    ftsQuery,
   ])
 
   // FTS Loading State (initial)
@@ -341,7 +346,7 @@ export const NoteList = memo(function NoteList({
     return (
       <div className="h-full flex flex-col">
         {/* FTS Search Results Header */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground p-4 pb-2 flex-shrink-0">
+        <div className="flex items-center justify-between text-sm text-muted-foreground px-3 py-2 flex-shrink-0">
           <div>
             Found: <span className="font-semibold">{displayTotal}</span> {displayTotal === 1 ? "note" : "notes"}
           </div>
