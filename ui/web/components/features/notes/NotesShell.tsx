@@ -107,13 +107,28 @@ export function NotesShell({ controller }: NotesShellProps) {
     const id = setTimeout(() => {
       noteEditorRef.current?.scrollToChunk(pending.charOffset, pending.chunkLength)
       pendingScrollRef.current = null
-    }, 50)
+    }, 150)
     return () => clearTimeout(id)
   }, [isEditing, selectedNote?.id])
 
-  const handleOpenInContext = React.useCallback((noteId: string, charOffset: number, chunkLength: number) => {
-    const note = controller.notes.find((n) => n.id === noteId)
-    if (!note) return
+  const handleOpenInContext = React.useCallback(async (noteId: string, charOffset: number, chunkLength: number) => {
+    let note = controller.notes.find((n) => n.id === noteId)
+
+    if (!note) {
+      // Note not in the current paginated list — fetch it from the DB
+      try {
+        const { data } = await supabase
+          .from('notes')
+          .select('id, title, description, tags, created_at, updated_at, user_id')
+          .eq('id', noteId)
+          .maybeSingle()
+        if (!data) return
+        note = data as Note
+      } catch {
+        return
+      }
+    }
+    if (!note) return  // TypeScript: narrowing lost after await + let reassignment
 
     // Adjust charOffset: rag-index prepends title + " " before the body text
     const title = (note.title ?? '').trim()
@@ -128,7 +143,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     // Navigate to note in edit mode, then scroll once mounted
     pendingScrollRef.current = { noteId, charOffset: bodyOffset, chunkLength }
     controller.handleEditNote(note)
-  }, [controller])
+  }, [controller, supabase])
 
   const showEditor = !!(selectedNote || isEditing)
 

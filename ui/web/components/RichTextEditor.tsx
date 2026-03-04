@@ -41,10 +41,46 @@ const getHistoryState = (editor: Editor): HistoryState => ({
   canRedo: editor.can().redo(),
 })
 
+/** Highlight the block containing charOffset and scroll it into view. */
+function doScrollToChunk(editor: Editor, charOffset: number): void {
+  const { doc } = editor.state
+  // Walk textblocks accumulating plain-text length, mirroring rag-index's stripHtml mapping.
+  let textAccum = 0
+  let targetFrom: number | null = null
+  let targetTo: number | null = null
+  doc.descendants((node, pos) => {
+    if (targetFrom !== null) return false
+    if (node.isTextblock) {
+      const blockLen = node.textContent.length
+      if (textAccum + blockLen + 1 > charOffset) {
+        targetFrom = pos
+        targetTo = pos + node.nodeSize
+      } else {
+        textAccum += blockLen + 1 // +1 for block separator
+      }
+      return false // no need to descend into inline nodes
+    }
+  })
+  if (targetFrom === null || targetTo === null) return
+  const from = targetFrom
+  const to = targetTo
+  const $pos = doc.resolve(Math.min(from + 1, doc.content.size))
+  editor.view.dispatch(
+    editor.state.tr
+      .setMeta(CHUNK_FOCUS_KEY, { from, to })
+      .setSelection(TextSelection.near($pos))
+  )
+  // ProseMirror DOM is updated synchronously after dispatch — scroll the decorated element.
+  const el = editor.view.dom.querySelector('.chunk-focus')
+  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
 const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProps>(
   ({ initialContent, onContentChange, hideToolbar = false }, ref) => {
     const editorRef = React.useRef<Editor | null>(null)
     const suppressNextUpdateRef = React.useRef(false)
+    // Queues a scroll request when scrollToChunk is called before the editor is ready.
+    const pendingChunkScrollRef = React.useRef<number | null>(null)
     const [hasSelection, setHasSelection] = React.useState(false)
     const [historyState, setHistoryState] = React.useState<HistoryState>(EMPTY_HISTORY_STATE)
 
@@ -106,6 +142,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       content: initialContent,
       onCreate: ({ editor: e }) => {
         updateHistoryState(getHistoryState(e))
+        // Execute any scroll that was requested before the editor finished initializing.
+        if (pendingChunkScrollRef.current !== null) {
+          const charOffset = pendingChunkScrollRef.current
+          pendingChunkScrollRef.current = null
+          doScrollToChunk(e, charOffset)
+        }
       },
       onTransaction: ({ editor: e }) => {
         updateHistoryState(getHistoryState(e))
@@ -184,37 +226,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
         }
       },
       scrollToChunk: (charOffset: number, _chunkLength: number) => {
-        if (!editor) return
-        const { doc } = editor.state
-        // Walk textblocks (paragraphs, headings, list items) accumulating plain-text
-        // length, approximating how rag-index's stripHtml maps block boundaries to
-        // a single space (+1 per block).
-        let textAccum = 0
-        let targetFrom: number | null = null
-        let targetTo: number | null = null
-        doc.descendants((node, pos) => {
-          if (targetFrom !== null) return false
-          if (node.isTextblock) {
-            const blockLen = node.textContent.length
-            if (textAccum + blockLen + 1 >= charOffset) {
-              targetFrom = pos
-              targetTo = pos + node.nodeSize
-            } else {
-              textAccum += blockLen + 1 // +1 for block separator
-            }
-            return false // no need to descend into inline nodes
-          }
-        })
-        if (targetFrom === null || targetTo === null) return
-        const from = targetFrom
-        const to = targetTo
-        const $pos = doc.resolve(Math.min(from + 1, doc.content.size))
-        editor.view.dispatch(
-          editor.state.tr
-            .setMeta(CHUNK_FOCUS_KEY, { from, to })
-            .setSelection(TextSelection.near($pos))
-            .scrollIntoView()
-        )
+        if (!editor) {
+          // Editor not ready yet (TipTap still initializing) — queue for onCreate.
+          pendingChunkScrollRef.current = charOffset
+          return
+        }
+        pendingChunkScrollRef.current = null
+        doScrollToChunk(editor, charOffset)
       },
     }), [editor])
 

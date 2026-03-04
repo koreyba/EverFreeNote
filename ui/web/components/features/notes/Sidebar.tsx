@@ -102,12 +102,14 @@ export function Sidebar({
   const [wordPressSettingsOpen, setWordPressSettingsOpen] = useState(false)
   const [apiKeysOpen, setApiKeysOpen] = useState(false)
   const [searchDraft, setSearchDraft] = useState(searchQuery)
+  // AI search fires only on Enter — not on every keystroke, to avoid unnecessary API calls.
+  const [aiSearchQuery, setAiSearchQuery] = useState(searchQuery)
   const debouncedSearch = useDebouncedCallback(onSearch, 250)
 
   // AI Search state
   const { isAIEnabled, preset, viewMode, setIsAIEnabled, setPreset, setViewMode } = useSearchMode()
   const { noteGroups, isLoading: aiLoading, error: aiError, refetch: aiRefetch } = useAISearch({
-    query: searchDraft,
+    query: aiSearchQuery,
     preset,
     filterTag: filterByTag,
     isEnabled: isAIEnabled,
@@ -117,7 +119,7 @@ export function Sidebar({
     onOpenInContext?.(noteId, charOffset, chunkLength)
   }
 
-  const showAIResults = isAIEnabled && searchDraft.trim().length >= 3
+  const showAIResults = isAIEnabled && aiSearchQuery.trim().length >= 3
 
   const handleBulkConfirm = async () => {
     await onBulkDelete()
@@ -125,11 +127,27 @@ export function Sidebar({
   }
   useEffect(() => {
     setSearchDraft(searchQuery)
+    // Only clear AI query when search is programmatically reset (e.g. X button, tag filter clear).
+    // Normal FTS debounce also changes searchQuery, so we must NOT sync on every change.
+    if (!searchQuery) setAiSearchQuery('')
   }, [searchQuery])
 
   const handleSearchChange = (value: string) => {
     setSearchDraft(value)
-    debouncedSearch.call(value)
+    if (!isAIEnabled) {
+      debouncedSearch.call(value)
+    }
+    // When AI is enabled, search fires only on Enter
+  }
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return
+    if (isAIEnabled) {
+      setAiSearchQuery(searchDraft)
+    } else {
+      debouncedSearch.cancel()
+      onSearch(searchDraft)
+    }
   }
 
   const handleDeleteAccount = async () => {
@@ -202,6 +220,7 @@ export function Sidebar({
             placeholder={filterByTag ? `Search in "${filterByTag}" notes...` : "Search notes..."}
             value={searchDraft}
             onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
             className="pl-10 pr-8"
           />
           {searchQuery && (
@@ -238,7 +257,7 @@ export function Sidebar({
           {isAIEnabled && (
             <>
               <AiSearchPresetSelector value={preset} onChange={setPreset} />
-              {showAIResults && (
+              {showAIResults && noteGroups.length > 0 && (
                 <AiSearchViewTabs value={viewMode} onChange={setViewMode} />
               )}
             </>
