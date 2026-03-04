@@ -38,8 +38,8 @@ Full-text search (FTS) only matches exact keywords and can miss semantically rel
 
 | ID | Story |
 |----|-------|
-| US-1 | As a user, I want to toggle AI Search ON/OFF so that I can choose between semantic search and fast keyword search. |
-| US-2 | As a user searching with AI Search ON, I want to see notes ranked by semantic relevance, with a snippet showing the matched passage, so I can quickly judge relevance. |
+| US-1 | As a user, I want to toggle **AI RAG Search** ON/OFF so that I can choose between semantic search and fast keyword search. |
+| US-2 | As a user with AI RAG Search ON, I want to type my query and press **Enter** to run a semantic search and see notes ranked by relevance, with a snippet showing the matched passage. |
 | US-3 | As a user, I want to expand a note's entry to see up to 5 distinct matching fragments, so I can understand how deeply a note covers my topic. |
 | US-4 | As a user, I want to switch to Chunk View to browse individual passages as standalone results without having to open each note. |
 | US-5 | As a user, I want to click "Open in context" on any chunk to open the note and scroll directly to that passage with a persistent left-border highlight (cleared when I click elsewhere in the editor). |
@@ -49,7 +49,8 @@ Full-text search (FTS) only matches exact keywords and can miss semantically rel
 ### Edge Cases
 - Note has only 1 chunk → no "show more" button needed.
 - All chunks of a note are too similar (offset delta < 300 chars) → deduplication hides them, "+N hidden" label shown.
-- **Query is empty** → AI Search is ON but shows the regular full notes list (same as without search).
+- **Query is empty or Enter not yet pressed** → AI RAG Search is ON but shows the regular full notes list (same as without search). No RAG call is made.
+- **AI RAG Search ON, user is typing but hasn't pressed Enter** → no search fires; regular notes list stays visible. FTS debounce is also suppressed while AI is ON.
 - Gemini API key not configured → toggle disabled with tooltip.
 - **RAG returns 0 results** → show "No results found. Try adjusting the Strict ↔ Broad slider." (not an error state).
 - **Gemini API error** (rate limit / quota / 5xx) → show error state "AI Search unavailable" with retry; toggle remains ON.
@@ -59,7 +60,7 @@ Full-text search (FTS) only matches exact keywords and can miss semantically rel
 
 | # | Criterion |
 |---|-----------|
-| 1 | AI Search toggle ON/OFF works; OFF reverts to existing FTS. |
+| 1 | AI RAG Search toggle ON/OFF works; OFF reverts to existing FTS (debounced on type; Enter also triggers immediately). |
 | 2 | Note View shows results with title, tags, **score as percentage (e.g. 85%)**, and 1 top snippet per note. |
 | 3 | "Show more" expands inline (accordion) to ≤ 5 deduplicated chunks; "+N hidden" shown if more exist. |
 | 4 | Chunk View shows ≤ 2 chunks per note with title, text, score. |

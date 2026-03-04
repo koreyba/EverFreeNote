@@ -12,7 +12,7 @@ description: Architecture for semantic search UI with Note View, Chunk View, ded
 graph TD
     subgraph UI["Web UI"]
         SB[Sidebar / SearchBar]
-        Toggle[AI Search Toggle]
+        Toggle[AI RAG Search Toggle]
         Slider[Strict / Neutral / Broad Selector]
         ModeSwitch[Note View / Chunk View Tab]
         NoteView[NoteSearchResults]
@@ -54,7 +54,7 @@ graph TD
 ```
 
 **Key responsibilities:**
-- `useAISearch` — orchestrates query, debounce, deduplication, and grouping.
+- `useAISearch` — orchestrates Enter-triggered queries, deduplication, and grouping. No internal debounce — query fires only when explicitly submitted.
 - `rag-search` Edge Function — embeds the query with Gemini, calls `match_notes`, returns raw chunk results.
 - `NoteSearchResults` — Note View renderer with expand/collapse.
 - `ChunkSearchResults` — Chunk View renderer.
@@ -154,7 +154,7 @@ UI: 3 кнопки/таба или segmented control (Strict / Neutral / Broad).
 
 | Component | Path | Responsibility |
 |-----------|------|----------------|
-| `AiSearchToggle` | `features/search/AiSearchToggle.tsx` | ON/OFF toggle, disabled state if no API key |
+| `AiSearchToggle` | `features/search/AiSearchToggle.tsx` | ON/OFF toggle labelled "AI RAG Search"; disabled + tooltip when no API key; `ⓘ` Info icon with hover/tap tooltip explaining RAG search and Enter-to-search |
 | `AiSearchPresetSelector` | `features/search/AiSearchPresetSelector.tsx` | Segmented control: Strict / Neutral / Broad |
 | `AiSearchViewTabs` | `features/search/AiSearchViewTabs.tsx` | "Notes" / "Chunks" tab switcher |
 | `NoteSearchResults` | `features/search/NoteSearchResults.tsx` | Note View list with expand/collapse |
@@ -167,15 +167,15 @@ UI: 3 кнопки/таба или segmented control (Strict / Neutral / Broad).
 
 | Component | Change |
 |-----------|--------|
-| `Sidebar.tsx` | Add AI Search Toggle, Slider, View Tabs below SearchBar when AI mode is active |
-| `NoteEditor` / `EditorPanel` | Add `scrollToOffset(charOffset)` + permanent left-border highlight (cleared on next click elsewhere) |
+| `Sidebar.tsx` | Add AI RAG Search Toggle, Preset Selector, View Tabs below SearchBar when AI mode is active. When AI ON: FTS debounce disabled; Enter submits AI search. When AI OFF: Enter triggers FTS immediately (cancels pending debounce). `AiSearchViewTabs` only shown when results exist. |
+| `NoteEditor` / `EditorPanel` | `scrollToChunk(charOffset, chunkLength)` + permanent left-border highlight (cleared on next click elsewhere). Fallback pending scroll queue (`pendingChunkScrollRef`) handles TipTap `immediatelyRender: false` race. |
 
 ### New Hooks
 
 | Hook | Path | Responsibility |
 |------|------|----------------|
-| `useAISearch` | `hooks/useAISearch.ts` | Query debounce (300ms), call `rag-search`, deduplication, grouping |
-| `useSearchMode` | `hooks/useSearchMode.ts` | Persist AI toggle ON/OFF and view mode (localStorage) |
+| `useAISearch` | `hooks/useAISearch.ts` | Call `rag-search` when query changes (Enter-triggered, no internal debounce), deduplication, grouping |
+| `useSearchMode` | `hooks/useSearchMode.ts` | Persist AI toggle ON/OFF, view mode, and preset (localStorage) |
 
 ## Design Decisions
 
@@ -194,7 +194,7 @@ The Strict/Neutral/Broad control uses 3 fixed presets defined in `core/constants
 The `char_offset` column already exists in `note_embeddings`. The editor will use this offset to scroll to the paragraph containing the chunk. Highlight style: **permanent left-border stripe** (e.g. `border-left: 3px solid accent`) on the matched paragraph, cleared when the user clicks anywhere else in the editor. No time-based fade — the highlight stays until dismissed.
 
 ### D5: Persist AI toggle state
-AI Search ON/OFF and view mode (Note/Chunk) are persisted to `localStorage` so they survive page refreshes.
+AI RAG Search ON/OFF, view mode (Note/Chunk), and preset (Strict/Neutral/Broad) are persisted to `localStorage` so they survive page refreshes.
 
 ### D6: Tag filter via DB-side `match_notes` extension
 Tag filtering is applied inside the `match_notes` SQL function (new `filter_tag TEXT DEFAULT NULL` parameter), mirroring the `search_notes_fts` approach (`filter_tag = ANY(n.tags)`). This requires a new migration. Post-filtering in the Edge Function is avoided to prevent result starvation when topK is small.
@@ -202,8 +202,22 @@ Tag filtering is applied inside the `match_notes` SQL function (new `filter_tag 
 ### D7: Score displayed as percentage
 `similarity * 100`, rounded to nearest integer, shown as e.g. `85%`. Applied in the UI layer — no changes needed in the Edge Function response.
 
-### D8: Empty query shows full notes list
-When AI Search is ON but query is empty/short (< 3 chars), the sidebar falls back to the normal notes list (same behavior as FTS). No RAG call is made.
+### D8: Empty / unsubmitted query shows full notes list
+When AI RAG Search is ON but no query has been submitted via Enter (or the submitted query is < 3 chars), the sidebar shows the regular notes list. No RAG call is made.
+
+### D9: Enter-triggered search (not debounced on type)
+AI RAG search fires **only on Enter**, not on every keystroke. When AI is ON, FTS debounce is also suppressed — Enter is the single trigger for both modes.
+
+**Rationale**: Each RAG query calls the Gemini Embedding API (costs money and quota). Debouncing on type would fire on every pause in typing. Enter gives the user explicit control and avoids unnecessary API spend.
+
+**Trade-off**: Slightly less "instant" UX compared to FTS. Mitigated by the fact that users typically form a complete thought before semantically searching, unlike keyword search where partial matches are useful.
+
+### D10: Native DOM scroll for "Open in context"
+`scrollToChunk` uses `el.scrollIntoView({ behavior: 'smooth', block: 'center' })` directly on the `.chunk-focus` DOM element (obtained via `editor.view.dom.querySelector`) rather than ProseMirror's `tr.scrollIntoView()`.
+
+**Rationale**: ProseMirror's built-in scroll relies on traversing ancestor `overflow` styles, which can fail when the scroll container is several levels up. Native `scrollIntoView` is guaranteed to find the correct scroll ancestor regardless of DOM depth.
+
+**Pending scroll queue**: `pendingChunkScrollRef` in `RichTextEditor` stores a scroll request made before TipTap finishes initializing (`immediatelyRender: false` causes `editor = null` on first render). The request is executed in TipTap's `onCreate` callback once the editor is ready.
 
 ## Non-Functional Requirements
 
