@@ -7,17 +7,22 @@ import {
   type Editor,
 } from "@tiptap/react"
 import { createDocument } from "@tiptap/core"
+import { TextSelection } from "@tiptap/pm/state"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { SmartPasteService } from "@core/services/smartPaste"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
 import { applySelectionAsMarkdown } from "@ui/web/lib/editor"
 import { EditorMenuBar, type HistoryState } from "./EditorMenuBar"
 import { editorExtensions } from "./editorExtensions"
+import { CHUNK_FOCUS_KEY } from "@/extensions/ChunkFocus"
 
 export type RichTextEditorHandle = {
   getHTML: () => string
   setContent: (html: string) => void
   runCommand: (command: string, ...args: unknown[]) => void
+  /** Scroll to and highlight the block containing the given plain-text char offset.
+   *  charOffset must be relative to the note body (not including title prefix). */
+  scrollToChunk: (charOffset: number, chunkLength: number) => void
 }
 
 type RichTextEditorProps = {
@@ -177,6 +182,39 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
         if (typeof cmd === 'function') {
           cmd(...args).run()
         }
+      },
+      scrollToChunk: (charOffset: number, _chunkLength: number) => {
+        if (!editor) return
+        const { doc } = editor.state
+        // Walk textblocks (paragraphs, headings, list items) accumulating plain-text
+        // length, approximating how rag-index's stripHtml maps block boundaries to
+        // a single space (+1 per block).
+        let textAccum = 0
+        let targetFrom: number | null = null
+        let targetTo: number | null = null
+        doc.descendants((node, pos) => {
+          if (targetFrom !== null) return false
+          if (node.isTextblock) {
+            const blockLen = node.textContent.length
+            if (textAccum + blockLen + 1 >= charOffset) {
+              targetFrom = pos
+              targetTo = pos + node.nodeSize
+            } else {
+              textAccum += blockLen + 1 // +1 for block separator
+            }
+            return false // no need to descend into inline nodes
+          }
+        })
+        if (targetFrom === null || targetTo === null) return
+        const from = targetFrom
+        const to = targetTo
+        const $pos = doc.resolve(Math.min(from + 1, doc.content.size))
+        editor.view.dispatch(
+          editor.state.tr
+            .setMeta(CHUNK_FOCUS_KEY, { from, to })
+            .setSelection(TextSelection.near($pos))
+            .scrollIntoView()
+        )
       },
     }), [editor])
 
