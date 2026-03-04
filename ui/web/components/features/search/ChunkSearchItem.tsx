@@ -36,7 +36,7 @@ export function ChunkSearchItem({ chunk, onOpenInContext, highlightQuery = '' }:
         role="button"
         tabIndex={0}
         aria-label={`Open fragment from "${chunk.noteTitle || 'Untitled'}" in context`}
-        className="px-3 py-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50"
+        className="relative px-3 py-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50"
         onClick={handleOpen}
         onKeyDown={(e) => {
           if (e.key !== 'Enter' && e.key !== ' ') return
@@ -44,6 +44,8 @@ export function ChunkSearchItem({ chunk, onOpenInContext, highlightQuery = '' }:
           handleOpen()
         }}
       >
+        <ArrowUpRight className="absolute bottom-2.5 right-2.5 h-3 w-3 text-primary opacity-0 group-hover:opacity-60 transition-opacity" />
+
         {/* Note title + score */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="text-[13.5px] font-semibold leading-snug text-foreground flex-1 line-clamp-2">
@@ -61,11 +63,6 @@ export function ChunkSearchItem({ chunk, onOpenInContext, highlightQuery = '' }:
           highlightQuery={highlightQuery}
         />
 
-        {/* Open hint */}
-        <div className="mt-1.5 flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity text-[10px] text-primary">
-          <ArrowUpRight className="h-2.5 w-2.5" />
-          <span>Open in context</span>
-        </div>
       </div>
     </div>
   )

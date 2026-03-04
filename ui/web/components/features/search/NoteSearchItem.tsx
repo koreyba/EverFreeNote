@@ -92,19 +92,16 @@ export function NoteSearchItem({ group, onOpenInContext, highlightQuery = '', on
             role="button"
             tabIndex={0}
             aria-label={`Open top fragment from "${group.noteTitle || 'Untitled'}" in context`}
-            className="group mt-2.5 rounded-md bg-muted/30 px-2.5 py-2 cursor-pointer border border-transparent transition-all hover:bg-muted/50 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="group relative mt-2.5 rounded-md bg-muted/30 px-2.5 py-2 cursor-pointer border border-transparent transition-all hover:bg-muted/50 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             onClick={() => handleChunkActivate(topChunk.charOffset, topChunk.content.length)}
             onKeyDown={(e) => handleChunkKeyDown(e, topChunk.charOffset, topChunk.content.length)}
           >
+            <ArrowUpRight className="absolute bottom-2 right-2 h-3 w-3 text-primary opacity-0 group-hover:opacity-60 transition-opacity" />
             <ChunkSnippet
               content={topChunk.content}
               className="text-[12.5px] leading-relaxed text-foreground/80"
               highlightQuery={highlightQuery}
             />
-            <div className="mt-1.5 flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity text-[10px] text-primary">
-              <ArrowUpRight className="h-2.5 w-2.5" />
-              <span>Open in context</span>
-            </div>
           </div>
         )}
 
