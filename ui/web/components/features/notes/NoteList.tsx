@@ -2,6 +2,7 @@
 
 import { memo, useMemo } from "react"
 import type { CSSProperties } from "react"
+import type { ReactNode } from "react"
 import { Loader2, Zap } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -52,9 +53,9 @@ interface NoteListProps {
   isFetchingNextPage: boolean
 
   // FTS Search Props
-  ftsQuery: string
-  ftsLoading: boolean
-  showFTSResults: boolean
+  ftsQuery?: string
+  ftsLoading?: boolean
+  showFTSResults?: boolean
   ftsData?: {
     total?: number
     executionTime?: number
@@ -63,8 +64,9 @@ interface NoteListProps {
   ftsHasMore?: boolean
   ftsLoadingMore?: boolean
   onLoadMoreFts?: () => void
-  onSearchResultClick: (note: SearchResult) => void
-  
+  onSearchResultClick?: (note: SearchResult) => void
+  ftsHeader?: ReactNode
+
   // Optional fixed dimensions for testing or specific layouts
   height?: number
   width?: number
@@ -93,6 +95,7 @@ interface SearchItemData {
   hasMore: boolean
   isLoadingMore: boolean
   onLoadMore: () => void
+  ftsQuery: string
 }
 
 // Row component for react-window (regular notes list)
@@ -165,12 +168,13 @@ const SearchRow = memo(({ index, style, ...props }: RowComponentProps<SearchItem
     hasMore,
     isLoadingMore,
     onLoadMore,
+    ftsQuery,
   } = props as unknown as SearchItemData
 
   // Render Load More / Loading indicator at the end
   if (index === items.length) {
     return (
-      <div style={style} className="px-4 py-2 flex justify-center items-center">
+      <div style={style} className="px-3 py-2 flex justify-center items-center">
         {isLoadingMore ? (
           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         ) : hasMore ? (
@@ -191,7 +195,7 @@ const SearchRow = memo(({ index, style, ...props }: RowComponentProps<SearchItem
   if (!note) return null
 
   return (
-    <div style={style} className="px-4 py-2">
+    <div style={style} className="px-3 py-1">
       <NoteCard
         note={note}
         variant="search"
@@ -204,6 +208,7 @@ const SearchRow = memo(({ index, style, ...props }: RowComponentProps<SearchItem
             : onSearchResultClick(note)
         }
         onTagClick={onTagClick}
+        highlightQuery={ftsQuery}
       />
     </div>
   )
@@ -242,14 +247,15 @@ export const NoteList = memo(function NoteList({
   onLoadMore,
   hasMore,
   isFetchingNextPage,
-  ftsQuery,
-  ftsLoading,
-  showFTSResults,
+  ftsQuery = "",
+  ftsLoading = false,
+  showFTSResults = false,
   ftsData,
   ftsHasMore = false,
   ftsLoadingMore = false,
   onLoadMoreFts,
-  onSearchResultClick,
+  onSearchResultClick = () => { },
+  ftsHeader,
   height: fixedHeight,
   width: fixedWidth,
 }: NoteListProps) {
@@ -296,6 +302,7 @@ export const NoteList = memo(function NoteList({
     hasMore: ftsHasMore ?? false,
     isLoadingMore: ftsLoadingMore ?? false,
     onLoadMore: onLoadMoreFts ?? (() => { }),
+    ftsQuery,
   }), [
     ftsData?.results,
     selectionMode,
@@ -306,6 +313,7 @@ export const NoteList = memo(function NoteList({
     ftsHasMore,
     ftsLoadingMore,
     onLoadMoreFts,
+    ftsQuery,
   ])
 
   // FTS Loading State (initial)
@@ -340,21 +348,22 @@ export const NoteList = memo(function NoteList({
 
     return (
       <div className="h-full flex flex-col">
-        {/* FTS Search Results Header */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground p-4 pb-2 flex-shrink-0">
-          <div>
-            Found: <span className="font-semibold">{displayTotal}</span> {displayTotal === 1 ? "note" : "notes"}
-          </div>
-          {typeof ftsData.executionTime === "number" && (
-            <div className="flex items-center gap-2">
-              <span>{ftsData.executionTime}ms</span>
-              <Badge variant="outline" className="text-xs gap-1">
-                <Zap className="h-3 w-3" />
-                Quick search
-              </Badge>
+        {ftsHeader ?? (
+          <div className="flex items-center justify-between text-sm text-muted-foreground px-3 py-2 flex-shrink-0">
+            <div>
+              Found: <span className="font-semibold">{displayTotal}</span> {displayTotal === 1 ? "note" : "notes"}
             </div>
-          )}
-        </div>
+            {typeof ftsData.executionTime === "number" && (
+              <div className="flex items-center gap-2">
+                <span>{ftsData.executionTime}ms</span>
+                <Badge variant="outline" className="text-xs gap-1">
+                  <Zap className="h-3 w-3" />
+                  Quick search
+                </Badge>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Virtualized FTS Results List */}
         <div className="flex-1 h-full min-h-0">

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 
-import { useSearchNotes } from './useNotesQuery'
+import { useFlattenedNotes, useNotesQuery, useSearchNotes } from './useNotesQuery'
 import { useInfiniteScroll } from './useInfiniteScroll'
 import type { SearchResult } from '@core/types/domain'
 import { computeFtsHasMore, computeFtsTotal } from '@core/services/ftsPagination'
@@ -9,22 +9,36 @@ import { shouldUpdateTagFilter } from '@core/utils/search'
 
 export function useNoteSearch(userId: string | undefined) {
     // -- State --
-    const [searchQuery, setSearchQuery] = useState("")
+    // Note: searchQuery was removed as a duplicate of ftsSearchQuery.
+    // Both were always set together; ftsSearchQuery is returned as searchQuery for API compatibility.
     const [ftsSearchQuery, setFtsSearchQuery] = useState("")
     const [filterByTag, setFilterByTag] = useState<string | null>(null)
     const [ftsOffset, setFtsOffset] = useState(0)
     const [ftsAccumulatedResults, setFtsAccumulatedResults] = useState<SearchResult[]>([])
+    const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false)
     const ftsLimit = SEARCH_CONFIG.PAGE_SIZE
     const lastProcessedDataRef = useRef<string>('')
+    const prevQueryRef = useRef<string>('')
 
     // -- Logic --
 
     const handleSearch = useCallback((query: string) => {
-        setSearchQuery(query)
-        setFtsSearchQuery(query)
+        const trimmedQuery = query.trim()
+        const isNewQuery = trimmedQuery !== prevQueryRef.current
+        prevQueryRef.current = trimmedQuery
+        setFtsSearchQuery(trimmedQuery)
         setFtsOffset(0)
-        setFtsAccumulatedResults([])
-        lastProcessedDataRef.current = ''
+        // Only reset accumulated results when the query actually changes.
+        // Calling handleSearch with the same query (e.g. pressing Enter) must not
+        // clear results, because the React Query cache won't change reference and
+        // the repopulation effect won't re-run.
+        if (isNewQuery) {
+            setFtsAccumulatedResults([])
+            lastProcessedDataRef.current = ''
+        }
+        if (trimmedQuery.length > 0) {
+            setIsSearchPanelOpen(true)
+        }
     }, [])
 
     const handleTagClick = useCallback((tag: string) => {
@@ -33,11 +47,19 @@ export function useNoteSearch(userId: string | undefined) {
         setFtsOffset(0)
         setFtsAccumulatedResults([])
         lastProcessedDataRef.current = ''
+        // Tag filtering now belongs to the search panel context.
+        setIsSearchPanelOpen(true)
         // Don't reset search - preserve search state when clicking tags
-    }, [filterByTag])
+    }, [filterByTag, setIsSearchPanelOpen])
 
     const handleClearTagFilter = useCallback(() => {
         setFilterByTag(null)
+        setFtsOffset(0)
+        setFtsAccumulatedResults([])
+        lastProcessedDataRef.current = ''
+    }, [])
+
+    const resetFtsResults = useCallback(() => {
         setFtsOffset(0)
         setFtsAccumulatedResults([])
         lastProcessedDataRef.current = ''
@@ -102,6 +124,28 @@ export function useNoteSearch(userId: string | undefined) {
         !!ftsData &&
         !ftsData.error
 
+    // -- Tag-only mode (no text query, only selected tag) --
+    const showTagOnlyResults = Boolean(filterByTag) && ftsSearchQuery.trim().length < SEARCH_CONFIG.MIN_QUERY_LENGTH
+    const tagOnlyQuery = useNotesQuery({
+        userId,
+        searchQuery: '',
+        selectedTag: filterByTag,
+        enabled: Boolean(userId) && showTagOnlyResults,
+    })
+    const tagOnlyResults = useFlattenedNotes(tagOnlyQuery)
+    const tagOnlyTotal = useMemo(() => {
+        const pages = tagOnlyQuery.data?.pages
+        if (pages?.length && typeof pages[0]?.totalCount === 'number') {
+            return pages[0].totalCount
+        }
+        return tagOnlyResults.length
+    }, [tagOnlyQuery.data?.pages, tagOnlyResults.length])
+
+    const loadMoreTagOnly = useCallback(() => {
+        if (!tagOnlyQuery.hasNextPage || tagOnlyQuery.isFetchingNextPage) return
+        void tagOnlyQuery.fetchNextPage()
+    }, [tagOnlyQuery])
+
     const aggregatedFtsData = showFTSResults ? {
         ...ftsData,
         results: ftsAccumulatedResults,
@@ -121,9 +165,10 @@ export function useNoteSearch(userId: string | undefined) {
     )
 
     return {
-        searchQuery,
-        ftsSearchQuery, // exposed if needed
+        searchQuery: ftsSearchQuery,
         filterByTag,
+        isSearchPanelOpen,
+        setIsSearchPanelOpen,
         handleSearch,
         handleTagClick,
         handleClearTagFilter,
@@ -136,6 +181,16 @@ export function useNoteSearch(userId: string | undefined) {
         ftsHasMore,
         ftsAccumulatedResults,
         loadMoreFts: loadMoreFtsCallback,
-        ftsSearchResult
+        ftsSearchResult,
+        resetFtsResults,
+
+        // Tag-only Data
+        showTagOnlyResults,
+        tagOnlyResults,
+        tagOnlyTotal,
+        tagOnlyLoading: tagOnlyQuery.isLoading,
+        tagOnlyHasMore: Boolean(tagOnlyQuery.hasNextPage),
+        tagOnlyLoadingMore: tagOnlyQuery.isFetchingNextPage,
+        loadMoreTagOnly,
     }
 }

@@ -25,7 +25,9 @@ serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
   if (!supabaseUrl || !serviceRoleKey) return jsonResponse({ error: "Function not configured" }, 500)
 
-  const token = req.headers.get("Authorization")?.replace("Bearer ", "")
+  const authHeader = req.headers.get("Authorization")?.trim() ?? ""
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
+  const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
   if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)

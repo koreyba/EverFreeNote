@@ -34,7 +34,7 @@ export function BulkDeleteDialog({ open, onOpenChange, count, loading = false, o
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent data-testid="bulk-delete-dialog">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete selected notes</AlertDialogTitle>
           <AlertDialogDescription>
@@ -44,6 +44,7 @@ export function BulkDeleteDialog({ open, onOpenChange, count, loading = false, o
         <div className="space-y-2">
           <label className="text-sm text-muted-foreground">Enter {count} to confirm</label>
           <Input
+            data-testid="bulk-delete-confirm-input"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={`${count}`}
@@ -52,8 +53,9 @@ export function BulkDeleteDialog({ open, onOpenChange, count, loading = false, o
           />
         </div>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel data-testid="bulk-delete-cancel" disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction
+            data-testid="bulk-delete-confirm"
             disabled={!isMatch || loading}
             onClick={onConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { Info, Sparkles } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -12,51 +13,152 @@ interface AiSearchToggleProps {
   enabled: boolean
   hasApiKey: boolean
   onChange: (enabled: boolean) => void
+  disabled?: boolean
+  disabledTitle?: string
 }
 
-export function AiSearchToggle({ enabled, hasApiKey, onChange }: AiSearchToggleProps) {
+export function AiSearchToggle({
+  enabled,
+  hasApiKey,
+  onChange,
+  disabled = false,
+  disabledTitle,
+}: AiSearchToggleProps) {
+  const isDisabled = !hasApiKey || disabled
+  const showSelectionBlockedHint = Boolean(disabled && disabledTitle)
+  const [supportsHover, setSupportsHover] = React.useState(true)
+  const [selectionHintOpen, setSelectionHintOpen] = React.useState(false)
+  const [infoHintOpen, setInfoHintOpen] = React.useState(false)
+  const rootRef = React.useRef<HTMLDivElement>(null)
+  const disabledReasonId = showSelectionBlockedHint
+    ? 'ai-search-toggle-disabled-hint'
+    : !hasApiKey
+      ? 'ai-search-toggle-missing-key-hint'
+      : undefined
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)')
+    const apply = () => setSupportsHover(mediaQuery.matches)
+    apply()
+    mediaQuery.addEventListener('change', apply)
+    return () => mediaQuery.removeEventListener('change', apply)
+  }, [])
+
+  React.useEffect(() => {
+    if (!showSelectionBlockedHint && selectionHintOpen) {
+      setSelectionHintOpen(false)
+    }
+  }, [showSelectionBlockedHint, selectionHintOpen])
+
+  React.useEffect(() => {
+    if (supportsHover) return
+    if (!selectionHintOpen && !infoHintOpen) return
+
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (target && rootRef.current?.contains(target)) return
+      setSelectionHintOpen(false)
+      setInfoHintOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handleOutsidePointerDown, true)
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown, true)
+  }, [supportsHover, selectionHintOpen, infoHintOpen])
+
+  const handleSelectionHintPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!showSelectionBlockedHint || supportsHover) return
+    event.preventDefault()
+    event.stopPropagation()
+    setSelectionHintOpen((prev) => !prev)
+  }
+
+  const toggleControl = (
+    <div
+      data-testid="ai-search-toggle-trigger"
+      className="flex items-center gap-2"
+      onPointerDown={handleSelectionHintPointerDown}
+      tabIndex={isDisabled ? 0 : -1}
+      aria-disabled={isDisabled || undefined}
+      aria-describedby={isDisabled ? disabledReasonId : undefined}
+      onKeyDown={(event) => {
+        if (!isDisabled) return
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        if (showSelectionBlockedHint) {
+          setSelectionHintOpen((prev) => !prev)
+        }
+      }}
+    >
+      <Switch
+        id="ai-search-toggle"
+        data-testid="ai-search-toggle-switch"
+        checked={enabled}
+        onCheckedChange={onChange}
+        disabled={isDisabled}
+        aria-label="Toggle AI RAG Search"
+      />
+      <Label
+        data-testid="ai-search-toggle-label"
+        htmlFor="ai-search-toggle"
+        className="flex items-center gap-1 text-xs cursor-pointer select-none"
+      >
+        <Sparkles className="w-3 h-3" />
+        AI RAG Search
+      </Label>
+    </div>
+  )
+
   return (
     <TooltipProvider>
-      <div className="flex items-center gap-2">
-        {/* Toggle — shows "no API key" tooltip when key is missing */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="ai-search-toggle"
-                checked={enabled}
-                onCheckedChange={onChange}
-                disabled={!hasApiKey}
-                aria-label="Toggle AI RAG Search"
-              />
-              <Label
-                htmlFor="ai-search-toggle"
-                className="flex items-center gap-1 text-xs cursor-pointer select-none"
-              >
-                <Sparkles className="w-3 h-3" />
-                AI RAG Search
-              </Label>
-            </div>
-          </TooltipTrigger>
-          {!hasApiKey && (
-            <TooltipContent side="right" className="text-xs">
-              Configure Gemini API key in Settings → API Keys
+      <div ref={rootRef} data-testid="ai-search-toggle-root" className="flex items-center gap-2">
+        {showSelectionBlockedHint ? (
+          <Tooltip
+            open={supportsHover ? undefined : selectionHintOpen}
+            onOpenChange={supportsHover ? setSelectionHintOpen : undefined}
+          >
+            <TooltipTrigger asChild>
+              {toggleControl}
+            </TooltipTrigger>
+            <TooltipContent id="ai-search-toggle-disabled-hint" data-testid="ai-search-toggle-disabled-hint" side="bottom" align="start" sideOffset={6} className="text-xs">
+              {disabledTitle}
             </TooltipContent>
-          )}
-        </Tooltip>
+          </Tooltip>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {toggleControl}
+            </TooltipTrigger>
+            {!hasApiKey && (
+              <TooltipContent id="ai-search-toggle-missing-key-hint" data-testid="ai-search-toggle-missing-key-hint" side="bottom" align="start" sideOffset={6} className="text-xs">
+                Configure Gemini API key in Settings {'>'} API Keys
+              </TooltipContent>
+            )}
+          </Tooltip>
+        )}
 
-        {/* Help icon — hover on desktop, tap on mobile (Radix handles both) */}
-        <Tooltip delayDuration={100}>
+        <Tooltip
+          delayDuration={100}
+          open={supportsHover ? undefined : infoHintOpen}
+          onOpenChange={supportsHover ? setInfoHintOpen : undefined}
+        >
           <TooltipTrigger asChild>
             <button
+              data-testid="ai-search-toggle-info-trigger"
               type="button"
               className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-full"
               aria-label="About AI RAG Search"
+              onPointerDown={(event) => {
+                if (supportsHover) return
+                event.preventDefault()
+                event.stopPropagation()
+                setInfoHintOpen((prev) => !prev)
+              }}
             >
               <Info className="w-3.5 h-3.5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right" className="max-w-52 text-xs">
+          <TooltipContent data-testid="ai-search-toggle-info-hint" side="bottom" align="end" sideOffset={6} className="max-w-52 text-xs">
             Searches your previously indexed notes using semantic (vector) similarity.
             Press <kbd className="font-mono">Enter</kbd> to run a query.
           </TooltipContent>

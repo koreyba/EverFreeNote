@@ -49,15 +49,20 @@ export function ApiKeysSettingsDialog({ open, onOpenChange }: ApiKeysSettingsDia
   const handleSave = async () => {
     setErrorMessage(null)
     setSuccessMessage(null)
+    const trimmedGeminiApiKey = geminiApiKey.trim()
 
-    if (!geminiApiKey.trim() && !configured) {
+    if (!trimmedGeminiApiKey && !configured) {
       setErrorMessage("Gemini API key is required for initial setup.")
+      return
+    }
+    if (!trimmedGeminiApiKey && configured) {
+      setSuccessMessage("No changes to save.")
       return
     }
 
     setSaving(true)
     try {
-      await service.upsert(geminiApiKey.trim())
+      await service.upsert(trimmedGeminiApiKey)
       setConfigured(true)
       setGeminiApiKey("")
       setSuccessMessage("API key saved.")

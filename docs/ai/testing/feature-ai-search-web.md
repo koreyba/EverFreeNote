@@ -1,127 +1,159 @@
 ---
 phase: testing
-title: AI Search Web (RAG) — Testing Strategy
-description: Unit, integration, and E2E test strategy for semantic search UI
+title: AI Search Web (RAG) - Testing Strategy
+description: Detailed test catalog for AI search retrieval, UI behavior, and context navigation
 ---
 
 # Testing Strategy
 
-## Test Coverage Goals
+## Objective
 
-- **Unit tests**: 100% of new code in `core/`, `hooks/`, and pure utility functions
-- **Integration tests**: `rag-search` Edge Function (mocked Gemini + real pgvector), `useAISearch` hook with mocked fetch
-- **E2E tests**: Key user journeys through the AI Search UI
+Define complete test coverage for AI Search on web, including:
+- Retrieval behavior via `rag-search`
+- Client-side grouping, deduplication, and pagination
+- AI mode UX (toggle, presets, tabs, Enter-triggered search)
+- Editor context navigation (`Open in context`)
+- Robustness under errors, empty states, and partial index coverage
 
-## Unit Tests
+## Scope
 
-### `core/constants/aiSearch.ts` — `sliderToParams`
-- [ ] `sliderToParams(0)` returns strict anchors (`topK: 5, threshold: 0.75`)
-- [ ] `sliderToParams(100)` returns broad anchors (`topK: 30, threshold: 0.40`)
-- [ ] `sliderToParams(50)` returns neutral anchors
-- [ ] Values between 0–50 interpolate correctly between strict and neutral
-- [ ] Values between 50–100 interpolate correctly between neutral and broad
+In scope:
+- `useAIPaginatedSearch`, `useSearchMode`, `AiSearch*` components
+- `SearchResultsPanel` AI paths (Notes and Chunks)
+- `rag-search` edge function contract
+- API key gating and tooltip behavior
 
-### `useAISearch` — deduplication logic
-- [ ] Chunks within `OFFSET_DELTA_THRESHOLD` of an accepted chunk are filtered out
-- [ ] Chunks beyond offset threshold are accepted
-- [ ] Output is capped at `maxCount` (5 for Note View)
-- [ ] `hiddenCount` equals total input minus accepted count
-- [ ] Empty input returns `{ accepted: [], hiddenCount: 0 }`
-- [ ] Single chunk input always accepted
+Out of scope:
+- Mobile native app
+- AI ranking quality as an ML metric
 
-### `useAISearch` — groupByNote
-- [ ] Chunks from same note are grouped together
-- [ ] Groups sorted by `topScore` descending
-- [ ] Each group contains deduplicated chunks only
-- [ ] Multiple notes each get their own group
+## Test Priority Model
 
-### `useSearchMode`
-- [ ] Default state: `isAIEnabled: false`, `viewMode: 'note'`
-- [ ] Toggle persisted to localStorage
-- [ ] View mode change persisted to localStorage
-- [ ] Reads from localStorage on init
+- `P0`: data correctness, query contract, user-critical flows
+- `P1`: major UX behavior and interaction consistency
+- `P2`: polish and non-critical presentation behavior
 
-### `AiSearchSlider`
-- [ ] Renders with label "Strict" on left, "Broad" on right
-- [ ] `onChange` fires with correct slider value
-- [ ] Slider is disabled when AI Search is OFF
-- [ ] Accessible: has ARIA label and `role="slider"`
+## Automated Test Catalog
 
-### `NoteSearchItem`
-- [ ] Renders note title, tags, and top score
-- [ ] Shows exactly 1 chunk snippet by default
-- [ ] "Show more" button not rendered if `chunks.length <= 1`
-- [ ] Clicking "Show more" expands to show all `chunks`
-- [ ] "+N hidden" label shown when `hiddenCount > 0`
-- [ ] "+N hidden" not shown when `hiddenCount === 0`
+### A) Constants and pure logic
 
-### `ChunkSearchItem`
-- [ ] Renders note title, chunk content, similarity score
-- [ ] "Open in context" button rendered
-- [ ] Clicking "Open in context" fires callback with `{ noteId, charOffset }`
+- [ ] `P0` `AIS-CONST-001`: preset mapping is exact (`strict`, `neutral`, `broad`) with expected `topK` and `threshold`.
+- [ ] `P0` `AIS-LOGIC-001`: chunk dedup accepts first highest-similarity chunk and removes close offsets.
+- [ ] `P0` `AIS-LOGIC-002`: dedup keeps max chunks per note and computes `hiddenCount` correctly.
+- [ ] `P0` `AIS-LOGIC-003`: `groupByNote` sorts groups by `topScore` descending.
+- [ ] `P1` `AIS-LOGIC-004`: group signature detects changes in score/snippet content, not only ids.
 
-### `ChunkSearchResults`
-- [ ] Renders max 2 chunks per note
-- [ ] Chunks beyond 2 per note are not rendered
+### B) `useAIPaginatedSearch`
 
-## Integration Tests
+- [x] `P0` `AIS-HOOK-001`: disabled when query shorter than minimum.
+- [ ] `P0` `AIS-HOOK-002`: query key includes query/preset/tag/topK dimensions.
+- [ ] `P0` `AIS-HOOK-003`: load-more increases requested topK and preserves dedup semantics.
+- [x] `P0` `AIS-HOOK-004`: cumulative fetch refreshes existing groups when better chunks/scores arrive.
+- [ ] `P0` `AIS-HOOK-005`: `aiHasMore` transitions correctly by chunk count and max topK boundary.
+- [x] `P0` `AIS-HOOK-006`: `resetAIResults()` clears offset and accumulated results.
+- [ ] `P1` `AIS-HOOK-007`: changing search identity (query/preset/tag/enabled) resets pagination state.
+- [ ] `P1` `AIS-HOOK-008`: exposes loading and error states for UI consumption.
 
-- [ ] `useAISearch` — calls `rag-search` Edge Function with correct `{ query, topK, threshold, userId }`
-- [ ] `useAISearch` — does NOT call Edge Function when `isEnabled = false`
-- [ ] `useAISearch` — does NOT call Edge Function when `query.length < 3`
-- [ ] `useAISearch` — debounces: only 1 call for rapid keystrokes within 300ms
-- [ ] `useAISearch` — maps raw chunks to `RagNoteGroup[]` correctly
-- [ ] `useAISearch` — returns `isLoading: true` while fetch in progress
-- [ ] `useAISearch` — returns `error` when Edge Function returns 5xx
-- [ ] `Sidebar` integration — FTS results hidden when AI Search is ON
-- [ ] `Sidebar` integration — AI controls (toggle, slider, tabs) hidden when AI is OFF
+### C) `useSearchMode`
 
-### `rag-search` Edge Function (Deno / local Supabase)
-- [ ] Returns 401 when called without auth token
-- [ ] Returns `{ chunks: [] }` for query with no matching embeddings
-- [ ] Enriches chunks with `noteTitle` and `noteTags` from `notes` table
-- [ ] Applies `threshold` filter: chunks below threshold not returned
-- [ ] Respects `topK` limit: at most `topK` chunks returned
-- [ ] Reads Gemini API key from `user_api_keys` (mocked Gemini call)
-- [ ] Returns error JSON when Gemini key is missing
+- [x] `P1` `AIS-MODE-001`: default values are stable (`isAIEnabled=false`, default preset, default view mode).
+- [x] `P1` `AIS-MODE-002`: toggle/preset/view persist to localStorage.
+- [x] `P1` `AIS-MODE-003`: values restore from localStorage on initialization.
 
-## End-to-End Tests
+### D) AI controls components
 
-- [ ] **E2E-1**: Toggle AI Search ON → search box query triggers AI results, FTS results disappear
-- [ ] **E2E-2**: Toggle AI Search OFF → FTS results return, AI components hidden
-- [ ] **E2E-3**: Note View — results show note title, tag, score, and 1 snippet
-- [ ] **E2E-4**: Note View — "Show more" expands to additional snippets; "+N hidden" visible if applicable
-- [ ] **E2E-5**: Switch to Chunk View — each result shows note title, chunk text, "Open in context"
-- [ ] **E2E-6**: Chunk View — max 2 chunks visible per note
-- [ ] **E2E-7**: Slider moved to Strict → fewer results returned
-- [ ] **E2E-8**: "Open in context" — note opens in editor and scrolls to highlighted region
-- [ ] **E2E-9**: AI Search mode and view mode persist after page reload
+- [x] `P1` `AIS-COMP-001`: `AiSearchToggle` disabled when API key missing.
+- [x] `P1` `AIS-COMP-002`: missing-key tooltip message is rendered.
+- [x] `P1` `AIS-COMP-003`: blocked-selection hint (`Remove selection to switch`) opens on desktop hover.
+- [x] `P1` `AIS-COMP-004`: blocked-selection hint toggles on mobile tap and closes on outside tap.
+- [x] `P1` `AIS-COMP-005`: info tooltip on mobile does not auto-close immediately.
+- [x] `P1` `AIS-COMP-006`: `AiSearchViewTabs` disabled behavior mirrors toggle behavior.
+- [ ] `P2` `AIS-COMP-007`: preset selector updates active preset styling and callback payload.
 
-## Test Data
+### E) AI results rendering components
 
-- At least 3 notes with content indexed in `note_embeddings`
-- Notes should contain overlapping topics to test deduplication and grouping
-- Mock `rag-search` response fixtures in `__fixtures__/ragSearch.ts`:
-  ```typescript
-  export const mockRagChunks: RagChunk[] = [...]
-  export const mockRagNoteGroups: RagNoteGroup[] = [...]
-  ```
+- [ ] `P0` `AIS-UI-001`: `NoteSearchResults` empty state renders when no groups.
+- [ ] `P0` `AIS-UI-002`: `NoteSearchItem` renders title/tags/score/top snippet.
+- [ ] `P1` `AIS-UI-003`: fragment expansion shows additional chunks and hidden fragment count.
+- [ ] `P1` `AIS-UI-004`: in selection mode, chunk click toggles selection and does not open context.
+- [ ] `P0` `AIS-UI-005`: `ChunkSearchResults` shows chunk rows and calls `onOpenInContext` with correct payload.
+- [ ] `P1` `AIS-UI-006`: chunk view respects per-note chunk cap in UI.
 
-## Manual Testing
+### F) `SearchResultsPanel` AI-path integration
 
-- [ ] Toggle ON/OFF is clearly visible and the state is obvious
-- [ ] Slider thumb is draggable and snaps smoothly
-- [ ] Score badges are readable (contrast ratio ≥ 4.5:1)
-- [ ] Highlighted chunk in editor is visible without being distracting
-- [ ] "Open in context" works for notes already open in editor (same note)
-- [ ] Works in Firefox, Chrome, Safari (desktop)
+- [ ] `P0` `AIS-PANEL-001`: AI mode ON + Enter triggers AI query path.
+- [ ] `P0` `AIS-PANEL-002`: AI mode ON + typing without Enter does not trigger AI query.
+- [ ] `P0` `AIS-PANEL-003`: AI mode OFF keeps FTS behavior.
+- [ ] `P0` `AIS-PANEL-004`: Notes/Chunks tabs switch rendering path correctly.
+- [ ] `P0` `AIS-PANEL-005`: load-more in AI Notes calls `controller.loadMoreAI` and appends results.
+- [ ] `P1` `AIS-PANEL-006`: AI error state renders retry action and retry calls refetch.
+- [ ] `P1` `AIS-PANEL-007`: active tag filter is forwarded to AI query function.
+- [ ] `P1` `AIS-PANEL-008`: clear search resets AI results and exits panel selection mode.
 
-## Performance Testing
+### G) Edge function contract (`rag-search`)
 
-- [ ] AI Search with 1000+ indexed chunks returns within 2s on average connection
-- [ ] Chunk View with 30+ items renders without jank (no dropped frames)
+- [ ] `P0` `AIS-EDGE-001`: unauthorized request fails with auth error.
+- [ ] `P0` `AIS-EDGE-002`: valid request returns `chunks[]` shape with required fields.
+- [ ] `P0` `AIS-EDGE-003`: threshold filter removes chunks below threshold.
+- [ ] `P0` `AIS-EDGE-004`: `topK` cap enforced.
+- [ ] `P0` `AIS-EDGE-005`: `filterTag` constrains results to notes containing tag.
+- [ ] `P0` `AIS-EDGE-006`: missing Gemini key returns controlled error response.
+- [ ] `P1` `AIS-EDGE-007`: note title and tags enrichment is present in output.
 
-## Bug Tracking
+### H) Open-in-context integration
 
-- Report AI Search-specific issues with label `ai-search` in the tracker
-- Regression: after any sidebar change, verify FTS still works when AI is OFF
+- [ ] `P0` `AIS-CTX-001`: clicking `Open in context` opens target note and calls scroll with mapped offsets.
+- [ ] `P0` `AIS-CTX-002`: if note not in loaded sidebar pages, fallback fetch retrieves it and opens editor.
+- [ ] `P1` `AIS-CTX-003`: pending scroll executes after editor mount/create lifecycle.
+- [ ] `P1` `AIS-CTX-004`: highlight decoration appears and clears on next user click.
+
+### I) Persistence and regressions
+
+- [ ] `P1` `AIS-REG-001`: AI enabled state and selected view/preset survive reload.
+- [ ] `P0` `AIS-REG-002`: with AI ON and empty/unsubmitted query, app shows regular notes list.
+- [ ] `P1` `AIS-REG-003`: toggling AI OFF restores expected FTS interaction flow.
+- [ ] `P1` `AIS-REG-004`: query+tag behavior stays stable after preset changes.
+
+## Implementation Status (2026-03-05)
+
+Implemented in this iteration:
+- `cypress/component/ui/web/hooks/useAIPaginatedSearch.cy.tsx`
+  - `AIS-HOOK-001`, `AIS-HOOK-004`, partial `AIS-HOOK-005`, `AIS-HOOK-006`
+- `cypress/component/ui/web/hooks/useSearchMode.cy.tsx`
+  - `AIS-MODE-001`, `AIS-MODE-002`, `AIS-MODE-003`
+- `cypress/component/features/search/AiSearchToggle.cy.tsx`
+  - `AIS-COMP-001`, `AIS-COMP-002`, `AIS-COMP-003`, `AIS-COMP-004`, `AIS-COMP-005`
+- `cypress/component/features/search/AiSearchViewTabs.cy.tsx`
+  - `AIS-COMP-006`
+
+Verification note:
+- `npm run type-check` and targeted `eslint` passed.
+- `cypress run --component` is pending local execution because browser startup crashes in current agent environment (exit code `-1073741795`).
+
+## Manual Test Catalog
+
+- [ ] `P0` `AIS-MAN-001`: full user flow: enable AI -> Enter query -> open note in context.
+- [ ] `P0` `AIS-MAN-002`: no-results and error states are visually clear and recoverable.
+- [ ] `P1` `AIS-MAN-003`: desktop and mobile tooltip interactions are stable.
+- [ ] `P1` `AIS-MAN-004`: browser matrix smoke (Chrome, Safari, Firefox desktop).
+- [ ] `P2` `AIS-MAN-005`: keyboard navigation for AI controls and result actions.
+
+## Performance and Load
+
+- [ ] `P1` `AIS-PERF-001`: AI query perceived latency is acceptable under normal network.
+- [ ] `P1` `AIS-PERF-002`: load-more stays responsive with larger result sets.
+- [ ] `P2` `AIS-PERF-003`: repeated same-query refetch avoids unnecessary UI churn.
+
+## Suggested Execution Order
+
+1. Run all `P0` hook and edge-contract tests.
+2. Run `P0` panel and open-in-context integration tests.
+3. Run `P1` interaction, persistence, and performance smoke tests.
+4. Execute manual browser/device checks.
+
+## Exit Criteria
+
+AI Search test scope is considered complete when:
+- All `P0` automated tests pass.
+- No unresolved `P1` regressions in target browsers.
+- Manual `P0` scenarios are documented as verified.

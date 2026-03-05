@@ -67,8 +67,10 @@ describe('NoteCard Component', () => {
       </ThemeProvider>
     )
 
-    cy.contains('73.4%').should('be.visible')
-    cy.get('mark').should('contain.text', 'highlight')
+    cy.contains('73%').should('be.visible')
+    cy.contains('highlight').should('be.visible')
+    cy.get('mark').should('not.exist')
+    cy.contains('ignored()').should('not.exist')
     cy.contains('+1').should('be.visible')
 
     cy.get('[data-cy=\'interactive-tag\']').first().click()
@@ -90,6 +92,27 @@ describe('NoteCard Component', () => {
     )
 
     cy.contains('Untitled').should('be.visible')
+  })
+
+  it('keeps checkbox unchecked when note is active but selection mode is off', () => {
+    const onToggleSelect = cy.stub().as('onToggleSelect')
+
+    cy.mount(
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <NoteCard
+          note={baseNote}
+          variant='compact'
+          isSelected
+          selectionMode={false}
+          onClick={cy.stub()}
+          onToggleSelect={onToggleSelect}
+        />
+      </ThemeProvider>
+    )
+
+    cy.get('[role="checkbox"]').should('have.attr', 'data-state', 'unchecked')
+    cy.get('[role="checkbox"]').click({ force: true })
+    cy.get('@onToggleSelect').should('have.been.calledOnce')
   })
 })
 

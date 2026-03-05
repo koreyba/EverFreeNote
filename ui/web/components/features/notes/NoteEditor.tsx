@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
@@ -33,6 +34,7 @@ interface NoteEditorProps {
   lastSavedAt?: string | null
   wordpressConfigured?: boolean
   onDelete?: () => void
+  onBack?: () => void
 }
 
 export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor({
@@ -50,6 +52,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   availableTags = [],
   wordpressConfigured = false,
   onDelete,
+  onBack,
 }: NoteEditorProps, ref) {
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
@@ -166,7 +169,20 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     <div className="flex-1 flex min-h-0 flex-col">
       {/* Editor Header */}
       <div className="p-4 border-b bg-card flex items-start justify-between">
-        <h2 className="text-lg font-semibold text-muted-foreground">Editing</h2>
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden -ml-2"
+              onClick={onBack}
+              aria-label="Back"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+          )}
+          <h2 className="text-lg font-semibold text-muted-foreground">Editing</h2>
+        </div>
         <div className="flex flex-col items-end gap-1">
           <div className="flex gap-2 items-center">
             <Button onClick={handleRead} variant="outline" disabled={isSaving}>

@@ -22,6 +22,8 @@ describe('Mobile Layout Adaptation', () => {
       selectedNote: null,
       isEditing: false,
       setIsEditing: cy.stub(),
+      isSearchPanelOpen: false,
+      setIsSearchPanelOpen: cy.stub(),
       searchQuery: '',
       filterByTag: null,
       deleteDialogOpen: false,
@@ -34,10 +36,16 @@ describe('Mobile Layout Adaptation', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ftsSearchResult: { isLoading: false, data: [] } as any,
       showFTSResults: false,
+      showTagOnlyResults: false,
       ftsData: undefined,
       ftsResults: [],
       ftsHasMore: false,
       ftsLoadingMore: false,
+      tagOnlyResults: [],
+      tagOnlyTotal: 0,
+      tagOnlyLoading: false,
+      tagOnlyHasMore: false,
+      tagOnlyLoadingMore: false,
       ftsObserverTarget: { current: null },
       observerTarget: { current: null },
       deleteAccountLoading: false,
@@ -66,6 +74,8 @@ describe('Mobile Layout Adaptation', () => {
       selectAllVisible: cy.stub(),
       clearSelection: cy.stub(),
       loadMoreFts: cy.stub(),
+      loadMoreTagOnly: cy.stub(),
+      loadMoreAI: cy.stub(),
       toggleNoteSelection: cy.stub(),
       deleteSelectedNotes: cy.stub(),
       totalNotes: 0,
@@ -82,6 +92,10 @@ describe('Mobile Layout Adaptation', () => {
 
       // Required by controller type (used by NotesShell to register editor ref)
       registerNoteEditorRef: overrides.registerNoteEditorRef ?? cy.stub(),
+      resetFtsResults: overrides.resetFtsResults ?? cy.stub(),
+      resetAIResults: overrides.resetAIResults ?? cy.stub(),
+      registerAIPaginationControls: overrides.registerAIPaginationControls ?? cy.stub(),
+      deleteNotesByIds: overrides.deleteNotesByIds ?? cy.stub().resolves({ total: 0, failed: 0, queuedOffline: false }),
     })
 
     mockSupabase = {

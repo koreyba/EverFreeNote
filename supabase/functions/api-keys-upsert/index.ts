@@ -22,11 +22,21 @@ const jsonResponse = (body: unknown, status = 200) =>
 // ---------------------------------------------------------------------------
 const textEncoder = new TextEncoder()
 let cachedCryptoKey: CryptoKey | null = null
+let cachedSecretHash: string | null = null
+
+const bytesToHex = (bytes: Uint8Array): string =>
+  Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
 
 const getCryptoKey = async (secret: string): Promise<CryptoKey> => {
-  if (cachedCryptoKey) return cachedCryptoKey
-  const hash = await crypto.subtle.digest("SHA-256", textEncoder.encode(secret))
-  cachedCryptoKey = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"])
+  const digest = await crypto.subtle.digest("SHA-256", textEncoder.encode(secret))
+  const secretHash = bytesToHex(new Uint8Array(digest))
+
+  if (cachedCryptoKey && cachedSecretHash === secretHash) return cachedCryptoKey
+
+  cachedCryptoKey = await crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, ["encrypt", "decrypt"])
+  cachedSecretHash = secretHash
   return cachedCryptoKey
 }
 
@@ -57,7 +67,9 @@ serve(async (req: Request) => {
     return jsonResponse({ error: "Function not configured" }, 500)
   }
 
-  const token = req.headers.get("Authorization")?.replace("Bearer ", "")
+  const authHeader = req.headers.get("Authorization")?.trim() ?? ""
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
+  const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
   if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)

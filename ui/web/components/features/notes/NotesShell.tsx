@@ -20,6 +20,8 @@ import { NoteList } from "@/components/features/notes/NoteList"
 import { NoteEditor, type NoteEditorHandle } from "@/components/features/notes/NoteEditor"
 import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
+import { SearchResultsPanel } from "@/components/features/notes/SearchResultsPanel"
+import type { SearchResultsPanelHandle } from "@/components/features/notes/SearchResultsPanel"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { normalizeTagList } from "@ui/web/lib/tags"
@@ -39,6 +41,7 @@ type NotesShellProps = {
 
 export function NotesShell({ controller }: NotesShellProps) {
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
+  const searchPanelRef = React.useRef<SearchResultsPanelHandle | null>(null)
   const { supabase } = useSupabase()
   const wordpressSettingsService = React.useMemo(() => new WordPressSettingsService(supabase), [supabase])
   const apiKeysService = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
@@ -66,14 +69,10 @@ export function NotesShell({ controller }: NotesShellProps) {
     selectionMode,
     selectedCount,
     bulkDeleting,
-    enterSelectionMode,
     exitSelectionMode,
     selectAllVisible,
-    clearSelection,
     deleteSelectedNotes,
     filterByTag,
-    searchQuery,
-    handleSearch,
     handleClearTagFilter,
     handleCreateNote,
     handleSignOut,
@@ -86,6 +85,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     selectedNote,
     isEditing,
     handleSelectNote,
+    isSearchPanelOpen,
+    setIsSearchPanelOpen,
   } = controller
 
   const refreshWordPressStatus = React.useCallback(async () => {
@@ -125,7 +126,8 @@ export function NotesShell({ controller }: NotesShellProps) {
           .maybeSingle()
         if (!data) return
         note = data as Note
-      } catch {
+      } catch (error) {
+        console.error("Failed to fetch note for open-in-context", { noteId, error })
         return
       }
     }
@@ -147,6 +149,13 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [controller, supabase])
 
   const showEditor = !!(selectedNote || isEditing)
+  const handleOpenSearchPanel = React.useCallback(() => {
+    if (isSearchPanelOpen) {
+      searchPanelRef.current?.focusInput()
+      return
+    }
+    setIsSearchPanelOpen(true)
+  }, [isSearchPanelOpen, setIsSearchPanelOpen])
 
   return (
     <div className="flex h-screen max-h-screen bg-muted/20 overflow-hidden">
@@ -161,13 +170,9 @@ export function NotesShell({ controller }: NotesShellProps) {
         selectionMode={selectionMode}
         selectedCount={selectedCount}
         bulkDeleting={bulkDeleting}
-        onEnterSelectionMode={enterSelectionMode}
         onExitSelectionMode={exitSelectionMode}
         onSelectAll={selectAllVisible}
-        onClearSelection={clearSelection}
         onBulkDelete={deleteSelectedNotes}
-        searchQuery={searchQuery}
-        onSearch={handleSearch}
         onClearTagFilter={handleClearTagFilter}
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
@@ -176,13 +181,23 @@ export function NotesShell({ controller }: NotesShellProps) {
         onImportComplete={invalidateNotes}
         wordpressConfigured={wordpressConfigured}
         onWordPressConfiguredChange={setWordpressConfigured}
-        hasGeminiApiKey={hasGeminiApiKey}
-        onOpenInContext={handleOpenInContext}
-        className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
+        onOpenSearch={handleOpenSearchPanel}
+        className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
       >
         <ListPane controller={controller} />
       </Sidebar>
+
+      {isSearchPanelOpen && (
+        <SearchResultsPanel
+          ref={searchPanelRef}
+          controller={controller}
+          hasGeminiApiKey={hasGeminiApiKey}
+          onOpenInContext={handleOpenInContext}
+          onClose={() => setIsSearchPanelOpen(false)}
+          className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
+        />
+      )}
 
       <div
         className={cn(
@@ -209,18 +224,11 @@ function ListPane({ controller }: { controller: NoteAppController }) {
     notes,
     notesQuery,
     selectedNote,
-    searchQuery,
-    ftsSearchResult,
-    showFTSResults,
-    ftsData,
-    ftsHasMore,
-    ftsLoadingMore,
     handleSelectNote,
     selectionMode,
     selectedNoteIds,
     toggleNoteSelection,
     handleTagClick,
-    handleSearchResultClick,
   } = controller
 
   return (
@@ -236,22 +244,6 @@ function ListPane({ controller }: { controller: NoteAppController }) {
       onLoadMore={() => notesQuery.fetchNextPage()}
       hasMore={notesQuery.hasNextPage}
       isFetchingNextPage={notesQuery.isFetchingNextPage}
-      ftsQuery={searchQuery}
-      ftsLoading={ftsSearchResult.isLoading}
-      showFTSResults={showFTSResults}
-      ftsData={
-        ftsData
-          ? {
-            total: ftsData.total,
-            executionTime: ftsData.executionTime,
-            results: ftsData.results,
-          }
-          : undefined
-      }
-      ftsHasMore={ftsHasMore}
-      ftsLoadingMore={ftsLoadingMore}
-      onLoadMoreFts={controller.loadMoreFts}
-      onSearchResultClick={handleSearchResultClick}
     />
   )
 }
@@ -307,6 +299,7 @@ function EditorPane({
         lastSavedAt={lastSavedAt}
         wordpressConfigured={wordpressConfigured}
         onDelete={selectedNote ? () => handleDeleteNote(selectedNote) : undefined}
+        onBack={onBack}
       />
     )
   }

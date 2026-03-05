@@ -14,7 +14,6 @@ type UseNoteDataParams = {
   offlineOverlay: CachedNote[]
   aggregatedFtsData: AggregatedFtsData | undefined
   selectedNoteIds: Set<string>
-  showFTSResults: boolean
 }
 
 /**
@@ -26,7 +25,6 @@ export function useNoteData({
   offlineOverlay,
   aggregatedFtsData,
   selectedNoteIds,
-  showFTSResults,
 }: UseNoteDataParams) {
   const baseNotes: NoteViewModel[] = useFlattenedNotes(notesQuery)
 
@@ -59,9 +57,9 @@ export function useNoteData({
     ? pages[0].totalCount
     : notes.length
 
-  const notesDisplayed = showFTSResults && mergedFtsData ? mergedFtsData.results.length : notes.length
-  const baseTotal = showFTSResults && mergedFtsData ? mergedFtsData.total : totalNotes
-  const notesTotal = baseTotal
+  // Sidebar list is now decoupled from search panel and always shows the regular notes list.
+  const notesDisplayed = notes.length
+  const notesTotal = totalNotes
   const selectedCount = selectedNoteIds.size
 
   // Ref kept in sync for use in save handlers (avoids stale closure)
