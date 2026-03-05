@@ -1,4 +1,11 @@
+import * as React from 'react'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import type { ViewMode } from '@ui/web/hooks/useSearchMode'
 
 interface AiSearchViewTabsProps {
@@ -14,8 +21,48 @@ export function AiSearchViewTabs({
   disabled = false,
   disabledTitle,
 }: AiSearchViewTabsProps) {
-  return (
-    <div title={disabled ? disabledTitle : undefined}>
+  const showDisabledHint = Boolean(disabled && disabledTitle)
+  const [supportsHover, setSupportsHover] = React.useState(true)
+  const [disabledHintOpen, setDisabledHintOpen] = React.useState(false)
+  const rootRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)')
+    const apply = () => setSupportsHover(mediaQuery.matches)
+    apply()
+    mediaQuery.addEventListener('change', apply)
+    return () => mediaQuery.removeEventListener('change', apply)
+  }, [])
+
+  React.useEffect(() => {
+    if (!showDisabledHint && disabledHintOpen) {
+      setDisabledHintOpen(false)
+    }
+  }, [showDisabledHint, disabledHintOpen])
+
+  React.useEffect(() => {
+    if (supportsHover || !disabledHintOpen) return
+
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (target && rootRef.current?.contains(target)) return
+      setDisabledHintOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handleOutsidePointerDown, true)
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown, true)
+  }, [supportsHover, disabledHintOpen])
+
+  const handleDisabledHintPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!showDisabledHint || supportsHover) return
+    event.preventDefault()
+    event.stopPropagation()
+    setDisabledHintOpen((prev) => !prev)
+  }
+
+  const tabsControl = (
+    <div onPointerDown={handleDisabledHintPointerDown}>
       <ToggleGroup
         type="single"
         value={value}
@@ -41,5 +88,25 @@ export function AiSearchViewTabs({
         </ToggleGroupItem>
       </ToggleGroup>
     </div>
+  )
+
+  if (!showDisabledHint) {
+    return tabsControl
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip
+        open={supportsHover ? undefined : disabledHintOpen}
+        onOpenChange={supportsHover ? setDisabledHintOpen : undefined}
+      >
+        <TooltipTrigger asChild>
+          <div ref={rootRef}>{tabsControl}</div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="end" sideOffset={6} className="text-xs">
+          {disabledTitle}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
