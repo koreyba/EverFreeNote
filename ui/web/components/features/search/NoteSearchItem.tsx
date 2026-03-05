@@ -43,6 +43,7 @@ export function NoteSearchItem({
 
   const topChunk = group.chunks[0]
   const extraChunks = group.chunks.slice(1)
+  const totalHidden = (extraChunks.length || 0) + (group.hiddenCount || 0)
   const hasMore = extraChunks.length > 0 || group.hiddenCount > 0
 
   const hasActiveSelection = () => {
@@ -187,7 +188,7 @@ export function NoteSearchItem({
             >
               {expanded
                 ? 'Hide fragments'
-                : `${extraChunks.length} more fragment${extraChunks.length !== 1 ? 's' : ''}`}
+                : `${totalHidden} more fragment${totalHidden !== 1 ? 's' : ''}`}
               {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </button>
           </div>

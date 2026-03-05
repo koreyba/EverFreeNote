@@ -126,7 +126,8 @@ export function NotesShell({ controller }: NotesShellProps) {
           .maybeSingle()
         if (!data) return
         note = data as Note
-      } catch {
+      } catch (error) {
+        console.error("Failed to fetch note for open-in-context", { noteId, error })
         return
       }
     }

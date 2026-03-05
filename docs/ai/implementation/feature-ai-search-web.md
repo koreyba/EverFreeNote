@@ -14,6 +14,8 @@ description: Technical notes for the rag-search Edge Function, useAISearch hook,
 - At least one note indexed via `RagIndexPanel` for manual testing
 
 **Key files to read before starting:**
+- `docs/ai/requirements/feature-ai-search-web.md` - feature requirements and acceptance criteria
+- `docs/ai/design/feature-ai-search-web.md` - architecture and design decisions
 - `supabase/functions/rag-index/index.ts` — reference for Gemini embed pattern
 - `core/constants/search.ts` — existing search constants pattern
 - `ui/web/hooks/useNoteSearch.ts` — existing FTS hook to keep in parity

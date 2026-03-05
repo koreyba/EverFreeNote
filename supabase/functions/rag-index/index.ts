@@ -70,11 +70,21 @@ function prepareNoteText(title: string, html: string): string {
 const textDecoder = new TextDecoder()
 const _textEncoder = new TextEncoder()
 let _cachedCryptoKey: CryptoKey | null = null
+let _cachedSecretHash: string | null = null
+
+const bytesToHex = (bytes: Uint8Array): string =>
+  Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
 
 const _getCryptoKey = async (secret: string): Promise<CryptoKey> => {
-  if (_cachedCryptoKey) return _cachedCryptoKey
-  const hash = await crypto.subtle.digest("SHA-256", _textEncoder.encode(secret))
-  _cachedCryptoKey = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"])
+  const digest = await crypto.subtle.digest("SHA-256", _textEncoder.encode(secret))
+  const secretHash = bytesToHex(new Uint8Array(digest))
+
+  if (_cachedCryptoKey && _cachedSecretHash === secretHash) return _cachedCryptoKey
+
+  _cachedCryptoKey = await crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, ["encrypt", "decrypt"])
+  _cachedSecretHash = secretHash
   return _cachedCryptoKey
 }
 
@@ -86,7 +96,11 @@ const base64ToBytes = (b64: string): Uint8Array => {
 }
 
 const decryptValue = async (encrypted: string, secret: string): Promise<string> => {
-  const [ivRaw, dataRaw] = encrypted.split(":")
+  const parts = encrypted.split(":")
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new Error("Invalid encrypted payload format: expected 'iv:data'")
+  }
+  const [ivRaw, dataRaw] = parts
   const iv = base64ToBytes(ivRaw)
   const data = base64ToBytes(dataRaw)
   const key = await _getCryptoKey(secret)
@@ -185,7 +199,9 @@ serve(async (req: Request) => {
   }
 
   // Auth
-  const token = req.headers.get("Authorization")?.replace("Bearer ", "")
+  const authHeader = req.headers.get("Authorization")?.trim() ?? ""
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
+  const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
   if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)

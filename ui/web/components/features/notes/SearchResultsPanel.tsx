@@ -152,7 +152,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         try {
             const result = await controller.deleteNotesByIds(Array.from(panelSelectedIds))
             if (showAIResults && viewMode === 'note') {
-                controller.resetAIResults()
+                resetAIResults()
             } else {
                 controller.resetFtsResults()
             }
@@ -170,6 +170,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         panelSelectedIds,
         showAIResults,
         viewMode,
+        resetAIResults,
         exitPanelSelectionMode,
     ])
 
@@ -217,7 +218,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         controller.handleSearch('')
         setSearchDraft('')
         setAiSearchQuery('')
-        controller.resetAIResults()
+        resetAIResults()
         exitPanelSelectionMode()
     }
 
