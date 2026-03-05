@@ -50,6 +50,29 @@ function groupByNote(chunks: RagChunk[]): RagNoteGroup[] {
   return groups.sort((a, b) => b.topScore - a.topScore)
 }
 
+function hashText(value: string): string {
+  // Fast non-crypto hash for change detection signatures.
+  let hash = 2166136261
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function buildGroupsSignature(groups: RagNoteGroup[]): string {
+  return groups
+    .map((group) => {
+      const chunksSignature = group.chunks
+        .map((chunk) =>
+          `${chunk.chunkIndex}:${chunk.charOffset}:${chunk.similarity.toFixed(6)}:${hashText(chunk.content)}`
+        )
+        .join('|')
+      return `${group.noteId}:${group.topScore.toFixed(6)}:${group.hiddenCount}:${chunksSignature}`
+    })
+    .join('||')
+}
+
 interface UseAIPaginatedSearchOptions {
   query: string
   preset: SearchPreset
@@ -145,23 +168,14 @@ export function useAIPaginatedSearch({
     if (!result.data) return
 
     const dataSignature =
-      `${aiOffset}-${result.data.chunkCount}-` +
-      result.data.groups.map((group) => group.noteId).join(',')
+      `${aiOffset}-${result.data.chunkCount}-${result.data.groups.length}-` +
+      buildGroupsSignature(result.data.groups)
     if (dataSignature === lastProcessedDataRef.current) return
     lastProcessedDataRef.current = dataSignature
 
-    setAiAccumulatedResults((prev) => {
-      if (aiOffset === 0) return result.data!.groups
-      const next = [...prev]
-      const seen = new Set(prev.map((item) => item.noteId))
-      for (const group of result.data!.groups) {
-        if (!seen.has(group.noteId)) {
-          seen.add(group.noteId)
-          next.push(group)
-        }
-      }
-      return next
-    })
+    // rag-search returns cumulative topK results. Always replacing keeps ranking,
+    // scores, and snippets fresh when existing note groups are updated.
+    setAiAccumulatedResults(result.data.groups)
   }, [aiOffset, queryEnabled, result.data])
 
   const aiHasMore =

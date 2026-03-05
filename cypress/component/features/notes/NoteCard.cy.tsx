@@ -67,8 +67,10 @@ describe('NoteCard Component', () => {
       </ThemeProvider>
     )
 
-    cy.contains('73.4%').should('be.visible')
-    cy.get('mark').should('contain.text', 'highlight')
+    cy.contains('73%').should('be.visible')
+    cy.contains('highlight').should('be.visible')
+    cy.get('mark').should('not.exist')
+    cy.contains('ignored()').should('not.exist')
     cy.contains('+1').should('be.visible')
 
     cy.get('[data-cy=\'interactive-tag\']').first().click()

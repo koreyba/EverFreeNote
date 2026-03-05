@@ -8,64 +8,89 @@ description: Define testing approach, test cases, and quality assurance
 
 ## Execution Status (2026-03-05)
 
-- Implementation for phases 0-2 and task 3.1 is complete.
-- Static checks passed: `npm run type-check`, targeted `eslint`.
-- Runtime tests (Cypress/manual smoke) are deferred by request.
-- Milestone 3 verification tasks (3.2-3.6) stay open until runtime tests resume.
+- Core implementation is complete for pagination, shared delete flow, selection mode, and UX parity fixes.
+- Static checks passed in development loop (`type-check`, targeted lint).
+- Runtime suite execution is pending (deferred).
 
 ## Coverage Goals
 
-- Unit and component coverage for new delete and selection flows.
-- Integration coverage for panel selection and cross-list sync.
-- Manual offline smoke for queued deletion behavior.
+- Validate shared delete helper behavior (online + offline).
+- Validate panel and sidebar selection flows are consistent.
+- Validate tag/query matrix (`tag-only`, `query-only`, `query + tag`).
+- Validate blocked mode-switch hint UX on desktop and mobile.
 
-## Unit Tests
+## Unit / Component Tests
 
-### deleteNotesByIds helper
-- [ ] Calls `deleteNoteMutation.mutateAsync` for each ID in parallel.
+### `useNoteBulkActions` and controller wiring
+- [ ] `deleteNotesByIds` returns expected `{ total, failed, queuedOffline }`.
 - [ ] Invalidates `['notes']` and `['aiSearch']` on completion.
-- [ ] Shows success toast on full success.
-- [ ] Shows error toast on partial failure.
-- [ ] Uses offline enqueue path when `isOffline === true`.
-- [ ] Sets `selectedNote` to `null` after delete.
+- [ ] Clears `selectedNote` after delete.
+- [ ] Offline path writes pending overlay and increments pending count.
+- [ ] `deleteSelectedNotes` exits sidebar selection mode.
 
-### resetFtsResults in useNoteSearch
-- [ ] Resets `ftsOffset` to `0`.
-- [ ] Clears `ftsAccumulatedResults`.
-- [ ] Resets `lastProcessedDataRef`.
+### `useNoteSearch`
+- [ ] `resetFtsResults()` resets offset + accumulation state.
+- [ ] `showTagOnlyResults` toggles correctly when query is below minimum.
+- [ ] Tag-only pagination (`loadMoreTagOnly`) is wired and guarded.
 
-### SearchResultsPanel local selection
-- [ ] `togglePanelSelection` add/remove behavior is correct.
-- [ ] `exitPanelSelectionMode` clears mode and selected IDs.
-- [ ] `Select all` selects all visible IDs in active view.
-- [ ] `panelBulkDeleting` true during delete and false after.
+### `useAIPaginatedSearch`
+- [ ] Accumulates groups without duplicates across pages.
+- [ ] `aiHasMore` and `aiLoadingMore` transitions are correct.
+- [ ] `resetAIResults()` clears accumulated state and offset.
+
+### Selection UI components
+- [ ] `SelectionModeActions` renders count and action states correctly.
+- [ ] `BulkDeleteDialog` requires typed count before enabling confirm.
+- [ ] `useBulkDeleteConfirm` opens dialog and closes after confirm.
+
+### Card behavior
+- [ ] `NoteCard` checkbox visibility and toggle behavior in/ out of selection mode.
+- [ ] `NoteSearchItem` mirrors selection behavior and suppresses chunk navigation in selection mode.
+- [ ] Long press entry works for touch pointers in both card types.
+
+### Mode-switch hint components
+- [ ] `AiSearchToggle`: blocked hint appears on desktop hover.
+- [ ] `AiSearchToggle`: blocked hint toggles on mobile tap and closes on outside tap.
+- [ ] `AiSearchViewTabs`: same desktop/mobile hint behavior.
+- [ ] AI info tooltip on mobile does not auto-close immediately after tap.
 
 ## Integration Tests
 
-- [ ] Enter panel selection mode on FTS card and see checkboxes.
-- [ ] Enter panel selection mode on AI Notes card and see checkboxes.
-- [ ] `Delete (N)` calls `deleteNotesByIds` with selected IDs.
-- [ ] After delete, FTS path calls `resetFtsResults` and refetches.
-- [ ] After delete, AI Notes path calls `resetAIResults` and refetches.
-- [ ] Main-list selection mode remains independent from panel mode.
-- [ ] Mode switch controls are disabled while panel selection is active.
+- [ ] Enter panel selection mode from FTS results and manage selection actions.
+- [ ] Enter panel selection mode from AI Notes results and manage selection actions.
+- [ ] Panel delete flow opens confirm dialog and calls `deleteNotesByIds` only after confirm.
+- [ ] Sidebar delete flow uses the same confirm dialog behavior.
+- [ ] After delete in FTS/tag-only paths, `resetFtsResults()` path is used.
+- [ ] After delete in AI Notes path, `resetAIResults()` path is used.
+- [ ] Selection mode auto-exits when selected count reaches `0`.
+- [ ] Main sidebar selection state remains independent from panel selection state.
+- [ ] Mode switch controls are blocked during panel selection mode.
+- [ ] Tag filtering matrix works end-to-end:
+  - query only
+  - tag only
+  - query + tag
 
 ## Manual Testing
 
-- [ ] Desktop: hover card (FTS + AI Notes) shows checkbox; click enters selection mode.
-- [ ] Mobile: long press card (FTS + AI Notes) enters selection mode.
-- [ ] Checkbox click does not navigate when selecting.
-- [ ] `Delete (N)` shows spinner while request is in flight.
-- [ ] Deleted notes disappear from panel and main list after refetch.
-- [ ] Disable network -> delete -> re-enable and verify queued deletion sync.
-- [ ] AI Chunks tab has no selection UI and remains non-selectable.
+- [ ] Desktop: hover card shows checkbox in sidebar, FTS, and AI Notes views.
+- [ ] Mobile: long press enters selection mode in sidebar, FTS, and AI Notes views.
+- [ ] In selection mode, card body toggles selection instead of navigation.
+- [ ] Confirm dialog blocks delete until typed count matches selected count.
+- [ ] Deleted notes disappear from sidebar and panel after refetch.
+- [ ] Offline delete queues operations and shows pending state in both surfaces.
+- [ ] AI Chunks view stays non-selectable and does not show selection UI.
+- [ ] Blocked mode-switch hint:
+  - desktop hover works
+  - mobile tap/open/close works
 
 ## Performance
 
-- Bulk delete of 50 notes completes under acceptable latency on normal connection.
+- [ ] Bulk delete of 50 notes remains within acceptable latency on normal connection.
+- [ ] Load-more remains responsive in FTS and AI Notes views.
 
 ## Risks to Re-check
 
-- Main-list bulk delete regression after refactor to `deleteNotesByIds`.
-- Stale FTS/AI accumulated results after delete and refetch.
-- Offline queued deletions reflected consistently in visible lists.
+- Regression in sidebar bulk delete after shared-flow refactor.
+- Stale accumulated FTS/AI results after delete+refetch.
+- Mobile-specific tooltip interactions across browsers.
+- Keyboard accessibility of disabled mode-switch controls (follow-up hardening item).

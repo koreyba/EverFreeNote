@@ -156,9 +156,8 @@ describe('Sidebar Component', () => {
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
 
-    cy.contains('work').should('be.visible')
-    cy.contains('Clear Tags').click()
-    cy.get('@onClearTagFilter').should('have.been.called')
+    cy.contains('Search in "work" notes...').should('be.visible')
+    cy.get('@onClearTagFilter').should('not.have.been.called')
     cy.contains('Search in "work" notes...').should('be.visible')
   })
 

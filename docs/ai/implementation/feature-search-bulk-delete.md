@@ -8,94 +8,124 @@ description: Technical implementation notes, patterns, and code guidelines
 
 ## Development Setup
 
-No new dependencies or environment changes required.
+No new dependencies or environment changes are required.
 
 ## Code Structure
 
-Files to change:
-- `ui/web/hooks/useNoteAppController.ts` — expose `deleteNotesByIds`
-- `ui/web/hooks/useNoteBulkActions.ts` — delegate to `deleteNotesByIds`
-- `ui/web/hooks/useNoteSearch.ts` — expose `resetFtsResults` callback
-- `ui/web/components/features/notes/SearchResultsPanel.tsx` — add local selection state + UI
+Primary files:
+- `ui/web/hooks/useNoteBulkActions.ts`
+- `ui/web/hooks/useNoteAppController.ts`
+- `ui/web/hooks/useNoteSearch.ts`
+- `ui/web/hooks/useAIPaginatedSearch.ts`
+- `ui/web/hooks/useLongPress.ts`
+- `ui/web/hooks/useBulkDeleteConfirm.ts`
+- `ui/web/components/features/notes/SearchResultsPanel.tsx`
+- `ui/web/components/features/notes/SelectionModeActions.tsx`
+- `ui/web/components/features/notes/BulkDeleteDialog.tsx`
+- `ui/web/components/features/search/AiSearchToggle.tsx`
+- `ui/web/components/features/search/AiSearchViewTabs.tsx`
+- `ui/web/components/features/search/NoteSearchResults.tsx`
+- `ui/web/components/features/search/NoteSearchItem.tsx`
+- `ui/web/components/features/notes/NoteCard.tsx`
 
 ## Implementation Notes
 
-### Core Features
+### Shared delete helper
 
-**`deleteNotesByIds(ids: string[])`**
-Extract from `useNoteBulkActions.deleteSelectedNotes`. Signature:
+`useNoteBulkActions` owns `deleteNotesByIds(ids)` and returns a structured result:
+
 ```ts
-deleteNotesByIds: (ids: string[]) => Promise<void>
-```
-Responsibilities: offline check → batch enqueue or `Promise.allSettled` delete → toast → `queryClient.invalidateQueries({ queryKey: ['notes'] })` → `setSelectedNote(null)`.
-The existing `deleteSelectedNotes` becomes a thin wrapper: `await deleteNotesByIds(Array.from(selectedNoteIds))` + `exitSelectionMode()`.
-
-**`resetFtsResults()` in `useNoteSearch`**
-```ts
-const resetFtsResults = useCallback(() => {
-    setFtsOffset(0)
-    setFtsAccumulatedResults([])
-    lastProcessedDataRef.current = ''
-}, [])
-```
-Called after panel bulk delete succeeds to ensure the FTS refetch produces a clean first page without the deleted notes appearing in stale accumulated state.
-
-**Panel local selection state**
-```ts
-const [panelSelectionMode, setPanelSelectionMode] = useState(false)
-const [panelSelectedIds, setPanelSelectedIds] = useState<Set<string>>(new Set())
-const [panelBulkDeleting, setPanelBulkDeleting] = useState(false)
-
-const togglePanelSelection = (id: string) => {
-    setPanelSelectedIds(prev => {
-        const next = new Set(prev)
-        next.has(id) ? next.delete(id) : next.add(id)
-        return next
-    })
-}
-
-const exitPanelSelectionMode = () => {
-    setPanelSelectionMode(false)
-    setPanelSelectedIds(new Set())
-}
-
-const handlePanelBulkDelete = async () => {
-    if (!panelSelectedIds.size) return
-    setPanelBulkDeleting(true)
-    try {
-        await controller.deleteNotesByIds(Array.from(panelSelectedIds))
-        exitPanelSelectionMode()
-        controller.resetFtsResults()   // clears accumulated, triggers clean refetch
-    } finally {
-        setPanelBulkDeleting(false)
-    }
+type DeleteNotesByIdsResult = {
+  total: number
+  failed: number
+  queuedOffline: boolean
 }
 ```
 
-### Patterns & Best Practices
+Flow:
+1. Validate `ids`.
+2. Offline path: queue delete mutations and update offline overlay.
+3. Online path: `Promise.allSettled` over `deleteNoteMutation.mutateAsync`.
+4. Invalidate both query families:
+   - `['notes']`
+   - `['aiSearch']`
+5. Clear selected note reference.
 
-- Do **not** reuse `useNoteSelection` state for the panel. The two selection contexts are independent by design.
-- Selection mode toggle button should only be visible when `showFTSResults` is true (not during AI search, not during loading).
-- "Delete (N)" button should be visually destructive (red/destructive variant) and show a spinner while `panelBulkDeleting` is true.
-- Keep the panel open after deletion — let the refetch update results. Do not close or navigate away.
+`deleteSelectedNotes` (sidebar path) is a thin wrapper around this helper and exits sidebar selection mode after completion.
+
+### Search panel selection flow
+
+`SearchResultsPanel` owns panel-local state:
+
+```ts
+panelSelectionMode
+panelSelectedIds
+panelBulkDeleting
+```
+
+Behavior:
+- Enter selection mode by selecting a card (checkbox or long press).
+- Use shared `SelectionModeActions` for `Select all`, `Delete (N)`, `Cancel`.
+- Deletion is confirm-first via `useBulkDeleteConfirm` + `BulkDeleteDialog`.
+- After confirmed delete:
+  - AI Notes view -> `resetAIResults()`
+  - FTS or tag-only view -> `resetFtsResults()`
+- Exit panel selection mode only when `failed === 0`.
+- Auto-exit selection mode if selected count reaches `0`.
+
+### Tag and query behavior
+
+`useNoteSearch` supports three explicit scenarios:
+- query only
+- tag only
+- query + tag
+
+Tag-only path uses `useNotesQuery({ searchQuery: '', selectedTag })` and exposes pagination helpers for `NoteList`.
+
+### AI pagination behavior
+
+`useAIPaginatedSearch` mirrors FTS accumulation:
+- offset-based growth of requested `topK`
+- accumulated `noteGroups`
+- `aiHasMore`, `aiLoadingMore`
+- `resetAIResults`, `loadMoreAI`
+
+`useNoteAppController` exposes bridge callbacks via `registerAIPaginationControls`.
+
+### Cross-device blocked-switch hint
+
+When panel selection mode is active:
+- `AiSearchToggle` and `AiSearchViewTabs` are disabled.
+- Hint text is `Remove selection to switch`.
+- Desktop: tooltip on hover.
+- Mobile: tooltip on tap toggle + outside tap close.
+
+## Patterns & Best Practices
+
+- Keep sidebar selection state and panel selection state independent.
+- Reuse `SelectionModeActions` and `BulkDeleteDialog` across surfaces.
+- Keep panel open after delete and rely on cache invalidation + reset callbacks.
+- Preserve tag filter context after delete.
 
 ## Integration Points
 
-- `SearchResultsPanel` receives `controller: NoteAppController` — all new controller methods come through this existing prop.
-- `NoteList` FTS path already accepts `selectionMode`, `selectedIds`, `onToggleSelect` — no changes needed in `NoteList`.
-- Cache invalidation in `deleteNotesByIds` covers both `useNotesQuery` and `useSearchNotes` via the `['notes']` prefix.
+- Controller API consumed by `NotesShell` and `SearchResultsPanel`.
+- `NoteList` handles both regular and FTS list rendering with selection props.
+- `NoteSearchResults` handles AI Notes list with selection + pagination props.
 
 ## Error Handling
 
-- Use the same `toast.error` / `toast.success` pattern as existing bulk delete.
-- On failure, keep selection mode active so user can retry.
-- `panelBulkDeleting` spinner prevents double-submit.
+- Partial delete failures keep panel selection state for retry.
+- Shared toast patterns for success and failures are used in the helper.
+- `panelBulkDeleting` and `bulkDeleting` prevent repeated submissions.
 
 ## Performance Considerations
 
-- No additional queries. Invalidation triggers one refetch per active query — same as existing behaviour.
-- `resetFtsResults` resets to page 1; re-fetching page 1 is a single DB request.
+- Delete requests remain batched.
+- Query invalidation is key-based, not item-based.
+- FTS/AI resets force clean first-page repopulation after delete.
 
 ## Security Notes
 
-- No new auth surface. Deletion goes through the existing `deleteNoteMutation` which is scoped to the authenticated user's notes.
+- No new auth surface.
+- Deletion still goes through existing authenticated mutations.
