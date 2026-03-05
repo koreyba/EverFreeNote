@@ -26,6 +26,8 @@ import { NoteSearchResults } from "@/components/features/search/NoteSearchResult
 import { ChunkSearchResults } from "@/components/features/search/ChunkSearchResults"
 import { NoteList } from "@/components/features/notes/NoteList"
 import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
+import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
+import { useBulkDeleteConfirm } from "@ui/web/hooks/useBulkDeleteConfirm"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { cn } from "@ui/web/lib/utils"
 
@@ -56,10 +58,17 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         ftsData,
         ftsHasMore,
         ftsLoadingMore,
+        showTagOnlyResults,
+        tagOnlyResults,
+        tagOnlyTotal,
+        tagOnlyLoading,
+        tagOnlyHasMore,
+        tagOnlyLoadingMore,
         handleSelectNote,
         handleTagClick,
         handleSearchResultClick,
-        loadMoreFts
+        loadMoreFts,
+        loadMoreTagOnly,
     } = controller
 
     const [searchDraft, setSearchDraft] = useState(searchQuery)
@@ -90,17 +99,23 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
     const showAIResults = isAIEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
     const selectionSwitchTitle = "Remove selection to switch"
-    const canSelectInPanel = showFTSResults || (showAIResults && viewMode === 'note')
+    const canSelectInPanel =
+        showFTSResults ||
+        showTagOnlyResults ||
+        (showAIResults && viewMode === 'note')
 
     const visibleResultIds = React.useMemo(() => {
         if (showAIResults && viewMode === 'note') {
             return noteGroups.map((group) => group.noteId)
         }
+        if (showTagOnlyResults) {
+            return tagOnlyResults.map((note) => note.id)
+        }
         if (showFTSResults && ftsData) {
             return ftsData.results.map((note) => note.id)
         }
         return []
-    }, [showAIResults, viewMode, noteGroups, showFTSResults, ftsData])
+    }, [showAIResults, viewMode, noteGroups, showTagOnlyResults, tagOnlyResults, showFTSResults, ftsData])
 
     const selectedCount = panelSelectedIds.size
     const allVisibleSelected =
@@ -157,6 +172,13 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         viewMode,
         exitPanelSelectionMode,
     ])
+
+    const {
+        isDialogOpen: panelBulkDialogOpen,
+        setIsDialogOpen: setPanelBulkDialogOpen,
+        requestDelete: requestPanelBulkDelete,
+        confirmDelete: handleConfirmPanelBulkDelete,
+    } = useBulkDeleteConfirm(handlePanelDelete)
 
     const handleSearchChange = (value: string) => {
         setSearchDraft(value)
@@ -297,7 +319,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 <SelectionModeActions
                     selectedCount={selectedCount}
                     onSelectAll={selectAllVisibleInPanel}
-                    onDelete={() => void handlePanelDelete()}
+                    onDelete={requestPanelBulkDelete}
                     onCancel={exitPanelSelectionMode}
                     selectingAllDisabled={allVisibleSelected || !visibleResultIds.length || panelBulkDeleting}
                     deletingDisabled={!selectedCount || panelBulkDeleting}
@@ -310,7 +332,9 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         const visibleCount =
             showAIResults && viewMode === 'note'
                 ? noteGroups.length
-                : (typeof ftsData?.total === 'number' ? ftsData.total : (ftsData?.results.length ?? 0))
+                : showTagOnlyResults
+                    ? tagOnlyTotal
+                    : (typeof ftsData?.total === 'number' ? ftsData.total : (ftsData?.results.length ?? 0))
 
         return (
             <div className="flex items-center justify-between px-3 py-2 text-sm text-muted-foreground border-b bg-card/70">
@@ -496,6 +520,20 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                         onSearchResultClick={handleSearchResultClick}
                         ftsHeader={false}
                     />
+                ) : showTagOnlyResults ? (
+                    <NoteList
+                        notes={tagOnlyResults}
+                        isLoading={tagOnlyLoading}
+                        selectedNoteId={controller.selectedNote?.id}
+                        selectionMode={panelSelectionMode}
+                        selectedIds={panelSelectedIds}
+                        onToggleSelect={(note) => togglePanelSelection(note.id)}
+                        onSelectNote={(note) => handleSelectNote(note)}
+                        onTagClick={handleTagClick}
+                        onLoadMore={loadMoreTagOnly}
+                        hasMore={tagOnlyHasMore}
+                        isFetchingNextPage={tagOnlyLoadingMore}
+                    />
                 ) : (
                     <div className="flex flex-col items-center gap-3 py-14 px-6 text-center">
                         <div className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center">
@@ -520,6 +558,14 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                     isResizing && "bg-primary"
                 )}
                 onPointerDown={handlePointerDown}
+            />
+
+            <BulkDeleteDialog
+                open={panelBulkDialogOpen}
+                onOpenChange={setPanelBulkDialogOpen}
+                count={selectedCount}
+                onConfirm={() => void handleConfirmPanelBulkDelete()}
+                loading={panelBulkDeleting}
             />
         </div>
     )

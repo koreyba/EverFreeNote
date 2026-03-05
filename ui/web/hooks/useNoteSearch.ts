@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 
-import { useSearchNotes } from './useNotesQuery'
+import { useFlattenedNotes, useNotesQuery, useSearchNotes } from './useNotesQuery'
 import { useInfiniteScroll } from './useInfiniteScroll'
 import type { SearchResult } from '@core/types/domain'
 import { computeFtsHasMore, computeFtsTotal } from '@core/services/ftsPagination'
@@ -123,6 +123,28 @@ export function useNoteSearch(userId: string | undefined) {
         !!ftsData &&
         !ftsData.error
 
+    // -- Tag-only mode (no text query, only selected tag) --
+    const showTagOnlyResults = Boolean(filterByTag) && ftsSearchQuery.trim().length < SEARCH_CONFIG.MIN_QUERY_LENGTH
+    const tagOnlyQuery = useNotesQuery({
+        userId,
+        searchQuery: '',
+        selectedTag: filterByTag,
+        enabled: Boolean(userId) && showTagOnlyResults,
+    })
+    const tagOnlyResults = useFlattenedNotes(tagOnlyQuery)
+    const tagOnlyTotal = useMemo(() => {
+        const pages = tagOnlyQuery.data?.pages
+        if (pages?.length && typeof pages[0]?.totalCount === 'number') {
+            return pages[0].totalCount
+        }
+        return tagOnlyResults.length
+    }, [tagOnlyQuery.data?.pages, tagOnlyResults.length])
+
+    const loadMoreTagOnly = useCallback(() => {
+        if (!tagOnlyQuery.hasNextPage || tagOnlyQuery.isFetchingNextPage) return
+        void tagOnlyQuery.fetchNextPage()
+    }, [tagOnlyQuery])
+
     const aggregatedFtsData = showFTSResults ? {
         ...ftsData,
         results: ftsAccumulatedResults,
@@ -160,5 +182,14 @@ export function useNoteSearch(userId: string | undefined) {
         loadMoreFts: loadMoreFtsCallback,
         ftsSearchResult,
         resetFtsResults,
+
+        // Tag-only Data
+        showTagOnlyResults,
+        tagOnlyResults,
+        tagOnlyTotal,
+        tagOnlyLoading: tagOnlyQuery.isLoading,
+        tagOnlyHasMore: Boolean(tagOnlyQuery.hasNextPage),
+        tagOnlyLoadingMore: tagOnlyQuery.isFetchingNextPage,
+        loadMoreTagOnly,
     }
 }

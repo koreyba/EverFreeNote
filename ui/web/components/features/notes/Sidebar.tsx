@@ -14,6 +14,7 @@ import { WordPressSettingsDialog } from "@/components/features/wordpress/WordPre
 import { ApiKeysSettingsDialog } from "@/components/features/settings/ApiKeysSettingsDialog"
 import { User } from "@supabase/supabase-js"
 import { cn } from "@ui/web/lib/utils"
+import { useBulkDeleteConfirm } from "@ui/web/hooks/useBulkDeleteConfirm"
 
 interface SidebarProps {
   user: User
@@ -71,7 +72,6 @@ export function Sidebar({
   className,
   "data-testid": dataTestId
 }: SidebarProps) {
-  const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
   const [wordPressSettingsOpen, setWordPressSettingsOpen] = useState(false)
   const [apiKeysOpen, setApiKeysOpen] = useState(false)
@@ -80,10 +80,12 @@ export function Sidebar({
     ? notesDisplayed > 0 && selectedCount >= notesDisplayed
     : false
 
-  const handleBulkConfirm = async () => {
-    await onBulkDelete()
-    setBulkDialogOpen(false)
-  }
+  const {
+    isDialogOpen: bulkDialogOpen,
+    setIsDialogOpen: setBulkDialogOpen,
+    requestDelete: requestBulkDelete,
+    confirmDelete: handleBulkConfirm,
+  } = useBulkDeleteConfirm(onBulkDelete)
 
   const handleDeleteAccount = async () => {
     await onDeleteAccount()
@@ -154,7 +156,7 @@ export function Sidebar({
           <SelectionModeActions
             selectedCount={selectedCount}
             onSelectAll={onSelectAll}
-            onDelete={() => setBulkDialogOpen(true)}
+            onDelete={requestBulkDelete}
             onCancel={onExitSelectionMode}
             selectingAllDisabled={!hasVisibleNotes || allVisibleSelected || bulkDeleting}
             deletingDisabled={selectedCount === 0 || bulkDeleting}
@@ -239,7 +241,7 @@ export function Sidebar({
         open={bulkDialogOpen}
         onOpenChange={setBulkDialogOpen}
         count={selectedCount}
-        onConfirm={handleBulkConfirm}
+        onConfirm={() => void handleBulkConfirm()}
         loading={bulkDeleting}
       />
       <DeleteAccountDialog
