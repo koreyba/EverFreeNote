@@ -110,13 +110,13 @@ export function useAIPaginatedSearch({
   const [aiAccumulatedResults, setAiAccumulatedResults] = useState<RagNoteGroup[]>([])
 
   const lastProcessedDataRef = useRef<string>('')
-  const searchIdentityRef = useRef<string>('')
 
   const trimmedQuery = query.trim()
   const queryEnabled = isEnabled && trimmedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH
   const searchIdentity = `${trimmedQuery}::${preset}::${filterTag ?? ''}::${isEnabled}`
+  const [committedIdentity, setCommittedIdentity] = useState(searchIdentity)
   const effectiveAiOffset =
-    searchIdentityRef.current && searchIdentityRef.current !== searchIdentity ? 0 : aiOffset
+    committedIdentity !== searchIdentity ? 0 : aiOffset
 
   const requestedTopK = useMemo(
     () => Math.min(AI_SEARCH_TOP_K_MAX, pageSize + effectiveAiOffset),
@@ -131,11 +131,11 @@ export function useAIPaginatedSearch({
 
   // Reset pagination whenever the effective search identity changes.
   useEffect(() => {
-    if (searchIdentityRef.current === searchIdentity) return
-    searchIdentityRef.current = searchIdentity
+    if (committedIdentity === searchIdentity) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCommittedIdentity(searchIdentity)
     resetAIResults()
-  }, [searchIdentity, resetAIResults])
+  }, [committedIdentity, searchIdentity, resetAIResults])
 
   const result = useQuery({
     queryKey: ['aiSearch', trimmedQuery, preset, filterTag, requestedTopK],
