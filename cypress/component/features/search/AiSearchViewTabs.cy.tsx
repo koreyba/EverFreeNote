@@ -76,4 +76,27 @@ describe('AiSearchViewTabs', () => {
     cy.contains('Outside').click()
     cy.contains('Remove selection to switch').should('not.exist')
   })
+
+  it('shows disabled hint when tapping a disabled tab directly on mobile', () => {
+    mockMatchMedia(false)
+    const onChange = cy.stub().as('onChange')
+
+    cy.mount(
+      <div>
+        <AiSearchViewTabs
+          value="note"
+          onChange={onChange}
+          disabled
+          disabledTitle="Remove selection to switch"
+        />
+      </div>
+    )
+
+    cy.get('[data-testid="ai-search-view-tab-chunk"]')
+      .trigger('pointerdown', { force: true, pointerType: 'touch' })
+    cy.contains('Remove selection to switch').should('exist')
+
+    cy.get('[data-testid="ai-search-view-tab-chunk"]').click({ force: true })
+    cy.get('@onChange').should('not.have.been.called')
+  })
 })

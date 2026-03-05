@@ -41,6 +41,7 @@ const HookHarness = ({ query, preset, filterTag, isEnabled }: HookHarnessProps) 
       <div data-cy="first-score">{result.noteGroups[0]?.topScore?.toFixed(2) ?? 'none'}</div>
       <div data-cy="first-title">{result.noteGroups[0]?.noteTitle ?? 'none'}</div>
       <div data-cy="first-tags">{result.noteGroups[0]?.noteTags?.join(',') ?? 'none'}</div>
+      <div data-cy="first-snippet">{result.noteGroups[0]?.chunks[0]?.content ?? 'none'}</div>
       <div data-cy="ids">{result.noteGroups.map((group) => group.noteId).join(',')}</div>
       <button type="button" data-cy="load-more" onClick={result.loadMoreAI}>
         Load More
@@ -259,6 +260,47 @@ describe('useAIPaginatedSearch', () => {
 
     cy.get('[data-cy="first-title"]').should('contain', 'Updated title')
     cy.get('[data-cy="first-tags"]').should('contain', 'fresh,tag')
+    cy.get('@invoke').its('callCount').should('eq', 2)
+  })
+
+  it('updates displayed snippet when refetch keeps same ids but chunk content changes', () => {
+    let requestCount = 0
+    const invoke = cy.stub().as('invoke').callsFake(() => {
+      requestCount += 1
+      return Promise.resolve({
+        data: {
+          chunks: [
+            {
+              noteId: 'note-1',
+              noteTitle: 'Stable title',
+              noteTags: ['stable'],
+              chunkIndex: 0,
+              charOffset: 0,
+              content: requestCount === 1 ? 'old snippet text' : 'new snippet text',
+              similarity: 0.81,
+            } satisfies RagChunk,
+          ],
+        },
+        error: null,
+      })
+    })
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    mountHarness(
+      <HookHarness
+        query="ontology"
+        preset="strict"
+        filterTag={null}
+        isEnabled
+      />,
+      supabase
+    )
+
+    cy.get('[data-cy="first-snippet"]').should('contain', 'old snippet text')
+    cy.get('[data-cy="refetch"]').click()
+    cy.get('[data-cy="first-snippet"]').should('contain', 'new snippet text')
     cy.get('@invoke').its('callCount').should('eq', 2)
   })
 

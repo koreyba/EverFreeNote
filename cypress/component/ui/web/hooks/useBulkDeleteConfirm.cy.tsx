@@ -66,4 +66,32 @@ describe('useBulkDeleteConfirm', () => {
     cy.then(() => resolveConfirm?.())
     cy.get('[data-cy="open"]').should('contain', 'false')
   })
+
+  it('resets in-flight guard after rejected confirm and allows retry', () => {
+    cy.on('uncaught:exception', (error) => {
+      if (error.message.includes('failed once')) return false
+      return undefined
+    })
+
+    let shouldReject = true
+    const onConfirm = cy.stub().as('onConfirm').callsFake(() => {
+      if (shouldReject) {
+        shouldReject = false
+        return Promise.reject(new Error('failed once'))
+      }
+      return Promise.resolve()
+    })
+
+    cy.mount(<TestHarness onConfirmDelete={onConfirm} />)
+
+    cy.get('[data-cy="request"]').click()
+    cy.get('[data-cy="confirm"]').click()
+    cy.get('@onConfirm').should('have.been.calledOnce')
+    cy.get('[data-cy="open"]').should('contain', 'false')
+
+    cy.get('[data-cy="request"]').click()
+    cy.get('[data-cy="confirm"]').click()
+    cy.get('@onConfirm').should('have.been.calledTwice')
+    cy.get('[data-cy="open"]').should('contain', 'false')
+  })
 })
