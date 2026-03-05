@@ -47,4 +47,23 @@ describe('useBulkDeleteConfirm', () => {
 
     cy.get('[data-cy="open"]').should('contain', 'false')
   })
+
+  it('prevents duplicate confirm calls while delete is in progress', () => {
+    let resolveConfirm: (() => void) | undefined
+    const pending = new Promise<void>((resolve) => {
+      resolveConfirm = resolve
+    })
+    const onConfirm = cy.stub().as('onConfirm').callsFake(() => pending)
+
+    cy.mount(<TestHarness onConfirmDelete={onConfirm} />)
+
+    cy.get('[data-cy="request"]').click()
+    cy.get('[data-cy="confirm"]').click()
+    cy.get('[data-cy="confirm"]').click()
+
+    cy.get('@onConfirm').should('have.been.calledOnce')
+
+    cy.then(() => resolveConfirm?.())
+    cy.get('[data-cy="open"]').should('contain', 'false')
+  })
 })

@@ -49,8 +49,8 @@ describe('AiSearchViewTabs', () => {
       />
     )
 
-    cy.contains('button', 'Notes').should('be.disabled')
-    cy.contains('button', 'Chunks').should('be.disabled')
+    cy.contains('button', 'Notes').should('have.attr', 'aria-disabled', 'true')
+    cy.contains('button', 'Chunks').should('have.attr', 'aria-disabled', 'true')
     cy.contains('button', 'Chunks').click({ force: true })
     cy.get('@onChange').should('not.have.been.called')
   })

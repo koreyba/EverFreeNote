@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type MouseEvent, useState } from 'react'
+import { type KeyboardEvent, type MouseEvent, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, ArrowUpRight } from 'lucide-react'
 import InteractiveTag from '@/components/InteractiveTag'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -39,6 +39,7 @@ export function NoteSearchItem({
   onToggleSelect,
 }: NoteSearchItemProps) {
   const [expanded, setExpanded] = useState(false)
+  const containerRef = useRef<HTMLElement>(null)
 
   const topChunk = group.chunks[0]
   const extraChunks = group.chunks.slice(1)
@@ -47,7 +48,16 @@ export function NoteSearchItem({
   const hasActiveSelection = () => {
     if (typeof window === 'undefined') return false
     const selection = window.getSelection()
-    return Boolean(selection && selection.toString().trim().length > 0)
+    if (!selection || selection.rangeCount === 0) return false
+    if (selection.toString().trim().length === 0) return false
+    const container = containerRef.current
+    if (!container) return false
+    const anchorNode = selection.anchorNode
+    const focusNode = selection.focusNode
+    return Boolean(
+      (anchorNode && container.contains(anchorNode)) ||
+        (focusNode && container.contains(focusNode))
+    )
   }
 
   const openChunkInContext = (charOffset: number, chunkLength: number) => {
@@ -89,11 +99,13 @@ export function NoteSearchItem({
       onToggleSelect?.(group.noteId)
       return
     }
+    if (hasActiveSelection()) return
     openChunkInContext(charOffset, chunkLength)
   }
 
   return (
     <article
+      ref={containerRef}
       className={cn(
         'group relative rounded-lg border border-border/60 bg-card border-l-[3px] overflow-hidden transition-all hover:border-primary/30 hover:shadow-sm',
         getAccentClass(group.topScore)

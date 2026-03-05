@@ -45,7 +45,8 @@ description: Technical implementation notes, patterns, and code guidelines
   - Mobile back button (`md:hidden`) and desktop close button (`md:inline-flex`).
   - Width persistence in `localStorage` (`search-panel-width`) with min/max constraints.
   - Desktop-only drag resize handle.
-- Clearing search in the panel resets query state and closes panel.
+- Clearing search in the panel resets query state only; panel close is explicit via Close/Back controls.
+- This behavior follows `docs/ai/requirements/feature-search-results-panel.md` ("Panel visibility logic (REQUIRED)").
 
 ### Patterns & Best Practices
 - Keep regular note-list and FTS/search-result rendering separated by `showFTSResults`.

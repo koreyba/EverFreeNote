@@ -61,31 +61,52 @@ export function AiSearchViewTabs({
     setDisabledHintOpen((prev) => !prev)
   }
 
+  const handleDisabledItemPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!disabled) return
+    event.preventDefault()
+  }
+
+  const handleDisabledItemClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled) return
+    event.preventDefault()
+  }
+
   const tabsControl = (
     <div data-testid="ai-search-view-tabs-trigger" onPointerDown={handleDisabledHintPointerDown}>
       <ToggleGroup
         data-testid="ai-search-view-tabs-group"
         type="single"
         value={value}
-        onValueChange={(v) => { if (v === 'note' || v === 'chunk') onChange(v) }}
+        onValueChange={(v) => {
+          if (disabled) return
+          if (v === 'note' || v === 'chunk') onChange(v)
+        }}
         className="justify-start gap-1"
         aria-label="Result view mode"
       >
         <ToggleGroupItem
           data-testid="ai-search-view-tab-note"
           value="note"
-          className="text-xs h-6 px-2"
+          className="text-xs h-6 px-2 data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
           aria-label="Note view"
-          disabled={disabled}
+          aria-disabled={disabled}
+          data-disabled={disabled ? 'true' : undefined}
+          tabIndex={disabled ? -1 : 0}
+          onPointerDown={handleDisabledItemPointerDown}
+          onClick={handleDisabledItemClick}
         >
           Notes
         </ToggleGroupItem>
         <ToggleGroupItem
           data-testid="ai-search-view-tab-chunk"
           value="chunk"
-          className="text-xs h-6 px-2"
+          className="text-xs h-6 px-2 data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
           aria-label="Chunk view"
-          disabled={disabled}
+          aria-disabled={disabled}
+          data-disabled={disabled ? 'true' : undefined}
+          tabIndex={disabled ? -1 : 0}
+          onPointerDown={handleDisabledItemPointerDown}
+          onClick={handleDisabledItemClick}
         >
           Chunks
         </ToggleGroupItem>

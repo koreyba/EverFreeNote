@@ -54,7 +54,7 @@ export function NoteSearchResults({
           onToggleSelect={onToggleSelect}
         />
       ))}
-      {(loadingMore || hasMore) && (
+      {(loadingMore || (hasMore && !!onLoadMore)) && (
         <div className="flex justify-center py-2">
           {loadingMore ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -62,7 +62,7 @@ export function NoteSearchResults({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onLoadMore?.()}
+              onClick={onLoadMore}
               className="text-xs text-muted-foreground"
             >
               Load more...

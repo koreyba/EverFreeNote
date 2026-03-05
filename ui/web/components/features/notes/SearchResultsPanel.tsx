@@ -471,7 +471,12 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto min-h-0 bg-muted/10 relative">
+            <div
+                className={cn(
+                    "flex-1 min-h-0 bg-muted/10 relative",
+                    showFTSResults || showTagOnlyResults ? "overflow-hidden" : "overflow-y-auto"
+                )}
+            >
                 {renderResultsHeader()}
                 {showAIResults ? (
                     <div className="px-3 py-2">
