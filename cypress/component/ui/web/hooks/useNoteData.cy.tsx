@@ -12,7 +12,6 @@ type SinonStub = any
 interface TestComponentProps {
   offlineOverlay?: CachedNote[]
   selectedNoteIds?: Set<string>
-  showFTSResults?: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   aggregatedFtsData?: any
 }
@@ -20,7 +19,6 @@ interface TestComponentProps {
 const TestComponent = ({
   offlineOverlay = [],
   selectedNoteIds = new Set(),
-  showFTSResults = false,
   aggregatedFtsData = undefined,
 }: TestComponentProps) => {
   const notesQuery = useNotesQuery({ userId: 'test-user', searchQuery: '', selectedTag: null, enabled: true })
@@ -30,7 +28,6 @@ const TestComponent = ({
     offlineOverlay,
     aggregatedFtsData,
     selectedNoteIds,
-    showFTSResults,
   })
 
   return (
@@ -152,7 +149,7 @@ describe('useNoteData', () => {
     cy.get('[data-cy="selected-count"]').should('contain', '3')
   })
 
-  it('uses notes.length for notesDisplayed when showFTSResults is false', () => {
+  it('uses notes.length for notesDisplayed', () => {
     const serverNotes = [
       { id: 'note-1', title: 'Note 1', description: '', tags: [], user_id: 'test-user', created_at: '2024-01-01', updated_at: '2024-01-01' },
     ]
@@ -161,7 +158,7 @@ describe('useNoteData', () => {
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
         <QueryProvider>
-          <TestComponent showFTSResults={false} />
+          <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
@@ -169,7 +166,7 @@ describe('useNoteData', () => {
     cy.get('[data-cy="notes-displayed"]').should('contain', '1')
   })
 
-  it('uses FTS result count for notesDisplayed when showFTSResults is true', () => {
+  it('keeps merged FTS data while notesDisplayed stays tied to regular notes list', () => {
     const ftsData = {
       results: [
         { id: 'note-1', title: 'Note 1', description: '', tags: [], user_id: 'test-user', created_at: '2024-01-01', updated_at: '2024-01-01', rank: 1, headline: '' },
@@ -184,12 +181,12 @@ describe('useNoteData', () => {
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
         <QueryProvider>
-          <TestComponent showFTSResults aggregatedFtsData={ftsData} />
+          <TestComponent aggregatedFtsData={ftsData} />
         </QueryProvider>
       </SupabaseTestProvider>
     )
 
-    cy.get('[data-cy="notes-displayed"]').should('contain', '2')
+    cy.get('[data-cy="notes-displayed"]').should('contain', '0')
     cy.get('[data-cy="merged-fts-count"]').should('contain', '2')
   })
 
@@ -197,7 +194,7 @@ describe('useNoteData', () => {
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
         <QueryProvider>
-          <TestComponent showFTSResults={false} aggregatedFtsData={undefined} />
+          <TestComponent aggregatedFtsData={undefined} />
         </QueryProvider>
       </SupabaseTestProvider>
     )
@@ -231,7 +228,7 @@ describe('useNoteData', () => {
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase}>
         <QueryProvider>
-          <TestComponent showFTSResults offlineOverlay={overlay} aggregatedFtsData={ftsData} />
+          <TestComponent offlineOverlay={overlay} aggregatedFtsData={ftsData} />
         </QueryProvider>
       </SupabaseTestProvider>
     )

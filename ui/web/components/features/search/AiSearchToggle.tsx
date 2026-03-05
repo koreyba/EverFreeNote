@@ -12,21 +12,33 @@ interface AiSearchToggleProps {
   enabled: boolean
   hasApiKey: boolean
   onChange: (enabled: boolean) => void
+  disabled?: boolean
+  disabledTitle?: string
 }
 
-export function AiSearchToggle({ enabled, hasApiKey, onChange }: AiSearchToggleProps) {
+export function AiSearchToggle({
+  enabled,
+  hasApiKey,
+  onChange,
+  disabled = false,
+  disabledTitle,
+}: AiSearchToggleProps) {
+  const isDisabled = !hasApiKey || disabled
+
   return (
     <TooltipProvider>
       <div className="flex items-center gap-2">
-        {/* Toggle — shows "no API key" tooltip when key is missing */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-2"
+              title={disabled ? disabledTitle : undefined}
+            >
               <Switch
                 id="ai-search-toggle"
                 checked={enabled}
                 onCheckedChange={onChange}
-                disabled={!hasApiKey}
+                disabled={isDisabled}
                 aria-label="Toggle AI RAG Search"
               />
               <Label
@@ -40,12 +52,11 @@ export function AiSearchToggle({ enabled, hasApiKey, onChange }: AiSearchToggleP
           </TooltipTrigger>
           {!hasApiKey && (
             <TooltipContent side="right" className="text-xs">
-              Configure Gemini API key in Settings → API Keys
+              Configure Gemini API key in Settings to API Keys
             </TooltipContent>
           )}
         </Tooltip>
 
-        {/* Help icon — hover on desktop, tap on mobile (Radix handles both) */}
         <Tooltip delayDuration={100}>
           <TooltipTrigger asChild>
             <button

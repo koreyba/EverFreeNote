@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/compon
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
+import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
 import { DeleteAccountDialog } from "@/components/features/account/DeleteAccountDialog"
 import { WordPressSettingsDialog } from "@/components/features/wordpress/WordPressSettingsDialog"
 import { ApiKeysSettingsDialog } from "@/components/features/settings/ApiKeysSettingsDialog"
@@ -24,10 +25,8 @@ interface SidebarProps {
   selectionMode: boolean
   selectedCount: number
   bulkDeleting: boolean
-  onEnterSelectionMode: () => void
   onExitSelectionMode: () => void
   onSelectAll: () => void
-  onClearSelection: () => void
   onBulkDelete: () => void
   filterByTag: string | null
   onClearTagFilter: () => void
@@ -55,10 +54,8 @@ export function Sidebar({
   selectionMode,
   selectedCount,
   bulkDeleting,
-  onEnterSelectionMode,
   onExitSelectionMode,
   onSelectAll,
-  onClearSelection,
   onBulkDelete,
   filterByTag,
   onOpenSearch,
@@ -78,6 +75,10 @@ export function Sidebar({
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
   const [wordPressSettingsOpen, setWordPressSettingsOpen] = useState(false)
   const [apiKeysOpen, setApiKeysOpen] = useState(false)
+  const hasVisibleNotes = typeof notesDisplayed === "number" ? notesDisplayed > 0 : true
+  const allVisibleSelected = typeof notesDisplayed === "number"
+    ? notesDisplayed > 0 && selectedCount >= notesDisplayed
+    : false
 
   const handleBulkConfirm = async () => {
     await onBulkDelete()
@@ -146,35 +147,20 @@ export function Sidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
-        <Button
-          variant={selectionMode ? "secondary" : "outline"}
-          onClick={selectionMode ? onExitSelectionMode : onEnterSelectionMode}
-          className="w-full"
-        >
-          {selectionMode ? "Exit selection" : "Select Notes"}
-        </Button>
         <p className="text-xs text-muted-foreground text-center">
           Notes displayed: {typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of {typeof notesTotal === "number" ? notesTotal : "unknown"}
         </p>
         {selectionMode && (
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={onSelectAll}>
-                Select all
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1" onClick={onClearSelection}>
-                Unselect all
-              </Button>
-            </div>
-            <Button
-              variant="destructive"
-              disabled={selectedCount === 0 || bulkDeleting}
-              className="w-full"
-              onClick={() => setBulkDialogOpen(true)}
-            >
-              {bulkDeleting ? "Deleting..." : `Delete selected${selectedCount > 0 ? ` (${selectedCount})` : ""}`}
-            </Button>
-          </div>
+          <SelectionModeActions
+            selectedCount={selectedCount}
+            onSelectAll={onSelectAll}
+            onDelete={() => setBulkDialogOpen(true)}
+            onCancel={onExitSelectionMode}
+            selectingAllDisabled={!hasVisibleNotes || allVisibleSelected || bulkDeleting}
+            deletingDisabled={selectedCount === 0 || bulkDeleting}
+            deleting={bulkDeleting}
+            className="rounded-md border bg-card/70 backdrop-blur"
+          />
         )}
       </div>
 

@@ -58,6 +58,12 @@ export function useNoteSearch(userId: string | undefined) {
         lastProcessedDataRef.current = ''
     }, [])
 
+    const resetFtsResults = useCallback(() => {
+        setFtsOffset(0)
+        setFtsAccumulatedResults([])
+        lastProcessedDataRef.current = ''
+    }, [])
+
     // -- FTS Query --
 
     const ftsSearchResult = useSearchNotes(ftsSearchQuery, userId, {
@@ -152,6 +158,7 @@ export function useNoteSearch(userId: string | undefined) {
         ftsHasMore,
         ftsAccumulatedResults,
         loadMoreFts: loadMoreFtsCallback,
-        ftsSearchResult
+        ftsSearchResult,
+        resetFtsResults,
     }
 }

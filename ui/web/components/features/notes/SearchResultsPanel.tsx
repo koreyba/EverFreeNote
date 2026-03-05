@@ -16,7 +16,7 @@ import {
 
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { useSearchMode } from "@ui/web/hooks/useSearchMode"
-import { useAISearch } from "@ui/web/hooks/useAISearch"
+import { useAIPaginatedSearch } from "@ui/web/hooks/useAIPaginatedSearch"
 import { AI_SEARCH_MIN_QUERY_LENGTH } from "@core/constants/aiSearch"
 
 import { AiSearchToggle } from "@/components/features/search/AiSearchToggle"
@@ -25,6 +25,7 @@ import { AiSearchViewTabs } from "@/components/features/search/AiSearchViewTabs"
 import { NoteSearchResults } from "@/components/features/search/NoteSearchResults"
 import { ChunkSearchResults } from "@/components/features/search/ChunkSearchResults"
 import { NoteList } from "@/components/features/notes/NoteList"
+import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { cn } from "@ui/web/lib/utils"
 
@@ -56,9 +57,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         ftsHasMore,
         ftsLoadingMore,
         handleSelectNote,
-        selectionMode,
-        selectedNoteIds,
-        toggleNoteSelection,
         handleTagClick,
         handleSearchResultClick,
         loadMoreFts
@@ -66,12 +64,24 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
     const [searchDraft, setSearchDraft] = useState(searchQuery)
     const [aiSearchQuery, setAiSearchQuery] = useState(searchQuery)
+    const [panelSelectionMode, setPanelSelectionMode] = useState(false)
+    const [panelSelectedIds, setPanelSelectedIds] = useState<Set<string>>(new Set())
+    const [panelBulkDeleting, setPanelBulkDeleting] = useState(false)
 
     const debouncedSearch = useDebouncedCallback(controller.handleSearch, 250)
 
     // AI Search state
     const { isAIEnabled, preset, viewMode, setIsAIEnabled, setPreset, setViewMode } = useSearchMode()
-    const { noteGroups, isLoading: aiLoading, error: aiError, refetch: aiRefetch } = useAISearch({
+    const {
+        noteGroups,
+        isLoading: aiLoading,
+        error: aiError,
+        refetch: aiRefetch,
+        aiHasMore,
+        aiLoadingMore,
+        loadMoreAI,
+        resetAIResults,
+    } = useAIPaginatedSearch({
         query: aiSearchQuery,
         preset,
         filterTag: filterByTag,
@@ -79,6 +89,74 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     })
 
     const showAIResults = isAIEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
+    const selectionSwitchTitle = "Remove selection to switch"
+    const canSelectInPanel = showFTSResults || (showAIResults && viewMode === 'note')
+
+    const visibleResultIds = React.useMemo(() => {
+        if (showAIResults && viewMode === 'note') {
+            return noteGroups.map((group) => group.noteId)
+        }
+        if (showFTSResults && ftsData) {
+            return ftsData.results.map((note) => note.id)
+        }
+        return []
+    }, [showAIResults, viewMode, noteGroups, showFTSResults, ftsData])
+
+    const selectedCount = panelSelectedIds.size
+    const allVisibleSelected =
+        visibleResultIds.length > 0 &&
+        visibleResultIds.every((id) => panelSelectedIds.has(id))
+
+    const togglePanelSelection = React.useCallback((id: string) => {
+        setPanelSelectionMode(true)
+        setPanelSelectedIds((prev) => {
+            const next = new Set(prev)
+            if (next.has(id)) {
+                next.delete(id)
+            } else {
+                next.add(id)
+            }
+            return next
+        })
+    }, [])
+
+    const exitPanelSelectionMode = React.useCallback(() => {
+        setPanelSelectionMode(false)
+        setPanelSelectedIds(new Set())
+    }, [])
+
+    const selectAllVisibleInPanel = React.useCallback(() => {
+        if (!visibleResultIds.length) return
+        setPanelSelectionMode(true)
+        setPanelSelectedIds(new Set(visibleResultIds))
+    }, [visibleResultIds])
+
+    const handlePanelDelete = React.useCallback(async () => {
+        if (!selectedCount) return
+        setPanelBulkDeleting(true)
+        try {
+            const result = await controller.deleteNotesByIds(Array.from(panelSelectedIds))
+            if (showAIResults && viewMode === 'note') {
+                controller.resetAIResults()
+            } else {
+                controller.resetFtsResults()
+            }
+            if (result.failed === 0) {
+                exitPanelSelectionMode()
+            }
+        } catch (error) {
+            console.error('Panel bulk delete failed:', error)
+        } finally {
+            setPanelBulkDeleting(false)
+        }
+    }, [
+        selectedCount,
+        controller,
+        panelSelectedIds,
+        showAIResults,
+        viewMode,
+        exitPanelSelectionMode,
+    ])
 
     const handleSearchChange = (value: string) => {
         setSearchDraft(value)
@@ -86,6 +164,13 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             debouncedSearch.call(value)
         }
     }
+
+    useEffect(() => {
+        controller.registerAIPaginationControls({
+            loadMoreAI,
+            resetAIResults,
+        })
+    }, [controller, loadMoreAI, resetAIResults])
 
     const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
@@ -110,7 +195,31 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         controller.handleSearch('')
         setSearchDraft('')
         setAiSearchQuery('')
+        controller.resetAIResults()
+        exitPanelSelectionMode()
     }
+
+    useEffect(() => {
+        if (!panelSelectionMode) return
+        const visible = new Set(visibleResultIds)
+        setPanelSelectedIds((prev) => {
+            const next = new Set(Array.from(prev).filter((id) => visible.has(id)))
+            if (next.size === prev.size) return prev
+            return next
+        })
+    }, [panelSelectionMode, visibleResultIds])
+
+    useEffect(() => {
+        if (panelSelectionMode && selectedCount === 0) {
+            setPanelSelectionMode(false)
+        }
+    }, [panelSelectionMode, selectedCount])
+
+    useEffect(() => {
+        if (!canSelectInPanel && panelSelectionMode) {
+            exitPanelSelectionMode()
+        }
+    }, [canSelectInPanel, panelSelectionMode, exitPanelSelectionMode])
 
     // Provide auto-focus on mount
     const inputRef = useRef<HTMLInputElement>(null)
@@ -179,6 +288,41 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             localStorage.setItem(STORAGE_KEY, panelWidth.toString())
         }
     }, [isResizing, panelWidth])
+
+    const renderResultsHeader = () => {
+        if (!canSelectInPanel) return null
+
+        if (panelSelectionMode) {
+            return (
+                <SelectionModeActions
+                    selectedCount={selectedCount}
+                    onSelectAll={selectAllVisibleInPanel}
+                    onDelete={() => void handlePanelDelete()}
+                    onCancel={exitPanelSelectionMode}
+                    selectingAllDisabled={allVisibleSelected || !visibleResultIds.length || panelBulkDeleting}
+                    deletingDisabled={!selectedCount || panelBulkDeleting}
+                    deleting={panelBulkDeleting}
+                    className="border-b bg-card/70 backdrop-blur"
+                />
+            )
+        }
+
+        const visibleCount =
+            showAIResults && viewMode === 'note'
+                ? noteGroups.length
+                : (typeof ftsData?.total === 'number' ? ftsData.total : (ftsData?.results.length ?? 0))
+
+        return (
+            <div className="flex items-center justify-between px-3 py-2 text-sm text-muted-foreground border-b bg-card/70">
+                <div>
+                    Found: <span className="font-semibold">{visibleCount}</span> {visibleCount === 1 ? 'note' : 'notes'}
+                </div>
+                {typeof ftsData?.executionTime === "number" && !showAIResults && (
+                    <div>{ftsData.executionTime}ms</div>
+                )}
+            </div>
+        )
+    }
 
     return (
         <div
@@ -258,8 +402,21 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 {hasGeminiApiKey && (
                     <div className="flex flex-col gap-2 pt-1 border-t">
                         <div className="flex items-center justify-between pt-1">
-                            <AiSearchToggle enabled={isAIEnabled} hasApiKey={hasGeminiApiKey} onChange={setIsAIEnabled} />
-                            {isAIEnabled && <AiSearchViewTabs value={viewMode} onChange={setViewMode} />}
+                            <AiSearchToggle
+                                enabled={isAIEnabled}
+                                hasApiKey={hasGeminiApiKey}
+                                onChange={setIsAIEnabled}
+                                disabled={panelSelectionMode}
+                                disabledTitle={selectionSwitchTitle}
+                            />
+                            {isAIEnabled && (
+                                <AiSearchViewTabs
+                                    value={viewMode}
+                                    onChange={setViewMode}
+                                    disabled={panelSelectionMode}
+                                    disabledTitle={selectionSwitchTitle}
+                                />
+                            )}
                         </div>
                         {isAIEnabled && <AiSearchPresetSelector value={preset} onChange={setPreset} />}
                     </div>
@@ -267,6 +424,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             </div>
 
             <div className="flex-1 overflow-y-auto min-h-0 bg-muted/10 relative">
+                {renderResultsHeader()}
                 {showAIResults ? (
                     <div className="px-3 py-2">
                         {aiLoading && (
@@ -297,6 +455,12 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                                     onOpenInContext={onOpenInContext}
                                     query={aiSearchQuery}
                                     onTagClick={handleTagClick}
+                                    selectionMode={panelSelectionMode}
+                                    selectedIds={panelSelectedIds}
+                                    onToggleSelect={togglePanelSelection}
+                                    hasMore={aiHasMore}
+                                    loadingMore={aiLoadingMore}
+                                    onLoadMore={controller.loadMoreAI}
                                 />
                             )
                         )}
@@ -306,9 +470,9 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                         notes={[]}
                         isLoading={ftsSearchResult?.isLoading ?? false}
                         selectedNoteId={controller.selectedNote?.id}
-                        selectionMode={selectionMode}
-                        selectedIds={selectedNoteIds}
-                        onToggleSelect={(note) => toggleNoteSelection(note.id)}
+                        selectionMode={panelSelectionMode}
+                        selectedIds={panelSelectedIds}
+                        onToggleSelect={(note) => togglePanelSelection(note.id)}
                         onSelectNote={(note) => handleSelectNote(note)}
                         onTagClick={handleTagClick}
                         onLoadMore={() => { }}
@@ -330,6 +494,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                         ftsLoadingMore={ftsLoadingMore}
                         onLoadMoreFts={loadMoreFts}
                         onSearchResultClick={handleSearchResultClick}
+                        ftsHeader={false}
                     />
                 ) : (
                     <div className="flex flex-col items-center gap-3 py-14 px-6 text-center">

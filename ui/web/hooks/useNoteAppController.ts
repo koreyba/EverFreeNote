@@ -20,6 +20,11 @@ export type EditFormState = {
   tags: string
 }
 
+type AIPaginationControls = {
+  resetAIResults: () => void
+  loadMoreAI: () => void
+}
+
 export function useNoteAppController() {
   // -- Auth --
   const {
@@ -118,7 +123,8 @@ export function useNoteAppController() {
     ftsLoadingMore,
     ftsAccumulatedResults,
     loadMoreFts,
-    ftsSearchResult
+    ftsSearchResult,
+    resetFtsResults,
   } = useNoteSearch(user?.id)
 
   // -- Notes query --
@@ -145,7 +151,6 @@ export function useNoteAppController() {
     offlineOverlay,
     aggregatedFtsData,
     selectedNoteIds,
-    showFTSResults,
   })
 
   // -- Infinite Scroll --
@@ -197,7 +202,7 @@ export function useNoteAppController() {
   })
 
   // -- Bulk actions --
-  const { selectAllVisible, deleteSelectedNotes } = useNoteBulkActions({
+  const { selectAllVisible, deleteSelectedNotes, deleteNotesByIds } = useNoteBulkActions({
     selectedNoteIds,
     isOffline,
     enqueueBatchAndDrainIfOnline,
@@ -209,8 +214,6 @@ export function useNoteAppController() {
     setBulkDeleting,
     setSelectedNote,
     queryClient,
-    showFTSResults,
-    mergedFtsData,
     notes,
     selectAllVisibleCallback,
   })
@@ -251,6 +254,23 @@ export function useNoteAppController() {
     handleSearchResultClick(resolveSearchResult(note))
     setLastSavedAt(null)
   }, [flushPendingEditorSave, handleSearchResultClick, resolveSearchResult, setLastSavedAt, setIsEditing])
+
+  const aiPaginationControlsRef = useRef<AIPaginationControls>({
+    resetAIResults: () => {},
+    loadMoreAI: () => {},
+  })
+
+  const registerAIPaginationControls = useCallback((controls: AIPaginationControls) => {
+    aiPaginationControlsRef.current = controls
+  }, [])
+
+  const resetAIResults = useCallback(() => {
+    aiPaginationControlsRef.current.resetAIResults()
+  }, [])
+
+  const loadMoreAI = useCallback(() => {
+    aiPaginationControlsRef.current.loadMoreAI()
+  }, [])
 
   return {
     registerNoteEditorRef,
@@ -319,7 +339,12 @@ export function useNoteAppController() {
     selectAllVisible,
     clearSelection,
     loadMoreFts,
+    resetFtsResults,
+    loadMoreAI,
+    resetAIResults,
+    registerAIPaginationControls,
     deleteSelectedNotes,
+    deleteNotesByIds,
 
     // Helpers
     invalidateNotes: () => queryClient.invalidateQueries({ queryKey: ['notes'] }),

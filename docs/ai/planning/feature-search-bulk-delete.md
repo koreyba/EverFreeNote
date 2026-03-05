@@ -8,42 +8,42 @@ description: Break down work into actionable tasks and estimate timeline
 
 ## Milestones
 
-- [ ] Milestone 0: AI Notes pagination implemented (load-more, accumulated results)
-- [ ] Milestone 1: Shared delete helper extracted (invalidates all caches), no UX changes
-- [ ] Milestone 2: Selection mode working in SearchResultsPanel (FTS results + AI Notes view)
+- [x] Milestone 0: AI Notes pagination implemented (load-more, accumulated results)
+- [x] Milestone 1: Shared delete helper extracted (invalidates all caches), no UX changes
+- [x] Milestone 2: Selection mode working in SearchResultsPanel (FTS results + AI Notes view)
 - [ ] Milestone 3: Cross-list sync verified, edge cases covered
 
 ## Task Breakdown
 
 ### Phase 0: AI pagination — extend useAISearch
 
-- [ ] **0.1** Create `useAIPaginatedSearch` hook (or extend `useAISearch`) with accumulated results + offset/topK paging, mirroring `useNoteSearch` FTS pattern. State: `aiOffset`, `aiAccumulatedResults`, `aiHasMore`, `aiLoadingMore`. Expose `resetAIResults()` and `loadMoreAI()`.
-- [ ] **0.2** Update `NoteSearchResults` to accept and render `hasMore` / `loadingMore` / `onLoadMore` props (load-more button at bottom, same UX as FTS)
-- [ ] **0.3** Wire new paginated hook into `SearchResultsPanel` AI Notes path, replacing current `useAISearch`
-- [ ] **0.4** Expose `resetAIResults()` and `loadMoreAI()` from `useNoteAppController`
+- [x] **0.1** Create `useAIPaginatedSearch` hook (or extend `useAISearch`) with accumulated results + offset/topK paging, mirroring `useNoteSearch` FTS pattern. State: `aiOffset`, `aiAccumulatedResults`, `aiHasMore`, `aiLoadingMore`. Expose `resetAIResults()` and `loadMoreAI()`.
+- [x] **0.2** Update `NoteSearchResults` to accept and render `hasMore` / `loadingMore` / `onLoadMore` props (load-more button at bottom, same UX as FTS)
+- [x] **0.3** Wire new paginated hook into `SearchResultsPanel` AI Notes path, replacing current `useAISearch`
+- [x] **0.4** Expose `resetAIResults()` and `loadMoreAI()` from `useNoteAppController`
 
 ### Phase 1: Refactor — extract shared delete logic
 
-- [ ] **1.1** Add `deleteNotesByIds(ids: string[]): Promise<void>` to `useNoteAppController` (or expose from `useNoteBulkActions`), encapsulating: offline check, `Promise.allSettled` delete loop, toast, `queryClient.invalidateQueries(['notes'])`, `queryClient.invalidateQueries(['aiSearch'])`, and `setSelectedNote(null)`
-- [ ] **1.2** Refactor existing `deleteSelectedNotes` in `useNoteBulkActions` to call `deleteNotesByIds` — verify main-list bulk delete still works identically
-- [ ] **1.3** Expose `deleteNotesByIds` from controller return value
+- [x] **1.1** Add `deleteNotesByIds(ids: string[]): Promise<void>` to `useNoteAppController` (or expose from `useNoteBulkActions`), encapsulating: offline check, `Promise.allSettled` delete loop, toast, `queryClient.invalidateQueries(['notes'])`, `queryClient.invalidateQueries(['aiSearch'])`, and `setSelectedNote(null)`
+- [x] **1.2** Refactor existing `deleteSelectedNotes` in `useNoteBulkActions` to call `deleteNotesByIds` — verify main-list bulk delete still works identically
+- [x] **1.3** Expose `deleteNotesByIds` from controller return value
 
 ### Phase 2: Selection mode in SearchResultsPanel
 
-- [ ] **2.1** Add local state to `SearchResultsPanel`: `panelSelectionMode`, `panelSelectedIds`, `panelBulkDeleting`
-- [ ] **2.2** Create `useLongPress` hook — pointer events + 500ms timeout, cancels on move/up/leave
-- [ ] **2.3** Update `NoteCard.tsx` — desktop: `opacity-0 group-hover:opacity-100` checkbox (both `compact` and `search` variants); mobile: `useLongPress` on card root triggers `onToggleSelect`. **Applies to main list and FTS results simultaneously.**
-- [ ] **2.4** Update `NoteSearchItem.tsx` — mirror 2.3: same hover checkbox and long-press logic for AI Notes view cards
-- [ ] **2.5** Wire `selectionMode={panelSelectionMode}`, `selectedIds={panelSelectedIds}`, `onToggleSelect` into `NoteList` FTS path; `onToggleSelect` also sets `panelSelectionMode=true`
-- [ ] **2.6** Wire same selection props into `NoteSearchResults` AI Notes path; pass `selectionMode` + `selectedIds` + `onToggleSelect` down to each `NoteSearchItem`
-- [ ] **2.7** Disable `AiSearchToggle` when `panelSelectionMode` is true; add `title="Remove selection to switch"` tooltip on the disabled element
-- [ ] **2.8** Disable AI Notes/Chunks view tabs when `panelSelectionMode` is true; same tooltip
-- [ ] **2.9** Transform results header when `panelSelectionMode` is true: "N selected", "Select all" [disabled if all selected], "Delete (N)" [disabled at 0], "Cancel"
-- [ ] **2.10** Add "Delete (N)" action: call `deleteNotesByIds`, exit panel selection mode, call `resetFtsResults()` (FTS) or `resetAIResults()` (AI Notes) based on active view
+- [x] **2.1** Add local state to `SearchResultsPanel`: `panelSelectionMode`, `panelSelectedIds`, `panelBulkDeleting`
+- [x] **2.2** Create `useLongPress` hook — pointer events + 500ms timeout, cancels on move/up/leave
+- [x] **2.3** Update `NoteCard.tsx` — desktop: `opacity-0 group-hover:opacity-100` checkbox (both `compact` and `search` variants); mobile: `useLongPress` on card root triggers `onToggleSelect`. **Applies to main list and FTS results simultaneously.**
+- [x] **2.4** Update `NoteSearchItem.tsx` — mirror 2.3: same hover checkbox and long-press logic for AI Notes view cards
+- [x] **2.5** Wire `selectionMode={panelSelectionMode}`, `selectedIds={panelSelectedIds}`, `onToggleSelect` into `NoteList` FTS path; `onToggleSelect` also sets `panelSelectionMode=true`
+- [x] **2.6** Wire same selection props into `NoteSearchResults` AI Notes path; pass `selectionMode` + `selectedIds` + `onToggleSelect` down to each `NoteSearchItem`
+- [x] **2.7** Disable `AiSearchToggle` when `panelSelectionMode` is true; add `title="Remove selection to switch"` tooltip on the disabled element
+- [x] **2.8** Disable AI Notes/Chunks view tabs when `panelSelectionMode` is true; same tooltip
+- [x] **2.9** Transform results header when `panelSelectionMode` is true: "N selected", "Select all" [disabled if all selected], "Delete (N)" [disabled at 0], "Cancel"
+- [x] **2.10** Add "Delete (N)" action: call `deleteNotesByIds`, exit panel selection mode, call `resetFtsResults()` (FTS) or `resetAIResults()` (AI Notes) based on active view
 
 ### Phase 3: Cross-list sync and edge cases
 
-- [ ] **3.1** After panel bulk delete, reset `ftsOffset` to 0 and clear `ftsAccumulatedResults` in `useNoteSearch` so the refetch produces a full fresh page (expose a `resetFtsResults()` callback from `useNoteSearch`)
+- [x] **3.1** After panel bulk delete, reset `ftsOffset` to 0 and clear `ftsAccumulatedResults` in `useNoteSearch` so the refetch produces a full fresh page (expose a `resetFtsResults()` callback from `useNoteSearch`)
 - [ ] **3.2** Verify that after deletion the main notes list also updates (React Query invalidation covers `['notes', userId, '', null]`)
 - [ ] **3.3** Verify offline path: queued deletions show `pending` state in both lists
 - [ ] **3.4** Verify empty state: if all FTS or AI Notes results are deleted, panel shows "No results" empty state

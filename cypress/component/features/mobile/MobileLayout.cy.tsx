@@ -68,6 +68,7 @@ describe('Mobile Layout Adaptation', () => {
       selectAllVisible: cy.stub(),
       clearSelection: cy.stub(),
       loadMoreFts: cy.stub(),
+      loadMoreAI: cy.stub(),
       toggleNoteSelection: cy.stub(),
       deleteSelectedNotes: cy.stub(),
       totalNotes: 0,
@@ -84,6 +85,10 @@ describe('Mobile Layout Adaptation', () => {
 
       // Required by controller type (used by NotesShell to register editor ref)
       registerNoteEditorRef: overrides.registerNoteEditorRef ?? cy.stub(),
+      resetFtsResults: overrides.resetFtsResults ?? cy.stub(),
+      resetAIResults: overrides.resetAIResults ?? cy.stub(),
+      registerAIPaginationControls: overrides.registerAIPaginationControls ?? cy.stub(),
+      deleteNotesByIds: overrides.deleteNotesByIds ?? cy.stub().resolves({ total: 0, failed: 0, queuedOffline: false }),
     })
 
     mockSupabase = {

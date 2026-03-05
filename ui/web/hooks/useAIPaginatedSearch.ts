@@ -1,0 +1,204 @@
+import { useQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSupabase } from '@ui/web/providers/SupabaseProvider'
+import {
+  AI_SEARCH_MIN_QUERY_LENGTH,
+  OFFSET_DELTA_THRESHOLD,
+  SEARCH_PRESETS,
+  type SearchPreset,
+} from '@core/constants/aiSearch'
+import type { RagChunk, RagNoteGroup } from '@core/types/ragSearch'
+
+const STALE_TIME_MS = 30_000
+const AI_SEARCH_TOP_K_MAX = 100
+
+function deduplicateChunks(
+  chunks: RagChunk[],
+  maxCount: number
+): { accepted: RagChunk[]; hiddenCount: number } {
+  const accepted: RagChunk[] = []
+  for (const chunk of chunks) {
+    const tooClose = accepted.some(
+      (a) => Math.abs(chunk.charOffset - a.charOffset) < OFFSET_DELTA_THRESHOLD
+    )
+    if (!tooClose) accepted.push(chunk)
+    if (accepted.length >= maxCount) break
+  }
+  return { accepted, hiddenCount: chunks.length - accepted.length }
+}
+
+function groupByNote(chunks: RagChunk[]): RagNoteGroup[] {
+  const map = new Map<string, RagChunk[]>()
+  for (const chunk of chunks) {
+    if (!map.has(chunk.noteId)) map.set(chunk.noteId, [])
+    map.get(chunk.noteId)!.push(chunk)
+  }
+
+  const groups: RagNoteGroup[] = Array.from(map.entries()).map(([noteId, noteChunks]) => {
+    const sorted = [...noteChunks].sort((a, b) => b.similarity - a.similarity)
+    const { accepted, hiddenCount } = deduplicateChunks(sorted, 5)
+    return {
+      noteId,
+      noteTitle: sorted[0].noteTitle,
+      noteTags: sorted[0].noteTags,
+      topScore: sorted[0].similarity,
+      chunks: accepted,
+      hiddenCount,
+    }
+  })
+
+  return groups.sort((a, b) => b.topScore - a.topScore)
+}
+
+interface UseAIPaginatedSearchOptions {
+  query: string
+  preset: SearchPreset
+  filterTag: string | null
+  isEnabled: boolean
+}
+
+interface UseAIPaginatedSearchResult {
+  noteGroups: RagNoteGroup[]
+  isLoading: boolean
+  error: string | null
+  refetch: () => void
+  aiOffset: number
+  aiAccumulatedResults: RagNoteGroup[]
+  aiHasMore: boolean
+  aiLoadingMore: boolean
+  loadMoreAI: () => void
+  resetAIResults: () => void
+}
+
+export function useAIPaginatedSearch({
+  query,
+  preset,
+  filterTag,
+  isEnabled,
+}: UseAIPaginatedSearchOptions): UseAIPaginatedSearchResult {
+  const { supabase } = useSupabase()
+  const { topK: baseTopK, threshold } = SEARCH_PRESETS[preset]
+  const pageSize = Math.max(1, baseTopK)
+
+  const [aiOffset, setAiOffset] = useState(0)
+  const [aiAccumulatedResults, setAiAccumulatedResults] = useState<RagNoteGroup[]>([])
+
+  const lastProcessedDataRef = useRef<string>('')
+  const searchIdentityRef = useRef<string>('')
+
+  const trimmedQuery = query.trim()
+  const queryEnabled = isEnabled && trimmedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH
+
+  const requestedTopK = useMemo(
+    () => Math.min(AI_SEARCH_TOP_K_MAX, pageSize + aiOffset),
+    [pageSize, aiOffset]
+  )
+
+  const resetAIResults = useCallback(() => {
+    setAiOffset(0)
+    setAiAccumulatedResults([])
+    lastProcessedDataRef.current = ''
+  }, [])
+
+  // Reset pagination whenever the effective search identity changes.
+  useEffect(() => {
+    const nextIdentity = `${trimmedQuery}::${preset}::${filterTag ?? ''}::${isEnabled}`
+    if (searchIdentityRef.current === nextIdentity) return
+    searchIdentityRef.current = nextIdentity
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    resetAIResults()
+  }, [trimmedQuery, preset, filterTag, isEnabled, resetAIResults])
+
+  const result = useQuery({
+    queryKey: ['aiSearch', trimmedQuery, preset, filterTag, requestedTopK],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('rag-search', {
+        body: {
+          query: trimmedQuery,
+          topK: requestedTopK,
+          threshold,
+          filterTag: filterTag ?? null,
+        },
+      })
+
+      if (error) throw new Error(error.message ?? 'AI Search failed')
+
+      const chunks = Array.isArray(data?.chunks) ? (data.chunks as RagChunk[]) : []
+      return {
+        chunkCount: chunks.length,
+        groups: groupByNote(chunks),
+      }
+    },
+    enabled: queryEnabled,
+    staleTime: STALE_TIME_MS,
+    retry: 1,
+  })
+
+  useEffect(() => {
+    if (!queryEnabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAiAccumulatedResults([])
+      setAiOffset(0)
+      lastProcessedDataRef.current = ''
+      return
+    }
+    if (!result.data) return
+
+    const dataSignature =
+      `${aiOffset}-${result.data.chunkCount}-` +
+      result.data.groups.map((group) => group.noteId).join(',')
+    if (dataSignature === lastProcessedDataRef.current) return
+    lastProcessedDataRef.current = dataSignature
+
+    setAiAccumulatedResults((prev) => {
+      if (aiOffset === 0) return result.data!.groups
+      const next = [...prev]
+      const seen = new Set(prev.map((item) => item.noteId))
+      for (const group of result.data!.groups) {
+        if (!seen.has(group.noteId)) {
+          seen.add(group.noteId)
+          next.push(group)
+        }
+      }
+      return next
+    })
+  }, [aiOffset, queryEnabled, result.data])
+
+  const aiHasMore =
+    queryEnabled &&
+    !!result.data &&
+    requestedTopK < AI_SEARCH_TOP_K_MAX &&
+    result.data.chunkCount >= requestedTopK
+
+  const aiLoadingMore = result.isFetching && aiOffset > 0
+
+  const loadMoreAI = useCallback(() => {
+    if (!queryEnabled || aiLoadingMore || !aiHasMore) return
+    setAiOffset((prev) =>
+      Math.min(prev + pageSize, Math.max(0, AI_SEARCH_TOP_K_MAX - pageSize))
+    )
+  }, [queryEnabled, aiLoadingMore, aiHasMore, pageSize])
+
+  const refetch = useCallback(() => {
+    void result.refetch()
+  }, [result])
+
+  const initialLoading =
+    queryEnabled &&
+    result.isFetching &&
+    aiOffset === 0 &&
+    aiAccumulatedResults.length === 0
+
+  return {
+    noteGroups: queryEnabled ? aiAccumulatedResults : [],
+    isLoading: initialLoading,
+    error: result.error ? String(result.error) : null,
+    refetch,
+    aiOffset,
+    aiAccumulatedResults,
+    aiHasMore,
+    aiLoadingMore,
+    loadMoreAI,
+    resetAIResults,
+  }
+}

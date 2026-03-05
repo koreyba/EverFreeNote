@@ -52,8 +52,11 @@ export function useNoteSelection() {
     }, [])
 
     const toggleNoteSelection = useCallback((noteId: string) => {
-        setSelectionMode(true)
-        setSelectedNoteIds(prev => toggleSelection(prev, noteId))
+        setSelectedNoteIds((prev) => {
+            const next = toggleSelection(prev, noteId)
+            setSelectionMode(next.size > 0)
+            return next
+        })
     }, [])
 
     const selectAllVisible = useCallback((source: (NoteViewModel | SearchResult)[]) => {
@@ -62,6 +65,7 @@ export function useNoteSelection() {
     }, [])
 
     const clearSelection = useCallback(() => {
+        setSelectionMode(false)
         setSelectedNoteIds(clearSelectionSet())
     }, [])
 

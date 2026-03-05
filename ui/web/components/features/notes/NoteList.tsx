@@ -2,6 +2,7 @@
 
 import { memo, useMemo } from "react"
 import type { CSSProperties } from "react"
+import type { ReactNode } from "react"
 import { Loader2, Zap } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -64,6 +65,7 @@ interface NoteListProps {
   ftsLoadingMore?: boolean
   onLoadMoreFts?: () => void
   onSearchResultClick?: (note: SearchResult) => void
+  ftsHeader?: ReactNode
 
   // Optional fixed dimensions for testing or specific layouts
   height?: number
@@ -253,6 +255,7 @@ export const NoteList = memo(function NoteList({
   ftsLoadingMore = false,
   onLoadMoreFts,
   onSearchResultClick = () => { },
+  ftsHeader,
   height: fixedHeight,
   width: fixedWidth,
 }: NoteListProps) {
@@ -345,21 +348,22 @@ export const NoteList = memo(function NoteList({
 
     return (
       <div className="h-full flex flex-col">
-        {/* FTS Search Results Header */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground px-3 py-2 flex-shrink-0">
-          <div>
-            Found: <span className="font-semibold">{displayTotal}</span> {displayTotal === 1 ? "note" : "notes"}
-          </div>
-          {typeof ftsData.executionTime === "number" && (
-            <div className="flex items-center gap-2">
-              <span>{ftsData.executionTime}ms</span>
-              <Badge variant="outline" className="text-xs gap-1">
-                <Zap className="h-3 w-3" />
-                Quick search
-              </Badge>
+        {ftsHeader ?? (
+          <div className="flex items-center justify-between text-sm text-muted-foreground px-3 py-2 flex-shrink-0">
+            <div>
+              Found: <span className="font-semibold">{displayTotal}</span> {displayTotal === 1 ? "note" : "notes"}
             </div>
-          )}
-        </div>
+            {typeof ftsData.executionTime === "number" && (
+              <div className="flex items-center gap-2">
+                <span>{ftsData.executionTime}ms</span>
+                <Badge variant="outline" className="text-xs gap-1">
+                  <Zap className="h-3 w-3" />
+                  Quick search
+                </Badge>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Virtualized FTS Results List */}
         <div className="flex-1 h-full min-h-0">

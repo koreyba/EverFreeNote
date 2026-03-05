@@ -69,10 +69,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     selectionMode,
     selectedCount,
     bulkDeleting,
-    enterSelectionMode,
     exitSelectionMode,
     selectAllVisible,
-    clearSelection,
     deleteSelectedNotes,
     filterByTag,
     handleClearTagFilter,
@@ -171,10 +169,8 @@ export function NotesShell({ controller }: NotesShellProps) {
         selectionMode={selectionMode}
         selectedCount={selectedCount}
         bulkDeleting={bulkDeleting}
-        onEnterSelectionMode={enterSelectionMode}
         onExitSelectionMode={exitSelectionMode}
         onSelectAll={selectAllVisible}
-        onClearSelection={clearSelection}
         onBulkDelete={deleteSelectedNotes}
         onClearTagFilter={handleClearTagFilter}
         onCreateNote={handleCreateNote}

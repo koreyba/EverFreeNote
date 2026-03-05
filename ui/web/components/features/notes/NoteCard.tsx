@@ -8,6 +8,7 @@ import DOMPurify from "isomorphic-dompurify"
 import { SanitizationService } from "@core/services/sanitizer"
 import type { Note, SearchResult } from "@core/types/domain"
 import { cn } from "@ui/web/lib/utils"
+import { useLongPress } from "@ui/web/hooks/useLongPress"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -59,6 +60,8 @@ export const NoteCard = memo(function NoteCard({
   onTagClick,
   highlightQuery = '',
 }: NoteCardProps) {
+  const checkboxChecked = Boolean(selectionMode && isSelected)
+
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString("ru-RU", {
       year: "numeric",
@@ -79,7 +82,15 @@ export const NoteCard = memo(function NoteCard({
     )
   }
 
+  const { longPressHandlers, consumeLongPress } = useLongPress(
+    () => onToggleSelect?.(),
+    {
+      enabled: !selectionMode && !!onToggleSelect,
+    }
+  )
+
   const handleCardClick = (event: MouseEvent<HTMLElement>) => {
+    if (consumeLongPress()) return
     if (hasTextSelectionInside(event.currentTarget)) return
     onClick()
   }
@@ -90,16 +101,24 @@ export const NoteCard = memo(function NoteCard({
       <div
         data-testid="note-card"
         onClick={handleCardClick}
-        className={`p-3 rounded-lg cursor-pointer transition-colors border h-full ${isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
-          }`}
+        className={cn(
+          "group p-3 rounded-lg cursor-pointer transition-colors border h-full",
+          isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
+        )}
+        {...longPressHandlers}
       >
         <div className="flex items-start gap-3 h-full">
-          {selectionMode && (
+          {onToggleSelect && (
             <Checkbox
-              checked={isSelected}
+              checked={checkboxChecked}
               onCheckedChange={() => onToggleSelect?.()}
               onClick={(e) => e.stopPropagation()}
-              className="mt-1"
+              className={cn(
+                "mt-1 shrink-0 transition-opacity",
+                selectionMode
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+              )}
             />
           )}
           <div className="flex-1 min-w-0 flex flex-col h-full">
@@ -147,23 +166,34 @@ export const NoteCard = memo(function NoteCard({
     <article
       data-testid="note-card"
       onClick={handleCardClick}
+      {...longPressHandlers}
       className={cn(
-        'rounded-lg border border-border/60 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/30 hover:shadow-sm',
+        'group relative rounded-lg border border-border/60 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/30 hover:shadow-sm',
         getAccentClass(rank)
       )}
     >
+      {onToggleSelect && (
+        <Checkbox
+          checked={checkboxChecked}
+          onCheckedChange={() => onToggleSelect?.()}
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            "absolute left-2 top-2 z-10 bg-background/90 transition-opacity",
+            selectionMode
+              ? "opacity-100"
+              : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+          )}
+        />
+      )}
       <div className="px-3 py-2.5">
         {/* Title + rank */}
         <div className="flex items-start gap-2 justify-between">
-          {selectionMode && (
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={() => onToggleSelect?.()}
-              onClick={(e) => e.stopPropagation()}
-              className="mt-0.5 shrink-0"
-            />
-          )}
-          <h3 className="text-[13.5px] font-semibold leading-snug text-foreground flex-1 line-clamp-2">
+          <h3
+            className={cn(
+              "text-[13.5px] font-semibold leading-snug text-foreground flex-1 line-clamp-2",
+              onToggleSelect && "pl-6"
+            )}
+          >
             {note.title || 'Untitled'}
           </h3>
           {searchNote.rank !== undefined && searchNote.rank !== null && (

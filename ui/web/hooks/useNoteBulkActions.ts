@@ -1,11 +1,10 @@
 import { toast } from 'sonner'
-import type { NoteViewModel, SearchResult } from '@core/types/domain'
+import type { NoteViewModel } from '@core/types/domain'
 import type { CachedNote } from '@core/types/offline'
 import type { useNoteSync } from './useNoteSync'
 import type { useNoteSelection } from './useNoteSelection'
 import type { useDeleteNote } from './useNotesMutations'
 import type { QueryClient } from '@tanstack/react-query'
-import type { useNoteData } from './useNoteData'
 
 type UseNoteBulkActionsParams = {
   selectedNoteIds: Set<string>
@@ -19,10 +18,14 @@ type UseNoteBulkActionsParams = {
   setBulkDeleting: ReturnType<typeof useNoteSelection>['setBulkDeleting']
   setSelectedNote: ReturnType<typeof useNoteSelection>['setSelectedNote']
   queryClient: QueryClient
-  showFTSResults: boolean
-  mergedFtsData: ReturnType<typeof useNoteData>['mergedFtsData']
   notes: NoteViewModel[]
-  selectAllVisibleCallback: (source: (NoteViewModel | SearchResult)[]) => void
+  selectAllVisibleCallback: (source: NoteViewModel[]) => void
+}
+
+export type DeleteNotesByIdsResult = {
+  total: number
+  failed: number
+  queuedOffline: boolean
 }
 
 /**
@@ -40,23 +43,20 @@ export function useNoteBulkActions({
   setBulkDeleting,
   setSelectedNote,
   queryClient,
-  showFTSResults,
-  mergedFtsData,
   notes,
   selectAllVisibleCallback,
 }: UseNoteBulkActionsParams) {
   const selectAllVisible = () => {
-    const source = showFTSResults && mergedFtsData
-      ? mergedFtsData.results
-      : notes
-    selectAllVisibleCallback(source)
+    selectAllVisibleCallback(notes)
   }
 
-  const deleteSelectedNotes = async () => {
-    if (!selectedNoteIds.size) return
-    setBulkDeleting(true)
+  const deleteNotesByIds = async (ids: string[]): Promise<DeleteNotesByIdsResult> => {
+    if (!ids.length) {
+      return { total: 0, failed: 0, queuedOffline: false }
+    }
+
     try {
-      const ids = Array.from(selectedNoteIds)
+      let failed = 0
       if (isOffline) {
         await enqueueBatchAndDrainIfOnline(
           ids.map((id) => ({
@@ -67,39 +67,60 @@ export function useNoteBulkActions({
           }))
         )
         const now = new Date().toISOString()
-        const updates: CachedNote[] = ids.map(id => ({
+        const updates: CachedNote[] = ids.map((id) => ({
           id,
           status: 'pending' as const,
           deleted: true,
           updatedAt: now,
         }))
-        for (const u of updates) await offlineCache.saveNote(u)
+        for (const update of updates) await offlineCache.saveNote(update)
+
         setOfflineOverlay((prev) => {
           const next = [...prev]
-          updates.forEach((u) => {
-            const idx = next.findIndex((n) => n.id === u.id)
-            if (idx >= 0) next[idx] = u
-            else next.push(u)
+          updates.forEach((update) => {
+            const idx = next.findIndex((n) => n.id === update.id)
+            if (idx >= 0) next[idx] = update
+            else next.push(update)
           })
           return next
         })
         setPendingCount((prev) => prev + ids.length)
         toast.success(`Queued deletion of ${ids.length} notes (offline)`)
       } else {
-        const results = await Promise.allSettled(ids.map(id => deleteNoteMutation.mutateAsync({ id, silent: true })))
-        const failed = results.filter(r => r.status === 'rejected').length
+        const results = await Promise.allSettled(
+          ids.map((id) => deleteNoteMutation.mutateAsync({ id, silent: true }))
+        )
+        failed = results.filter((r) => r.status === 'rejected').length
         if (failed > 0) {
           toast.error(`Failed to delete ${failed} notes`)
         } else {
           toast.success(`Deleted ${ids.length} notes`)
         }
       }
-      exitSelectionMode()
-      await queryClient.invalidateQueries({ queryKey: ['notes'] })
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['notes'] }),
+        queryClient.invalidateQueries({ queryKey: ['aiSearch'] }),
+      ])
       setSelectedNote(null)
+
+      return { total: ids.length, failed, queuedOffline: isOffline }
     } catch (error) {
       console.error('Bulk delete error:', error)
       toast.error('Failed to delete selected notes')
+      throw error
+    }
+  }
+
+  const deleteSelectedNotes = async () => {
+    if (!selectedNoteIds.size) return
+    setBulkDeleting(true)
+    try {
+      const ids = Array.from(selectedNoteIds)
+      await deleteNotesByIds(ids)
+      exitSelectionMode()
+    } catch (error) {
+      console.error('Bulk delete error:', error)
     } finally {
       setBulkDeleting(false)
     }
@@ -107,6 +128,7 @@ export function useNoteBulkActions({
 
   return {
     selectAllVisible,
+    deleteNotesByIds,
     deleteSelectedNotes,
   }
 }
