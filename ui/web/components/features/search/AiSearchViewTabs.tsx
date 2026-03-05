@@ -62,8 +62,9 @@ export function AiSearchViewTabs({
   }
 
   const tabsControl = (
-    <div onPointerDown={handleDisabledHintPointerDown}>
+    <div data-testid="ai-search-view-tabs-trigger" onPointerDown={handleDisabledHintPointerDown}>
       <ToggleGroup
+        data-testid="ai-search-view-tabs-group"
         type="single"
         value={value}
         onValueChange={(v) => { if (v === 'note' || v === 'chunk') onChange(v) }}
@@ -71,6 +72,7 @@ export function AiSearchViewTabs({
         aria-label="Result view mode"
       >
         <ToggleGroupItem
+          data-testid="ai-search-view-tab-note"
           value="note"
           className="text-xs h-6 px-2"
           aria-label="Note view"
@@ -79,6 +81,7 @@ export function AiSearchViewTabs({
           Notes
         </ToggleGroupItem>
         <ToggleGroupItem
+          data-testid="ai-search-view-tab-chunk"
           value="chunk"
           className="text-xs h-6 px-2"
           aria-label="Chunk view"
@@ -101,9 +104,9 @@ export function AiSearchViewTabs({
         onOpenChange={supportsHover ? setDisabledHintOpen : undefined}
       >
         <TooltipTrigger asChild>
-          <div ref={rootRef}>{tabsControl}</div>
+          <div ref={rootRef} data-testid="ai-search-view-tabs-root">{tabsControl}</div>
         </TooltipTrigger>
-        <TooltipContent side="bottom" align="end" sideOffset={6} className="text-xs">
+        <TooltipContent data-testid="ai-search-view-tabs-disabled-hint" side="bottom" align="end" sideOffset={6} className="text-xs">
           {disabledTitle}
         </TooltipContent>
       </Tooltip>

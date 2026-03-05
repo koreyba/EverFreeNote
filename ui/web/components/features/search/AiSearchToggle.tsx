@@ -70,17 +70,20 @@ export function AiSearchToggle({
 
   const toggleControl = (
     <div
+      data-testid="ai-search-toggle-trigger"
       className="flex items-center gap-2"
       onPointerDown={handleSelectionHintPointerDown}
     >
       <Switch
         id="ai-search-toggle"
+        data-testid="ai-search-toggle-switch"
         checked={enabled}
         onCheckedChange={onChange}
         disabled={isDisabled}
         aria-label="Toggle AI RAG Search"
       />
       <Label
+        data-testid="ai-search-toggle-label"
         htmlFor="ai-search-toggle"
         className="flex items-center gap-1 text-xs cursor-pointer select-none"
       >
@@ -92,7 +95,7 @@ export function AiSearchToggle({
 
   return (
     <TooltipProvider>
-      <div ref={rootRef} className="flex items-center gap-2">
+      <div ref={rootRef} data-testid="ai-search-toggle-root" className="flex items-center gap-2">
         {showSelectionBlockedHint ? (
           <Tooltip
             open={supportsHover ? undefined : selectionHintOpen}
@@ -101,7 +104,7 @@ export function AiSearchToggle({
             <TooltipTrigger asChild>
               {toggleControl}
             </TooltipTrigger>
-            <TooltipContent side="bottom" align="start" sideOffset={6} className="text-xs">
+            <TooltipContent data-testid="ai-search-toggle-disabled-hint" side="bottom" align="start" sideOffset={6} className="text-xs">
               {disabledTitle}
             </TooltipContent>
           </Tooltip>
@@ -111,7 +114,7 @@ export function AiSearchToggle({
               {toggleControl}
             </TooltipTrigger>
             {!hasApiKey && (
-              <TooltipContent side="bottom" align="start" sideOffset={6} className="text-xs">
+              <TooltipContent data-testid="ai-search-toggle-missing-key-hint" side="bottom" align="start" sideOffset={6} className="text-xs">
                 Configure Gemini API key in Settings to API Keys
               </TooltipContent>
             )}
@@ -125,6 +128,7 @@ export function AiSearchToggle({
         >
           <TooltipTrigger asChild>
             <button
+              data-testid="ai-search-toggle-info-trigger"
               type="button"
               className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-full"
               aria-label="About AI RAG Search"
@@ -138,7 +142,7 @@ export function AiSearchToggle({
               <Info className="w-3.5 h-3.5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" align="end" sideOffset={6} className="max-w-52 text-xs">
+          <TooltipContent data-testid="ai-search-toggle-info-hint" side="bottom" align="end" sideOffset={6} className="max-w-52 text-xs">
             Searches your previously indexed notes using semantic (vector) similarity.
             Press <kbd className="font-mono">Enter</kbd> to run a query.
           </TooltipContent>

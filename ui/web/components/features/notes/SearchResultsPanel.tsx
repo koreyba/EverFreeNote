@@ -358,7 +358,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 {/* Search input row — Back (mobile) | input | X (desktop) */}
                 <TooltipProvider>
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" className="h-8 px-1.5 md:hidden shrink-0" onClick={onClose}>
+                    <Button data-testid="search-panel-back" variant="ghost" size="sm" className="h-8 px-1.5 md:hidden shrink-0" onClick={onClose}>
                         <ChevronLeft className="w-4 h-4 mr-1" />
                         Back
                     </Button>
@@ -366,6 +366,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
                         <Input
+                            data-testid="search-panel-input"
                             ref={inputRef}
                             type="text"
                             placeholder={filterByTag ? `In "${filterByTag}"…` : "Search notes…"}
@@ -381,6 +382,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <button
+                                        data-testid="search-panel-clear"
                                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
                                         onClick={handleClear}
                                         aria-label="Clear search"
@@ -395,7 +397,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8 shrink-0" onClick={onClose}>
+                            <Button data-testid="search-panel-close" variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8 shrink-0" onClick={onClose}>
                                 <X className="w-4 h-4" />
                             </Button>
                         </TooltipTrigger>
@@ -413,6 +415,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                             className="text-xs px-2 py-0.5 max-w-[70%] truncate"
                         />
                         <Button
+                            data-testid="search-panel-clear-tag"
                             variant="ghost"
                             size="sm"
                             className="h-6 px-2 text-xs"
@@ -463,9 +466,9 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                             </div>
                         )}
                         {aiError && !aiLoading && (
-                            <div className="py-2 text-center">
+                            <div className="py-2 text-center" data-testid="search-panel-ai-error">
                                 <p className="text-xs text-destructive">AI Search unavailable</p>
-                                <Button variant="ghost" size="sm" className="h-5 text-xs px-0 mt-1" onClick={() => aiRefetch()}>
+                                <Button data-testid="search-panel-ai-retry" variant="ghost" size="sm" className="h-5 text-xs px-0 mt-1" onClick={() => aiRefetch()}>
                                     Retry
                                 </Button>
                             </div>

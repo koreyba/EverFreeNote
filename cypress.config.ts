@@ -27,7 +27,7 @@ export default defineConfig({
     video: false,
     screenshotOnRunFailure: true,
     retries: {
-      runMode: 2,
+      runMode: 0,
       openMode: 0,
     },
     // Increase timeouts for CI stability
