@@ -94,6 +94,30 @@ describe('Sidebar Component', () => {
     cy.contains('Notes displayed: 5 out of 12').should('be.visible')
   })
 
+  it('does not render legacy Select Notes button when selection mode is off', () => {
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      onOpenSearch: cy.stub(),
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
+      onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
+      selectionMode: false,
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+    cy.contains('Select Notes').should('not.exist')
+    cy.contains('Select all').should('not.exist')
+    cy.contains(/^Delete \(\d+\)$/).should('not.exist')
+  })
+
   it('shows unknown total when not provided', () => {
     const props = {
       user: mockUser,
@@ -186,6 +210,42 @@ describe('Sidebar Component', () => {
 
     cy.get('button').find('.lucide-log-out').parent().click()
     cy.get('@onSignOut').should('have.been.called')
+  })
+
+  it('renders selection actions only in selection mode and confirms before bulk delete', () => {
+    const onBulkDelete = cy.spy().as('onBulkDelete')
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      onOpenSearch: cy.stub(),
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
+      onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
+      selectionMode: true,
+      selectedCount: 1,
+      notesDisplayed: 3,
+      onBulkDelete,
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+    cy.contains('button', 'Select all').should('be.visible')
+    cy.contains('button', 'Delete (1)').click({ force: true })
+    cy.get('@onBulkDelete').should('not.have.been.called')
+
+    cy.contains('Delete selected notes').should('be.visible')
+    cy.get('input[placeholder="1"]').clear().type('1')
+    cy.get('[role="alertdialog"]')
+      .contains('button', /^Delete$/)
+      .click({ force: true })
+
+    cy.get('@onBulkDelete').should('have.been.calledOnce')
   })
 
   describe('Sync Status Indicator', () => {

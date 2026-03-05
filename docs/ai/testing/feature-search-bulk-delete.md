@@ -41,8 +41,26 @@ Currently present:
 - `cypress/component/ui/web/hooks/useNoteBulkActions.cy.tsx`
 - `cypress/component/features/notes/NoteCard.cy.tsx`
 - `cypress/component/features/notes/Sidebar.cy.tsx`
+- `cypress/component/features/notes/BulkDeleteDialog.cy.tsx`
+- `cypress/component/features/notes/SelectionModeActions.cy.tsx`
+- `cypress/component/features/notes/SearchResultsPanel.cy.tsx`
+- `cypress/component/ui/web/hooks/useBulkDeleteConfirm.cy.tsx`
+- `cypress/component/ui/web/hooks/useLongPress.cy.tsx`
 
 Gaps remain in SearchResultsPanel integration and AI-mode interaction cases.
+
+## Implementation Status (2026-03-05)
+
+Implemented in this iteration:
+- `SBD-COMP-001`, `SBD-COMP-002`, `SBD-COMP-003`, `SBD-COMP-004`, `SBD-COMP-005`
+- `SBD-HOOK-009`, `SBD-HOOK-010`
+- `SBD-PANEL-005`, `SBD-PANEL-006`, `SBD-PANEL-007`, `SBD-PANEL-008`
+- `SBD-SIDEBAR-001`, `SBD-SIDEBAR-002`
+- Additional regression assertion in `NoteCard` for unchecked checkbox when not in selection mode.
+
+Verification note:
+- `npm run type-check` and targeted `eslint` passed.
+- `cypress run --component` could not be executed in current agent environment (browser process crash with exit code `-1073741795`), so runtime execution remains pending on local machine.
 
 ## Automated Test Catalog
 

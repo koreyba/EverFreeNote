@@ -114,6 +114,22 @@ Out of scope:
 - [ ] `P1` `AIS-REG-003`: toggling AI OFF restores expected FTS interaction flow.
 - [ ] `P1` `AIS-REG-004`: query+tag behavior stays stable after preset changes.
 
+## Implementation Status (2026-03-05)
+
+Implemented in this iteration:
+- `cypress/component/ui/web/hooks/useAIPaginatedSearch.cy.tsx`
+  - `AIS-HOOK-001`, `AIS-HOOK-004`, partial `AIS-HOOK-005`, `AIS-HOOK-006`
+- `cypress/component/ui/web/hooks/useSearchMode.cy.tsx`
+  - `AIS-MODE-001`, `AIS-MODE-002`, `AIS-MODE-003`
+- `cypress/component/features/search/AiSearchToggle.cy.tsx`
+  - `AIS-COMP-001`, `AIS-COMP-002`, `AIS-COMP-003`, `AIS-COMP-004`, `AIS-COMP-005`
+- `cypress/component/features/search/AiSearchViewTabs.cy.tsx`
+  - `AIS-COMP-006`
+
+Verification note:
+- `npm run type-check` and targeted `eslint` passed.
+- `cypress run --component` is pending local execution because browser startup crashes in current agent environment (exit code `-1073741795`).
+
 ## Manual Test Catalog
 
 - [ ] `P0` `AIS-MAN-001`: full user flow: enable AI -> Enter query -> open note in context.
