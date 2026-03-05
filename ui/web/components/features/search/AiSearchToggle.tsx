@@ -30,6 +30,11 @@ export function AiSearchToggle({
   const [selectionHintOpen, setSelectionHintOpen] = React.useState(false)
   const [infoHintOpen, setInfoHintOpen] = React.useState(false)
   const rootRef = React.useRef<HTMLDivElement>(null)
+  const disabledReasonId = showSelectionBlockedHint
+    ? 'ai-search-toggle-disabled-hint'
+    : !hasApiKey
+      ? 'ai-search-toggle-missing-key-hint'
+      : undefined
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return
@@ -73,6 +78,17 @@ export function AiSearchToggle({
       data-testid="ai-search-toggle-trigger"
       className="flex items-center gap-2"
       onPointerDown={handleSelectionHintPointerDown}
+      tabIndex={isDisabled ? 0 : -1}
+      aria-disabled={isDisabled || undefined}
+      aria-describedby={isDisabled ? disabledReasonId : undefined}
+      onKeyDown={(event) => {
+        if (!isDisabled) return
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        if (showSelectionBlockedHint) {
+          setSelectionHintOpen((prev) => !prev)
+        }
+      }}
     >
       <Switch
         id="ai-search-toggle"
@@ -104,7 +120,7 @@ export function AiSearchToggle({
             <TooltipTrigger asChild>
               {toggleControl}
             </TooltipTrigger>
-            <TooltipContent data-testid="ai-search-toggle-disabled-hint" side="bottom" align="start" sideOffset={6} className="text-xs">
+            <TooltipContent id="ai-search-toggle-disabled-hint" data-testid="ai-search-toggle-disabled-hint" side="bottom" align="start" sideOffset={6} className="text-xs">
               {disabledTitle}
             </TooltipContent>
           </Tooltip>
@@ -114,7 +130,7 @@ export function AiSearchToggle({
               {toggleControl}
             </TooltipTrigger>
             {!hasApiKey && (
-              <TooltipContent data-testid="ai-search-toggle-missing-key-hint" side="bottom" align="start" sideOffset={6} className="text-xs">
+              <TooltipContent id="ai-search-toggle-missing-key-hint" data-testid="ai-search-toggle-missing-key-hint" side="bottom" align="start" sideOffset={6} className="text-xs">
                 Configure Gemini API key in Settings {'>'} API Keys
               </TooltipContent>
             )}

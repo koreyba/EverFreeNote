@@ -84,6 +84,7 @@ export function NoteSearchItem({
     charOffset: number,
     chunkLength: number
   ) => {
+    if (consumeLongPress()) return
     if (selectionMode) {
       event.stopPropagation()
       onToggleSelect?.(group.noteId)
