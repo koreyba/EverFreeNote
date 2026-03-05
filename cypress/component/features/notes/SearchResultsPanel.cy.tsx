@@ -199,7 +199,7 @@ describe('SearchResultsPanel', () => {
       .click({ force: true })
 
     cy.wrap(controller.deleteNotesByIds).should('have.been.calledWithMatch', ['ai-note-1'])
-    cy.wrap(controller.resetAIResults).should('have.been.calledOnce')
+    cy.wrap(controller.resetAIResults).should('not.have.been.called')
     cy.wrap(controller.resetFtsResults).should('not.have.been.called')
   })
 
@@ -280,7 +280,7 @@ describe('SearchResultsPanel', () => {
     cy.get('[role="alertdialog"]').contains('button', /^Delete$/).click({ force: true })
 
     cy.wrap(controller.deleteNotesByIds).should('have.been.calledWithMatch', ['ai-note-1', 'ai-note-2'])
-    cy.wrap(controller.resetAIResults).should('have.been.calledOnce')
+    cy.wrap(controller.resetAIResults).should('not.have.been.called')
   })
 
   it('deletes tag-only results and resets FTS path', () => {
