@@ -77,7 +77,21 @@ We need to add UI interaction state. No database schema changes are required.
 
 - **Custom Resizer vs `<ResizablePanelGroup>`:** The existing app layout utilizes strict utility classes (e.g. fixed `w-80` for the Sidebar and `flex-1` for the editor). Shadcn's layout based on `react-resizable-panels` uses percentages which would require refactoring the entire `NotesShell` shell sizing. Using a custom drag handle right inside `SearchResultsPanel` allows for a pixel-perfect `min-width/max-width` constraint while leaving `Sidebar` and `Editor` unaffected.
 - **Extending the Controller:** Hooking `isSearchPanelOpen` into the existing `useNoteSearch` hook ensures that when other components (like global keyboard shortcuts) trigger a search, the panel knows to open seamlessly.
-- **Search clear behavior:** Per requirements, we will implement auto-close logic when the user clears the search query to improve UX.
+- **Search clear behavior:** Clearing the query resets search state but keeps the panel open; closing remains explicit via Close/Back controls.
+
+### Post-Implementation Architecture Decisions
+
+- `useNoteAppController` intentionally calls `useNotesQuery` with `searchQuery: ''` for the sidebar list.
+  - Rationale: search rendering is owned by `SearchResultsPanel`; the main sidebar list stays stable and does not mirror search results.
+  - Trade-off: no 1-2 character inline filtering in sidebar, but avoids duplicate result surfaces and extra query load.
+- Full-text search minimum query length is 3 characters.
+  - Rationale: PostgreSQL FTS constraints and better signal-to-noise for server queries.
+- `useNoteSearch` no longer keeps duplicate query states (`searchQuery` + `ftsSearchQuery`).
+  - Rationale: single source of truth; exported API compatibility is kept by returning `ftsSearchQuery` as `searchQuery`.
+- `handleSearch` resets `ftsAccumulatedResults` only when the committed (trimmed) query actually changes.
+  - Rationale: Enter on the same query should not clear visible results before refetch completes.
+- Enter key cancels debounce and forces refresh for both FTS and AI paths when query text is unchanged.
+  - Rationale: explicit user submit must always produce a fresh fetch (`ftsSearchResult.refetch()` and `aiRefetch()`).
 
 ## Non-Functional Requirements
 

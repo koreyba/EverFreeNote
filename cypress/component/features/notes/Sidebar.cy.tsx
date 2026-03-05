@@ -158,11 +158,36 @@ describe('Sidebar Component', () => {
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
 
-    cy.contains('Search notes...').click()
+    cy.contains('Click to search').click()
     cy.get('@onOpenSearch').should('have.been.calledOnce')
   })
 
-  it('shows tag filter when active', () => {
+  it('renders search trigger as focusable button for keyboard accessibility', () => {
+    const onOpenSearch = cy.stub().as('onOpenSearch')
+    const props = {
+      user: mockUser,
+      filterByTag: null,
+      onOpenSearch,
+      onClearTagFilter: cy.stub(),
+      onCreateNote: cy.stub(),
+      onSignOut: cy.stub(),
+      onDeleteAccount: cy.stub(),
+      deleteAccountLoading: false,
+      onImportComplete: cy.stub(),
+      onExportComplete: cy.stub(),
+      ...createSelectionProps(),
+      children: <div data-testid="note-list">Note List Content</div>
+    }
+    cy.mount(wrapWithProvider(<Sidebar {...props} />))
+
+    cy.get('[data-testid="sidebar-search-trigger"]')
+      .should('have.prop', 'tagName', 'BUTTON')
+      .focus()
+      .should('have.focus')
+    cy.get('@onOpenSearch').should('not.have.been.called')
+  })
+
+  it('keeps static search hint when tag filter is active', () => {
     const onClearTagFilter = cy.spy().as('onClearTagFilter')
     const props = {
       user: mockUser,
@@ -180,9 +205,10 @@ describe('Sidebar Component', () => {
     }
     cy.mount(wrapWithProvider(<Sidebar {...props} />))
 
-    cy.contains('Search in "work" notes...').should('be.visible')
+    cy.contains('Click to search').should('be.visible')
+    cy.contains('Search in "work" notes...').should('not.exist')
     cy.get('@onClearTagFilter').should('not.have.been.called')
-    cy.contains('Search in "work" notes...').should('be.visible')
+    cy.contains('Click to search').should('be.visible')
   })
 
   it('handles actions', () => {

@@ -277,9 +277,24 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     })
 
     const [isResizing, setIsResizing] = useState(false)
+    const pointerMoveHandlerRef = useRef<((event: PointerEvent) => void) | null>(null)
+    const pointerUpHandlerRef = useRef<((event: PointerEvent) => void) | null>(null)
+
+    const cleanupResizeListeners = React.useCallback(() => {
+        document.body.style.cursor = ""
+        if (pointerMoveHandlerRef.current) {
+            document.removeEventListener("pointermove", pointerMoveHandlerRef.current)
+            pointerMoveHandlerRef.current = null
+        }
+        if (pointerUpHandlerRef.current) {
+            document.removeEventListener("pointerup", pointerUpHandlerRef.current)
+            pointerUpHandlerRef.current = null
+        }
+    }, [])
 
     const handlePointerDown = (e: React.PointerEvent) => {
         e.preventDefault()
+        cleanupResizeListeners()
         setIsResizing(true)
         document.body.style.cursor = "col-resize"
         const startX = e.clientX
@@ -295,15 +310,21 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         }
 
         const handlePointerUp = () => {
-            document.body.style.cursor = ""
             setIsResizing(false)
-            document.removeEventListener("pointermove", handlePointerMove)
-            document.removeEventListener("pointerup", handlePointerUp)
+            cleanupResizeListeners()
         }
 
+        pointerMoveHandlerRef.current = handlePointerMove
+        pointerUpHandlerRef.current = handlePointerUp
         document.addEventListener("pointermove", handlePointerMove)
         document.addEventListener("pointerup", handlePointerUp)
     }
+
+    useEffect(() => {
+        return () => {
+            cleanupResizeListeners()
+        }
+    }, [cleanupResizeListeners])
 
     useEffect(() => {
         if (!isResizing) {
@@ -487,7 +508,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                                     onToggleSelect={togglePanelSelection}
                                     hasMore={aiHasMore}
                                     loadingMore={aiLoadingMore}
-                                    onLoadMore={controller.loadMoreAI}
+                                    onLoadMore={loadMoreAI}
                                 />
                             )
                         )}

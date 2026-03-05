@@ -115,7 +115,7 @@ export function AiSearchToggle({
             </TooltipTrigger>
             {!hasApiKey && (
               <TooltipContent data-testid="ai-search-toggle-missing-key-hint" side="bottom" align="start" sideOffset={6} className="text-xs">
-                Configure Gemini API key in Settings to API Keys
+                Configure Gemini API key in Settings / API Keys
               </TooltipContent>
             )}
           </Tooltip>

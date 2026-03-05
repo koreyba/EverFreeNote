@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 import type { RagNoteGroup } from '@core/types/ragSearch'
 
+const EMPTY_SELECTED_IDS = new Set<string>()
+
 interface NoteSearchResultsProps {
   noteGroups: RagNoteGroup[]
   onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
@@ -22,7 +24,7 @@ export function NoteSearchResults({
   query = '',
   onTagClick,
   selectionMode = false,
-  selectedIds = new Set(),
+  selectedIds = EMPTY_SELECTED_IDS,
   onToggleSelect,
   hasMore = false,
   loadingMore = false,
@@ -60,7 +62,7 @@ export function NoteSearchResults({
             <Button
               variant="ghost"
               size="sm"
-              onClick={onLoadMore}
+              onClick={() => onLoadMore?.()}
               className="text-xs text-muted-foreground"
             >
               Load more...

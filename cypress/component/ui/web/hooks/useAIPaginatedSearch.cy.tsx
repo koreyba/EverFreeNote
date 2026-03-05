@@ -39,12 +39,45 @@ const HookHarness = ({ query, preset, filterTag, isEnabled }: HookHarnessProps) 
       <div data-cy="ai-offset">{result.aiOffset}</div>
       <div data-cy="has-more">{String(result.aiHasMore)}</div>
       <div data-cy="first-score">{result.noteGroups[0]?.topScore?.toFixed(2) ?? 'none'}</div>
+      <div data-cy="first-title">{result.noteGroups[0]?.noteTitle ?? 'none'}</div>
+      <div data-cy="first-tags">{result.noteGroups[0]?.noteTags?.join(',') ?? 'none'}</div>
       <div data-cy="ids">{result.noteGroups.map((group) => group.noteId).join(',')}</div>
       <button type="button" data-cy="load-more" onClick={result.loadMoreAI}>
         Load More
       </button>
+      <button type="button" data-cy="refetch" onClick={result.refetch}>
+        Refetch
+      </button>
       <button type="button" data-cy="reset" onClick={result.resetAIResults}>
         Reset
+      </button>
+    </div>
+  )
+}
+
+const IdentityResetHarness = ({
+  initialQuery,
+  preset,
+  filterTag,
+  isEnabled,
+}: {
+  initialQuery: string
+  preset: SearchPreset
+  filterTag: string | null
+  isEnabled: boolean
+}) => {
+  const [query, setQuery] = React.useState(initialQuery)
+  const result = useAIPaginatedSearch({ query, preset, filterTag, isEnabled })
+
+  return (
+    <div>
+      <div data-cy="identity-query">{query}</div>
+      <div data-cy="identity-offset">{result.aiOffset}</div>
+      <button type="button" data-cy="identity-load-more" onClick={result.loadMoreAI}>
+        Load More
+      </button>
+      <button type="button" data-cy="identity-switch-query" onClick={() => setQuery('ethics')}>
+        Switch Query
       </button>
     </div>
   )
@@ -182,5 +215,100 @@ describe('useAIPaginatedSearch', () => {
     cy.get('[data-cy="reset"]').click()
     cy.get('[data-cy="groups-count"]').should('contain', '0')
     cy.get('[data-cy="ai-offset"]').should('contain', '0')
+  })
+
+  it('updates displayed metadata when refetch returns same chunks with changed title/tags', () => {
+    let requestCount = 0
+    const invoke = cy.stub().as('invoke').callsFake(() => {
+      requestCount += 1
+      return Promise.resolve({
+        data: {
+          chunks: [
+            {
+              noteId: 'note-1',
+              noteTitle: requestCount === 1 ? 'Old title' : 'Updated title',
+              noteTags: requestCount === 1 ? ['legacy'] : ['fresh', 'tag'],
+              chunkIndex: 0,
+              charOffset: 0,
+              content: 'same snippet',
+              similarity: 0.81,
+            } satisfies RagChunk,
+          ],
+        },
+        error: null,
+      })
+    })
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    mountHarness(
+      <HookHarness
+        query="ontology"
+        preset="strict"
+        filterTag={null}
+        isEnabled
+      />,
+      supabase
+    )
+
+    cy.get('[data-cy="first-title"]').should('contain', 'Old title')
+    cy.get('[data-cy="first-tags"]').should('contain', 'legacy')
+
+    cy.get('[data-cy="refetch"]').click()
+
+    cy.get('[data-cy="first-title"]').should('contain', 'Updated title')
+    cy.get('[data-cy="first-tags"]').should('contain', 'fresh,tag')
+    cy.get('@invoke').its('callCount').should('eq', 2)
+  })
+
+  it('does not over-fetch with stale offset after search identity changes', () => {
+    const invoke = cy.stub().as('invoke').callsFake(
+      (_fn: string, { body }: { body: { query: string; topK: number } }) => {
+        const chunks = Array.from({ length: body.topK }, (_, idx) => ({
+          noteId: `${body.query}-note-${idx + 1}`,
+          noteTitle: `Title ${body.query}-${idx + 1}`,
+          noteTags: ['tag'],
+          chunkIndex: 0,
+          charOffset: idx * 100,
+          content: `${body.query} snippet ${idx + 1}`,
+          similarity: 0.9 - idx * 0.001,
+        })) satisfies RagChunk[]
+
+        return Promise.resolve({ data: { chunks }, error: null })
+      }
+    )
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    mountHarness(
+      <IdentityResetHarness
+        initialQuery="ontology"
+        preset="strict"
+        filterTag={null}
+        isEnabled
+      />,
+      supabase
+    )
+
+    cy.get('@invoke').should('have.been.calledWithMatch', 'rag-search', {
+      body: { query: 'ontology', topK: 5 },
+    })
+
+    cy.get('[data-cy="identity-load-more"]').click()
+    cy.get('[data-cy="identity-offset"]').should('contain', '5')
+    cy.get('@invoke').should('have.been.calledWithMatch', 'rag-search', {
+      body: { query: 'ontology', topK: 10 },
+    })
+
+    cy.get('[data-cy="identity-switch-query"]').click()
+    cy.get('[data-cy="identity-query"]').should('contain', 'ethics')
+    cy.get('@invoke').should('have.been.calledWithMatch', 'rag-search', {
+      body: { query: 'ethics', topK: 5 },
+    })
+    cy.get('@invoke').should('not.have.been.calledWithMatch', 'rag-search', {
+      body: { query: 'ethics', topK: 10 },
+    })
   })
 })

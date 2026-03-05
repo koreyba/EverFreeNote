@@ -56,11 +56,11 @@ Implemented in this iteration:
 - `SBD-HOOK-009`, `SBD-HOOK-010`
 - `SBD-PANEL-005`, `SBD-PANEL-006`, `SBD-PANEL-007`, `SBD-PANEL-008`
 - `SBD-SIDEBAR-001`, `SBD-SIDEBAR-002`
-- Additional regression assertion in `NoteCard` for unchecked checkbox when not in selection mode.
+- Additional regression assertion in `NoteCard` for unchecked checkbox when not in selection mode (`SBD-CARD-REG-001`).
 
 Verification note:
 - `npm run type-check` and targeted `eslint` passed.
-- `cypress run --component` could not be executed in current agent environment (browser process crash with exit code `-1073741795`), so runtime execution remains pending on local machine.
+- Targeted Cypress component runs are executable in agent environment and used for iterative verification.
 
 ## Automated Test Catalog
 
@@ -74,16 +74,16 @@ Verification note:
 - [ ] `P0` `SBD-HOOK-006`: offline path enqueues delete operations and marks overlay notes as pending/deleted.
 - [ ] `P1` `SBD-HOOK-007`: `deleteSelectedNotes` exits sidebar selection mode on success.
 - [ ] `P1` `SBD-HOOK-008`: `deleteSelectedNotes` keeps selection mode on thrown error.
-- [ ] `P1` `SBD-HOOK-009`: `useBulkDeleteConfirm` opens dialog, calls callback only on confirm, and closes dialog after callback.
-- [ ] `P1` `SBD-HOOK-010`: `useLongPress` triggers after delay, cancels on pointer move/up/leave/cancel.
+- [x] `P1` `SBD-HOOK-009`: `useBulkDeleteConfirm` opens dialog, calls callback only on confirm, and closes dialog after callback.
+- [x] `P1` `SBD-HOOK-010`: `useLongPress` triggers after delay, cancels on pointer move/up/leave/cancel.
 
 ### B) Selection UI components
 
-- [ ] `P1` `SBD-COMP-001`: `SelectionModeActions` renders compact count and all actions.
-- [ ] `P1` `SBD-COMP-002`: `SelectionModeActions` disables `Select all` and `Delete` per props.
-- [ ] `P1` `SBD-COMP-003`: `SelectionModeActions` shows loading spinner in Delete when `deleting=true`.
-- [ ] `P0` `SBD-COMP-004`: `BulkDeleteDialog` keeps confirm disabled until typed value exactly matches count.
-- [ ] `P1` `SBD-COMP-005`: `BulkDeleteDialog` resets input when dialog closes.
+- [x] `P1` `SBD-COMP-001`: `SelectionModeActions` renders compact count and all actions.
+- [x] `P1` `SBD-COMP-002`: `SelectionModeActions` disables `Select all` and `Delete` per props.
+- [x] `P1` `SBD-COMP-003`: `SelectionModeActions` shows loading spinner in Delete when `deleting=true`.
+- [x] `P0` `SBD-COMP-004`: `BulkDeleteDialog` keeps confirm disabled until typed value exactly matches count.
+- [x] `P1` `SBD-COMP-005`: `BulkDeleteDialog` resets input when dialog closes.
 
 ### C) Card-level selection behavior
 
@@ -93,6 +93,7 @@ Verification note:
 - [ ] `P1` `SBD-CARD-004`: `NoteSearchItem` mirrors checkbox behavior and long-press entry.
 - [ ] `P1` `SBD-CARD-005`: `NoteSearchItem` suppresses chunk navigation in selection mode and toggles selection instead.
 - [ ] `P2` `SBD-CARD-006`: tag clicks are disabled in selection mode and active outside selection mode.
+- [x] `P2` `SBD-CARD-REG-001`: `NoteCard` keeps checkbox unchecked when note is active and selection mode is off.
 
 ### D) SearchResultsPanel integration
 
@@ -100,10 +101,10 @@ Verification note:
 - [ ] `P0` `SBD-PANEL-002`: panel enters selection mode from AI Notes item.
 - [ ] `P0` `SBD-PANEL-003`: panel enters selection mode from tag-only result item.
 - [ ] `P0` `SBD-PANEL-004`: `Select all` selects all currently visible ids in active path (FTS/tag-only/AI Notes).
-- [ ] `P0` `SBD-PANEL-005`: delete action opens confirmation dialog; no delete before confirm.
-- [ ] `P0` `SBD-PANEL-006`: confirm delete calls `deleteNotesByIds` with selected ids.
-- [ ] `P0` `SBD-PANEL-007`: FTS/tag-only delete path calls `resetFtsResults()`.
-- [ ] `P0` `SBD-PANEL-008`: AI Notes delete path calls `resetAIResults()`.
+- [x] `P0` `SBD-PANEL-005`: delete action opens confirmation dialog; no delete before confirm.
+- [x] `P0` `SBD-PANEL-006`: confirm delete calls `deleteNotesByIds` with selected ids.
+- [x] `P0` `SBD-PANEL-007`: FTS/tag-only delete path calls `resetFtsResults()`.
+- [x] `P0` `SBD-PANEL-008`: AI Notes delete path calls `resetAIResults()`.
 - [ ] `P1` `SBD-PANEL-009`: panel exits selection mode when selected count becomes zero.
 - [ ] `P1` `SBD-PANEL-010`: panel keeps selection mode if delete result has failures.
 - [ ] `P1` `SBD-PANEL-011`: visible-id reconciliation removes ids not present after result-set change.
@@ -112,8 +113,8 @@ Verification note:
 
 ### E) Sidebar integration
 
-- [ ] `P0` `SBD-SIDEBAR-001`: sidebar no longer renders old `Select Notes` button; actions appear only in selection mode.
-- [ ] `P0` `SBD-SIDEBAR-002`: sidebar uses shared confirmation dialog before bulk delete.
+- [x] `P0` `SBD-SIDEBAR-001`: sidebar no longer renders old `Select Notes` button; actions appear only in selection mode.
+- [x] `P0` `SBD-SIDEBAR-002`: sidebar uses shared confirmation dialog before bulk delete.
 - [ ] `P0` `SBD-SIDEBAR-003`: sidebar `Select all` selects visible sidebar notes (not FTS data source).
 - [ ] `P1` `SBD-SIDEBAR-004`: sidebar actions UI matches panel actions layout and labels.
 

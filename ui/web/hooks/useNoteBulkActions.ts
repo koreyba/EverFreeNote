@@ -119,8 +119,8 @@ export function useNoteBulkActions({
       const ids = Array.from(selectedNoteIds)
       await deleteNotesByIds(ids)
       exitSelectionMode()
-    } catch (error) {
-      console.error('Bulk delete error:', error)
+    } catch {
+      // deleteNotesByIds already reports failures.
     } finally {
       setBulkDeleting(false)
     }

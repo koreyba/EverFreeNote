@@ -16,13 +16,13 @@ describe('BulkDeleteDialog', () => {
     )
 
     cy.contains('Delete selected notes').should('be.visible')
-    cy.contains('button', 'Delete').should('be.disabled')
+    cy.get('[data-testid="bulk-delete-confirm"]').should('be.disabled')
 
-    cy.get('input[placeholder="3"]').type('2')
-    cy.contains('button', 'Delete').should('be.disabled')
+    cy.get('[data-testid="bulk-delete-confirm-input"]').type('2')
+    cy.get('[data-testid="bulk-delete-confirm"]').should('be.disabled')
 
-    cy.get('input[placeholder="3"]').clear().type('3')
-    cy.contains('button', 'Delete').should('not.be.disabled').click()
+    cy.get('[data-testid="bulk-delete-confirm-input"]').clear().type('3')
+    cy.get('[data-testid="bulk-delete-confirm"]').should('not.be.disabled').click()
 
     cy.get('@onConfirm').should('have.been.calledOnce')
   })
@@ -47,10 +47,10 @@ describe('BulkDeleteDialog', () => {
 
     cy.mount(<DialogHarness />)
 
-    cy.get('input[placeholder="2"]').type('2')
-    cy.contains('button', 'Cancel').click()
+    cy.get('[data-testid="bulk-delete-confirm-input"]').type('2')
+    cy.get('[data-testid="bulk-delete-cancel"]').click()
     cy.contains('Delete selected notes').should('not.exist')
     cy.contains('Reopen').click()
-    cy.get('input[placeholder="2"]').should('have.value', '')
+    cy.get('[data-testid="bulk-delete-confirm-input"]').should('have.value', '')
   })
 })

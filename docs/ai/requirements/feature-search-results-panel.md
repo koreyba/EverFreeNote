@@ -44,10 +44,10 @@ description: Clarify the problem space, gather requirements, and define success 
 - The panel works on desktop (resizable) and mobile (full-screen with back button).
 - Clicking a result correctly opens the target note in the editor, while the search panel remains gracefully open.
 - The panel has a clear "Close" button.
-  - **Panel visibility logic:** The panel closes when the user clicks the "Close" button. (Suggestion: It should *also* auto-close if the user completely clears the text in the search input and loses focus, or clicks a 'Clear' button).
-  - The appearance/disappearance of the panel occurs with a smooth sliding transition.
-  - The user's preferred panel width is saved to LocalStorage and restored upon next open.
-  - The original left panel notes list is completely unaffected by the search results.
+- **Panel visibility logic (REQUIRED):** The panel closes only via explicit panel-close actions (desktop Close button or mobile Back button). Clearing search text must not auto-close the panel.
+- The appearance/disappearance of the panel occurs with a smooth sliding transition.
+- The user's preferred panel width is saved to LocalStorage and restored upon next open.
+- The original left panel notes list is completely unaffected by the search results.
 
 ## Constraints & Assumptions
 **What limitations do we need to work within?**
@@ -56,4 +56,4 @@ description: Clarify the problem space, gather requirements, and define success 
 
 ## Questions & Open Items
 **What do we still need to clarify?**
-- None currently. The behavior of the left panel search input is proposed as a simple trigger button.
+- None currently. Panel close behavior is finalized: no auto-close on clearing input.

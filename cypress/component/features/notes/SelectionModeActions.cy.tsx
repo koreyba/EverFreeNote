@@ -41,7 +41,7 @@ describe('SelectionModeActions', () => {
 
     cy.contains('button', 'Select all').should('be.disabled')
     cy.contains('button', 'Cancel').should('be.disabled')
-    cy.contains('button', 'Delete (2)').should('not.exist')
+    cy.contains('button', 'Deleting (2)').should('be.disabled')
     cy.get('button').find('.animate-spin').should('have.length', 1)
   })
 })

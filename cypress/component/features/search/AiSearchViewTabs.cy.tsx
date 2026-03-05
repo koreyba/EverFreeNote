@@ -70,8 +70,7 @@ describe('AiSearchViewTabs', () => {
       </div>
     )
 
-    cy.get('[aria-label="Result view mode"]')
-      .parent()
+    cy.get('[data-testid="ai-search-view-tabs-trigger"]')
       .trigger('pointerdown', { force: true, pointerType: 'touch' })
     cy.contains('Remove selection to switch').should('exist')
     cy.contains('Outside').click()

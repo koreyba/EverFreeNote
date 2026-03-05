@@ -73,7 +73,7 @@ describe('AiSearchToggle', () => {
       </div>
     )
 
-    cy.contains('AI RAG Search').click({ force: true })
+    cy.get('[data-testid="ai-search-toggle-trigger"]').click({ force: true })
     cy.contains('Remove selection to switch').should('exist')
 
     cy.contains('Outside').click()
@@ -88,6 +88,7 @@ describe('AiSearchToggle', () => {
     cy.get('[aria-label="About AI RAG Search"]').click({ force: true })
     cy.contains('semantic (vector) similarity').should('exist')
     cy.get('[aria-label="About AI RAG Search"]').click({ force: true })
-    cy.contains('Press').should('not.exist')
+    // "Press Enter..." is a mobile secondary hint inside the info tooltip.
+    cy.get('[data-testid="ai-search-toggle-info-hint"]').should('not.exist')
   })
 })

@@ -58,7 +58,6 @@ export function Sidebar({
   onExitSelectionMode,
   onSelectAll,
   onBulkDelete,
-  filterByTag,
   onOpenSearch,
   onCreateNote,
   onSignOut,
@@ -132,12 +131,18 @@ export function Sidebar({
         </div>
 
         {/* Search */}
-        <div className="relative cursor-pointer" onClick={onOpenSearch}>
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground mr-2 pointer-events-none" />
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="relative w-full text-left"
+          data-testid="sidebar-search-trigger"
+          aria-label="Open search panel"
+        >
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground mr-2 pointer-events-none" />
           <div className="flex w-full items-center h-10 px-3 pl-9 py-2 rounded-md border border-input bg-background/50 hover:bg-background/80 transition-colors text-sm text-muted-foreground text-left">
-            {filterByTag ? `Search in "${filterByTag}" notes...` : "Search notes..."}
+            Click to search
           </div>
-        </div>
+        </button>
       </div>
 
       {/* New Note Button */}

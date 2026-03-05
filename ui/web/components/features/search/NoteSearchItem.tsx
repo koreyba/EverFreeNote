@@ -191,10 +191,11 @@ export function NoteSearchItem({
               role="button"
               tabIndex={0}
               aria-label={`Open fragment ${index + 2} from "${group.noteTitle || 'Untitled'}" in context`}
-              className="group rounded-md bg-background/60 px-2.5 py-2 cursor-pointer border border-border/40 transition-all hover:bg-background hover:border-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              className="group relative rounded-md bg-background/60 px-2.5 py-2 cursor-pointer border border-border/40 transition-all hover:bg-background hover:border-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               onClick={(e) => handleChunkActivate(e, chunk.charOffset, chunk.content.length)}
               onKeyDown={(e) => handleChunkKeyDown(e, chunk.charOffset, chunk.content.length)}
             >
+              <ArrowUpRight className="absolute bottom-2 right-2 h-3 w-3 text-primary opacity-0 group-hover:opacity-60 transition-opacity" />
               <div className="mb-1 flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground">Fragment {index + 2}</span>
                 <span className={cn('text-[10px] tabular-nums', getScoreClass(chunk.similarity))}>

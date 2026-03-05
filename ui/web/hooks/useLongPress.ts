@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 
 interface UseLongPressOptions {
@@ -61,6 +61,14 @@ export function useLongPress(
     longPressTriggeredRef.current = false
     return wasTriggered
   }, [])
+
+  useEffect(() => {
+    return () => {
+      clearTimer()
+      startPointRef.current = null
+      longPressTriggeredRef.current = false
+    }
+  }, [clearTimer, enabled, delayMs, moveThresholdPx])
 
   return {
     longPressHandlers: {

@@ -45,9 +45,16 @@ export function SelectionModeActions({
           size="sm"
           className="h-7 px-2 text-xs whitespace-nowrap"
           onClick={onDelete}
-          disabled={deletingDisabled}
+          disabled={deleting || deletingDisabled}
         >
-          {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : `Delete (${selectedCount})`}
+          {deleting ? (
+            <span className="inline-flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Deleting ({selectedCount})</span>
+            </span>
+          ) : (
+            `Delete (${selectedCount})`
+          )}
         </Button>
         <Button
           data-testid="selection-mode-cancel"

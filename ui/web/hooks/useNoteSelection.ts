@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { NoteViewModel, SearchResult } from '@core/types/domain'
 import { clearSelection as clearSelectionSet, selectAll as selectAllSet, toggleSelection } from '@core/services/selection'
 
@@ -12,6 +12,11 @@ export function useNoteSelection() {
     const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
     const [selectionMode, setSelectionMode] = useState(false)
     const [bulkDeleting, setBulkDeleting] = useState(false)
+    const selectedNoteIdsRef = useRef(selectedNoteIds)
+
+    useEffect(() => {
+        selectedNoteIdsRef.current = selectedNoteIds
+    }, [selectedNoteIds])
 
     const handleSelectNote = useCallback((note: NoteViewModel | null) => {
         setSelectedNote(note)
@@ -52,11 +57,9 @@ export function useNoteSelection() {
     }, [])
 
     const toggleNoteSelection = useCallback((noteId: string) => {
-        setSelectedNoteIds((prev) => {
-            const next = toggleSelection(prev, noteId)
-            setSelectionMode(next.size > 0)
-            return next
-        })
+        const next = toggleSelection(selectedNoteIdsRef.current, noteId)
+        setSelectedNoteIds(next)
+        setSelectionMode(next.size > 0)
     }, [])
 
     const selectAllVisible = useCallback((source: (NoteViewModel | SearchResult)[]) => {

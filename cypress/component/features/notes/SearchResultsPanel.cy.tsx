@@ -208,9 +208,13 @@ describe('SearchResultsPanel', () => {
 
     mountPanel(controller)
 
-    cy.contains('button', 'Select all').click({ force: true })
-    cy.contains('button', 'Delete (2)').should('be.visible')
-    cy.contains('button', 'Delete (2)').click({ force: true })
+    cy.contains('Result One')
+      .closest('[data-testid="note-card"]')
+      .find('[role="checkbox"]')
+      .click({ force: true })
+    cy.get('[data-testid="selection-mode-select-all"]').click({ force: true })
+    cy.get('[data-testid="selection-mode-delete"]').should('contain', 'Delete (2)')
+    cy.get('[data-testid="selection-mode-delete"]').click({ force: true })
     cy.get('input[placeholder="2"]').clear().type('2')
     cy.get('[role="alertdialog"]').contains('button', /^Delete$/).click({ force: true })
 
@@ -266,8 +270,12 @@ describe('SearchResultsPanel', () => {
 
     mountPanel(controller, { hasGeminiApiKey: true, supabase })
 
-    cy.contains('button', 'Select all').click({ force: true })
-    cy.contains('button', 'Delete (2)').click({ force: true })
+    cy.contains('AI Result One')
+      .closest('article')
+      .find('[role="checkbox"]')
+      .click({ force: true })
+    cy.get('[data-testid="selection-mode-select-all"]').click({ force: true })
+    cy.get('[data-testid="selection-mode-delete"]').click({ force: true })
     cy.get('input[placeholder="2"]').clear().type('2')
     cy.get('[role="alertdialog"]').contains('button', /^Delete$/).click({ force: true })
 
@@ -289,8 +297,12 @@ describe('SearchResultsPanel', () => {
 
     mountPanel(controller)
 
-    cy.contains('button', 'Select all').click({ force: true })
-    cy.contains('button', 'Delete (2)').click({ force: true })
+    cy.contains('Tag Note One')
+      .closest('[data-testid="note-card"]')
+      .find('[role="checkbox"]')
+      .click({ force: true })
+    cy.get('[data-testid="selection-mode-select-all"]').click({ force: true })
+    cy.get('[data-testid="selection-mode-delete"]').click({ force: true })
     cy.get('input[placeholder="2"]').clear().type('2')
     cy.get('[role="alertdialog"]').contains('button', /^Delete$/).click({ force: true })
 

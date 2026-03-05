@@ -23,9 +23,10 @@ export function useNoteSearch(userId: string | undefined) {
     // -- Logic --
 
     const handleSearch = useCallback((query: string) => {
-        const isNewQuery = query.trim() !== prevQueryRef.current.trim()
-        prevQueryRef.current = query
-        setFtsSearchQuery(query)
+        const trimmedQuery = query.trim()
+        const isNewQuery = trimmedQuery !== prevQueryRef.current
+        prevQueryRef.current = trimmedQuery
+        setFtsSearchQuery(trimmedQuery)
         setFtsOffset(0)
         // Only reset accumulated results when the query actually changes.
         // Calling handleSearch with the same query (e.g. pressing Enter) must not
@@ -35,7 +36,7 @@ export function useNoteSearch(userId: string | undefined) {
             setFtsAccumulatedResults([])
             lastProcessedDataRef.current = ''
         }
-        if (query.trim().length > 0) {
+        if (trimmedQuery.length > 0) {
             setIsSearchPanelOpen(true)
         }
     }, [])

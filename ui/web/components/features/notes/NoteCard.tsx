@@ -2,6 +2,7 @@
 
 import { memo } from "react"
 import type { MouseEvent } from "react"
+import type { KeyboardEvent } from "react"
 import InteractiveTag from "@ui/web/components/InteractiveTag"
 import { Checkbox } from "@ui/web/components/ui/checkbox"
 import DOMPurify from "isomorphic-dompurify"
@@ -95,12 +96,28 @@ export const NoteCard = memo(function NoteCard({
     onClick()
   }
 
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget) return
+    if (event.key === "Enter") {
+      event.preventDefault()
+      onClick()
+      return
+    }
+    if (event.key === " ") {
+      event.preventDefault()
+      onClick()
+    }
+  }
+
   // Compact variant - for regular note list
   if (variant === "compact") {
     return (
       <div
         data-testid="note-card"
         onClick={handleCardClick}
+        onKeyDown={handleCardKeyDown}
+        role="button"
+        tabIndex={0}
         className={cn(
           "group p-3 rounded-lg cursor-pointer transition-colors border h-full",
           isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
@@ -113,6 +130,8 @@ export const NoteCard = memo(function NoteCard({
               checked={checkboxChecked}
               onCheckedChange={() => onToggleSelect?.()}
               onClick={(e) => e.stopPropagation()}
+              tabIndex={selectionMode ? 0 : -1}
+              aria-hidden={!selectionMode}
               className={cn(
                 "mt-1 shrink-0 transition-opacity",
                 selectionMode
@@ -166,6 +185,9 @@ export const NoteCard = memo(function NoteCard({
     <article
       data-testid="note-card"
       onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      role="button"
+      tabIndex={0}
       {...longPressHandlers}
       className={cn(
         'group relative rounded-lg border border-border/60 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/30 hover:shadow-sm',
@@ -177,6 +199,8 @@ export const NoteCard = memo(function NoteCard({
           checked={checkboxChecked}
           onCheckedChange={() => onToggleSelect?.()}
           onClick={(e) => e.stopPropagation()}
+          tabIndex={selectionMode ? 0 : -1}
+          aria-hidden={!selectionMode}
           className={cn(
             "absolute left-2 top-2 z-10 bg-background/90 transition-opacity",
             selectionMode

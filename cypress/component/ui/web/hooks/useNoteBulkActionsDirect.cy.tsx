@@ -19,6 +19,15 @@ const sampleNotes: NoteViewModel[] = [
     updated_at: '2026-01-01T00:00:00.000Z',
     user_id: 'user-1',
   },
+  {
+    id: 'note-2',
+    title: 'Note 2',
+    description: '',
+    tags: [],
+    created_at: '2026-01-02T00:00:00.000Z',
+    updated_at: '2026-01-02T00:00:00.000Z',
+    user_id: 'user-1',
+  },
 ]
 
 const Harness = ({ selectedIds, isOffline = false, deleteShouldRejectIds = [] }: HarnessProps) => {

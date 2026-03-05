@@ -63,12 +63,15 @@ function hashText(value: string): string {
 function buildGroupsSignature(groups: RagNoteGroup[]): string {
   return groups
     .map((group) => {
+      const tagsSignature = Array.isArray(group.noteTags)
+        ? [...group.noteTags].sort().join(',')
+        : ''
       const chunksSignature = group.chunks
         .map((chunk) =>
           `${chunk.chunkIndex}:${chunk.charOffset}:${chunk.similarity.toFixed(6)}:${hashText(chunk.content)}`
         )
         .join('|')
-      return `${group.noteId}:${group.topScore.toFixed(6)}:${group.hiddenCount}:${chunksSignature}`
+      return `${group.noteId}:${hashText(group.noteTitle)}:${hashText(tagsSignature)}:${group.topScore.toFixed(6)}:${group.hiddenCount}:${chunksSignature}`
     })
     .join('||')
 }
@@ -111,10 +114,13 @@ export function useAIPaginatedSearch({
 
   const trimmedQuery = query.trim()
   const queryEnabled = isEnabled && trimmedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH
+  const searchIdentity = `${trimmedQuery}::${preset}::${filterTag ?? ''}::${isEnabled}`
+  const effectiveAiOffset =
+    searchIdentityRef.current && searchIdentityRef.current !== searchIdentity ? 0 : aiOffset
 
   const requestedTopK = useMemo(
-    () => Math.min(AI_SEARCH_TOP_K_MAX, pageSize + aiOffset),
-    [pageSize, aiOffset]
+    () => Math.min(AI_SEARCH_TOP_K_MAX, pageSize + effectiveAiOffset),
+    [pageSize, effectiveAiOffset]
   )
 
   const resetAIResults = useCallback(() => {
@@ -125,12 +131,11 @@ export function useAIPaginatedSearch({
 
   // Reset pagination whenever the effective search identity changes.
   useEffect(() => {
-    const nextIdentity = `${trimmedQuery}::${preset}::${filterTag ?? ''}::${isEnabled}`
-    if (searchIdentityRef.current === nextIdentity) return
-    searchIdentityRef.current = nextIdentity
+    if (searchIdentityRef.current === searchIdentity) return
+    searchIdentityRef.current = searchIdentity
     // eslint-disable-next-line react-hooks/set-state-in-effect
     resetAIResults()
-  }, [trimmedQuery, preset, filterTag, isEnabled, resetAIResults])
+  }, [searchIdentity, resetAIResults])
 
   const result = useQuery({
     queryKey: ['aiSearch', trimmedQuery, preset, filterTag, requestedTopK],
@@ -168,7 +173,7 @@ export function useAIPaginatedSearch({
     if (!result.data) return
 
     const dataSignature =
-      `${aiOffset}-${result.data.chunkCount}-${result.data.groups.length}-` +
+      `${effectiveAiOffset}-${result.data.chunkCount}-${result.data.groups.length}-` +
       buildGroupsSignature(result.data.groups)
     if (dataSignature === lastProcessedDataRef.current) return
     lastProcessedDataRef.current = dataSignature
@@ -176,7 +181,7 @@ export function useAIPaginatedSearch({
     // rag-search returns cumulative topK results. Always replacing keeps ranking,
     // scores, and snippets fresh when existing note groups are updated.
     setAiAccumulatedResults(result.data.groups)
-  }, [aiOffset, queryEnabled, result.data])
+  }, [effectiveAiOffset, queryEnabled, result.data])
 
   const aiHasMore =
     queryEnabled &&
@@ -184,14 +189,14 @@ export function useAIPaginatedSearch({
     requestedTopK < AI_SEARCH_TOP_K_MAX &&
     result.data.chunkCount >= requestedTopK
 
-  const aiLoadingMore = result.isFetching && aiOffset > 0
+  const normalizedLoadingMore = result.isFetching && effectiveAiOffset > 0
 
   const loadMoreAI = useCallback(() => {
-    if (!queryEnabled || aiLoadingMore || !aiHasMore) return
+    if (!queryEnabled || normalizedLoadingMore || !aiHasMore) return
     setAiOffset((prev) =>
       Math.min(prev + pageSize, Math.max(0, AI_SEARCH_TOP_K_MAX - pageSize))
     )
-  }, [queryEnabled, aiLoadingMore, aiHasMore, pageSize])
+  }, [queryEnabled, normalizedLoadingMore, aiHasMore, pageSize])
 
   const refetch = useCallback(() => {
     void result.refetch()
@@ -200,7 +205,7 @@ export function useAIPaginatedSearch({
   const initialLoading =
     queryEnabled &&
     result.isFetching &&
-    aiOffset === 0 &&
+    effectiveAiOffset === 0 &&
     aiAccumulatedResults.length === 0
 
   return {
@@ -208,10 +213,10 @@ export function useAIPaginatedSearch({
     isLoading: initialLoading,
     error: result.error ? String(result.error) : null,
     refetch,
-    aiOffset,
+    aiOffset: effectiveAiOffset,
     aiAccumulatedResults,
     aiHasMore,
-    aiLoadingMore,
+    aiLoadingMore: normalizedLoadingMore,
     loadMoreAI,
     resetAIResults,
   }
