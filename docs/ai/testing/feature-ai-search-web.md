@@ -45,29 +45,29 @@ Out of scope:
 
 ### B) `useAIPaginatedSearch`
 
-- [ ] `P0` `AIS-HOOK-001`: disabled when query shorter than minimum.
+- [x] `P0` `AIS-HOOK-001`: disabled when query shorter than minimum.
 - [ ] `P0` `AIS-HOOK-002`: query key includes query/preset/tag/topK dimensions.
 - [ ] `P0` `AIS-HOOK-003`: load-more increases requested topK and preserves dedup semantics.
-- [ ] `P0` `AIS-HOOK-004`: cumulative fetch refreshes existing groups when better chunks/scores arrive.
+- [x] `P0` `AIS-HOOK-004`: cumulative fetch refreshes existing groups when better chunks/scores arrive.
 - [ ] `P0` `AIS-HOOK-005`: `aiHasMore` transitions correctly by chunk count and max topK boundary.
-- [ ] `P0` `AIS-HOOK-006`: `resetAIResults()` clears offset and accumulated results.
+- [x] `P0` `AIS-HOOK-006`: `resetAIResults()` clears offset and accumulated results.
 - [ ] `P1` `AIS-HOOK-007`: changing search identity (query/preset/tag/enabled) resets pagination state.
 - [ ] `P1` `AIS-HOOK-008`: exposes loading and error states for UI consumption.
 
 ### C) `useSearchMode`
 
-- [ ] `P1` `AIS-MODE-001`: default values are stable (`isAIEnabled=false`, default preset, default view mode).
-- [ ] `P1` `AIS-MODE-002`: toggle/preset/view persist to localStorage.
-- [ ] `P1` `AIS-MODE-003`: values restore from localStorage on initialization.
+- [x] `P1` `AIS-MODE-001`: default values are stable (`isAIEnabled=false`, default preset, default view mode).
+- [x] `P1` `AIS-MODE-002`: toggle/preset/view persist to localStorage.
+- [x] `P1` `AIS-MODE-003`: values restore from localStorage on initialization.
 
 ### D) AI controls components
 
-- [ ] `P1` `AIS-COMP-001`: `AiSearchToggle` disabled when API key missing.
-- [ ] `P1` `AIS-COMP-002`: missing-key tooltip message is rendered.
-- [ ] `P1` `AIS-COMP-003`: blocked-selection hint (`Remove selection to switch`) opens on desktop hover.
-- [ ] `P1` `AIS-COMP-004`: blocked-selection hint toggles on mobile tap and closes on outside tap.
-- [ ] `P1` `AIS-COMP-005`: info tooltip on mobile does not auto-close immediately.
-- [ ] `P1` `AIS-COMP-006`: `AiSearchViewTabs` disabled behavior mirrors toggle behavior.
+- [x] `P1` `AIS-COMP-001`: `AiSearchToggle` disabled when API key missing.
+- [x] `P1` `AIS-COMP-002`: missing-key tooltip message is rendered.
+- [x] `P1` `AIS-COMP-003`: blocked-selection hint (`Remove selection to switch`) opens on desktop hover.
+- [x] `P1` `AIS-COMP-004`: blocked-selection hint toggles on mobile tap and closes on outside tap.
+- [x] `P1` `AIS-COMP-005`: info tooltip on mobile does not auto-close immediately.
+- [x] `P1` `AIS-COMP-006`: `AiSearchViewTabs` disabled behavior mirrors toggle behavior.
 - [ ] `P2` `AIS-COMP-007`: preset selector updates active preset styling and callback payload.
 
 ### E) AI results rendering components
