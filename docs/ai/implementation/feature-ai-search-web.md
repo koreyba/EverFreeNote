@@ -160,3 +160,8 @@ function groupByNote(chunks: RagChunk[]): RagNoteGroup[] {
 - Gemini API key is read server-side in the Edge Function — never sent to the browser.
 - `match_notes` RPC enforces `user_id` filtering — RLS ensures users only see their own embeddings.
 - Edge Function validates `userId` from the JWT token, not just the request body.
+
+## Deployment Order
+
+- Apply database migrations up to and including `20260304000001_add_filter_tag_to_match_notes.sql` before deploying `supabase/functions/rag-search`.
+- The `rag-search` function includes a legacy-signature fallback, but target behavior (server-side `filter_tag`) requires the updated 3-arg `match_notes` signature.

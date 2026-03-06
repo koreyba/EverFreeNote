@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
+import { createClient } from "@supabase/supabase-js"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -18,34 +18,39 @@ const jsonResponse = (body: unknown, status = 200) =>
   })
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
-  if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405)
+  try {
+    if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
+    if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405)
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-  if (!supabaseUrl || !serviceRoleKey) return jsonResponse({ error: "Function not configured" }, 500)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    if (!supabaseUrl || !serviceRoleKey) return jsonResponse({ error: "Function not configured" }, 500)
 
-  const authHeader = req.headers.get("Authorization")?.trim() ?? ""
-  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
-  const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
-  if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
+    const authHeader = req.headers.get("Authorization")?.trim() ?? ""
+    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
+    const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
+    if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
-  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
-  if (userError || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401)
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
+    if (userError || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401)
 
-  const { data, error } = await supabaseAdmin
-    .from("user_api_keys")
-    .select("gemini_api_key_encrypted")
-    .eq("user_id", userData.user.id)
-    .maybeSingle()
+    const { data, error } = await supabaseAdmin
+      .from("user_api_keys")
+      .select("gemini_api_key_encrypted")
+      .eq("user_id", userData.user.id)
+      .maybeSingle()
 
-  if (error) {
-    console.error("[api-keys-status]", error)
+    if (error) {
+      console.error("[api-keys-status]", error)
+      return jsonResponse({ error: "Internal error" }, 500)
+    }
+
+    return jsonResponse({
+      gemini: { configured: Boolean(data?.gemini_api_key_encrypted) },
+    })
+  } catch (err) {
+    console.error("[api-keys-status]", err)
     return jsonResponse({ error: "Internal error" }, 500)
   }
-
-  return jsonResponse({
-    gemini: { configured: Boolean(data?.gemini_api_key_encrypted) },
-  })
 })

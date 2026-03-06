@@ -13,6 +13,8 @@ export function useBulkDeleteConfirm(onConfirmDelete: () => Promise<void> | void
     confirmingRef.current = true
     try {
       await onConfirmDelete()
+    } catch (error) {
+      console.error('Bulk delete confirmation failed:', error)
     } finally {
       confirmingRef.current = false
       setIsDialogOpen(false)

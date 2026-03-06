@@ -118,6 +118,7 @@ export function NoteSearchItem({
     >
       {onToggleSelect && (
         <Checkbox
+          aria-label={`Select note ${group.noteTitle || 'Untitled'}`}
           checked={isSelected}
           onCheckedChange={() => onToggleSelect(group.noteId)}
           onClick={(e) => e.stopPropagation()}

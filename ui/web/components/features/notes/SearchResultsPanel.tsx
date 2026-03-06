@@ -81,6 +81,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
     // AI Search state
     const { isAIEnabled, preset, viewMode, setIsAIEnabled, setPreset, setViewMode } = useSearchMode()
+    const aiEnabled = isAIEnabled && hasGeminiApiKey
     const {
         noteGroups,
         isLoading: aiLoading,
@@ -94,10 +95,10 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         query: aiSearchQuery,
         preset,
         filterTag: filterByTag,
-        isEnabled: isAIEnabled,
+        isEnabled: aiEnabled,
     })
 
-    const showAIResults = isAIEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
+    const showAIResults = aiEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
     const selectionSwitchTitle = "Remove selection to switch"
     const canSelectInPanel =
         showFTSResults ||
@@ -183,7 +184,12 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
     const handleSearchChange = (value: string) => {
         setSearchDraft(value)
-        if (!isAIEnabled) {
+        if (!aiEnabled) {
+            if (value === '') {
+                debouncedSearch.cancel()
+                controller.handleSearch('')
+                return
+            }
             debouncedSearch.call(value)
         }
     }
@@ -199,7 +205,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         if (e.key === 'Enter') {
             const normalizedQuery = searchDraft.trim()
             debouncedSearch.cancel()
-            if (isAIEnabled) {
+            if (aiEnabled) {
                 const queryChanged = normalizedQuery !== aiSearchQuery.trim()
                 setAiSearchQuery(normalizedQuery)
                 controller.handleSearch(normalizedQuery)
@@ -216,6 +222,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     }
 
     const handleClear = () => {
+        debouncedSearch.cancel()
         controller.handleSearch('')
         setSearchDraft('')
         setAiSearchQuery('')
@@ -398,7 +405,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                             onKeyDown={handleSearchKeyDown}
                             className={cn(
                                 "pl-9 pr-7 h-9 bg-background transition-shadow",
-                                isAIEnabled && "ring-1 ring-primary/35 focus-visible:ring-primary/60"
+                                aiEnabled && "ring-1 ring-primary/35 focus-visible:ring-primary/60"
                             )}
                         />
                         {searchDraft && (
@@ -574,7 +581,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                             <p className="text-sm font-medium text-muted-foreground/70">
                                 {searchDraft.trim().length > 0 ? "Press Enter to search" : "Search your notes"}
                             </p>
-                            {isAIEnabled && searchDraft.trim().length > 0 && (
+                            {aiEnabled && searchDraft.trim().length > 0 && (
                                 <p className="text-xs text-muted-foreground/45 mt-1">AI search uses semantic similarity</p>
                             )}
                         </div>

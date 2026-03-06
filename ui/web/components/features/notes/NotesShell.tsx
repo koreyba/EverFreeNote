@@ -145,7 +145,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
     // Navigate to note in edit mode, then scroll once mounted
     pendingScrollRef.current = { noteId, charOffset: bodyOffset, chunkLength }
-    controller.handleEditNote(note)
+    await controller.handleEditNote(note)
   }, [controller, supabase])
 
   const showEditor = !!(selectedNote || isEditing)

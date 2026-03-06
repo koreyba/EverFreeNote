@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck - Deno types (Deno.env, URL imports) are not available in the Node.js TypeScript
-// compiler used by the monorepo. There is no deno.json / import_map.json in this project.
+// @ts-nocheck - Deno runtime globals are not available in the Node.js TypeScript compiler
+// used by the monorepo root checks.
 // The `declare const Deno` below is kept for editor IntelliSense only.
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
+import { createClient } from "@supabase/supabase-js"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -142,7 +142,9 @@ serve(async (req: Request) => {
   }
 
   // Auth — extract userId from JWT
-  const token = req.headers.get("Authorization")?.replace("Bearer ", "")
+  const authHeader = req.headers.get("Authorization")?.trim() ?? ""
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
+  const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
   if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
@@ -159,8 +161,8 @@ serve(async (req: Request) => {
   if (typeof query !== "string" || query.trim().length === 0) {
     return jsonResponse({ error: "Missing or empty query" }, 400)
   }
-  if (typeof topK !== "number" || topK < 1 || topK > 100) {
-    return jsonResponse({ error: "topK must be a number between 1 and 100" }, 400)
+  if (typeof topK !== "number" || !Number.isInteger(topK) || topK < 1 || topK > 100) {
+    return jsonResponse({ error: "topK must be an integer between 1 and 100" }, 400)
   }
   if (typeof threshold !== "number" || threshold < 0 || threshold > 1) {
     return jsonResponse({ error: "threshold must be a number between 0 and 1" }, 400)
@@ -199,11 +201,27 @@ serve(async (req: Request) => {
       global: { headers: { Authorization: `Bearer ${token}` } },
     })
 
-    const { data: chunks, error: rpcError } = await supabaseUser.rpc("match_notes", {
+    let { data: chunks, error: rpcError } = await supabaseUser.rpc("match_notes", {
       query_embedding: queryEmbedding,
       match_count: topK,
       filter_tag: tagFilter,
     })
+
+    if (rpcError && tagFilter) {
+      const rpcMessage = `${rpcError.message ?? ""} ${rpcError.details ?? ""}`.toLowerCase()
+      const looksLikeLegacySignature =
+        rpcMessage.includes("filter_tag") ||
+        (rpcMessage.includes("match_notes") && rpcMessage.includes("function"))
+
+      if (looksLikeLegacySignature) {
+        const fallback = await supabaseUser.rpc("match_notes", {
+          query_embedding: queryEmbedding,
+          match_count: topK,
+        })
+        chunks = fallback.data
+        rpcError = fallback.error
+      }
+    }
 
     if (rpcError) {
       console.error("[rag-search] match_notes RPC error", rpcError)
@@ -255,7 +273,8 @@ serve(async (req: Request) => {
       }
     })
 
-    return jsonResponse({ chunks: result })
+    const finalResult = tagFilter ? result.filter((item) => item.noteTags.includes(tagFilter)) : result
+    return jsonResponse({ chunks: finalResult })
   } catch (err) {
     console.error("[rag-search]", err)
     const isGeminiError = err instanceof Error && err.message.startsWith("Gemini")

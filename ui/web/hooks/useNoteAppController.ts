@@ -54,7 +54,7 @@ export function useNoteAppController() {
     setBulkDeleting,
     handleSelectNote,
     handleSearchResultClick,
-    handleEditNote,
+    handleEditNote: handleEditNoteRaw,
     handleCreateNote,
     handleDeleteNote,
     enterSelectionMode,
@@ -243,6 +243,12 @@ export function useNoteAppController() {
     setLastSavedAt(null)
   }, [flushPendingEditorSave, handleCreateNote, setLastSavedAt])
 
+  const wrappedHandleEditNote = useCallback(async (note: NoteViewModel) => {
+    await flushPendingEditorSave()
+    handleEditNoteRaw(note)
+    setLastSavedAt(null)
+  }, [flushPendingEditorSave, handleEditNoteRaw, setLastSavedAt])
+
   const handleTagClick = useCallback(async (tag: string) => {
     await flushPendingEditorSave()
     onTagClick(tag)
@@ -337,7 +343,7 @@ export function useNoteAppController() {
     handleSignOut,
     handleDeleteAccount,
     handleCreateNote: wrappedHandleCreateNote,
-    handleEditNote,
+    handleEditNote: wrappedHandleEditNote,
     handleSaveNote,
     handleReadNote,
     handleAutoSave,
