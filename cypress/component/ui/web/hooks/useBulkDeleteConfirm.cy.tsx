@@ -2,11 +2,12 @@ import React from 'react'
 import { useBulkDeleteConfirm } from '../../../../../ui/web/hooks/useBulkDeleteConfirm'
 
 const TestHarness = ({ onConfirmDelete }: { onConfirmDelete: () => Promise<void> | void }) => {
-  const { isDialogOpen, requestDelete, confirmDelete, setIsDialogOpen } = useBulkDeleteConfirm(onConfirmDelete)
+  const { isDialogOpen, requestDelete, confirmDelete, setIsDialogOpen, error } = useBulkDeleteConfirm(onConfirmDelete)
 
   return (
     <div>
       <div data-cy="open">{String(isDialogOpen)}</div>
+      <div data-cy="error">{error?.message ?? ''}</div>
       <button type="button" data-cy="request" onClick={requestDelete}>
         Request
       </button>
@@ -68,11 +69,6 @@ describe('useBulkDeleteConfirm', () => {
   })
 
   it('resets in-flight guard after rejected confirm and allows retry', () => {
-    cy.on('uncaught:exception', (error) => {
-      if (error.message.includes('failed once')) return false
-      return undefined
-    })
-
     let shouldReject = true
     const onConfirm = cy.stub().as('onConfirm').callsFake(() => {
       if (shouldReject) {
@@ -87,11 +83,12 @@ describe('useBulkDeleteConfirm', () => {
     cy.get('[data-cy="request"]').click()
     cy.get('[data-cy="confirm"]').click()
     cy.get('@onConfirm').should('have.been.calledOnce')
-    cy.get('[data-cy="open"]').should('contain', 'false')
+    cy.get('[data-cy="open"]').should('contain', 'true')
+    cy.get('[data-cy="error"]').should('contain', 'failed once')
 
-    cy.get('[data-cy="request"]').click()
     cy.get('[data-cy="confirm"]').click()
     cy.get('@onConfirm').should('have.been.calledTwice')
     cy.get('[data-cy="open"]').should('contain', 'false')
+    cy.get('[data-cy="error"]').should('contain', '')
   })
 })

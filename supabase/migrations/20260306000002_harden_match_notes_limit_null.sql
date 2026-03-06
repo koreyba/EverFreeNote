@@ -1,6 +1,5 @@
 -- Harden match_notes: guard against NULL match_count to avoid LIMIT NULL (unbounded results).
 -- Forward-only fix in a new migration so historical migrations remain unchanged.
-SET search_path TO public, extensions;
 
 CREATE OR REPLACE FUNCTION public.match_notes(
   query_embedding vector(1536),
@@ -15,6 +14,7 @@ RETURNS TABLE (
   similarity   float
 )
 LANGUAGE sql STABLE
+SET search_path = public, extensions
 AS $$
   SELECT
     ne.note_id,

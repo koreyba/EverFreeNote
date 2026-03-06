@@ -32,6 +32,26 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
 
+const isLegacyMatchNotesSignatureError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") return false
+
+  const code = typeof (error as { code?: unknown }).code === "string"
+    ? (error as { code: string }).code.toUpperCase()
+    : ""
+  // PostgREST "function not found in schema cache" for RPC signature mismatches.
+  if (code === "PGRST202") return true
+
+  const message = typeof (error as { message?: unknown }).message === "string"
+    ? (error as { message: string }).message
+    : ""
+  const details = typeof (error as { details?: unknown }).details === "string"
+    ? (error as { details: string }).details
+    : ""
+  const combined = `${message} ${details}`.toLowerCase()
+
+  return combined.includes("match_notes") && combined.includes("filter_tag") && combined.includes("function")
+}
+
 // ---------------------------------------------------------------------------
 // AES-GCM decryption (mirrors rag-index pattern)
 // ---------------------------------------------------------------------------
@@ -207,19 +227,31 @@ serve(async (req: Request) => {
       filter_tag: tagFilter,
     })
 
-    if (rpcError && tagFilter) {
-      const rpcMessage = `${rpcError.message ?? ""} ${rpcError.details ?? ""}`.toLowerCase()
-      const looksLikeLegacySignature =
-        rpcMessage.includes("filter_tag") ||
-        (rpcMessage.includes("match_notes") && rpcMessage.includes("function"))
-
-      if (looksLikeLegacySignature) {
+    // Transitional compatibility: some environments may still have legacy match_notes(query_embedding, match_count).
+    // Remove this fallback after all environments are migrated to 20260304000001_add_filter_tag_to_match_notes.sql.
+    if (rpcError && tagFilter && isLegacyMatchNotesSignatureError(rpcError)) {
+      const primaryRpcError = rpcError
+      try {
         const fallback = await supabaseUser.rpc("match_notes", {
           query_embedding: queryEmbedding,
           match_count: topK,
         })
         chunks = fallback.data
         rpcError = fallback.error
+        if (!fallback.error) {
+          console.warn("[rag-search] Using legacy match_notes fallback without filter_tag")
+        } else {
+          console.error("[rag-search] match_notes fallback failed", {
+            primaryRpcError,
+            fallbackRpcError: fallback.error,
+          })
+        }
+      } catch (fallbackErr) {
+        console.error("[rag-search] match_notes fallback threw", {
+          primaryRpcError,
+          fallbackErr,
+        })
+        rpcError = primaryRpcError
       }
     }
 
