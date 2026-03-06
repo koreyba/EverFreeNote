@@ -17,7 +17,7 @@ import {
 import { cn } from "@ui/web/lib/utils"
 import { Sidebar } from "@/components/features/notes/Sidebar"
 import { NoteList } from "@/components/features/notes/NoteList"
-import { NoteEditor, type NoteEditorHandle } from "@/components/features/notes/NoteEditor"
+import { NoteEditor, type NoteEditorHandle, type PendingChunkFocus } from "@/components/features/notes/NoteEditor"
 import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
 import { SearchResultsPanel } from "@/components/features/notes/SearchResultsPanel"
@@ -47,8 +47,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   const apiKeysService = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
   const [wordpressConfigured, setWordpressConfigured] = React.useState(false)
 
-  // Pending scroll: set when navigating to a different note via "Open in context"
-  const pendingScrollRef = React.useRef<{ noteId: string; charOffset: number; chunkLength: number } | null>(null)
+  const [pendingChunkFocus, setPendingChunkFocus] = React.useState<(PendingChunkFocus & { noteId: string }) | null>(null)
 
   React.useEffect(() => {
     controller.registerNoteEditorRef(noteEditorRef)
@@ -102,17 +101,6 @@ export function NotesShell({ controller }: NotesShellProps) {
     void refreshWordPressStatus()
   }, [refreshWordPressStatus, user?.id])
 
-  // Execute pending scroll once the editor has mounted for the target note
-  React.useEffect(() => {
-    const pending = pendingScrollRef.current
-    if (!pending || !isEditing || selectedNote?.id !== pending.noteId) return
-    const id = setTimeout(() => {
-      noteEditorRef.current?.scrollToChunk(pending.charOffset, pending.chunkLength)
-      pendingScrollRef.current = null
-    }, 150)
-    return () => clearTimeout(id)
-  }, [isEditing, selectedNote?.id])
-
   const handleOpenInContext = React.useCallback(async (noteId: string, charOffset: number, chunkLength: number) => {
     let note = controller.notes.find((n) => n.id === noteId)
 
@@ -136,15 +124,18 @@ export function NotesShell({ controller }: NotesShellProps) {
     // Adjust charOffset: rag-index prepends title + " " before the body text
     const title = (note.title ?? '').trim()
     const bodyOffset = title ? Math.max(0, charOffset - (title.length + 1)) : charOffset
+    const nextPendingChunkFocus = {
+      requestId: `${noteId}:${bodyOffset}:${chunkLength}:${Date.now()}`,
+      noteId,
+      charOffset: bodyOffset,
+      chunkLength,
+    }
+    setPendingChunkFocus(nextPendingChunkFocus)
 
     if (controller.selectedNote?.id === noteId && controller.isEditing) {
-      // Already editing the right note — scroll immediately
-      noteEditorRef.current?.scrollToChunk(bodyOffset, chunkLength)
       return
     }
 
-    // Navigate to note in edit mode, then scroll once mounted
-    pendingScrollRef.current = { noteId, charOffset: bodyOffset, chunkLength }
     await controller.handleEditNote(note)
   }, [controller, supabase])
 
@@ -156,6 +147,10 @@ export function NotesShell({ controller }: NotesShellProps) {
     }
     setIsSearchPanelOpen(true)
   }, [isSearchPanelOpen, setIsSearchPanelOpen])
+
+  const handlePendingChunkFocusApplied = React.useCallback((requestId: string) => {
+    setPendingChunkFocus((current) => (current?.requestId === requestId ? null : current))
+  }, [])
 
   return (
     <div className="flex h-screen max-h-screen bg-muted/20 overflow-hidden">
@@ -211,6 +206,12 @@ export function NotesShell({ controller }: NotesShellProps) {
           onBack={() => handleSelectNote(null)}
           noteEditorRef={noteEditorRef}
           wordpressConfigured={wordpressConfigured}
+          pendingChunkFocus={
+            selectedNote?.id && pendingChunkFocus?.noteId === selectedNote.id
+              ? pendingChunkFocus
+              : null
+          }
+          onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
         />
       </div>
 
@@ -253,11 +254,15 @@ function EditorPane({
   onBack,
   noteEditorRef,
   wordpressConfigured,
+  pendingChunkFocus,
+  onPendingChunkFocusApplied,
 }: {
   controller: NoteAppController
   onBack: () => void
   noteEditorRef: React.RefObject<NoteEditorHandle | null>
   wordpressConfigured: boolean
+  pendingChunkFocus: PendingChunkFocus | null
+  onPendingChunkFocusApplied: (requestId: string) => void
 }) {
   const {
     selectedNote,
@@ -300,6 +305,8 @@ function EditorPane({
         wordpressConfigured={wordpressConfigured}
         onDelete={selectedNote ? () => handleDeleteNote(selectedNote) : undefined}
         onBack={onBack}
+        pendingChunkFocus={pendingChunkFocus}
+        onPendingChunkFocusApplied={onPendingChunkFocusApplied}
       />
     )
   }

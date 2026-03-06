@@ -29,6 +29,21 @@ const createTagOnlyNote = (id: string, title: string): NoteViewModel => ({
   user_id: 'user-1',
 })
 
+const createAiChunk = (
+  noteId: string,
+  noteTitle: string,
+  chunkIndex: number,
+  similarity: number
+) => ({
+  noteId,
+  noteTitle,
+  noteTags: ['ontology'],
+  chunkIndex,
+  charOffset: chunkIndex * 400,
+  content: `${noteTitle} chunk ${chunkIndex}`,
+  similarity,
+})
+
 const createController = (overrides: Partial<NoteAppController> = {}): NoteAppController => {
   const controller = {
     searchQuery: 'query',
@@ -106,6 +121,16 @@ const mountPanel = (
     </SupabaseTestProvider>
   )
 }
+
+const createAiSupabase = (chunks: unknown[]) =>
+  ({
+    auth: {
+      getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } }, error: null }),
+    },
+    functions: {
+      invoke: cy.stub().resolves({ data: { chunks }, error: null }),
+    },
+  } as unknown as SupabaseClient)
 
 describe('SearchResultsPanel', () => {
   beforeEach(() => {
@@ -308,5 +333,253 @@ describe('SearchResultsPanel', () => {
 
     cy.wrap(controller.deleteNotesByIds).should('have.been.calledWithMatch', ['tag-note-1', 'tag-note-2'])
     cy.wrap(controller.resetFtsResults).should('have.been.calledOnce')
+  })
+
+  it('uses the panel scroll region for AI results and the virtualized list scroll for FTS results', () => {
+    const ftsController = createController()
+    mountPanel(ftsController)
+    cy.get('[data-testid="search-results-scroll-region"]')
+      .should('have.class', 'overflow-hidden')
+      .and('not.have.class', 'overflow-y-auto')
+
+    cy.window().then((win) => {
+      win.localStorage.setItem(
+        'everfreenote:aiSearchMode',
+        JSON.stringify({ isAIEnabled: true, preset: 'strict', viewMode: 'note' })
+      )
+    })
+
+    const aiController = createController({
+      showFTSResults: false,
+      ftsData: undefined,
+      searchQuery: 'ontology',
+    })
+
+    mountPanel(aiController, {
+      hasGeminiApiKey: true,
+      supabase: createAiSupabase([
+        createAiChunk('ai-note-1', 'AI Result One', 0, 0.84),
+        createAiChunk('ai-note-2', 'AI Result Two', 0, 0.78),
+      ]),
+    })
+
+    cy.get('[data-testid="search-results-scroll-region"]')
+      .should('have.class', 'overflow-y-auto')
+      .and('not.have.class', 'overflow-hidden')
+  })
+
+  it('does not trigger FTS search when submitting an AI query', () => {
+    cy.window().then((win) => {
+      win.localStorage.setItem(
+        'everfreenote:aiSearchMode',
+        JSON.stringify({ isAIEnabled: true, preset: 'strict', viewMode: 'note' })
+      )
+    })
+
+    const controller = createController({
+      searchQuery: '',
+      showFTSResults: false,
+      ftsData: undefined,
+    })
+
+    const invoke = cy.stub().resolves({
+      data: {
+        chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
+      },
+      error: null,
+    })
+
+    const supabase = {
+      auth: {
+        getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } }, error: null }),
+      },
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    mountPanel(controller, { hasGeminiApiKey: true, supabase })
+
+    cy.get('[data-testid="search-panel-input"]').type('ontology{enter}')
+
+    cy.wrap(invoke).should('have.been.calledOnce')
+    cy.wrap(controller.handleSearch).should('not.have.been.called')
+    cy.contains('AI Result One').should('be.visible')
+  })
+
+  it('does not trigger AI search when submitting a normal FTS query', () => {
+    const controller = createController({
+      searchQuery: '',
+      showFTSResults: false,
+      ftsData: undefined,
+    })
+
+    const invoke = cy.stub().as('aiInvoke').resolves({
+      data: {
+        chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
+      },
+      error: null,
+    })
+
+    const supabase = {
+      auth: {
+        getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } }, error: null }),
+      },
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    mountPanel(controller, { hasGeminiApiKey: true, supabase })
+
+    cy.get('[data-testid="search-panel-input"]').type('ontology{enter}')
+
+    cy.wrap(controller.handleSearch).should('have.been.calledWith', 'ontology')
+    cy.get('@aiInvoke').should('not.have.been.called')
+  })
+
+  it('switching from normal search to AI triggers only AI search for the current query', () => {
+    const controller = createController({
+      searchQuery: '',
+      showFTSResults: false,
+      ftsData: undefined,
+    })
+
+    const invoke = cy.stub().as('aiInvoke').resolves({
+      data: {
+        chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
+      },
+      error: null,
+    })
+
+    const supabase = {
+      auth: {
+        getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } }, error: null }),
+      },
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    mountPanel(controller, { hasGeminiApiKey: true, supabase })
+
+    cy.get('[data-testid="search-panel-input"]').type('ontology')
+    cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
+    cy.wait(400)
+
+    cy.get('@aiInvoke').should('have.been.calledOnce')
+    cy.wrap(controller.handleSearch).should('not.have.been.called')
+    cy.contains('AI Result One').should('be.visible')
+  })
+
+  it('syncs the current query to FTS when AI mode is turned off', () => {
+    cy.window().then((win) => {
+      win.localStorage.setItem(
+        'everfreenote:aiSearchMode',
+        JSON.stringify({ isAIEnabled: true, preset: 'strict', viewMode: 'note' })
+      )
+    })
+
+    const controller = createController({
+      searchQuery: '',
+      showFTSResults: false,
+      ftsData: undefined,
+    })
+
+    mountPanel(controller, {
+      hasGeminiApiKey: true,
+      supabase: createAiSupabase([createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)]),
+    })
+
+    cy.get('[data-testid="search-panel-input"]').type('  ontology  ')
+    cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
+
+    cy.wrap(controller.handleSearch).should('have.been.calledOnceWithExactly', 'ontology')
+  })
+
+  it('switching from normal search to AI does not trigger a search for short queries', () => {
+    const controller = createController({
+      searchQuery: '',
+      showFTSResults: false,
+      ftsData: undefined,
+    })
+
+    const invoke = cy.stub().as('aiInvoke').resolves({
+      data: {
+        chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
+      },
+      error: null,
+    })
+
+    const supabase = {
+      auth: {
+        getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } }, error: null }),
+      },
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    mountPanel(controller, { hasGeminiApiKey: true, supabase })
+
+    cy.get('[data-testid="search-panel-input"]').type('ab')
+    cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
+    cy.wait(400)
+
+    cy.get('@aiInvoke').should('not.have.been.called')
+    cy.wrap(controller.handleSearch).should('not.have.been.called')
+  })
+
+  it('shows visible chunk count in AI chunk view instead of the FTS note total', () => {
+    cy.window().then((win) => {
+      win.localStorage.setItem(
+        'everfreenote:aiSearchMode',
+        JSON.stringify({ isAIEnabled: true, preset: 'strict', viewMode: 'note' })
+      )
+    })
+
+    const controller = createController({
+      searchQuery: 'ontology',
+      ftsData: {
+        total: 99,
+        executionTime: 10,
+        method: 'fts',
+        query: 'ontology',
+        results: [createFtsResult('fts-note-1', 'FTS Result One')],
+      },
+    })
+
+    mountPanel(controller, {
+      hasGeminiApiKey: true,
+      supabase: createAiSupabase([
+        createAiChunk('ai-note-1', 'AI Result One', 0, 0.84),
+        createAiChunk('ai-note-1', 'AI Result One', 1, 0.82),
+        createAiChunk('ai-note-1', 'AI Result One', 2, 0.8),
+        createAiChunk('ai-note-2', 'AI Result Two', 0, 0.78),
+      ]),
+    })
+
+    cy.contains('Found: 2 notes').should('be.visible')
+    cy.get('[data-testid="ai-search-view-tab-chunk"]').click({ force: true })
+    cy.contains('Found: 3 chunks').should('be.visible')
+    cy.contains('Found: 99').should('not.exist')
+  })
+
+  it('shows chunk count in pure AI chunk view without requiring FTS results', () => {
+    cy.window().then((win) => {
+      win.localStorage.setItem(
+        'everfreenote:aiSearchMode',
+        JSON.stringify({ isAIEnabled: true, preset: 'broad', viewMode: 'chunk' })
+      )
+    })
+
+    const controller = createController({
+      searchQuery: 'ontology',
+      showFTSResults: false,
+      ftsData: undefined,
+    })
+
+    mountPanel(controller, {
+      hasGeminiApiKey: true,
+      supabase: createAiSupabase([
+        createAiChunk('ai-note-1', 'AI Result One', 0, 0.84),
+        createAiChunk('ai-note-1', 'AI Result One', 1, 0.82),
+        createAiChunk('ai-note-2', 'AI Result Two', 0, 0.78),
+      ]),
+    })
+
+    cy.contains('Found: 3 chunks').should('be.visible')
   })
 })

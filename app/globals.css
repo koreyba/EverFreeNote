@@ -293,11 +293,30 @@ mark {
   pointer-events: none;
 }
 
-/* Chunk focus highlight — applied via NodeDecoration from scrollToChunk */
-.note-content .ProseMirror .chunk-focus {
-  border-left: 3px solid var(--color-primary);
-  padding-left: 0.75rem;
-  margin-left: -0.75rem;
+/* Chunk focus highlight — applied via block Decoration from scrollToChunk */
+.note-content .ProseMirror .chunk-focus-block {
+  position: relative;
+  --chunk-focus-line-offset: 0.9rem;
+}
+
+.note-content .ProseMirror .chunk-focus-block::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--chunk-focus-line-offset));
+  top: -1rem;
+  bottom: -1rem;
+  width: 3px;
+  border-radius: 999px;
+  background-color: var(--color-primary);
+  pointer-events: none;
+}
+
+.note-content .ProseMirror .chunk-focus-block-start::before {
+  top: 0.15rem;
+}
+
+.note-content .ProseMirror .chunk-focus-block-end::before {
+  bottom: 0.15rem;
 }
 
 /* Dark theme overrides */

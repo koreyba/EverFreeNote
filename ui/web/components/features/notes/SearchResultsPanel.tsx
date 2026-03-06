@@ -23,7 +23,7 @@ import { AiSearchToggle } from "@/components/features/search/AiSearchToggle"
 import { AiSearchPresetSelector } from "@/components/features/search/AiSearchPresetSelector"
 import { AiSearchViewTabs } from "@/components/features/search/AiSearchViewTabs"
 import { NoteSearchResults } from "@/components/features/search/NoteSearchResults"
-import { ChunkSearchResults } from "@/components/features/search/ChunkSearchResults"
+import { ChunkSearchResults, getVisibleChunkCount } from "@/components/features/search/ChunkSearchResults"
 import { NoteList } from "@/components/features/notes/NoteList"
 import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
@@ -81,6 +81,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
     // AI Search state
     const { isAIEnabled, preset, viewMode, setIsAIEnabled, setPreset, setViewMode } = useSearchMode()
+    const prevIsAIEnabledRef = useRef(isAIEnabled)
     const aiEnabled = isAIEnabled && hasGeminiApiKey
     const {
         noteGroups,
@@ -99,11 +100,16 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     })
 
     const showAIResults = aiEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
+    const usesVirtualizedList = !showAIResults && (showFTSResults || showTagOnlyResults)
     const selectionSwitchTitle = "Remove selection to switch"
     const canSelectInPanel =
         showFTSResults ||
         showTagOnlyResults ||
         (showAIResults && viewMode === 'note')
+    const shouldShowResultsHeader =
+        showAIResults ||
+        showFTSResults ||
+        showTagOnlyResults
 
     const visibleResultIds = React.useMemo(() => {
         if (showAIResults && viewMode === 'note') {
@@ -117,6 +123,40 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         }
         return []
     }, [showAIResults, viewMode, noteGroups, showTagOnlyResults, tagOnlyResults, showFTSResults, ftsData])
+
+    const visibleResultsSummary = React.useMemo(() => {
+        if (showAIResults && viewMode === 'note') {
+            return {
+                count: noteGroups.length,
+                singularLabel: 'note',
+                pluralLabel: 'notes',
+            }
+        }
+
+        if (showAIResults && viewMode === 'chunk') {
+            const visibleChunkCount = getVisibleChunkCount(noteGroups)
+            return {
+                count: visibleChunkCount,
+                singularLabel: 'chunk',
+                pluralLabel: 'chunks',
+            }
+        }
+
+        if (showTagOnlyResults) {
+            return {
+                count: tagOnlyTotal,
+                singularLabel: 'note',
+                pluralLabel: 'notes',
+            }
+        }
+
+        const visibleCount = typeof ftsData?.total === 'number' ? ftsData.total : (ftsData?.results.length ?? 0)
+        return {
+            count: visibleCount,
+            singularLabel: 'note',
+            pluralLabel: 'notes',
+        }
+    }, [showAIResults, viewMode, noteGroups, showTagOnlyResults, tagOnlyTotal, ftsData])
 
     const selectedCount = panelSelectedIds.size
     const allVisibleSelected =
@@ -201,6 +241,24 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         })
     }, [controller, loadMoreAI, resetAIResults])
 
+    useEffect(() => {
+        const wasAIEnabled = prevIsAIEnabledRef.current
+        const normalizedQuery = searchDraft.trim()
+
+        if (!wasAIEnabled && isAIEnabled) {
+            debouncedSearch.cancel()
+            setAiSearchQuery(normalizedQuery)
+        }
+
+        if (wasAIEnabled && !isAIEnabled) {
+            controller.handleSearch(normalizedQuery)
+            if (normalizedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH && normalizedQuery === searchQuery.trim()) {
+                ftsSearchResult?.refetch()
+            }
+        }
+        prevIsAIEnabledRef.current = isAIEnabled
+    }, [isAIEnabled, searchDraft, controller, searchQuery, ftsSearchResult, debouncedSearch])
+
     const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             const normalizedQuery = searchDraft.trim()
@@ -208,7 +266,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             if (aiEnabled) {
                 const queryChanged = normalizedQuery !== aiSearchQuery.trim()
                 setAiSearchQuery(normalizedQuery)
-                controller.handleSearch(normalizedQuery)
                 // If query is the same, setAiSearchQuery won't re-trigger useAISearch; force refetch.
                 if (!queryChanged) aiRefetch()
             } else {
@@ -342,8 +399,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     }, [isResizing, panelWidth])
 
     const renderResultsHeader = () => {
-        if (!canSelectInPanel) return null
-
         if (panelSelectionMode) {
             return (
                 <SelectionModeActions
@@ -359,17 +414,17 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             )
         }
 
-        const visibleCount =
-            showAIResults && viewMode === 'note'
-                ? noteGroups.length
-                : showTagOnlyResults
-                    ? tagOnlyTotal
-                    : (typeof ftsData?.total === 'number' ? ftsData.total : (ftsData?.results.length ?? 0))
+        if (!shouldShowResultsHeader) return null
+
+        const resultLabel =
+            visibleResultsSummary.count === 1
+                ? visibleResultsSummary.singularLabel
+                : visibleResultsSummary.pluralLabel
 
         return (
             <div className="flex items-center justify-between px-3 py-2 text-sm text-muted-foreground border-b bg-card/70">
                 <div>
-                    Found: <span className="font-semibold">{visibleCount}</span> {visibleCount === 1 ? 'note' : 'notes'}
+                    Found: <span className="font-semibold">{visibleResultsSummary.count}</span> {resultLabel}
                 </div>
                 {typeof ftsData?.executionTime === "number" && !showAIResults && (
                     <div>{ftsData.executionTime}ms</div>
@@ -481,9 +536,10 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             </div>
 
             <div
+                data-testid="search-results-scroll-region"
                 className={cn(
                     "flex-1 min-h-0 bg-muted/10 relative",
-                    showFTSResults || showTagOnlyResults ? "overflow-hidden" : "overflow-y-auto"
+                    usesVirtualizedList ? "overflow-hidden" : "overflow-y-auto"
                 )}
             >
                 {renderResultsHeader()}

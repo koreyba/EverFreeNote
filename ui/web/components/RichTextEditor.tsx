@@ -20,7 +20,7 @@ export type RichTextEditorHandle = {
   getHTML: () => string
   setContent: (html: string) => void
   runCommand: (command: string, ...args: unknown[]) => void
-  /** Scroll to and highlight the block containing the given plain-text char offset.
+  /** Scroll to and highlight the given plain-text chunk range.
    *  charOffset must be relative to the note body (not including title prefix). */
   scrollToChunk: (charOffset: number, chunkLength: number) => void
 }
@@ -29,6 +29,7 @@ type RichTextEditorProps = {
   initialContent: string
   onContentChange?: () => void // Called when content changes (for triggering autosave)
   hideToolbar?: boolean
+  onChunkFocusApplied?: () => void
 }
 
 const EMPTY_HISTORY_STATE: HistoryState = { canUndo: false, canRedo: false }
@@ -41,46 +42,93 @@ const getHistoryState = (editor: Editor): HistoryState => ({
   canRedo: editor.can().redo(),
 })
 
-/** Highlight the block containing charOffset and scroll it into view. */
-function doScrollToChunk(editor: Editor, charOffset: number): void {
+type ChunkScrollTarget = {
+  charOffset: number
+  chunkLength: number
+}
+
+type BlockRange = {
+  from: number
+  to: number
+}
+
+type ChunkBlockRangesResult = {
+  ranges: BlockRange[]
+  firstFocusPos: number | null
+}
+
+function getChunkBlockRanges(editor: Editor, charOffset: number, chunkLength: number): ChunkBlockRangesResult {
   const { doc } = editor.state
-  // Walk textblocks accumulating plain-text length, mirroring rag-index's stripHtml mapping.
-  let textAccum = 0
-  let targetFrom: number | null = null
-  let targetTo: number | null = null
+  const chunkStart = Math.max(0, charOffset)
+  const chunkEnd = chunkStart + Math.max(1, chunkLength)
+  let plainTextOffset = 0
+  const rangeMap = new Map<string, BlockRange>()
+  let firstFocusPos: number | null = null
+  const containerTypes = new Set(['orderedList', 'bulletList', 'taskList'])
+
   doc.descendants((node, pos) => {
-    if (targetFrom !== null) return false
-    if (node.isTextblock) {
-      const blockLen = node.textContent.length
-      if (textAccum + blockLen + 1 > charOffset) {
-        targetFrom = pos
-        targetTo = pos + node.nodeSize
-      } else {
-        textAccum += blockLen + 1 // +1 for block separator
-      }
-      return false // no need to descend into inline nodes
+    if (!node.isTextblock) return true
+
+    const blockText = node.textContent
+    const blockLen = blockText.length
+    const blockStart = plainTextOffset
+    const blockEnd = blockStart + blockLen
+    const visualBlockEnd = blockEnd + 1
+    const blockHasOverlap = visualBlockEnd > chunkStart && blockStart < chunkEnd
+
+    if (firstFocusPos === null && visualBlockEnd > chunkStart) {
+      firstFocusPos = Math.min(pos + 1, doc.content.size)
     }
+
+    if (blockHasOverlap) {
+      const $pos = doc.resolve(Math.min(pos + 1, doc.content.size))
+      let rangeFrom = pos
+      let rangeTo = pos + node.nodeSize
+
+      for (let depth = $pos.depth; depth > 0; depth -= 1) {
+        const ancestor = $pos.node(depth)
+        if (!containerTypes.has(ancestor.type.name)) continue
+        rangeFrom = $pos.before(depth)
+        rangeTo = $pos.after(depth)
+        break
+      }
+
+      rangeMap.set(`${rangeFrom}:${rangeTo}`, { from: rangeFrom, to: rangeTo })
+      if (firstFocusPos === null) {
+        firstFocusPos = Math.min(pos + 1, doc.content.size)
+      }
+    }
+
+    plainTextOffset = blockEnd + 1 // +1 mirrors the separator inserted by stripHtml block boundaries
+    return false
   })
-  if (targetFrom === null || targetTo === null) return
-  const from = targetFrom
-  const to = targetTo
-  const $pos = doc.resolve(Math.min(from + 1, doc.content.size))
+
+  return { ranges: Array.from(rangeMap.values()), firstFocusPos }
+}
+
+/** Highlight the blocks intersecting the chunk range and scroll the first block into view. */
+function doScrollToChunk(editor: Editor, charOffset: number, chunkLength: number): boolean {
+  const { ranges, firstFocusPos } = getChunkBlockRanges(editor, charOffset, chunkLength)
+  if (ranges.length === 0) return false
+
+  const focusPos = firstFocusPos ?? ranges[0].from
+  const $pos = editor.state.doc.resolve(Math.min(focusPos, editor.state.doc.content.size))
   editor.view.dispatch(
     editor.state.tr
-      .setMeta(CHUNK_FOCUS_KEY, { from, to })
+      .setMeta(CHUNK_FOCUS_KEY, { ranges })
       .setSelection(TextSelection.near($pos))
   )
-  // ProseMirror DOM is updated synchronously after dispatch — scroll the decorated element.
-  const el = editor.view.dom.querySelector('.chunk-focus')
+  const el = editor.view.dom.querySelector('.chunk-focus-block-start, .chunk-focus-block')
   el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  return true
 }
 
 const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProps>(
-  ({ initialContent, onContentChange, hideToolbar = false }, ref) => {
+  ({ initialContent, onContentChange, hideToolbar = false, onChunkFocusApplied }, ref) => {
     const editorRef = React.useRef<Editor | null>(null)
     const suppressNextUpdateRef = React.useRef(false)
     // Queues a scroll request when scrollToChunk is called before the editor is ready.
-    const pendingChunkScrollRef = React.useRef<number | null>(null)
+    const pendingChunkScrollRef = React.useRef<ChunkScrollTarget | null>(null)
     const [hasSelection, setHasSelection] = React.useState(false)
     const [historyState, setHistoryState] = React.useState<HistoryState>(EMPTY_HISTORY_STATE)
 
@@ -144,9 +192,11 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
         updateHistoryState(getHistoryState(e))
         // Execute any scroll that was requested before the editor finished initializing.
         if (pendingChunkScrollRef.current !== null) {
-          const charOffset = pendingChunkScrollRef.current
+          const { charOffset, chunkLength } = pendingChunkScrollRef.current
           pendingChunkScrollRef.current = null
-          doScrollToChunk(e, charOffset)
+          if (doScrollToChunk(e, charOffset, chunkLength)) {
+            onChunkFocusApplied?.()
+          }
         }
       },
       onTransaction: ({ editor: e }) => {
@@ -225,17 +275,18 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
           cmd(...args).run()
         }
       },
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      scrollToChunk: (charOffset: number, _chunkLength: number) => {
+      scrollToChunk: (charOffset: number, chunkLength: number) => {
         if (!editor) {
           // Editor not ready yet (TipTap still initializing) — queue for onCreate.
-          pendingChunkScrollRef.current = charOffset
+          pendingChunkScrollRef.current = { charOffset, chunkLength }
           return
         }
         pendingChunkScrollRef.current = null
-        doScrollToChunk(editor, charOffset)
+        if (doScrollToChunk(editor, charOffset, chunkLength)) {
+          onChunkFocusApplied?.()
+        }
       },
-    }), [editor])
+    }), [editor, onChunkFocusApplied])
 
     return (
       <div className={`bg-background ${hideToolbar ? '' : 'border border-t-0 rounded-b-md rounded-t-none'}`}>

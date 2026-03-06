@@ -19,6 +19,12 @@ export interface NoteEditorHandle {
   scrollToChunk: (charOffset: number, chunkLength: number) => void
 }
 
+export type PendingChunkFocus = {
+  requestId: string
+  charOffset: number
+  chunkLength: number
+}
+
 interface NoteEditorProps {
   noteId?: string
   initialTitle?: string
@@ -35,6 +41,8 @@ interface NoteEditorProps {
   wordpressConfigured?: boolean
   onDelete?: () => void
   onBack?: () => void
+  pendingChunkFocus?: PendingChunkFocus | null
+  onPendingChunkFocusApplied?: (requestId: string) => void
 }
 
 export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor({
@@ -53,12 +61,16 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   wordpressConfigured = false,
   onDelete,
   onBack,
+  pendingChunkFocus = null,
+  onPendingChunkFocusApplied,
 }: NoteEditorProps, ref) {
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
+  const appliedChunkFocusKeyRef = React.useRef<string | null>(null)
+  const pendingChunkFocusRequestIdRef = React.useRef<string | null>(null)
 
   const selectedTagsRef = React.useRef<string[]>(selectedTags)
   React.useEffect(() => {
@@ -162,6 +174,21 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     },
   }), [flushPendingSave])
 
+  React.useEffect(() => {
+    if (!pendingChunkFocus) return
+
+    const applyKey = `${pendingChunkFocus.requestId}:${editorSessionKey}`
+    if (appliedChunkFocusKeyRef.current === applyKey) return
+    appliedChunkFocusKeyRef.current = applyKey
+    pendingChunkFocusRequestIdRef.current = pendingChunkFocus.requestId
+
+    const id = window.requestAnimationFrame(() => {
+      editorRef.current?.scrollToChunk(pendingChunkFocus.charOffset, pendingChunkFocus.chunkLength)
+    })
+
+    return () => window.cancelAnimationFrame(id)
+  }, [pendingChunkFocus, editorSessionKey, onPendingChunkFocusApplied])
+
   // Show the "..." menu for existing notes (RAG + delete)
   const showMoreMenu = !!noteId
 
@@ -240,6 +267,12 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             ref={editorRef}
             initialContent={initialDescription}
             onContentChange={handleContentChange}
+            onChunkFocusApplied={() => {
+              const requestId = pendingChunkFocusRequestIdRef.current
+              if (!requestId) return
+              pendingChunkFocusRequestIdRef.current = null
+              onPendingChunkFocusApplied?.(requestId)
+            }}
           />
         </div>
       </div>

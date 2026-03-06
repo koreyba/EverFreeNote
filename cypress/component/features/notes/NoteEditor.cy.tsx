@@ -1,6 +1,6 @@
 import React from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { NoteEditor } from '../../../../ui/web/components/features/notes/NoteEditor'
+import { NoteEditor, type NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import { createSupabaseForExportDialog } from './noteTestHelpers'
 
@@ -640,5 +640,36 @@ describe('NoteEditor – autosave race condition on new note create', () => {
 
     // Full title "Hello World" MUST be preserved
     cy.get('input[placeholder="Note title"]').should('have.value', 'Hello World')
+  })
+
+  it('highlights the AI chunk block range', () => {
+    const editorRef = React.createRef<NoteEditorHandle>()
+
+    function Wrapper() {
+      return (
+        <div>
+          <button type="button" onClick={() => editorRef.current?.scrollToChunk(10, 12)}>
+            Highlight chunk
+          </button>
+          <NoteEditor
+            ref={editorRef}
+            initialTitle="Chunk note"
+            initialDescription="<p>Alpha beta gamma</p><p>Delta epsilon zeta</p><p>Omega</p>"
+            initialTags=""
+            availableTags={[]}
+            isSaving={false}
+            onSave={() => undefined}
+            onRead={() => undefined}
+          />
+        </div>
+      )
+    }
+
+    cy.mount(<Wrapper />)
+
+    cy.contains('Highlight chunk').click()
+
+    cy.get('.ProseMirror .chunk-focus-block').should('have.length.at.least', 1)
+    cy.get('.ProseMirror .chunk-focus-block').first().should('contain.text', 'Alpha beta gamma')
   })
 })

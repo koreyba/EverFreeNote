@@ -221,11 +221,18 @@ serve(async (req: Request) => {
       global: { headers: { Authorization: `Bearer ${token}` } },
     })
 
-    let { data: chunks, error: rpcError } = await supabaseUser.rpc("match_notes", {
-      query_embedding: queryEmbedding,
-      match_count: topK,
-      filter_tag: tagFilter,
-    })
+    const rpcPayload = tagFilter
+      ? {
+          query_embedding: queryEmbedding,
+          match_count: topK,
+          filter_tag: tagFilter,
+        }
+      : {
+          query_embedding: queryEmbedding,
+          match_count: topK,
+        }
+
+    let { data: chunks, error: rpcError } = await supabaseUser.rpc("match_notes", rpcPayload)
 
     // Transitional compatibility: some environments may still have legacy match_notes(query_embedding, match_count).
     // Remove this fallback after all environments are migrated to 20260304000001_add_filter_tag_to_match_notes.sql.
