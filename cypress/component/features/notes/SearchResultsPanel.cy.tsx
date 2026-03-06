@@ -456,10 +456,11 @@ describe('SearchResultsPanel', () => {
     } as unknown as SupabaseClient
 
     mountPanel(controller, { hasGeminiApiKey: true, supabase })
+    cy.clock()
 
     cy.get('[data-testid="search-panel-input"]').type('ontology')
     cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
-    cy.wait(400)
+    cy.tick(400)
 
     cy.get('@aiInvoke').should('have.been.calledOnce')
     cy.wrap(controller.handleSearch).should('not.have.been.called')
@@ -513,10 +514,11 @@ describe('SearchResultsPanel', () => {
     } as unknown as SupabaseClient
 
     mountPanel(controller, { hasGeminiApiKey: true, supabase })
+    cy.clock()
 
     cy.get('[data-testid="search-panel-input"]').type('ab')
     cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
-    cy.wait(400)
+    cy.tick(400)
 
     cy.get('@aiInvoke').should('not.have.been.called')
     cy.wrap(controller.handleSearch).should('not.have.been.called')

@@ -43,7 +43,7 @@ const getHistoryState = (editor: Editor): HistoryState => ({
   canRedo: editor.can().redo(),
 })
 
-type ChunkScrollTarget = {
+export type ChunkScrollTarget = {
   requestId: string
   charOffset: number
   chunkLength: number

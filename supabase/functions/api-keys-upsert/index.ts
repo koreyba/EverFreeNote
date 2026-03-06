@@ -79,7 +79,18 @@ serve(async (req: Request) => {
     const userId = userData.user.id
 
     let payload: Record<string, unknown> = {}
-    try { payload = await req.json() } catch { /* empty body */ }
+    const rawBody = await req.text()
+    if (rawBody.trim()) {
+      try {
+        const parsed = JSON.parse(rawBody)
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          return jsonResponse({ error: "Request body must be a JSON object" }, 400)
+        }
+        payload = parsed as Record<string, unknown>
+      } catch {
+        return jsonResponse({ error: "Malformed JSON body" }, 400)
+      }
+    }
 
     const rawGeminiKey = typeof payload.geminiApiKey === "string" ? payload.geminiApiKey.trim() : ""
 
