@@ -29,7 +29,8 @@ type RichTextEditorProps = {
   initialContent: string
   onContentChange?: () => void // Called when content changes (for triggering autosave)
   hideToolbar?: boolean
-  onChunkFocusApplied?: () => void
+  chunkFocusRequest?: ChunkScrollTarget | null
+  onChunkFocusApplied?: (requestId: string) => void
 }
 
 const EMPTY_HISTORY_STATE: HistoryState = { canUndo: false, canRedo: false }
@@ -43,6 +44,7 @@ const getHistoryState = (editor: Editor): HistoryState => ({
 })
 
 type ChunkScrollTarget = {
+  requestId: string
   charOffset: number
   chunkLength: number
 }
@@ -55,6 +57,48 @@ type BlockRange = {
 type ChunkBlockRangesResult = {
   ranges: BlockRange[]
   firstFocusPos: number | null
+}
+
+const CHUNK_SCROLL_TOP_GUTTER_PX = 48
+
+function findScrollParent(element: HTMLElement | null): HTMLElement | null {
+  let current = element?.parentElement ?? null
+
+  while (current) {
+    const style = window.getComputedStyle(current)
+    const overflowY = style.overflowY
+    if ((overflowY === 'auto' || overflowY === 'scroll') && current.scrollHeight > current.clientHeight) {
+      return current
+    }
+    current = current.parentElement
+  }
+
+  return null
+}
+
+function scrollChunkElementIntoView(element: HTMLElement | null) {
+  if (!element) return
+
+  const scrollParent = findScrollParent(element)
+  if (!scrollParent) {
+    element.scrollIntoView({ behavior: 'auto', block: 'start' })
+    return
+  }
+
+  const align = () => {
+    const parentRect = scrollParent.getBoundingClientRect()
+    const elementRect = element.getBoundingClientRect()
+    const offsetTop = elementRect.top - parentRect.top + scrollParent.scrollTop
+    const targetTop = Math.max(0, offsetTop - CHUNK_SCROLL_TOP_GUTTER_PX)
+
+    scrollParent.scrollTo({
+      top: targetTop,
+      behavior: 'auto',
+    })
+  }
+
+  align()
+  window.requestAnimationFrame(align)
 }
 
 function getChunkBlockRanges(editor: Editor, charOffset: number, chunkLength: number): ChunkBlockRangesResult {
@@ -119,16 +163,18 @@ function doScrollToChunk(editor: Editor, charOffset: number, chunkLength: number
       .setSelection(TextSelection.near($pos))
   )
   const el = editor.view.dom.querySelector('.chunk-focus-block-start, .chunk-focus-block')
-  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  scrollChunkElementIntoView(el instanceof HTMLElement ? el : null)
   return true
 }
 
 const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProps>(
-  ({ initialContent, onContentChange, hideToolbar = false, onChunkFocusApplied }, ref) => {
+  ({ initialContent, onContentChange, hideToolbar = false, chunkFocusRequest = null, onChunkFocusApplied }, ref) => {
     const editorRef = React.useRef<Editor | null>(null)
     const suppressNextUpdateRef = React.useRef(false)
     // Queues a scroll request when scrollToChunk is called before the editor is ready.
     const pendingChunkScrollRef = React.useRef<ChunkScrollTarget | null>(null)
+    const pendingChunkFocusRef = React.useRef<ChunkScrollTarget | null>(null)
+    const lastAppliedChunkFocusRequestIdRef = React.useRef<string | null>(null)
     const [hasSelection, setHasSelection] = React.useState(false)
     const [historyState, setHistoryState] = React.useState<HistoryState>(EMPTY_HISTORY_STATE)
 
@@ -184,19 +230,36 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       handlePaste,
     }), [handlePaste])
 
+    const applyChunkFocusRequest = React.useCallback((targetEditor: Editor, request: ChunkScrollTarget) => {
+      if (lastAppliedChunkFocusRequestIdRef.current === request.requestId) {
+        return true
+      }
+
+      const applied = doScrollToChunk(targetEditor, request.charOffset, request.chunkLength)
+      if (!applied) return false
+
+      lastAppliedChunkFocusRequestIdRef.current = request.requestId
+      onChunkFocusApplied?.(request.requestId)
+      return true
+    }, [onChunkFocusApplied])
+
     const editor = useEditor({
       immediatelyRender: false,
       extensions: editorExtensions,
       content: initialContent,
       onCreate: ({ editor: e }) => {
         updateHistoryState(getHistoryState(e))
+        if (pendingChunkFocusRef.current !== null) {
+          const request = pendingChunkFocusRef.current
+          if (applyChunkFocusRequest(e, request)) {
+            pendingChunkFocusRef.current = null
+          }
+        }
         // Execute any scroll that was requested before the editor finished initializing.
         if (pendingChunkScrollRef.current !== null) {
           const { charOffset, chunkLength } = pendingChunkScrollRef.current
           pendingChunkScrollRef.current = null
-          if (doScrollToChunk(e, charOffset, chunkLength)) {
-            onChunkFocusApplied?.()
-          }
+          doScrollToChunk(e, charOffset, chunkLength)
         }
       },
       onTransaction: ({ editor: e }) => {
@@ -227,6 +290,17 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
         }
       }
     }, [editor, updateHistoryState])
+
+    React.useEffect(() => {
+      if (!chunkFocusRequest) return
+
+      pendingChunkFocusRef.current = chunkFocusRequest
+      if (!editor) return
+
+      if (applyChunkFocusRequest(editor, chunkFocusRequest)) {
+        pendingChunkFocusRef.current = null
+      }
+    }, [applyChunkFocusRequest, chunkFocusRequest, editor])
 
     const handleEditorContainerMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
       if (!editor) return
@@ -278,15 +352,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       scrollToChunk: (charOffset: number, chunkLength: number) => {
         if (!editor) {
           // Editor not ready yet (TipTap still initializing) — queue for onCreate.
-          pendingChunkScrollRef.current = { charOffset, chunkLength }
+          pendingChunkScrollRef.current = { requestId: "imperative", charOffset, chunkLength }
           return
         }
         pendingChunkScrollRef.current = null
-        if (doScrollToChunk(editor, charOffset, chunkLength)) {
-          onChunkFocusApplied?.()
-        }
+        doScrollToChunk(editor, charOffset, chunkLength)
       },
-    }), [editor, onChunkFocusApplied])
+    }), [editor])
 
     return (
       <div className={`bg-background ${hideToolbar ? '' : 'border border-t-0 rounded-b-md rounded-t-none'}`}>
@@ -314,3 +386,4 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
 RichTextEditor.displayName = "RichTextEditor"
 
 export default RichTextEditor
+

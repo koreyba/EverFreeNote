@@ -47,7 +47,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   const apiKeysService = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
   const [wordpressConfigured, setWordpressConfigured] = React.useState(false)
 
-  const [pendingChunkFocus, setPendingChunkFocus] = React.useState<(PendingChunkFocus & { noteId: string }) | null>(null)
+  const [pendingChunkFocus, setPendingChunkFocus] = React.useState<PendingChunkFocus | null>(null)
 
   React.useEffect(() => {
     controller.registerNoteEditorRef(noteEditorRef)
@@ -206,11 +206,7 @@ export function NotesShell({ controller }: NotesShellProps) {
           onBack={() => handleSelectNote(null)}
           noteEditorRef={noteEditorRef}
           wordpressConfigured={wordpressConfigured}
-          pendingChunkFocus={
-            selectedNote?.id && pendingChunkFocus?.noteId === selectedNote.id
-              ? pendingChunkFocus
-              : null
-          }
+          pendingChunkFocus={pendingChunkFocus}
           onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
         />
       </div>

@@ -21,6 +21,7 @@ export interface NoteEditorHandle {
 
 export type PendingChunkFocus = {
   requestId: string
+  noteId: string
   charOffset: number
   chunkLength: number
 }
@@ -67,10 +68,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
+  const [readyChunkFocus, setReadyChunkFocus] = React.useState<PendingChunkFocus | null>(null)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
-  const appliedChunkFocusKeyRef = React.useRef<string | null>(null)
-  const pendingChunkFocusRequestIdRef = React.useRef<string | null>(null)
+  const previousNoteIdRef = React.useRef(noteId)
 
   const selectedTagsRef = React.useRef<string[]>(selectedTags)
   React.useEffect(() => {
@@ -174,20 +175,29 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     },
   }), [flushPendingSave])
 
+  const effectivePendingChunkFocus = React.useMemo(() => {
+    if (!pendingChunkFocus || !noteId) return null
+    return pendingChunkFocus.noteId === noteId ? pendingChunkFocus : null
+  }, [pendingChunkFocus, noteId])
+
   React.useEffect(() => {
-    if (!pendingChunkFocus) return
+    const noteChanged = previousNoteIdRef.current !== noteId
+    previousNoteIdRef.current = noteId
 
-    const applyKey = `${pendingChunkFocus.requestId}:${editorSessionKey}`
-    if (appliedChunkFocusKeyRef.current === applyKey) return
-    appliedChunkFocusKeyRef.current = applyKey
-    pendingChunkFocusRequestIdRef.current = pendingChunkFocus.requestId
+    if (!effectivePendingChunkFocus) {
+      setReadyChunkFocus(null)
+      return
+    }
 
-    const id = window.requestAnimationFrame(() => {
-      editorRef.current?.scrollToChunk(pendingChunkFocus.charOffset, pendingChunkFocus.chunkLength)
-    })
+    // Real note switches remount the editor after noteId changes. Delay the focus request
+    // until the post-switch editor session is active so scroll/highlight are applied once.
+    if (noteChanged) {
+      setReadyChunkFocus(null)
+      return
+    }
 
-    return () => window.cancelAnimationFrame(id)
-  }, [pendingChunkFocus, editorSessionKey, onPendingChunkFocusApplied])
+    setReadyChunkFocus(effectivePendingChunkFocus)
+  }, [effectivePendingChunkFocus, noteId, editorSessionKey])
 
   // Show the "..." menu for existing notes (RAG + delete)
   const showMoreMenu = !!noteId
@@ -267,12 +277,16 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             ref={editorRef}
             initialContent={initialDescription}
             onContentChange={handleContentChange}
-            onChunkFocusApplied={() => {
-              const requestId = pendingChunkFocusRequestIdRef.current
-              if (!requestId) return
-              pendingChunkFocusRequestIdRef.current = null
-              onPendingChunkFocusApplied?.(requestId)
-            }}
+            chunkFocusRequest={
+              readyChunkFocus
+                ? {
+                    requestId: readyChunkFocus.requestId,
+                    charOffset: readyChunkFocus.charOffset,
+                    chunkLength: readyChunkFocus.chunkLength,
+                  }
+                : null
+            }
+            onChunkFocusApplied={onPendingChunkFocusApplied}
           />
         </div>
       </div>
