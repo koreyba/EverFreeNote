@@ -36,7 +36,10 @@ export function BulkDeleteDialog({
 
   useEffect(() => {
     if (!errorMessage) return
-    setValue("")
+    const resetId = window.setTimeout(() => {
+      setValue("")
+    }, 0)
+    return () => window.clearTimeout(resetId)
   }, [errorMessage])
 
   const handleOpenChange = (next: boolean) => {
