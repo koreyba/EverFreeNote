@@ -252,7 +252,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
         if (wasAIEnabled && !aiEnabled) {
             controller.handleSearch(normalizedQuery)
-            if (normalizedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH && normalizedQuery === searchQuery.trim()) {
+            if (normalizedQuery === searchQuery.trim()) {
                 ftsSearchResult?.refetch()
             }
         }
