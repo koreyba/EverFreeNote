@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { SmartPasteService } from '@core/services/smartPaste'
 
-const fixturesDir = path.resolve(__dirname, '../../../../core/tests/fixtures/clipboard')
+const fixturesDir = path.resolve(__dirname, '../fixtures/clipboard')
 
 const readFixture = (name: string) =>
   fs.readFileSync(path.join(fixturesDir, name), 'utf8')
@@ -102,7 +102,7 @@ describe('smartPaste integration', () => {
     expect(result.html).toContain('<hr')
   })
 
-  describe('forced markdown — force-markdown.txt fixture', () => {
+  describe('forced markdown - force-markdown.txt fixture', () => {
     it('auto-detects fixture as plain (confirms low markdown score)', () => {
       const text = readFixture('force-markdown.txt')
       const result = SmartPasteService.resolvePaste({ html: null, text, types: ['text/plain'] })

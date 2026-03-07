@@ -57,9 +57,10 @@ Important trigger details:
 CI does not currently run:
 
 - a dedicated root `core` unit test project
+- a dedicated root `core` integration Jest project
 - a dedicated root `web` unit test project
 
-That is not a CI omission in the narrow sense; those projects do not exist yet. But it means shared `core` and isolated `web` unit ownership are still missing as first-class pipeline stages.
+That is not a CI omission in the narrow sense; those projects did not exist in the original setup. It does mean the new root-owned `core` and `web` suites are still not first-class pipeline stages yet.
 
 ### Current Test Count Baseline
 
@@ -78,41 +79,44 @@ User-provided CI summary confirms that the current mobile Jest workflow executes
 
 This is the authoritative current baseline for the mobile Jest suite and should be preserved or intentionally exceeded during migration.
 
-#### Mobile Jest local execution from this worktree
+#### Post-restructuring verified local baseline
 
-The suite was also launched locally from this worktree, but only after bypassing the current path and matcher issues:
+The repository has now been restructured and re-run locally from this worktree.
 
-- direct `npm test` from the worktree failed to discover tests
-- the root cause is the combination of Windows worktree path handling and the current Jest matcher behavior
-- a temporary external Jest config using `testRegex` was required to run the suite from this worktree without modifying repository files
+Existing Jest coverage was preserved exactly, but split by ownership:
 
-Local runnable baseline from the worktree:
+- `unit-core`: `11` suites / `184` tests, all passed
+- `integration-core`: `2` suites / `20` tests, all passed
+- `unit-mobile`: `24` suites / `228` tests, all passed
 
-- `37` test suites total
-- `36` test suites passed
-- `1` test suite failed
-- `432` tests total
-- `431` tests passed
-- `1` test failed
-- `0` skipped
+Preserved existing total:
 
-Observed failing test during the local audit run:
+- `37` suites
+- `432` tests
 
-- `tests/integration/searchScreen.test.tsx`
-- failing case: `SearchScreen - Delete Functionality > Delete from search results > renders delete buttons for each search result`
-- failure mode: Jest timeout after `5000 ms`
+This confirms that the migration did not lose existing Jest coverage. It only moved ownership from the mobile project into dedicated root `core` projects.
 
-This means the suite is real and runnable from the worktree, but the current default launch path is not stable there. The migration work should preserve the CI baseline and should also leave local execution in a better state than it is today.
+#### Added tests after the preserved baseline
 
-#### Mobile Jest local launch issue
+New dedicated web unit coverage has already been added on top of the preserved baseline:
 
-Default local execution from this worktree still has a known discovery problem:
+- `unit-web`: `2` suites / `7` tests, all passed
 
-- `npm test -- --ci --verbose --json --outputFile=results.json` in `ui/mobile` reports `No tests found`
+Current total local Jest count after migration and new web coverage:
 
-This points to an environment-sensitive mismatch in the current Jest file matching configuration. The most likely culprit is the current `testMatch` in `ui/mobile/jest.config.js`.
+- `39` suites
+- `439` tests
 
-This issue does not change the migration target, but it should be documented and investigated separately so local verification is consistent with CI and with worktree-based development.
+#### Worktree execution status
+
+Local execution from this Windows worktree now works with the repository config.
+
+Important fixes that made this reliable:
+
+- `ui/mobile/jest.config.js` now uses `testRegex` instead of the path-sensitive `testMatch`
+- the previously flaky `searchScreen.test.tsx` timeout was stabilized
+
+This means the current local verification path is stable enough to act as a migration guardrail.
 
 #### Cypress component baseline without execution
 
@@ -132,11 +136,12 @@ These static counts are useful as a migration guardrail, but they are not equiva
 The repository should have the following automated testing layers:
 
 - `unit-core`: shared domain logic from `core`
+- `integration-core`: multi-service shared-domain flows from `core`
 - `unit-web`: isolated browser/web logic from `ui/web`
 - `unit-mobile`: RN/Expo-specific logic from `ui/mobile`
 - Cypress component tests: composed web UI and browser behavior
 
-This plan only covers the unit-test architecture. It does not replace existing Cypress component coverage or redefine mobile integration coverage.
+This plan primarily covers the unit-test architecture. It also documents the small root-owned `integration-core` slice that was extracted from the old mobile Jest project because those tests are still clearly owned by `core`, not by mobile.
 
 ### Runner Strategy
 
@@ -144,7 +149,7 @@ Use Jest everywhere for unit tests.
 
 The architecture should be:
 
-- root-level Jest setup for `unit-core` and `unit-web`
+- root-level Jest setup for `unit-core`, `integration-core`, and `unit-web`
 - existing mobile Jest setup remains in `ui/mobile`
 
 This keeps one consistent unit-testing model while still respecting different runtime environments.
@@ -174,6 +179,27 @@ Forbidden:
 - browser globals such as `window` or `document`
 - imports from `@ui/mobile`
 - imports from `@ui/web`
+
+#### `integration-core`
+
+Purpose:
+
+- test shared `core` workflows that span multiple shared services but still do not belong to a platform layer
+
+Environment:
+
+- `node`
+
+Allowed:
+
+- interactions across multiple `core/services`
+- shared fixtures under `core/tests/fixtures`
+
+Forbidden:
+
+- RN/Expo runtime dependencies
+- browser-only globals
+- imports from platform test setup
 
 #### `unit-web`
 
@@ -219,6 +245,7 @@ This project remains separate because it requires RN/Expo mocks and setup that s
 The target directory layout should be:
 
 - `core/tests/unit`
+- `core/tests/integration`
 - `ui/web/tests/unit`
 - `ui/mobile/tests/unit`
 
@@ -288,18 +315,21 @@ The repository currently has:
 
 - a broad Cypress component suite at the root
 - a mobile Jest project in `ui/mobile`
-- no dedicated root unit-test project for shared `core`
-- no dedicated web unit-test project for isolated `ui/web` logic
+- a dedicated root `unit-core` project
+- a dedicated root `integration-core` project
+- a dedicated root `unit-web` project
 
-### What Existing Mobile Jest Tests Tell Us
+### What Existing Mobile Jest Tests Told Us
 
-The current mobile Jest suite is not hopelessly mixed. It is actually separable.
+The original mobile Jest suite was not hopelessly mixed. It proved to be separable.
 
 There are three practical categories:
 
-#### Category A: pure shared-core tests that should move
+#### Category A: pure shared-core tests that were moved
 
-These are currently located under `ui/mobile/tests/unit`, but they are logically `unit-core`:
+These tests no longer live under `ui/mobile`. They were moved into root-owned `core` projects.
+
+Moved into `core/tests/unit`:
 
 - `core-services-notes-delete.test.ts`
 - `core-services-offlineCache.test.ts`
@@ -313,7 +343,12 @@ These are currently located under `ui/mobile/tests/unit`, but they are logically
 - `editorWebViewBridge.test.ts`
 - `search.test.ts`
 
-These tests are the first migration batch because they already avoid mobile ownership in practice.
+Moved into `core/tests/integration`:
+
+- `offlineSync.test.ts`
+- `smartPaste.integration.test.ts`
+
+These files are now owned by `core`, not by the mobile test project.
 
 #### Category B: mobile-only unit tests that should stay
 
@@ -338,9 +373,11 @@ Example:
 
 These should remain in mobile because the unit under test is not shared `core`; it is mobile behavior built on top of shared objects.
 
+After the restructuring pass, the remaining files in `ui/mobile/tests` are mobile-owned or mixed mobile-plus-core tests. No pure shared-core Jest files remain there.
+
 ### Important Conclusion
 
-The current test suite can be split by ownership.
+The current test suite can be split by ownership, and the pure shared-core slice has already been separated out.
 
 There is no evidence that current mobile Jest tests are so cross-coupled with web that the repo must keep them in one mixed project.
 
@@ -352,12 +389,14 @@ The intended command surface should be standardized and documented before implem
 
 - `npm run test:unit`
 - `npm run test:unit:core`
+- `npm run test:integration:core`
 - `npm run test:unit:web`
 - optional root wrapper for mobile, such as `npm run test:unit:mobile`
 
 Coverage should be reported separately for:
 
 - `unit-core`
+- `integration-core`
 - `unit-web`
 - `unit-mobile`
 
@@ -365,7 +404,7 @@ An aggregated summary can exist for reporting purposes, but ownership should rem
 
 The intended config split:
 
-- root Jest config with projects for `unit-core` and `unit-web`
+- root Jest config with projects for `unit-core`, `integration-core`, and `unit-web`
 - `ui/mobile/jest.config.js` remains mobile-specific
 - separate setup files per environment
 
@@ -422,6 +461,7 @@ Expected result:
 Add root-level Jest support for:
 
 - `unit-core`
+- `integration-core`
 - `unit-web`
 
 Keep `ui/mobile` unchanged at this stage.
@@ -433,7 +473,7 @@ Expected result:
 
 ### Phase 3: Migrate the Pure Core Tests
 
-Move the existing pure shared-core tests out of `ui/mobile/tests/unit` and into `core/tests/unit`.
+Move the existing pure shared-core tests out of `ui/mobile/tests` and into root-owned `core` test directories.
 
 Rules:
 
@@ -445,6 +485,7 @@ Expected result:
 
 - `core` gains clear ownership of its unit tests
 - mobile no longer hosts shared-core coverage
+- pure shared-core integration tests also stop being hosted by mobile
 
 ### Phase 4: Start Web Unit Coverage
 
@@ -490,7 +531,8 @@ Expected result:
 - coverage becomes interpretable by subsystem
 - baseline counts can be compared against the pre-migration reference:
   - mobile Jest CI baseline: `37 suites / 432 tests`
-  - mobile Jest local worktree audit: `37 suites / 432 tests`, with `1` timeout failure in `searchScreen.test.tsx`
+  - preserved existing local baseline after restructuring: `37 suites / 432 tests`
+  - current total after added web unit coverage: `39 suites / 439 tests`
   - component static baseline: `95 specs / 662 detected test blocks`
 
 ## Acceptance Criteria
@@ -498,6 +540,7 @@ Expected result:
 This migration is successful when:
 
 - shared `core` unit tests no longer live under mobile
+- shared `core` integration tests no longer live under mobile
 - web has a dedicated isolated unit-test layer
 - mobile owns only mobile-specific or mobile-composed unit behavior
 - Cypress component tests remain the higher-level web layer, not the lowest one

@@ -22,6 +22,16 @@ module.exports = {
       clearMocks: true,
     },
     {
+      displayName: 'integration-core',
+      rootDir: __dirname,
+      testEnvironment: 'node',
+      testRegex: ['core/tests/integration/.*\\.test\\.(ts|tsx)$'],
+      setupFilesAfterEnv: ['<rootDir>/tests/jest/core.setup.cjs'],
+      transform,
+      moduleNameMapper,
+      clearMocks: true,
+    },
+    {
       displayName: 'unit-web',
       rootDir: __dirname,
       testEnvironment: 'jsdom',
