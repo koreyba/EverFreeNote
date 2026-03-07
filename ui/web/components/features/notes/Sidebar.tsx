@@ -1,26 +1,20 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { BookOpen, Globe, LogOut, Plus, Search, Tag, X, Settings } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { useState } from "react"
+import { BookOpen, Globe, KeyRound, LogOut, Plus, Search, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
+import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
 import { DeleteAccountDialog } from "@/components/features/account/DeleteAccountDialog"
 import { WordPressSettingsDialog } from "@/components/features/wordpress/WordPressSettingsDialog"
+import { ApiKeysSettingsDialog } from "@/components/features/settings/ApiKeysSettingsDialog"
 import { User } from "@supabase/supabase-js"
 import { cn } from "@ui/web/lib/utils"
-import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
+import { useBulkDeleteConfirm } from "@ui/web/hooks/useBulkDeleteConfirm"
 
 interface SidebarProps {
   user: User
@@ -32,15 +26,12 @@ interface SidebarProps {
   selectionMode: boolean
   selectedCount: number
   bulkDeleting: boolean
-  onEnterSelectionMode: () => void
   onExitSelectionMode: () => void
   onSelectAll: () => void
-  onClearSelection: () => void
   onBulkDelete: () => void
   filterByTag: string | null
-  searchQuery: string
-  onSearch: (query: string) => void
   onClearTagFilter: () => void
+  onOpenSearch: () => void
   onCreateNote: () => void
   onSignOut: () => void
   onDeleteAccount: () => Promise<void> | void
@@ -64,15 +55,10 @@ export function Sidebar({
   selectionMode,
   selectedCount,
   bulkDeleting,
-  onEnterSelectionMode,
   onExitSelectionMode,
   onSelectAll,
-  onClearSelection,
   onBulkDelete,
-  filterByTag,
-  searchQuery,
-  onSearch,
-  onClearTagFilter,
+  onOpenSearch,
   onCreateNote,
   onSignOut,
   onDeleteAccount,
@@ -85,24 +71,22 @@ export function Sidebar({
   className,
   "data-testid": dataTestId
 }: SidebarProps) {
-  const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
   const [wordPressSettingsOpen, setWordPressSettingsOpen] = useState(false)
-  const [searchDraft, setSearchDraft] = useState(searchQuery)
-  const debouncedSearch = useDebouncedCallback(onSearch, 250)
+  const [apiKeysOpen, setApiKeysOpen] = useState(false)
+  const hasVisibleNotes = typeof notesDisplayed === "number" ? notesDisplayed > 0 : true
+  const allVisibleSelected = typeof notesDisplayed === "number"
+    ? notesDisplayed > 0 && selectedCount >= notesDisplayed
+    : false
 
-  const handleBulkConfirm = async () => {
-    await onBulkDelete()
-    setBulkDialogOpen(false)
-  }
-  useEffect(() => {
-    setSearchDraft(searchQuery)
-  }, [searchQuery])
-
-  const handleSearchChange = (value: string) => {
-    setSearchDraft(value)
-    debouncedSearch.call(value)
-  }
+  const {
+    isDialogOpen: bulkDialogOpen,
+    setIsDialogOpen: setBulkDialogOpen,
+    requestDelete: requestBulkDelete,
+    confirmDelete: handleBulkConfirm,
+    error: bulkDeleteError,
+    clearError: clearBulkDeleteError,
+  } = useBulkDeleteConfirm(onBulkDelete)
 
   const handleDeleteAccount = async () => {
     await onDeleteAccount()
@@ -148,57 +132,19 @@ export function Sidebar({
           )}
         </div>
 
-        {/* Tag Filter Badge */}
-        {filterByTag && (
-          <div className="mb-3 flex items-center gap-2">
-            <Badge variant="outline" className="bg-accent text-accent-foreground">
-              <Tag className="w-3 h-3 mr-1" />
-              {filterByTag}
-            </Badge>
-            <Button
-              onClick={onClearTagFilter}
-              variant="ghost"
-              size="sm"
-              className="h-6 text-xs"
-            >
-              Clear Tags
-            </Button>
-          </div>
-        )}
-        
         {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            type="text"
-            placeholder={filterByTag ? `Search in "${filterByTag}" notes...` : "Search notes..."}
-            value={searchDraft}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-10 pr-8"
-          />
-          {searchQuery && (
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 hover:bg-transparent"
-                      onClick={() => onSearch('')}
-                    >
-                      <X className="w-4 h-4 text-gray-400 hover:text-foreground" />
-                      <span className="sr-only">Clear Search</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Clear Search</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="relative w-full text-left"
+          data-testid="sidebar-search-trigger"
+          aria-label="Open search panel"
+        >
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground mr-2 pointer-events-none" />
+          <div className="flex w-full items-center h-10 px-3 pl-9 py-2 rounded-md border border-input bg-background/50 hover:bg-background/80 transition-colors text-sm text-muted-foreground text-left">
+            Click to search
+          </div>
+        </button>
       </div>
 
       {/* New Note Button */}
@@ -210,40 +156,25 @@ export function Sidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
-        <Button
-          variant={selectionMode ? "secondary" : "outline"}
-          onClick={selectionMode ? onExitSelectionMode : onEnterSelectionMode}
-          className="w-full"
-        >
-          {selectionMode ? "Exit selection" : "Select Notes"}
-        </Button>
         <p className="text-xs text-muted-foreground text-center">
           Notes displayed: {typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of {typeof notesTotal === "number" ? notesTotal : "unknown"}
         </p>
         {selectionMode && (
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={onSelectAll}>
-                Select all
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1" onClick={onClearSelection}>
-                Unselect all
-              </Button>
-            </div>
-            <Button
-              variant="destructive"
-              disabled={selectedCount === 0 || bulkDeleting}
-              className="w-full"
-              onClick={() => setBulkDialogOpen(true)}
-            >
-              {bulkDeleting ? "Deleting..." : `Delete selected${selectedCount > 0 ? ` (${selectedCount})` : ""}`}
-            </Button>
-          </div>
+          <SelectionModeActions
+            selectedCount={selectedCount}
+            onSelectAll={onSelectAll}
+            onDelete={requestBulkDelete}
+            onCancel={onExitSelectionMode}
+            selectingAllDisabled={!hasVisibleNotes || allVisibleSelected || bulkDeleting}
+            deletingDisabled={selectedCount === 0 || bulkDeleting}
+            deleting={bulkDeleting}
+            className="rounded-md border bg-card/70 backdrop-blur"
+          />
         )}
       </div>
 
       {/* Notes List Container */}
-      <div className="flex-1 overflow-hidden" id="notes-list-container">
+      <div className="flex-1 overflow-y-auto" id="notes-list-container">
         {children}
       </div>
 
@@ -281,6 +212,15 @@ export function Sidebar({
                   <Globe className="w-4 h-4 mr-2" />
                   WordPress settings
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setApiKeysOpen(true)}
+                >
+                  <KeyRound className="w-4 h-4 mr-2" />
+                  API Keys
+                </Button>
                 <ImportButton onImportComplete={onImportComplete} />
                 <ExportButton onExportComplete={onExportComplete} />
                 <Button
@@ -308,8 +248,10 @@ export function Sidebar({
         open={bulkDialogOpen}
         onOpenChange={setBulkDialogOpen}
         count={selectedCount}
-        onConfirm={handleBulkConfirm}
+        onConfirm={() => void handleBulkConfirm()}
         loading={bulkDeleting}
+        errorMessage={bulkDeleteError?.message ?? null}
+        onClearError={clearBulkDeleteError}
       />
       <DeleteAccountDialog
         open={deleteAccountOpen}
@@ -321,6 +263,10 @@ export function Sidebar({
         open={wordPressSettingsOpen}
         onOpenChange={setWordPressSettingsOpen}
         onConfiguredChange={onWordPressConfiguredChange}
+      />
+      <ApiKeysSettingsDialog
+        open={apiKeysOpen}
+        onOpenChange={setApiKeysOpen}
       />
     </div>
   )

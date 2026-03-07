@@ -14,6 +14,7 @@ import FontFamily from "@tiptap/extension-font-family"
 import Heading from "@tiptap/extension-heading"
 import type { Extensions } from "@tiptap/react"
 import { FontSize } from "@/extensions/FontSize"
+import { ChunkFocusExtension } from "@/extensions/ChunkFocus"
 
 /**
  * Shared TipTap extension configuration used by both RichTextEditor and RichTextEditorWebView.
@@ -47,4 +48,5 @@ export const editorExtensions: Extensions = [
   Color,
   FontFamily,
   FontSize,
+  ChunkFocusExtension,
 ]

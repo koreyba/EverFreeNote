@@ -1,17 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Edit2, Trash2, ChevronLeft, MoreHorizontal } from "lucide-react"
+import { Edit2, Trash2, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import InteractiveTag from "@/components/InteractiveTag"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
-import {
-  ExportToWordPressButton,
-  type ExportableWordPressNote,
-} from "@/components/features/wordpress/ExportToWordPressButton"
-import { WordPressExportDialog } from "@/components/features/wordpress/WordPressExportDialog"
-
+import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { SanitizationService } from "@core/services/sanitizer"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import type { Note } from "@core/types/domain"
@@ -61,13 +55,6 @@ export const NoteView = React.memo(function NoteView({
     tags: note.tags ?? [],
   }), [note.content, note.description, note.id, note.tags, note.title])
 
-  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
-  const [exportDialogNote, setExportDialogNote] = React.useState<ExportableWordPressNote | null>(null)
-
-  const handleExportRequest = React.useCallback((exportNote: ExportableWordPressNote) => {
-    setExportDialogNote(exportNote)
-    setExportDialogOpen(true)
-  }, [])
 
   return (
     <div className="flex-1 flex min-h-0 flex-col">
@@ -86,14 +73,7 @@ export const NoteView = React.memo(function NoteView({
           )}
           <h2 className="text-lg font-semibold text-muted-foreground">Reading</h2>
         </div>
-        <div className="flex gap-2">
-          {wordpressConfigured ? (
-            <ExportToWordPressButton
-              getNote={getExportNote}
-              onRequestExport={handleExportRequest}
-              className="hidden md:inline-flex"
-            />
-          ) : null}
+        <div className="flex items-center gap-2">
           <Button
             onClick={onEdit}
             variant="outline"
@@ -106,27 +86,19 @@ export const NoteView = React.memo(function NoteView({
             onClick={onDelete}
             variant="outline"
             size="sm"
+            data-cy="note-delete-button"
+            aria-label="Delete note"
             className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
           >
             <Trash2 className="w-4 h-4 mr-2" />
-            Delete
+            <span className="hidden sm:inline" aria-hidden="true">Delete</span>
           </Button>
-          {wordpressConfigured ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="md:hidden" aria-label="More actions">
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <ExportToWordPressButton
-                  getNote={getExportNote}
-                  onRequestExport={handleExportRequest}
-                  triggerVariant="menu-item"
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
+          {/* More actions menu — always visible, contains RAG index controls + optional WP export */}
+          <MoreActionsMenu
+            noteId={note.id}
+            wordpressConfigured={wordpressConfigured}
+            getExportNote={getExportNote}
+          />
         </div>
       </div>
 
@@ -136,7 +108,7 @@ export const NoteView = React.memo(function NoteView({
           <h1 className="text-3xl font-bold mb-4">
             {note.title}
           </h1>
-          
+
           {note.tags && note.tags.length > 0 && (
             <div className="mb-6 overflow-hidden">
               <HorizontalTagScroll className="pb-1">
@@ -152,21 +124,18 @@ export const NoteView = React.memo(function NoteView({
               </HorizontalTagScroll>
             </div>
           )}
-          
+
           <div
             className={NOTE_CONTENT_CLASS}
             dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           />
-          
+
           <div className="mt-8 pt-4 border-t text-sm text-muted-foreground">
             <p>Created: {formattedDates.created}</p>
             <p>Updated: {formattedDates.updated}</p>
           </div>
         </div>
       </div>
-      {exportDialogNote ? (
-        <WordPressExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} note={exportDialogNote} />
-      ) : null}
     </div>
   )
 })

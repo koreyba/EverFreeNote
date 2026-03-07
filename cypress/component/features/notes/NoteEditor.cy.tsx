@@ -1,49 +1,28 @@
 import React from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { NoteEditor } from '../../../../ui/web/components/features/notes/NoteEditor'
+import { NoteEditor, type NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
+import { createSupabaseForExportDialog } from './noteTestHelpers'
 
-const createSupabaseForExportDialog = () => {
-  const invoke = cy.stub().callsFake((name: string, params: { body: { action?: string } }) => {
-    if (name === 'wordpress-settings-status') {
-      return Promise.resolve({
-        data: {
-          configured: true,
-          integration: {
-            siteUrl: 'https://stage.dkoreiba.com/',
-            wpUsername: 'editor',
-            enabled: true,
-            hasPassword: true,
-          },
-        },
-        error: null,
-      })
-    }
-    if (name === 'wordpress-bridge' && params.body.action === 'get_categories') {
-      return Promise.resolve({
-        data: {
-          categories: [{ id: 1, name: 'Tech' }],
-          rememberedCategoryIds: [],
-        },
-        error: null,
-      })
-    }
-    return Promise.resolve({ data: null, error: null })
-  })
-
-  const supabase = {
-    functions: { invoke },
+/** Minimal Supabase stub for tests that open the "..." menu but don't need real WP/RAG responses.
+ *  With user=null (SupabaseTestProvider default), useRagStatus returns early without querying. */
+function createMinimalSupabase(): SupabaseClient {
+  return {
+    functions: { invoke: cy.stub().resolves({ data: null, error: null }) },
     auth: {
-      getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } } }),
+      getUser: cy.stub().resolves({ data: { user: null }, error: null }),
+      getSession: cy.stub().resolves({ data: { session: null }, error: null }),
+      onAuthStateChange: cy.stub().returns({ data: { subscription: { unsubscribe: cy.stub() } } }),
+      signOut: cy.stub().resolves({ error: null }),
     },
     from: cy.stub().returns({
-      upsert: cy.stub().resolves({ error: null }),
-      update: cy.stub().returnsThis(),
-      eq: cy.stub().resolves({ error: null }),
+      select: cy.stub().returns({
+        eq: cy.stub().returns({
+          eq: cy.stub().resolves({ data: [], error: null }),
+        }),
+      }),
     }),
   } as unknown as SupabaseClient
-
-  return { supabase, invoke }
 }
 
 describe('NoteEditor Component', () => {
@@ -396,36 +375,37 @@ describe('NoteEditor Component', () => {
     cy.get('[data-cy="redo-button"]').should('be.disabled')
   })
 
-  it('shows export button when WordPress is configured and note has id', () => {
-    const props = {
-      ...getDefaultProps(),
-      noteId: 'note-1',
-      wordpressConfigured: true,
-    }
-
+  it('shows more actions menu when note has id', () => {
+    const props = { ...getDefaultProps(), noteId: 'note-1' }
     cy.mount(<NoteEditor {...props} />)
-    cy.contains('button', 'Export to WP').should('be.visible')
-  })
-
-  it('shows mobile more-actions menu instead of visible export button', () => {
-    cy.viewport(390, 844)
-
-    const props = {
-      ...getDefaultProps(),
-      noteId: 'note-1',
-      wordpressConfigured: true,
-    }
-
-    cy.mount(<NoteEditor {...props} />)
-    cy.contains('button', 'Export to WP')
-      .should('have.class', 'hidden')
-      .and('have.class', 'md:inline-flex')
     cy.get('button[aria-label="More actions"]').should('be.visible')
   })
 
-  it('opens export dialog from mobile menu and closes menu content', () => {
-    cy.viewport(390, 844)
+  it('does not show more actions menu for new notes without id', () => {
+    cy.mount(<NoteEditor {...getDefaultProps()} />)
+    cy.get('button[aria-label="More actions"]').should('not.exist')
+  })
 
+  it('shows WordPress export inside the more actions menu when configured', () => {
+    const { supabase } = createSupabaseForExportDialog()
+    const props = {
+      ...getDefaultProps(),
+      noteId: 'note-1',
+      wordpressConfigured: true,
+    }
+    cy.mount(
+      <SupabaseTestProvider supabase={supabase}>
+        <NoteEditor {...props} />
+      </SupabaseTestProvider>
+    )
+    // WP export is no longer an inline header button
+    cy.contains('button', 'Export to WP').should('not.exist')
+    // It lives in the "..." menu
+    cy.get('button[aria-label="More actions"]').click()
+    cy.contains('[role="menuitem"]', 'Export to WP').should('be.visible')
+  })
+
+  it('opens export dialog from the more actions menu', () => {
     const props = {
       ...getDefaultProps(),
       noteId: 'note-1',
@@ -449,14 +429,54 @@ describe('NoteEditor Component', () => {
     })
   })
 
-  it('hides export button for new notes without id', () => {
+  it('does not show export button when WordPress is not configured or note has no id', () => {
+    // With wordpressConfigured=true but no noteId — no menu at all
+    cy.mount(<NoteEditor {...getDefaultProps()} wordpressConfigured={true} />)
+    cy.contains('button', 'Export to WP').should('not.exist')
+    cy.get('button[aria-label="More actions"]').should('not.exist')
+  })
+
+  it('shows delete note option in the more actions menu when onDelete is provided', () => {
     const props = {
       ...getDefaultProps(),
-      wordpressConfigured: true,
+      noteId: 'note-1',
+      onDelete: cy.stub(),
     }
+    cy.mount(
+      <SupabaseTestProvider supabase={createMinimalSupabase()}>
+        <NoteEditor {...props} />
+      </SupabaseTestProvider>
+    )
+    cy.get('button[aria-label="More actions"]').click()
+    cy.contains('[role="menuitem"]', 'Delete note').should('be.visible')
+  })
 
-    cy.mount(<NoteEditor {...props} />)
-    cy.contains('button', 'Export to WP').should('not.exist')
+  it('calls onDelete when delete note is clicked from the more actions menu', () => {
+    const onDelete = cy.stub().as('onDelete')
+    const props = {
+      ...getDefaultProps(),
+      noteId: 'note-1',
+      onDelete,
+    }
+    cy.mount(
+      <SupabaseTestProvider supabase={createMinimalSupabase()}>
+        <NoteEditor {...props} />
+      </SupabaseTestProvider>
+    )
+    cy.get('button[aria-label="More actions"]').click()
+    cy.contains('[role="menuitem"]', 'Delete note').click()
+    cy.get('@onDelete').should('have.been.calledOnce')
+  })
+
+  it('does not show delete note option when onDelete is not provided', () => {
+    const props = { ...getDefaultProps(), noteId: 'note-1' }
+    cy.mount(
+      <SupabaseTestProvider supabase={createMinimalSupabase()}>
+        <NoteEditor {...props} />
+      </SupabaseTestProvider>
+    )
+    cy.get('button[aria-label="More actions"]').click()
+    cy.contains('[role="menuitem"]', 'Delete note').should('not.exist')
   })
 })
 
@@ -620,5 +640,36 @@ describe('NoteEditor – autosave race condition on new note create', () => {
 
     // Full title "Hello World" MUST be preserved
     cy.get('input[placeholder="Note title"]').should('have.value', 'Hello World')
+  })
+
+  it('highlights the AI chunk block range', () => {
+    const editorRef = React.createRef<NoteEditorHandle>()
+
+    function Wrapper() {
+      return (
+        <div>
+          <button type="button" onClick={() => editorRef.current?.scrollToChunk(10, 12)}>
+            Highlight chunk
+          </button>
+          <NoteEditor
+            ref={editorRef}
+            initialTitle="Chunk note"
+            initialDescription="<p>Alpha beta gamma</p><p>Delta epsilon zeta</p><p>Omega</p>"
+            initialTags=""
+            availableTags={[]}
+            isSaving={false}
+            onSave={() => undefined}
+            onRead={() => undefined}
+          />
+        </div>
+      )
+    }
+
+    cy.mount(<Wrapper />)
+
+    cy.contains('Highlight chunk').click()
+
+    cy.get('.ProseMirror .chunk-focus-block').should('have.length.at.least', 1)
+    cy.get('.ProseMirror .chunk-focus-block').first().should('contain.text', 'Alpha beta gamma')
   })
 })

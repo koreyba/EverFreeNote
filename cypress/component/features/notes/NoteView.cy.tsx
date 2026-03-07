@@ -1,51 +1,8 @@
 import React from 'react'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { NoteView } from '../../../../ui/web/components/features/notes/NoteView'
 import type { Note } from '../../../../core/types/domain'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
-
-const createSupabaseForExportDialog = () => {
-  const invoke = cy.stub().callsFake((name: string, params: { body: { action?: string } }) => {
-    if (name === 'wordpress-settings-status') {
-      return Promise.resolve({
-        data: {
-          configured: true,
-          integration: {
-            siteUrl: 'https://stage.dkoreiba.com/',
-            wpUsername: 'editor',
-            enabled: true,
-            hasPassword: true,
-          },
-        },
-        error: null,
-      })
-    }
-    if (name === 'wordpress-bridge' && params.body.action === 'get_categories') {
-      return Promise.resolve({
-        data: {
-          categories: [{ id: 1, name: 'Tech' }],
-          rememberedCategoryIds: [],
-        },
-        error: null,
-      })
-    }
-    return Promise.resolve({ data: null, error: null })
-  })
-
-  const supabase = {
-    functions: { invoke },
-    auth: {
-      getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } } }),
-    },
-    from: cy.stub().returns({
-      upsert: cy.stub().resolves({ error: null }),
-      update: cy.stub().returnsThis(),
-      eq: cy.stub().resolves({ error: null }),
-    }),
-  } as unknown as SupabaseClient
-
-  return { supabase, invoke }
-}
+import { createSupabaseForExportDialog } from './noteTestHelpers'
 
 describe('NoteView Component', () => {
   const mockNote: Note & { content?: string | null } = {
@@ -99,7 +56,7 @@ describe('NoteView Component', () => {
     cy.contains('Edit').click()
     cy.get('@onEdit').should('have.been.called')
 
-    cy.contains('Delete').click()
+    cy.get('[data-cy="note-delete-button"]').click()
     cy.get('@onDelete').should('have.been.called')
 
     // Test tag interaction if InteractiveTag supports it
@@ -129,42 +86,76 @@ describe('NoteView Component', () => {
     cy.get('.prose script').should('not.exist')
   })
 
-  it('shows export button when WordPress is configured', () => {
+  it('more actions menu is always visible', () => {
+    // The "..." button is always present — it holds RAG controls (and optionally WP export)
     const props = {
       note: mockNote,
       onEdit: cy.stub(),
       onDelete: cy.stub(),
       onTagClick: cy.stub(),
       onRemoveTag: cy.stub(),
-      wordpressConfigured: true,
+      wordpressConfigured: false,
     }
-
     cy.mount(<NoteView {...props} />)
-    cy.contains('button', 'Export to WP').should('be.visible')
-  })
-
-  it('shows mobile more-actions menu instead of visible export button', () => {
-    cy.viewport(390, 844)
-
-    const props = {
-      note: mockNote,
-      onEdit: cy.stub(),
-      onDelete: cy.stub(),
-      onTagClick: cy.stub(),
-      onRemoveTag: cy.stub(),
-      wordpressConfigured: true,
-    }
-
-    cy.mount(<NoteView {...props} />)
-    cy.contains('button', 'Export to WP')
-      .should('have.class', 'hidden')
-      .and('have.class', 'md:inline-flex')
     cy.get('button[aria-label="More actions"]').should('be.visible')
   })
 
-  it('opens export dialog from mobile menu and closes menu content', () => {
+  it('more actions menu is visible on mobile too', () => {
     cy.viewport(390, 844)
+    const props = {
+      note: mockNote,
+      onEdit: cy.stub(),
+      onDelete: cy.stub(),
+      onTagClick: cy.stub(),
+      onRemoveTag: cy.stub(),
+    }
+    cy.mount(<NoteView {...props} />)
+    cy.get('button[aria-label="More actions"]').should('be.visible')
+  })
 
+  it('shows RAG index controls inside the more actions menu', () => {
+    const { supabase } = createSupabaseForExportDialog()
+    const props = {
+      note: mockNote,
+      onEdit: cy.stub(),
+      onDelete: cy.stub(),
+      onTagClick: cy.stub(),
+      onRemoveTag: cy.stub(),
+    }
+    cy.mount(
+      <SupabaseTestProvider supabase={supabase}>
+        <NoteView {...props} />
+      </SupabaseTestProvider>
+    )
+    cy.get('button[aria-label="More actions"]').click()
+    // RAG items always present in the menu
+    cy.contains('[role="menuitem"]', 'Index note').should('be.visible')
+    cy.get('[data-cy="note-delete-index-button"]').should('be.visible')
+  })
+
+  it('shows WordPress export inside the more actions menu when configured', () => {
+    const { supabase } = createSupabaseForExportDialog()
+    const props = {
+      note: mockNote,
+      onEdit: cy.stub(),
+      onDelete: cy.stub(),
+      onTagClick: cy.stub(),
+      onRemoveTag: cy.stub(),
+      wordpressConfigured: true,
+    }
+    cy.mount(
+      <SupabaseTestProvider supabase={supabase}>
+        <NoteView {...props} />
+      </SupabaseTestProvider>
+    )
+    // WP export is no longer an inline header button
+    cy.contains('button', 'Export to WP').should('not.exist')
+    // It lives in the "..." menu
+    cy.get('button[aria-label="More actions"]').click()
+    cy.contains('[role="menuitem"]', 'Export to WP').should('be.visible')
+  })
+
+  it('opens export dialog from the more actions menu', () => {
     const props = {
       note: mockNote,
       onEdit: cy.stub(),
@@ -192,7 +183,8 @@ describe('NoteView Component', () => {
     })
   })
 
-  it('hides export button when WordPress is not configured', () => {
+  it('does not show WordPress export in menu when not configured', () => {
+    const { supabase } = createSupabaseForExportDialog()
     const props = {
       note: mockNote,
       onEdit: cy.stub(),
@@ -201,8 +193,12 @@ describe('NoteView Component', () => {
       onRemoveTag: cy.stub(),
       wordpressConfigured: false,
     }
-
-    cy.mount(<NoteView {...props} />)
-    cy.contains('button', 'Export to WP').should('not.exist')
+    cy.mount(
+      <SupabaseTestProvider supabase={supabase}>
+        <NoteView {...props} />
+      </SupabaseTestProvider>
+    )
+    cy.get('button[aria-label="More actions"]').click()
+    cy.contains('[role="menuitem"]', 'Export to WP').should('not.exist')
   })
 })

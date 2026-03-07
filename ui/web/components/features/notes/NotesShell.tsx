@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Loader2 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,14 +17,17 @@ import {
 import { cn } from "@ui/web/lib/utils"
 import { Sidebar } from "@/components/features/notes/Sidebar"
 import { NoteList } from "@/components/features/notes/NoteList"
-import { NoteEditor, type NoteEditorHandle } from "@/components/features/notes/NoteEditor"
+import { NoteEditor, type NoteEditorHandle, type PendingChunkFocus } from "@/components/features/notes/NoteEditor"
 import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
+import { SearchResultsPanel } from "@/components/features/notes/SearchResultsPanel"
+import type { SearchResultsPanelHandle } from "@/components/features/notes/SearchResultsPanel"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { normalizeTagList } from "@ui/web/lib/tags"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
+import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -37,29 +41,37 @@ type NotesShellProps = {
 
 export function NotesShell({ controller }: NotesShellProps) {
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
+  const searchPanelRef = React.useRef<SearchResultsPanelHandle | null>(null)
   const { supabase } = useSupabase()
   const wordpressSettingsService = React.useMemo(() => new WordPressSettingsService(supabase), [supabase])
+  const apiKeysService = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
   const [wordpressConfigured, setWordpressConfigured] = React.useState(false)
+
+  const [pendingChunkFocus, setPendingChunkFocus] = React.useState<PendingChunkFocus | null>(null)
 
   React.useEffect(() => {
     controller.registerNoteEditorRef(noteEditorRef)
   }, [controller])
 
+  const user = controller.user
+  const { data: apiKeysStatus } = useQuery({
+    queryKey: ['apiKeysStatus', user?.id],
+    queryFn: () => apiKeysService.getStatus(),
+    staleTime: 5 * 60 * 1000,
+    enabled: Boolean(user?.id),
+  })
+  const hasGeminiApiKey = apiKeysStatus?.gemini?.configured ?? false
+
   const {
-    user,
     notesDisplayed,
     notesTotal,
     selectionMode,
     selectedCount,
     bulkDeleting,
-    enterSelectionMode,
     exitSelectionMode,
     selectAllVisible,
-    clearSelection,
     deleteSelectedNotes,
     filterByTag,
-    searchQuery,
-    handleSearch,
     handleClearTagFilter,
     handleCreateNote,
     handleSignOut,
@@ -72,6 +84,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     selectedNote,
     isEditing,
     handleSelectNote,
+    isSearchPanelOpen,
+    setIsSearchPanelOpen,
   } = controller
 
   const refreshWordPressStatus = React.useCallback(async () => {
@@ -87,7 +101,56 @@ export function NotesShell({ controller }: NotesShellProps) {
     void refreshWordPressStatus()
   }, [refreshWordPressStatus, user?.id])
 
+  const handleOpenInContext = React.useCallback(async (noteId: string, charOffset: number, chunkLength: number) => {
+    let note = controller.notes.find((n) => n.id === noteId)
+
+    if (!note) {
+      // Note not in the current paginated list — fetch it from the DB
+      try {
+        const { data } = await supabase
+          .from('notes')
+          .select('id, title, description, tags, created_at, updated_at, user_id')
+          .eq('id', noteId)
+          .maybeSingle()
+        if (!data) return
+        note = data as Note
+      } catch (error) {
+        console.error("Failed to fetch note for open-in-context", { noteId, error })
+        return
+      }
+    }
+    if (!note) return  // TypeScript: narrowing lost after await + let reassignment
+
+    // Adjust charOffset: rag-index prepends title + " " before the body text
+    const title = (note.title ?? '').trim()
+    const bodyOffset = title ? Math.max(0, charOffset - (title.length + 1)) : charOffset
+    const nextPendingChunkFocus = {
+      requestId: `${noteId}:${bodyOffset}:${chunkLength}:${Date.now()}`,
+      noteId,
+      charOffset: bodyOffset,
+      chunkLength,
+    }
+    setPendingChunkFocus(nextPendingChunkFocus)
+
+    if (controller.selectedNote?.id === noteId && controller.isEditing) {
+      return
+    }
+
+    await controller.handleEditNote(note)
+  }, [controller, supabase])
+
   const showEditor = !!(selectedNote || isEditing)
+  const handleOpenSearchPanel = React.useCallback(() => {
+    if (isSearchPanelOpen) {
+      searchPanelRef.current?.focusInput()
+      return
+    }
+    setIsSearchPanelOpen(true)
+  }, [isSearchPanelOpen, setIsSearchPanelOpen])
+
+  const handlePendingChunkFocusApplied = React.useCallback((requestId: string) => {
+    setPendingChunkFocus((current) => (current?.requestId === requestId ? null : current))
+  }, [])
 
   return (
     <div className="flex h-screen max-h-screen bg-muted/20 overflow-hidden">
@@ -102,13 +165,9 @@ export function NotesShell({ controller }: NotesShellProps) {
         selectionMode={selectionMode}
         selectedCount={selectedCount}
         bulkDeleting={bulkDeleting}
-        onEnterSelectionMode={enterSelectionMode}
         onExitSelectionMode={exitSelectionMode}
         onSelectAll={selectAllVisible}
-        onClearSelection={clearSelection}
         onBulkDelete={deleteSelectedNotes}
-        searchQuery={searchQuery}
-        onSearch={handleSearch}
         onClearTagFilter={handleClearTagFilter}
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
@@ -117,11 +176,23 @@ export function NotesShell({ controller }: NotesShellProps) {
         onImportComplete={invalidateNotes}
         wordpressConfigured={wordpressConfigured}
         onWordPressConfiguredChange={setWordpressConfigured}
-        className={cn(showEditor ? "hidden md:flex" : "w-full md:w-80")}
+        onOpenSearch={handleOpenSearchPanel}
+        className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
       >
         <ListPane controller={controller} />
       </Sidebar>
+
+      {isSearchPanelOpen && (
+        <SearchResultsPanel
+          ref={searchPanelRef}
+          controller={controller}
+          hasGeminiApiKey={hasGeminiApiKey}
+          onOpenInContext={handleOpenInContext}
+          onClose={() => setIsSearchPanelOpen(false)}
+          className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
+        />
+      )}
 
       <div
         className={cn(
@@ -135,6 +206,8 @@ export function NotesShell({ controller }: NotesShellProps) {
           onBack={() => handleSelectNote(null)}
           noteEditorRef={noteEditorRef}
           wordpressConfigured={wordpressConfigured}
+          pendingChunkFocus={pendingChunkFocus}
+          onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
         />
       </div>
 
@@ -148,18 +221,11 @@ function ListPane({ controller }: { controller: NoteAppController }) {
     notes,
     notesQuery,
     selectedNote,
-    searchQuery,
-    ftsSearchResult,
-    showFTSResults,
-    ftsData,
-    ftsHasMore,
-    ftsLoadingMore,
     handleSelectNote,
     selectionMode,
     selectedNoteIds,
     toggleNoteSelection,
     handleTagClick,
-    handleSearchResultClick,
   } = controller
 
   return (
@@ -175,22 +241,6 @@ function ListPane({ controller }: { controller: NoteAppController }) {
       onLoadMore={() => notesQuery.fetchNextPage()}
       hasMore={notesQuery.hasNextPage}
       isFetchingNextPage={notesQuery.isFetchingNextPage}
-      ftsQuery={searchQuery}
-      ftsLoading={ftsSearchResult.isLoading}
-      showFTSResults={showFTSResults}
-      ftsData={
-        ftsData
-          ? {
-            total: ftsData.total,
-            executionTime: ftsData.executionTime,
-            results: ftsData.results,
-          }
-          : undefined
-      }
-      ftsHasMore={ftsHasMore}
-      ftsLoadingMore={ftsLoadingMore}
-      onLoadMoreFts={controller.loadMoreFts}
-      onSearchResultClick={handleSearchResultClick}
     />
   )
 }
@@ -200,11 +250,15 @@ function EditorPane({
   onBack,
   noteEditorRef,
   wordpressConfigured,
+  pendingChunkFocus,
+  onPendingChunkFocusApplied,
 }: {
   controller: NoteAppController
   onBack: () => void
   noteEditorRef: React.RefObject<NoteEditorHandle | null>
   wordpressConfigured: boolean
+  pendingChunkFocus: PendingChunkFocus | null
+  onPendingChunkFocusApplied: (requestId: string) => void
 }) {
   const {
     selectedNote,
@@ -245,6 +299,10 @@ function EditorPane({
         isAutoSaving={autoSaving}
         lastSavedAt={lastSavedAt}
         wordpressConfigured={wordpressConfigured}
+        onDelete={selectedNote ? () => handleDeleteNote(selectedNote) : undefined}
+        onBack={onBack}
+        pendingChunkFocus={pendingChunkFocus}
+        onPendingChunkFocusApplied={onPendingChunkFocusApplied}
       />
     )
   }

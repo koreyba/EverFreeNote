@@ -1,18 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal } from "lucide-react"
+import { ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { TagInput } from "@/components/TagInput"
-import {
-  ExportToWordPressButton,
-  type ExportableWordPressNote,
-} from "@/components/features/wordpress/ExportToWordPressButton"
-import { WordPressExportDialog } from "@/components/features/wordpress/WordPressExportDialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
@@ -21,6 +16,14 @@ const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
 export interface NoteEditorHandle {
   flushPendingSave: () => Promise<void>
+  scrollToChunk: (charOffset: number, chunkLength: number) => void
+}
+
+export type PendingChunkFocus = {
+  requestId: string
+  noteId: string
+  charOffset: number
+  chunkLength: number
 }
 
 interface NoteEditorProps {
@@ -37,6 +40,10 @@ interface NoteEditorProps {
   autosaveDelayMs?: number
   lastSavedAt?: string | null
   wordpressConfigured?: boolean
+  onDelete?: () => void
+  onBack?: () => void
+  pendingChunkFocus?: PendingChunkFocus | null
+  onPendingChunkFocusApplied?: (requestId: string) => void
 }
 
 export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor({
@@ -53,14 +60,18 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   lastSavedAt,
   availableTags = [],
   wordpressConfigured = false,
+  onDelete,
+  onBack,
+  pendingChunkFocus = null,
+  onPendingChunkFocusApplied,
 }: NoteEditorProps, ref) {
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
-  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
-  const [exportDialogNote, setExportDialogNote] = React.useState<ExportableWordPressNote | null>(null)
+  const [readyChunkFocus, setReadyChunkFocus] = React.useState<PendingChunkFocus | null>(null)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
+  const previousNoteIdRef = React.useRef(noteId)
 
   const selectedTagsRef = React.useRef<string[]>(selectedTags)
   React.useEffect(() => {
@@ -126,11 +137,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     }
   }, [getFormData, noteId])
 
-  const handleExportRequest = React.useCallback((exportNote: ExportableWordPressNote) => {
-    setExportDialogNote(exportNote)
-    setExportDialogOpen(true)
-  }, [])
-
   const suggestions = useTagSuggestions({
     allTags: availableTags,
     selectedTags,
@@ -162,44 +168,75 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     scheduleAutoSave({ tags: buildTagString(next) })
   }, [scheduleAutoSave])
 
-  React.useImperativeHandle(ref, () => ({ flushPendingSave }), [flushPendingSave])
+  React.useImperativeHandle(ref, () => ({
+    flushPendingSave,
+    scrollToChunk: (charOffset: number, chunkLength: number) => {
+      editorRef.current?.scrollToChunk(charOffset, chunkLength)
+    },
+  }), [flushPendingSave])
+
+  const effectivePendingChunkFocus = React.useMemo(() => {
+    if (!pendingChunkFocus || !noteId) return null
+    return pendingChunkFocus.noteId === noteId ? pendingChunkFocus : null
+  }, [pendingChunkFocus, noteId])
+
+  React.useEffect(() => {
+    const noteChanged = previousNoteIdRef.current !== noteId
+    previousNoteIdRef.current = noteId
+
+    if (!effectivePendingChunkFocus) {
+      setReadyChunkFocus(null)
+      return
+    }
+
+    // Real note switches remount the editor after noteId changes. Delay the focus request
+    // until the post-switch editor session is active so scroll/highlight are applied once.
+    if (noteChanged) {
+      setReadyChunkFocus(null)
+      return
+    }
+
+    setReadyChunkFocus(effectivePendingChunkFocus)
+  }, [effectivePendingChunkFocus, noteId, editorSessionKey])
+
+  // Show the "..." menu for existing notes (RAG + delete)
+  const showMoreMenu = !!noteId
 
   return (
     <div className="flex-1 flex min-h-0 flex-col">
       {/* Editor Header */}
       <div className="p-4 border-b bg-card flex items-start justify-between">
-        <h2 className="text-lg font-semibold text-muted-foreground">Editing</h2>
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden -ml-2"
+              onClick={onBack}
+              aria-label="Back"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+          )}
+          <h2 className="text-lg font-semibold text-muted-foreground">Editing</h2>
+        </div>
         <div className="flex flex-col items-end gap-1">
-          <div className="flex gap-2">
-            {wordpressConfigured && noteId ? (
-              <ExportToWordPressButton
-                getNote={getExportNote}
-                onRequestExport={handleExportRequest}
-                className="hidden md:inline-flex"
-              />
-            ) : null}
+          <div className="flex gap-2 items-center">
             <Button onClick={handleRead} variant="outline" disabled={isSaving}>
               Read
             </Button>
             <Button onClick={handleSave} disabled={isSaving}>
               Save
             </Button>
-            {wordpressConfigured && noteId ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="md:hidden" aria-label="More actions">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <ExportToWordPressButton
-                    getNote={getExportNote}
-                    onRequestExport={handleExportRequest}
-                    triggerVariant="menu-item"
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
+            {/* More actions menu — RAG controls, delete note, WordPress export */}
+            {showMoreMenu && (
+              <MoreActionsMenu
+                noteId={noteId!}
+                wordpressConfigured={wordpressConfigured}
+                getExportNote={getExportNote}
+                onDelete={onDelete}
+              />
+            )}
           </div>
           {(showSaving || isSaving) ? (
             <div className="text-xs text-muted-foreground animate-pulse">Saving...</div>
@@ -240,12 +277,19 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             ref={editorRef}
             initialContent={initialDescription}
             onContentChange={handleContentChange}
+            chunkFocusRequest={
+              readyChunkFocus
+                ? {
+                    requestId: readyChunkFocus.requestId,
+                    charOffset: readyChunkFocus.charOffset,
+                    chunkLength: readyChunkFocus.chunkLength,
+                  }
+                : null
+            }
+            onChunkFocusApplied={onPendingChunkFocusApplied}
           />
         </div>
       </div>
-      {exportDialogNote ? (
-        <WordPressExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} note={exportDialogNote} />
-      ) : null}
     </div>
   )
 }))
