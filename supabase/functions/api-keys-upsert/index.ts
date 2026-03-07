@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
+import { createClient } from "@supabase/supabase-js"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -60,34 +60,49 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405)
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-  const encryptionSecret = Deno.env.get("AI_CREDENTIALS_KEY")
-  if (!supabaseUrl || !serviceRoleKey || !encryptionSecret) {
-    return jsonResponse({ error: "Function not configured" }, 500)
-  }
-
-  const authHeader = req.headers.get("Authorization")?.trim() ?? ""
-  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
-  const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
-  if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
-
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
-  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
-  if (userError || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401)
-  const userId = userData.user.id
-
-  let payload: Record<string, unknown> = {}
-  try { payload = await req.json() } catch { /* empty body */ }
-
-  const rawGeminiKey = typeof payload.geminiApiKey === "string" ? payload.geminiApiKey.trim() : ""
-
-  const MAX_GEMINI_KEY_LENGTH = 256
-  if (rawGeminiKey.length > MAX_GEMINI_KEY_LENGTH) {
-    return jsonResponse({ error: `Gemini API key must not exceed ${MAX_GEMINI_KEY_LENGTH} characters` }, 400)
-  }
-
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    const encryptionSecret = Deno.env.get("AI_CREDENTIALS_KEY")
+    if (!supabaseUrl || !serviceRoleKey || !encryptionSecret) {
+      return jsonResponse({ error: "Function not configured" }, 500)
+    }
+
+    const authHeader = req.headers.get("Authorization")?.trim() ?? ""
+    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
+    const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
+    if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
+
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
+    if (userError || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401)
+    const userId = userData.user.id
+
+    let payload: Record<string, unknown> = {}
+    const rawBody = await req.text()
+    if (rawBody.trim()) {
+      try {
+        const parsed = JSON.parse(rawBody)
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          return jsonResponse({ error: "Request body must be a JSON object" }, 400)
+        }
+        payload = parsed as Record<string, unknown>
+      } catch {
+        return jsonResponse({ error: "Malformed JSON body" }, 400)
+      }
+    }
+
+    if ("geminiApiKey" in payload && typeof payload.geminiApiKey !== "string") {
+      return jsonResponse({ error: "geminiApiKey must be a string" }, 400)
+    }
+
+    const rawGeminiKey = typeof payload.geminiApiKey === "string" ? payload.geminiApiKey.trim() : ""
+
+    const MAX_GEMINI_KEY_LENGTH = 256
+    if (rawGeminiKey.length > MAX_GEMINI_KEY_LENGTH) {
+      return jsonResponse({ error: `Gemini API key must not exceed ${MAX_GEMINI_KEY_LENGTH} characters` }, 400)
+    }
+
     // Fetch existing row to support "keep existing key" on empty input
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from("user_api_keys")

@@ -54,7 +54,7 @@ export function useNoteAppController() {
     setBulkDeleting,
     handleSelectNote,
     handleSearchResultClick,
-    handleEditNote,
+    handleEditNote: handleEditNoteRaw,
     handleCreateNote,
     handleDeleteNote,
     enterSelectionMode,
@@ -170,6 +170,7 @@ export function useNoteAppController() {
 
   // Ref to avoid stale closure in save handlers and nav wrappers
   const selectedNoteRef = useRef(selectedNote)
+  const latestEditRequestRef = useRef(0)
   useEffect(() => {
     selectedNoteRef.current = selectedNote
   }, [selectedNote])
@@ -242,6 +243,14 @@ export function useNoteAppController() {
     handleCreateNote()
     setLastSavedAt(null)
   }, [flushPendingEditorSave, handleCreateNote, setLastSavedAt])
+
+  const wrappedHandleEditNote = useCallback(async (note: NoteViewModel) => {
+    const requestId = ++latestEditRequestRef.current
+    await flushPendingEditorSave()
+    if (requestId !== latestEditRequestRef.current) return
+    handleEditNoteRaw(note)
+    setLastSavedAt(null)
+  }, [flushPendingEditorSave, handleEditNoteRaw, setLastSavedAt])
 
   const handleTagClick = useCallback(async (tag: string) => {
     await flushPendingEditorSave()
@@ -337,7 +346,7 @@ export function useNoteAppController() {
     handleSignOut,
     handleDeleteAccount,
     handleCreateNote: wrappedHandleCreateNote,
-    handleEditNote,
+    handleEditNote: wrappedHandleEditNote,
     handleSaveNote,
     handleReadNote,
     handleAutoSave,

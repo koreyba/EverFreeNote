@@ -23,7 +23,7 @@ import { AiSearchToggle } from "@/components/features/search/AiSearchToggle"
 import { AiSearchPresetSelector } from "@/components/features/search/AiSearchPresetSelector"
 import { AiSearchViewTabs } from "@/components/features/search/AiSearchViewTabs"
 import { NoteSearchResults } from "@/components/features/search/NoteSearchResults"
-import { ChunkSearchResults } from "@/components/features/search/ChunkSearchResults"
+import { ChunkSearchResults, getVisibleChunkCount } from "@/components/features/search/ChunkSearchResults"
 import { NoteList } from "@/components/features/notes/NoteList"
 import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
@@ -81,6 +81,8 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
     // AI Search state
     const { isAIEnabled, preset, viewMode, setIsAIEnabled, setPreset, setViewMode } = useSearchMode()
+    const aiEnabled = isAIEnabled && hasGeminiApiKey
+    const prevAiEnabledRef = useRef(aiEnabled)
     const {
         noteGroups,
         isLoading: aiLoading,
@@ -94,15 +96,20 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         query: aiSearchQuery,
         preset,
         filterTag: filterByTag,
-        isEnabled: isAIEnabled,
+        isEnabled: aiEnabled,
     })
 
-    const showAIResults = isAIEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
+    const showAIResults = aiEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
+    const usesVirtualizedList = !showAIResults && (showFTSResults || showTagOnlyResults)
     const selectionSwitchTitle = "Remove selection to switch"
     const canSelectInPanel =
         showFTSResults ||
         showTagOnlyResults ||
         (showAIResults && viewMode === 'note')
+    const shouldShowResultsHeader =
+        showAIResults ||
+        showFTSResults ||
+        showTagOnlyResults
 
     const visibleResultIds = React.useMemo(() => {
         if (showAIResults && viewMode === 'note') {
@@ -116,6 +123,40 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         }
         return []
     }, [showAIResults, viewMode, noteGroups, showTagOnlyResults, tagOnlyResults, showFTSResults, ftsData])
+
+    const visibleResultsSummary = React.useMemo(() => {
+        if (showAIResults && viewMode === 'note') {
+            return {
+                count: noteGroups.length,
+                singularLabel: 'note',
+                pluralLabel: 'notes',
+            }
+        }
+
+        if (showAIResults && viewMode === 'chunk') {
+            const visibleChunkCount = getVisibleChunkCount(noteGroups)
+            return {
+                count: visibleChunkCount,
+                singularLabel: 'chunk',
+                pluralLabel: 'chunks',
+            }
+        }
+
+        if (showTagOnlyResults) {
+            return {
+                count: tagOnlyTotal,
+                singularLabel: 'note',
+                pluralLabel: 'notes',
+            }
+        }
+
+        const visibleCount = typeof ftsData?.total === 'number' ? ftsData.total : (ftsData?.results.length ?? 0)
+        return {
+            count: visibleCount,
+            singularLabel: 'note',
+            pluralLabel: 'notes',
+        }
+    }, [showAIResults, viewMode, noteGroups, showTagOnlyResults, tagOnlyTotal, ftsData])
 
     const selectedCount = panelSelectedIds.size
     const allVisibleSelected =
@@ -159,8 +200,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             if (result.failed === 0) {
                 exitPanelSelectionMode()
             }
-        } catch (error) {
-            console.error('Panel bulk delete failed:', error)
         } finally {
             setPanelBulkDeleting(false)
         }
@@ -179,11 +218,18 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         setIsDialogOpen: setPanelBulkDialogOpen,
         requestDelete: requestPanelBulkDelete,
         confirmDelete: handleConfirmPanelBulkDelete,
+        error: panelBulkDeleteError,
+        clearError: clearPanelBulkDeleteError,
     } = useBulkDeleteConfirm(handlePanelDelete)
 
     const handleSearchChange = (value: string) => {
         setSearchDraft(value)
-        if (!isAIEnabled) {
+        if (!aiEnabled) {
+            if (value === '') {
+                debouncedSearch.cancel()
+                controller.handleSearch('')
+                return
+            }
             debouncedSearch.call(value)
         }
     }
@@ -195,14 +241,31 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         })
     }, [controller, loadMoreAI, resetAIResults])
 
+    useEffect(() => {
+        const wasAIEnabled = prevAiEnabledRef.current
+        const normalizedQuery = searchDraft.trim()
+
+        if (!wasAIEnabled && aiEnabled) {
+            debouncedSearch.cancel()
+            setAiSearchQuery(normalizedQuery)
+        }
+
+        if (wasAIEnabled && !aiEnabled) {
+            controller.handleSearch(normalizedQuery)
+            if (normalizedQuery === searchQuery.trim()) {
+                ftsSearchResult?.refetch()
+            }
+        }
+        prevAiEnabledRef.current = aiEnabled
+    }, [aiEnabled, searchDraft, controller, searchQuery, ftsSearchResult, debouncedSearch])
+
     const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             const normalizedQuery = searchDraft.trim()
             debouncedSearch.cancel()
-            if (isAIEnabled) {
+            if (aiEnabled) {
                 const queryChanged = normalizedQuery !== aiSearchQuery.trim()
                 setAiSearchQuery(normalizedQuery)
-                controller.handleSearch(normalizedQuery)
                 // If query is the same, setAiSearchQuery won't re-trigger useAISearch; force refetch.
                 if (!queryChanged) aiRefetch()
             } else {
@@ -216,6 +279,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     }
 
     const handleClear = () => {
+        debouncedSearch.cancel()
         controller.handleSearch('')
         setSearchDraft('')
         setAiSearchQuery('')
@@ -335,8 +399,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     }, [isResizing, panelWidth])
 
     const renderResultsHeader = () => {
-        if (!canSelectInPanel) return null
-
         if (panelSelectionMode) {
             return (
                 <SelectionModeActions
@@ -352,17 +414,17 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             )
         }
 
-        const visibleCount =
-            showAIResults && viewMode === 'note'
-                ? noteGroups.length
-                : showTagOnlyResults
-                    ? tagOnlyTotal
-                    : (typeof ftsData?.total === 'number' ? ftsData.total : (ftsData?.results.length ?? 0))
+        if (!shouldShowResultsHeader) return null
+
+        const resultLabel =
+            visibleResultsSummary.count === 1
+                ? visibleResultsSummary.singularLabel
+                : visibleResultsSummary.pluralLabel
 
         return (
             <div className="flex items-center justify-between px-3 py-2 text-sm text-muted-foreground border-b bg-card/70">
                 <div>
-                    Found: <span className="font-semibold">{visibleCount}</span> {visibleCount === 1 ? 'note' : 'notes'}
+                    Found: <span className="font-semibold">{visibleResultsSummary.count}</span> {resultLabel}
                 </div>
                 {typeof ftsData?.executionTime === "number" && !showAIResults && (
                     <div>{ftsData.executionTime}ms</div>
@@ -398,7 +460,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                             onKeyDown={handleSearchKeyDown}
                             className={cn(
                                 "pl-9 pr-7 h-9 bg-background transition-shadow",
-                                isAIEnabled && "ring-1 ring-primary/35 focus-visible:ring-primary/60"
+                                aiEnabled && "ring-1 ring-primary/35 focus-visible:ring-primary/60"
                             )}
                         />
                         {searchDraft && (
@@ -474,9 +536,10 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             </div>
 
             <div
+                data-testid="search-results-scroll-region"
                 className={cn(
                     "flex-1 min-h-0 bg-muted/10 relative",
-                    showFTSResults || showTagOnlyResults ? "overflow-hidden" : "overflow-y-auto"
+                    usesVirtualizedList ? "overflow-hidden" : "overflow-y-auto"
                 )}
             >
                 {renderResultsHeader()}
@@ -574,7 +637,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                             <p className="text-sm font-medium text-muted-foreground/70">
                                 {searchDraft.trim().length > 0 ? "Press Enter to search" : "Search your notes"}
                             </p>
-                            {isAIEnabled && searchDraft.trim().length > 0 && (
+                            {aiEnabled && searchDraft.trim().length > 0 && (
                                 <p className="text-xs text-muted-foreground/45 mt-1">AI search uses semantic similarity</p>
                             )}
                         </div>
@@ -597,6 +660,8 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 count={selectedCount}
                 onConfirm={() => void handleConfirmPanelBulkDelete()}
                 loading={panelBulkDeleting}
+                errorMessage={panelBulkDeleteError?.message ?? null}
+                onClearError={clearPanelBulkDeleteError}
             />
         </div>
     )

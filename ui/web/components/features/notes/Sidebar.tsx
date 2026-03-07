@@ -84,6 +84,8 @@ export function Sidebar({
     setIsDialogOpen: setBulkDialogOpen,
     requestDelete: requestBulkDelete,
     confirmDelete: handleBulkConfirm,
+    error: bulkDeleteError,
+    clearError: clearBulkDeleteError,
   } = useBulkDeleteConfirm(onBulkDelete)
 
   const handleDeleteAccount = async () => {
@@ -248,6 +250,8 @@ export function Sidebar({
         count={selectedCount}
         onConfirm={() => void handleBulkConfirm()}
         loading={bulkDeleting}
+        errorMessage={bulkDeleteError?.message ?? null}
+        onClearError={clearBulkDeleteError}
       />
       <DeleteAccountDialog
         open={deleteAccountOpen}

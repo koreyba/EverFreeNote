@@ -1,7 +1,14 @@
 import { ChunkSearchItem } from './ChunkSearchItem'
 import type { RagNoteGroup } from '@core/types/ragSearch'
 
-const MAX_CHUNKS_PER_NOTE = 2
+export const MAX_CHUNKS_PER_NOTE = 2
+
+export function getVisibleChunkCount(noteGroups: RagNoteGroup[]): number {
+  return noteGroups.reduce(
+    (total, group) => total + Math.min(group.chunks.length, MAX_CHUNKS_PER_NOTE),
+    0
+  )
+}
 
 interface ChunkSearchResultsProps {
   noteGroups: RagNoteGroup[]
@@ -21,9 +28,7 @@ export function ChunkSearchResults({ noteGroups, onOpenInContext, query = '' }: 
   }
 
   // Flatten to at most 2 chunks per note
-  const flatChunks = noteGroups.flatMap((group) =>
-    group.chunks.slice(0, MAX_CHUNKS_PER_NOTE)
-  )
+  const flatChunks = noteGroups.flatMap((group) => group.chunks.slice(0, MAX_CHUNKS_PER_NOTE))
 
   return (
     <div className="flex flex-col gap-2" role="list" aria-label="Chunk search results">

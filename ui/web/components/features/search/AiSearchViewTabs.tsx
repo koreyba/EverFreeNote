@@ -91,7 +91,7 @@ export function AiSearchViewTabs({
           aria-label="Note view"
           aria-disabled={disabled}
           data-disabled={disabled ? 'true' : undefined}
-          tabIndex={disabled ? -1 : 0}
+          tabIndex={disabled ? -1 : undefined}
           onPointerDown={handleDisabledItemPointerDown}
           onClick={handleDisabledItemClick}
         >
@@ -104,7 +104,7 @@ export function AiSearchViewTabs({
           aria-label="Chunk view"
           aria-disabled={disabled}
           data-disabled={disabled ? 'true' : undefined}
-          tabIndex={disabled ? -1 : 0}
+          tabIndex={disabled ? -1 : undefined}
           onPointerDown={handleDisabledItemPointerDown}
           onClick={handleDisabledItemClick}
         >

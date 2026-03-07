@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck - Deno types (Deno.env, URL imports) are not available in the Node.js TypeScript
-// compiler used by the monorepo. There is no deno.json / import_map.json in this project.
+// @ts-nocheck - Deno runtime globals are not available in the Node.js TypeScript compiler
+// used by the monorepo root checks.
 // The `declare const Deno` below is kept for editor IntelliSense only.
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
+import { createClient } from "@supabase/supabase-js"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -31,6 +31,26 @@ const jsonResponse = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
+
+const isLegacyMatchNotesSignatureError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") return false
+
+  const code = typeof (error as { code?: unknown }).code === "string"
+    ? (error as { code: string }).code.toUpperCase()
+    : ""
+  // PostgREST "function not found in schema cache" for RPC signature mismatches.
+  if (code === "PGRST202") return true
+
+  const message = typeof (error as { message?: unknown }).message === "string"
+    ? (error as { message: string }).message
+    : ""
+  const details = typeof (error as { details?: unknown }).details === "string"
+    ? (error as { details: string }).details
+    : ""
+  const combined = `${message} ${details}`.toLowerCase()
+
+  return combined.includes("match_notes") && combined.includes("filter_tag") && combined.includes("function")
+}
 
 // ---------------------------------------------------------------------------
 // AES-GCM decryption (mirrors rag-index pattern)
@@ -142,7 +162,9 @@ serve(async (req: Request) => {
   }
 
   // Auth — extract userId from JWT
-  const token = req.headers.get("Authorization")?.replace("Bearer ", "")
+  const authHeader = req.headers.get("Authorization")?.trim() ?? ""
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
+  const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
   if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
@@ -159,8 +181,8 @@ serve(async (req: Request) => {
   if (typeof query !== "string" || query.trim().length === 0) {
     return jsonResponse({ error: "Missing or empty query" }, 400)
   }
-  if (typeof topK !== "number" || topK < 1 || topK > 100) {
-    return jsonResponse({ error: "topK must be a number between 1 and 100" }, 400)
+  if (typeof topK !== "number" || !Number.isInteger(topK) || topK < 1 || topK > 100) {
+    return jsonResponse({ error: "topK must be an integer between 1 and 100" }, 400)
   }
   if (typeof threshold !== "number" || threshold < 0 || threshold > 1) {
     return jsonResponse({ error: "threshold must be a number between 0 and 1" }, 400)
@@ -199,11 +221,46 @@ serve(async (req: Request) => {
       global: { headers: { Authorization: `Bearer ${token}` } },
     })
 
-    const { data: chunks, error: rpcError } = await supabaseUser.rpc("match_notes", {
-      query_embedding: queryEmbedding,
-      match_count: topK,
-      filter_tag: tagFilter,
-    })
+    const rpcPayload = tagFilter
+      ? {
+          query_embedding: queryEmbedding,
+          match_count: topK,
+          filter_tag: tagFilter,
+        }
+      : {
+          query_embedding: queryEmbedding,
+          match_count: topK,
+        }
+
+    let { data: chunks, error: rpcError } = await supabaseUser.rpc("match_notes", rpcPayload)
+
+    // Transitional compatibility: some environments may still have legacy match_notes(query_embedding, match_count).
+    // Remove this fallback after all environments are migrated to 20260304000001_add_filter_tag_to_match_notes.sql.
+    if (rpcError && tagFilter && isLegacyMatchNotesSignatureError(rpcError)) {
+      const primaryRpcError = rpcError
+      try {
+        const fallback = await supabaseUser.rpc("match_notes", {
+          query_embedding: queryEmbedding,
+          match_count: topK,
+        })
+        chunks = fallback.data
+        rpcError = fallback.error
+        if (!fallback.error) {
+          console.warn("[rag-search] Using legacy match_notes fallback without filter_tag")
+        } else {
+          console.error("[rag-search] match_notes fallback failed", {
+            primaryRpcError,
+            fallbackRpcError: fallback.error,
+          })
+        }
+      } catch (fallbackErr) {
+        console.error("[rag-search] match_notes fallback threw", {
+          primaryRpcError,
+          fallbackErr,
+        })
+        rpcError = primaryRpcError
+      }
+    }
 
     if (rpcError) {
       console.error("[rag-search] match_notes RPC error", rpcError)
@@ -255,7 +312,8 @@ serve(async (req: Request) => {
       }
     })
 
-    return jsonResponse({ chunks: result })
+    const finalResult = tagFilter ? result.filter((item) => item.noteTags.includes(tagFilter)) : result
+    return jsonResponse({ chunks: finalResult })
   } catch (err) {
     console.error("[rag-search]", err)
     const isGeminiError = err instanceof Error && err.message.startsWith("Gemini")
