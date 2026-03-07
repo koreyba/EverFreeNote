@@ -39,8 +39,8 @@ Existing coverage snapshot:
 - `cypress/component/ui/web/hooks/useLongPress.cy.tsx`
 
 Implementation status (2026-03-05):
-- Implemented IDs: `SBD-COMP-001`, `SBD-COMP-002`, `SBD-COMP-003`, `SBD-COMP-004`, `SBD-COMP-005`, `SBD-HOOK-009`, `SBD-HOOK-010`, `SBD-PANEL-005`, `SBD-PANEL-006`, `SBD-PANEL-007`, `SBD-PANEL-008`, `SBD-SIDEBAR-001`, `SBD-SIDEBAR-002`, `SBD-CARD-REG-001`.
-- Verification note: targeted `type-check`, `eslint`, and Cypress component runs were used for iterative validation.
+- Implemented IDs: `SBD-COMP-001`, `SBD-COMP-002`, `SBD-COMP-003`, `SBD-COMP-004`, `SBD-COMP-005`, `SBD-HOOK-009`, `SBD-HOOK-010`, `SBD-HOOK-011`, `SBD-PANEL-005`, `SBD-PANEL-006`, `SBD-PANEL-007`, `SBD-PANEL-008`, `SBD-SIDEBAR-001`, `SBD-SIDEBAR-002`, `SBD-CARD-REG-001`.
+- Verification note: targeted `type-check`, `eslint`, and Cypress component runs were used for iterative validation. `useBulkDeleteConfirm` success and reject/retry paths are covered; cross-surface dialog rendering of hook errors remains coupled to component integration checks.
 
 ## Unit Tests
 
@@ -53,8 +53,9 @@ Implementation status (2026-03-05):
 - [ ] `P0` `SBD-HOOK-006`: offline path enqueues delete operations and marks overlay notes as pending/deleted.
 - [ ] `P1` `SBD-HOOK-007`: `deleteSelectedNotes` exits sidebar selection mode on success.
 - [ ] `P1` `SBD-HOOK-008`: `deleteSelectedNotes` keeps selection mode on thrown error.
-- [x] `P1` `SBD-HOOK-009`: `useBulkDeleteConfirm` opens dialog, calls callback only on confirm, and closes dialog after callback.
+- [x] `P1` `SBD-HOOK-009`: `useBulkDeleteConfirm` opens dialog, calls callback only on confirm, and closes dialog after a successful callback.
 - [x] `P1` `SBD-HOOK-010`: `useLongPress` triggers after delay, cancels on pointer move/up/leave/cancel.
+- [x] `P1` `SBD-HOOK-011`: `useBulkDeleteConfirm` keeps the dialog open on rejected confirm and exposes `error` / `clearError` for retry flows.
 
 ### Selection UI components
 - [x] `P1` `SBD-COMP-001`: `SelectionModeActions` renders compact count and all actions.

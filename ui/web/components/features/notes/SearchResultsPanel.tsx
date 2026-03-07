@@ -81,8 +81,8 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
     // AI Search state
     const { isAIEnabled, preset, viewMode, setIsAIEnabled, setPreset, setViewMode } = useSearchMode()
-    const prevIsAIEnabledRef = useRef(isAIEnabled)
     const aiEnabled = isAIEnabled && hasGeminiApiKey
+    const prevAiEnabledRef = useRef(aiEnabled)
     const {
         noteGroups,
         isLoading: aiLoading,
@@ -200,8 +200,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             if (result.failed === 0) {
                 exitPanelSelectionMode()
             }
-        } catch (error) {
-            console.error('Panel bulk delete failed:', error)
         } finally {
             setPanelBulkDeleting(false)
         }
@@ -220,6 +218,8 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         setIsDialogOpen: setPanelBulkDialogOpen,
         requestDelete: requestPanelBulkDelete,
         confirmDelete: handleConfirmPanelBulkDelete,
+        error: panelBulkDeleteError,
+        clearError: clearPanelBulkDeleteError,
     } = useBulkDeleteConfirm(handlePanelDelete)
 
     const handleSearchChange = (value: string) => {
@@ -242,22 +242,22 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     }, [controller, loadMoreAI, resetAIResults])
 
     useEffect(() => {
-        const wasAIEnabled = prevIsAIEnabledRef.current
+        const wasAIEnabled = prevAiEnabledRef.current
         const normalizedQuery = searchDraft.trim()
 
-        if (!wasAIEnabled && isAIEnabled) {
+        if (!wasAIEnabled && aiEnabled) {
             debouncedSearch.cancel()
             setAiSearchQuery(normalizedQuery)
         }
 
-        if (wasAIEnabled && !isAIEnabled) {
+        if (wasAIEnabled && !aiEnabled) {
             controller.handleSearch(normalizedQuery)
             if (normalizedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH && normalizedQuery === searchQuery.trim()) {
                 ftsSearchResult?.refetch()
             }
         }
-        prevIsAIEnabledRef.current = isAIEnabled
-    }, [isAIEnabled, searchDraft, controller, searchQuery, ftsSearchResult, debouncedSearch])
+        prevAiEnabledRef.current = aiEnabled
+    }, [aiEnabled, searchDraft, controller, searchQuery, ftsSearchResult, debouncedSearch])
 
     const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
@@ -660,6 +660,8 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 count={selectedCount}
                 onConfirm={() => void handleConfirmPanelBulkDelete()}
                 loading={panelBulkDeleting}
+                errorMessage={panelBulkDeleteError?.message ?? null}
+                onClearError={clearPanelBulkDeleteError}
             />
         </div>
     )

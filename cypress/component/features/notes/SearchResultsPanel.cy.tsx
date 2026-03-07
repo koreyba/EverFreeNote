@@ -524,6 +524,72 @@ describe('SearchResultsPanel', () => {
     cy.wrap(controller.handleSearch).should('not.have.been.called')
   })
 
+  it('resyncs the current query into AI search when the Gemini key becomes available later', () => {
+    cy.window().then((win) => {
+      win.localStorage.setItem(
+        'everfreenote:aiSearchMode',
+        JSON.stringify({ isAIEnabled: true, preset: 'strict', viewMode: 'note' })
+      )
+    })
+
+    const controller = createController({
+      searchQuery: 'ontology',
+      showFTSResults: false,
+      ftsData: undefined,
+    })
+
+    const invoke = cy.stub().as('aiInvoke').resolves({
+      data: {
+        chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
+      },
+      error: null,
+    })
+
+    const supabase = {
+      auth: {
+        getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } }, error: null }),
+      },
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+      },
+    })
+
+    const Harness = () => {
+      const [hasGeminiApiKey, setHasGeminiApiKey] = React.useState(false)
+
+      return (
+        <SupabaseTestProvider supabase={supabase}>
+          <QueryClientProvider client={queryClient}>
+            <button type="button" data-testid="grant-gemini-key" onClick={() => setHasGeminiApiKey(true)}>
+              Grant key
+            </button>
+            <div className="h-[680px] w-[680px]">
+              <SearchResultsPanel
+                controller={controller}
+                hasGeminiApiKey={hasGeminiApiKey}
+                onOpenInContext={() => undefined}
+                onClose={() => undefined}
+              />
+            </div>
+          </QueryClientProvider>
+        </SupabaseTestProvider>
+      )
+    }
+
+    cy.mount(<Harness />)
+
+    cy.get('@aiInvoke').should('not.have.been.called')
+    cy.get('[data-testid="grant-gemini-key"]').click()
+
+    cy.get('@aiInvoke').should('have.been.calledOnce')
+    cy.wrap(controller.handleSearch).should('not.have.been.called')
+    cy.contains('AI Result One').should('be.visible')
+  })
+
   it('shows visible chunk count in AI chunk view instead of the FTS note total', () => {
     cy.window().then((win) => {
       win.localStorage.setItem(

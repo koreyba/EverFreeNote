@@ -170,6 +170,7 @@ export function useNoteAppController() {
 
   // Ref to avoid stale closure in save handlers and nav wrappers
   const selectedNoteRef = useRef(selectedNote)
+  const latestEditRequestRef = useRef(0)
   useEffect(() => {
     selectedNoteRef.current = selectedNote
   }, [selectedNote])
@@ -244,7 +245,9 @@ export function useNoteAppController() {
   }, [flushPendingEditorSave, handleCreateNote, setLastSavedAt])
 
   const wrappedHandleEditNote = useCallback(async (note: NoteViewModel) => {
+    const requestId = ++latestEditRequestRef.current
     await flushPendingEditorSave()
+    if (requestId !== latestEditRequestRef.current) return
     handleEditNoteRaw(note)
     setLastSavedAt(null)
   }, [flushPendingEditorSave, handleEditNoteRaw, setLastSavedAt])

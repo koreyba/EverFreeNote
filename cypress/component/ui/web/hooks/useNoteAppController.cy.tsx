@@ -10,12 +10,16 @@ import type { NoteEditorHandle } from '../../../../../ui/web/components/features
 type SinonStub = any
 
 let flushSpy: SinonStub | null = null
+let flushPendingSaveImpl: (() => Promise<void>) | null = null
 
 const TestComponent = () => {
   const controller = useNoteAppController()
   const editorRef = React.useRef<NoteEditorHandle | null>({
     flushPendingSave: async () => {
       flushSpy?.()
+      if (flushPendingSaveImpl) {
+        await flushPendingSaveImpl()
+      }
     },
     scrollToChunk: () => {},
   })
@@ -46,6 +50,15 @@ const TestComponent = () => {
         updated_at: '2023-01-01',
         user_id: 'test-user'
       } as NoteViewModel)}>Edit Note</button>
+      <button data-cy="edit-note-2-btn" onClick={() => controller.handleEditNote({
+        id: '2',
+        title: 'Second Note',
+        description: 'Desc',
+        tags: [],
+        created_at: '2023-01-01',
+        updated_at: '2023-01-01',
+        user_id: 'test-user'
+      } as NoteViewModel)}>Edit Note 2</button>
       <button data-cy="select-note-btn" onClick={() => controller.handleSelectNote({
         id: '2',
         title: 'Selected Note',
@@ -116,6 +129,7 @@ describe('useNoteAppController', () => {
 
   beforeEach(() => {
     flushSpy = cy.stub()
+    flushPendingSaveImpl = null
     mockQueryBuilder = {
       select: cy.stub().returnsThis(),
       order: cy.stub().returnsThis(),
@@ -179,6 +193,38 @@ describe('useNoteAppController', () => {
     cy.then(() => {
       expect(flushSpy).to.have.been.called
     })
+  })
+
+  it('ignores stale edit completions after a newer edit request wins the flush race', () => {
+    let flushCount = 0
+    let resolveFirstFlush: (() => void) | null = null
+    flushPendingSaveImpl = () => {
+      flushCount += 1
+      if (flushCount === 1) {
+        return new Promise<void>((resolve) => {
+          resolveFirstFlush = resolve
+        })
+      }
+      return Promise.resolve()
+    }
+
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase}>
+        <QueryProvider>
+          <TestComponent />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="register-editor-ref-btn"]').click()
+
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="edit-note-2-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('contain', '2')
+
+    cy.then(() => resolveFirstFlush?.())
+    cy.get('[data-cy="selectedNote-id"]').should('contain', '2')
   })
 
   it('flushes pending editor save when creating a note while editing', () => {

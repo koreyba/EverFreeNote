@@ -121,8 +121,6 @@ export function useNoteBulkActions({
       if (result.failed === 0) {
         exitSelectionMode()
       }
-    } catch {
-      // deleteNotesByIds already reports failures.
     } finally {
       setBulkDeleting(false)
     }

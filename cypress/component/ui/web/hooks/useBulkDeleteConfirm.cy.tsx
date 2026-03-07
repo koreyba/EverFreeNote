@@ -89,6 +89,6 @@ describe('useBulkDeleteConfirm', () => {
     cy.get('[data-cy="confirm"]').click()
     cy.get('@onConfirm').should('have.been.calledTwice')
     cy.get('[data-cy="open"]').should('contain', 'false')
-    cy.get('[data-cy="error"]').should('contain', '')
+    cy.get('[data-cy="error"]').should('have.text', '')
   })
 })

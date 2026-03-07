@@ -92,6 +92,10 @@ serve(async (req: Request) => {
       }
     }
 
+    if ("geminiApiKey" in payload && typeof payload.geminiApiKey !== "string") {
+      return jsonResponse({ error: "geminiApiKey must be a string" }, 400)
+    }
+
     const rawGeminiKey = typeof payload.geminiApiKey === "string" ? payload.geminiApiKey.trim() : ""
 
     const MAX_GEMINI_KEY_LENGTH = 256

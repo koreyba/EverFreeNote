@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,14 +18,31 @@ type BulkDeleteDialogProps = {
   onOpenChange: (open: boolean) => void
   count: number
   loading?: boolean
+  errorMessage?: string | null
+  onClearError?: () => void
   onConfirm: () => void
 }
 
-export function BulkDeleteDialog({ open, onOpenChange, count, loading = false, onConfirm }: BulkDeleteDialogProps) {
+export function BulkDeleteDialog({
+  open,
+  onOpenChange,
+  count,
+  loading = false,
+  errorMessage = null,
+  onClearError,
+  onConfirm,
+}: BulkDeleteDialogProps) {
   const [value, setValue] = useState("")
+
+  useEffect(() => {
+    if (!errorMessage) return
+    setValue("")
+  }, [errorMessage])
+
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       setValue("")
+      onClearError?.()
     }
     onOpenChange(next)
   }
@@ -46,18 +63,31 @@ export function BulkDeleteDialog({ open, onOpenChange, count, loading = false, o
           <Input
             data-testid="bulk-delete-confirm-input"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              if (errorMessage) {
+                onClearError?.()
+              }
+              setValue(e.target.value)
+            }}
             placeholder={`${count}`}
             type="number"
             min={0}
           />
+          {errorMessage ? (
+            <p data-testid="bulk-delete-error" className="text-sm text-destructive">
+              {errorMessage}
+            </p>
+          ) : null}
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel data-testid="bulk-delete-cancel" disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             data-testid="bulk-delete-confirm"
             disabled={!isMatch || loading}
-            onClick={onConfirm}
+            onClick={(event) => {
+              event.preventDefault()
+              onConfirm()
+            }}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {loading ? "Deleting..." : "Delete"}
