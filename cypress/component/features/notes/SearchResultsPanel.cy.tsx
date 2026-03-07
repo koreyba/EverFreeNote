@@ -505,7 +505,7 @@ describe('SearchResultsPanel', () => {
       searchQuery: 'ab',
       showFTSResults: false,
       ftsData: undefined,
-      ftsSearchResult: { isLoading: false, refetch },
+      ftsSearchResult: { isLoading: false, refetch } as unknown as NoteAppController['ftsSearchResult'],
     })
 
     mountPanel(controller, {
