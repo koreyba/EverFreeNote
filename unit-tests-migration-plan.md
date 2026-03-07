@@ -42,7 +42,10 @@ The current repository has three test-related GitHub Actions workflows:
 
 Current behavior:
 
-- `unit-tests.yml` installs root and mobile dependencies, then runs Jest only in `ui/mobile`
+- `unit-tests.yml` is split into three independent jobs:
+  - `unit-tests-mobile`
+  - `unit-tests-code`
+  - `unit-tests-web`
 - `component-tests.yml` installs root dependencies and runs the root Cypress component suite
 - `e2e-tests.yml` runs Playwright tests from the external `EverFreeNote-e2e` repository, not from this repository
 
@@ -56,11 +59,9 @@ Important trigger details:
 
 CI does not currently run:
 
-- a dedicated root `core` unit test project
-- a dedicated root `core` integration Jest project
-- a dedicated root `web` unit test project
+- nothing is missing for the current Jest split between `mobile`, `code`, and `web`
 
-That is not a CI omission in the narrow sense; those projects did not exist in the original setup. It does mean the new root-owned `core` and `web` suites are still not first-class pipeline stages yet.
+The remaining CI gap is not about Jest ownership anymore. The remaining gap is only that Cypress component coverage and external E2E coverage still live in separate workflows, which is expected.
 
 ### Current Test Count Baseline
 
