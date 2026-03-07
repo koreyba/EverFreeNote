@@ -3,6 +3,9 @@ const transform = {
 }
 
 const moduleNameMapper = {
+  '^@/components/(.*)$': '<rootDir>/ui/web/components/$1',
+  '^@/supabase/(.*)$': '<rootDir>/supabase/$1',
+  '^@/types/(.*)$': '<rootDir>/core/types/$1',
   '^@/(.*)$': '<rootDir>/$1',
   '^@core/(.*)$': '<rootDir>/core/$1',
   '^@ui/web/(.*)$': '<rootDir>/ui/web/$1',

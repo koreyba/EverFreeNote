@@ -234,4 +234,44 @@ describe('useAIPaginatedSearch', () => {
       })
     )
   })
+
+  it('keeps results empty when the AI search endpoint returns an error', async () => {
+    const invoke = jest
+      .fn()
+      .mockResolvedValue({ data: null, error: { message: 'boom' } })
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const { result } = renderHook(
+      () =>
+        useAIPaginatedSearch({
+          query: 'ontology',
+          preset: 'strict',
+          filterTag: null,
+          isEnabled: true,
+        }),
+      { wrapper: createWrapper(supabase) }
+    )
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledTimes(2)
+    }, { timeout: 3000 })
+
+    await waitFor(() => {
+      expect(result.current.error).toContain('boom')
+    }, { timeout: 3000 })
+
+    expect(result.current.noteGroups).toEqual([])
+    expect(result.current.aiHasMore).toBe(false)
+    expect(invoke).toHaveBeenCalledWith(
+      'rag-search',
+      expect.objectContaining({
+        body: expect.objectContaining({
+          query: 'ontology',
+          topK: 5,
+        }),
+      })
+    )
+  })
 })
