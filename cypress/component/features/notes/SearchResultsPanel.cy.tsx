@@ -462,7 +462,14 @@ describe('SearchResultsPanel', () => {
     cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
     cy.tick(400)
 
-    cy.get('@aiInvoke').should('have.been.calledOnce')
+    cy.get('@aiInvoke').should((invokeStub) => {
+      expect(invokeStub).to.have.been.calledOnce
+      expect(invokeStub).to.have.been.calledWithMatch('rag-search', {
+        body: {
+          query: 'ontology',
+        },
+      })
+    })
     cy.wrap(controller.handleSearch).should('not.have.been.called')
     cy.contains('AI Result One').should('be.visible')
   })
@@ -613,7 +620,14 @@ describe('SearchResultsPanel', () => {
     cy.get('@aiInvoke').should('not.have.been.called')
     cy.get('[data-testid="grant-gemini-key"]').click()
 
-    cy.get('@aiInvoke').should('have.been.calledOnce')
+    cy.get('@aiInvoke').should((invokeStub) => {
+      expect(invokeStub).to.have.been.calledOnce
+      expect(invokeStub).to.have.been.calledWithMatch('rag-search', {
+        body: {
+          query: 'ontology',
+        },
+      })
+    })
     cy.wrap(controller.handleSearch).should('not.have.been.called')
     cy.contains('AI Result One').should('be.visible')
   })
