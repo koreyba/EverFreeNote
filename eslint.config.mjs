@@ -1,6 +1,7 @@
 import { defineConfig } from 'eslint/config';
 import js from '@eslint/js';
 import { createRequire } from 'module';
+import globals from 'globals';
 
 const require = createRequire(import.meta.url);
 
@@ -71,6 +72,18 @@ export default defineConfig([
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/no-var-requires': 'off',
+    },
+  },
+
+  // Override for Jest config/setup files in CommonJS
+  {
+    files: ['jest.config.cjs', 'tests/jest/**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+      },
     },
   },
 ]);

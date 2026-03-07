@@ -62,6 +62,8 @@
   "exclude": [
     "node_modules",
     "ui/mobile",
+    "core/tests",
+    "ui/web/tests",
     "**/web-editor/**"
   ]
 }
