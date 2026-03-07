@@ -57,10 +57,56 @@ function sanitizeAttributes(rawAttributes, config) {
       continue
     }
 
+    if (attribute.name === 'style') {
+      const allowedStyles = sanitizeStyleAttribute(attribute.value, config.ALLOWED_STYLES)
+      if (!allowedStyles) {
+        continue
+      }
+      sanitized.push(`style="${allowedStyles}"`)
+      continue
+    }
+
     sanitized.push(`${attribute.name}="${attribute.value}"`)
   }
 
   return sanitized.length > 0 ? ` ${sanitized.join(' ')}` : ''
+}
+
+function sanitizeStyleAttribute(styleValue, allowedStylesConfig) {
+  if (!allowedStylesConfig || typeof allowedStylesConfig !== 'object') {
+    return styleValue
+  }
+
+  const wildcardRules = allowedStylesConfig['*']
+  if (!wildcardRules || typeof wildcardRules !== 'object') {
+    return ''
+  }
+
+  const sanitizedDeclarations = styleValue
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [rawProperty, ...rawValueParts] = entry.split(':')
+      if (!rawProperty || rawValueParts.length === 0) {
+        return null
+      }
+
+      const property = rawProperty.trim().toLowerCase()
+      const value = rawValueParts.join(':').trim()
+      const matchers = wildcardRules[property]
+
+      if (!Array.isArray(matchers) || matchers.length === 0) {
+        return null
+      }
+
+      return matchers.some((matcher) => matcher.test(value))
+        ? `${property}: ${value}`
+        : null
+    })
+    .filter(Boolean)
+
+  return sanitizedDeclarations.join('; ')
 }
 
 function sanitizeHtml(html, config = {}) {
