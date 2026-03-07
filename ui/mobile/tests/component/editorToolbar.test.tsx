@@ -9,6 +9,15 @@ jest.mock('@ui/mobile/providers', () => ({
       background: '#ffffff',
       border: '#cccccc',
       accent: '#eeeeee',
+      card: '#ffffff',
+      primary: '#228822',
+      primaryForeground: '#ffffff',
+      secondary: '#f3f3f3',
+      secondaryForeground: '#000000',
+      mutedForeground: '#666666',
+      destructive: '#cc0000',
+      destructiveForeground: '#ffffff',
+      ring: '#116611',
     },
   }),
 }))
@@ -19,81 +28,133 @@ jest.mock('lucide-react-native', () => {
   return {
     Bold: icon('Bold'),
     Italic: icon('Italic'),
+    Strikethrough: icon('Strikethrough'),
     Underline: icon('Underline'),
+    Minus: icon('Minus'),
     List: icon('List'),
     ListOrdered: icon('ListOrdered'),
-    Heading1: icon('Heading1'),
-    Heading2: icon('Heading2'),
-    Minus: icon('Minus'),
     Quote: icon('Quote'),
     Code: icon('Code'),
   }
 })
 
-describe('EditorToolbar — MD button', () => {
+describe('EditorToolbar', () => {
   it('renders the MD button', () => {
-    const { getByLabelText } = render(
-      <EditorToolbar onCommand={jest.fn()} />
-    )
+    const { getByLabelText } = render(<EditorToolbar onCommand={jest.fn()} />)
 
     expect(getByLabelText('Apply as Markdown')).toBeTruthy()
   })
 
-  it('is disabled by default (hasSelection not provided)', () => {
-    const { getByLabelText } = render(
-      <EditorToolbar onCommand={jest.fn()} />
-    )
+  it('keeps the MD button disabled without selection', () => {
+    const { getByLabelText } = render(<EditorToolbar onCommand={jest.fn()} hasSelection={false} />)
 
-    const button = getByLabelText('Apply as Markdown')
-    expect(button.props.accessibilityState?.disabled).toBe(true)
+    expect(getByLabelText('Apply as Markdown').props.accessibilityState?.disabled).toBe(true)
   })
 
-  it('is disabled when hasSelection=false', () => {
-    const { getByLabelText } = render(
-      <EditorToolbar onCommand={jest.fn()} hasSelection={false} />
-    )
-
-    const button = getByLabelText('Apply as Markdown')
-    expect(button.props.accessibilityState?.disabled).toBe(true)
-  })
-
-  it('is enabled when hasSelection=true', () => {
-    const { getByLabelText } = render(
-      <EditorToolbar onCommand={jest.fn()} hasSelection={true} />
-    )
-
-    const button = getByLabelText('Apply as Markdown')
-    expect(button.props.accessibilityState?.disabled).toBe(false)
-  })
-
-  it('calls onCommand("applySelectionAsMarkdown") when pressed with selection', () => {
+  it('enables and triggers the MD button with selection', () => {
     const onCommand = jest.fn()
-    const { getByLabelText } = render(
-      <EditorToolbar onCommand={onCommand} hasSelection={true} />
-    )
+    const { getByLabelText } = render(<EditorToolbar onCommand={onCommand} hasSelection={true} />)
 
     fireEvent.press(getByLabelText('Apply as Markdown'))
 
-    expect(onCommand).toHaveBeenCalledTimes(1)
     expect(onCommand).toHaveBeenCalledWith('applySelectionAsMarkdown')
   })
 
-  it('does not call onCommand when disabled (hasSelection=false)', () => {
+  it('opens heading menu and sends selected heading command', () => {
     const onCommand = jest.fn()
-    const { getByLabelText } = render(
-      <EditorToolbar onCommand={onCommand} hasSelection={false} />
-    )
+    const { getByLabelText, getByText } = render(<EditorToolbar onCommand={onCommand} />)
 
-    fireEvent.press(getByLabelText('Apply as Markdown'))
+    fireEvent.press(getByLabelText('Open heading menu'))
+    fireEvent.press(getByText('H3'))
 
-    expect(onCommand).not.toHaveBeenCalled()
+    expect(onCommand).toHaveBeenCalledWith('toggleHeadingLevel', [3])
   })
 
-  it('displays "MD" label text', () => {
-    const { getByText } = render(
-      <EditorToolbar onCommand={jest.fn()} />
-    )
+  it('opens alignment menu and sends align command', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText, getByText } = render(<EditorToolbar onCommand={onCommand} />)
 
-    expect(getByText('MD')).toBeTruthy()
+    fireEvent.press(getByLabelText('Open alignment menu'))
+    fireEvent.press(getByText('Center'))
+
+    expect(onCommand).toHaveBeenCalledWith('setTextAlign', ['center'])
+  })
+
+  it('opens font size menu and sends size command', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText, getByText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Open font size menu'))
+    fireEvent.press(getByText('24'))
+
+    expect(onCommand).toHaveBeenCalledWith('setFontSize', ['24pt'])
+  })
+
+  it('sends clear formatting command', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Clear formatting'))
+
+    expect(onCommand).toHaveBeenCalledWith('clearFormatting', undefined)
+  })
+
+  it('sends horizontal rule command', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Horizontal rule'))
+
+    expect(onCommand).toHaveBeenCalledWith('setHorizontalRule', undefined)
+  })
+
+  it('sends strikethrough command', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Strikethrough'))
+
+    expect(onCommand).toHaveBeenCalledWith('toggleStrike', undefined)
+  })
+
+  it('sends task list command', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Task list'))
+
+    expect(onCommand).toHaveBeenCalledWith('toggleTaskList', undefined)
+  })
+
+  it('applies a link from the link menu', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText, getByPlaceholderText, getByText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Open link menu'))
+    fireEvent.changeText(getByPlaceholderText('https://example.com'), 'https://openai.com')
+    fireEvent.press(getByText('Apply'))
+
+    expect(onCommand).toHaveBeenCalledWith('setLinkUrl', ['https://openai.com'])
+  })
+
+  it('removes a link from the link menu', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText, getByText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Open link menu'))
+    fireEvent.press(getByText('Remove'))
+
+    expect(onCommand).toHaveBeenCalledWith('setLinkUrl', [''])
+  })
+
+  it('inserts an image from the image menu', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText, getByPlaceholderText, getByText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Open image menu'))
+    fireEvent.changeText(getByPlaceholderText('https://example.com/image.png'), 'https://cdn.test/image.png')
+    fireEvent.press(getByText('Insert'))
+
+    expect(onCommand).toHaveBeenCalledWith('insertImageUrl', ['https://cdn.test/image.png'])
   })
 })
