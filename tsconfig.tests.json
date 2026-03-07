@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"]
+  },
+  "include": [
+    "core/tests/**/*.ts",
+    "core/tests/**/*.tsx",
+    "ui/web/tests/**/*.ts",
+    "ui/web/tests/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "ui/mobile",
+    "**/web-editor/**",
+    "cypress"
+  ]
+}

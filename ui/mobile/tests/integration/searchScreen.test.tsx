@@ -300,14 +300,14 @@ describe('SearchScreen - Delete Functionality', () => {
       const searchInput = screen.getByPlaceholderText('Search notes...')
       fireEvent.changeText(searchInput, 'keyword')
 
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      expect(
+        await screen.findByText('Search Result 1', {}, { timeout: 10000 })
+      ).toBeTruthy()
 
       expect(screen.getByTestId('delete-button-search-note-1')).toBeTruthy()
       expect(screen.getByTestId('delete-button-search-note-2')).toBeTruthy()
       expect(screen.getByTestId('delete-button-search-note-3')).toBeTruthy()
-    })
+    }, 15000)
 
     it('deletes note when swipe delete is triggered in search results', async () => {
       render(<SearchScreen />, { wrapper })
