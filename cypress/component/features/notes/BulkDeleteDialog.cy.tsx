@@ -54,6 +54,36 @@ describe('BulkDeleteDialog', () => {
     cy.get('[data-testid="bulk-delete-confirm-input"]').should('have.value', '')
   })
 
+  it('resets confirmation input when the parent closes the dialog programmatically', () => {
+    const DialogHarness = () => {
+      const [open, setOpen] = React.useState(true)
+      return (
+        <div>
+          <button type="button" onClick={() => setOpen(false)}>
+            Close externally
+          </button>
+          <button type="button" onClick={() => setOpen(true)}>
+            Reopen
+          </button>
+          <BulkDeleteDialog
+            open={open}
+            onOpenChange={setOpen}
+            count={2}
+            onConfirm={() => undefined}
+          />
+        </div>
+      )
+    }
+
+    cy.mount(<DialogHarness />)
+
+    cy.get('[data-testid="bulk-delete-confirm-input"]').type('2')
+    cy.contains('Close externally').click({ force: true })
+    cy.contains('Delete selected notes').should('not.exist')
+    cy.contains('Reopen').click()
+    cy.get('[data-testid="bulk-delete-confirm-input"]').should('have.value', '')
+  })
+
   it('shows delete errors, clears the typed confirmation, and clears the error on retry input', () => {
     const DialogHarness = () => {
       const [errorMessage, setErrorMessage] = React.useState<string | null>(null)

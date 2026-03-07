@@ -492,6 +492,34 @@ describe('SearchResultsPanel', () => {
     cy.wrap(controller.handleSearch).should('have.been.calledOnceWithExactly', 'ontology')
   })
 
+  it('refetches matching short FTS queries when AI mode is turned off', () => {
+    cy.window().then((win) => {
+      win.localStorage.setItem(
+        'everfreenote:aiSearchMode',
+        JSON.stringify({ isAIEnabled: true, preset: 'strict', viewMode: 'note' })
+      )
+    })
+
+    const refetch = cy.stub().as('ftsRefetch')
+    const controller = createController({
+      searchQuery: 'ab',
+      showFTSResults: false,
+      ftsData: undefined,
+      ftsSearchResult: { isLoading: false, refetch },
+    })
+
+    mountPanel(controller, {
+      hasGeminiApiKey: true,
+      supabase: createAiSupabase([createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)]),
+    })
+
+    cy.get('[data-testid="search-panel-input"]').clear().type('ab')
+    cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
+
+    cy.wrap(controller.handleSearch).should('have.been.calledOnceWithExactly', 'ab')
+    cy.get('@ftsRefetch').should('have.been.calledOnce')
+  })
+
   it('switching from normal search to AI does not trigger a search for short queries', () => {
     const controller = createController({
       searchQuery: '',
