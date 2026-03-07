@@ -78,7 +78,7 @@ describe('BulkDeleteDialog', () => {
     cy.mount(<DialogHarness />)
 
     cy.get('[data-testid="bulk-delete-confirm-input"]').type('3')
-    cy.contains('Show error').click()
+    cy.contains('Show error').click({ force: true })
 
     cy.get('[data-testid="bulk-delete-error"]').should('contain', 'Delete failed')
     cy.get('[data-testid="bulk-delete-confirm-input"]').should('have.value', '')
