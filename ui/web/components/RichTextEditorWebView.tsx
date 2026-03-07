@@ -24,6 +24,76 @@ type RichTextEditorWebViewProps = {
   onHistoryStateChange?: (state: { canUndo: boolean; canRedo: boolean }) => void
 }
 
+const executeEditorCommand = ({
+  editor,
+  command,
+  args,
+  onApplySelectionAsMarkdown,
+}: {
+  editor: Editor
+  command: string
+  args: unknown[]
+  onApplySelectionAsMarkdown: () => void
+}) => {
+  if (command === "undo") {
+    editor.commands.undo()
+    return
+  }
+
+  if (command === "redo") {
+    editor.commands.redo()
+    return
+  }
+
+  if (command === "applySelectionAsMarkdown") {
+    onApplySelectionAsMarkdown()
+    return
+  }
+
+  if (command === "clearFormatting") {
+    editor.chain().focus().unsetAllMarks().clearNodes().run()
+    return
+  }
+
+  if (command === "setLinkUrl") {
+    const url = typeof args[0] === "string" ? args[0].trim() : ""
+    const chain = editor.chain().focus().extendMarkRange("link")
+    if (url) {
+      chain.setLink({ href: url }).run()
+    } else {
+      chain.unsetLink().run()
+    }
+    return
+  }
+
+  if (command === "insertImageUrl") {
+    const url = typeof args[0] === "string" ? args[0].trim() : ""
+    if (url) {
+      editor.chain().focus().setImage({ src: url }).run()
+    }
+    return
+  }
+
+  if (command === "toggleHeadingLevel") {
+    const level = Number(args[0])
+    if ([1, 2, 3].includes(level)) {
+      editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 }).run()
+    }
+    return
+  }
+
+  const cmd = (
+    editor.chain().focus() as unknown as Record<
+      string,
+      (...a: unknown[]) => { run: () => void }
+    >
+  )[command]
+
+  if (typeof cmd === "function") {
+    cmd(...args).run()
+  }
+}
+
 const RichTextEditorWebView = React.forwardRef<
   RichTextEditorWebViewHandle,
   RichTextEditorWebViewProps
@@ -153,27 +223,12 @@ const RichTextEditorWebView = React.forwardRef<
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
-        if (command === "undo") {
-          editor.commands.undo()
-          return
-        }
-        if (command === "redo") {
-          editor.commands.redo()
-          return
-        }
-        if (command === 'applySelectionAsMarkdown') {
-          handleApplySelectionAsMarkdown()
-          return
-        }
-        const cmd = (
-          editor.chain().focus() as unknown as Record<
-            string,
-            (...a: unknown[]) => { run: () => void }
-          >
-        )[command]
-        if (typeof cmd === "function") {
-          cmd(...args).run()
-        }
+        executeEditorCommand({
+          editor,
+          command,
+          args,
+          onApplySelectionAsMarkdown: handleApplySelectionAsMarkdown,
+        })
       },
     }),
     [editor, handleApplySelectionAsMarkdown]

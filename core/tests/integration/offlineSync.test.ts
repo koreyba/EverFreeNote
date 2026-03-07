@@ -61,13 +61,9 @@ describe('Offline Sync Integration', () => {
         status: 'pending',
       }
 
-      // Save to cache
       await cacheService.saveNote(note)
-
-      // Queue mutation
       await queueService.enqueue(mutation)
 
-      // Verify both operations completed
       expect(mockStorage.saveNote).toHaveBeenCalledWith(note)
       expect(mockStorage.upsertQueueItem).toHaveBeenCalled()
     })
@@ -85,11 +81,9 @@ describe('Offline Sync Integration', () => {
         updatedAt: '2024-01-01T00:00:00Z',
       }
 
-      // Save original note
       await cacheService.saveNote(originalNote)
       await cacheService.markSynced(originalNote.id, originalNote.updatedAt)
 
-      // Update note
       const updatedNote: CachedNote = {
         ...originalNote,
         title: 'Updated Title',
@@ -106,11 +100,9 @@ describe('Offline Sync Integration', () => {
         status: 'pending',
       }
 
-      // Update cache and queue
       await cacheService.saveNote(updatedNote)
       await queueService.enqueue(mutation)
 
-      // Verify updated data was stored
       expect(mockStorage.saveNote).toHaveBeenCalledWith(updatedNote)
     })
   })
@@ -127,10 +119,7 @@ describe('Offline Sync Integration', () => {
         updatedAt: '2024-01-01T00:00:00Z',
       }
 
-      // Save note first
       await cacheService.saveNote(note)
-
-      // Delete note
       await cacheService.deleteNote(note.id)
 
       const mutation: MutationQueueItem = {
@@ -144,7 +133,6 @@ describe('Offline Sync Integration', () => {
 
       await queueService.enqueue(mutation)
 
-      // Verify deletion and queueing
       expect(mockStorage.deleteNote).toHaveBeenCalledWith(note.id)
       expect(mockStorage.upsertQueueItem).toHaveBeenCalled()
     })
@@ -179,13 +167,9 @@ describe('Offline Sync Integration', () => {
         },
       ]
 
-      // Enqueue all mutations
       await queueService.enqueueMany(mutations)
-
-      // Mock getPendingBatch to return the mutations
       mockStorage.getPendingBatch.mockResolvedValue(mutations)
 
-      // Get batch for sync
       const batch = await queueService.getPendingBatch(10)
 
       expect(batch).toHaveLength(3)
@@ -214,13 +198,11 @@ describe('Offline Sync Integration', () => {
         description: 'Server',
         tags: [],
         status: 'synced',
-        updatedAt: '2024-01-01T13:00:00Z', // Server is newer
+        updatedAt: '2024-01-01T13:00:00Z',
       }
 
-      // Save local version
       await cacheService.saveNote(localNote)
 
-      // Queue update mutation
       const mutation: MutationQueueItem = {
         id: 'mut-conflict',
         noteId: localNote.id,
@@ -231,17 +213,12 @@ describe('Offline Sync Integration', () => {
       }
 
       await queueService.enqueue(mutation)
-
-      // In real sync, server would return conflict
-      // Client should use server version (last-write-wins)
       await cacheService.saveNote(serverNote)
       await cacheService.markSynced(serverNote.id, serverNote.updatedAt)
 
-      // Remove mutation from queue
       const batch = await queueService.getPendingBatch(10)
       await queueService.removeItems(batch.map((m) => m.id))
 
-      // Verify server version is in cache
       mockStorage.loadNotes.mockResolvedValue([serverNote])
       const cachedNotes = await cacheService.loadNotes()
       const cachedNote = cachedNotes.find((n) => n.id === 'conflict-note')
@@ -262,15 +239,12 @@ describe('Offline Sync Integration', () => {
         updatedAt: new Date(2024, 0, i + 1).toISOString(),
       }))
 
-      // Save all notes
       for (const note of notes) {
         await cacheService.saveNote(note)
       }
 
-      // Enforce limit (default is 10)
       await cacheService.enforceLimit()
 
-      // Should call enforceLimit on storage
       expect(mockStorage.enforceLimit).toHaveBeenCalled()
     })
   })
@@ -305,17 +279,12 @@ describe('Offline Sync Integration', () => {
       ]
 
       await queueService.enqueueMany(mutations)
-
-      // Mock getPendingBatch to return the mutations
       mockStorage.getPendingBatch.mockResolvedValue(mutations)
 
-      // Get batch - should compact to single update
       const batch = await queueService.getPendingBatch(10)
 
-      // Note: Actual compaction logic depends on implementation
-      // This test verifies the queue can handle multiple updates
       expect(batch.length).toBeGreaterThan(0)
-      
+
       const note1Updates = batch.filter((m) => m.noteId === 'note-1')
       expect(note1Updates.length).toBeGreaterThan(0)
     })
@@ -333,14 +302,10 @@ describe('Offline Sync Integration', () => {
       }
 
       await queueService.enqueue(mutation)
-
-      // Mark as failed
       await queueService.markStatus('mut-retry', 'failed')
 
-      // Mock getPendingBatch to return the mutation
       mockStorage.getPendingBatch.mockResolvedValue([mutation])
 
-      // Get pending batch - should include failed item
       const batch = await queueService.getPendingBatch(10)
 
       expect(batch.find((m) => m.noteId === 'note-retry')).toBeDefined()
