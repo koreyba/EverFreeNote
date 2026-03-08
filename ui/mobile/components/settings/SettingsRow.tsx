@@ -30,18 +30,19 @@ export function SettingsRow({
 
     return (
         <Pressable
+            disabled={disabled || !onPress}
             style={({ pressed }) => [
                 styles.row,
                 isFirst && styles.rowFirst,
                 isLast && styles.rowLast,
                 !isLast && styles.rowBorder,
-                pressed && !disabled && styles.rowPressed,
+                pressed && onPress && !disabled && styles.rowPressed,
                 disabled && styles.rowDisabled,
             ]}
             onPress={disabled ? undefined : onPress}
-            accessibilityRole="button"
+            accessibilityRole={onPress ? 'button' : undefined}
             accessibilityLabel={title}
-            accessibilityState={{ disabled }}
+            accessibilityState={onPress ? { disabled } : undefined}
         >
             <View style={styles.rowContent}>
                 <View style={styles.rowText}>
