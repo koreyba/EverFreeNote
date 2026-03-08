@@ -119,16 +119,22 @@ jest.mock('@ui/mobile/services/sync', () => ({
 const mockEditorCallbacks: {
   onContentChange?: (html: string) => void
   onBlur?: () => void
+  onFocus?: () => void
+} = {}
+
+const mockToolbarCallbacks: {
+  onMenuVisibilityChange?: (visible: boolean) => void
 } = {}
 
 jest.mock('@ui/mobile/components/EditorWebView', () => {
   const React = require('react')
   const { View, Text } = require('react-native')
 
-  return React.forwardRef((props: { onContentChange?: (html: string) => void; onBlur?: () => void }, ref: unknown) => {
+  return React.forwardRef((props: { onContentChange?: (html: string) => void; onBlur?: () => void; onFocus?: () => void }, ref: unknown) => {
     // Store callbacks for test access
     mockEditorCallbacks.onContentChange = props.onContentChange
     mockEditorCallbacks.onBlur = props.onBlur
+    mockEditorCallbacks.onFocus = props.onFocus
 
     React.useImperativeHandle(ref, () => ({
       runCommand: jest.fn(),
@@ -143,8 +149,9 @@ jest.mock('@ui/mobile/components/EditorWebView', () => {
 })
 
 jest.mock('@ui/mobile/components/EditorToolbar', () => ({
-  EditorToolbar: () => {
+  EditorToolbar: ({ onMenuVisibilityChange }: { onMenuVisibilityChange?: (visible: boolean) => void }) => {
     const { View, Text } = require('react-native')
+    mockToolbarCallbacks.onMenuVisibilityChange = onMenuVisibilityChange
     return (
       <View testID="editor-toolbar">
         <Text>Toolbar</Text>
@@ -189,6 +196,10 @@ describe('NoteEditorScreen - Delete Functionality', () => {
   beforeEach(() => {
     queryClient = createTestQueryClient()
     wrapper = createQueryWrapper(queryClient)
+    mockEditorCallbacks.onContentChange = undefined
+    mockEditorCallbacks.onBlur = undefined
+    mockEditorCallbacks.onFocus = undefined
+    mockToolbarCallbacks.onMenuVisibilityChange = undefined
 
     mockNoteService.prototype.getNote = jest.fn().mockResolvedValue({
       id: 'test-note-id',
@@ -515,6 +526,37 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       expect(screen.getByLabelText('Delete note')).toBeTruthy()
       expect(screen.getByTestId('theme-toggle')).toBeTruthy()
+    })
+  })
+
+  describe('Toolbar visibility', () => {
+    it('keeps toolbar visible while menu is open after editor blur', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      expect(screen.queryByTestId('editor-toolbar')).toBeNull()
+
+      act(() => {
+        mockEditorCallbacks.onFocus?.()
+      })
+      expect(screen.queryByTestId('editor-toolbar')).toBeTruthy()
+
+      act(() => {
+        mockToolbarCallbacks.onMenuVisibilityChange?.(true)
+      })
+
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+      expect(screen.queryByTestId('editor-toolbar')).toBeTruthy()
+
+      act(() => {
+        mockToolbarCallbacks.onMenuVisibilityChange?.(false)
+      })
+      expect(screen.queryByTestId('editor-toolbar')).toBeNull()
     })
   })
 

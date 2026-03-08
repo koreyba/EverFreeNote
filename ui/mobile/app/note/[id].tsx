@@ -27,6 +27,7 @@ export default function NoteEditorScreen() {
   const [title, setTitle] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
+  const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
@@ -158,7 +159,9 @@ export default function NoteEditorScreen() {
     })
   }, [deleteNote, id, router])
 
-  const editorPaddingBottom = isEditorFocused
+  const isToolbarVisible = isEditorFocused || isToolbarMenuOpen
+
+  const editorPaddingBottom = isToolbarVisible
     ? keyboardHeight + TOOLBAR_CONTENT_HEIGHT + insets.bottom
     : Math.max(insets.bottom, 0)
 
@@ -279,9 +282,13 @@ export default function NoteEditorScreen() {
           loadingFallback={<NoteBodyPreview html={note.description || ''} colors={colors} />}
         />
       </View>
-      {isEditorFocused && (
+      {isToolbarVisible && (
         <View style={[styles.toolbarContainer, { bottom: keyboardHeight }]}>
-          <EditorToolbar onCommand={handleToolbarCommand} hasSelection={hasSelection} />
+          <EditorToolbar
+            onCommand={handleToolbarCommand}
+            hasSelection={hasSelection}
+            onMenuVisibilityChange={setIsToolbarMenuOpen}
+          />
         </View>
       )}
     </View>
