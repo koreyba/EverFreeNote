@@ -15,6 +15,7 @@ import { applySelectionAsMarkdown } from "@ui/web/lib/editor"
 import { EditorMenuBar, type HistoryState } from "./EditorMenuBar"
 import { editorExtensions } from "./editorExtensions"
 import { CHUNK_FOCUS_KEY } from "@/extensions/ChunkFocus"
+import { executeEditorCommand } from "./executeEditorCommand"
 
 export type RichTextEditorHandle = {
   getHTML: () => string
@@ -23,70 +24,6 @@ export type RichTextEditorHandle = {
   /** Scroll to and highlight the given plain-text chunk range.
    *  charOffset must be relative to the note body (not including title prefix). */
   scrollToChunk: (charOffset: number, chunkLength: number) => void
-}
-
-const executeEditorCommand = ({
-  editor,
-  command,
-  args,
-  onApplySelectionAsMarkdown,
-}: {
-  editor: Editor
-  command: string
-  args: unknown[]
-  onApplySelectionAsMarkdown: () => void
-}) => {
-  if (command === "undo") {
-    editor.commands.undo()
-    return
-  }
-
-  if (command === "redo") {
-    editor.commands.redo()
-    return
-  }
-
-  if (command === "applySelectionAsMarkdown") {
-    onApplySelectionAsMarkdown()
-    return
-  }
-
-  if (command === "clearFormatting") {
-    editor.chain().focus().unsetAllMarks().clearNodes().run()
-    return
-  }
-
-  if (command === "setLinkUrl") {
-    const url = typeof args[0] === "string" ? args[0].trim() : ""
-    const chain = editor.chain().focus().extendMarkRange("link")
-    if (url) {
-      chain.setLink({ href: url }).run()
-    } else {
-      chain.unsetLink().run()
-    }
-    return
-  }
-
-  if (command === "insertImageUrl") {
-    const url = typeof args[0] === "string" ? args[0].trim() : ""
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run()
-    }
-    return
-  }
-
-  if (command === "toggleHeadingLevel") {
-    const level = Number(args[0])
-    if ([1, 2, 3].includes(level)) {
-      editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 }).run()
-    }
-    return
-  }
-
-  const cmd = (editor.chain().focus() as unknown as Record<string, (...a: unknown[]) => { run: () => void }>)[command]
-  if (typeof cmd === 'function') {
-    cmd(...args).run()
-  }
 }
 
 type RichTextEditorProps = {
@@ -416,7 +353,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
         pendingChunkScrollRef.current = null
         doScrollToChunk(editor, charOffset, chunkLength)
       },
-    }), [editor])
+    }), [editor, handleApplySelectionAsMarkdown])
 
     return (
       <div className={`bg-background ${hideToolbar ? '' : 'border border-t-0 rounded-b-md rounded-t-none'}`}>

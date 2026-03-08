@@ -52,4 +52,4 @@ description: Technical implementation notes, patterns, and code guidelines for m
 - Text alignment uses a single trigger that opens `left`/`center`/`right` actions.
 - Font size uses a compact size picker with the same point sizes as the web editor.
 - Link editing and image insertion are handled through inline URL forms in the toolbar overlay.
-- The React Native toolbar sends explicit bridge commands (`toggleHeadingLevel`, `clearFormatting`, `setLinkUrl`, `insertImageUrl`) to the WebView editor so mobile behavior does not depend on ad hoc TipTap chain access.
+- The React Native toolbar uses explicit bridge commands for `toggleHeadingLevel`, `clearFormatting`, `setLinkUrl`, and `insertImageUrl`; other actions still fall through the generic TipTap chain command lookup in the WebView editor.

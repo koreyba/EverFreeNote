@@ -26,6 +26,51 @@ type MenuKey = 'heading' | 'align' | 'fontSize' | 'link' | 'image' | null
 
 const FONT_SIZE_OPTIONS = ['10', '11', '12', '13', '14', '15', '18', '24', '30', '36']
 
+type ToolbarStyles = ReturnType<typeof createStyles>
+
+type ToolbarButtonProps = {
+  icon: React.ElementType
+  onPress: () => void
+  accessibilityLabel: string
+  styles: ToolbarStyles
+  iconColor: string
+}
+
+const ToolbarButton = ({ icon: Icon, onPress, accessibilityLabel, styles, iconColor }: ToolbarButtonProps) => (
+  <Pressable
+    accessibilityLabel={accessibilityLabel}
+    style={({ pressed }) => [
+      styles.button,
+      pressed && styles.buttonPressed,
+    ]}
+    onPress={onPress}
+  >
+    <Icon size={20} color={iconColor} />
+  </Pressable>
+)
+
+type TextToolbarButtonProps = {
+  label: string
+  onPress: () => void
+  accessibilityLabel: string
+  active?: boolean
+  styles: ToolbarStyles
+}
+
+const TextToolbarButton = ({ label, onPress, accessibilityLabel, active = false, styles }: TextToolbarButtonProps) => (
+  <Pressable
+    accessibilityLabel={accessibilityLabel}
+    style={({ pressed }) => [
+      styles.textButton,
+      active && styles.textButtonActive,
+      pressed && styles.buttonPressed,
+    ]}
+    onPress={onPress}
+  >
+    <Text style={styles.textButtonLabel}>{label}</Text>
+  </Pressable>
+)
+
 export const EditorToolbar = ({ onCommand, hasSelection = false }: Props) => {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
@@ -71,51 +116,6 @@ export const EditorToolbar = ({ onCommand, hasSelection = false }: Props) => {
     runCommand('insertImageUrl', [normalized])
     closeMenu()
   }
-
-  const ToolbarButton = ({
-    icon: Icon,
-    onPress,
-    accessibilityLabel,
-  }: {
-    icon: React.ElementType
-    onPress: () => void
-    accessibilityLabel: string
-  }) => (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [
-        styles.button,
-        pressed && styles.buttonPressed,
-      ]}
-      onPress={onPress}
-    >
-      <Icon size={20} color={colors.foreground} />
-    </Pressable>
-  )
-
-  const TextToolbarButton = ({
-    label,
-    onPress,
-    accessibilityLabel,
-    active = false,
-  }: {
-    label: string
-    onPress: () => void
-    accessibilityLabel: string
-    active?: boolean
-  }) => (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [
-        styles.textButton,
-        active && styles.textButtonActive,
-        pressed && styles.buttonPressed,
-      ]}
-      onPress={onPress}
-    >
-      <Text style={styles.textButtonLabel}>{label}</Text>
-    </Pressable>
-  )
 
   const renderMenu = () => {
     if (activeMenu === null) return null
@@ -260,28 +260,31 @@ export const EditorToolbar = ({ onCommand, hasSelection = false }: Props) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <ToolbarButton icon={Bold} onPress={() => runCommand('toggleBold')} accessibilityLabel="Bold" />
-        <ToolbarButton icon={Italic} onPress={() => runCommand('toggleItalic')} accessibilityLabel="Italic" />
-        <ToolbarButton icon={Strikethrough} onPress={() => runCommand('toggleStrike')} accessibilityLabel="Strikethrough" />
-        <ToolbarButton icon={Underline} onPress={() => runCommand('toggleUnderline')} accessibilityLabel="Underline" />
+        <ToolbarButton icon={Bold} onPress={() => runCommand('toggleBold')} accessibilityLabel="Bold" styles={styles} iconColor={colors.foreground} />
+        <ToolbarButton icon={Italic} onPress={() => runCommand('toggleItalic')} accessibilityLabel="Italic" styles={styles} iconColor={colors.foreground} />
+        <ToolbarButton icon={Strikethrough} onPress={() => runCommand('toggleStrike')} accessibilityLabel="Strikethrough" styles={styles} iconColor={colors.foreground} />
+        <ToolbarButton icon={Underline} onPress={() => runCommand('toggleUnderline')} accessibilityLabel="Underline" styles={styles} iconColor={colors.foreground} />
         <View style={styles.divider} />
         <TextToolbarButton
           label="H"
           active={activeMenu === 'heading'}
           accessibilityLabel="Open heading menu"
           onPress={() => toggleMenu('heading')}
+          styles={styles}
         />
         <TextToolbarButton
           label="Align"
           active={activeMenu === 'align'}
           accessibilityLabel="Open alignment menu"
           onPress={() => toggleMenu('align')}
+          styles={styles}
         />
         <TextToolbarButton
           label="Size"
           active={activeMenu === 'fontSize'}
           accessibilityLabel="Open font size menu"
           onPress={() => toggleMenu('fontSize')}
+          styles={styles}
         />
         <TextToolbarButton
           label="Tx"
@@ -290,30 +293,34 @@ export const EditorToolbar = ({ onCommand, hasSelection = false }: Props) => {
             closeMenu()
             runCommand('clearFormatting')
           }}
+          styles={styles}
         />
-        <ToolbarButton icon={Minus} onPress={() => runCommand('setHorizontalRule')} accessibilityLabel="Horizontal rule" />
+        <ToolbarButton icon={Minus} onPress={() => runCommand('setHorizontalRule')} accessibilityLabel="Horizontal rule" styles={styles} iconColor={colors.foreground} />
         <View style={styles.divider} />
-        <ToolbarButton icon={List} onPress={() => runCommand('toggleBulletList')} accessibilityLabel="Bullet list" />
-        <ToolbarButton icon={ListOrdered} onPress={() => runCommand('toggleOrderedList')} accessibilityLabel="Ordered list" />
+        <ToolbarButton icon={List} onPress={() => runCommand('toggleBulletList')} accessibilityLabel="Bullet list" styles={styles} iconColor={colors.foreground} />
+        <ToolbarButton icon={ListOrdered} onPress={() => runCommand('toggleOrderedList')} accessibilityLabel="Ordered list" styles={styles} iconColor={colors.foreground} />
         <TextToolbarButton
           label="Task"
           accessibilityLabel="Task list"
           onPress={() => runCommand('toggleTaskList')}
+          styles={styles}
         />
-        <ToolbarButton icon={Quote} onPress={() => runCommand('toggleBlockquote')} accessibilityLabel="Blockquote" />
-        <ToolbarButton icon={Code} onPress={() => runCommand('toggleCodeBlock')} accessibilityLabel="Code block" />
+        <ToolbarButton icon={Quote} onPress={() => runCommand('toggleBlockquote')} accessibilityLabel="Blockquote" styles={styles} iconColor={colors.foreground} />
+        <ToolbarButton icon={Code} onPress={() => runCommand('toggleCodeBlock')} accessibilityLabel="Code block" styles={styles} iconColor={colors.foreground} />
         <View style={styles.divider} />
         <TextToolbarButton
           label="Link"
           active={activeMenu === 'link'}
           accessibilityLabel="Open link menu"
           onPress={() => toggleMenu('link')}
+          styles={styles}
         />
         <TextToolbarButton
           label="Image"
           active={activeMenu === 'image'}
           accessibilityLabel="Open image menu"
           onPress={() => toggleMenu('image')}
+          styles={styles}
         />
         <View style={styles.divider} />
         <Pressable

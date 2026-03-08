@@ -57,7 +57,7 @@ describe('EditorToolbar', () => {
 
     fireEvent.press(getByLabelText('Apply as Markdown'))
 
-    expect(onCommand).toHaveBeenCalledWith('applySelectionAsMarkdown')
+    expect(onCommand).toHaveBeenCalledWith('applySelectionAsMarkdown', undefined)
   })
 
   it('opens heading menu and sends selected heading command', () => {
