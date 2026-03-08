@@ -10,7 +10,7 @@ export interface RagStatus {
 }
 
 const POLL_INTERVAL_MS = 3000
-type RagStatusRow = { indexed_at: string | null }
+type RagStatusRow = { indexed_at: string | null; chunk_index?: number }
 
 function getLatestIndexedAt(rows: RagStatusRow[] | null): string | null {
   if (!rows || rows.length === 0) return null

@@ -17,10 +17,10 @@ import { useSupabase } from '@ui/mobile/providers/SupabaseProvider'
 import { ApiKeysSettingsService } from '@core/services/apiKeysSettings'
 import { SettingsRow } from './SettingsRow'
 
-interface GeminiApiKeySectionProps {
+type GeminiApiKeySectionProps = Readonly<{
     isFirst?: boolean
     isLast?: boolean
-}
+}>
 
 export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProps) {
     const { colors } = useTheme()
@@ -54,7 +54,9 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
 
     const openModal = () => {
         setModalVisible(true)
-        void loadStatus()
+        loadStatus().catch((err) => {
+            console.error('Failed to load Gemini API key status:', err)
+        })
     }
 
     const closeModal = () => {
@@ -92,18 +94,22 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
         }
     }
 
-    const statusBadge = loading ? (
-        <ActivityIndicator size="small" color={colors.mutedForeground} />
-    ) : configured ? (
-        <CheckCircle2 size={18} color="#22c55e" />
-    ) : null
+    const renderStatusBadge = () => {
+        if (loading) {
+            return <ActivityIndicator size="small" color={colors.mutedForeground} />
+        }
+        if (configured) {
+            return <CheckCircle2 size={18} color="#22c55e" />
+        }
+        return null
+    }
 
     return (
         <>
             <SettingsRow
                 title="Google / Gemini API"
                 subtitle={configured ? 'Key configured' : 'Not configured'}
-                right={statusBadge}
+                right={renderStatusBadge()}
                 onPress={openModal}
                 isFirst={isFirst}
                 isLast={isLast}

@@ -69,7 +69,7 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
             const count = typeof (data as { chunkCount?: number })?.chunkCount === 'number'
                 ? (data as { chunkCount: number }).chunkCount
                 : null
-            showToast(count !== null ? `Indexed into ${count} chunks` : 'Indexed successfully')
+            showToast(count === null ? 'Indexed successfully' : `Indexed into ${count} chunks`)
             refresh()
         } catch (err) {
             showToast(await extractErrorMessage(err, 'Indexing failed'), true)
