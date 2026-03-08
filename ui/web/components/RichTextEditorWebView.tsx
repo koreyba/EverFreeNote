@@ -8,6 +8,7 @@ import { editorExtensions } from "./editorExtensions"
 import { SmartPasteService } from "@core/services/smartPaste"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
 import { applySelectionAsMarkdown } from "@ui/web/lib/editor"
+import { executeEditorCommand } from "./executeEditorCommand"
 
 export type RichTextEditorWebViewHandle = {
   getHTML: () => string
@@ -153,27 +154,12 @@ const RichTextEditorWebView = React.forwardRef<
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
-        if (command === "undo") {
-          editor.commands.undo()
-          return
-        }
-        if (command === "redo") {
-          editor.commands.redo()
-          return
-        }
-        if (command === 'applySelectionAsMarkdown') {
-          handleApplySelectionAsMarkdown()
-          return
-        }
-        const cmd = (
-          editor.chain().focus() as unknown as Record<
-            string,
-            (...a: unknown[]) => { run: () => void }
-          >
-        )[command]
-        if (typeof cmd === "function") {
-          cmd(...args).run()
-        }
+        executeEditorCommand({
+          editor,
+          command,
+          args,
+          onApplySelectionAsMarkdown: handleApplySelectionAsMarkdown,
+        })
       },
     }),
     [editor, handleApplySelectionAsMarkdown]

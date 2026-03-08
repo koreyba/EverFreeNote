@@ -115,9 +115,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const editorWebViewOverride = variant === 'dev' ? devEditorWebViewUrl : ''
   const stageWebViewUrl = resolveStageWebViewUrl()
   const oauthRedirectOverride = (process.env.EXPO_PUBLIC_OAUTH_REDIRECT_URL ?? '').trim()
-  const resolvedEditorWebViewUrl =
-    editorWebViewOverride ||
-    (variant === 'stage' && stageWebViewUrl ? stageWebViewUrl : variantConfig.editorWebViewUrl)
+  const resolvedEditorWebViewUrl = editorWebViewOverride !== ''
+    ? editorWebViewOverride
+    : (variant === 'stage' && stageWebViewUrl ? stageWebViewUrl : variantConfig.editorWebViewUrl)
 
   return {
     ...config,
@@ -169,7 +169,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       supabaseFunctionsUrl: variantConfig.supabaseFunctionsUrl,
       editorWebViewUrl: resolvedEditorWebViewUrl,
       requireEditorWebViewUrl: variantConfig.requireEditorWebViewUrl ?? false,
-      oauthRedirectUrl: oauthRedirectOverride || `${variantConfig.scheme}://auth/callback`,
+      oauthRedirectUrl: oauthRedirectOverride !== '' ? oauthRedirectOverride : `${variantConfig.scheme}://auth/callback`,
     },
   }
 }

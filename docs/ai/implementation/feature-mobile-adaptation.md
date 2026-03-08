@@ -44,3 +44,12 @@ description: Technical implementation notes, patterns, and code guidelines for m
 **How do we keep it fast?**
 
 - Ensure the Sheet doesn't cause layout thrashing when opening.
+
+## Mobile Editor Toolbar
+
+- The mobile rich-text toolbar now groups advanced formatting into compact menus to keep the horizontal action row usable on phones.
+- Heading selection uses a single trigger that opens `H1`/`H2`/`H3` actions.
+- Text alignment uses a single trigger that opens `left`/`center`/`right` actions.
+- Font size uses a compact size picker with the same point sizes as the web editor.
+- Link editing and image insertion are handled through inline URL forms in the toolbar overlay.
+- The React Native toolbar uses explicit bridge commands for `toggleHeadingLevel`, `clearFormatting`, `setLinkUrl`, and `insertImageUrl`; other actions still fall through the generic TipTap chain command lookup in the WebView editor.
