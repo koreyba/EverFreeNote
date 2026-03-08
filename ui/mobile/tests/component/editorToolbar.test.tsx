@@ -46,9 +46,13 @@ describe('EditorToolbar', () => {
   })
 
   it('keeps the MD button disabled without selection', () => {
-    const { getByLabelText } = render(<EditorToolbar onCommand={jest.fn()} hasSelection={false} />)
+    const onCommand = jest.fn()
+    const { getByLabelText } = render(<EditorToolbar onCommand={onCommand} hasSelection={false} />)
+    const button = getByLabelText('Apply as Markdown')
 
-    expect(getByLabelText('Apply as Markdown').props.accessibilityState?.disabled).toBe(true)
+    expect(button.props.accessibilityState?.disabled).toBe(true)
+    fireEvent.press(button)
+    expect(onCommand).not.toHaveBeenCalled()
   })
 
   it('enables and triggers the MD button with selection', () => {
@@ -184,5 +188,31 @@ describe('EditorToolbar', () => {
     fireEvent.press(getByText('Insert'))
 
     expect(onCommand).toHaveBeenCalledWith('insertImageUrl', ['https://cdn.test/image.png'])
+  })
+
+  it('closes link menu on cancel without calling onCommand', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText, getByText, queryByPlaceholderText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Open link menu'))
+    onCommand.mockClear()
+
+    fireEvent.press(getByText('Cancel'))
+
+    expect(onCommand).not.toHaveBeenCalled()
+    expect(queryByPlaceholderText('https://example.com')).toBeNull()
+  })
+
+  it('closes image menu on cancel without calling onCommand', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText, getByText, queryByPlaceholderText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Open image menu'))
+    onCommand.mockClear()
+
+    fireEvent.press(getByText('Cancel'))
+
+    expect(onCommand).not.toHaveBeenCalled()
+    expect(queryByPlaceholderText('https://example.com/image.png')).toBeNull()
   })
 })

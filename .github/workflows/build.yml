@@ -52,7 +52,14 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Validate main project
+        id: validate_main
+        continue-on-error: true
+        run: npm run validate
+
       - name: Validate mobile package
+        id: validate_mobile
+        continue-on-error: true
         run: npm --prefix ui/mobile run validate
 
       - name: Run gitleaks scan
@@ -79,4 +86,24 @@ jobs:
           echo "Run ID: ${{ github.run_id }}"
           echo "SHA: ${{ github.sha }}"
           echo "For Act local testing, use: build-${{ github.run_id }}"
+
+      - name: Fail if validation checks failed
+        if: always()
+        run: |
+          failed=0
+
+          if [ "${{ steps.validate_main.outcome }}" != "success" ]; then
+            echo "Main project validation failed."
+            failed=1
+          fi
+
+          if [ "${{ steps.validate_mobile.outcome }}" != "success" ]; then
+            echo "Mobile package validation failed."
+            failed=1
+          fi
+
+          if [ "$failed" -ne 0 ]; then
+            echo "One or more validation checks failed."
+            exit 1
+          fi
 

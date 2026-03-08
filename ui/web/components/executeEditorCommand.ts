@@ -44,7 +44,10 @@ export const executeEditorCommand = ({
   }
 
   if (command === "setLinkUrl") {
-    const url = typeof args[0] === "string" ? args[0].trim() : ""
+    if (typeof args[0] !== "string") {
+      return
+    }
+    const url = args[0].trim()
     const chain = editor.chain().focus().extendMarkRange("link")
     if (url) {
       chain.setLink({ href: url }).run()
