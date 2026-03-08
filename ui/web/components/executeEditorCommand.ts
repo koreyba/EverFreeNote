@@ -73,14 +73,22 @@ export const executeEditorCommand = ({
     return
   }
 
-  const cmd = (
-    editor.chain().focus() as unknown as Record<
-      string,
-      (...a: unknown[]) => { run: () => void }
-    >
-  )[command]
+  const chain = editor.chain().focus() as Record<string, unknown>
+  if (!Object.prototype.hasOwnProperty.call(chain, command)) {
+    return
+  }
 
-  if (typeof cmd === "function") {
-    cmd(...args).run()
+  const candidate = chain[command]
+  if (typeof candidate !== "function") {
+    return
+  }
+
+  const next = (candidate as (...a: unknown[]) => unknown).apply(chain, args)
+  if (
+    typeof next === "object" &&
+    next !== null &&
+    typeof (next as { run?: unknown }).run === "function"
+  ) {
+    ;(next as { run: () => void }).run()
   }
 }

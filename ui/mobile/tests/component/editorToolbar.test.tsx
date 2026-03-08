@@ -158,6 +158,27 @@ describe('EditorToolbar', () => {
     expect(onCommand).toHaveBeenCalledWith('toggleTaskList', undefined)
   })
 
+  it('sends one-tap formatting commands', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Bold'))
+    fireEvent.press(getByLabelText('Italic'))
+    fireEvent.press(getByLabelText('Underline'))
+    fireEvent.press(getByLabelText('Bullet list'))
+    fireEvent.press(getByLabelText('Ordered list'))
+    fireEvent.press(getByLabelText('Blockquote'))
+    fireEvent.press(getByLabelText('Code block'))
+
+    expect(onCommand).toHaveBeenNthCalledWith(1, 'toggleBold', undefined)
+    expect(onCommand).toHaveBeenNthCalledWith(2, 'toggleItalic', undefined)
+    expect(onCommand).toHaveBeenNthCalledWith(3, 'toggleUnderline', undefined)
+    expect(onCommand).toHaveBeenNthCalledWith(4, 'toggleBulletList', undefined)
+    expect(onCommand).toHaveBeenNthCalledWith(5, 'toggleOrderedList', undefined)
+    expect(onCommand).toHaveBeenNthCalledWith(6, 'toggleBlockquote', undefined)
+    expect(onCommand).toHaveBeenNthCalledWith(7, 'toggleCodeBlock', undefined)
+  })
+
   it('applies a link from the link menu', () => {
     const onCommand = jest.fn()
     const { getByLabelText, getByPlaceholderText, getByText } = render(<EditorToolbar onCommand={onCommand} />)
