@@ -9,7 +9,7 @@
     "test:unit": "jest --config jest.config.cjs --selectProjects unit-core unit-web --passWithNoTests",
     "test:unit:core": "jest --config jest.config.cjs --selectProjects unit-core",
     "test:integration:core": "jest --config jest.config.cjs --selectProjects integration-core",
-    "test:unit:web": "jest --config jest.config.cjs --selectProjects unit-web --passWithNoTests",
+    "test:unit:web": "jest --config jest.config.cjs --selectProjects unit-web",
     "type-check": "tsc --noEmit",
     "type-check:tests": "tsc -p tsconfig.tests.json --noEmit",
     "eslint": "eslint . --max-warnings=0",
