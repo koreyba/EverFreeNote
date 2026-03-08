@@ -20,13 +20,14 @@ export const TOOLBAR_CONTENT_HEIGHT = 48
 type Props = {
   onCommand: (method: string, args?: unknown[]) => void
   hasSelection?: boolean
+  onMenuVisibilityChange?: (visible: boolean) => void
 }
 
 type MenuKey = 'heading' | 'align' | 'fontSize' | 'link' | 'image' | null
 
 const FONT_SIZE_OPTIONS = ['10', '11', '12', '13', '14', '15', '18', '24', '30', '36']
 
-export const EditorToolbar = ({ onCommand, hasSelection = false }: Props) => {
+export const EditorToolbar = ({ onCommand, hasSelection = false, onMenuVisibilityChange }: Props) => {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const styles = useMemo(() => createStyles(colors), [colors])
@@ -43,6 +44,10 @@ export const EditorToolbar = ({ onCommand, hasSelection = false }: Props) => {
     }
   }, [activeMenu])
 
+  useEffect(() => {
+    onMenuVisibilityChange?.(activeMenu !== null)
+  }, [activeMenu, onMenuVisibilityChange])
+
   const runCommand = (method: string, args?: unknown[]) => {
     onCommand(method, args)
   }
@@ -51,6 +56,15 @@ export const EditorToolbar = ({ onCommand, hasSelection = false }: Props) => {
 
   const toggleMenu = (menu: Exclude<MenuKey, null>) => {
     setActiveMenu((current) => (current === menu ? null : menu))
+  }
+
+  const openMenu = (menu: Exclude<MenuKey, null>) => {
+    const isOpening = activeMenu !== menu
+    if (isOpening && (menu === 'link' || menu === 'image')) {
+      // Dismiss editor selection handles/native action menu before opening URL forms.
+      runCommand('blur')
+    }
+    toggleMenu(menu)
   }
 
   const handleLinkApply = () => {
@@ -269,22 +283,22 @@ export const EditorToolbar = ({ onCommand, hasSelection = false }: Props) => {
           label="H"
           active={activeMenu === 'heading'}
           accessibilityLabel="Open heading menu"
-          onPress={() => toggleMenu('heading')}
+          onPress={() => openMenu('heading')}
         />
         <TextToolbarButton
           label="Align"
           active={activeMenu === 'align'}
           accessibilityLabel="Open alignment menu"
-          onPress={() => toggleMenu('align')}
+          onPress={() => openMenu('align')}
         />
         <TextToolbarButton
           label="Size"
           active={activeMenu === 'fontSize'}
           accessibilityLabel="Open font size menu"
-          onPress={() => toggleMenu('fontSize')}
+          onPress={() => openMenu('fontSize')}
         />
         <TextToolbarButton
-          label="Tx"
+          label="Clear"
           accessibilityLabel="Clear formatting"
           onPress={() => {
             closeMenu()
@@ -307,13 +321,13 @@ export const EditorToolbar = ({ onCommand, hasSelection = false }: Props) => {
           label="Link"
           active={activeMenu === 'link'}
           accessibilityLabel="Open link menu"
-          onPress={() => toggleMenu('link')}
+          onPress={() => openMenu('link')}
         />
         <TextToolbarButton
           label="Image"
           active={activeMenu === 'image'}
           accessibilityLabel="Open image menu"
-          onPress={() => toggleMenu('image')}
+          onPress={() => openMenu('image')}
         />
         <View style={styles.divider} />
         <Pressable

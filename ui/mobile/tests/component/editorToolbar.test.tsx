@@ -57,7 +57,7 @@ describe('EditorToolbar', () => {
 
     fireEvent.press(getByLabelText('Apply as Markdown'))
 
-    expect(onCommand).toHaveBeenCalledWith('applySelectionAsMarkdown')
+    expect(onCommand).toHaveBeenCalledWith('applySelectionAsMarkdown', undefined)
   })
 
   it('opens heading menu and sends selected heading command', () => {
@@ -92,11 +92,39 @@ describe('EditorToolbar', () => {
 
   it('sends clear formatting command', () => {
     const onCommand = jest.fn()
-    const { getByLabelText } = render(<EditorToolbar onCommand={onCommand} />)
+    const { getByLabelText, getByText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    expect(getByText('Clear')).toBeTruthy()
 
     fireEvent.press(getByLabelText('Clear formatting'))
 
     expect(onCommand).toHaveBeenCalledWith('clearFormatting', undefined)
+  })
+
+  it('blurs editor before opening link/image menus', () => {
+    const onCommand = jest.fn()
+    const { getByLabelText } = render(<EditorToolbar onCommand={onCommand} />)
+
+    fireEvent.press(getByLabelText('Open link menu'))
+    fireEvent.press(getByLabelText('Open image menu'))
+
+    expect(onCommand).toHaveBeenNthCalledWith(1, 'blur', undefined)
+    expect(onCommand).toHaveBeenNthCalledWith(2, 'blur', undefined)
+  })
+
+  it('reports menu visibility changes', () => {
+    const onMenuVisibilityChange = jest.fn()
+    const { getByLabelText } = render(
+      <EditorToolbar onCommand={jest.fn()} onMenuVisibilityChange={onMenuVisibilityChange} />
+    )
+
+    expect(onMenuVisibilityChange).toHaveBeenLastCalledWith(false)
+
+    fireEvent.press(getByLabelText('Open link menu'))
+    expect(onMenuVisibilityChange).toHaveBeenLastCalledWith(true)
+
+    fireEvent.press(getByLabelText('Open link menu'))
+    expect(onMenuVisibilityChange).toHaveBeenLastCalledWith(false)
   })
 
   it('sends horizontal rule command', () => {
