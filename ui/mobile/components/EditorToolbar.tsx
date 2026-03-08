@@ -27,7 +27,7 @@ type MenuKey = 'heading' | 'align' | 'fontSize' | 'link' | 'image' | null
 
 const FONT_SIZE_OPTIONS = ['10', '11', '12', '13', '14', '15', '18', '24', '30', '36']
 
-export const EditorToolbar = ({ onCommand, hasSelection = false, onMenuVisibilityChange }: Props) => {
+type ToolbarStyles = ReturnType<typeof createStyles>
 
 type ToolbarButtonProps = {
   icon: React.ElementType
@@ -72,6 +72,7 @@ const TextToolbarButton = ({ label, onPress, accessibilityLabel, active = false,
   </Pressable>
 )
 
+export const EditorToolbar = ({ onCommand, hasSelection = false, onMenuVisibilityChange }: Props) => {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const styles = useMemo(() => createStyles(colors), [colors])
