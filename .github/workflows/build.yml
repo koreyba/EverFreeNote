@@ -80,17 +80,6 @@ jobs:
           path: ./out
           retention-days: 90
       
-      - name: Run Sonar Qube
-        continue-on-error: true
-        steps:
-          - uses: actions/checkout@v4
-            with:
-              fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-          - uses: SonarSource/sonarqube-scan-action@v6
-            env:
-              SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-              SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      
       - name: Output artifact info
         run: |
           echo "Artifact ID: build-${{ github.run_id }}"
