@@ -233,7 +233,6 @@ export default function NoteEditorScreen() {
           ),
           headerRight: () => (
             <View style={styles.headerActions}>
-              <ThemeToggle style={styles.headerToggle} />
               <Pressable
                 onPress={handleDelete}
                 disabled={isDeleting}
@@ -241,7 +240,8 @@ export default function NoteEditorScreen() {
                 accessibilityRole="button"
                 style={({ pressed }) => [
                   styles.headerButton,
-                  (pressed || isDeleting) && { opacity: 0.5 }
+                  styles.headerDeleteCentered,
+                  (pressed || isDeleting) && { opacity: 0.5 },
                 ]}
               >
                 {isDeleting ? (
@@ -250,14 +250,17 @@ export default function NoteEditorScreen() {
                   <Trash2 color={colors.destructive} size={20} />
                 )}
               </Pressable>
-              <Pressable
-                onPress={() => setIsNoteMenuVisible(true)}
-                accessibilityLabel="More options"
-                accessibilityRole="button"
-                style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
-              >
-                <MoreVertical color={colors.foreground} size={20} />
-              </Pressable>
+              <View style={styles.headerRightGroup}>
+                <ThemeToggle style={styles.headerToggle} />
+                <Pressable
+                  onPress={() => setIsNoteMenuVisible(true)}
+                  accessibilityLabel="More options"
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+                >
+                  <MoreVertical color={colors.foreground} size={20} />
+                </Pressable>
+              </View>
             </View>
           ),
         }}
@@ -347,9 +350,22 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     marginLeft: 12,
   },
   headerActions: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    minWidth: 140,
     marginRight: 12,
+  },
+  headerRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 'auto',
+  },
+  headerDeleteCentered: {
+    position: 'absolute',
+    left: '50%',
+    transform: [{ translateX: -18 }],
   },
   headerLeftActions: {
     flexDirection: 'row',

@@ -159,6 +159,13 @@ jest.mock('@ui/mobile/components/tags/TagInput', () => ({
   },
 }))
 
+jest.mock('@ui/mobile/components/NoteIndexMenu', () => ({
+  NoteIndexMenu: () => {
+    const { View } = require('react-native')
+    return <View testID="note-index-menu" />
+  },
+}))
+
 import NoteEditorScreen from '@ui/mobile/app/note/[id]'
 import { NoteService } from '@core/services/notes'
 
