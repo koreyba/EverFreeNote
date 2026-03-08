@@ -5,6 +5,10 @@ import type { ThemeMode } from '@ui/mobile/lib/theme'
 import { Square, CheckSquare } from 'lucide-react-native'
 import { Button } from '@ui/mobile/components/ui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SettingsSectionHeader } from '@ui/mobile/components/settings/SettingsSectionHeader'
+import { SettingsRow } from '@ui/mobile/components/settings/SettingsRow'
+import { ComingSoonBadge } from '@ui/mobile/components/settings/ComingSoonBadge'
+import { GeminiApiKeySection } from '@ui/mobile/components/settings/GeminiApiKeySection'
 
 export default function SettingsScreen() {
   const { colors, mode, setMode, colorScheme } = useTheme()
@@ -17,7 +21,7 @@ export default function SettingsScreen() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const options: { value: ThemeMode; label: string; description: string }[] = [
+  const themeOptions: { value: ThemeMode; label: string; description: string }[] = [
     { value: 'system', label: 'System', description: 'Follow device setting' },
     { value: 'light', label: 'Light', description: 'Always light theme' },
     { value: 'dark', label: 'Dark', description: 'Always dark theme' },
@@ -29,7 +33,6 @@ export default function SettingsScreen() {
     setError(null)
     try {
       await deleteAccount()
-      // Provider will handle navigation to login via auth state change
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete account')
       setIsDeleting(false)
@@ -38,11 +41,12 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>Appearance</Text>
-      <Text style={styles.subtitle}>Current: {mode} ({colorScheme})</Text>
 
+      {/* ─── APPEARANCE ─────────────────────────────── */}
+      <SettingsSectionHeader title="Appearance" />
+      <Text style={styles.sectionSubtitle}>Current: {mode} ({colorScheme})</Text>
       <View style={styles.card}>
-        {options.map((option) => {
+        {themeOptions.map((option, index) => {
           const isSelected = mode === option.value
           return (
             <Pressable
@@ -52,6 +56,9 @@ export default function SettingsScreen() {
               accessibilityState={{ selected: isSelected }}
               style={({ pressed }) => [
                 styles.option,
+                index === 0 && styles.optionFirst,
+                index === themeOptions.length - 1 && styles.optionLast,
+                index < themeOptions.length - 1 && styles.optionBorder,
                 pressed && styles.optionPressed,
                 isSelected && styles.optionSelected,
               ]}
@@ -68,6 +75,47 @@ export default function SettingsScreen() {
           )
         })}
       </View>
+
+      {/* ─── INTEGRATIONS ────────────────────────────── */}
+      <SettingsSectionHeader title="Integrations" />
+      <View style={styles.card}>
+        <GeminiApiKeySection isFirst isLast={false} />
+        <SettingsRow
+          title="WordPress"
+          subtitle="Publish notes to WordPress"
+          right={<ComingSoonBadge />}
+          disabled
+          showChevron={false}
+          isFirst={false}
+          isLast
+        />
+      </View>
+
+      {/* ─── DATA ────────────────────────────────────── */}
+      <SettingsSectionHeader title="Data" />
+      <View style={styles.card}>
+        <SettingsRow
+          title="Import notes"
+          subtitle="Import from Markdown, HTML or JSON"
+          right={<ComingSoonBadge />}
+          disabled
+          showChevron={false}
+          isFirst
+          isLast={false}
+        />
+        <SettingsRow
+          title="Export notes"
+          subtitle="Download all notes as ZIP"
+          right={<ComingSoonBadge />}
+          disabled
+          showChevron={false}
+          isFirst={false}
+          isLast
+        />
+      </View>
+
+      {/* ─── ACCOUNT ─────────────────────────────────── */}
+      <SettingsSectionHeader title="Account" />
 
       <Pressable
         accessibilityRole="button"
@@ -93,6 +141,7 @@ export default function SettingsScreen() {
         <Text style={styles.deleteLinkText}>Delete account</Text>
       </Pressable>
 
+      {/* ─── Delete account modal ────────────────────── */}
       <Modal
         visible={showDeleteModal}
         transparent
@@ -109,7 +158,7 @@ export default function SettingsScreen() {
 
             <View style={styles.tipContainer}>
               <Text style={styles.tipText}>
-                Tip: use the Export option in the settings menu to download your notes before deleting your account.
+                Tip: use the Export option above to download your notes before deleting your account.
               </Text>
             </View>
 
@@ -156,181 +205,190 @@ export default function SettingsScreen() {
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useTheme>['colors'], insets: { bottom?: number }) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: (insets.bottom ?? 0) + 32,
-  },
-  title: {
-    fontSize: 20,
-    fontFamily: 'Inter_700Bold',
-    color: colors.foreground,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-    color: colors.mutedForeground,
-    marginBottom: 16,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  optionSelected: {
-    backgroundColor: colors.accent,
-  },
-  optionPressed: {
-    backgroundColor: colors.muted,
-  },
-  optionText: {
-    flex: 1,
-    marginRight: 12,
-  },
-  optionLabel: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: colors.foreground,
-    marginBottom: 2,
-  },
-  optionDescription: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: colors.mutedForeground,
-  },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioSelected: {
-    borderColor: colors.primary,
-  },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
-  },
-  signOutButton: {
-    marginTop: 24,
-    backgroundColor: colors.destructive,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  signOutButtonPressed: {
-    opacity: 0.8,
-  },
-  signOutText: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: colors.destructiveForeground,
-  },
-  deleteLink: {
-    marginTop: 24,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  deleteLinkPressed: {
-    opacity: 0.7,
-  },
-  deleteLinkText: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    color: colors.destructive,
-    textDecorationLine: 'underline',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    width: '100%',
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter_700Bold',
-    color: colors.foreground,
-    marginBottom: 16,
-  },
-  modalDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: 'Inter_400Regular',
-    color: colors.mutedForeground,
-    marginBottom: 16,
-  },
-  tipContainer: {
-    padding: 12,
-    backgroundColor: colors.muted,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  tipText: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-    color: colors.mutedForeground,
-    lineHeight: 18,
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 24,
-    gap: 12,
-  },
-  checkboxLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: colors.foreground,
-    lineHeight: 20,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-  },
-  errorText: {
-    color: colors.destructive,
-    fontSize: 12,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-})
+const createStyles = (colors: ReturnType<typeof useTheme>['colors'], insets: { bottom?: number }) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    contentContainer: {
+      paddingHorizontal: 16,
+      paddingBottom: (insets.bottom ?? 0) + 32,
+    },
+    sectionSubtitle: {
+      fontSize: 12,
+      fontFamily: 'Inter_400Regular',
+      color: colors.mutedForeground,
+      marginBottom: 8,
+      paddingHorizontal: 4,
+    },
+    card: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    // Theme options
+    option: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.card,
+    },
+    optionFirst: {
+      borderTopLeftRadius: 12,
+      borderTopRightRadius: 12,
+    },
+    optionLast: {
+      borderBottomLeftRadius: 12,
+      borderBottomRightRadius: 12,
+    },
+    optionBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    optionSelected: {
+      backgroundColor: colors.accent,
+    },
+    optionPressed: {
+      backgroundColor: colors.muted,
+    },
+    optionText: {
+      flex: 1,
+      marginRight: 12,
+    },
+    optionLabel: {
+      fontSize: 16,
+      fontFamily: 'Inter_600SemiBold',
+      color: colors.foreground,
+      marginBottom: 2,
+    },
+    optionDescription: {
+      fontSize: 12,
+      fontFamily: 'Inter_400Regular',
+      color: colors.mutedForeground,
+    },
+    radio: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    radioSelected: {
+      borderColor: colors.primary,
+    },
+    radioDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: colors.primary,
+    },
+    // Account
+    signOutButton: {
+      marginTop: 8,
+      backgroundColor: colors.destructive,
+      borderRadius: 12,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    signOutButtonPressed: {
+      opacity: 0.8,
+    },
+    signOutText: {
+      fontSize: 16,
+      fontFamily: 'Inter_600SemiBold',
+      color: colors.destructiveForeground,
+    },
+    deleteLink: {
+      marginTop: 16,
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    deleteLinkPressed: {
+      opacity: 0.7,
+    },
+    deleteLinkText: {
+      fontSize: 14,
+      fontFamily: 'Inter_500Medium',
+      color: colors.destructive,
+      textDecorationLine: 'underline',
+    },
+    // Delete modal
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    modalContent: {
+      width: '100%',
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontFamily: 'Inter_700Bold',
+      color: colors.foreground,
+      marginBottom: 16,
+    },
+    modalDescription: {
+      fontSize: 14,
+      lineHeight: 20,
+      fontFamily: 'Inter_400Regular',
+      color: colors.mutedForeground,
+      marginBottom: 16,
+    },
+    tipContainer: {
+      padding: 12,
+      backgroundColor: colors.muted,
+      borderRadius: 8,
+      marginBottom: 20,
+    },
+    tipText: {
+      fontSize: 13,
+      fontFamily: 'Inter_400Regular',
+      color: colors.mutedForeground,
+      lineHeight: 18,
+    },
+    checkboxContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 24,
+      gap: 12,
+    },
+    checkboxLabel: {
+      flex: 1,
+      fontSize: 14,
+      fontFamily: 'Inter_400Regular',
+      color: colors.foreground,
+      lineHeight: 20,
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: 12,
+    },
+    modalButton: {
+      flex: 1,
+    },
+    errorText: {
+      color: colors.destructive,
+      fontSize: 12,
+      marginBottom: 16,
+      textAlign: 'center',
+    },
+  })

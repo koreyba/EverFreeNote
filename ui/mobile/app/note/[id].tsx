@@ -8,10 +8,11 @@ import { EditorToolbar, TOOLBAR_CONTENT_HEIGHT } from '@ui/mobile/components/Edi
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
-import { Trash2, ChevronLeft, Undo2, Redo2 } from 'lucide-react-native'
+import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical } from 'lucide-react-native'
 import { Pressable } from 'react-native'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
+import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
 
 export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -28,6 +29,7 @@ export default function NoteEditorScreen() {
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
+  const [isNoteMenuVisible, setIsNoteMenuVisible] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
@@ -63,15 +65,15 @@ export default function NoteEditorScreen() {
 
   const saverRef = useRef<ReturnType<typeof createDebouncedLatest<{ title: string; description: string; tags: string[] }>> | null>(null)
   saverRef.current ??= createDebouncedLatest({
-      delayMs: 1000,
-      isEqual: (a, b) => a.title === b.title && a.description === b.description && areStringArraysEqual(a.tags, b.tags),
-      onFlush: (next) => {
-        const patch = buildPatch(next)
-        if (Object.keys(patch).length === 0) return
-        updateNote({ id, updates: patch })
-        lastSavedRef.current = next
-      },
-    })
+    delayMs: 1000,
+    isEqual: (a, b) => a.title === b.title && a.description === b.description && areStringArraysEqual(a.tags, b.tags),
+    onFlush: (next) => {
+      const patch = buildPatch(next)
+      if (Object.keys(patch).length === 0) return
+      updateNote({ id, updates: patch })
+      lastSavedRef.current = next
+    },
+  })
 
   const flushPendingUpdates = useCallback(() => saverRef.current?.flush(), [])
 
@@ -247,6 +249,14 @@ export default function NoteEditorScreen() {
                   <Trash2 color={colors.destructive} size={20} />
                 )}
               </Pressable>
+              <Pressable
+                onPress={() => setIsNoteMenuVisible(true)}
+                accessibilityLabel="More options"
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+              >
+                <MoreVertical color={colors.foreground} size={20} />
+              </Pressable>
               <ThemeToggle style={styles.headerToggle} />
             </View>
           ),
@@ -291,6 +301,11 @@ export default function NoteEditorScreen() {
           />
         </View>
       )}
+      <NoteIndexMenu
+        noteId={id}
+        visible={isNoteMenuVisible}
+        onClose={() => setIsNoteMenuVisible(false)}
+      />
     </View>
   )
 }
