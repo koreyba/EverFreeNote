@@ -233,6 +233,7 @@ export default function NoteEditorScreen() {
           ),
           headerRight: () => (
             <View style={styles.headerActions}>
+              <ThemeToggle style={styles.headerToggle} />
               <Pressable
                 onPress={handleDelete}
                 disabled={isDeleting}
@@ -257,7 +258,6 @@ export default function NoteEditorScreen() {
               >
                 <MoreVertical color={colors.foreground} size={20} />
               </Pressable>
-              <ThemeToggle style={styles.headerToggle} />
             </View>
           ),
         }}
