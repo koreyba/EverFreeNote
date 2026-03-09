@@ -27,10 +27,15 @@ jest.mock('expo-router', () => ({
   }),
   useLocalSearchParams: () => mockUseLocalSearchParams(),
   Stack: {
-    Screen: ({ children, options }: { children: ReactNode; options?: { headerRight?: () => ReactNode; headerLeft?: () => ReactNode } }) => {
+    Screen: ({ children, options }: { children: ReactNode; options?: { headerRight?: () => ReactNode; headerLeft?: () => ReactNode; headerTitle?: () => ReactNode } }) => {
       const { View } = require('react-native')
       return (
         <View>
+          {options?.headerTitle && (
+            <View testID="header-title">
+              {typeof options.headerTitle === 'function' ? options.headerTitle() : options.headerTitle}
+            </View>
+          )}
           {options?.headerRight && (
             <View testID="header-right">
               {typeof options.headerRight === 'function' ? options.headerRight() : options.headerRight}
@@ -182,6 +187,13 @@ jest.mock('@ui/mobile/components/tags/TagInput', () => ({
   },
 }))
 
+jest.mock('@ui/mobile/components/NoteIndexMenu', () => ({
+  NoteIndexMenu: () => {
+    const { View } = require('react-native')
+    return <View testID="note-index-menu" />
+  },
+}))
+
 import NoteEditorScreen from '@ui/mobile/app/note/[id]'
 import { NoteService } from '@core/services/notes'
 
@@ -217,12 +229,8 @@ const waitForEditorReady = async () => {
   })
 }
 
-const simulateExit = (mode: ExitMode, unmount: () => void) => {
-  if (mode === 'ui-back') {
-    mockBack()
-  } else {
-    mockBack()
-  }
+const simulateExit = (_mode: ExitMode, unmount: () => void) => {
+  mockBack()
   unmount()
 }
 

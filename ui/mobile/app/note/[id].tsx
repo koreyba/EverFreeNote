@@ -8,10 +8,14 @@ import { EditorToolbar, TOOLBAR_CONTENT_HEIGHT } from '@ui/mobile/components/Edi
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
-import { Trash2, ChevronLeft, Undo2, Redo2 } from 'lucide-react-native'
+import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical } from 'lucide-react-native'
 import { Pressable } from 'react-native'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
+import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
+
+const CONTENT_HORIZONTAL_PADDING = 16
+const HEADER_BUTTON_PADDING = 8
 
 export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -28,6 +32,7 @@ export default function NoteEditorScreen() {
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
+  const [isNoteMenuVisible, setIsNoteMenuVisible] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
@@ -63,15 +68,15 @@ export default function NoteEditorScreen() {
 
   const saverRef = useRef<ReturnType<typeof createDebouncedLatest<{ title: string; description: string; tags: string[] }>> | null>(null)
   saverRef.current ??= createDebouncedLatest({
-      delayMs: 1000,
-      isEqual: (a, b) => a.title === b.title && a.description === b.description && areStringArraysEqual(a.tags, b.tags),
-      onFlush: (next) => {
-        const patch = buildPatch(next)
-        if (Object.keys(patch).length === 0) return
-        updateNote({ id, updates: patch })
-        lastSavedRef.current = next
-      },
-    })
+    delayMs: 1000,
+    isEqual: (a, b) => a.title === b.title && a.description === b.description && areStringArraysEqual(a.tags, b.tags),
+    onFlush: (next) => {
+      const patch = buildPatch(next)
+      if (Object.keys(patch).length === 0) return
+      updateNote({ id, updates: patch })
+      lastSavedRef.current = next
+    },
+  })
 
   const flushPendingUpdates = useCallback(() => saverRef.current?.flush(), [])
 
@@ -189,6 +194,7 @@ export default function NoteEditorScreen() {
           headerBackVisible: false,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
+          headerTitleAlign: 'center',
           headerLeft: () => (
             <View style={styles.headerLeftActions}>
               <Pressable
@@ -229,25 +235,38 @@ export default function NoteEditorScreen() {
               </Pressable>
             </View>
           ),
+          headerTitle: () => (
+            <Pressable
+              onPress={handleDelete}
+              disabled={isDeleting}
+              accessibilityLabel="Delete note"
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.headerButton,
+                styles.headerTitleButton,
+                (pressed || isDeleting) && { opacity: 0.5 },
+              ]}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color={colors.destructive} testID="activity-indicator" />
+              ) : (
+                <Trash2 color={colors.destructive} size={20} />
+              )}
+            </Pressable>
+          ),
           headerRight: () => (
             <View style={styles.headerActions}>
-              <Pressable
-                onPress={handleDelete}
-                disabled={isDeleting}
-                accessibilityLabel="Delete note"
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.headerButton,
-                  (pressed || isDeleting) && { opacity: 0.5 }
-                ]}
-              >
-                {isDeleting ? (
-                  <ActivityIndicator size="small" color={colors.destructive} testID="activity-indicator" />
-                ) : (
-                  <Trash2 color={colors.destructive} size={20} />
-                )}
-              </Pressable>
-              <ThemeToggle style={styles.headerToggle} />
+              <View style={styles.headerRightGroup}>
+                <ThemeToggle style={styles.headerToggle} />
+                <Pressable
+                  onPress={() => setIsNoteMenuVisible(true)}
+                  accessibilityLabel="More options"
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+                >
+                  <MoreVertical color={colors.foreground} size={20} />
+                </Pressable>
+              </View>
             </View>
           ),
         }}
@@ -291,6 +310,11 @@ export default function NoteEditorScreen() {
           />
         </View>
       )}
+      <NoteIndexMenu
+        noteId={id}
+        visible={isNoteMenuVisible}
+        onClose={() => setIsNoteMenuVisible(false)}
+      />
     </View>
   )
 }
@@ -304,7 +328,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     flex: 1,
   },
   header: {
-    padding: 16,
+    padding: CONTENT_HORIZONTAL_PADDING,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -329,12 +353,21 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     color: colors.destructive,
   },
   headerToggle: {
-    marginLeft: 12,
+    marginRight: 8,
+  },
+  headerTitleButton: {
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
+  },
+  headerRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: -HEADER_BUTTON_PADDING,
   },
   headerLeftActions: {
     flexDirection: 'row',
@@ -342,7 +375,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     marginLeft: 4,
   },
   headerButton: {
-    padding: 8,
+    padding: HEADER_BUTTON_PADDING,
   },
   headerButtonDisabled: {
     opacity: 0.35,

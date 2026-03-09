@@ -24,10 +24,15 @@ jest.mock('expo-router', () => ({
   }),
   useLocalSearchParams: () => mockRouteParams,
   Stack: {
-    Screen: ({ children, options }: { children?: ReactNode; options?: { title?: string; headerLeft?: () => ReactNode; headerRight?: () => ReactNode } }) => {
+    Screen: ({ children, options }: { children?: ReactNode; options?: { title?: string; headerLeft?: () => ReactNode; headerRight?: () => ReactNode; headerTitle?: () => ReactNode } }) => {
       const { View } = require('react-native')
       return (
         <View>
+          {options?.headerTitle && (
+            <View testID="header-title">
+              {typeof options.headerTitle === 'function' ? options.headerTitle() : options.headerTitle}
+            </View>
+          )}
           {options?.headerLeft && (
             <View testID="header-left">
               {typeof options.headerLeft === 'function' ? options.headerLeft() : options.headerLeft}
@@ -156,6 +161,13 @@ jest.mock('@ui/mobile/components/tags/TagInput', () => ({
   TagInput: () => {
     const { View } = require('react-native')
     return <View testID="tag-input" />
+  },
+}))
+
+jest.mock('@ui/mobile/components/NoteIndexMenu', () => ({
+  NoteIndexMenu: () => {
+    const { View } = require('react-native')
+    return <View testID="note-index-menu" />
   },
 }))
 
