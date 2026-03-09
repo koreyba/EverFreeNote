@@ -27,12 +27,13 @@ type SearchPage = {
     method?: string
 }
 
-export function useSearch(query: string, options: { tag?: string | null } = {}) {
+export function useSearch(query: string, options: { tag?: string | null; enabled?: boolean } = {}) {
     const { client, user } = useSupabase()
     const searchService = new SearchService(client)
     const noteService = new NoteService(client)
     const isOnline = useNetworkStatus()
     const tag = options.tag && options.tag.trim().length > 0 ? options.tag : null
+    const isEnabled = options.enabled ?? true
     const trimmed = query.trim()
     const queryKey = ['search', user?.id, trimmed, tag] as const
 
@@ -113,7 +114,7 @@ export function useSearch(query: string, options: { tag?: string | null } = {}) 
                 method: 'local_fts',
             }
         },
-        enabled: !!user?.id && (trimmed.length >= 2 || !!tag),
+        enabled: isEnabled && !!user?.id && (trimmed.length >= 2 || !!tag),
         staleTime: 0, // Don't cache search results for long
     })
 }

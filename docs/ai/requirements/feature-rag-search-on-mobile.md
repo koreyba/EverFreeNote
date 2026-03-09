@@ -1,99 +1,144 @@
 ---
 phase: requirements
-title: RAG Search on Mobile — Requirements & Problem Understanding
-description: Bring RAG note indexing (three-dot menu) and a redesigned settings page to the React Native mobile app
+title: RAG Search on Mobile - Requirements & Problem Understanding
+description: Bring the web AI search experience to the React Native mobile app while preserving existing mobile search and note workflows
 ---
 
 # Requirements & Problem Understanding
 
 ## Problem Statement
 
-The web app has two recently built features that are not yet available on mobile:
-1. **Per-note RAG indexing** — users can index/re-index/delete-index a note for AI search directly from the note's overflow menu on the web.
-2. **AI Search panel** — a full search sidebar with FTS and AI/RAG toggle.
+Mobile already supports traditional note search and note-level RAG indexing, but it still lacks the actual AI search experience available on the web. This creates a parity gap for users who index notes on mobile yet cannot run semantic search there.
 
-Additionally, the mobile **Settings** screen currently has only Theme, Sign Out, and Delete Account. As the product grows (API keys, WordPress, import, export), there's no scalable place to put these settings on mobile.
-
-- **Affected users:** Mobile users who want to use AI-assisted note search and manage integrations from their phone.
-- **Current workaround:** None — indexing and settings management is only possible via the web app.
-- **Pain point:** Feature parity gap between web and mobile; mobile settings screen cannot accommodate growing list of options.
+The missing piece is not just a button or backend call. Mobile needs the same search model as web:
+- regular FTS search and AI search as mutually exclusive modes
+- AI result views for both note groups and individual chunks
+- three search strictness presets
+- open-in-context navigation from AI results into the note editor
+- selection-mode rules that match the current web behavior
+- virtualized, incremental loading so large result sets stay responsive
 
 ## Goals & Objectives
 
 ### Primary Goals
-1. **Note three-dot menu** — Add an overflow (`⋮`) button to the mobile note editor header that opens a bottom-sheet/action-sheet with:
-   - **Index note** (or **Re-index note** if already indexed)
-   - **Remove from index** (disabled when not indexed)
-2. **Redesigned Settings page** — Replace the flat list with a sectioned layout that can accommodate current and future settings categories:
-   - **Appearance** (existing: theme)
-   - **Integrations** (new: Google / Gemini API key — implemented now; WordPress — placeholder for later)
-   - **Data** (new: Import — placeholder; Export — placeholder)
-   - **Account** (existing: Sign Out, Delete Account)
+1. Add mobile AI search mode with the same semantic search logic as web.
+2. Support two AI result views:
+   - `notes`
+   - `chunks`
+3. Support three strictness presets:
+   - `strict`
+   - `neutral`
+   - `broad`
+4. Make AI and regular search mutually exclusive so only the active mode fetches.
+5. Open AI results in note context:
+   - navigate to the note
+   - scroll to the matching chunk
+   - show a green left highlight line on the focused chunk
+   - clear that highlight when the user taps in the editor
+6. Preserve long-press bulk selection in `notes` view only.
+7. While selection mode is active, block:
+   - switching between `notes` and `chunks`
+   - switching between regular search and AI search
+8. Keep large result sets fast with virtualization and incremental loading for both regular and AI search.
+9. Unify the visual presentation of search result cards between regular and AI search.
 
 ### Secondary Goals
-- Show live RAG status (chunk count + timestamp) inside the overflow menu so users know if a note is already indexed before deciding to re-index.
-- Google / Gemini API key section is fully functional in this iteration.
-- Settings sections for WordPress, Import, Export show a "Coming soon" badge — UI space is reserved but tapping does nothing harmful.
+- Persist AI search mode preferences on mobile so the chosen mode, preset, and view feel stable.
+- Reuse shared constants and types (`SearchPreset`, `RagChunk`, `RagNoteGroup`) rather than inventing mobile-only variants.
+- Keep existing search history and tag-filter behavior compatible with the new search experience.
 
-### Non-Goals
-- Full AI Search UI on mobile (separate feature, future).
-- WordPress integration implementation on mobile.
-- Import / Export implementation on mobile.
-- Automatic indexing on note save.
-- Bulk indexing from mobile.
+## Non-Goals
+
+- Changing backend ranking logic for `rag-search`
+- Changing the chunking/indexing pipeline
+- Adding selection mode to AI `chunks` view
+- Building a mobile-only AI search design that intentionally diverges from web behavior
+- Replacing the current note editor with a native editor
 
 ## User Stories & Use Cases
 
 | ID | Story |
 |----|-------|
-| US-1 | As a mobile user, I want to tap the `⋮` button on a note so that I can access indexing options without cluttering the header. |
-| US-2 | As a mobile user, I want to tap **Index note** so that this note becomes searchable via AI. |
-| US-3 | As a mobile user, I want to tap **Re-index note** on an already-indexed note so that updates are reflected in AI search. |
-| US-4 | As a mobile user, I want to tap **Remove from index** so that a note is removed from AI search. |
-| US-5 | As a mobile user, I want to see the current index status (chunk count, timestamp) in the menu before deciding to re-index. |
-| US-6 | As a mobile user, I want to open Settings and find a **Google API** section where I can enter or update my Gemini API key. |
-| US-7 | As a mobile user, I want the Settings page to be well-organized with clear sections so I can quickly find what I need now and in the future. |
-| US-8 | As a mobile user, I want WordPress, Import, and Export settings sections to be visible (but marked "Coming soon") so the layout feels complete. |
+| US-1 | As a mobile user, I want to switch from regular search to AI search so I can run semantic queries from my phone. |
+| US-2 | As a mobile user, I want to choose `strict`, `neutral`, or `broad` AI search so I can control recall vs precision. |
+| US-3 | As a mobile user, I want to switch between `notes` and `chunks` views so I can browse grouped note matches or direct fragments. |
+| US-4 | As a mobile user, I want tapping an AI result to open the note at the matching chunk so I do not have to hunt manually. |
+| US-5 | As a mobile user, I want the matched chunk visually highlighted in the editor so I can quickly orient myself. |
+| US-6 | As a mobile user, I want long-press note selection to keep working in search results, but only where it makes sense. |
+| US-7 | As a mobile user, I want the UI to block mode/view switching during selection so I do not lose track of what is selected. |
+| US-8 | As a mobile user with many indexed notes, I want AI results to load incrementally and stay smooth while scrolling. |
 
-### Edge Cases
-- Note editor is loading → `⋮` button disabled until note data is available.
-- Indexing in progress → **Index/Re-index** button shows a spinner and is disabled; **Remove** is also disabled.
-- Gemini API key not configured → **Index/Re-index** still calls the Edge Function; the Edge Function returns a clear error → show error toast.
-- Network offline → indexing fails gracefully with a toast error; status stays unchanged.
-- Delete confirm → tapping **Remove from index** shows a confirmation modal before deleting.
+## Functional Requirements
+
+### Search Modes
+- The search screen must expose a toggle between regular search and AI search.
+- Toggling must immediately activate the selected mode.
+- Only the active mode may fetch or paginate.
+- Search history remains tied to the typed query and should not break with AI mode enabled.
+
+### AI Search Controls
+- AI mode must show the three strictness presets from `@core/constants/aiSearch`.
+- AI mode must show `notes` and `chunks` result views.
+- View switching is allowed only when selection mode is not active.
+
+### Result Views
+- `notes` view must group chunks by note, matching web grouping and dedup rules.
+- `chunks` view must flatten grouped results into chunk cards, matching web limits and ordering.
+- Only `notes` view supports selection mode.
+
+### Open In Context
+- Tapping an AI result in either view must open the note editor.
+- The navigation payload must include enough data to resolve the matching chunk.
+- Because indexed content includes the title prefix, mobile must apply the same title-offset adjustment as web before scrolling.
+- The editor must scroll to the target chunk and decorate the relevant blocks with a green left accent line.
+- The highlight must clear on user interaction inside the editor.
+
+### Performance
+- AI results must use virtualization/incremental loading rather than rendering everything at once.
+- AI pagination must behave cumulatively like web `useAIPaginatedSearch`, replacing the visible result set with refreshed ranked groups when `topK` grows.
+- Regular search virtualization must remain intact.
+
+## Edge Cases
+
+- User enables AI search without a configured Gemini key: toggle can be shown but AI results should fail clearly and recover cleanly.
+- Query is below `AI_SEARCH_MIN_QUERY_LENGTH`: AI mode should not fetch and should show the idle/empty guidance state.
+- User switches notes quickly after tapping different AI results: only the latest chunk focus request should apply.
+- Note is not currently in local search results: app must still fetch/open that note if needed for AI open-in-context.
+- Selection mode active: AI toggle and view tabs must be visibly blocked, not silently ignored.
+- Chunk highlight request arrives before the editor WebView is ready: it must queue and apply once ready.
 
 ## Success Criteria
 
-- [ ] `⋮` button appears in the note editor header (right side, next to Trash and ThemeToggle).
-- [ ] Tapping `⋮` opens a bottom sheet with index options and current status.
-- [ ] **Index note** / **Re-index note** calls `supabase.functions.invoke('rag-index')` and shows a toast on success/error.
-- [ ] **Remove from index** requires confirmation, then calls the delete action and shows a toast.
-- [ ] RAG status (chunk count) is polled every 3 seconds — same logic as web `useRagStatus` hook.
-- [ ] Settings screen has 4 named sections: Appearance, Integrations, Data, Account.
-- [ ] **Google / Gemini API** row in Integrations opens a modal to enter/update the Gemini API key (uses existing `ApiKeysSettingsService`).
-- [ ] WordPress, Import, Export rows are visible with "Coming soon" badge and non-destructive on tap.
-- [ ] All existing Settings functionality (Theme, Sign Out, Delete Account) still works.
+- [ ] Mobile search supports both regular and AI search modes.
+- [ ] AI mode supports `notes` and `chunks` views.
+- [ ] AI mode supports `strict`, `neutral`, and `broad` presets.
+- [ ] Only the active search mode fetches.
+- [ ] Switching the AI toggle immediately activates the selected search type.
+- [ ] Long-press selection works only in note-style result lists.
+- [ ] Selection mode blocks AI toggle and AI view switching.
+- [ ] AI result tap opens the note, scrolls to the matching chunk, and highlights it.
+- [ ] Chunk highlight clears when the user taps in the editor.
+- [ ] AI result rendering is virtualized/incremental and remains responsive with large datasets.
+- [ ] Regular and AI note cards share a unified visual language.
 
 ## Constraints & Assumptions
 
 ### Technical Constraints
-- Mobile app: React Native + Expo (Expo Router), NativeWind / StyleSheet, TypeScript.
-- The Supabase client on mobile is `client` (not `supabase`) from `useSupabase()` — the mobile provider uses `client` as the key, not `supabase`.
-- `client.functions.invoke('rag-index', ...)` works identically to the web — Supabase JS client is shared.
-- `GEMINI_API_KEY` lives only in Edge Function environment — no mobile-side secret.
-- `ApiKeysSettingsService` (in `core/services/apiKeysSettings.ts`) is already shared and reusable on mobile.
-- `useRagStatus` hook depends on `useSupabase()` from the web provider — needs a mobile equivalent or inline implementation.
+- Mobile app uses React Native + Expo Router.
+- Mobile Supabase provider exposes `client`, not `supabase`.
+- The embedded editor is driven through `EditorWebView` and the web `editor-webview` page bridge.
+- Shared RAG search constants/types already exist in `core`.
 
 ### Assumptions
-- The `rag-index` Edge Function is already deployed and working (built for the web feature).
-- `note_embeddings` RLS is enforced — mobile users can only see/modify their own rows.
-- The `⋮` menu on mobile should be a **Modal + ActionSheet** pattern (no `DropdownMenu` — not standard on RN).
+- `rag-search` Edge Function is already deployed and compatible with mobile auth.
+- Existing web grouping/dedup logic is the source of truth for AI notes/chunks behavior.
+- The mobile search screen may be refactored structurally as long as existing non-AI flows remain correct.
 
 ## Questions & Open Items
 
 | # | Question | Status |
 |---|----------|--------|
-| Q1 | Should the three-dot menu be a native ActionSheet or a custom Modal bottom sheet? | **Resolved: custom Modal bottom sheet** — consistent with existing mobile UI pattern (delete confirm modal). |
-| Q2 | Should `useRagStatus` be shared as a hook in `@ui/mobile/hooks/` or reuse the core logic? | **Resolved: create `useRagStatus.ts` in `ui/mobile/hooks/`** — adapts the web hook to use mobile's `client` key from `useSupabase()`. |
-| Q3 | How should "Coming soon" items look in Settings? | **Resolved: badge labeled "Soon" next to the item title, row is non-interactive (opacity 0.5).** |
-| Q4 | Where exactly does the `⋮` button go in the header? | **Resolved: rightmost position in `headerRight`, replacing ThemeToggle which moves to Settings page only.** Wait — ThemeToggle stays for now; `⋮` is added next to it. |
+| Q1 | Should mobile AI search run on debounced typing or explicit Enter/submit only? | Resolved: mobile should activate the currently selected mode immediately from the search field interaction pattern, without requiring a separate web-style Enter-only flow. |
+| Q2 | Should selection mode exist in chunk view? | Resolved: no, selection is supported only in notes view. |
+| Q3 | How should chunk focus be shown in the editor? | Resolved: same behavior as web - green left line on focused chunk blocks, cleared on click/tap. |
+| Q4 | What lives in the note header after prior feature work? | Resolved: `Delete` stays centered in `headerTitle`; `ThemeToggle` stays beside the `⋮` button in `headerRight`. |

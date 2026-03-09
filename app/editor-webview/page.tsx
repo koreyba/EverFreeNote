@@ -163,6 +163,16 @@ export default function EditorWebViewPage() {
               editorRef.current.runCommand(method, ...(Array.isArray(args) ? args : []))
             }
           }
+        } else if (type === 'SCROLL_TO_CHUNK') {
+          if (editorRef.current) {
+            const { charOffset, chunkLength } = (payload ?? {}) as {
+              charOffset?: unknown
+              chunkLength?: unknown
+            }
+            if (typeof charOffset === 'number' && typeof chunkLength === 'number') {
+              editorRef.current.scrollToChunk(charOffset, chunkLength)
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to parse message:', error)

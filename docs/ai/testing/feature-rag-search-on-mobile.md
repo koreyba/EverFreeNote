@@ -1,60 +1,87 @@
 ---
 phase: testing
-title: RAG Search on Mobile — Testing Strategy
-description: Test checklist for mobile RAG indexing menu and settings redesign
+title: RAG Search on Mobile - Testing Strategy
+description: Test plan for mobile AI search parity, chunk open-in-context, and result-list behavior
+note: This file was created by copying the testing template from docs/ai/testing/README.md and tailoring it for this feature.
 ---
 
 # Testing Strategy
 
 ## Unit Tests
 
-### `useRagStatus` (mobile hook)
-- [ ] Returns `{ chunkCount: 0, isLoading: false }` when `noteId` is undefined
-- [ ] Returns `{ chunkCount: 0, isLoading: false }` when `user` is null
-- [ ] Calls `client.from('note_embeddings').select(...)` with correct `note_id` and `user_id`
-- [ ] Returns correct `chunkCount` from query result
-- [ ] Returns latest `indexedAt` from multiple rows
-- [ ] `refresh()` triggers a re-fetch (increments tick)
-- [ ] Cleans up interval on unmount
+### `useMobileSearchMode`
+- [ ] Loads default state when no persisted value exists
+- [ ] Restores persisted `isAIEnabled`, `preset`, and `viewMode`
+- [ ] Persists changes after toggling mode or switching view/preset
+- [ ] Sanitizes invalid persisted values back to supported defaults
 
-### `NoteIndexMenu`
-- [ ] Renders correctly when `chunkCount === 0` ("Index note" enabled, "Remove" disabled)
-- [ ] Renders correctly when `chunkCount > 0` ("Re-index note" enabled, "Remove" enabled)
-- [ ] Calls `client.functions.invoke('rag-index', { body: { noteId, action: 'index' } })` on Index tap
-- [ ] Calls `client.functions.invoke('rag-index', { body: { noteId, action: 'reindex' } })` on Re-index tap
-- [ ] Shows confirmation modal before delete
-- [ ] Calls delete action after confirmation
-- [ ] Shows error toast on invoke failure
+### `useMobileAIPaginatedSearch`
+- [ ] Does not fetch below `AI_SEARCH_MIN_QUERY_LENGTH`
+- [ ] Calls `rag-search` with preset-derived `topK` and `threshold`
+- [ ] Groups returned chunks by note
+- [ ] Deduplicates chunks that are too close in offset
+- [ ] Replaces accumulated results when cumulative `topK` grows
+- [ ] Resets accumulated results when query/preset/tag changes
+- [ ] Exposes correct `aiHasMore` and `aiLoadingMore` behavior
 
-### `GeminiApiKeySection`
-- [ ] Calls `ApiKeysSettingsService.getStatus()` on modal open
-- [ ] Shows "Configured" badge when `configured === true`
-- [ ] Shows "Not configured" when `configured === false`
-- [ ] Save calls `ApiKeysSettingsService.upsert(key)` with trimmed key
-- [ ] Shows success message after save
-- [ ] Shows error message on failure
+### Search result components
+- [ ] Note result card renders title, tags, snippet, and score correctly
+- [ ] Chunk result card renders note title, chunk snippet, and score correctly
+- [ ] Long press selection handlers exist only for note-style cards
+- [ ] Disabled controls expose blocked state when selection mode is active
 
-## Manual QA Checklist
+### Editor bridge
+- [ ] `EditorWebView.scrollToChunk()` posts the expected message
+- [ ] note screen converts title-prefixed offsets to body-relative offsets
+- [ ] pending chunk focus waits for editor readiness before dispatch
 
-### Note overflow menu
-- [ ] `⋮` button visible in note editor header
-- [ ] Tapping opens bottom sheet
-- [ ] Status line shows correct chunk count and timestamp (or "Not indexed")
-- [ ] "Index note" / "Re-index note" label correct based on status
-- [ ] Tap outside the sheet closes it
-- [ ] Indexing spinner shows during operation
-- [ ] Success toast appears after indexing
-- [ ] Error toast appears on failure (e.g. no API key)
-- [ ] Confirm modal appears before delete
-- [ ] After delete, status resets to "Not indexed"
+## Integration Tests
 
-### Settings screen
-- [ ] 4 sections visible: APPEARANCE, INTEGRATIONS, DATA, ACCOUNT
-- [ ] Theme selection still works
-- [ ] Google / Gemini API row opens modal
-- [ ] Modal loads status correctly (Configured / Not configured)
-- [ ] Can enter and save a new API key
-- [ ] WordPress row shows "Soon" badge and is non-interactive
-- [ ] Import / Export rows show "Soon" badge and are non-interactive
-- [ ] Sign Out works
-- [ ] Delete Account modal still works
+- [ ] AI toggle activates AI mode and suppresses regular search fetches
+- [ ] Switching back to regular mode suppresses AI fetches
+- [ ] Notes/chunks tab switch updates the rendered result list
+- [ ] Selection mode blocks AI toggle and view switching
+- [ ] Long press selection works in notes view
+- [ ] Chunk view does not allow note selection
+- [ ] AI result tap opens the note with chunk-focus params
+- [ ] Regular search pagination remains functional after the refactor
+- [ ] AI pagination loads more results on scroll/end reached
+
+## End-to-End / Manual QA Checklist
+
+- [ ] Search screen still loads and regular search works with no AI interaction
+- [ ] Enabling AI search immediately switches the active search mode
+- [ ] `Strict`, `Neutral`, and `Broad` produce visibly different recall behavior
+- [ ] Notes view shows grouped note matches
+- [ ] Chunks view shows direct fragment matches
+- [ ] Tapping an AI result opens the correct note
+- [ ] Note editor scrolls to the matching chunk
+- [ ] Focused chunk shows green left highlight
+- [ ] Tapping inside the editor clears the highlight
+- [ ] Long press note selection still works in note-style result lists
+- [ ] While selection mode is active, AI toggle and notes/chunks tabs are blocked
+- [ ] Large result sets remain smooth while scrolling and paginate correctly
+
+## Test Coverage Results
+
+| Component | Coverage % | Lines Covered / Total | Last updated |
+|-----------|------------|-----------------------|--------------|
+| `useRagStatus` | TBD | TBD / TBD | 2026-03-09 |
+| `NoteIndexMenu` | TBD | TBD / TBD | 2026-03-09 |
+| `GeminiApiKeySection` | TBD | TBD / TBD | 2026-03-09 |
+| `useMobileSearchMode` | TBD | TBD / TBD | 2026-03-09 |
+| `useMobileAIPaginatedSearch` | TBD | TBD / TBD | 2026-03-09 |
+
+## Outstanding Gaps
+
+### Unit Test Gaps
+- Exact visual score styling thresholds may remain covered only indirectly unless dedicated component tests are added.
+- AsyncStorage recovery from malformed JSON should be explicitly tested if persistence logic grows more complex.
+
+### Integration Test Gaps
+- Full scroll-to-chunk behavior inside the real WebView may still need higher-level verification beyond mocked bridge tests.
+- Very large AI result sets should be stress-tested with representative fixtures, not only small mocked pages.
+
+### Manual QA Gaps
+- Device-level validation is still needed on at least one Android handset for WebView scroll and highlight clearing.
+- Manual UX verification is needed for disabled-control messaging during selection mode.

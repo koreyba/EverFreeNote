@@ -18,7 +18,17 @@ const CONTENT_HORIZONTAL_PADDING = 16
 const HEADER_BUTTON_PADDING = 8
 
 export default function NoteEditorScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const {
+    id,
+    focusOffset,
+    focusLength,
+    focusRequestId,
+  } = useLocalSearchParams<{
+    id: string
+    focusOffset?: string
+    focusLength?: string
+    focusRequestId?: string
+  }>()
   const { data: note, isLoading, error } = useNote(id)
   const { mutate: updateNote } = useUpdateNote()
   const { mutate: deleteNote, isPending: isDeleting } = useDeleteNote()
@@ -37,6 +47,7 @@ export default function NoteEditorScreen() {
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const lastHydratedNoteIdRef = useRef<string | null>(null)
+  const lastAppliedChunkFocusRequestIdRef = useRef<string | null>(null)
   const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
     title: '',
     description: '',
@@ -119,6 +130,40 @@ export default function NoteEditorScreen() {
       saverRef.current?.reset(lastSavedRef.current)
     }
   }, [note])
+
+  const pendingChunkFocus = useMemo(() => {
+    if (!note?.id) return null
+    const rawOffset = typeof focusOffset === 'string' ? Number.parseInt(focusOffset, 10) : Number.NaN
+    const rawLength = typeof focusLength === 'string' ? Number.parseInt(focusLength, 10) : Number.NaN
+
+    if (!Number.isFinite(rawOffset) || !Number.isFinite(rawLength) || rawLength <= 0) {
+      return null
+    }
+
+    const titlePrefix = (note.title ?? '').trim()
+    const bodyOffset = titlePrefix ? Math.max(0, rawOffset - (titlePrefix.length + 1)) : rawOffset
+
+    return {
+      requestId:
+        typeof focusRequestId === 'string' && focusRequestId.length > 0
+          ? focusRequestId
+          : `${note.id}:${bodyOffset}:${rawLength}`,
+      charOffset: bodyOffset,
+      chunkLength: rawLength,
+    }
+  }, [focusLength, focusOffset, focusRequestId, note?.id, note?.title])
+
+  useEffect(() => {
+    if (!pendingChunkFocus) return
+    if (lastAppliedChunkFocusRequestIdRef.current === pendingChunkFocus.requestId) return
+    editorRef.current?.scrollToChunk(pendingChunkFocus.charOffset, pendingChunkFocus.chunkLength)
+    lastAppliedChunkFocusRequestIdRef.current = pendingChunkFocus.requestId
+    router.setParams({
+      focusOffset: '',
+      focusLength: '',
+      focusRequestId: '',
+    })
+  }, [pendingChunkFocus, router])
 
   const scheduleSave = useCallback(() => {
     saverRef.current?.schedule({ ...latestDraftRef.current })

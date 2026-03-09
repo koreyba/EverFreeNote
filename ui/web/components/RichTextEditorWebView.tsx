@@ -9,11 +9,13 @@ import { SmartPasteService } from "@core/services/smartPaste"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
 import { applySelectionAsMarkdown } from "@ui/web/lib/editor"
 import { executeEditorCommand } from "./executeEditorCommand"
+import { scrollEditorToChunk } from "./chunkFocusUtils"
 
 export type RichTextEditorWebViewHandle = {
   getHTML: () => string
   setContent: (html: string) => void
   runCommand: (command: string, ...args: unknown[]) => void
+  scrollToChunk: (charOffset: number, chunkLength: number) => void
 }
 
 type RichTextEditorWebViewProps = {
@@ -160,6 +162,10 @@ const RichTextEditorWebView = React.forwardRef<
           args,
           onApplySelectionAsMarkdown: handleApplySelectionAsMarkdown,
         })
+      },
+      scrollToChunk: (charOffset: number, chunkLength: number) => {
+        if (!editor) return
+        scrollEditorToChunk(editor, charOffset, chunkLength)
       },
     }),
     [editor, handleApplySelectionAsMarkdown]

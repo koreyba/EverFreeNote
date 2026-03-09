@@ -23,6 +23,7 @@ interface SwipeableNoteCardProps {
     onDelete: (id: string) => void
     isSelectionMode?: boolean
     isSelected?: boolean
+    variant?: 'list' | 'search'
 }
 
 interface RightActionProps {
@@ -58,6 +59,7 @@ export const SwipeableNoteCard = memo(function SwipeableNoteCard({
     onDelete,
     isSelectionMode = false,
     isSelected = false,
+    variant = 'list',
 }: SwipeableNoteCardProps) {
     const { colors } = useTheme()
     const { register, unregister, onSwipeStart } = useSwipeContext()
@@ -100,6 +102,7 @@ export const SwipeableNoteCard = memo(function SwipeableNoteCard({
                 onPress={handlePress}
                 onLongPress={onLongPress}
                 onTagPress={onTagPress}
+                variant={variant}
                 isSelectionMode
                 isSelected={isSelected}
             />
@@ -121,6 +124,7 @@ export const SwipeableNoteCard = memo(function SwipeableNoteCard({
                     onPress={handlePress}
                     onLongPress={onLongPress}
                     onTagPress={onTagPress}
+                    variant={variant}
                 />
             </View>
         </ReanimatedSwipeable>
