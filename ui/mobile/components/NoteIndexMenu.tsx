@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react'
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import {
     Modal,
     View,
@@ -45,6 +45,18 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
 
     const isIndexed = chunkCount > 0
     const isBusy = operation !== null
+    const isStatusPending = isLoading && !isBusy
+    const isIndexActionDisabled = isBusy || isStatusPending
+    const isDeleteActionDisabled = isBusy || isStatusPending || !isIndexed
+
+    useEffect(() => {
+        return () => {
+            if (toastTimerRef.current) {
+                clearTimeout(toastTimerRef.current)
+                toastTimerRef.current = null
+            }
+        }
+    }, [])
 
     const handleClose = useCallback(() => {
         // Prevent closing while an operation is in progress
@@ -55,10 +67,14 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
     const showToast = useCallback((text: string, isError = false) => {
         if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
         setToastMessage({ text, isError })
-        toastTimerRef.current = setTimeout(() => setToastMessage(null), 3000)
+        toastTimerRef.current = setTimeout(() => {
+            toastTimerRef.current = null
+            setToastMessage(null)
+        }, 3000)
     }, [])
 
     const handleIndex = async () => {
+        if (isIndexActionDisabled) return
         setOperation('indexing')
         try {
             const action = isIndexed ? 'reindex' : 'index'
@@ -137,21 +153,21 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
                             style={({ pressed }) => [
                                 styles.actionButton,
                                 pressed && !isBusy && styles.actionButtonPressed,
-                                isBusy && styles.actionButtonDisabled,
+                                isIndexActionDisabled && styles.actionButtonDisabled,
                             ]}
                             onPress={() => { void handleIndex() }}
-                            disabled={isBusy}
+                            disabled={isIndexActionDisabled}
                             accessibilityRole="button"
                             accessibilityLabel={isIndexed ? 'Re-index note' : 'Index note'}
-                            accessibilityState={{ disabled: isBusy }}
+                            accessibilityState={{ disabled: isIndexActionDisabled }}
                         >
                             <View style={styles.actionButtonContent}>
                                 {operation === 'indexing' ? (
                                     <ActivityIndicator size="small" color={colors.primary} style={styles.actionIcon} />
                                 ) : (
-                                    <Database size={20} color={isBusy ? colors.mutedForeground : colors.foreground} style={styles.actionIcon} />
+                                    <Database size={20} color={isIndexActionDisabled ? colors.mutedForeground : colors.foreground} style={styles.actionIcon} />
                                 )}
-                                <Text style={[styles.actionButtonText, isBusy && styles.actionButtonTextDisabled]}>
+                                <Text style={[styles.actionButtonText, isIndexActionDisabled && styles.actionButtonTextDisabled]}>
                                     {isIndexed ? 'Re-index note' : 'Index note'}
                                 </Text>
                             </View>
@@ -162,24 +178,24 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
                             style={({ pressed }) => [
                                 styles.actionButton,
                                 pressed && !isBusy && !(!isIndexed) && styles.actionButtonPressed,
-                                (isBusy || !isIndexed) && styles.actionButtonDisabled,
+                                isDeleteActionDisabled && styles.actionButtonDisabled,
                             ]}
                             onPress={() => setDeleteConfirmVisible(true)}
-                            disabled={isBusy || !isIndexed}
+                            disabled={isDeleteActionDisabled}
                             accessibilityRole="button"
                             accessibilityLabel="Remove from index"
-                            accessibilityState={{ disabled: isBusy || !isIndexed }}
+                            accessibilityState={{ disabled: isDeleteActionDisabled }}
                         >
                             <View style={styles.actionButtonContent}>
                                 {operation === 'deleting' ? (
                                     <ActivityIndicator size="small" color={colors.destructive} style={styles.actionIcon} />
                                 ) : (
-                                    <Trash2 size={20} color={(isBusy || !isIndexed) ? colors.mutedForeground : colors.destructive} style={styles.actionIcon} />
+                                    <Trash2 size={20} color={isDeleteActionDisabled ? colors.mutedForeground : colors.destructive} style={styles.actionIcon} />
                                 )}
                                 <Text style={[
                                     styles.actionButtonText,
                                     styles.destructiveText,
-                                    (isBusy || !isIndexed) && styles.actionButtonTextDisabled,
+                                    isDeleteActionDisabled && styles.actionButtonTextDisabled,
                                 ]}>
                                     Remove from index
                                 </Text>

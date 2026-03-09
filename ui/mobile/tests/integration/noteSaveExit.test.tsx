@@ -27,10 +27,15 @@ jest.mock('expo-router', () => ({
   }),
   useLocalSearchParams: () => mockUseLocalSearchParams(),
   Stack: {
-    Screen: ({ children, options }: { children: ReactNode; options?: { headerRight?: () => ReactNode; headerLeft?: () => ReactNode } }) => {
+    Screen: ({ children, options }: { children: ReactNode; options?: { headerRight?: () => ReactNode; headerLeft?: () => ReactNode; headerTitle?: () => ReactNode } }) => {
       const { View } = require('react-native')
       return (
         <View>
+          {options?.headerTitle && (
+            <View testID="header-title">
+              {typeof options.headerTitle === 'function' ? options.headerTitle() : options.headerTitle}
+            </View>
+          )}
           {options?.headerRight && (
             <View testID="header-right">
               {typeof options.headerRight === 'function' ? options.headerRight() : options.headerRight}

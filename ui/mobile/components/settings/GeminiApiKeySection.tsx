@@ -30,7 +30,7 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
 
     const [modalVisible, setModalVisible] = useState(false)
     const [geminiApiKey, setGeminiApiKey] = useState('')
-    const [configured, setConfigured] = useState(false)
+    const [configured, setConfigured] = useState<boolean | null>(null)
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -41,11 +41,11 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
         setErrorMessage(null)
         setSuccessMessage(null)
         setGeminiApiKey('')
+        setConfigured(null)
         try {
             const status = await service.getStatus()
             setConfigured(status.gemini.configured)
         } catch (err) {
-            setConfigured(false)
             setErrorMessage(err instanceof Error ? err.message : 'Failed to load API key settings')
         } finally {
             setLoading(false)
@@ -54,9 +54,7 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
 
     const openModal = () => {
         setModalVisible(true)
-        loadStatus().catch((err) => {
-            console.error('Failed to load Gemini API key status:', err)
-        })
+        void loadStatus()
     }
 
     const closeModal = () => {
@@ -72,11 +70,11 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
         setSuccessMessage(null)
         const trimmedKey = geminiApiKey.trim()
 
-        if (!trimmedKey && !configured) {
+        if (!trimmedKey && configured !== true) {
             setErrorMessage('Gemini API key is required for initial setup.')
             return
         }
-        if (!trimmedKey && configured) {
+        if (!trimmedKey && configured === true) {
             setSuccessMessage('No changes to save.')
             return
         }
@@ -98,7 +96,7 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
         if (loading) {
             return <ActivityIndicator size="small" color={colors.mutedForeground} />
         }
-        if (configured) {
+        if (configured === true) {
             return <CheckCircle2 size={18} color="#22c55e" />
         }
         return null
@@ -108,7 +106,7 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
         <>
             <SettingsRow
                 title="Google / Gemini API"
-                subtitle={configured ? 'Key configured' : 'Not configured'}
+                subtitle={configured === true ? 'Key configured' : configured === false ? 'Not configured' : 'Tap to check status'}
                 right={renderStatusBadge()}
                 onPress={openModal}
                 isFirst={isFirst}
@@ -145,14 +143,18 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
 
                         {/* Status badge */}
                         {!loading && (
-                            <View style={[styles.statusBadge, configured ? styles.statusBadgeConfigured : styles.statusBadgeEmpty]}>
-                                {configured ? (
+                            <View style={[styles.statusBadge, configured === true ? styles.statusBadgeConfigured : styles.statusBadgeEmpty]}>
+                                {configured === true ? (
                                     <CheckCircle2 size={16} color="#22c55e" />
                                 ) : (
                                     <Key size={16} color={colors.mutedForeground} />
                                 )}
-                                <Text style={[styles.statusBadgeText, configured ? styles.statusTextConfigured : styles.statusTextEmpty]}>
-                                    {configured ? 'Gemini API key is configured.' : 'No key configured yet.'}
+                                <Text style={[styles.statusBadgeText, configured === true ? styles.statusTextConfigured : styles.statusTextEmpty]}>
+                                    {configured === true
+                                        ? 'Gemini API key is configured.'
+                                        : configured === false
+                                          ? 'No key configured yet.'
+                                          : 'Unable to determine key status.'}
                                 </Text>
                             </View>
                         )}
@@ -171,7 +173,7 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
                                     style={styles.input}
                                     value={geminiApiKey}
                                     onChangeText={setGeminiApiKey}
-                                    placeholder={configured ? 'Leave empty to keep current key' : 'AIzaSy...'}
+                                    placeholder={configured === true ? 'Leave empty to keep current key' : 'AIzaSy...'}
                                     placeholderTextColor={colors.mutedForeground}
                                     secureTextEntry
                                     autoComplete="off"
@@ -179,7 +181,7 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
                                     autoCapitalize="none"
                                     editable={!saving}
                                 />
-                                {configured && (
+                                {configured === true && (
                                     <Text style={styles.inputHint}>A key is stored. Enter a new one only to replace it.</Text>
                                 )}
                             </View>

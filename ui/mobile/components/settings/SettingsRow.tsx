@@ -24,7 +24,7 @@ export function SettingsRow({
     showChevron = true,
     isFirst = false,
     isLast = false,
-}: SettingsRowProps) {
+}: Readonly<SettingsRowProps>) {
     const { colors } = useTheme()
     const styles = useMemo(() => createStyles(colors), [colors])
 

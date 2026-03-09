@@ -27,11 +27,16 @@ jest.mock('expo-router', () => ({
   }),
   useLocalSearchParams: () => ({ id: 'test-note-id' }),
   Stack: {
-    Screen: ({ children, options }: { children: ReactNode; options?: { headerRight?: () => ReactNode; headerLeft?: () => ReactNode } }) => {
+    Screen: ({ children, options }: { children: ReactNode; options?: { headerRight?: () => ReactNode; headerLeft?: () => ReactNode; headerTitle?: () => ReactNode } }) => {
       const { View } = require('react-native')
       return (
         <View>
           {/* Render header options if provided */}
+          {options?.headerTitle && (
+            <View testID="header-title">
+              {typeof options.headerTitle === 'function' ? options.headerTitle() : options.headerTitle}
+            </View>
+          )}
           {options?.headerRight && (
             <View testID="header-right">
               {typeof options.headerRight === 'function' ? options.headerRight() : options.headerRight}
@@ -185,9 +190,15 @@ jest.mock('@ui/mobile/components/tags/TagInput', () => ({
 }))
 
 jest.mock('@ui/mobile/components/NoteIndexMenu', () => ({
-  NoteIndexMenu: () => {
-    const { View } = require('react-native')
-    return <View testID="note-index-menu" />
+  NoteIndexMenu: ({ visible, noteId, onClose }: { visible: boolean; noteId: string; onClose: () => void }) => {
+    const { View, Text, Pressable } = require('react-native')
+    return (
+      <View testID="note-index-menu">
+        <Text testID="note-index-menu-visibility">{visible ? 'visible' : 'hidden'}</Text>
+        <Text testID="note-index-menu-note-id">{noteId}</Text>
+        <Pressable accessibilityLabel="Close note index menu" onPress={onClose} />
+      </View>
+    )
   },
 }))
 
@@ -533,6 +544,29 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       expect(screen.getByLabelText('Delete note')).toBeTruthy()
       expect(screen.getByTestId('theme-toggle')).toBeTruthy()
+    })
+
+    it('opens note index menu from more options and forwards note id', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      expect(screen.getByTestId('note-index-menu-visibility').props.children).toBe('hidden')
+      expect(screen.getByTestId('note-index-menu-note-id').props.children).toBe('test-note-id')
+
+      fireEvent.press(screen.getByLabelText('More options'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('note-index-menu-visibility').props.children).toBe('visible')
+      })
+
+      fireEvent.press(screen.getByLabelText('Close note index menu'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('note-index-menu-visibility').props.children).toBe('hidden')
+      })
     })
   })
 

@@ -191,6 +191,7 @@ export default function NoteEditorScreen() {
           headerBackVisible: false,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
+          headerTitleAlign: 'center',
           headerLeft: () => (
             <View style={styles.headerLeftActions}>
               <Pressable
@@ -231,25 +232,27 @@ export default function NoteEditorScreen() {
               </Pressable>
             </View>
           ),
+          headerTitle: () => (
+            <Pressable
+              onPress={handleDelete}
+              disabled={isDeleting}
+              accessibilityLabel="Delete note"
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.headerButton,
+                styles.headerTitleButton,
+                (pressed || isDeleting) && { opacity: 0.5 },
+              ]}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color={colors.destructive} testID="activity-indicator" />
+              ) : (
+                <Trash2 color={colors.destructive} size={20} />
+              )}
+            </Pressable>
+          ),
           headerRight: () => (
             <View style={styles.headerActions}>
-              <Pressable
-                onPress={handleDelete}
-                disabled={isDeleting}
-                accessibilityLabel="Delete note"
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.headerButton,
-                  styles.headerDeleteCentered,
-                  (pressed || isDeleting) && { opacity: 0.5 },
-                ]}
-              >
-                {isDeleting ? (
-                  <ActivityIndicator size="small" color={colors.destructive} testID="activity-indicator" />
-                ) : (
-                  <Trash2 color={colors.destructive} size={20} />
-                )}
-              </Pressable>
               <View style={styles.headerRightGroup}>
                 <ThemeToggle style={styles.headerToggle} />
                 <Pressable
@@ -347,25 +350,20 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     color: colors.destructive,
   },
   headerToggle: {
-    marginLeft: 12,
+    marginRight: 8,
+  },
+  headerTitleButton: {
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerActions: {
-    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    minWidth: 140,
-    marginRight: 12,
   },
   headerRightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 'auto',
-  },
-  headerDeleteCentered: {
-    position: 'absolute',
-    left: '50%',
-    transform: [{ translateX: -18 }],
   },
   headerLeftActions: {
     flexDirection: 'row',
