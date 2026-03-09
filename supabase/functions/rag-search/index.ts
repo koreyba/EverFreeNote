@@ -268,7 +268,7 @@ serve(async (req: Request) => {
     }
 
     if (!chunks || chunks.length === 0) {
-      return jsonResponse({ chunks: [] })
+      return jsonResponse({ chunks: [], availableChunkCount: 0 })
     }
 
     // Filter by similarity threshold (post-RPC)
@@ -281,7 +281,7 @@ serve(async (req: Request) => {
     }>).filter((c) => c.similarity >= threshold)
 
     if (filteredChunks.length === 0) {
-      return jsonResponse({ chunks: [] })
+      return jsonResponse({ chunks: [], availableChunkCount: 0 })
     }
 
     // Enrich with note title and tags (single query)
@@ -313,7 +313,12 @@ serve(async (req: Request) => {
     })
 
     const finalResult = tagFilter ? result.filter((item) => item.noteTags.includes(tagFilter)) : result
-    return jsonResponse({ chunks: finalResult })
+    return jsonResponse({
+      chunks: finalResult,
+      // Preserve pre-tag-filter count so the client can keep paginating when
+      // topK results contain non-matching tags that are removed after enrichment.
+      availableChunkCount: result.length,
+    })
   } catch (err) {
     console.error("[rag-search]", err)
     const isGeminiError = err instanceof Error && err.message.startsWith("Gemini")

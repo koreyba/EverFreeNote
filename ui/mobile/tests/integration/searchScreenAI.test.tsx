@@ -1,4 +1,5 @@
 import React from 'react'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { QueryClient } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, createQueryWrapper, createTestQueryClient } from '../testUtils'
 
@@ -125,6 +126,7 @@ jest.mock('@shopify/flash-list', () => ({
 import SearchScreen from '@ui/mobile/app/(tabs)/search'
 
 describe('SearchScreen - AI search', () => {
+  const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>
   let queryClient: QueryClient
   let wrapper: ReturnType<typeof createQueryWrapper>
 
@@ -136,6 +138,8 @@ describe('SearchScreen - AI search', () => {
     mockInvoke.mockReset()
     mockSearchNotes.mockReset()
     mockGetStatus.mockReset()
+    mockAsyncStorage.getItem.mockResolvedValue(null)
+    mockAsyncStorage.setItem.mockResolvedValue(undefined)
 
     mockGetStatus.mockResolvedValue({
       gemini: { configured: true },
@@ -185,7 +189,14 @@ describe('SearchScreen - AI search', () => {
       expect(screen.getByTestId('ai-search-toggle').props.accessibilityState.disabled).toBe(false)
     })
 
-    fireEvent.press(screen.getByTestId('ai-search-toggle'))
+    const toggle = screen.getByTestId('ai-search-toggle')
+    if (!toggle.props.accessibilityState.checked) {
+      fireEvent.press(toggle)
+    }
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-search-toggle').props.accessibilityState.checked).toBe(true)
+    })
   }
 
   it('runs AI search without regular FTS when AI mode is enabled', async () => {

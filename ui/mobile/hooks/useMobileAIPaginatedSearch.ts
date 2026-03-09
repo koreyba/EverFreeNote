@@ -86,7 +86,7 @@ export function useMobileAIPaginatedSearch({
   filterTag,
   isEnabled,
 }: UseMobileAIPaginatedSearchOptions) {
-  const { client } = useSupabase()
+  const { client, user } = useSupabase()
   const { topK: baseTopK, threshold } = SEARCH_PRESETS[preset]
   const pageSize = Math.max(1, baseTopK)
 
@@ -95,7 +95,7 @@ export function useMobileAIPaginatedSearch({
   const lastProcessedDataRef = useRef('')
 
   const trimmedQuery = query.trim()
-  const queryEnabled = isEnabled && trimmedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH
+  const queryEnabled = isEnabled && !!user?.id && trimmedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH
   const searchIdentity = `${trimmedQuery}::${preset}::${filterTag ?? ''}::${isEnabled}`
   const [committedIdentity, setCommittedIdentity] = useState(searchIdentity)
   const effectiveAiOffset = committedIdentity !== searchIdentity ? 0 : aiOffset
@@ -118,8 +118,10 @@ export function useMobileAIPaginatedSearch({
   }, [committedIdentity, resetAIResults, searchIdentity])
 
   const result = useQuery({
-    queryKey: ['mobileAiSearch', trimmedQuery, preset, filterTag, requestedTopK],
+    queryKey: ['mobileAiSearch', user?.id ?? null, trimmedQuery, preset, filterTag, requestedTopK],
     queryFn: async () => {
+      if (!user?.id) throw new Error('User not authenticated')
+
       const { data, error } = await client.functions.invoke('rag-search', {
         body: {
           query: trimmedQuery,
@@ -132,8 +134,10 @@ export function useMobileAIPaginatedSearch({
       if (error) throw new Error(error.message ?? 'AI Search failed')
 
       const chunks = Array.isArray(data?.chunks) ? (data.chunks as RagChunk[]) : []
+      const availableChunkCount =
+        typeof data?.availableChunkCount === 'number' ? data.availableChunkCount : chunks.length
       return {
-        chunkCount: chunks.length,
+        availableChunkCount,
         groups: groupByNote(chunks),
       }
     },
@@ -152,7 +156,7 @@ export function useMobileAIPaginatedSearch({
     if (!result.data) return
 
     const dataSignature =
-      `${effectiveAiOffset}-${result.data.chunkCount}-${result.data.groups.length}-` +
+      `${effectiveAiOffset}-${result.data.availableChunkCount}-${result.data.groups.length}-` +
       buildGroupsSignature(result.data.groups)
 
     if (dataSignature === lastProcessedDataRef.current) return
@@ -164,7 +168,7 @@ export function useMobileAIPaginatedSearch({
     queryEnabled &&
     !!result.data &&
     requestedTopK < AI_SEARCH_TOP_K_MAX &&
-    result.data.chunkCount >= requestedTopK
+    result.data.availableChunkCount >= requestedTopK
 
   const aiLoadingMore = result.isFetching && effectiveAiOffset > 0
 
@@ -176,8 +180,9 @@ export function useMobileAIPaginatedSearch({
   }, [aiHasMore, aiLoadingMore, pageSize, queryEnabled])
 
   const refetch = useCallback(() => {
+    if (!queryEnabled) return
     void result.refetch()
-  }, [result])
+  }, [queryEnabled, result])
 
   const isLoading =
     queryEnabled &&
@@ -188,7 +193,7 @@ export function useMobileAIPaginatedSearch({
   return {
     noteGroups: queryEnabled ? aiAccumulatedResults : [],
     isLoading,
-    error: result.error ? String(result.error) : null,
+    error: queryEnabled && result.error ? String(result.error) : null,
     refetch,
     aiHasMore,
     aiLoadingMore,

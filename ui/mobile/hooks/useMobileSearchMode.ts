@@ -12,10 +12,15 @@ type MobileSearchModeState = {
 }
 
 const STORAGE_KEY = 'everfreenote:mobileAiSearchMode'
+const VALID_PRESETS: SearchPreset[] = ['strict', 'neutral', 'broad']
 const DEFAULT_STATE: MobileSearchModeState = {
   isAIEnabled: false,
   preset: DEFAULT_PRESET,
   viewMode: 'note',
+}
+
+function serializeState(state: MobileSearchModeState): string {
+  return JSON.stringify(state)
 }
 
 function parseState(raw: string | null): MobileSearchModeState {
@@ -25,7 +30,7 @@ function parseState(raw: string | null): MobileSearchModeState {
     const parsed = JSON.parse(raw) as Partial<MobileSearchModeState>
     return {
       isAIEnabled: parsed.isAIEnabled === true,
-      preset: (['strict', 'neutral', 'broad'] as SearchPreset[]).includes(parsed.preset as SearchPreset)
+      preset: VALID_PRESETS.includes(parsed.preset as SearchPreset)
         ? (parsed.preset as SearchPreset)
         : DEFAULT_PRESET,
       viewMode: parsed.viewMode === 'chunk' ? 'chunk' : 'note',
@@ -38,15 +43,47 @@ function parseState(raw: string | null): MobileSearchModeState {
 export function useMobileSearchMode() {
   const [state, setState] = useState<MobileSearchModeState>(DEFAULT_STATE)
   const hasLoadedRef = useRef(false)
+  const latestStateRef = useRef(DEFAULT_STATE)
+  const localEditedRef = useRef(false)
+
+  useEffect(() => {
+    latestStateRef.current = state
+  }, [state])
 
   useEffect(() => {
     let active = true
 
-    void asyncStorageAdapter.getItem(STORAGE_KEY).then((raw) => {
-      if (!active) return
-      setState(parseState(raw))
-      hasLoadedRef.current = true
-    })
+    void (async () => {
+      let raw: string | null = null
+      let shouldPersistNormalizedState = false
+
+      try {
+        raw = await asyncStorageAdapter.getItem(STORAGE_KEY)
+        if (!active) return
+
+        const parsed = parseState(raw)
+        const serializedParsed = serializeState(parsed)
+        shouldPersistNormalizedState = raw !== serializedParsed
+
+        if (!localEditedRef.current) {
+          latestStateRef.current = parsed
+          setState(parsed)
+        }
+      } finally {
+        const shouldPersistLocalEdit = active && localEditedRef.current
+        const shouldPersistNormalized = active && !localEditedRef.current && shouldPersistNormalizedState
+
+        if (active) {
+          hasLoadedRef.current = true
+        }
+
+        if (shouldPersistLocalEdit) {
+          void asyncStorageAdapter.setItem(STORAGE_KEY, serializeState(latestStateRef.current))
+        } else if (shouldPersistNormalized) {
+          void asyncStorageAdapter.setItem(STORAGE_KEY, serializeState(latestStateRef.current))
+        }
+      }
+    })()
 
     return () => {
       active = false
@@ -55,12 +92,14 @@ export function useMobileSearchMode() {
 
   const persistState = useCallback((next: MobileSearchModeState) => {
     if (!hasLoadedRef.current) return
-    void asyncStorageAdapter.setItem(STORAGE_KEY, JSON.stringify(next))
+    void asyncStorageAdapter.setItem(STORAGE_KEY, serializeState(next))
   }, [])
 
   const updateState = useCallback((updater: (prev: MobileSearchModeState) => MobileSearchModeState) => {
     setState((prev) => {
+      localEditedRef.current = true
       const next = updater(prev)
+      latestStateRef.current = next
       persistState(next)
       return next
     })

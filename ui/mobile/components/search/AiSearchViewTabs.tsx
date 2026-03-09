@@ -30,6 +30,7 @@ export const AiSearchViewTabs = memo(function AiSearchViewTabs({
           <Pressable
             key={tab.value}
             testID={`ai-search-view-tab-${tab.value}`}
+            disabled={disabled}
             onPress={() => {
               if (disabled) return
               onChange(tab.value)

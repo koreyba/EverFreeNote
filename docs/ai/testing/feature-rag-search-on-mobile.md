@@ -64,13 +64,15 @@ note: This file was created by copying the testing template from docs/ai/testing
 
 ## Test Coverage Results
 
+Coverage note: line/statement coverage was not measured for this PR, so the table below tracks scope ownership rather than exact percentages.
+
 | Component | Coverage % | Lines Covered / Total | Last updated |
 |-----------|------------|-----------------------|--------------|
-| `useRagStatus` | TBD | TBD / TBD | 2026-03-09 |
-| `NoteIndexMenu` | TBD | TBD / TBD | 2026-03-09 |
-| `GeminiApiKeySection` | TBD | TBD / TBD | 2026-03-09 |
-| `useMobileSearchMode` | TBD | TBD / TBD | 2026-03-09 |
-| `useMobileAIPaginatedSearch` | TBD | TBD / TBD | 2026-03-09 |
+| `useMobileSearchMode` | Not measured | Not measured / Not measured | 2026-03-09 |
+| `useMobileAIPaginatedSearch` | Not measured | Not measured / Not measured | 2026-03-09 |
+| `SearchScreen` AI mode orchestration | Not measured | Not measured / Not measured | 2026-03-09 |
+| `EditorWebView` chunk focus bridge | Not measured | Not measured / Not measured | 2026-03-09 |
+| `RichTextEditorWebView` chunk focus buffering | Not measured | Not measured / Not measured | 2026-03-09 |
 
 ## Outstanding Gaps
 

@@ -8,83 +8,83 @@ description: Task breakdown for mobile AI search parity, chunk open-in-context, 
 
 ## Milestones
 
-- [ ] **M1:** Mobile AI search state and controls in place
-- [ ] **M2:** AI notes/chunks result views implemented with virtualization
-- [ ] **M3:** Open-in-context chunk scroll and highlight working in note editor
-- [ ] **M4:** Search result UI unified and covered by tests
+- [x] **M1:** Mobile AI search state and controls in place
+- [x] **M2:** AI notes/chunks result views implemented with virtualization
+- [x] **M3:** Open-in-context chunk scroll and highlight working in note editor
+- [x] **M4:** Search result UI unified and covered by tests
 
 ## Task Breakdown
 
 ### Phase 1: State and Hooks
 
-- [ ] **T1.1** Create `ui/mobile/hooks/useMobileSearchMode.ts`
+- [x] **T1.1** Create `ui/mobile/hooks/useMobileSearchMode.ts`
   - AsyncStorage-backed state for AI toggle, preset, and view mode
   - mirror web `useSearchMode` semantics with mobile storage
 
-- [ ] **T1.2** Create `ui/mobile/hooks/useMobileAIPaginatedSearch.ts`
+- [x] **T1.2** Create `ui/mobile/hooks/useMobileAIPaginatedSearch.ts`
   - copy-adapt web `useAIPaginatedSearch`
   - use mobile `client.functions.invoke`
   - reuse shared RAG constants/types
 
-- [ ] **T1.3** Extend `useOpenNote`
+- [x] **T1.3** Extend `useOpenNote`
   - accept optional chunk focus payload
   - push note route with params needed for open-in-context
 
 ### Phase 2: Search Screen Refactor
 
-- [ ] **T2.1** Refactor `ui/mobile/app/(tabs)/search.tsx`
+- [x] **T2.1** Refactor `ui/mobile/app/(tabs)/search.tsx`
   - coordinate regular vs AI search
   - ensure only active mode loads
   - block mode/view changes during selection mode
   - keep search history and tag filter behavior intact
 
-- [ ] **T2.2** Add mobile AI controls
+- [x] **T2.2** Add mobile AI controls
   - toggle
   - preset selector
   - notes/chunks view tabs
 
-- [ ] **T2.3** Add AI results rendering
+- [x] **T2.3** Add AI results rendering
   - `notes` view with grouped note cards
   - `chunks` view with flattened chunk cards
   - `FlashList` virtualization and `onEndReached`
 
-- [ ] **T2.4** Unify result-card visuals
+- [x] **T2.4** Unify result-card visuals
   - bring regular note search and AI note search into the same visual system
   - preserve selection affordances in note lists
 
 ### Phase 3: Editor Open-In-Context
 
-- [ ] **T3.1** Extend `ui/mobile/components/EditorWebView.tsx`
+- [x] **T3.1** Extend `ui/mobile/components/EditorWebView.tsx`
   - add `scrollToChunk` handle method
   - bridge new message type to the embedded editor page
 
-- [ ] **T3.2** Extend `app/editor-webview/page.tsx`
+- [x] **T3.2** Extend `app/editor-webview/page.tsx`
   - handle chunk-focus messages from native
   - forward to `RichTextEditorWebView`
 
-- [ ] **T3.3** Extend `ui/web/components/RichTextEditorWebView.tsx`
+- [x] **T3.3** Extend `ui/web/components/RichTextEditorWebView.tsx`
   - expose `scrollToChunk`
   - reuse shared chunk focus logic/extension
 
-- [ ] **T3.4** Update `ui/mobile/app/note/[id].tsx`
+- [x] **T3.4** Update `ui/mobile/app/note/[id].tsx`
   - read navigation params for pending chunk focus
   - adjust offset relative to body content
   - dispatch chunk focus once note/editor are ready
 
 ### Phase 4: Testing
 
-- [ ] **T4.1** Add hook tests
+- [x] **T4.1** Add hook tests
   - AI paginated search grouping, reset, and load-more behavior
   - mobile search mode persistence
 
-- [ ] **T4.2** Add integration tests for search screen
+- [x] **T4.2** Add integration tests for search screen
   - AI toggle activates selected mode
   - only active mode fetches
   - view switching blocked during selection mode
   - long press selection disabled in chunk view
   - AI result press opens note in context
 
-- [ ] **T4.3** Add editor bridge tests
+- [x] **T4.3** Add editor bridge tests
   - note screen forwards chunk-focus params
   - EditorWebView posts chunk-focus message
 

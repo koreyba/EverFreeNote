@@ -42,4 +42,88 @@ describe('useMobileSearchMode', () => {
       )
     })
   })
+
+  it('sanitizes malformed persisted state and writes back a valid default payload', async () => {
+    mockAsyncStorage.getItem.mockResolvedValueOnce('{not-json')
+
+    const { result } = renderHook(() => useMobileSearchMode())
+
+    await waitFor(() => {
+      expect(result.current.isAIEnabled).toBe(false)
+      expect(result.current.preset).toBe('neutral')
+      expect(result.current.viewMode).toBe('note')
+    })
+
+    await waitFor(() => {
+      expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+        'everfreenote:mobileAiSearchMode',
+        JSON.stringify({
+          isAIEnabled: false,
+          preset: 'neutral',
+          viewMode: 'note',
+        })
+      )
+    })
+  })
+
+  it('persists AI mode toggles after hydration', async () => {
+    const { result } = renderHook(() => useMobileSearchMode())
+
+    await waitFor(() => {
+      expect(mockAsyncStorage.getItem).toHaveBeenCalledWith('everfreenote:mobileAiSearchMode')
+    })
+
+    act(() => {
+      result.current.setIsAIEnabled(true)
+      result.current.setIsAIEnabled(false)
+    })
+
+    await waitFor(() => {
+      expect(mockAsyncStorage.setItem).toHaveBeenLastCalledWith(
+        'everfreenote:mobileAiSearchMode',
+        JSON.stringify({
+          isAIEnabled: false,
+          preset: 'neutral',
+          viewMode: 'note',
+        })
+      )
+    })
+  })
+
+  it('preserves a local edit that happens before hydration finishes', async () => {
+    let resolveStorage: ((value: string | null) => void) | null = null
+    mockAsyncStorage.getItem.mockImplementationOnce(
+      () => new Promise((resolve) => {
+        resolveStorage = resolve
+      })
+    )
+
+    const { result } = renderHook(() => useMobileSearchMode())
+
+    act(() => {
+      result.current.setIsAIEnabled(true)
+    })
+
+    expect(result.current.isAIEnabled).toBe(true)
+
+    act(() => {
+      resolveStorage?.(JSON.stringify({
+        isAIEnabled: false,
+        preset: 'broad',
+        viewMode: 'chunk',
+      }))
+    })
+
+    await waitFor(() => {
+      expect(result.current.isAIEnabled).toBe(true)
+      expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+        'everfreenote:mobileAiSearchMode',
+        JSON.stringify({
+          isAIEnabled: true,
+          preset: 'neutral',
+          viewMode: 'note',
+        })
+      )
+    })
+  })
 })
