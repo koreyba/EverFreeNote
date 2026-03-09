@@ -69,6 +69,8 @@ export function useMobileSearchMode() {
           latestStateRef.current = parsed
           setState(parsed)
         }
+      } catch (error) {
+        console.warn('Failed to load mobile search mode from storage', error)
       } finally {
         const shouldPersistLocalEdit = active && localEditedRef.current
         const shouldPersistNormalized = active && !localEditedRef.current && shouldPersistNormalizedState
