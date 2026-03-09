@@ -19,6 +19,7 @@ export default function EditorWebViewPage() {
   const lastKnownHtmlRef = React.useRef<string | null>(null)
   const lastHistoryStateRef = React.useRef<{ canUndo: boolean; canRedo: boolean } | null>(null)
   const pendingBaselineRef = React.useRef(false)
+  const pendingChunkFocusRef = React.useRef<{ charOffset: number; chunkLength: number } | null>(null)
   const chunkBuffers = React.useRef<ChunkBufferStore>({})
 
   const handleHistoryStateChange = React.useCallback((state: { canUndo: boolean; canRedo: boolean }) => {
@@ -164,13 +165,15 @@ export default function EditorWebViewPage() {
             }
           }
         } else if (type === 'SCROLL_TO_CHUNK') {
-          if (editorRef.current) {
-            const { charOffset, chunkLength } = (payload ?? {}) as {
-              charOffset?: unknown
-              chunkLength?: unknown
-            }
-            if (typeof charOffset === 'number' && typeof chunkLength === 'number') {
+          const { charOffset, chunkLength } = (payload ?? {}) as {
+            charOffset?: unknown
+            chunkLength?: unknown
+          }
+          if (typeof charOffset === 'number' && typeof chunkLength === 'number') {
+            if (editorRef.current) {
               editorRef.current.scrollToChunk(charOffset, chunkLength)
+            } else {
+              pendingChunkFocusRef.current = { charOffset, chunkLength }
             }
           }
         }
@@ -233,6 +236,16 @@ export default function EditorWebViewPage() {
     if (!editorRef.current) return
     lastKnownHtmlRef.current = editorRef.current.getHTML()
     pendingBaselineRef.current = false
+  })
+
+  useEffect(() => {
+    if (!pendingChunkFocusRef.current) return
+    if (!editorRef.current) return
+    editorRef.current.scrollToChunk(
+      pendingChunkFocusRef.current.charOffset,
+      pendingChunkFocusRef.current.chunkLength
+    )
+    pendingChunkFocusRef.current = null
   })
 
   const handleChange = () => {

@@ -93,15 +93,17 @@ description: Task breakdown for mobile AI search parity, chunk open-in-context, 
 | Task | Depends on |
 |------|-----------|
 | T1.2 | shared AI constants/types already existing |
+| T1.3 | shared note route and note editor entry points already existing |
 | T2.1 | T1.1, T1.2 |
-| T2.3 | T2.1 |
-| T2.4 | T2.3 |
+| T2.2 | T2.1 |
+| T2.3 | T2.2, T1.3 |
+| T2.4 | T2.3, T1.3 |
 | T3.2 | T3.1 |
-| T3.4 | T3.1, T3.2, T3.3 |
+| T3.4 | T1.3, T3.1, T3.2, T3.3 |
 | T4.x | corresponding implementation tasks |
 
 ## Risks & Sequencing Notes
 
 - Build the AI hook and search state first so UI work stays deterministic.
-- Land editor chunk focus before finalizing AI result taps; otherwise the tap flow cannot be validated end-to-end.
+- Land T1.3 and editor chunk focus before finalizing AI result taps; otherwise the tap flow cannot be validated end-to-end.
 - Keep regular-search regressions visible by preserving existing integration coverage and extending it rather than replacing it.

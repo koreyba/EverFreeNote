@@ -277,7 +277,7 @@ export default function SearchScreen() {
       return `Type at least ${AI_SEARCH_MIN_QUERY_LENGTH} characters for AI search.`
     }
     return null
-  }, [aiModeEnabled, hasGeminiApiKey, queryTrimmed.length, selectionLockActive])
+  }, [aiModeEnabled, geminiConfigured, queryTrimmed.length, selectionLockActive])
 
   const activeMode = aiModeEnabled ? (viewMode === 'chunk' ? 'ai-chunk' : 'ai-note') : 'regular'
   const shouldShowResultsList =
@@ -325,6 +325,8 @@ export default function SearchScreen() {
                 if (!user?.id) return
                 void clearSearchHistory(user.id).then(() => setHistory([]))
               }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search history"
             >
               <Text style={styles.historyClear}>Clear</Text>
             </Pressable>
@@ -337,6 +339,8 @@ export default function SearchScreen() {
                 pressed && styles.historyItemPressed,
               ]}
               onPress={() => setQuery(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Search again for ${item}`}
             >
               <Text style={styles.historyText} numberOfLines={1}>
                 {item}

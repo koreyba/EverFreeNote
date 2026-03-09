@@ -201,7 +201,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     }, 2000)
                 })
             },
-        }))
+        }), [isReady])
 
         const editorUrl = editorSource?.uri ?? ''
 

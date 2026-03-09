@@ -33,6 +33,7 @@ const RichTextEditorWebView = React.forwardRef<
 >(({ initialContent, onContentChange, onFocus, onBlur, onSelectionChange, onHistoryStateChange }, ref) => {
   const editorRef = React.useRef<Editor | null>(null)
   const suppressNextUpdateRef = React.useRef(false)
+  const pendingChunkScrollRef = React.useRef<{ charOffset: number; chunkLength: number } | null>(null)
 
   const handleApplySelectionAsMarkdown = React.useCallback(() => {
     const editor = editorRef.current
@@ -99,6 +100,11 @@ const RichTextEditorWebView = React.forwardRef<
     extensions: editorExtensions,
     content: initialContent,
     onCreate: ({ editor: e }) => {
+      if (pendingChunkScrollRef.current) {
+        const { charOffset, chunkLength } = pendingChunkScrollRef.current
+        pendingChunkScrollRef.current = null
+        scrollEditorToChunk(e, charOffset, chunkLength)
+      }
       onHistoryStateChange?.({
         canUndo: e.can().undo(),
         canRedo: e.can().redo(),
@@ -164,7 +170,10 @@ const RichTextEditorWebView = React.forwardRef<
         })
       },
       scrollToChunk: (charOffset: number, chunkLength: number) => {
-        if (!editor) return
+        if (!editor) {
+          pendingChunkScrollRef.current = { charOffset, chunkLength }
+          return
+        }
         scrollEditorToChunk(editor, charOffset, chunkLength)
       },
     }),

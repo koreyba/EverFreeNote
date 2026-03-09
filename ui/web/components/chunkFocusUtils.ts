@@ -91,9 +91,6 @@ function getChunkBlockRanges(editor: Editor, charOffset: number, chunkLength: nu
       }
 
       rangeMap.set(`${rangeFrom}:${rangeTo}`, { from: rangeFrom, to: rangeTo })
-      if (firstFocusPos === null) {
-        firstFocusPos = Math.min(pos + 1, doc.content.size)
-      }
     }
 
     plainTextOffset = blockEnd + 1

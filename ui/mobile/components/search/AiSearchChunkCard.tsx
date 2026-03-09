@@ -60,8 +60,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,

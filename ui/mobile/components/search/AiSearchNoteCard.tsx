@@ -53,7 +53,6 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
       accessibilityState={selectionMode ? { checked: isSelected } : undefined}
       style={({ pressed }) => [
         styles.card,
-        styles.cardAccent,
         isSelected && styles.cardSelected,
         pressed && styles.cardPressed,
       ]}
@@ -164,10 +163,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
-  },
-  cardAccent: {
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
   },
   cardSelected: {
     backgroundColor: colors.accent,
