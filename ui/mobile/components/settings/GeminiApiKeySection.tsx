@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useRef } from 'react'
 import {
     Modal,
     View,
@@ -35,8 +35,12 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
     const [saving, setSaving] = useState(false)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
+    const loadRequestTokenRef = useRef(0)
 
     const loadStatus = useCallback(async () => {
+        const requestToken = loadRequestTokenRef.current + 1
+        loadRequestTokenRef.current = requestToken
+
         setLoading(true)
         setErrorMessage(null)
         setSuccessMessage(null)
@@ -44,11 +48,15 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
         setConfigured(null)
         try {
             const status = await service.getStatus()
+            if (loadRequestTokenRef.current !== requestToken) return
             setConfigured(status.gemini.configured)
         } catch (err) {
+            if (loadRequestTokenRef.current !== requestToken) return
             setErrorMessage(err instanceof Error ? err.message : 'Failed to load API key settings')
         } finally {
-            setLoading(false)
+            if (loadRequestTokenRef.current === requestToken) {
+                setLoading(false)
+            }
         }
     }, [service])
 
@@ -59,7 +67,9 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
 
     const closeModal = () => {
         if (saving) return
+        loadRequestTokenRef.current += 1
         setModalVisible(false)
+        setLoading(false)
         setGeminiApiKey('')
         setErrorMessage(null)
         setSuccessMessage(null)
@@ -70,7 +80,11 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
         setSuccessMessage(null)
         const trimmedKey = geminiApiKey.trim()
 
-        if (!trimmedKey && configured !== true) {
+        if (!trimmedKey && configured === null) {
+            setErrorMessage('Unable to verify key status. Please retry.')
+            return
+        }
+        if (!trimmedKey && configured === false) {
             setErrorMessage('Gemini API key is required for initial setup.')
             return
         }

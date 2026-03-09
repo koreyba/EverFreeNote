@@ -516,17 +516,6 @@ describe('NoteEditorScreen - Delete Functionality', () => {
   })
 
   describe('Header configuration', () => {
-    it('shows correct header title', async () => {
-      render(<NoteEditorScreen />, { wrapper })
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
-      })
-
-      // Stack.Screen should configure header with title 'Edit'
-      // This is tested implicitly through the component rendering
-    })
-
     it('includes theme toggle in header', async () => {
       render(<NoteEditorScreen />, { wrapper })
 

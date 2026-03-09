@@ -14,6 +14,9 @@ import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
 import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
 
+const CONTENT_HORIZONTAL_PADDING = 16
+const HEADER_BUTTON_PADDING = 8
+
 export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { data: note, isLoading, error } = useNote(id)
@@ -325,7 +328,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     flex: 1,
   },
   header: {
-    padding: 16,
+    padding: CONTENT_HORIZONTAL_PADDING,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -364,6 +367,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   headerRightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: -HEADER_BUTTON_PADDING,
   },
   headerLeftActions: {
     flexDirection: 'row',
@@ -371,7 +375,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     marginLeft: 4,
   },
   headerButton: {
-    padding: 8,
+    padding: HEADER_BUTTON_PADDING,
   },
   headerButtonDisabled: {
     opacity: 0.35,

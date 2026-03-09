@@ -229,12 +229,8 @@ const waitForEditorReady = async () => {
   })
 }
 
-const simulateExit = (mode: ExitMode, unmount: () => void) => {
-  if (mode === 'ui-back') {
-    mockBack()
-  } else {
-    mockBack()
-  }
+const simulateExit = (_mode: ExitMode, unmount: () => void) => {
+  mockBack()
   unmount()
 }
 

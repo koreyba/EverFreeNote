@@ -23,6 +23,15 @@ export function useRagStatus(noteId: string | undefined): RagStatus {
   const refresh = useCallback(() => setRefreshTick((t) => t + 1), [])
 
   useEffect(() => {
+    if (!noteId) {
+      setStatus({ chunkCount: 0, indexedAt: null, isLoading: false })
+      return
+    }
+
+    setStatus({ chunkCount: 0, indexedAt: null, isLoading: true })
+  }, [noteId])
+
+  useEffect(() => {
     if (!noteId || !user) return
 
     let cancelled = false
