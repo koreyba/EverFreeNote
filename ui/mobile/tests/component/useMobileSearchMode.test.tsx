@@ -126,4 +126,40 @@ describe('useMobileSearchMode', () => {
       )
     })
   })
+
+  it('persists a pre-hydration local edit even if the hook unmounts before storage resolves', async () => {
+    let resolveStorage: ((value: string | null) => void) | null = null
+    mockAsyncStorage.getItem.mockImplementationOnce(
+      () => new Promise((resolve) => {
+        resolveStorage = resolve
+      })
+    )
+
+    const { result, unmount } = renderHook(() => useMobileSearchMode())
+
+    act(() => {
+      result.current.setIsAIEnabled(true)
+    })
+
+    unmount()
+
+    act(() => {
+      resolveStorage?.(JSON.stringify({
+        isAIEnabled: false,
+        preset: 'strict',
+        viewMode: 'chunk',
+      }))
+    })
+
+    await waitFor(() => {
+      expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+        'everfreenote:mobileAiSearchMode',
+        JSON.stringify({
+          isAIEnabled: true,
+          preset: 'neutral',
+          viewMode: 'note',
+        })
+      )
+    })
+  })
 })

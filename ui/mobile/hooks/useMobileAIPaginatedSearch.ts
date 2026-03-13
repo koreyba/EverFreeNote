@@ -171,6 +171,7 @@ export function useMobileAIPaginatedSearch({
     result.data.availableChunkCount >= requestedTopK
 
   const aiLoadingMore = result.isFetching && effectiveAiOffset > 0
+  const identitySettled = committedIdentity === searchIdentity
 
   const loadMoreAI = useCallback(() => {
     if (!queryEnabled || aiLoadingMore || !aiHasMore) return
@@ -191,9 +192,9 @@ export function useMobileAIPaginatedSearch({
     aiAccumulatedResults.length === 0
 
   return {
-    noteGroups: queryEnabled ? aiAccumulatedResults : [],
+    noteGroups: queryEnabled && identitySettled ? aiAccumulatedResults : [],
     isLoading,
-    error: queryEnabled && result.error ? String(result.error) : null,
+    error: queryEnabled && identitySettled && result.error ? String(result.error) : null,
     refetch,
     aiHasMore,
     aiLoadingMore,

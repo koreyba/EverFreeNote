@@ -202,4 +202,51 @@ describe('useMobileAIPaginatedSearch', () => {
       expect(result.current.isLoading).toBe(false)
     })
   })
+
+  it('hides stale groups and errors while the search identity is switching', async () => {
+    mockInvoke.mockImplementation(
+      (_name: string, { body }: { body: RagSearchPayload }) => {
+        if (body.query === 'ontology') {
+          return Promise.resolve({
+            data: {
+              availableChunkCount: 1,
+              chunks: [createChunk('note-a', 0.95, 0, 0, 'stable result')],
+            },
+            error: null,
+          })
+        }
+
+        return new Promise(() => {
+          // Keep the next identity unresolved so we can assert the transition state.
+        })
+      }
+    )
+
+    const queryClient = createTestQueryClient()
+    const wrapper = createQueryWrapper(queryClient)
+
+    const { result, rerender } = renderHook(
+      ({ query }: { query: string }) => useMobileAIPaginatedSearch({
+        query,
+        preset: 'strict',
+        filterTag: null,
+        isEnabled: true,
+      }),
+      {
+        initialProps: { query: 'ontology' },
+        wrapper,
+      }
+    )
+
+    await waitFor(() => {
+      expect(result.current.noteGroups[0]?.noteId).toBe('note-a')
+    })
+
+    rerender({ query: 'metaphysics' })
+
+    await waitFor(() => {
+      expect(result.current.noteGroups).toEqual([])
+      expect(result.current.error).toBeNull()
+    })
+  })
 })

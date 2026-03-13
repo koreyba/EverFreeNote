@@ -4,18 +4,7 @@ import RichTextEditorWebView from '@ui/web/components/RichTextEditorWebView'
 
 const mockScrollEditorToChunk = jest.fn()
 const mockExecuteEditorCommand = jest.fn()
-const mockCreateDocument = jest.fn((
-  html: string,
-  schema: unknown,
-  parseOptions: unknown,
-  options: unknown
-) => {
-  void html
-  void schema
-  void parseOptions
-  void options
-  return 'parsed-document'
-})
+const mockCreateDocument = jest.fn<string, [string, unknown, unknown, unknown]>(() => 'parsed-document')
 
 type UseEditorConfig = Parameters<typeof import('@tiptap/react').useEditor>[0]
 

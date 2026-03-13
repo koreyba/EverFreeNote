@@ -370,6 +370,32 @@ describe('EditorWebView message handling', () => {
       })
     })
 
+    it('flushes queued content before queued chunk focus on READY', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      act(() => {
+        ref.current?.setContent('<p>Queued content</p>')
+        ref.current?.scrollToChunk(24, 7)
+      })
+
+      sendMessage('READY')
+
+      await waitFor(() => {
+        const messages = mockPostMessage.mock.calls.map(([value]) => JSON.parse(String(value)) as { type: string })
+        const setContentIndex = messages.findIndex((message) => message.type === 'SET_CONTENT')
+        const scrollIndex = messages.findIndex((message) => message.type === 'SCROLL_TO_CHUNK')
+
+        expect(setContentIndex).toBeGreaterThanOrEqual(0)
+        expect(scrollIndex).toBeGreaterThan(setContentIndex)
+      })
+    })
+
     it('posts COMMAND messages immediately through runCommand', async () => {
       const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
 
@@ -414,6 +440,35 @@ describe('EditorWebView message handling', () => {
       sendMessage('CONTENT_RESPONSE', '<p>Saved content</p>')
 
       await expect(contentPromise).resolves.toBe('<p>Saved content</p>')
+    })
+
+    it('resolves getContent with an empty string when the editor never responds', async () => {
+      jest.useFakeTimers()
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      try {
+        const contentPromise = ref.current?.getContent()
+
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'GET_CONTENT',
+          })
+        )
+
+        await act(async () => {
+          jest.advanceTimersByTime(2000)
+        })
+
+        await expect(contentPromise).resolves.toBe('')
+      } finally {
+        jest.useRealTimers()
+      }
     })
   })
 

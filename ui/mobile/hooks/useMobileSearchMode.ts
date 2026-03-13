@@ -72,16 +72,14 @@ export function useMobileSearchMode() {
       } catch (error) {
         console.warn('Failed to load mobile search mode from storage', error)
       } finally {
-        const shouldPersistLocalEdit = active && localEditedRef.current
+        const shouldPersistLocalEdit = localEditedRef.current
         const shouldPersistNormalized = active && !localEditedRef.current && shouldPersistNormalizedState
 
         if (active) {
           hasLoadedRef.current = true
         }
 
-        if (shouldPersistLocalEdit) {
-          void asyncStorageAdapter.setItem(STORAGE_KEY, serializeState(latestStateRef.current))
-        } else if (shouldPersistNormalized) {
+        if (shouldPersistLocalEdit || shouldPersistNormalized) {
           void asyncStorageAdapter.setItem(STORAGE_KEY, serializeState(latestStateRef.current))
         }
       }
