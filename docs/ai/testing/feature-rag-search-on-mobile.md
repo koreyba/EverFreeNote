@@ -62,28 +62,64 @@ note: This file was created by copying the testing template from docs/ai/testing
 - [ ] While selection mode is active, AI toggle and notes/chunks tabs are blocked
 - [ ] Large result sets remain smooth while scrolling and paginate correctly
 
+## Coverage-Driven Test Cases Added
+
+### Added on 2026-03-13
+- [x] `useOpenNote` opens a plain note route when no chunk focus is provided
+- [x] `useOpenNote` seeds the note cache with the freshest cached note before navigating
+- [x] `useOpenNote` generates a stable fallback `focusRequestId` when one is not supplied
+- [x] `useMobileAIPaginatedSearch` skips requests below the minimum AI query length
+- [x] `useMobileAIPaginatedSearch` keeps `aiHasMore` true when `availableChunkCount` exceeds the filtered chunk payload
+- [x] `useMobileAIPaginatedSearch` clears accumulated results immediately when the authenticated user changes
+- [x] `EditorWebView` queues `scrollToChunk()` until `READY`
+- [x] `EditorWebView` sends `scrollToChunk()` immediately after readiness is established
+- [x] `AiSearchNoteCard` opens the top fragment in context
+- [x] `AiSearchNoteCard` toggles selection instead of navigating while selection mode is active
+- [x] `AiSearchNoteCard` distinguishes hidden-only matches from expandable extra fragments
+- [x] `AiSearchChunkCard` opens the note in context with the selected chunk payload
+- [x] `AiSearchChunkCard` renders tags and forwards tag presses
+- [x] `SearchResultsList` renders empty state when no rows exist
+- [x] `SearchResultsList` handles regular-note selection activation and selection-mode toggling
+- [x] `SearchResultsList` flattens AI chunk rows to the top two chunks per note
+- [x] `SearchResultsList` gates `onLoadMore` when already loading and fires it when pagination is allowed
+- [x] `chunkFocusUtils` returns `false` when no text block overlaps the requested chunk
+- [x] `chunkFocusUtils` scrolls via the nearest scroll parent when one exists
+- [x] `chunkFocusUtils` falls back to `scrollIntoView()` when no scroll parent exists
+- [x] `RichTextEditorWebView` buffers `scrollToChunk()` until `onCreate`
+- [x] `RichTextEditorWebView` forwards imperative commands and content replacement to the editor instance
+
 ## Test Coverage Results
 
-Coverage note: line/statement coverage was not measured for this PR, so the table below tracks scope ownership rather than exact percentages.
+Coverage note: metrics below were measured on 2026-03-13 against the current branch with targeted coverage runs for the mobile AI-search scope and the web chunk-focus utility scope.
 
 | Component | Coverage % | Lines Covered / Total | Last updated |
 |-----------|------------|-----------------------|--------------|
-| `useMobileSearchMode` | Not measured | Not measured / Not measured | 2026-03-09 |
-| `useMobileAIPaginatedSearch` | Not measured | Not measured / Not measured | 2026-03-09 |
-| `SearchScreen` AI mode orchestration | Not measured | Not measured / Not measured | 2026-03-09 |
-| `EditorWebView` chunk focus bridge | Not measured | Not measured / Not measured | 2026-03-09 |
-| `RichTextEditorWebView` chunk focus buffering | Not measured | Not measured / Not measured | 2026-03-09 |
+| Mobile targeted scope (aggregate) | 92.58% lines / 90.83% statements / 76.49% branches | 512 / 553 lines | 2026-03-13 |
+| `useMobileSearchMode` | 98.24% lines | 56 / 57 lines | 2026-03-13 |
+| `useMobileAIPaginatedSearch` | 97.43% lines | 76 / 78 lines | 2026-03-13 |
+| `useOpenNote` | 100.00% lines | 11 / 11 lines | 2026-03-13 |
+| `EditorWebView` chunk focus bridge | 83.42% lines | 151 / 181 lines | 2026-03-13 |
+| `AiSearchChunkCard` | 100.00% lines | 7 / 7 lines | 2026-03-13 |
+| `AiSearchNoteCard` | 100.00% lines | 28 / 28 lines | 2026-03-13 |
+| `SearchResultsList` | 100.00% lines | 31 / 31 lines | 2026-03-13 |
+| Web targeted scope (aggregate) | 65.60% lines / 62.43% statements / 41.45% branches | 227 / 346 lines | 2026-03-13 |
+| `chunkFocusUtils` | 100.00% lines | 61 / 61 lines | 2026-03-13 |
+| `RichTextEditorWebView` | 73.13% lines | 49 / 67 lines | 2026-03-13 |
+| `RichTextEditor` | 0.00% lines | 0 / 69 lines | 2026-03-13 |
 
 ## Outstanding Gaps
 
 ### Unit Test Gaps
-- Exact visual score styling thresholds may remain covered only indirectly unless dedicated component tests are added.
-- AsyncStorage recovery from malformed JSON should be explicitly tested if persistence logic grows more complex.
+- `EditorWebView` still has uncovered fallback/error branches and some connectivity/theme synchronization paths beyond the imperative bridge coverage.
+- `RichTextEditorWebView` still has shallow branch coverage around paste handling, selection updates, and focus/blur callbacks.
+- `RichTextEditor` remains unmeasured and still needs either focused unit tests or a higher-level editor harness.
 
 ### Integration Test Gaps
-- Full scroll-to-chunk behavior inside the real WebView may still need higher-level verification beyond mocked bridge tests.
-- Very large AI result sets should be stress-tested with representative fixtures, not only small mocked pages.
+- Full scroll-to-chunk behavior still needs an end-to-end assertion inside the real mobile WebView, not only the mocked bridge.
+- Very large AI result sets still need stress coverage for virtualization and repeated `onEndReached` loading.
+- Search-mode switching under fast repeated toggles is only partially covered through current happy-path integration tests.
 
 ### Manual QA Gaps
 - Device-level validation is still needed on at least one Android handset for WebView scroll and highlight clearing.
-- Manual UX verification is needed for disabled-control messaging during selection mode.
+- Manual UX verification is still needed for disabled-control messaging during selection mode.
+- Search screen parity should still be checked visually between regular and AI notes/chunks results after the card unification changes.

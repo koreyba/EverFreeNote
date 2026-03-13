@@ -2,7 +2,8 @@
  * Tests for EditorWebView message handling
  * Specifically tests CONTENT_ON_BLUR safety net feature
  */
-import { render, waitFor } from '@testing-library/react-native'
+import React from 'react'
+import { act, render, waitFor } from '@testing-library/react-native'
 
 // Mock WebView
 const mockPostMessage = jest.fn()
@@ -55,17 +56,27 @@ jest.mock('@ui/mobile/providers', () => ({
 import EditorWebView from '@ui/mobile/components/EditorWebView'
 
 describe('EditorWebView message handling', () => {
+  let warnSpy: jest.SpyInstance
+  let errorSpy: jest.SpyInstance
+
   beforeEach(() => {
     jest.clearAllMocks()
     capturedOnMessage = null
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    warnSpy.mockRestore()
+    errorSpy.mockRestore()
   })
 
   const sendMessage = (type: string, payload?: unknown) => {
-    if (capturedOnMessage) {
-      capturedOnMessage({
+    act(() => {
+      capturedOnMessage?.({
         nativeEvent: { data: JSON.stringify({ type, payload }) },
       })
-    }
+    })
   }
 
   describe('CONTENT_ON_BLUR handling', () => {
@@ -257,6 +268,152 @@ describe('EditorWebView message handling', () => {
       })
 
       expect(() => sendMessage('SELECTION_CHANGE', true)).not.toThrow()
+    })
+  })
+
+  describe('scrollToChunk bridge', () => {
+    it('queues chunk focus until the editor signals READY', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      act(() => {
+        ref.current?.scrollToChunk(24, 7)
+      })
+
+      expect(mockPostMessage).not.toHaveBeenCalledWith(
+        JSON.stringify({
+          type: 'SCROLL_TO_CHUNK',
+          payload: { charOffset: 24, chunkLength: 7 },
+        })
+      )
+
+      sendMessage('READY')
+
+      await waitFor(() => {
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'SCROLL_TO_CHUNK',
+            payload: { charOffset: 24, chunkLength: 7 },
+          })
+        )
+      })
+    })
+
+    it('sends chunk focus immediately after the editor is ready', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('READY')
+      await waitFor(() => {
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'SET_THEME',
+            payload: 'light',
+          })
+        )
+      })
+
+      act(() => {
+        mockPostMessage.mockClear()
+        ref.current?.scrollToChunk(120, 18)
+      })
+
+      expect(mockPostMessage).toHaveBeenCalledWith(
+        JSON.stringify({
+          type: 'SCROLL_TO_CHUNK',
+          payload: { charOffset: 120, chunkLength: 18 },
+        })
+      )
+    })
+  })
+
+  describe('imperative bridge methods', () => {
+    it('queues setContent before READY and flushes it once the editor is ready', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      act(() => {
+        ref.current?.setContent('<p>Queued content</p>')
+      })
+
+      expect(mockPostMessage).not.toHaveBeenCalledWith(
+        JSON.stringify({
+          type: 'SET_CONTENT',
+          payload: '<p>Queued content</p>',
+        })
+      )
+
+      sendMessage('READY')
+
+      await waitFor(() => {
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'SET_CONTENT',
+            payload: '<p>Queued content</p>',
+          })
+        )
+      })
+    })
+
+    it('posts COMMAND messages immediately through runCommand', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      act(() => {
+        ref.current?.runCommand('toggleBold', ['arg-1'])
+      })
+
+      expect(mockPostMessage).toHaveBeenCalledWith(
+        JSON.stringify({
+          type: 'COMMAND',
+          payload: {
+            method: 'toggleBold',
+            args: ['arg-1'],
+          },
+        })
+      )
+    })
+
+    it('requests content and resolves the promise from CONTENT_RESPONSE', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      const contentPromise = ref.current?.getContent()
+
+      expect(mockPostMessage).toHaveBeenCalledWith(
+        JSON.stringify({
+          type: 'GET_CONTENT',
+        })
+      )
+
+      sendMessage('CONTENT_RESPONSE', '<p>Saved content</p>')
+
+      await expect(contentPromise).resolves.toBe('<p>Saved content</p>')
     })
   })
 
