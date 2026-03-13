@@ -13,6 +13,7 @@ import { useNoteData } from './useNoteData'
 import { useNoteSaveHandlers } from './useNoteSaveHandlers'
 import { useNoteBulkActions } from './useNoteBulkActions'
 import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
+import type { NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
 
 export type EditFormState = {
   title: string
@@ -288,6 +289,40 @@ export function useNoteAppController() {
     aiPaginationControlsRef.current.loadMoreAI()
   }, [])
 
+  const captureUiState = useCallback<() => NotesUiStateSnapshot>(() => ({
+    selectedNote,
+    isEditing,
+    isSearchPanelOpen,
+    searchQuery,
+    filterByTag,
+  }), [filterByTag, isEditing, isSearchPanelOpen, searchQuery, selectedNote])
+
+  const restoreUiState = useCallback((snapshot: NotesUiStateSnapshot) => {
+    if (snapshot.searchQuery) {
+      handleSearch(snapshot.searchQuery)
+    } else {
+      resetFtsResults()
+    }
+
+    if (snapshot.filterByTag) {
+      onTagClick(snapshot.filterByTag)
+    } else {
+      handleClearTagFilter()
+    }
+
+    setIsSearchPanelOpen(snapshot.isSearchPanelOpen || Boolean(snapshot.searchQuery) || Boolean(snapshot.filterByTag))
+    setSelectedNote(snapshot.selectedNote)
+    setIsEditing(Boolean(snapshot.isEditing && snapshot.selectedNote))
+  }, [
+    handleClearTagFilter,
+    handleSearch,
+    onTagClick,
+    resetFtsResults,
+    setIsEditing,
+    setIsSearchPanelOpen,
+    setSelectedNote,
+  ])
+
   return {
     registerNoteEditorRef,
     // State
@@ -366,6 +401,8 @@ export function useNoteAppController() {
     loadMoreAI,
     resetAIResults,
     registerAIPaginationControls,
+    captureUiState,
+    restoreUiState,
     deleteSelectedNotes,
     deleteNotesByIds,
 
