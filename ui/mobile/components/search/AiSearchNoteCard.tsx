@@ -15,6 +15,100 @@ type AiSearchNoteCardProps = {
   onToggleSelect?: (noteId: string) => void
 }
 
+type MoreFragmentsSectionProps = {
+  group: RagNoteGroup
+  extraChunks: RagNoteGroup['chunks']
+  expanded: boolean
+  selectionMode: boolean
+  onToggleExpanded: () => void
+  onOpenChunk: (charOffset: number, chunkLength: number) => void
+  colors: ReturnType<typeof useTheme>['colors']
+  styles: ReturnType<typeof createStyles>
+}
+
+function MoreFragmentsSection({
+  group,
+  extraChunks,
+  expanded,
+  selectionMode,
+  onToggleExpanded,
+  onOpenChunk,
+  colors,
+  styles,
+}: MoreFragmentsSectionProps) {
+  const visibleExtraChunkCount = extraChunks.length
+  const hasExpandableContent = visibleExtraChunkCount > 0
+
+  if (!hasExpandableContent && group.hiddenCount === 0) {
+    return null
+  }
+
+  return (
+    <View style={styles.moreSection}>
+      {hasExpandableContent ? (
+        <Pressable
+          onPress={(event) => {
+            event?.stopPropagation?.()
+            onToggleExpanded()
+          }}
+          disabled={selectionMode}
+          style={({ pressed }) => [
+            styles.moreButton,
+            pressed && !selectionMode && styles.moreButtonPressed,
+          ]}
+        >
+          <Text style={styles.moreButtonText}>
+            {expanded
+              ? 'Hide fragments'
+              : `${visibleExtraChunkCount} more fragment${visibleExtraChunkCount === 1 ? '' : 's'}`}
+          </Text>
+          {expanded ? (
+            <ChevronUp size={16} color={colors.mutedForeground} />
+          ) : (
+            <ChevronDown size={16} color={colors.mutedForeground} />
+          )}
+        </Pressable>
+      ) : null}
+
+      {!hasExpandableContent && group.hiddenCount > 0 && (
+        <Text style={styles.hiddenMatchesText}>
+          +{group.hiddenCount} similar fragment{group.hiddenCount === 1 ? '' : 's'} hidden
+        </Text>
+      )}
+
+      {expanded && (
+        <>
+          {extraChunks.map((chunk, index) => (
+            <Pressable
+              key={`${chunk.noteId}-${chunk.chunkIndex}`}
+              testID={`ai-note-extra-chunk-${chunk.noteId}-${chunk.chunkIndex}`}
+              onPress={(event) => {
+                event?.stopPropagation?.()
+                onOpenChunk(chunk.charOffset, chunk.content.length)
+              }}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.extraChunk,
+                pressed && !selectionMode && styles.snippetCardPressed,
+              ]}
+            >
+              <Text style={styles.snippetLabel}>Fragment {index + 2}</Text>
+              <Text style={styles.extraChunkText} numberOfLines={3}>
+                {chunk.content}
+              </Text>
+            </Pressable>
+          ))}
+          {group.hiddenCount > 0 && (
+            <Text style={styles.hiddenMatchesText}>
+              +{group.hiddenCount} similar fragment{group.hiddenCount === 1 ? '' : 's'} hidden
+            </Text>
+          )}
+        </>
+      )}
+    </View>
+  )
+}
+
 export const AiSearchNoteCard = memo(function AiSearchNoteCard({
   group,
   onOpenInContext,
@@ -30,8 +124,6 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
 
   const topChunk = group.chunks[0]
   const extraChunks = group.chunks.slice(1)
-  const visibleExtraChunkCount = extraChunks.length
-  const hasExpandableContent = visibleExtraChunkCount > 0
 
   const handleOpenChunk = (charOffset: number, chunkLength: number) => {
     if (selectionMode) {
@@ -102,70 +194,16 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
         </Pressable>
       ) : null}
 
-      {(hasExpandableContent || group.hiddenCount > 0) && (
-        <View style={styles.moreSection}>
-          {hasExpandableContent ? (
-            <Pressable
-              onPress={(event) => {
-                event?.stopPropagation?.()
-                setExpanded((prev) => !prev)
-              }}
-              disabled={selectionMode}
-              style={({ pressed }) => [
-                styles.moreButton,
-                pressed && !selectionMode && styles.moreButtonPressed,
-              ]}
-            >
-              <Text style={styles.moreButtonText}>
-                {expanded
-                  ? 'Hide fragments'
-                  : `${visibleExtraChunkCount} more fragment${visibleExtraChunkCount === 1 ? '' : 's'}`}
-              </Text>
-              {expanded ? (
-                <ChevronUp size={16} color={colors.mutedForeground} />
-              ) : (
-                <ChevronDown size={16} color={colors.mutedForeground} />
-              )}
-            </Pressable>
-          ) : null}
-
-          {!hasExpandableContent && group.hiddenCount > 0 && (
-            <Text style={styles.hiddenMatchesText}>
-              +{group.hiddenCount} similar fragment{group.hiddenCount === 1 ? '' : 's'} hidden
-            </Text>
-          )}
-
-          {expanded && (
-            <>
-              {extraChunks.map((chunk, index) => (
-                <Pressable
-                  key={`${chunk.noteId}-${chunk.chunkIndex}`}
-                  testID={`ai-note-extra-chunk-${chunk.noteId}-${chunk.chunkIndex}`}
-                  onPress={(event) => {
-                    event?.stopPropagation?.()
-                    handleOpenChunk(chunk.charOffset, chunk.content.length)
-                  }}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [
-                    styles.extraChunk,
-                    pressed && !selectionMode && styles.snippetCardPressed,
-                  ]}
-                >
-                  <Text style={styles.snippetLabel}>Fragment {index + 2}</Text>
-                  <Text style={styles.extraChunkText} numberOfLines={3}>
-                    {chunk.content}
-                  </Text>
-                </Pressable>
-              ))}
-              {group.hiddenCount > 0 && (
-                <Text style={styles.hiddenMatchesText}>
-                  +{group.hiddenCount} similar fragment{group.hiddenCount === 1 ? '' : 's'} hidden
-                </Text>
-              )}
-            </>
-          )}
-        </View>
-      )}
+      <MoreFragmentsSection
+        group={group}
+        extraChunks={extraChunks}
+        expanded={expanded}
+        selectionMode={selectionMode}
+        onToggleExpanded={() => setExpanded((prev) => !prev)}
+        onOpenChunk={handleOpenChunk}
+        colors={colors}
+        styles={styles}
+      />
     </Pressable>
   )
 })

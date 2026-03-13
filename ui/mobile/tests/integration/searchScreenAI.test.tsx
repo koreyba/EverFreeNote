@@ -1,13 +1,14 @@
 import React from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { QueryClient } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, createQueryWrapper, createTestQueryClient } from '../testUtils'
+import { act, fireEvent, render, renderHook, screen, waitFor, createQueryWrapper, createTestQueryClient } from '../testUtils'
 
 const mockPush = jest.fn()
 const mockSetParams = jest.fn()
 const mockInvoke = jest.fn()
 const mockSearchNotes = jest.fn()
 const mockGetStatus = jest.fn()
+const mockDeleteNote = jest.fn()
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -63,6 +64,30 @@ jest.mock('@ui/mobile/services/searchHistory', () => ({
   clearSearchHistory: jest.fn().mockResolvedValue(undefined),
 }))
 
+jest.mock('@ui/mobile/services/database', () => ({
+  databaseService: {
+    markDeleted: jest.fn().mockResolvedValue(undefined),
+    saveNotes: jest.fn().mockResolvedValue(undefined),
+    getLocalNotes: jest.fn().mockResolvedValue([]),
+    searchNotes: jest.fn().mockResolvedValue([]),
+  },
+}))
+
+jest.mock('@ui/mobile/adapters/networkStatus', () => ({
+  mobileNetworkStatusProvider: {
+    isOnline: jest.fn().mockReturnValue(true),
+    subscribe: jest.fn().mockReturnValue(jest.fn()),
+  },
+}))
+
+jest.mock('@ui/mobile/services/sync', () => ({
+  mobileSyncService: {
+    getManager: jest.fn().mockReturnValue({
+      enqueue: jest.fn().mockResolvedValue(undefined),
+    }),
+  },
+}))
+
 jest.mock('@core/services/search', () => ({
   SearchService: jest.fn().mockImplementation(() => ({
     searchNotes: mockSearchNotes,
@@ -76,6 +101,7 @@ jest.mock('@core/services/notes', () => ({
       totalCount: 0,
       hasMore: false,
     }),
+    deleteNote: mockDeleteNote,
   })),
 }))
 
@@ -124,6 +150,7 @@ jest.mock('@shopify/flash-list', () => ({
 }))
 
 import SearchScreen from '@ui/mobile/app/(tabs)/search'
+import { useDeleteNote } from '@ui/mobile/hooks/useNotesMutations'
 
 describe('SearchScreen - AI search', () => {
   const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>
@@ -144,6 +171,7 @@ describe('SearchScreen - AI search', () => {
     mockGetStatus.mockResolvedValue({
       gemini: { configured: true },
     })
+    mockDeleteNote.mockReset().mockResolvedValue('ai-note-1')
 
     mockSearchNotes.mockResolvedValue({
       results: [],
@@ -234,6 +262,28 @@ describe('SearchScreen - AI search', () => {
         }),
       })
     })
+  })
+
+  it('removes deleted notes from visible AI search results without rerunning the search', async () => {
+    await enableAISearch()
+
+    fireEvent.changeText(screen.getByPlaceholderText('Search notes...'), 'semantic query')
+
+    await screen.findByTestId('ai-note-card-ai-note-1')
+    const invokeCallsBeforeDelete = mockInvoke.mock.calls.length
+
+    const { result } = renderHook(() => useDeleteNote(), { wrapper })
+
+    await act(async () => {
+      await result.current.mutateAsync('ai-note-1')
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('ai-note-card-ai-note-1')).toBeNull()
+    })
+
+    expect(mockDeleteNote).toHaveBeenCalledWith('ai-note-1')
+    expect(mockInvoke).toHaveBeenCalledTimes(invokeCallsBeforeDelete)
   })
 
   it('blocks mode and view switching while selection mode is active in AI notes view', async () => {

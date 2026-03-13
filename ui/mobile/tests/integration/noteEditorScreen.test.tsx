@@ -19,6 +19,7 @@ const mockPush = jest.fn()
 const mockBack = jest.fn()
 const mockReplace = jest.fn()
 const mockSetParams = jest.fn()
+const mockPathname = '/note/[id]'
 let mockLocalSearchParams: { id: string; focusOffset?: string; focusLength?: string; focusRequestId?: string } = {
   id: 'test-note-id',
 }
@@ -31,6 +32,7 @@ jest.mock('expo-router', () => ({
     setParams: mockSetParams,
   }),
   useLocalSearchParams: () => mockLocalSearchParams,
+  usePathname: () => mockPathname,
   Stack: {
     Screen: ({ children, options }: { children: ReactNode; options?: { headerRight?: () => ReactNode; headerLeft?: () => ReactNode; headerTitle?: () => ReactNode } }) => {
       const { View } = require('react-native')
@@ -228,6 +230,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     mockToolbarCallbacks.onMenuVisibilityChange = undefined
     mockScrollToChunk.mockReset()
     mockSetParams.mockReset()
+    mockReplace.mockReset()
 
     mockNoteService.prototype.getNote = jest.fn().mockResolvedValue({
       id: 'test-note-id',
@@ -570,7 +573,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
   })
 
   describe('Chunk focus', () => {
-    it('scrolls to the requested body chunk and clears focus params', async () => {
+    it('scrolls to the requested body chunk and removes focus params from the route', async () => {
       mockLocalSearchParams = {
         id: 'test-note-id',
         focusOffset: '14',
@@ -588,10 +591,11 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         expect(mockScrollToChunk).toHaveBeenCalledWith(4, 5)
       })
 
-      expect(mockSetParams).toHaveBeenCalledWith({
-        focusOffset: '',
-        focusLength: '',
-        focusRequestId: '',
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: '/note/[id]',
+        params: {
+          id: 'test-note-id',
+        },
       })
     })
   })

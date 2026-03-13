@@ -96,6 +96,26 @@ type NotesPage = {
   nextCursor?: number
 }
 
+type AiSearchResult = {
+  availableChunkCount: number
+  groups: Array<{
+    noteId: string
+    noteTitle: string
+    noteTags: string[]
+    topScore: number
+    hiddenCount: number
+    chunks: Array<{
+      noteId: string
+      noteTitle: string
+      noteTags: string[]
+      chunkIndex: number
+      charOffset: number
+      content: string
+      similarity: number
+    }>
+  }>
+}
+
 describe('useDeleteNote', () => {
   let queryClient: QueryClient
   let wrapper: ReturnType<typeof createQueryWrapper>
@@ -300,6 +320,7 @@ describe('useDeleteNote', () => {
       })
 
       expect(cancelQueriesSpy).toHaveBeenCalledWith({ queryKey: ['notes'] })
+      expect(cancelQueriesSpy).toHaveBeenCalledWith({ queryKey: ['mobileAiSearch'] })
     })
 
     it('succeeds even when no cache data exists', async () => {
@@ -338,6 +359,80 @@ describe('useDeleteNote', () => {
 
       // Verify getQueriesData was called to snapshot previous state
       expect(getQueriesDataSpy).toHaveBeenCalledWith({ queryKey: ['notes'] })
+    })
+
+    it('removes deleted note from AI search cache without refetching', async () => {
+      const initialAiSearch: AiSearchResult = {
+        availableChunkCount: 5,
+        groups: [
+          {
+            noteId: 'note-1',
+            noteTitle: 'Deleted note',
+            noteTags: ['ai'],
+            topScore: 0.92,
+            hiddenCount: 2,
+            chunks: [
+              {
+                noteId: 'note-1',
+                noteTitle: 'Deleted note',
+                noteTags: ['ai'],
+                chunkIndex: 0,
+                charOffset: 12,
+                content: 'First chunk',
+                similarity: 0.92,
+              },
+            ],
+          },
+          {
+            noteId: 'note-2',
+            noteTitle: 'Remaining note',
+            noteTags: ['ai'],
+            topScore: 0.81,
+            hiddenCount: 0,
+            chunks: [
+              {
+                noteId: 'note-2',
+                noteTitle: 'Remaining note',
+                noteTags: ['ai'],
+                chunkIndex: 0,
+                charOffset: 40,
+                content: 'Second chunk',
+                similarity: 0.81,
+              },
+            ],
+          },
+        ],
+      }
+
+      queryClient.setQueryData(
+        ['mobileAiSearch', TEST_USER_ID, 'semantic query', 'neutral', null, 20],
+        initialAiSearch
+      )
+
+      const { result } = renderHook(() => useDeleteNote(), {
+        wrapper,
+      })
+
+      await act(async () => {
+        result.current.mutate('note-1')
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      const cacheData = queryClient.getQueryData<AiSearchResult>([
+        'mobileAiSearch',
+        TEST_USER_ID,
+        'semantic query',
+        'neutral',
+        null,
+        20,
+      ])
+
+      expect(cacheData?.groups).toHaveLength(1)
+      expect(cacheData?.groups[0]?.noteId).toBe('note-2')
+      expect(cacheData?.availableChunkCount).toBe(2)
     })
   })
 
@@ -413,6 +508,7 @@ describe('useDeleteNote', () => {
       })
 
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notes'] })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['mobileAiSearch'] })
     })
 
     it('does not invalidate queries on success', async () => {
@@ -431,6 +527,84 @@ describe('useDeleteNote', () => {
       })
 
       expect(invalidateSpy).not.toHaveBeenCalled()
+    })
+
+    it('rolls back AI search cache on queue error', async () => {
+      mockIsOnline.mockReturnValue(false)
+      const error = new Error('Queue full')
+      mockGetManager.mockReturnValue({
+        enqueue: jest.fn().mockRejectedValue(error),
+      })
+
+      const initialAiSearch: AiSearchResult = {
+        availableChunkCount: 4,
+        groups: [
+          {
+            noteId: 'note-1',
+            noteTitle: 'Deleted note',
+            noteTags: ['ai'],
+            topScore: 0.91,
+            hiddenCount: 1,
+            chunks: [
+              {
+                noteId: 'note-1',
+                noteTitle: 'Deleted note',
+                noteTags: ['ai'],
+                chunkIndex: 0,
+                charOffset: 15,
+                content: 'First chunk',
+                similarity: 0.91,
+              },
+            ],
+          },
+          {
+            noteId: 'note-2',
+            noteTitle: 'Remaining note',
+            noteTags: ['ai'],
+            topScore: 0.84,
+            hiddenCount: 0,
+            chunks: [
+              {
+                noteId: 'note-2',
+                noteTitle: 'Remaining note',
+                noteTags: ['ai'],
+                chunkIndex: 0,
+                charOffset: 60,
+                content: 'Second chunk',
+                similarity: 0.84,
+              },
+            ],
+          },
+        ],
+      }
+
+      queryClient.setQueryData(
+        ['mobileAiSearch', TEST_USER_ID, 'semantic query', 'neutral', null, 20],
+        initialAiSearch
+      )
+
+      const { result } = renderHook(() => useDeleteNote(), {
+        wrapper,
+      })
+
+      await act(async () => {
+        result.current.mutate('note-1')
+      })
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true)
+      })
+
+      const cacheData = queryClient.getQueryData<AiSearchResult>([
+        'mobileAiSearch',
+        TEST_USER_ID,
+        'semantic query',
+        'neutral',
+        null,
+        20,
+      ])
+
+      expect(cacheData).toEqual(initialAiSearch)
     })
   })
 

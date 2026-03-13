@@ -39,8 +39,99 @@ type SearchListRow =
   | { key: string; kind: 'ai-note'; group: RagNoteGroup }
   | { key: string; kind: 'ai-chunk'; chunk: RagChunk }
 
+type SelectionProps = {
+  selectionMode: boolean
+  selectedIds: Set<string>
+  onActivateSelection?: (id: string) => void
+  onToggleSelect?: (id: string) => void
+}
+
 function flattenChunks(groups: RagNoteGroup[]): RagChunk[] {
   return groups.flatMap((group) => group.chunks.slice(0, MAX_CHUNKS_PER_NOTE))
+}
+
+function triggerSelectionHaptics() {
+  Promise.resolve(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)).catch(() => undefined)
+}
+
+function buildRegularLongPressHandler(
+  noteId: string,
+  selectionMode: boolean,
+  onActivateSelection?: (id: string) => void
+) {
+  if (selectionMode) return undefined
+
+  return () => {
+    triggerSelectionHaptics()
+    onActivateSelection?.(noteId)
+  }
+}
+
+function buildAiNoteLongPressHandler(
+  noteId: string,
+  selectionMode: boolean,
+  onActivateSelection?: (id: string) => void
+) {
+  if (selectionMode) return undefined
+
+  return () => {
+    triggerSelectionHaptics()
+    onActivateSelection?.(noteId)
+  }
+}
+
+function renderRegularRow(
+  note: SearchResultItem,
+  selection: SelectionProps,
+  onRegularNotePress: (note: Note) => void,
+  onDeleteRegularNote: (id: string) => void,
+  onTagPress?: (tag: string) => void
+) {
+  return (
+    <SwipeableNoteCard
+      note={note}
+      onPress={selection.selectionMode ? (nextNote: Note) => selection.onToggleSelect?.(nextNote.id) : onRegularNotePress}
+      onLongPress={buildRegularLongPressHandler(note.id, selection.selectionMode, selection.onActivateSelection)}
+      onTagPress={selection.selectionMode ? undefined : onTagPress}
+      onDelete={onDeleteRegularNote}
+      isSelectionMode={selection.selectionMode}
+      isSelected={selection.selectedIds.has(note.id)}
+      variant="search"
+    />
+  )
+}
+
+function renderAiNoteRow(
+  group: RagNoteGroup,
+  selection: SelectionProps,
+  onOpenAiResult: (noteId: string, charOffset: number, chunkLength: number) => void,
+  onTagPress?: (tag: string) => void
+) {
+  return (
+    <AiSearchNoteCard
+      group={group}
+      onOpenInContext={onOpenAiResult}
+      onTagPress={onTagPress}
+      selectionMode={selection.selectionMode}
+      isSelected={selection.selectedIds.has(group.noteId)}
+      onToggleSelect={selection.onToggleSelect}
+      onLongPress={buildAiNoteLongPressHandler(group.noteId, selection.selectionMode, selection.onActivateSelection)}
+    />
+  )
+}
+
+function renderAiChunkRow(
+  chunk: RagChunk,
+  onOpenAiResult: (noteId: string, charOffset: number, chunkLength: number) => void,
+  onTagPress?: (tag: string) => void
+) {
+  return (
+    <AiSearchChunkCard
+      chunk={chunk}
+      onOpenInContext={onOpenAiResult}
+      onTagPress={onTagPress}
+    />
+  )
 }
 
 export const SearchResultsList = memo(function SearchResultsList({
@@ -67,6 +158,12 @@ export const SearchResultsList = memo(function SearchResultsList({
     () => [styles.contentContainer, { paddingBottom: bottomInset }],
     [bottomInset, styles.contentContainer]
   )
+  const selection = useMemo<SelectionProps>(() => ({
+    selectionMode,
+    selectedIds,
+    onActivateSelection,
+    onToggleSelect,
+  }), [onActivateSelection, onToggleSelect, selectedIds, selectionMode])
 
   const rows = useMemo<SearchListRow[]>(() => {
     if (mode === 'regular') {
@@ -94,56 +191,20 @@ export const SearchResultsList = memo(function SearchResultsList({
 
   const renderItem = useCallback<ListRenderItem<SearchListRow>>(({ item }) => {
     if (item.kind === 'regular') {
-      return (
-        <SwipeableNoteCard
-          note={item.note}
-          onPress={selectionMode ? (note: Note) => onToggleSelect?.(note.id) : onRegularNotePress}
-          onLongPress={selectionMode ? undefined : () => {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-            onActivateSelection?.(item.note.id)
-          }}
-          onTagPress={selectionMode ? undefined : onTagPress}
-          onDelete={onDeleteRegularNote}
-          isSelectionMode={selectionMode}
-          isSelected={selectedIds.has(item.note.id)}
-          variant="search"
-        />
-      )
+      return renderRegularRow(item.note, selection, onRegularNotePress, onDeleteRegularNote, onTagPress)
     }
 
     if (item.kind === 'ai-note') {
-      return (
-        <AiSearchNoteCard
-          group={item.group}
-          onOpenInContext={onOpenAiResult}
-          onTagPress={onTagPress}
-          selectionMode={selectionMode}
-          isSelected={selectedIds.has(item.group.noteId)}
-          onToggleSelect={onToggleSelect}
-          onLongPress={selectionMode ? undefined : () => {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-            onActivateSelection?.(item.group.noteId)
-          }}
-        />
-      )
+      return renderAiNoteRow(item.group, selection, onOpenAiResult, onTagPress)
     }
 
-    return (
-      <AiSearchChunkCard
-        chunk={item.chunk}
-        onOpenInContext={onOpenAiResult}
-        onTagPress={onTagPress}
-      />
-    )
+    return renderAiChunkRow(item.chunk, onOpenAiResult, onTagPress)
   }, [
-    onActivateSelection,
     onDeleteRegularNote,
     onOpenAiResult,
     onRegularNotePress,
     onTagPress,
-    onToggleSelect,
-    selectedIds,
-    selectionMode,
+    selection,
   ])
 
   if (rows.length === 0 && !loadingMore) {
@@ -169,7 +230,12 @@ export const SearchResultsList = memo(function SearchResultsList({
       onScrollBeginDrag={onScrollBeginDrag}
       onEndReached={() => {
         if (!hasMore || loadingMore || !onLoadMore) return
-        onLoadMore()
+        try {
+          const maybePromise = onLoadMore()
+          Promise.resolve(maybePromise).catch(() => undefined)
+        } catch {
+          return
+        }
       }}
       onEndReachedThreshold={0.4}
       ListFooterComponent={

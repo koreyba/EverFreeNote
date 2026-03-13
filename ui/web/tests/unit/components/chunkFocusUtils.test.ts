@@ -43,10 +43,7 @@ function createEditor({
         content: { size: 200 },
         descendants: (visitor: (node: TextBlockNode, pos: number) => boolean) => {
           for (const block of blocks) {
-            const shouldContinue = visitor(block.node, block.pos)
-            if (shouldContinue === false) {
-              continue
-            }
+            visitor(block.node, block.pos)
           }
         },
         resolve,
