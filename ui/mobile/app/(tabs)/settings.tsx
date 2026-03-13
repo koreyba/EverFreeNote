@@ -153,12 +153,12 @@ export default function SettingsScreen() {
             <Text style={styles.modalTitle}>Delete my account</Text>
 
             <Text style={styles.modalDescription}>
-              This will permanently delete your account and all notes. Please export your notes before deleting if you need a copy.
+              This will permanently delete your account and all notes. Make sure you have any backups you need before continuing.
             </Text>
 
             <View style={styles.tipContainer}>
               <Text style={styles.tipText}>
-                Tip: use the Export option above to download your notes before deleting your account.
+                Note: Export is coming soon and is not available yet.
               </Text>
             </View>
 

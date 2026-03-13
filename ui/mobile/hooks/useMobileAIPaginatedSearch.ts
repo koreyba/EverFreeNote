@@ -96,7 +96,7 @@ export function useMobileAIPaginatedSearch({
 
   const trimmedQuery = query.trim()
   const queryEnabled = isEnabled && !!user?.id && trimmedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH
-  const searchIdentity = `${trimmedQuery}::${preset}::${filterTag ?? ''}::${isEnabled}`
+  const searchIdentity = `${user?.id ?? 'anonymous'}::${trimmedQuery}::${preset}::${filterTag ?? ''}::${isEnabled}`
   const [committedIdentity, setCommittedIdentity] = useState(searchIdentity)
   const effectiveAiOffset = committedIdentity !== searchIdentity ? 0 : aiOffset
 
