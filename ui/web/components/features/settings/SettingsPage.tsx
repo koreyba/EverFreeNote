@@ -70,7 +70,8 @@ export function SettingsPage() {
   const [mobileTabsScrollable, setMobileTabsScrollable] = React.useState(false)
   const [mobileTabsIndicator, setMobileTabsIndicator] = React.useState({ width: 0, left: 0, visible: false })
 
-  const activeTab = isSettingsTabId(searchParams.get("tab")) ? searchParams.get("tab") : "wordpress"
+  const activeTabParam = searchParams.get("tab")
+  const activeTab = isSettingsTabId(activeTabParam) ? activeTabParam : "account"
 
   React.useEffect(() => {
     if (loading || user) return
@@ -78,10 +79,8 @@ export function SettingsPage() {
   }, [loading, router, user])
 
   const handleSelectTab = React.useCallback((tabId: SettingsTabId) => {
-    const nextSearchParams = new URLSearchParams(searchParams.toString())
-    nextSearchParams.set("tab", tabId)
-    router.replace(`/settings?${nextSearchParams.toString()}`, { scroll: false })
-  }, [router, searchParams])
+    router.replace(`/settings?tab=${tabId}`, { scroll: false })
+  }, [router])
 
   const handleExit = React.useCallback(() => {
     const returnState = readSettingsReturnState()

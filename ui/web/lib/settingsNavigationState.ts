@@ -2,8 +2,17 @@ import type { NoteViewModel } from '@core/types/domain'
 
 const SETTINGS_RETURN_STATE_KEY = 'everfreenote:settings-return-state'
 
+// Temporary contract for returning from /settings back to the notes workspace.
+// This is intentionally narrow: selected note + search context only.
+// If the app later needs richer back/forward behavior, prefer moving the
+// workspace state into route-driven history instead of growing this object.
+export type RestorableSelectedNoteSnapshot = Pick<
+  NoteViewModel,
+  'id' | 'title' | 'description' | 'content' | 'tags' | 'created_at' | 'updated_at' | 'user_id' | 'headline' | 'rank'
+>
+
 export type NotesUiStateSnapshot = {
-  selectedNote: NoteViewModel | null
+  selectedNote: RestorableSelectedNoteSnapshot | null
   isEditing: boolean
   isSearchPanelOpen: boolean
   searchQuery: string
@@ -19,9 +28,31 @@ function isBrowserReady() {
   return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined'
 }
 
-export function saveSettingsReturnState(state: SettingsReturnState) {
-  if (!isBrowserReady()) return
-  window.sessionStorage.setItem(SETTINGS_RETURN_STATE_KEY, JSON.stringify(state))
+export function createSettingsSelectedNoteSnapshot(note: NoteViewModel): RestorableSelectedNoteSnapshot {
+  return {
+    id: note.id,
+    title: note.title,
+    description: note.description,
+    content: note.content,
+    tags: note.tags,
+    created_at: note.created_at,
+    updated_at: note.updated_at,
+    user_id: note.user_id,
+    headline: note.headline,
+    rank: note.rank,
+  }
+}
+
+export function saveSettingsReturnState(state: SettingsReturnState): boolean {
+  if (!isBrowserReady()) return false
+
+  try {
+    window.sessionStorage.setItem(SETTINGS_RETURN_STATE_KEY, JSON.stringify(state))
+    return true
+  } catch {
+    window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
+    return false
+  }
 }
 
 export function readSettingsReturnState(): SettingsReturnState | null {

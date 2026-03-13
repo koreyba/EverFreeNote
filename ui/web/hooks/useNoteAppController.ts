@@ -13,7 +13,10 @@ import { useNoteData } from './useNoteData'
 import { useNoteSaveHandlers } from './useNoteSaveHandlers'
 import { useNoteBulkActions } from './useNoteBulkActions'
 import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
-import type { NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
+import {
+  createSettingsSelectedNoteSnapshot,
+  type NotesUiStateSnapshot,
+} from '@ui/web/lib/settingsNavigationState'
 
 export type EditFormState = {
   title: string
@@ -171,10 +174,26 @@ export function useNoteAppController() {
 
   // Ref to avoid stale closure in save handlers and nav wrappers
   const selectedNoteRef = useRef(selectedNote)
+  const isEditingRef = useRef(isEditing)
+  const searchQueryRef = useRef(searchQuery)
+  const filterByTagRef = useRef(filterByTag)
+  const isSearchPanelOpenRef = useRef(isSearchPanelOpen)
   const latestEditRequestRef = useRef(0)
   useEffect(() => {
     selectedNoteRef.current = selectedNote
   }, [selectedNote])
+  useEffect(() => {
+    isEditingRef.current = isEditing
+  }, [isEditing])
+  useEffect(() => {
+    searchQueryRef.current = searchQuery
+  }, [searchQuery])
+  useEffect(() => {
+    filterByTagRef.current = filterByTag
+  }, [filterByTag])
+  useEffect(() => {
+    isSearchPanelOpenRef.current = isSearchPanelOpen
+  }, [isSearchPanelOpen])
 
   // -- Save handlers --
   const {
@@ -289,15 +308,22 @@ export function useNoteAppController() {
     aiPaginationControlsRef.current.loadMoreAI()
   }, [])
 
-  const captureUiState = useCallback<() => NotesUiStateSnapshot>(() => ({
-    selectedNote,
-    isEditing,
-    isSearchPanelOpen,
-    searchQuery,
-    filterByTag,
-  }), [filterByTag, isEditing, isSearchPanelOpen, searchQuery, selectedNote])
+  const captureSettingsReturnState = useCallback(async (): Promise<NotesUiStateSnapshot> => {
+    await flushPendingEditorSave()
+
+    return {
+      selectedNote: selectedNoteRef.current ? createSettingsSelectedNoteSnapshot(selectedNoteRef.current) : null,
+      isEditing: isEditingRef.current,
+      isSearchPanelOpen: isSearchPanelOpenRef.current,
+      searchQuery: searchQueryRef.current,
+      filterByTag: filterByTagRef.current,
+    }
+  }, [flushPendingEditorSave])
 
   const restoreUiState = useCallback((snapshot: NotesUiStateSnapshot) => {
+    // Temporary bridge for the /settings route. The contract is intentionally narrow
+    // and should not keep expanding forever. If returning from settings needs richer
+    // workspace history, move the primary notes UI state into route/history instead.
     if (snapshot.searchQuery) {
       handleSearch(snapshot.searchQuery)
     } else {
@@ -401,7 +427,7 @@ export function useNoteAppController() {
     loadMoreAI,
     resetAIResults,
     registerAIPaginationControls,
-    captureUiState,
+    captureSettingsReturnState,
     restoreUiState,
     deleteSelectedNotes,
     deleteNotesByIds,

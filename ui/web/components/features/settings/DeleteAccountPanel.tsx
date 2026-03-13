@@ -17,11 +17,25 @@ export function DeleteAccountPanel({
   loading = false,
 }: DeleteAccountPanelProps) {
   const [acknowledged, setAcknowledged] = React.useState(false)
+  const [submitting, setSubmitting] = React.useState(false)
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
+  const isLoading = loading || submitting
 
   const handleConfirm = async () => {
-    if (!acknowledged || loading) return
-    await onConfirm()
-    setAcknowledged(false)
+    if (!acknowledged || isLoading) return
+
+    setErrorMessage(null)
+    setSubmitting(true)
+
+    try {
+      await onConfirm()
+      setAcknowledged(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete account. Please try again."
+      setErrorMessage(message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -43,20 +57,29 @@ export function DeleteAccountPanel({
         <Checkbox
           id="settings-delete-account-ack"
           checked={acknowledged}
-          onCheckedChange={(value) => setAcknowledged(Boolean(value))}
+          onCheckedChange={(value) => {
+            setAcknowledged(Boolean(value))
+            setErrorMessage(null)
+          }}
         />
         <label htmlFor="settings-delete-account-ack" className="text-sm leading-snug text-muted-foreground">
           I understand that my account and all notes will be permanently deleted.
         </label>
       </div>
 
+      {errorMessage ? (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {errorMessage}
+        </div>
+      ) : null}
+
       <div className="flex justify-end">
         <Button
           variant="destructive"
-          disabled={!acknowledged || loading}
+          disabled={!acknowledged || isLoading}
           onClick={() => void handleConfirm()}
         >
-          {loading ? "Deleting..." : "Delete account"}
+          {isLoading ? "Deleting..." : "Delete account"}
         </Button>
       </div>
     </div>

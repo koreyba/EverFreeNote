@@ -155,11 +155,13 @@ export function NotesShell({ controller }: NotesShellProps) {
     setPendingChunkFocus((current) => (current?.requestId === requestId ? null : current))
   }, [])
 
-  const handleOpenSettings = React.useCallback(() => {
+  const handleOpenSettings = React.useCallback(async () => {
+    const notesUiState = await controller.captureSettingsReturnState()
+
     if (typeof window !== "undefined") {
       saveSettingsReturnState({
         returnPath: `${window.location.pathname}${window.location.search}${window.location.hash}`,
-        notesUiState: controller.captureUiState(),
+        notesUiState,
       })
     }
 
@@ -183,7 +185,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         onSelectAll={selectAllVisible}
         onBulkDelete={deleteSelectedNotes}
         onClearTagFilter={handleClearTagFilter}
-        onOpenSettings={handleOpenSettings}
+        onOpenSettings={() => void handleOpenSettings()}
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
         onDeleteAccount={handleDeleteAccount}

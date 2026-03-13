@@ -95,7 +95,7 @@ describe('Mobile Layout Adaptation', () => {
       resetFtsResults: overrides.resetFtsResults ?? cy.stub(),
       resetAIResults: overrides.resetAIResults ?? cy.stub(),
       registerAIPaginationControls: overrides.registerAIPaginationControls ?? cy.stub(),
-      captureUiState: overrides.captureUiState ?? cy.stub().returns({
+      captureSettingsReturnState: overrides.captureSettingsReturnState ?? cy.stub().resolves({
         selectedNote: null,
         isEditing: false,
         isSearchPanelOpen: false,
