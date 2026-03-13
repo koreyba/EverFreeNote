@@ -110,7 +110,7 @@ describe('useOpenNote', () => {
         id: 'note-generated',
         focusOffset: '42',
         focusLength: '9',
-        focusRequestId: expect.stringMatching(/^note-generated:42:9:/),
+        focusRequestId: expect.stringMatching(/^note-generated:42:9:.+$/),
       }),
     })
   })

@@ -247,6 +247,7 @@ describe('SearchResultsList', () => {
 
   it('does not load more while already loading', () => {
     const onLoadMore = jest.fn()
+    const onOpenAiResult = jest.fn()
 
     render(
       <SearchResultsList
@@ -255,15 +256,17 @@ describe('SearchResultsList', () => {
         aiNoteGroups={[createAiGroup('note-a', 2)]}
         onRegularNotePress={jest.fn()}
         onDeleteRegularNote={jest.fn()}
-        onOpenAiResult={jest.fn()}
+        onOpenAiResult={onOpenAiResult}
         hasMore
         loadingMore
         onLoadMore={onLoadMore}
       />
     )
 
+    fireEvent.press(screen.getByTestId('mock-ai-note-note-a'))
     fireEvent.press(screen.getByTestId('end-reached'))
 
+    expect(onOpenAiResult).toHaveBeenCalledWith('note-a', 0, 'Chunk 0'.length)
     expect(onLoadMore).not.toHaveBeenCalled()
   })
 })
