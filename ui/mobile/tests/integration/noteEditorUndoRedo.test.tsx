@@ -23,6 +23,7 @@ jest.mock('expo-router', () => ({
     replace: jest.fn(),
   }),
   useLocalSearchParams: () => mockRouteParams,
+  usePathname: () => '/note/[id]',
   Stack: {
     Screen: ({ children, options }: { children?: ReactNode; options?: { title?: string; headerLeft?: () => ReactNode; headerRight?: () => ReactNode; headerTitle?: () => ReactNode } }) => {
       const { View } = require('react-native')

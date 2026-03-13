@@ -7,6 +7,7 @@ import { useNetworkStatus } from './useNetworkStatus'
 import { mobileNetworkStatusProvider } from '@ui/mobile/adapters/networkStatus'
 import { updateNoteCaches } from '@ui/mobile/utils/noteCache'
 import type { Note } from '@core/types/domain'
+import type { RagNoteGroup } from '@core/types/ragSearch'
 import type { NotesPage } from './useNotes'
 
 const generateUuidV4 = (): string => {
@@ -27,6 +28,26 @@ type SearchPage = {
   hasMore: boolean
   nextCursor?: number
   method?: string
+}
+
+type AiSearchResult = {
+  availableChunkCount: number
+  groups: RagNoteGroup[]
+}
+
+function removeNoteFromAiSearchResult(data: AiSearchResult | undefined, noteId: string) {
+  if (!data) return data
+
+  const removedGroup = data.groups.find((group) => group.noteId === noteId)
+  if (!removedGroup) return data
+
+  const removedChunkCount = removedGroup.chunks.length + removedGroup.hiddenCount
+
+  return {
+    ...data,
+    availableChunkCount: Math.max(0, data.availableChunkCount - removedChunkCount),
+    groups: data.groups.filter((group) => group.noteId !== noteId),
+  }
 }
 
 export function useCreateNote() {
@@ -168,10 +189,12 @@ export function useDeleteNote() {
       // Cancel queries to prevent old data from overwriting our optimistic update
       await queryClient.cancelQueries({ queryKey: ['notes'] })
       await queryClient.cancelQueries({ queryKey: ['search'] })
+      await queryClient.cancelQueries({ queryKey: ['mobileAiSearch'] })
 
       // Snapshot the previous values
       const previousNotes = queryClient.getQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'] })
       const previousSearch = queryClient.getQueriesData<InfiniteData<SearchPage>>({ queryKey: ['search'] })
+      const previousAiSearch = queryClient.getQueriesData<AiSearchResult>({ queryKey: ['mobileAiSearch'] })
       const activeNotes = queryClient.getQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'], type: 'active' })
       const shouldRefetch = activeNotes.some(([, data]) => !data)
 
@@ -201,7 +224,11 @@ export function useDeleteNote() {
         }
       })
 
-      return { previousNotes, previousSearch, shouldRefetch }
+      queryClient.setQueriesData<AiSearchResult>({ queryKey: ['mobileAiSearch'] }, (data) =>
+        removeNoteFromAiSearchResult(data, id)
+      )
+
+      return { previousNotes, previousSearch, previousAiSearch, shouldRefetch }
     },
     onError: (_err, _id, context) => {
       if (context?.previousNotes) {
@@ -216,6 +243,11 @@ export function useDeleteNote() {
           queryClient.setQueryData(queryKey, data)
         })
       }
+      if (context?.previousAiSearch) {
+        context.previousAiSearch.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
     },
     onSettled: (_, error, _id, context) => {
       if (!error) {
@@ -226,6 +258,7 @@ export function useDeleteNote() {
       if (error || context?.shouldRefetch) {
         void queryClient.invalidateQueries({ queryKey: ['notes'] })
         void queryClient.invalidateQueries({ queryKey: ['search'] })
+        void queryClient.invalidateQueries({ queryKey: ['mobileAiSearch'] })
       }
     },
   })

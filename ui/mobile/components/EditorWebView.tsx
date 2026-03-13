@@ -12,6 +12,7 @@ export type EditorWebViewHandle = {
     setContent: (html: string) => void
     getContent: () => Promise<string>
     runCommand: (method: string, args?: unknown[]) => void
+    scrollToChunk: (charOffset: number, chunkLength: number) => void
 }
 
 type Props = {
@@ -78,6 +79,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         const contentResolver = useRef<((html: string) => void) | null>(null)
         const pendingChunks = useRef<ChunkBufferStore>({})
         const pendingTheme = useRef(colorScheme)
+        const pendingChunkFocus = useRef<{ charOffset: number; chunkLength: number } | null>(null)
         const hasFallback = useRef(false)
         const readyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
         const appVariant = useMemo(() => {
@@ -179,6 +181,13 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             runCommand(method: string, args: unknown[] = []) {
                 post({ type: 'COMMAND', payload: { method, args } })
             },
+            scrollToChunk(charOffset: number, chunkLength: number) {
+                if (isReady) {
+                    post({ type: 'SCROLL_TO_CHUNK', payload: { charOffset, chunkLength } })
+                    return
+                }
+                pendingChunkFocus.current = { charOffset, chunkLength }
+            },
             async getContent() {
                 return new Promise<string>((resolve) => {
                     contentResolver.current = resolve
@@ -192,7 +201,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     }, 2000)
                 })
             },
-        }))
+        }), [isReady])
 
         const editorUrl = editorSource?.uri ?? ''
 
@@ -254,6 +263,10 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         }
                         if (pendingTheme.current) {
                             post({ type: 'SET_THEME', payload: pendingTheme.current })
+                        }
+                        if (pendingChunkFocus.current) {
+                            post({ type: 'SCROLL_TO_CHUNK', payload: pendingChunkFocus.current })
+                            pendingChunkFocus.current = null
                         }
                         setIsReady(true)
                         if (readyTimeoutRef.current) {

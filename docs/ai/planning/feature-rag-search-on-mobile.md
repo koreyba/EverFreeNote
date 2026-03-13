@@ -1,139 +1,109 @@
 ---
 phase: planning
-title: RAG Search on Mobile — Project Planning & Task Breakdown
-description: Task breakdown for per-note RAG indexing menu and redesigned settings screen on mobile
+title: RAG Search on Mobile - Project Planning & Task Breakdown
+description: Task breakdown for mobile AI search parity, chunk open-in-context, and search UI unification
 ---
 
 # Project Planning & Task Breakdown
 
 ## Milestones
 
-- [ ] **M1:** Note overflow menu with RAG index/re-index/delete actions functional
-- [ ] **M2:** Redesigned Settings screen with sections and working Gemini API key management
-- [ ] **M3:** Polish, error handling, accessibility, and export hook wired in settings (placeholders)
-
----
+- [x] **M1:** Mobile AI search state and controls in place
+- [x] **M2:** AI notes/chunks result views implemented with virtualization
+- [x] **M3:** Open-in-context chunk scroll and highlight working in note editor
+- [x] **M4:** Search result UI unified and covered by tests
 
 ## Task Breakdown
 
-### Phase 1: Mobile RAG Hook
+### Phase 1: State and Hooks
 
-- [ ] **T1.1** Create `ui/mobile/hooks/useRagStatus.ts`
-  - Copy-adapt `ui/web/hooks/useRagStatus.ts`
-  - Replace `useSupabase()` import with mobile provider; use `client` instead of `supabase`
-  - Export `RagStatus` interface and `useRagStatus` function
-  - Export from `ui/mobile/hooks/index.ts`
+- [x] **T1.1** Create `ui/mobile/hooks/useMobileSearchMode.ts`
+  - AsyncStorage-backed state for AI toggle, preset, and view mode
+  - mirror web `useSearchMode` semantics with mobile storage
 
-### Phase 2: Note Overflow Menu
+- [x] **T1.2** Create `ui/mobile/hooks/useMobileAIPaginatedSearch.ts`
+  - copy-adapt web `useAIPaginatedSearch`
+  - use mobile `client.functions.invoke`
+  - reuse shared RAG constants/types
 
-- [ ] **T2.1** Create `ui/mobile/components/NoteIndexMenu.tsx`
-  - Bottom-sheet `Modal` (`animationType="slide"`, `transparent`, bottom-anchored)
-  - Import `useRagStatus` from mobile hooks
-  - Derive `isIndexed`, `isBusy` from status and `operation` state
-  - **Index/Re-index button:** calls `client.functions.invoke('rag-index', { body: { noteId, action } })`; shows `ActivityIndicator` while in-flight; toast on success/error
-  - **Remove from index button:** disabled when `chunkCount === 0`; opens a confirmation sub-modal before calling delete action
-  - **Status line** at top showing chunk count and timestamp (or "Not indexed")
-  - Cancel button at bottom
-  - `accessibilityLabel`, `accessibilityRole`, `accessibilityState.disabled` on all buttons
+- [x] **T1.3** Extend `useOpenNote`
+  - accept optional chunk focus payload
+  - push note route with params needed for open-in-context
 
-- [ ] **T2.2** Wire `NoteIndexMenu` into `note/[id].tsx`
-  - Add `isNoteMenuVisible: boolean` state
-  - Import `MoreVertical` from `lucide-react-native`
-  - Add `MoreVertical` `Pressable` to `headerRight` (after Trash, before ThemeToggle)
-  - Render `<NoteIndexMenu noteId={id} visible={isNoteMenuVisible} onClose={...} />` in the screen
+### Phase 2: Search Screen Refactor
 
-### Phase 3: Settings Screen Redesign
+- [x] **T2.1** Refactor `ui/mobile/app/(tabs)/search.tsx`
+  - coordinate regular vs AI search
+  - ensure only active mode loads
+  - block mode/view changes during selection mode
+  - keep search history and tag filter behavior intact
 
-- [ ] **T3.1** Create `ui/mobile/components/settings/GeminiApiKeySection.tsx`
-  - Renders a pressable row with title "Google / Gemini API" and status indicator (key icon + "Configured" / "Not set")
-  - On press: opens a full-screen `Modal`
-  - Modal content:
-    - Password `TextInput` with placeholder logic (configured vs not)
-    - Inline status badge (green "Configured" / grey "Not configured")
-    - Error and success messages
-    - Save and Close buttons
-  - Uses `new ApiKeysSettingsService(client)` from `@core/services/apiKeysSettings`
-  - Loads status on modal open; saves key on "Save"
+- [x] **T2.2** Add mobile AI controls
+  - toggle
+  - preset selector
+  - notes/chunks view tabs
 
-- [ ] **T3.2** Create helper components in `ui/mobile/components/settings/`
-  - `SettingsSectionHeader.tsx` — small ALL-CAPS section label (e.g. "INTEGRATIONS")
-  - `SettingsRow.tsx` — generic pressable row: title (left), optional right element (badge, icon, chevron)
-  - `ComingSoonBadge.tsx` — small "Soon" badge with muted style
+- [x] **T2.3** Add AI results rendering
+  - `notes` view with grouped note cards
+  - `chunks` view with flattened chunk cards
+  - `FlashList` virtualization and `onEndReached`
 
-- [ ] **T3.3** Redesign `ui/mobile/app/(tabs)/settings.tsx`
-  - Replace flat layout with `ScrollView` + sections
-  - **Section: APPEARANCE** — existing theme radio options (unchanged logic)
-  - **Section: INTEGRATIONS**
-    - `<GeminiApiKeySection />` (functional)
-    - WordPress row: `<SettingsRow title="WordPress" badge={<ComingSoonBadge />} disabled />` 
-  - **Section: DATA**
-    - Import row: `<SettingsRow title="Import notes" badge={<ComingSoonBadge />} disabled />`
-    - Export row: `<SettingsRow title="Export notes" badge={<ComingSoonBadge />} disabled />`
-  - **Section: ACCOUNT**
-    - Sign Out button (existing)
-    - Delete Account link + Modal (existing — no change to logic)
-  - Maintain all existing styles for existing elements
+- [x] **T2.4** Unify result-card visuals
+  - bring regular note search and AI note search into the same visual system
+  - preserve selection affordances in note lists
 
-### Phase 4: Testing templates
+### Phase 3: Editor Open-In-Context
 
-- [ ] **T4.1** Create `docs/ai/testing/feature-rag-search-on-mobile.md`
-  - Unit test checklist for `useRagStatus` mobile hook
-  - Integration test checklist for `NoteIndexMenu` (mock `functions.invoke`)
-  - Integration test checklist for `GeminiApiKeySection` (mock `ApiKeysSettingsService`)
-  - Manual QA checklist for settings sections
+- [x] **T3.1** Extend `ui/mobile/components/EditorWebView.tsx`
+  - add `scrollToChunk` handle method
+  - bridge new message type to the embedded editor page
 
-- [ ] **T4.2** Create `docs/ai/implementation/feature-rag-search-on-mobile.md`
-  - Implementation notes as tasks complete
+- [x] **T3.2** Extend `app/editor-webview/page.tsx`
+  - handle chunk-focus messages from native
+  - forward to `RichTextEditorWebView`
 
----
+- [x] **T3.3** Extend `ui/web/components/RichTextEditorWebView.tsx`
+  - expose `scrollToChunk`
+  - reuse shared chunk focus logic/extension
+
+- [x] **T3.4** Update `ui/mobile/app/note/[id].tsx`
+  - read navigation params for pending chunk focus
+  - adjust offset relative to body content
+  - dispatch chunk focus once note/editor are ready
+
+### Phase 4: Testing
+
+- [x] **T4.1** Add hook tests
+  - AI paginated search grouping, reset, and load-more behavior
+  - mobile search mode persistence
+
+- [x] **T4.2** Add integration tests for search screen
+  - AI toggle activates selected mode
+  - only active mode fetches
+  - view switching blocked during selection mode
+  - long press selection disabled in chunk view
+  - AI result press opens note in context
+
+- [x] **T4.3** Add editor bridge tests
+  - note screen forwards chunk-focus params
+  - EditorWebView posts chunk-focus message
 
 ## Dependencies
 
 | Task | Depends on |
 |------|-----------|
-| T2.1 | T1.1 (useRagStatus hook must exist first) |
-| T2.2 | T2.1 (NoteIndexMenu component must exist) |
-| T3.1 | `core/services/apiKeysSettings.ts` (already exists ✅) |
-| T3.3 | T3.1, T3.2 |
-| T4.1 | T1.1, T2.1, T3.1 |
+| T1.2 | shared AI constants/types already existing |
+| T1.3 | shared note route and note editor entry points already existing |
+| T2.1 | T1.1, T1.2 |
+| T2.2 | T2.1 |
+| T2.3 | T2.2, T1.3 |
+| T2.4 | T2.3, T1.3 |
+| T3.2 | T3.1 |
+| T3.4 | T1.3, T3.1, T3.2, T3.3 |
+| T4.x | corresponding implementation tasks |
 
-**External dependencies (already satisfied):**
-- `rag-index` Edge Function — deployed ✅
-- `api-keys-status` / `api-keys-upsert` Edge Functions — deployed ✅
-- `note_embeddings` table + RLS — applied ✅
-- `core/services/apiKeysSettings.ts` — exists ✅
-- `lucide-react-native` — installed in mobile ✅
+## Risks & Sequencing Notes
 
----
-
-## Timeline & Estimates
-
-| Task | Effort |
-|------|--------|
-| T1.1 — `useRagStatus` hook | ~30 min |
-| T2.1 — `NoteIndexMenu` component | ~1.5 h |
-| T2.2 — Wire into note editor | ~30 min |
-| T3.1 — `GeminiApiKeySection` | ~1.5 h |
-| T3.2 — `SettingsSectionHeader`, `SettingsRow`, `ComingSoonBadge` | ~30 min |
-| T3.3 — Settings screen redesign | ~1 h |
-| T4.x — Docs | ~30 min |
-| **Total** | **~6 h** |
-
----
-
-## Risks & Mitigation
-
-| Risk | Impact | Mitigation |
-|------|--------|-----------|
-| `client.functions.invoke` fails on mobile (CORS / auth) | High | Already works for other features (sync); same Supabase client used |
-| `note_embeddings` RLS blocks mobile reads | Medium | Same anon key + user JWT flow as web; RLS is user-scoped not platform-scoped |
-| Bottom-sheet modal animation feels janky | Low | Use `animationType="slide"` + `transparent` overlay; proven pattern |
-| Header gets too crowded with `⋮` button | Low | Remove ThemeToggle from header if needed (move to Settings) |
-
----
-
-## Implementation Order
-
-1. T1.1 → T2.1 → T2.2 (RAG note menu, end-to-end)
-2. T3.2 → T3.1 → T3.3 (Settings redesign, end-to-end)
-3. T4.x (docs)
+- Build the AI hook and search state first so UI work stays deterministic.
+- Land T1.3 and editor chunk focus before finalizing AI result taps; otherwise the tap flow cannot be validated end-to-end.
+- Keep regular-search regressions visible by preserving existing integration coverage and extending it rather than replacing it.

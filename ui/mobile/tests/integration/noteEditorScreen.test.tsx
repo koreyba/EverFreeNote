@@ -18,14 +18,21 @@ import {
 const mockPush = jest.fn()
 const mockBack = jest.fn()
 const mockReplace = jest.fn()
+const mockSetParams = jest.fn()
+const mockPathname = '/note/[id]'
+let mockLocalSearchParams: { id: string; focusOffset?: string; focusLength?: string; focusRequestId?: string } = {
+  id: 'test-note-id',
+}
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     push: mockPush,
     back: mockBack,
     replace: mockReplace,
+    setParams: mockSetParams,
   }),
-  useLocalSearchParams: () => ({ id: 'test-note-id' }),
+  useLocalSearchParams: () => mockLocalSearchParams,
+  usePathname: () => mockPathname,
   Stack: {
     Screen: ({ children, options }: { children: ReactNode; options?: { headerRight?: () => ReactNode; headerLeft?: () => ReactNode; headerTitle?: () => ReactNode } }) => {
       const { View } = require('react-native')
@@ -125,24 +132,28 @@ const mockEditorCallbacks: {
   onContentChange?: (html: string) => void
   onBlur?: () => void
   onFocus?: () => void
+  onReady?: () => void
 } = {}
 
 const mockToolbarCallbacks: {
   onMenuVisibilityChange?: (visible: boolean) => void
 } = {}
+const mockScrollToChunk = jest.fn()
 
 jest.mock('@ui/mobile/components/EditorWebView', () => {
   const React = require('react')
   const { View, Text } = require('react-native')
 
-  return React.forwardRef((props: { onContentChange?: (html: string) => void; onBlur?: () => void; onFocus?: () => void }, ref: unknown) => {
+  return React.forwardRef((props: { onContentChange?: (html: string) => void; onBlur?: () => void; onFocus?: () => void; onReady?: () => void }, ref: unknown) => {
     // Store callbacks for test access
     mockEditorCallbacks.onContentChange = props.onContentChange
     mockEditorCallbacks.onBlur = props.onBlur
     mockEditorCallbacks.onFocus = props.onFocus
+    mockEditorCallbacks.onReady = props.onReady
 
     React.useImperativeHandle(ref, () => ({
       runCommand: jest.fn(),
+      scrollToChunk: mockScrollToChunk,
     }))
 
     return (
@@ -212,12 +223,17 @@ describe('NoteEditorScreen - Delete Functionality', () => {
   let wrapper: ReturnType<typeof createQueryWrapper>
 
   beforeEach(() => {
+    mockLocalSearchParams = { id: 'test-note-id' }
     queryClient = createTestQueryClient()
     wrapper = createQueryWrapper(queryClient)
     mockEditorCallbacks.onContentChange = undefined
     mockEditorCallbacks.onBlur = undefined
     mockEditorCallbacks.onFocus = undefined
+    mockEditorCallbacks.onReady = undefined
     mockToolbarCallbacks.onMenuVisibilityChange = undefined
+    mockScrollToChunk.mockReset()
+    mockSetParams.mockReset()
+    mockReplace.mockReset()
 
     mockNoteService.prototype.getNote = jest.fn().mockResolvedValue({
       id: 'test-note-id',
@@ -555,6 +571,78 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('note-index-menu-visibility').props.children).toBe('hidden')
+      })
+    })
+  })
+
+  describe('Chunk focus', () => {
+    it('retries chunk focus when the editor becomes ready without replacing the current route', async () => {
+      mockLocalSearchParams = {
+        id: 'test-note-id',
+        focusOffset: '14',
+        focusLength: '5',
+        focusRequestId: 'focus-request-1',
+      }
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      expect(mockScrollToChunk).not.toHaveBeenCalled()
+
+      act(() => {
+        mockEditorCallbacks.onReady?.()
+      })
+
+      await waitFor(() => {
+        expect(mockScrollToChunk).toHaveBeenCalledWith(4, 5)
+      })
+
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+
+    it('applies the same chunk focus again when reopening the same note', async () => {
+      mockLocalSearchParams = {
+        id: 'test-note-id',
+        focusOffset: '14',
+        focusLength: '5',
+        focusRequestId: 'focus-request-1',
+      }
+
+      const firstRender = render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onReady?.()
+      })
+
+      await waitFor(() => {
+        expect(mockScrollToChunk).toHaveBeenCalledTimes(1)
+      })
+
+      firstRender.unmount()
+
+      mockScrollToChunk.mockClear()
+      mockEditorCallbacks.onReady = undefined
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onReady?.()
+      })
+
+      await waitFor(() => {
+        expect(mockScrollToChunk).toHaveBeenCalledTimes(1)
+        expect(mockScrollToChunk).toHaveBeenCalledWith(4, 5)
       })
     })
   })

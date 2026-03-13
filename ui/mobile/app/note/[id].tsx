@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard } from 'react-native'
+import { Pressable, View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
@@ -9,7 +9,6 @@ import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
 import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical } from 'lucide-react-native'
-import { Pressable } from 'react-native'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
 import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
@@ -17,8 +16,145 @@ import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
 const CONTENT_HORIZONTAL_PADDING = 16
 const HEADER_BUTTON_PADDING = 8
 
+type NoteEditorHeaderStyles = ReturnType<typeof createStyles>
+type ThemeColors = ReturnType<typeof useTheme>['colors']
+
+type HeaderLeftActionsProps = Readonly<{
+  styles: NoteEditorHeaderStyles
+  colors: ThemeColors
+  canUndo: boolean
+  canRedo: boolean
+  onBack: () => void
+  onUndo: () => void
+  onRedo: () => void
+}>
+
+function HeaderLeftActions({
+  styles,
+  colors,
+  canUndo,
+  canRedo,
+  onBack,
+  onUndo,
+  onRedo,
+}: HeaderLeftActionsProps) {
+  return (
+    <View style={styles.headerLeftActions}>
+      <Pressable
+        onPress={onBack}
+        accessibilityLabel="Go back"
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+      >
+        <ChevronLeft color={colors.foreground} size={24} />
+      </Pressable>
+      <Pressable
+        onPress={onUndo}
+        disabled={!canUndo}
+        accessibilityLabel="Undo"
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !canUndo }}
+        style={({ pressed }) => [
+          styles.headerButton,
+          !canUndo && styles.headerButtonDisabled,
+          pressed && canUndo && { opacity: 0.5 },
+        ]}
+      >
+        <Undo2 color={canUndo ? colors.foreground : colors.mutedForeground} size={20} />
+      </Pressable>
+      <Pressable
+        onPress={onRedo}
+        disabled={!canRedo}
+        accessibilityLabel="Redo"
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !canRedo }}
+        style={({ pressed }) => [
+          styles.headerButton,
+          !canRedo && styles.headerButtonDisabled,
+          pressed && canRedo && { opacity: 0.5 },
+        ]}
+      >
+        <Redo2 color={canRedo ? colors.foreground : colors.mutedForeground} size={20} />
+      </Pressable>
+    </View>
+  )
+}
+
+type HeaderDeleteButtonProps = Readonly<{
+  styles: NoteEditorHeaderStyles
+  colors: ThemeColors
+  isDeleting: boolean
+  onDelete: () => void
+}>
+
+function HeaderDeleteButton({
+  styles,
+  colors,
+  isDeleting,
+  onDelete,
+}: HeaderDeleteButtonProps) {
+  return (
+    <Pressable
+      onPress={onDelete}
+      disabled={isDeleting}
+      accessibilityLabel="Delete note"
+      accessibilityRole="button"
+      accessibilityState={{ disabled: isDeleting }}
+      style={({ pressed }) => [
+        styles.headerButton,
+        styles.headerTitleButton,
+        (pressed || isDeleting) && { opacity: 0.5 },
+      ]}
+    >
+      {isDeleting ? (
+        <ActivityIndicator size="small" color={colors.destructive} testID="activity-indicator" />
+      ) : (
+        <Trash2 color={colors.destructive} size={20} />
+      )}
+    </Pressable>
+  )
+}
+
+type HeaderRightActionsProps = Readonly<{
+  styles: NoteEditorHeaderStyles
+  colors: ThemeColors
+  onOpenMenu: () => void
+}>
+
+function HeaderRightActions({
+  styles,
+  colors,
+  onOpenMenu,
+}: HeaderRightActionsProps) {
+  return (
+    <View style={styles.headerActions}>
+      <View style={styles.headerRightGroup}>
+        <ThemeToggle style={styles.headerToggle} />
+        <Pressable
+          onPress={onOpenMenu}
+          accessibilityLabel="More options"
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+        >
+          <MoreVertical color={colors.foreground} size={20} />
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
 export default function NoteEditorScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const {
+    id,
+    focusOffset,
+    focusLength,
+    focusRequestId,
+  } = useLocalSearchParams<{
+    id: string
+    focusOffset?: string
+    focusLength?: string
+    focusRequestId?: string
+  }>()
   const { data: note, isLoading, error } = useNote(id)
   const { mutate: updateNote } = useUpdateNote()
   const { mutate: deleteNote, isPending: isDeleting } = useDeleteNote()
@@ -36,7 +172,9 @@ export default function NoteEditorScreen() {
   const [hasSelection, setHasSelection] = useState(false)
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [isEditorReady, setIsEditorReady] = useState(false)
   const lastHydratedNoteIdRef = useRef<string | null>(null)
+  const lastAppliedChunkFocusRequestIdRef = useRef<string | null>(null)
   const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
     title: '',
     description: '',
@@ -106,6 +244,7 @@ export default function NoteEditorScreen() {
       const hasNoteSwitched = lastHydratedNoteIdRef.current !== note.id
       if (hasNoteSwitched) {
         setHistoryState({ canUndo: false, canRedo: false })
+        setIsEditorReady(false)
         lastHydratedNoteIdRef.current = note.id
       }
       setTitle(note.title || '')
@@ -119,6 +258,44 @@ export default function NoteEditorScreen() {
       saverRef.current?.reset(lastSavedRef.current)
     }
   }, [note])
+
+  const pendingChunkFocus = useMemo(() => {
+    if (!note?.id) return null
+    const rawOffset = typeof focusOffset === 'string' ? Number.parseInt(focusOffset, 10) : Number.NaN
+    const rawLength = typeof focusLength === 'string' ? Number.parseInt(focusLength, 10) : Number.NaN
+
+    if (!Number.isFinite(rawOffset) || !Number.isFinite(rawLength) || rawLength <= 0) {
+      return null
+    }
+
+    const titlePrefix = (note.title ?? '').trim()
+    const bodyOffset = titlePrefix ? Math.max(0, rawOffset - (titlePrefix.length + 1)) : rawOffset
+
+    return {
+      requestId:
+        typeof focusRequestId === 'string' && focusRequestId.length > 0
+          ? focusRequestId
+          : `${note.id}:${bodyOffset}:${rawLength}`,
+      charOffset: bodyOffset,
+      chunkLength: rawLength,
+    }
+  }, [focusLength, focusOffset, focusRequestId, note?.id, note?.title])
+
+  const applyPendingChunkFocus = useCallback(() => {
+    if (!pendingChunkFocus) return
+    if (lastAppliedChunkFocusRequestIdRef.current === pendingChunkFocus.requestId) return
+    if (!isEditorReady) return
+
+    const editor = editorRef.current
+    if (!editor) return
+
+    editor.scrollToChunk(pendingChunkFocus.charOffset, pendingChunkFocus.chunkLength)
+    lastAppliedChunkFocusRequestIdRef.current = pendingChunkFocus.requestId
+  }, [isEditorReady, pendingChunkFocus])
+
+  useEffect(() => {
+    applyPendingChunkFocus()
+  }, [applyPendingChunkFocus])
 
   const scheduleSave = useCallback(() => {
     saverRef.current?.schedule({ ...latestDraftRef.current })
@@ -156,6 +333,22 @@ export default function NoteEditorScreen() {
     editorRef.current?.runCommand(method, args)
   }, [])
 
+  const handleGoBack = useCallback(() => {
+    router.back()
+  }, [router])
+
+  const handleUndo = useCallback(() => {
+    editorRef.current?.runCommand('undo')
+  }, [])
+
+  const handleRedo = useCallback(() => {
+    editorRef.current?.runCommand('redo')
+  }, [])
+
+  const handleOpenNoteMenu = useCallback(() => {
+    setIsNoteMenuVisible(true)
+  }, [])
+
   const handleDelete = useCallback(() => {
     deleteNote(id, {
       onSuccess: () => {
@@ -163,6 +356,44 @@ export default function NoteEditorScreen() {
       },
     })
   }, [deleteNote, id, router])
+
+  const renderHeaderLeft = useCallback(
+    () => (
+      <HeaderLeftActions
+        styles={styles}
+        colors={colors}
+        canUndo={historyState.canUndo}
+        canRedo={historyState.canRedo}
+        onBack={handleGoBack}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+      />
+    ),
+    [colors, handleGoBack, handleRedo, handleUndo, historyState.canRedo, historyState.canUndo, styles]
+  )
+
+  const renderHeaderTitle = useCallback(
+    () => (
+      <HeaderDeleteButton
+        styles={styles}
+        colors={colors}
+        isDeleting={isDeleting}
+        onDelete={handleDelete}
+      />
+    ),
+    [colors, handleDelete, isDeleting, styles]
+  )
+
+  const renderHeaderRight = useCallback(
+    () => (
+      <HeaderRightActions
+        styles={styles}
+        colors={colors}
+        onOpenMenu={handleOpenNoteMenu}
+      />
+    ),
+    [colors, handleOpenNoteMenu, styles]
+  )
 
   const isToolbarVisible = isEditorFocused || isToolbarMenuOpen
 
@@ -195,80 +426,9 @@ export default function NoteEditorScreen() {
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
           headerTitleAlign: 'center',
-          headerLeft: () => (
-            <View style={styles.headerLeftActions}>
-              <Pressable
-                onPress={() => router.back()}
-                accessibilityLabel="Go back"
-                accessibilityRole="button"
-                style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
-              >
-                <ChevronLeft color={colors.foreground} size={24} />
-              </Pressable>
-              <Pressable
-                onPress={() => editorRef.current?.runCommand('undo')}
-                disabled={!historyState.canUndo}
-                accessibilityLabel="Undo"
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !historyState.canUndo }}
-                style={({ pressed }) => [
-                  styles.headerButton,
-                  !historyState.canUndo && styles.headerButtonDisabled,
-                  pressed && historyState.canUndo && { opacity: 0.5 },
-                ]}
-              >
-                <Undo2 color={historyState.canUndo ? colors.foreground : colors.mutedForeground} size={20} />
-              </Pressable>
-              <Pressable
-                onPress={() => editorRef.current?.runCommand('redo')}
-                disabled={!historyState.canRedo}
-                accessibilityLabel="Redo"
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !historyState.canRedo }}
-                style={({ pressed }) => [
-                  styles.headerButton,
-                  !historyState.canRedo && styles.headerButtonDisabled,
-                  pressed && historyState.canRedo && { opacity: 0.5 },
-                ]}
-              >
-                <Redo2 color={historyState.canRedo ? colors.foreground : colors.mutedForeground} size={20} />
-              </Pressable>
-            </View>
-          ),
-          headerTitle: () => (
-            <Pressable
-              onPress={handleDelete}
-              disabled={isDeleting}
-              accessibilityLabel="Delete note"
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.headerButton,
-                styles.headerTitleButton,
-                (pressed || isDeleting) && { opacity: 0.5 },
-              ]}
-            >
-              {isDeleting ? (
-                <ActivityIndicator size="small" color={colors.destructive} testID="activity-indicator" />
-              ) : (
-                <Trash2 color={colors.destructive} size={20} />
-              )}
-            </Pressable>
-          ),
-          headerRight: () => (
-            <View style={styles.headerActions}>
-              <View style={styles.headerRightGroup}>
-                <ThemeToggle style={styles.headerToggle} />
-                <Pressable
-                  onPress={() => setIsNoteMenuVisible(true)}
-                  accessibilityLabel="More options"
-                  accessibilityRole="button"
-                  style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
-                >
-                  <MoreVertical color={colors.foreground} size={20} />
-                </Pressable>
-              </View>
-            </View>
-          ),
+          headerLeft: renderHeaderLeft,
+          headerTitle: renderHeaderTitle,
+          headerRight: renderHeaderRight,
         }}
       />
       <View style={styles.header}>
@@ -292,6 +452,7 @@ export default function NoteEditorScreen() {
       <View style={[styles.editorContainer, { paddingBottom: editorPaddingBottom }]}>
         <EditorWebView
           ref={editorRef}
+          onReady={() => setIsEditorReady(true)}
           initialContent={note.description || ''}
           onContentChange={handleContentChange}
           onFocus={() => setIsEditorFocused(true)}

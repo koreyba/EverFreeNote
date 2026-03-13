@@ -1,51 +1,76 @@
 ---
 phase: implementation
-title: RAG Search on Mobile — Implementation Notes
-description: Implementation progress and technical notes for the mobile RAG indexing menu and settings redesign
+title: RAG Search on Mobile - Implementation Notes
+description: Implementation progress and technical notes for mobile AI search parity
 ---
 
 # Implementation Notes
 
 ## Status
-✅ **All tasks complete.** TypeScript check: 0 errors.
 
-## Completed Tasks
+Mobile AI search parity implementation is now in place.
 
-- ✅ **T1.1** `ui/mobile/hooks/useRagStatus.ts` — mobile adaptation of web hook (uses `client` instead of `supabase`)
-- ✅ **T1.1** Export added to `ui/mobile/hooks/index.ts`
-- ✅ **T2.1** `ui/mobile/components/NoteIndexMenu.tsx` — bottom-sheet Modal for RAG operations (index/re-index/delete with confirm)
-- ✅ **T2.2** `note/[id].tsx` — added `MoreVertical` button to `headerRight`, wired to `NoteIndexMenu`
-- ✅ **T3.2** `ui/mobile/components/settings/SettingsSectionHeader.tsx`
-- ✅ **T3.2** `ui/mobile/components/settings/SettingsRow.tsx`
-- ✅ **T3.2** `ui/mobile/components/settings/ComingSoonBadge.tsx`
-- ✅ **T3.1** `ui/mobile/components/settings/GeminiApiKeySection.tsx` — Gemini API key management modal
-- ✅ **T3.3** `ui/mobile/app/(tabs)/settings.tsx` — redesigned with 4 sections: Appearance, Integrations, Data, Account
+Validated on 2026-03-09 with:
+- `npm run type-check`
+- `npm run lint`
+- targeted Jest suites for search screen AI flows, existing search flows, note editor flows, and persisted mobile search mode state
+
+Previous scope for this feature already shipped:
+- note-level RAG indexing menu on mobile
+- settings redesign and Gemini API key management
+
+Current extension of the feature:
+- full mobile AI search parity with web
+- note/chunk views
+- strictness presets
+- open-in-context chunk focus in the mobile editor
+
+## Implementation Strategy
+
+### Search state
+- Keep existing `useSearch` for regular search.
+- Add a mobile AI hook mirroring web `useAIPaginatedSearch`.
+- Coordinate active-mode behavior in `search.tsx` so only one mode fetches and paginates.
+
+### Search controls
+- Add mobile-native controls for:
+  - AI toggle
+  - strictness preset
+  - notes/chunks view
+- Persist control state with AsyncStorage to avoid surprising resets.
+
+### Result rendering
+- Preserve `FlashList` for virtualization.
+- Use grouped note cards for AI notes view.
+- Use flattened chunk cards for AI chunk view.
+- Unify note-card styling so regular and AI search feel consistent.
+
+### Open in context
+- Extend `useOpenNote` and `note/[id].tsx` to carry pending chunk-focus requests.
+- Extend `EditorWebView` bridge and embedded editor page with `scrollToChunk`.
+- Reuse `ChunkFocusExtension` for the green left highlight and clear-on-click behavior.
 
 ## Technical Notes
 
-### Mobile Supabase client key
-The mobile `SupabaseProvider` exposes `client` (not `supabase`) — all calls use `const { client, user } = useSupabase()`.
+### Title-prefix adjustment
+The RAG index prepends `title + " "` ahead of body content. Mobile must apply the same offset correction as web before scrolling to a chunk.
 
-### `useRagStatus` adaptation
-- Web: `const { supabase, user } = useSupabase()` → uses `supabase.from(...)`
-- Mobile: `const { client, user } = useSupabase()` → uses `client.from(...)`
-- The rest of the hook logic is identical.
+### Single active loader rule
+The search screen should never call both:
+- regular `fetchNextPage`
+- AI `loadMoreAI`
 
-### `NoteIndexMenu` bottom-sheet pattern
-```
-<Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-  <Pressable style={overlay} onPress={onClose} />
-  <View style={sheet}>
-    {/* content */}
-  </View>
-</Modal>
-```
-The `Pressable` overlay captures taps outside the sheet and closes it.
+The active mode owns the list, empty state, loading state, and pagination callbacks.
 
-### `ApiKeysSettingsService` on mobile
-```typescript
-import { ApiKeysSettingsService } from '@core/services/apiKeysSettings'
-const { client } = useSupabase()
-const service = useMemo(() => new ApiKeysSettingsService(client), [client])
-```
-No changes to the core service needed.
+### Selection-mode guard
+Selection mode is valid only for note-style result lists. While active:
+- AI toggle is disabled
+- notes/chunks tabs are disabled
+- leaving selection mode restores normal switching
+
+## Validation Plan
+
+Completed checks for this iteration:
+- `npm test -- --runInBand tests/integration/searchScreen.test.tsx tests/integration/searchScreenAI.test.tsx tests/integration/noteEditorScreen.test.tsx tests/component/useMobileSearchMode.test.tsx`
+- `npm run type-check`
+- `npm run lint`

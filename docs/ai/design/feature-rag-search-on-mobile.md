@@ -1,7 +1,7 @@
 ---
 phase: design
-title: RAG Search on Mobile — System Design & Architecture
-description: Architecture for per-note RAG indexing menu and redesigned settings page in the React Native mobile app
+title: RAG Search on Mobile - System Design & Architecture
+description: Architecture for bringing mobile search to parity with the web AI search experience
 ---
 
 # System Design & Architecture
@@ -11,207 +11,203 @@ description: Architecture for per-note RAG indexing menu and redesigned settings
 ```mermaid
 graph TD
     subgraph MobileApp["React Native (Expo)"]
-        NoteEditor["note/[id].tsx\n(note editor screen)"]
-        OverflowBtn["MoreVertical button\n(header right)"]
-        NoteMenu["NoteIndexMenu component\n(Modal bottom sheet)"]
-        RagHook["useRagStatus hook\n(mobile, polls every 3s)"]
-        SettingsScreen["(tabs)/settings.tsx\n(redesigned)"]
-        GeminiModal["GeminiApiKeyModal component\n(Modal)"]
-        MobileSupabase["useSupabase()\n→ client + user"]
+        SearchScreen["(tabs)/search.tsx"]
+        SearchMode["useMobileSearchMode"]
+        FTSHook["useSearch"]
+        AIHook["useMobileAIPaginatedSearch"]
+        ResultCards["Unified search result cards"]
+        OpenNote["useOpenNote"]
+        NoteEditor["note/[id].tsx"]
+        EditorBridge["EditorWebView"]
     end
 
-    subgraph SupabaseEdge["Supabase Edge Functions"]
-        RagIndex["rag-index\n(existing)"]
-        ApiKeysStatus["api-keys-status\n(existing)"]
-        ApiKeysUpsert["api-keys-upsert\n(existing)"]
+    subgraph Shared["Shared Core"]
+        SearchConstants["core/constants/aiSearch.ts"]
+        RagTypes["core/types/ragSearch.ts"]
+        SearchService["core/services/search.ts"]
     end
 
-    subgraph SupabaseDB["Supabase DB"]
-        NoteEmbeddings[("note_embeddings\nvector(1536), HNSW")]
-        UserSettings[("user_api_keys\n(encrypted Gemini key)")]
+    subgraph WebBundle["Web editor bundle in mobile WebView"]
+        EditorPage["app/editor-webview/page.tsx"]
+        RichEditor["RichTextEditorWebView"]
+        ChunkFocus["extensions/ChunkFocus.ts"]
     end
 
-    NoteEditor --> OverflowBtn
-    OverflowBtn -->|"onPress"| NoteMenu
-    NoteMenu --> RagHook
-    RagHook -->|"SELECT chunk_index, indexed_at\nWHERE note_id = ?"| MobileSupabase
-    MobileSupabase --> NoteEmbeddings
-    NoteMenu -->|"client.functions.invoke\n'rag-index'"| RagIndex
-    RagIndex --> NoteEmbeddings
+    subgraph Supabase["Supabase"]
+        RagSearch["Edge Function: rag-search"]
+        NotesTable[("notes")]
+    end
 
-    SettingsScreen --> GeminiModal
-    GeminiModal -->|"ApiKeysSettingsService.getStatus()"| ApiKeysStatus
-    GeminiModal -->|"ApiKeysSettingsService.upsert(key)"| ApiKeysUpsert
-    ApiKeysStatus --> UserSettings
-    ApiKeysUpsert --> UserSettings
+    SearchScreen --> SearchMode
+    SearchScreen --> FTSHook
+    SearchScreen --> AIHook
+    SearchScreen --> ResultCards
+    SearchScreen --> OpenNote
+    SearchMode --> SearchConstants
+    AIHook --> SearchConstants
+    AIHook --> RagTypes
+    FTSHook --> SearchService
+    AIHook --> RagSearch
+    OpenNote --> NoteEditor
+    NoteEditor --> EditorBridge
+    EditorBridge --> EditorPage
+    EditorPage --> RichEditor
+    RichEditor --> ChunkFocus
+    OpenNote --> NotesTable
 ```
 
-**Key principles:**
-- No new backend — reuses existing `rag-index`, `api-keys-status`, `api-keys-upsert` Edge Functions.
-- Mobile `useRagStatus` hook is a copy-adapt of the web hook, using `client` instead of `supabase` from mobile's `useSupabase()`.
-- `ApiKeysSettingsService` from `core/services/apiKeysSettings.ts` is directly reused on mobile.
+## Key Decisions
 
-## Data Models
+### 1. Keep separate hooks for regular and AI search, coordinate them at the screen level
+- `useSearch` remains the owner of regular FTS/tag search.
+- A new mobile AI hook mirrors web `useAIPaginatedSearch`.
+- The screen decides which hook is active and only renders/paginates the active mode.
 
-### Client-side: `RagStatus` (same as web)
-```typescript
-interface RagStatus {
-  chunkCount: number        // 0 = not indexed
-  indexedAt: string | null  // ISO timestamp of latest chunk
-  isLoading: boolean
-  refresh: () => void       // manual re-fetch trigger
-}
-```
+This keeps parity with web behavior while preserving the already working regular-search hook.
 
-### No DB schema changes
-All tables (`note_embeddings`, `user_api_keys`) already exist. No migrations needed.
+### 2. Mirror web AI grouping and pagination semantics
+- Reuse `SEARCH_PRESETS`, `AI_SEARCH_MIN_QUERY_LENGTH`, and `OFFSET_DELTA_THRESHOLD`.
+- AI results are fetched cumulatively with growing `topK`.
+- Each fetch replaces the accumulated grouped note results so ranking/snippets stay fresh.
 
-## API Design
+This avoids mobile/web drift in note grouping and chunk deduplication.
 
-### `rag-index` Edge Function (already deployed)
-- **Action `index` / `reindex`:** embeds note content → upserts chunks → returns `{ chunkCount: N }`
-- **Action `delete`:** removes all embeddings for note → returns `{ deleted: true }`
-- Invoked via: `client.functions.invoke('rag-index', { body: { noteId, action } })`
+### 3. Use persisted mobile search mode state
+- Introduce a small mobile hook backed by AsyncStorage.
+- Persist:
+  - `isAIEnabled`
+  - `preset`
+  - `viewMode`
 
-### `api-keys-status` / `api-keys-upsert` Edge Functions (already deployed)
-- Used by `ApiKeysSettingsService` — no change needed.
-- Invoked via: `new ApiKeysSettingsService(client).getStatus()` / `.upsert(key)`
+This matches web intent while using the right mobile storage primitive.
 
-### Status polling (mobile → Supabase direct)
-```typescript
-client
-  .from('note_embeddings')
-  .select('chunk_index, indexed_at')
-  .eq('note_id', noteId)
-  .eq('user_id', user.id)
-```
-RLS policy enforces per-user isolation.
+### 4. Add note open-in-context via navigation params + queued editor focus
+- AI result tap calls an enhanced `useOpenNote`.
+- `useOpenNote` can optionally receive chunk focus metadata.
+- `note/[id].tsx` reads pending chunk focus params, adjusts offset relative to note body, and forwards the request to `EditorWebView`.
+- `EditorWebView` exposes `scrollToChunk(charOffset, chunkLength)`.
+- `app/editor-webview/page.tsx` and `RichTextEditorWebView` support the chunk-focus bridge and rely on the shared `ChunkFocusExtension`.
+
+This is the cleanest path because the editor already lives behind a bridge and the web extension already solves highlight lifecycle.
+
+### 5. Unify note result visuals across regular and AI search
+- Keep one mobile card language for note results.
+- Regular search results and AI note groups should share core layout, spacing, tag treatment, and metadata style.
+- AI-specific cards can add score and fragment affordances, but the base structure should feel like the same product surface.
 
 ## Component Breakdown
 
-### 1. `NoteIndexMenu` (`ui/mobile/components/NoteIndexMenu.tsx`)
-A **Modal bottom sheet** component.
+### `useMobileSearchMode`
+Location: `ui/mobile/hooks/useMobileSearchMode.ts`
 
-**Props:**
-```typescript
-interface NoteIndexMenuProps {
-  noteId: string
-  visible: boolean
-  onClose: () => void
+Responsibilities:
+- load/save search UI mode from AsyncStorage
+- expose:
+  - `isAIEnabled`
+  - `preset`
+  - `viewMode`
+  - setters
+
+### `useMobileAIPaginatedSearch`
+Location: `ui/mobile/hooks/useMobileAIPaginatedSearch.ts`
+
+Responsibilities:
+- invoke `client.functions.invoke('rag-search')`
+- group chunks by note
+- deduplicate nearby chunks
+- manage cumulative loading and `loadMore`
+- expose:
+  - `noteGroups`
+  - `isLoading`
+  - `error`
+  - `refetch`
+  - `aiHasMore`
+  - `aiLoadingMore`
+  - `loadMoreAI`
+  - `resetAIResults`
+
+### Search UI components
+Proposed mobile components:
+- `AiSearchToggleMobile`
+- `AiSearchPresetSelectorMobile`
+- `AiSearchViewTabsMobile`
+- `SearchResultNoteCard`
+- `SearchResultChunkCard`
+
+These keep the screen readable and make testing more focused.
+
+### Note editor chunk focus path
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Search as SearchScreen
+    participant Open as useOpenNote
+    participant Note as note/[id].tsx
+    participant WV as EditorWebView
+    participant Page as editor-webview/page.tsx
+    participant Editor as RichTextEditorWebView
+
+    User->>Search: Tap AI result
+    Search->>Open: openNote(note, chunkFocus)
+    Open->>Note: router.push(note route + focus params)
+    Note->>WV: scrollToChunk(bodyOffset, chunkLength)
+    WV->>Page: postMessage(SCROLL_TO_CHUNK)
+    Page->>Editor: scrollToChunk(...)
+    Editor->>Editor: apply ChunkFocus decorations + scroll
+    User->>Editor: Tap in editor
+    Editor->>Editor: clear highlight via ChunkFocus mousedown handler
+```
+
+## Data Contracts
+
+### Mobile AI search mode
+```ts
+type MobileSearchModeState = {
+  isAIEnabled: boolean
+  preset: SearchPreset
+  viewMode: 'note' | 'chunk'
 }
 ```
 
-**Internal state:**
-- Uses `useRagStatus(noteId)` for chunk count and timestamp.
-- `operation: 'indexing' | 'deleting' | null` — in-flight operation state.
-- `deleteConfirmVisible: boolean` — nested confirmation modal for delete.
-
-**UI layout (bottom sheet):**
-```
-┌────────────────────────────────┐
-│  AI Index                      │
-│  Status: 5 chunks · 14:32:01   │
-├────────────────────────────────┤
-│  🗄️  Index note                │  ← disabled + spinner when indexing
-│  🔄  Re-index note             │  ← only shown when indexed
-│  🗑️  Remove from index         │  ← disabled when not indexed
-├────────────────────────────────┤
-│  [Cancel]                      │
-└────────────────────────────────┘
+### Pending chunk focus
+```ts
+type PendingChunkFocus = {
+  noteId: string
+  charOffset: number
+  chunkLength: number
+  requestId: string
+}
 ```
 
-Actually simplified:
-- **One action button** for index/re-index (label changes based on `isIndexed`).
-- **Remove from index** button (disabled when `chunkCount === 0`).
-- Status line at top.
-- Cancel closes the modal.
+## Virtualization Strategy
 
-**Confirmation sub-modal:** Standard `Modal` with "Remove from AI index?" title, description, Cancel and Remove buttons.
+### Regular search
+- Keep `FlashList` for existing note/tag/FTS results.
 
----
+### AI search
+- Use `FlashList` as well.
+- In `notes` view: each row is a grouped note card.
+- In `chunks` view: flatten to chunk items ahead of the list and paginate through cumulative grouped results.
+- `onEndReached` should call only the active loader:
+  - regular mode -> `fetchNextPage`
+  - AI mode -> `loadMoreAI`
 
-### 2. `useRagStatus` (`ui/mobile/hooks/useRagStatus.ts`)
-Mobile adaptation of `ui/web/hooks/useRagStatus.ts`.
+This guarantees only one infinite loader is active at a time.
 
-- Uses `useSupabase()` from mobile provider → `client` (not `supabase`).
-- Identical polling logic (3-second interval, `cancelled` flag, `refreshTick`).
-- Same return type: `{ chunkCount, indexedAt, isLoading, refresh }`.
+## Accessibility and Interaction Rules
 
----
+- AI toggle and view tabs must expose disabled state when selection mode is active.
+- Disabled controls should still explain why they are blocked.
+- Note/chunk result cards must remain clearly tappable.
+- Chunk focus highlight must not trap the user; a normal tap in the editor clears it.
 
-### 3. Updated `note/[id].tsx`
-- **Add `⋮` button** (`MoreVertical` from `lucide-react-native`) in `headerRight`, to the right of the existing Trash icon and ThemeToggle.
-- **State:** `isNoteMenuVisible: boolean`.
-- **Render:** `<NoteIndexMenu noteId={id} visible={isNoteMenuVisible} onClose={() => setIsNoteMenuVisible(false)} />`
+## Risks & Mitigations
 
----
-
-### 4. `GeminiApiKeySection` (`ui/mobile/components/settings/GeminiApiKeySection.tsx`)
-An inline section component used by the Settings screen — renders a pressable row that opens a full-screen Modal.
-
-**Modal content:**
-- Header: "Google / Gemini API Key"
-- Status badge: green "Configured" or grey "Not configured"
-- Password `TextInput` to enter new key ("Leave empty to keep current" placeholder when configured)
-- Save / Cancel buttons
-- Error and success inline messages
-
-Uses `ApiKeysSettingsService(client)` directly.
-
----
-
-### 5. Redesigned `(tabs)/settings.tsx`
-Replace the flat layout with **sections**:
-
-```
-┌─────────────────────────────────┐
-│  APPEARANCE                     │
-│  [System / Light / Dark radio]  │
-├─────────────────────────────────┤
-│  INTEGRATIONS                   │
-│  > Google / Gemini API    [key] │  ← opens GeminiApiKeySection modal
-│  > WordPress              [Soon]│  ← disabled, "Coming soon"
-├─────────────────────────────────┤
-│  DATA                           │
-│  > Import notes           [Soon]│  ← disabled
-│  > Export notes           [Soon]│  ← disabled
-├─────────────────────────────────┤
-│  ACCOUNT                        │
-│  [Sign Out button]              │
-│  [Delete account link]          │
-└─────────────────────────────────┘
-```
-
-**New sub-components introduced:**
-- `SettingsSectionHeader` — small labeled header text
-- `SettingsRow` — generic pressable row with title, optional right badge/icon
-
-## Design Decisions
-
-### Bottom-sheet Modal instead of ActionSheet
-**Decision:** Use a custom `Modal` with a bottom-anchored `View` for the note overflow menu.
-**Rationale:** React Native's `ActionSheetIOS` is iOS-only. A custom modal is consistent with the existing Delete-account modal pattern already in the codebase.
-
-### Reuse `core/services/apiKeysSettings.ts` directly on mobile
-**Decision:** Import `ApiKeysSettingsService` in the mobile settings component.
-**Rationale:** The service only depends on `SupabaseClient` which is available on mobile via `client`. No platform-specific code. Zero duplication.
-
-### Mobile `useRagStatus` as a separate hook file
-**Decision:** Copy-adapt `ui/web/hooks/useRagStatus.ts` → `ui/mobile/hooks/useRagStatus.ts`.
-**Rationale:** The web hook imports from `@ui/web/providers/SupabaseProvider` which doesn't exist on mobile. The logic is identical — only the import path changes. Keeping them separate avoids cross-platform coupling.
-
-### "Coming soon" rows — visible but disabled
-**Decision:** WordPress, Import, Export rows are rendered with `opacity: 0.5`, a "Soon" badge, and no `onPress` handler.
-**Rationale:** Communicates future intent, reserves visual space, prevents accidental taps, avoids placeholder screens.
-
-### `⋮` button stays in header (does not replace ThemeToggle)
-**Decision:** Add `MoreVertical` button to the right of Trash and ThemeToggle in `headerRight`.
-**Rationale:** ThemeToggle is a frequently used quick-action; moving it to Settings would hurt discoverability. The header can hold one more icon.
-
-## Non-Functional Requirements
-
-- **Responsiveness:** Bottom sheet opens with a subtle slide-up animation (React Native `Modal` with `animationType="slide"`).
-- **Security:** No Gemini API key is ever stored in memory longer than the modal session. `ApiKeysSettingsService` sends it directly to the Edge Function.
-- **Rate limits:** Same as web — 1 `batchEmbedContents` call per index action; user is responsible for not re-indexing too fast.
-- **Offline:** If network is unavailable, operations fail with a toast error; status stays at last known state.
-- **Accessibility:** All new buttons have `accessibilityLabel`, `accessibilityRole="button"`, and appropriate `accessibilityState.disabled`.
+| Risk | Impact | Mitigation |
+|------|--------|-----------|
+| AI and regular search fetch simultaneously | High | Gate hooks and load-more handlers by active mode only |
+| Chunk focus applies before editor is ready | High | Queue focus request in note screen and editor bridge |
+| Mobile AI list becomes slow with many grouped notes | Medium | Keep FlashList virtualization and incremental loading |
+| Web/mobile ranking diverges | Medium | Reuse web grouping/dedup constants and hook semantics |
+| Selection mode breaks when switching modes | Medium | Centralize guard logic in search screen state |
