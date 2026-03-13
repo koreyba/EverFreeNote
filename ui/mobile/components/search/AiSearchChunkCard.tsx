@@ -17,6 +17,7 @@ export const AiSearchChunkCard = memo(function AiSearchChunkCard({
 }: AiSearchChunkCardProps) {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
+  const noteTags = chunk.noteTags ?? []
 
   return (
     <Pressable
@@ -35,9 +36,9 @@ export const AiSearchChunkCard = memo(function AiSearchChunkCard({
         <Text style={styles.score}>{Math.round(chunk.similarity * 100)}%</Text>
       </View>
 
-      {!!chunk.noteTags.length && (
+      {noteTags.length > 0 && (
         <TagList
-          tags={chunk.noteTags}
+          tags={noteTags}
           onTagPress={onTagPress}
           maxVisible={4}
           showOverflowCount

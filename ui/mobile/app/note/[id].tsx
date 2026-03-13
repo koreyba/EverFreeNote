@@ -156,25 +156,16 @@ export default function NoteEditorScreen() {
   useEffect(() => {
     if (!pendingChunkFocus) return
     if (lastAppliedChunkFocusRequestIdRef.current === pendingChunkFocus.requestId) return
-    editorRef.current?.scrollToChunk(pendingChunkFocus.charOffset, pendingChunkFocus.chunkLength)
-    lastAppliedChunkFocusRequestIdRef.current = pendingChunkFocus.requestId
-    const {
-      focusOffset: _focusOffset,
-      focusLength: _focusLength,
-      focusRequestId: _focusRequestId,
-      ...restParams
-    } = {
-      id,
-      ...(typeof focusOffset === 'string' ? { focusOffset } : {}),
-      ...(typeof focusLength === 'string' ? { focusLength } : {}),
-      ...(typeof focusRequestId === 'string' ? { focusRequestId } : {}),
-    }
+    const editor = editorRef.current
+    if (!editor) return
 
+    editor.scrollToChunk(pendingChunkFocus.charOffset, pendingChunkFocus.chunkLength)
+    lastAppliedChunkFocusRequestIdRef.current = pendingChunkFocus.requestId
     router.replace({
       pathname: '/note/[id]',
-      params: restParams,
+      params: { id },
     })
-  }, [focusLength, focusOffset, focusRequestId, id, pendingChunkFocus, router])
+  }, [id, pendingChunkFocus, router])
 
   const scheduleSave = useCallback(() => {
     saverRef.current?.schedule({ ...latestDraftRef.current })
