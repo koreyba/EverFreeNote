@@ -54,20 +54,7 @@ function triggerSelectionHaptics() {
   Promise.resolve(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)).catch(() => undefined)
 }
 
-function buildRegularLongPressHandler(
-  noteId: string,
-  selectionMode: boolean,
-  onActivateSelection?: (id: string) => void
-) {
-  if (selectionMode) return undefined
-
-  return () => {
-    triggerSelectionHaptics()
-    onActivateSelection?.(noteId)
-  }
-}
-
-function buildAiNoteLongPressHandler(
+function buildSelectionLongPressHandler(
   noteId: string,
   selectionMode: boolean,
   onActivateSelection?: (id: string) => void
@@ -91,7 +78,7 @@ function renderRegularRow(
     <SwipeableNoteCard
       note={note}
       onPress={selection.selectionMode ? (nextNote: Note) => selection.onToggleSelect?.(nextNote.id) : onRegularNotePress}
-      onLongPress={buildRegularLongPressHandler(note.id, selection.selectionMode, selection.onActivateSelection)}
+      onLongPress={buildSelectionLongPressHandler(note.id, selection.selectionMode, selection.onActivateSelection)}
       onTagPress={selection.selectionMode ? undefined : onTagPress}
       onDelete={onDeleteRegularNote}
       isSelectionMode={selection.selectionMode}
@@ -115,7 +102,7 @@ function renderAiNoteRow(
       selectionMode={selection.selectionMode}
       isSelected={selection.selectedIds.has(group.noteId)}
       onToggleSelect={selection.onToggleSelect}
-      onLongPress={buildAiNoteLongPressHandler(group.noteId, selection.selectionMode, selection.onActivateSelection)}
+      onLongPress={buildSelectionLongPressHandler(group.noteId, selection.selectionMode, selection.onActivateSelection)}
     />
   )
 }

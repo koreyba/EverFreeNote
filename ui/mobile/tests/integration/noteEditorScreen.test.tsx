@@ -132,6 +132,7 @@ const mockEditorCallbacks: {
   onContentChange?: (html: string) => void
   onBlur?: () => void
   onFocus?: () => void
+  onReady?: () => void
 } = {}
 
 const mockToolbarCallbacks: {
@@ -143,11 +144,12 @@ jest.mock('@ui/mobile/components/EditorWebView', () => {
   const React = require('react')
   const { View, Text } = require('react-native')
 
-  return React.forwardRef((props: { onContentChange?: (html: string) => void; onBlur?: () => void; onFocus?: () => void }, ref: unknown) => {
+  return React.forwardRef((props: { onContentChange?: (html: string) => void; onBlur?: () => void; onFocus?: () => void; onReady?: () => void }, ref: unknown) => {
     // Store callbacks for test access
     mockEditorCallbacks.onContentChange = props.onContentChange
     mockEditorCallbacks.onBlur = props.onBlur
     mockEditorCallbacks.onFocus = props.onFocus
+    mockEditorCallbacks.onReady = props.onReady
 
     React.useImperativeHandle(ref, () => ({
       runCommand: jest.fn(),
@@ -227,6 +229,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     mockEditorCallbacks.onContentChange = undefined
     mockEditorCallbacks.onBlur = undefined
     mockEditorCallbacks.onFocus = undefined
+    mockEditorCallbacks.onReady = undefined
     mockToolbarCallbacks.onMenuVisibilityChange = undefined
     mockScrollToChunk.mockReset()
     mockSetParams.mockReset()
@@ -573,7 +576,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
   })
 
   describe('Chunk focus', () => {
-    it('scrolls to the requested body chunk and removes focus params from the route', async () => {
+    it('retries chunk focus when the editor becomes ready without replacing the current route', async () => {
       mockLocalSearchParams = {
         id: 'test-note-id',
         focusOffset: '14',
@@ -587,15 +590,59 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         expect(screen.queryByTestId('editor-webview')).toBeTruthy()
       })
 
+      expect(mockScrollToChunk).not.toHaveBeenCalled()
+
+      act(() => {
+        mockEditorCallbacks.onReady?.()
+      })
+
       await waitFor(() => {
         expect(mockScrollToChunk).toHaveBeenCalledWith(4, 5)
       })
 
-      expect(mockReplace).toHaveBeenCalledWith({
-        pathname: '/note/[id]',
-        params: {
-          id: 'test-note-id',
-        },
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+
+    it('applies the same chunk focus again when reopening the same note', async () => {
+      mockLocalSearchParams = {
+        id: 'test-note-id',
+        focusOffset: '14',
+        focusLength: '5',
+        focusRequestId: 'focus-request-1',
+      }
+
+      const firstRender = render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onReady?.()
+      })
+
+      await waitFor(() => {
+        expect(mockScrollToChunk).toHaveBeenCalledTimes(1)
+      })
+
+      firstRender.unmount()
+
+      mockScrollToChunk.mockClear()
+      mockEditorCallbacks.onReady = undefined
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onReady?.()
+      })
+
+      await waitFor(() => {
+        expect(mockScrollToChunk).toHaveBeenCalledTimes(1)
+        expect(mockScrollToChunk).toHaveBeenCalledWith(4, 5)
       })
     })
   })
