@@ -22,6 +22,14 @@ const tabs: SettingsTabDefinition[] = [
   { key: 'apiKeys', label: 'API Keys' },
 ]
 
+const initialVisitedTabs: Record<SettingsTabKey, boolean> = {
+  account: true,
+  import: false,
+  export: false,
+  wordpress: false,
+  apiKeys: false,
+}
+
 export default function SettingsScreen() {
   const { colors, mode, setMode, colorScheme } = useTheme()
   const { signOut, deleteAccount } = useAuth()
@@ -29,6 +37,12 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
   const styles = useMemo(() => createStyles(colors, insets.bottom ?? 0), [colors, insets.bottom])
   const [activeTab, setActiveTab] = useState<SettingsTabKey>('account')
+  const [visitedTabs, setVisitedTabs] = useState(initialVisitedTabs)
+
+  const handleTabChange = (tab: SettingsTabKey) => {
+    setActiveTab(tab)
+    setVisitedTabs((current) => (current[tab] ? current : { ...current, [tab]: true }))
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -38,24 +52,65 @@ export default function SettingsScreen() {
           <Text style={styles.subtitle}>Everything for your account, imports, exports, and integrations.</Text>
         </View>
 
-        <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+        <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
         <View style={styles.panelWrap}>
-          {activeTab === 'account' ? (
-            <AccountSettingsPanel
-              email={user?.email ?? 'No email available'}
-              mode={mode}
-              colorScheme={colorScheme}
-              onModeChange={setMode}
-              onSignOut={signOut}
-              onDeleteAccount={deleteAccount}
-            />
+          {visitedTabs.account ? (
+            <View
+              accessibilityElementsHidden={activeTab !== 'account'}
+              importantForAccessibility={activeTab === 'account' ? 'auto' : 'no-hide-descendants'}
+              style={[styles.panel, activeTab !== 'account' && styles.panelHidden]}
+            >
+              <AccountSettingsPanel
+                email={user?.email ?? 'No email available'}
+                mode={mode}
+                colorScheme={colorScheme}
+                onModeChange={setMode}
+                onSignOut={signOut}
+                onDeleteAccount={deleteAccount}
+              />
+            </View>
           ) : null}
 
-          {activeTab === 'import' ? <EnexImportPanel /> : null}
-          {activeTab === 'export' ? <EnexExportPanel /> : null}
-          {activeTab === 'wordpress' ? <WordPressSettingsPanel /> : null}
-          {activeTab === 'apiKeys' ? <ApiKeysSettingsPanel /> : null}
+          {visitedTabs.import ? (
+            <View
+              accessibilityElementsHidden={activeTab !== 'import'}
+              importantForAccessibility={activeTab === 'import' ? 'auto' : 'no-hide-descendants'}
+              style={[styles.panel, activeTab !== 'import' && styles.panelHidden]}
+            >
+              <EnexImportPanel />
+            </View>
+          ) : null}
+
+          {visitedTabs.export ? (
+            <View
+              accessibilityElementsHidden={activeTab !== 'export'}
+              importantForAccessibility={activeTab === 'export' ? 'auto' : 'no-hide-descendants'}
+              style={[styles.panel, activeTab !== 'export' && styles.panelHidden]}
+            >
+              <EnexExportPanel />
+            </View>
+          ) : null}
+
+          {visitedTabs.wordpress ? (
+            <View
+              accessibilityElementsHidden={activeTab !== 'wordpress'}
+              importantForAccessibility={activeTab === 'wordpress' ? 'auto' : 'no-hide-descendants'}
+              style={[styles.panel, activeTab !== 'wordpress' && styles.panelHidden]}
+            >
+              <WordPressSettingsPanel />
+            </View>
+          ) : null}
+
+          {visitedTabs.apiKeys ? (
+            <View
+              accessibilityElementsHidden={activeTab !== 'apiKeys'}
+              importantForAccessibility={activeTab === 'apiKeys' ? 'auto' : 'no-hide-descendants'}
+              style={[styles.panel, activeTab !== 'apiKeys' && styles.panelHidden]}
+            >
+              <ApiKeysSettingsPanel />
+            </View>
+          ) : null}
         </View>
       </View>
     </ScrollView>
@@ -100,5 +155,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset
     },
     panelWrap: {
       gap: 14,
+    },
+    panel: {
+      width: '100%',
+    },
+    panelHidden: {
+      display: 'none',
     },
   })

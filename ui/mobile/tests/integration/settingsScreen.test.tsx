@@ -156,6 +156,14 @@ describe('SettingsScreen', () => {
     })
 
     fireEvent.changeText(screen.getByPlaceholderText('AIzaSy...'), 'AIza-test')
+    fireEvent.press(screen.getByRole('button', { name: 'My Account' }))
+    fireEvent.press(screen.getByRole('button', { name: 'API Keys' }))
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('AIza-test')).toBeTruthy()
+      expect(mockApiKeysGetStatus).toHaveBeenCalledTimes(1)
+    })
+
     fireEvent.press(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
