@@ -57,10 +57,6 @@ describe('Sidebar Component', () => {
     onClearTagFilter: cy.stub(),
     onCreateNote: cy.stub(),
     onSignOut: cy.stub(),
-    onDeleteAccount: cy.stub(),
-    deleteAccountLoading: false,
-    onImportComplete: cy.stub(),
-    onExportComplete: cy.stub(),
     ...createSelectionProps(),
     children: <div data-testid="note-list">Note List Content</div>,
   })

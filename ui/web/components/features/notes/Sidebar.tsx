@@ -28,12 +28,7 @@ interface SidebarProps {
   onOpenSettings: () => void
   onCreateNote: () => void
   onSignOut: () => void
-  onDeleteAccount: () => Promise<void> | void
-  deleteAccountLoading?: boolean
-  onImportComplete: () => void
-  onExportComplete?: (success: boolean, exportedCount: number) => void
   wordpressConfigured?: boolean
-  onWordPressConfiguredChange?: (configured: boolean) => void
   children: React.ReactNode // For the NoteList
   className?: string
   "data-testid"?: string
@@ -56,12 +51,7 @@ export function Sidebar({
   onOpenSettings,
   onCreateNote,
   onSignOut,
-  onDeleteAccount,
-  deleteAccountLoading = false,
-  onImportComplete,
-  onExportComplete,
   wordpressConfigured = false,
-  onWordPressConfiguredChange,
   children,
   className,
   "data-testid": dataTestId

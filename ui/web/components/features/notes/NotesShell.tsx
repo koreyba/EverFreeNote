@@ -78,9 +78,6 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleClearTagFilter,
     handleCreateNote,
     handleSignOut,
-    handleDeleteAccount,
-    deleteAccountLoading,
-    invalidateNotes,
     pendingCount,
     failedCount,
     isOffline,
@@ -188,11 +185,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         onOpenSettings={() => void handleOpenSettings()}
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
-        onDeleteAccount={handleDeleteAccount}
-        deleteAccountLoading={deleteAccountLoading}
-        onImportComplete={invalidateNotes}
         wordpressConfigured={wordpressConfigured}
-        onWordPressConfiguredChange={setWordpressConfigured}
         onOpenSearch={handleOpenSearchPanel}
         className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
