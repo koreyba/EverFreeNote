@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Download, Globe, KeyRound, Upload, UserRound, X } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -13,7 +14,7 @@ import { ExportButton } from "@/components/ExportButton"
 import { ApiKeysSettingsPanel } from "@/components/features/settings/ApiKeysSettingsPanel"
 import { DeleteAccountPanel } from "@/components/features/settings/DeleteAccountPanel"
 import { WordPressSettingsPanel } from "@/components/features/settings/WordPressSettingsPanel"
-import { readSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
+import { readSettingsReturnState, sanitizeSettingsReturnPath } from "@ui/web/lib/settingsNavigationState"
 
 type SettingsTabId = "wordpress" | "api-keys" | "import" | "export" | "account"
 
@@ -62,6 +63,7 @@ function isSettingsTabId(value: string | null): value is SettingsTabId {
 }
 
 export function SettingsPage() {
+  const queryClient = useQueryClient()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading, deleteAccountLoading, handleDeleteAccount } = useNoteAuth()
@@ -84,8 +86,13 @@ export function SettingsPage() {
 
   const handleExit = React.useCallback(() => {
     const returnState = readSettingsReturnState()
-    router.push(returnState?.returnPath ?? "/")
+    const safeReturnPath = sanitizeSettingsReturnPath(returnState?.returnPath) ?? "/"
+    router.push(safeReturnPath)
   }, [router])
+
+  const handleImportComplete = React.useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["notes"] })
+  }, [queryClient])
 
   const activeDefinition = SETTINGS_TABS.find((tab) => tab.id === activeTab) ?? SETTINGS_TABS[0]
   const ActiveIcon = activeDefinition.icon
@@ -298,7 +305,7 @@ export function SettingsPage() {
                       title="Import notes from an Evernote export"
                       description="Choose one or more .enex files, review duplicate handling, and import notes into your workspace."
                     >
-                      <ImportButton />
+                      <ImportButton onImportComplete={handleImportComplete} />
                     </ActionSection>
                   ) : null}
                   {activeDefinition.id === "export" ? (

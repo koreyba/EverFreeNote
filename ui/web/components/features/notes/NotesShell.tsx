@@ -155,9 +155,9 @@ export function NotesShell({ controller }: NotesShellProps) {
   const handleOpenSettings = React.useCallback(async () => {
     const notesUiState = await controller.captureSettingsReturnState()
 
-    if (typeof window !== "undefined") {
+    if (typeof globalThis.location !== "undefined") {
       saveSettingsReturnState({
-        returnPath: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        returnPath: `${globalThis.location.pathname}${globalThis.location.search}${globalThis.location.hash}`,
         notesUiState,
       })
     }

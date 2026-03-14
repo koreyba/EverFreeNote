@@ -35,7 +35,7 @@ export default function App() {
     const returnState = consumeSettingsReturnState()
     if (!returnState) return
 
-    controller.restoreUiState(returnState.notesUiState)
+    void controller.restoreUiState(returnState.notesUiState)
   }, [controller, loading, user])
 
   if (loading) {

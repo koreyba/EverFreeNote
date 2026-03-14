@@ -16,7 +16,23 @@ type WordPressSettingsPanelProps = {
   showCloseButton?: boolean
 }
 
-const normalizeSiteUrl = (value: string) => value.trim().replace(/\/+$/, "")
+const normalizeValidSiteUrl = (value: string): string | null => {
+  const trimmedValue = value.trim()
+  if (!trimmedValue) return null
+
+  try {
+    const parsedUrl = new URL(trimmedValue)
+    if (!['http:', 'https:'].includes(parsedUrl.protocol) || !parsedUrl.hostname) {
+      return null
+    }
+
+    const normalizedPathname = parsedUrl.pathname.replace(/\/+$/, '')
+    const normalizedBase = `${parsedUrl.origin}${normalizedPathname === '/' ? '' : normalizedPathname}`
+    return `${normalizedBase}${parsedUrl.search}`
+  } catch {
+    return null
+  }
+}
 
 export function WordPressSettingsPanel({
   onConfiguredChange,
@@ -67,11 +83,16 @@ export function WordPressSettingsPanel({
     setErrorMessage(null)
     setSuccessMessage(null)
 
-    const normalizedSiteUrl = normalizeSiteUrl(siteUrl)
+    const normalizedSiteUrl = normalizeValidSiteUrl(siteUrl)
     const normalizedUsername = wpUsername.trim()
 
-    if (!normalizedSiteUrl || !normalizedUsername) {
+    if (!siteUrl.trim() || !normalizedUsername) {
       setErrorMessage("Site URL and username are required.")
+      return
+    }
+
+    if (!normalizedSiteUrl) {
+      setErrorMessage("Enter a valid site URL including http:// or https://.")
       return
     }
 

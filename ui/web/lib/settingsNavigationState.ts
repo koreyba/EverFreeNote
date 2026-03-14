@@ -1,18 +1,12 @@
-import type { NoteViewModel } from '@core/types/domain'
-
 const SETTINGS_RETURN_STATE_KEY = 'everfreenote:settings-return-state'
+const FALLBACK_RETURN_PATH = '/'
 
 // Temporary contract for returning from /settings back to the notes workspace.
-// This is intentionally narrow: selected note + search context only.
-// If the app later needs richer back/forward behavior, prefer moving the
-// workspace state into route-driven history instead of growing this object.
-export type RestorableSelectedNoteSnapshot = Pick<
-  NoteViewModel,
-  'id' | 'title' | 'description' | 'content' | 'tags' | 'created_at' | 'updated_at' | 'user_id' | 'headline' | 'rank'
->
-
+// Keep this intentionally narrow: selected note id + search/sidebar context only.
+// If the app needs richer back/forward restoration later, prefer moving the
+// workspace view state into route/history instead of growing this snapshot.
 export type NotesUiStateSnapshot = {
-  selectedNote: RestorableSelectedNoteSnapshot | null
+  selectedNoteId: string | null
   isEditing: boolean
   isSearchPanelOpen: boolean
   searchQuery: string
@@ -28,26 +22,61 @@ function isBrowserReady() {
   return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined'
 }
 
-export function createSettingsSelectedNoteSnapshot(note: NoteViewModel): RestorableSelectedNoteSnapshot {
-  return {
-    id: note.id,
-    title: note.title,
-    description: note.description,
-    content: note.content,
-    tags: note.tags,
-    created_at: note.created_at,
-    updated_at: note.updated_at,
-    user_id: note.user_id,
-    headline: note.headline,
-    rank: note.rank,
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isNotesUiStateSnapshot(value: unknown): value is NotesUiStateSnapshot {
+  if (!isRecord(value)) return false
+
+  return (
+    (typeof value.selectedNoteId === 'string' || value.selectedNoteId === null) &&
+    typeof value.isEditing === 'boolean' &&
+    typeof value.isSearchPanelOpen === 'boolean' &&
+    typeof value.searchQuery === 'string' &&
+    (typeof value.filterByTag === 'string' || value.filterByTag === null)
+  )
+}
+
+function isSettingsReturnState(value: unknown): value is SettingsReturnState {
+  if (!isRecord(value)) return false
+
+  return typeof value.returnPath === 'string' && isNotesUiStateSnapshot(value.notesUiState)
+}
+
+export function sanitizeSettingsReturnPath(path: string | null | undefined): string | null {
+  if (typeof path !== 'string') return null
+
+  const trimmedPath = path.trim()
+  if (!trimmedPath || !trimmedPath.startsWith('/') || trimmedPath.startsWith('//')) {
+    return null
+  }
+
+  try {
+    const baseOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://everfreenote.local'
+    const parsedPath = new URL(trimmedPath, baseOrigin)
+
+    if (parsedPath.origin !== baseOrigin) {
+      return null
+    }
+
+    return `${parsedPath.pathname}${parsedPath.search}${parsedPath.hash}`
+  } catch {
+    return null
   }
 }
 
 export function saveSettingsReturnState(state: SettingsReturnState): boolean {
   if (!isBrowserReady()) return false
+  if (!isNotesUiStateSnapshot(state.notesUiState)) return false
+
+  const safeState: SettingsReturnState = {
+    returnPath: sanitizeSettingsReturnPath(state.returnPath) ?? FALLBACK_RETURN_PATH,
+    notesUiState: state.notesUiState,
+  }
 
   try {
-    window.sessionStorage.setItem(SETTINGS_RETURN_STATE_KEY, JSON.stringify(state))
+    window.sessionStorage.setItem(SETTINGS_RETURN_STATE_KEY, JSON.stringify(safeState))
     return true
   } catch {
     window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
@@ -62,7 +91,22 @@ export function readSettingsReturnState(): SettingsReturnState | null {
   if (!rawValue) return null
 
   try {
-    return JSON.parse(rawValue) as SettingsReturnState
+    const parsedValue: unknown = JSON.parse(rawValue)
+    if (!isSettingsReturnState(parsedValue)) {
+      window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
+      return null
+    }
+
+    const safeReturnPath = sanitizeSettingsReturnPath(parsedValue.returnPath)
+    if (!safeReturnPath) {
+      window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
+      return null
+    }
+
+    return {
+      returnPath: safeReturnPath,
+      notesUiState: parsedValue.notesUiState,
+    }
   } catch {
     window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
     return null
