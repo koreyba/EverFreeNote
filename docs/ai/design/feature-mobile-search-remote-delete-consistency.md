@@ -30,7 +30,7 @@ graph TD
 - `ui/mobile/hooks/useNote.ts` applies fallback policy based on that classification instead of treating every exception the same way.
 - `ui/mobile/hooks/useSearch.ts` and related search screen behavior keep the user in the same search context while stale results are reconciled away.
 - AI search follows the same product rule set as regular search: stale entries may remain visible in already-open results until a confirmed refresh point, but stale open attempts resolve into deleted-note handling instead of a normal note open.
-- The feature intentionally relies on explicit refresh boundaries instead of background realtime convergence. In v1, the confirmed refresh boundaries are manual refresh, full app close and reopen, and repeated search execution.
+- The feature intentionally relies on explicit refresh boundaries instead of background realtime convergence. In v1, the confirmed refresh boundaries are manual refresh, cold start (full process kill and relaunch — background-to-foreground resume does not count), and repeated search execution.
 - Mobile SQLite remains the local fallback store, but remote deletion reconciliation becomes an explicit part of lifecycle management.
 - Existing offline queue and sync manager remain in place for local writes and deferred cloud sync.
 
@@ -50,8 +50,10 @@ graph TD
 - Reconciliation outcome:
   - When `status === 'not_found'` and the app is online, the local note is marked deleted or removed from local caches and SQLite so it no longer appears in local list/search fallback.
 - Conflict state:
-  - Existing pending local edits remain governed by the current project conflict policy.
-  - Remote deletion must not silently discard queued local edits; the queue and resolution path remain authoritative for deciding whether a later local write wins.
+  - When remote deletion conflicts with unsynced local edits, local edits win: the note is restored from the locally edited version.
+  - Remote deletion must not silently discard queued local edits; the sync queue restores the note from the local version.
+- Bulk delete behavior:
+  - Bulk delete silently skips notes that no longer exist on the server and completes the operation for the remaining ones without error messages.
 
 ## API Design
 **How do components communicate?**
@@ -67,16 +69,18 @@ graph TD
 - Search/list reconciliation:
   - Active search/list queries are invalidated or refetched at the confirmed lifecycle points for this feature:
     - manual refresh via pull-to-refresh on the search results list
-    - full app close and reopen
+    - cold start (full process kill and relaunch)
     - repeated search execution
+  - After returning from a deleted-note alert, the stale item is allowed to remain in the list until the next confirmed refresh point.
   - Removed note IDs are pruned from React Query search/list/detail caches.
   - Already-open search result lists do not need in-place removal before those refresh points.
 - AI search reconciliation:
   - AI search uses the same confirmed refresh points as regular search.
   - A stale AI result may remain visible in already-open results until refresh, but attempting to open it must resolve into deleted-note handling rather than a normal note open.
 - Cross-platform behavior:
-  - Web and mobile should follow the same product rule set: refreshed or repeated-search data should stop surfacing remotely deleted notes, and stale open attempts should resolve into deleted-note handling rather than a normal open experience.
-  - On web, stale-open protection is applied before promoting a search result or list item into `selectedNote`, while still allowing existing offline conflict policy to win when unsynced local edits exist.
+  - Web and mobile must follow the same product rule set: refreshed or repeated-search data must stop surfacing remotely deleted notes, and stale open attempts must resolve into deleted-note handling rather than a normal open experience.
+  - On web, stale-open protection is applied before promoting a search result or list item into `selectedNote`. When the browser is online and there are no unsynced local edits for that note, the app revalidates the note against the server. Confirmed `not_found` clears stale offline cache, shows deleted-note feedback (toast), and invalidates notes queries.
+  - When unsynced local edits exist for that note, the local version is used without server revalidation (local edits win).
 - Local storage integration:
   - Existing `databaseService.markDeleted(noteId, userId)` or equivalent cleanup path becomes the main mobile-side remote-delete reconciliation primitive.
 
@@ -105,6 +109,10 @@ graph TD
   - `ui/mobile/app/(tabs)/search.tsx`
   - `ui/mobile/app/note/[id].tsx`
     - surface user-facing deleted-note messaging and avoid misleading open flows
+- Web hooks:
+  - `ui/web/hooks/useNoteAppController.ts`
+    - revalidate notes against the server before opening from list/search when online and no unsynced local edits
+    - show deleted-note feedback and invalidate queries on confirmed `not_found`
 
 ## Design Decisions
 **Why did we choose this approach?**
@@ -121,10 +129,9 @@ graph TD
   - This keeps the implementation simpler while still making stale opens safe and refreshed data correct.
 - Reuse existing SQLite `is_deleted` and cache invalidation patterns:
   - This minimizes schema churn and fits the current mobile stack.
-- Preserve existing conflict policy rather than inventing a new one inside this feature:
-  - The feature should integrate with current sync/conflict behavior, not replace it.
-- For remote deletion versus unsynced local edits, the expected resolution is restoration from the local edited version through the existing conflict policy:
-  - This avoids introducing new conflict-specific UI in this feature.
+- Conflict policy: local edits win over remote deletion:
+  - When unsynced local edits exist for a remotely deleted note, the note is restored from the local version.
+  - This avoids introducing new conflict-specific UI in this feature and prevents silent data loss.
 - Avoid full realtime or tombstone architecture in the first pass:
   - Reconciliation at lifecycle boundaries is sufficient for the stated problem and matches the medium priority.
 

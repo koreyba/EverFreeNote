@@ -33,7 +33,7 @@ description: Break down the work needed to reconcile remote deletions on mobile 
 ### Phase 3: Integration & Polish
 - [ ] Task 3.1: Verify deferred local writes still sync after temporary failures
 - [ ] Task 3.2: Add tests for remote deletion, transient failure fallback, stale search cleanup, and conflict-sensitive cases
-- [x] Task 3.3: Update implementation/testing docs with actual behavior, coverage, and any remaining gaps
+- [ ] Task 3.3: Update implementation/testing docs with actual behavior, coverage, and any remaining gaps
 
 ## Dependencies
 **What needs to happen in what order?**

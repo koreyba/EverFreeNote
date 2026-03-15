@@ -36,19 +36,22 @@ description: Test strategy for remote deletion reconciliation, offline fallback,
 
 - [x] Search result selected after remote web deletion no longer opens as a normal note when online
 - [x] Search screen keeps query/tag context while dropping the stale deleted note after manual refresh or repeated search
-- [ ] Already-open search results are allowed to keep stale entries before refresh, but stale opens must fail safely with the deleted-note message
+- [ ] Already-open search results are allowed to keep stale entries before refresh, but stale opens must fail safely with the deleted-note message. After returning from the alert, the stale item may remain in the list until the next confirmed refresh point (manual refresh, cold start, or repeated search).
 - [x] AI search result selected after remote web deletion shows the deleted-note message and no longer opens as a normal note
 - [ ] Temporary server failure still allows local fallback and does not purge local data
-- [ ] Pending local edits remain governed by the existing sync/conflict path and restore the locally edited version instead of being silently dropped
+- [ ] Pending local edits win over remote deletion: the note is restored from the locally edited version instead of being silently dropped
+- [ ] Bulk delete silently skips already-deleted notes and completes the operation for the remaining ones without error messages
 
 ## End-to-End Tests
 **What user flows need validation?**
 
 - [ ] User flow 1: search on mobile, delete on web, manually refresh or repeat search, observe reconciliation
 - [ ] User flow 2: open cached note while server is transiently unavailable, then later sync successfully
-- [ ] User flow 3: tap stale deleted note before refresh, see deleted message, and return to prior context
-- [ ] User flow 4: repeat the same stale-open and refreshed-result behavior through AI search
-- [ ] Critical path testing: online remote deletion versus offline fallback behave differently and correctly
+- [ ] User flow 3: tap stale deleted note before refresh, see deleted message, return to prior context, confirm stale item remains visible until next refresh
+- [ ] User flow 4: repeat the same stale-open and refreshed-result behavior through AI search (both note view and chunk view)
+- [ ] User flow 5: delete note on mobile, verify web app handles it correctly (stale-open guard, deleted-note toast)
+- [ ] User flow 6: bulk delete selection including already-deleted notes — operation completes silently for remaining notes
+- [ ] Critical path testing: online remote deletion versus offline fallback behave differently and correctly. Cold start clears stale data; background-to-foreground does not.
 - [ ] Regression of adjacent features: existing mobile delete and search UX remain intact
 
 ## Test Data
@@ -83,8 +86,9 @@ description: Test strategy for remote deletion reconciliation, offline fallback,
   - All commands above passed.
 - Remaining gaps:
   - No dedicated automated web test yet covers the new stale-open guard in `ui/web/hooks/useNoteAppController.ts`.
-  - No automated test yet proves the deferred local-write conflict path end-to-end for remote deletion versus unsynced edits.
+  - No automated test yet proves the deferred local-write conflict path end-to-end for remote deletion versus unsynced edits (local edits must win).
   - No dedicated automated test yet proves the transient-error fallback path preserves local data without destructive cleanup.
+  - No automated test yet covers bulk delete behavior when some selected notes are already deleted on the server.
 
 ## Manual Testing
 **What requires human validation?**

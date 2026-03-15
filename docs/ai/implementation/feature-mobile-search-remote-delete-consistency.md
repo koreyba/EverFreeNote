@@ -36,13 +36,15 @@ description: Implementation notes for reconciling remote deletions on mobile whi
 - Replace generic note-read failure handling with explicit semantic classification.
 - Only allow SQLite fallback when the app is offline or the server failure is retryable.
 - When the app is online and the note is remotely deleted, reconcile stale data out of React Query and SQLite.
-- Reconciliation in v1 is driven by manual refresh, full app close and reopen, and repeated search execution rather than background focus triggers.
+- Reconciliation in v1 is driven by manual refresh, cold start (full process kill and relaunch — background-to-foreground resume does not count), and repeated search execution rather than background focus triggers.
+- After returning from a deleted-note alert, the stale item is allowed to remain in the search list until the next confirmed refresh point.
 - Manual refresh is implemented as pull-to-refresh on the mobile search results list for both regular search and AI search.
 - If a user taps a stale deleted note before refresh, show deleted-note feedback and return them to the notes list or search context they came from.
 - The app does not need to remove the stale item from an already-open regular or AI search results list before the next confirmed refresh point.
 - Apply the same deleted-note handling rule to AI search result opens, not only regular search.
 - Preserve existing queue/sync behavior so local changes still attempt cloud sync after temporary failure recovery.
-- For remote deletion versus unsynced local edits, rely on the existing conflict policy with the expected outcome of restoring the locally edited note version.
+- Conflict policy: when remote deletion conflicts with unsynced local edits, local edits win — the note is restored from the locally edited version.
+- Bulk delete silently skips notes that no longer exist on the server and completes the operation for the remaining ones.
 
 ### Actual Implementation Status
 - `core/services/notes.ts` now exposes `getNoteStatus()` with `found`, `not_found`, and `transient_error`.
