@@ -30,22 +30,22 @@ export function EnexImportPanel() {
       return
     }
 
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ['application/xml', 'text/xml', '*/*'],
-      copyToCacheDirectory: true,
-      multiple: false,
-    })
-
-    if (result.canceled || !result.assets?.length) {
-      return
-    }
-
-    const asset = result.assets[0]
-    setSelectedFileName(asset.name)
-    setIsImporting(true)
-    setFeedback(null)
-
     try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/xml', 'text/xml', '*/*'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      })
+
+      if (result.canceled || !result.assets?.length) {
+        return
+      }
+
+      const asset = result.assets[0]
+      setSelectedFileName(asset.name)
+      setIsImporting(true)
+      setFeedback(null)
+
       const summary = await new MobileEnexImportService(client).importAsset(asset, user.id)
       setFeedback({ variant: summary.errors > 0 ? 'info' : 'success', message: summary.message })
     } catch (error) {

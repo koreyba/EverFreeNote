@@ -36,6 +36,8 @@ describe('enexMobile helpers', () => {
       expect.objectContaining({
         title: 'Imported note',
         content: '<div>Hello</div>',
+        created: new Date('2026-03-14T10:30:00.000Z'),
+        updated: new Date('2026-03-14T10:45:00.000Z'),
         tags: ['mobile', 'enex'],
         resources: [],
       }),

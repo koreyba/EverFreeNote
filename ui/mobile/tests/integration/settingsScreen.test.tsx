@@ -149,15 +149,15 @@ describe('SettingsScreen', () => {
       expect(screen.getByText('Current: dark (dark)')).toBeTruthy()
     })
 
-    fireEvent.press(screen.getByRole('button', { name: 'API Keys' }))
+    fireEvent.press(screen.getByRole('tab', { name: 'API Keys' }))
 
     await waitFor(() => {
       expect(screen.getByText('External model credentials and secure storage.')).toBeTruthy()
     })
 
     fireEvent.changeText(screen.getByPlaceholderText('AIzaSy...'), 'AIza-test')
-    fireEvent.press(screen.getByRole('button', { name: 'My Account' }))
-    fireEvent.press(screen.getByRole('button', { name: 'API Keys' }))
+    fireEvent.press(screen.getByRole('tab', { name: 'My Account' }))
+    fireEvent.press(screen.getByRole('tab', { name: 'API Keys' }))
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('AIza-test')).toBeTruthy()
@@ -173,9 +173,11 @@ describe('SettingsScreen', () => {
   })
 
   it('handles import, export, and WordPress save flows', async () => {
+    const testApplicationPassword = 'test-value'
+
     renderScreen()
 
-    fireEvent.press(screen.getByRole('button', { name: 'Import .enex file' }))
+    fireEvent.press(screen.getByRole('tab', { name: 'Import .enex file' }))
 
     await waitFor(() => {
       expect(screen.getByText('Bring notes in from Evernote exports.')).toBeTruthy()
@@ -191,7 +193,7 @@ describe('SettingsScreen', () => {
       expect(screen.getByText('Imported 2 note(s).')).toBeTruthy()
     })
 
-    fireEvent.press(screen.getByRole('button', { name: 'Export .enex file' }))
+    fireEvent.press(screen.getByRole('tab', { name: 'Export .enex file' }))
     fireEvent.press(screen.getByRole('button', { name: 'Export and share' }))
 
     await waitFor(() => {
@@ -208,7 +210,7 @@ describe('SettingsScreen', () => {
       ).toBeTruthy()
     })
 
-    fireEvent.press(screen.getByRole('button', { name: 'WordPress settings' }))
+    fireEvent.press(screen.getByRole('tab', { name: 'WordPress settings' }))
 
     await waitFor(() => {
       expect(screen.getByText('Site URL, account, and publishing access.')).toBeTruthy()
@@ -216,17 +218,144 @@ describe('SettingsScreen', () => {
 
     fireEvent.changeText(screen.getByPlaceholderText('https://example.com'), 'https://example.com/')
     fireEvent.changeText(screen.getByPlaceholderText('editor-user'), 'editor-user')
-    fireEvent.changeText(screen.getByPlaceholderText('xxxx xxxx xxxx xxxx'), 'secret secret secret')
+    fireEvent.changeText(screen.getByPlaceholderText('xxxx xxxx xxxx xxxx'), testApplicationPassword)
     fireEvent.press(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
       expect(mockWordPressUpsert).toHaveBeenCalledWith({
         siteUrl: 'https://example.com',
         wpUsername: 'editor-user',
-        applicationPassword: 'secret secret secret',
+        applicationPassword: testApplicationPassword,
         enabled: true,
       })
       expect(screen.getByText('WordPress settings saved successfully.')).toBeTruthy()
+    })
+  })
+
+  it('blocks import and export actions when no user is available', async () => {
+    mockUseSupabase.mockReturnValue({
+      client: {},
+      user: null,
+      session: null,
+      loading: false,
+      signOut: mockSignOut,
+      deleteAccount: mockDeleteAccount,
+    })
+
+    mockUseAuth.mockReturnValue({
+      user: null,
+      session: null,
+      loading: false,
+      isAuthenticated: false,
+      signOut: mockSignOut,
+      deleteAccount: mockDeleteAccount,
+    })
+
+    renderScreen()
+
+    fireEvent.press(screen.getByRole('tab', { name: 'Import .enex file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Choose and import file' }))
+
+    await waitFor(() => {
+      expect(mockGetDocumentAsync).not.toHaveBeenCalled()
+      expect(screen.getByText('You need to be signed in to import notes.')).toBeTruthy()
+    })
+
+    fireEvent.press(screen.getByRole('tab', { name: 'Export .enex file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Export and share' }))
+
+    await waitFor(() => {
+      expect(mockExportAllNotes).not.toHaveBeenCalled()
+      expect(screen.getByText('You need to be signed in to export notes.')).toBeTruthy()
+    })
+  })
+
+  it('shows import and export unhappy-path feedback', async () => {
+    mockGetDocumentAsync.mockRejectedValueOnce(new Error('Picker unavailable'))
+    mockImportAsset.mockResolvedValueOnce({
+      success: 1,
+      errors: 1,
+      failedNotes: [{ title: 'Broken note', error: 'Import failed' }],
+      message: 'Imported 1 note(s) with 1 error(s).',
+    })
+
+    renderScreen()
+
+    fireEvent.press(screen.getByRole('tab', { name: 'Import .enex file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Choose and import file' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Picker unavailable')).toBeTruthy()
+      expect(mockImportAsset).not.toHaveBeenCalled()
+    })
+
+    fireEvent.press(screen.getByRole('button', { name: 'Choose and import file' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Imported 1 note(s) with 1 error(s).')).toBeTruthy()
+      expect(mockImportAsset).toHaveBeenCalledTimes(1)
+    })
+
+    mockIsAvailableAsync.mockResolvedValueOnce(false)
+
+    fireEvent.press(screen.getByRole('tab', { name: 'Export .enex file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Export and share' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Sharing is unavailable on this device')).toBeTruthy()
+      expect(mockExportAllNotes).not.toHaveBeenCalled()
+      expect(mockShareAsync).not.toHaveBeenCalled()
+    })
+
+    mockIsAvailableAsync.mockResolvedValueOnce(true)
+    mockExportAllNotes.mockRejectedValueOnce(new Error('Export failed'))
+
+    fireEvent.press(screen.getByRole('button', { name: 'Export and share' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Export failed')).toBeTruthy()
+      expect(mockShareAsync).not.toHaveBeenCalled()
+    })
+  })
+
+  it('shows WordPress load, validation, and save errors', async () => {
+    const testApplicationPassword = 'test-value'
+    mockWordPressGetStatus.mockRejectedValueOnce(new Error('Load failed'))
+    mockWordPressUpsert.mockRejectedValueOnce(new Error('Save failed'))
+
+    renderScreen()
+
+    fireEvent.press(screen.getByRole('tab', { name: 'WordPress settings' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Load failed')).toBeTruthy()
+    })
+
+    fireEvent.press(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Site URL is required.')).toBeTruthy()
+    })
+
+    fireEvent.changeText(screen.getByPlaceholderText('https://example.com'), 'https://example.com/')
+    fireEvent.changeText(screen.getByPlaceholderText('editor-user'), 'editor-user')
+    fireEvent.press(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Application password is required for the initial setup.')).toBeTruthy()
+    })
+
+    fireEvent.changeText(screen.getByPlaceholderText('xxxx xxxx xxxx xxxx'), testApplicationPassword)
+    fireEvent.press(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(mockWordPressUpsert).toHaveBeenCalledWith({
+        siteUrl: 'https://example.com',
+        wpUsername: 'editor-user',
+        applicationPassword: testApplicationPassword,
+        enabled: true,
+      })
+      expect(screen.getByText('Save failed')).toBeTruthy()
     })
   })
 })

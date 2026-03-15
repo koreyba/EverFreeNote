@@ -26,6 +26,7 @@ export function WordPressSettingsPanel() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [feedback, setFeedback] = useState<FeedbackState>(null)
+  const isBusy = isLoading || isSaving
 
   useEffect(() => {
     let isMounted = true
@@ -139,6 +140,7 @@ export function WordPressSettingsPanel() {
         autoCorrect={false}
         keyboardType="url"
         placeholder="https://example.com"
+        editable={!isBusy}
       />
 
       <Input
@@ -148,6 +150,7 @@ export function WordPressSettingsPanel() {
         autoCapitalize="none"
         autoCorrect={false}
         placeholder="editor-user"
+        editable={!isBusy}
       />
 
       <Input
@@ -158,11 +161,13 @@ export function WordPressSettingsPanel() {
         autoCorrect={false}
         secureTextEntry
         placeholder="xxxx xxxx xxxx xxxx"
+        editable={!isBusy}
       />
 
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: enabled }}
+        disabled={isBusy}
         onPress={() => setEnabled((value) => !value)}
         style={({ pressed }) => [styles.checkboxRow, pressed && styles.checkboxRowPressed]}
       >
@@ -181,7 +186,7 @@ export function WordPressSettingsPanel() {
 
       {feedback ? <SettingsStatusMessage message={feedback.message} variant={feedback.variant} /> : null}
 
-      <Button onPress={() => void handleSave()} loading={isSaving} disabled={isLoading || isSaving}>
+      <Button onPress={() => void handleSave()} loading={isSaving} disabled={isBusy}>
         Save
       </Button>
     </SettingsPanelCard>

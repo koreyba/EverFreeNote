@@ -51,6 +51,7 @@ export function AccountSettingsPanel({
       await onDeleteAccount()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete account')
+    } finally {
       setIsDeleting(false)
     }
   }

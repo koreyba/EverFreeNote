@@ -23,6 +23,7 @@ export function SettingsTabBar({ tabs, activeTab, onChange }: SettingsTabBarProp
   return (
     <View style={styles.wrap}>
       <ScrollView
+        accessibilityRole="tablist"
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.content}
@@ -33,7 +34,7 @@ export function SettingsTabBar({ tabs, activeTab, onChange }: SettingsTabBarProp
           return (
             <Pressable
               key={tab.key}
-              accessibilityRole="button"
+              accessibilityRole="tab"
               accessibilityLabel={tab.label}
               accessibilityState={{ selected: isActive }}
               onPress={() => onChange(tab.key)}

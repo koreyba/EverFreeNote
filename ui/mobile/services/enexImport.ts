@@ -25,6 +25,10 @@ export class MobileEnexImportService {
   async importXml(xml: string, userId: string): Promise<ImportResult> {
     const parsedNotes = parseEnexXml(xml)
 
+    if (parsedNotes.length === 0) {
+      throw new Error('No importable notes were found in the selected .enex file')
+    }
+
     let success = 0
     let errors = 0
     const failedNotes: ImportResult['failedNotes'] = []

@@ -39,6 +39,7 @@ export function SettingsStatusMessage({ message, variant }: SettingsStatusMessag
   return (
     <View
       accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
       style={[
         styles.container,
         {
