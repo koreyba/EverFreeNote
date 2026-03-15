@@ -38,15 +38,18 @@ export const Input = forwardRef<TextInput, InputProps>(
           placeholderTextColor={colors.mutedForeground}
           style={[
             {
-              height: 40,
+              minHeight: 48,
               borderWidth: 1,
               borderColor: hasError ? colors.destructive : colors.border,
               borderRadius: 8,
               paddingHorizontal: 12,
+              paddingVertical: 10,
               fontSize: 14,
+              lineHeight: 20,
               fontFamily: 'Inter_400Regular',
               color: colors.foreground,
               backgroundColor: colors.background,
+              textAlignVertical: 'center',
             },
             style,
           ]}

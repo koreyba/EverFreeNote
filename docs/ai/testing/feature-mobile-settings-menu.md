@@ -29,6 +29,8 @@ description: Testing plan for the redesigned mobile settings screen and its nati
 ### Settings panel logic
 - [x] API keys validation state transitions.
 - [x] WordPress settings validation and URL normalization.
+- [x] Import panel constrains selection to `.enex` flows and rejects other file names before import.
+- [x] Export panel copy and share hand-off stay aligned with the "export all notes" mobile behavior.
 - [ ] Additional coverage: account deletion acknowledgement gating.
 
 ## Integration Tests
@@ -70,7 +72,7 @@ description: Testing plan for the redesigned mobile settings screen and its nati
 ### Latest implementation run
 - Passed: `npm --prefix ui/mobile run type-check`
 - Passed: `npm --prefix ui/mobile run lint`
-- Passed: `npx jest --runInBand tests/unit/mobileEnexHelpers.test.ts tests/integration/settingsScreen.test.tsx` from `ui/mobile/`
+- Passed: `npx jest --runInBand tests/unit/mobileEnexHelpers.test.ts tests/unit/settingsPanels.test.tsx tests/unit/input.test.tsx tests/integration/settingsScreen.test.tsx` from `ui/mobile/`
 - Passed earlier in the feature workflow: `npx ai-devkit@latest lint --feature mobile-settings-menu`
 
 ## Manual Testing

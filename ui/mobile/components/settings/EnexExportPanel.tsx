@@ -75,7 +75,7 @@ export function EnexExportPanel() {
       {feedback ? <SettingsStatusMessage message={feedback.message} variant={feedback.variant} /> : null}
 
       <Button onPress={() => void handleExport()} loading={isExporting} disabled={isExporting}>
-        Export and share
+        Export all notes
       </Button>
     </SettingsPanelCard>
   )

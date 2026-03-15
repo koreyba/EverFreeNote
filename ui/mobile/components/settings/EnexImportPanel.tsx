@@ -13,6 +13,10 @@ type FeedbackState =
   | { variant: 'error' | 'success' | 'info'; message: string }
   | null
 
+const enexPickerTypes = ['application/xml', 'text/xml']
+
+const isEnexFileName = (fileName: string) => /\.enex$/i.test(fileName.trim())
+
 export function EnexImportPanel() {
   const { client, user } = useSupabase()
   const { colors } = useTheme()
@@ -32,7 +36,7 @@ export function EnexImportPanel() {
 
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/xml', 'text/xml', '*/*'],
+        type: enexPickerTypes,
         copyToCacheDirectory: true,
         multiple: false,
       })
@@ -43,6 +47,15 @@ export function EnexImportPanel() {
 
       const asset = result.assets[0]
       setSelectedFileName(asset.name)
+
+      if (!isEnexFileName(asset.name)) {
+        setFeedback({
+          variant: 'error',
+          message: 'Please choose an .enex export file.',
+        })
+        return
+      }
+
       setIsImporting(true)
       setFeedback(null)
 
@@ -79,7 +92,7 @@ export function EnexImportPanel() {
       {feedback ? <SettingsStatusMessage message={feedback.message} variant={feedback.variant} /> : null}
 
       <Button onPress={() => void handleImport()} loading={isImporting} disabled={isImporting}>
-        Choose and import file
+        Choose and import .enex
       </Button>
     </SettingsPanelCard>
   )

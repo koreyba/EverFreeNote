@@ -183,9 +183,14 @@ describe('SettingsScreen', () => {
       expect(screen.getByText('Bring notes in from Evernote exports.')).toBeTruthy()
     })
 
-    fireEvent.press(screen.getByRole('button', { name: 'Choose and import file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Choose and import .enex' }))
 
     await waitFor(() => {
+      expect(mockGetDocumentAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: ['application/xml', 'text/xml'],
+        })
+      )
       expect(mockImportAsset).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'import.enex' }),
         'user-1'
@@ -194,7 +199,7 @@ describe('SettingsScreen', () => {
     })
 
     fireEvent.press(screen.getByRole('tab', { name: 'Export .enex file' }))
-    fireEvent.press(screen.getByRole('button', { name: 'Export and share' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Export all notes' }))
 
     await waitFor(() => {
       expect(mockExportAllNotes).toHaveBeenCalledWith('user-1')
@@ -254,7 +259,7 @@ describe('SettingsScreen', () => {
     renderScreen()
 
     fireEvent.press(screen.getByRole('tab', { name: 'Import .enex file' }))
-    fireEvent.press(screen.getByRole('button', { name: 'Choose and import file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Choose and import .enex' }))
 
     await waitFor(() => {
       expect(mockGetDocumentAsync).not.toHaveBeenCalled()
@@ -262,7 +267,7 @@ describe('SettingsScreen', () => {
     })
 
     fireEvent.press(screen.getByRole('tab', { name: 'Export .enex file' }))
-    fireEvent.press(screen.getByRole('button', { name: 'Export and share' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Export all notes' }))
 
     await waitFor(() => {
       expect(mockExportAllNotes).not.toHaveBeenCalled()
@@ -282,14 +287,14 @@ describe('SettingsScreen', () => {
     renderScreen()
 
     fireEvent.press(screen.getByRole('tab', { name: 'Import .enex file' }))
-    fireEvent.press(screen.getByRole('button', { name: 'Choose and import file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Choose and import .enex' }))
 
     await waitFor(() => {
       expect(screen.getByText('Picker unavailable')).toBeTruthy()
       expect(mockImportAsset).not.toHaveBeenCalled()
     })
 
-    fireEvent.press(screen.getByRole('button', { name: 'Choose and import file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Choose and import .enex' }))
 
     await waitFor(() => {
       expect(screen.getByText('Imported 1 note(s) with 1 error(s).')).toBeTruthy()
@@ -299,7 +304,7 @@ describe('SettingsScreen', () => {
     mockIsAvailableAsync.mockResolvedValueOnce(false)
 
     fireEvent.press(screen.getByRole('tab', { name: 'Export .enex file' }))
-    fireEvent.press(screen.getByRole('button', { name: 'Export and share' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Export all notes' }))
 
     await waitFor(() => {
       expect(screen.getByText('Sharing is unavailable on this device')).toBeTruthy()
@@ -310,11 +315,34 @@ describe('SettingsScreen', () => {
     mockIsAvailableAsync.mockResolvedValueOnce(true)
     mockExportAllNotes.mockRejectedValueOnce(new Error('Export failed'))
 
-    fireEvent.press(screen.getByRole('button', { name: 'Export and share' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Export all notes' }))
 
     await waitFor(() => {
       expect(screen.getByText('Export failed')).toBeTruthy()
       expect(mockShareAsync).not.toHaveBeenCalled()
+    })
+  })
+
+  it('rejects picked files that are not .enex exports', async () => {
+    mockGetDocumentAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [
+        {
+          uri: 'file:///tmp/import.pdf',
+          name: 'import.pdf',
+          lastModified: 0,
+        },
+      ],
+    })
+
+    renderScreen()
+
+    fireEvent.press(screen.getByRole('tab', { name: 'Import .enex file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Choose and import .enex' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Please choose an .enex export file.')).toBeTruthy()
+      expect(mockImportAsset).not.toHaveBeenCalled()
     })
   })
 
