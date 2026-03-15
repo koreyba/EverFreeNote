@@ -1,6 +1,7 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Platform } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { ThemeProvider } from '@ui/mobile/providers/ThemeProvider'
@@ -72,6 +73,8 @@ const renderScreen = () =>
   )
 
 describe('SettingsScreen', () => {
+  const expectedPickerType = Platform.OS === 'android' ? '*/*' : ['application/xml', 'text/xml']
+
   beforeEach(() => {
     const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>
     mockAsyncStorage.getItem.mockResolvedValue('light')
@@ -188,7 +191,7 @@ describe('SettingsScreen', () => {
     await waitFor(() => {
       expect(mockGetDocumentAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: ['application/xml', 'text/xml'],
+          type: expectedPickerType,
         })
       )
       expect(mockImportAsset).toHaveBeenCalledWith(
@@ -341,7 +344,7 @@ describe('SettingsScreen', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Choose and import .enex' }))
 
     await waitFor(() => {
-      expect(screen.getByText('Please choose an .enex export file.')).toBeTruthy()
+      expect(screen.getByText('Only Evernote .enex export files are supported.')).toBeTruthy()
       expect(mockImportAsset).not.toHaveBeenCalled()
     })
   })

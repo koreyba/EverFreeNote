@@ -30,6 +30,7 @@ description: Testing plan for the redesigned mobile settings screen and its nati
 - [x] API keys validation state transitions.
 - [x] WordPress settings validation and URL normalization.
 - [x] Import panel constrains selection to `.enex` flows and rejects other file names before import.
+- [x] Android-safe picker configuration keeps `.enex` files selectable even when the provider does not advertise an XML MIME type.
 - [x] Export panel copy and share hand-off stay aligned with the "export all notes" mobile behavior.
 - [ ] Additional coverage: account deletion acknowledgement gating.
 

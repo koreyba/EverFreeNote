@@ -81,6 +81,7 @@ description: Implementation notes for the redesigned mobile settings screen with
 
 - ENEX import
   - Pick a single `.enex` document from the device.
+  - On Android, use a broad picker MIME type and validate the chosen file in-app because `.enex` providers often do not advertise a stable XML MIME type.
   - Read file content as UTF-8 text.
   - Parse note entries with a RN-safe XML parser.
   - Preserve title, tags, timestamps, and note body HTML where possible.

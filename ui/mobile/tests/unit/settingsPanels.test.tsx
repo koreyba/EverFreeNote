@@ -1,5 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { Platform } from 'react-native'
 
 const mockUseSupabase = jest.fn()
 const mockGetDocumentAsync = jest.fn()
@@ -72,6 +73,8 @@ import { WordPressSettingsPanel } from '@ui/mobile/components/settings/WordPress
 const renderWithTheme = (ui: React.ReactElement) => render(ui)
 
 describe('settings panels', () => {
+  const expectedPickerType = Platform.OS === 'android' ? '*/*' : ['application/xml', 'text/xml']
+
   beforeEach(() => {
     mockUseSupabase.mockReturnValue({
       client: {},
@@ -134,7 +137,7 @@ describe('settings panels', () => {
 
     await waitFor(() => {
       expect(mockGetDocumentAsync).toHaveBeenCalledWith({
-        type: ['application/xml', 'text/xml'],
+        type: expectedPickerType,
         copyToCacheDirectory: true,
         multiple: false,
       })
@@ -163,7 +166,7 @@ describe('settings panels', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Choose and import .enex' }))
 
     await waitFor(() => {
-      expect(screen.getByText('Please choose an .enex export file.')).toBeTruthy()
+      expect(screen.getByText('Only Evernote .enex export files are supported.')).toBeTruthy()
       expect(mockImportAsset).not.toHaveBeenCalled()
     })
   })

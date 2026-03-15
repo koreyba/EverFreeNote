@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native'
 import { Upload } from 'lucide-react-native'
 import * as DocumentPicker from 'expo-document-picker'
 
@@ -13,7 +13,7 @@ type FeedbackState =
   | { variant: 'error' | 'success' | 'info'; message: string }
   | null
 
-const enexPickerTypes = ['application/xml', 'text/xml']
+const enexPickerType = Platform.OS === 'android' ? '*/*' : ['application/xml', 'text/xml']
 
 const isEnexFileName = (fileName: string) => /\.enex$/i.test(fileName.trim())
 
@@ -35,8 +35,10 @@ export function EnexImportPanel() {
     }
 
     try {
+      // Android document providers often do not expose `.enex` exports with a stable XML MIME type.
+      // Filtering by MIME there can show the file but ignore the tap, so we pick broadly and validate ourselves.
       const result = await DocumentPicker.getDocumentAsync({
-        type: enexPickerTypes,
+        type: enexPickerType,
         copyToCacheDirectory: true,
         multiple: false,
       })
@@ -51,7 +53,7 @@ export function EnexImportPanel() {
       if (!isEnexFileName(asset.name)) {
         setFeedback({
           variant: 'error',
-          message: 'Please choose an .enex export file.',
+          message: 'Only Evernote .enex export files are supported.',
         })
         return
       }
