@@ -1,6 +1,7 @@
 import {
   DUPLICATE_LOOKUP_UNAVAILABLE_MESSAGE,
   fetchExistingTitles,
+  normalizeNoteTitle,
   resolveExistingTitlesForImport,
 } from '@core/enex/import-shared'
 
@@ -82,7 +83,17 @@ describe('import-shared helpers', () => {
     })
 
     await expect(fetchExistingTitles(client, 'user-1')).resolves.toEqual(
-      new Map([['First note', 'note-1']])
+      new Map([
+        ['First note', 'note-1'],
+        ['Untitled', 'note-2'],
+      ])
     )
+  })
+
+  it('normalizes blank or whitespace titles to Untitled', () => {
+    expect(normalizeNoteTitle('  Focus note  ')).toBe('Focus note')
+    expect(normalizeNoteTitle('   ')).toBe('Untitled')
+    expect(normalizeNoteTitle('')).toBe('Untitled')
+    expect(normalizeNoteTitle(null)).toBe('Untitled')
   })
 })

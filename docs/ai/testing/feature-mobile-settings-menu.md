@@ -21,6 +21,8 @@ description: Testing plan for the redesigned mobile settings screen and its nati
 - [x] Report import progress as `processed / total` while notes are created.
 - [x] Respect duplicate strategy and `skip duplicates inside imported file(s)` during mobile import orchestration.
 - [x] Stop `skip` / `replace` imports when existing-title lookup is unavailable, while allowing `prefix` to fall back safely.
+- [x] Keep `prefix` fallback stable when snapshot lookup is unavailable, so duplicate decisions do not change mid-import after earlier writes.
+- [x] Fail note creation when fallback duplicate lookup errors, instead of importing as if no duplicate existed.
 - [ ] Handle malformed XML / empty note payloads with user-facing errors.
 - [ ] Additional coverage: duplicate title handling path through import orchestration.
 
@@ -79,6 +81,9 @@ description: Testing plan for the redesigned mobile settings screen and its nati
 - Passed: `npm --prefix ui/mobile run type-check`
 - Passed: `npm --prefix ui/mobile run lint`
 - Passed: `npx jest --runInBand tests/unit/importShared.test.ts tests/unit/mobileEnexHelpers.test.ts tests/unit/mobileEnexImportService.test.ts tests/unit/settingsPanels.test.tsx tests/unit/input.test.tsx tests/integration/settingsScreen.test.tsx` from `ui/mobile/`
+- Passed: `npx jest --config jest.config.cjs --selectProjects unit-core --runInBand --runTestsByPath core/tests/unit/core-enex-noteCreator.test.ts`
+- Passed: `npx cypress run --component --browser electron --spec "cypress/component/lib/enex/note-creator.cy.ts"`
+- Passed: `npx cypress run --component --browser electron --spec "cypress/component/ui/ImportButton.cy.tsx"`
 - Passed earlier in the feature workflow: `npx ai-devkit@latest lint --feature mobile-settings-menu`
 
 ## Manual Testing

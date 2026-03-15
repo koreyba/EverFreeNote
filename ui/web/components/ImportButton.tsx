@@ -140,6 +140,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
         user.id,
         settings.duplicateStrategy
       )
+      const fallbackExistingByTitle = new Map<string, string | null>()
       // Отслеживаем титлы, уже встреченные в текущем сеансе импорта (внутри файла/файлов)
       const seenTitlesInImport = new Set<string>()
 
@@ -216,6 +217,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
                 {
                   skipFileDuplicates: settings.skipFileDuplicates,
                   existingByTitle,
+                  fallbackExistingByTitle,
                   seenTitlesInImport,
                 }
               )

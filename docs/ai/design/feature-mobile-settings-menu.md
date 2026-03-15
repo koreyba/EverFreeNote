@@ -222,6 +222,48 @@ graph TD
     - users see the same duplicate-handling controls on both clients;
     - imports remain predictable when users switch devices or compare results between mobile and web;
     - shared `core/enex` metadata reduces copy drift and duplicate-strategy mismatches across clients.
+  - Duplicate-handling decision flow:
+
+```mermaid
+flowchart TD
+  Start["Incoming parsed note"] --> Normalize["Normalize title via normalizeNoteTitle()"]
+  Normalize --> Seen{"skipFileDuplicates enabled AND title already seen in this import?"}
+  Seen -->|Yes| SkipInFile["Skip note as in-file duplicate"]
+  Seen -->|No| Snapshot{"existingByTitle snapshot available?"}
+
+  Snapshot -->|Yes| SnapshotLookup["Read existing id from pre-import snapshot"]
+  Snapshot -->|No| Cache{"Fallback cache already has this title?"}
+
+  Cache -->|Yes| CachedDecision["Reuse cached pre-write decision"]
+  Cache -->|No| LiveLookup["Query DB once before writing note"]
+  LiveLookup --> CacheStore["Store lookup result in fallback cache"]
+  CacheStore --> CachedDecision
+
+  SnapshotLookup --> Existing{"Did pre-import view find an existing note?"}
+  CachedDecision --> Existing
+
+  Existing -->|No| ImportAsIs["Import note as-is"]
+  Existing -->|Yes| Strategy{"duplicateStrategy"}
+
+  Strategy -->|prefix| Prefix["Create new note titled [duplicate] ${title}"]
+  Strategy -->|skip| SkipExisting["Skip because title existed before import"]
+  Strategy -->|replace| Replace["Update the pre-import target note"]
+
+  ImportAsIs --> Write["Write note"]
+  Prefix --> Write
+  Replace --> Write
+
+  Write --> Track{"skipFileDuplicates enabled?"}
+  Track -->|Yes| MarkSeen["Add normalized title to seenTitlesInImport"]
+  Track -->|No| Done["Done"]
+  MarkSeen --> Done
+  SkipInFile --> Done
+  SkipExisting --> Done
+```
+  - The fallback cache path is intentionally stable for the entire import session:
+    - it records the first pre-write lookup result for each normalized title;
+    - it does not treat rows created later by the same import as newly "existing" duplicates;
+    - this keeps `duplicateStrategy` focused on notes that existed before the import, while `skipFileDuplicates` remains the only control that suppresses duplicates created by the imported file itself.
 
 - Alternatives considered
   - Keep current sectioned list and only remove `Soon` badges.

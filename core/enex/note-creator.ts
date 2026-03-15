@@ -1,7 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { Database, TablesInsert } from '@/supabase/types'
+import { normalizeNoteTitle } from './import-shared'
 import type { DuplicateStrategy, ParsedNote } from './types'
+
+type DuplicateContext = {
+  skipFileDuplicates: boolean
+  existingByTitle: Map<string, string> | null
+  fallbackExistingByTitle: Map<string, string | null>
+  seenTitlesInImport: Set<string>
+}
 
 type DuplicateCheckResult =
   | { title: string; skip: true; replace: false; existingId?: string }
@@ -19,13 +27,10 @@ export class NoteCreator {
     note: ParsedNote,
     userId: string,
     duplicateStrategy: DuplicateStrategy = 'prefix',
-    duplicateContext?: {
-      skipFileDuplicates: boolean
-      existingByTitle: Map<string, string> | null
-      seenTitlesInImport: Set<string>
-    }
+    duplicateContext?: DuplicateContext
   ): Promise<string | null> {
     try {
+      const normalizedTitle = normalizeNoteTitle(note.title)
       const result = await this.handleDuplicate(note.title, userId, duplicateStrategy, duplicateContext)
 
       if (result.skip) {
@@ -54,7 +59,7 @@ export class NoteCreator {
         if (!data?.id) throw new Error('Updated note id was not returned')
 
         if (duplicateContext?.skipFileDuplicates) {
-          duplicateContext.seenTitlesInImport.add(note.title)
+          duplicateContext.seenTitlesInImport.add(normalizedTitle)
         }
 
         return data.id
@@ -71,7 +76,7 @@ export class NoteCreator {
       const createdId = data.id
 
       if (duplicateContext?.skipFileDuplicates) {
-        duplicateContext.seenTitlesInImport.add(note.title)
+        duplicateContext.seenTitlesInImport.add(normalizedTitle)
       }
 
       return createdId
@@ -91,73 +96,81 @@ export class NoteCreator {
     title: string,
     userId: string,
     strategy: DuplicateStrategy,
-    context?: {
-      skipFileDuplicates: boolean
-      existingByTitle: Map<string, string> | null
-      seenTitlesInImport: Set<string>
-    }
+    context?: DuplicateContext
   ): Promise<DuplicateCheckResult> {
+    const normalizedTitle = normalizeNoteTitle(title)
+
     if (context) {
       const { skipFileDuplicates, existingByTitle, seenTitlesInImport } = context
 
-      if (skipFileDuplicates && seenTitlesInImport.has(title)) {
-        return { title, skip: true, replace: false }
+      if (skipFileDuplicates && seenTitlesInImport.has(normalizedTitle)) {
+        return { title: normalizedTitle, skip: true, replace: false }
       }
 
-      if (!existingByTitle) {
-        return this.lookupExistingDuplicate(title, userId, strategy)
-      }
+      const existingId =
+        existingByTitle === null
+          ? await this.lookupExistingDuplicateIdWithCache(normalizedTitle, userId, context)
+          : (existingByTitle.get(normalizedTitle) ?? null)
 
-      const existingId = existingByTitle.get(title)
-
-      if (!existingId) {
-        return { title, skip: false, replace: false }
-      }
-
-      switch (strategy) {
-        case 'skip':
-          return { title, skip: true, replace: false }
-        case 'replace':
-          return { title, skip: false, replace: true, existingId }
-        case 'prefix':
-        default:
-          return { title: `[duplicate] ${title}`, skip: false, replace: false }
-      }
+      return this.buildDuplicateResult(normalizedTitle, strategy, existingId)
     }
 
-    return this.lookupExistingDuplicate(title, userId, strategy)
+    const existingId = await this.lookupExistingDuplicateId(normalizedTitle, userId)
+    return this.buildDuplicateResult(normalizedTitle, strategy, existingId)
   }
 
-  private async lookupExistingDuplicate(
+  private buildDuplicateResult(
     title: string,
-    userId: string,
-    strategy: DuplicateStrategy
-  ): Promise<DuplicateCheckResult> {
-    const { data, error } = await this.supabase
-      .from('notes')
-      .select('id, title')
-      .eq('user_id', userId)
-      .eq('title', title)
-
-    if (error) {
-      console.error('Duplicate check failed:', error)
+    strategy: DuplicateStrategy,
+    existingId?: string | null
+  ): DuplicateCheckResult {
+    if (!existingId) {
       return { title, skip: false, replace: false }
     }
-
-    if (!data || data.length === 0) {
-      return { title, skip: false, replace: false }
-    }
-
-    const existingNote = data[0]
 
     switch (strategy) {
       case 'skip':
         return { title, skip: true, replace: false }
       case 'replace':
-        return { title, skip: false, replace: true, existingId: existingNote.id }
+        return { title, skip: false, replace: true, existingId }
       case 'prefix':
       default:
         return { title: `[duplicate] ${title}`, skip: false, replace: false }
     }
+  }
+
+  private async lookupExistingDuplicateIdWithCache(
+    title: string,
+    userId: string,
+    context: DuplicateContext
+  ): Promise<string | null> {
+    if (context.fallbackExistingByTitle.has(title)) {
+      return context.fallbackExistingByTitle.get(title) ?? null
+    }
+
+    const existingId = await this.lookupExistingDuplicateId(title, userId)
+    context.fallbackExistingByTitle.set(title, existingId)
+
+    return existingId
+  }
+
+  private async lookupExistingDuplicateId(title: string, userId: string): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .from('notes')
+      .select('id, created_at')
+      .eq('user_id', userId)
+      .eq('title', title)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Duplicate check failed:', error)
+      throw error
+    }
+
+    if (!data || data.length === 0) {
+      return null
+    }
+
+    return data[0]?.id ?? null
   }
 }

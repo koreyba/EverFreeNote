@@ -30,6 +30,7 @@ describe('ImportButton', () => {
     insert: SinonStub,
     update: SinonStub,
     eq: SinonStub,
+    order: SinonStub,
     single: SinonStub,
     then: (resolve: (value: unknown) => void) => void
   }
@@ -71,6 +72,7 @@ describe('ImportButton', () => {
       insert: cy.stub(),
       update: cy.stub(),
       eq: cy.stub(),
+      order: cy.stub(),
       single: cy.stub(),
       then: (resolve: (value: unknown) => void) => resolve({ data: [], error: null }) // Default resolve for list (handleDuplicate)
     }
@@ -80,6 +82,7 @@ describe('ImportButton', () => {
     mockQueryBuilder.insert.returns(mockQueryBuilder)
     mockQueryBuilder.update.returns(mockQueryBuilder)
     mockQueryBuilder.eq.returns(mockQueryBuilder)
+    mockQueryBuilder.order.resolves({ data: [], error: null })
     mockQueryBuilder.single.resolves({ data: { id: 'new-note-id' }, error: null })
 
     // Mock Supabase Client

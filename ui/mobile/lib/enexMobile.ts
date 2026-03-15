@@ -1,6 +1,7 @@
 import type { ParsedNote } from '@core/enex/types'
 import type { Tables } from '@/supabase/types'
 import type { ExportNote } from '@core/enex/export-types'
+import { normalizeNoteTitle } from '@core/enex/import-shared'
 import { XMLParser } from 'fast-xml-parser'
 
 type NoteRow = Tables<'notes'>
@@ -78,10 +79,9 @@ export const parseEnexXml = (xml: string): ParsedNote[] => {
 
   return notes.map((note) => {
     const rawContent = readParsedNoteContent(note.content)
-    const trimmedTitle = note.title?.trim()
 
     return {
-      title: trimmedTitle && trimmedTitle.length > 0 ? trimmedTitle : 'Untitled',
+      title: normalizeNoteTitle(note.title),
       content: extractEnexContent(rawContent),
       created: parseEnexDate(note.created),
       updated: parseEnexDate(note.updated ?? note.created),

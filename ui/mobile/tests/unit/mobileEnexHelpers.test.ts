@@ -44,6 +44,23 @@ describe('enexMobile helpers', () => {
     ])
   })
 
+  it('normalizes whitespace-only ENEX titles to Untitled', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<en-export>
+  <note>
+    <title>   </title>
+    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE en-note><en-note><div>Hello</div></en-note>]]></content>
+    <created>20260314T103000Z</created>
+  </note>
+</en-export>`
+
+    expect(parseEnexXml(xml)).toEqual([
+      expect.objectContaining({
+        title: 'Untitled',
+      }),
+    ])
+  })
+
   it('maps notes into export format and builds a stable filename', () => {
     const exportNotes = toEnexExportNotes([
       {

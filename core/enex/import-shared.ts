@@ -26,6 +26,11 @@ export const DUPLICATE_STRATEGY_OPTIONS: ReadonlyArray<{
 export const DUPLICATE_LOOKUP_UNAVAILABLE_MESSAGE =
   'Could not verify existing notes. Try again, or switch duplicate handling to "Add [duplicate] prefix to title".'
 
+export function normalizeNoteTitle(title?: string | null): string {
+  const trimmed = typeof title === 'string' ? title.trim() : ''
+  return trimmed.length > 0 ? trimmed : 'Untitled'
+}
+
 export async function fetchExistingTitles(
   client: SupabaseClient<Database>,
   userId: string
@@ -42,11 +47,7 @@ export async function fetchExistingTitles(
 
   const map = new Map<string, string>()
   data?.forEach((row) => {
-    const title = row?.title
-
-    if (typeof title !== 'string' || title.trim().length === 0) {
-      return
-    }
+    const title = normalizeNoteTitle(row?.title)
 
     if (!map.has(title)) {
       map.set(title, row.id)

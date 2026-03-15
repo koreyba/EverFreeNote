@@ -85,7 +85,9 @@ description: Implementation notes for the redesigned mobile settings screen with
 - Reuse shared import settings metadata from `core/enex` so web and mobile stay aligned on duplicate strategy labels and defaults.
 - Fail closed for duplicate strategies that require a snapshot of existing note titles:
   - `skip` and `replace` now stop with a user-facing error if existing-title lookup is unavailable;
-  - `prefix` remains available and falls back to per-note duplicate lookup when the shared snapshot is unavailable.
+  - `prefix` remains available when the shared snapshot is unavailable, but now uses a stable per-import fallback cache keyed by normalized title.
+  - The fallback cache stores the first pre-write lookup result for each title and reuses it for the rest of the batch, so notes created by the current import do not become new "existing duplicates" mid-run.
+  - If a per-title duplicate lookup fails during that fallback path, note creation now fails instead of silently treating the note as non-duplicate.
 - Read file content as UTF-8 text.
   - Parse note entries with a RN-safe XML parser.
   - Preserve title, tags, timestamps, and note body HTML where possible.

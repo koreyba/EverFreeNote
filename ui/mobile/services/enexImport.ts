@@ -65,6 +65,7 @@ export class MobileEnexImportService {
       userId,
       settings.duplicateStrategy
     )
+    const fallbackExistingByTitle = new Map<string, string | null>()
     const seenTitlesInImport = new Set<string>()
 
     onProgress?.({ processed: 0, total: parsedNotes.length })
@@ -83,6 +84,7 @@ export class MobileEnexImportService {
           {
             skipFileDuplicates: settings.skipFileDuplicates,
             existingByTitle,
+            fallbackExistingByTitle,
             seenTitlesInImport,
           }
         )
