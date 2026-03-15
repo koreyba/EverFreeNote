@@ -211,6 +211,7 @@ export function useNoteAppController() {
       setOfflineOverlay((current) => current.filter((cachedNote) => cachedNote.id !== note.id))
       toast.error('This note was deleted on another device.')
       void queryClient.invalidateQueries({ queryKey: ['notes'] })
+      void queryClient.invalidateQueries({ queryKey: ['aiSearch'] })
       return null
     }
 
@@ -292,9 +293,11 @@ export function useNoteAppController() {
     const requestId = ++latestEditRequestRef.current
     await flushPendingEditorSave()
     if (requestId !== latestEditRequestRef.current) return
-    handleEditNoteRaw(note)
+    const openableNote = await resolveOpenableNote(note)
+    if (!openableNote) return
+    handleEditNoteRaw(openableNote)
     setLastSavedAt(null)
-  }, [flushPendingEditorSave, handleEditNoteRaw, setLastSavedAt])
+  }, [flushPendingEditorSave, handleEditNoteRaw, resolveOpenableNote, setLastSavedAt])
 
   const handleTagClick = useCallback(async (tag: string) => {
     await flushPendingEditorSave()

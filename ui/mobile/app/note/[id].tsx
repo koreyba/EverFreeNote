@@ -433,7 +433,7 @@ export default function NoteEditorScreen() {
   if (noteState?.status === 'deleted') {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>This note was deleted on another device.</Text>
+        <ActivityIndicator size="large" color={colors.primary} testID="activity-indicator" />
       </View>
     )
   }

@@ -100,6 +100,7 @@ jest.mock('@ui/mobile/services/database', () => ({
     markDeleted: jest.fn().mockResolvedValue(undefined),
     saveNotes: jest.fn().mockResolvedValue(undefined),
     getLocalNotes: jest.fn().mockResolvedValue([]),
+    hasPendingWrites: jest.fn().mockResolvedValue(false),
   },
 }))
 
@@ -208,6 +209,7 @@ const setupNoteState = (note: Note) => {
   const service = createMockNoteService(state)
 
   mockNoteService.prototype.getNote = service.getNote
+  mockNoteService.prototype.getNoteStatus = service.getNoteStatus
   mockNoteService.prototype.updateNote = service.updateNote
   mockNoteService.prototype.deleteNote = service.deleteNote
 

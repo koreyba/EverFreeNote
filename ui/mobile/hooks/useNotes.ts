@@ -4,7 +4,6 @@ import { NoteService } from '@core/services/notes'
 import { databaseService } from '@ui/mobile/services/database'
 import { useNetworkStatus } from './useNetworkStatus'
 import type { Note } from '@core/types/domain'
-import type { NoteLookupResult } from '@core/services/notes'
 
 export type NotesPage = {
   notes: Note[]
@@ -89,21 +88,17 @@ export function useNote(id: string) {
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
 
-      const getNoteStatus = async (): Promise<NoteLookupResult> => {
-        if (typeof noteService.getNoteStatus === 'function') {
-          return noteService.getNoteStatus(id)
-        }
-
-        try {
-          const note = await noteService.getNote(id)
-          return { status: 'found', note }
-        } catch (error) {
-          return { status: 'transient_error', error }
-        }
-      }
-
       if (isOnline) {
-        const remoteResult = await getNoteStatus()
+        if (await databaseService.hasPendingWrites(id)) {
+          const localNotes = await databaseService.getLocalNotes(user.id)
+          const localNote = localNotes.find(n => n.id === id) ?? null
+          return {
+            note: localNote,
+            status: localNote ? 'found' as const : 'missing' as const,
+          }
+        }
+
+        const remoteResult = await noteService.getNoteStatus(id)
 
         if (remoteResult.status === 'found') {
           await databaseService.saveNotes([remoteResult.note])

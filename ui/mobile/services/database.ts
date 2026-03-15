@@ -284,6 +284,15 @@ export class DatabaseService {
         await db.runAsync(`DELETE FROM mutation_queue WHERE id IN (${placeholders})`, ids)
     }
 
+    async hasPendingWrites(noteId: string): Promise<boolean> {
+        const db = await this.init()
+        const row = await db.getFirstAsync<{ cnt: number }>(
+            "SELECT COUNT(*) as cnt FROM mutation_queue WHERE noteId = ? AND operation != 'delete' AND status = 'pending'",
+            [noteId]
+        )
+        return (row?.cnt ?? 0) > 0
+    }
+
     async markQueueItemStatus(id: string, status: string, lastError?: string) {
         const db = await this.init()
         await db.runAsync(
