@@ -86,11 +86,13 @@ description: Implementation notes for the redesigned mobile settings screen with
   - Parse note entries with a RN-safe XML parser.
   - Preserve title, tags, timestamps, and note body HTML where possible.
   - Create notes through `NoteCreator` using duplicate strategy `prefix`.
+  - Surface in-panel progress as `processed / total notes` while notes are being imported.
 
 - ENEX export
   - Read user notes through `NoteService`.
   - Convert notes into `ExportNote[]` and build XML through `EnexBuilder`.
   - Write the result to a temporary file and trigger native share/save flow.
+  - Surface staged progress while exporting: loading notes, building archive, saving file, opening share sheet.
 
 ### Patterns & Best Practices
 - Keep panel state localized to each feature component.

@@ -108,6 +108,7 @@ export function ApiKeysSettingsPanel() {
         autoCorrect={false}
         placeholder="AIzaSy..."
         secureTextEntry
+        disabled={isLoading || isSaving}
       />
 
       {feedback ? <SettingsStatusMessage message={feedback.message} variant={feedback.variant} /> : null}

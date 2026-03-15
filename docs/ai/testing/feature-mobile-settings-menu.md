@@ -18,11 +18,13 @@ description: Testing plan for the redesigned mobile settings screen and its nati
 
 ### Mobile ENEX import helpers
 - [x] Parse title, timestamps, tags, and note body from ENEX XML.
+- [x] Report import progress as `processed / total` while notes are created.
 - [ ] Handle malformed XML / empty note payloads with user-facing errors.
 - [ ] Additional coverage: duplicate title handling path through import orchestration.
 
 ### Mobile ENEX export helpers
 - [x] Build export payload from note data with deterministic file naming.
+- [x] Report staged export progress for loading, building, and writing.
 - [ ] Handle empty note collections gracefully.
 - [ ] Additional coverage: temporary file creation / share precondition failures.
 

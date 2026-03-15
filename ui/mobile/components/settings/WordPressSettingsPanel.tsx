@@ -165,6 +165,7 @@ export function WordPressSettingsPanel() {
       />
 
       <Pressable
+        accessibilityLabel="Enable WordPress publishing"
         accessibilityRole="checkbox"
         accessibilityState={{ checked: enabled }}
         disabled={isBusy}

@@ -13,11 +13,36 @@ type FeedbackState =
   | { variant: 'error' | 'success' | 'info'; message: string }
   | null
 
+type ExportProgressState =
+  | { stage: 'loading'; loaded: number; total: number }
+  | { stage: 'building'; noteCount: number }
+  | { stage: 'writing'; noteCount: number; fileName: string }
+  | { stage: 'sharing' }
+  | null
+
+const getExportProgressLabel = (progress: ExportProgressState) => {
+  if (!progress) {
+    return 'Preparing your archive...'
+  }
+
+  switch (progress.stage) {
+    case 'loading':
+      return `Loading notes ${progress.loaded} / ${progress.total}...`
+    case 'building':
+      return `Building archive for ${progress.noteCount} note(s)...`
+    case 'writing':
+      return `Saving ${progress.fileName}...`
+    case 'sharing':
+      return 'Opening share sheet...'
+  }
+}
+
 export function EnexExportPanel() {
   const { client, user } = useSupabase()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const [isExporting, setIsExporting] = useState(false)
+  const [progress, setProgress] = useState<ExportProgressState>(null)
   const [feedback, setFeedback] = useState<FeedbackState>({
     variant: 'info',
     message: 'Export all notes to a portable .enex archive and hand it off to the native share sheet.',
@@ -30,6 +55,7 @@ export function EnexExportPanel() {
     }
 
     setIsExporting(true)
+    setProgress({ stage: 'loading', loaded: 0, total: 0 })
     setFeedback(null)
 
     try {
@@ -38,7 +64,10 @@ export function EnexExportPanel() {
         throw new Error('Sharing is unavailable on this device')
       }
 
-      const result = await new MobileEnexExportService(client).exportAllNotes(user.id)
+      const result = await new MobileEnexExportService(client).exportAllNotes(user.id, (next) => {
+        setProgress(next)
+      })
+      setProgress({ stage: 'sharing' })
       await Sharing.shareAsync(result.fileUri, {
         mimeType: 'application/xml',
         UTI: 'public.xml',
@@ -56,6 +85,7 @@ export function EnexExportPanel() {
       })
     } finally {
       setIsExporting(false)
+      setProgress(null)
     }
   }
 
@@ -68,7 +98,7 @@ export function EnexExportPanel() {
       {isExporting ? (
         <View style={styles.loader}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={styles.loaderText}>Preparing your archive...</Text>
+          <Text style={styles.loaderText}>{getExportProgressLabel(progress)}</Text>
         </View>
       ) : null}
 

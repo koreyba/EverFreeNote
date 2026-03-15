@@ -36,4 +36,12 @@ describe('Input', () => {
       })
     )
   })
+
+  it('maps disabled to a non-editable text input', () => {
+    render(<Input placeholder="Gemini API Key" value="" onChangeText={jest.fn()} disabled />)
+
+    const input = screen.getByPlaceholderText('Gemini API Key')
+
+    expect(input.props.editable).toBe(false)
+  })
 })

@@ -76,6 +76,8 @@ describe('SettingsScreen', () => {
   const expectedPickerType = Platform.OS === 'android' ? '*/*' : ['application/xml', 'text/xml']
 
   beforeEach(() => {
+    jest.clearAllMocks()
+
     const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>
     mockAsyncStorage.getItem.mockResolvedValue('light')
 
@@ -196,7 +198,8 @@ describe('SettingsScreen', () => {
       )
       expect(mockImportAsset).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'import.enex' }),
-        'user-1'
+        'user-1',
+        expect.any(Function)
       )
       expect(screen.getByText('Imported 2 note(s).')).toBeTruthy()
     })
@@ -205,7 +208,7 @@ describe('SettingsScreen', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Export all notes' }))
 
     await waitFor(() => {
-      expect(mockExportAllNotes).toHaveBeenCalledWith('user-1')
+      expect(mockExportAllNotes).toHaveBeenCalledWith('user-1', expect.any(Function))
       expect(mockShareAsync).toHaveBeenCalledWith(
         'file:///tmp/everfreenote-export-20260314-083000.enex',
         expect.objectContaining({
@@ -323,6 +326,67 @@ describe('SettingsScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Export failed')).toBeTruthy()
       expect(mockShareAsync).not.toHaveBeenCalled()
+    })
+  })
+
+  it('renders import and export progress states while work is in flight', async () => {
+    let resolveImport!: () => void
+    const importCompleted = new Promise<void>((resolve) => {
+      resolveImport = resolve
+    })
+    let resolveExport!: () => void
+    const exportCompleted = new Promise<void>((resolve) => {
+      resolveExport = resolve
+    })
+
+    mockImportAsset.mockImplementationOnce(async (_asset, _userId, onProgress) => {
+      onProgress?.({ processed: 2, total: 5 })
+      await importCompleted
+      return {
+        success: 5,
+        errors: 0,
+        failedNotes: [],
+        message: 'Imported 5 note(s).',
+      }
+    })
+
+    mockExportAllNotes.mockImplementationOnce(async (_userId, onProgress) => {
+      onProgress?.({ stage: 'loading', loaded: 3, total: 5 })
+      onProgress?.({ stage: 'building', noteCount: 5 })
+      await exportCompleted
+      return {
+        fileUri: 'file:///tmp/everfreenote-export-20260314-083000.enex',
+        fileName: 'everfreenote-export-20260314-083000.enex',
+        noteCount: 5,
+      }
+    })
+
+    renderScreen()
+
+    fireEvent.press(screen.getByRole('tab', { name: 'Import .enex file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Choose and import .enex' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Importing notes 2 / 5...')).toBeTruthy()
+    })
+
+    resolveImport()
+
+    await waitFor(() => {
+      expect(screen.getByText('Imported 5 note(s).')).toBeTruthy()
+    })
+
+    fireEvent.press(screen.getByRole('tab', { name: 'Export .enex file' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Export all notes' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Building archive for 5 note(s)...')).toBeTruthy()
+    })
+
+    resolveExport()
+
+    await waitFor(() => {
+      expect(screen.getByText('Exported 5 note(s) to everfreenote-export-20260314-083000.enex.')).toBeTruthy()
     })
   })
 

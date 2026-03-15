@@ -13,6 +13,11 @@ type FeedbackState =
   | { variant: 'error' | 'success' | 'info'; message: string }
   | null
 
+type ImportProgressState =
+  | { stage: 'reading' }
+  | { stage: 'importing'; processed: number; total: number }
+  | null
+
 const enexPickerType = Platform.OS === 'android' ? '*/*' : ['application/xml', 'text/xml']
 
 const isEnexFileName = (fileName: string) => /\.enex$/i.test(fileName.trim())
@@ -23,6 +28,7 @@ export function EnexImportPanel() {
   const styles = useMemo(() => createStyles(colors), [colors])
   const [isImporting, setIsImporting] = useState(false)
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
+  const [progress, setProgress] = useState<ImportProgressState>(null)
   const [feedback, setFeedback] = useState<FeedbackState>({
     variant: 'info',
     message: 'Choose an .enex export from your device to import notes into EverFreeNote.',
@@ -59,9 +65,16 @@ export function EnexImportPanel() {
       }
 
       setIsImporting(true)
+      setProgress({ stage: 'reading' })
       setFeedback(null)
 
-      const summary = await new MobileEnexImportService(client).importAsset(asset, user.id)
+      const summary = await new MobileEnexImportService(client).importAsset(asset, user.id, (next) => {
+        setProgress({
+          stage: 'importing',
+          processed: next.processed,
+          total: next.total,
+        })
+      })
       setFeedback({ variant: summary.errors > 0 ? 'info' : 'success', message: summary.message })
     } catch (error) {
       setFeedback({
@@ -70,6 +83,7 @@ export function EnexImportPanel() {
       })
     } finally {
       setIsImporting(false)
+      setProgress(null)
     }
   }
 
@@ -87,7 +101,11 @@ export function EnexImportPanel() {
       {isImporting ? (
         <View style={styles.loader}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={styles.loaderText}>Importing notes...</Text>
+          <Text style={styles.loaderText}>
+            {progress?.stage === 'importing'
+              ? `Importing notes ${progress.processed} / ${progress.total}...`
+              : 'Reading .enex file...'}
+          </Text>
         </View>
       ) : null}
 

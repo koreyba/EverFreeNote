@@ -7,6 +7,11 @@ import { NoteCreator } from '@core/enex/note-creator'
 import type { ImportResult } from '@core/enex/types'
 import { parseEnexXml } from '@ui/mobile/lib/enexMobile'
 
+export type ImportProgress = {
+  processed: number
+  total: number
+}
+
 export class MobileEnexImportService {
   private readonly noteCreator: NoteCreator
 
@@ -14,20 +19,30 @@ export class MobileEnexImportService {
     this.noteCreator = new NoteCreator(supabase)
   }
 
-  async importAsset(asset: DocumentPickerAsset, userId: string): Promise<ImportResult> {
+  async importAsset(
+    asset: DocumentPickerAsset,
+    userId: string,
+    onProgress?: (progress: ImportProgress) => void
+  ): Promise<ImportResult> {
     const xml = await FileSystem.readAsStringAsync(asset.uri, {
       encoding: FileSystem.EncodingType.UTF8,
     })
 
-    return this.importXml(xml, userId)
+    return this.importXml(xml, userId, onProgress)
   }
 
-  async importXml(xml: string, userId: string): Promise<ImportResult> {
+  async importXml(
+    xml: string,
+    userId: string,
+    onProgress?: (progress: ImportProgress) => void
+  ): Promise<ImportResult> {
     const parsedNotes = parseEnexXml(xml)
 
     if (parsedNotes.length === 0) {
       throw new Error('No importable notes were found in the selected .enex file')
     }
+
+    onProgress?.({ processed: 0, total: parsedNotes.length })
 
     let success = 0
     let errors = 0
@@ -38,6 +53,12 @@ export class MobileEnexImportService {
         const created = await this.noteCreator.create(note, userId, 'prefix')
         if (created) {
           success += 1
+        } else {
+          errors += 1
+          failedNotes.push({
+            title: note.title,
+            error: 'Note creator did not return a created note',
+          })
         }
       } catch (error) {
         errors += 1
@@ -45,6 +66,8 @@ export class MobileEnexImportService {
           title: note.title,
           error: error instanceof Error ? error.message : 'Failed to import note',
         })
+      } finally {
+        onProgress?.({ processed: success + errors, total: parsedNotes.length })
       }
     }
 
