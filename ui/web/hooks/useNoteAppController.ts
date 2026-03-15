@@ -176,26 +176,10 @@ export function useNoteAppController() {
 
   // Ref to avoid stale closure in save handlers and nav wrappers
   const selectedNoteRef = useRef(selectedNote)
-  const isEditingRef = useRef(isEditing)
-  const searchQueryRef = useRef(searchQuery)
-  const filterByTagRef = useRef(filterByTag)
-  const isSearchPanelOpenRef = useRef(isSearchPanelOpen)
   const latestEditRequestRef = useRef(0)
   useEffect(() => {
     selectedNoteRef.current = selectedNote
   }, [selectedNote])
-  useEffect(() => {
-    isEditingRef.current = isEditing
-  }, [isEditing])
-  useEffect(() => {
-    searchQueryRef.current = searchQuery
-  }, [searchQuery])
-  useEffect(() => {
-    filterByTagRef.current = filterByTag
-  }, [filterByTag])
-  useEffect(() => {
-    isSearchPanelOpenRef.current = isSearchPanelOpen
-  }, [isSearchPanelOpen])
 
   // -- Save handlers --
   const {
@@ -314,13 +298,13 @@ export function useNoteAppController() {
     await flushPendingEditorSave()
 
     return {
-      selectedNoteId: selectedNoteRef.current?.id ?? null,
-      isEditing: isEditingRef.current,
-      isSearchPanelOpen: isSearchPanelOpenRef.current,
-      searchQuery: searchQueryRef.current,
-      filterByTag: filterByTagRef.current,
+      selectedNoteId: selectedNote?.id ?? null,
+      isEditing,
+      isSearchPanelOpen,
+      searchQuery,
+      filterByTag,
     }
-  }, [flushPendingEditorSave])
+  }, [filterByTag, flushPendingEditorSave, isEditing, isSearchPanelOpen, searchQuery, selectedNote])
 
   const restoreUiState = useCallback(async (snapshot: NotesUiStateSnapshot) => {
     // Temporary bridge for the /settings route. The contract is intentionally narrow

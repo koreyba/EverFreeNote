@@ -18,8 +18,24 @@ export type SettingsReturnState = {
   notesUiState: NotesUiStateSnapshot
 }
 
-function isBrowserReady() {
-  return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined'
+function getSessionStorage(): Storage | null {
+  if (typeof globalThis.window === 'undefined') return null
+
+  try {
+    return globalThis.window.sessionStorage
+  } catch {
+    return null
+  }
+}
+
+function clearStoredReturnState(storage: Storage | null = getSessionStorage()): void {
+  if (!storage) return
+
+  try {
+    storage.removeItem(SETTINGS_RETURN_STATE_KEY)
+  } catch {
+    // Ignore storage-access failures. Settings return state is a best-effort bridge.
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -67,7 +83,8 @@ export function sanitizeSettingsReturnPath(path: string | null | undefined): str
 }
 
 export function saveSettingsReturnState(state: SettingsReturnState): boolean {
-  if (!isBrowserReady()) return false
+  const storage = getSessionStorage()
+  if (!storage) return false
   if (!isNotesUiStateSnapshot(state.notesUiState)) return false
 
   const safeState: SettingsReturnState = {
@@ -76,30 +93,36 @@ export function saveSettingsReturnState(state: SettingsReturnState): boolean {
   }
 
   try {
-    window.sessionStorage.setItem(SETTINGS_RETURN_STATE_KEY, JSON.stringify(safeState))
+    storage.setItem(SETTINGS_RETURN_STATE_KEY, JSON.stringify(safeState))
     return true
   } catch {
-    window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
+    clearStoredReturnState(storage)
     return false
   }
 }
 
 export function readSettingsReturnState(): SettingsReturnState | null {
-  if (!isBrowserReady()) return null
+  const storage = getSessionStorage()
+  if (!storage) return null
 
-  const rawValue = window.sessionStorage.getItem(SETTINGS_RETURN_STATE_KEY)
+  let rawValue: string | null = null
+  try {
+    rawValue = storage.getItem(SETTINGS_RETURN_STATE_KEY)
+  } catch {
+    return null
+  }
   if (!rawValue) return null
 
   try {
     const parsedValue: unknown = JSON.parse(rawValue)
     if (!isSettingsReturnState(parsedValue)) {
-      window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
+      clearStoredReturnState(storage)
       return null
     }
 
     const safeReturnPath = sanitizeSettingsReturnPath(parsedValue.returnPath)
     if (!safeReturnPath) {
-      window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
+      clearStoredReturnState(storage)
       return null
     }
 
@@ -108,21 +131,17 @@ export function readSettingsReturnState(): SettingsReturnState | null {
       notesUiState: parsedValue.notesUiState,
     }
   } catch {
-    window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
+    clearStoredReturnState(storage)
     return null
   }
 }
 
 export function consumeSettingsReturnState(): SettingsReturnState | null {
   const state = readSettingsReturnState()
-  if (!isBrowserReady()) return state
-
-  window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
+  clearStoredReturnState()
   return state
 }
 
 export function clearSettingsReturnState(): void {
-  if (!isBrowserReady()) return
-
-  window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
+  clearStoredReturnState()
 }

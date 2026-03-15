@@ -96,4 +96,40 @@ describe('settingsNavigationState', () => {
     })
     expect(readSettingsReturnState()).toBeNull()
   })
+
+  it('gracefully handles blocked sessionStorage access', () => {
+    const hadOwnDescriptor = Object.prototype.hasOwnProperty.call(window, 'sessionStorage')
+    const originalOwnDescriptor = Object.getOwnPropertyDescriptor(window, 'sessionStorage')
+
+    Object.defineProperty(window, 'sessionStorage', {
+      configurable: true,
+      get() {
+        throw new DOMException('Blocked', 'SecurityError')
+      },
+    })
+
+    try {
+      expect(() =>
+        saveSettingsReturnState({
+          returnPath: '/',
+          notesUiState: {
+            selectedNoteId: null,
+            isEditing: false,
+            isSearchPanelOpen: false,
+            searchQuery: '',
+            filterByTag: null,
+          },
+        }),
+      ).not.toThrow()
+      expect(readSettingsReturnState()).toBeNull()
+      expect(() => clearSettingsReturnState()).not.toThrow()
+      expect(consumeSettingsReturnState()).toBeNull()
+    } finally {
+      if (hadOwnDescriptor && originalOwnDescriptor) {
+        Object.defineProperty(window, 'sessionStorage', originalOwnDescriptor)
+      } else {
+        Reflect.deleteProperty(window as unknown as { sessionStorage?: Storage }, 'sessionStorage')
+      }
+    }
+  })
 })
