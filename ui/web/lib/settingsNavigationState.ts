@@ -120,3 +120,9 @@ export function consumeSettingsReturnState(): SettingsReturnState | null {
   window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
   return state
 }
+
+export function clearSettingsReturnState(): void {
+  if (!isBrowserReady()) return
+
+  window.sessionStorage.removeItem(SETTINGS_RETURN_STATE_KEY)
+}

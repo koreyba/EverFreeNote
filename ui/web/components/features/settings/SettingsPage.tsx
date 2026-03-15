@@ -14,7 +14,11 @@ import { ExportButton } from "@/components/ExportButton"
 import { ApiKeysSettingsPanel } from "@/components/features/settings/ApiKeysSettingsPanel"
 import { DeleteAccountPanel } from "@/components/features/settings/DeleteAccountPanel"
 import { WordPressSettingsPanel } from "@/components/features/settings/WordPressSettingsPanel"
-import { readSettingsReturnState, sanitizeSettingsReturnPath } from "@ui/web/lib/settingsNavigationState"
+import {
+  clearSettingsReturnState,
+  readSettingsReturnState,
+  sanitizeSettingsReturnPath,
+} from "@ui/web/lib/settingsNavigationState"
 
 type SettingsTabId = "wordpress" | "api-keys" | "import" | "export" | "account"
 
@@ -319,7 +323,10 @@ export function SettingsPage() {
                   {activeDefinition.id === "account" ? (
                     <DeleteAccountPanel
                       email={user.email}
-                      onConfirm={() => handleDeleteAccount(() => router.push("/"))}
+                      onConfirm={() => handleDeleteAccount(() => {
+                        clearSettingsReturnState()
+                        router.push("/")
+                      })}
                       loading={deleteAccountLoading}
                     />
                   ) : null}

@@ -351,8 +351,12 @@ export function useNoteAppController() {
     }
 
     setIsSearchPanelOpen(snapshot.isSearchPanelOpen || Boolean(snapshot.searchQuery) || Boolean(snapshot.filterByTag))
+    const canRestoreEditing =
+      snapshot.isEditing &&
+      (restoredSelectedNote !== null || snapshot.selectedNoteId === null)
+
     setSelectedNote(restoredSelectedNote)
-    setIsEditing(Boolean(snapshot.isEditing && restoredSelectedNote))
+    setIsEditing(canRestoreEditing)
   }, [
     handleClearTagFilter,
     handleSearch,
