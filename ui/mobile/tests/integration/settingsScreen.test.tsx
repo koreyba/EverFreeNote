@@ -178,7 +178,7 @@ describe('SettingsScreen', () => {
   })
 
   it('handles import, export, and WordPress save flows', async () => {
-    const testApplicationPassword = 'test-value'
+    const wordpressAppFixture = 'fixture-identifier'
 
     renderScreen()
 
@@ -233,14 +233,14 @@ describe('SettingsScreen', () => {
 
     fireEvent.changeText(screen.getByPlaceholderText('https://example.com'), 'https://example.com/')
     fireEvent.changeText(screen.getByPlaceholderText('editor-user'), 'editor-user')
-    fireEvent.changeText(screen.getByPlaceholderText('xxxx xxxx xxxx xxxx'), testApplicationPassword)
+    fireEvent.changeText(screen.getByPlaceholderText('xxxx xxxx xxxx xxxx'), wordpressAppFixture)
     fireEvent.press(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
       expect(mockWordPressUpsert).toHaveBeenCalledWith({
         siteUrl: 'https://example.com',
         wpUsername: 'editor-user',
-        applicationPassword: testApplicationPassword,
+        applicationPassword: wordpressAppFixture,
         enabled: true,
       })
       expect(screen.getByText('WordPress settings saved successfully.')).toBeTruthy()
@@ -418,7 +418,7 @@ describe('SettingsScreen', () => {
   })
 
   it('shows WordPress load, validation, and save errors', async () => {
-    const testApplicationPassword = 'test-value'
+    const wordpressAppFixture = 'fixture-identifier'
     mockWordPressGetStatus.mockRejectedValueOnce(new Error('Load failed'))
     mockWordPressUpsert.mockRejectedValueOnce(new Error('Save failed'))
 
@@ -444,14 +444,14 @@ describe('SettingsScreen', () => {
       expect(screen.getByText('Application password is required for the initial setup.')).toBeTruthy()
     })
 
-    fireEvent.changeText(screen.getByPlaceholderText('xxxx xxxx xxxx xxxx'), testApplicationPassword)
+    fireEvent.changeText(screen.getByPlaceholderText('xxxx xxxx xxxx xxxx'), wordpressAppFixture)
     fireEvent.press(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
       expect(mockWordPressUpsert).toHaveBeenCalledWith({
         siteUrl: 'https://example.com',
         wpUsername: 'editor-user',
-        applicationPassword: testApplicationPassword,
+        applicationPassword: wordpressAppFixture,
         enabled: true,
       })
       expect(screen.getByText('Save failed')).toBeTruthy()

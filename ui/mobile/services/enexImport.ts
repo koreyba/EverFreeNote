@@ -11,6 +11,8 @@ import { NoteCreator } from '@core/enex/note-creator'
 import type { ImportResult, ImportSettings } from '@core/enex/types'
 import { parseEnexXml } from '@ui/mobile/lib/enexMobile'
 
+export const MAX_ENEX_SIZE_BYTES = 100 * 1024 * 1024
+
 export type ImportProgress = {
   processed: number
   total: number
@@ -31,6 +33,14 @@ export class MobileEnexImportService {
     settings: ImportSettings = DEFAULT_IMPORT_SETTINGS,
     onProgress?: (progress: ImportProgress) => void
   ): Promise<ImportResult> {
+    if (typeof asset.size === 'number' && asset.size > MAX_ENEX_SIZE_BYTES) {
+      throw new Error(
+        `Selected .enex file is too large to import. Maximum supported size is ${Math.round(
+          MAX_ENEX_SIZE_BYTES / 1024 / 1024
+        )} MB.`
+      )
+    }
+
     const xml = await FileSystem.readAsStringAsync(asset.uri, {
       encoding: FileSystem.EncodingType.UTF8,
     })

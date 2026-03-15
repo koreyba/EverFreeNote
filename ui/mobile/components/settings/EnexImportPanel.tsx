@@ -87,7 +87,7 @@ export function EnexImportPanel() {
           })
         }
       )
-      setFeedback({ variant: summary.errors > 0 ? 'info' : 'success', message: summary.message })
+      setFeedback({ variant: summary.errors > 0 ? 'error' : 'success', message: summary.message })
     } catch (error) {
       setFeedback({
         variant: 'error',

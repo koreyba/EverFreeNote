@@ -1,5 +1,14 @@
 const mockCreate = jest.fn()
+const mockReadAsStringAsync = jest.fn()
 const mockResolveExistingTitlesForImport = jest.fn()
+
+jest.mock('expo-file-system/legacy', () => ({
+  __esModule: true,
+  EncodingType: {
+    UTF8: 'utf8',
+  },
+  readAsStringAsync: (...args: unknown[]) => mockReadAsStringAsync(...args),
+}))
 
 jest.mock('@core/enex/note-creator', () => ({
   NoteCreator: jest.fn().mockImplementation(() => ({
@@ -22,6 +31,7 @@ import { MobileEnexImportService } from '@ui/mobile/services/enexImport'
 describe('MobileEnexImportService', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockReadAsStringAsync.mockResolvedValue('')
     mockResolveExistingTitlesForImport.mockResolvedValue(new Map([['Duplicate note', 'existing-id']]))
   })
 
@@ -158,5 +168,23 @@ describe('MobileEnexImportService', () => {
       'Could not verify existing notes. Try again, or switch duplicate handling to "Add [duplicate] prefix to title".'
     )
     expect(mockCreate).not.toHaveBeenCalled()
+  })
+
+  it('rejects oversized import assets before reading them', async () => {
+    const service = new MobileEnexImportService({} as never)
+
+    await expect(
+      service.importAsset(
+        {
+          uri: 'file:///tmp/huge.enex',
+          name: 'huge.enex',
+          size: 101 * 1024 * 1024,
+          lastModified: 0,
+        },
+        'user-1'
+      )
+    ).rejects.toThrow('Selected .enex file is too large to import. Maximum supported size is 100 MB.')
+
+    expect(mockReadAsStringAsync).not.toHaveBeenCalled()
   })
 })

@@ -5,15 +5,19 @@ import {
 } from '@core/enex/import-shared'
 
 type QueryResult = {
-  data: Array<{ id: string; title: string | null | undefined }> | null
+  data: Array<{ id: string; title: string | null | undefined; created_at?: string }> | null
   error: { message: string } | null
 }
 
 function createSupabaseClient(result: QueryResult) {
+  const order = jest.fn(async () => result)
+
   return {
     from: jest.fn(() => ({
       select: jest.fn(() => ({
-        eq: jest.fn(async () => result),
+        eq: jest.fn(() => ({
+          order,
+        })),
       })),
     })),
   } as never
@@ -35,7 +39,7 @@ describe('import-shared helpers', () => {
     )
   })
 
-  it('falls back to an empty snapshot for prefix imports when lookup fails', async () => {
+  it('falls back to a per-note lookup marker for prefix imports when lookup fails', async () => {
     const client = createSupabaseClient({
       data: null,
       error: { message: 'lookup failed' },

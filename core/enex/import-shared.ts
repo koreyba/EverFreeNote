@@ -32,8 +32,9 @@ export async function fetchExistingTitles(
 ): Promise<Map<string, string>> {
   const { data, error } = await client
     .from('notes')
-    .select('id, title')
+    .select('id, title, created_at')
     .eq('user_id', userId)
+    .order('created_at', { ascending: false })
 
   if (error) {
     throw new Error(`Failed to fetch existing titles: ${error.message}`)

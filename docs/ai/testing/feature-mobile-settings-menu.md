@@ -100,9 +100,9 @@ description: Testing plan for the redesigned mobile settings screen and its nati
 ## Performance Testing
 **How do we validate performance?**
 
-- Verify tab switching stays responsive on a typical device.
-- Verify export of a moderate notes set does not freeze the UI.
-- Verify import of a small `.enex` file completes without app crash.
+- Ensure tab switching stays responsive on a typical device.
+- Confirm export of a moderate notes set does not freeze the UI.
+- Check that importing a small `.enex` file completes without app crash.
 
 ## Bug Tracking
 **How do we manage issues?**

@@ -110,6 +110,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
     }
 
     let successCount = 0
+    let skippedCount = 0
     let errorCount = 0
     let totalNotes = 0
     const failedNotes: FailedImportNote[] = []
@@ -183,9 +184,10 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
                 JSON.stringify({
                   currentFile: fileIndex + 1,
                   totalFiles: files.length,
-                  currentNote: successCount + errorCount,
+                  currentNote: successCount + skippedCount + errorCount,
                   totalNotes,
                   successCount,
+                  skippedCount,
                   errorCount,
                   fileName: file.name,
                 })
@@ -204,7 +206,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
                 note.title || "Untitled"
               )
 
-              await noteCreator.create(
+              const createdId = await noteCreator.create(
                 {
                   ...note,
                   content: convertedContent,
@@ -218,12 +220,16 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
                 }
               )
 
-              successCount++
+              if (createdId) {
+                successCount++
+              } else {
+                skippedCount++
+              }
 
               // Update note progress
               setProgress((prev) => ({
                 ...prev,
-                currentNote: successCount + errorCount,
+                currentNote: successCount + skippedCount + errorCount,
               }))
             } catch (error) {
               const err = error as Error
@@ -239,7 +245,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
               // Update note progress even on error
               setProgress((prev) => ({
                 ...prev,
-                currentNote: successCount + errorCount,
+                currentNote: successCount + skippedCount + errorCount,
               }))
             }
           }
@@ -259,12 +265,29 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
         success: successCount,
         errors: errorCount,
         failedNotes,
-        message:
-          successCount > 0
-            ? `Successfully imported ${successCount} note${successCount > 1 ? "s" : ""}`
-            : errorCount > 0
-              ? "All imports failed"
-              : "No notes were imported",
+        message: (() => {
+          const messageParts: string[] = []
+
+          if (successCount > 0) {
+            messageParts.push(
+              `Successfully imported ${successCount} note${successCount > 1 ? "s" : ""}`
+            )
+          }
+
+          if (skippedCount > 0) {
+            messageParts.push(`skipped ${skippedCount} duplicate note${skippedCount > 1 ? "s" : ""}`)
+          }
+
+          if (errorCount > 0) {
+            if (messageParts.length > 0) {
+              messageParts.push(`with ${errorCount} error${errorCount > 1 ? "s" : ""}`)
+            } else {
+              messageParts.push("All imports failed")
+            }
+          }
+
+          return messageParts.length > 0 ? messageParts.join(", ") : "No notes were imported"
+        })(),
       }
       setImportResult(result)
 

@@ -64,11 +64,10 @@ graph TD
 
 - Core UI model
   - `SettingsTabKey = "account" | "import" | "export" | "wordpress" | "apiKeys"`
-  - Each tab has:
-    - label
-    - icon
-    - description
-    - render function / component
+  - `SettingsTabDefinition` currently includes:
+    - `key`
+    - `label`
+  - Iconography, descriptions, and render/component wiring live outside `SettingsTabDefinition` in the current implementation.
 
 - Account panel state
   - `email: string`
@@ -94,8 +93,13 @@ graph TD
     - Despite the UI copy `Skip duplicates inside imported file(s)`, this flag currently applies to duplicate note titles seen within the current import batch, not attachments/resources and not a global skip-all mode.
     - When enabled, `core/enex` duplicate handling records each imported note title in `seenTitlesInImport` and skips later notes in the same import session that repeat that title.
   - `isImporting: boolean`
-  - `importSummary?: { success: number; errors: number; message: string }`
-  - `errorMessage?: string`
+  - `progress: ImportProgressState`
+    - `null` when idle
+    - `{ stage: "reading" }` while the selected `.enex` file is being loaded from disk
+    - `{ stage: "importing"; processed: number; total: number }` while parsed notes are being written
+    - `EnexImportPanel.tsx` uses the `stage` discriminator to decide whether to render a generic "Reading .enex file..." message or a note counter.
+  - `feedback?: { variant: "error" | "success" | "info"; message: string }`
+    - This runtime state replaces a separate `importSummary`/`errorMessage` split in the implementation.
 
 - Export panel state
   - `isExporting: boolean`
@@ -135,8 +139,15 @@ graph TD
   - `NoteCreator.create()`
 
 - New mobile-only service interfaces
-  - `MobileEnexImportService.importDocument(options): Promise<ImportResult>`
-  - `MobileEnexExportService.exportAllNotes(userId): Promise<{ fileUri: string; fileName: string; noteCount: number }>`
+  - `MobileEnexImportService.importAsset(asset, userId, settings, onProgress?): Promise<ImportResult>`
+    - `onProgress?` receives `{ processed: number; total: number }`
+  - `MobileEnexImportService.importXml(xml, userId, settings, onProgress?): Promise<ImportResult>`
+    - `onProgress?` receives `{ processed: number; total: number }`
+  - `MobileEnexExportService.exportAllNotes(userId, onProgress?): Promise<{ fileUri: string; fileName: string; noteCount: number }>`
+    - `onProgress?` receives staged export updates:
+      - `{ stage: "loading"; loaded: number; total: number }`
+      - `{ stage: "building"; noteCount: number }`
+      - `{ stage: "writing"; noteCount: number; fileName: string }`
 
 - Native integration contracts
   - File import:
@@ -204,7 +215,7 @@ graph TD
     - `skip` matches the intent of users who trust the current library state and want deduplication without creating new notes.
     - `replace` is the highest-risk option because it overwrites an existing note, but it is still needed for explicit parity with the web import flow and for users who intentionally want the imported version to win.
   - Duplicate criteria used today:
-    - existing-note duplicates are determined by exact title match against the existing-title snapshot (`id`, `title`);
+    - existing-note duplicates are determined by exact title match against the existing-title snapshot (`id`, `title`, `created_at`), with the newest `created_at` row winning when duplicate titles already exist in the database;
     - in-file duplicates are determined by exact repeated titles tracked in `seenTitlesInImport`;
     - persistent GUIDs, timestamps, and content hashes are not part of duplicate correlation in the current implementation.
   - Why web/mobile alignment matters:
