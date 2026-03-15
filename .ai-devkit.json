@@ -11,18 +11,27 @@
     "monitoring"
   ],
   "createdAt": "2025-10-20T08:10:00.763Z",
-  "updatedAt": "2026-02-26T14:11:58.233Z",
+  "updatedAt": "2026-03-14T17:49:10.430Z",
   "environments": [
+    "cursor",
     "claude",
     "github",
     "gemini",
-    "codex",
-    "antigravity"
+    "codex"
   ],
   "skills": [
     {
       "registry": "codeaholicguy/ai-devkit",
       "name": "dev-lifecycle"
     }
+  ],
+  "phases": [
+    "requirements",
+    "design",
+    "planning",
+    "implementation",
+    "testing",
+    "deployment",
+    "monitoring"
   ]
 }

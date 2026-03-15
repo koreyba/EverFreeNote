@@ -10,6 +10,7 @@ import { SanitizationService } from "@core/services/sanitizer"
 import type { Note, SearchResult } from "@core/types/domain"
 import { cn } from "@ui/web/lib/utils"
 import { useLongPress } from "@ui/web/hooks/useLongPress"
+import { selectableSurfaceStateClasses } from "@ui/web/lib/selectableSurfaceStyles"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -120,7 +121,7 @@ export const NoteCard = memo(function NoteCard({
         tabIndex={0}
         className={cn(
           "group p-3 rounded-lg cursor-pointer transition-colors border h-full",
-          isSelected ? "bg-accent border-primary/60" : "hover:bg-muted/50 border-transparent"
+          isSelected ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
         )}
         {...longPressHandlers}
       >
