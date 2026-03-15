@@ -5,16 +5,16 @@ import { useTheme } from '@ui/mobile/providers'
 
 export type SettingsTabKey = 'account' | 'import' | 'export' | 'wordpress' | 'apiKeys'
 
-export type SettingsTabDefinition = {
+export type SettingsTabDefinition = Readonly<{
   key: SettingsTabKey
   label: string
-}
+}>
 
-type SettingsTabBarProps = {
+type SettingsTabBarProps = Readonly<{
   tabs: SettingsTabDefinition[]
   activeTab: SettingsTabKey
   onChange: (tab: SettingsTabKey) => void
-}
+}>
 
 export function SettingsTabBar({ tabs, activeTab, onChange }: SettingsTabBarProps) {
   const { colors } = useTheme()

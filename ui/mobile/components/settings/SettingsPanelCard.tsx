@@ -4,12 +4,12 @@ import { useMemo } from 'react'
 
 import { useTheme } from '@ui/mobile/providers'
 
-type SettingsPanelCardProps = {
+type SettingsPanelCardProps = Readonly<{
   icon: ReactNode
   title: string
   subtitle: string
   children: ReactNode
-}
+}>
 
 export function SettingsPanelCard({
   icon,

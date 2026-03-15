@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -30,6 +30,38 @@ const initialVisitedTabs: Record<SettingsTabKey, boolean> = {
   apiKeys: false,
 }
 
+type PanelConfig = {
+  key: SettingsTabKey
+  isVisited: boolean
+  content: ReactNode
+}
+
+const getPanelAccessibilityProps = (isActive: boolean) => ({
+  accessibilityElementsHidden: !isActive,
+  importantForAccessibility: isActive
+    ? ('auto' as const)
+    : ('no-hide-descendants' as const),
+})
+
+function SettingsPanel({
+  isActive,
+  content,
+  styles,
+}: Readonly<{
+  isActive: boolean
+  content: ReactNode
+  styles: ReturnType<typeof createStyles>
+}>) {
+  return (
+    <View
+      {...getPanelAccessibilityProps(isActive)}
+      style={[styles.panel, !isActive && styles.panelHidden]}
+    >
+      {content}
+    </View>
+  )
+}
+
 export default function SettingsScreen() {
   const { colors, mode, setMode, colorScheme } = useTheme()
   const { signOut, deleteAccount } = useAuth()
@@ -44,6 +76,43 @@ export default function SettingsScreen() {
     setVisitedTabs((current) => (current[tab] ? current : { ...current, [tab]: true }))
   }
 
+  const panelConfigs: PanelConfig[] = [
+    {
+      key: 'account',
+      isVisited: visitedTabs.account,
+      content: (
+        <AccountSettingsPanel
+          email={user?.email ?? 'No email available'}
+          mode={mode}
+          colorScheme={colorScheme}
+          onModeChange={setMode}
+          onSignOut={signOut}
+          onDeleteAccount={deleteAccount}
+        />
+      ),
+    },
+    {
+      key: 'import',
+      isVisited: visitedTabs.import,
+      content: <EnexImportPanel />,
+    },
+    {
+      key: 'export',
+      isVisited: visitedTabs.export,
+      content: <EnexExportPanel />,
+    },
+    {
+      key: 'wordpress',
+      isVisited: visitedTabs.wordpress,
+      content: <WordPressSettingsPanel />,
+    },
+    {
+      key: 'apiKeys',
+      isVisited: visitedTabs.apiKeys,
+      content: <ApiKeysSettingsPanel />,
+    },
+  ]
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.shell}>
@@ -55,62 +124,16 @@ export default function SettingsScreen() {
         <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
         <View style={styles.panelWrap}>
-          {visitedTabs.account ? (
-            <View
-              accessibilityElementsHidden={activeTab !== 'account'}
-              importantForAccessibility={activeTab === 'account' ? 'auto' : 'no-hide-descendants'}
-              style={[styles.panel, activeTab !== 'account' && styles.panelHidden]}
-            >
-              <AccountSettingsPanel
-                email={user?.email ?? 'No email available'}
-                mode={mode}
-                colorScheme={colorScheme}
-                onModeChange={setMode}
-                onSignOut={signOut}
-                onDeleteAccount={deleteAccount}
+          {panelConfigs.map((panel) =>
+            panel.isVisited ? (
+              <SettingsPanel
+                key={panel.key}
+                isActive={activeTab === panel.key}
+                content={panel.content}
+                styles={styles}
               />
-            </View>
-          ) : null}
-
-          {visitedTabs.import ? (
-            <View
-              accessibilityElementsHidden={activeTab !== 'import'}
-              importantForAccessibility={activeTab === 'import' ? 'auto' : 'no-hide-descendants'}
-              style={[styles.panel, activeTab !== 'import' && styles.panelHidden]}
-            >
-              <EnexImportPanel />
-            </View>
-          ) : null}
-
-          {visitedTabs.export ? (
-            <View
-              accessibilityElementsHidden={activeTab !== 'export'}
-              importantForAccessibility={activeTab === 'export' ? 'auto' : 'no-hide-descendants'}
-              style={[styles.panel, activeTab !== 'export' && styles.panelHidden]}
-            >
-              <EnexExportPanel />
-            </View>
-          ) : null}
-
-          {visitedTabs.wordpress ? (
-            <View
-              accessibilityElementsHidden={activeTab !== 'wordpress'}
-              importantForAccessibility={activeTab === 'wordpress' ? 'auto' : 'no-hide-descendants'}
-              style={[styles.panel, activeTab !== 'wordpress' && styles.panelHidden]}
-            >
-              <WordPressSettingsPanel />
-            </View>
-          ) : null}
-
-          {visitedTabs.apiKeys ? (
-            <View
-              accessibilityElementsHidden={activeTab !== 'apiKeys'}
-              importantForAccessibility={activeTab === 'apiKeys' ? 'auto' : 'no-hide-descendants'}
-              style={[styles.panel, activeTab !== 'apiKeys' && styles.panelHidden]}
-            >
-              <ApiKeysSettingsPanel />
-            </View>
-          ) : null}
+            ) : null
+          )}
         </View>
       </View>
     </ScrollView>

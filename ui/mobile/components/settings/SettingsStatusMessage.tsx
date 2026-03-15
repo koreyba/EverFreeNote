@@ -4,10 +4,10 @@ import { CircleAlert, CircleCheckBig, Info } from 'lucide-react-native'
 
 import { useTheme } from '@ui/mobile/providers'
 
-type SettingsStatusMessageProps = {
+type SettingsStatusMessageProps = Readonly<{
   message: string
   variant: 'error' | 'success' | 'info'
-}
+}>
 
 export function SettingsStatusMessage({ message, variant }: SettingsStatusMessageProps) {
   const { colors } = useTheme()

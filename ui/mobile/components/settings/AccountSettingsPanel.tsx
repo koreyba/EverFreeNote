@@ -8,14 +8,14 @@ import type { ColorScheme, ThemeMode } from '@ui/mobile/lib/theme'
 import { SettingsPanelCard } from './SettingsPanelCard'
 import { SettingsStatusMessage } from './SettingsStatusMessage'
 
-type AccountSettingsPanelProps = {
+type AccountSettingsPanelProps = Readonly<{
   email: string
   mode: ThemeMode
   colorScheme: ColorScheme
   onModeChange: (mode: ThemeMode) => void
   onSignOut: () => Promise<void> | void
   onDeleteAccount: () => Promise<void>
-}
+}>
 
 const themeOptions: Array<{
   value: ThemeMode

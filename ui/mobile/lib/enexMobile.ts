@@ -24,10 +24,26 @@ const parser = new XMLParser({
   parseTagValue: false,
   trimValues: false,
 })
+const evernoteDatePattern = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/
+const enNoteContentPattern = /<en-note[^>]*>([\s\S]*)<\/en-note>/i
+const enMediaSelfClosingPattern = /<en-media\b[^>]*\/>/gi
+const enMediaOpenClosePattern = /<en-media\b[^>]*>[\s\S]*?<\/en-media>/gi
 
 const asArray = <T>(value: T | T[] | undefined): T[] => {
   if (!value) return []
   return Array.isArray(value) ? value : [value]
+}
+
+const readParsedNoteContent = (content: ParsedEnexNote['content']): string => {
+  if (typeof content === 'string') {
+    return content
+  }
+
+  if (typeof content?.['#text'] === 'string') {
+    return content['#text']
+  }
+
+  return ''
 }
 
 export const parseEnexDate = (value?: string | null): Date => {
@@ -36,7 +52,7 @@ export const parseEnexDate = (value?: string | null): Date => {
   const trimmed = value.trim()
   if (!trimmed) return new Date()
 
-  const match = trimmed.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/)
+  const match = evernoteDatePattern.exec(trimmed)
   if (!match) {
     const parsed = new Date(trimmed)
     return Number.isNaN(parsed.getTime()) ? new Date() : parsed
@@ -47,12 +63,12 @@ export const parseEnexDate = (value?: string | null): Date => {
 }
 
 export const extractEnexContent = (value: string): string => {
-  const match = value.match(/<en-note[^>]*>([\s\S]*)<\/en-note>/i)
+  const match = enNoteContentPattern.exec(value)
   const content = match ? match[1] : value
 
   return content
-    .replace(/<en-media\b[^>]*\/>/gi, '<p>[Imported media placeholder]</p>')
-    .replace(/<en-media\b[^>]*>[\s\S]*?<\/en-media>/gi, '<p>[Imported media placeholder]</p>')
+    .replaceAll(enMediaSelfClosingPattern, '<p>[Imported media placeholder]</p>')
+    .replaceAll(enMediaOpenClosePattern, '<p>[Imported media placeholder]</p>')
     .trim()
 }
 
@@ -61,12 +77,7 @@ export const parseEnexXml = (xml: string): ParsedNote[] => {
   const notes = asArray(parsed['en-export']?.note)
 
   return notes.map((note) => {
-    const rawContent =
-      typeof note.content === 'string'
-        ? note.content
-        : typeof note.content?.['#text'] === 'string'
-          ? note.content['#text']
-          : ''
+    const rawContent = readParsedNoteContent(note.content)
     const trimmedTitle = note.title?.trim()
 
     return {
