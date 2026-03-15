@@ -300,10 +300,13 @@ export function useNoteAppController() {
     await flushPendingEditorSave()
     if (requestId !== latestEditRequestRef.current) return
     const openableNote = await resolveOpenableNote(note)
-    if (!openableNote) return
+    if (!openableNote) {
+      handleSelectNote(null)
+      return
+    }
     handleEditNoteRaw(openableNote)
     setLastSavedAt(null)
-  }, [flushPendingEditorSave, handleEditNoteRaw, resolveOpenableNote, setLastSavedAt])
+  }, [flushPendingEditorSave, handleEditNoteRaw, handleSelectNote, resolveOpenableNote, setLastSavedAt])
 
   const handleTagClick = useCallback(async (tag: string) => {
     await flushPendingEditorSave()

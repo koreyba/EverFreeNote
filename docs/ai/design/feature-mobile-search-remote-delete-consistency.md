@@ -52,6 +52,7 @@ graph TD
 - Conflict state:
   - When remote deletion conflicts with unsynced local edits, local edits win: the note is restored from the locally edited version.
   - Remote deletion must not silently discard queued local edits; the sync queue restores the note from the local version.
+  - When a note is deleted remotely while the user has it open in the editor (web or mobile), saving must re-create the note via upsert. The save operation must not fail or show an error — the user's in-progress work takes priority over the remote deletion.
 - Bulk delete behavior:
   - Bulk delete silently skips notes that no longer exist on the server and completes the operation for the remaining ones without error messages.
 
@@ -131,6 +132,7 @@ graph TD
   - This minimizes schema churn and fits the current mobile stack.
 - Conflict policy: local edits win over remote deletion:
   - When unsynced local edits exist for a remotely deleted note, the note is restored from the local version.
+  - When a note is deleted remotely while the user is actively editing it (web or mobile), saving must re-create the note via upsert rather than failing with an error. The user's in-progress work is never lost.
   - This avoids introducing new conflict-specific UI in this feature and prevents silent data loss.
 - Avoid full realtime or tombstone architecture in the first pass:
   - Reconciliation at lifecycle boundaries is sufficient for the stated problem and matches the medium priority.

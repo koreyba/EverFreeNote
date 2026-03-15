@@ -245,8 +245,14 @@ export function useNoteSaveHandlers({
           toast.success('Saved offline (will sync when online)')
           setLastSavedAt(clientUpdatedAt)
         } else {
-          const updated = await updateNoteMutation.mutateAsync({ id: selectedNote.id, ...noteData })
-          savedNote = { ...selectedNote, ...updated }
+          try {
+            const updated = await updateNoteMutation.mutateAsync({ id: selectedNote.id, ...noteData })
+            savedNote = { ...selectedNote, ...updated }
+          } catch {
+            // Note was deleted remotely while being edited — re-create with the same ID
+            const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id, id: selectedNote.id })
+            savedNote = created as NoteViewModel
+          }
           setLastSavedAt(clientUpdatedAt)
         }
       } else {

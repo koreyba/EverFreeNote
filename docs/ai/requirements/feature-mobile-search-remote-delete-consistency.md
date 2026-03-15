@@ -55,7 +55,7 @@ Required behavior scenarios:
 1. If the app is online and the note no longer exists on the server, the app must not open the stale local copy as if it were current. It must communicate clearly that the note was already deleted and return the user to the notes list or search context they came from.
 2. If the server is temporarily unavailable, mobile may use the local copy as fallback. That fallback must represent temporary degraded mode, not confirmed server truth.
 3. If a note is deleted on another device while search results are already open, the stale entry may remain visible until the next confirmed refresh point. In v1, those refresh points are manual refresh, cold start (full process kill and relaunch — background-to-foreground resume does not count), or a repeated search execution. If the user taps the stale entry before refresh, the app must show that the note was deleted and return the user back to their prior context. The stale item is allowed to remain in the list after the user returns from the deleted-note alert; it will disappear at the next confirmed refresh point. The app does not need to remove the stale item from the already-open results list immediately.
-4. If the user made valid local changes while offline, those changes must still attempt to sync later. When a remote deletion conflicts with unsynced local edits, the local edits win: the note is restored from the locally edited version rather than silently lost. This is the authoritative conflict policy for this feature.
+4. If the user made valid local changes while offline, those changes must still attempt to sync later. When a remote deletion conflicts with unsynced local edits, the local edits win: the note is restored from the locally edited version rather than silently lost. This is the authoritative conflict policy for this feature. The same policy applies when a note is deleted remotely while the user is actively editing it: saving must re-create the note (upsert), not fail silently or show an error. This applies to both web and mobile.
 5. AI search must follow the same product behavior as regular search for remotely deleted notes. This applies to both AI note-grouped view and AI chunk view. A stale AI result may remain visible in already-open results until the next confirmed refresh point, but opening it (whether tapping a note card or a chunk card) must show the deleted-note message and return the user to their prior context. After manual refresh, cold start, or repeated search, the deleted note must no longer appear in AI search results.
 6. Bulk delete must silently skip notes that no longer exist on the server and delete the remaining ones without error messages or interruption. The user does not need to be informed about already-deleted notes in the batch.
 
@@ -78,7 +78,7 @@ Edge cases:
 - Remotely deleted notes are eventually marked removed in mobile SQLite and stop resurfacing in local search/list fallbacks.
 - Temporary network failures still permit appropriate local fallback behavior.
 - Pending valid local changes continue syncing to the cloud after connectivity returns.
-- Conflict cases involving remote deletion and unsynced local edits are resolved in favor of the local edits: the note is restored from the locally edited version, not silently lost.
+- Conflict cases involving remote deletion and unsynced local edits are resolved in favor of the local edits: the note is restored from the locally edited version, not silently lost. Saving a note from an active editor session after remote deletion re-creates the note via upsert.
 - The refreshed-data and stale-open rules apply consistently to both web and mobile product behavior. Web must revalidate notes against the server before opening them from list or search results when online, and show deleted-note feedback when a note is confirmed gone.
 - Bulk delete silently skips already-deleted notes and completes the operation for the remaining ones without error messages.
 
@@ -90,7 +90,7 @@ Edge cases:
   - The current offline stack already includes queueing and sync primitives that should be reused instead of replaced wholesale.
   - Search and note detail behavior currently depend on both cached server results and local SQLite fallback.
 - Assumptions:
-  - Conflict handling for remote deletion vs local edits: local edits win. The note is restored from the locally edited version.
+  - Conflict handling for remote deletion vs local edits: local edits win. The note is restored from the locally edited version. This includes active editor sessions: if a note is deleted remotely while being edited, saving must re-create it (upsert).
   - The feature can be delivered without a full realtime subscription system because the confirmed refresh points are manual refresh, cold start (full process kill and relaunch), and repeated search. Background-to-foreground resume is not a refresh point in v1.
   - A targeted cleanup path for remotely deleted notes is acceptable even if full local-database compaction remains a separate concern.
 - Priority:

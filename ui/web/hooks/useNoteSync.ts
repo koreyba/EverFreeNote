@@ -66,12 +66,23 @@ export function useNoteSync({
                 })
             } else if (item.operation === 'update') {
                 const payload = item.payload as Partial<NoteUpdate>
-                await updateMutationRef.current.mutateAsync({
-                    id: item.noteId,
-                    title: payload.title ?? 'Untitled',
-                    description: payload.description ?? '',
-                    tags: payload.tags ?? [],
-                })
+                try {
+                    await updateMutationRef.current.mutateAsync({
+                        id: item.noteId,
+                        title: payload.title ?? 'Untitled',
+                        description: payload.description ?? '',
+                        tags: payload.tags ?? [],
+                    })
+                } catch {
+                    // Note was deleted remotely — re-create with the same ID
+                    await createMutationRef.current.mutateAsync({
+                        id: item.noteId,
+                        title: payload.title ?? 'Untitled',
+                        description: payload.description ?? '',
+                        tags: payload.tags ?? [],
+                        userId: currentUser.id,
+                    })
+                }
             } else if (item.operation === 'delete') {
                 await deleteMutationRef.current.mutateAsync({ id: item.noteId, silent: true })
             }
