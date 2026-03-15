@@ -28,7 +28,6 @@ interface SidebarProps {
   onOpenSettings: () => void
   onCreateNote: () => void
   onSignOut: () => void
-  wordpressConfigured?: boolean
   children: React.ReactNode // For the NoteList
   className?: string
   "data-testid"?: string
@@ -51,7 +50,6 @@ export function Sidebar({
   onOpenSettings,
   onCreateNote,
   onSignOut,
-  wordpressConfigured = false,
   children,
   className,
   "data-testid": dataTestId
@@ -167,7 +165,7 @@ export function Sidebar({
             <span className="text-sm truncate">{user.email}</span>
           </div>
           <Button
-            variant={wordpressConfigured ? "secondary" : "ghost"}
+            variant="ghost"
             size="sm"
             className="p-2"
             onClick={onOpenSettings}

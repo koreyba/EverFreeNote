@@ -185,7 +185,6 @@ export function NotesShell({ controller }: NotesShellProps) {
         onOpenSettings={() => void handleOpenSettings()}
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
-        wordpressConfigured={wordpressConfigured}
         onOpenSearch={handleOpenSearchPanel}
         className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
