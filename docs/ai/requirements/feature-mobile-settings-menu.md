@@ -47,6 +47,7 @@ description: Complete the mobile settings experience with fully interactive sett
 - As a mobile user, I want to switch between settings categories using horizontal tabs so that the page remains compact and easy to scan.
 - As a signed-in user, I want to see my account email and delete my account from the `My Account` tab so that account management is available without leaving the app.
 - As a migrating user, I want to import an `.enex` file from my device so that I can bring notes into EverFreeNote on mobile.
+- As a migrating user, I want to choose how duplicates are handled during mobile import so that mobile import matches web capabilities.
 - As a backup-conscious user, I want to export my notes as `.enex` and share/save the file from my device so that I can keep a portable archive.
 - As a publishing user, I want to configure WordPress credentials from mobile so that WordPress export access matches web capabilities.
 - As an AI user, I want to store my Gemini API key from mobile so that AI-related features can be configured securely in-app.
@@ -59,6 +60,7 @@ description: Complete the mobile settings experience with fully interactive sett
 - `My Account` shows the authenticated email and allows account deletion with explicit confirmation.
 - `My Account` continues to expose theme controls and sign-out without regressing current behavior.
 - `Import .enex file` allows choosing a file and importing notes into the signed-in account.
+- `Import .enex file` exposes the same duplicate-handling options as web: `prefix`, `skip`, `replace`, and `skip duplicates inside imported file(s)`.
 - `Export .enex file` allows generating an `.enex` archive and sharing/saving it from the device.
 - `WordPress settings` loads current status, validates input, and saves through existing Supabase functions.
 - `API Keys` loads current status, validates input, and saves through existing Supabase functions.

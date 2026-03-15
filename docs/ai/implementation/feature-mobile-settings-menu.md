@@ -82,10 +82,14 @@ description: Implementation notes for the redesigned mobile settings screen with
 - ENEX import
   - Pick a single `.enex` document from the device.
   - On Android, use a broad picker MIME type and validate the chosen file in-app because `.enex` providers often do not advertise a stable XML MIME type.
-  - Read file content as UTF-8 text.
+- Reuse shared import settings metadata from `core/enex` so web and mobile stay aligned on duplicate strategy labels and defaults.
+- Fail closed for duplicate strategies that require a snapshot of existing note titles:
+  - `skip` and `replace` now stop with a user-facing error if existing-title lookup is unavailable;
+  - `prefix` remains available and falls back safely when lookup fails.
+- Read file content as UTF-8 text.
   - Parse note entries with a RN-safe XML parser.
   - Preserve title, tags, timestamps, and note body HTML where possible.
-  - Create notes through `NoteCreator` using duplicate strategy `prefix`.
+  - Create notes through `NoteCreator` using the user-selected duplicate strategy plus `skip duplicates inside imported file(s)`.
   - Surface in-panel progress as `processed / total notes` while notes are being imported.
 
 - ENEX export

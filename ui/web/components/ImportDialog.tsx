@@ -9,6 +9,11 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { DuplicateStrategy } from "@core/enex/types"
+import {
+  DEFAULT_IMPORT_SETTINGS,
+  DUPLICATE_STRATEGY_OPTIONS,
+  IMPORT_SETTINGS_COPY,
+} from "@core/enex/import-shared"
 
 type ImportDialogProps = {
   open: boolean
@@ -22,8 +27,9 @@ type ImportDialogProps = {
 export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
   const [isDragging, setIsDragging] = React.useState(false)
   const [duplicateStrategy, setDuplicateStrategy] =
-    React.useState<DuplicateStrategy>("prefix")
-  const [skipFileDuplicates, setSkipFileDuplicates] = React.useState(false)
+    React.useState<DuplicateStrategy>(DEFAULT_IMPORT_SETTINGS.duplicateStrategy)
+  const [skipFileDuplicates, setSkipFileDuplicates] =
+    React.useState(DEFAULT_IMPORT_SETTINGS.skipFileDuplicates)
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([])
 
   React.useEffect(() => {
@@ -142,12 +148,12 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
 
           {/* Import Settings */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Import Settings</Label>
+            <Label className="text-sm font-medium">{IMPORT_SETTINGS_COPY.title}</Label>
 
             {/* Duplicate Strategy */}
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">
-                What to do with duplicate notes?
+                {IMPORT_SETTINGS_COPY.duplicateQuestion}
               </Label>
               <RadioGroup
                 value={duplicateStrategy}
@@ -155,33 +161,17 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                   setDuplicateStrategy(value)
                 }
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="prefix" id="prefix" />
-                  <Label
-                    htmlFor="prefix"
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    Add [duplicate] prefix to title
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="skip" id="skip" />
-                  <Label
-                    htmlFor="skip"
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    Skip duplicate notes
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="replace" id="replace" />
-                  <Label
-                    htmlFor="replace"
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    Replace existing notes
-                  </Label>
-                </div>
+                {DUPLICATE_STRATEGY_OPTIONS.map((option) => (
+                  <div key={option.value} className="flex items-center space-x-2">
+                    <RadioGroupItem value={option.value} id={option.value} />
+                    <Label
+                      htmlFor={option.value}
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {option.label}
+                    </Label>
+                  </div>
+                ))}
               </RadioGroup>
             </div>
 
@@ -192,7 +182,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                 onCheckedChange={(checked) => setSkipFileDuplicates(Boolean(checked))}
               />
               <Label htmlFor="skip-file-duplicates" className="text-sm font-normal cursor-pointer">
-                Skip duplicates inside imported file(s)
+                {IMPORT_SETTINGS_COPY.skipFileDuplicatesLabel}
               </Label>
             </div>
           </div>

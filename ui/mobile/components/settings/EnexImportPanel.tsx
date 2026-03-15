@@ -1,8 +1,14 @@
 import { useMemo, useState } from 'react'
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native'
-import { Upload } from 'lucide-react-native'
+import { CheckCircle2, CheckSquare, Circle, Square, Upload } from 'lucide-react-native'
 import * as DocumentPicker from 'expo-document-picker'
 
+import {
+  DEFAULT_IMPORT_SETTINGS,
+  DUPLICATE_STRATEGY_OPTIONS,
+  IMPORT_SETTINGS_COPY,
+} from '@core/enex/import-shared'
+import type { ImportSettings } from '@core/enex/types'
 import { Button } from '@ui/mobile/components/ui'
 import { useSupabase, useTheme } from '@ui/mobile/providers'
 import { MobileEnexImportService } from '@ui/mobile/services/enexImport'
@@ -28,6 +34,7 @@ export function EnexImportPanel() {
   const styles = useMemo(() => createStyles(colors), [colors])
   const [isImporting, setIsImporting] = useState(false)
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
+  const [importSettings, setImportSettings] = useState<ImportSettings>(DEFAULT_IMPORT_SETTINGS)
   const [progress, setProgress] = useState<ImportProgressState>(null)
   const [feedback, setFeedback] = useState<FeedbackState>({
     variant: 'info',
@@ -68,13 +75,18 @@ export function EnexImportPanel() {
       setProgress({ stage: 'reading' })
       setFeedback(null)
 
-      const summary = await new MobileEnexImportService(client).importAsset(asset, user.id, (next) => {
-        setProgress({
-          stage: 'importing',
-          processed: next.processed,
-          total: next.total,
-        })
-      })
+      const summary = await new MobileEnexImportService(client).importAsset(
+        asset,
+        user.id,
+        importSettings,
+        (next) => {
+          setProgress({
+            stage: 'importing',
+            processed: next.processed,
+            total: next.total,
+          })
+        }
+      )
       setFeedback({ variant: summary.errors > 0 ? 'info' : 'success', message: summary.message })
     } catch (error) {
       setFeedback({
@@ -96,6 +108,72 @@ export function EnexImportPanel() {
       <View style={styles.meta}>
         <Text style={styles.metaLabel}>Selected file</Text>
         <Text style={styles.metaValue}>{selectedFileName ?? 'No file selected yet'}</Text>
+      </View>
+
+      <View style={styles.settingsGroup}>
+        <Text style={styles.settingsTitle}>{IMPORT_SETTINGS_COPY.title}</Text>
+
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsQuestion}>{IMPORT_SETTINGS_COPY.duplicateQuestion}</Text>
+          <View accessibilityRole="radiogroup" style={styles.optionsList}>
+            {DUPLICATE_STRATEGY_OPTIONS.map((option) => {
+              const checked = importSettings.duplicateStrategy === option.value
+
+              return (
+                <Button
+                  key={option.value}
+                  variant="ghost"
+                  disabled={isImporting}
+                  onPress={() =>
+                    setImportSettings((current) => ({
+                      ...current,
+                      duplicateStrategy: option.value,
+                    }))
+                  }
+                  style={styles.optionButton}
+                  textStyle={styles.optionButtonText}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked, disabled: isImporting }}
+                  accessibilityLabel={option.label}
+                >
+                  <View style={styles.optionContent}>
+                    {checked ? (
+                      <CheckCircle2 size={18} color={colors.primary} />
+                    ) : (
+                      <Circle size={18} color={colors.mutedForeground} />
+                    )}
+                    <Text style={styles.optionLabel}>{option.label}</Text>
+                  </View>
+                </Button>
+              )
+            })}
+          </View>
+        </View>
+
+        <Button
+          variant="ghost"
+          disabled={isImporting}
+          onPress={() =>
+            setImportSettings((current) => ({
+              ...current,
+              skipFileDuplicates: !current.skipFileDuplicates,
+            }))
+          }
+          style={styles.optionButton}
+          textStyle={styles.optionButtonText}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: importSettings.skipFileDuplicates, disabled: isImporting }}
+          accessibilityLabel={IMPORT_SETTINGS_COPY.skipFileDuplicatesLabel}
+        >
+          <View style={styles.optionContent}>
+            {importSettings.skipFileDuplicates ? (
+              <CheckSquare size={18} color={colors.primary} />
+            ) : (
+              <Square size={18} color={colors.mutedForeground} />
+            )}
+            <Text style={styles.optionLabel}>{IMPORT_SETTINGS_COPY.skipFileDuplicatesLabel}</Text>
+          </View>
+        </Button>
       </View>
 
       {isImporting ? (
@@ -138,6 +216,52 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       color: colors.foreground,
       fontFamily: 'Inter_500Medium',
       fontSize: 14,
+    },
+    settingsGroup: {
+      gap: 10,
+    },
+    settingsTitle: {
+      color: colors.foreground,
+      fontFamily: 'Inter_600SemiBold',
+      fontSize: 14,
+    },
+    settingsSection: {
+      gap: 8,
+    },
+    settingsQuestion: {
+      color: colors.mutedForeground,
+      fontFamily: 'Inter_400Regular',
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    optionsList: {
+      gap: 8,
+    },
+    optionButton: {
+      width: '100%',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+      justifyContent: 'flex-start',
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+    },
+    optionButtonText: {
+      textAlign: 'left',
+    },
+    optionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      width: '100%',
+      flexShrink: 1,
+    },
+    optionLabel: {
+      color: colors.foreground,
+      fontFamily: 'Inter_400Regular',
+      fontSize: 14,
+      flexShrink: 1,
     },
     loader: {
       flexDirection: 'row',

@@ -199,6 +199,10 @@ describe('SettingsScreen', () => {
       expect(mockImportAsset).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'import.enex' }),
         'user-1',
+        {
+          duplicateStrategy: 'prefix',
+          skipFileDuplicates: false,
+        },
         expect.any(Function)
       )
       expect(screen.getByText('Imported 2 note(s).')).toBeTruthy()
@@ -339,7 +343,7 @@ describe('SettingsScreen', () => {
       resolveExport = resolve
     })
 
-    mockImportAsset.mockImplementationOnce(async (_asset, _userId, onProgress) => {
+    mockImportAsset.mockImplementationOnce(async (_asset, _userId, _settings, onProgress) => {
       onProgress?.({ processed: 2, total: 5 })
       await importCompleted
       return {

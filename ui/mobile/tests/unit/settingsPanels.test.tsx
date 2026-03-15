@@ -146,9 +146,33 @@ describe('settings panels', () => {
       expect(mockImportAsset).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'import.enex' }),
         'user-1',
+        {
+          duplicateStrategy: 'prefix',
+          skipFileDuplicates: false,
+        },
         expect.any(Function)
       )
       expect(screen.getByText('Imported 2 note(s).')).toBeTruthy()
+    })
+  })
+
+  it('passes the selected duplicate settings into the import service', async () => {
+    renderWithTheme(<EnexImportPanel />)
+
+    fireEvent.press(screen.getByRole('radio', { name: 'Replace existing notes' }))
+    fireEvent.press(screen.getByRole('checkbox', { name: 'Skip duplicates inside imported file(s)' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Choose and import .enex' }))
+
+    await waitFor(() => {
+      expect(mockImportAsset).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'import.enex' }),
+        'user-1',
+        {
+          duplicateStrategy: 'replace',
+          skipFileDuplicates: true,
+        },
+        expect.any(Function)
+      )
     })
   })
 
@@ -158,7 +182,7 @@ describe('settings panels', () => {
       resolveImport = resolve
     })
 
-    mockImportAsset.mockImplementationOnce(async (_asset, _userId, onProgress) => {
+    mockImportAsset.mockImplementationOnce(async (_asset, _userId, _settings, onProgress) => {
       onProgress?.({ processed: 1, total: 3 })
       await importCompleted
       return {

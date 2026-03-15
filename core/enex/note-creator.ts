@@ -51,12 +51,13 @@ export class NoteCreator {
           .single()
 
         if (error) throw error
+        if (!data?.id) throw new Error('Updated note id was not returned')
 
         if (duplicateContext?.skipFileDuplicates) {
           duplicateContext.seenTitlesInImport.add(note.title)
         }
 
-        return data?.id ?? null
+        return data.id
       }
 
       const { data, error } = await this.supabase
@@ -66,7 +67,8 @@ export class NoteCreator {
         .single()
 
       if (error) throw error
-      const createdId = data?.id ?? null
+      if (!data?.id) throw new Error('Created note id was not returned')
+      const createdId = data.id
 
       if (duplicateContext?.skipFileDuplicates) {
         duplicateContext.seenTitlesInImport.add(note.title)

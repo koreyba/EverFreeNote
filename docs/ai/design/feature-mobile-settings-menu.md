@@ -47,6 +47,7 @@ graph TD
     - Launches native file picker.
     - Reads `.enex` content from device storage.
     - Parses notes into a RN-safe structure and writes them using existing note creation logic.
+    - Exposes the same duplicate-handling controls as the web import dialog, backed by shared `core/enex` metadata.
   - `ENEX export panel`
     - Loads notes for the signed-in user.
     - Builds `.enex` XML using the shared builder.
@@ -78,6 +79,20 @@ graph TD
 
 - Import panel state
   - `selectedFileName?: string`
+  - `duplicateStrategy: "prefix" | "skip" | "replace"`
+    - Default: `"prefix"` from shared `core/enex` metadata in `DEFAULT_IMPORT_SETTINGS`.
+    - Maps to shared `core/enex` duplicate-handling controls and `NoteCreator.create()` behavior:
+      - `"prefix"` keeps the incoming note and rewrites the imported title to `[duplicate] ${title}`.
+      - `"skip"` keeps the existing note and returns no new note when the imported title matches the existing-title snapshot.
+      - `"replace"` updates the existing note selected from the existing-title snapshot for that title.
+    - Duplicate criteria are currently title-based only:
+      - existing notes are correlated by exact `title` matches from `core/enex/import-shared.ts`;
+      - notes repeated inside the same import batch are correlated by exact repeated `title` values in `seenTitlesInImport`.
+      - Persistent GUIDs, timestamps, and content hashes are not currently used for duplicate detection.
+  - `skipFileDuplicates: boolean`
+    - Default: `false` from shared `core/enex` metadata in `DEFAULT_IMPORT_SETTINGS`.
+    - Despite the UI copy `Skip duplicates inside imported file(s)`, this flag currently applies to duplicate note titles seen within the current import batch, not attachments/resources and not a global skip-all mode.
+    - When enabled, `core/enex` duplicate handling records each imported note title in `seenTitlesInImport` and skips later notes in the same import session that repeat that title.
   - `isImporting: boolean`
   - `importSummary?: { success: number; errors: number; message: string }`
   - `errorMessage?: string`
@@ -177,6 +192,25 @@ graph TD
 - Decision: Build mobile-native ENEX import/export services instead of reusing browser-specific `core/enex` orchestrators.
   - Pros: avoids DOM/File API mismatch in React Native.
   - Cons: mobile service logic is partially duplicated around parsing/orchestration.
+
+- Decision: Keep duplicate-handling controls aligned with the web import dialog and centralize their definitions in shared `core/enex` metadata.
+  - The duplicate-handling controls are `duplicateStrategy` (`"prefix" | "skip" | "replace"`) plus `skipFileDuplicates`.
+  - The shared `core/enex` metadata currently lives in `core/enex/import-shared.ts` and includes:
+    - `DEFAULT_IMPORT_SETTINGS` for defaults;
+    - `DUPLICATE_STRATEGY_OPTIONS` and `IMPORT_SETTINGS_COPY` for the visible controls/copy;
+    - `fetchExistingTitles()` / `resolveExistingTitlesForImport()` for the existing-title snapshot used by both web and mobile orchestration.
+  - Why these three strategies were chosen:
+    - `prefix` is the safest default because it preserves imported content even when a duplicate exists or duplicate lookup is temporarily unavailable.
+    - `skip` matches the intent of users who trust the current library state and want deduplication without creating new notes.
+    - `replace` is the highest-risk option because it overwrites an existing note, but it is still needed for explicit parity with the web import flow and for users who intentionally want the imported version to win.
+  - Duplicate criteria used today:
+    - existing-note duplicates are determined by exact title match against the existing-title snapshot (`id`, `title`);
+    - in-file duplicates are determined by exact repeated titles tracked in `seenTitlesInImport`;
+    - persistent GUIDs, timestamps, and content hashes are not part of duplicate correlation in the current implementation.
+  - Why web/mobile alignment matters:
+    - users see the same duplicate-handling controls on both clients;
+    - imports remain predictable when users switch devices or compare results between mobile and web;
+    - shared `core/enex` metadata reduces copy drift and duplicate-strategy mismatches across clients.
 
 - Alternatives considered
   - Keep current sectioned list and only remove `Soon` badges.

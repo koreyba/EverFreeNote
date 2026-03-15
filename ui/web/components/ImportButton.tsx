@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { ImportDialog } from "@/components/ImportDialog"
 import { ImportProgressDialog } from "@/components/ImportProgressDialog"
 import { ContentConverter } from "@core/enex/converter"
+import { resolveExistingTitlesForImport } from "@core/enex/import-shared"
 import { EnexParser } from "@core/enex/parser"
 import { ImageProcessor } from "@core/enex/image-processor"
 import { NoteCreator } from "@core/enex/note-creator"
@@ -22,28 +23,6 @@ import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { browser } from "@ui/web/adapters/browser"
 
 const IMPORT_STATE_KEY = "everfreenote-import-state"
-
-type SupabaseClientType = ReturnType<typeof useSupabase>["supabase"]
-
-async function fetchExistingTitles(client: SupabaseClientType, userId: string) {
-  const { data, error } = await client
-    .from("notes")
-    .select("id, title")
-    .eq("user_id", userId)
-
-  if (error) {
-    console.error("Failed to fetch existing titles:", error)
-    return new Map<string, string>()
-  }
-
-  const map = new Map<string, string>()
-  data?.forEach((row) => {
-    if (!map.has(row.title)) {
-      map.set(row.title, row.id)
-    }
-  })
-  return map
-}
 
 const initialProgress: ImportProgress = {
   currentFile: 0,
@@ -155,7 +134,11 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
       const noteCreator = new NoteCreator(supabase)
 
       // Snapshot существующих заголовков в базе до импорта
-      const existingByTitle = await fetchExistingTitles(supabase, user.id)
+      const existingByTitle = await resolveExistingTitlesForImport(
+        supabase,
+        user.id,
+        settings.duplicateStrategy
+      )
       // Отслеживаем титлы, уже встреченные в текущем сеансе импорта (внутри файла/файлов)
       const seenTitlesInImport = new Set<string>()
 

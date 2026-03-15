@@ -19,6 +19,8 @@ description: Testing plan for the redesigned mobile settings screen and its nati
 ### Mobile ENEX import helpers
 - [x] Parse title, timestamps, tags, and note body from ENEX XML.
 - [x] Report import progress as `processed / total` while notes are created.
+- [x] Respect duplicate strategy and `skip duplicates inside imported file(s)` during mobile import orchestration.
+- [x] Stop `skip` / `replace` imports when existing-title lookup is unavailable, while allowing `prefix` to fall back safely.
 - [ ] Handle malformed XML / empty note payloads with user-facing errors.
 - [ ] Additional coverage: duplicate title handling path through import orchestration.
 
@@ -32,6 +34,7 @@ description: Testing plan for the redesigned mobile settings screen and its nati
 - [x] API keys validation state transitions.
 - [x] WordPress settings validation and URL normalization.
 - [x] Import panel constrains selection to `.enex` flows and rejects other file names before import.
+- [x] Import panel passes selected duplicate-handling settings into the mobile import service.
 - [x] Android-safe picker configuration keeps `.enex` files selectable even when the provider does not advertise an XML MIME type.
 - [x] Export panel copy and share hand-off stay aligned with the "export all notes" mobile behavior.
 - [ ] Additional coverage: account deletion acknowledgement gating.
@@ -75,7 +78,7 @@ description: Testing plan for the redesigned mobile settings screen and its nati
 ### Latest implementation run
 - Passed: `npm --prefix ui/mobile run type-check`
 - Passed: `npm --prefix ui/mobile run lint`
-- Passed: `npx jest --runInBand tests/unit/mobileEnexHelpers.test.ts tests/unit/settingsPanels.test.tsx tests/unit/input.test.tsx tests/integration/settingsScreen.test.tsx` from `ui/mobile/`
+- Passed: `npx jest --runInBand tests/unit/importShared.test.ts tests/unit/mobileEnexHelpers.test.ts tests/unit/mobileEnexImportService.test.ts tests/unit/settingsPanels.test.tsx tests/unit/input.test.tsx tests/integration/settingsScreen.test.tsx` from `ui/mobile/`
 - Passed earlier in the feature workflow: `npx ai-devkit@latest lint --feature mobile-settings-menu`
 
 ## Manual Testing
