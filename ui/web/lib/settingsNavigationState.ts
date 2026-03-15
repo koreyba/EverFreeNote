@@ -1,3 +1,5 @@
+import type { NoteViewModel } from '@core/types/domain'
+
 const SETTINGS_RETURN_STATE_KEY = 'everfreenote:settings-return-state'
 const FALLBACK_RETURN_PATH = '/'
 
@@ -5,8 +7,14 @@ const FALLBACK_RETURN_PATH = '/'
 // Keep this intentionally narrow: selected note id + search/sidebar context only.
 // If the app needs richer back/forward restoration later, prefer moving the
 // workspace view state into route/history instead of growing this snapshot.
+export type SettingsReturnSelectedNoteSnapshot = Pick<
+  NoteViewModel,
+  'id' | 'title' | 'description' | 'tags' | 'created_at' | 'updated_at' | 'user_id' | 'content' | 'headline' | 'rank'
+>
+
 export type NotesUiStateSnapshot = {
   selectedNoteId: string | null
+  selectedNote: SettingsReturnSelectedNoteSnapshot | null
   isEditing: boolean
   isSearchPanelOpen: boolean
   searchQuery: string
@@ -42,11 +50,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function isSelectedNoteSnapshot(value: unknown): value is SettingsReturnSelectedNoteSnapshot {
+  if (!isRecord(value)) return false
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.description === 'string' &&
+    Array.isArray(value.tags) &&
+    value.tags.every((tag) => typeof tag === 'string') &&
+    typeof value.created_at === 'string' &&
+    typeof value.updated_at === 'string' &&
+    typeof value.user_id === 'string' &&
+    (value.content === undefined || value.content === null || typeof value.content === 'string') &&
+    (value.headline === undefined || value.headline === null || typeof value.headline === 'string') &&
+    (value.rank === undefined || value.rank === null || typeof value.rank === 'number')
+  )
+}
+
 function isNotesUiStateSnapshot(value: unknown): value is NotesUiStateSnapshot {
   if (!isRecord(value)) return false
 
   return (
     (typeof value.selectedNoteId === 'string' || value.selectedNoteId === null) &&
+    (value.selectedNote === null || isSelectedNoteSnapshot(value.selectedNote)) &&
     typeof value.isEditing === 'boolean' &&
     typeof value.isSearchPanelOpen === 'boolean' &&
     typeof value.searchQuery === 'string' &&

@@ -16,6 +16,7 @@ import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEdi
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
 import { type NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
+import { pickLatestNote } from '@core/utils/noteSnapshot'
 
 export type EditFormState = {
   title: string
@@ -296,22 +297,27 @@ export function useNoteAppController() {
 
   const captureSettingsReturnState = useCallback(async (): Promise<NotesUiStateSnapshot> => {
     await flushPendingEditorSave()
+    const selectedNoteForSnapshot = selectedNoteRef.current
 
     return {
-      selectedNoteId: selectedNote?.id ?? null,
+      selectedNoteId: selectedNoteForSnapshot?.id ?? null,
+      selectedNote: selectedNoteForSnapshot ?? null,
       isEditing,
       isSearchPanelOpen,
       searchQuery,
       filterByTag,
     }
-  }, [filterByTag, flushPendingEditorSave, isEditing, isSearchPanelOpen, searchQuery, selectedNote])
+  }, [filterByTag, flushPendingEditorSave, isEditing, isSearchPanelOpen, searchQuery, selectedNoteRef])
 
   const restoreUiState = useCallback(async (snapshot: NotesUiStateSnapshot) => {
     // Temporary bridge for the /settings route. The contract is intentionally narrow
     // and should not keep expanding forever. If returning from settings needs richer
     // workspace history, move the primary notes UI state into route/history instead.
     let restoredSelectedNote = snapshot.selectedNoteId
-      ? notesRef.current.find((note) => note.id === snapshot.selectedNoteId) ?? null
+      ? pickLatestNote([
+        notesRef.current.find((note) => note.id === snapshot.selectedNoteId),
+        snapshot.selectedNote,
+      ]) ?? null
       : null
 
     if (!restoredSelectedNote && snapshot.selectedNoteId) {
