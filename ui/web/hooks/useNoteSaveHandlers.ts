@@ -216,7 +216,7 @@ export function useNoteSaveHandlers({
     executeOfflineWrite,
     offlineQueueRef,
     createNoteMutation,
-    setSelectedNote,
+    syncSelectedNote,
     setPendingCount,
     setFailedCount,
     setLastSavedAt,
