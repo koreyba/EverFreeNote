@@ -198,21 +198,27 @@ export function useNoteAppController() {
       return note
     }
 
-    const remoteResult = await noteService.getNoteStatus(note.id)
-    if (remoteResult.status === 'found') {
-      return pickLatestNote([
-        mergeNoteFields(note, remoteResult.note),
-        note,
-      ]) ?? mergeNoteFields(note, remoteResult.note)
-    }
+    try {
+      const remoteResult = await noteService.getNoteStatus(note.id)
+      if (remoteResult.status === 'found') {
+        return pickLatestNote([
+          mergeNoteFields(note, remoteResult.note),
+          note,
+        ]) ?? mergeNoteFields(note, remoteResult.note)
+      }
 
-    if (remoteResult.status === 'not_found') {
-      await offlineCache.deleteNote(note.id)
-      setOfflineOverlay((current) => current.filter((cachedNote) => cachedNote.id !== note.id))
-      toast.error('This note was deleted on another device.')
-      void queryClient.invalidateQueries({ queryKey: ['notes'] })
-      void queryClient.invalidateQueries({ queryKey: ['aiSearch'] })
-      return null
+      if (remoteResult.status === 'not_found') {
+        await offlineCache.deleteNote(note.id)
+        setOfflineOverlay((current) => current.filter((cachedNote) => cachedNote.id !== note.id))
+        toast.error('This note was deleted on another device.')
+        void queryClient.invalidateQueries({ queryKey: ['notes'] })
+        void queryClient.invalidateQueries({ queryKey: ['aiSearch'] })
+        return null
+      }
+
+      console.warn('Transient error checking note status, using local version:', remoteResult.error)
+    } catch (error) {
+      console.warn('Failed to check note status, using local version:', error)
     }
 
     return note

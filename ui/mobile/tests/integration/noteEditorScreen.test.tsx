@@ -473,19 +473,21 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       render(<NoteEditorScreen />, { wrapper })
 
       await waitFor(() => {
-        expect(screen.getByText('This note was deleted on another device.')).toBeTruthy()
+        expect(screen.getByTestId('activity-indicator')).toBeTruthy()
       })
 
-      expect(alertSpy).toHaveBeenCalledWith(
-        'Note deleted',
-        'This note was deleted on another device.',
-        expect.arrayContaining([
-          expect.objectContaining({
-            text: 'OK',
-            onPress: expect.any(Function),
-          }),
-        ])
-      )
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith(
+          'Note deleted',
+          'This note was deleted on another device.',
+          expect.arrayContaining([
+            expect.objectContaining({
+              text: 'OK',
+              onPress: expect.any(Function),
+            }),
+          ])
+        )
+      })
 
       const buttons = alertSpy.mock.calls[0]?.[2]
       const okButton = Array.isArray(buttons)

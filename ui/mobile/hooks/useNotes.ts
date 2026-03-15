@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query'
 import { useSupabase } from '@ui/mobile/providers'
 import { NoteService } from '@core/services/notes'
 import { databaseService } from '@ui/mobile/services/database'
@@ -82,6 +82,7 @@ export function useNote(id: string) {
   const { client, user } = useSupabase()
   const noteService = new NoteService(client)
   const isOnline = useNetworkStatus()
+  const queryClient = useQueryClient()
 
   return useQuery({
     queryKey: ['note', id],
@@ -110,6 +111,7 @@ export function useNote(id: string) {
 
         if (remoteResult.status === 'not_found') {
           await databaseService.markDeleted(id, user.id)
+          void queryClient.invalidateQueries({ queryKey: ['notes'] })
           return {
             note: null,
             status: 'deleted' as const,
