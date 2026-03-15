@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "supabase",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "npm", "run", "db:start"],
+      "port": 54321
+    },
+    {
+      "name": "functions",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "npm", "run", "functions:serve"],
+      "port": 54321
+    },
+    {
+      "name": "mobile",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "npm", "run", "start:dev"],
+      "port": 8081
+    }
+  ]
+}

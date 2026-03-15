@@ -29,6 +29,7 @@ graph TD
 - `core/services/notes.ts` becomes the canonical place that classifies note-read outcomes from Supabase.
 - `ui/mobile/hooks/useNote.ts` applies fallback policy based on that classification instead of treating every exception the same way.
 - `ui/mobile/hooks/useSearch.ts` and related search screen behavior keep the user in the same search context while stale results are reconciled away.
+- AI search follows the same product rule set as regular search: stale entries may remain visible in already-open results until a confirmed refresh point, but stale open attempts resolve into deleted-note handling instead of a normal note open.
 - The feature intentionally relies on explicit refresh boundaries instead of background realtime convergence. In v1, the confirmed refresh boundaries are manual refresh, full app close and reopen, and repeated search execution.
 - Mobile SQLite remains the local fallback store, but remote deletion reconciliation becomes an explicit part of lifecycle management.
 - Existing offline queue and sync manager remain in place for local writes and deferred cloud sync.
@@ -65,12 +66,17 @@ graph TD
   - In `not_found`, the hook triggers reconciliation of local caches/storage, shows deleted-note feedback, and returns the user to the notes list or search context they came from.
 - Search/list reconciliation:
   - Active search/list queries are invalidated or refetched at the confirmed lifecycle points for this feature:
-    - manual refresh
+    - manual refresh via pull-to-refresh on the search results list
     - full app close and reopen
     - repeated search execution
   - Removed note IDs are pruned from React Query search/list/detail caches.
+  - Already-open search result lists do not need in-place removal before those refresh points.
+- AI search reconciliation:
+  - AI search uses the same confirmed refresh points as regular search.
+  - A stale AI result may remain visible in already-open results until refresh, but attempting to open it must resolve into deleted-note handling rather than a normal note open.
 - Cross-platform behavior:
   - Web and mobile should follow the same product rule set: refreshed or repeated-search data should stop surfacing remotely deleted notes, and stale open attempts should resolve into deleted-note handling rather than a normal open experience.
+  - On web, stale-open protection is applied before promoting a search result or list item into `selectedNote`, while still allowing existing offline conflict policy to win when unsynced local edits exist.
 - Local storage integration:
   - Existing `databaseService.markDeleted(noteId, userId)` or equivalent cleanup path becomes the main mobile-side remote-delete reconciliation primitive.
 
@@ -87,6 +93,8 @@ graph TD
     - optionally strengthen list refresh behavior after screen return or reconciliation
   - `ui/mobile/hooks/useSearch.ts`
     - keep regular search aligned with current remote truth when online
+  - `ui/mobile/hooks/useMobileAIPaginatedSearch.ts`
+    - align AI search result-opening and refreshed-result behavior with the same deleted-note rules
   - `ui/mobile/hooks/useNotesMutations.ts`
     - reuse existing cache invalidation and local deletion primitives where relevant
 - Mobile storage:
@@ -109,6 +117,8 @@ graph TD
   - If the server is reachable and says the note is gone, the app should reconcile to that state.
 - Use explicit refresh boundaries in v1 instead of background screen-focus or foreground sync triggers:
   - This matches the confirmed UX and keeps the first implementation simpler.
+- Do not force in-place removal from already-open search results in v1:
+  - This keeps the implementation simpler while still making stale opens safe and refreshed data correct.
 - Reuse existing SQLite `is_deleted` and cache invalidation patterns:
   - This minimizes schema churn and fits the current mobile stack.
 - Preserve existing conflict policy rather than inventing a new one inside this feature:
@@ -128,6 +138,7 @@ graph TD
   - Local fallback must continue working for genuine transient errors and offline mode.
   - Reconciliation must reliably remove stale notes from React Query caches and SQLite-backed queries.
   - Deleted-note open attempts must reliably navigate the user back to the prior context after feedback is shown.
+  - Deleted-note open attempts must behave the same whether they originate from regular search or AI search.
 - Security:
   - Continue using authenticated Supabase access patterns.
   - Do not expose additional note data in deleted-state messaging.

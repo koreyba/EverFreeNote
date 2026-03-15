@@ -52,8 +52,9 @@ Key workflows:
 Required behavior scenarios:
 1. If the app is online and the note no longer exists on the server, the app must not open the stale local copy as if it were current. It must communicate clearly that the note was already deleted and return the user to the notes list or search context they came from.
 2. If the server is temporarily unavailable, mobile may use the local copy as fallback. That fallback must represent temporary degraded mode, not confirmed server truth.
-3. If a note is deleted on another device while mobile search is already open, the stale entry may remain visible until the next confirmed refresh point. In v1, those refresh points are manual refresh, full app close and reopen, or a repeated search execution. If the user taps the stale entry before refresh, the app must show that the note was deleted and return the user back to their prior context.
+3. If a note is deleted on another device while search results are already open, the stale entry may remain visible until the next confirmed refresh point. In v1, those refresh points are manual refresh, full app close and reopen, or a repeated search execution. If the user taps the stale entry before refresh, the app must show that the note was deleted and return the user back to their prior context. The app does not need to remove the stale item from the already-open results list immediately.
 4. If the user made valid local changes while offline, those changes must still attempt to sync later. Conflict handling for remote deletion versus local edits must follow the existing project policy, with the expected result for this feature being restoration of the note from the locally edited version rather than silent data loss.
+5. AI search must follow the same product behavior as regular search for remotely deleted notes. A stale AI result may remain visible in already-open results until the next confirmed refresh point, but opening it must show the deleted-note message and return the user to their prior context. After manual refresh, full app reopen, or repeated search, the deleted note must no longer appear in AI search results.
 
 Edge cases:
 - Deleted note is still present in React Query cache but missing on the server.
@@ -67,6 +68,8 @@ Edge cases:
 
 - Online note opening no longer treats server-side "not found" as a generic fallback case.
 - Deleted-on-server notes are removed from search results after manual refresh, full app reopen, or repeated search without resetting the active query or tag filter.
+- Already-open search results are allowed to keep showing stale entries until the next confirmed refresh point; attempting to open such an entry must show the deleted-note message instead of a normal note open.
+- The same stale-open and refreshed-result rules apply to both regular search and AI search.
 - Remotely deleted notes are eventually marked removed in mobile SQLite and stop resurfacing in local search/list fallbacks.
 - Temporary network failures still permit appropriate local fallback behavior.
 - Pending valid local changes continue syncing to the cloud after connectivity returns.
@@ -90,5 +93,4 @@ Edge cases:
 ## Questions & Open Items
 **What do we still need to clarify?**
 
-- What exact user-facing message should be shown when a note was deleted on another device?
-- Should AI search explicitly share the same reconciliation path in the first implementation, or can it remain an indirect beneficiary of shared hook/service changes?
+- User-facing deleted-note message text can be implemented as: `This note was deleted on another device.`

@@ -9,30 +9,31 @@ description: Break down the work needed to reconcile remote deletions on mobile 
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] Milestone 1: Confirm requirements, design, and reconciliation policy for remote deletions
-- [ ] Milestone 2: Implement typed remote lookup outcomes and mobile reconciliation flows
+- [x] Milestone 1: Confirm requirements, design, and reconciliation policy for remote deletions
+- [x] Milestone 2: Implement typed remote lookup outcomes and mobile reconciliation flows
 - [ ] Milestone 3: Validate search, note opening, offline fallback, and conflict scenarios with tests
 
 ## Task Breakdown
 **What specific work needs to be done?**
 
 ### Phase 1: Foundation
-- [ ] Task 1.1: Audit current mobile note-open, search, cache, SQLite, and sync behavior for remote deletion gaps
-- [ ] Task 1.2: Introduce a core-level semantic distinction between `found`, `not_found`, and `transient_error` for note reads
-- [ ] Task 1.3: Document how existing conflict handling should apply when local edits race with remote deletion
+- [x] Task 1.1: Audit current mobile note-open, search, cache, SQLite, and sync behavior for remote deletion gaps
+- [x] Task 1.2: Introduce a core-level semantic distinction between `found`, `not_found`, and `transient_error` for note reads
+- [x] Task 1.3: Document how existing conflict handling should apply when local edits race with remote deletion
 
 ### Phase 2: Core Features
-- [ ] Task 2.1: Update mobile note-opening logic to allow local fallback only for offline or transient failures
-- [ ] Task 2.2: Reconcile remotely deleted notes out of React Query note/search/list caches
-- [ ] Task 2.3: Reconcile remotely deleted notes out of mobile SQLite so local search/list fallback stops resurfacing ghost notes
-- [ ] Task 2.4: Implement the confirmed refresh triggers: manual refresh, full app close and reopen, and repeated search execution
-- [ ] Task 2.5: Add clear user-facing deleted-note handling in note detail flow
-- [ ] Task 2.6: Mirror the same refreshed-data and stale-open behavior across web and mobile
+- [x] Task 2.1: Update mobile note-opening logic to allow local fallback only for offline or transient failures
+- [x] Task 2.2: Stop seeding stale note detail cache on open and rely on confirmed refresh points to reconcile search/list queries
+- [x] Task 2.3: Reconcile remotely deleted notes out of mobile SQLite so local search/list fallback stops resurfacing ghost notes
+- [x] Task 2.4: Implement the confirmed refresh triggers: manual refresh, full app close and reopen, and repeated search execution
+- [x] Task 2.5: Add clear user-facing deleted-note handling in note detail flow
+- [x] Task 2.6: Mirror the same refreshed-data and stale-open behavior across web and mobile
+- [x] Task 2.7: Mirror the same stale-open and refreshed-result behavior across regular search and AI search without requiring immediate in-place removal from already-open results
 
 ### Phase 3: Integration & Polish
 - [ ] Task 3.1: Verify deferred local writes still sync after temporary failures
 - [ ] Task 3.2: Add tests for remote deletion, transient failure fallback, stale search cleanup, and conflict-sensitive cases
-- [ ] Task 3.3: Update implementation/testing docs with actual behavior, coverage, and any remaining gaps
+- [x] Task 3.3: Update implementation/testing docs with actual behavior, coverage, and any remaining gaps
 
 ## Dependencies
 **What needs to happen in what order?**

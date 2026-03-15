@@ -22,20 +22,22 @@ description: Test strategy for remote deletion reconciliation, offline fallback,
 **What individual components need testing?**
 
 ### Core note-read semantics
-- [ ] Test case 1: missing remote note is classified as `not_found`
-- [ ] Test case 2: network or timeout failures are classified as retryable/transient
+- [x] Test case 1: missing remote note is classified as `not_found`
+- [x] Test case 2: network or timeout failures are classified as retryable/transient
 - [ ] Additional coverage: unexpected error handling remains safe
 
 ### Mobile reconciliation helpers
 - [ ] Test case 1: online `not_found` removes note from detail/list/search caches
-- [ ] Test case 2: online `not_found` marks the local SQLite note deleted so it no longer appears in fallback queries
+- [x] Test case 2: online `not_found` marks the local SQLite note deleted so it no longer appears in fallback queries
 - [ ] Additional coverage: transient failures do not trigger destructive cleanup
 
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] Search result selected after remote web deletion no longer opens as a normal note when online
-- [ ] Search screen keeps query/tag context while removing the stale deleted note after manual refresh or repeated search
+- [x] Search result selected after remote web deletion no longer opens as a normal note when online
+- [x] Search screen keeps query/tag context while dropping the stale deleted note after manual refresh or repeated search
+- [ ] Already-open search results are allowed to keep stale entries before refresh, but stale opens must fail safely with the deleted-note message
+- [x] AI search result selected after remote web deletion shows the deleted-note message and no longer opens as a normal note
 - [ ] Temporary server failure still allows local fallback and does not purge local data
 - [ ] Pending local edits remain governed by the existing sync/conflict path and restore the locally edited version instead of being silently dropped
 
@@ -45,6 +47,7 @@ description: Test strategy for remote deletion reconciliation, offline fallback,
 - [ ] User flow 1: search on mobile, delete on web, manually refresh or repeat search, observe reconciliation
 - [ ] User flow 2: open cached note while server is transiently unavailable, then later sync successfully
 - [ ] User flow 3: tap stale deleted note before refresh, see deleted message, and return to prior context
+- [ ] User flow 4: repeat the same stale-open and refreshed-result behavior through AI search
 - [ ] Critical path testing: online remote deletion versus offline fallback behave differently and correctly
 - [ ] Regression of adjacent features: existing mobile delete and search UX remain intact
 
@@ -68,7 +71,20 @@ description: Test strategy for remote deletion reconciliation, offline fallback,
 - Mobile commands:
   - `npm test -- --runInBand`
   - `npm run test:coverage`
-- Coverage gaps and manual verification outcomes will be recorded in this document after implementation
+- Executed during implementation:
+  - `npm run test:unit:core -- core/tests/unit/core-services-notes-getNoteStatus.test.ts`
+  - `npm test -- --runInBand ui/mobile/tests/component/useOpenNote.test.tsx`
+  - `npm test -- --runInBand ui/mobile/tests/component/searchResultsList.test.tsx`
+  - `npm test -- --runInBand ui/mobile/tests/integration/noteEditorScreen.test.tsx`
+  - `npm test -- --runInBand ui/mobile/tests/integration/searchScreen.test.tsx`
+  - `npm test -- --runInBand ui/mobile/tests/integration/searchScreenAI.test.tsx`
+  - `npm run type-check` in `ui/mobile`
+- Result:
+  - All commands above passed.
+- Remaining gaps:
+  - No dedicated automated web test yet covers the new stale-open guard in `ui/web/hooks/useNoteAppController.ts`.
+  - No automated test yet proves the deferred local-write conflict path end-to-end for remote deletion versus unsynced edits.
+  - No dedicated automated test yet proves the transient-error fallback path preserves local data without destructive cleanup.
 
 ## Manual Testing
 **What requires human validation?**

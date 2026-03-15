@@ -32,6 +32,8 @@ type SearchResultsListProps = {
   loadingMore?: boolean
   onLoadMore?: () => void
   bottomInset?: number
+  refreshing?: boolean
+  onRefresh?: () => void
 }
 
 type SearchListRow =
@@ -138,6 +140,8 @@ export const SearchResultsList = memo(function SearchResultsList({
   loadingMore = false,
   onLoadMore,
   bottomInset = 16,
+  refreshing = false,
+  onRefresh,
 }: SearchResultsListProps) {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
@@ -215,6 +219,8 @@ export const SearchResultsList = memo(function SearchResultsList({
       contentContainerStyle={contentContainerStyle}
       extraData={{ mode, selectionMode, selectedIds }}
       onScrollBeginDrag={onScrollBeginDrag}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       onEndReached={() => {
         if (!hasMore || loadingMore || !onLoadMore) return
         try {

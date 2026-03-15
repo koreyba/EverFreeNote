@@ -190,10 +190,16 @@ export function useMobileAIPaginatedSearch({
     result.isFetching &&
     effectiveAiOffset === 0 &&
     aiAccumulatedResults.length === 0
+  const isRefreshing =
+    queryEnabled &&
+    result.isFetching &&
+    effectiveAiOffset === 0 &&
+    aiAccumulatedResults.length > 0
 
   return {
     noteGroups: queryEnabled && identitySettled ? aiAccumulatedResults : [],
     isLoading,
+    isRefreshing,
     error: queryEnabled && identitySettled && result.error ? String(result.error) : null,
     refetch,
     aiHasMore,

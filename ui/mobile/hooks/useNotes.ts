@@ -4,6 +4,7 @@ import { NoteService } from '@core/services/notes'
 import { databaseService } from '@ui/mobile/services/database'
 import { useNetworkStatus } from './useNetworkStatus'
 import type { Note } from '@core/types/domain'
+import type { NoteLookupResult } from '@core/services/notes'
 
 export type NotesPage = {
   notes: Note[]
@@ -88,21 +89,52 @@ export function useNote(id: string) {
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
 
-      try {
-        if (isOnline) {
-          const note = await noteService.getNote(id)
-          await databaseService.saveNotes([note])
-          return note
+      const getNoteStatus = async (): Promise<NoteLookupResult> => {
+        if (typeof noteService.getNoteStatus === 'function') {
+          return noteService.getNoteStatus(id)
         }
-      } catch (error) {
-        console.warn('Failed to fetch note from Supabase, falling back to local DB:', error)
+
+        try {
+          const note = await noteService.getNote(id)
+          return { status: 'found', note }
+        } catch (error) {
+          return { status: 'transient_error', error }
+        }
+      }
+
+      if (isOnline) {
+        const remoteResult = await getNoteStatus()
+
+        if (remoteResult.status === 'found') {
+          await databaseService.saveNotes([remoteResult.note])
+          return {
+            note: remoteResult.note as Note,
+            status: 'found' as const,
+          }
+        }
+
+        if (remoteResult.status === 'not_found') {
+          await databaseService.markDeleted(id, user.id)
+          return {
+            note: null,
+            status: 'deleted' as const,
+          }
+        }
+
+        console.warn('Failed to fetch note from Supabase, falling back to local DB:', remoteResult.error)
       }
 
       // Fallback to local DB
       const localNotes = await databaseService.getLocalNotes(user.id)
-      return localNotes.find(n => n.id === id) ?? null
+      const localNote = localNotes.find(n => n.id === id) ?? null
+
+      return {
+        note: localNote,
+        status: localNote ? 'found' as const : 'missing' as const,
+      }
     },
     enabled: !!user?.id && !!id,
-    staleTime: 1000 * 60,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }

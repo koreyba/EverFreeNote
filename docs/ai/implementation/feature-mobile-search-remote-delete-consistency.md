@@ -9,7 +9,7 @@ description: Implementation notes for reconciling remote deletions on mobile whi
 ## Development Setup
 **How do we get started?**
 
-- Work in the dedicated feature worktree rooted at `.worktrees/feature-mobile-search-remote-delete-consistency`.
+- Current implementation work is on branch `codex/mobile-search-remote-delete-consistency-main` in the main repository worktree.
 - Use the root `npm ci` install for shared web/core dependencies.
 - Use `ui/mobile/npm ci` for mobile-specific dependencies and tests.
 
@@ -37,9 +37,20 @@ description: Implementation notes for reconciling remote deletions on mobile whi
 - Only allow SQLite fallback when the app is offline or the server failure is retryable.
 - When the app is online and the note is remotely deleted, reconcile stale data out of React Query and SQLite.
 - Reconciliation in v1 is driven by manual refresh, full app close and reopen, and repeated search execution rather than background focus triggers.
+- Manual refresh is implemented as pull-to-refresh on the mobile search results list for both regular search and AI search.
 - If a user taps a stale deleted note before refresh, show deleted-note feedback and return them to the notes list or search context they came from.
+- The app does not need to remove the stale item from an already-open regular or AI search results list before the next confirmed refresh point.
+- Apply the same deleted-note handling rule to AI search result opens, not only regular search.
 - Preserve existing queue/sync behavior so local changes still attempt cloud sync after temporary failure recovery.
 - For remote deletion versus unsynced local edits, rely on the existing conflict policy with the expected outcome of restoring the locally edited note version.
+
+### Actual Implementation Status
+- `core/services/notes.ts` now exposes `getNoteStatus()` with `found`, `not_found`, and `transient_error`.
+- `ui/mobile/hooks/useNotes.ts` uses that semantic result to allow local fallback only for transient failures and to mark remotely deleted notes as deleted in SQLite.
+- `ui/mobile/hooks/useOpenNote.ts` no longer seeds the note detail query cache from stale search results before navigation.
+- `ui/mobile/app/note/[id].tsx` shows deleted-note feedback and returns the user to the previous context instead of rendering a stale note.
+- `ui/mobile/components/search/SearchResultsList.tsx` now supports pull-to-refresh, and `ui/mobile/app/(tabs)/search.tsx` wires it to both regular search and AI search refetch flows.
+- `ui/web/hooks/useNoteAppController.ts` now revalidates notes before opening them from the web list/search when the browser is online and there are no unsynced local edits for that note. Confirmed `not_found` clears stale offline cache for that note, shows deleted-note feedback, and invalidates notes queries instead of promoting stale data into `selectedNote`.
 
 ### Patterns & Best Practices
 - Keep transport-error interpretation centralized instead of duplicating it inside screen components.

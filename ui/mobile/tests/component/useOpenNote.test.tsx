@@ -37,37 +37,22 @@ describe('useOpenNote', () => {
     })
 
     expect(mockPush).toHaveBeenCalledWith('/note/note-1')
-    expect(queryClient.getQueryData(['note', note.id])).toEqual(note)
+    expect(queryClient.getQueryData(['note', note.id])).toBeUndefined()
   })
 
-  it('prefers the freshest cached note before opening a focused chunk route', () => {
+  it('opens a focused chunk route without seeding the note query cache', () => {
     const queryClient = createTestQueryClient()
     const wrapper = createQueryWrapper(queryClient)
-    const fallbackNote = createNote({
+    const note = createNote({
       id: 'note-42',
       title: 'Fallback title',
       updated_at: '2026-03-10T10:00:00.000Z',
-    })
-    const fresherSearchNote = createNote({
-      id: 'note-42',
-      title: 'Fresh search title',
-      description: 'Newer cached body',
-      updated_at: '2026-03-11T12:00:00.000Z',
-    })
-
-    queryClient.setQueryData(['search', 'meaning'], {
-      pages: [
-        {
-          results: [fresherSearchNote],
-        },
-      ],
-      pageParams: [undefined],
     })
 
     const { result } = renderHook(() => useOpenNote(), { wrapper })
 
     act(() => {
-      result.current(fallbackNote, {
+      result.current(note, {
         chunkFocus: {
           charOffset: 128,
           chunkLength: 24,
@@ -76,7 +61,7 @@ describe('useOpenNote', () => {
       })
     })
 
-    expect(queryClient.getQueryData(['note', 'note-42'])).toEqual(fresherSearchNote)
+    expect(queryClient.getQueryData(['note', 'note-42'])).toBeUndefined()
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/note/[id]',
       params: {

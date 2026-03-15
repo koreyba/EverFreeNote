@@ -3,6 +3,7 @@
  * Tests delete button functionality, navigation after deletion, loading states
  */
 import type { ReactNode } from 'react'
+import { Alert } from 'react-native'
 import type { QueryClient } from '@tanstack/react-query'
 import {
   act,
@@ -139,6 +140,15 @@ const mockToolbarCallbacks: {
   onMenuVisibilityChange?: (visible: boolean) => void
 } = {}
 const mockScrollToChunk = jest.fn()
+const defaultNote = {
+  id: 'test-note-id',
+  title: 'Test Note',
+  description: '<p>Test content</p>',
+  tags: ['tag1'],
+  created_at: '2025-01-01T10:00:00.000Z',
+  updated_at: '2025-01-01T10:00:00.000Z',
+  user_id: 'test-user-id',
+}
 
 jest.mock('@ui/mobile/components/EditorWebView', () => {
   const React = require('react')
@@ -217,12 +227,14 @@ import NoteEditorScreen from '@ui/mobile/app/note/[id]'
 import { NoteService } from '@core/services/notes'
 
 const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
+const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 
 describe('NoteEditorScreen - Delete Functionality', () => {
   let queryClient: QueryClient
   let wrapper: ReturnType<typeof createQueryWrapper>
 
   beforeEach(() => {
+    jest.clearAllMocks()
     mockLocalSearchParams = { id: 'test-note-id' }
     queryClient = createTestQueryClient()
     wrapper = createQueryWrapper(queryClient)
@@ -234,16 +246,14 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     mockScrollToChunk.mockReset()
     mockSetParams.mockReset()
     mockReplace.mockReset()
-
-    mockNoteService.prototype.getNote = jest.fn().mockResolvedValue({
-      id: 'test-note-id',
-      title: 'Test Note',
-      description: '<p>Test content</p>',
-      tags: ['tag1'],
-      created_at: '2025-01-01T10:00:00.000Z',
-      updated_at: '2025-01-01T10:00:00.000Z',
-      user_id: 'test-user-id',
+    alertSpy.mockClear()
+    ;(mockNoteService.prototype as typeof mockNoteService.prototype & {
+      getNoteStatus: jest.Mock
+    }).getNoteStatus = jest.fn().mockResolvedValue({
+      status: 'found',
+      note: defaultNote,
     })
+    mockNoteService.prototype.getNote = jest.fn().mockResolvedValue(defaultNote)
 
     mockNoteService.prototype.deleteNote = jest.fn().mockResolvedValue('test-note-id')
     mockNoteService.prototype.updateNote = jest.fn().mockResolvedValue({
@@ -255,8 +265,6 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       updated_at: '2025-01-01T10:00:00.000Z',
       user_id: 'test-user-id',
     })
-
-    jest.clearAllMocks()
   })
 
   afterEach(() => {
@@ -426,7 +434,9 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         // Never resolves
       })
 
-      mockNoteService.prototype.getNote = jest.fn().mockReturnValue(notePromise)
+      ;(mockNoteService.prototype as typeof mockNoteService.prototype & {
+        getNoteStatus: jest.Mock
+      }).getNoteStatus = jest.fn().mockReturnValue(notePromise)
 
       render(<NoteEditorScreen />, { wrapper })
 
@@ -436,7 +446,12 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
     it('shows error message when note fails to load', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
-      mockNoteService.prototype.getNote = jest.fn().mockRejectedValue(new Error('Failed to load'))
+      ;(mockNoteService.prototype as typeof mockNoteService.prototype & {
+        getNoteStatus: jest.Mock
+      }).getNoteStatus = jest.fn().mockResolvedValue({
+        status: 'transient_error',
+        error: new Error('Failed to load'),
+      })
 
       render(<NoteEditorScreen />, { wrapper })
 
@@ -447,12 +462,50 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       warnSpy.mockRestore()
     })
 
+    it('shows deleted-note message and navigates back when the remote note is missing', async () => {
+      ;(mockNoteService.prototype as typeof mockNoteService.prototype & {
+        getNoteStatus?: jest.Mock
+      }).getNoteStatus = jest.fn().mockResolvedValue({
+        status: 'not_found',
+      })
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.getByText('This note was deleted on another device.')).toBeTruthy()
+      })
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Note deleted',
+        'This note was deleted on another device.',
+        expect.arrayContaining([
+          expect.objectContaining({
+            text: 'OK',
+            onPress: expect.any(Function),
+          }),
+        ])
+      )
+
+      const buttons = alertSpy.mock.calls[0]?.[2]
+      const okButton = Array.isArray(buttons)
+        ? buttons.find((button) => button?.text === 'OK')
+        : undefined
+
+      act(() => {
+        okButton?.onPress?.()
+      })
+
+      expect(mockBack).toHaveBeenCalled()
+    })
+
     it('does not show delete button when note is loading', () => {
       const notePromise = new Promise(() => {
         // Never resolves
       })
 
-      mockNoteService.prototype.getNote = jest.fn().mockReturnValue(notePromise)
+      ;(mockNoteService.prototype as typeof mockNoteService.prototype & {
+        getNoteStatus: jest.Mock
+      }).getNoteStatus = jest.fn().mockReturnValue(notePromise)
 
       render(<NoteEditorScreen />, { wrapper })
 
@@ -461,7 +514,12 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
     it('does not show delete button when note fails to load', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
-      mockNoteService.prototype.getNote = jest.fn().mockRejectedValue(new Error('Failed to load'))
+      ;(mockNoteService.prototype as typeof mockNoteService.prototype & {
+        getNoteStatus: jest.Mock
+      }).getNoteStatus = jest.fn().mockResolvedValue({
+        status: 'transient_error',
+        error: new Error('Failed to load'),
+      })
 
       render(<NoteEditorScreen />, { wrapper })
 

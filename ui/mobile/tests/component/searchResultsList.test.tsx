@@ -38,6 +38,9 @@ jest.mock('@shopify/flash-list', () => ({
           <View key={item.key}>{renderItem({ item })}</View>
         ))}
         {footer}
+        <Pressable testID="refresh-list" onPress={() => (props.onRefresh as (() => void) | undefined)?.()}>
+          <Text>Refresh</Text>
+        </Pressable>
         <Pressable testID="end-reached" onPress={() => (props.onEndReached as (() => void) | undefined)?.()}>
           <Text>End reached</Text>
         </Pressable>
@@ -268,5 +271,28 @@ describe('SearchResultsList', () => {
 
     expect(onOpenAiResult).toHaveBeenCalledWith('note-a', 0, 'Chunk 0'.length)
     expect(onLoadMore).not.toHaveBeenCalled()
+  })
+
+  it('forwards pull-to-refresh props to the list', () => {
+    const onRefresh = jest.fn()
+
+    render(
+      <SearchResultsList
+        mode="regular"
+        regularResults={[createRegularNote('note-1')]}
+        aiNoteGroups={[]}
+        onRegularNotePress={jest.fn()}
+        onDeleteRegularNote={jest.fn()}
+        onOpenAiResult={jest.fn()}
+        refreshing
+        onRefresh={onRefresh}
+      />
+    )
+
+    expect(lastFlashListProps?.refreshing).toBe(true)
+
+    fireEvent.press(screen.getByTestId('refresh-list'))
+
+    expect(onRefresh).toHaveBeenCalled()
   })
 })

@@ -158,6 +158,7 @@ type SearchScreenBodyProps = {
   regularResults: SearchResultItem[]
   aiModeEnabled: boolean
   isAILoading: boolean
+  isResultsRefreshing: boolean
   noteGroups: ReturnType<typeof useMobileAIPaginatedSearch>['noteGroups']
   aiQueryReady: boolean
   aiError: string | null
@@ -176,6 +177,7 @@ type SearchScreenBodyProps = {
   hasMore: boolean
   loadingMore: boolean
   onLoadMore: () => void
+  onRefreshResults: () => void
   bottomInset: number
   shouldShowEmptyResults: boolean
   shouldShowIdleState: boolean
@@ -194,6 +196,7 @@ function SearchScreenBody({
   regularResults,
   aiModeEnabled,
   isAILoading,
+  isResultsRefreshing,
   noteGroups,
   aiQueryReady,
   aiError,
@@ -212,6 +215,7 @@ function SearchScreenBody({
   hasMore,
   loadingMore,
   onLoadMore,
+  onRefreshResults,
   bottomInset,
   shouldShowEmptyResults,
   shouldShowIdleState,
@@ -301,6 +305,8 @@ function SearchScreenBody({
         hasMore={hasMore}
         loadingMore={loadingMore}
         onLoadMore={onLoadMore}
+        refreshing={isResultsRefreshing}
+        onRefresh={onRefreshResults}
         bottomInset={bottomInset}
       />
     )
@@ -379,12 +385,14 @@ export default function SearchScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetching: isRegularFetching,
     refetch: refetchRegularSearch,
   } = useSearch(query, { tag: activeTag, enabled: !aiModeEnabled })
 
   const {
     noteGroups,
     isLoading: isAILoading,
+    isRefreshing: isAIRefreshing,
     error: aiError,
     refetch: refetchAISearch,
     aiHasMore,
@@ -561,9 +569,20 @@ export default function SearchScreen() {
     }
     runAsyncSafely(fetchNextPage())
   }, [aiModeEnabled, fetchNextPage, loadMoreAI])
+  const handleRefreshResults = useCallback(() => {
+    if (aiModeEnabled) {
+      resetAIResults()
+      runAsyncSafely(refetchAISearch())
+      return
+    }
+    runAsyncSafely(refetchRegularSearch())
+  }, [aiModeEnabled, refetchAISearch, refetchRegularSearch, resetAIResults])
   const handleHistoryItemPress = useCallback((item: string) => {
     setQuery(applyHistoryItem(item))
   }, [applyHistoryItem])
+  const isResultsRefreshing = aiModeEnabled
+    ? isAIRefreshing
+    : isRegularFetching && regularResults.length > 0
 
   return (
     <View style={styles.container}>
@@ -606,6 +625,7 @@ export default function SearchScreen() {
         regularResults={regularResults as SearchResultItem[]}
         aiModeEnabled={aiModeEnabled}
         isAILoading={isAILoading}
+        isResultsRefreshing={isResultsRefreshing}
         noteGroups={noteGroups}
         aiQueryReady={aiQueryReady}
         aiError={aiError}
@@ -624,6 +644,7 @@ export default function SearchScreen() {
         hasMore={aiModeEnabled ? aiHasMore : hasNextPage}
         loadingMore={aiModeEnabled ? aiLoadingMore : isFetchingNextPage}
         onLoadMore={handleLoadMore}
+        onRefreshResults={handleRefreshResults}
         bottomInset={listBottomInset}
         shouldShowEmptyResults={shouldShowEmptyResults}
         shouldShowIdleState={shouldShowIdleState}

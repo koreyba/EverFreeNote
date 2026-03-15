@@ -189,13 +189,14 @@ jest.mock('@ui/mobile/components/tags', () => ({
 
 // Mock FlashList
 jest.mock('@shopify/flash-list', () => ({
-  FlashList: ({ data, renderItem, keyExtractor, onScrollBeginDrag }: {
+  FlashList: ({ data, renderItem, keyExtractor, onScrollBeginDrag, onRefresh }: {
     data: unknown[];
     renderItem: (info: { item: unknown }) => React.ReactElement;
     keyExtractor: (item: unknown) => string;
     onScrollBeginDrag?: () => void;
+    onRefresh?: () => void;
   }) => {
-    const { View, ScrollView } = require('react-native')
+    const { View, ScrollView, Pressable, Text } = require('react-native')
     return (
       <ScrollView
         testID="search-results-list"
@@ -206,6 +207,9 @@ jest.mock('@shopify/flash-list', () => ({
             {renderItem({ item })}
           </View>
         ))}
+        <Pressable testID="search-results-refresh" onPress={onRefresh}>
+          <Text>Refresh</Text>
+        </Pressable>
       </ScrollView>
     )
   },
@@ -426,6 +430,27 @@ describe('SearchScreen - Delete Functionality', () => {
       // Note should be deleted (fallback succeeded, optimistic update stays)
       await waitFor(() => {
         expect(screen.queryByText('Search Result 1')).toBeNull()
+      })
+    })
+  })
+
+  describe('Manual refresh', () => {
+    it('re-runs regular search when the results list is refreshed', async () => {
+      render(<SearchScreen />, { wrapper })
+
+      const searchInput = screen.getByPlaceholderText('Search notes...')
+      fireEvent.changeText(searchInput, 'keyword')
+
+      await waitFor(() => {
+        expect(screen.getByText('Search Result 1')).toBeTruthy()
+      })
+
+      expect(mockSearchService.prototype.searchNotes).toHaveBeenCalledTimes(1)
+
+      fireEvent.press(screen.getByTestId('search-results-refresh'))
+
+      await waitFor(() => {
+        expect(mockSearchService.prototype.searchNotes).toHaveBeenCalledTimes(2)
       })
     })
   })

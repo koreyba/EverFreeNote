@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { Pressable, View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard } from 'react-native'
+import { Alert, Pressable, View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
@@ -155,15 +155,17 @@ export default function NoteEditorScreen() {
     focusLength?: string
     focusRequestId?: string
   }>()
-  const { data: note, isLoading, error } = useNote(id)
+  const { data: noteState, isLoading, error } = useNote(id)
   const { mutate: updateNote } = useUpdateNote()
   const { mutate: deleteNote, isPending: isDeleting } = useDeleteNote()
   const router = useRouter()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const insets = useSafeAreaInsets()
+  const note = noteState?.note ?? null
 
   const editorRef = useRef<EditorWebViewHandle>(null)
+  const deletedMessageShownRef = useRef(false)
   const [title, setTitle] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
@@ -258,6 +260,25 @@ export default function NoteEditorScreen() {
       saverRef.current?.reset(lastSavedRef.current)
     }
   }, [note])
+
+  useEffect(() => {
+    if (noteState?.status !== 'deleted') return
+    if (deletedMessageShownRef.current) return
+    deletedMessageShownRef.current = true
+
+    Alert.alert(
+      'Note deleted',
+      'This note was deleted on another device.',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            router.back()
+          },
+        },
+      ]
+    )
+  }, [noteState?.status, router])
 
   const pendingChunkFocus = useMemo(() => {
     if (!note?.id) return null
@@ -405,6 +426,14 @@ export default function NoteEditorScreen() {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={colors.primary} testID="activity-indicator" />
+      </View>
+    )
+  }
+
+  if (noteState?.status === 'deleted') {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>This note was deleted on another device.</Text>
       </View>
     )
   }
