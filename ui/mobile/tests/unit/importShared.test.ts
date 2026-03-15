@@ -44,7 +44,7 @@ describe('import-shared helpers', () => {
 
     const existingByTitle = await resolveExistingTitlesForImport(client, 'user-1', 'prefix')
 
-    expect(existingByTitle).toEqual(new Map())
+    expect(existingByTitle).toBeNull()
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'Failed to fetch existing titles for prefix import:',
       expect.any(Error)

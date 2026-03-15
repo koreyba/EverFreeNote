@@ -88,8 +88,8 @@ describe('MobileEnexImportService', () => {
     })
   })
 
-  it('falls back to an empty snapshot when prefix lookup fails', async () => {
-    mockResolveExistingTitlesForImport.mockResolvedValueOnce(new Map())
+  it('falls back to per-note duplicate lookup when prefix snapshot lookup fails', async () => {
+    mockResolveExistingTitlesForImport.mockResolvedValueOnce(null)
     mockCreate.mockResolvedValueOnce('created-id')
 
     const service = new MobileEnexImportService({} as never)
@@ -115,6 +115,14 @@ describe('MobileEnexImportService', () => {
       expect.anything(),
       'user-1',
       'prefix'
+    )
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Fresh note' }),
+      'user-1',
+      'prefix',
+      expect.objectContaining({
+        existingByTitle: null,
+      })
     )
     expect(result).toEqual({
       success: 1,

@@ -21,7 +21,7 @@ export class NoteCreator {
     duplicateStrategy: DuplicateStrategy = 'prefix',
     duplicateContext?: {
       skipFileDuplicates: boolean
-      existingByTitle: Map<string, string>
+      existingByTitle: Map<string, string> | null
       seenTitlesInImport: Set<string>
     }
   ): Promise<string | null> {
@@ -93,7 +93,7 @@ export class NoteCreator {
     strategy: DuplicateStrategy,
     context?: {
       skipFileDuplicates: boolean
-      existingByTitle: Map<string, string>
+      existingByTitle: Map<string, string> | null
       seenTitlesInImport: Set<string>
     }
   ): Promise<DuplicateCheckResult> {
@@ -104,12 +104,13 @@ export class NoteCreator {
         return { title, skip: true, replace: false }
       }
 
+      if (!existingByTitle) {
+        return this.lookupExistingDuplicate(title, userId, strategy)
+      }
+
       const existingId = existingByTitle.get(title)
 
       if (!existingId) {
-        if (skipFileDuplicates) {
-          seenTitlesInImport.add(title)
-        }
         return { title, skip: false, replace: false }
       }
 
@@ -124,6 +125,14 @@ export class NoteCreator {
       }
     }
 
+    return this.lookupExistingDuplicate(title, userId, strategy)
+  }
+
+  private async lookupExistingDuplicate(
+    title: string,
+    userId: string,
+    strategy: DuplicateStrategy
+  ): Promise<DuplicateCheckResult> {
     const { data, error } = await this.supabase
       .from('notes')
       .select('id, title')

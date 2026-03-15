@@ -59,13 +59,13 @@ export async function resolveExistingTitlesForImport(
   client: SupabaseClient<Database>,
   userId: string,
   duplicateStrategy: DuplicateStrategy
-): Promise<Map<string, string>> {
+): Promise<Map<string, string> | null> {
   try {
     return await fetchExistingTitles(client, userId)
   } catch (error) {
     if (duplicateStrategy === 'prefix') {
       console.error('Failed to fetch existing titles for prefix import:', error)
-      return new Map<string, string>()
+      return null
     }
 
     throw new Error(DUPLICATE_LOOKUP_UNAVAILABLE_MESSAGE)
