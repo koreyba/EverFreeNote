@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@ui/web/lib/utils"
+import { selectableSurfaceIconClasses, selectableSurfaceStateClasses } from "@ui/web/lib/selectableSurfaceStyles"
 import { useNoteAuth } from "@ui/web/hooks/useNoteAuth"
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
@@ -207,16 +208,14 @@ export function SettingsPage() {
                       onClick={() => handleSelectTab(tab.id)}
                       className={cn(
                         "w-full rounded-2xl border px-4 py-3 text-left transition-colors",
-                        isActive
-                          ? "border-foreground/10 bg-foreground text-background shadow-sm"
-                          : "border-transparent bg-muted/50 text-foreground hover:border-border hover:bg-muted"
+                        isActive ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
                       )}
                     >
                       <div className="flex items-start gap-3">
                         <span
                           className={cn(
                             "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-                            isActive ? "bg-background/15" : "bg-background"
+                            isActive ? selectableSurfaceIconClasses.active : selectableSurfaceIconClasses.idle
                           )}
                         >
                           <Icon className="h-4 w-4" />
@@ -226,7 +225,7 @@ export function SettingsPage() {
                           <div
                             className={cn(
                               "mt-1 text-xs",
-                              isActive ? "text-background/75" : "text-muted-foreground"
+                              isActive ? "text-foreground/70" : "text-muted-foreground"
                             )}
                           >
                             {tab.description}
@@ -257,10 +256,8 @@ export function SettingsPage() {
                           type="button"
                           onClick={() => handleSelectTab(tab.id)}
                           className={cn(
-                            "shrink-0 rounded-xl px-4 py-2 text-sm font-medium transition-colors",
-                            isActive
-                              ? "bg-foreground text-background shadow-sm"
-                              : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                            "shrink-0 rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                            isActive ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idlePill
                           )}
                         >
                           {tab.label.replace(" settings", "")}
