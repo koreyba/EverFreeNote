@@ -76,6 +76,16 @@ export function useNoteSaveHandlers({
   const [saving, setSaving] = useState(false)
   const [autoSaving, setAutoSaving] = useState(false)
 
+  const syncSelectedNote = useCallback((note: NoteViewModel | null | ((prev: NoteViewModel | null) => NoteViewModel | null)) => {
+    setSelectedNote((prev) => {
+      const next = typeof note === 'function'
+        ? (note as (current: NoteViewModel | null) => NoteViewModel | null)(prev)
+        : note
+      selectedNoteRef.current = next
+      return next
+    })
+  }, [selectedNoteRef, setSelectedNote])
+
   /**
    * Shared offline write path: persists note to local cache, upserts the overlay,
    * enqueues the mutation for sync, and increments the pending count.
@@ -152,10 +162,18 @@ export function useNoteSaveHandlers({
 
         if (isOffline) {
           await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: noteData, clientUpdatedAt })
-          setSelectedNote({ id: tempId, title: noteData.title, description: noteData.description, tags: noteData.tags } as NoteViewModel)
+          syncSelectedNote({
+            id: tempId,
+            title: noteData.title,
+            description: noteData.description,
+            tags: noteData.tags,
+            created_at: clientUpdatedAt,
+            updated_at: clientUpdatedAt,
+            user_id: user.id,
+          } as NoteViewModel)
         } else {
           const created = await createNoteMutation.mutateAsync(noteData)
-          setSelectedNote(created as NoteViewModel)
+          syncSelectedNote(created as NoteViewModel)
         }
         setLastSavedAt(clientUpdatedAt)
       } else {
@@ -169,7 +187,7 @@ export function useNoteSaveHandlers({
         }
 
         // Optimistic selectedNote update first (prevents stale NoteView after leaving editor)
-        setSelectedNote((prev) => {
+        syncSelectedNote((prev) => {
           if (!prev || prev.id !== targetId) return prev
           return {
             ...prev,
@@ -198,7 +216,7 @@ export function useNoteSaveHandlers({
     executeOfflineWrite,
     offlineQueueRef,
     createNoteMutation,
-    setSelectedNote,
+    syncSelectedNote,
     setPendingCount,
     setFailedCount,
     setLastSavedAt,
@@ -223,7 +241,7 @@ export function useNoteSaveHandlers({
       if (selectedNote) {
         if (isOffline) {
           await executeOfflineWrite({ operation: 'update', noteId: selectedNote.id, payload: noteData, clientUpdatedAt })
-          setSelectedNote({ ...selectedNote, ...noteData })
+          syncSelectedNote({ ...selectedNote, ...noteData, updated_at: clientUpdatedAt } as NoteViewModel)
           toast.success('Saved offline (will sync when online)')
           setLastSavedAt(clientUpdatedAt)
         } else {
@@ -235,7 +253,13 @@ export function useNoteSaveHandlers({
         const tempId = uuidv4()
         if (isOffline) {
           await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: { ...noteData, userId: user.id }, clientUpdatedAt })
-          setSelectedNote({ id: tempId, ...noteData } as NoteViewModel)
+          syncSelectedNote({
+            id: tempId,
+            ...noteData,
+            created_at: clientUpdatedAt,
+            updated_at: clientUpdatedAt,
+            user_id: user.id,
+          } as NoteViewModel)
           toast.success('Saved offline (will sync when online)')
           setLastSavedAt(clientUpdatedAt)
         } else {
@@ -246,7 +270,7 @@ export function useNoteSaveHandlers({
       }
 
       if (savedNote) {
-        setSelectedNote(savedNote)
+        syncSelectedNote(savedNote)
       }
     } catch (error) {
       console.error('Error saving note:', error)
@@ -297,7 +321,7 @@ export function useNoteSaveHandlers({
       }
 
       if (selectedNote?.id === noteToDelete.id) {
-        setSelectedNote(null)
+        syncSelectedNote(null)
         setIsEditing(false)
       }
     } catch (error) {

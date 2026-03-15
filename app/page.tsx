@@ -8,6 +8,7 @@ import { AuthShell } from "@/components/features/auth/AuthShell"
 import { NotesShell } from "@/components/features/notes/NotesShell"
 import { useNoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { featureFlags } from "@ui/web/featureFlags"
+import { consumeSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
 
 export default function App() {
   const controller = useNoteAppController()
@@ -27,6 +28,15 @@ export default function App() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (loading || !user) return
+
+    const returnState = consumeSettingsReturnState()
+    if (!returnState) return
+
+    void controller.restoreUiState(returnState.notesUiState)
+  }, [controller, loading, user])
 
   if (loading) {
     return (

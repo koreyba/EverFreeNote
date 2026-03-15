@@ -95,6 +95,14 @@ describe('Mobile Layout Adaptation', () => {
       resetFtsResults: overrides.resetFtsResults ?? cy.stub(),
       resetAIResults: overrides.resetAIResults ?? cy.stub(),
       registerAIPaginationControls: overrides.registerAIPaginationControls ?? cy.stub(),
+      captureSettingsReturnState: overrides.captureSettingsReturnState ?? cy.stub().resolves({
+        selectedNoteId: null,
+        isEditing: false,
+        isSearchPanelOpen: false,
+        searchQuery: '',
+        filterByTag: null,
+      }),
+      restoreUiState: overrides.restoreUiState ?? cy.stub(),
       deleteNotesByIds: overrides.deleteNotesByIds ?? cy.stub().resolves({ total: 0, failed: 0, queuedOffline: false }),
     })
 

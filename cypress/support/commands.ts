@@ -3,6 +3,11 @@
 import React from 'react'
 import { mount } from 'cypress/react'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
+import {
+  AppRouterContext,
+  type AppRouterInstance,
+} from 'next/dist/shared/lib/app-router-context.shared-runtime'
+
 import { SupabaseTestProvider } from '../../ui/web/providers/SupabaseProvider'
 
 type ImportStrategy = 'prefix' | 'skip'
@@ -18,6 +23,7 @@ type SupabaseMountOptions = Parameters<typeof mount>[1] & {
   supabaseUser?: User | null
   supabaseLoading?: boolean
   wrapWithSupabase?: boolean
+  appRouter?: Partial<AppRouterInstance>
 }
 
 const createThenableQueryBuilder = () => {
@@ -73,6 +79,16 @@ const createDefaultSupabaseMock = (): SupabaseClient => ({
   from: () => createThenableQueryBuilder(),
   rpc: () => Promise.resolve({ data: null, error: null }),
 }) as unknown as SupabaseClient
+
+const createDefaultAppRouterMock = (overrides: Partial<AppRouterInstance> = {}): AppRouterInstance => ({
+  back: cy.stub(),
+  forward: cy.stub(),
+  refresh: cy.stub(),
+  push: cy.stub(),
+  replace: cy.stub(),
+  prefetch: cy.stub(),
+  ...overrides,
+})
 
 const getSupabaseAnonKey = (): string | null => {
   const key =
@@ -269,11 +285,18 @@ Cypress.Commands.add('mount', (component, options: SupabaseMountOptions = {}) =>
     supabaseUser,
     supabaseLoading,
     wrapWithSupabase = true,
+    appRouter,
     ...mountOptions
   } = options
 
+  const routerProvider = React.createElement(
+    AppRouterContext.Provider,
+    { value: createDefaultAppRouterMock(appRouter) },
+    component,
+  )
+
   if (!wrapWithSupabase) {
-    return mount(component, mountOptions)
+    return mount(routerProvider, mountOptions)
   }
 
   const wrapped = React.createElement(
@@ -288,7 +311,7 @@ Cypress.Commands.add('mount', (component, options: SupabaseMountOptions = {}) =>
       user: supabaseUser ?? { id: 'test-user' } as User,
       loading: supabaseLoading ?? false,
     },
-    component,
+    routerProvider,
   )
 
   return mount(wrapped, mountOptions)

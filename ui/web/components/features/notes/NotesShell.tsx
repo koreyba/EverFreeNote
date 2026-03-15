@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Loader2 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +29,7 @@ import { normalizeTagList } from "@ui/web/lib/tags"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
+import { saveSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -40,6 +42,7 @@ type NotesShellProps = {
 }
 
 export function NotesShell({ controller }: NotesShellProps) {
+  const router = useRouter()
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
   const searchPanelRef = React.useRef<SearchResultsPanelHandle | null>(null)
   const { supabase } = useSupabase()
@@ -75,9 +78,6 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleClearTagFilter,
     handleCreateNote,
     handleSignOut,
-    handleDeleteAccount,
-    deleteAccountLoading,
-    invalidateNotes,
     pendingCount,
     failedCount,
     isOffline,
@@ -152,6 +152,19 @@ export function NotesShell({ controller }: NotesShellProps) {
     setPendingChunkFocus((current) => (current?.requestId === requestId ? null : current))
   }, [])
 
+  const handleOpenSettings = React.useCallback(async () => {
+    const notesUiState = await controller.captureSettingsReturnState()
+
+    if (typeof globalThis.location !== "undefined") {
+      saveSettingsReturnState({
+        returnPath: `${globalThis.location.pathname}${globalThis.location.search}${globalThis.location.hash}`,
+        notesUiState,
+      })
+    }
+
+    router.push("/settings")
+  }, [controller, router])
+
   return (
     <div className="flex h-screen max-h-screen bg-muted/20 overflow-hidden">
       <Sidebar
@@ -169,13 +182,9 @@ export function NotesShell({ controller }: NotesShellProps) {
         onSelectAll={selectAllVisible}
         onBulkDelete={deleteSelectedNotes}
         onClearTagFilter={handleClearTagFilter}
+        onOpenSettings={() => void handleOpenSettings()}
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
-        onDeleteAccount={handleDeleteAccount}
-        deleteAccountLoading={deleteAccountLoading}
-        onImportComplete={invalidateNotes}
-        wordpressConfigured={wordpressConfigured}
-        onWordPressConfiguredChange={setWordpressConfigured}
         onOpenSearch={handleOpenSearchPanel}
         className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"

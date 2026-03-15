@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useNotesQuery } from './useNotesQuery'
@@ -13,6 +13,10 @@ import { useNoteData } from './useNoteData'
 import { useNoteSaveHandlers } from './useNoteSaveHandlers'
 import { useNoteBulkActions } from './useNoteBulkActions'
 import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
+import { useSupabase } from '@ui/web/providers/SupabaseProvider'
+import { NoteService } from '@core/services/notes'
+import { type NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
+import { pickLatestNote } from '@core/utils/noteSnapshot'
 
 export type EditFormState = {
   title: string
@@ -26,6 +30,8 @@ type AIPaginationControls = {
 }
 
 export function useNoteAppController() {
+  const { supabase } = useSupabase()
+
   // -- Auth --
   const {
     user,
@@ -80,6 +86,7 @@ export function useNoteAppController() {
 
   // -- Infrastructure --
   const queryClient = useQueryClient()
+  const noteService = useMemo(() => new NoteService(supabase), [supabase])
   const createNoteMutation = useCreateNote()
   const updateNoteMutation = useUpdateNote()
   const deleteNoteMutation = useDeleteNote()
@@ -288,6 +295,70 @@ export function useNoteAppController() {
     aiPaginationControlsRef.current.loadMoreAI()
   }, [])
 
+  const captureSettingsReturnState = useCallback(async (): Promise<NotesUiStateSnapshot> => {
+    await flushPendingEditorSave()
+    const selectedNoteForSnapshot = selectedNoteRef.current
+
+    return {
+      selectedNoteId: selectedNoteForSnapshot?.id ?? null,
+      selectedNote: selectedNoteForSnapshot ?? null,
+      isEditing,
+      isSearchPanelOpen,
+      searchQuery,
+      filterByTag,
+    }
+  }, [filterByTag, flushPendingEditorSave, isEditing, isSearchPanelOpen, searchQuery, selectedNoteRef])
+
+  const restoreUiState = useCallback(async (snapshot: NotesUiStateSnapshot) => {
+    // Temporary bridge for the /settings route. The contract is intentionally narrow
+    // and should not keep expanding forever. If returning from settings needs richer
+    // workspace history, move the primary notes UI state into route/history instead.
+    let restoredSelectedNote = snapshot.selectedNoteId
+      ? pickLatestNote([
+        notesRef.current.find((note) => note.id === snapshot.selectedNoteId),
+        snapshot.selectedNote,
+      ]) ?? null
+      : null
+
+    if (!restoredSelectedNote && snapshot.selectedNoteId) {
+      try {
+        restoredSelectedNote = await noteService.getNote(snapshot.selectedNoteId)
+      } catch {
+        restoredSelectedNote = null
+      }
+    }
+
+    if (snapshot.searchQuery) {
+      handleSearch(snapshot.searchQuery)
+    } else {
+      resetFtsResults()
+    }
+
+    if (snapshot.filterByTag) {
+      onTagClick(snapshot.filterByTag)
+    } else {
+      handleClearTagFilter()
+    }
+
+    setIsSearchPanelOpen(snapshot.isSearchPanelOpen || Boolean(snapshot.searchQuery) || Boolean(snapshot.filterByTag))
+    const canRestoreEditing =
+      snapshot.isEditing &&
+      (restoredSelectedNote !== null || snapshot.selectedNoteId === null)
+
+    setSelectedNote(restoredSelectedNote)
+    setIsEditing(canRestoreEditing)
+  }, [
+    handleClearTagFilter,
+    handleSearch,
+    noteService,
+    notesRef,
+    onTagClick,
+    resetFtsResults,
+    setIsEditing,
+    setIsSearchPanelOpen,
+    setSelectedNote,
+  ])
+
   return {
     registerNoteEditorRef,
     // State
@@ -366,6 +437,8 @@ export function useNoteAppController() {
     loadMoreAI,
     resetAIResults,
     registerAIPaginationControls,
+    captureSettingsReturnState,
+    restoreUiState,
     deleteSelectedNotes,
     deleteNotesByIds,
 
