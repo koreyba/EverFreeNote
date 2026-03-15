@@ -8,10 +8,10 @@ type SinonStub = any
 type SupabaseQueryBuilder = {
   select: SinonStub
   eq: SinonStub
+  order: SinonStub
   insert: SinonStub
   update: SinonStub
   single: SinonStub
-  then: (callback: (result: { data: unknown[]; error: unknown }) => void) => void
 }
 
 type SupabaseClientStub = {
@@ -36,10 +36,10 @@ describe('NoteCreator', () => {
     mockQueryBuilder = {
       select: cy.stub().returnsThis(),
       eq: cy.stub().returnsThis(),
+      order: cy.stub().resolves({ data: [], error: null }),
       insert: cy.stub().returnsThis(),
       update: cy.stub().returnsThis(),
       single: cy.stub().resolves({ data: { id: 'new-note-id' }, error: null }),
-      then: (resolve) => resolve({ data: [], error: null }) // Default: no duplicates
     }
 
     mockSupabase = {
@@ -64,7 +64,7 @@ describe('NoteCreator', () => {
 
   it('skips duplicate when strategy is skip', async () => {
     // Mock duplicate found
-    mockQueryBuilder.then = (resolve) => resolve({ data: [{ id: 'existing-id', title: 'Test Note' }], error: null })
+    mockQueryBuilder.order.resolves({ data: [{ id: 'existing-id', created_at: '2026-03-14T10:00:00.000Z' }], error: null })
     
     const id = await creator.create(mockNote, 'user1', 'skip')
     
@@ -75,7 +75,7 @@ describe('NoteCreator', () => {
 
   it('replaces duplicate when strategy is replace', async () => {
     // Mock duplicate found
-    mockQueryBuilder.then = (resolve) => resolve({ data: [{ id: 'existing-id', title: 'Test Note' }], error: null })
+    mockQueryBuilder.order.resolves({ data: [{ id: 'existing-id', created_at: '2026-03-14T10:00:00.000Z' }], error: null })
     
     // Mock update response
     mockQueryBuilder.single.resolves({ data: { id: 'existing-id' }, error: null })
@@ -89,7 +89,7 @@ describe('NoteCreator', () => {
 
   it('prefixes duplicate when strategy is prefix', async () => {
     // Mock duplicate found
-    mockQueryBuilder.then = (resolve) => resolve({ data: [{ id: 'existing-id', title: 'Test Note' }], error: null })
+    mockQueryBuilder.order.resolves({ data: [{ id: 'existing-id', created_at: '2026-03-14T10:00:00.000Z' }], error: null })
     
     const id = await creator.create(mockNote, 'user1', 'prefix')
     
@@ -116,6 +116,7 @@ describe('NoteCreator', () => {
     const context = {
       skipFileDuplicates: true,
       existingByTitle: new Map<string, string>(),
+      fallbackExistingByTitle: new Map<string, string | null>(),
       seenTitlesInImport: new Set<string>(['Test Note'])
     }
 
@@ -129,6 +130,7 @@ describe('NoteCreator', () => {
     const context = {
       skipFileDuplicates: true,
       existingByTitle: new Map<string, string>(),
+      fallbackExistingByTitle: new Map<string, string | null>(),
       seenTitlesInImport: new Set<string>()
     }
 

@@ -77,6 +77,22 @@ describe('EnexParser', () => {
     expect(notes[0].updated).to.be.instanceOf(Date)
   })
 
+  it('normalizes whitespace-only titles to Untitled', async () => {
+    const xml = `
+      <en-export>
+        <note>
+          <title>   </title>
+          <content><![CDATA[<en-note>Content</en-note>]]></content>
+        </note>
+      </en-export>
+    `
+    const file = new File([xml], 'whitespace-title.enex', { type: 'application/xml' })
+    const notes = await parser.parse(file)
+
+    expect(notes).to.have.length(1)
+    expect(notes[0].title).to.equal('Untitled')
+  })
+
   it('extracts content without en-note wrapper if missing', async () => {
     const xml = `
       <en-export>

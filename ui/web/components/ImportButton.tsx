@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { ImportDialog } from "@/components/ImportDialog"
 import { ImportProgressDialog } from "@/components/ImportProgressDialog"
 import { ContentConverter } from "@core/enex/converter"
+import { resolveExistingTitlesForImport } from "@core/enex/import-shared"
 import { EnexParser } from "@core/enex/parser"
 import { ImageProcessor } from "@core/enex/image-processor"
 import { NoteCreator } from "@core/enex/note-creator"
@@ -22,28 +23,6 @@ import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { browser } from "@ui/web/adapters/browser"
 
 const IMPORT_STATE_KEY = "everfreenote-import-state"
-
-type SupabaseClientType = ReturnType<typeof useSupabase>["supabase"]
-
-async function fetchExistingTitles(client: SupabaseClientType, userId: string) {
-  const { data, error } = await client
-    .from("notes")
-    .select("id, title")
-    .eq("user_id", userId)
-
-  if (error) {
-    console.error("Failed to fetch existing titles:", error)
-    return new Map<string, string>()
-  }
-
-  const map = new Map<string, string>()
-  data?.forEach((row) => {
-    if (!map.has(row.title)) {
-      map.set(row.title, row.id)
-    }
-  })
-  return map
-}
 
 const initialProgress: ImportProgress = {
   currentFile: 0,
@@ -131,6 +110,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
     }
 
     let successCount = 0
+    let skippedCount = 0
     let errorCount = 0
     let totalNotes = 0
     const failedNotes: FailedImportNote[] = []
@@ -155,7 +135,12 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
       const noteCreator = new NoteCreator(supabase)
 
       // Snapshot существующих заголовков в базе до импорта
-      const existingByTitle = await fetchExistingTitles(supabase, user.id)
+      const existingByTitle = await resolveExistingTitlesForImport(
+        supabase,
+        user.id,
+        settings.duplicateStrategy
+      )
+      const fallbackExistingByTitle = new Map<string, string | null>()
       // Отслеживаем титлы, уже встреченные в текущем сеансе импорта (внутри файла/файлов)
       const seenTitlesInImport = new Set<string>()
 
@@ -200,9 +185,10 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
                 JSON.stringify({
                   currentFile: fileIndex + 1,
                   totalFiles: files.length,
-                  currentNote: successCount + errorCount,
+                  currentNote: successCount + skippedCount + errorCount,
                   totalNotes,
                   successCount,
+                  skippedCount,
                   errorCount,
                   fileName: file.name,
                 })
@@ -221,7 +207,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
                 note.title || "Untitled"
               )
 
-              await noteCreator.create(
+              const createdId = await noteCreator.create(
                 {
                   ...note,
                   content: convertedContent,
@@ -231,16 +217,21 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
                 {
                   skipFileDuplicates: settings.skipFileDuplicates,
                   existingByTitle,
+                  fallbackExistingByTitle,
                   seenTitlesInImport,
                 }
               )
 
-              successCount++
+              if (createdId) {
+                successCount++
+              } else {
+                skippedCount++
+              }
 
               // Update note progress
               setProgress((prev) => ({
                 ...prev,
-                currentNote: successCount + errorCount,
+                currentNote: successCount + skippedCount + errorCount,
               }))
             } catch (error) {
               const err = error as Error
@@ -256,7 +247,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
               // Update note progress even on error
               setProgress((prev) => ({
                 ...prev,
-                currentNote: successCount + errorCount,
+                currentNote: successCount + skippedCount + errorCount,
               }))
             }
           }
@@ -276,12 +267,29 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
         success: successCount,
         errors: errorCount,
         failedNotes,
-        message:
-          successCount > 0
-            ? `Successfully imported ${successCount} note${successCount > 1 ? "s" : ""}`
-            : errorCount > 0
-              ? "All imports failed"
-              : "No notes were imported",
+        message: (() => {
+          const messageParts: string[] = []
+
+          if (successCount > 0) {
+            messageParts.push(
+              `Successfully imported ${successCount} note${successCount > 1 ? "s" : ""}`
+            )
+          }
+
+          if (skippedCount > 0) {
+            messageParts.push(`skipped ${skippedCount} duplicate note${skippedCount > 1 ? "s" : ""}`)
+          }
+
+          if (errorCount > 0) {
+            if (messageParts.length > 0) {
+              messageParts.push(`with ${errorCount} error${errorCount > 1 ? "s" : ""}`)
+            } else {
+              messageParts.push("All imports failed")
+            }
+          }
+
+          return messageParts.length > 0 ? messageParts.join(", ") : "No notes were imported"
+        })(),
       }
       setImportResult(result)
 

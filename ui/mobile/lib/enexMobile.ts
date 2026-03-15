@@ -1,0 +1,115 @@
+import type { ParsedNote } from '@core/enex/types'
+import type { Tables } from '@/supabase/types'
+import type { ExportNote } from '@core/enex/export-types'
+import { normalizeNoteTitle } from '@core/enex/import-shared'
+import { XMLParser } from 'fast-xml-parser'
+
+type NoteRow = Tables<'notes'>
+
+type ParsedEnexDocument = {
+  'en-export'?: {
+    note?: ParsedEnexNote | ParsedEnexNote[]
+  }
+}
+
+type ParsedEnexNote = {
+  title?: string
+  content?: string | { '#text'?: string }
+  created?: string
+  updated?: string
+  tag?: string | string[]
+}
+
+const parser = new XMLParser({
+  ignoreAttributes: false,
+  parseTagValue: false,
+  trimValues: false,
+})
+const evernoteDatePattern = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/
+const enNoteContentPattern = /<en-note[^>]*>([\s\S]*)<\/en-note>/i
+const enMediaSelfClosingPattern = /<en-media\b[^>]*\/>/gi
+const enMediaOpenClosePattern = /<en-media\b[^>]*>[\s\S]*?<\/en-media>/gi
+
+const asArray = <T>(value: T | T[] | undefined): T[] => {
+  if (!value) return []
+  return Array.isArray(value) ? value : [value]
+}
+
+const readParsedNoteContent = (content: ParsedEnexNote['content']): string => {
+  if (typeof content === 'string') {
+    return content
+  }
+
+  if (typeof content?.['#text'] === 'string') {
+    return content['#text']
+  }
+
+  return ''
+}
+
+export const parseEnexDate = (value?: string | null): Date => {
+  if (!value) return new Date()
+
+  const trimmed = value.trim()
+  if (!trimmed) return new Date()
+
+  const match = evernoteDatePattern.exec(trimmed)
+  if (!match) {
+    const parsed = new Date(trimmed)
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed
+  }
+
+  const [, year, month, day, hour, minute, second] = match
+  return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}Z`)
+}
+
+export const extractEnexContent = (value: string): string => {
+  const match = enNoteContentPattern.exec(value)
+  const content = match ? match[1] : value
+
+  return content
+    .replaceAll(enMediaSelfClosingPattern, '<p>[Imported media placeholder]</p>')
+    .replaceAll(enMediaOpenClosePattern, '<p>[Imported media placeholder]</p>')
+    .trim()
+}
+
+export const parseEnexXml = (xml: string): ParsedNote[] => {
+  const parsed = parser.parse(xml) as ParsedEnexDocument
+  const notes = asArray(parsed['en-export']?.note)
+
+  return notes.map((note) => {
+    const rawContent = readParsedNoteContent(note.content)
+
+    return {
+      title: normalizeNoteTitle(note.title),
+      content: extractEnexContent(rawContent),
+      created: parseEnexDate(note.created),
+      updated: parseEnexDate(note.updated ?? note.created),
+      tags: asArray(note.tag)
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      resources: [],
+    }
+  })
+}
+
+export const buildEnexExportFileName = (date: Date = new Date()) => {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  const hours = String(date.getUTCHours()).padStart(2, '0')
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0')
+  const seconds = String(date.getUTCSeconds()).padStart(2, '0')
+
+  return `everfreenote-export-${year}${month}${day}-${hours}${minutes}${seconds}.enex`
+}
+
+export const toEnexExportNotes = (notes: NoteRow[]): ExportNote[] =>
+  notes.map((note) => ({
+    title: note.title ?? 'Untitled',
+    content: note.description ?? '',
+    created: new Date(note.created_at),
+    updated: new Date(note.updated_at ?? note.created_at),
+    tags: note.tags ?? [],
+    resources: [],
+  }))

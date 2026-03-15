@@ -1,4 +1,5 @@
 import type { EnexResource, ParsedNote } from './types'
+import { normalizeNoteTitle } from './import-shared'
 
 export class EnexParser {
   async parse(file: File): Promise<ParsedNote[]> {
@@ -21,7 +22,7 @@ export class EnexParser {
   }
 
   private parseNote(noteElement: Element): ParsedNote {
-    const title = noteElement.querySelector('title')?.textContent || 'Untitled'
+    const title = normalizeNoteTitle(noteElement.querySelector('title')?.textContent)
     const contentCDATA = noteElement.querySelector('content')?.textContent || ''
     const content = this.extractContentFromCDATA(contentCDATA)
     const created = this.parseDate(noteElement.querySelector('created')?.textContent)

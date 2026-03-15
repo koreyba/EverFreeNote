@@ -12,12 +12,14 @@ interface InputProps extends TextInputProps {
   label?: string
   error?: string
   containerStyle?: ViewStyle
+  disabled?: boolean
 }
 
 export const Input = forwardRef<TextInput, InputProps>(
-  ({ label, error, containerStyle, style, ...props }, ref) => {
+  ({ label, error, containerStyle, style, disabled, editable, ...props }, ref) => {
     const { colors } = useTheme()
     const hasError = Boolean(error)
+    const isEditable = disabled ? false : editable
 
     return (
       <View style={containerStyle}>
@@ -38,18 +40,23 @@ export const Input = forwardRef<TextInput, InputProps>(
           placeholderTextColor={colors.mutedForeground}
           style={[
             {
-              height: 40,
+              minHeight: 48,
               borderWidth: 1,
               borderColor: hasError ? colors.destructive : colors.border,
               borderRadius: 8,
               paddingHorizontal: 12,
+              paddingVertical: 10,
               fontSize: 14,
+              lineHeight: 20,
               fontFamily: 'Inter_400Regular',
               color: colors.foreground,
               backgroundColor: colors.background,
+              textAlignVertical: 'center',
+              opacity: isEditable === false ? 0.65 : 1,
             },
             style,
           ]}
+          editable={isEditable}
           {...props}
         />
         {error && (
