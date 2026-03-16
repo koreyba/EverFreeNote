@@ -53,6 +53,9 @@ description: Implementation notes for reconciling remote deletions on mobile whi
 - `ui/mobile/app/note/[id].tsx` shows deleted-note feedback and returns the user to the previous context instead of rendering a stale note.
 - `ui/mobile/components/search/SearchResultsList.tsx` now supports pull-to-refresh, and `ui/mobile/app/(tabs)/search.tsx` wires it to both regular search and AI search refetch flows.
 - `ui/web/hooks/useNoteAppController.ts` now revalidates notes before opening them from the web list/search when the browser is online and there are no unsynced local edits for that note. Confirmed `not_found` clears stale offline cache for that note, shows deleted-note feedback, and invalidates notes queries instead of promoting stale data into `selectedNote`.
+- `core/utils/postgrest.ts` now centralizes detection of the `PGRST116` "no rows returned" case so web and mobile apply the same remote-delete recovery rule.
+- `ui/mobile/hooks/useNotesMutations.ts` now matches the web save contract: when an online update hits remote deletion (`PGRST116`), mobile re-creates the note with the same ID instead of letting the note disappear.
+- `ui/mobile/services/sync.ts` now applies the same re-create-with-same-ID fallback for queued mobile updates, so deferred sync follows the same "local edits win" rule as interactive save.
 
 ### Patterns & Best Practices
 - Keep transport-error interpretation centralized instead of duplicating it inside screen components.

@@ -6,6 +6,7 @@ import { databaseService } from '@ui/mobile/services/database'
 import { useNetworkStatus } from './useNetworkStatus'
 import { mobileNetworkStatusProvider } from '@ui/mobile/adapters/networkStatus'
 import { updateNoteCaches } from '@ui/mobile/utils/noteCache'
+import { isPostgrestNoRowsError } from '@core/utils/postgrest'
 import type { Note } from '@core/types/domain'
 import type { RagNoteGroup } from '@core/types/ragSearch'
 import type { NotesPage } from './useNotes'
@@ -107,9 +108,16 @@ export function useUpdateNote() {
       updates: Partial<Pick<Note, 'title' | 'description' | 'tags'>>
     }) => {
       if (!user?.id) throw new Error('User not authenticated')
-      // Local update first for immediate response
       const localNotes = await databaseService.getLocalNotes(user.id)
       const existing = localNotes.find(n => n.id === id)
+      const mergedNote = {
+        title: updates.title ?? existing?.title ?? 'Untitled',
+        description: updates.description ?? existing?.description ?? '',
+        tags: updates.tags ?? existing?.tags ?? [],
+        user_id: existing?.user_id ?? user.id,
+      }
+
+      // Local update first for immediate response
       if (existing) {
         await databaseService.saveNotes([{
           ...existing,
@@ -120,16 +128,27 @@ export function useUpdateNote() {
       }
 
       if (isOnline) {
-        return await noteService.updateNote(id, updates)
+        try {
+          return await noteService.updateNote(id, updates)
+        } catch (error) {
+          if (!isPostgrestNoRowsError(error)) throw error
+          return await noteService.createNote({
+            id,
+            title: mergedNote.title,
+            description: mergedNote.description,
+            tags: mergedNote.tags,
+            userId: mergedNote.user_id,
+          })
+        }
       } else {
         const manager = mobileSyncService.getManager()
         await manager.enqueue({
           noteId: id,
           operation: 'update',
-          payload: updates as Partial<Note>,
+          payload: mergedNote as Partial<Note>,
           clientUpdatedAt: new Date().toISOString()
         })
-        return { id, ...updates } as Note
+        return { id, ...mergedNote } as Note
       }
     },
     onMutate: ({ id, updates }) => {

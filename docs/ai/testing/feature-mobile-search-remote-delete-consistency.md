@@ -82,6 +82,9 @@ description: Test strategy for remote deletion reconciliation, offline fallback,
   - `npm test -- --runInBand ui/mobile/tests/integration/searchScreen.test.tsx`
   - `npm test -- --runInBand ui/mobile/tests/integration/searchScreenAI.test.tsx`
   - `npm run type-check` in `ui/mobile`
+- Executed during follow-up consistency fix:
+  - `npx jest --config jest.config.cjs --selectProjects unit-core --runTestsByPath core/tests/unit/core-utils-postgrest.test.ts`
+  - `npm test -- --runTestsByPath tests/component/useUpdateNote.test.tsx tests/component/mobileSyncService.test.ts --runInBand` in `ui/mobile`
 - Result:
   - All commands above passed.
 - Remaining gaps:

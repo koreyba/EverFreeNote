@@ -4,6 +4,7 @@ import { OfflineSyncManager } from '@core/services/offlineSyncManager'
 import { OfflineCacheService } from '@core/services/offlineCache'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import { webNetworkStatus } from '@ui/web/adapters/networkStatus'
+import { isPostgrestNoRowsError } from '@core/utils/postgrest'
 import type { MutationQueueItemInput, CachedNote } from '@core/types/offline'
 import type { NoteInsert, NoteUpdate } from '@core/types/domain'
 import type { User } from '@supabase/supabase-js'
@@ -74,8 +75,7 @@ export function useNoteSync({
                         tags: payload.tags ?? [],
                     })
                 } catch (error) {
-                    // PGRST116 = .single() returned 0 rows → note was deleted remotely
-                    if (!(error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'PGRST116')) throw error
+                    if (!isPostgrestNoRowsError(error)) throw error
                     // Re-create with the same ID so the user's queued edits are preserved
                     await createMutationRef.current.mutateAsync({
                         id: item.noteId,

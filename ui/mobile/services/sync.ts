@@ -5,6 +5,7 @@ import { NoteService } from '@core/services/notes'
 import type { MutationQueueItem } from '@core/types/offline'
 import type { Note } from '@core/types/domain'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { isPostgrestNoRowsError } from '@core/utils/postgrest'
 import { databaseService } from './database'
 
 type ErrorWithCode = Error & { code?: string }
@@ -45,8 +46,34 @@ export class MobileSyncService {
                 }
                 case 'update':
                     {
-                        const updated = await noteService.updateNote(item.noteId, item.payload)
-                        await databaseService.saveNotes([{ ...updated, is_synced: 1, is_deleted: 0 }])
+                        const payload = item.payload as Partial<Note> & { user_id?: string }
+                        const localNote = await databaseService.getLocalNoteById(item.noteId)
+                        const noteData = {
+                            title: payload.title ?? localNote?.title ?? 'Untitled',
+                            description: payload.description ?? localNote?.description ?? '',
+                            tags: payload.tags ?? localNote?.tags ?? [],
+                            userId: payload.user_id ?? localNote?.user_id ?? '',
+                        }
+
+                        try {
+                            const updated = await noteService.updateNote(item.noteId, {
+                                title: noteData.title,
+                                description: noteData.description,
+                                tags: noteData.tags,
+                            })
+                            await databaseService.saveNotes([{ ...updated, is_synced: 1, is_deleted: 0 }])
+                        } catch (error) {
+                            if (!isPostgrestNoRowsError(error)) throw error
+
+                            const created = await noteService.createNote({
+                                id: item.noteId,
+                                title: noteData.title,
+                                description: noteData.description,
+                                tags: noteData.tags,
+                                userId: noteData.userId,
+                            })
+                            await databaseService.saveNotes([{ ...created, is_synced: 1, is_deleted: 0 }])
+                        }
                     }
                     break
                 case 'delete':

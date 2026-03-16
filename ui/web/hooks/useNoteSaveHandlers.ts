@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import type { NoteViewModel, NoteUpdate } from '@core/types/domain'
 import type { CachedNote } from '@core/types/offline'
 import { parseTagString } from '@ui/web/lib/tags'
+import { isPostgrestNoRowsError } from '@core/utils/postgrest'
 import type { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import type { useNoteSync } from './useNoteSync'
 import type { useNoteSelection } from './useNoteSelection'
@@ -249,8 +250,7 @@ export function useNoteSaveHandlers({
             const updated = await updateNoteMutation.mutateAsync({ id: selectedNote.id, ...noteData })
             savedNote = { ...selectedNote, ...updated }
           } catch (error) {
-            // PGRST116 = .single() returned 0 rows → note was deleted remotely
-            if (!(error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'PGRST116')) throw error
+            if (!isPostgrestNoRowsError(error)) throw error
             // Re-create with the same ID so the user's in-progress work is preserved
             const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id, id: selectedNote.id })
             savedNote = created as NoteViewModel

@@ -209,6 +209,15 @@ export class DatabaseService {
         return rows.map((r) => this.mapRowToNote(r))
     }
 
+    async getLocalNoteById(noteId: string) {
+        const db = await this.init()
+        const row = await db.getFirstAsync<LocalNoteRow>(
+            'SELECT * FROM notes WHERE id = ? LIMIT 1',
+            [noteId]
+        )
+        return row ? this.mapRowToNote(row) : null
+    }
+
     async getLocalNotesByTag(
         userId: string,
         tag: string,
