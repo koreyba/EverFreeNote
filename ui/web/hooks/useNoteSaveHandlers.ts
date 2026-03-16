@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import type { NoteViewModel, NoteUpdate } from '@core/types/domain'
 import type { CachedNote } from '@core/types/offline'
 import { parseTagString } from '@ui/web/lib/tags'
+import { isPostgrestNoRowsError } from '@core/utils/postgrest'
 import type { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import type { useNoteSync } from './useNoteSync'
 import type { useNoteSelection } from './useNoteSelection'
@@ -245,8 +246,15 @@ export function useNoteSaveHandlers({
           toast.success('Saved offline (will sync when online)')
           setLastSavedAt(clientUpdatedAt)
         } else {
-          const updated = await updateNoteMutation.mutateAsync({ id: selectedNote.id, ...noteData })
-          savedNote = { ...selectedNote, ...updated }
+          try {
+            const updated = await updateNoteMutation.mutateAsync({ id: selectedNote.id, ...noteData })
+            savedNote = { ...selectedNote, ...updated }
+          } catch (error) {
+            if (!isPostgrestNoRowsError(error)) throw error
+            // Re-create with the same ID so the user's in-progress work is preserved
+            const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id, id: selectedNote.id })
+            savedNote = created as NoteViewModel
+          }
           setLastSavedAt(clientUpdatedAt)
         }
       } else {

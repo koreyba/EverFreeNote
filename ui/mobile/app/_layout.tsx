@@ -60,6 +60,7 @@ function ThemedStack() {
         options={{
           headerShown: true,
           presentation: 'modal',
+          title: '',
         }}
       />
     </Stack>

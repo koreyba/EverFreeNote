@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query'
 import { useSupabase } from '@ui/mobile/providers'
 import { NoteService } from '@core/services/notes'
 import { databaseService } from '@ui/mobile/services/database'
@@ -82,27 +82,56 @@ export function useNote(id: string) {
   const { client, user } = useSupabase()
   const noteService = new NoteService(client)
   const isOnline = useNetworkStatus()
+  const queryClient = useQueryClient()
 
   return useQuery({
     queryKey: ['note', id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
 
-      try {
-        if (isOnline) {
-          const note = await noteService.getNote(id)
-          await databaseService.saveNotes([note])
-          return note
+      if (isOnline) {
+        if (await databaseService.hasPendingWrites(id)) {
+          const localNotes = await databaseService.getLocalNotes(user.id)
+          const localNote = localNotes.find(n => n.id === id) ?? null
+          return {
+            note: localNote,
+            status: localNote ? 'found' as const : 'missing' as const,
+          }
         }
-      } catch (error) {
-        console.warn('Failed to fetch note from Supabase, falling back to local DB:', error)
+
+        const remoteResult = await noteService.getNoteStatus(id)
+
+        if (remoteResult.status === 'found') {
+          await databaseService.saveNotes([remoteResult.note])
+          return {
+            note: remoteResult.note as Note,
+            status: 'found' as const,
+          }
+        }
+
+        if (remoteResult.status === 'not_found') {
+          await databaseService.markDeleted(id, user.id)
+          queryClient.invalidateQueries({ queryKey: ['notes'] }).catch(() => {})
+          return {
+            note: null,
+            status: 'deleted' as const,
+          }
+        }
+
+        console.warn('Failed to fetch note from Supabase, falling back to local DB:', remoteResult.error)
       }
 
       // Fallback to local DB
       const localNotes = await databaseService.getLocalNotes(user.id)
-      return localNotes.find(n => n.id === id) ?? null
+      const localNote = localNotes.find(n => n.id === id) ?? null
+
+      return {
+        note: localNote,
+        status: localNote ? 'found' as const : 'missing' as const,
+      }
     },
     enabled: !!user?.id && !!id,
-    staleTime: 1000 * 60,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }

@@ -351,7 +351,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     onMessage={handleMessage}
                     javaScriptEnabled
                     domStorageEnabled
-                    style={styles.webview}
+                    style={[styles.webview, !isReady && styles.webviewHidden]}
                     injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
                     mixedContentMode="always"
                     onLoadStart={() => {
@@ -459,6 +459,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     },
     webview: {
         flex: 1,
+    },
+    webviewHidden: {
+        opacity: 0,
     },
     loadingContainer: {
         ...StyleSheet.absoluteFillObject,

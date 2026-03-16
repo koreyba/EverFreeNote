@@ -12,6 +12,7 @@ import { AiSearchNoteCard } from './AiSearchNoteCard'
 import type { SearchResultItem } from './types'
 
 const MAX_CHUNKS_PER_NOTE = 2
+type AiNoteSnapshot = Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags' | 'description' | 'created_at' | 'updated_at' | 'user_id'>>
 
 type SearchListMode = 'regular' | 'ai-note' | 'ai-chunk'
 
@@ -21,7 +22,7 @@ type SearchResultsListProps = {
   aiNoteGroups: RagNoteGroup[]
   onRegularNotePress: (note: Note) => void
   onDeleteRegularNote: (id: string) => void
-  onOpenAiResult: (noteId: string, charOffset: number, chunkLength: number) => void
+  onOpenAiResult: (note: AiNoteSnapshot, charOffset: number, chunkLength: number) => void
   onTagPress?: (tag: string) => void
   onScrollBeginDrag?: () => void
   selectionMode?: boolean
@@ -32,6 +33,8 @@ type SearchResultsListProps = {
   loadingMore?: boolean
   onLoadMore?: () => void
   bottomInset?: number
+  refreshing?: boolean
+  onRefresh?: () => void
 }
 
 type SearchListRow =
@@ -91,7 +94,7 @@ function renderRegularRow(
 function renderAiNoteRow(
   group: RagNoteGroup,
   selection: SelectionProps,
-  onOpenAiResult: (noteId: string, charOffset: number, chunkLength: number) => void,
+  onOpenAiResult: (note: AiNoteSnapshot, charOffset: number, chunkLength: number) => void,
   onTagPress?: (tag: string) => void
 ) {
   return (
@@ -109,7 +112,7 @@ function renderAiNoteRow(
 
 function renderAiChunkRow(
   chunk: RagChunk,
-  onOpenAiResult: (noteId: string, charOffset: number, chunkLength: number) => void,
+  onOpenAiResult: (note: AiNoteSnapshot, charOffset: number, chunkLength: number) => void,
   onTagPress?: (tag: string) => void
 ) {
   return (
@@ -138,6 +141,8 @@ export const SearchResultsList = memo(function SearchResultsList({
   loadingMore = false,
   onLoadMore,
   bottomInset = 16,
+  refreshing = false,
+  onRefresh,
 }: SearchResultsListProps) {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
@@ -215,6 +220,8 @@ export const SearchResultsList = memo(function SearchResultsList({
       contentContainerStyle={contentContainerStyle}
       extraData={{ mode, selectionMode, selectedIds }}
       onScrollBeginDrag={onScrollBeginDrag}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       onEndReached={() => {
         if (!hasMore || loadingMore || !onLoadMore) return
         try {

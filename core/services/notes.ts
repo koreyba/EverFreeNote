@@ -2,6 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/supabase/types'
 
 type Note = Tables<'notes'>
+export type NoteLookupResult =
+  | { status: 'found'; note: Note }
+  | { status: 'not_found' }
+  | { status: 'transient_error'; error: unknown }
 
 // Sanitize value for PostgREST OR syntax: strip commas to avoid breaking the logic tree
 const sanitizeOrValue = (value: string) => value.replace(/,/g, ' ')
@@ -99,6 +103,32 @@ export class NoteService {
 
     if (error) throw error
     return data as Note
+  }
+
+  async getNoteStatus(id: string): Promise<NoteLookupResult> {
+    const { data, error } = await this.supabase
+      .from('notes')
+      .select('id, title, description, tags, created_at, updated_at, user_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (error) {
+      return {
+        status: 'transient_error',
+        error,
+      }
+    }
+
+    if (!data) {
+      return {
+        status: 'not_found',
+      }
+    }
+
+    return {
+      status: 'found',
+      note: data as Note,
+    }
   }
 
   async getNotesByIds(noteIds: string[], userId: string) {

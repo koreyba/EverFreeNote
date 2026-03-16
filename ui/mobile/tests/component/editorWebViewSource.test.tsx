@@ -1,8 +1,10 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
+import { StyleSheet, type ViewStyle } from 'react-native'
 
 const mockPostMessage = jest.fn()
 let lastWebViewProps: {
   source?: { uri?: string }
+  style?: unknown
   onError?: (event: { nativeEvent: { description?: string } }) => void
   onHttpError?: (event: { nativeEvent: { statusCode?: number; description?: string } }) => void
   onMessage?: (event: { nativeEvent: { data: string } }) => void
@@ -96,6 +98,8 @@ const sendReady = () => {
   })
 }
 
+const getFlattenedWebViewStyle = (): Partial<ViewStyle> => StyleSheet.flatten(lastWebViewProps?.style) ?? {}
+
 describe('EditorWebView source selection', () => {
   let warnSpy: jest.SpyInstance
   let errorSpy: jest.SpyInstance
@@ -132,6 +136,22 @@ describe('EditorWebView source selection', () => {
     })
 
     sendReady()
+  })
+
+  it('keeps the raw WebView hidden until the editor is ready', async () => {
+    render(<EditorWebView initialContent="" />)
+
+    await waitFor(() => {
+      expect(lastWebViewProps?.source?.uri).toBe('http://example.dev/editor-webview')
+    })
+
+    expect(getFlattenedWebViewStyle().opacity).toBe(0)
+
+    sendReady()
+
+    await waitFor(() => {
+      expect(getFlattenedWebViewStyle().opacity).not.toBe(0)
+    })
   })
 
   it('selects local when offline', async () => {

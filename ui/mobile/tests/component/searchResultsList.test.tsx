@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '../testUtils'
 import type { ReactNode } from 'react'
+import type { Note } from '@core/types/domain'
 import type { SearchResultItem } from '@ui/mobile/components/search/types'
 import type { RagNoteGroup } from '@core/types/ragSearch'
 import { SearchResultsList } from '@ui/mobile/components/search/SearchResultsList'
@@ -38,6 +39,9 @@ jest.mock('@shopify/flash-list', () => ({
           <View key={item.key}>{renderItem({ item })}</View>
         ))}
         {footer}
+        <Pressable testID="refresh-list" onPress={() => (props.onRefresh as (() => void) | undefined)?.()}>
+          <Text>Refresh</Text>
+        </Pressable>
         <Pressable testID="end-reached" onPress={() => (props.onEndReached as (() => void) | undefined)?.()}>
           <Text>End reached</Text>
         </Pressable>
@@ -81,13 +85,21 @@ jest.mock('@ui/mobile/components/search/AiSearchNoteCard', () => ({
     onOpenInContext,
   }: {
     group: RagNoteGroup
-    onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+    onOpenInContext: (
+      note: Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags'>>,
+      charOffset: number,
+      chunkLength: number
+    ) => void
   }) => {
     const { Pressable, Text } = require('react-native')
     return (
       <Pressable
         testID={`mock-ai-note-${group.noteId}`}
-        onPress={() => onOpenInContext(group.noteId, group.chunks[0].charOffset, group.chunks[0].content.length)}
+        onPress={() => onOpenInContext({
+          id: group.noteId,
+          title: group.noteTitle,
+          tags: group.noteTags,
+        }, group.chunks[0].charOffset, group.chunks[0].content.length)}
       >
         <Text>{group.noteTitle}</Text>
       </Pressable>
@@ -101,13 +113,17 @@ jest.mock('@ui/mobile/components/search/AiSearchChunkCard', () => ({
     onOpenInContext,
   }: {
     chunk: { noteId: string; chunkIndex: number; charOffset: number; content: string }
-    onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+    onOpenInContext: (
+      note: Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags'>>,
+      charOffset: number,
+      chunkLength: number
+    ) => void
   }) => {
     const { Pressable, Text } = require('react-native')
     return (
       <Pressable
         testID={`mock-ai-chunk-${chunk.noteId}-${chunk.chunkIndex}`}
-        onPress={() => onOpenInContext(chunk.noteId, chunk.charOffset, chunk.content.length)}
+        onPress={() => onOpenInContext({ id: chunk.noteId }, chunk.charOffset, chunk.content.length)}
       >
         <Text>{chunk.content}</Text>
       </Pressable>
@@ -239,7 +255,7 @@ describe('SearchResultsList', () => {
     fireEvent.press(screen.getByTestId('end-reached'))
     fireEvent(screen.getByTestId('flash-list'), 'scrollBeginDrag')
 
-    expect(onOpenAiResult).toHaveBeenCalledWith('note-a', 100, 'Chunk 1'.length)
+    expect(onOpenAiResult).toHaveBeenCalledWith({ id: 'note-a' }, 100, 'Chunk 1'.length)
     expect(onLoadMore).toHaveBeenCalled()
     expect(onScrollBeginDrag).toHaveBeenCalled()
     expect(lastFlashListProps?.estimatedItemSize).toBe(140)
@@ -266,7 +282,34 @@ describe('SearchResultsList', () => {
     fireEvent.press(screen.getByTestId('mock-ai-note-note-a'))
     fireEvent.press(screen.getByTestId('end-reached'))
 
-    expect(onOpenAiResult).toHaveBeenCalledWith('note-a', 0, 'Chunk 0'.length)
+    expect(onOpenAiResult).toHaveBeenCalledWith(
+      { id: 'note-a', title: 'AI note-a', tags: ['semantic'] },
+      0,
+      'Chunk 0'.length
+    )
     expect(onLoadMore).not.toHaveBeenCalled()
+  })
+
+  it('forwards pull-to-refresh props to the list', () => {
+    const onRefresh = jest.fn()
+
+    render(
+      <SearchResultsList
+        mode="regular"
+        regularResults={[createRegularNote('note-1')]}
+        aiNoteGroups={[]}
+        onRegularNotePress={jest.fn()}
+        onDeleteRegularNote={jest.fn()}
+        onOpenAiResult={jest.fn()}
+        refreshing
+        onRefresh={onRefresh}
+      />
+    )
+
+    expect(lastFlashListProps?.refreshing).toBe(true)
+
+    fireEvent.press(screen.getByTestId('refresh-list'))
+
+    expect(onRefresh).toHaveBeenCalled()
   })
 })

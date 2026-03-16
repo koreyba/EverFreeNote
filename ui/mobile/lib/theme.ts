@@ -30,6 +30,11 @@ export const colors = {
     accent: '#ecfdf5',               // oklch(96% 0.03 145) → emerald-50
     accentForeground: '#166534',     // oklch(40% 0.05 145) → green-800
 
+    // Selection states
+    selectionBackground: '#ecfdf5',  // Match selected note surface for consistent active states
+    selectionBorder: '#16a34a',
+    selectionForeground: '#166534',
+
     // Destructive
     destructive: '#dc2626',          // oklch(55% 0.22 29) → red-600
     destructiveForeground: '#ffffff',
@@ -66,6 +71,11 @@ export const colors = {
     // Accent
     accent: '#14532d',               // oklch(32% 0.04 145) → green-900
     accentForeground: '#f9fafb',     // oklch(95% 0.005 256)
+
+    // Selection states
+    selectionBackground: '#14532d',  // Match selected note surface for consistent active states
+    selectionBorder: '#22c55e',
+    selectionForeground: '#f9fafb',
 
     // Destructive
     destructive: '#b91c1c',          // oklch(50% 0.2 29) → red-700

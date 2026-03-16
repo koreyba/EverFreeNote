@@ -9,6 +9,7 @@
 
 # Claude Code local settings
 .claude/settings.local.json
+.mcp.json
 
 # Dependencies
 node_modules/
@@ -124,3 +125,4 @@ ui/mobile/ios/EverFreeNote/WebEditor/
 /.playwright-mcp/editor-webview-screenshot.png
 /.playwright-mcp/editor-webview-with-content.png
 /.playwright-mcp/editor-webview-working.png
+/.mcp.json

@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 
 import { useNotesQuery } from './useNotesQuery'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
@@ -16,7 +17,7 @@ import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEdi
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
 import { type NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
-import { pickLatestNote } from '@core/utils/noteSnapshot'
+import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
 
 export type EditFormState = {
   title: string
@@ -178,9 +179,52 @@ export function useNoteAppController() {
   // Ref to avoid stale closure in save handlers and nav wrappers
   const selectedNoteRef = useRef(selectedNote)
   const latestEditRequestRef = useRef(0)
+  const latestSelectRequestRef = useRef(0)
+  const latestSearchClickRequestRef = useRef(0)
   useEffect(() => {
     selectedNoteRef.current = selectedNote
   }, [selectedNote])
+
+  const hasPendingLocalWrites = useCallback((noteId: string) => (
+    offlineOverlay.some((note) => (
+      note.id === noteId &&
+      (
+        note.status !== 'synced' ||
+        Boolean(note.pendingOps?.some((operation) => operation !== 'delete'))
+      )
+    ))
+  ), [offlineOverlay])
+
+  const resolveOpenableNote = useCallback(async <T extends NoteViewModel | SearchResult>(note: T): Promise<T | null> => {
+    if (isOffline || hasPendingLocalWrites(note.id)) {
+      return note
+    }
+
+    try {
+      const remoteResult = await noteService.getNoteStatus(note.id)
+      if (remoteResult.status === 'found') {
+        return pickLatestNote([
+          mergeNoteFields(note, remoteResult.note),
+          note,
+        ]) ?? mergeNoteFields(note, remoteResult.note)
+      }
+
+      if (remoteResult.status === 'not_found') {
+        await offlineCache.deleteNote(note.id)
+        setOfflineOverlay((current) => current.filter((cachedNote) => cachedNote.id !== note.id))
+        toast.error('This note was deleted on another device.')
+        queryClient.invalidateQueries({ queryKey: ['notes'] }).catch(() => {})
+        queryClient.invalidateQueries({ queryKey: ['aiSearch'] }).catch(() => {})
+        return null
+      }
+
+      console.warn('Transient error checking note status, using local version:', remoteResult.error)
+    } catch (error) {
+      console.warn('Failed to check note status, using local version:', error)
+    }
+
+    return note
+  }, [hasPendingLocalWrites, isOffline, noteService, offlineCache, setOfflineOverlay, queryClient])
 
   // -- Save handlers --
   const {
@@ -235,15 +279,20 @@ export function useNoteAppController() {
 
   // -- Nav wrappers: flush pending editor save before any navigation --
   const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null) => {
+    const requestId = ++latestSelectRequestRef.current
     await flushPendingEditorSave()
+    if (requestId !== latestSelectRequestRef.current) return
     if (note?.id && selectedNoteRef.current?.id === note.id) {
       setIsEditing(false)
       setLastSavedAt(null)
       return
     }
-    handleSelectNote(note)
+    const openableNote = note ? await resolveOpenableNote(note) : null
+    if (requestId !== latestSelectRequestRef.current) return
+    if (note && !openableNote) return
+    handleSelectNote(openableNote)
     setLastSavedAt(null)
-  }, [flushPendingEditorSave, handleSelectNote, setLastSavedAt, setIsEditing])
+  }, [flushPendingEditorSave, handleSelectNote, resolveOpenableNote, setLastSavedAt, setIsEditing])
 
   const wrappedHandleCreateNote = useCallback(async () => {
     await flushPendingEditorSave()
@@ -255,9 +304,15 @@ export function useNoteAppController() {
     const requestId = ++latestEditRequestRef.current
     await flushPendingEditorSave()
     if (requestId !== latestEditRequestRef.current) return
-    handleEditNoteRaw(note)
+    const openableNote = await resolveOpenableNote(note)
+    if (requestId !== latestEditRequestRef.current) return
+    if (!openableNote) {
+      handleSelectNote(null)
+      return
+    }
+    handleEditNoteRaw(openableNote)
     setLastSavedAt(null)
-  }, [flushPendingEditorSave, handleEditNoteRaw, setLastSavedAt])
+  }, [flushPendingEditorSave, handleEditNoteRaw, handleSelectNote, resolveOpenableNote, setLastSavedAt])
 
   const handleTagClick = useCallback(async (tag: string) => {
     await flushPendingEditorSave()
@@ -268,15 +323,20 @@ export function useNoteAppController() {
   }, [flushPendingEditorSave, onTagClick, setSelectedNote, setIsEditing, setLastSavedAt])
 
   const wrappedHandleSearchResultClick = useCallback(async (note: SearchResult) => {
+    const requestId = ++latestSearchClickRequestRef.current
     await flushPendingEditorSave()
+    if (requestId !== latestSearchClickRequestRef.current) return
     if (note?.id && selectedNoteRef.current?.id === note.id) {
       setIsEditing(false)
       setLastSavedAt(null)
       return
     }
-    handleSearchResultClick(resolveSearchResult(note))
+    const openableNote = await resolveOpenableNote(resolveSearchResult(note))
+    if (requestId !== latestSearchClickRequestRef.current) return
+    if (!openableNote) return
+    handleSearchResultClick(openableNote)
     setLastSavedAt(null)
-  }, [flushPendingEditorSave, handleSearchResultClick, resolveSearchResult, setLastSavedAt, setIsEditing])
+  }, [flushPendingEditorSave, handleSearchResultClick, resolveOpenableNote, resolveSearchResult, setLastSavedAt, setIsEditing])
 
   const aiPaginationControlsRef = useRef<AIPaginationControls>({
     resetAIResults: () => {},

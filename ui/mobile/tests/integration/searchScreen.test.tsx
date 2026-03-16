@@ -92,6 +92,7 @@ jest.mock('@ui/mobile/services/database', () => ({
     markDeleted: jest.fn().mockResolvedValue(undefined),
     saveNotes: jest.fn().mockResolvedValue(undefined),
     getLocalNotes: jest.fn().mockResolvedValue([]),
+    hasPendingWrites: jest.fn().mockResolvedValue(false),
     searchNotes: jest.fn().mockResolvedValue([]),
   },
 }))
@@ -189,13 +190,14 @@ jest.mock('@ui/mobile/components/tags', () => ({
 
 // Mock FlashList
 jest.mock('@shopify/flash-list', () => ({
-  FlashList: ({ data, renderItem, keyExtractor, onScrollBeginDrag }: {
+  FlashList: ({ data, renderItem, keyExtractor, onScrollBeginDrag, onRefresh }: {
     data: unknown[];
     renderItem: (info: { item: unknown }) => React.ReactElement;
     keyExtractor: (item: unknown) => string;
     onScrollBeginDrag?: () => void;
+    onRefresh?: () => void;
   }) => {
-    const { View, ScrollView } = require('react-native')
+    const { View, ScrollView, Pressable, Text } = require('react-native')
     return (
       <ScrollView
         testID="search-results-list"
@@ -206,6 +208,9 @@ jest.mock('@shopify/flash-list', () => ({
             {renderItem({ item })}
           </View>
         ))}
+        <Pressable testID="search-results-refresh" onPress={onRefresh}>
+          <Text>Refresh</Text>
+        </Pressable>
       </ScrollView>
     )
   },
@@ -430,6 +435,27 @@ describe('SearchScreen - Delete Functionality', () => {
     })
   })
 
+  describe('Manual refresh', () => {
+    it('re-runs regular search when the results list is refreshed', async () => {
+      render(<SearchScreen />, { wrapper })
+
+      const searchInput = screen.getByPlaceholderText('Search notes...')
+      fireEvent.changeText(searchInput, 'keyword')
+
+      await waitFor(() => {
+        expect(screen.getByText('Search Result 1')).toBeTruthy()
+      })
+
+      expect(mockSearchService.prototype.searchNotes).toHaveBeenCalledTimes(1)
+
+      fireEvent.press(screen.getByTestId('search-results-refresh'))
+
+      await waitFor(() => {
+        expect(mockSearchService.prototype.searchNotes).toHaveBeenCalledTimes(2)
+      })
+    })
+  })
+
   describe('Navigation from search results', () => {
     it('navigates to note editor when search result is pressed', async () => {
       render(<SearchScreen />, { wrapper })
@@ -485,8 +511,11 @@ describe('SearchScreen - Delete Functionality', () => {
       })
 
       await waitFor(() => {
-        const noteCache = queryClient.getQueryData(['note', 'search-note-1']) as { title?: string } | undefined
-        expect(noteCache?.title).toBe('Updated Title')
+        const noteCache = queryClient.getQueryData(['note', 'search-note-1']) as {
+          note?: { title?: string } | null
+          status?: string
+        } | undefined
+        expect(noteCache?.note?.title).toBe('Updated Title')
       })
 
       await act(async () => {
@@ -508,10 +537,12 @@ describe('SearchScreen - Delete Functionality', () => {
       const { result: openNote } = renderHook(() => useOpenNote(), { wrapper })
 
       await act(async () => {
-        openNote.current(mockSearchResults[0])
+        await openNote.current(mockSearchResults[0])
       })
       const cached = queryClient.getQueryData(['note', 'search-note-1'])
-      expect(cached).toEqual(expect.objectContaining({ title: 'Updated Title' }))
+      expect(cached).toEqual(expect.objectContaining({
+        note: expect.objectContaining({ title: 'Updated Title' }),
+      }))
     })
 
     it('open from search -> edit -> return keeps search results updated', async () => {

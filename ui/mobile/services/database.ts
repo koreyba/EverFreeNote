@@ -209,6 +209,15 @@ export class DatabaseService {
         return rows.map((r) => this.mapRowToNote(r))
     }
 
+    async getLocalNoteById(noteId: string) {
+        const db = await this.init()
+        const row = await db.getFirstAsync<LocalNoteRow>(
+            'SELECT * FROM notes WHERE id = ? LIMIT 1',
+            [noteId]
+        )
+        return row ? this.mapRowToNote(row) : null
+    }
+
     async getLocalNotesByTag(
         userId: string,
         tag: string,
@@ -282,6 +291,15 @@ export class DatabaseService {
         if (ids.length === 0) return
         const placeholders = ids.map(() => '?').join(',')
         await db.runAsync(`DELETE FROM mutation_queue WHERE id IN (${placeholders})`, ids)
+    }
+
+    async hasPendingWrites(noteId: string): Promise<boolean> {
+        const db = await this.init()
+        const row = await db.getFirstAsync<{ cnt: number }>(
+            "SELECT COUNT(*) as cnt FROM mutation_queue WHERE noteId = ? AND operation != 'delete' AND status IN ('pending', 'failed')",
+            [noteId]
+        )
+        return (row?.cnt ?? 0) > 0
     }
 
     async markQueueItemStatus(id: string, status: string, lastError?: string) {

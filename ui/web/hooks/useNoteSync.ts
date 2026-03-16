@@ -4,6 +4,7 @@ import { OfflineSyncManager } from '@core/services/offlineSyncManager'
 import { OfflineCacheService } from '@core/services/offlineCache'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import { webNetworkStatus } from '@ui/web/adapters/networkStatus'
+import { isPostgrestNoRowsError } from '@core/utils/postgrest'
 import type { MutationQueueItemInput, CachedNote } from '@core/types/offline'
 import type { NoteInsert, NoteUpdate } from '@core/types/domain'
 import type { User } from '@supabase/supabase-js'
@@ -66,12 +67,24 @@ export function useNoteSync({
                 })
             } else if (item.operation === 'update') {
                 const payload = item.payload as Partial<NoteUpdate>
-                await updateMutationRef.current.mutateAsync({
-                    id: item.noteId,
-                    title: payload.title ?? 'Untitled',
-                    description: payload.description ?? '',
-                    tags: payload.tags ?? [],
-                })
+                try {
+                    await updateMutationRef.current.mutateAsync({
+                        id: item.noteId,
+                        title: payload.title ?? 'Untitled',
+                        description: payload.description ?? '',
+                        tags: payload.tags ?? [],
+                    })
+                } catch (error) {
+                    if (!isPostgrestNoRowsError(error)) throw error
+                    // Re-create with the same ID so the user's queued edits are preserved
+                    await createMutationRef.current.mutateAsync({
+                        id: item.noteId,
+                        title: payload.title ?? 'Untitled',
+                        description: payload.description ?? '',
+                        tags: payload.tags ?? [],
+                        userId: currentUser.id,
+                    })
+                }
             } else if (item.operation === 'delete') {
                 await deleteMutationRef.current.mutateAsync({ id: item.noteId, silent: true })
             }

@@ -11,10 +11,22 @@ type SearchPage<T extends Note = Note> = {
 }
 
 type NotePatch = Partial<Pick<Note, 'title' | 'description' | 'tags' | 'updated_at'>>
+type NoteDetailData = {
+  note: Note | null
+  status: 'found' | 'missing' | 'deleted'
+}
 
 const applyPatch = <T extends Note>(note: T, patch: NotePatch): T => {
   if (Object.keys(patch).length === 0) return note
   return { ...note, ...patch }
+}
+
+const extractDirectNote = (value: Note | NoteDetailData | undefined): Note | undefined => {
+  if (!value) return undefined
+  if ('note' in value) {
+    return value.note ?? undefined
+  }
+  return value
 }
 
 const findNoteInNotesCache = (queryClient: QueryClient, noteId: string): Note | undefined => {
@@ -46,7 +58,9 @@ export const getCachedNote = <T extends Note>(
   noteId: string,
   fallback?: T
 ): T | undefined => {
-  const direct = queryClient.getQueryData<T>(['note', noteId])
+  const direct = extractDirectNote(
+    queryClient.getQueryData<Note | NoteDetailData>(['note', noteId])
+  ) as T | undefined
   const fromNotes = findNoteInNotesCache(queryClient, noteId) as T | undefined
   const fromSearch = findNoteInSearchCache<T>(queryClient, noteId)
 
@@ -91,9 +105,20 @@ export const updateNoteCaches = (
 
   const fallback = getCachedNote(queryClient, noteId)
 
-  queryClient.setQueryData<Note | undefined>(['note', noteId], (current) => {
-    const base = current ?? fallback
-    return base ? applyPatch(base, patch) : current
+  queryClient.setQueryData<NoteDetailData | Note | undefined>(['note', noteId], (current) => {
+    const currentStatus = current && 'status' in current ? current.status : undefined
+    const currentNote = extractDirectNote(current)
+    if ((currentStatus === 'missing' || currentStatus === 'deleted') && !currentNote) {
+      return current
+    }
+
+    const base = currentNote ?? fallback
+    if (!base) return current
+
+    return {
+      note: applyPatch(base, patch),
+      status: currentStatus ?? 'found',
+    } satisfies NoteDetailData
   })
 
   queryClient.setQueriesData<InfiniteData<NotesPage>>({ queryKey: ['notes'] }, (data) => {

@@ -63,7 +63,11 @@ describe('AiSearchNoteCard', () => {
 
     fireEvent.press(screen.getByTestId('ai-note-top-chunk-note-1'))
 
-    expect(onOpenInContext).toHaveBeenCalledWith('note-1', 20, 'Primary chunk content'.length)
+    expect(onOpenInContext).toHaveBeenCalledWith({
+      id: 'note-1',
+      title: 'AI result note',
+      tags: ['tag-a', 'tag-b'],
+    }, 20, 'Primary chunk content'.length)
   })
 
   it('toggles selection instead of opening the note while selection mode is active', () => {
@@ -151,6 +155,10 @@ describe('AiSearchNoteCard', () => {
 
     expect(screen.getByText('Hide fragments')).toBeTruthy()
     expect(screen.getByText('+2 similar fragments hidden')).toBeTruthy()
-    expect(onOpenInContext).toHaveBeenCalledWith('note-1', 420, 'Second fragment'.length)
+    expect(onOpenInContext).toHaveBeenCalledWith({
+      id: 'note-1',
+      title: 'AI result note',
+      tags: ['tag-a', 'tag-b'],
+    }, 420, 'Second fragment'.length)
   })
 })

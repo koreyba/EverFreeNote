@@ -15,7 +15,7 @@ import type { Tables } from '@/supabase/types'
  */
 type Note = Tables<'notes'>
 
-type CreateNoteParams = Pick<Note, 'title' | 'description' | 'tags'> & { userId: string }
+type CreateNoteParams = Pick<Note, 'title' | 'description' | 'tags'> & { userId: string; id?: string }
 type UpdateNoteParams = Pick<Note, 'id' | 'title' | 'description' | 'tags'>
 type DeleteNoteParams = { id: string; silent?: boolean }
 

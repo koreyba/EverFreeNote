@@ -158,6 +158,7 @@ type SearchScreenBodyProps = {
   regularResults: SearchResultItem[]
   aiModeEnabled: boolean
   isAILoading: boolean
+  isResultsRefreshing: boolean
   noteGroups: ReturnType<typeof useMobileAIPaginatedSearch>['noteGroups']
   aiQueryReady: boolean
   aiError: string | null
@@ -166,7 +167,11 @@ type SearchScreenBodyProps = {
   activeMode: 'regular' | 'ai-note' | 'ai-chunk'
   onRegularNotePress: (note: Note) => void
   onDeleteRegularNote: (id: string) => void
-  onOpenAiResult: (noteId: string, charOffset: number, chunkLength: number) => void
+  onOpenAiResult: (
+    note: Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags'>>,
+    charOffset: number,
+    chunkLength: number
+  ) => void
   onTagPress: (tag: string) => void
   onScrollBeginDrag: () => void
   selectionMode: boolean
@@ -176,6 +181,7 @@ type SearchScreenBodyProps = {
   hasMore: boolean
   loadingMore: boolean
   onLoadMore: () => void
+  onRefreshResults: () => void
   bottomInset: number
   shouldShowEmptyResults: boolean
   shouldShowIdleState: boolean
@@ -194,6 +200,7 @@ function SearchScreenBody({
   regularResults,
   aiModeEnabled,
   isAILoading,
+  isResultsRefreshing,
   noteGroups,
   aiQueryReady,
   aiError,
@@ -212,6 +219,7 @@ function SearchScreenBody({
   hasMore,
   loadingMore,
   onLoadMore,
+  onRefreshResults,
   bottomInset,
   shouldShowEmptyResults,
   shouldShowIdleState,
@@ -301,6 +309,8 @@ function SearchScreenBody({
         hasMore={hasMore}
         loadingMore={loadingMore}
         onLoadMore={onLoadMore}
+        refreshing={isResultsRefreshing}
+        onRefresh={onRefreshResults}
         bottomInset={bottomInset}
       />
     )
@@ -379,12 +389,14 @@ export default function SearchScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetching: isRegularFetching,
     refetch: refetchRegularSearch,
   } = useSearch(query, { tag: activeTag, enabled: !aiModeEnabled })
 
   const {
     noteGroups,
     isLoading: isAILoading,
+    isRefreshing: isAIRefreshing,
     error: aiError,
     refetch: refetchAISearch,
     aiHasMore,
@@ -471,20 +483,27 @@ export default function SearchScreen() {
   }, [deleteNote])
 
   const handleRegularNotePress = useCallback((note: Note) => {
-    openNote(note)
+    runAsyncSafely(
+      openNote(note),
+      () => Alert.alert('Error', 'Unable to open note. Please try again.')
+    )
   }, [openNote])
 
-  const handleOpenAiResult = useCallback((noteId: string, charOffset: number, chunkLength: number) => {
-    router.push({
-      pathname: '/note/[id]',
-      params: {
-        id: noteId,
-        focusOffset: String(charOffset),
-        focusLength: String(chunkLength),
-        focusRequestId: `${noteId}:${charOffset}:${chunkLength}:${Date.now()}`,
-      },
-    })
-  }, [router])
+  const handleOpenAiResult = useCallback((
+    note: Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags'>>,
+    charOffset: number,
+    chunkLength: number
+  ) => {
+    runAsyncSafely(
+      openNote(note, {
+        chunkFocus: {
+          charOffset,
+          chunkLength,
+        },
+      }),
+      () => Alert.alert('Error', 'Unable to open note. Please try again.')
+    )
+  }, [openNote])
 
   const handleBulkDelete = useCallback(() => {
     const count = selectedIds.size
@@ -561,9 +580,20 @@ export default function SearchScreen() {
     }
     runAsyncSafely(fetchNextPage())
   }, [aiModeEnabled, fetchNextPage, loadMoreAI])
+  const handleRefreshResults = useCallback(() => {
+    if (aiModeEnabled) {
+      resetAIResults()
+      runAsyncSafely(refetchAISearch())
+      return
+    }
+    runAsyncSafely(refetchRegularSearch())
+  }, [aiModeEnabled, refetchAISearch, refetchRegularSearch, resetAIResults])
   const handleHistoryItemPress = useCallback((item: string) => {
     setQuery(applyHistoryItem(item))
   }, [applyHistoryItem])
+  const isResultsRefreshing = aiModeEnabled
+    ? isAIRefreshing
+    : isRegularFetching && !isFetchingNextPage && regularResults.length > 0
 
   return (
     <View style={styles.container}>
@@ -606,6 +636,7 @@ export default function SearchScreen() {
         regularResults={regularResults as SearchResultItem[]}
         aiModeEnabled={aiModeEnabled}
         isAILoading={isAILoading}
+        isResultsRefreshing={isResultsRefreshing}
         noteGroups={noteGroups}
         aiQueryReady={aiQueryReady}
         aiError={aiError}
@@ -624,6 +655,7 @@ export default function SearchScreen() {
         hasMore={aiModeEnabled ? aiHasMore : hasNextPage}
         loadingMore={aiModeEnabled ? aiLoadingMore : isFetchingNextPage}
         onLoadMore={handleLoadMore}
+        onRefreshResults={handleRefreshResults}
         bottomInset={listBottomInset}
         shouldShowEmptyResults={shouldShowEmptyResults}
         shouldShowIdleState={shouldShowIdleState}

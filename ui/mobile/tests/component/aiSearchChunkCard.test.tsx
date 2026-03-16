@@ -54,7 +54,11 @@ describe('AiSearchChunkCard', () => {
 
     fireEvent.press(screen.getByTestId('ai-chunk-card-note-7-2'))
 
-    expect(onOpenInContext).toHaveBeenCalledWith('note-7', 144, 'A focused chunk of text'.length)
+    expect(onOpenInContext).toHaveBeenCalledWith({
+      id: 'note-7',
+      title: 'Semantic note',
+      tags: ['philosophy', 'science'],
+    }, 144, 'A focused chunk of text'.length)
     expect(screen.getByText('82%')).toBeTruthy()
   })
 

@@ -69,6 +69,7 @@ jest.mock('@ui/mobile/services/database', () => ({
     markDeleted: jest.fn().mockResolvedValue(undefined),
     saveNotes: jest.fn().mockResolvedValue(undefined),
     getLocalNotes: jest.fn().mockResolvedValue([]),
+    hasPendingWrites: jest.fn().mockResolvedValue(false),
     searchNotes: jest.fn().mockResolvedValue([]),
   },
 }))
@@ -131,12 +132,13 @@ jest.mock('@ui/mobile/components/tags', () => ({
 }))
 
 jest.mock('@shopify/flash-list', () => ({
-  FlashList: ({ data, renderItem, keyExtractor }: {
+  FlashList: ({ data, renderItem, keyExtractor, onRefresh }: {
     data: unknown[]
     renderItem: (info: { item: unknown }) => React.ReactElement
     keyExtractor: (item: unknown) => string
+    onRefresh?: () => void
   }) => {
-    const { ScrollView, View } = require('react-native')
+    const { ScrollView, View, Pressable, Text } = require('react-native')
     return (
       <ScrollView testID="search-results-list">
         {data.map((item) => (
@@ -144,6 +146,9 @@ jest.mock('@shopify/flash-list', () => ({
             {renderItem({ item })}
           </View>
         ))}
+        <Pressable testID="search-results-refresh" onPress={onRefresh}>
+          <Text>Refresh</Text>
+        </Pressable>
       </ScrollView>
     )
   },
@@ -261,6 +266,23 @@ describe('SearchScreen - AI search', () => {
           focusLength: String('This is the most relevant chunk for the query.'.length),
         }),
       })
+    })
+  })
+
+  it('re-runs AI search when the results list is refreshed', async () => {
+    await enableAISearch()
+
+    fireEvent.changeText(screen.getByPlaceholderText('Search notes...'), 'semantic query')
+
+    await screen.findByTestId('ai-note-card-ai-note-1')
+    expect(mockInvoke).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('search-results-refresh'))
+    })
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledTimes(2)
     })
   })
 

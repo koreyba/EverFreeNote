@@ -4,6 +4,7 @@
     "types": ["jest", "node"]
   },
   "include": [
+    "core/types/**/*.d.ts",
     "core/tests/**/*.ts",
     "core/tests/**/*.tsx",
     "ui/web/tests/**/*.ts",

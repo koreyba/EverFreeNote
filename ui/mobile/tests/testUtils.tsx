@@ -141,6 +141,17 @@ export function createMockNoteService(state: MockNoteServiceState) {
       return Promise.resolve(note)
     }),
 
+    getNoteStatus: jest.fn().mockImplementation((id: string) => {
+      if (state.deletedIds.has(id)) {
+        return Promise.resolve({ status: 'not_found' })
+      }
+      const note = state.notes.find(n => n.id === id)
+      if (!note) {
+        return Promise.resolve({ status: 'not_found' })
+      }
+      return Promise.resolve({ status: 'found', note })
+    }),
+
     deleteNote: jest.fn().mockImplementation((id: string) => {
       state.deletedIds.add(id)
       return Promise.resolve(id)
@@ -173,6 +184,7 @@ export function createMockDatabaseService() {
     saveNotes: jest.fn().mockResolvedValue(undefined),
     getLocalNotes: jest.fn().mockResolvedValue([]),
     searchNotes: jest.fn().mockResolvedValue([]),
+    hasPendingWrites: jest.fn().mockResolvedValue(false),
   }
 }
 
@@ -259,6 +271,9 @@ export function createMockTheme() {
       card: '#ffffff',
       border: '#e0e0e0',
       accent: '#f2f2f2',
+      selectionBackground: '#f2fff2',
+      selectionBorder: '#00aa00',
+      selectionForeground: '#006600',
       primary: '#00aa00',
       primaryForeground: '#ffffff',
       secondary: '#f7f7f7',

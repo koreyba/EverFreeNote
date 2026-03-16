@@ -3,11 +3,18 @@ import type { Note } from '@core/types/domain'
 import { useOpenNote } from '@ui/mobile/hooks/useOpenNote'
 
 const mockPush = jest.fn()
+const mockGetLocalNoteById = jest.fn()
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+}))
+
+jest.mock('@ui/mobile/services/database', () => ({
+  databaseService: {
+    getLocalNoteById: (...args: unknown[]) => mockGetLocalNoteById(...args),
+  },
 }))
 
 const createNote = (overrides: Partial<Note> = {}): Note => ({
@@ -23,51 +30,40 @@ const createNote = (overrides: Partial<Note> = {}): Note => ({
 describe('useOpenNote', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockGetLocalNoteById.mockResolvedValue(null)
   })
 
-  it('opens a plain note route when chunk focus is not provided', () => {
+  it('opens a plain note route and seeds the detail cache when chunk focus is not provided', async () => {
     const queryClient = createTestQueryClient()
     const wrapper = createQueryWrapper(queryClient)
     const note = createNote()
 
     const { result } = renderHook(() => useOpenNote(), { wrapper })
 
-    act(() => {
-      result.current(note)
+    await act(async () => {
+      await result.current(note)
     })
 
     expect(mockPush).toHaveBeenCalledWith('/note/note-1')
-    expect(queryClient.getQueryData(['note', note.id])).toEqual(note)
+    expect(queryClient.getQueryData(['note', note.id])).toEqual({
+      note,
+      status: 'found',
+    })
   })
 
-  it('prefers the freshest cached note before opening a focused chunk route', () => {
+  it('opens a focused chunk route and seeds the note detail cache', async () => {
     const queryClient = createTestQueryClient()
     const wrapper = createQueryWrapper(queryClient)
-    const fallbackNote = createNote({
+    const note = createNote({
       id: 'note-42',
       title: 'Fallback title',
       updated_at: '2026-03-10T10:00:00.000Z',
     })
-    const fresherSearchNote = createNote({
-      id: 'note-42',
-      title: 'Fresh search title',
-      description: 'Newer cached body',
-      updated_at: '2026-03-11T12:00:00.000Z',
-    })
-
-    queryClient.setQueryData(['search', 'meaning'], {
-      pages: [
-        {
-          results: [fresherSearchNote],
-        },
-      ],
-      pageParams: [undefined],
-    })
 
     const { result } = renderHook(() => useOpenNote(), { wrapper })
 
-    act(() => {
-      result.current(fallbackNote, {
+    await act(async () => {
+      await result.current(note, {
         chunkFocus: {
           charOffset: 128,
           chunkLength: 24,
@@ -76,7 +72,10 @@ describe('useOpenNote', () => {
       })
     })
 
-    expect(queryClient.getQueryData(['note', 'note-42'])).toEqual(fresherSearchNote)
+    expect(queryClient.getQueryData(['note', 'note-42'])).toEqual({
+      note,
+      status: 'found',
+    })
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/note/[id]',
       params: {
@@ -88,15 +87,15 @@ describe('useOpenNote', () => {
     })
   })
 
-  it('generates a focus request id when one is not supplied', () => {
+  it('generates a focus request id when one is not supplied', async () => {
     const queryClient = createTestQueryClient()
     const wrapper = createQueryWrapper(queryClient)
     const note = createNote({ id: 'note-generated' })
 
     const { result } = renderHook(() => useOpenNote(), { wrapper })
 
-    act(() => {
-      result.current(note, {
+    await act(async () => {
+      await result.current(note, {
         chunkFocus: {
           charOffset: 42,
           chunkLength: 9,
@@ -113,5 +112,30 @@ describe('useOpenNote', () => {
         focusRequestId: expect.stringMatching(/^note-generated:42:9:.+$/),
       }),
     })
+  })
+
+  it('falls back to the local database when only the note id is available', async () => {
+    const queryClient = createTestQueryClient()
+    const wrapper = createQueryWrapper(queryClient)
+    const localNote = createNote({
+      id: 'note-local',
+      title: 'Local title',
+      description: 'Local description',
+    })
+
+    mockGetLocalNoteById.mockResolvedValue(localNote)
+
+    const { result } = renderHook(() => useOpenNote(), { wrapper })
+
+    await act(async () => {
+      await result.current({ id: 'note-local' })
+    })
+
+    expect(mockGetLocalNoteById).toHaveBeenCalledWith('note-local')
+    expect(queryClient.getQueryData(['note', 'note-local'])).toEqual({
+      note: localNote,
+      status: 'found',
+    })
+    expect(mockPush).toHaveBeenCalledWith('/note/note-local')
   })
 })
