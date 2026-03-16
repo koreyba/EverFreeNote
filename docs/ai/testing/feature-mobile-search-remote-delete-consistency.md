@@ -39,7 +39,7 @@ description: Test strategy for remote deletion reconciliation, offline fallback,
 - [ ] Already-open search results are allowed to keep stale entries before refresh, but stale opens must fail safely with the deleted-note message. After returning from the alert, the stale item may remain in the list until the next confirmed refresh point (manual refresh, cold start, or repeated search).
 - [x] AI search result selected after remote web deletion shows the deleted-note message and no longer opens as a normal note
 - [ ] Temporary server failure still allows local fallback and does not purge local data
-- [ ] Pending local edits win over remote deletion: the note is restored from the locally edited version instead of being silently dropped
+- [x] Pending local edits win over remote deletion: the note is restored from the locally edited version instead of being silently dropped
 - [ ] Bulk delete silently skips already-deleted notes and completes the operation for the remaining ones without error messages
 
 ## End-to-End Tests
@@ -85,6 +85,7 @@ description: Test strategy for remote deletion reconciliation, offline fallback,
 - Executed during follow-up consistency fix:
   - `npx jest --config jest.config.cjs --selectProjects unit-core --runTestsByPath core/tests/unit/core-utils-postgrest.test.ts`
   - `npm test -- --runTestsByPath tests/component/useUpdateNote.test.tsx tests/component/mobileSyncService.test.ts --runInBand` in `ui/mobile`
+  - `npm test -- --runTestsByPath tests/integration/noteSaveExit.test.tsx --runInBand` in `ui/mobile`
 - Result:
   - All commands above passed.
 - Remaining gaps:

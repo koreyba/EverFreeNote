@@ -198,8 +198,10 @@ jest.mock('@ui/mobile/components/NoteIndexMenu', () => ({
 
 import NoteEditorScreen from '@ui/mobile/app/note/[id]'
 import { NoteService } from '@core/services/notes'
+import { databaseService } from '@ui/mobile/services/database'
 
 const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
+const mockGetLocalNotes = databaseService.getLocalNotes as jest.Mock
 
 type ExitMode = 'ui-back' | 'hardware-back'
 type InputMode = 'paste' | 'typing'
@@ -211,6 +213,7 @@ const setupNoteState = (note: Note) => {
   mockNoteService.prototype.getNote = service.getNote
   mockNoteService.prototype.getNoteStatus = service.getNoteStatus
   mockNoteService.prototype.updateNote = service.updateNote
+  mockNoteService.prototype.createNote = service.createNote
   mockNoteService.prototype.deleteNote = service.deleteNote
 
   return state
@@ -373,5 +376,106 @@ describe('NoteEditorScreen - save on exit', () => {
 
       reopened.unmount()
     })
+  })
+
+  it('recreates the note after a remote deletion when mobile saves last', async () => {
+    const note = createMockNote({
+      id: 'note-remote-delete',
+      title: 'Existing title',
+      description: '<p>Existing</p>',
+      tags: ['tag1'],
+    })
+    const recreatedHtml = '<p>Restored on mobile</p>'
+    const state = setupNoteState(note)
+    const pgrst116 = Object.assign(new Error('PGRST116'), { code: 'PGRST116' })
+
+    mockGetLocalNotes.mockResolvedValue([note])
+    mockNoteService.prototype.updateNote = jest.fn().mockImplementation(async (id: string, updates: Partial<Note>) => {
+      state.updatedNotes.set(id, updates)
+
+      if (state.deletedIds.has(id)) {
+        throw pgrst116
+      }
+
+      const noteIndex = state.notes.findIndex((item) => item.id === id)
+      if (noteIndex >= 0) {
+        state.notes[noteIndex] = { ...state.notes[noteIndex], ...updates }
+      }
+
+      return {
+        ...state.notes[noteIndex],
+        id,
+        ...updates,
+      }
+    })
+    mockNoteService.prototype.createNote = jest.fn().mockImplementation(async ({
+      id,
+      title,
+      description,
+      tags,
+      userId,
+    }: {
+      id: string
+      title: string
+      description: string
+      tags: string[]
+      userId: string
+    }) => {
+      const recreatedNote = createMockNote({
+        id,
+        title,
+        description,
+        tags,
+        created_at: note.created_at,
+        updated_at: '2026-03-16T10:00:00.000Z',
+        user_id: userId,
+      })
+
+      state.deletedIds.delete(id)
+      const noteIndex = state.notes.findIndex((item) => item.id === id)
+
+      if (noteIndex >= 0) {
+        state.notes[noteIndex] = recreatedNote
+      } else {
+        state.notes.push(recreatedNote)
+      }
+
+      state.createdNotes.push(recreatedNote)
+      return recreatedNote
+    })
+
+    const { unmount } = renderNoteEditor(note.id)
+    await waitForEditorReady()
+
+    act(() => {
+      state.deletedIds.add(note.id)
+    })
+
+    act(() => {
+      mockEditorCallbacks.onContentChange?.(recreatedHtml)
+    })
+
+    act(() => {
+      simulateExit('ui-back', unmount)
+    })
+
+    await waitFor(() => {
+      expect(mockNoteService.prototype.createNote).toHaveBeenCalledWith({
+        id: note.id,
+        title: note.title,
+        description: recreatedHtml,
+        tags: note.tags,
+        userId: note.user_id,
+      })
+    })
+
+    const reopened = renderNoteEditor(note.id)
+    await waitForEditorReady()
+
+    await waitFor(() => {
+      expect(mockEditorState.initialContent).toBe(recreatedHtml)
+    })
+
+    reopened.unmount()
   })
 })

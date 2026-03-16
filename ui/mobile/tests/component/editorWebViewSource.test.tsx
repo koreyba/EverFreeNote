@@ -1,5 +1,5 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
-import { StyleSheet } from 'react-native'
+import { StyleSheet, type ViewStyle } from 'react-native'
 
 const mockPostMessage = jest.fn()
 let lastWebViewProps: {
@@ -98,7 +98,7 @@ const sendReady = () => {
   })
 }
 
-const getFlattenedWebViewStyle = () => StyleSheet.flatten(lastWebViewProps?.style) ?? {}
+const getFlattenedWebViewStyle = (): Partial<ViewStyle> => StyleSheet.flatten(lastWebViewProps?.style) ?? {}
 
 describe('EditorWebView source selection', () => {
   let warnSpy: jest.SpyInstance
