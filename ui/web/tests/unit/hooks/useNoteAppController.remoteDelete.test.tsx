@@ -123,7 +123,6 @@ jest.mock('@ui/web/hooks/useNotesQuery', () => ({
 }))
 
 jest.mock('@ui/web/hooks/useNoteData', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useNoteData: () => ({
     notes: [],
     resolveSearchResult: jest.fn((r: unknown) => r),
