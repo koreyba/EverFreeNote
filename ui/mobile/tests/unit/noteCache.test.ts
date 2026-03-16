@@ -40,6 +40,11 @@ const buildSearchData = (results: SearchPage['results']): InfiniteData<SearchPag
   pageParams: [0],
 })
 
+const buildNoteDetailData = (note: Note | null, status: 'found' | 'missing' | 'deleted' = 'found') => ({
+  note,
+  status,
+})
+
 describe('noteCache utilities', () => {
   let queryClient: QueryClient
 
@@ -64,7 +69,7 @@ describe('noteCache utilities', () => {
       updated_at: '2025-01-02T10:00:00.000Z',
     })
 
-    queryClient.setQueryData(['note', noteId], older)
+    queryClient.setQueryData(['note', noteId], buildNoteDetailData(older))
     queryClient.setQueryData(notesQueryKey, buildNotesData([newer]))
 
     const cached = getCachedNote(queryClient, noteId)
@@ -86,7 +91,7 @@ describe('noteCache utilities', () => {
       headline: 'Headline',
     }
 
-    queryClient.setQueryData(['note', noteId], base)
+    queryClient.setQueryData(['note', noteId], buildNoteDetailData(base))
     queryClient.setQueryData(notesQueryKey, buildNotesData([base]))
     queryClient.setQueryData(searchQueryKey, buildSearchData([searchResult]))
 
@@ -95,13 +100,14 @@ describe('noteCache utilities', () => {
       description: 'New description',
     }, { updatedAt: '2025-01-02T09:00:00.000Z' })
 
-    const noteCache = queryClient.getQueryData<Note>(['note', noteId])
+    const noteCache = queryClient.getQueryData<{ note: Note | null; status: 'found' | 'missing' | 'deleted' }>(['note', noteId])
     const notesCache = queryClient.getQueryData<InfiniteData<NotesPage>>(notesQueryKey)
     const searchCache = queryClient.getQueryData<InfiniteData<SearchPage>>(searchQueryKey)
 
-    expect(noteCache?.title).toBe('New title')
-    expect(noteCache?.description).toBe('New description')
-    expect(noteCache?.updated_at).toBe('2025-01-02T09:00:00.000Z')
+    expect(noteCache?.status).toBe('found')
+    expect(noteCache?.note?.title).toBe('New title')
+    expect(noteCache?.note?.description).toBe('New description')
+    expect(noteCache?.note?.updated_at).toBe('2025-01-02T09:00:00.000Z')
 
     expect(notesCache?.pages[0].notes[0].title).toBe('New title')
     expect(notesCache?.pages[0].notes[0].description).toBe('New description')
@@ -109,5 +115,33 @@ describe('noteCache utilities', () => {
     expect(searchCache?.pages[0].results[0].title).toBe('New title')
     expect(searchCache?.pages[0].results[0].description).toBe('New description')
     expect(searchCache?.pages[0].results[0].snippet).toBe('Snippet')
+  })
+
+  it('creates a found note-detail cache entry from list cache fallback', () => {
+    const noteId = 'note-3'
+    const base = createMockNote({
+      id: noteId,
+      title: 'List title',
+      description: 'List description',
+      updated_at: '2025-01-01T08:00:00.000Z',
+    })
+
+    queryClient.setQueryData(notesQueryKey, buildNotesData([base]))
+
+    updateNoteCaches(queryClient, noteId, {
+      description: 'Fresh description',
+    }, { updatedAt: '2025-01-02T09:00:00.000Z' })
+
+    const noteCache = queryClient.getQueryData<{ note: Note | null; status: 'found' | 'missing' | 'deleted' }>(['note', noteId])
+
+    expect(noteCache).toEqual({
+      note: expect.objectContaining({
+        id: noteId,
+        title: 'List title',
+        description: 'Fresh description',
+        updated_at: '2025-01-02T09:00:00.000Z',
+      }),
+      status: 'found',
+    })
   })
 })
