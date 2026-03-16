@@ -101,8 +101,9 @@ describe('useNoteSync — performSync upsert', () => {
     expect(create).not.toHaveBeenCalled()
   })
 
-  it('falls back to create with same ID when update fails (remote deletion)', async () => {
-    const update = jest.fn().mockRejectedValue(new Error('PGRST116'))
+  it('falls back to create with same ID when update fails with PGRST116 (remote deletion)', async () => {
+    const pgrst116 = Object.assign(new Error('PGRST116'), { code: 'PGRST116' })
+    const update = jest.fn().mockRejectedValue(pgrst116)
     const create = jest.fn().mockResolvedValue({})
     renderSyncHook({ update, create })
 
@@ -112,6 +113,19 @@ describe('useNoteSync — performSync upsert', () => {
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'note-1', userId: 'user-1', title: 'Title' }),
     )
+  })
+
+  it('re-throws non-PGRST116 update errors without attempting create', async () => {
+    const update = jest.fn().mockRejectedValue(new Error('network failure'))
+    const create = jest.fn()
+    renderSyncHook({ update, create })
+
+    await expect(
+      capturedPerformSync!(makeQueueItem()),
+    ).rejects.toThrow('network failure')
+
+    expect(update).toHaveBeenCalled()
+    expect(create).not.toHaveBeenCalled()
   })
 
   it('throws when user is not authenticated', async () => {

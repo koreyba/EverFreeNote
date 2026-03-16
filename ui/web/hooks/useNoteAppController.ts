@@ -179,6 +179,8 @@ export function useNoteAppController() {
   // Ref to avoid stale closure in save handlers and nav wrappers
   const selectedNoteRef = useRef(selectedNote)
   const latestEditRequestRef = useRef(0)
+  const latestSelectRequestRef = useRef(0)
+  const latestSearchClickRequestRef = useRef(0)
   useEffect(() => {
     selectedNoteRef.current = selectedNote
   }, [selectedNote])
@@ -211,8 +213,8 @@ export function useNoteAppController() {
         await offlineCache.deleteNote(note.id)
         setOfflineOverlay((current) => current.filter((cachedNote) => cachedNote.id !== note.id))
         toast.error('This note was deleted on another device.')
-        void queryClient.invalidateQueries({ queryKey: ['notes'] })
-        void queryClient.invalidateQueries({ queryKey: ['aiSearch'] })
+        queryClient.invalidateQueries({ queryKey: ['notes'] }).catch(() => {})
+        queryClient.invalidateQueries({ queryKey: ['aiSearch'] }).catch(() => {})
         return null
       }
 
@@ -277,13 +279,16 @@ export function useNoteAppController() {
 
   // -- Nav wrappers: flush pending editor save before any navigation --
   const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null) => {
+    const requestId = ++latestSelectRequestRef.current
     await flushPendingEditorSave()
+    if (requestId !== latestSelectRequestRef.current) return
     if (note?.id && selectedNoteRef.current?.id === note.id) {
       setIsEditing(false)
       setLastSavedAt(null)
       return
     }
     const openableNote = note ? await resolveOpenableNote(note) : null
+    if (requestId !== latestSelectRequestRef.current) return
     if (note && !openableNote) return
     handleSelectNote(openableNote)
     setLastSavedAt(null)
@@ -317,13 +322,16 @@ export function useNoteAppController() {
   }, [flushPendingEditorSave, onTagClick, setSelectedNote, setIsEditing, setLastSavedAt])
 
   const wrappedHandleSearchResultClick = useCallback(async (note: SearchResult) => {
+    const requestId = ++latestSearchClickRequestRef.current
     await flushPendingEditorSave()
+    if (requestId !== latestSearchClickRequestRef.current) return
     if (note?.id && selectedNoteRef.current?.id === note.id) {
       setIsEditing(false)
       setLastSavedAt(null)
       return
     }
     const openableNote = await resolveOpenableNote(resolveSearchResult(note))
+    if (requestId !== latestSearchClickRequestRef.current) return
     if (!openableNote) return
     handleSearchResultClick(openableNote)
     setLastSavedAt(null)

@@ -23,7 +23,7 @@
     {
       "name": "mobile",
       "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "npm", "run", "start:dev"],
+      "runtimeArgs": ["/c", "cd", "ui/mobile", "&&", "npm", "run", "start:dev"],
       "port": 8081
     }
   ]

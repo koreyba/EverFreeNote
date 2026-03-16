@@ -74,10 +74,11 @@ describe('useNoteSaveHandlers — handleSaveNote upsert', () => {
     expect(params.setLastSavedAt).toHaveBeenCalled()
   })
 
-  it('re-creates note with same ID when update fails (remote deletion)', async () => {
+  it('re-creates note with same ID when update fails with PGRST116 (remote deletion)', async () => {
     const recreated = makeNote({ title: 'Recreated' })
+    const pgrst116 = Object.assign(new Error('PGRST116'), { code: 'PGRST116' })
     const { result, params } = setup({
-      updateNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(new Error('PGRST116')) },
+      updateNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(pgrst116) },
       createNoteMutation: { mutateAsync: jest.fn().mockResolvedValue(recreated) },
     })
 
@@ -92,11 +93,31 @@ describe('useNoteSaveHandlers — handleSaveNote upsert', () => {
     expect(params.setLastSavedAt).toHaveBeenCalled()
   })
 
-  it('logs error and skips setLastSavedAt when both update and create fail', async () => {
+  it('re-throws non-PGRST116 update errors without attempting create', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
 
     const { result, params } = setup({
-      updateNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(new Error('update fail')) },
+      updateNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(new Error('network failure')) },
+      createNoteMutation: { mutateAsync: jest.fn() },
+    })
+
+    await act(async () => {
+      await result.current.handleSaveNote({ title: 'X', description: '', tags: '' })
+    })
+
+    expect(consoleSpy).toHaveBeenCalledWith('Error saving note:', expect.any(Error))
+    expect(params.createNoteMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(params.setLastSavedAt).not.toHaveBeenCalled()
+
+    consoleSpy.mockRestore()
+  })
+
+  it('logs error when PGRST116 update → create fallback also fails', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
+    const pgrst116 = Object.assign(new Error('PGRST116'), { code: 'PGRST116' })
+
+    const { result, params } = setup({
+      updateNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(pgrst116) },
       createNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(new Error('create fail')) },
     })
 
@@ -105,6 +126,7 @@ describe('useNoteSaveHandlers — handleSaveNote upsert', () => {
     })
 
     expect(consoleSpy).toHaveBeenCalledWith('Error saving note:', expect.any(Error))
+    expect(params.createNoteMutation.mutateAsync).toHaveBeenCalled()
     expect(params.setLastSavedAt).not.toHaveBeenCalled()
 
     consoleSpy.mockRestore()

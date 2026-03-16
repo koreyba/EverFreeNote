@@ -167,6 +167,11 @@ export default function NoteEditorScreen() {
   const editorRef = useRef<EditorWebViewHandle>(null)
   const deletedMessageShownRef = useRef(false)
   const [title, setTitle] = useState('')
+
+  // Reset deleted-message guard when navigating to a different note
+  useEffect(() => {
+    deletedMessageShownRef.current = false
+  }, [id])
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)

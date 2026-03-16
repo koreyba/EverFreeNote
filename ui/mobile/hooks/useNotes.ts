@@ -111,7 +111,7 @@ export function useNote(id: string) {
 
         if (remoteResult.status === 'not_found') {
           await databaseService.markDeleted(id, user.id)
-          void queryClient.invalidateQueries({ queryKey: ['notes'] })
+          queryClient.invalidateQueries({ queryKey: ['notes'] }).catch(() => {})
           return {
             note: null,
             status: 'deleted' as const,

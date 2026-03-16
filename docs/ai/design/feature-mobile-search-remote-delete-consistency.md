@@ -59,9 +59,8 @@ graph TD
 ## API Design
 **How do components communicate?**
 
-- `NoteService.getNote(id)`:
-  - Current behavior throws generic errors.
-  - Proposed behavior returns a typed outcome or throws only for truly unexpected states.
+- `NoteService.getNoteStatus(id)`:
+  - Returns a typed outcome: `{ status: 'found', note }`, `{ status: 'not_found' }`, or `{ status: 'error', error }`.
   - A server-side missing row becomes `not_found`, not a generic exception.
 - `useNote(id)`:
   - If offline or the remote lookup result is `transient_error`, local fallback is allowed.

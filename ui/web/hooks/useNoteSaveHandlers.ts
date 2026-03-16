@@ -248,8 +248,10 @@ export function useNoteSaveHandlers({
           try {
             const updated = await updateNoteMutation.mutateAsync({ id: selectedNote.id, ...noteData })
             savedNote = { ...selectedNote, ...updated }
-          } catch {
-            // Note was deleted remotely while being edited — re-create with the same ID
+          } catch (error) {
+            // PGRST116 = .single() returned 0 rows → note was deleted remotely
+            if (!(error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'PGRST116')) throw error
+            // Re-create with the same ID so the user's in-progress work is preserved
             const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id, id: selectedNote.id })
             savedNote = created as NoteViewModel
           }

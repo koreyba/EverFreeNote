@@ -287,7 +287,7 @@ export class DatabaseService {
     async hasPendingWrites(noteId: string): Promise<boolean> {
         const db = await this.init()
         const row = await db.getFirstAsync<{ cnt: number }>(
-            "SELECT COUNT(*) as cnt FROM mutation_queue WHERE noteId = ? AND operation != 'delete' AND status = 'pending'",
+            "SELECT COUNT(*) as cnt FROM mutation_queue WHERE noteId = ? AND operation != 'delete' AND status IN ('pending', 'failed')",
             [noteId]
         )
         return (row?.cnt ?? 0) > 0

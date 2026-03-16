@@ -582,7 +582,7 @@ export default function SearchScreen() {
   }, [applyHistoryItem])
   const isResultsRefreshing = aiModeEnabled
     ? isAIRefreshing
-    : isRegularFetching && regularResults.length > 0
+    : isRegularFetching && !isFetchingNextPage && regularResults.length > 0
 
   return (
     <View style={styles.container}>

@@ -73,8 +73,10 @@ export function useNoteSync({
                         description: payload.description ?? '',
                         tags: payload.tags ?? [],
                     })
-                } catch {
-                    // Note was deleted remotely — re-create with the same ID
+                } catch (error) {
+                    // PGRST116 = .single() returned 0 rows → note was deleted remotely
+                    if (!(error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'PGRST116')) throw error
+                    // Re-create with the same ID so the user's queued edits are preserved
                     await createMutationRef.current.mutateAsync({
                         id: item.noteId,
                         title: payload.title ?? 'Untitled',
