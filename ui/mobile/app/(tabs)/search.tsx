@@ -483,7 +483,10 @@ export default function SearchScreen() {
   }, [deleteNote])
 
   const handleRegularNotePress = useCallback((note: Note) => {
-    void openNote(note)
+    runAsyncSafely(
+      openNote(note),
+      () => Alert.alert('Error', 'Unable to open note. Please try again.')
+    )
   }, [openNote])
 
   const handleOpenAiResult = useCallback((
@@ -491,12 +494,15 @@ export default function SearchScreen() {
     charOffset: number,
     chunkLength: number
   ) => {
-    void openNote(note, {
-      chunkFocus: {
-        charOffset,
-        chunkLength,
-      },
-    })
+    runAsyncSafely(
+      openNote(note, {
+        chunkFocus: {
+          charOffset,
+          chunkLength,
+        },
+      }),
+      () => Alert.alert('Error', 'Unable to open note. Please try again.')
+    )
   }, [openNote])
 
   const handleBulkDelete = useCallback(() => {

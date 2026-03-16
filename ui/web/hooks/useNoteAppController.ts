@@ -305,6 +305,7 @@ export function useNoteAppController() {
     await flushPendingEditorSave()
     if (requestId !== latestEditRequestRef.current) return
     const openableNote = await resolveOpenableNote(note)
+    if (requestId !== latestEditRequestRef.current) return
     if (!openableNote) {
       handleSelectNote(null)
       return

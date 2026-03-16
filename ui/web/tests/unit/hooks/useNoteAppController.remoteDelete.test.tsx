@@ -355,5 +355,48 @@ describe('useNoteAppController — remote delete consistency', () => {
       )
       expect(mockHandleSelectNote).not.toHaveBeenCalled()
     })
+    it('ignores stale edit resolution when a newer edit request finishes first', async () => {
+      const first = makeNote({ id: 'note-a', title: 'Note A' })
+      const second = makeNote({ id: 'note-b', title: 'Note B' })
+
+      let resolveFirst: ((value: unknown) => void) | undefined
+      let resolveSecond: ((value: unknown) => void) | undefined
+
+      mockGetNoteStatus.mockImplementation((id: string) => new Promise((resolve) => {
+        if (id === 'note-a') {
+          resolveFirst = resolve
+          return
+        }
+
+        resolveSecond = resolve
+      }))
+
+      const { result } = renderHook(() => useNoteAppController(), {
+        wrapper: createWrapper(),
+      })
+
+      let firstPromise: Promise<void> | undefined
+      let secondPromise: Promise<void> | undefined
+
+      await act(async () => {
+        firstPromise = result.current.handleEditNote(first)
+        secondPromise = result.current.handleEditNote(second)
+      })
+
+      await act(async () => {
+        resolveSecond?.({ status: 'found', note: second })
+        await secondPromise
+      })
+
+      await act(async () => {
+        resolveFirst?.({ status: 'found', note: first })
+        await firstPromise
+      })
+
+      expect(mockHandleEditNoteRaw).toHaveBeenCalledTimes(1)
+      expect(mockHandleEditNoteRaw).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'note-b' }),
+      )
+    })
   })
 })

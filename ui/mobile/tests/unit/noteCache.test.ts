@@ -144,4 +144,28 @@ describe('noteCache utilities', () => {
       status: 'found',
     })
   })
+
+  it('preserves missing tombstones instead of resurrecting stale list cache data', () => {
+    const noteId = 'note-4'
+    const staleListNote = createMockNote({
+      id: noteId,
+      title: 'Stale list note',
+      description: 'Old description',
+      updated_at: '2025-01-01T08:00:00.000Z',
+    })
+
+    queryClient.setQueryData(['note', noteId], buildNoteDetailData(null, 'missing'))
+    queryClient.setQueryData(notesQueryKey, buildNotesData([staleListNote]))
+
+    updateNoteCaches(queryClient, noteId, {
+      description: 'Should not be applied',
+    }, { updatedAt: '2025-01-02T09:00:00.000Z' })
+
+    const noteCache = queryClient.getQueryData<{ note: Note | null; status: 'found' | 'missing' | 'deleted' }>(['note', noteId])
+
+    expect(noteCache).toEqual({
+      note: null,
+      status: 'missing',
+    })
+  })
 })

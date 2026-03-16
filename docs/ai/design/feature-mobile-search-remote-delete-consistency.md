@@ -60,7 +60,7 @@ graph TD
 **How do components communicate?**
 
 - `NoteService.getNoteStatus(id)`:
-  - Returns a typed outcome: `{ status: 'found', note }`, `{ status: 'not_found' }`, or `{ status: 'error', error }`.
+  - Returns a typed outcome: `{ status: 'found', note }`, `{ status: 'not_found' }`, or `{ status: 'transient_error', error }`.
   - A server-side missing row becomes `not_found`, not a generic exception.
 - `useNote(id)`:
   - If offline or the remote lookup result is `transient_error`, local fallback is allowed.

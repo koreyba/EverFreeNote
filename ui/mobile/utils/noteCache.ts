@@ -106,13 +106,18 @@ export const updateNoteCaches = (
   const fallback = getCachedNote(queryClient, noteId)
 
   queryClient.setQueryData<NoteDetailData | Note | undefined>(['note', noteId], (current) => {
+    const currentStatus = current && 'status' in current ? current.status : undefined
     const currentNote = extractDirectNote(current)
+    if ((currentStatus === 'missing' || currentStatus === 'deleted') && !currentNote) {
+      return current
+    }
+
     const base = currentNote ?? fallback
     if (!base) return current
 
     return {
       note: applyPatch(base, patch),
-      status: current && 'status' in current ? current.status : 'found',
+      status: currentStatus ?? 'found',
     } satisfies NoteDetailData
   })
 
