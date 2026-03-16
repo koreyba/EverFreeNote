@@ -73,8 +73,8 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       justifyContent: 'center',
     },
     tabActive: {
-      backgroundColor: colors.foreground,
-      borderColor: colors.foreground,
+      backgroundColor: colors.selectionBackground,
+      borderColor: colors.selectionBorder,
     },
     tabPressed: {
       opacity: 0.85,
@@ -85,6 +85,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       fontSize: 14,
     },
     labelActive: {
-      color: colors.background,
+      color: colors.selectionForeground,
     },
   })

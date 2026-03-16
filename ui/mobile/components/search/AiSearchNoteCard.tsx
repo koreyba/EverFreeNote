@@ -233,11 +233,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     elevation: 2,
   },
   cardSelected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.primary,
+    backgroundColor: colors.selectionBackground,
+    borderColor: colors.selectionBorder,
   },
   cardPressed: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.selectionBackground,
   },
   headerRow: {
     flexDirection: 'row',
