@@ -3,10 +3,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { TagList } from '@ui/mobile/components/tags/TagList'
 import { useTheme } from '@ui/mobile/providers'
 import type { RagChunk } from '@core/types/ragSearch'
+import type { Note } from '@core/types/domain'
 
 type AiSearchChunkCardProps = {
   chunk: RagChunk
-  onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+  onOpenInContext: (
+    note: Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags'>>,
+    charOffset: number,
+    chunkLength: number
+  ) => void
   onTagPress?: (tag: string) => void
 }
 
@@ -18,11 +23,16 @@ export const AiSearchChunkCard = memo(function AiSearchChunkCard({
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const noteTags = chunk.noteTags ?? []
+  const noteSnapshot = useMemo(() => ({
+    id: chunk.noteId,
+    title: chunk.noteTitle,
+    tags: noteTags,
+  }), [chunk.noteId, chunk.noteTitle, noteTags])
 
   return (
     <Pressable
       testID={`ai-chunk-card-${chunk.noteId}-${chunk.chunkIndex}`}
-      onPress={() => onOpenInContext(chunk.noteId, chunk.charOffset, chunk.content.length)}
+      onPress={() => onOpenInContext(noteSnapshot, chunk.charOffset, chunk.content.length)}
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.card,

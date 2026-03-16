@@ -77,13 +77,13 @@ export default function NotesScreen() {
   const handleCreateNote = useCallback(() => {
     createNote({ title: 'New note', description: '', tags: [] }, {
       onSuccess: (newNote) => {
-        openNote(newNote)
+        void openNote(newNote)
       }
     })
   }, [createNote, openNote])
 
   const handleOpenNote = useCallback((note: Note) => {
-    openNote(note)
+    void openNote(note)
   }, [openNote])
 
   const handleTagPress = useCallback((tag: string) => {

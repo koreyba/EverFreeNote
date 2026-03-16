@@ -537,7 +537,7 @@ describe('SearchScreen - Delete Functionality', () => {
       const { result: openNote } = renderHook(() => useOpenNote(), { wrapper })
 
       await act(async () => {
-        openNote.current(mockSearchResults[0])
+        await openNote.current(mockSearchResults[0])
       })
       const cached = queryClient.getQueryData(['note', 'search-note-1'])
       expect(cached).toEqual(expect.objectContaining({

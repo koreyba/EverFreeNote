@@ -28,6 +28,8 @@ description: Implementation notes for reconciling remote deletions on mobile whi
   - Owns search-screen lifecycle behavior and user-facing state
 - `ui/mobile/app/note/[id].tsx`
   - Owns deleted-note UX in the detail flow
+- `ui/mobile/hooks/useOpenNote.ts`
+  - Owns fast-open note hydration before background revalidation
 
 ## Implementation Notes
 **Key technical details to remember:**
@@ -49,7 +51,7 @@ description: Implementation notes for reconciling remote deletions on mobile whi
 ### Actual Implementation Status
 - `core/services/notes.ts` now exposes `getNoteStatus()` with `found`, `not_found`, and `transient_error`.
 - `ui/mobile/hooks/useNotes.ts` uses that semantic result to allow local fallback only for transient failures and to mark remotely deleted notes as deleted in SQLite.
-- `ui/mobile/hooks/useOpenNote.ts` no longer seeds the note detail query cache from stale search results before navigation.
+- `ui/mobile/hooks/useOpenNote.ts` now restores fast-open behavior by seeding the note detail cache from the best available local snapshot (React Query first, then SQLite fallback) before navigation.
 - `ui/mobile/app/note/[id].tsx` shows deleted-note feedback and returns the user to the previous context instead of rendering a stale note.
 - `ui/mobile/components/search/SearchResultsList.tsx` now supports pull-to-refresh, and `ui/mobile/app/(tabs)/search.tsx` wires it to both regular search and AI search refetch flows.
 - `ui/web/hooks/useNoteAppController.ts` now revalidates notes before opening them from the web list/search when the browser is online and there are no unsynced local edits for that note. Confirmed `not_found` clears stale offline cache for that note, shows deleted-note feedback, and invalidates notes queries instead of promoting stale data into `selectedNote`.
@@ -61,6 +63,7 @@ description: Implementation notes for reconciling remote deletions on mobile whi
 - Keep transport-error interpretation centralized instead of duplicating it inside screen components.
 - Reuse existing cache invalidation helpers where possible.
 - Prefer targeted local cleanup over broad cache/database resets.
+- Optimize first paint for note opening from local snapshots, then let remote validation correct stale state afterward.
 
 ## Integration Points
 **How do pieces connect?**

@@ -4,10 +4,15 @@ import { Check, ChevronDown, ChevronUp } from 'lucide-react-native'
 import { TagList } from '@ui/mobile/components/tags/TagList'
 import { useTheme } from '@ui/mobile/providers'
 import type { RagNoteGroup } from '@core/types/ragSearch'
+import type { Note } from '@core/types/domain'
 
 type AiSearchNoteCardProps = {
   group: RagNoteGroup
-  onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+  onOpenInContext: (
+    note: Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags'>>,
+    charOffset: number,
+    chunkLength: number
+  ) => void
   onTagPress?: (tag: string) => void
   onLongPress?: () => void
   selectionMode?: boolean
@@ -124,13 +129,18 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
 
   const topChunk = group.chunks[0]
   const extraChunks = group.chunks.slice(1)
+  const noteSnapshot = useMemo(() => ({
+    id: group.noteId,
+    title: group.noteTitle,
+    tags: group.noteTags,
+  }), [group.noteId, group.noteTags, group.noteTitle])
 
   const handleOpenChunk = (charOffset: number, chunkLength: number) => {
     if (selectionMode) {
       onToggleSelect?.(group.noteId)
       return
     }
-    onOpenInContext(group.noteId, charOffset, chunkLength)
+    onOpenInContext(noteSnapshot, charOffset, chunkLength)
   }
 
   return (

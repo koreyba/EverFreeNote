@@ -167,7 +167,11 @@ type SearchScreenBodyProps = {
   activeMode: 'regular' | 'ai-note' | 'ai-chunk'
   onRegularNotePress: (note: Note) => void
   onDeleteRegularNote: (id: string) => void
-  onOpenAiResult: (noteId: string, charOffset: number, chunkLength: number) => void
+  onOpenAiResult: (
+    note: Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags'>>,
+    charOffset: number,
+    chunkLength: number
+  ) => void
   onTagPress: (tag: string) => void
   onScrollBeginDrag: () => void
   selectionMode: boolean
@@ -479,20 +483,21 @@ export default function SearchScreen() {
   }, [deleteNote])
 
   const handleRegularNotePress = useCallback((note: Note) => {
-    openNote(note)
+    void openNote(note)
   }, [openNote])
 
-  const handleOpenAiResult = useCallback((noteId: string, charOffset: number, chunkLength: number) => {
-    router.push({
-      pathname: '/note/[id]',
-      params: {
-        id: noteId,
-        focusOffset: String(charOffset),
-        focusLength: String(chunkLength),
-        focusRequestId: `${noteId}:${charOffset}:${chunkLength}:${Date.now()}`,
+  const handleOpenAiResult = useCallback((
+    note: Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags'>>,
+    charOffset: number,
+    chunkLength: number
+  ) => {
+    void openNote(note, {
+      chunkFocus: {
+        charOffset,
+        chunkLength,
       },
     })
-  }, [router])
+  }, [openNote])
 
   const handleBulkDelete = useCallback(() => {
     const count = selectedIds.size
