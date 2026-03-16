@@ -511,8 +511,11 @@ describe('SearchScreen - Delete Functionality', () => {
       })
 
       await waitFor(() => {
-        const noteCache = queryClient.getQueryData(['note', 'search-note-1']) as { title?: string } | undefined
-        expect(noteCache?.title).toBe('Updated Title')
+        const noteCache = queryClient.getQueryData(['note', 'search-note-1']) as {
+          note?: { title?: string } | null
+          status?: string
+        } | undefined
+        expect(noteCache?.note?.title).toBe('Updated Title')
       })
 
       await act(async () => {
@@ -537,7 +540,9 @@ describe('SearchScreen - Delete Functionality', () => {
         openNote.current(mockSearchResults[0])
       })
       const cached = queryClient.getQueryData(['note', 'search-note-1'])
-      expect(cached).toEqual(expect.objectContaining({ title: 'Updated Title' }))
+      expect(cached).toEqual(expect.objectContaining({
+        note: expect.objectContaining({ title: 'Updated Title' }),
+      }))
     })
 
     it('open from search -> edit -> return keeps search results updated', async () => {
