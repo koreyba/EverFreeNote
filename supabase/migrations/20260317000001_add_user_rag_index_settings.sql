@@ -1,0 +1,37 @@
+CREATE TABLE public.user_rag_index_settings (
+  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  small_note_threshold integer NOT NULL DEFAULT 300,
+  target_chunk_size integer NOT NULL DEFAULT 200,
+  min_chunk_size integer NOT NULL DEFAULT 100,
+  max_chunk_size integer NOT NULL DEFAULT 400,
+  overlap integer NOT NULL DEFAULT 50,
+  use_title boolean NOT NULL DEFAULT true,
+  use_section_headings boolean NOT NULL DEFAULT true,
+  use_tags boolean NOT NULL DEFAULT true,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_rag_index_settings_small_note_threshold_range CHECK (small_note_threshold BETWEEN 50 AND 5000),
+  CONSTRAINT user_rag_index_settings_target_chunk_size_range CHECK (target_chunk_size BETWEEN 50 AND 5000),
+  CONSTRAINT user_rag_index_settings_min_chunk_size_range CHECK (min_chunk_size BETWEEN 50 AND 5000),
+  CONSTRAINT user_rag_index_settings_max_chunk_size_range CHECK (max_chunk_size BETWEEN 50 AND 5000),
+  CONSTRAINT user_rag_index_settings_overlap_range CHECK (overlap BETWEEN 50 AND 5000),
+  CONSTRAINT user_rag_index_settings_ordering CHECK (min_chunk_size <= target_chunk_size AND target_chunk_size <= max_chunk_size)
+);
+
+ALTER TABLE public.user_rag_index_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own rag index settings"
+  ON public.user_rag_index_settings FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own rag index settings"
+  ON public.user_rag_index_settings FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own rag index settings"
+  ON public.user_rag_index_settings FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own rag index settings"
+  ON public.user_rag_index_settings FOR DELETE
+  USING (auth.uid() = user_id);

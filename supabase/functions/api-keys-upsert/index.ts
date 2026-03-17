@@ -3,6 +3,12 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
+import {
+  assertValidRagIndexingEditableSettings,
+  coerceRagIndexingEditableSettings,
+  resolveRagIndexingSettings,
+} from "../../../core/rag/indexingSettings.ts"
+
 declare const Deno: { env: { get(key: string): string | undefined } }
 
 const corsHeaders = {
@@ -96,11 +102,18 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "geminiApiKey must be a string" }, 400)
     }
 
+    const hasGeminiApiKeyField = "geminiApiKey" in payload
     const rawGeminiKey = typeof payload.geminiApiKey === "string" ? payload.geminiApiKey.trim() : ""
+    const coercedRagIndexingSettings = coerceRagIndexingEditableSettings(payload)
+    const hasRagIndexingFields = Object.keys(coercedRagIndexingSettings).length > 0
 
     const MAX_GEMINI_KEY_LENGTH = 256
     if (rawGeminiKey.length > MAX_GEMINI_KEY_LENGTH) {
       return jsonResponse({ error: `Gemini API key must not exceed ${MAX_GEMINI_KEY_LENGTH} characters` }, 400)
+    }
+
+    if (!hasGeminiApiKeyField && !hasRagIndexingFields) {
+      return jsonResponse({ error: "No Google API settings changes provided" }, 400)
     }
 
     // Fetch existing row to support "keep existing key" on empty input
@@ -114,21 +127,46 @@ serve(async (req: Request) => {
 
     let encryptedKey = existing?.gemini_api_key_encrypted ?? null
 
-    if (rawGeminiKey) {
+    if (hasGeminiApiKeyField && rawGeminiKey) {
       encryptedKey = await encryptValue(rawGeminiKey, encryptionSecret)
     }
 
-    if (!encryptedKey) {
+    if (hasGeminiApiKeyField && !encryptedKey && !hasRagIndexingFields) {
       return jsonResponse({ error: "Gemini API key is required for initial setup" }, 400)
     }
 
-    const { error: upsertError } = await supabaseAdmin
-      .from("user_api_keys")
-      .upsert({ user_id: userId, gemini_api_key_encrypted: encryptedKey, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+    if (hasGeminiApiKeyField && encryptedKey) {
+      const { error: upsertError } = await supabaseAdmin
+        .from("user_api_keys")
+        .upsert({ user_id: userId, gemini_api_key_encrypted: encryptedKey, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
 
-    if (upsertError) throw upsertError
+      if (upsertError) throw upsertError
+    }
 
-    return jsonResponse({ gemini: { configured: true } })
+    let resolvedRagIndexingSettings
+    if (hasRagIndexingFields) {
+      const editableSettings = assertValidRagIndexingEditableSettings(coercedRagIndexingSettings)
+      const { error: ragUpsertError } = await supabaseAdmin
+        .from("user_rag_index_settings")
+        .upsert({ user_id: userId, ...editableSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+
+      if (ragUpsertError) throw ragUpsertError
+      resolvedRagIndexingSettings = resolveRagIndexingSettings(editableSettings)
+    } else {
+      const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
+        .from("user_rag_index_settings")
+        .select("small_note_threshold, target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (ragIndexingError) throw ragIndexingError
+      resolvedRagIndexingSettings = resolveRagIndexingSettings(ragIndexingData ?? null)
+    }
+
+    return jsonResponse({
+      gemini: { configured: Boolean(hasGeminiApiKeyField ? encryptedKey : existing?.gemini_api_key_encrypted) },
+      ragIndexing: resolvedRagIndexingSettings,
+    })
   } catch (err) {
     console.error("[api-keys-upsert]", err)
     return jsonResponse({ error: "Internal error" }, 500)

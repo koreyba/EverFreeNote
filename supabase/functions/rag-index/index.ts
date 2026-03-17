@@ -5,6 +5,9 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
 
+import { buildRagIndexChunks } from "../../../core/rag/chunking.ts"
+import { getRagReadonlySettings, resolveRagIndexingEditableSettings } from "../../../core/rag/indexingSettings.ts"
+
 declare const Deno: { env: { get(key: string): string | undefined } }
 
 // ---------------------------------------------------------------------------
@@ -12,9 +15,8 @@ declare const Deno: { env: { get(key: string): string | undefined } }
 // ---------------------------------------------------------------------------
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 const EMBEDDING_MODEL = "models/gemini-embedding-001"
-const OUTPUT_DIMENSIONS = 1536
-const CHUNK_SIZE = 1500
-const CHUNK_OVERLAP = 200
+const READONLY_RAG_SETTINGS = getRagReadonlySettings()
+const OUTPUT_DIMENSIONS = READONLY_RAG_SETTINGS.output_dimensionality
 const MAX_CHUNKS_PER_NOTE = 128
 const GEMINI_TIMEOUT_MS = 10000
 const GEMINI_MAX_RETRIES = 3
@@ -34,35 +36,6 @@ const jsonResponse = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
-
-// ---------------------------------------------------------------------------
-// Chunking
-// ---------------------------------------------------------------------------
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
-}
-
-function chunkText(text: string): Array<{ content: string; charOffset: number }> {
-  if (!text.trim()) return []
-  const chunks: Array<{ content: string; charOffset: number }> = []
-  let offset = 0
-  while (offset < text.length) {
-    const content = text.slice(offset, offset + CHUNK_SIZE)
-    chunks.push({ content, charOffset: offset })
-    if (content.length < CHUNK_SIZE) break
-    const next = offset + CHUNK_SIZE - CHUNK_OVERLAP
-    // Stop if the next window would start beyond the end of the text —
-    // that would produce a chunk containing only already-covered overlap.
-    if (next >= text.length) break
-    offset = next
-  }
-  return chunks
-}
-
-function prepareNoteText(title: string, html: string): string {
-  const body = stripHtml(html)
-  return title.trim() ? `${title.trim()} ${body}` : body
-}
 
 // ---------------------------------------------------------------------------
 // AES-GCM decryption (mirrors api-keys-upsert / wordpress-bridge pattern)
@@ -111,11 +84,15 @@ const decryptValue = async (encrypted: string, secret: string): Promise<string> 
 // ---------------------------------------------------------------------------
 // Embeddings via Gemini REST API
 // ---------------------------------------------------------------------------
-async function embedTexts(texts: string[], apiKey: string): Promise<number[][]> {
-  const requests = texts.map((text) => ({
+async function embedTexts(
+  texts: Array<{ text: string; title: string | null }>,
+  apiKey: string
+): Promise<number[][]> {
+  const requests = texts.map(({ text, title }) => ({
     model: EMBEDDING_MODEL,
+    ...(title ? { title } : {}),
     content: { parts: [{ text }] },
-    taskType: "RETRIEVAL_DOCUMENT",
+    taskType: READONLY_RAG_SETTINGS.task_type_document,
     outputDimensionality: OUTPUT_DIMENSIONS,
   }))
 
@@ -154,13 +131,13 @@ async function embedTexts(texts: string[], apiKey: string): Promise<number[][]> 
       if (!Array.isArray(data?.embeddings)) {
         throw new Error("Gemini batchEmbedContents response missing embeddings array")
       }
-      if (data.embeddings.length !== texts.length) {
+      if (data.embeddings.length !== requests.length) {
         throw new Error(
-          `Gemini embeddings count mismatch: input=${texts.length} returned=${data.embeddings.length} requestId=${requestId}`
+          `Gemini embeddings count mismatch: input=${requests.length} returned=${data.embeddings.length} requestId=${requestId}`
         )
       }
 
-      return data.embeddings.map((e: { values: number[] }) => e.values)
+      return data.embeddings.map((embedding: { values: number[] }) => embedding.values)
     } catch (error) {
       const isAbort = error instanceof DOMException && error.name === "AbortError"
       const isNetwork = error instanceof TypeError
@@ -209,7 +186,6 @@ serve(async (req: Request) => {
   if (userError || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401)
   const userId = userData.user.id
 
-  // Parse body
   let payload: { noteId?: string; action?: string } = {}
   try { payload = await req.json() } catch { /* empty body */ }
 
@@ -221,12 +197,10 @@ serve(async (req: Request) => {
     return jsonResponse({ error: "action must be 'index', 'reindex', or 'delete'" }, 400)
   }
 
-  // Verify note ownership
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (!uuidRegex.test(noteId)) return jsonResponse({ error: "Invalid noteId" }, 400)
 
   try {
-    // Delete does not need the Gemini API key — handle it before the key lookup.
     if (action === "delete") {
       const { error } = await supabaseAdmin
         .from("note_embeddings")
@@ -237,7 +211,6 @@ serve(async (req: Request) => {
       return jsonResponse({ deleted: true })
     }
 
-    // action === "index" | "reindex" — fetch and decrypt the user's Gemini API key.
     const { data: apiKeyRow, error: apiKeyError } = await supabaseAdmin
       .from("user_api_keys")
       .select("gemini_api_key_encrypted")
@@ -249,7 +222,7 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Internal error" }, 500)
     }
     if (!apiKeyRow?.gemini_api_key_encrypted) {
-      return jsonResponse({ error: "Gemini API key not configured. Add it in Settings → API Keys." }, 400)
+      return jsonResponse({ error: "Gemini API key not configured. Add it in Settings → Google API." }, 400)
     }
 
     let geminiApiKey: string
@@ -260,9 +233,17 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Internal error" }, 500)
     }
 
+    const { data: settingsRow, error: settingsError } = await supabaseAdmin
+      .from("user_rag_index_settings")
+      .select("small_note_threshold, target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (settingsError) throw settingsError
+
     const { data: note, error: noteError } = await supabaseAdmin
       .from("notes")
-      .select("title, description")
+      .select("title, description, tags")
       .eq("id", noteId)
       .eq("user_id", userId)
       .maybeSingle()
@@ -270,8 +251,14 @@ serve(async (req: Request) => {
     if (noteError) throw noteError
     if (!note) return jsonResponse({ error: "Note not found" }, 404)
 
-    const text = prepareNoteText(note.title ?? "", note.description ?? "")
-    const chunks = chunkText(text)
+    const settings = resolveRagIndexingEditableSettings(settingsRow ?? null)
+    const chunks = buildRagIndexChunks({
+      title: note.title ?? "",
+      html: note.description ?? "",
+      tags: Array.isArray(note.tags) ? note.tags : [],
+      settings,
+    })
+
     const droppedChunkCount = Math.max(0, chunks.length - MAX_CHUNKS_PER_NOTE)
     const chunksForIndexing = droppedChunkCount > 0 ? chunks.slice(0, MAX_CHUNKS_PER_NOTE) : chunks
 
@@ -291,20 +278,25 @@ serve(async (req: Request) => {
       return jsonResponse({ chunkCount: 0 })
     }
 
-    // Embed
-    const vectors = await embedTexts(chunksForIndexing.map((c) => c.content), geminiApiKey)
+    const vectors = await embedTexts(
+      chunksForIndexing.map((chunk) => ({
+        text: chunk.content,
+        title: chunk.title,
+      })),
+      geminiApiKey
+    )
+
     if (vectors.length !== chunksForIndexing.length) {
       throw new Error(`Gemini returned ${vectors.length} vectors for ${chunksForIndexing.length} chunks`)
     }
 
-    // Upsert first so failed re-index never deletes a previously searchable note.
-    const rows = chunksForIndexing.map((chunk, i) => ({
+    const rows = chunksForIndexing.map((chunk, index) => ({
       note_id: noteId,
       user_id: userId,
-      chunk_index: i,
+      chunk_index: index,
       char_offset: chunk.charOffset,
       content: chunk.content,
-      embedding: vectors[i],
+      embedding: vectors[index],
     }))
 
     const { error: upsertError } = await supabaseAdmin
@@ -312,7 +304,6 @@ serve(async (req: Request) => {
       .upsert(rows, { onConflict: "note_id,chunk_index" })
     if (upsertError) throw upsertError
 
-    // Remove obsolete tail chunks when note becomes shorter after edits.
     const { error: cleanupError } = await supabaseAdmin
       .from("note_embeddings")
       .delete()
@@ -320,6 +311,20 @@ serve(async (req: Request) => {
       .eq("user_id", userId)
       .gte("chunk_index", chunksForIndexing.length)
     if (cleanupError) throw cleanupError
+
+    console.info("[rag-index] Indexed note with settings", {
+      noteId,
+      userId,
+      chunkCount: chunksForIndexing.length,
+      small_note_threshold: settings.small_note_threshold,
+      target_chunk_size: settings.target_chunk_size,
+      min_chunk_size: settings.min_chunk_size,
+      max_chunk_size: settings.max_chunk_size,
+      overlap: settings.overlap,
+      use_title: settings.use_title,
+      use_section_headings: settings.use_section_headings,
+      use_tags: settings.use_tags,
+    })
 
     return jsonResponse({
       chunkCount: chunksForIndexing.length,

@@ -5,6 +5,8 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
+import { getRagReadonlySettings } from "../../../core/rag/indexingSettings.ts"
+
 declare const Deno: { env: { get(key: string): string | undefined } }
 
 // ---------------------------------------------------------------------------
@@ -12,7 +14,8 @@ declare const Deno: { env: { get(key: string): string | undefined } }
 // ---------------------------------------------------------------------------
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 const EMBEDDING_MODEL = "models/gemini-embedding-001"
-const OUTPUT_DIMENSIONS = 1536
+const READONLY_RAG_SETTINGS = getRagReadonlySettings()
+const OUTPUT_DIMENSIONS = READONLY_RAG_SETTINGS.output_dimensionality
 const GEMINI_TIMEOUT_MS = 10000
 const GEMINI_MAX_RETRIES = 3
 const GEMINI_RETRY_BASE_MS = 400
@@ -38,7 +41,6 @@ const isLegacyMatchNotesSignatureError = (error: unknown): boolean => {
   const code = typeof (error as { code?: unknown }).code === "string"
     ? (error as { code: string }).code.toUpperCase()
     : ""
-  // PostgREST "function not found in schema cache" for RPC signature mismatches.
   if (code === "PGRST202") return true
 
   const message = typeof (error as { message?: unknown }).message === "string"
@@ -100,7 +102,7 @@ async function embedQuery(query: string, apiKey: string): Promise<number[]> {
           body: JSON.stringify({
             model: EMBEDDING_MODEL,
             content: { parts: [{ text: query }] },
-            taskType: "RETRIEVAL_QUERY",
+            taskType: READONLY_RAG_SETTINGS.task_type_query,
             outputDimensionality: OUTPUT_DIMENSIONS,
           }),
           signal: controller.signal,
@@ -161,7 +163,6 @@ serve(async (req: Request) => {
     return jsonResponse({ error: "Function not configured" }, 500)
   }
 
-  // Auth — extract userId from JWT
   const authHeader = req.headers.get("Authorization")?.trim() ?? ""
   const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
   const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
@@ -172,7 +173,6 @@ serve(async (req: Request) => {
   if (userError || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401)
   const userId = userData.user.id
 
-  // Parse and validate request body
   let payload: { query?: unknown; topK?: unknown; threshold?: unknown; filterTag?: unknown } = {}
   try { payload = await req.json() } catch { /* empty body */ }
 
@@ -190,7 +190,6 @@ serve(async (req: Request) => {
   const tagFilter: string | null = typeof filterTag === "string" ? filterTag : null
 
   try {
-    // Fetch and decrypt the user's Gemini API key
     const { data: apiKeyRow, error: apiKeyError } = await supabaseAdmin
       .from("user_api_keys")
       .select("gemini_api_key_encrypted")
@@ -202,7 +201,7 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Internal error" }, 500)
     }
     if (!apiKeyRow?.gemini_api_key_encrypted) {
-      return jsonResponse({ error: "Gemini API key not configured. Add it in Settings → API Keys." }, 400)
+      return jsonResponse({ error: "Gemini API key not configured. Add it in Settings → Google API." }, 400)
     }
 
     let geminiApiKey: string
@@ -213,10 +212,8 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Internal error" }, 500)
     }
 
-    // Embed the search query (RETRIEVAL_QUERY task type)
     const queryEmbedding = await embedQuery(query.trim(), geminiApiKey)
 
-    // Call match_notes RPC using a user-scoped client so auth.uid() works in the SQL function
     const supabaseUser = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     })
@@ -234,8 +231,6 @@ serve(async (req: Request) => {
 
     let { data: chunks, error: rpcError } = await supabaseUser.rpc("match_notes", rpcPayload)
 
-    // Transitional compatibility: some environments may still have legacy match_notes(query_embedding, match_count).
-    // Remove this fallback after all environments are migrated to 20260304000001_add_filter_tag_to_match_notes.sql.
     if (rpcError && tagFilter && isLegacyMatchNotesSignatureError(rpcError)) {
       const primaryRpcError = rpcError
       try {
@@ -271,21 +266,19 @@ serve(async (req: Request) => {
       return jsonResponse({ chunks: [], availableChunkCount: 0 })
     }
 
-    // Filter by similarity threshold (post-RPC)
     const filteredChunks = (chunks as Array<{
       note_id: string
       chunk_index: number
       char_offset: number
       content: string
       similarity: number
-    }>).filter((c) => c.similarity >= threshold)
+    }>).filter((chunk) => chunk.similarity >= threshold)
 
     if (filteredChunks.length === 0) {
       return jsonResponse({ chunks: [], availableChunkCount: 0 })
     }
 
-    // Enrich with note title and tags (single query)
-    const noteIds = [...new Set(filteredChunks.map((c) => c.note_id))]
+    const noteIds = [...new Set(filteredChunks.map((chunk) => chunk.note_id))]
     const { data: notes, error: notesError } = await supabaseAdmin
       .from("notes")
       .select("id, title, tags")
@@ -297,26 +290,24 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Internal error" }, 500)
     }
 
-    const noteMap = new Map((notes ?? []).map((n: { id: string; title: string | null; tags: string[] }) => [n.id, n]))
+    const noteMap = new Map((notes ?? []).map((note: { id: string; title: string | null; tags: string[] }) => [note.id, note]))
 
-    const result = filteredChunks.map((c) => {
-      const note = noteMap.get(c.note_id)
+    const result = filteredChunks.map((chunk) => {
+      const note = noteMap.get(chunk.note_id)
       return {
-        noteId: c.note_id,
+        noteId: chunk.note_id,
         noteTitle: note?.title ?? "",
         noteTags: note?.tags ?? [],
-        chunkIndex: c.chunk_index,
-        charOffset: c.char_offset,
-        content: c.content,
-        similarity: c.similarity,
+        chunkIndex: chunk.chunk_index,
+        charOffset: chunk.char_offset,
+        content: chunk.content,
+        similarity: chunk.similarity,
       }
     })
 
     const finalResult = tagFilter ? result.filter((item) => item.noteTags.includes(tagFilter)) : result
     return jsonResponse({
       chunks: finalResult,
-      // Preserve pre-tag-filter count so the client can keep paginating when
-      // topK results contain non-matching tags that are removed after enrichment.
       availableChunkCount: result.length,
     })
   } catch (err) {
