@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RagIndexSettingsService } from "@core/services/ragIndexSettings"
 import type { RagIndexingEditableSettings, RagIndexingSettings } from "@core/rag/indexingSettings"
+import { validateRagIndexingEditableSettings } from "@core/rag/indexingSettings"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { Info } from "lucide-react"
 
@@ -80,6 +81,18 @@ export function RagIndexingSettingsPanel() {
     setFormState((current) => ({ ...current, [key]: checked }))
   }
 
+  const validationErrors = React.useMemo(() => {
+    return validateRagIndexingEditableSettings({
+      target_chunk_size: Number(formState.target_chunk_size),
+      min_chunk_size: Number(formState.min_chunk_size),
+      max_chunk_size: Number(formState.max_chunk_size),
+      overlap: Number(formState.overlap),
+      use_title: formState.use_title,
+      use_section_headings: formState.use_section_headings,
+      use_tags: formState.use_tags,
+    })
+  }, [formState])
+
   const handleSave = async () => {
     setErrorMessage(null)
     setSuccessMessage(null)
@@ -112,26 +125,40 @@ export function RagIndexingSettingsPanel() {
       <CardHeader>
         <CardTitle>RAG indexing</CardTitle>
         <CardDescription>
-          Configure web-visible indexing behavior. All size values are measured in characters.
+          When a note is indexed for AI search, its text is split into chunks — smaller pieces that are embedded and stored as vectors.
+          The parameters below control how that splitting works. All size values are measured in characters.
+          Changes apply only to future indexing — already indexed notes stay as-is until you reindex them manually.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
-          <NumericField
-            id="rag-target-chunk-size"
-            label="Target chunk size (characters)"
-            value={formState.target_chunk_size}
-            disabled={loading || saving}
-            onChange={(value) => updateNumericField("target_chunk_size", value)}
-          />
           <NumericField
             id="rag-min-chunk-size"
             label="Minimum chunk size (characters)"
             value={formState.min_chunk_size}
             disabled={loading || saving}
             onChange={(value) => updateNumericField("min_chunk_size", value)}
+            tooltip={
+              "Paragraphs are merged together until the chunk reaches this size.\n" +
+              "Also the minimum note size — shorter notes are skipped and not indexed at all.\n\n" +
+              "Increase: fewer but larger chunks, short notes ignored.\n" +
+              "Decrease: more granular chunks, even short notes get indexed."
+            }
           />
-          <NumericFieldWithTooltip
+          <NumericField
+            id="rag-target-chunk-size"
+            label="Target chunk size (characters)"
+            value={formState.target_chunk_size}
+            disabled={loading || saving}
+            onChange={(value) => updateNumericField("target_chunk_size", value)}
+            tooltip={
+              "Preferred chunk size. Once min is reached, one more whole paragraph " +
+              "can be added — but only if the chunk stays within this limit.\n\n" +
+              "Increase: chunks may include more paragraphs, broader context per chunk.\n" +
+              "Decrease: chunks close earlier, more focused but potentially fragmented."
+            }
+          />
+          <NumericField
             id="rag-max-chunk-size"
             label="Maximum chunk size (characters)"
             value={formState.max_chunk_size}
@@ -142,9 +169,11 @@ export function RagIndexingSettingsPanel() {
               const min = Number(formState.min_chunk_size) || 0
               const effectiveMax = max + min - 1
               return (
-                `When an oversized paragraph is split, a small remainder (< min_chunk_size) ` +
-                `is merged back into the previous piece. The effective maximum in that case:\n` +
-                `max_chunk_size + min_chunk_size - 1 = ${max} + ${min} - 1 = ${effectiveMax} characters.`
+                `Hard limit. Paragraphs longer than this are split — first by sentences, then by characters.\n` +
+                `A small leftover (< min) is merged back into the previous piece.\n` +
+                `Effective max in that case: ${max} + ${min} - 1 = ${effectiveMax} chars.\n\n` +
+                `Increase: long paragraphs stay whole, fewer splits.\n` +
+                `Decrease: more aggressive splitting of large paragraphs.`
               )
             })()}
           />
@@ -154,14 +183,54 @@ export function RagIndexingSettingsPanel() {
             value={formState.overlap}
             disabled={loading || saving}
             onChange={(value) => updateNumericField("overlap", value)}
+            inputMin={0}
+            tooltip={
+              "How many characters from the end of one chunk are repeated at the start of the next.\n" +
+              "Must be less than min chunk size. Snaps to the nearest sentence end.\n" +
+              "Never crosses section (heading) boundaries.\n\n" +
+              "Increase: more shared context between chunks, better continuity.\n" +
+              "Set to 0: no repetition, smaller chunks, less redundancy."
+            }
           />
         </div>
+
+        <div className="flex justify-end -mt-2">
+          <button
+            type="button"
+            className="text-xs text-muted-foreground underline-offset-4 hover:underline hover:text-foreground transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            disabled={loading || saving}
+            onClick={() =>
+              setFormState({
+                target_chunk_size: "500",
+                min_chunk_size: "200",
+                max_chunk_size: "1500",
+                overlap: "150",
+                use_title: true,
+                use_section_headings: true,
+                use_tags: true,
+              })
+            }
+          >
+            Reset to default values
+          </button>
+        </div>
+
+        {validationErrors.length > 0 ? (
+          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-600/30 dark:bg-amber-500/10 dark:text-amber-300">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <ul className="list-disc list-inside space-y-0.5">
+              {validationErrors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
           <ToggleRow
             id="rag-use-title"
             label="Use title for embeddings"
-            description="Pass the note title separately via the Gemini title field."
+            description="Pass the note title to Gemini via the separate title field. The title is not duplicated inside chunk text."
             checked={formState.use_title}
             disabled={loading || saving}
             onCheckedChange={(checked) => updateBooleanField("use_title", checked)}
@@ -169,7 +238,7 @@ export function RagIndexingSettingsPanel() {
           <ToggleRow
             id="rag-use-sections"
             label="Use section headings"
-            description="Show a Section line when the note contains real h1-h6 headings."
+            description='Prepend a "Section:" line to chunks when the note contains h1–h6 headings. Bold or styled text is not treated as a heading.'
             checked={formState.use_section_headings}
             disabled={loading || saving}
             onCheckedChange={(checked) => updateBooleanField("use_section_headings", checked)}
@@ -177,7 +246,7 @@ export function RagIndexingSettingsPanel() {
           <ToggleRow
             id="rag-use-tags"
             label="Use tags"
-            description="Show a Tags line when the note has tags."
+            description='Prepend a "Tags:" line to chunks when the note has tags assigned.'
             checked={formState.use_tags}
             disabled={loading || saving}
             onCheckedChange={(checked) => updateBooleanField("use_tags", checked)}
@@ -185,30 +254,87 @@ export function RagIndexingSettingsPanel() {
         </div>
 
         {resolvedSettings ? (
-          <div className="space-y-4 rounded-xl border bg-muted/20 p-4">
-            <div>
-              <h4 className="text-sm font-semibold">Read-only system settings</h4>
-              <p className="mt-1 text-xs text-muted-foreground">
-                These values are system-defined and shown for transparency.
+          <div className="space-y-5 rounded-xl border bg-muted/20 p-4">
+            <h4 className="text-sm font-semibold">How your notes are chunked</h4>
+
+            <div className="space-y-3">
+              <p className="text-xs text-foreground/80">
+                Every note is split into paragraphs. Each paragraph becomes a building block for chunks.
+              </p>
+              <ol className="list-decimal list-inside space-y-1.5 text-xs text-foreground/80">
+                <li>
+                  <strong>Headings as boundaries.</strong> If a note has{" "}
+                  <code className="text-[11px] bg-muted px-1 rounded">h1</code>–<code className="text-[11px] bg-muted px-1 rounded">h6</code>{" "}
+                  headings, they act as walls — paragraphs from different sections never end up in the same chunk,
+                  and overlap never crosses a heading. Notes without headings are processed as one continuous section.
+                  Bold or styled text does not count as a heading.
+                </li>
+                <li>
+                  <strong>Merging small paragraphs.</strong> Neighboring paragraphs within the same section are merged
+                  together until the chunk reaches <strong>min chunk size</strong>. If the next paragraph would push
+                  the chunk past <strong>max chunk size</strong>, only a portion of it is taken.
+                </li>
+                <li>
+                  <strong>Extending toward target.</strong> Once <strong>min chunk size</strong> is reached, the chunk
+                  can accept one more whole paragraph — but only if the result stays within <strong>target chunk size</strong>.
+                  Otherwise the chunk is closed and the paragraph starts a new one.
+                </li>
+                <li>
+                  <strong>Splitting oversized paragraphs.</strong> A paragraph longer than <strong>max chunk size</strong>{" "}
+                  is split first at sentence boundaries, then by characters. A tiny leftover is merged back so you
+                  don{"'"}t get a useless 20-character chunk.
+                </li>
+                <li>
+                  <strong>Trailing merge.</strong> If the very last chunk is smaller than <strong>min chunk size</strong>,
+                  it is merged with the previous one (unless that would exceed <strong>max chunk size</strong>).
+                </li>
+                <li>
+                  <strong>Overlap.</strong> The tail of each chunk is copied to the beginning of the next one.
+                  This helps search find matches near chunk boundaries. Overlap prefers to start at a sentence end
+                  and never crosses a section heading.
+                </li>
+              </ol>
+              <p className="text-xs text-foreground/80">
+                Notes shorter than <strong>min chunk size</strong> are not indexed — they are too short for meaningful semantic search.
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <ReadOnlyRow label="Document taskType" value={resolvedSettings.task_type_document} />
-              <ReadOnlyRow label="Query taskType" value={resolvedSettings.task_type_query} />
-              <ReadOnlyRow label="Output dimensionality" value={String(resolvedSettings.output_dimensionality)} />
-              <ReadOnlyRow label="Split strategy" value={resolvedSettings.split_strategy} />
-              <ReadOnlyRow label="Fallback split order" value={resolvedSettings.fallback_split_order.join(" -> ")} />
-              <ReadOnlyRow label="Chunk accumulation rule" value={resolvedSettings.chunk_accumulation_rule} />
-              <ReadOnlyRow label="Small chunk merge rule" value={resolvedSettings.small_chunk_merge_rule} />
+
+            <div className="space-y-2 rounded-lg border bg-background p-3">
+              <div className="text-xs font-medium text-muted-foreground">Tuning tips</div>
+              <ul className="list-disc list-inside space-y-1 text-xs text-foreground/70">
+                <li>
+                  <strong>Short notes, lists, quick thoughts</strong> — lower <em>min chunk size</em> (e.g. 100) so they get indexed.
+                </li>
+                <li>
+                  <strong>Long essays, articles</strong> — increase <em>target chunk size</em> (e.g. 800–1000) for more context per chunk.
+                </li>
+                <li>
+                  <strong>Dense text without headings</strong> — increase <em>max chunk size</em> to avoid splitting long paragraphs.
+                </li>
+                <li>
+                  <strong>Better search continuity</strong> — increase <em>overlap</em> (e.g. 150–200). Set to 0 if you want no repetition.
+                </li>
+              </ul>
             </div>
+
+            <div className="space-y-3">
+              <div className="text-xs font-medium text-muted-foreground">Embedding settings (system-defined)</div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <ReadOnlyRow label="Vector dimensions" value={String(resolvedSettings.output_dimensionality)} hint="Size of each embedding vector" />
+                <ReadOnlyRow label="Indexing task type" value={resolvedSettings.task_type_document} hint="Used when embedding note chunks" />
+                <ReadOnlyRow label="Search task type" value={resolvedSettings.task_type_query} hint="Used when embedding search queries" />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="rag-chunk-template">Chunk structure template</Label>
-              <pre
-                id="rag-chunk-template"
-                className="overflow-x-auto rounded-lg border bg-background px-3 py-3 text-xs text-foreground"
-              >
+              <div className="text-xs font-medium text-muted-foreground">Each chunk is formatted as</div>
+              <pre className="overflow-x-auto rounded-lg border bg-background px-3 py-3 text-xs text-foreground">
                 {resolvedSettings.chunk_template}
               </pre>
+              <p className="text-[11px] text-muted-foreground">
+                Section and Tags lines appear only when enabled above and when the note has the corresponding data.
+                Title is never in the chunk text — it is passed separately via the Gemini API title field.
+              </p>
             </div>
           </div>
         ) : null}
@@ -228,7 +354,7 @@ export function RagIndexingSettingsPanel() {
         ) : null}
 
         <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={loading || saving}>
+          <Button onClick={handleSave} disabled={loading || saving || validationErrors.length > 0}>
             {saving ? "Saving..." : "Save indexing settings"}
           </Button>
         </div>
@@ -243,65 +369,38 @@ function NumericField({
   value,
   disabled,
   onChange,
-}: {
-  id: string
-  label: string
-  value: string
-  disabled: boolean
-  onChange: (value: string) => void
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        type="number"
-        min={50}
-        max={5000}
-        step={1}
-        inputMode="numeric"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        disabled={disabled}
-      />
-    </div>
-  )
-}
-
-function NumericFieldWithTooltip({
-  id,
-  label,
-  value,
-  disabled,
-  onChange,
   tooltip,
+  inputMin = 50,
 }: {
   id: string
   label: string
   value: string
   disabled: boolean
   onChange: (value: string) => void
-  tooltip: string
+  tooltip?: string
+  inputMin?: number
 }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1.5">
         <Label htmlFor={id}>{label}</Label>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs whitespace-pre-line">
-              {tooltip}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        {tooltip ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs whitespace-pre-line">
+                {tooltip}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : null}
       </div>
       <Input
         id={id}
         type="number"
-        min={50}
+        min={inputMin}
         max={5000}
         step={1}
         inputMode="numeric"
@@ -339,11 +438,12 @@ function ToggleRow({
   )
 }
 
-function ReadOnlyRow({ label, value }: { label: string; value: string }) {
+function ReadOnlyRow({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="space-y-1 rounded-lg border bg-background px-3 py-2">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <div className="text-sm">{value}</div>
+      {hint ? <div className="text-[11px] text-muted-foreground">{hint}</div> : null}
     </div>
   )
 }

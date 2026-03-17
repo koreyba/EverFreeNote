@@ -36,6 +36,8 @@ export type RagIndexingEditableSettings = {
 
 export type RagIndexingSettings = RagIndexingEditableSettings & typeof RAG_INDEX_READONLY_SETTINGS
 
+export const RAG_INDEX_OVERLAP_MIN = 0
+
 export const RAG_INDEX_EDITABLE_NUMERIC_KEYS = [
   "target_chunk_size",
   "min_chunk_size",
@@ -82,8 +84,9 @@ export function validateRagIndexingEditableSettings(
       errors.push(`${key} must be an integer`)
       continue
     }
-    if (value < RAG_INDEX_NUMERIC_MIN || value > RAG_INDEX_NUMERIC_MAX) {
-      errors.push(`${key} must be between ${RAG_INDEX_NUMERIC_MIN} and ${RAG_INDEX_NUMERIC_MAX}`)
+    const min = key === "overlap" ? RAG_INDEX_OVERLAP_MIN : RAG_INDEX_NUMERIC_MIN
+    if (value < min || value > RAG_INDEX_NUMERIC_MAX) {
+      errors.push(`${key} must be between ${min} and ${RAG_INDEX_NUMERIC_MAX}`)
     }
   }
 
@@ -99,6 +102,9 @@ export function validateRagIndexingEditableSettings(
   }
   if (resolved.target_chunk_size > resolved.max_chunk_size) {
     errors.push("target_chunk_size must be less than or equal to max_chunk_size")
+  }
+  if (resolved.overlap >= resolved.min_chunk_size) {
+    errors.push("overlap must be less than min_chunk_size")
   }
 
   return errors

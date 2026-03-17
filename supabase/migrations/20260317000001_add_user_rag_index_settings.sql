@@ -11,7 +11,7 @@ CREATE TABLE public.user_rag_index_settings (
   CONSTRAINT user_rag_index_settings_target_chunk_size_range CHECK (target_chunk_size BETWEEN 50 AND 5000),
   CONSTRAINT user_rag_index_settings_min_chunk_size_range CHECK (min_chunk_size BETWEEN 50 AND 5000),
   CONSTRAINT user_rag_index_settings_max_chunk_size_range CHECK (max_chunk_size BETWEEN 50 AND 5000),
-  CONSTRAINT user_rag_index_settings_overlap_range CHECK (overlap BETWEEN 50 AND 5000),
+  CONSTRAINT user_rag_index_settings_overlap_range CHECK (overlap BETWEEN 0 AND 5000),
   CONSTRAINT user_rag_index_settings_ordering CHECK (min_chunk_size <= target_chunk_size AND target_chunk_size <= max_chunk_size)
 );
 

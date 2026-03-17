@@ -16,8 +16,27 @@ describe("core/rag/indexingSettings", () => {
 
   it("rejects numeric values outside the allowed range", () => {
     expect(() => assertValidRagIndexingEditableSettings({ overlap: 5001 })).toThrow(
-      "overlap must be between 50 and 5000"
+      "overlap must be between 0 and 5000"
     )
+    expect(() => assertValidRagIndexingEditableSettings({ min_chunk_size: 49 })).toThrow(
+      "min_chunk_size must be between 50 and 5000"
+    )
+  })
+
+  it("allows overlap = 0", () => {
+    expect(() =>
+      assertValidRagIndexingEditableSettings({ overlap: 0, min_chunk_size: 200 })
+    ).not.toThrow()
+  })
+
+  it("rejects overlap >= min_chunk_size", () => {
+    expect(() =>
+      assertValidRagIndexingEditableSettings({ overlap: 200, min_chunk_size: 200 })
+    ).toThrow("overlap must be less than min_chunk_size")
+
+    expect(() =>
+      assertValidRagIndexingEditableSettings({ overlap: 300, min_chunk_size: 200 })
+    ).toThrow("overlap must be less than min_chunk_size")
   })
 
   it("rejects invalid ordering for chunk sizes", () => {
@@ -31,7 +50,7 @@ describe("core/rag/indexingSettings", () => {
 
     expect(() =>
       assertValidRagIndexingEditableSettings({
-        min_chunk_size: 100,
+        min_chunk_size: 200,
         target_chunk_size: 500,
         max_chunk_size: 400,
       })

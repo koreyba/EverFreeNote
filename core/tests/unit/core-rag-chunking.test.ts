@@ -1,6 +1,20 @@
 import { buildRagIndexChunks } from "@core/rag/chunking"
-import { buildRagChunkText, getRagChunkBodyLength, getRagChunkBodyText } from "@core/rag/chunkTemplate"
+import { buildRagChunkText, getRagChunkBodyText } from "@core/rag/chunkTemplate"
 import { RAG_INDEX_EDITABLE_DEFAULTS } from "@core/rag/indexingSettings"
+
+// --- Helpers ---
+
+const p = (text: string) => `<p>${text}</p>`
+
+const cfg = (overrides: Partial<typeof RAG_INDEX_EDITABLE_DEFAULTS> = {}) => ({
+  ...RAG_INDEX_EDITABLE_DEFAULTS,
+  ...overrides,
+})
+
+/** Solid text of exactly n chars — no spaces or periods (character-level fallback) */
+const solid = (n: number) => "x".repeat(n)
+
+// --- Real note fixture ---
 
 const USER_NOTE_HTML = [
   '<p>"То что на предыдущем уровне было субъектом становиться объектом на следующем". (с)</p>',
@@ -12,270 +26,487 @@ const USER_NOTE_HTML = [
   '<p>Если мною овладевает ярость, она является неосознанной, она являеться моим скрытым субъектом и тогда я - ярость. В такой момент я не осознаю что все мои действия происходят под влиянием ярости. Ярость как бы берет верх управления и у меня нет выбора в том как вести себя. Я отождествлен со своей яростью, она мой скрытый субъект, я - ярость. Что значит растождествиться со своей яростью? Это значит увидеть ее, увидеть ее со стороны, сделать ее объектом наблюдения. Она больше не мой скрытый субъект, она то что я наблюдаю - объект, и тогда я не ярость, ведь я не могу быть тем что я могу наблюдать (как нож не может порезать сам себя).&nbsp;</p>',
 ].join("")
 
-const USER_SETTINGS = {
-  ...RAG_INDEX_EDITABLE_DEFAULTS,
-  small_note_threshold: 400,
+const USER_SETTINGS = cfg({
   target_chunk_size: 500,
   min_chunk_size: 200,
   max_chunk_size: 1500,
   overlap: 100,
-}
+})
 
-describe("core/rag/chunking", () => {
-  it("does not index a note shorter than min_chunk_size", () => {
-    const chunks = buildRagIndexChunks({
-      title: "Weekly plan",
-      html: "<p>Short body text.</p>",
-      tags: ["work"],
-      settings: RAG_INDEX_EDITABLE_DEFAULTS,
+// ============================================================
+
+describe("core/rag/chunking — pairwise test suite", () => {
+  // ── A: Порог индексации ──────────────────────────────────
+  describe("A — Порог индексации", () => {
+    it("A1: заметка < min → 0 чанков", () => {
+      const chunks = buildRagIndexChunks({
+        title: "Note",
+        html: p("Short."),
+        tags: [],
+        settings: cfg(), // min=200, text ~6 chars
+      })
+      expect(chunks).toHaveLength(0)
     })
 
-    // "Short body text." is ~17 chars, well below min_chunk_size (200)
-    expect(chunks).toHaveLength(0)
+    it("A2: заметка = min → 1 чанк", () => {
+      const chunks = buildRagIndexChunks({
+        title: "Exact",
+        html: p(solid(200)),
+        tags: ["t1"],
+        settings: cfg(),
+      })
+      expect(chunks).toHaveLength(1)
+      expect(chunks[0]!.title).toBe("Exact")
+      expect(chunks[0]!.content).toContain("Tags: t1")
+    })
   })
 
-  it("indexes a note at exactly min_chunk_size as a single chunk", () => {
-    const body = "A".repeat(RAG_INDEX_EDITABLE_DEFAULTS.min_chunk_size)
-    const chunks = buildRagIndexChunks({
-      title: "Exact min",
-      html: `<p>${body}</p>`,
-      tags: ["work"],
-      settings: RAG_INDEX_EDITABLE_DEFAULTS,
+  // ── B: Paragraph-first аккумуляция ───────────────────────
+  describe("B — Paragraph-first аккумуляция", () => {
+    it("B2: 3 мелких абзаца, сумма ≤ target → 1 чанк", () => {
+      // 80 + \n\n + 80 + \n\n + 80 = 244. min=150, target=500
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(solid(80)) + p(solid(80)) + p(solid(80)),
+        tags: [],
+        settings: cfg({ min_chunk_size: 150, target_chunk_size: 500, max_chunk_size: 1500 }),
+      })
+      expect(chunks).toHaveLength(1)
     })
 
-    expect(chunks).toHaveLength(1)
-    expect(chunks[0]?.content).toContain("Tags: work")
-    expect(chunks[0]?.title).toBe("Exact min")
+    it("B3: P1+P2 ≥ min, +P3 > target → 2 чанка (не добавляем даже если ≤ max)", () => {
+      // P1+P2 = 80+2+80 = 162 ≥ min=150. +P3: 162+2+400 = 564 > target=500
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(solid(80)) + p(solid(80)) + p(solid(400)),
+        tags: [],
+        settings: cfg({ min_chunk_size: 150, target_chunk_size: 500, max_chunk_size: 1500 }),
+      })
+      expect(chunks).toHaveLength(2)
+    })
   })
 
-  it("splits large paragraphs and adds overlap to later chunks", () => {
-    const repeated = "Sentence one. Sentence two. Sentence three. Sentence four. Sentence five."
-    const html = `<h2>Section A</h2><p>${repeated} ${repeated} ${repeated}</p>`
+  // ── C: Partial split ─────────────────────────────────────
+  describe("C — Partial split", () => {
+    it("C1: P1 < min, P2 ≤ max, P1+P2 > max → частичный разрез P2", () => {
+      // P1=100 < min=200. P2=1450 ≤ max=1500. Combined=100+2+1450=1552 > max
+      // → takePartialText отрезает от P2 ровно столько, сколько нужно до min
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(solid(100)) + p(solid(1450)),
+        tags: [],
+        settings: cfg({ min_chunk_size: 200, target_chunk_size: 500, max_chunk_size: 1500, overlap: 0 }),
+      })
+      expect(chunks.length).toBeGreaterThanOrEqual(2)
+      const body0 = getRagChunkBodyText(chunks[0]!.content)
+      expect(body0.length).toBeGreaterThanOrEqual(200) // reached min via partial
+    })
+  })
 
-    const chunks = buildRagIndexChunks({
-      title: "Long note",
-      html,
-      tags: ["alpha", "beta"],
-      settings: {
-        ...RAG_INDEX_EDITABLE_DEFAULTS,
-        target_chunk_size: 80,
-        min_chunk_size: 50,
-        max_chunk_size: 90,
-        overlap: 50,
-      },
+  // ── D: Oversized paragraph + backward merge ──────────────
+  describe("D — Oversized paragraph + backward merge", () => {
+    it("D4: абзац max+min-2 символов → backward merge → 1 чанк (≤ max+min-1)", () => {
+      // solid(1698) → char split [1500, 198]. 198 < min=200 → merge.
+      // Merged: 1500 + " " + 198 = 1699 = max+min-1
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(solid(1698)),
+        tags: [],
+        settings: cfg({ overlap: 0 }),
+      })
+      expect(chunks).toHaveLength(1)
+      const bodyLen = getRagChunkBodyText(chunks[0]!.content).length
+      expect(bodyLen).toBeLessThanOrEqual(1500 + 200 - 1)
     })
 
-    expect(chunks.length).toBeGreaterThan(1)
-    expect(chunks[0]?.content).toContain("Section: Section A")
-    expect(chunks[1]?.content).toContain("Sentence")
-    expect(chunks[1]?.charOffset).toBeGreaterThan(chunks[0]?.charOffset ?? 0)
-  })
-
-  it("expands overlap back to the start of the sentence instead of starting mid-sentence", () => {
-    const longSentence = "Alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau."
-
-    const chunks = buildRagIndexChunks({
-      title: "Long sentence note",
-      html: `<p>${longSentence}</p>`,
-      tags: [],
-      settings: {
-        ...RAG_INDEX_EDITABLE_DEFAULTS,
-        small_note_threshold: 20,
-        target_chunk_size: 25,
-        min_chunk_size: 20,
-        max_chunk_size: 25,
-        overlap: 10,
-      },
+    it("D5: абзац max+min символов → remainder ≥ min → 2 чанка (без merge)", () => {
+      // solid(1700) → char split [1500, 200]. 200 ≥ min=200 → NO merge
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(solid(1700)),
+        tags: [],
+        settings: cfg({ overlap: 0 }),
+      })
+      expect(chunks).toHaveLength(2)
     })
 
-    expect(chunks.length).toBeGreaterThan(1)
-    expect(getRagChunkBodyText(chunks[1]?.content ?? "").startsWith("Alpha beta gamma")).toBe(true)
+    it("D7: oversized из предложений → разрез по границам предложений", () => {
+      // 6 sentences × ~296 chars = ~1781 > max=1500
+      const sentenceText = Array.from({ length: 6 }, (_, i) =>
+        `Sent${i} ${"z".repeat(286)}.`
+      ).join(" ")
+
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(sentenceText),
+        tags: [],
+        settings: cfg({ overlap: 0 }),
+      })
+      expect(chunks.length).toBeGreaterThan(1)
+      // Each chunk ends at a sentence boundary (period)
+      for (const chunk of chunks) {
+        expect(getRagChunkBodyText(chunk.content).trimEnd().endsWith(".")).toBe(true)
+      }
+    })
   })
 
-  it("does not carry overlap across section boundaries", () => {
-    const chunks = buildRagIndexChunks({
-      title: "Sectioned note",
-      html: "<h2>Section A</h2><p>Alpha sentence one. Alpha sentence two.</p><h2>Section B</h2><p>Beta sentence one. Beta sentence two.</p>",
-      tags: [],
-      settings: {
-        ...RAG_INDEX_EDITABLE_DEFAULTS,
-        small_note_threshold: 20,
-        target_chunk_size: 30,
-        min_chunk_size: 20,
-        max_chunk_size: 30,
-        overlap: 10,
-      },
+  // ── E: Trailing undersized merge ─────────────────────────
+  describe("E — Trailing undersized merge", () => {
+    it("E1: trailing < min, merge ≤ max → merge происходит", () => {
+      // P1=300, P2=400, P3=100. Assembly: [300], [400], [100].
+      // mergeUndersizedTail: 100 < min=200, merged=400+2+100=502 ≤ max=1500 → merge
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(solid(300)) + p(solid(400)) + p(solid(100)),
+        tags: [],
+        settings: cfg({ min_chunk_size: 200, target_chunk_size: 500, max_chunk_size: 1500, overlap: 0 }),
+      })
+      expect(chunks).toHaveLength(2) // [P1], [P2+P3]
     })
 
-    // Each section text (~40 chars) is > max_chunk_size (30), so splitOversizedParagraph fires.
-    // But each sentence (~19 chars) is < min_chunk_size (20), so backward merge kicks in,
-    // producing 1 chunk per section = 2 chunks total.
-    expect(chunks).toHaveLength(2)
-    expect(chunks[0]?.content).toContain("Section: Section A")
-    expect(chunks[1]?.content).toContain("Section: Section B")
-    // Section B chunk should NOT contain overlap from Section A
-    expect(getRagChunkBodyText(chunks[1]?.content ?? "")).toBe("Beta sentence one. Beta sentence two.")
-  })
-
-  it("omits empty optional lines from the chunk template", () => {
-    const text = buildRagChunkText({
-      sectionHeading: null,
-      tags: [],
-      chunkContent: "Body only",
-      settings: {
-        use_section_headings: true,
-        use_tags: true,
-      },
+    it("E3: trailing < min, merge > max → остаётся undersized", () => {
+      // P1=300, P2=1400, P3=150. Assembly: [300], [1400], [150].
+      // mergeUndersizedTail: 150 < min=200, merged=1400+2+150=1552 > max=1500 → NO merge
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(solid(300)) + p(solid(1400)) + p(solid(150)),
+        tags: [],
+        settings: cfg({ min_chunk_size: 200, target_chunk_size: 500, max_chunk_size: 1500, overlap: 0 }),
+      })
+      expect(chunks).toHaveLength(3)
+      const lastBody = getRagChunkBodyText(chunks[2]!.content)
+      expect(lastBody.length).toBeLessThan(200)
     })
 
-    expect(text).toBe("Body only")
+    it("E4: trailing из другой секции → merge запрещён", () => {
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: `<h2>A</h2>${p(solid(300))}<h2>B</h2>${p(solid(100))}`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 200, target_chunk_size: 500, max_chunk_size: 1500, overlap: 0 }),
+      })
+      expect(chunks).toHaveLength(2)
+      expect(chunks[0]!.sectionHeading).toBe("A")
+      expect(chunks[1]!.sectionHeading).toBe("B")
+    })
   })
 
-  it("extracts the note body from templated chunk content", () => {
-    const text = buildRagChunkText({
-      sectionHeading: "Section A",
-      tags: ["alpha", "beta"],
-      chunkContent: "Body only",
-      settings: {
-        use_section_headings: true,
-        use_tags: true,
-      },
+  // ── F: Секции и заголовки ────────────────────────────────
+  describe("F — Секции и заголовки", () => {
+    it("F1: две секции h2 → разрыв чанка на границе секций", () => {
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: `<h2>Alpha</h2>${p(solid(250))}<h2>Beta</h2>${p(solid(250))}`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 200, target_chunk_size: 500, max_chunk_size: 1500, overlap: 0 }),
+      })
+      expect(chunks).toHaveLength(2)
+      expect(chunks[0]!.sectionHeading).toBe("Alpha")
+      expect(chunks[1]!.sectionHeading).toBe("Beta")
     })
 
-    expect(getRagChunkBodyText(text)).toBe("Body only")
-    expect(getRagChunkBodyLength(text)).toBe("Body only".length)
+    it("F2: абзац после heading наследует его sectionHeading", () => {
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: `<h2>Title</h2>${p(solid(250))}${p(solid(250))}`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 200, target_chunk_size: 400, max_chunk_size: 1500, overlap: 0 }),
+      })
+      // P1+P2 = 250+2+250 = 502 > target=400 → 2 chunks, both inherit heading
+      expect(chunks).toHaveLength(2)
+      for (const chunk of chunks) {
+        expect(chunk.sectionHeading).toBe("Title")
+      }
+    })
+
+    it("F3: <strong> не создаёт секцию", () => {
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: `<p><strong>Bold text</strong></p>${p(solid(250))}`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 200, target_chunk_size: 500, max_chunk_size: 1500 }),
+      })
+      for (const chunk of chunks) {
+        expect(chunk.sectionHeading).toBeNull()
+        expect(chunk.content).not.toContain("Section:")
+      }
+    })
   })
 
-  describe("paragraph-first assembly with real note content", () => {
-    it("produces multiple chunks, not a single chunk", () => {
+  // ── G: Overlap ───────────────────────────────────────────
+  describe("G — Overlap", () => {
+    it("G1: overlap=0 → нет overlap текста", () => {
+      // Two paragraphs, each ≥ min, sum > target → 2 chunks
+      const p1 = "Alpha " + solid(244) + "." // 251 chars
+      const p2 = "Bravo " + solid(244) + "." // 251 chars
+
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(p1) + p(p2),
+        tags: [],
+        settings: cfg({ min_chunk_size: 200, target_chunk_size: 250, max_chunk_size: 1500, overlap: 0 }),
+      })
+      expect(chunks).toHaveLength(2)
+      const body1 = getRagChunkBodyText(chunks[1]!.content)
+      expect(body1).not.toContain("Alpha")
+    })
+
+    it("G2: overlap=100 → предпочитает границу предложения", () => {
+      // P1 has sentences; overlap should snap to sentence boundary
+      const p1Text = "First " + solid(100) + ". Middle " + solid(80) + ". Ending sentence here."
+      // Positions of periods: ~106, ~195, ~217. With overlap=100, snap to "." at ~106
+      const p2Text = "Second paragraph " + solid(200) + "."
+
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(p1Text) + p(p2Text),
+        tags: [],
+        settings: cfg({ min_chunk_size: 50, target_chunk_size: 150, max_chunk_size: 1500, overlap: 100 }),
+      })
+      expect(chunks).toHaveLength(2)
+      const body1 = getRagChunkBodyText(chunks[1]!.content)
+      // Overlap prefix starts at sentence boundary and contains "Ending sentence here."
+      expect(body1).toContain("Ending sentence here.")
+    })
+
+    it("G3: overlap > длины предыдущего чанка → берёт весь текст", () => {
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(solid(80)) + p(solid(300)),
+        tags: [],
+        settings: cfg({ min_chunk_size: 50, target_chunk_size: 80, max_chunk_size: 1500, overlap: 200 }),
+      })
+      expect(chunks).toHaveLength(2)
+      const body1 = getRagChunkBodyText(chunks[1]!.content)
+      // Entire first chunk text is used as overlap prefix
+      expect(body1).toContain(solid(80))
+    })
+
+    it("G4: overlap между секциями → не применяется", () => {
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: `<h2>A</h2>${p(solid(250))}<h2>B</h2>${p(solid(250))}`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 200, target_chunk_size: 500, max_chunk_size: 1500, overlap: 100 }),
+      })
+      expect(chunks).toHaveLength(2)
+      const body1 = getRagChunkBodyText(chunks[1]!.content)
+      // Section B should NOT have overlap from section A
+      expect(body1).toBe(solid(250))
+    })
+  })
+
+  // ── H: Chunk template ────────────────────────────────────
+  describe("H — Chunk template", () => {
+    it("H1: section + tags + content → полный шаблон", () => {
+      const text = buildRagChunkText({
+        sectionHeading: "Intro",
+        tags: ["a", "b"],
+        chunkContent: "Body text",
+        settings: { use_section_headings: true, use_tags: true },
+      })
+      expect(text).toBe("Section: Intro\nTags: a, b\n\nBody text")
+    })
+
+    it("H2: heading=null → строка Section: опущена", () => {
+      const text = buildRagChunkText({
+        sectionHeading: null,
+        tags: ["a"],
+        chunkContent: "Body text",
+        settings: { use_section_headings: true, use_tags: true },
+      })
+      expect(text).toBe("Tags: a\n\nBody text")
+      expect(text).not.toContain("Section:")
+    })
+
+    it("H4: heading есть, use_section_headings=false → Section: скрыта", () => {
+      const text = buildRagChunkText({
+        sectionHeading: "Heading",
+        tags: [],
+        chunkContent: "Body",
+        settings: { use_section_headings: false, use_tags: true },
+      })
+      expect(text).not.toContain("Section:")
+      expect(text).toBe("Body")
+    })
+
+    it("H5: tags есть, use_tags=false → Tags: скрыта", () => {
+      const text = buildRagChunkText({
+        sectionHeading: null,
+        tags: ["x", "y"],
+        chunkContent: "Body",
+        settings: { use_section_headings: true, use_tags: false },
+      })
+      expect(text).not.toContain("Tags:")
+      expect(text).toBe("Body")
+    })
+
+    it("H7: use_title=true → title передаётся", () => {
+      const chunks = buildRagIndexChunks({
+        title: "My Note",
+        html: p(solid(200)),
+        tags: [],
+        settings: cfg({ use_title: true }),
+      })
+      expect(chunks[0]!.title).toBe("My Note")
+    })
+
+    it("H8: use_title=false → title = null", () => {
+      const chunks = buildRagIndexChunks({
+        title: "My Note",
+        html: p(solid(200)),
+        tags: [],
+        settings: cfg({ use_title: false }),
+      })
+      expect(chunks[0]!.title).toBeNull()
+    })
+  })
+
+  // ── I: Cross-factor pairwise ─────────────────────────────
+  describe("I — Cross-factor pairwise", () => {
+    it("I1: oversized в секции A + абзац в B + overlap → overlap не пересекает секцию", () => {
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: `<h2>A</h2>${p(solid(2000))}<h2>B</h2>${p(solid(300))}`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 200, target_chunk_size: 500, max_chunk_size: 1500, overlap: 100 }),
+      })
+      // Section A splits into oversized chunks; section B is separate
+      const sectionBChunk = chunks[chunks.length - 1]!
+      expect(sectionBChunk.sectionHeading).toBe("B")
+      // Section B must NOT have overlap from section A
+      expect(getRagChunkBodyText(sectionBChunk.content)).toBe(solid(300))
+    })
+
+    it("I2: узкие настройки (min≈target≈max) → форсируют partial split", () => {
+      // P1=80 < min=100. P2=80: combined=80+2+80=162 > max=120 → partial split P2
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: p(solid(80)) + p(solid(80)),
+        tags: [],
+        settings: cfg({ min_chunk_size: 100, target_chunk_size: 110, max_chunk_size: 120, overlap: 0 }),
+      })
+      expect(chunks.length).toBeGreaterThanOrEqual(2)
+      const body0 = getRagChunkBodyText(chunks[0]!.content)
+      expect(body0.length).toBeGreaterThanOrEqual(100)
+      expect(body0.length).toBeLessThanOrEqual(120)
+    })
+  })
+
+  // ── J: HTML parsing ──────────────────────────────────────
+  describe("J — HTML parsing", () => {
+    it("J1: nested <div> с <p> → отдельные блоки", () => {
+      // 150+2+150=302 > target=200, P1=150 ≥ min=100 → 2 chunks
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: `<div><p>${solid(150)}</p><p>${solid(150)}</p></div>`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 100, target_chunk_size: 200, max_chunk_size: 1500, overlap: 0 }),
+      })
+      expect(chunks).toHaveLength(2)
+    })
+
+    it("J2: <li> элементы → отдельные блоки", () => {
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: `<ul><li>${solid(150)}</li><li>${solid(150)}</li></ul>`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 100, target_chunk_size: 200, max_chunk_size: 1500, overlap: 0 }),
+      })
+      expect(chunks).toHaveLength(2)
+    })
+
+    it("J4: <ol> нумерованный список → нумерация сохраняется в тексте", () => {
+      // Tiptap/ProseMirror wraps list item content in <p> tags
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: `<ol><li><p>First item</p></li><li><p>Second item</p></li><li><p>Third item</p></li></ol>`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 20, target_chunk_size: 500, max_chunk_size: 1500 }),
+      })
+      expect(chunks).toHaveLength(1)
+      const body = getRagChunkBodyText(chunks[0]!.content)
+      expect(body).toContain("1. First item")
+      expect(body).toContain("2. Second item")
+      expect(body).toContain("3. Third item")
+    })
+
+    it("J5: <ul> маркированный список → маркеры сохраняются в тексте", () => {
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: `<ul><li><p>First item</p></li><li><p>Second item</p></li><li><p>Third item</p></li></ul>`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 20, target_chunk_size: 500, max_chunk_size: 1500 }),
+      })
+      expect(chunks).toHaveLength(1)
+      const body = getRagChunkBodyText(chunks[0]!.content)
+      expect(body).toContain("- First item")
+      expect(body).toContain("- Second item")
+      expect(body).toContain("- Third item")
+    })
+
+    it("J3: <br> внутри <p> → один блок (не разделяет на параграфы)", () => {
+      const chunks = buildRagIndexChunks({
+        title: "t",
+        html: "<p>Line one<br>Line two<br>Line three</p>",
+        tags: [],
+        settings: cfg({ min_chunk_size: 20, target_chunk_size: 500, max_chunk_size: 1500 }),
+      })
+      expect(chunks).toHaveLength(1)
+      const body = getRagChunkBodyText(chunks[0]!.content)
+      expect(body).toContain("Line one")
+      expect(body).toContain("Line three")
+    })
+  })
+
+  // ── Regression: реальная заметка ─────────────────────────
+  describe("Regression — реальная заметка (4 абзаца, русский текст)", () => {
+    it("создаёт несколько чанков, не один", () => {
       const chunks = buildRagIndexChunks({
         title: "тестовый тайтл",
         html: USER_NOTE_HTML,
         tags: ["тег1", "тег2"],
         settings: USER_SETTINGS,
       })
-
       expect(chunks.length).toBeGreaterThan(1)
     })
 
-    it("keeps first two small paragraphs together as one chunk (>= min_chunk_size)", () => {
+    it("объединяет два первых мелких абзаца в один чанк (≥ min)", () => {
       const chunks = buildRagIndexChunks({
         title: "тестовый тайтл",
         html: USER_NOTE_HTML,
         tags: ["тег1", "тег2"],
         settings: USER_SETTINGS,
       })
-
       const body0 = getRagChunkBodyText(chunks[0]?.content ?? "")
-      // First chunk should contain both P1 and P2
       expect(body0).toContain('"То что на предыдущем уровне')
       expect(body0).toContain("Чувство голода может")
-      // First chunk should NOT contain text from paragraph 3
+      // Третий абзац — уже в следующем чанке
       expect(body0).not.toContain("Что такое субъект и объект")
     })
 
-    it("does not cross paragraph boundaries when chunk is above min_chunk_size", () => {
+    it("не пересекает границы абзацев когда чанк ≥ min", () => {
       const chunks = buildRagIndexChunks({
         title: "тестовый тайтл",
         html: USER_NOTE_HTML,
         tags: ["тег1", "тег2"],
         settings: USER_SETTINGS,
       })
-
-      // Each chunk body should contain only whole paragraphs
-      for (const chunk of chunks) {
-        const body = getRagChunkBodyText(chunk.content)
-        // No paragraph text should be cut mid-sentence at paragraph boundary
-        // (overlap prefix from previous chunk is OK)
-        expect(body.length).toBeGreaterThan(0)
-      }
-
-      // Chunk 1 (index 1) should start with paragraph 3 content (possibly with overlap prefix)
       const body1 = getRagChunkBodyText(chunks[1]?.content ?? "")
       expect(body1).toContain("Что такое субъект и объект")
     })
 
-    it("each chunk body respects target_chunk_size for accumulation decisions", () => {
+    it("3 чанка из 4 абзацев: [P1+P2], [P3], [P4]", () => {
       const chunks = buildRagIndexChunks({
         title: "тестовый тайтл",
         html: USER_NOTE_HTML,
         tags: ["тег1", "тег2"],
         settings: USER_SETTINGS,
       })
-
-      // With 4 paragraphs (~83, ~245, ~530, ~570 chars) and target=500:
-      // Chunk 0: P1+P2 (~330 chars, >= min, P3 would exceed target → close)
-      // Chunk 1: P3 (~530 chars, >= min, P4 would exceed target → close)
-      // Chunk 2: P4 (~570 chars)
+      // P1~83 + P2~245 = ~330 ≥ min. P3~530 would exceed target → close.
+      // P3~530 ≥ min. P4~570 would exceed target → close.
+      // P4~570 ≥ min → standalone chunk.
       expect(chunks).toHaveLength(3)
     })
-  })
-
-  describe("oversized paragraph splitting with backward merge", () => {
-    it("splits oversized paragraph at max_chunk_size boundaries, not target", () => {
-      // Create a paragraph that is > max_chunk_size
-      const sentence = "Это предложение для теста длинного абзаца. "
-      const longParagraph = sentence.repeat(50) // ~2200 chars
-      const html = `<p>${longParagraph}</p>`
-
-      const chunks = buildRagIndexChunks({
-        title: "test",
-        html,
-        tags: [],
-        settings: {
-          ...USER_SETTINGS,
-          },
-      })
-
-      // With max=1500, a ~2200 char paragraph should produce 2 chunks, not 5 (which target=500 would make)
-      expect(chunks).toHaveLength(2)
-    })
-
-    it("backward-merges small remainder into previous piece", () => {
-      // Create a paragraph where splitting at max would leave a tiny remainder
-      const sentence = "Это тестовое предложение номер один. "
-      // Need something slightly over max_chunk_size with small remainder
-      const longParagraph = sentence.repeat(42) // ~42 * 36 = ~1512, remainder ~12 chars
-      const html = `<p>${longParagraph}</p>`
-
-      const settings = {
-        ...USER_SETTINGS,
-        max_chunk_size: 1500,
-        min_chunk_size: 200,
-      }
-
-      const chunks = buildRagIndexChunks({
-        title: "test",
-        html,
-        tags: [],
-        settings,
-      })
-
-      // If remainder < min_chunk_size, it should be merged back → single chunk
-      // (the merged chunk will be slightly above max_chunk_size)
-      if (chunks.length === 1) {
-        // Backward merge happened — chunk may exceed max but bounded by max + min - 1
-        expect(getRagChunkBodyText(chunks[0]?.content ?? "").length).toBeLessThanOrEqual(
-          settings.max_chunk_size + settings.min_chunk_size - 1
-        )
-      }
-    })
-  })
-
-  it("does not create sections from non-heading formatting alone", () => {
-    const chunks = buildRagIndexChunks({
-      title: "Formatting note",
-      html: "<p><strong>Looks like a heading</strong></p><p>Paragraph text.</p>",
-      tags: [],
-      settings: {
-        ...RAG_INDEX_EDITABLE_DEFAULTS,
-        target_chunk_size: 30,
-        min_chunk_size: 20,
-        max_chunk_size: 30,
-        overlap: 10,
-      },
-    })
-
-    expect(chunks[0]?.content).not.toContain("Section:")
   })
 })

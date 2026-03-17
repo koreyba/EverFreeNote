@@ -93,7 +93,7 @@ function collectBlocksFromDom(rootHtml: string): RawBlock[] {
   const blocks: RawBlock[] = []
   let currentHeading: string | null = null
 
-  const walk = (node: Node) => {
+  const walk = (node: Node, olIndex: number | null) => {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
         const text = normalizeWhitespace(child.textContent ?? "")
@@ -111,8 +111,38 @@ function collectBlocksFromDom(rootHtml: string): RawBlock[] {
         continue
       }
 
-      if (tagName === "ul" || tagName === "ol" || tagName === "section" || tagName === "article" || tagName === "main") {
-        walk(element)
+      if (tagName === "ol") {
+        let idx = 1
+        for (const olChild of Array.from(element.childNodes)) {
+          if (olChild.nodeType !== Node.ELEMENT_NODE) continue
+          const olChildTag = (olChild as Element).tagName.toLowerCase()
+          if (olChildTag === "li") {
+            const text = normalizeWhitespace(extractElementText(olChild))
+            if (text) blocks.push({ sectionHeading: currentHeading, text: `${idx}. ${text}` })
+            idx++
+          } else {
+            walk(olChild, null)
+          }
+        }
+        continue
+      }
+
+      if (tagName === "ul") {
+        for (const ulChild of Array.from(element.childNodes)) {
+          if (ulChild.nodeType !== Node.ELEMENT_NODE) continue
+          const ulChildTag = (ulChild as Element).tagName.toLowerCase()
+          if (ulChildTag === "li") {
+            const text = normalizeWhitespace(extractElementText(ulChild))
+            if (text) blocks.push({ sectionHeading: currentHeading, text: `- ${text}` })
+          } else {
+            walk(ulChild, null)
+          }
+        }
+        continue
+      }
+
+      if (tagName === "section" || tagName === "article" || tagName === "main") {
+        walk(element, null)
         continue
       }
 
@@ -123,7 +153,7 @@ function collectBlocksFromDom(rootHtml: string): RawBlock[] {
         })
 
         if (hasNestedBlocks) {
-          walk(element)
+          walk(element, null)
           continue
         }
       }
@@ -134,11 +164,11 @@ function collectBlocksFromDom(rootHtml: string): RawBlock[] {
         continue
       }
 
-      walk(element)
+      walk(element, null)
     }
   }
 
-  walk(doc.body)
+  walk(doc.body, null)
   return blocks.filter((block) => block.text.length > 0)
 }
 
@@ -153,8 +183,31 @@ function splitAndStripParagraphs(text: string, sectionHeading: string | null): R
     .map((cleaned) => ({ sectionHeading, text: cleaned }))
 }
 
+function prefixListItems(html: string): string {
+  // Ordered lists: prepend "1. ", "2. ", etc.
+  let result = html.replace(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner: string) => {
+    let idx = 1
+    const numbered = inner.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
+      const stripped = liContent.replace(/<\/?p\b[^>]*>/gi, "")
+      return `<li>${idx++}. ${stripped}</li>`
+    })
+    return `<ol>${numbered}</ol>`
+  })
+
+  // Unordered lists: prepend "- "
+  result = result.replace(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (_match, inner: string) => {
+    const bulleted = inner.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
+      const stripped = liContent.replace(/<\/?p\b[^>]*>/gi, "")
+      return `<li>- ${stripped}</li>`
+    })
+    return `<ul>${bulleted}</ul>`
+  })
+
+  return result
+}
+
 function collectBlocksWithRegex(html: string): RawBlock[] {
-  const normalizedHtml = html
+  const normalizedHtml = prefixListItems(html)
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(BLOCK_BREAK_PATTERN, "\n\n")
 
