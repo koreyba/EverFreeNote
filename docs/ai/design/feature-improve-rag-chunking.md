@@ -168,7 +168,7 @@ Representative payload:
   "task_type_query": "RETRIEVAL_QUERY",
   "split_strategy": "hierarchical",
   "fallback_split_order": ["sections", "paragraphs", "sentences", "tokens_or_characters"],
-  "chunk_accumulation_rule": "Accumulate neighboring small paragraphs within the same section until target_chunk_size is reached or max_chunk_size would be exceeded.",
+  "chunk_accumulation_rule": "Paragraph-first: accumulate whole paragraphs until min_chunk_size is reached, then optionally extend toward target_chunk_size only if the next whole paragraph fits without exceeding it. Oversized paragraphs are split at max_chunk_size boundaries; if the remainder is below min_chunk_size it is merged back into the previous piece.",
   "small_chunk_merge_rule": "Merge undersized final chunks with adjacent chunks when possible without violating max_chunk_size.",
   "chunk_template": "Section: {section_heading}\\nTags: {tag1}, {tag2}, {tag3}\\n\\n{chunk_content}"
 }
