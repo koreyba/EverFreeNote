@@ -6,6 +6,17 @@ description: Test plan for configurable hierarchical chunking and indexing setti
 
 # Testing Strategy
 
+## Decision Update - 2026-03-17
+
+The test plan must explicitly protect the newly clarified paragraph-first rules:
+
+- paragraph-first chunk assembly
+- `min_chunk_size` reached before optional extension toward `target_chunk_size`
+- no whole-paragraph append when it overshoots `target_chunk_size`
+- partial split of the next paragraph only when needed to escape an undersized chunk that cannot fit the whole paragraph under `max_chunk_size`
+- trailing undersized chunk tries backward merge first
+- overlap remains one-directional from previous chunk into next chunk
+
 ## Test Coverage Goals
 
 - Unit test coverage target: 100% of new chunking and settings-validation logic
@@ -41,11 +52,15 @@ description: Test plan for configurable hierarchical chunking and indexing setti
 
 ### Chunk accumulation and merge rules
 
-- [ ] Adjacent small paragraphs accumulate toward `target_chunk_size`
+- [ ] Adjacent small paragraphs accumulate paragraph-first until `min_chunk_size` is reached
+- [ ] After reaching `min_chunk_size`, another whole paragraph is appended only when it improves fit toward `target_chunk_size`
+- [ ] A whole next paragraph is not appended when it would overshoot `target_chunk_size`, even if still within `max_chunk_size`
+- [ ] If still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, the paragraph is split internally as fallback
 - [ ] Accumulation stops before violating `max_chunk_size`
 - [ ] Undersized final trailing chunk merges with previous neighbor when allowed
 - [ ] Undersized chunk remains standalone when merging would exceed `max_chunk_size`
 - [ ] Overlap duplicates only boundary content between adjacent final chunks
+- [ ] Overlap is one-directional from previous chunk into next chunk
 
 ### Chunk text templating
 

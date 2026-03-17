@@ -1,5 +1,5 @@
-import type { RagIndexingEditableSettings } from "@core/rag/indexingSettings"
-import { buildRagChunkText, buildRagEmbeddingTitle } from "@core/rag/chunkTemplate"
+import type { RagIndexingEditableSettings } from "./indexingSettings.ts"
+import { buildRagChunkText, buildRagEmbeddingTitle } from "./chunkTemplate.ts"
 
 type RawBlock = {
   sectionHeading: string | null
@@ -356,8 +356,15 @@ function mergeSmallChunks(
 
 function buildOverlapPrefix(source: string, overlap: number): string {
   if (overlap <= 0 || source.length === 0) return ""
-  const start = Math.max(0, source.length - overlap)
-  return source.slice(start).trim()
+  const requestedStart = Math.max(0, source.length - overlap)
+  const sentenceBoundary = source.lastIndexOf(".", requestedStart - 1)
+
+  if (sentenceBoundary === -1) {
+    return source.trim()
+  }
+
+  const sentenceStart = sentenceBoundary + 1
+  return source.slice(sentenceStart).trim()
 }
 
 function applyFinalOverlap(chunks: CandidateChunk[], overlap: number): CandidateChunk[] {
@@ -366,6 +373,9 @@ function applyFinalOverlap(chunks: CandidateChunk[], overlap: number): Candidate
   return chunks.map((chunk, index) => {
     if (index === 0) return chunk
     const previous = chunks[index - 1]
+    if (!previous || previous.sectionHeading !== chunk.sectionHeading) {
+      return chunk
+    }
     const overlapPrefix = buildOverlapPrefix(previous?.text ?? "", overlap)
     if (!overlapPrefix) return chunk
 

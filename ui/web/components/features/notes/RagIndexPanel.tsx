@@ -20,6 +20,7 @@ import {
 import { toast } from 'sonner'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { useRagStatus } from '@ui/web/hooks/useRagStatus'
+import { logRagIndexDebugChunks, type RagIndexDebugChunk } from '@core/rag/debugLog'
 
 async function extractErrorMessage(err: unknown, fallback: string): Promise<string> {
   if (!(err instanceof Error)) return fallback
@@ -43,6 +44,21 @@ interface RagIndexPanelProps {
 
 type Operation = 'indexing' | 'deleting' | null
 
+function parseDebugChunks(data: unknown): RagIndexDebugChunk[] {
+  if (!data || typeof data !== 'object') return []
+  const value = (data as { debugChunks?: unknown }).debugChunks
+  if (!Array.isArray(value)) return []
+  return value.filter((chunk): chunk is RagIndexDebugChunk => {
+    if (!chunk || typeof chunk !== 'object') return false
+    const candidate = chunk as Partial<RagIndexDebugChunk>
+    return typeof candidate.chunkIndex === 'number'
+      && typeof candidate.charOffset === 'number'
+      && typeof candidate.content === 'string'
+      && (typeof candidate.sectionHeading === 'string' || candidate.sectionHeading === null)
+      && (typeof candidate.title === 'string' || candidate.title === null)
+  })
+}
+
 function parseChunkCount(data: unknown): number | null {
   if (!data || typeof data !== 'object') return null
   const value = (data as { chunkCount?: unknown }).chunkCount
@@ -62,9 +78,13 @@ export function RagIndexPanel({ noteId, variant = 'inline', onMenuClose }: RagIn
     setOperation('indexing')
     try {
       const { data, error } = await supabase.functions.invoke('rag-index', {
-        body: { noteId, action: isIndexed ? 'reindex' : 'index' },
+        body: { noteId, action: isIndexed ? 'reindex' : 'index', debugChunks: true },
       })
       if (error) throw error
+      const debugChunks = parseDebugChunks(data)
+      if (debugChunks.length > 0) {
+        logRagIndexDebugChunks(noteId, debugChunks)
+      }
       const count = parseChunkCount(data)
       if (count === null) {
         console.warn('[rag-index] Unexpected response payload for index action', data)

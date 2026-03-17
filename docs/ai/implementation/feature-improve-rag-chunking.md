@@ -6,6 +6,18 @@ description: Technical notes for configurable hierarchical chunking and indexing
 
 # Implementation Guide
 
+## Decision Update - 2026-03-17
+
+Implementation must now follow these clarified chunk-assembly rules:
+
+- treat paragraph boundaries as the default assembly boundary
+- use `min_chunk_size` as the primary condition for closing a chunk assembled from small paragraphs
+- after `min_chunk_size` is reached, another whole paragraph may be appended only if it improves fit toward `target_chunk_size`
+- do not append a whole paragraph that would overshoot `target_chunk_size`, even if it is still within `max_chunk_size`
+- if the current chunk is still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, split that next paragraph internally to finish the chunk
+- when a trailing chunk is undersized, try backward merge first and leave it undersized if merging would exceed `max_chunk_size`
+- keep overlap one-directional from previous chunk into next chunk
+
 ## Development Setup
 
 - Use the existing Supabase Edge Function flow for indexing and search.
@@ -68,7 +80,7 @@ Suggested processing flow:
 4. Otherwise:
    - split into sections using `h1-h6` tags only
    - split each section into paragraphs
-   - accumulate neighboring small paragraphs toward `target_chunk_size`
+   - accumulate neighboring small paragraphs paragraph-first, reaching `min_chunk_size` before considering optional extension toward `target_chunk_size`
    - split oversized paragraphs deeper by sentences
    - if still oversized, split by tokens or characters
 5. After candidate chunks are created:
@@ -112,6 +124,7 @@ Implementation rules:
 - Keep domain logic in `core` and keep UI layers thin.
 - Do not copy chunking logic into web/mobile modules for convenience; add or extend shared `core` APIs instead.
 - Keep current UI work web-only, while preserving a clean shared contract for future mobile adoption.
+- In paragraph-first assembly, make decisions on whole-paragraph boundaries whenever possible and only cut inside a paragraph as the explicit fallback path.
 - Keep I/O boundaries thin:
   - settings fetch
   - note fetch

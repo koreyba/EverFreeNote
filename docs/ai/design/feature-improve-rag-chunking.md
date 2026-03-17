@@ -6,6 +6,19 @@ description: Architecture for configurable hierarchical note chunking and explic
 
 # System Design & Architecture
 
+## Decision Update - 2026-03-17
+
+The chunk assembly design has been refined after review. These rules are the latest source of truth and should take precedence over earlier generic phrases such as "accumulate toward target size" when they conflict.
+
+- Chunk assembly is `paragraph-first`, not `target-first`.
+- `min_chunk_size` is the primary threshold for merging neighboring small paragraphs.
+- Once `min_chunk_size` is reached, the assembler may add another whole paragraph only if doing so still fits naturally and moves the chunk closer to `target_chunk_size`.
+- A whole next paragraph must not be added if it would overshoot `target_chunk_size`, even when it would still fit in `max_chunk_size`.
+- If the current chunk is still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, the next paragraph may be split internally to complete a minimally valid chunk.
+- Final trailing undersized chunks should try backward merge first; if that fails because of `max_chunk_size`, they remain undersized.
+- Overlap is intentionally one-directional: `chunk[i + 1] = suffix(chunk[i]) + new_content`.
+- Overlap must not cross a section boundary and should prefer natural stop points such as sentence-ending period or text boundary.
+
 ## Architecture Overview
 
 ```mermaid
@@ -204,7 +217,7 @@ This feature does not alter search ranking logic, but the design must preserve:
 - Implemented in shared `core` code with no dependency on `ui/web` or `ui/mobile`
 - Parses note content into hierarchical structural units
 - Derives sections only from real heading tags `h1` through `h6`
-- Accumulates small sibling paragraphs toward `target_chunk_size`
+- Accumulates small sibling paragraphs paragraph-first, reaching `min_chunk_size` before considering optional extension toward `target_chunk_size`
 - Splits oversized paragraphs into sentences, then token/character-based subparts
 - Applies overlap only after final chunks are formed
 - Merges undersized final chunks with neighbors when allowed
@@ -241,6 +254,16 @@ This feature does not alter search ranking logic, but the design must preserve:
 **Decision:** `overlap` means repeated boundary content between adjacent final chunks, not intermediate parser overlap.
 
 **Why:** This keeps chunk generation predictable and aligns the setting with user expectations in the UI.
+
+**Clarification:** overlap is one-directional. The next chunk repeats a suffix of the previous chunk at its beginning; chunks do not embed "future context" from the next chunk into their own tail.
+
+### Paragraph-first accumulation
+
+**Decision:** paragraph boundaries are the default chunk assembly boundary, and `min_chunk_size` is the first assembly target.
+
+**Why:** This preserves natural note structure better than greedily filling chunks toward `target_chunk_size`.
+
+**Consequence:** `target_chunk_size` remains useful, but only after `min_chunk_size` has already been reached and only when adding another whole paragraph still makes the resulting chunk a better fit.
 
 ### Title is metadata, not chunk body
 

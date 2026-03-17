@@ -186,10 +186,10 @@ serve(async (req: Request) => {
   if (userError || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401)
   const userId = userData.user.id
 
-  let payload: { noteId?: string; action?: string } = {}
+  let payload: { noteId?: string; action?: string; debugChunks?: boolean } = {}
   try { payload = await req.json() } catch { /* empty body */ }
 
-  const { noteId, action } = payload
+  const { noteId, action, debugChunks } = payload
   if (!noteId || typeof noteId !== "string") {
     return jsonResponse({ error: "Missing noteId" }, 400)
   }
@@ -329,6 +329,15 @@ serve(async (req: Request) => {
     return jsonResponse({
       chunkCount: chunksForIndexing.length,
       droppedChunks: droppedChunkCount > 0 ? droppedChunkCount : undefined,
+      debugChunks: debugChunks
+        ? chunksForIndexing.map((chunk, index) => ({
+            chunkIndex: index,
+            charOffset: chunk.charOffset,
+            sectionHeading: chunk.sectionHeading,
+            title: chunk.title,
+            content: chunk.content,
+          }))
+        : undefined,
     })
   } catch (err) {
     console.error("[rag-index]", err)

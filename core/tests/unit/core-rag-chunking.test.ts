@@ -41,6 +41,47 @@ describe("core/rag/chunking", () => {
     expect(chunks[1]?.charOffset).toBeGreaterThan(chunks[0]?.charOffset ?? 0)
   })
 
+  it("expands overlap back to the start of the sentence instead of starting mid-sentence", () => {
+    const longSentence = "Alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau."
+
+    const chunks = buildRagIndexChunks({
+      title: "Long sentence note",
+      html: `<p>${longSentence}</p>`,
+      tags: [],
+      settings: {
+        ...RAG_INDEX_EDITABLE_DEFAULTS,
+        small_note_threshold: 20,
+        target_chunk_size: 25,
+        min_chunk_size: 20,
+        max_chunk_size: 25,
+        overlap: 10,
+      },
+    })
+
+    expect(chunks.length).toBeGreaterThan(1)
+    expect(getRagChunkBodyText(chunks[1]?.content ?? "").startsWith("Alpha beta gamma")).toBe(true)
+  })
+
+  it("does not carry overlap across section boundaries", () => {
+    const chunks = buildRagIndexChunks({
+      title: "Sectioned note",
+      html: "<h2>Section A</h2><p>Alpha sentence one. Alpha sentence two.</p><h2>Section B</h2><p>Beta sentence one. Beta sentence two.</p>",
+      tags: [],
+      settings: {
+        ...RAG_INDEX_EDITABLE_DEFAULTS,
+        small_note_threshold: 20,
+        target_chunk_size: 30,
+        min_chunk_size: 20,
+        max_chunk_size: 30,
+        overlap: 10,
+      },
+    })
+
+    expect(chunks).toHaveLength(4)
+    expect(chunks[2]?.content).toContain("Section: Section B")
+    expect(getRagChunkBodyText(chunks[2]?.content ?? "")).toBe("Beta sentence one.")
+  })
+
   it("omits empty optional lines from the chunk template", () => {
     const text = buildRagChunkText({
       sectionHeading: null,

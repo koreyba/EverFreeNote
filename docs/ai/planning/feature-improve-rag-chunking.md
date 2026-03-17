@@ -6,6 +6,18 @@ description: Task breakdown for configurable hierarchical chunking and indexing 
 
 # Project Planning & Task Breakdown
 
+## Decision Update - 2026-03-17
+
+Latest clarified behavior to preserve during implementation:
+
+- chunk assembly is paragraph-first
+- merge small paragraphs until `min_chunk_size` is reached
+- after reaching `min_chunk_size`, only add another whole paragraph if it improves fit toward `target_chunk_size`
+- do not add a whole paragraph that overshoots `target_chunk_size`, even if it still fits in `max_chunk_size`
+- if still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, split that paragraph internally as a compromise
+- trailing undersized chunks try backward merge first
+- overlap is one-directional from previous chunk into next chunk
+
 ## Milestones
 
 - [ ] Milestone 1: Persisted indexing settings model and UI contract defined
@@ -54,7 +66,9 @@ description: Task breakdown for configurable hierarchical chunking and indexing 
 
 - [ ] **2.4** Implement chunk assembly rules
   - single-chunk indexing for small notes
-  - accumulation of neighboring small paragraphs up to target size
+  - paragraph-first accumulation of neighboring small paragraphs
+  - use `min_chunk_size` as the first stopping threshold
+  - use `target_chunk_size` only as a later preference when another whole paragraph still improves fit
   - merge of undersized final chunks when possible
   - final-chunk overlap behavior
 

@@ -6,6 +6,21 @@ description: Requirements for hierarchical note chunking and explicit indexing s
 
 # Requirements & Problem Understanding
 
+## Decision Update - 2026-03-17
+
+This feature now uses a stricter `paragraph-first` interpretation of hierarchical chunking. These decisions were made after initial drafting and must override any older wording below if there is a conflict.
+
+- Paragraphs are the primary chunk assembly unit.
+- Small neighboring paragraphs may be merged, but reaching `min_chunk_size` is the first stopping condition.
+- After `min_chunk_size` is reached, the chunk may include additional whole paragraphs only when they still fit naturally and move the chunk closer to `target_chunk_size`.
+- If the next whole paragraph would overshoot `target_chunk_size`, it must not be added just to make the chunk larger, even if it would still fit within `max_chunk_size`.
+- If a chunk is still below `min_chunk_size` and the next whole paragraph fits within `max_chunk_size`, that whole paragraph should be added.
+- If a chunk is still below `min_chunk_size` but the next whole paragraph would exceed `max_chunk_size`, the next paragraph may be split internally as a compromise to reach a valid chunk.
+- Oversized paragraphs are still split internally by sentences and then by token/character fallback when needed.
+- A trailing undersized chunk should first try to merge backward with the previous chunk; if that would exceed `max_chunk_size`, the undersized tail remains as-is.
+- Overlap remains one-directional: each next chunk repeats a suffix of the previous chunk at its beginning.
+- Overlap should prefer natural boundaries, currently using explicit stop points such as sentence-ending period, section boundary, or text boundary.
+
 ## Problem Statement
 
 RAG note indexing currently uses fixed, mostly implicit chunking and embedding settings in code. This makes indexing quality harder to tune, hides important system behavior from the UI, and forces redeploys for changes that should be configuration-driven.
@@ -53,6 +68,7 @@ RAG note indexing currently uses fixed, mostly implicit chunking and embedding s
 - **As a user searching small notes**, I want short notes to remain whole so that their context is preserved.
 - **As a user searching large notes**, I want notes to be split on natural boundaries first so that retrieved chunks stay coherent.
 - **As a system**, I want tiny neighboring paragraphs to accumulate into a target-sized chunk so that the index avoids fragmented low-value chunks.
+- **As a system**, I want tiny neighboring paragraphs to merge paragraph-first so that natural paragraph boundaries stay intact whenever possible.
 - **As a system**, I want oversized paragraphs to split deeper by sentences and then by token/character fallback so that no final chunk exceeds the configured maximum.
 - **As a system**, I want undersized final chunks to merge with neighbors when possible so that chunk quality remains consistent.
 
@@ -105,10 +121,12 @@ RAG note indexing currently uses fixed, mostly implicit chunking and embedding s
   - small chunk merge rule
 - [ ] Notes below `small_note_threshold` are indexed as a single chunk unless prevented by system constraints.
 - [ ] Larger notes are split by natural boundaries before using sentence-level and token/character fallback splitting.
-- [ ] Small adjacent paragraphs accumulate toward `target_chunk_size` within a section before becoming final chunks.
+- [ ] Small adjacent paragraphs accumulate paragraph-first, reaching `min_chunk_size` first and extending toward `target_chunk_size` only when additional whole paragraphs fit naturally.
 - [ ] Oversized paragraphs are split deeper until all final chunks satisfy `max_chunk_size`.
 - [ ] Undersized final chunks are merged with adjacent chunks when possible without violating configured limits.
 - [ ] `overlap` is applied as repeated boundary content between adjacent final chunks, not as an intermediate split rule.
+- [ ] `overlap` is one-directional: the next chunk repeats the previous chunk's tail at its beginning.
+- [ ] `overlap` should prefer natural boundaries instead of starting from the middle of a sentence when a supported stop point is available.
 - [ ] Title is passed separately through the Gemini API `title` field and is not duplicated inside chunk text.
 - [ ] Size-based settings are explicitly labeled in the UI as character-based values.
 - [ ] Indexed chunk text follows one consistent template:
@@ -152,6 +170,7 @@ Tags: {tag1}, {tag2}, {tag3}
 - Any omitted optional chunk parts (`Section`, `Tags`) should disappear entirely rather than render as empty labels.
 - Editable numeric indexing parameters use an allowed range of `50..5000`.
 - Server-side validation must also enforce logical ordering: `min_chunk_size <= target_chunk_size <= max_chunk_size`.
+- `target_chunk_size` remains relevant for oversize paragraph splitting and for deciding whether another whole paragraph should be added after `min_chunk_size` has already been reached.
 
 ## Questions & Open Items
 

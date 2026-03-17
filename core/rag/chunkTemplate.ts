@@ -1,4 +1,4 @@
-import type { RagIndexingEditableSettings } from "@core/rag/indexingSettings"
+import type { RagIndexingEditableSettings } from "./indexingSettings.ts"
 
 export type RagChunkTemplateInput = {
   sectionHeading: string | null
