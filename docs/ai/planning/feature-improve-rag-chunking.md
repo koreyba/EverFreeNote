@@ -18,29 +18,57 @@ Latest clarified behavior to preserve during implementation:
 - trailing undersized chunks try backward merge first
 - overlap is one-directional from previous chunk into next chunk
 
+## Planning Update - 2026-03-17
+
+Current progress after implementation and review work:
+
+- shared `core` settings and chunking logic exists and is already wired into indexing paths
+- per-user indexing settings storage and web-only settings UI are implemented
+- local Supabase Edge boot issues were resolved by switching internal `core/rag` imports to explicit local `.ts` imports and removing an incompatible `deno.lock`
+- temporary chunk debug logging is enabled to inspect final indexed chunks in the browser/app console
+- design and requirements were refined after implementation review: chunk assembly must be `paragraph-first`, not greedily `target_chunk_size`-first
+
+Current risks and open execution focus:
+
+- current chunk assembly implementation still needs to be fully aligned with the newly clarified paragraph-first planning rules
+- debug observations showed chunk boundaries still drifting across paragraph boundaries more aggressively than desired
+- docs are updated, but code and tests still need one more reconciliation pass to fully match the latest rules
+- `ai-devkit lint --feature improve-rag-chunking` still fails on workflow metadata only because git branch `feature-improve-rag-chunking` does not exist in this repo context
+
+Recommended next tasks:
+
+1. Rework `core/rag/chunking.ts` so paragraph-first accumulation uses `min_chunk_size` as the first stopping condition and uses `target_chunk_size` only as a secondary preference.
+2. Add/adjust unit tests for paragraph-preserving chunk assembly, fallback paragraph splitting, trailing undersized merge-back, and one-directional overlap expectations.
+3. Re-run local manual indexing against representative notes and compare debug chunk output against expected paragraph-first boundaries.
+
+Blockers / coordination:
+
+- no product blocker is open on requirements; the remaining work is implementation alignment
+- if strict workflow lint compliance is needed, create the expected git branch or worktree name `feature-improve-rag-chunking`
+
 ## Milestones
 
-- [ ] Milestone 1: Persisted indexing settings model and UI contract defined
-- [ ] Milestone 2: Shared `core` chunking/settings module implemented and adopted by indexing paths
+- [x] Milestone 1: Persisted indexing settings model and UI contract defined
+- [x] Milestone 2: Shared `core` chunking/settings module implemented and adopted by indexing paths
 - [ ] Milestone 3: Settings UI wired to runtime configuration and validated end-to-end
 
 ## Task Breakdown
 
 ### Phase 1: Settings foundation
 
-- [ ] **1.1** Finalize the persisted settings shape for indexing configuration
+- [x] **1.1** Finalize the persisted settings shape for indexing configuration
   - use per-user settings scope
   - store settings in a dedicated per-user table, separate from `user_api_keys`
   - place the UI under the Google API settings tab
   - define defaults for editable and read-only parameters
   - allow any user to edit their own settings
 
-- [ ] **1.2** Add backend read/write access for indexing settings
+- [x] **1.2** Add backend read/write access for indexing settings
   - read resolved settings for the UI
   - save editable settings with validation
   - expose read-only system values alongside editable values
 
-- [ ] **1.3** Define validation rules
+- [x] **1.3** Define validation rules
   - numeric ranges for thresholds and chunk sizes: `50..5000`
   - invariants like `min_chunk_size <= target_chunk_size <= max_chunk_size`
   - overlap constraints relative to chunk sizes
@@ -48,13 +76,13 @@ Latest clarified behavior to preserve during implementation:
 
 ### Phase 2: Chunking pipeline
 
-- [ ] **2.1** Create shared `core` module for indexing settings and hierarchical chunking
+- [x] **2.1** Create shared `core` module for indexing settings and hierarchical chunking
   - keep application-owned chunking
   - keep the module independent from `ui/web` and `ui/mobile`
   - expose pure helpers reusable by server and clients
   - treat this module as the canonical implementation, not as an optional helper
 
-- [ ] **2.2** Replace current fixed-window chunking in `supabase/functions/rag-index/index.ts` with the shared `core` module
+- [x] **2.2** Replace current fixed-window chunking in `supabase/functions/rag-index/index.ts` with the shared `core` module
   - remove hard-coded chunking constants from the main indexing flow
   - consume the shared chunk builder and template serializer
 
@@ -63,6 +91,7 @@ Latest clarified behavior to preserve during implementation:
   - split sections into paragraphs
   - split oversized paragraphs into sentences
   - add token/character fallback for pathological long blocks
+  - status: in progress; implemented, but paragraph-first behavior still needs refinement to match latest clarified rules
 
 - [ ] **2.4** Implement chunk assembly rules
   - single-chunk indexing for small notes
@@ -71,8 +100,9 @@ Latest clarified behavior to preserve during implementation:
   - use `target_chunk_size` only as a later preference when another whole paragraph still improves fit
   - merge of undersized final chunks when possible
   - final-chunk overlap behavior
+  - status: in progress; overlap is working and one-directional, but accumulation still needs to stop and extend according to the newly agreed paragraph-first rules
 
-- [ ] **2.5** Implement chunk text templating
+- [x] **2.5** Implement chunk text templating
   - title passed separately via Gemini `title`
   - optional `Section:` line
   - optional `Tags:` line
@@ -80,7 +110,7 @@ Latest clarified behavior to preserve during implementation:
 
 ### Phase 3: UI and compatibility
 
-- [ ] **3.1** Build indexing settings UI consumers on top of the shared contract
+- [x] **3.1** Build indexing settings UI consumers on top of the shared contract
   - web only in this feature
   - editable controls for chunk parameters and inclusion flags
   - read-only section for `output_dimensionality`, task types, and system chunking rules
@@ -94,12 +124,14 @@ Latest clarified behavior to preserve during implementation:
   - web UI consumes the shared settings shape in this phase
   - mobile reuse is deferred, but the shared contract must remain mobile-compatible
   - reject any duplicated per-platform chunking implementation during rollout/review
+  - status: in progress; mostly done, but needs one more pass after paragraph-first chunking updates to verify end-to-end behavior
 
 - [ ] **3.3** Reindex and rollout strategy
   - settings changes affect only future indexing and future manual reindex
   - existing indexed notes remain unchanged until manually reindexed
   - define user guidance for when manual reindex is needed
   - add observability for effective settings during indexing runs
+  - status: in progress; manual reindex behavior is already true in practice, but user guidance and final rollout notes still need a cleanup pass
 
 ## Dependencies
 
