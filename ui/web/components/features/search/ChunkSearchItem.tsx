@@ -1,6 +1,7 @@
 import { ArrowUpRight } from 'lucide-react'
 import { ChunkSnippet } from './ChunkSnippet'
 import { cn } from '@ui/web/lib/utils'
+import { getRagChunkBodyLength } from '@core/rag/chunkTemplate'
 import type { RagChunk } from '@core/types/ragSearch'
 
 interface ChunkSearchItemProps {
@@ -22,7 +23,7 @@ function getScoreClass(score: number) {
 }
 
 export function ChunkSearchItem({ chunk, onOpenInContext, highlightQuery = '' }: ChunkSearchItemProps) {
-  const handleOpen = () => onOpenInContext(chunk.noteId, chunk.charOffset, chunk.content.length)
+  const handleOpen = () => onOpenInContext(chunk.noteId, chunk.charOffset, getRagChunkBodyLength(chunk.content))
 
   return (
     <div

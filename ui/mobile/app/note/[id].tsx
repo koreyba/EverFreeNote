@@ -294,18 +294,15 @@ export default function NoteEditorScreen() {
       return null
     }
 
-    const titlePrefix = (note.title ?? '').trim()
-    const bodyOffset = titlePrefix ? Math.max(0, rawOffset - (titlePrefix.length + 1)) : rawOffset
-
     return {
       requestId:
         typeof focusRequestId === 'string' && focusRequestId.length > 0
           ? focusRequestId
-          : `${note.id}:${bodyOffset}:${rawLength}`,
-      charOffset: bodyOffset,
+          : `${note.id}:${rawOffset}:${rawLength}`,
+      charOffset: rawOffset,
       chunkLength: rawLength,
     }
-  }, [focusLength, focusOffset, focusRequestId, note?.id, note?.title])
+  }, [focusLength, focusOffset, focusRequestId, note?.id])
 
   const applyPendingChunkFocus = useCallback(() => {
     if (!pendingChunkFocus) return

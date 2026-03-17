@@ -2,11 +2,11 @@ export const RAG_INDEX_NUMERIC_MIN = 50
 export const RAG_INDEX_NUMERIC_MAX = 5000
 
 export const RAG_INDEX_EDITABLE_DEFAULTS = {
-  small_note_threshold: 300,
-  target_chunk_size: 200,
-  min_chunk_size: 100,
-  max_chunk_size: 400,
-  overlap: 50,
+  small_note_threshold: 400,
+  target_chunk_size: 500,
+  min_chunk_size: 200,
+  max_chunk_size: 1500,
+  overlap: 100,
   use_title: true,
   use_section_headings: true,
   use_tags: true,

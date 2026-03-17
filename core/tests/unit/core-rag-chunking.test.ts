@@ -1,5 +1,5 @@
 import { buildRagIndexChunks } from "@core/rag/chunking"
-import { buildRagChunkText } from "@core/rag/chunkTemplate"
+import { buildRagChunkText, getRagChunkBodyLength, getRagChunkBodyText } from "@core/rag/chunkTemplate"
 import { RAG_INDEX_EDITABLE_DEFAULTS } from "@core/rag/indexingSettings"
 
 describe("core/rag/chunking", () => {
@@ -53,6 +53,21 @@ describe("core/rag/chunking", () => {
     })
 
     expect(text).toBe("Body only")
+  })
+
+  it("extracts the note body from templated chunk content", () => {
+    const text = buildRagChunkText({
+      sectionHeading: "Section A",
+      tags: ["alpha", "beta"],
+      chunkContent: "Body only",
+      settings: {
+        use_section_headings: true,
+        use_tags: true,
+      },
+    })
+
+    expect(getRagChunkBodyText(text)).toBe("Body only")
+    expect(getRagChunkBodyLength(text)).toBe("Body only".length)
   })
 
   it("does not create sections from non-heading formatting alone", () => {

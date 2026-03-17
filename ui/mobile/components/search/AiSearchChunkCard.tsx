@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { TagList } from '@ui/mobile/components/tags/TagList'
 import { useTheme } from '@ui/mobile/providers'
+import { getRagChunkBodyLength } from '@core/rag/chunkTemplate'
 import type { RagChunk } from '@core/types/ragSearch'
 import type { Note } from '@core/types/domain'
 
@@ -32,7 +33,7 @@ export const AiSearchChunkCard = memo(function AiSearchChunkCard({
   return (
     <Pressable
       testID={`ai-chunk-card-${chunk.noteId}-${chunk.chunkIndex}`}
-      onPress={() => onOpenInContext(noteSnapshot, chunk.charOffset, chunk.content.length)}
+      onPress={() => onOpenInContext(noteSnapshot, chunk.charOffset, getRagChunkBodyLength(chunk.content))}
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.card,

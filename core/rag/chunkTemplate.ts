@@ -9,6 +9,31 @@ export type RagChunkTemplateInput = {
 
 const normalizeInlineText = (value: string) => value.replace(/\s+/g, " ").trim()
 
+export function getRagChunkBodyText(content: string): string {
+  const normalized = content.trim()
+  if (!normalized) return ""
+
+  const lines = normalized.split("\n")
+  let cursor = 0
+
+  if (lines[cursor]?.startsWith("Section: ")) {
+    cursor += 1
+  }
+  if (lines[cursor]?.startsWith("Tags: ")) {
+    cursor += 1
+  }
+
+  if (cursor > 0 && lines[cursor] === "") {
+    return lines.slice(cursor + 1).join("\n").trim()
+  }
+
+  return normalized
+}
+
+export function getRagChunkBodyLength(content: string): number {
+  return getRagChunkBodyText(content).length
+}
+
 export function buildRagChunkText({
   sectionHeading,
   tags,

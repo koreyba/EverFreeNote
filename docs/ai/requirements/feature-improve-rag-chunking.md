@@ -156,9 +156,9 @@ Tags: {tag1}, {tag2}, {tag3}
 ## Questions & Open Items
 
 - Start defaults are fixed as:
-  - `small_note_threshold = 300`
-  - `target_chunk_size = 200`
-  - `min_chunk_size = 100`
-  - `max_chunk_size = 400`
-  - `overlap = 50`
+  - `small_note_threshold = 400`
+  - `target_chunk_size = 500`
+  - `min_chunk_size = 200`
+  - `max_chunk_size = 1500`
+  - `overlap = 100`
 - No remaining open items in requirements.

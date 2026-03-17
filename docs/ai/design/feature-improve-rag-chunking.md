@@ -52,11 +52,11 @@ Representative model:
 ```sql
 user_rag_index_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  small_note_threshold integer not null default 300,
-  target_chunk_size integer not null default 200,
-  min_chunk_size integer not null default 100,
-  max_chunk_size integer not null default 400,
-  overlap integer not null default 50,
+  small_note_threshold integer not null default 400,
+  target_chunk_size integer not null default 500,
+  min_chunk_size integer not null default 200,
+  max_chunk_size integer not null default 1500,
+  overlap integer not null default 100,
   use_title boolean not null default true,
   use_section_headings boolean not null default true,
   use_tags boolean not null default true,
@@ -141,11 +141,11 @@ Representative payload:
 
 ```json
 {
-  "small_note_threshold": 300,
-  "target_chunk_size": 200,
-  "min_chunk_size": 100,
-  "max_chunk_size": 400,
-  "overlap": 50,
+  "small_note_threshold": 400,
+  "target_chunk_size": 500,
+  "min_chunk_size": 200,
+  "max_chunk_size": 1500,
+  "overlap": 100,
   "use_title": true,
   "use_section_headings": true,
   "use_tags": true,
@@ -287,11 +287,11 @@ This feature does not alter search ranking logic, but the design must preserve:
 ## Open Design Items
 
 - Start defaults are:
-  - `small_note_threshold = 300`
-  - `target_chunk_size = 200`
-  - `min_chunk_size = 100`
-  - `max_chunk_size = 400`
-  - `overlap = 50`
+  - `small_note_threshold = 400`
+  - `target_chunk_size = 500`
+  - `min_chunk_size = 200`
+  - `max_chunk_size = 1500`
+  - `overlap = 100`
 - Validation ranges for editable numeric settings are:
   - `small_note_threshold`: `50..5000`
   - `target_chunk_size`: `50..5000`
