@@ -29,7 +29,7 @@ description: Task breakdown for configurable hierarchical chunking and indexing 
   - expose read-only system values alongside editable values
 
 - [ ] **1.3** Define validation rules
-  - numeric ranges for thresholds and chunk sizes
+  - numeric ranges for thresholds and chunk sizes: `50..5000`
   - invariants like `min_chunk_size <= target_chunk_size <= max_chunk_size`
   - overlap constraints relative to chunk sizes
   - compatibility checks for `output_dimensionality`

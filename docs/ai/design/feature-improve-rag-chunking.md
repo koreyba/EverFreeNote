@@ -196,6 +196,8 @@ This feature does not alter search ranking logic, but the design must preserve:
 - Fetches persisted indexing settings for UI display
 - Validates and saves editable settings
 - Exposes a single resolved settings object to indexing/search services
+- Enforces numeric bounds of `50..5000` for editable numeric settings
+- Enforces ordering invariants such as `min_chunk_size <= target_chunk_size <= max_chunk_size`
 
 ### Chunking module
 
@@ -284,11 +286,15 @@ This feature does not alter search ranking logic, but the design must preserve:
 
 ## Open Design Items
 
-- Validation ranges and defaults for all editable numeric settings.
 - Start defaults are:
   - `small_note_threshold = 300`
   - `target_chunk_size = 200`
   - `min_chunk_size = 100`
   - `max_chunk_size = 400`
   - `overlap = 50`
-- Validation ranges for these numeric settings still need to be finalized.
+- Validation ranges for editable numeric settings are:
+  - `small_note_threshold`: `50..5000`
+  - `target_chunk_size`: `50..5000`
+  - `min_chunk_size`: `50..5000`
+  - `max_chunk_size`: `50..5000`
+  - `overlap`: `50..5000`

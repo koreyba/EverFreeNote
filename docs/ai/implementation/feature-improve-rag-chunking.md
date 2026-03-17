@@ -139,6 +139,11 @@ function buildChunkPlan(note: {
 function validateRagIndexingSettings(input: Partial<RagIndexingSettings>): ValidatedRagIndexingSettings
 ```
 
+Validation rules to enforce in both UI and server paths:
+
+- `small_note_threshold`, `target_chunk_size`, `min_chunk_size`, `max_chunk_size`, `overlap` must each be within `50..5000`
+- `min_chunk_size <= target_chunk_size <= max_chunk_size`
+
 Representative placement:
 
 ```text

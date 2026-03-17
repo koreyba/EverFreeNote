@@ -150,6 +150,8 @@ Tags: {tag1}, {tag2}, {tag3}
 - `output_dimensionality` is displayed as read-only in the UI.
 - Size-based parameters are defined in characters in v1 and must be labeled that way in the UI.
 - Any omitted optional chunk parts (`Section`, `Tags`) should disappear entirely rather than render as empty labels.
+- Editable numeric indexing parameters use an allowed range of `50..5000`.
+- Server-side validation must also enforce logical ordering: `min_chunk_size <= target_chunk_size <= max_chunk_size`.
 
 ## Questions & Open Items
 
@@ -159,4 +161,4 @@ Tags: {tag1}, {tag2}, {tag3}
   - `min_chunk_size = 100`
   - `max_chunk_size = 400`
   - `overlap = 50`
-- Exact validation ranges for `small_note_threshold`, `target_chunk_size`, `min_chunk_size`, `max_chunk_size`, and `overlap` still need to be finalized.
+- No remaining open items in requirements.

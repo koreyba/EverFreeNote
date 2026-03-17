@@ -23,7 +23,8 @@ description: Test plan for configurable hierarchical chunking and indexing setti
 
 ### Chunking settings validation
 
-- [ ] Reject negative or zero values where not allowed
+- [ ] Reject values below `50`
+- [ ] Reject values above `5000`
 - [ ] Reject `min_chunk_size > target_chunk_size`
 - [ ] Reject `target_chunk_size > max_chunk_size`
 - [ ] Reject overlap values that exceed allowed bounds
@@ -132,4 +133,4 @@ npx ai-devkit@latest lint --feature improve-rag-chunking
 
 ## Outstanding Gaps
 
-- [ ] Finalize exact validation ranges
+- [ ] Decide whether overlap should also be constrained to be less than or equal to `max_chunk_size`
