@@ -142,6 +142,17 @@ function collectBlocksFromDom(rootHtml: string): RawBlock[] {
   return blocks.filter((block) => block.text.length > 0)
 }
 
+function splitAndStripParagraphs(text: string, sectionHeading: string | null): RawBlock[] {
+  // Split by paragraph breaks first (created by BLOCK_BREAK_PATTERN replacement),
+  // then strip remaining tags from each paragraph individually.
+  // This preserves paragraph boundaries that normalizeWhitespace would otherwise collapse.
+  return text
+    .split(/\n{2,}/)
+    .map((paragraph) => stripTags(paragraph))
+    .filter(Boolean)
+    .map((cleaned) => ({ sectionHeading, text: cleaned }))
+}
+
 function collectBlocksWithRegex(html: string): RawBlock[] {
   const normalizedHtml = html
     .replace(/<br\s*\/?>/gi, "\n")
@@ -156,19 +167,13 @@ function collectBlocksWithRegex(html: string): RawBlock[] {
 
   while ((match = headingRegex.exec(normalizedHtml)) !== null) {
     const beforeHeading = normalizedHtml.slice(lastIndex, match.index)
-    rawBlocks.push(...buildBlocksFromPlainText(stripTags(beforeHeading)).map((block) => ({
-      sectionHeading: currentHeading,
-      text: block.text,
-    })))
+    rawBlocks.push(...splitAndStripParagraphs(beforeHeading, currentHeading))
     currentHeading = stripTags(match[2] ?? "")
     lastIndex = headingRegex.lastIndex
   }
 
   const remaining = normalizedHtml.slice(lastIndex)
-  rawBlocks.push(...buildBlocksFromPlainText(stripTags(remaining)).map((block) => ({
-    sectionHeading: currentHeading,
-    text: block.text,
-  })))
+  rawBlocks.push(...splitAndStripParagraphs(remaining, currentHeading))
 
   return rawBlocks.filter((block) => block.text.length > 0)
 }
@@ -241,61 +246,161 @@ function splitByCharacterFallback(segment: TextSegment, maxChunkSize: number): T
   return parts
 }
 
-function splitOversizedBlock(block: IndexedBlock, maxChunkSize: number): TextSegment[] {
-  if (block.text.length <= maxChunkSize) {
-    return [{ sectionHeading: block.sectionHeading, text: block.text, charOffset: block.charOffset }]
+function takePartialText(text: string, minChars: number): { taken: string; remainder: string } {
+  if (minChars >= text.length) {
+    return { taken: text, remainder: "" }
   }
 
+  const sentenceEnd = text.indexOf(".", minChars)
+  if (sentenceEnd !== -1 && sentenceEnd < text.length) {
+    return {
+      taken: text.slice(0, sentenceEnd + 1).trim(),
+      remainder: text.slice(sentenceEnd + 1).trim(),
+    }
+  }
+
+  const spaceIndex = text.indexOf(" ", minChars)
+  if (spaceIndex !== -1) {
+    return {
+      taken: text.slice(0, spaceIndex).trim(),
+      remainder: text.slice(spaceIndex).trim(),
+    }
+  }
+
+  return {
+    taken: text.slice(0, minChars).trim(),
+    remainder: text.slice(minChars).trim(),
+  }
+}
+
+function splitOversizedParagraph(
+  block: IndexedBlock,
+  maxSize: number,
+  minSize: number
+): CandidateChunk[] {
   const sentenceSegments = splitIntoSentenceSegments(block)
-  const expanded: TextSegment[] = []
+  const pieces: TextSegment[] = []
   for (const sentence of sentenceSegments) {
-    if (sentence.text.length <= maxChunkSize) {
-      expanded.push(sentence)
+    if (sentence.text.length <= maxSize) {
+      pieces.push(sentence)
+    } else {
+      pieces.push(...splitByCharacterFallback(sentence, maxSize))
+    }
+  }
+
+  const chunks: CandidateChunk[] = []
+  let current: CandidateChunk | null = null
+
+  for (const piece of pieces) {
+    if (!current) {
+      current = { sectionHeading: piece.sectionHeading, text: piece.text, charOffset: piece.charOffset }
       continue
     }
-    expanded.push(...splitByCharacterFallback(sentence, maxChunkSize))
+
+    const combined = [current.text, piece.text].join(" ")
+    if (combined.length <= maxSize) {
+      current = { ...current, text: combined }
+    } else {
+      chunks.push(current)
+      current = { sectionHeading: piece.sectionHeading, text: piece.text, charOffset: piece.charOffset }
+    }
   }
 
-  return expanded
+  if (current) chunks.push(current)
+
+  // Backward merge: if the last piece is undersized, merge it into the previous piece.
+  // This may produce a chunk slightly above maxSize — a conscious compromise to avoid
+  // breaking the next paragraph boundary or leaving a tiny orphan chunk.
+  if (chunks.length >= 2) {
+    const last = chunks[chunks.length - 1]!
+    if (last.text.length < minSize) {
+      const prev = chunks[chunks.length - 2]!
+      chunks.splice(-2, 2, { ...prev, text: [prev.text, last.text].join(" ") })
+    }
+  }
+
+  return chunks
 }
 
 function joinChunkParts(parts: string[]): string {
   return parts.filter(Boolean).join("\n\n").trim()
 }
 
-function accumulateSegments(
-  segments: TextSegment[],
+function assembleParagraphFirst(
+  blocks: IndexedBlock[],
   settings: Pick<RagIndexingEditableSettings, "min_chunk_size" | "target_chunk_size" | "max_chunk_size">
 ): CandidateChunk[] {
   const candidates: CandidateChunk[] = []
   let current: CandidateChunk | null = null
 
-  for (const segment of segments) {
-    if (!current) {
-      current = { sectionHeading: segment.sectionHeading, text: segment.text, charOffset: segment.charOffset }
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i]
+    if (!block) continue
+
+    // Section boundary — close current chunk
+    if (current && current.sectionHeading !== block.sectionHeading) {
+      candidates.push(current)
+      current = null
+    }
+
+    // Oversized paragraph (> max_chunk_size): split internally with max_chunk_size (minimal cuts)
+    if (block.text.length > settings.max_chunk_size) {
+      if (current) {
+        candidates.push(current)
+        current = null
+      }
+      candidates.push(...splitOversizedParagraph(block, settings.max_chunk_size, settings.min_chunk_size))
       continue
     }
 
-    const sameSection = current.sectionHeading === segment.sectionHeading
-    const combinedText = joinChunkParts([current.text, segment.text])
+    // Start new chunk
+    if (!current) {
+      current = { sectionHeading: block.sectionHeading, text: block.text, charOffset: block.charOffset }
+      continue
+    }
 
-    if (
-      sameSection &&
-      (
-        combinedText.length <= settings.target_chunk_size ||
-        (current.text.length < settings.min_chunk_size && combinedText.length <= settings.max_chunk_size)
-      )
-    ) {
-      current = {
-        sectionHeading: current.sectionHeading,
-        text: combinedText,
-        charOffset: current.charOffset,
+    // current is guaranteed non-null here (guarded by the !current check above)
+    const combinedText = joinChunkParts([current!.text, block.text])
+
+    if (current!.text.length < settings.min_chunk_size) {
+      // Below min — must add more to reach min_chunk_size
+      if (combinedText.length <= settings.max_chunk_size) {
+        // Whole paragraph fits within max — add it whole
+        current = { sectionHeading: current!.sectionHeading, text: combinedText, charOffset: current!.charOffset }
+      } else {
+        // Whole paragraph doesn't fit in max — split partially to reach min
+        const separatorLen = 2 // "\n\n"
+        const needed = settings.min_chunk_size - current!.text.length - separatorLen
+        if (needed > 0) {
+          const partial = takePartialText(block.text, needed)
+          current = { sectionHeading: current!.sectionHeading, text: joinChunkParts([current!.text, partial.taken]), charOffset: current!.charOffset }
+          candidates.push(current)
+          current = null
+          if (partial.remainder) {
+            current = {
+              sectionHeading: block.sectionHeading,
+              text: partial.remainder,
+              charOffset: block.charOffset + partial.taken.length,
+            }
+          }
+        } else {
+          // Current is already at min with just the separator
+          candidates.push(current!)
+          current = { sectionHeading: block.sectionHeading, text: block.text, charOffset: block.charOffset }
+        }
       }
       continue
     }
 
-    candidates.push(current)
-    current = { sectionHeading: segment.sectionHeading, text: segment.text, charOffset: segment.charOffset }
+    // At or above min — can close, but check if next paragraph fits within target
+    if (combinedText.length <= settings.target_chunk_size) {
+      // Adding this paragraph keeps within target — add it
+      current = { sectionHeading: current!.sectionHeading, text: combinedText, charOffset: current!.charOffset }
+    } else {
+      // Would exceed target — close current, start new chunk
+      candidates.push(current!)
+      current = { sectionHeading: block.sectionHeading, text: block.text, charOffset: block.charOffset }
+    }
   }
 
   if (current) {
@@ -305,53 +410,27 @@ function accumulateSegments(
   return candidates
 }
 
-function mergeSmallChunks(
+function mergeUndersizedTail(
   chunks: CandidateChunk[],
   settings: Pick<RagIndexingEditableSettings, "min_chunk_size" | "max_chunk_size">
 ): CandidateChunk[] {
-  const merged: CandidateChunk[] = []
+  if (chunks.length < 2) return chunks
 
-  for (let index = 0; index < chunks.length; index += 1) {
-    const chunk = chunks[index]
-    if (!chunk) continue
+  const last = chunks[chunks.length - 1]!
+  if (last.text.length >= settings.min_chunk_size) return chunks
 
-    if (chunk.text.length >= settings.min_chunk_size) {
-      merged.push(chunk)
-      continue
-    }
+  const prev = chunks[chunks.length - 2]!
+  if (prev.sectionHeading !== last.sectionHeading) return chunks
 
-    const previous = merged[merged.length - 1]
-    if (
-      previous &&
-      previous.sectionHeading === chunk.sectionHeading &&
-      joinChunkParts([previous.text, chunk.text]).length <= settings.max_chunk_size
-    ) {
-      merged[merged.length - 1] = {
-        sectionHeading: previous.sectionHeading,
-        text: joinChunkParts([previous.text, chunk.text]),
-        charOffset: previous.charOffset,
-      }
-      continue
-    }
-
-    const next = chunks[index + 1]
-    if (
-      next &&
-      next.sectionHeading === chunk.sectionHeading &&
-      joinChunkParts([chunk.text, next.text]).length <= settings.max_chunk_size
-    ) {
-      chunks[index + 1] = {
-        sectionHeading: next.sectionHeading,
-        text: joinChunkParts([chunk.text, next.text]),
-        charOffset: chunk.charOffset,
-      }
-      continue
-    }
-
-    merged.push(chunk)
+  const merged = joinChunkParts([prev.text, last.text])
+  if (merged.length <= settings.max_chunk_size) {
+    return [
+      ...chunks.slice(0, -2),
+      { ...prev, text: merged },
+    ]
   }
 
-  return merged
+  return chunks
 }
 
 function buildOverlapPrefix(source: string, overlap: number): string {
@@ -420,11 +499,8 @@ export function buildRagIndexChunks({
   const baseChunks =
     noteBodyLength > 0 && noteBodyLength <= settings.small_note_threshold
       ? buildWholeNoteChunk(blocks, html ?? "", settings)
-      : mergeSmallChunks(
-          accumulateSegments(
-            blocks.flatMap((block) => splitOversizedBlock(block, settings.max_chunk_size)),
-            settings
-          ),
+      : mergeUndersizedTail(
+          assembleParagraphFirst(blocks, settings),
           settings
         )
 

@@ -8,9 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RagIndexSettingsService } from "@core/services/ragIndexSettings"
 import type { RagIndexingEditableSettings, RagIndexingSettings } from "@core/rag/indexingSettings"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
+import { Info } from "lucide-react"
 
 type EditableNumericKey = keyof Pick<
   RagIndexingEditableSettings,
@@ -139,12 +141,22 @@ export function RagIndexingSettingsPanel() {
             disabled={loading || saving}
             onChange={(value) => updateNumericField("min_chunk_size", value)}
           />
-          <NumericField
+          <NumericFieldWithTooltip
             id="rag-max-chunk-size"
             label="Maximum chunk size (characters)"
             value={formState.max_chunk_size}
             disabled={loading || saving}
             onChange={(value) => updateNumericField("max_chunk_size", value)}
+            tooltip={(() => {
+              const max = Number(formState.max_chunk_size) || 0
+              const min = Number(formState.min_chunk_size) || 0
+              const effectiveMax = max + min - 1
+              return (
+                `When an oversized paragraph is split, a small remainder (< min_chunk_size) ` +
+                `is merged back into the previous piece. The effective maximum in that case:\n` +
+                `max_chunk_size + min_chunk_size - 1 = ${max} + ${min} - 1 = ${effectiveMax} characters.`
+              )
+            })()}
           />
           <NumericField
             id="rag-overlap"
@@ -251,6 +263,51 @@ function NumericField({
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type="number"
+        min={50}
+        max={5000}
+        step={1}
+        inputMode="numeric"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+      />
+    </div>
+  )
+}
+
+function NumericFieldWithTooltip({
+  id,
+  label,
+  value,
+  disabled,
+  onChange,
+  tooltip,
+}: {
+  id: string
+  label: string
+  value: string
+  disabled: boolean
+  onChange: (value: string) => void
+  tooltip: string
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Label htmlFor={id}>{label}</Label>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs whitespace-pre-line">
+              {tooltip}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       <Input
         id={id}
         type="number"

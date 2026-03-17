@@ -14,6 +14,8 @@ The test plan must explicitly protect the newly clarified paragraph-first rules:
 - `min_chunk_size` reached before optional extension toward `target_chunk_size`
 - no whole-paragraph append when it overshoots `target_chunk_size`
 - partial split of the next paragraph only when needed to escape an undersized chunk that cannot fit the whole paragraph under `max_chunk_size`
+- oversized paragraphs (> `max_chunk_size`) split at `max_chunk_size` boundaries (minimal cuts), not `target_chunk_size`
+- if the last piece after splitting an oversized paragraph is below `min_chunk_size`, it is merged back into the previous piece; effective max = `max_chunk_size + min_chunk_size - 1`
 - trailing undersized chunk tries backward merge first
 - overlap remains one-directional from previous chunk into next chunk
 
@@ -56,6 +58,9 @@ The test plan must explicitly protect the newly clarified paragraph-first rules:
 - [ ] After reaching `min_chunk_size`, another whole paragraph is appended only when it improves fit toward `target_chunk_size`
 - [ ] A whole next paragraph is not appended when it would overshoot `target_chunk_size`, even if still within `max_chunk_size`
 - [ ] If still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, the paragraph is split internally as fallback
+- [ ] Oversized paragraph (> max_chunk_size) is split at max_chunk_size boundaries, not target_chunk_size
+- [ ] If last piece of split oversized paragraph is below min_chunk_size, it is backward-merged into the previous piece
+- [ ] Backward merge may produce a piece up to max_chunk_size + min_chunk_size - 1 characters
 - [ ] Accumulation stops before violating `max_chunk_size`
 - [ ] Undersized final trailing chunk merges with previous neighbor when allowed
 - [ ] Undersized chunk remains standalone when merging would exceed `max_chunk_size`

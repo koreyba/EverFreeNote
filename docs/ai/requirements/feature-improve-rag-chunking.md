@@ -16,7 +16,8 @@ This feature now uses a stricter `paragraph-first` interpretation of hierarchica
 - If the next whole paragraph would overshoot `target_chunk_size`, it must not be added just to make the chunk larger, even if it would still fit within `max_chunk_size`.
 - If a chunk is still below `min_chunk_size` and the next whole paragraph fits within `max_chunk_size`, that whole paragraph should be added.
 - If a chunk is still below `min_chunk_size` but the next whole paragraph would exceed `max_chunk_size`, the next paragraph may be split internally as a compromise to reach a valid chunk.
-- Oversized paragraphs are still split internally by sentences and then by token/character fallback when needed.
+- Oversized paragraphs (> `max_chunk_size`) are split at `max_chunk_size` boundaries (minimal cuts) by sentences and then by token/character fallback when needed.
+- If the last piece after splitting an oversized paragraph is below `min_chunk_size`, it is merged back into the previous piece (backward merge). This may produce a chunk slightly above `max_chunk_size`, bounded by `max_chunk_size + min_chunk_size - 1`.
 - A trailing undersized chunk should first try to merge backward with the previous chunk; if that would exceed `max_chunk_size`, the undersized tail remains as-is.
 - Overlap remains one-directional: each next chunk repeats a suffix of the previous chunk at its beginning.
 - Overlap should prefer natural boundaries, currently using explicit stop points such as sentence-ending period, section boundary, or text boundary.

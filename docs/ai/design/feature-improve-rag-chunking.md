@@ -15,6 +15,7 @@ The chunk assembly design has been refined after review. These rules are the lat
 - Once `min_chunk_size` is reached, the assembler may add another whole paragraph only if doing so still fits naturally and moves the chunk closer to `target_chunk_size`.
 - A whole next paragraph must not be added if it would overshoot `target_chunk_size`, even when it would still fit in `max_chunk_size`.
 - If the current chunk is still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, the next paragraph may be split internally to complete a minimally valid chunk.
+- Oversized paragraphs (> `max_chunk_size`) are split at `max_chunk_size` boundaries (minimal cuts), not at `target_chunk_size`. If the last piece after splitting is below `min_chunk_size`, it is merged back into the previous piece. This conscious compromise bounds the effective maximum at `max_chunk_size + min_chunk_size - 1`.
 - Final trailing undersized chunks should try backward merge first; if that fails because of `max_chunk_size`, they remain undersized.
 - Overlap is intentionally one-directional: `chunk[i + 1] = suffix(chunk[i]) + new_content`.
 - Overlap must not cross a section boundary and should prefer natural stop points such as sentence-ending period or text boundary.

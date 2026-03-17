@@ -15,6 +15,8 @@ Implementation must now follow these clarified chunk-assembly rules:
 - after `min_chunk_size` is reached, another whole paragraph may be appended only if it improves fit toward `target_chunk_size`
 - do not append a whole paragraph that would overshoot `target_chunk_size`, even if it is still within `max_chunk_size`
 - if the current chunk is still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, split that next paragraph internally to finish the chunk
+- oversized paragraphs (> `max_chunk_size`) are split at `max_chunk_size` boundaries (minimal cuts), not at `target_chunk_size`
+- if the last piece after splitting an oversized paragraph is below `min_chunk_size`, merge it back into the previous piece (backward merge); effective maximum is `max_chunk_size + min_chunk_size - 1`
 - when a trailing chunk is undersized, try backward merge first and leave it undersized if merging would exceed `max_chunk_size`
 - keep overlap one-directional from previous chunk into next chunk
 
