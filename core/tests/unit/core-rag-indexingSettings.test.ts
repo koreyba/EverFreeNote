@@ -8,7 +8,6 @@ describe("core/rag/indexingSettings", () => {
   it("returns defaults plus read-only settings when no editable overrides exist", () => {
     const settings = resolveRagIndexingSettings()
 
-    expect(settings.small_note_threshold).toBe(RAG_INDEX_EDITABLE_DEFAULTS.small_note_threshold)
     expect(settings.target_chunk_size).toBe(RAG_INDEX_EDITABLE_DEFAULTS.target_chunk_size)
     expect(settings.output_dimensionality).toBe(1536)
     expect(settings.task_type_document).toBe("RETRIEVAL_DOCUMENT")
@@ -16,9 +15,6 @@ describe("core/rag/indexingSettings", () => {
   })
 
   it("rejects numeric values outside the allowed range", () => {
-    expect(() => assertValidRagIndexingEditableSettings({ small_note_threshold: 49 })).toThrow(
-      "small_note_threshold must be between 50 and 5000"
-    )
     expect(() => assertValidRagIndexingEditableSettings({ overlap: 5001 })).toThrow(
       "overlap must be between 50 and 5000"
     )

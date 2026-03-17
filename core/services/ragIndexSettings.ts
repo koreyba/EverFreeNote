@@ -31,7 +31,6 @@ const readErrorMessage = async (error: unknown, fallback: string) => {
 const isRagIndexingSettings = (data: unknown): data is RagIndexingSettings => {
   if (!data || typeof data !== "object") return false
   return (
-    typeof (data as { small_note_threshold?: unknown }).small_note_threshold === "number" &&
     typeof (data as { target_chunk_size?: unknown }).target_chunk_size === "number" &&
     typeof (data as { min_chunk_size?: unknown }).min_chunk_size === "number" &&
     typeof (data as { max_chunk_size?: unknown }).max_chunk_size === "number" &&

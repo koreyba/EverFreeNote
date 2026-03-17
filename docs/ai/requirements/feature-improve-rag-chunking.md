@@ -16,6 +16,7 @@ This feature now uses a stricter `paragraph-first` interpretation of hierarchica
 - If the next whole paragraph would overshoot `target_chunk_size`, it must not be added just to make the chunk larger, even if it would still fit within `max_chunk_size`.
 - If a chunk is still below `min_chunk_size` and the next whole paragraph fits within `max_chunk_size`, that whole paragraph should be added.
 - If a chunk is still below `min_chunk_size` but the next whole paragraph would exceed `max_chunk_size`, the next paragraph may be split internally as a compromise to reach a valid chunk.
+- Notes shorter than `min_chunk_size` are not indexed at all (the `small_note_threshold` parameter has been removed; `min_chunk_size` now serves both as the minimum chunk size and the minimum note size for indexing).
 - Oversized paragraphs (> `max_chunk_size`) are split at `max_chunk_size` boundaries (minimal cuts) by sentences and then by token/character fallback when needed.
 - If the last piece after splitting an oversized paragraph is below `min_chunk_size`, it is merged back into the previous piece (backward merge). This may produce a chunk slightly above `max_chunk_size`, bounded by `max_chunk_size + min_chunk_size - 1`.
 - A trailing undersized chunk should first try to merge backward with the previous chunk; if that would exceed `max_chunk_size`, the undersized tail remains as-is.
@@ -66,7 +67,7 @@ RAG note indexing currently uses fixed, mostly implicit chunking and embedding s
 - **As a user configuring AI indexing**, I want these settings to live in my Google API settings area so that related AI configuration is managed in one place.
 - **As a user configuring AI indexing**, I want to edit chunk sizing and overlap settings so that indexing quality can be tuned without redeploy.
 - **As a user configuring AI indexing**, I want title, section headings, and tags to be explicit indexing inputs that can be enabled or disabled.
-- **As a user searching small notes**, I want short notes to remain whole so that their context is preserved.
+- **As a user searching small notes**, I want notes shorter than `min_chunk_size` to be skipped during indexing, since they lack enough content for meaningful semantic search.
 - **As a user searching large notes**, I want notes to be split on natural boundaries first so that retrieved chunks stay coherent.
 - **As a system**, I want tiny neighboring paragraphs to accumulate into a target-sized chunk so that the index avoids fragmented low-value chunks.
 - **As a system**, I want tiny neighboring paragraphs to merge paragraph-first so that natural paragraph boundaries stay intact whenever possible.
@@ -87,7 +88,7 @@ RAG note indexing currently uses fixed, mostly implicit chunking and embedding s
 
 ### Edge cases
 
-- Note is smaller than `small_note_threshold` and should be indexed as a single chunk.
+- Note is shorter than `min_chunk_size` and should not be indexed.
 - Note has no section headings and must fall back directly to paragraph-based chunking.
 - A paragraph is larger than `max_chunk_size` and must be split deeper.
 - The last chunk is too small and should merge with a neighbor if size constraints allow.
@@ -103,7 +104,6 @@ RAG note indexing currently uses fixed, mostly implicit chunking and embedding s
 - [ ] Indexing settings are exposed in the user's Google API settings tab.
 - [ ] Indexing settings UI is added on the web site only for this feature.
 - [ ] Editable UI settings include:
-  - `small_note_threshold`
   - `target_chunk_size`
   - `min_chunk_size`
   - `max_chunk_size`
@@ -120,7 +120,7 @@ RAG note indexing currently uses fixed, mostly implicit chunking and embedding s
   - chunk structure template
   - chunk accumulation rule
   - small chunk merge rule
-- [ ] Notes below `small_note_threshold` are indexed as a single chunk unless prevented by system constraints.
+- [ ] Notes shorter than `min_chunk_size` are not indexed (0 chunks returned, existing embeddings removed).
 - [ ] Larger notes are split by natural boundaries before using sentence-level and token/character fallback splitting.
 - [ ] Small adjacent paragraphs accumulate paragraph-first, reaching `min_chunk_size` first and extending toward `target_chunk_size` only when additional whole paragraphs fit naturally.
 - [ ] Oversized paragraphs are split deeper until all final chunks satisfy `max_chunk_size`.
@@ -171,12 +171,12 @@ Tags: {tag1}, {tag2}, {tag3}
 - Any omitted optional chunk parts (`Section`, `Tags`) should disappear entirely rather than render as empty labels.
 - Editable numeric indexing parameters use an allowed range of `50..5000`.
 - Server-side validation must also enforce logical ordering: `min_chunk_size <= target_chunk_size <= max_chunk_size`.
-- `target_chunk_size` remains relevant for oversize paragraph splitting and for deciding whether another whole paragraph should be added after `min_chunk_size` has already been reached.
+- `target_chunk_size` remains relevant for deciding whether another whole paragraph should be added after `min_chunk_size` has already been reached.
+- `min_chunk_size` serves double duty: it is both the minimum chunk size during assembly and the minimum note size for indexing eligibility.
 
 ## Questions & Open Items
 
 - Start defaults are fixed as:
-  - `small_note_threshold = 400`
   - `target_chunk_size = 500`
   - `min_chunk_size = 200`
   - `max_chunk_size = 1500`

@@ -465,28 +465,6 @@ function applyFinalOverlap(chunks: CandidateChunk[], overlap: number): Candidate
   })
 }
 
-function buildWholeNoteChunk(
-  blocks: IndexedBlock[],
-  html: string,
-  settings: RagIndexingEditableSettings
-): CandidateChunk[] {
-  const contentFromBlocks = joinChunkParts(blocks.map((block) => block.text))
-  const fallbackContent = stripTags(html)
-  const text = contentFromBlocks || fallbackContent
-  if (!text) return []
-
-  const firstSection = blocks[0]?.sectionHeading ?? null
-  const hasSingleSection = blocks.every((block) => block.sectionHeading === firstSection)
-
-  return [
-    {
-      sectionHeading: hasSingleSection ? firstSection : null,
-      text,
-      charOffset: blocks[0]?.charOffset ?? 0,
-    },
-  ]
-}
-
 export function buildRagIndexChunks({
   title,
   html,
@@ -496,13 +474,16 @@ export function buildRagIndexChunks({
   const normalizedTags = Array.isArray(tags) ? tags.filter((tag): tag is string => typeof tag === "string") : []
   const blocks = extractBlocksFromHtml(html ?? "")
   const noteBodyLength = joinChunkParts(blocks.map((block) => block.text)).length
-  const baseChunks =
-    noteBodyLength > 0 && noteBodyLength <= settings.small_note_threshold
-      ? buildWholeNoteChunk(blocks, html ?? "", settings)
-      : mergeUndersizedTail(
-          assembleParagraphFirst(blocks, settings),
-          settings
-        )
+
+  // Notes shorter than min_chunk_size are not indexed
+  if (noteBodyLength < settings.min_chunk_size) {
+    return []
+  }
+
+  const baseChunks = mergeUndersizedTail(
+    assembleParagraphFirst(blocks, settings),
+    settings
+  )
 
   const finalChunks = applyFinalOverlap(baseChunks, settings.overlap)
   const embeddingTitle = buildRagEmbeddingTitle(title, settings)

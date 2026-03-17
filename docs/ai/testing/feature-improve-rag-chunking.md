@@ -14,6 +14,7 @@ The test plan must explicitly protect the newly clarified paragraph-first rules:
 - `min_chunk_size` reached before optional extension toward `target_chunk_size`
 - no whole-paragraph append when it overshoots `target_chunk_size`
 - partial split of the next paragraph only when needed to escape an undersized chunk that cannot fit the whole paragraph under `max_chunk_size`
+- notes shorter than `min_chunk_size` are not indexed (0 chunks, existing embeddings removed)
 - oversized paragraphs (> `max_chunk_size`) split at `max_chunk_size` boundaries (minimal cuts), not `target_chunk_size`
 - if the last piece after splitting an oversized paragraph is below `min_chunk_size`, it is merged back into the previous piece; effective max = `max_chunk_size + min_chunk_size - 1`
 - trailing undersized chunk tries backward merge first
@@ -45,7 +46,8 @@ The test plan must explicitly protect the newly clarified paragraph-first rules:
 
 ### Hierarchical segmentation
 
-- [ ] Small note below `small_note_threshold` returns a single final chunk
+- [ ] Note shorter than `min_chunk_size` returns 0 chunks (not indexed)
+- [ ] Note at exactly `min_chunk_size` returns a single chunk
 - [ ] Multi-section note with `h1-h6` headings prefers section boundaries before paragraph fallback
 - [ ] Notes without headings fall back directly to paragraph splitting
 - [ ] Non-heading styled text does not create synthetic sections
@@ -99,7 +101,7 @@ The test plan must explicitly protect the newly clarified paragraph-first rules:
 - [ ] Verify read-only parameters, including `output_dimensionality`, are visible but not editable
 - [ ] Save valid settings and confirm they persist after reload
 - [ ] Attempt to save invalid settings and confirm inline validation blocks the change
-- [ ] Reindex a small note and verify one chunk is produced
+- [ ] Reindex a note shorter than `min_chunk_size` and verify 0 chunks with `skipped: "too_short"` response
 - [ ] Reindex a long structured note and verify chunk count changes according to settings
 - [ ] Toggle title inclusion off and verify indexed chunk bodies do not gain title text
 - [ ] Toggle section heading and tag inclusion on/off and verify chunk content changes accordingly

@@ -22,7 +22,7 @@ const USER_SETTINGS = {
 }
 
 describe("core/rag/chunking", () => {
-  it("keeps a small note as a single chunk", () => {
+  it("does not index a note shorter than min_chunk_size", () => {
     const chunks = buildRagIndexChunks({
       title: "Weekly plan",
       html: "<p>Short body text.</p>",
@@ -30,10 +30,22 @@ describe("core/rag/chunking", () => {
       settings: RAG_INDEX_EDITABLE_DEFAULTS,
     })
 
+    // "Short body text." is ~17 chars, well below min_chunk_size (200)
+    expect(chunks).toHaveLength(0)
+  })
+
+  it("indexes a note at exactly min_chunk_size as a single chunk", () => {
+    const body = "A".repeat(RAG_INDEX_EDITABLE_DEFAULTS.min_chunk_size)
+    const chunks = buildRagIndexChunks({
+      title: "Exact min",
+      html: `<p>${body}</p>`,
+      tags: ["work"],
+      settings: RAG_INDEX_EDITABLE_DEFAULTS,
+    })
+
     expect(chunks).toHaveLength(1)
     expect(chunks[0]?.content).toContain("Tags: work")
-    expect(chunks[0]?.content).toContain("Short body text.")
-    expect(chunks[0]?.title).toBe("Weekly plan")
+    expect(chunks[0]?.title).toBe("Exact min")
   })
 
   it("splits large paragraphs and adds overlap to later chunks", () => {
@@ -46,7 +58,6 @@ describe("core/rag/chunking", () => {
       tags: ["alpha", "beta"],
       settings: {
         ...RAG_INDEX_EDITABLE_DEFAULTS,
-        small_note_threshold: 50,
         target_chunk_size: 80,
         min_chunk_size: 50,
         max_chunk_size: 90,
@@ -213,8 +224,7 @@ describe("core/rag/chunking", () => {
         tags: [],
         settings: {
           ...USER_SETTINGS,
-          small_note_threshold: 50,
-        },
+          },
       })
 
       // With max=1500, a ~2200 char paragraph should produce 2 chunks, not 5 (which target=500 would make)
@@ -230,7 +240,6 @@ describe("core/rag/chunking", () => {
 
       const settings = {
         ...USER_SETTINGS,
-        small_note_threshold: 50,
         max_chunk_size: 1500,
         min_chunk_size: 200,
       }
@@ -260,7 +269,6 @@ describe("core/rag/chunking", () => {
       tags: [],
       settings: {
         ...RAG_INDEX_EDITABLE_DEFAULTS,
-        small_note_threshold: 50,
         target_chunk_size: 30,
         min_chunk_size: 20,
         max_chunk_size: 30,

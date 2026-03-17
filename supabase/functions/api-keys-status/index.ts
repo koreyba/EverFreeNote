@@ -45,7 +45,7 @@ serve(async (req: Request) => {
 
     const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
       .from("user_rag_index_settings")
-      .select("small_note_threshold, target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
+      .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
       .eq("user_id", userData.user.id)
       .maybeSingle()
 

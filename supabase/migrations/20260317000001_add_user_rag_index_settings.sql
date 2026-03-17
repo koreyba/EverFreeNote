@@ -1,6 +1,5 @@
 CREATE TABLE public.user_rag_index_settings (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  small_note_threshold integer NOT NULL DEFAULT 400,
   target_chunk_size integer NOT NULL DEFAULT 500,
   min_chunk_size integer NOT NULL DEFAULT 200,
   max_chunk_size integer NOT NULL DEFAULT 1500,
@@ -9,7 +8,6 @@ CREATE TABLE public.user_rag_index_settings (
   use_section_headings boolean NOT NULL DEFAULT true,
   use_tags boolean NOT NULL DEFAULT true,
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT user_rag_index_settings_small_note_threshold_range CHECK (small_note_threshold BETWEEN 50 AND 5000),
   CONSTRAINT user_rag_index_settings_target_chunk_size_range CHECK (target_chunk_size BETWEEN 50 AND 5000),
   CONSTRAINT user_rag_index_settings_min_chunk_size_range CHECK (min_chunk_size BETWEEN 50 AND 5000),
   CONSTRAINT user_rag_index_settings_max_chunk_size_range CHECK (max_chunk_size BETWEEN 50 AND 5000),

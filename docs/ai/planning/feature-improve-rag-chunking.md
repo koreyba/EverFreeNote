@@ -15,6 +15,7 @@ Latest clarified behavior to preserve during implementation:
 - after reaching `min_chunk_size`, only add another whole paragraph if it improves fit toward `target_chunk_size`
 - do not add a whole paragraph that overshoots `target_chunk_size`, even if it still fits in `max_chunk_size`
 - if still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, split that paragraph internally as a compromise
+- notes shorter than `min_chunk_size` are not indexed at all (`small_note_threshold` removed, `min_chunk_size` serves both roles)
 - oversized paragraphs (> `max_chunk_size`) are split at `max_chunk_size` boundaries (minimal cuts, not `target_chunk_size`)
 - if the last piece after splitting an oversized paragraph is below `min_chunk_size`, it is merged back into the previous piece; effective max = `max_chunk_size + min_chunk_size - 1`
 - trailing undersized chunks try backward merge first

@@ -15,6 +15,7 @@ The chunk assembly design has been refined after review. These rules are the lat
 - Once `min_chunk_size` is reached, the assembler may add another whole paragraph only if doing so still fits naturally and moves the chunk closer to `target_chunk_size`.
 - A whole next paragraph must not be added if it would overshoot `target_chunk_size`, even when it would still fit in `max_chunk_size`.
 - If the current chunk is still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, the next paragraph may be split internally to complete a minimally valid chunk.
+- Notes shorter than `min_chunk_size` are not indexed at all (`small_note_threshold` has been removed; `min_chunk_size` now determines both the minimum chunk size and the minimum note size for indexing).
 - Oversized paragraphs (> `max_chunk_size`) are split at `max_chunk_size` boundaries (minimal cuts), not at `target_chunk_size`. If the last piece after splitting is below `min_chunk_size`, it is merged back into the previous piece. This conscious compromise bounds the effective maximum at `max_chunk_size + min_chunk_size - 1`.
 - Final trailing undersized chunks should try backward merge first; if that fails because of `max_chunk_size`, they remain undersized.
 - Overlap is intentionally one-directional: `chunk[i + 1] = suffix(chunk[i]) + new_content`.
@@ -66,7 +67,6 @@ Representative model:
 ```sql
 user_rag_index_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  small_note_threshold integer not null default 400,
   target_chunk_size integer not null default 500,
   min_chunk_size integer not null default 200,
   max_chunk_size integer not null default 1500,
@@ -82,7 +82,6 @@ The effective settings object exposed to the UI and indexing paths must support:
 
 ```ts
 type RagIndexingSettings = {
-  small_note_threshold: number
   target_chunk_size: number
   min_chunk_size: number
   max_chunk_size: number
@@ -155,7 +154,6 @@ Representative payload:
 
 ```json
 {
-  "small_note_threshold": 400,
   "target_chunk_size": 500,
   "min_chunk_size": 200,
   "max_chunk_size": 1500,
@@ -311,13 +309,11 @@ This feature does not alter search ranking logic, but the design must preserve:
 ## Open Design Items
 
 - Start defaults are:
-  - `small_note_threshold = 400`
   - `target_chunk_size = 500`
   - `min_chunk_size = 200`
   - `max_chunk_size = 1500`
   - `overlap = 100`
 - Validation ranges for editable numeric settings are:
-  - `small_note_threshold`: `50..5000`
   - `target_chunk_size`: `50..5000`
   - `min_chunk_size`: `50..5000`
   - `max_chunk_size`: `50..5000`

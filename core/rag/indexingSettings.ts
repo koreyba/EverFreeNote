@@ -2,7 +2,6 @@ export const RAG_INDEX_NUMERIC_MIN = 50
 export const RAG_INDEX_NUMERIC_MAX = 5000
 
 export const RAG_INDEX_EDITABLE_DEFAULTS = {
-  small_note_threshold: 400,
   target_chunk_size: 500,
   min_chunk_size: 200,
   max_chunk_size: 1500,
@@ -19,14 +18,13 @@ export const RAG_INDEX_READONLY_SETTINGS = {
   split_strategy: "hierarchical" as const,
   fallback_split_order: ["sections", "paragraphs", "sentences", "tokens_or_characters"] as const,
   chunk_accumulation_rule:
-    "Paragraph-first: accumulate whole paragraphs until min_chunk_size is reached, then optionally extend toward target_chunk_size only if the next whole paragraph fits without exceeding it. Oversized paragraphs are split at max_chunk_size boundaries; if the remainder is below min_chunk_size it is merged back into the previous piece.",
+    "Paragraph-first: accumulate whole paragraphs until min_chunk_size is reached, then optionally extend toward target_chunk_size only if the next whole paragraph fits without exceeding it. Oversized paragraphs are split at max_chunk_size boundaries; if the remainder is below min_chunk_size it is merged back into the previous piece. Notes shorter than min_chunk_size are not indexed.",
   small_chunk_merge_rule:
     "Merge undersized final chunks with adjacent chunks when possible without violating max_chunk_size.",
   chunk_template: "Section: {section_heading}\nTags: {tag1}, {tag2}, {tag3}\n\n{chunk_content}",
 } as const
 
 export type RagIndexingEditableSettings = {
-  small_note_threshold: number
   target_chunk_size: number
   min_chunk_size: number
   max_chunk_size: number
@@ -39,7 +37,6 @@ export type RagIndexingEditableSettings = {
 export type RagIndexingSettings = RagIndexingEditableSettings & typeof RAG_INDEX_READONLY_SETTINGS
 
 export const RAG_INDEX_EDITABLE_NUMERIC_KEYS = [
-  "small_note_threshold",
   "target_chunk_size",
   "min_chunk_size",
   "max_chunk_size",

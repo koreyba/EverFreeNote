@@ -15,6 +15,7 @@ Implementation must now follow these clarified chunk-assembly rules:
 - after `min_chunk_size` is reached, another whole paragraph may be appended only if it improves fit toward `target_chunk_size`
 - do not append a whole paragraph that would overshoot `target_chunk_size`, even if it is still within `max_chunk_size`
 - if the current chunk is still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, split that next paragraph internally to finish the chunk
+- notes shorter than `min_chunk_size` are not indexed (return empty array); `small_note_threshold` has been removed, `min_chunk_size` now serves both as minimum chunk size and minimum note size
 - oversized paragraphs (> `max_chunk_size`) are split at `max_chunk_size` boundaries (minimal cuts), not at `target_chunk_size`
 - if the last piece after splitting an oversized paragraph is below `min_chunk_size`, merge it back into the previous piece (backward merge); effective maximum is `max_chunk_size + min_chunk_size - 1`
 - when a trailing chunk is undersized, try backward merge first and leave it undersized if merging would exceed `max_chunk_size`
@@ -78,7 +79,7 @@ Suggested processing flow:
 
 1. Normalize note content to a structure suitable for section/paragraph detection.
 2. Compute note size using the same unit chosen for settings semantics.
-3. If size is below `small_note_threshold`, emit one final chunk.
+3. If size is below `min_chunk_size`, return no chunks (note is too short for indexing).
 4. Otherwise:
    - split into sections using `h1-h6` tags only
    - split each section into paragraphs
@@ -156,7 +157,7 @@ function validateRagIndexingSettings(input: Partial<RagIndexingSettings>): Valid
 
 Validation rules to enforce in both UI and server paths:
 
-- `small_note_threshold`, `target_chunk_size`, `min_chunk_size`, `max_chunk_size`, `overlap` must each be within `50..5000`
+- `target_chunk_size`, `min_chunk_size`, `max_chunk_size`, `overlap` must each be within `50..5000`
 - `min_chunk_size <= target_chunk_size <= max_chunk_size`
 
 Representative placement:
@@ -173,7 +174,6 @@ Recommended defaults in `core`:
 
 ```ts
 const DEFAULT_RAG_INDEX_SETTINGS = {
-  small_note_threshold: 400,
   target_chunk_size: 500,
   min_chunk_size: 200,
   max_chunk_size: 1500,

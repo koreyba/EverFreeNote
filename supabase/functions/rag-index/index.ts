@@ -235,7 +235,7 @@ serve(async (req: Request) => {
 
     const { data: settingsRow, error: settingsError } = await supabaseAdmin
       .from("user_rag_index_settings")
-      .select("small_note_threshold, target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
+      .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
       .eq("user_id", userId)
       .maybeSingle()
 
@@ -275,7 +275,11 @@ serve(async (req: Request) => {
         .eq("note_id", noteId)
         .eq("user_id", userId)
       if (clearError) throw clearError
-      return jsonResponse({ chunkCount: 0 })
+      return jsonResponse({
+        chunkCount: 0,
+        skipped: "too_short",
+        message: `Note is too short for indexing (minimum: ${settings.min_chunk_size} characters)`,
+      })
     }
 
     const vectors = await embedTexts(
@@ -316,7 +320,6 @@ serve(async (req: Request) => {
       noteId,
       userId,
       chunkCount: chunksForIndexing.length,
-      small_note_threshold: settings.small_note_threshold,
       target_chunk_size: settings.target_chunk_size,
       min_chunk_size: settings.min_chunk_size,
       max_chunk_size: settings.max_chunk_size,

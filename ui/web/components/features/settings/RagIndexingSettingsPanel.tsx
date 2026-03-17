@@ -16,14 +16,13 @@ import { Info } from "lucide-react"
 
 type EditableNumericKey = keyof Pick<
   RagIndexingEditableSettings,
-  "small_note_threshold" | "target_chunk_size" | "min_chunk_size" | "max_chunk_size" | "overlap"
+  "target_chunk_size" | "min_chunk_size" | "max_chunk_size" | "overlap"
 >
 
 type EditableBooleanKey = keyof Pick<RagIndexingEditableSettings, "use_title" | "use_section_headings" | "use_tags">
 
 function buildEditableState(settings: RagIndexingSettings) {
   return {
-    small_note_threshold: String(settings.small_note_threshold),
     target_chunk_size: String(settings.target_chunk_size),
     min_chunk_size: String(settings.min_chunk_size),
     max_chunk_size: String(settings.max_chunk_size),
@@ -44,7 +43,6 @@ export function RagIndexingSettingsPanel() {
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
   const [resolvedSettings, setResolvedSettings] = React.useState<RagIndexingSettings | null>(null)
   const [formState, setFormState] = React.useState(() => ({
-    small_note_threshold: "400",
     target_chunk_size: "500",
     min_chunk_size: "200",
     max_chunk_size: "1500",
@@ -87,7 +85,6 @@ export function RagIndexingSettingsPanel() {
     setSuccessMessage(null)
 
     const payload: RagIndexingEditableSettings = {
-      small_note_threshold: Number(formState.small_note_threshold),
       target_chunk_size: Number(formState.target_chunk_size),
       min_chunk_size: Number(formState.min_chunk_size),
       max_chunk_size: Number(formState.max_chunk_size),
@@ -120,13 +117,6 @@ export function RagIndexingSettingsPanel() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
-          <NumericField
-            id="rag-small-note-threshold"
-            label="Small note threshold (characters)"
-            value={formState.small_note_threshold}
-            disabled={loading || saving}
-            onChange={(value) => updateNumericField("small_note_threshold", value)}
-          />
           <NumericField
             id="rag-target-chunk-size"
             label="Target chunk size (characters)"
