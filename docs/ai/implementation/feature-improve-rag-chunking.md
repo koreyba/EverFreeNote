@@ -96,10 +96,10 @@ Treat any function that changes chunk boundaries, overlap, merge behavior, or ch
 Chunk text should be built from optional parts in a stable order:
 
 ```text
+{chunk_content}
+
 Section: {section_heading}
 Tags: {tag1}, {tag2}, {tag3}
-
-{chunk_content}
 ```
 
 Implementation rules:
@@ -109,6 +109,7 @@ Implementation rules:
 - include `Section:` only when section headings are enabled and present
 - include `Tags:` only when tags are enabled and non-empty
 - omit optional lines entirely when inputs are absent or disabled
+- preserve the clean body text separately from overlap and metadata so search snippets and context highlighting can use the exact body span
 
 ### Core feature 4: Gemini embedding requests
 

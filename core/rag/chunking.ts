@@ -32,8 +32,15 @@ export type BuildRagChunksInput = {
 export type RagIndexChunk = {
   charOffset: number
   content: string
+  bodyContent: string
+  overlapPrefix: string
   title: string | null
   sectionHeading: string | null
+}
+
+type FinalChunkWithContext = CandidateChunk & {
+  bodyText: string
+  overlapPrefix: string
 }
 
 const BLOCK_BREAK_PATTERN = /<\/?(?:p|div|li|blockquote|pre|ul|ol|section|article|main)\b[^>]*>/gi
@@ -509,21 +516,29 @@ function buildOverlapPrefix(source: string, overlap: number): string {
   return source.slice(sentenceStart).trim()
 }
 
-function applyFinalOverlap(chunks: CandidateChunk[], overlap: number): CandidateChunk[] {
-  if (overlap <= 0) return chunks
-
+function applyFinalOverlap(chunks: CandidateChunk[], overlap: number): FinalChunkWithContext[] {
   return chunks.map((chunk, index) => {
-    if (index === 0) return chunk
+    if (overlap <= 0 || index === 0) {
+      return {
+        ...chunk,
+        bodyText: chunk.text,
+        overlapPrefix: "",
+      }
+    }
+
     const previous = chunks[index - 1]
     if (previous?.sectionHeading !== chunk.sectionHeading) {
-      return chunk
+      return {
+        ...chunk,
+        bodyText: chunk.text,
+        overlapPrefix: "",
+      }
     }
-    const overlapPrefix = buildOverlapPrefix(previous.text, overlap)
-    if (!overlapPrefix) return chunk
 
     return {
       ...chunk,
-      text: joinChunkParts([overlapPrefix, chunk.text]),
+      bodyText: chunk.text,
+      overlapPrefix: buildOverlapPrefix(previous.text, overlap),
     }
   })
 }
@@ -557,9 +572,11 @@ export function buildRagIndexChunks({
       content: buildRagChunkText({
         sectionHeading: chunk.sectionHeading,
         tags: normalizedTags,
-        chunkContent: chunk.text,
+        chunkContent: joinChunkParts([chunk.overlapPrefix, chunk.bodyText]),
         settings,
       }),
+      bodyContent: chunk.bodyText,
+      overlapPrefix: chunk.overlapPrefix,
       title: embeddingTitle,
       sectionHeading: chunk.sectionHeading,
     }))

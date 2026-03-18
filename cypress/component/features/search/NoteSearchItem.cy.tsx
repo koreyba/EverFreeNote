@@ -15,8 +15,21 @@ const baseGroup: RagNoteGroup = {
       noteTags: ['philosophy'],
       chunkIndex: 0,
       charOffset: 12,
-      content: 'Top chunk snippet for selection tests.',
+      bodyContent: 'Top chunk snippet for selection tests.',
+      overlapPrefix: '',
+      content: 'Top chunk snippet for selection tests.\n\nSection: Introduction\nTags: philosophy',
       similarity: 0.87,
+    },
+    {
+      noteId: 'note-1',
+      noteTitle: 'Ontology Basics',
+      noteTags: ['philosophy'],
+      chunkIndex: 1,
+      charOffset: 88,
+      bodyContent: 'Second fragment for context opening.',
+      overlapPrefix: '',
+      content: 'Second fragment for context opening.\n\nSection: Details\nTags: philosophy, logic',
+      similarity: 0.73,
     },
   ],
 }
@@ -50,7 +63,23 @@ describe('NoteSearchItem', () => {
       'have.been.calledOnceWith',
       'note-1',
       12,
-      baseGroup.chunks[0].content.length
+      baseGroup.chunks[0].bodyContent.length
+    )
+  })
+
+  it('opens expanded fragments using body-only length', () => {
+    const onOpenInContext = cy.stub().as('onOpenInContext')
+
+    cy.mount(<NoteSearchItem group={baseGroup} onOpenInContext={onOpenInContext} />)
+
+    cy.contains('button', '1 more fragment').click()
+    cy.get('[aria-label^="Open fragment 2"]').click()
+
+    cy.get('@onOpenInContext').should(
+      'have.been.calledOnceWith',
+      'note-1',
+      88,
+      baseGroup.chunks[1].bodyContent.length
     )
   })
 

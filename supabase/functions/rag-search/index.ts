@@ -5,6 +5,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
+import { getRagChunkBodyText } from "../../../core/rag/chunkTemplate.ts"
 import { getRagReadonlySettings } from "../../../core/rag/indexingSettings.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
@@ -271,6 +272,8 @@ serve(async (req: Request) => {
       chunk_index: number
       char_offset: number
       content: string
+      body_content: string | null
+      overlap_prefix: string | null
       similarity: number
     }>).filter((chunk) => chunk.similarity >= threshold)
 
@@ -290,16 +293,31 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Internal error" }, 500)
     }
 
-    const noteMap = new Map((notes ?? []).map((note: { id: string; title: string | null; tags: string[] }) => [note.id, note]))
+    const noteMap = new Map((
+      notes ?? []
+    ).map((note: {
+      id: string
+      title: string | null
+      tags: string[]
+    }) => [note.id, note]))
 
     const result = filteredChunks.map((chunk) => {
       const note = noteMap.get(chunk.note_id)
+      const bodyContent = typeof chunk.body_content === "string" && chunk.body_content.trim().length > 0
+        ? chunk.body_content
+        : getRagChunkBodyText(chunk.content)
+      const overlapPrefix = typeof chunk.overlap_prefix === "string"
+        ? chunk.overlap_prefix
+        : ""
+
       return {
         noteId: chunk.note_id,
         noteTitle: note?.title ?? "",
         noteTags: note?.tags ?? [],
         chunkIndex: chunk.chunk_index,
         charOffset: chunk.char_offset,
+        bodyContent,
+        overlapPrefix,
         content: chunk.content,
         similarity: chunk.similarity,
       }

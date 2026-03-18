@@ -85,22 +85,22 @@ function MoreFragmentsSection({
       {expanded && (
         <>
           {extraChunks.map((chunk, index) => (
-            <Pressable
-              key={`${chunk.noteId}-${chunk.chunkIndex}`}
-              testID={`ai-note-extra-chunk-${chunk.noteId}-${chunk.chunkIndex}`}
-              onPress={(event) => {
-                event?.stopPropagation?.()
-                onOpenChunk(chunk.charOffset, getRagChunkBodyLength(chunk.content))
-              }}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.extraChunk,
+          <Pressable
+            key={`${chunk.noteId}-${chunk.chunkIndex}`}
+            testID={`ai-note-extra-chunk-${chunk.noteId}-${chunk.chunkIndex}`}
+            onPress={(event) => {
+              event?.stopPropagation?.()
+              onOpenChunk(chunk.charOffset, getRagChunkBodyLength(chunk.bodyContent))
+            }}
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.extraChunk,
                 pressed && !selectionMode && styles.snippetCardPressed,
               ]}
             >
               <Text style={styles.snippetLabel}>Fragment {index + 2}</Text>
               <Text style={styles.extraChunkText} numberOfLines={3}>
-                {chunk.content}
+                {chunk.bodyContent}
               </Text>
             </Pressable>
           ))}
@@ -145,14 +145,14 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
   }
 
   return (
-    <Pressable
-      testID={`ai-note-card-${group.noteId}`}
-      onPress={() => {
-        if (!topChunk) return
-        handleOpenChunk(topChunk.charOffset, getRagChunkBodyLength(topChunk.content))
-      }}
-      onLongPress={selectionMode ? undefined : onLongPress}
-      delayLongPress={400}
+      <Pressable
+        testID={`ai-note-card-${group.noteId}`}
+        onPress={() => {
+          if (!topChunk) return
+          handleOpenChunk(topChunk.charOffset, getRagChunkBodyLength(topChunk.bodyContent))
+        }}
+        onLongPress={selectionMode ? undefined : onLongPress}
+        delayLongPress={400}
       accessibilityRole={selectionMode ? 'checkbox' : 'button'}
       accessibilityState={selectionMode ? { checked: isSelected } : undefined}
       style={({ pressed }) => [
@@ -190,7 +190,7 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
           testID={`ai-note-top-chunk-${group.noteId}`}
           onPress={(event) => {
             event?.stopPropagation?.()
-            handleOpenChunk(topChunk.charOffset, getRagChunkBodyLength(topChunk.content))
+            handleOpenChunk(topChunk.charOffset, getRagChunkBodyLength(topChunk.bodyContent))
           }}
           accessibilityRole="button"
           style={({ pressed }) => [
@@ -200,7 +200,7 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
         >
           <Text style={styles.snippetLabel}>Top fragment</Text>
           <Text style={styles.snippetText} numberOfLines={3}>
-            {topChunk.content}
+            {topChunk.bodyContent}
           </Text>
         </Pressable>
       ) : null}

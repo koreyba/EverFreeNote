@@ -25,24 +25,28 @@ const createGroup = (overrides: Partial<RagNoteGroup> = {}): RagNoteGroup => ({
   topScore: overrides.topScore ?? 0.84,
   hiddenCount: overrides.hiddenCount ?? 0,
   chunks: overrides.chunks ?? [
-    {
-      noteId: overrides.noteId ?? 'note-1',
-      noteTitle: overrides.noteTitle ?? 'AI result note',
-      noteTags: overrides.noteTags ?? ['tag-a', 'tag-b'],
-      chunkIndex: 0,
-      charOffset: 20,
-      content: 'Primary chunk content',
-      similarity: 0.84,
-    },
-    {
-      noteId: overrides.noteId ?? 'note-1',
-      noteTitle: overrides.noteTitle ?? 'AI result note',
-      noteTags: overrides.noteTags ?? ['tag-a', 'tag-b'],
-      chunkIndex: 1,
-      charOffset: 360,
-      content: 'Secondary chunk content',
-      similarity: 0.8,
-    },
+      {
+        noteId: overrides.noteId ?? 'note-1',
+        noteTitle: overrides.noteTitle ?? 'AI result note',
+        noteTags: overrides.noteTags ?? ['tag-a', 'tag-b'],
+        chunkIndex: 0,
+        charOffset: 20,
+        bodyContent: 'Primary chunk content',
+        overlapPrefix: '',
+        content: 'Section: AI result note\n\nPrimary chunk content\n\nTags: tag-a, tag-b',
+        similarity: 0.84,
+      },
+      {
+        noteId: overrides.noteId ?? 'note-1',
+        noteTitle: overrides.noteTitle ?? 'AI result note',
+        noteTags: overrides.noteTags ?? ['tag-a', 'tag-b'],
+        chunkIndex: 1,
+        charOffset: 360,
+        bodyContent: 'Secondary chunk content',
+        overlapPrefix: '',
+        content: 'Section: AI result note\n\nSecondary chunk content\n\nTags: tag-a, tag-b',
+        similarity: 0.8,
+      },
   ],
 })
 
@@ -53,10 +57,11 @@ describe('AiSearchNoteCard', () => {
 
   it('opens the top chunk from the primary snippet button', () => {
     const onOpenInContext = jest.fn()
+    const group = createGroup()
 
     render(
       <AiSearchNoteCard
-        group={createGroup()}
+        group={group}
         onOpenInContext={onOpenInContext}
       />
     )
@@ -68,6 +73,8 @@ describe('AiSearchNoteCard', () => {
       title: 'AI result note',
       tags: ['tag-a', 'tag-b'],
     }, 20, 'Primary chunk content'.length)
+    expect(screen.getByText('Primary chunk content')).toBeTruthy()
+    expect(screen.queryByText('Section: AI result note\n\nPrimary chunk content\n\nTags: tag-a, tag-b')).toBeNull()
   })
 
   it('toggles selection instead of opening the note while selection mode is active', () => {
@@ -105,7 +112,9 @@ describe('AiSearchNoteCard', () => {
               noteTags: ['tag-a'],
               chunkIndex: 0,
               charOffset: 10,
-              content: 'Only visible chunk',
+              bodyContent: 'Only visible chunk',
+              overlapPrefix: '',
+              content: 'Section: AI result note\n\nOnly visible chunk\n\nTags: tag-a',
               similarity: 0.77,
             },
           ],
@@ -115,6 +124,7 @@ describe('AiSearchNoteCard', () => {
     )
 
     expect(screen.getByText('+3 similar fragments hidden')).toBeTruthy()
+    expect(screen.getByText('Only visible chunk')).toBeTruthy()
     expect(screen.queryByText(/more fragment/i)).toBeNull()
   })
 
@@ -132,7 +142,9 @@ describe('AiSearchNoteCard', () => {
               noteTags: ['tag-a'],
               chunkIndex: 0,
               charOffset: 10,
-              content: 'Only visible chunk',
+              bodyContent: 'Only visible chunk',
+              overlapPrefix: '',
+              content: 'Section: AI result note\n\nOnly visible chunk\n\nTags: tag-a',
               similarity: 0.9,
             },
             {
@@ -141,7 +153,9 @@ describe('AiSearchNoteCard', () => {
               noteTags: ['tag-a'],
               chunkIndex: 1,
               charOffset: 420,
-              content: 'Second fragment',
+              bodyContent: 'Second fragment',
+              overlapPrefix: '',
+              content: 'Section: AI result note\n\nSecond fragment\n\nTags: tag-a',
               similarity: 0.8,
             },
           ],
@@ -160,5 +174,7 @@ describe('AiSearchNoteCard', () => {
       title: 'AI result note',
       tags: ['tag-a', 'tag-b'],
     }, 420, 'Second fragment'.length)
+    expect(screen.getByText('Second fragment')).toBeTruthy()
+    expect(screen.queryByText('Section: AI result note\n\nSecond fragment\n\nTags: tag-a')).toBeNull()
   })
 })

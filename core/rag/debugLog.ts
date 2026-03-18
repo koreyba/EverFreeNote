@@ -35,7 +35,8 @@ export function logRagIndexDebugChunks(noteId: string, chunks: RagIndexDebugChun
       contentLength: chunk.content.length,
       preview: previewContent(chunk.content),
     })
-    console.log("content preview:", chunk.content.length > 0 ? previewContent(chunk.content) : "<empty>")
+    console.log("content:")
+    console.log(chunk.content.length > 0 ? chunk.content : "<empty>")
   }
   closeGroup()
 }

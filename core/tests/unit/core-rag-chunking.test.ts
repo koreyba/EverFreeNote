@@ -57,6 +57,8 @@ describe("core/rag/chunking — pairwise test suite", () => {
       })
       expect(chunks).toHaveLength(1)
       expect(chunks[0]!.title).toBe("Exact")
+      expect(chunks[0]!.bodyContent).toBe(solid(200))
+      expect(chunks[0]!.overlapPrefix).toBe("")
       expect(chunks[0]!.content).toContain("Tags: t1")
     })
   })
@@ -267,6 +269,8 @@ describe("core/rag/chunking — pairwise test suite", () => {
       const body1 = getRagChunkBodyText(chunks[1]!.content)
       // Overlap prefix starts at sentence boundary and contains "Ending sentence here."
       expect(body1).toContain("Ending sentence here.")
+      expect(chunks[1]!.overlapPrefix).toContain("Ending sentence here.")
+      expect(chunks[1]!.bodyContent).toBe(p2Text)
     })
 
     it("G3: overlap > длины предыдущего чанка → берёт весь текст", () => {
@@ -317,6 +321,19 @@ describe("core/rag/chunking — pairwise test suite", () => {
       })
       expect(text).toBe("Body text\n\nTags: a")
       expect(text).not.toContain("Section:")
+    })
+
+    it("H3: body text that starts with metadata-like labels stays intact", () => {
+      const bodyText = "Section: Overview\nDetails about sections."
+      const text = buildRagChunkText({
+        sectionHeading: "Intro",
+        tags: ["a", "b"],
+        chunkContent: bodyText,
+        settings: { use_section_headings: true, use_tags: true },
+      })
+
+      expect(text).toBe(`${bodyText}\n\nSection: Intro\nTags: a, b`)
+      expect(getRagChunkBodyText(text)).toBe(bodyText)
     })
 
     it("H4: heading есть, use_section_headings=false → Section: скрыта", () => {
@@ -509,4 +526,5 @@ describe("core/rag/chunking — pairwise test suite", () => {
       expect(chunks).toHaveLength(3)
     })
   })
+
 })

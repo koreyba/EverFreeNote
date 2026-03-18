@@ -92,6 +92,8 @@ jest.mock('@ui/mobile/components/search/AiSearchNoteCard', () => ({
     ) => void
   }) => {
     const { Pressable, Text } = require('react-native')
+    const topChunk = group.chunks[0]
+    const chunkText = topChunk.bodyContent ?? topChunk.content ?? ''
     return (
       <Pressable
         testID={`mock-ai-note-${group.noteId}`}
@@ -99,9 +101,10 @@ jest.mock('@ui/mobile/components/search/AiSearchNoteCard', () => ({
           id: group.noteId,
           title: group.noteTitle,
           tags: group.noteTags,
-        }, group.chunks[0].charOffset, group.chunks[0].content.length)}
+        }, topChunk.charOffset, chunkText.length)}
       >
         <Text>{group.noteTitle}</Text>
+        <Text>{chunkText}</Text>
       </Pressable>
     )
   },
@@ -112,7 +115,7 @@ jest.mock('@ui/mobile/components/search/AiSearchChunkCard', () => ({
     chunk,
     onOpenInContext,
   }: {
-    chunk: { noteId: string; chunkIndex: number; charOffset: number; content: string }
+    chunk: { noteId: string; chunkIndex: number; charOffset: number; bodyContent: string }
     onOpenInContext: (
       note: Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags'>>,
       charOffset: number,
@@ -123,9 +126,9 @@ jest.mock('@ui/mobile/components/search/AiSearchChunkCard', () => ({
     return (
       <Pressable
         testID={`mock-ai-chunk-${chunk.noteId}-${chunk.chunkIndex}`}
-        onPress={() => onOpenInContext({ id: chunk.noteId }, chunk.charOffset, chunk.content.length)}
+        onPress={() => onOpenInContext({ id: chunk.noteId }, chunk.charOffset, chunk.bodyContent.length)}
       >
-        <Text>{chunk.content}</Text>
+        <Text>{chunk.bodyContent}</Text>
       </Pressable>
     )
   },
@@ -153,10 +156,32 @@ const createAiGroup = (noteId: string, chunkCount = 3): RagNoteGroup => ({
     noteTags: ['semantic'],
     chunkIndex: index,
     charOffset: index * 100,
-    content: `Chunk ${index}`,
+    bodyContent: `Chunk ${index}`,
+    overlapPrefix: '',
+    content: `Section: AI ${noteId}\n\nChunk ${index}\n\nTags: semantic`,
     similarity: 0.9 - index * 0.05,
   })),
 })
+
+const createLegacyAiGroup = (noteId: string): RagNoteGroup =>
+  ({
+    noteId,
+    noteTitle: `Legacy ${noteId}`,
+    noteTags: ['semantic'],
+    topScore: 0.88,
+    hiddenCount: 0,
+    chunks: [
+      {
+        noteId,
+        noteTitle: `Legacy ${noteId}`,
+        noteTags: ['semantic'],
+        chunkIndex: 0,
+        charOffset: 40,
+        content: 'Legacy chunk only content',
+        similarity: 0.88,
+      } as never,
+    ],
+  } as RagNoteGroup)
 
 describe('SearchResultsList', () => {
   beforeEach(() => {
@@ -288,6 +313,30 @@ describe('SearchResultsList', () => {
       'Chunk 0'.length
     )
     expect(onLoadMore).not.toHaveBeenCalled()
+  })
+
+  it('opens legacy ai-note rows using content when bodyContent is missing', () => {
+    const onOpenAiResult = jest.fn()
+
+    render(
+      <SearchResultsList
+        mode="ai-note"
+        regularResults={[]}
+        aiNoteGroups={[createLegacyAiGroup('note-legacy')]}
+        onRegularNotePress={jest.fn()}
+        onDeleteRegularNote={jest.fn()}
+        onOpenAiResult={onOpenAiResult}
+      />
+    )
+
+    fireEvent.press(screen.getByTestId('mock-ai-note-note-legacy'))
+
+    expect(screen.getByText('Legacy chunk only content')).toBeTruthy()
+    expect(onOpenAiResult).toHaveBeenCalledWith(
+      { id: 'note-legacy', title: 'Legacy note-legacy', tags: ['semantic'] },
+      40,
+      'Legacy chunk only content'.length
+    )
   })
 
   it('forwards pull-to-refresh props to the list', () => {

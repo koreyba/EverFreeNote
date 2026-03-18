@@ -54,6 +54,8 @@ describe('NotesShell: AI open in context', () => {
                 noteTags: note.tags,
                 chunkIndex: 0,
                 charOffset: chunkOffset,
+                bodyContent: 'Alpha beta gamma',
+                overlapPrefix: '',
                 content: 'Alpha beta gamma',
                 similarity: 0.84,
               },

@@ -25,6 +25,8 @@ const createChunk = (
   noteTags: ['tag'],
   chunkIndex,
   charOffset,
+  bodyContent: content,
+  overlapPrefix: '',
   content,
   similarity,
 })
@@ -148,6 +150,114 @@ describe('useAIPaginatedSearch', () => {
     )
   })
 
+  it('refreshes accumulated snippets when only bodyContent changes after refetch', async () => {
+    const invoke = jest
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          chunks: [
+            {
+              ...createChunk('note-1', 0.8, 0, 0, 'embedding payload'),
+              bodyContent: 'stale snippet',
+            },
+          ],
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          chunks: [
+            {
+              ...createChunk('note-1', 0.8, 0, 0, 'embedding payload'),
+              bodyContent: 'fresh snippet',
+            },
+          ],
+        },
+        error: null,
+      })
+
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const { result } = renderHook(
+      () =>
+        useAIPaginatedSearch({
+          query: 'ontology',
+          preset: 'strict',
+          filterTag: null,
+          isEnabled: true,
+        }),
+      { wrapper: createWrapper(supabase) }
+    )
+
+    await waitFor(() => {
+      expect(result.current.noteGroups[0]?.chunks[0]?.bodyContent).toBe('stale snippet')
+    })
+
+    act(() => {
+      result.current.refetch()
+    })
+
+    await waitFor(() => {
+      expect(result.current.noteGroups[0]?.chunks[0]?.bodyContent).toBe('fresh snippet')
+    })
+  })
+
+  it('refreshes accumulated snippets when only overlapPrefix changes after refetch', async () => {
+    const invoke = jest
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          chunks: [
+            {
+              ...createChunk('note-1', 0.8, 0, 0, 'embedding payload'),
+              overlapPrefix: 'stale overlap',
+            },
+          ],
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          chunks: [
+            {
+              ...createChunk('note-1', 0.8, 0, 0, 'embedding payload'),
+              overlapPrefix: 'fresh overlap',
+            },
+          ],
+        },
+        error: null,
+      })
+
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const { result } = renderHook(
+      () =>
+        useAIPaginatedSearch({
+          query: 'ontology',
+          preset: 'strict',
+          filterTag: null,
+          isEnabled: true,
+        }),
+      { wrapper: createWrapper(supabase) }
+    )
+
+    await waitFor(() => {
+      expect(result.current.noteGroups[0]?.chunks[0]?.overlapPrefix).toBe('stale overlap')
+    })
+
+    act(() => {
+      result.current.refetch()
+    })
+
+    await waitFor(() => {
+      expect(result.current.noteGroups[0]?.chunks[0]?.overlapPrefix).toBe('fresh overlap')
+    })
+  })
+
   it('resets offset when search identity changes and does not over-fetch with stale pagination', async () => {
     const invoke = jest.fn().mockImplementation(
       async (_fn: string, { body }: { body: { topK: number; query: string } }) => ({
@@ -158,6 +268,8 @@ describe('useAIPaginatedSearch', () => {
             noteTags: ['tag'],
             chunkIndex: 0,
             charOffset: idx * 100,
+            bodyContent: `${body.query} snippet ${idx + 1}`,
+            overlapPrefix: '',
             content: `${body.query} snippet ${idx + 1}`,
             similarity: 0.9 - idx * 0.001,
           })),
@@ -273,5 +385,46 @@ describe('useAIPaginatedSearch', () => {
         }),
       })
     )
+  })
+
+  it('falls back to legacy content when bodyContent is missing from rag-search results', async () => {
+    const invoke = jest.fn().mockResolvedValue({
+      data: {
+        chunks: [
+          {
+            noteId: 'note-legacy',
+            noteTitle: 'Legacy note',
+            noteTags: ['tag'],
+            chunkIndex: 0,
+            charOffset: 12,
+            content: 'Legacy chunk text',
+            similarity: 0.88,
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const { result } = renderHook(
+      () =>
+        useAIPaginatedSearch({
+          query: 'ontology',
+          preset: 'strict',
+          filterTag: null,
+          isEnabled: true,
+        }),
+      { wrapper: createWrapper(supabase) }
+    )
+
+    await waitFor(() => {
+      expect(result.current.noteGroups[0]?.chunks[0]?.content).toBe('Legacy chunk text')
+    })
+
+    expect(result.current.noteGroups[0]?.chunks[0]?.bodyContent).toBeUndefined()
+    expect(result.current.noteGroups[0]?.chunks[0]?.overlapPrefix).toBeUndefined()
   })
 })

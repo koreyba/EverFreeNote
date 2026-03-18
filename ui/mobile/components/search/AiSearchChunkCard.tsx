@@ -33,7 +33,7 @@ export const AiSearchChunkCard = memo(function AiSearchChunkCard({
   return (
     <Pressable
       testID={`ai-chunk-card-${chunk.noteId}-${chunk.chunkIndex}`}
-      onPress={() => onOpenInContext(noteSnapshot, chunk.charOffset, getRagChunkBodyLength(chunk.content))}
+      onPress={() => onOpenInContext(noteSnapshot, chunk.charOffset, getRagChunkBodyLength(chunk.bodyContent))}
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.card,
@@ -58,7 +58,7 @@ export const AiSearchChunkCard = memo(function AiSearchChunkCard({
       )}
 
       <Text style={styles.snippet} numberOfLines={4}>
-        {chunk.content}
+        {chunk.bodyContent}
       </Text>
     </Pressable>
   )

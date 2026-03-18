@@ -16,6 +16,8 @@ const noteGroups: RagNoteGroup[] = [
         noteTags: ['tag-1'],
         chunkIndex: 0,
         charOffset: 0,
+        bodyContent: 'First snippet',
+        overlapPrefix: '',
         content: 'First snippet',
         similarity: 0.82,
       },

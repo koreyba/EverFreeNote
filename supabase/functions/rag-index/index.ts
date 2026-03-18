@@ -300,6 +300,8 @@ serve(async (req: Request) => {
       chunk_index: index,
       char_offset: chunk.charOffset,
       content: chunk.content,
+      body_content: chunk.bodyContent,
+      overlap_prefix: chunk.overlapPrefix,
       embedding: vectors[index],
     }))
 
@@ -339,6 +341,8 @@ serve(async (req: Request) => {
             sectionHeading: chunk.sectionHeading,
             title: chunk.title,
             content: chunk.content,
+            bodyContent: chunk.bodyContent,
+            overlapPrefix: chunk.overlapPrefix,
           }))
         : undefined,
     })

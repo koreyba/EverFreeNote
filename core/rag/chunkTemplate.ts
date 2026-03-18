@@ -9,6 +9,9 @@ export type RagChunkTemplateInput = {
 
 const normalizeInlineText = (value: string) => value.replace(/\s+/g, " ").trim()
 
+const isChunkMetadataLine = (line: string | undefined): boolean =>
+  line?.startsWith("Section: ") || line?.startsWith("Tags: ") || false
+
 export function getRagChunkBodyText(content: string): string {
   const normalized = content.trim()
   if (!normalized) return ""
@@ -16,18 +19,19 @@ export function getRagChunkBodyText(content: string): string {
   const lines = normalized.split("\n")
   let end = lines.length
 
-  if (lines[end - 1]?.startsWith("Tags: ")) {
-    end -= 1
-  }
-  if (lines[end - 1]?.startsWith("Section: ")) {
+  while (end > 0 && isChunkMetadataLine(lines[end - 1])) {
     end -= 1
   }
 
-  if (end < lines.length && lines[end - 1] === "") {
-    return lines.slice(0, end - 1).join("\n").trim()
+  if (end === lines.length) {
+    return normalized
   }
 
-  return lines.slice(0, end).join("\n").trim()
+  if (end === 0 || lines[end - 1] !== "") {
+    return normalized
+  }
+
+  return lines.slice(0, end - 1).join("\n").trim()
 }
 
 export function getRagChunkBodyLength(content: string): number {
