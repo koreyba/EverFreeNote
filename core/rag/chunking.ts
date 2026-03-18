@@ -40,14 +40,14 @@ const BLOCK_BREAK_PATTERN = /<\/?(?:p|div|li|blockquote|pre|ul|ol|section|articl
 
 function normalizeWhitespace(value: string): string {
   return value
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\u00a0/g, " ")
-    .replace(/\s+/g, " ")
+    .replaceAll(/&nbsp;/gi, " ")
+    .replaceAll(/\u00a0/g, " ")
+    .replaceAll(/\s+/g, " ")
     .trim()
 }
 
 function stripTags(value: string): string {
-  return normalizeWhitespace(value.replace(/<[^>]*>/g, " "))
+  return normalizeWhitespace(value.replaceAll(/<[^>]*>/g, " "))
 }
 
 function splitPlainTextParagraphs(value: string): string[] {
@@ -86,84 +86,71 @@ function extractElementText(node: Node): string {
   return result
 }
 
+const SEMANTIC_CONTAINERS = new Set(["section", "article", "main"])
+const BLOCK_ELEMENTS = new Set(["p", "div", "li", "blockquote", "pre"])
+const NESTED_BLOCK_TAGS = new Set(["div", "p", "li", "blockquote", "pre"])
+
+function isHeadingTag(tagName: string): boolean {
+  return tagName.length === 2 && tagName.startsWith("h") && tagName >= "h1" && tagName <= "h6"
+}
+
+function divHasNestedBlocks(element: Element): boolean {
+  return Array.from(element.children).some((child) => {
+    const tag = child.tagName.toLowerCase()
+    return NESTED_BLOCK_TAGS.has(tag) || isHeadingTag(tag)
+  })
+}
+
 function collectBlocksFromDom(rootHtml: string): RawBlock[] {
   const parser = new DOMParser()
   const doc = parser.parseFromString(rootHtml, "text/html")
   const blocks: RawBlock[] = []
   let currentHeading: string | null = null
 
+  const pushBlock = (text: string) => {
+    if (text) blocks.push({ sectionHeading: currentHeading, text })
+  }
+
+  const handleList = (element: Element, prefix: (idx: number) => string) => {
+    let idx = 1
+    for (const child of Array.from(element.childNodes)) {
+      if (child.nodeType !== Node.ELEMENT_NODE) continue
+      if ((child as Element).tagName.toLowerCase() === "li") {
+        const text = normalizeWhitespace(extractElementText(child))
+        pushBlock(text ? `${prefix(idx)}${text}` : "")
+        idx++
+      } else {
+        walk(child)
+      }
+    }
+  }
+
   const walk = (node: Node) => {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
-        const text = normalizeWhitespace(child.textContent ?? "")
-        if (text) blocks.push({ sectionHeading: currentHeading, text })
+        pushBlock(normalizeWhitespace(child.textContent ?? ""))
         continue
       }
-
       if (child.nodeType !== Node.ELEMENT_NODE) continue
 
       const element = child as Element
       const tagName = element.tagName.toLowerCase()
 
-      if (/^h[1-6]$/.test(tagName)) {
+      if (isHeadingTag(tagName)) {
         currentHeading = normalizeWhitespace(element.textContent ?? "")
-        continue
-      }
-
-      if (tagName === "ol") {
-        let idx = 1
-        for (const olChild of Array.from(element.childNodes)) {
-          if (olChild.nodeType !== Node.ELEMENT_NODE) continue
-          const olChildTag = (olChild as Element).tagName.toLowerCase()
-          if (olChildTag === "li") {
-            const text = normalizeWhitespace(extractElementText(olChild))
-            if (text) blocks.push({ sectionHeading: currentHeading, text: `${idx}. ${text}` })
-            idx++
-          } else {
-            walk(olChild)
-          }
-        }
-        continue
-      }
-
-      if (tagName === "ul") {
-        for (const ulChild of Array.from(element.childNodes)) {
-          if (ulChild.nodeType !== Node.ELEMENT_NODE) continue
-          const ulChildTag = (ulChild as Element).tagName.toLowerCase()
-          if (ulChildTag === "li") {
-            const text = normalizeWhitespace(extractElementText(ulChild))
-            if (text) blocks.push({ sectionHeading: currentHeading, text: `- ${text}` })
-          } else {
-            walk(ulChild)
-          }
-        }
-        continue
-      }
-
-      if (tagName === "section" || tagName === "article" || tagName === "main") {
+      } else if (tagName === "ol") {
+        handleList(element, (idx) => `${idx}. `)
+      } else if (tagName === "ul") {
+        handleList(element, () => "- ")
+      } else if (SEMANTIC_CONTAINERS.has(tagName)) {
         walk(element)
-        continue
+      } else if (tagName === "div" && divHasNestedBlocks(element)) {
+        walk(element)
+      } else if (BLOCK_ELEMENTS.has(tagName)) {
+        pushBlock(normalizeWhitespace(extractElementText(element)))
+      } else {
+        walk(element)
       }
-
-      if (tagName === "div") {
-        const hasNestedBlocks = Array.from(element.children).some((childElement) => {
-          const childTag = childElement.tagName.toLowerCase()
-          return childTag === "div" || childTag === "p" || childTag === "li" || childTag === "blockquote" || childTag === "pre" || /^h[1-6]$/.test(childTag)
-        })
-
-        if (hasNestedBlocks) {
-          walk(element)
-          continue
-        }
-      }
-
-      if (tagName === "p" || tagName === "div" || tagName === "li" || tagName === "blockquote" || tagName === "pre") {
-        const text = normalizeWhitespace(extractElementText(element))
-        if (text) blocks.push({ sectionHeading: currentHeading, text })
-        continue
-      }
-
-      walk(element)
     }
   }
 
@@ -184,19 +171,19 @@ function splitAndStripParagraphs(text: string, sectionHeading: string | null): R
 
 function prefixListItems(html: string): string {
   // Ordered lists: prepend "1. ", "2. ", etc.
-  let result = html.replace(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner: string) => {
+  let result = html.replaceAll(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner: string) => {
     let idx = 1
-    const numbered = inner.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
-      const stripped = liContent.replace(/<\/?p\b[^>]*>/gi, "")
+    const numbered = inner.replaceAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
+      const stripped = liContent.replaceAll(/<\/?p\b[^>]*>/gi, "")
       return `<li>${idx++}. ${stripped}</li>`
     })
     return `<ol>${numbered}</ol>`
   })
 
   // Unordered lists: prepend "- "
-  result = result.replace(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (_match, inner: string) => {
-    const bulleted = inner.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
-      const stripped = liContent.replace(/<\/?p\b[^>]*>/gi, "")
+  result = result.replaceAll(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (_match, inner: string) => {
+    const bulleted = inner.replaceAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
+      const stripped = liContent.replaceAll(/<\/?p\b[^>]*>/gi, "")
       return `<li>- ${stripped}</li>`
     })
     return `<ul>${bulleted}</ul>`
@@ -207,8 +194,8 @@ function prefixListItems(html: string): string {
 
 function collectBlocksWithRegex(html: string): RawBlock[] {
   const normalizedHtml = prefixListItems(html)
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(BLOCK_BREAK_PATTERN, "\n\n")
+    .replaceAll(/<br\s*\/?>/gi, "\n")
+    .replaceAll(BLOCK_BREAK_PATTERN, "\n\n")
 
   const rawBlocks: RawBlock[] = []
   let currentHeading: string | null = null
@@ -298,16 +285,18 @@ function splitByCharacterFallback(segment: TextSegment, maxChunkSize: number): T
   return parts
 }
 
-function takePartialText(text: string, minChars: number): { taken: string; remainder: string } {
+function takePartialText(text: string, minChars: number): { taken: string; remainder: string; consumedChars: number } {
   if (minChars >= text.length) {
-    return { taken: text, remainder: "" }
+    return { taken: text, remainder: "", consumedChars: text.length }
   }
 
   const sentenceEnd = text.indexOf(".", minChars)
   if (sentenceEnd !== -1 && sentenceEnd < text.length) {
+    const splitAt = sentenceEnd + 1
     return {
-      taken: text.slice(0, sentenceEnd + 1).trim(),
-      remainder: text.slice(sentenceEnd + 1).trim(),
+      taken: text.slice(0, splitAt).trim(),
+      remainder: text.slice(splitAt).trim(),
+      consumedChars: splitAt,
     }
   }
 
@@ -316,12 +305,14 @@ function takePartialText(text: string, minChars: number): { taken: string; remai
     return {
       taken: text.slice(0, spaceIndex).trim(),
       remainder: text.slice(spaceIndex).trim(),
+      consumedChars: spaceIndex,
     }
   }
 
   return {
     taken: text.slice(0, minChars).trim(),
     remainder: text.slice(minChars).trim(),
+    consumedChars: minChars,
   }
 }
 
@@ -364,9 +355,9 @@ function splitOversizedParagraph(
   // This may produce a chunk slightly above maxSize — a conscious compromise to avoid
   // breaking the next paragraph boundary or leaving a tiny orphan chunk.
   if (chunks.length >= 2) {
-    const last = chunks[chunks.length - 1]!
-    if (last.text.length < minSize) {
-      const prev = chunks[chunks.length - 2]!
+    const last = chunks.at(-1)
+    const prev = chunks.at(-2)
+    if (last && prev && last.text.length < minSize) {
       chunks.splice(-2, 2, { ...prev, text: [prev.text, last.text].join(" ") })
     }
   }
@@ -378,6 +369,64 @@ function joinChunkParts(parts: string[]): string {
   return parts.filter(Boolean).join("\n\n").trim()
 }
 
+function accumulateBelowMin(
+  current: CandidateChunk,
+  block: IndexedBlock,
+  combinedText: string,
+  candidates: CandidateChunk[],
+  settings: Pick<RagIndexingEditableSettings, "min_chunk_size" | "max_chunk_size">
+): CandidateChunk | null {
+  if (combinedText.length <= settings.max_chunk_size) {
+    return { sectionHeading: current.sectionHeading, text: combinedText, charOffset: current.charOffset }
+  }
+
+  const separatorLen = 2 // "\n\n"
+  const needed = settings.min_chunk_size - current.text.length - separatorLen
+  if (needed <= 0) {
+    candidates.push(current)
+    return { sectionHeading: block.sectionHeading, text: block.text, charOffset: block.charOffset }
+  }
+
+  const partial = takePartialText(block.text, needed)
+  candidates.push({
+    sectionHeading: current.sectionHeading,
+    text: joinChunkParts([current.text, partial.taken]),
+    charOffset: current.charOffset,
+  })
+
+  if (partial.remainder) {
+    return {
+      sectionHeading: block.sectionHeading,
+      text: partial.remainder,
+      charOffset: block.charOffset + partial.consumedChars,
+    }
+  }
+
+  return null
+}
+
+function mergeBlockIntoCurrent(
+  current: CandidateChunk,
+  block: IndexedBlock,
+  candidates: CandidateChunk[],
+  settings: Pick<RagIndexingEditableSettings, "min_chunk_size" | "target_chunk_size" | "max_chunk_size">
+): CandidateChunk | null {
+  const combinedText = joinChunkParts([current.text, block.text])
+
+  if (current.text.length < settings.min_chunk_size) {
+    return accumulateBelowMin(current, block, combinedText, candidates, settings)
+  }
+
+  // At or above min — can close, but check if next paragraph fits within target
+  if (combinedText.length <= settings.target_chunk_size) {
+    return { sectionHeading: current.sectionHeading, text: combinedText, charOffset: current.charOffset }
+  }
+
+  // Would exceed target — close current, start new chunk
+  candidates.push(current)
+  return { sectionHeading: block.sectionHeading, text: block.text, charOffset: block.charOffset }
+}
+
 function assembleParagraphFirst(
   blocks: IndexedBlock[],
   settings: Pick<RagIndexingEditableSettings, "min_chunk_size" | "target_chunk_size" | "max_chunk_size">
@@ -385,10 +434,7 @@ function assembleParagraphFirst(
   const candidates: CandidateChunk[] = []
   let current: CandidateChunk | null = null
 
-  for (let i = 0; i < blocks.length; i++) {
-    const block = blocks[i]
-    if (!block) continue
-
+  for (const block of blocks) {
     // Section boundary — close current chunk
     if (current && current.sectionHeading !== block.sectionHeading) {
       candidates.push(current)
@@ -411,48 +457,7 @@ function assembleParagraphFirst(
       continue
     }
 
-    // current is guaranteed non-null here (guarded by the !current check above)
-    const combinedText = joinChunkParts([current!.text, block.text])
-
-    if (current!.text.length < settings.min_chunk_size) {
-      // Below min — must add more to reach min_chunk_size
-      if (combinedText.length <= settings.max_chunk_size) {
-        // Whole paragraph fits within max — add it whole
-        current = { sectionHeading: current!.sectionHeading, text: combinedText, charOffset: current!.charOffset }
-      } else {
-        // Whole paragraph doesn't fit in max — split partially to reach min
-        const separatorLen = 2 // "\n\n"
-        const needed = settings.min_chunk_size - current!.text.length - separatorLen
-        if (needed > 0) {
-          const partial = takePartialText(block.text, needed)
-          current = { sectionHeading: current!.sectionHeading, text: joinChunkParts([current!.text, partial.taken]), charOffset: current!.charOffset }
-          candidates.push(current)
-          current = null
-          if (partial.remainder) {
-            current = {
-              sectionHeading: block.sectionHeading,
-              text: partial.remainder,
-              charOffset: block.charOffset + partial.taken.length,
-            }
-          }
-        } else {
-          // Current is already at min with just the separator
-          candidates.push(current!)
-          current = { sectionHeading: block.sectionHeading, text: block.text, charOffset: block.charOffset }
-        }
-      }
-      continue
-    }
-
-    // At or above min — can close, but check if next paragraph fits within target
-    if (combinedText.length <= settings.target_chunk_size) {
-      // Adding this paragraph keeps within target — add it
-      current = { sectionHeading: current!.sectionHeading, text: combinedText, charOffset: current!.charOffset }
-    } else {
-      // Would exceed target — close current, start new chunk
-      candidates.push(current!)
-      current = { sectionHeading: block.sectionHeading, text: block.text, charOffset: block.charOffset }
-    }
+    current = mergeBlockIntoCurrent(current, block, candidates, settings)
   }
 
   if (current) {
@@ -468,10 +473,11 @@ function mergeUndersizedTail(
 ): CandidateChunk[] {
   if (chunks.length < 2) return chunks
 
-  const last = chunks[chunks.length - 1]!
-  if (last.text.length >= settings.min_chunk_size) return chunks
+  const last = chunks.at(-1)
+  const prev = chunks.at(-2)
+  if (!last || !prev) return chunks
 
-  const prev = chunks[chunks.length - 2]!
+  if (last.text.length >= settings.min_chunk_size) return chunks
   if (prev.sectionHeading !== last.sectionHeading) return chunks
 
   const merged = joinChunkParts([prev.text, last.text])
@@ -491,7 +497,7 @@ function buildOverlapPrefix(source: string, overlap: number): string {
   const sentenceBoundary = source.lastIndexOf(".", requestedStart - 1)
 
   if (sentenceBoundary === -1) {
-    return source.trim()
+    return source.slice(requestedStart).trim()
   }
 
   const sentenceStart = sentenceBoundary + 1
@@ -504,10 +510,10 @@ function applyFinalOverlap(chunks: CandidateChunk[], overlap: number): Candidate
   return chunks.map((chunk, index) => {
     if (index === 0) return chunk
     const previous = chunks[index - 1]
-    if (!previous || previous.sectionHeading !== chunk.sectionHeading) {
+    if (previous?.sectionHeading !== chunk.sectionHeading) {
       return chunk
     }
-    const overlapPrefix = buildOverlapPrefix(previous?.text ?? "", overlap)
+    const overlapPrefix = buildOverlapPrefix(previous.text, overlap)
     if (!overlapPrefix) return chunk
 
     return {

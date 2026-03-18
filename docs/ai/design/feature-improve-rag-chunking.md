@@ -317,4 +317,8 @@ This feature does not alter search ranking logic, but the design must preserve:
   - `target_chunk_size`: `50..5000`
   - `min_chunk_size`: `50..5000`
   - `max_chunk_size`: `50..5000`
-  - `overlap`: `0..5000`
+  - `overlap`: `0..min_chunk_size - 1` (must be strictly less than `min_chunk_size`)
+- Cross-field invariants enforced by the settings access/validation layer:
+  - `min_chunk_size <= target_chunk_size <= max_chunk_size`
+  - `overlap < min_chunk_size`
+  - These checks must be performed at save time, not just at the individual field level. Changing one field may invalidate another (e.g., raising `min_chunk_size` above `target_chunk_size` must be rejected or auto-corrected).
