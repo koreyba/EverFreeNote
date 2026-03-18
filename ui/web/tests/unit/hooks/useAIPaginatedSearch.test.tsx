@@ -386,4 +386,45 @@ describe('useAIPaginatedSearch', () => {
       })
     )
   })
+
+  it('falls back to legacy content when bodyContent is missing from rag-search results', async () => {
+    const invoke = jest.fn().mockResolvedValue({
+      data: {
+        chunks: [
+          {
+            noteId: 'note-legacy',
+            noteTitle: 'Legacy note',
+            noteTags: ['tag'],
+            chunkIndex: 0,
+            charOffset: 12,
+            content: 'Legacy chunk text',
+            similarity: 0.88,
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const { result } = renderHook(
+      () =>
+        useAIPaginatedSearch({
+          query: 'ontology',
+          preset: 'strict',
+          filterTag: null,
+          isEnabled: true,
+        }),
+      { wrapper: createWrapper(supabase) }
+    )
+
+    await waitFor(() => {
+      expect(result.current.noteGroups[0]?.chunks[0]?.content).toBe('Legacy chunk text')
+    })
+
+    expect(result.current.noteGroups[0]?.chunks[0]?.bodyContent).toBeUndefined()
+    expect(result.current.noteGroups[0]?.chunks[0]?.overlapPrefix).toBeUndefined()
+  })
 })

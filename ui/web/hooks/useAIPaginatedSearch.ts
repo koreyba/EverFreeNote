@@ -50,11 +50,12 @@ function groupByNote(chunks: RagChunk[]): RagNoteGroup[] {
   return groups.sort((a, b) => b.topScore - a.topScore)
 }
 
-function hashText(value: string): string {
+function hashText(value: string | undefined): string {
   // Fast non-crypto hash for change detection signatures.
+  const normalizedValue = value ?? ''
   let hash = 2166136261
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i)
+  for (let i = 0; i < normalizedValue.length; i += 1) {
+    hash ^= normalizedValue.charCodeAt(i)
     hash = Math.imul(hash, 16777619)
   }
   return (hash >>> 0).toString(36)
@@ -69,7 +70,7 @@ function buildGroupsSignature(groups: RagNoteGroup[]): string {
       const chunksSignature = group.chunks
         .map((chunk) =>
           `${chunk.chunkIndex}:${chunk.charOffset}:${chunk.similarity.toFixed(6)}:` +
-          `${hashText(chunk.content)}:${hashText(chunk.bodyContent)}:${hashText(chunk.overlapPrefix)}`
+          `${hashText(chunk.content)}:${hashText(chunk.bodyContent ?? chunk.content)}:${hashText(chunk.overlapPrefix)}`
         )
         .join('|')
       return `${group.noteId}:${hashText(group.noteTitle)}:${hashText(tagsSignature)}:${group.topScore.toFixed(6)}:${group.hiddenCount}:${chunksSignature}`

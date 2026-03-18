@@ -45,6 +45,7 @@ export function NoteSearchItem({
   const extraChunks = group.chunks.slice(1)
   const totalHidden = (extraChunks.length || 0) + (group.hiddenCount || 0)
   const hasMore = extraChunks.length > 0 || group.hiddenCount > 0
+  const topChunkText = topChunk?.bodyContent ?? topChunk?.content ?? ''
 
   const hasActiveSelection = () => {
     if (typeof window === 'undefined') return false
@@ -168,12 +169,12 @@ export function NoteSearchItem({
             tabIndex={0}
             aria-label={`Open top fragment from "${group.noteTitle || 'Untitled'}" in context`}
             className="group relative mt-2.5 rounded-md bg-muted/30 px-2.5 py-2 cursor-pointer border border-transparent transition-all hover:bg-muted/50 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-            onClick={(e) => handleChunkActivate(e, topChunk.charOffset, Math.max(1, topChunk.bodyContent.length))}
-            onKeyDown={(e) => handleChunkKeyDown(e, topChunk.charOffset, Math.max(1, topChunk.bodyContent.length))}
+            onClick={(e) => handleChunkActivate(e, topChunk.charOffset, Math.max(1, topChunkText.length))}
+            onKeyDown={(e) => handleChunkKeyDown(e, topChunk.charOffset, Math.max(1, topChunkText.length))}
           >
             <ArrowUpRight className="absolute bottom-2 right-2 h-3 w-3 text-primary opacity-0 group-hover:opacity-60 transition-opacity" />
             <ChunkSnippet
-              content={topChunk.bodyContent}
+              content={topChunkText}
               className="text-[12.5px] leading-relaxed text-foreground/80"
               highlightQuery={highlightQuery}
             />
@@ -207,8 +208,8 @@ export function NoteSearchItem({
               tabIndex={0}
               aria-label={`Open fragment ${index + 2} from "${group.noteTitle || 'Untitled'}" in context`}
               className="group relative rounded-md bg-background/60 px-2.5 py-2 cursor-pointer border border-border/40 transition-all hover:bg-background hover:border-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-              onClick={(e) => handleChunkActivate(e, chunk.charOffset, Math.max(1, chunk.bodyContent.length))}
-              onKeyDown={(e) => handleChunkKeyDown(e, chunk.charOffset, Math.max(1, chunk.bodyContent.length))}
+              onClick={(e) => handleChunkActivate(e, chunk.charOffset, Math.max(1, (chunk.bodyContent ?? chunk.content ?? '').length))}
+              onKeyDown={(e) => handleChunkKeyDown(e, chunk.charOffset, Math.max(1, (chunk.bodyContent ?? chunk.content ?? '').length))}
             >
               <ArrowUpRight className="absolute bottom-2 right-2 h-3 w-3 text-primary opacity-0 group-hover:opacity-60 transition-opacity" />
               <div className="mb-1 flex items-center justify-between">
@@ -218,7 +219,7 @@ export function NoteSearchItem({
                 </span>
               </div>
               <ChunkSnippet
-                content={chunk.bodyContent}
+                content={chunk.bodyContent ?? chunk.content ?? ''}
                 className="text-[12px] leading-relaxed text-foreground/75"
                 highlightQuery={highlightQuery}
               />

@@ -22,7 +22,8 @@ function getScoreClass(score: number) {
 }
 
 export function ChunkSearchItem({ chunk, onOpenInContext, highlightQuery = '' }: ChunkSearchItemProps) {
-  const handleOpen = () => onOpenInContext(chunk.noteId, chunk.charOffset, Math.max(1, chunk.bodyContent.length))
+  const chunkText = chunk.bodyContent ?? chunk.content ?? ''
+  const handleOpen = () => onOpenInContext(chunk.noteId, chunk.charOffset, Math.max(1, chunkText.length))
 
   return (
     <div
@@ -58,7 +59,7 @@ export function ChunkSearchItem({ chunk, onOpenInContext, highlightQuery = '' }:
 
         {/* Snippet — primary content */}
         <ChunkSnippet
-          content={chunk.bodyContent}
+          content={chunkText}
           className="text-[12.5px] leading-relaxed text-foreground/80"
           highlightQuery={highlightQuery}
         />
