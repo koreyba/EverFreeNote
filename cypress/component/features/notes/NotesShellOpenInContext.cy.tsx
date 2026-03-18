@@ -35,7 +35,7 @@ describe('NotesShell: AI open in context', () => {
       user_id: user.id,
     }
 
-    const chunkOffset = note.title.length + 1 + 10
+    const chunkOffset = 10
 
     const invoke = cy.stub().callsFake((fn: string) => {
       if (fn === 'api-keys-status') {

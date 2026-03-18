@@ -155,7 +155,7 @@ jobs:
         if: steps.run-mobile-unit-tests.outcome != 'success'
         run: exit 1
 
-  unit-tests-code:
+  unit-tests-core:
     runs-on: ubuntu-latest
 
     steps:
@@ -182,10 +182,10 @@ jobs:
         continue-on-error: true
         run: npm run test:integration:core -- --verbose --ci --json --outputFile=core-integration-results.json
 
-      - name: Generate code summary
+      - name: Generate core summary
         if: always()
         env:
-          SUMMARY_TITLE: Code Tests
+          SUMMARY_TITLE: Core Tests
           REPORT_PATHS: core-unit-results.json,core-integration-results.json
           PRIMARY_OUTCOME: ${{ steps.run-core-unit-tests.outcome == 'success' && steps.run-core-integration-tests.outcome == 'success' && 'success' || 'failure' }}
         run: |
@@ -286,18 +286,18 @@ jobs:
           fs.appendFileSync(summaryFile, md);
           NODE
 
-      - name: Upload code test reports
+      - name: Upload core test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-test-report-code-${{ github.run_id }}
+          name: unit-test-report-core-${{ github.run_id }}
           path: |
             core-unit-results.json
             core-integration-results.json
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Mark job as failed when code tests failed
+      - name: Mark job as failed when core tests failed
         if: steps.run-core-unit-tests.outcome != 'success' || steps.run-core-integration-tests.outcome != 'success'
         run: exit 1
 
