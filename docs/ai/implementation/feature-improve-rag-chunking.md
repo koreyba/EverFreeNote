@@ -157,7 +157,8 @@ function validateRagIndexingSettings(input: Partial<RagIndexingSettings>): Valid
 
 Validation rules to enforce in both UI and server paths:
 
-- `target_chunk_size`, `min_chunk_size`, `max_chunk_size`, `overlap` must each be within `50..5000`
+- `target_chunk_size`, `min_chunk_size`, `max_chunk_size` must each be within `50..5000`
+- `overlap` must be within `0..5000`
 - `min_chunk_size <= target_chunk_size <= max_chunk_size`
 
 Representative placement:

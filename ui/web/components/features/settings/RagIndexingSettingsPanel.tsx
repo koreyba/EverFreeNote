@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RagIndexSettingsService } from "@core/services/ragIndexSettings"
 import type { RagIndexingEditableSettings, RagIndexingSettings } from "@core/rag/indexingSettings"
-import { validateRagIndexingEditableSettings } from "@core/rag/indexingSettings"
+import { RAG_INDEX_EDITABLE_DEFAULTS, validateRagIndexingEditableSettings } from "@core/rag/indexingSettings"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { Info } from "lucide-react"
 
@@ -204,7 +204,7 @@ export function RagIndexingSettingsPanel() {
                 target_chunk_size: "500",
                 min_chunk_size: "200",
                 max_chunk_size: "1500",
-                overlap: "150",
+                overlap: String(RAG_INDEX_EDITABLE_DEFAULTS.overlap),
                 use_title: true,
                 use_section_headings: true,
                 use_tags: true,

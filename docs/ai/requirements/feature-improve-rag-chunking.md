@@ -102,7 +102,7 @@ RAG note indexing currently uses fixed, mostly implicit chunking and embedding s
 - [ ] Chunking, chunk-template construction, and settings validation logic live in shared `core` code and do not depend on web-only or mobile-only modules.
 - [ ] Web, mobile, and server-side indexing paths reuse the same `core` indexing rules instead of reimplementing them per platform.
 - [ ] Indexing settings are exposed in the user's Google API settings tab.
-- [ ] Indexing settings UI is added on the web site only for this feature.
+- [ ] Indexing settings UI is added on the website only for this feature.
 - [ ] Editable UI settings include:
   - `target_chunk_size`
   - `min_chunk_size`

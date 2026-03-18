@@ -97,7 +97,7 @@ describe('RagIndexPanel Component', () => {
   it('invokes rag-index with action=index', () => {
     const { supabase, invoke } = createSupabaseForRag([], async (name: string, params: unknown) => {
       expect(name).to.eq('rag-index')
-      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'index' } })
+      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'index', debugChunks: true } })
       return { data: { chunkCount: 3 }, error: null }
     })
 
@@ -109,7 +109,7 @@ describe('RagIndexPanel Component', () => {
 
     cy.contains('button', 'RAG Index').click()
     cy.wrap(invoke).should('have.been.calledWith', 'rag-index', {
-      body: { noteId: 'note-1', action: 'index' },
+      body: { noteId: 'note-1', action: 'index', debugChunks: true },
     })
   })
 
@@ -117,7 +117,7 @@ describe('RagIndexPanel Component', () => {
     const rows: EmbeddingRow[] = [{ chunk_index: 0, indexed_at: '2026-03-02T20:00:00.000Z' }]
     const { supabase, invoke } = createSupabaseForRag(rows, async (name: string, params: unknown) => {
       expect(name).to.eq('rag-index')
-      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'reindex' } })
+      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'reindex', debugChunks: true } })
       return { data: { chunkCount: 1 }, error: null }
     })
 
@@ -129,7 +129,7 @@ describe('RagIndexPanel Component', () => {
 
     cy.contains('button', 'Re-index').click()
     cy.wrap(invoke).should('have.been.calledWith', 'rag-index', {
-      body: { noteId: 'note-1', action: 'reindex' },
+      body: { noteId: 'note-1', action: 'reindex', debugChunks: true },
     })
   })
 
@@ -268,7 +268,7 @@ describe('RagIndexPanel (variant=menu)', () => {
   it('invokes rag-index with action=index from menu item', () => {
     const { supabase } = createSupabaseForRag([], async (name, params) => {
       expect(name).to.eq('rag-index')
-      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'index' } })
+      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'index', debugChunks: true } })
       return { data: { chunkCount: 2 }, error: null }
     })
     const onMenuClose = cy.stub().as('onMenuClose')
@@ -284,7 +284,7 @@ describe('RagIndexPanel (variant=menu)', () => {
     )
     cy.contains('[role="menuitem"]', 'Index note').click()
     cy.wrap(supabase.functions.invoke).should('have.been.calledWith', 'rag-index', {
-      body: { noteId: 'note-1', action: 'index' },
+      body: { noteId: 'note-1', action: 'index', debugChunks: true },
     })
     // onMenuClose called after operation settles — dropdown closes only then
     cy.get('@onMenuClose').should('have.been.calledOnce')

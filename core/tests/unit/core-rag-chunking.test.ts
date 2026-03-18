@@ -1,12 +1,12 @@
 import { buildRagIndexChunks } from "@core/rag/chunking"
 import { buildRagChunkText, getRagChunkBodyText } from "@core/rag/chunkTemplate"
-import { RAG_INDEX_EDITABLE_DEFAULTS } from "@core/rag/indexingSettings"
+import { RAG_INDEX_EDITABLE_DEFAULTS, type RagIndexingEditableSettings } from "@core/rag/indexingSettings"
 
 // --- Helpers ---
 
 const p = (text: string) => `<p>${text}</p>`
 
-const cfg = (overrides: Partial<typeof RAG_INDEX_EDITABLE_DEFAULTS> = {}) => ({
+const cfg = (overrides: Partial<RagIndexingEditableSettings> = {}): RagIndexingEditableSettings => ({
   ...RAG_INDEX_EDITABLE_DEFAULTS,
   ...overrides,
 })

@@ -7,7 +7,7 @@ import {
   assertValidRagIndexingEditableSettings,
   coerceRagIndexingEditableSettings,
   resolveRagIndexingSettings,
-} from "../../../core/rag/indexingSettings.ts"
+} from "@core/rag/indexingSettings.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -145,7 +145,12 @@ serve(async (req: Request) => {
 
     let resolvedRagIndexingSettings
     if (hasRagIndexingFields) {
-      const editableSettings = assertValidRagIndexingEditableSettings(coercedRagIndexingSettings)
+      let editableSettings
+      try {
+        editableSettings = assertValidRagIndexingEditableSettings(coercedRagIndexingSettings)
+      } catch (validationError) {
+        return jsonResponse({ error: validationError instanceof Error ? validationError.message : "Invalid RAG indexing settings" }, 400)
+      }
       const { error: ragUpsertError } = await supabaseAdmin
         .from("user_rag_index_settings")
         .upsert({ user_id: userId, ...editableSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })

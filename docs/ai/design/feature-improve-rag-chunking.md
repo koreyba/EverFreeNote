@@ -179,7 +179,7 @@ Representative payload:
 1. load active indexing settings
 2. fetch note title, content, and tags
 3. derive content structure into sections, paragraphs, sentences, then token/character fallback
-4. choose whole-note indexing when note size is below `small_note_threshold`
+4. skip indexing when note size is below `min_chunk_size`
 5. build final chunks using accumulation and merge rules
 6. construct final chunk text from `Section`, `Tags`, and content according to enabled flags
 7. send title separately via Gemini `title`
@@ -317,4 +317,4 @@ This feature does not alter search ranking logic, but the design must preserve:
   - `target_chunk_size`: `50..5000`
   - `min_chunk_size`: `50..5000`
   - `max_chunk_size`: `50..5000`
-  - `overlap`: `50..5000`
+  - `overlap`: `0..5000`
