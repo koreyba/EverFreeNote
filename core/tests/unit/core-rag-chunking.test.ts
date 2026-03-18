@@ -323,6 +323,19 @@ describe("core/rag/chunking — pairwise test suite", () => {
       expect(text).not.toContain("Section:")
     })
 
+    it("H3: body text that starts with metadata-like labels stays intact", () => {
+      const bodyText = "Section: Overview\nDetails about sections."
+      const text = buildRagChunkText({
+        sectionHeading: "Intro",
+        tags: ["a", "b"],
+        chunkContent: bodyText,
+        settings: { use_section_headings: true, use_tags: true },
+      })
+
+      expect(text).toBe(`${bodyText}\n\nSection: Intro\nTags: a, b`)
+      expect(getRagChunkBodyText(text)).toBe(bodyText)
+    })
+
     it("H4: heading есть, use_section_headings=false → Section: скрыта", () => {
       const text = buildRagChunkText({
         sectionHeading: "Heading",
@@ -514,10 +527,4 @@ describe("core/rag/chunking — pairwise test suite", () => {
     })
   })
 
-  describe("legacy body extraction", () => {
-    it("strips metadata-first prefix from old chunk payloads", () => {
-      const legacyText = "Section: Intro\nTags: a, b\n\nBody text"
-      expect(getRagChunkBodyText(legacyText)).toBe("Body text")
-    })
-  })
 })
