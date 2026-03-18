@@ -15,6 +15,8 @@ const baseGroup: RagNoteGroup = {
       noteTags: ['philosophy'],
       chunkIndex: 0,
       charOffset: 12,
+      bodyContent: 'Top chunk snippet for selection tests.',
+      overlapPrefix: '',
       content: 'Top chunk snippet for selection tests.',
       similarity: 0.87,
     },

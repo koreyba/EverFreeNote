@@ -153,6 +153,8 @@ const createAiGroup = (noteId: string, chunkCount = 3): RagNoteGroup => ({
     noteTags: ['semantic'],
     chunkIndex: index,
     charOffset: index * 100,
+    bodyContent: `Chunk ${index}`,
+    overlapPrefix: '',
     content: `Chunk ${index}`,
     similarity: 0.9 - index * 0.05,
   })),

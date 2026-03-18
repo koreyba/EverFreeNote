@@ -45,6 +45,8 @@ describe('AiSearchChunkCard', () => {
           noteTags: ['philosophy', 'science'],
           chunkIndex: 2,
           charOffset: 144,
+          bodyContent: 'A focused chunk of text',
+          overlapPrefix: '',
           content: 'A focused chunk of text',
           similarity: 0.82,
         }}
@@ -73,6 +75,8 @@ describe('AiSearchChunkCard', () => {
           noteTags: ['alpha'],
           chunkIndex: 0,
           charOffset: 12,
+          bodyContent: 'Chunk content',
+          overlapPrefix: '',
           content: 'Chunk content',
           similarity: 0.5,
         }}
