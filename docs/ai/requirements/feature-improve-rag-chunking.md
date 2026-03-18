@@ -133,14 +133,15 @@ RAG note indexing currently uses fixed, mostly implicit chunking and embedding s
 - [ ] Indexed chunk text follows one consistent template:
 
 ```text
+{chunk_content}
+
 Section: {section_heading}
 Tags: {tag1}, {tag2}, {tag3}
-
-{chunk_content}
 ```
 
 - [ ] Chunk text can include section headings and tags conditionally, based on UI settings.
 - [ ] If section headings or tags are disabled or absent, their corresponding lines are omitted entirely from the final chunk text.
+- [ ] Chunk body text is preserved separately from overlap and metadata so search snippets can display only the body content.
 
 ## Constraints & Assumptions
 

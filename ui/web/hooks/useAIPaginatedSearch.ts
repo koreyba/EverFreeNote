@@ -68,7 +68,8 @@ function buildGroupsSignature(groups: RagNoteGroup[]): string {
         : ''
       const chunksSignature = group.chunks
         .map((chunk) =>
-          `${chunk.chunkIndex}:${chunk.charOffset}:${chunk.similarity.toFixed(6)}:${hashText(chunk.content)}`
+          `${chunk.chunkIndex}:${chunk.charOffset}:${chunk.similarity.toFixed(6)}:` +
+          `${hashText(chunk.content)}:${hashText(chunk.bodyContent)}:${hashText(chunk.overlapPrefix)}`
         )
         .join('|')
       return `${group.noteId}:${hashText(group.noteTitle)}:${hashText(tagsSignature)}:${group.topScore.toFixed(6)}:${group.hiddenCount}:${chunksSignature}`

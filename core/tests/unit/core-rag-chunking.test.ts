@@ -57,6 +57,8 @@ describe("core/rag/chunking — pairwise test suite", () => {
       })
       expect(chunks).toHaveLength(1)
       expect(chunks[0]!.title).toBe("Exact")
+      expect(chunks[0]!.bodyContent).toBe(solid(200))
+      expect(chunks[0]!.overlapPrefix).toBe("")
       expect(chunks[0]!.content).toContain("Tags: t1")
     })
   })
@@ -267,6 +269,8 @@ describe("core/rag/chunking — pairwise test suite", () => {
       const body1 = getRagChunkBodyText(chunks[1]!.content)
       // Overlap prefix starts at sentence boundary and contains "Ending sentence here."
       expect(body1).toContain("Ending sentence here.")
+      expect(chunks[1]!.overlapPrefix).toContain("Ending sentence here.")
+      expect(chunks[1]!.bodyContent).toBe(p2Text)
     })
 
     it("G3: overlap > длины предыдущего чанка → берёт весь текст", () => {
@@ -507,6 +511,13 @@ describe("core/rag/chunking — pairwise test suite", () => {
       // P3~530 ≥ min. P4~570 would exceed target → close.
       // P4~570 ≥ min → standalone chunk.
       expect(chunks).toHaveLength(3)
+    })
+  })
+
+  describe("legacy body extraction", () => {
+    it("strips metadata-first prefix from old chunk payloads", () => {
+      const legacyText = "Section: Intro\nTags: a, b\n\nBody text"
+      expect(getRagChunkBodyText(legacyText)).toBe("Body text")
     })
   })
 })

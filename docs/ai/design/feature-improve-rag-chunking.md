@@ -119,6 +119,8 @@ type FinalChunk = {
   charOffset: number
   title: string | null
   text: string
+  bodyContent: string
+  overlapPrefix: string
 }
 ```
 
@@ -168,7 +170,7 @@ Representative payload:
   "fallback_split_order": ["sections", "paragraphs", "sentences", "tokens_or_characters"],
   "chunk_accumulation_rule": "Paragraph-first: accumulate whole paragraphs until min_chunk_size is reached, then optionally extend toward target_chunk_size only if the next whole paragraph fits without exceeding it. Oversized paragraphs are split at max_chunk_size boundaries; if the remainder is below min_chunk_size it is merged back into the previous piece.",
   "small_chunk_merge_rule": "Merge undersized final chunks with adjacent chunks when possible without violating max_chunk_size.",
-  "chunk_template": "Section: {section_heading}\\nTags: {tag1}, {tag2}, {tag3}\\n\\n{chunk_content}"
+  "chunk_template": "{chunk_content}\\n\\nSection: {section_heading}\\nTags: {tag1}, {tag2}, {tag3}"
 }
 ```
 
@@ -185,6 +187,12 @@ Representative payload:
 7. send title separately via Gemini `title`
 8. call Gemini embeddings with `taskType = RETRIEVAL_DOCUMENT`
 9. persist vectors into `note_embeddings`
+
+Persisted chunk rows should preserve:
+
+- `content`: full embedding payload used for retrieval (`body + overlap + optional metadata`)
+- `body_content`: clean body text without overlap or metadata, used for search snippets and context highlighting
+- `overlap_prefix`: repeated context prepended only for retrieval continuity
 
 ### `rag-search` compatibility
 

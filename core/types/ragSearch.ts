@@ -9,6 +9,8 @@ export interface RagChunk {
   noteTags: string[]
   chunkIndex: number
   charOffset: number
+  bodyContent: string
+  overlapPrefix: string
   content: string
   /** Cosine similarity in range [0, 1]. */
   similarity: number

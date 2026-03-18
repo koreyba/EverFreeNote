@@ -14,7 +14,18 @@ export function getRagChunkBodyText(content: string): string {
   if (!normalized) return ""
 
   const lines = normalized.split("\n")
+  let start = 0
   let end = lines.length
+
+  while (lines[start]?.startsWith("Section: ") || lines[start]?.startsWith("Tags: ")) {
+    start += 1
+  }
+
+  if (start > 0 && lines[start] === "") {
+    start += 1
+  } else {
+    start = 0
+  }
 
   if (lines[end - 1]?.startsWith("Tags: ")) {
     end -= 1
@@ -24,10 +35,10 @@ export function getRagChunkBodyText(content: string): string {
   }
 
   if (end < lines.length && lines[end - 1] === "") {
-    return lines.slice(0, end - 1).join("\n").trim()
+    return lines.slice(start, end - 1).join("\n").trim()
   }
 
-  return lines.slice(0, end).join("\n").trim()
+  return lines.slice(start, end).join("\n").trim()
 }
 
 export function getRagChunkBodyLength(content: string): number {
