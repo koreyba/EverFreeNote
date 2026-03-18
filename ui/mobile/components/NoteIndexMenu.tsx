@@ -11,6 +11,7 @@ import { Database, Trash2 } from 'lucide-react-native'
 import { useTheme } from '@ui/mobile/providers'
 import { useSupabase } from '@ui/mobile/providers/SupabaseProvider'
 import { useRagStatus } from '@ui/mobile/hooks/useRagStatus'
+import { logRagIndexDebugChunks, type RagIndexDebugChunk } from '@core/rag/debugLog'
 
 interface NoteIndexMenuProps {
     noteId: string
@@ -19,6 +20,21 @@ interface NoteIndexMenuProps {
 }
 
 type Operation = 'indexing' | 'deleting' | null
+
+function parseDebugChunks(data: unknown): RagIndexDebugChunk[] {
+    if (!data || typeof data !== 'object') return []
+    const value = (data as { debugChunks?: unknown }).debugChunks
+    if (!Array.isArray(value)) return []
+    return value.filter((chunk): chunk is RagIndexDebugChunk => {
+        if (!chunk || typeof chunk !== 'object') return false
+        const candidate = chunk as Partial<RagIndexDebugChunk>
+        return typeof candidate.chunkIndex === 'number'
+            && typeof candidate.charOffset === 'number'
+            && typeof candidate.content === 'string'
+            && (typeof candidate.sectionHeading === 'string' || candidate.sectionHeading === null)
+            && (typeof candidate.title === 'string' || candidate.title === null)
+    })
+}
 
 async function extractErrorMessage(err: unknown, fallback: string): Promise<string> {
     if (!(err instanceof Error)) return fallback
@@ -79,9 +95,13 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
         try {
             const action = isIndexed ? 'reindex' : 'index'
             const { data, error } = await client.functions.invoke('rag-index', {
-                body: { noteId, action },
+                body: { noteId, action, debugChunks: true },
             })
             if (error) throw error
+            const debugChunks = parseDebugChunks(data)
+            if (debugChunks.length > 0) {
+                logRagIndexDebugChunks(noteId, debugChunks)
+            }
             const count = typeof (data as { chunkCount?: number })?.chunkCount === 'number'
                 ? (data as { chunkCount: number }).chunkCount
                 : null

@@ -58,6 +58,10 @@ function createSupabaseForRag(rows: EmbeddingRow[], invokeImpl?: (name: string, 
 describe('RagIndexPanel Component', () => {
   const testUser = { id: 'user-1' } as User
 
+  beforeEach(() => {
+    localStorage.removeItem('rag-debug-chunks')
+  })
+
   it('renders unindexed state', () => {
     const { supabase, from, select, eqNote, eqUser } = createSupabaseForRag([])
 
@@ -175,6 +179,10 @@ describe('RagIndexPanel Component', () => {
 
 describe('RagIndexPanel (variant=menu)', () => {
   const testUser = { id: 'user-1' } as User
+
+  beforeEach(() => {
+    localStorage.removeItem('rag-debug-chunks')
+  })
 
   function mountMenuVariant({
     rows = [] as EmbeddingRow[],

@@ -658,7 +658,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       })
 
       await waitFor(() => {
-        expect(mockScrollToChunk).toHaveBeenCalledWith(4, 5)
+        expect(mockScrollToChunk).toHaveBeenCalledWith(14, 5)
       })
 
       expect(mockReplace).not.toHaveBeenCalled()
@@ -703,7 +703,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       await waitFor(() => {
         expect(mockScrollToChunk).toHaveBeenCalledTimes(1)
-        expect(mockScrollToChunk).toHaveBeenCalledWith(4, 5)
+        expect(mockScrollToChunk).toHaveBeenCalledWith(14, 5)
       })
     })
   })

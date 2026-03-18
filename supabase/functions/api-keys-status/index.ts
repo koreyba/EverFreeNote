@@ -3,6 +3,8 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
+import { resolveRagIndexingSettings } from "../../../core/rag/indexingSettings.ts"
+
 declare const Deno: { env: { get(key: string): string | undefined } }
 
 const corsHeaders = {
@@ -41,13 +43,24 @@ serve(async (req: Request) => {
       .eq("user_id", userData.user.id)
       .maybeSingle()
 
+    const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
+      .from("user_rag_index_settings")
+      .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
+      .eq("user_id", userData.user.id)
+      .maybeSingle()
+
     if (error) {
       console.error("[api-keys-status]", error)
+      return jsonResponse({ error: "Internal error" }, 500)
+    }
+    if (ragIndexingError) {
+      console.error("[api-keys-status] Failed to load RAG indexing settings", ragIndexingError)
       return jsonResponse({ error: "Internal error" }, 500)
     }
 
     return jsonResponse({
       gemini: { configured: Boolean(data?.gemini_api_key_encrypted) },
+      ragIndexing: resolveRagIndexingSettings(ragIndexingData ?? null),
     })
   } catch (err) {
     console.error("[api-keys-status]", err)

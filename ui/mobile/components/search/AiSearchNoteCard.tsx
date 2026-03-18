@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react-native'
 import { TagList } from '@ui/mobile/components/tags/TagList'
 import { useTheme } from '@ui/mobile/providers'
+import { getRagChunkBodyLength } from '@core/rag/chunkTemplate'
 import type { RagNoteGroup } from '@core/types/ragSearch'
 import type { Note } from '@core/types/domain'
 
@@ -89,7 +90,7 @@ function MoreFragmentsSection({
               testID={`ai-note-extra-chunk-${chunk.noteId}-${chunk.chunkIndex}`}
               onPress={(event) => {
                 event?.stopPropagation?.()
-                onOpenChunk(chunk.charOffset, chunk.content.length)
+                onOpenChunk(chunk.charOffset, getRagChunkBodyLength(chunk.content))
               }}
               accessibilityRole="button"
               style={({ pressed }) => [
@@ -148,7 +149,7 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
       testID={`ai-note-card-${group.noteId}`}
       onPress={() => {
         if (!topChunk) return
-        handleOpenChunk(topChunk.charOffset, topChunk.content.length)
+        handleOpenChunk(topChunk.charOffset, getRagChunkBodyLength(topChunk.content))
       }}
       onLongPress={selectionMode ? undefined : onLongPress}
       delayLongPress={400}
@@ -189,7 +190,7 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
           testID={`ai-note-top-chunk-${group.noteId}`}
           onPress={(event) => {
             event?.stopPropagation?.()
-            handleOpenChunk(topChunk.charOffset, topChunk.content.length)
+            handleOpenChunk(topChunk.charOffset, getRagChunkBodyLength(topChunk.content))
           }}
           accessibilityRole="button"
           style={({ pressed }) => [

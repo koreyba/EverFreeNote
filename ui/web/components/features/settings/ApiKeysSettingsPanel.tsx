@@ -4,8 +4,10 @@ import * as React from "react"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { RagIndexingSettingsPanel } from "@/components/features/settings/RagIndexingSettingsPanel"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 
@@ -77,54 +79,66 @@ export function ApiKeysSettingsPanel({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="gemini-api-key">Gemini API Key</Label>
-        <Input
-          id="gemini-api-key"
-          type="password"
-          value={geminiApiKey}
-          onChange={(event) => setGeminiApiKey(event.target.value)}
-          placeholder={configured ? "Leave empty to keep current key" : "AIzaSy..."}
-          disabled={loading || saving}
-          autoComplete="off"
-        />
-        {configured ? (
-          <p className="text-xs text-muted-foreground">
-            A key is stored. Enter a new one only to replace it.
-          </p>
-        ) : null}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Gemini API key</CardTitle>
+          <CardDescription>
+            Store the Gemini API key used for note indexing and AI search.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="gemini-api-key">Gemini API Key</Label>
+            <Input
+              id="gemini-api-key"
+              type="password"
+              value={geminiApiKey}
+              onChange={(event) => setGeminiApiKey(event.target.value)}
+              placeholder={configured ? "Leave empty to keep current key" : "AIzaSy..."}
+              disabled={loading || saving}
+              autoComplete="off"
+            />
+            {configured ? (
+              <p className="text-xs text-muted-foreground">
+                A key is stored. Enter a new one only to replace it.
+              </p>
+            ) : null}
+          </div>
 
-      {configured ? (
-        <div className="rounded-md border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-600/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-          Gemini API key is configured.
-        </div>
-      ) : null}
+          {configured ? (
+            <div className="rounded-md border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-600/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+              Gemini API key is configured.
+            </div>
+          ) : null}
 
-      {errorMessage ? (
-        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{errorMessage}</span>
-        </div>
-      ) : null}
+          {errorMessage ? (
+            <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          ) : null}
 
-      {successMessage ? (
-        <div className="flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-600/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{successMessage}</span>
-        </div>
-      ) : null}
+          {successMessage ? (
+            <div className="flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-600/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{successMessage}</span>
+            </div>
+          ) : null}
 
-      <div className="flex justify-end gap-2 pt-2">
-        {showCloseButton ? (
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            Close
-          </Button>
-        ) : null}
-        <Button onClick={handleSave} disabled={loading || saving}>
-          {saving ? "Saving..." : "Save"}
-        </Button>
-      </div>
+          <div className="flex justify-end gap-2 pt-2">
+            {showCloseButton ? (
+              <Button variant="outline" onClick={onClose} disabled={saving}>
+                Close
+              </Button>
+            ) : null}
+            <Button onClick={handleSave} disabled={loading || saving}>
+              {saving ? "Saving..." : "Save API key"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <RagIndexingSettingsPanel />
     </div>
   )
 }

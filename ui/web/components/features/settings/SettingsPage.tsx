@@ -57,8 +57,8 @@ const SETTINGS_TABS: SettingsTabDefinition[] = [
   },
   {
     id: "api-keys",
-    label: "API Keys",
-    description: "External model credentials and secure storage.",
+    label: "Google API",
+    description: "Gemini API key and RAG indexing settings.",
     icon: KeyRound,
   },
 ]

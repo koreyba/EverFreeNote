@@ -121,13 +121,10 @@ export function NotesShell({ controller }: NotesShellProps) {
     }
     if (!note) return  // TypeScript: narrowing lost after await + let reassignment
 
-    // Adjust charOffset: rag-index prepends title + " " before the body text
-    const title = (note.title ?? '').trim()
-    const bodyOffset = title ? Math.max(0, charOffset - (title.length + 1)) : charOffset
     const nextPendingChunkFocus = {
-      requestId: `${noteId}:${bodyOffset}:${chunkLength}:${Date.now()}`,
+      requestId: `${noteId}:${charOffset}:${chunkLength}:${Date.now()}`,
       noteId,
-      charOffset: bodyOffset,
+      charOffset,
       chunkLength,
     }
     setPendingChunkFocus(nextPendingChunkFocus)
