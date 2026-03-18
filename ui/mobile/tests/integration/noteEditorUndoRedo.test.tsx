@@ -209,6 +209,11 @@ const setHistoryState = async (state: HistoryState) => {
   })
 }
 
+const buildNoteDetailData = (note: ReturnType<typeof createMockNote>, status: 'found' | 'missing' | 'deleted' = 'found') => ({
+  note,
+  status,
+})
+
 describe('NoteEditorScreen — Undo/Redo header buttons', () => {
   beforeEach(() => {
     mockRunCommand.mockClear()
@@ -332,11 +337,11 @@ describe('NoteEditorScreen — Undo/Redo header buttons', () => {
     await act(async () => {
       queryClient.setQueryData(
         ['note', 'note-id'],
-        createMockNote({
+        buildNoteDetailData(createMockNote({
           id: 'note-id',
           title: 'Test Note',
           description: '',
-        })
+        }))
       )
     })
 
