@@ -23,6 +23,7 @@
     "db:migration:list": "supabase migration list",
     "db:status": "supabase status",
     "db:studio": "supabase studio",
+    "supa-functions-deploy-all": "supabase functions deploy",
     "functions:serve": "supabase functions serve --no-verify-jwt --env-file .env.local",
     "db:init-users": "node scripts/init-test-users.js",
     "perf:generate": "node scripts/generate-test-notes.js",
