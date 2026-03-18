@@ -93,15 +93,16 @@ jest.mock('@ui/mobile/components/search/AiSearchNoteCard', () => ({
   }) => {
     const { Pressable, Text } = require('react-native')
     return (
-      <Pressable
+        <Pressable
         testID={`mock-ai-note-${group.noteId}`}
         onPress={() => onOpenInContext({
           id: group.noteId,
           title: group.noteTitle,
           tags: group.noteTags,
-        }, group.chunks[0].charOffset, group.chunks[0].content.length)}
+        }, group.chunks[0].charOffset, group.chunks[0].bodyContent.length)}
       >
         <Text>{group.noteTitle}</Text>
+        <Text>{group.chunks[0].bodyContent}</Text>
       </Pressable>
     )
   },
@@ -112,7 +113,7 @@ jest.mock('@ui/mobile/components/search/AiSearchChunkCard', () => ({
     chunk,
     onOpenInContext,
   }: {
-    chunk: { noteId: string; chunkIndex: number; charOffset: number; content: string }
+    chunk: { noteId: string; chunkIndex: number; charOffset: number; bodyContent: string }
     onOpenInContext: (
       note: Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags'>>,
       charOffset: number,
@@ -123,9 +124,9 @@ jest.mock('@ui/mobile/components/search/AiSearchChunkCard', () => ({
     return (
       <Pressable
         testID={`mock-ai-chunk-${chunk.noteId}-${chunk.chunkIndex}`}
-        onPress={() => onOpenInContext({ id: chunk.noteId }, chunk.charOffset, chunk.content.length)}
+        onPress={() => onOpenInContext({ id: chunk.noteId }, chunk.charOffset, chunk.bodyContent.length)}
       >
-        <Text>{chunk.content}</Text>
+        <Text>{chunk.bodyContent}</Text>
       </Pressable>
     )
   },
@@ -155,7 +156,7 @@ const createAiGroup = (noteId: string, chunkCount = 3): RagNoteGroup => ({
     charOffset: index * 100,
     bodyContent: `Chunk ${index}`,
     overlapPrefix: '',
-    content: `Chunk ${index}`,
+    content: `Section: AI ${noteId}\n\nChunk ${index}\n\nTags: semantic`,
     similarity: 0.9 - index * 0.05,
   })),
 })

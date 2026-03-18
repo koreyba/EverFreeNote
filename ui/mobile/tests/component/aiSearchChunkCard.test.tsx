@@ -36,6 +36,8 @@ describe('AiSearchChunkCard', () => {
 
   it('opens the note in context with the selected chunk offset and length', () => {
     const onOpenInContext = jest.fn()
+    const bodyContent = 'A focused chunk of text'
+    const content = 'Section: Semantic note\n\nA focused chunk of text\n\nTags: philosophy, science'
 
     render(
       <AiSearchChunkCard
@@ -45,9 +47,9 @@ describe('AiSearchChunkCard', () => {
           noteTags: ['philosophy', 'science'],
           chunkIndex: 2,
           charOffset: 144,
-          bodyContent: 'A focused chunk of text',
+          bodyContent,
           overlapPrefix: '',
-          content: 'A focused chunk of text',
+          content,
           similarity: 0.82,
         }}
         onOpenInContext={onOpenInContext}
@@ -60,12 +62,16 @@ describe('AiSearchChunkCard', () => {
       id: 'note-7',
       title: 'Semantic note',
       tags: ['philosophy', 'science'],
-    }, 144, 'A focused chunk of text'.length)
+    }, 144, bodyContent.length)
+    expect(screen.getByText(bodyContent)).toBeTruthy()
+    expect(screen.queryByText(content)).toBeNull()
     expect(screen.getByText('82%')).toBeTruthy()
   })
 
   it('renders tags and forwards tag presses', () => {
     const onTagPress = jest.fn()
+    const bodyContent = 'Chunk content'
+    const content = 'Section: Untitled\n\nChunk content\n\nTags: alpha'
 
     render(
       <AiSearchChunkCard
@@ -75,9 +81,9 @@ describe('AiSearchChunkCard', () => {
           noteTags: ['alpha'],
           chunkIndex: 0,
           charOffset: 12,
-          bodyContent: 'Chunk content',
+          bodyContent,
           overlapPrefix: '',
-          content: 'Chunk content',
+          content,
           similarity: 0.5,
         }}
         onOpenInContext={jest.fn()}
@@ -86,6 +92,8 @@ describe('AiSearchChunkCard', () => {
     )
 
     expect(screen.getByText('Untitled')).toBeTruthy()
+    expect(screen.getByText(bodyContent)).toBeTruthy()
+    expect(screen.queryByText(content)).toBeNull()
 
     fireEvent.press(screen.getByTestId('tag-alpha'))
 
