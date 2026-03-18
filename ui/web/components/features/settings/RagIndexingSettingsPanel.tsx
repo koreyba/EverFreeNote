@@ -267,7 +267,7 @@ export function RagIndexingSettingsPanel() {
           <ToggleRow
             id="rag-use-sections"
             label="Use section headings"
-            description='Prepend a "Section:" line to chunks when the note contains h1–h6 headings. Bold or styled text is not treated as a heading.'
+            description='Append a "Section:" line after the chunk body when the note contains h1-h6 headings. Bold or styled text is not treated as a heading.'
             checked={formState.use_section_headings}
             disabled={loading || saving}
             onCheckedChange={(checked) => updateBooleanField("use_section_headings", checked)}
@@ -275,7 +275,7 @@ export function RagIndexingSettingsPanel() {
           <ToggleRow
             id="rag-use-tags"
             label="Use tags"
-            description='Prepend a "Tags:" line to chunks when the note has tags assigned.'
+            description='Append a "Tags:" line after the chunk body when the note has tags assigned.'
             checked={formState.use_tags}
             disabled={loading || saving}
             onCheckedChange={(checked) => updateBooleanField("use_tags", checked)}
@@ -361,7 +361,8 @@ export function RagIndexingSettingsPanel() {
                 {resolvedSettings.chunk_template}
               </pre>
               <p className="text-[11px] text-muted-foreground">
-                Section and Tags lines appear only when enabled above and when the note has the corresponding data.
+                The searchable body comes first. Section and Tags lines appear only when enabled above and when the note has the corresponding data.
+                Overlap is added internally for retrieval continuity and is not shown here.
                 Title is never in the chunk text — it is passed separately via the Gemini API title field.
               </p>
             </div>

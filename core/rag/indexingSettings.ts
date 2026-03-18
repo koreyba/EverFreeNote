@@ -21,7 +21,7 @@ export const RAG_INDEX_READONLY_SETTINGS = {
     "Paragraph-first: accumulate whole paragraphs until min_chunk_size is reached, then optionally extend toward target_chunk_size only if the next whole paragraph fits without exceeding it. Oversized paragraphs are split at max_chunk_size boundaries; if the remainder is below min_chunk_size it is merged back into the previous piece. Notes shorter than min_chunk_size are not indexed.",
   small_chunk_merge_rule:
     "Merge undersized final chunks with adjacent chunks when possible without violating max_chunk_size.",
-  chunk_template: "Section: {section_heading}\nTags: {tag1}, {tag2}, {tag3}\n\n{chunk_content}",
+  chunk_template: "{chunk_content}\n\nSection: {section_heading}\nTags: {tag1}, {tag2}, {tag3}",
 } as const
 
 export type RagIndexingEditableSettings = {
