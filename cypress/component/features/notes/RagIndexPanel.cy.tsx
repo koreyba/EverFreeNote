@@ -97,7 +97,7 @@ describe('RagIndexPanel Component', () => {
   it('invokes rag-index with action=index', () => {
     const { supabase, invoke } = createSupabaseForRag([], async (name: string, params: unknown) => {
       expect(name).to.eq('rag-index')
-      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'index', debugChunks: true } })
+      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'index' } })
       return { data: { chunkCount: 3 }, error: null }
     })
 
@@ -117,7 +117,7 @@ describe('RagIndexPanel Component', () => {
     const rows: EmbeddingRow[] = [{ chunk_index: 0, indexed_at: '2026-03-02T20:00:00.000Z' }]
     const { supabase, invoke } = createSupabaseForRag(rows, async (name: string, params: unknown) => {
       expect(name).to.eq('rag-index')
-      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'reindex', debugChunks: true } })
+      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'reindex' } })
       return { data: { chunkCount: 1 }, error: null }
     })
 
@@ -268,7 +268,7 @@ describe('RagIndexPanel (variant=menu)', () => {
   it('invokes rag-index with action=index from menu item', () => {
     const { supabase } = createSupabaseForRag([], async (name, params) => {
       expect(name).to.eq('rag-index')
-      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'index', debugChunks: true } })
+      expect(params).to.deep.eq({ body: { noteId: 'note-1', action: 'index' } })
       return { data: { chunkCount: 2 }, error: null }
     })
     const onMenuClose = cy.stub().as('onMenuClose')

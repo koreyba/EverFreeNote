@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { useRagStatus } from '@ui/web/hooks/useRagStatus'
 import { logRagIndexDebugChunks, type RagIndexDebugChunk } from '@core/rag/debugLog'
+import { isRagDebugChunksEnabled } from '@ui/web/components/features/settings/RagIndexingSettingsPanel'
 
 async function extractErrorMessage(err: unknown, fallback: string): Promise<string> {
   if (!(err instanceof Error)) return fallback
@@ -77,8 +78,9 @@ export function RagIndexPanel({ noteId, variant = 'inline', onMenuClose }: RagIn
   const handleIndex = async () => {
     setOperation('indexing')
     try {
+      const debug = isRagDebugChunksEnabled()
       const { data, error } = await supabase.functions.invoke('rag-index', {
-        body: { noteId, action: isIndexed ? 'reindex' : 'index', debugChunks: true },
+        body: { noteId, action: isIndexed ? 'reindex' : 'index', ...(debug ? { debugChunks: true } : {}) },
       })
       if (error) throw error
       const debugChunks = parseDebugChunks(data)

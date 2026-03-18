@@ -36,7 +36,6 @@ export type RagIndexChunk = {
   sectionHeading: string | null
 }
 
-const HEADING_TAG_PATTERN = /<\/?h[1-6]\b[^>]*>/i
 const BLOCK_BREAK_PATTERN = /<\/?(?:p|div|li|blockquote|pre|ul|ol|section|article|main)\b[^>]*>/gi
 
 function normalizeWhitespace(value: string): string {
@@ -93,7 +92,7 @@ function collectBlocksFromDom(rootHtml: string): RawBlock[] {
   const blocks: RawBlock[] = []
   let currentHeading: string | null = null
 
-  const walk = (node: Node, olIndex: number | null) => {
+  const walk = (node: Node) => {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
         const text = normalizeWhitespace(child.textContent ?? "")
@@ -121,7 +120,7 @@ function collectBlocksFromDom(rootHtml: string): RawBlock[] {
             if (text) blocks.push({ sectionHeading: currentHeading, text: `${idx}. ${text}` })
             idx++
           } else {
-            walk(olChild, null)
+            walk(olChild)
           }
         }
         continue
@@ -135,14 +134,14 @@ function collectBlocksFromDom(rootHtml: string): RawBlock[] {
             const text = normalizeWhitespace(extractElementText(ulChild))
             if (text) blocks.push({ sectionHeading: currentHeading, text: `- ${text}` })
           } else {
-            walk(ulChild, null)
+            walk(ulChild)
           }
         }
         continue
       }
 
       if (tagName === "section" || tagName === "article" || tagName === "main") {
-        walk(element, null)
+        walk(element)
         continue
       }
 
@@ -153,7 +152,7 @@ function collectBlocksFromDom(rootHtml: string): RawBlock[] {
         })
 
         if (hasNestedBlocks) {
-          walk(element, null)
+          walk(element)
           continue
         }
       }
@@ -164,11 +163,11 @@ function collectBlocksFromDom(rootHtml: string): RawBlock[] {
         continue
       }
 
-      walk(element, null)
+      walk(element)
     }
   }
 
-  walk(doc.body, null)
+  walk(doc.body)
   return blocks.filter((block) => block.text.length > 0)
 }
 

@@ -9,11 +9,22 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Checkbox } from "@/components/ui/checkbox"
 import { RagIndexSettingsService } from "@core/services/ragIndexSettings"
 import type { RagIndexingEditableSettings, RagIndexingSettings } from "@core/rag/indexingSettings"
 import { RAG_INDEX_EDITABLE_DEFAULTS, validateRagIndexingEditableSettings } from "@core/rag/indexingSettings"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { Info } from "lucide-react"
+
+const RAG_DEBUG_CHUNKS_KEY = "rag-debug-chunks"
+
+export function isRagDebugChunksEnabled(): boolean {
+  try {
+    return localStorage.getItem(RAG_DEBUG_CHUNKS_KEY) === "true"
+  } catch {
+    return false
+  }
+}
 
 type EditableNumericKey = keyof Pick<
   RagIndexingEditableSettings,
@@ -52,6 +63,7 @@ export function RagIndexingSettingsPanel() {
     use_section_headings: true,
     use_tags: true,
   }))
+  const [debugChunks, setDebugChunks] = React.useState(() => isRagDebugChunksEnabled())
 
   const loadSettings = React.useCallback(async () => {
     setLoading(true)
@@ -194,12 +206,27 @@ export function RagIndexingSettingsPanel() {
           />
         </div>
 
-        <div className="flex justify-end -mt-2">
+        <div className="flex items-center justify-between -mt-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="rag-debug-chunks"
+              checked={debugChunks}
+              disabled={loading || saving}
+              onCheckedChange={(checked) => {
+                const value = checked === true
+                setDebugChunks(value)
+                try { localStorage.setItem(RAG_DEBUG_CHUNKS_KEY, String(value)) } catch { /* ignore */ }
+              }}
+            />
+            <Label htmlFor="rag-debug-chunks" className="text-xs text-muted-foreground cursor-pointer">
+              Debug: show chunks in console on indexing
+            </Label>
+          </div>
           <button
             type="button"
             className="text-xs text-muted-foreground underline-offset-4 hover:underline hover:text-foreground transition-colors disabled:opacity-50 disabled:pointer-events-none"
             disabled={loading || saving}
-            onClick={() =>
+            onClick={() => {
               setFormState({
                 target_chunk_size: "500",
                 min_chunk_size: "200",
@@ -209,7 +236,9 @@ export function RagIndexingSettingsPanel() {
                 use_section_headings: true,
                 use_tags: true,
               })
-            }
+              setDebugChunks(false)
+              try { localStorage.removeItem(RAG_DEBUG_CHUNKS_KEY) } catch { /* ignore */ }
+            }}
           >
             Reset to default values
           </button>
