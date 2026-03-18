@@ -305,7 +305,7 @@ describe("core/rag/chunking — pairwise test suite", () => {
         chunkContent: "Body text",
         settings: { use_section_headings: true, use_tags: true },
       })
-      expect(text).toBe("Section: Intro\nTags: a, b\n\nBody text")
+      expect(text).toBe("Body text\n\nSection: Intro\nTags: a, b")
     })
 
     it("H2: heading=null → строка Section: опущена", () => {
@@ -315,7 +315,7 @@ describe("core/rag/chunking — pairwise test suite", () => {
         chunkContent: "Body text",
         settings: { use_section_headings: true, use_tags: true },
       })
-      expect(text).toBe("Tags: a\n\nBody text")
+      expect(text).toBe("Body text\n\nTags: a")
       expect(text).not.toContain("Section:")
     })
 

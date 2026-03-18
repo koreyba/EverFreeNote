@@ -14,20 +14,20 @@ export function getRagChunkBodyText(content: string): string {
   if (!normalized) return ""
 
   const lines = normalized.split("\n")
-  let cursor = 0
+  let end = lines.length
 
-  if (lines[cursor]?.startsWith("Section: ")) {
-    cursor += 1
+  if (lines[end - 1]?.startsWith("Tags: ")) {
+    end -= 1
   }
-  if (lines[cursor]?.startsWith("Tags: ")) {
-    cursor += 1
-  }
-
-  if (cursor > 0 && lines[cursor] === "") {
-    return lines.slice(cursor + 1).join("\n").trim()
+  if (lines[end - 1]?.startsWith("Section: ")) {
+    end -= 1
   }
 
-  return normalized
+  if (end < lines.length && lines[end - 1] === "") {
+    return lines.slice(0, end - 1).join("\n").trim()
+  }
+
+  return lines.slice(0, end).join("\n").trim()
 }
 
 export function getRagChunkBodyLength(content: string): number {
@@ -45,25 +45,29 @@ export function buildRagChunkText({
 
   if (!normalizedContent) return ""
 
+  lines.push(normalizedContent)
+
+  const metaLines: string[] = []
+
   if (settings.use_section_headings && sectionHeading) {
     const normalizedHeading = normalizeInlineText(sectionHeading)
     if (normalizedHeading) {
-      lines.push(`Section: ${normalizedHeading}`)
+      metaLines.push(`Section: ${normalizedHeading}`)
     }
   }
 
   if (settings.use_tags && tags.length > 0) {
     const normalizedTags = tags.map(normalizeInlineText).filter(Boolean)
     if (normalizedTags.length > 0) {
-      lines.push(`Tags: ${normalizedTags.join(", ")}`)
+      metaLines.push(`Tags: ${normalizedTags.join(", ")}`)
     }
   }
 
-  if (lines.length > 0) {
+  if (metaLines.length > 0) {
     lines.push("")
+    lines.push(...metaLines)
   }
 
-  lines.push(normalizedContent)
   return lines.join("\n")
 }
 
