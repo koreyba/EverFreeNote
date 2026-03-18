@@ -41,7 +41,7 @@ const BLOCK_BREAK_PATTERN = /<\/?(?:p|div|li|blockquote|pre|ul|ol|section|articl
 function normalizeWhitespace(value: string): string {
   return value
     .replaceAll(/&nbsp;/gi, " ")
-    .replaceAll(/\u00a0/g, " ")
+    .replaceAll("\u00a0", " ")
     .replaceAll(/\s+/g, " ")
     .trim()
 }

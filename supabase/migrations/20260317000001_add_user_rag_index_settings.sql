@@ -20,7 +20,7 @@ ALTER TABLE public.user_rag_index_settings ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'user_rag_index_settings' AND policyname = 'Users can view own rag index settings'
+    SELECT 1 FROM pg_policies WHERE schemaname = current_schema() AND tablename = 'user_rag_index_settings' AND policyname = 'Users can view own rag index settings'
   ) THEN
     CREATE POLICY "Users can view own rag index settings"
       ON public.user_rag_index_settings FOR SELECT
@@ -28,7 +28,7 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'user_rag_index_settings' AND policyname = 'Users can insert own rag index settings'
+    SELECT 1 FROM pg_policies WHERE schemaname = current_schema() AND tablename = 'user_rag_index_settings' AND policyname = 'Users can insert own rag index settings'
   ) THEN
     CREATE POLICY "Users can insert own rag index settings"
       ON public.user_rag_index_settings FOR INSERT
@@ -36,7 +36,7 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'user_rag_index_settings' AND policyname = 'Users can update own rag index settings'
+    SELECT 1 FROM pg_policies WHERE schemaname = current_schema() AND tablename = 'user_rag_index_settings' AND policyname = 'Users can update own rag index settings'
   ) THEN
     CREATE POLICY "Users can update own rag index settings"
       ON public.user_rag_index_settings FOR UPDATE
@@ -45,7 +45,7 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'user_rag_index_settings' AND policyname = 'Users can delete own rag index settings'
+    SELECT 1 FROM pg_policies WHERE schemaname = current_schema() AND tablename = 'user_rag_index_settings' AND policyname = 'Users can delete own rag index settings'
   ) THEN
     CREATE POLICY "Users can delete own rag index settings"
       ON public.user_rag_index_settings FOR DELETE

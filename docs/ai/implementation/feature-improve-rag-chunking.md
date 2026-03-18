@@ -8,18 +8,15 @@ description: Technical notes for configurable hierarchical chunking and indexing
 
 ## Decision Update - 2026-03-17
 
-Implementation must now follow these clarified chunk-assembly rules:
+Chunk-assembly rules have been refined to a strict `paragraph-first` model. The authoritative specification — including rationale and trade-offs for paragraph-boundary assembly, `min_chunk_size`/`target_chunk_size`/`max_chunk_size` behaviors, oversized-paragraph splitting with backward merge, and one-directional overlap — lives in the [design document](../design/feature-improve-rag-chunking.md#decision-update---2026-03-17).
 
-- treat paragraph boundaries as the default assembly boundary
-- use `min_chunk_size` as the primary condition for closing a chunk assembled from small paragraphs
-- after `min_chunk_size` is reached, another whole paragraph may be appended only if it improves fit toward `target_chunk_size`
-- do not append a whole paragraph that would overshoot `target_chunk_size`, even if it is still within `max_chunk_size`
-- if the current chunk is still below `min_chunk_size` and the next whole paragraph would exceed `max_chunk_size`, split that next paragraph internally to finish the chunk
-- notes shorter than `min_chunk_size` are not indexed (return empty array); `small_note_threshold` has been removed, `min_chunk_size` now serves both as minimum chunk size and minimum note size
-- oversized paragraphs (> `max_chunk_size`) are split at `max_chunk_size` boundaries (minimal cuts), not at `target_chunk_size`
-- if the last piece after splitting an oversized paragraph is below `min_chunk_size`, merge it back into the previous piece (backward merge); effective maximum is `max_chunk_size + min_chunk_size - 1`
-- when a trailing chunk is undersized, try backward merge first and leave it undersized if merging would exceed `max_chunk_size`
-- keep overlap one-directional from previous chunk into next chunk
+Key actionable points for implementers:
+
+- `small_note_threshold` is removed; `min_chunk_size` now serves as both minimum chunk size and minimum note size for indexing
+- paragraph boundaries are the default assembly boundary; `min_chunk_size` is the first stopping condition
+- `target_chunk_size` only matters after `min_chunk_size` is reached and only for whole-paragraph additions
+- oversized paragraphs split at `max_chunk_size` (not `target_chunk_size`); undersized tail pieces merge backward
+- overlap is one-directional (previous chunk suffix prepended to next chunk)
 
 ## Development Setup
 
@@ -158,8 +155,8 @@ function validateRagIndexingSettings(input: Partial<RagIndexingSettings>): Valid
 Validation rules to enforce in both UI and server paths:
 
 - `target_chunk_size`, `min_chunk_size`, `max_chunk_size` must each be within `50..5000`
-- `overlap` must be within `0..5000`
-- `min_chunk_size <= target_chunk_size <= max_chunk_size`
+- `overlap` must be within `0..min_chunk_size - 1` (strictly less than `min_chunk_size`)
+- Cross-field invariants: `min_chunk_size <= target_chunk_size <= max_chunk_size` and `overlap < min_chunk_size`
 
 Representative placement:
 
