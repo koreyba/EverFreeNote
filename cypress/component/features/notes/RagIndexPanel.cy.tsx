@@ -58,6 +58,10 @@ function createSupabaseForRag(rows: EmbeddingRow[], invokeImpl?: (name: string, 
 describe('RagIndexPanel Component', () => {
   const testUser = { id: 'user-1' } as User
 
+  beforeEach(() => {
+    localStorage.removeItem('rag-debug-chunks')
+  })
+
   it('renders unindexed state', () => {
     const { supabase, from, select, eqNote, eqUser } = createSupabaseForRag([])
 
@@ -109,7 +113,7 @@ describe('RagIndexPanel Component', () => {
 
     cy.contains('button', 'RAG Index').click()
     cy.wrap(invoke).should('have.been.calledWith', 'rag-index', {
-      body: { noteId: 'note-1', action: 'index', debugChunks: true },
+      body: { noteId: 'note-1', action: 'index' },
     })
   })
 
@@ -129,7 +133,7 @@ describe('RagIndexPanel Component', () => {
 
     cy.contains('button', 'Re-index').click()
     cy.wrap(invoke).should('have.been.calledWith', 'rag-index', {
-      body: { noteId: 'note-1', action: 'reindex', debugChunks: true },
+      body: { noteId: 'note-1', action: 'reindex' },
     })
   })
 
@@ -175,6 +179,10 @@ describe('RagIndexPanel Component', () => {
 
 describe('RagIndexPanel (variant=menu)', () => {
   const testUser = { id: 'user-1' } as User
+
+  beforeEach(() => {
+    localStorage.removeItem('rag-debug-chunks')
+  })
 
   function mountMenuVariant({
     rows = [] as EmbeddingRow[],
@@ -284,7 +292,7 @@ describe('RagIndexPanel (variant=menu)', () => {
     )
     cy.contains('[role="menuitem"]', 'Index note').click()
     cy.wrap(supabase.functions.invoke).should('have.been.calledWith', 'rag-index', {
-      body: { noteId: 'note-1', action: 'index', debugChunks: true },
+      body: { noteId: 'note-1', action: 'index' },
     })
     // onMenuClose called after operation settles — dropdown closes only then
     cy.get('@onMenuClose').should('have.been.calledOnce')

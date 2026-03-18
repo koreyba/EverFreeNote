@@ -169,6 +169,11 @@ function splitAndStripParagraphs(text: string, sectionHeading: string | null): R
     .map((cleaned) => ({ sectionHeading, text: cleaned }))
 }
 
+// Regex fallback for list prefixing — used only when DOMParser is unavailable.
+// Limitation: nested lists (e.g., <ol><li>Item <ul><li>nested</li></ul></li></ol>)
+// are not handled correctly because the <li> regex uses a non-greedy match that
+// stops at the first </li>. When DOMParser is available, collectBlocksFromDom
+// handles nested lists properly via DOM traversal.
 function prefixListItems(html: string): string {
   // Ordered lists: prepend "1. ", "2. ", etc.
   let result = html.replaceAll(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner: string) => {
