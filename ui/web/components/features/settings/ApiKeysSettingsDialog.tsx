@@ -15,7 +15,7 @@ export function ApiKeysSettingsDialog({ open, onOpenChange }: ApiKeysSettingsDia
         <DialogHeader>
           <DialogTitle>Indexing (RAG)</DialogTitle>
           <DialogDescription>
-            Gemini credentials are encrypted before storage and never exposed in plain text.
+            API credentials are encrypted before storage and never exposed in plain text.
           </DialogDescription>
         </DialogHeader>
         <ApiKeysSettingsPanel onClose={() => onOpenChange(false)} showCloseButton />

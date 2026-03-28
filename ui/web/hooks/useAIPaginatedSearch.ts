@@ -112,7 +112,8 @@ export function useAIPaginatedSearch({
 
   const trimmedQuery = query.trim()
   const queryEnabled = isEnabled && trimmedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH
-  const searchIdentity = `${trimmedQuery}::${pageSize}::${threshold.toFixed(2)}::${filterTag ?? ''}::${isEnabled}`
+  const normalizedThreshold = threshold.toFixed(2)
+  const searchIdentity = `${trimmedQuery}::${pageSize}::${normalizedThreshold}::${filterTag ?? ''}::${isEnabled}`
   const [committedIdentity, setCommittedIdentity] = useState(searchIdentity)
   const effectiveAiOffset =
     committedIdentity !== searchIdentity ? 0 : aiOffset
@@ -137,7 +138,7 @@ export function useAIPaginatedSearch({
   }, [committedIdentity, searchIdentity, resetAIResults])
 
   const result = useQuery({
-    queryKey: ['aiSearch', trimmedQuery, pageSize, threshold, filterTag, requestedTopK],
+    queryKey: ['aiSearch', trimmedQuery, pageSize, normalizedThreshold, filterTag, requestedTopK],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('rag-search', {
         body: {
