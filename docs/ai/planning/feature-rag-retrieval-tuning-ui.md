@@ -81,7 +81,7 @@ Total expected implementation size: moderate, mostly integration and settings pl
 ## Status Summary
 **What is the current execution status?**
 
-Implemented on `feature-rag-retrieval-tuning-ui`. Shared retrieval settings now exist in core, persist through Supabase settings transport, and drive the web AI search UI. The old preset selector was removed from the web flow, `topK` moved to Settings with default `15`, and the `Precision` slider now commits persisted threshold updates plus exact `hasMore` behavior via backend `+1` overfetch. Targeted unit tests, the full `npm run test:unit` suite, `type-check`, `type-check:tests`, and `deno check` all passed. Remaining verification is mainly manual UI validation and final review, not unfinished feature scope.
+Implemented on `feature-rag-retrieval-tuning-ui`. Shared retrieval settings now exist in core, persist through Supabase settings transport, and drive the web AI search UI. The old preset selector was removed from the web flow, `topK` moved to Settings with default `15`, and the `Precision` slider now commits persisted threshold updates plus exact `hasMore` behavior via backend `+1` overfetch. Follow-up continuation work also added: friendly settings-service failure messaging, default/fallback rendering for indexing and retrieval metadata when live settings fail to load, explicit Gemini API key removal, and a more consistent settings-page action layout. Targeted unit tests, the full `npm run test:unit` suite, `type-check`, `type-check:tests`, and `deno check` have passed at different checkpoints during implementation, with the latest continuation checks covering the new API key removal and settings-panel fallback behavior. Remaining verification is mainly manual responsive/light/dark UI validation, not unfinished feature scope.
 
 ## Risks & Mitigation
 **What could go wrong?**
@@ -97,6 +97,9 @@ Implemented on `feature-rag-retrieval-tuning-ui`. Shared retrieval settings now 
 
 - Risk: retrieval settings get implemented only for web and become hard to reuse
   - Mitigation: keep schema/defaults/validation in core from the start
+
+- Risk: settings-page UX changes fix one panel while making the broader settings layout feel inconsistent
+  - Mitigation: use shared settings layout classes for action rows and continue with a manual responsive/theming pass before sign-off
 
 ## Resources Needed
 **What do we need to succeed?**

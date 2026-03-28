@@ -33,12 +33,15 @@ description: Implementation guide for persisted retrieval settings and the web p
   - persisted `topK`
   - committed persisted similarity threshold
   - backend-provided `hasMore`
+- Feature 4: Keep the settings screen resilient and operable when local settings services are temporarily unavailable
+- Feature 5: Support explicit Gemini API key removal without overloading the empty-input save flow
 
 ### Patterns & best practices
 - Preserve current neutral defaults to minimize rollout surprise
 - Keep UI strings in English
 - Use commit-on-release interactions for the slider
 - Keep mobile reuse in mind, but do not add mobile UI in this feature
+- Keep settings action rows visually consistent across panels by reusing shared layout classes in web settings UI
 
 ## Integration Points
 **How do pieces connect?**
@@ -47,6 +50,8 @@ description: Implementation guide for persisted retrieval settings and the web p
 - Web search hook loads the same persisted settings and applies runtime slider commits
 - `rag-search` receives numeric `topK` and threshold values derived from settings/UI
 - `api-keys-status` and `api-keys-upsert` remain the primary settings transport layer unless implementation reveals a cleaner existing endpoint pattern
+- API key management, indexing settings, and retrieval settings now intentionally share the same settings screen vocabulary and action layout
+- `api-keys-upsert` now handles both key replacement and explicit key removal while continuing to preserve indexing/retrieval settings payloads
 
 ## Error Handling
 **How do we handle failures?**
@@ -54,6 +59,8 @@ description: Implementation guide for persisted retrieval settings and the web p
 - Fall back to defaults if persisted retrieval settings are absent
 - Show UI save/load errors similarly to existing settings panels
 - Preserve existing `rag-search` error handling and avoid changing Gemini behavior
+- Translate local service/network boot failures into a friendly settings-service message instead of surfacing raw resolution/runtime errors
+- Keep read-only indexing/retrieval metadata visible by rendering default system values when live settings fail to load
 
 ## Performance Considerations
 **How do we keep it fast?**
@@ -68,3 +75,4 @@ description: Implementation guide for persisted retrieval settings and the web p
 - Retrieval settings are per-user and require authenticated access
 - No additional secret handling is introduced
 - Gemini task types and output dimensionality remain system-defined, not user-editable
+- Gemini credentials continue to be stored encrypted, and explicit removal deletes the stored row instead of attempting a sentinel empty-string update

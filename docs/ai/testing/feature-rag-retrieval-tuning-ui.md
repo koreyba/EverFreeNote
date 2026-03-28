@@ -32,6 +32,15 @@ description: Testing strategy for persisted retrieval settings, precision slider
   - Covered by `ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx`
   - Covered by `ui/web/tests/unit/hooks/useSearchMode.test.tsx`
 
+### Settings panels and API key actions
+- [x] Test case 1: retrieval settings panel still renders default system values when live settings fail to load
+- [x] Test case 2: indexing settings panel still renders default system values when live settings fail to load
+- [x] Test case 3: API key panel keeps `Remove key` disabled until a Gemini key is configured
+- [x] Test case 4: explicit `removeGeminiApiKey` action is sent through the settings service
+- [x] Additional coverage: removing a configured Gemini key from the settings panel updates the UI state
+  - Covered by `ui/web/tests/unit/components/settingsPanels.test.tsx`
+  - Covered by `core/tests/unit/core-services-apiKeysSettings.test.ts`
+
 ## Integration Tests
 **How do we test component interactions?**
 
@@ -60,6 +69,7 @@ description: Testing strategy for persisted retrieval settings, precision slider
 
 - Targeted automated checks completed on 2026-03-28:
   - `npx jest --config jest.config.cjs --selectProjects unit-core unit-web --runTestsByPath core/tests/unit/core-rag-searchSettings.test.ts ui/web/tests/unit/hooks/useSearchMode.test.tsx ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx`
+  - `npx jest --config jest.config.cjs --selectProjects unit-core unit-web --runTestsByPath core/tests/unit/core-services-apiKeysSettings.test.ts ui/web/tests/unit/components/settingsPanels.test.tsx`
   - `npm run test:unit`
   - `npm run type-check`
   - `npm run type-check:tests`
@@ -68,7 +78,7 @@ description: Testing strategy for persisted retrieval settings, precision slider
 - Remaining gaps:
   - no automated integration test yet for `api-keys-status` / `api-keys-upsert` retrieval payloads
   - no automated web component test yet for slider commit persistence
-  - no manual QA results recorded yet for search panel UX
+  - no manual QA results recorded yet for the final mobile/light/dark settings-page polish pass
 
 ## Manual Testing
 **What requires human validation?**
@@ -77,6 +87,7 @@ description: Testing strategy for persisted retrieval settings, precision slider
 - Search rerun timing on slider release
 - `Load more` disappearance after the last page
 - Settings persistence across refresh and sign-in
+- Final responsive pass for the updated settings action rows in light and dark themes
 
 ## Performance Testing
 **How do we validate performance?**
