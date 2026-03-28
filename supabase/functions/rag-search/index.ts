@@ -241,12 +241,12 @@ serve(async (req: Request) => {
       try {
         const fallback = await supabaseUser.rpc("match_notes", {
           query_embedding: queryEmbedding,
-          match_count: requestedMatchCount,
+          match_count: READONLY_RAG_SETTINGS.max_top_k,
         })
         chunks = fallback.data
         rpcError = fallback.error
         if (!fallback.error) {
-          console.warn("[rag-search] Using legacy match_notes fallback without filter_tag")
+          console.warn("[rag-search] Using legacy match_notes fallback without filter_tag and expanding candidate window")
         } else {
           console.error("[rag-search] match_notes fallback failed", {
             primaryRpcError,

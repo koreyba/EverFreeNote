@@ -1,22 +1,35 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
-import type { RagSearchEditableSettings, RagSearchSettings } from "@core/rag/searchSettings"
+import {
+  resolveRagSearchSettings,
+  validateRagSearchEditableSettings,
+  type RagSearchEditableSettings,
+  type RagSearchSettings,
+} from "@core/rag/searchSettings"
 import type { ApiKeysStatus } from "@core/services/apiKeysSettings"
 import { readSettingsErrorMessage } from "@core/services/settingsErrorMessage"
-
-const isRagSearchSettings = (data: unknown): data is RagSearchSettings => {
-  if (!data || typeof data !== "object") return false
-  return (
-    typeof (data as { top_k?: unknown }).top_k === "number" &&
-    typeof (data as { similarity_threshold?: unknown }).similarity_threshold === "number" &&
-    typeof (data as { output_dimensionality?: unknown }).output_dimensionality === "number"
-  )
-}
 
 const readRagSearchSettings = (data: unknown): RagSearchSettings | null => {
   if (!data || typeof data !== "object") return null
   const ragSearch = (data as ApiKeysStatus).ragSearch
-  return isRagSearchSettings(ragSearch) ? ragSearch : null
+  if (!ragSearch || typeof ragSearch !== "object") return null
+
+  const editableSettings = {
+    top_k: (ragSearch as { top_k?: unknown }).top_k,
+    similarity_threshold: (ragSearch as { similarity_threshold?: unknown }).similarity_threshold,
+  } as Partial<RagSearchEditableSettings>
+
+  if (validateRagSearchEditableSettings(editableSettings).length > 0) {
+    return null
+  }
+
+  const resolvedSettings = resolveRagSearchSettings(editableSettings)
+  const rawSettings = ragSearch as Record<string, unknown>
+  const matchesResolvedShape = Object.entries(resolvedSettings).every(
+    ([key, value]) => rawSettings[key] === value
+  )
+
+  return matchesResolvedShape ? resolvedSettings : null
 }
 
 export class RagSearchSettingsService {

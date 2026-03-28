@@ -359,6 +359,75 @@ describe('useAIPaginatedSearch', () => {
     )
   })
 
+  it('hides stale results while a new search identity is loading', async () => {
+    let resolveNextSearch: ((value: unknown) => void) | null = null
+    const invoke = jest.fn().mockImplementation(
+      async (_fn: string, { body }: { body: { query: string; topK: number } }) => {
+        if (body.query === 'ontology') {
+          return {
+            data: {
+              chunks: [createChunk('note-1', 0.8, 0, 0, 'ontology snippet')],
+              hasMore: false,
+            },
+            error: null,
+          }
+        }
+
+        return await new Promise((resolve) => {
+          resolveNextSearch = resolve
+        })
+      }
+    )
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const { result, rerender } = renderHook(
+      (props: HookProps) => useAIPaginatedSearch(props),
+      {
+        initialProps: {
+          query: 'ontology',
+          topK: 5,
+          threshold: 0.75,
+          filterTag: null,
+          isEnabled: true,
+        },
+        wrapper: createWrapper(supabase),
+      }
+    )
+
+    await waitFor(() => {
+      expect(result.current.noteGroups[0]?.noteId).toBe('note-1')
+    })
+
+    rerender({
+      query: 'ethics',
+      topK: 5,
+      threshold: 0.75,
+      filterTag: null,
+      isEnabled: true,
+    })
+
+    expect(result.current.noteGroups).toEqual([])
+    expect(result.current.aiAccumulatedResults).toEqual([])
+    expect(result.current.isLoading).toBe(true)
+
+    act(() => {
+      resolveNextSearch?.({
+        data: {
+          chunks: [createChunk('note-2', 0.81, 0, 0, 'ethics snippet')],
+          hasMore: false,
+        },
+        error: null,
+      })
+    })
+
+    await waitFor(() => {
+      expect(result.current.noteGroups[0]?.noteId).toBe('note-2')
+      expect(result.current.isLoading).toBe(false)
+    })
+  })
+
   it('keeps results empty when the AI search endpoint returns an error', async () => {
     const invoke = jest
       .fn()

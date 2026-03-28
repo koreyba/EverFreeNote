@@ -40,7 +40,7 @@ export class ApiKeysSettingsService {
       throw new Error(await readSettingsErrorMessage(error, 'Failed to load API key settings'))
     }
     if (!isApiKeysStatus(data)) {
-      return { gemini: { configured: false } }
+      throw new Error('Unexpected response while loading API key settings')
     }
     return data
   }

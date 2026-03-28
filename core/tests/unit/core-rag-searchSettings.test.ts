@@ -39,4 +39,10 @@ describe("core/rag/searchSettings", () => {
       "similarity_threshold must be between 0 and 1"
     )
   })
+
+  it("rejects thresholds that do not align to the slider step", () => {
+    expect(() => assertValidRagSearchEditableSettings({ similarity_threshold: 0.531 })).toThrow(
+      "similarity_threshold must increment by 0.05"
+    )
+  })
 })

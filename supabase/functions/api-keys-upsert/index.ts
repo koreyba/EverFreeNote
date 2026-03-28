@@ -29,6 +29,29 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
 
+const isMissingRagSearchSettingsTableError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") return false
+
+  const code = typeof (error as { code?: unknown }).code === "string"
+    ? (error as { code: string }).code.toUpperCase()
+    : ""
+
+  if (code === "42P01" || code === "PGRST205") return true
+
+  const message = typeof (error as { message?: unknown }).message === "string"
+    ? (error as { message: string }).message
+    : ""
+  const details = typeof (error as { details?: unknown }).details === "string"
+    ? (error as { details: string }).details
+    : ""
+  const combined = `${message} ${details}`.toLowerCase()
+
+  return (
+    combined.includes("user_rag_search_settings") &&
+    (combined.includes("relation") || combined.includes("table") || combined.includes("schema cache"))
+  )
+}
+
 // ---------------------------------------------------------------------------
 // AES-GCM encryption (same pattern as wordpress-settings-upsert)
 // ---------------------------------------------------------------------------
@@ -201,7 +224,15 @@ serve(async (req: Request) => {
         .eq("user_id", userId)
         .maybeSingle()
 
-      if (existingRagSearchError) throw existingRagSearchError
+      if (existingRagSearchError) {
+        if (isMissingRagSearchSettingsTableError(existingRagSearchError)) {
+          return jsonResponse(
+            { error: "RAG retrieval settings are unavailable until the latest database migration is applied" },
+            503
+          )
+        }
+        throw existingRagSearchError
+      }
 
       let editableSettings
       try {
@@ -221,7 +252,15 @@ serve(async (req: Request) => {
         .from("user_rag_search_settings")
         .upsert({ user_id: userId, ...editableSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
 
-      if (ragSearchUpsertError) throw ragSearchUpsertError
+      if (ragSearchUpsertError) {
+        if (isMissingRagSearchSettingsTableError(ragSearchUpsertError)) {
+          return jsonResponse(
+            { error: "RAG retrieval settings are unavailable until the latest database migration is applied" },
+            503
+          )
+        }
+        throw ragSearchUpsertError
+      }
       resolvedRagSearchSettings = resolveRagSearchSettings(editableSettings)
     } else {
       const { data: ragSearchData, error: ragSearchError } = await supabaseAdmin
@@ -230,8 +269,12 @@ serve(async (req: Request) => {
         .eq("user_id", userId)
         .maybeSingle()
 
-      if (ragSearchError) throw ragSearchError
-      resolvedRagSearchSettings = resolveRagSearchSettings(ragSearchData ?? null)
+      if (ragSearchError) {
+        console.warn("[api-keys-upsert] Falling back to default RAG retrieval settings", ragSearchError)
+        resolvedRagSearchSettings = resolveRagSearchSettings(null)
+      } else {
+        resolvedRagSearchSettings = resolveRagSearchSettings(ragSearchData ?? null)
+      }
     }
 
     return jsonResponse({

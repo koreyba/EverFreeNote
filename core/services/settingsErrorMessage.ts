@@ -9,7 +9,12 @@ const NETWORK_ERROR_PATTERNS = [
   "load failed",
 ] as const
 
-const readPayloadMessage = async (context: Response): Promise<string | null> => {
+type ResponseLike = {
+  json?: () => Promise<unknown>
+  status?: unknown
+}
+
+const readPayloadMessage = async (context: ResponseLike): Promise<string | null> => {
   if (typeof context.json !== "function") return null
 
   try {
@@ -38,13 +43,13 @@ const isNetworkFailureMessage = (message: string): boolean => {
 
 export async function readSettingsErrorMessage(error: unknown, fallback: string): Promise<string> {
   if (typeof error === "object" && error && "context" in error) {
-    const context = (error as { context?: Response }).context
-    if (context instanceof Response) {
+    const context = (error as { context?: ResponseLike }).context
+    if (context && typeof context.json === "function") {
       const payloadMessage = await readPayloadMessage(context)
       if (payloadMessage && !isNetworkFailureMessage(payloadMessage)) {
         return payloadMessage
       }
-      if (isServiceUnavailableStatus(context.status)) {
+      if (typeof context.status === "number" && isServiceUnavailableStatus(context.status)) {
         return SETTINGS_SERVICE_UNAVAILABLE_MESSAGE
       }
       if (payloadMessage) return payloadMessage

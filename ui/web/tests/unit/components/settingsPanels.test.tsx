@@ -19,6 +19,10 @@ function renderWithSupabase(ui: React.ReactElement, invoke: jest.Mock) {
   )
 }
 
+afterEach(() => {
+  jest.restoreAllMocks()
+})
+
 describe('settings panels', () => {
   it('shows retrieval defaults even when live retrieval settings fail to load', async () => {
     const invoke = jest.fn().mockResolvedValue({
@@ -112,7 +116,7 @@ describe('settings panels', () => {
       throw new Error(`Unexpected function invoke: ${name}`)
     })
 
-    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+    jest.spyOn(window, 'confirm').mockReturnValue(true)
 
     renderWithSupabase(<ApiKeysSettingsPanel />, invoke)
 
@@ -133,7 +137,38 @@ describe('settings panels', () => {
     })
 
     expect((screen.getByRole('button', { name: 'Remove key' }) as HTMLButtonElement).disabled).toBe(true)
+  })
 
-    confirmSpy.mockRestore()
+  it('does not remove the stored Gemini key when the confirmation is cancelled', async () => {
+    const invoke = jest.fn().mockImplementation(async (name: string) => {
+      if (name === 'api-keys-status') {
+        return {
+          data: {
+            gemini: { configured: true },
+            ragIndexing: defaultRagIndexing,
+            ragSearch: defaultRagSearch,
+          },
+          error: null,
+        }
+      }
+
+      throw new Error(`Unexpected function invoke: ${name}`)
+    })
+
+    jest.spyOn(window, 'confirm').mockReturnValue(false)
+
+    renderWithSupabase(<ApiKeysSettingsPanel />, invoke)
+
+    await waitFor(() => {
+      expect(screen.getByText('Configured')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove key' }))
+
+    expect(invoke).not.toHaveBeenCalledWith('api-keys-upsert', {
+      body: { removeGeminiApiKey: true },
+    })
+    expect(screen.queryByText('API key removed.')).toBeNull()
+    expect((screen.getByRole('button', { name: 'Remove key' }) as HTMLButtonElement).disabled).toBe(false)
   })
 })

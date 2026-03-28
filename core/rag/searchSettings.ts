@@ -76,6 +76,12 @@ export function validateRagSearchEditableSettings(
     errors.push(
       `similarity_threshold must be between ${RAG_SEARCH_THRESHOLD_MIN} and ${RAG_SEARCH_THRESHOLD_MAX}`
     )
+  } else {
+    const stepCount =
+      (resolved.similarity_threshold - RAG_SEARCH_THRESHOLD_MIN) / RAG_SEARCH_THRESHOLD_STEP
+    if (Math.abs(stepCount - Math.round(stepCount)) > Number.EPSILON * 10) {
+      errors.push(`similarity_threshold must increment by ${RAG_SEARCH_THRESHOLD_STEP}`)
+    }
   }
 
   return errors

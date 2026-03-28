@@ -64,15 +64,16 @@ serve(async (req: Request) => {
       console.error("[api-keys-status] Failed to load RAG indexing settings", ragIndexingError)
       return jsonResponse({ error: "Internal error" }, 500)
     }
-    if (ragSearchError) {
-      console.error("[api-keys-status] Failed to load RAG retrieval settings", ragSearchError)
-      return jsonResponse({ error: "Internal error" }, 500)
-    }
+
+    const ragSearchSettings = ragSearchError
+      ? (console.warn("[api-keys-status] Falling back to default RAG retrieval settings", ragSearchError),
+        resolveRagSearchSettings(null))
+      : resolveRagSearchSettings(ragSearchData ?? null)
 
     return jsonResponse({
       gemini: { configured: Boolean(data?.gemini_api_key_encrypted) },
       ragIndexing: resolveRagIndexingSettings(ragIndexingData ?? null),
-      ragSearch: resolveRagSearchSettings(ragSearchData ?? null),
+      ragSearch: ragSearchSettings,
     })
   } catch (err) {
     console.error("[api-keys-status]", err)

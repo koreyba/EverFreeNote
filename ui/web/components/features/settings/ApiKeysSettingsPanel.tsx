@@ -32,8 +32,8 @@ export function ApiKeysSettingsPanel({
   const service = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
 
   const [geminiApiKey, setGeminiApiKey] = React.useState("")
-  const [configured, setConfigured] = React.useState(false)
-  const [loading, setLoading] = React.useState(false)
+  const [configured, setConfigured] = React.useState<boolean | null>(null)
+  const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
@@ -47,7 +47,7 @@ export function ApiKeysSettingsPanel({
       const status = await service.getStatus()
       setConfigured(status.gemini.configured)
     } catch (error) {
-      setConfigured(false)
+      setConfigured(null)
       setErrorMessage(error instanceof Error ? error.message : "Failed to load API key settings")
     } finally {
       setLoading(false)
@@ -63,11 +63,11 @@ export function ApiKeysSettingsPanel({
     setSuccessMessage(null)
     const trimmedGeminiApiKey = geminiApiKey.trim()
 
-    if (!trimmedGeminiApiKey && !configured) {
+    if (!trimmedGeminiApiKey && configured !== true) {
       setErrorMessage("Gemini API key is required for initial setup.")
       return
     }
-    if (!trimmedGeminiApiKey && configured) {
+    if (!trimmedGeminiApiKey && configured === true) {
       setSuccessMessage("No changes to save.")
       return
     }
@@ -86,7 +86,7 @@ export function ApiKeysSettingsPanel({
   }
 
   const handleRemove = async () => {
-    if (!configured) return
+    if (configured !== true) return
     const confirmed = window.confirm(
       "Remove the stored Gemini API key? AI search and note indexing will stop working until you add a new key."
     )
@@ -121,11 +121,11 @@ export function ApiKeysSettingsPanel({
             </div>
             <Badge
               variant="outline"
-              className={configured
+              className={configured === true
                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                 : "border-border/70 bg-background/70 text-muted-foreground"}
             >
-              {configured ? "Configured" : "Not configured"}
+              {loading ? "Checking..." : configured === true ? "Configured" : configured === false ? "Not configured" : "Status unavailable"}
             </Badge>
           </div>
         </CardHeader>
@@ -138,19 +138,31 @@ export function ApiKeysSettingsPanel({
                 type="password"
                 value={geminiApiKey}
                 onChange={(event) => setGeminiApiKey(event.target.value)}
-                placeholder={configured ? "Leave empty to keep current key" : "AIzaSy..."}
+                placeholder={
+                  loading
+                    ? "Checking key status..."
+                    : configured === true
+                      ? "Leave empty to keep current key"
+                      : configured === false
+                        ? "AIzaSy..."
+                        : "Enter Gemini API key"
+                }
                 disabled={loading || saving}
                 autoComplete="off"
               />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              {configured
-                ? "A key is already stored. Enter a new one to replace it, or use Remove key below."
-                : "Your Gemini key is stored encrypted and is never shown again after saving."}
+              {loading
+                ? "Checking stored key status..."
+                : configured === true
+                  ? "A key is already stored. Enter a new one to replace it, or use Remove key below."
+                  : configured === false
+                    ? "Your Gemini key is stored encrypted and is never shown again after saving."
+                    : "Stored key status is unavailable. Saving a new key will replace any existing key."}
             </p>
           </div>
 
-          {configured ? (
+          {configured === true ? (
             <div className="rounded-md border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-600/30 dark:bg-emerald-500/10 dark:text-emerald-300">
               Gemini API key is configured.
             </div>
@@ -185,7 +197,7 @@ export function ApiKeysSettingsPanel({
               type="button"
               variant="outline"
               onClick={handleRemove}
-              disabled={loading || saving || !configured}
+              disabled={loading || saving || configured !== true}
               className={`${settingsActionButtonClassName} border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive`}
             >
               Remove key

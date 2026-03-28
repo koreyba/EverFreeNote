@@ -89,6 +89,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     const aiEnabled = isAIEnabled && hasGeminiApiKey
     const prevAiEnabledRef = useRef(aiEnabled)
     const precisionSaveRequestRef = useRef(0)
+    const confirmedRagSearchSettingsRef = useRef(resolveRagSearchSettings())
     const [ragSearchSettings, setRagSearchSettings] = useState(() => resolveRagSearchSettings())
     const [draftPrecision, setDraftPrecision] = useState(resolveRagSearchSettings().similarity_threshold)
     const [ragSearchSettingsLoading, setRagSearchSettingsLoading] = useState(hasGeminiApiKey)
@@ -107,10 +108,11 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         topK: ragSearchSettings.top_k,
         threshold: ragSearchSettings.similarity_threshold,
         filterTag: filterByTag,
-        isEnabled: aiEnabled,
+        isEnabled: aiEnabled && !ragSearchSettingsLoading,
     })
 
     const showAIResults = aiEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
+    const showAIInitialization = showAIResults && ragSearchSettingsLoading
     const usesVirtualizedList = !showAIResults && (showFTSResults || showTagOnlyResults)
     const selectionSwitchTitle = "Remove selection to switch"
     const canSelectInPanel =
@@ -172,6 +174,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     useEffect(() => {
         if (!hasGeminiApiKey) {
             const defaults = resolveRagSearchSettings()
+            confirmedRagSearchSettingsRef.current = defaults
             setRagSearchSettings(defaults)
             setDraftPrecision(defaults.similarity_threshold)
             setRagSearchSettingsLoading(false)
@@ -186,12 +189,14 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             .getStatus()
             .then((settings) => {
                 if (!isMounted) return
+                confirmedRagSearchSettingsRef.current = settings
                 setRagSearchSettings(settings)
                 setDraftPrecision(settings.similarity_threshold)
             })
             .catch((error) => {
                 if (!isMounted) return
                 const defaults = resolveRagSearchSettings()
+                confirmedRagSearchSettingsRef.current = defaults
                 setRagSearchSettings(defaults)
                 setDraftPrecision(defaults.similarity_threshold)
                 setPrecisionError(
@@ -216,7 +221,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             return
         }
 
-        const previousSettings = ragSearchSettings
         precisionSaveRequestRef.current += 1
         const requestId = precisionSaveRequestRef.current
         setPrecisionError(null)
@@ -229,13 +233,15 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             .upsert({ similarity_threshold: normalizedThreshold })
             .then((settings) => {
                 if (requestId !== precisionSaveRequestRef.current) return
+                confirmedRagSearchSettingsRef.current = settings
                 setRagSearchSettings(settings)
                 setDraftPrecision(settings.similarity_threshold)
             })
             .catch((error) => {
                 if (requestId !== precisionSaveRequestRef.current) return
-                setRagSearchSettings(previousSettings)
-                setDraftPrecision(previousSettings.similarity_threshold)
+                const rollbackSettings = confirmedRagSearchSettingsRef.current
+                setRagSearchSettings(rollbackSettings)
+                setDraftPrecision(rollbackSettings.similarity_threshold)
                 setPrecisionError(
                     error instanceof Error ? error.message : "Failed to save AI search precision"
                 )
@@ -640,7 +646,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 {renderResultsHeader()}
                 {showAIResults ? (
                     <div className="px-3 py-2">
-                        {aiLoading && (
+                        {(showAIInitialization || aiLoading) && (
                             <div className="flex flex-col gap-3 py-2">
                                 {[1, 2, 3].map((i) => (
                                     <div key={i} className="space-y-1.5 p-3 rounded-md bg-card border">
@@ -651,7 +657,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                                 ))}
                             </div>
                         )}
-                        {aiError && !aiLoading && (
+                        {aiError && !showAIInitialization && !aiLoading && (
                             <div className="py-2 text-center" data-testid="search-panel-ai-error">
                                 <p className="text-xs text-destructive">AI Search unavailable</p>
                                 <Button data-testid="search-panel-ai-retry" variant="ghost" size="sm" className="h-5 text-xs px-0 mt-1" onClick={() => aiRefetch()}>
@@ -659,7 +665,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                                 </Button>
                             </div>
                         )}
-                        {!aiLoading && !aiError && (
+                        {!showAIInitialization && !aiLoading && !aiError && (
                             viewMode === 'chunk' ? (
                                 <ChunkSearchResults noteGroups={noteGroups} onOpenInContext={onOpenInContext} query={aiSearchQuery} />
                             ) : (

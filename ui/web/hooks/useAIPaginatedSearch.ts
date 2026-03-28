@@ -112,10 +112,11 @@ export function useAIPaginatedSearch({
   const trimmedQuery = query.trim()
   const queryEnabled = isEnabled && trimmedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH
   const normalizedThreshold = threshold.toFixed(2)
+  const normalizedThresholdValue = Number(normalizedThreshold)
   const searchIdentity = `${trimmedQuery}::${pageSize}::${normalizedThreshold}::${filterTag ?? ''}::${isEnabled}`
   const [committedIdentity, setCommittedIdentity] = useState(searchIdentity)
-  const effectiveAiOffset =
-    committedIdentity === searchIdentity ? aiOffset : 0
+  const identityCommitted = committedIdentity === searchIdentity
+  const effectiveAiOffset = identityCommitted ? aiOffset : 0
 
   const requestedTopK = useMemo(
     () => Math.min(RAG_SEARCH_TOP_K_MAX, pageSize + effectiveAiOffset),
@@ -143,7 +144,7 @@ export function useAIPaginatedSearch({
         body: {
           query: trimmedQuery,
           topK: requestedTopK,
-          threshold,
+          threshold: normalizedThresholdValue,
           filterTag: filterTag ?? null,
         },
       })
@@ -184,6 +185,7 @@ export function useAIPaginatedSearch({
   }, [effectiveAiOffset, queryEnabled, result.data])
 
   const aiHasMore =
+    identityCommitted &&
     queryEnabled &&
     !!result.data &&
     requestedTopK < RAG_SEARCH_TOP_K_MAX &&
@@ -204,17 +206,19 @@ export function useAIPaginatedSearch({
 
   const initialLoading =
     queryEnabled &&
-    result.isFetching &&
-    effectiveAiOffset === 0 &&
-    aiAccumulatedResults.length === 0
+    (!identityCommitted || (
+      result.isFetching &&
+      effectiveAiOffset === 0 &&
+      aiAccumulatedResults.length === 0
+    ))
 
   return {
-    noteGroups: queryEnabled ? aiAccumulatedResults : [],
+    noteGroups: queryEnabled && identityCommitted ? aiAccumulatedResults : [],
     isLoading: initialLoading,
     error: result.error ? String(result.error) : null,
     refetch,
     aiOffset: effectiveAiOffset,
-    aiAccumulatedResults,
+    aiAccumulatedResults: queryEnabled && identityCommitted ? aiAccumulatedResults : [],
     aiHasMore,
     aiLoadingMore: normalizedLoadingMore,
     loadMoreAI,

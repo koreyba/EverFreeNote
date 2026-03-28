@@ -34,7 +34,7 @@ export function NoteSearchResults({
     return (
       <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-4">
         <p className="text-xs leading-relaxed text-muted-foreground">
-          No results. Lower Precision or use the <span className="font-medium">...</span> menu on a note to index it.
+          No results. Lower the precision slider or use the <span className="font-medium">...</span> menu on a note to index it.
         </p>
       </div>
     )
