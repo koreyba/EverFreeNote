@@ -4,6 +4,7 @@
     "strict": true,
     "jsx": "react-native",
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
