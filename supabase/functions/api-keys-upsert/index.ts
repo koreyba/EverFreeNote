@@ -8,6 +8,12 @@ import {
   coerceRagIndexingEditableSettings,
   resolveRagIndexingSettings,
 } from "@core/rag/indexingSettings.ts"
+import {
+  assertValidRagSearchEditableSettings,
+  coerceRagSearchEditableSettings,
+  resolveRagSearchEditableSettings,
+  resolveRagSearchSettings,
+} from "@core/rag/searchSettings.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -106,13 +112,15 @@ serve(async (req: Request) => {
     const rawGeminiKey = typeof payload.geminiApiKey === "string" ? payload.geminiApiKey.trim() : ""
     const coercedRagIndexingSettings = coerceRagIndexingEditableSettings(payload)
     const hasRagIndexingFields = Object.keys(coercedRagIndexingSettings).length > 0
+    const coercedRagSearchSettings = coerceRagSearchEditableSettings(payload)
+    const hasRagSearchFields = Object.keys(coercedRagSearchSettings).length > 0
 
     const MAX_GEMINI_KEY_LENGTH = 256
     if (rawGeminiKey.length > MAX_GEMINI_KEY_LENGTH) {
       return jsonResponse({ error: `Gemini API key must not exceed ${MAX_GEMINI_KEY_LENGTH} characters` }, 400)
     }
 
-    if (!hasGeminiApiKeyField && !hasRagIndexingFields) {
+    if (!hasGeminiApiKeyField && !hasRagIndexingFields && !hasRagSearchFields) {
       return jsonResponse({ error: "No Google API settings changes provided" }, 400)
     }
 
@@ -131,7 +139,7 @@ serve(async (req: Request) => {
       encryptedKey = await encryptValue(rawGeminiKey, encryptionSecret)
     }
 
-    if (hasGeminiApiKeyField && !encryptedKey && !hasRagIndexingFields) {
+    if (hasGeminiApiKeyField && !encryptedKey && !hasRagIndexingFields && !hasRagSearchFields) {
       return jsonResponse({ error: "Gemini API key is required for initial setup" }, 400)
     }
 
@@ -168,9 +176,51 @@ serve(async (req: Request) => {
       resolvedRagIndexingSettings = resolveRagIndexingSettings(ragIndexingData ?? null)
     }
 
+    let resolvedRagSearchSettings
+    if (hasRagSearchFields) {
+      const { data: existingRagSearchData, error: existingRagSearchError } = await supabaseAdmin
+        .from("user_rag_search_settings")
+        .select("top_k, similarity_threshold")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (existingRagSearchError) throw existingRagSearchError
+
+      let editableSettings
+      try {
+        editableSettings = assertValidRagSearchEditableSettings(
+          resolveRagSearchEditableSettings({
+            ...(existingRagSearchData ?? {}),
+            ...coercedRagSearchSettings,
+          })
+        )
+      } catch (validationError) {
+        return jsonResponse({
+          error: validationError instanceof Error ? validationError.message : "Invalid RAG retrieval settings",
+        }, 400)
+      }
+
+      const { error: ragSearchUpsertError } = await supabaseAdmin
+        .from("user_rag_search_settings")
+        .upsert({ user_id: userId, ...editableSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+
+      if (ragSearchUpsertError) throw ragSearchUpsertError
+      resolvedRagSearchSettings = resolveRagSearchSettings(editableSettings)
+    } else {
+      const { data: ragSearchData, error: ragSearchError } = await supabaseAdmin
+        .from("user_rag_search_settings")
+        .select("top_k, similarity_threshold")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (ragSearchError) throw ragSearchError
+      resolvedRagSearchSettings = resolveRagSearchSettings(ragSearchData ?? null)
+    }
+
     return jsonResponse({
       gemini: { configured: Boolean(hasGeminiApiKeyField ? encryptedKey : existing?.gemini_api_key_encrypted) },
       ragIndexing: resolvedRagIndexingSettings,
+      ragSearch: resolvedRagSearchSettings,
     })
   } catch (err) {
     console.error("[api-keys-upsert]", err)

@@ -9,53 +9,53 @@ description: Task breakdown for user-configurable retrieval settings and web pre
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] Milestone 1: Shared retrieval settings model and persistence are implemented
-- [ ] Milestone 2: Web settings UI exposes editable and read-only retrieval parameters
-- [ ] Milestone 3: Web AI search uses the precision slider and exact `hasMore` behavior
+- [x] Milestone 1: Shared retrieval settings model and persistence are implemented
+- [x] Milestone 2: Web settings UI exposes editable and read-only retrieval parameters
+- [x] Milestone 3: Web AI search uses the precision slider and exact `hasMore` behavior
 
 ## Task Breakdown
 **What specific work needs to be done?**
 
 ### Phase 1: Foundation
-- [ ] Task 1.1: Add shared core retrieval-settings module
+- [x] Task 1.1: Add shared core retrieval-settings module
   - Defaults: `top_k = 15`, `similarity_threshold = 0.55`
   - Read-only constants for task types, output dimensionality, dedup threshold, and overfetch behavior
   - Validation/coercion helpers
 
-- [ ] Task 1.2: Add persisted storage for user retrieval settings
+- [x] Task 1.2: Add persisted storage for user retrieval settings
   - Create DB storage for per-user retrieval settings
   - Define defaults when no row exists
 
-- [ ] Task 1.3: Extend status/upsert Edge Functions and service layer
+- [x] Task 1.3: Extend status/upsert Edge Functions and service layer
   - `api-keys-status` returns `ragSearch`
   - `api-keys-upsert` accepts retrieval settings updates
   - Add `RagSearchSettingsService` in core
 
 ### Phase 2: Web Search & Settings UI
-- [ ] Task 2.1: Add retrieval settings UI to web settings
+- [x] Task 2.1: Add retrieval settings UI to web settings
   - Editable `topK`
   - Read-only task types and output dimensionality
 
-- [ ] Task 2.2: Remove preset selector from web AI search
+- [x] Task 2.2: Remove preset selector from web AI search
   - Remove preset state from `useSearchMode`
   - Remove preset UI from web search components
 
-- [ ] Task 2.3: Add precision slider to web AI search
+- [x] Task 2.3: Add precision slider to web AI search
   - English-only UI copy
   - Draft vs committed slider state
   - Persist committed threshold to user settings
   - Trigger refetch only on commit/release when value changed
 
 ### Phase 3: Retrieval Flow & Pagination Polish
-- [ ] Task 3.1: Update `useAIPaginatedSearch` to use persisted `topK`
+- [x] Task 3.1: Update `useAIPaginatedSearch` to use persisted `topK`
   - `topK` becomes page size and initial visible count
   - `Load more` increments by `topK`
 
-- [ ] Task 3.2: Add `+1` overfetch in `rag-search`
+- [x] Task 3.2: Add `+1` overfetch in `rag-search`
   - Return `hasMore`
   - Stop relying on client heuristic for `Load more`
 
-- [ ] Task 3.3: Verify regression safety
+- [x] Task 3.3: Verify regression safety
   - Existing indexing settings untouched
   - Existing Gemini task types unchanged
   - Existing AI search result grouping/dedup still works
@@ -77,6 +77,11 @@ description: Task breakdown for user-configurable retrieval settings and web pre
 - Phase 3: Small to Medium
 
 Total expected implementation size: moderate, mostly integration and settings plumbing rather than new retrieval algorithms.
+
+## Status Summary
+**What is the current execution status?**
+
+Implemented on `feature-rag-retrieval-tuning-ui`. Shared retrieval settings now exist in core, persist through Supabase settings transport, and drive the web AI search UI. The old preset selector was removed from the web flow, `topK` moved to Settings with default `15`, and the `Precision` slider now commits persisted threshold updates plus exact `hasMore` behavior via backend `+1` overfetch. Targeted unit tests, the full `npm run test:unit` suite, `type-check`, `type-check:tests`, and `deno check` all passed. Remaining verification is mainly manual UI validation and final review, not unfinished feature scope.
 
 ## Risks & Mitigation
 **What could go wrong?**

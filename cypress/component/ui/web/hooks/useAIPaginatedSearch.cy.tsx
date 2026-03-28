@@ -3,12 +3,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SupabaseTestProvider } from '../../../../../ui/web/providers/SupabaseProvider'
 import { useAIPaginatedSearch } from '../../../../../ui/web/hooks/useAIPaginatedSearch'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { SearchPreset } from '../../../../../core/constants/aiSearch'
 import type { RagChunk } from '../../../../../core/types/ragSearch'
 
 type HookHarnessProps = {
   query: string
-  preset: SearchPreset
+  topK: number
+  threshold: number
   filterTag: string | null
   isEnabled: boolean
 }
@@ -31,8 +31,8 @@ const createChunk = (
   similarity,
 })
 
-const HookHarness = ({ query, preset, filterTag, isEnabled }: HookHarnessProps) => {
-  const result = useAIPaginatedSearch({ query, preset, filterTag, isEnabled })
+const HookHarness = ({ query, topK, threshold, filterTag, isEnabled }: HookHarnessProps) => {
+  const result = useAIPaginatedSearch({ query, topK, threshold, filterTag, isEnabled })
 
   return (
     <div>
@@ -60,17 +60,19 @@ const HookHarness = ({ query, preset, filterTag, isEnabled }: HookHarnessProps) 
 
 const IdentityResetHarness = ({
   initialQuery,
-  preset,
+  topK,
+  threshold,
   filterTag,
   isEnabled,
 }: {
   initialQuery: string
-  preset: SearchPreset
+  topK: number
+  threshold: number
   filterTag: string | null
   isEnabled: boolean
 }) => {
   const [query, setQuery] = React.useState(initialQuery)
-  const result = useAIPaginatedSearch({ query, preset, filterTag, isEnabled })
+  const result = useAIPaginatedSearch({ query, topK, threshold, filterTag, isEnabled })
 
   return (
     <div>
@@ -105,7 +107,7 @@ const mountHarness = (node: React.ReactNode, supabase: SupabaseClient) => {
 
 describe('useAIPaginatedSearch', () => {
   it('does not request AI search when query is shorter than minimum length', () => {
-    const invoke = cy.stub().as('invoke').resolves({ data: { chunks: [] }, error: null })
+    const invoke = cy.stub().as('invoke').resolves({ data: { chunks: [], hasMore: false }, error: null })
     const supabase = {
       functions: { invoke },
     } as unknown as SupabaseClient
@@ -113,7 +115,8 @@ describe('useAIPaginatedSearch', () => {
     mountHarness(
       <HookHarness
         query="hi"
-        preset="strict"
+        topK={5}
+        threshold={0.75}
         filterTag={null}
         isEnabled
       />,
@@ -136,6 +139,7 @@ describe('useAIPaginatedSearch', () => {
               createChunk('note-3', 0.64, 0, 0, 'third snippet'),
               createChunk('note-4', 0.63, 0, 0, 'fourth snippet'),
             ],
+            hasMore: true,
           },
           error: null,
         })
@@ -151,8 +155,8 @@ describe('useAIPaginatedSearch', () => {
             createChunk('note-4', 0.63, 0, 0, 'fourth snippet'),
             createChunk('note-6', 0.62, 0, 0, 'fifth snippet'),
             createChunk('note-7', 0.61, 0, 0, 'sixth snippet'),
-            createChunk('note-8', 0.60, 0, 0, 'seventh snippet'),
           ],
+          hasMore: false,
         },
         error: null,
       })
@@ -165,7 +169,8 @@ describe('useAIPaginatedSearch', () => {
     mountHarness(
       <HookHarness
         query="ontology"
-        preset="strict"
+        topK={5}
+        threshold={0.75}
         filterTag="philosophy"
         isEnabled
       />,
@@ -197,7 +202,7 @@ describe('useAIPaginatedSearch', () => {
       .stub()
       .as('invoke')
       .resolves({
-        data: { chunks: [createChunk('note-1', 0.75, 0, 0, 'snippet')] },
+        data: { chunks: [createChunk('note-1', 0.75, 0, 0, 'snippet')], hasMore: false },
         error: null,
       })
     const supabase = {
@@ -207,7 +212,8 @@ describe('useAIPaginatedSearch', () => {
     mountHarness(
       <HookHarness
         query="knowledge"
-        preset="strict"
+        topK={5}
+        threshold={0.75}
         filterTag={null}
         isEnabled
       />,
@@ -239,6 +245,7 @@ describe('useAIPaginatedSearch', () => {
               similarity: 0.81,
             } satisfies RagChunk,
           ],
+          hasMore: false,
         },
         error: null,
       })
@@ -250,7 +257,8 @@ describe('useAIPaginatedSearch', () => {
     mountHarness(
       <HookHarness
         query="ontology"
-        preset="strict"
+        topK={5}
+        threshold={0.75}
         filterTag={null}
         isEnabled
       />,
@@ -286,6 +294,7 @@ describe('useAIPaginatedSearch', () => {
               similarity: 0.81,
             } satisfies RagChunk,
           ],
+          hasMore: false,
         },
         error: null,
       })
@@ -297,7 +306,8 @@ describe('useAIPaginatedSearch', () => {
     mountHarness(
       <HookHarness
         query="ontology"
-        preset="strict"
+        topK={5}
+        threshold={0.75}
         filterTag={null}
         isEnabled
       />,
@@ -325,7 +335,10 @@ describe('useAIPaginatedSearch', () => {
           similarity: 0.9 - idx * 0.001,
         })) satisfies RagChunk[]
 
-        return Promise.resolve({ data: { chunks }, error: null })
+        return Promise.resolve({
+          data: { chunks, hasMore: body.query === 'ontology' && body.topK === 5 },
+          error: null,
+        })
       }
     )
     const supabase = {
@@ -335,7 +348,8 @@ describe('useAIPaginatedSearch', () => {
     mountHarness(
       <IdentityResetHarness
         initialQuery="ontology"
-        preset="strict"
+        topK={5}
+        threshold={0.75}
         filterTag={null}
         isEnabled
       />,

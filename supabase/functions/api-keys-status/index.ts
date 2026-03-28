@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
 import { resolveRagIndexingSettings } from "../../../core/rag/indexingSettings.ts"
+import { resolveRagSearchSettings } from "../../../core/rag/searchSettings.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -49,6 +50,12 @@ serve(async (req: Request) => {
       .eq("user_id", userData.user.id)
       .maybeSingle()
 
+    const { data: ragSearchData, error: ragSearchError } = await supabaseAdmin
+      .from("user_rag_search_settings")
+      .select("top_k, similarity_threshold")
+      .eq("user_id", userData.user.id)
+      .maybeSingle()
+
     if (error) {
       console.error("[api-keys-status]", error)
       return jsonResponse({ error: "Internal error" }, 500)
@@ -57,10 +64,15 @@ serve(async (req: Request) => {
       console.error("[api-keys-status] Failed to load RAG indexing settings", ragIndexingError)
       return jsonResponse({ error: "Internal error" }, 500)
     }
+    if (ragSearchError) {
+      console.error("[api-keys-status] Failed to load RAG retrieval settings", ragSearchError)
+      return jsonResponse({ error: "Internal error" }, 500)
+    }
 
     return jsonResponse({
       gemini: { configured: Boolean(data?.gemini_api_key_encrypted) },
       ragIndexing: resolveRagIndexingSettings(ragIndexingData ?? null),
+      ragSearch: resolveRagSearchSettings(ragSearchData ?? null),
     })
   } catch (err) {
     console.error("[api-keys-status]", err)

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RagIndexingSettingsPanel } from "@/components/features/settings/RagIndexingSettingsPanel"
+import { RagSearchSettingsPanel } from "@/components/features/settings/RagSearchSettingsPanel"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 
@@ -139,6 +140,7 @@ export function ApiKeysSettingsPanel({
       </Card>
 
       <RagIndexingSettingsPanel />
+      <RagSearchSettingsPanel />
     </div>
   )
 }

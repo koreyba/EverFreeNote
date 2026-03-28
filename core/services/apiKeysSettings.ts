@@ -1,10 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { RagIndexingSettings } from '@core/rag/indexingSettings'
+import type { RagSearchSettings } from '@core/rag/searchSettings'
 
 export type ApiKeysStatus = {
   gemini: { configured: boolean }
   ragIndexing?: RagIndexingSettings
+  ragSearch?: RagSearchSettings
 }
 
 const isApiKeysStatus = (data: unknown): data is ApiKeysStatus => {

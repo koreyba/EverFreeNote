@@ -1,16 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
-import {
-  AI_SEARCH_MIN_QUERY_LENGTH,
-  OFFSET_DELTA_THRESHOLD,
-  SEARCH_PRESETS,
-  type SearchPreset,
-} from '@core/constants/aiSearch'
+import { AI_SEARCH_MIN_QUERY_LENGTH } from '@core/constants/aiSearch'
+import { RAG_SEARCH_TOP_K_MAX, getRagSearchReadonlySettings } from '@core/rag/searchSettings'
 import type { RagChunk, RagNoteGroup } from '@core/types/ragSearch'
 
 const STALE_TIME_MS = 30_000
-const AI_SEARCH_TOP_K_MAX = 100
+const READONLY_RAG_SEARCH_SETTINGS = getRagSearchReadonlySettings()
 
 function deduplicateChunks(
   chunks: RagChunk[],
@@ -19,7 +15,7 @@ function deduplicateChunks(
   const accepted: RagChunk[] = []
   for (const chunk of chunks) {
     const tooClose = accepted.some(
-      (a) => Math.abs(chunk.charOffset - a.charOffset) < OFFSET_DELTA_THRESHOLD
+      (a) => Math.abs(chunk.charOffset - a.charOffset) < READONLY_RAG_SEARCH_SETTINGS.offset_delta_threshold
     )
     if (!tooClose) accepted.push(chunk)
     if (accepted.length >= maxCount) break
@@ -80,7 +76,8 @@ function buildGroupsSignature(groups: RagNoteGroup[]): string {
 
 interface UseAIPaginatedSearchOptions {
   query: string
-  preset: SearchPreset
+  topK: number
+  threshold: number
   filterTag: string | null
   isEnabled: boolean
 }
@@ -100,13 +97,13 @@ interface UseAIPaginatedSearchResult {
 
 export function useAIPaginatedSearch({
   query,
-  preset,
+  topK,
+  threshold,
   filterTag,
   isEnabled,
 }: UseAIPaginatedSearchOptions): UseAIPaginatedSearchResult {
   const { supabase } = useSupabase()
-  const { topK: baseTopK, threshold } = SEARCH_PRESETS[preset]
-  const pageSize = Math.max(1, baseTopK)
+  const pageSize = Math.max(1, Math.min(topK, RAG_SEARCH_TOP_K_MAX))
 
   const [aiOffset, setAiOffset] = useState(0)
   const [aiAccumulatedResults, setAiAccumulatedResults] = useState<RagNoteGroup[]>([])
@@ -115,13 +112,13 @@ export function useAIPaginatedSearch({
 
   const trimmedQuery = query.trim()
   const queryEnabled = isEnabled && trimmedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH
-  const searchIdentity = `${trimmedQuery}::${preset}::${filterTag ?? ''}::${isEnabled}`
+  const searchIdentity = `${trimmedQuery}::${pageSize}::${threshold.toFixed(2)}::${filterTag ?? ''}::${isEnabled}`
   const [committedIdentity, setCommittedIdentity] = useState(searchIdentity)
   const effectiveAiOffset =
     committedIdentity !== searchIdentity ? 0 : aiOffset
 
   const requestedTopK = useMemo(
-    () => Math.min(AI_SEARCH_TOP_K_MAX, pageSize + effectiveAiOffset),
+    () => Math.min(RAG_SEARCH_TOP_K_MAX, pageSize + effectiveAiOffset),
     [pageSize, effectiveAiOffset]
   )
 
@@ -140,7 +137,7 @@ export function useAIPaginatedSearch({
   }, [committedIdentity, searchIdentity, resetAIResults])
 
   const result = useQuery({
-    queryKey: ['aiSearch', trimmedQuery, preset, filterTag, requestedTopK],
+    queryKey: ['aiSearch', trimmedQuery, pageSize, threshold, filterTag, requestedTopK],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('rag-search', {
         body: {
@@ -156,6 +153,7 @@ export function useAIPaginatedSearch({
       const chunks = Array.isArray(data?.chunks) ? (data.chunks as RagChunk[]) : []
       return {
         chunkCount: chunks.length,
+        hasMore: data?.hasMore === true,
         groups: groupByNote(chunks),
       }
     },
@@ -188,15 +186,15 @@ export function useAIPaginatedSearch({
   const aiHasMore =
     queryEnabled &&
     !!result.data &&
-    requestedTopK < AI_SEARCH_TOP_K_MAX &&
-    result.data.chunkCount >= requestedTopK
+    requestedTopK < RAG_SEARCH_TOP_K_MAX &&
+    result.data.hasMore === true
 
   const normalizedLoadingMore = result.isFetching && effectiveAiOffset > 0
 
   const loadMoreAI = useCallback(() => {
     if (!queryEnabled || normalizedLoadingMore || !aiHasMore) return
     setAiOffset((prev) =>
-      Math.min(prev + pageSize, Math.max(0, AI_SEARCH_TOP_K_MAX - pageSize))
+      Math.min(prev + pageSize, Math.max(0, RAG_SEARCH_TOP_K_MAX - pageSize))
     )
   }, [queryEnabled, normalizedLoadingMore, aiHasMore, pageSize])
 

@@ -1,14 +1,14 @@
 import React from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { SearchPreset } from '@core/constants/aiSearch'
 import type { RagChunk } from '@core/types/ragSearch'
 import { useAIPaginatedSearch } from '@ui/web/hooks/useAIPaginatedSearch'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 
 type HookProps = {
   query: string
-  preset: SearchPreset
+  topK: number
+  threshold: number
   filterTag: string | null
   isEnabled: boolean
 }
@@ -47,7 +47,8 @@ describe('useAIPaginatedSearch', () => {
       () =>
         useAIPaginatedSearch({
           query: 'hi',
-          preset: 'strict',
+          topK: 5,
+          threshold: 0.75,
           filterTag: null,
           isEnabled: true,
         }),
@@ -71,6 +72,7 @@ describe('useAIPaginatedSearch', () => {
                 createChunk('note-3', 0.64, 0, 0, 'third snippet'),
                 createChunk('note-4', 0.63, 0, 0, 'fourth snippet'),
               ],
+              hasMore: true,
             },
             error: null,
           }
@@ -86,8 +88,8 @@ describe('useAIPaginatedSearch', () => {
               createChunk('note-4', 0.63, 0, 0, 'fourth snippet'),
               createChunk('note-6', 0.62, 0, 0, 'fifth snippet'),
               createChunk('note-7', 0.61, 0, 0, 'sixth snippet'),
-              createChunk('note-8', 0.6, 0, 0, 'seventh snippet'),
             ],
+            hasMore: false,
           },
           error: null,
         }
@@ -101,7 +103,8 @@ describe('useAIPaginatedSearch', () => {
       () =>
         useAIPaginatedSearch({
           query: 'ontology',
-          preset: 'strict',
+          topK: 5,
+          threshold: 0.75,
           filterTag: 'philosophy',
           isEnabled: true,
         }),
@@ -161,6 +164,7 @@ describe('useAIPaginatedSearch', () => {
               bodyContent: 'stale snippet',
             },
           ],
+          hasMore: false,
         },
         error: null,
       })
@@ -172,6 +176,7 @@ describe('useAIPaginatedSearch', () => {
               bodyContent: 'fresh snippet',
             },
           ],
+          hasMore: false,
         },
         error: null,
       })
@@ -184,7 +189,8 @@ describe('useAIPaginatedSearch', () => {
       () =>
         useAIPaginatedSearch({
           query: 'ontology',
-          preset: 'strict',
+          topK: 5,
+          threshold: 0.75,
           filterTag: null,
           isEnabled: true,
         }),
@@ -215,6 +221,7 @@ describe('useAIPaginatedSearch', () => {
               overlapPrefix: 'stale overlap',
             },
           ],
+          hasMore: false,
         },
         error: null,
       })
@@ -226,6 +233,7 @@ describe('useAIPaginatedSearch', () => {
               overlapPrefix: 'fresh overlap',
             },
           ],
+          hasMore: false,
         },
         error: null,
       })
@@ -238,7 +246,8 @@ describe('useAIPaginatedSearch', () => {
       () =>
         useAIPaginatedSearch({
           query: 'ontology',
-          preset: 'strict',
+          topK: 5,
+          threshold: 0.75,
           filterTag: null,
           isEnabled: true,
         }),
@@ -273,6 +282,7 @@ describe('useAIPaginatedSearch', () => {
             content: `${body.query} snippet ${idx + 1}`,
             similarity: 0.9 - idx * 0.001,
           })),
+          hasMore: body.query === 'ontology' && body.topK === 5,
         },
         error: null,
       })
@@ -286,7 +296,8 @@ describe('useAIPaginatedSearch', () => {
       {
         initialProps: {
           query: 'ontology',
-          preset: 'strict',
+          topK: 5,
+          threshold: 0.75,
           filterTag: null,
           isEnabled: true,
         },
@@ -308,7 +319,8 @@ describe('useAIPaginatedSearch', () => {
 
     rerender({
       query: 'ethics',
-      preset: 'strict',
+      topK: 5,
+      threshold: 0.75,
       filterTag: null,
       isEnabled: true,
     })
@@ -359,7 +371,8 @@ describe('useAIPaginatedSearch', () => {
       () =>
         useAIPaginatedSearch({
           query: 'ontology',
-          preset: 'strict',
+          topK: 5,
+          threshold: 0.75,
           filterTag: null,
           isEnabled: true,
         }),
@@ -401,6 +414,7 @@ describe('useAIPaginatedSearch', () => {
             similarity: 0.88,
           },
         ],
+        hasMore: false,
       },
       error: null,
     })
@@ -413,7 +427,8 @@ describe('useAIPaginatedSearch', () => {
       () =>
         useAIPaginatedSearch({
           query: 'ontology',
-          preset: 'strict',
+          topK: 5,
+          threshold: 0.75,
           filterTag: null,
           isEnabled: true,
         }),

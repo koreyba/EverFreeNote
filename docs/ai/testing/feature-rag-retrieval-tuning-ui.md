@@ -18,16 +18,19 @@ description: Testing strategy for persisted retrieval settings, precision slider
 **What individual components need testing?**
 
 ### Shared retrieval settings module
-- [ ] Test case 1: resolves defaults when no stored row exists
-- [ ] Test case 2: validates `top_k` bounds and integer requirement
-- [ ] Test case 3: validates `similarity_threshold` numeric bounds
-- [ ] Additional coverage: read-only settings remain fixed and exposed correctly
+- [x] Test case 1: resolves defaults when no stored row exists
+- [x] Test case 2: validates `top_k` bounds and integer requirement
+- [x] Test case 3: validates `similarity_threshold` numeric bounds
+- [x] Additional coverage: read-only settings remain fixed and exposed correctly
+  - Covered by `core/tests/unit/core-rag-searchSettings.test.ts`
 
 ### Web search hooks / UI state
 - [ ] Test case 1: slider draft value changes without firing search
 - [ ] Test case 2: slider commit persists the new threshold and fires a single new search only when value changed
-- [ ] Test case 3: persisted `topK` controls page size and `Load more` increment size
-- [ ] Additional coverage: removing preset state does not break stored search-mode loading
+- [x] Test case 3: persisted `topK` controls page size and `Load more` increment size
+- [x] Additional coverage: removing preset state does not break stored search-mode loading
+  - Covered by `ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx`
+  - Covered by `ui/web/tests/unit/hooks/useSearchMode.test.tsx`
 
 ## Integration Tests
 **How do we test component interactions?**
@@ -55,9 +58,17 @@ description: Testing strategy for persisted retrieval settings, precision slider
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
 
-- Run targeted unit/integration suites for core and web changes
-- Record any remaining gaps in this doc during implementation
-- Capture manual web QA outcomes for slider behavior and `Load more`
+- Targeted automated checks completed on 2026-03-28:
+  - `npx jest --config jest.config.cjs --selectProjects unit-core unit-web --runTestsByPath core/tests/unit/core-rag-searchSettings.test.ts ui/web/tests/unit/hooks/useSearchMode.test.tsx ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx`
+  - `npm run test:unit`
+  - `npm run type-check`
+  - `npm run type-check:tests`
+  - `npx deno check supabase/functions/api-keys-status/index.ts supabase/functions/api-keys-upsert/index.ts supabase/functions/rag-search/index.ts`
+- Result: all executed checks passed.
+- Remaining gaps:
+  - no automated integration test yet for `api-keys-status` / `api-keys-upsert` retrieval payloads
+  - no automated web component test yet for slider commit persistence
+  - no manual QA results recorded yet for search panel UX
 
 ## Manual Testing
 **What requires human validation?**
