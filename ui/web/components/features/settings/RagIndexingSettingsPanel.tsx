@@ -19,6 +19,11 @@ import {
 } from "@core/rag/indexingSettings"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { Info } from "lucide-react"
+import {
+  settingsActionButtonClassName,
+  settingsActionRowClassName,
+  settingsSectionCardClassName,
+} from "@/components/features/settings/settingsLayout"
 
 const RAG_DEBUG_CHUNKS_KEY = "rag-debug-chunks"
 
@@ -138,7 +143,7 @@ export function RagIndexingSettingsPanel() {
   }
 
   return (
-    <Card>
+    <Card className={settingsSectionCardClassName}>
       <CardHeader>
         <CardTitle>RAG indexing</CardTitle>
         <CardDescription>
@@ -391,8 +396,12 @@ export function RagIndexingSettingsPanel() {
           </div>
         ) : null}
 
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={loading || saving || validationErrors.length > 0}>
+        <div className={settingsActionRowClassName}>
+          <Button
+            onClick={handleSave}
+            disabled={loading || saving || validationErrors.length > 0}
+            className={settingsActionButtonClassName}
+          >
             {saving ? "Saving..." : "Save indexing settings"}
           </Button>
         </div>

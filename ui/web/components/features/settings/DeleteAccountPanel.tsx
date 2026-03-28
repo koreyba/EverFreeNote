@@ -4,6 +4,10 @@ import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  settingsActionButtonClassName,
+  settingsActionRowClassName,
+} from "@/components/features/settings/settingsLayout"
 
 type DeleteAccountPanelProps = {
   email?: string | null
@@ -73,11 +77,12 @@ export function DeleteAccountPanel({
         </div>
       ) : null}
 
-      <div className="flex justify-end">
+      <div className={settingsActionRowClassName}>
         <Button
           variant="destructive"
           disabled={!acknowledged || isLoading}
           onClick={() => void handleConfirm()}
+          className={settingsActionButtonClassName}
         >
           {isLoading ? "Deleting..." : "Delete account"}
         </Button>

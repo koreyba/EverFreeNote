@@ -15,6 +15,11 @@ import {
 } from "@core/rag/searchSettings"
 import { RagSearchSettingsService } from "@core/services/ragSearchSettings"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
+import {
+  settingsActionButtonClassName,
+  settingsActionRowClassName,
+  settingsSectionCardClassName,
+} from "@/components/features/settings/settingsLayout"
 
 function buildEditableState(settings: RagSearchSettings) {
   return {
@@ -82,7 +87,7 @@ export function RagSearchSettingsPanel() {
   }
 
   return (
-    <Card>
+    <Card className={settingsSectionCardClassName}>
       <CardHeader>
         <CardTitle>RAG retrieval</CardTitle>
         <CardDescription>
@@ -174,8 +179,12 @@ export function RagSearchSettingsPanel() {
           </div>
         ) : null}
 
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={loading || saving || validationErrors.length > 0}>
+        <div className={settingsActionRowClassName}>
+          <Button
+            onClick={handleSave}
+            disabled={loading || saving || validationErrors.length > 0}
+            className={settingsActionButtonClassName}
+          >
             {saving ? "Saving..." : "Save retrieval settings"}
           </Button>
         </div>

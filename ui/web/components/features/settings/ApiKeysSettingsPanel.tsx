@@ -4,6 +4,7 @@ import * as React from "react"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,6 +12,12 @@ import { RagIndexingSettingsPanel } from "@/components/features/settings/RagInde
 import { RagSearchSettingsPanel } from "@/components/features/settings/RagSearchSettingsPanel"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
+import {
+  settingsActionButtonClassName,
+  settingsActionRowClassName,
+  settingsInsetPanelClassName,
+  settingsSectionCardClassName,
+} from "@/components/features/settings/settingsLayout"
 
 type ApiKeysSettingsPanelProps = {
   onClose?: () => void
@@ -103,17 +110,29 @@ export function ApiKeysSettingsPanel({
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Gemini API key</CardTitle>
-          <CardDescription>
-            Store the Gemini API key used for note indexing and AI search.
-          </CardDescription>
+      <Card className={settingsSectionCardClassName}>
+        <CardHeader className="space-y-4 pb-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-2">
+              <CardTitle>Gemini API key</CardTitle>
+              <CardDescription>
+                Store the Gemini API key used for note indexing and AI search.
+              </CardDescription>
+            </div>
+            <Badge
+              variant="outline"
+              className={configured
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : "border-border/70 bg-background/70 text-muted-foreground"}
+            >
+              {configured ? "Configured" : "Not configured"}
+            </Badge>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
+        <CardContent className="space-y-5">
+          <div className={settingsInsetPanelClassName}>
             <Label htmlFor="gemini-api-key">Gemini API Key</Label>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="mt-2">
               <Input
                 id="gemini-api-key"
                 type="password"
@@ -122,23 +141,13 @@ export function ApiKeysSettingsPanel({
                 placeholder={configured ? "Leave empty to keep current key" : "AIzaSy..."}
                 disabled={loading || saving}
                 autoComplete="off"
-                className="flex-1"
               />
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleRemove}
-                disabled={loading || saving || !configured}
-                className="sm:shrink-0"
-              >
-                Remove API key
-              </Button>
             </div>
-            {configured ? (
-              <p className="text-xs text-muted-foreground">
-                A key is stored. Enter a new one to replace it, or remove it explicitly.
-              </p>
-            ) : null}
+            <p className="mt-2 text-xs text-muted-foreground">
+              {configured
+                ? "A key is already stored. Enter a new one to replace it, or use Remove key below."
+                : "Your Gemini key is stored encrypted and is never shown again after saving."}
+            </p>
           </div>
 
           {configured ? (
@@ -161,13 +170,31 @@ export function ApiKeysSettingsPanel({
             </div>
           ) : null}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className={settingsActionRowClassName}>
             {showCloseButton ? (
-              <Button variant="outline" onClick={onClose} disabled={saving}>
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={saving}
+                className={settingsActionButtonClassName}
+              >
                 Close
               </Button>
             ) : null}
-            <Button onClick={handleSave} disabled={loading || saving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleRemove}
+              disabled={loading || saving || !configured}
+              className={`${settingsActionButtonClassName} border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive`}
+            >
+              Remove key
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={loading || saving}
+              className={settingsActionButtonClassName}
+            >
               {saving ? "Saving..." : "Save API key"}
             </Button>
           </div>
