@@ -3,10 +3,10 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ApiKeysSettingsPanel } from "@/components/features/settings/ApiKeysSettingsPanel"
 
-type ApiKeysSettingsDialogProps = {
+type ApiKeysSettingsDialogProps = Readonly<{
   open: boolean
   onOpenChange: (open: boolean) => void
-}
+}>
 
 export function ApiKeysSettingsDialog({ open, onOpenChange }: ApiKeysSettingsDialogProps) {
   return (

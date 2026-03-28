@@ -46,12 +46,11 @@ function groupByNote(chunks: RagChunk[]): RagNoteGroup[] {
   return groups.sort((a, b) => b.topScore - a.topScore)
 }
 
-function hashText(value: string | undefined): string {
+function hashText(value = ''): string {
   // Fast non-crypto hash for change detection signatures.
-  const normalizedValue = value ?? ''
   let hash = 2166136261
-  for (let i = 0; i < normalizedValue.length; i += 1) {
-    hash ^= normalizedValue.charCodeAt(i)
+  for (const char of value) {
+    hash ^= char.codePointAt(0) ?? 0
     hash = Math.imul(hash, 16777619)
   }
   return (hash >>> 0).toString(36)
@@ -61,7 +60,7 @@ function buildGroupsSignature(groups: RagNoteGroup[]): string {
   return groups
     .map((group) => {
       const tagsSignature = Array.isArray(group.noteTags)
-        ? [...group.noteTags].sort().join(',')
+        ? [...group.noteTags].sort((a, b) => a.localeCompare(b)).join(',')
         : ''
       const chunksSignature = group.chunks
         .map((chunk) =>
@@ -116,7 +115,7 @@ export function useAIPaginatedSearch({
   const searchIdentity = `${trimmedQuery}::${pageSize}::${normalizedThreshold}::${filterTag ?? ''}::${isEnabled}`
   const [committedIdentity, setCommittedIdentity] = useState(searchIdentity)
   const effectiveAiOffset =
-    committedIdentity !== searchIdentity ? 0 : aiOffset
+    committedIdentity === searchIdentity ? aiOffset : 0
 
   const requestedTopK = useMemo(
     () => Math.min(RAG_SEARCH_TOP_K_MAX, pageSize + effectiveAiOffset),

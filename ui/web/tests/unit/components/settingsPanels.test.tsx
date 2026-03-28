@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type React from 'react'
 
 import { ApiKeysSettingsPanel } from '@/components/features/settings/ApiKeysSettingsPanel'
 import { RagIndexingSettingsPanel } from '@/components/features/settings/RagIndexingSettingsPanel'
@@ -10,7 +11,7 @@ import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 const defaultRagIndexing = resolveRagIndexingSettings(null)
 const defaultRagSearch = resolveRagSearchSettings(null)
 
-function renderWithSupabase(ui: JSX.Element, invoke: jest.Mock) {
+function renderWithSupabase(ui: React.ReactElement, invoke: jest.Mock) {
   return render(
     <SupabaseTestProvider supabase={{ functions: { invoke } } as never}>
       {ui}
