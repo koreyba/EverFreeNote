@@ -107,20 +107,28 @@ serve(async (req: Request) => {
     if ("geminiApiKey" in payload && typeof payload.geminiApiKey !== "string") {
       return jsonResponse({ error: "geminiApiKey must be a string" }, 400)
     }
+    if ("removeGeminiApiKey" in payload && typeof payload.removeGeminiApiKey !== "boolean") {
+      return jsonResponse({ error: "removeGeminiApiKey must be a boolean" }, 400)
+    }
 
     const hasGeminiApiKeyField = "geminiApiKey" in payload
+    const shouldRemoveGeminiApiKey = payload.removeGeminiApiKey === true
     const rawGeminiKey = typeof payload.geminiApiKey === "string" ? payload.geminiApiKey.trim() : ""
     const coercedRagIndexingSettings = coerceRagIndexingEditableSettings(payload)
     const hasRagIndexingFields = Object.keys(coercedRagIndexingSettings).length > 0
     const coercedRagSearchSettings = coerceRagSearchEditableSettings(payload)
     const hasRagSearchFields = Object.keys(coercedRagSearchSettings).length > 0
 
+    if (shouldRemoveGeminiApiKey && rawGeminiKey) {
+      return jsonResponse({ error: "Provide either geminiApiKey or removeGeminiApiKey, not both" }, 400)
+    }
+
     const MAX_GEMINI_KEY_LENGTH = 256
     if (rawGeminiKey.length > MAX_GEMINI_KEY_LENGTH) {
       return jsonResponse({ error: `Gemini API key must not exceed ${MAX_GEMINI_KEY_LENGTH} characters` }, 400)
     }
 
-    if (!hasGeminiApiKeyField && !hasRagIndexingFields && !hasRagSearchFields) {
+    if (!hasGeminiApiKeyField && !shouldRemoveGeminiApiKey && !hasRagIndexingFields && !hasRagSearchFields) {
       return jsonResponse({ error: "No Google API settings changes provided" }, 400)
     }
 
@@ -135,15 +143,24 @@ serve(async (req: Request) => {
 
     let encryptedKey = existing?.gemini_api_key_encrypted ?? null
 
-    if (hasGeminiApiKeyField && rawGeminiKey) {
+    if (shouldRemoveGeminiApiKey) {
+      encryptedKey = null
+    } else if (hasGeminiApiKeyField && rawGeminiKey) {
       encryptedKey = await encryptValue(rawGeminiKey, encryptionSecret)
     }
 
-    if (hasGeminiApiKeyField && !encryptedKey && !hasRagIndexingFields && !hasRagSearchFields) {
+    if (hasGeminiApiKeyField && !shouldRemoveGeminiApiKey && !encryptedKey && !hasRagIndexingFields && !hasRagSearchFields) {
       return jsonResponse({ error: "Gemini API key is required for initial setup" }, 400)
     }
 
-    if (hasGeminiApiKeyField && encryptedKey) {
+    if (shouldRemoveGeminiApiKey) {
+      const { error: deleteError } = await supabaseAdmin
+        .from("user_api_keys")
+        .delete()
+        .eq("user_id", userId)
+
+      if (deleteError) throw deleteError
+    } else if (hasGeminiApiKeyField && encryptedKey) {
       const { error: upsertError } = await supabaseAdmin
         .from("user_api_keys")
         .upsert({ user_id: userId, gemini_api_key_encrypted: encryptedKey, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
@@ -218,7 +235,7 @@ serve(async (req: Request) => {
     }
 
     return jsonResponse({
-      gemini: { configured: Boolean(hasGeminiApiKeyField ? encryptedKey : existing?.gemini_api_key_encrypted) },
+      gemini: { configured: Boolean(shouldRemoveGeminiApiKey ? null : hasGeminiApiKeyField ? encryptedKey : existing?.gemini_api_key_encrypted) },
       ragIndexing: resolvedRagIndexingSettings,
       ragSearch: resolvedRagSearchSettings,
     })

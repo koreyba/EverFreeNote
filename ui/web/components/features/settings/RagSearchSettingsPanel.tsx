@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   RAG_SEARCH_EDITABLE_DEFAULTS,
+  resolveRagSearchSettings,
   validateRagSearchEditableSettings,
   type RagSearchSettings,
 } from "@core/rag/searchSettings"
@@ -33,6 +34,7 @@ export function RagSearchSettingsPanel() {
   const [formState, setFormState] = React.useState(() => ({
     top_k: String(RAG_SEARCH_EDITABLE_DEFAULTS.top_k),
   }))
+  const displaySettings = resolvedSettings ?? resolveRagSearchSettings(null)
 
   const loadSettings = React.useCallback(async () => {
     setLoading(true)
@@ -117,43 +119,46 @@ export function RagSearchSettingsPanel() {
           </div>
         ) : null}
 
-        {resolvedSettings ? (
-          <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
-            <div className="text-xs font-medium text-muted-foreground">Search system settings</div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <ReadOnlyRow
-                label="Current precision threshold"
-                value={resolvedSettings.similarity_threshold.toFixed(2)}
-                hint="Change this from the Precision slider in AI search."
-              />
-              <ReadOnlyRow
-                label="Vector dimensions"
-                value={String(resolvedSettings.output_dimensionality)}
-                hint="Embedding vector size."
-              />
-              <ReadOnlyRow
-                label="Document task type"
-                value={resolvedSettings.task_type_document}
-                hint="Used when embedding indexed note chunks."
-              />
-              <ReadOnlyRow
-                label="Query task type"
-                value={resolvedSettings.task_type_query}
-                hint="Used when embedding search queries."
-              />
-              <ReadOnlyRow
-                label="Load more overfetch"
-                value={`+${resolvedSettings.load_more_overfetch}`}
-                hint="Used to determine whether more backend results exist."
-              />
-              <ReadOnlyRow
-                label="Retrieval max cap"
-                value={String(resolvedSettings.max_top_k)}
-                hint="Upper bound for the cumulative AI search result window."
-              />
-            </div>
+        <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
+          {!resolvedSettings && errorMessage ? (
+            <p className="text-xs text-muted-foreground">
+              Showing default system values until live retrieval settings can be loaded from the server.
+            </p>
+          ) : null}
+          <div className="text-xs font-medium text-muted-foreground">Search system settings</div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <ReadOnlyRow
+              label="Current precision threshold"
+              value={displaySettings.similarity_threshold.toFixed(2)}
+              hint="Change this from the Precision slider in AI search."
+            />
+            <ReadOnlyRow
+              label="Vector dimensions"
+              value={String(displaySettings.output_dimensionality)}
+              hint="Embedding vector size."
+            />
+            <ReadOnlyRow
+              label="Document task type"
+              value={displaySettings.task_type_document}
+              hint="Used when embedding indexed note chunks."
+            />
+            <ReadOnlyRow
+              label="Query task type"
+              value={displaySettings.task_type_query}
+              hint="Used when embedding search queries."
+            />
+            <ReadOnlyRow
+              label="Load more overfetch"
+              value={`+${displaySettings.load_more_overfetch}`}
+              hint="Used to determine whether more backend results exist."
+            />
+            <ReadOnlyRow
+              label="Retrieval max cap"
+              value={String(displaySettings.max_top_k)}
+              hint="Upper bound for the cumulative AI search result window."
+            />
           </div>
-        ) : null}
+        </div>
 
         {errorMessage ? (
           <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

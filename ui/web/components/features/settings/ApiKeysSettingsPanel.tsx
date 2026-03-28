@@ -78,6 +78,29 @@ export function ApiKeysSettingsPanel({
     }
   }
 
+  const handleRemove = async () => {
+    if (!configured) return
+    const confirmed = window.confirm(
+      "Remove the stored Gemini API key? AI search and note indexing will stop working until you add a new key."
+    )
+    if (!confirmed) return
+
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    setSaving(true)
+
+    try {
+      await service.removeGeminiApiKey()
+      setConfigured(false)
+      setGeminiApiKey("")
+      setSuccessMessage("API key removed.")
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to remove API key")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -90,18 +113,30 @@ export function ApiKeysSettingsPanel({
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="gemini-api-key">Gemini API Key</Label>
-            <Input
-              id="gemini-api-key"
-              type="password"
-              value={geminiApiKey}
-              onChange={(event) => setGeminiApiKey(event.target.value)}
-              placeholder={configured ? "Leave empty to keep current key" : "AIzaSy..."}
-              disabled={loading || saving}
-              autoComplete="off"
-            />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input
+                id="gemini-api-key"
+                type="password"
+                value={geminiApiKey}
+                onChange={(event) => setGeminiApiKey(event.target.value)}
+                placeholder={configured ? "Leave empty to keep current key" : "AIzaSy..."}
+                disabled={loading || saving}
+                autoComplete="off"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleRemove}
+                disabled={loading || saving || !configured}
+                className="sm:shrink-0"
+              >
+                Remove API key
+              </Button>
+            </div>
             {configured ? (
               <p className="text-xs text-muted-foreground">
-                A key is stored. Enter a new one only to replace it.
+                A key is stored. Enter a new one to replace it, or remove it explicitly.
               </p>
             ) : null}
           </div>

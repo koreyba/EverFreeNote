@@ -1,4 +1,4 @@
-import { getRagReadonlySettings } from "@core/rag/indexingSettings"
+import { getRagReadonlySettings } from "@core/rag/indexingSettings.ts"
 
 const RAG_READONLY_INDEXING_SETTINGS = getRagReadonlySettings()
 
