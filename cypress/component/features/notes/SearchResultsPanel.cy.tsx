@@ -49,6 +49,13 @@ const createAiChunk = (
   similarity,
 })
 
+type StubCall = {
+  args: unknown[]
+}
+
+const getRagSearchCalls = (invoke: { getCalls: () => StubCall[] }): StubCall[] =>
+  invoke.getCalls().filter((call: StubCall) => call.args[0] === 'rag-search')
+
 const createController = (overrides: Partial<NoteAppController> = {}): NoteAppController => {
   const controller = {
     searchQuery: 'query',
@@ -513,9 +520,8 @@ describe('SearchResultsPanel', () => {
     cy.get('[data-testid="search-panel-input"]').type('ontology{enter}')
 
     cy.wrap(controller.handleSearch).should('have.been.calledWith', 'ontology')
-    cy.get('@aiInvoke').should((invokeStub) => {
-      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
-      expect(ragSearchCalls).to.have.length(0)
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(0)
     })
   })
 
@@ -558,10 +564,9 @@ describe('SearchResultsPanel', () => {
     cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
     cy.tick(400)
 
-    cy.get('@aiInvoke').should((invokeStub) => {
-      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
-      expect(ragSearchCalls).to.have.length(1)
-      expect(invokeStub).to.have.been.calledWithMatch('rag-search', {
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(1)
+      expect(invoke).to.have.been.calledWithMatch('rag-search', {
         body: {
           query: 'ontology',
         },
@@ -663,9 +668,8 @@ describe('SearchResultsPanel', () => {
     cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
     cy.tick(400)
 
-    cy.get('@aiInvoke').should((invokeStub) => {
-      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
-      expect(ragSearchCalls).to.have.length(0)
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(0)
     })
     cy.wrap(controller.handleSearch).should('not.have.been.called')
   })
@@ -739,16 +743,14 @@ describe('SearchResultsPanel', () => {
 
     cy.mount(<Harness />)
 
-    cy.get('@aiInvoke').should((invokeStub) => {
-      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
-      expect(ragSearchCalls).to.have.length(0)
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(0)
     })
     cy.get('[data-testid="grant-gemini-key"]').click()
 
-    cy.get('@aiInvoke').should((invokeStub) => {
-      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
-      expect(ragSearchCalls).to.have.length(1)
-      expect(invokeStub).to.have.been.calledWithMatch('rag-search', {
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(1)
+      expect(invoke).to.have.been.calledWithMatch('rag-search', {
         body: {
           query: 'ontology',
         },
