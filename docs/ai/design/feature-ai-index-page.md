@@ -12,9 +12,10 @@ description: Architecture for a dedicated Settings flow that lists note AI index
 graph TD
     SP["SettingsPage"] --> TAB["AIIndexTab"]
     TAB --> FILTERS["StatusFilters"]
+    TAB --> SEARCH["SearchRow"]
     TAB --> LIST["AIIndexList"]
     LIST --> ROW["AIIndexNoteRow"]
-    TAB --> HOOK["useAIIndexNotes(status, page)"]
+    TAB --> HOOK["useAIIndexNotes(status, search, page)"]
     ROW --> MUTATE["rag-index Edge Function"]
     HOOK --> FETCH["get_ai_index_notes RPC"]
 
@@ -74,6 +75,9 @@ supabase.rpc("get_ai_index_notes", {
   filter_status: "all" | "indexed" | "not_indexed" | "outdated",
   page_number: number,
   page_size: number,
+  search_query: string | null,
+  search_ts_query: string | null,
+  search_language: "english" | "russian" | null,
 })
 ```
 
@@ -83,8 +87,11 @@ supabase.rpc("get_ai_index_notes", {
 2. Query the user's notes.
 3. Aggregate latest `indexed_at` per note from `note_embeddings`.
 4. Derive the status in the server response.
-5. Apply requested filter before pagination output is returned.
-6. Sort rows by `notes.updated_at DESC` for predictable recency-focused review.
+5. If a search query is present, apply the same ordinary note-search semantics as the main notes flow:
+   - `FTS` first using the shared ts-query/lang rules
+   - `ILIKE` fallback when FTS returns no matches
+6. Apply requested filter before pagination output is returned.
+7. Sort rows by search relevance when search is active, otherwise by `notes.updated_at DESC`.
 
 The `all` filter is the default page state so the Settings tab opens with the full note inventory visible before the user narrows it.
 
@@ -107,6 +114,7 @@ The `all` filter is the default page state so the Settings tab opens with the fu
 - Settings-specific container for:
   - heading / summary
   - filter pills
+  - ordinary search row below the pills
   - list body
   - empty/loading states
 
@@ -115,6 +123,7 @@ The `all` filter is the default page state so the Settings tab opens with the fu
 - Dedicated React Query hook for the AI Index flow.
 - Owns:
   - active filter key
+  - active search key
   - infinite pagination
   - flattening pages
   - total count / hasMore
@@ -155,6 +164,11 @@ The `all` filter is the default page state so the Settings tab opens with the fu
 
 - Decision: keep `rag-index` for write actions and add a dedicated RPC read path for AI index state.
 - Rationale: existing mutation behavior is already shipped and tested; the missing capability is efficient list aggregation and filtering.
+
+### Reuse ordinary search semantics without reusing the notes controller
+
+- Decision: reuse the main note-search query construction and UX (`Search` input, debounce, 3-character threshold, FTS-first behavior) inside the dedicated AI Index flow.
+- Rationale: the user asked for the familiar search behavior, but the AI Index page still needs its own server-backed filtering, pagination, and row model rather than the full notes/search controller stack.
 
 ### Use virtualization inside Settings
 

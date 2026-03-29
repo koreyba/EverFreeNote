@@ -73,6 +73,9 @@ describe("useAIIndexNotes", () => {
       filter_status: "all",
       page_number: 0,
       page_size: 50,
+      search_query: null,
+      search_ts_query: null,
+      search_language: null,
     })
 
     await act(async () => {
@@ -102,6 +105,32 @@ describe("useAIIndexNotes", () => {
         filter_status: "outdated",
         page_number: 0,
         page_size: 50,
+        search_query: null,
+        search_ts_query: null,
+        search_language: null,
+      })
+    })
+  })
+
+  it("passes ordinary search params through to the RPC request", async () => {
+    const rpc = jest.fn().mockResolvedValue({
+      data: [],
+      error: null,
+    })
+
+    const supabase = { rpc } as unknown as SupabaseClient
+    renderHook(() => useAIIndexNotes("all", "hello world"), {
+      wrapper: createWrapper(supabase),
+    })
+
+    await waitFor(() => {
+      expect(rpc).toHaveBeenCalledWith("get_ai_index_notes", {
+        filter_status: "all",
+        page_number: 0,
+        page_size: 50,
+        search_query: "hello world",
+        search_ts_query: "hello:* & world:*",
+        search_language: "english",
       })
     })
   })

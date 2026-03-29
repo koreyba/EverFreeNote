@@ -1,6 +1,8 @@
 import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query"
 
+import { SEARCH_CONFIG } from "@core/constants/search"
 import type { AIIndexFilter, AIIndexNotesPage, AIIndexNoteRow, AIIndexStatus } from "@core/types/aiIndex"
+import { buildTsQuery, detectLanguage, ftsLanguage } from "@core/utils/search"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 
 const AI_INDEX_PAGE_SIZE = 50
@@ -39,15 +41,24 @@ export function getAIIndexNotesQueryPrefix(userId?: string) {
   return ["ai-index-notes", userId ?? null] as const
 }
 
-export function getAIIndexNotesQueryKey(userId: string | undefined, filter: AIIndexFilter) {
-  return [...getAIIndexNotesQueryPrefix(userId), filter] as const
+function normalizeSearchQuery(searchQuery: string) {
+  return searchQuery.trim()
 }
 
-export function useAIIndexNotes(filter: AIIndexFilter = "all", enabled = true) {
+export function getAIIndexNotesQueryKey(userId: string | undefined, filter: AIIndexFilter, searchQuery = "") {
+  return [...getAIIndexNotesQueryPrefix(userId), filter, normalizeSearchQuery(searchQuery)] as const
+}
+
+export function useAIIndexNotes(filter: AIIndexFilter = "all", searchQuery = "", enabled = true) {
   const { supabase, user } = useSupabase()
+  const normalizedSearchQuery = normalizeSearchQuery(searchQuery)
+  const activeSearchQuery =
+    normalizedSearchQuery.length >= SEARCH_CONFIG.MIN_QUERY_LENGTH ? normalizedSearchQuery : ""
+  const searchTsQuery = buildTsQuery(activeSearchQuery)
+  const searchLanguage = searchTsQuery ? ftsLanguage(detectLanguage(activeSearchQuery)) : null
 
   return useInfiniteQuery<AIIndexNotesPage>({
-    queryKey: getAIIndexNotesQueryKey(user?.id, filter),
+    queryKey: getAIIndexNotesQueryKey(user?.id, filter, activeSearchQuery),
     enabled: Boolean(enabled && user?.id),
     initialPageParam: 0,
     staleTime: AI_INDEX_STALE_TIME_MS,
@@ -57,6 +68,9 @@ export function useAIIndexNotes(filter: AIIndexFilter = "all", enabled = true) {
         filter_status: filter,
         page_number: page,
         page_size: AI_INDEX_PAGE_SIZE,
+        search_query: activeSearchQuery || null,
+        search_ts_query: searchTsQuery,
+        search_language: searchLanguage,
       })
 
       if (error) throw error

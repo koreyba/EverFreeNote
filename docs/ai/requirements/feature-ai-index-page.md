@@ -22,6 +22,7 @@ Users can currently index or delete the AI/RAG index only from inside an individ
 ### Primary goals
 
 - Add a dedicated `AI Index` tab under `Settings`.
+- Add a search row under the status tabs that reuses the ordinary note-search behavior for narrowing the list.
 - Show a paginated/virtualized list of notes with index metadata:
   - `title`
   - `status`
@@ -75,6 +76,10 @@ Users can currently index or delete the AI/RAG index only from inside an individ
 ### Default page behavior
 
 - The page initially shows all notes, then narrows the result set when a status filter is selected.
+- The page also supports the same ordinary text-search semantics as the main notes flow:
+  - the search row sits below the status tabs
+  - search starts after 3 characters
+  - matching should follow the ordinary note search path (`FTS` first, then substring fallback)
 - The default sort order is descending by note `updated_at` so the most recently changed notes are reviewed first.
 
 ## Success Criteria
@@ -83,6 +88,7 @@ Users can currently index or delete the AI/RAG index only from inside an individ
 - [ ] The page renders a virtualized list of notes with dynamic row heights.
 - [ ] The list supports infinite scrolling / lazy pagination with automatic load-more near the end.
 - [ ] Filter changes reload data for the selected status and reset pagination correctly.
+- [ ] Search query changes reload AI index data without breaking pagination or virtualization.
 - [ ] Each row shows `title`, computed status, and `last indexed at` when available.
 - [ ] `Index`, `Reindex`, and `Remove from index` actions are available according to row state.
 - [ ] After an action completes, the affected row reflects the new status without leaving the page.

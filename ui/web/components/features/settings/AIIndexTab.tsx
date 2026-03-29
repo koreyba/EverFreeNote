@@ -2,9 +2,11 @@
 
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Database, Loader2 } from "lucide-react"
+import { Database, Loader2, Search, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { SEARCH_CONFIG } from "@core/constants/search"
 import { cn } from "@ui/web/lib/utils"
 import type { AIIndexFilter } from "@core/types/aiIndex"
 import {
@@ -12,6 +14,7 @@ import {
   useAIIndexNotes,
   useFlattenedAIIndexNotes,
 } from "@ui/web/hooks/useAIIndexNotes"
+import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { AIIndexList } from "@/components/features/settings/AIIndexList"
 import {
@@ -37,14 +40,54 @@ export function AIIndexTab() {
   const queryClient = useQueryClient()
   const { user } = useSupabase()
   const [filter, setFilter] = React.useState<AIIndexFilter>("all")
+  const [searchDraft, setSearchDraft] = React.useState("")
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const normalizedSearchDraft = searchDraft.trim()
+  const isSearchHintVisible =
+    normalizedSearchDraft.length > 0 && normalizedSearchDraft.length < SEARCH_CONFIG.MIN_QUERY_LENGTH
+  const activeSearchQuery =
+    searchQuery.trim().length >= SEARCH_CONFIG.MIN_QUERY_LENGTH ? searchQuery.trim() : ""
+  const debouncedSearch = useDebouncedCallback((value: string) => {
+    setSearchQuery(value.trim())
+  }, SEARCH_CONFIG.DEBOUNCE_MS)
 
-  const query = useAIIndexNotes(filter)
+  const query = useAIIndexNotes(filter, activeSearchQuery)
   const notes = useFlattenedAIIndexNotes(query)
   const totalCount = query.data?.pages[0]?.totalCount ?? 0
 
   const handleMutated = React.useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) })
   }, [queryClient, user?.id])
+
+  const handleSearchChange = React.useCallback((value: string) => {
+    setSearchDraft(value)
+
+    if (value.trim().length === 0) {
+      debouncedSearch.cancel()
+      setSearchQuery("")
+      return
+    }
+
+    debouncedSearch.call(value)
+  }, [debouncedSearch])
+
+  const handleSearchKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") return
+
+    debouncedSearch.cancel()
+    setSearchQuery(searchDraft.trim())
+  }, [debouncedSearch, searchDraft])
+
+  const handleClearSearch = React.useCallback(() => {
+    debouncedSearch.cancel()
+    setSearchDraft("")
+    setSearchQuery("")
+  }, [debouncedSearch])
+
+  const emptyMessage =
+    activeSearchQuery.length > 0
+      ? `No ${filter === "all" ? "notes" : FILTER_OPTIONS.find((option) => option.value === filter)?.label.toLowerCase()} match "${activeSearchQuery}".`
+      : FILTER_EMPTY_MESSAGES[filter]
 
   if (query.isError) {
     return (
@@ -113,6 +156,37 @@ export function AIIndexTab() {
         })}
       </div>
 
+      <div className="space-y-2">
+        <div className="relative max-w-xl">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/70" />
+          <Input
+            aria-label="Search AI index notes"
+            data-testid="ai-index-search-input"
+            type="text"
+            placeholder="Search notes..."
+            value={searchDraft}
+            onChange={(event) => handleSearchChange(event.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            className="h-10 bg-background pl-9 pr-10"
+          />
+          {searchDraft ? (
+            <button
+              type="button"
+              aria-label="Clear AI index search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 transition-colors hover:text-foreground"
+              onClick={handleClearSearch}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
+        {isSearchHintVisible ? (
+          <p className="text-sm text-muted-foreground">
+            Search starts after {SEARCH_CONFIG.MIN_QUERY_LENGTH} characters, just like the main notes search.
+          </p>
+        ) : null}
+      </div>
+
       <div className="rounded-2xl border border-border/60 bg-background/60">
         <div className="border-b border-border/60 px-4 py-3 text-sm text-muted-foreground">
           The list keeps the same large-dataset principles as the main notes list: virtualization, dynamic row heights, and lazy loading on scroll.
@@ -129,7 +203,7 @@ export function AIIndexTab() {
               }
             }}
             onMutated={handleMutated}
-            emptyMessage={FILTER_EMPTY_MESSAGES[filter]}
+            emptyMessage={emptyMessage}
           />
         </div>
       </div>

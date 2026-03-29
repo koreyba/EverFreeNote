@@ -9,7 +9,7 @@ description: Test strategy for the Settings AI index page and its dedicated data
 ## Test Coverage Goals
 
 - Unit test all new hooks/services/components touched by the AI Index flow.
-- Cover filter changes, derived statuses, pagination, and row action refresh behavior.
+- Cover filter changes, ordinary search behavior, derived statuses, pagination, and row action refresh behavior.
 - Record manual coverage for Settings navigation and responsive behavior.
 
 ## Unit Tests
@@ -18,12 +18,14 @@ description: Test strategy for the Settings AI index page and its dedicated data
 
 - [x] Fetches first page correctly for the default filter
 - [x] Passes the selected filter to the RPC request
+- [x] Passes ordinary search params to the RPC request
 - [x] Exposes `hasMore` / next page behavior correctly
 
 ### AI index row/list UI
 
 - [x] Renders row actions for indexed and not-indexed states
 - [x] Executes `Index` and `Remove from index` flows
+- [x] Renders the search row and debounces search/filter updates together
 - [ ] Add a direct unit test for the virtualized empty-state copy if needed later
 
 ## Integration Tests
@@ -51,6 +53,7 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - Completed:
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/hooks/useAIIndexNotes.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexNoteRow.test.tsx`
+  - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexTab.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/settingsPage.aiIndex.test.tsx`
 - Completed:
   - `npm run type-check:tests`

@@ -11,6 +11,7 @@ description: Task breakdown for the Settings AI index management page
 - [x] Milestone 1: Feature docs and server-side AI index list query are in place
 - [x] Milestone 2: `Settings -> AI Index` tab renders filtered, virtualized note rows
 - [x] Milestone 3: Row actions refresh list state correctly and tests cover the new flow
+- [x] Milestone 4: AI Index supports ordinary note search semantics below the status tabs
 
 ## Task Breakdown
 
@@ -29,6 +30,7 @@ description: Task breakdown for the Settings AI index management page
 - [x] Task 2.2: Create `AIIndexTab` with header, filter controls, empty/loading states
 - [x] Task 2.3: Create `AIIndexList` with virtualization, dynamic row heights, and autoload on scroll
 - [x] Task 2.4: Create dedicated `AIIndexNoteRow` / card component without reusing `NoteCard`
+- [x] Task 2.5: Add the ordinary search row beneath AI Index status filters
 
 ### Phase 3: Actions, refresh, and polish
 
@@ -36,6 +38,7 @@ description: Task breakdown for the Settings AI index management page
 - [x] Task 3.2: Refresh or invalidate AI index queries after row mutations
 - [x] Task 3.3: Add status-specific button labels, timestamps, and disabled states
 - [x] Task 3.4: Document implementation and testing outcomes in feature docs
+- [x] Task 3.5: Reuse ordinary note-search semantics in the AI Index RPC and hook
 
 ## Dependencies
 
@@ -55,6 +58,8 @@ Total expected effort: 1 focused implementation cycle with follow-up testing and
 
 - Incorrect status filtering with browser-only aggregation
   - Mitigation: compute aggregated status on the server before pagination.
+- Search semantics drifting from the main notes experience
+  - Mitigation: reuse the shared debounce/min-length/ts-query rules in the AI Index hook and RPC contract.
 - Virtualization regressions inside Settings layout
   - Mitigation: mirror `NoteList` sizing and scrolling patterns in a dedicated component.
 - Query refresh race after row mutations

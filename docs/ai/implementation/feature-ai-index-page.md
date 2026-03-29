@@ -11,6 +11,7 @@ description: Implementation notes for the dedicated Settings AI index management
 - Use the feature worktree `feature-ai-index-page`.
 - Run frontend and Supabase tooling as usual for the web app.
 - Apply migration `20260329000001_add_get_ai_index_notes_rpc.sql`.
+- Apply migration `20260329000002_add_search_to_ai_index_notes_rpc.sql`.
 - Reuse the deployed/local `rag-index` function for row mutations.
 
 ## Code Structure
@@ -26,6 +27,7 @@ description: Implementation notes for the dedicated Settings AI index management
 ```text
 supabase/migrations/
   20260329000001_add_get_ai_index_notes_rpc.sql
+  20260329000002_add_search_to_ai_index_notes_rpc.sql
 
 core/types/
   aiIndex.ts
@@ -45,8 +47,9 @@ ui/web/components/features/settings/
 ### Core Features
 
 - Add an `AI Index` tab to `SettingsPage`.
-- Build a dedicated `AIIndexTab` container with filters and virtualized list.
+- Build a dedicated `AIIndexTab` container with filters, ordinary search row, and virtualized list.
 - Use dedicated server-backed status-aware pagination through `get_ai_index_notes`.
+- Reuse the shared search utilities (`SEARCH_CONFIG`, `buildTsQuery`, language mapping) so AI Index search behaves like the main notes search without reusing the notes controller.
 
 ### Patterns & Best Practices
 
@@ -59,6 +62,7 @@ ui/web/components/features/settings/
 - Reads: Postgres RPC `get_ai_index_notes`
 - Writes: existing `rag-index` Edge Function
 - Navigation: existing `tab` query param handling in `SettingsPage`
+- Search semantics: shared text-search utilities from `@core/utils/search`
 
 ## Error Handling
 
