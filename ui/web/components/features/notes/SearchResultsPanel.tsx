@@ -26,7 +26,7 @@ import { AiSearchToggle } from "@/components/features/search/AiSearchToggle"
 import { AiSearchPrecisionSlider } from "@/components/features/search/AiSearchPrecisionSlider"
 import { AiSearchViewTabs } from "@/components/features/search/AiSearchViewTabs"
 import { NoteSearchResults } from "@/components/features/search/NoteSearchResults"
-import { ChunkSearchResults, getVisibleChunkCount } from "@/components/features/search/ChunkSearchResults"
+import { ChunkSearchResults } from "@/components/features/search/ChunkSearchResults"
 import { NoteList } from "@/components/features/notes/NoteList"
 import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
@@ -96,6 +96,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     const [precisionError, setPrecisionError] = useState<string | null>(null)
     const {
         noteGroups,
+        chunks: aiChunks,
         isLoading: aiLoading,
         error: aiError,
         refetch: aiRefetch,
@@ -148,9 +149,8 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         }
 
         if (showAIResults && viewMode === 'chunk') {
-            const visibleChunkCount = getVisibleChunkCount(noteGroups)
             return {
-                count: visibleChunkCount,
+                count: aiChunks.length,
                 singularLabel: 'chunk',
                 pluralLabel: 'chunks',
             }
@@ -170,7 +170,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             singularLabel: 'note',
             pluralLabel: 'notes',
         }
-    }, [showAIResults, viewMode, noteGroups, showTagOnlyResults, tagOnlyTotal, ftsData])
+    }, [showAIResults, viewMode, noteGroups, aiChunks.length, showTagOnlyResults, tagOnlyTotal, ftsData])
 
     useEffect(() => {
         if (!hasGeminiApiKey) {
@@ -668,7 +668,14 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                         )}
                         {!showAIInitialization && !aiLoading && !aiError && (
                             viewMode === 'chunk' ? (
-                                <ChunkSearchResults noteGroups={noteGroups} onOpenInContext={onOpenInContext} query={aiSearchQuery} />
+                                <ChunkSearchResults
+                                    chunks={aiChunks}
+                                    onOpenInContext={onOpenInContext}
+                                    query={aiSearchQuery}
+                                    hasMore={aiHasMore}
+                                    loadingMore={aiLoadingMore}
+                                    onLoadMore={loadMoreAI}
+                                />
                             ) : (
                                 <NoteSearchResults
                                     noteGroups={noteGroups}
