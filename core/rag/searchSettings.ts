@@ -41,8 +41,8 @@ export function resolveRagSearchEditableSettings(
   input?: Partial<RagSearchEditableSettings> | null
 ): RagSearchEditableSettings {
   return {
-    ...RAG_SEARCH_EDITABLE_DEFAULTS,
-    ...(input ?? {}),
+    top_k: input?.top_k ?? RAG_SEARCH_EDITABLE_DEFAULTS.top_k,
+    similarity_threshold: input?.similarity_threshold ?? RAG_SEARCH_EDITABLE_DEFAULTS.similarity_threshold,
   }
 }
 

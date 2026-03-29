@@ -1,5 +1,6 @@
 import {
   assertValidRagSearchEditableSettings,
+  resolveRagSearchEditableSettings,
   resolveRagSearchSettings,
   RAG_SEARCH_EDITABLE_DEFAULTS,
 } from "@core/rag/searchSettings"
@@ -14,6 +15,16 @@ describe("core/rag/searchSettings", () => {
     expect(settings.task_type_document).toBe("RETRIEVAL_DOCUMENT")
     expect(settings.task_type_query).toBe("RETRIEVAL_QUERY")
     expect(settings.offset_delta_threshold).toBe(300)
+  })
+
+  it("falls back to defaults when editable overrides are explicitly undefined", () => {
+    const settings = resolveRagSearchEditableSettings({
+      top_k: undefined,
+      similarity_threshold: undefined,
+    })
+
+    expect(settings.top_k).toBe(RAG_SEARCH_EDITABLE_DEFAULTS.top_k)
+    expect(settings.similarity_threshold).toBe(RAG_SEARCH_EDITABLE_DEFAULTS.similarity_threshold)
   })
 
   it("rejects top_k values outside the allowed range", () => {
