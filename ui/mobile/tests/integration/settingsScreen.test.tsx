@@ -3,6 +3,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient } from '../testUtils'
+import { resolveRagSearchSettings } from '@core/rag/searchSettings'
 
 import { ThemeProvider } from '@ui/mobile/providers/ThemeProvider'
 
@@ -12,6 +15,8 @@ const mockUseSupabase = jest.fn()
 const mockUseAuth = jest.fn()
 const mockApiKeysGetStatus = jest.fn()
 const mockApiKeysUpsert = jest.fn()
+const mockApiKeysRemove = jest.fn()
+const mockRagSearchUpsert = jest.fn()
 const mockWordPressGetStatus = jest.fn()
 const mockWordPressUpsert = jest.fn()
 const mockImportAsset = jest.fn()
@@ -33,6 +38,13 @@ jest.mock('@core/services/apiKeysSettings', () => ({
   ApiKeysSettingsService: jest.fn().mockImplementation(() => ({
     getStatus: mockApiKeysGetStatus,
     upsert: mockApiKeysUpsert,
+    removeGeminiApiKey: mockApiKeysRemove,
+  })),
+}))
+
+jest.mock('@core/services/ragSearchSettings', () => ({
+  RagSearchSettingsService: jest.fn().mockImplementation(() => ({
+    upsert: mockRagSearchUpsert,
   })),
 }))
 
@@ -65,11 +77,13 @@ import SettingsScreen from '@ui/mobile/app/(tabs)/settings'
 
 const renderScreen = () =>
   render(
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <SettingsScreen />
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <QueryClientProvider client={createTestQueryClient()}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <SettingsScreen />
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   )
 
 describe('SettingsScreen', () => {
@@ -99,8 +113,21 @@ describe('SettingsScreen', () => {
       deleteAccount: mockDeleteAccount,
     })
 
-    mockApiKeysGetStatus.mockResolvedValue({ gemini: { configured: false } })
-    mockApiKeysUpsert.mockResolvedValue({ gemini: { configured: true } })
+    mockApiKeysGetStatus.mockResolvedValue({
+      gemini: { configured: false },
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.55 }),
+    })
+    mockApiKeysUpsert.mockResolvedValue({
+      gemini: { configured: true },
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.55 }),
+    })
+    mockApiKeysRemove.mockResolvedValue({
+      gemini: { configured: false },
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.55 }),
+    })
+    mockRagSearchUpsert.mockResolvedValue(
+      resolveRagSearchSettings({ top_k: 30, similarity_threshold: 0.55 })
+    )
     mockWordPressGetStatus.mockResolvedValue({
       configured: false,
       integration: null,
@@ -154,22 +181,22 @@ describe('SettingsScreen', () => {
       expect(screen.getByText('Current: dark (dark)')).toBeTruthy()
     })
 
-    fireEvent.press(screen.getByRole('tab', { name: 'API Keys' }))
+    fireEvent.press(screen.getByRole('tab', { name: 'Indexing (RAG)' }))
 
     await waitFor(() => {
-      expect(screen.getByText('External model credentials and secure storage.')).toBeTruthy()
+      expect(screen.getByText('Gemini API key plus AI retrieval settings.')).toBeTruthy()
     })
 
     fireEvent.changeText(screen.getByPlaceholderText('AIzaSy...'), 'AIza-test')
     fireEvent.press(screen.getByRole('tab', { name: 'My Account' }))
-    fireEvent.press(screen.getByRole('tab', { name: 'API Keys' }))
+    fireEvent.press(screen.getByRole('tab', { name: 'Indexing (RAG)' }))
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('AIza-test')).toBeTruthy()
       expect(mockApiKeysGetStatus).toHaveBeenCalledTimes(1)
     })
 
-    fireEvent.press(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Save API key' }))
 
     await waitFor(() => {
       expect(mockApiKeysUpsert).toHaveBeenCalledWith('AIza-test')
