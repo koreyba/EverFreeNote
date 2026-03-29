@@ -441,6 +441,49 @@ describe('SearchResultsPanel', () => {
       .and('not.have.class', 'overflow-hidden')
   })
 
+  it('keeps the AI results header sticky in notes, selection mode, and chunk view', () => {
+    cy.window().then((win) => {
+      win.localStorage.setItem(
+        'everfreenote:aiSearchMode',
+        JSON.stringify({ isAIEnabled: true, preset: 'strict', viewMode: 'note' })
+      )
+    })
+
+    const controller = createController({
+      showFTSResults: false,
+      ftsData: undefined,
+      searchQuery: 'ontology',
+    })
+
+    mountPanel(controller, {
+      hasGeminiApiKey: true,
+      supabase: createAiSupabase([
+        createAiChunk('ai-note-1', 'AI Result One', 0, 0.84),
+        createAiChunk('ai-note-2', 'AI Result Two', 0, 0.78),
+      ]),
+    })
+
+    cy.get('[data-testid="search-results-header"]')
+      .should('have.class', 'sticky')
+      .and('have.class', 'top-0')
+
+    cy.contains('AI Result One')
+      .closest('article')
+      .find('[role="checkbox"]')
+      .click({ force: true })
+
+    cy.get('[data-testid="search-results-header"]')
+      .should('have.class', 'sticky')
+      .and('have.class', 'top-0')
+
+    cy.get('[data-testid="selection-mode-cancel"]').click({ force: true })
+    cy.get('[data-testid="ai-search-view-tab-chunk"]').click({ force: true })
+
+    cy.get('[data-testid="search-results-header"]')
+      .should('have.class', 'sticky')
+      .and('have.class', 'top-0')
+  })
+
   it('does not trigger FTS search when submitting an AI query', () => {
     cy.window().then((win) => {
       win.localStorage.setItem(
