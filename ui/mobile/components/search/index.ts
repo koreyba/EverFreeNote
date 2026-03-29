@@ -1,5 +1,5 @@
 export { AiSearchToggle } from './AiSearchToggle'
-export { AiSearchPresetSelector } from './AiSearchPresetSelector'
+export { AiSearchPrecisionSlider } from './AiSearchPrecisionSlider'
 export { AiSearchViewTabs } from './AiSearchViewTabs'
 export { AiSearchNoteCard } from './AiSearchNoteCard'
 export { AiSearchChunkCard } from './AiSearchChunkCard'

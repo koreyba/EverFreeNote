@@ -3,14 +3,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSupabase } from '@ui/mobile/providers'
 import {
   AI_SEARCH_MIN_QUERY_LENGTH,
-  OFFSET_DELTA_THRESHOLD,
-  SEARCH_PRESETS,
-  type SearchPreset,
 } from '@core/constants/aiSearch'
+import { RAG_SEARCH_TOP_K_MAX, getRagSearchReadonlySettings } from '@core/rag/searchSettings'
 import type { RagChunk, RagNoteGroup } from '@core/types/ragSearch'
 
 const STALE_TIME_MS = 30_000
-const AI_SEARCH_TOP_K_MAX = 100
+const READONLY_RAG_SEARCH_SETTINGS = getRagSearchReadonlySettings()
 
 function deduplicateChunks(
   chunks: RagChunk[],
@@ -19,7 +17,9 @@ function deduplicateChunks(
   const accepted: RagChunk[] = []
   for (const chunk of chunks) {
     const tooClose = accepted.some(
-      (acceptedChunk) => Math.abs(chunk.charOffset - acceptedChunk.charOffset) < OFFSET_DELTA_THRESHOLD
+      (acceptedChunk) =>
+        Math.abs(chunk.charOffset - acceptedChunk.charOffset) <
+        READONLY_RAG_SEARCH_SETTINGS.offset_delta_threshold
     )
     if (!tooClose) accepted.push(chunk)
     if (accepted.length >= maxCount) break
@@ -52,8 +52,8 @@ function groupByNote(chunks: RagChunk[]): RagNoteGroup[] {
 
 function hashText(value: string): string {
   let hash = 2166136261
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index)
+  for (const char of value) {
+    hash ^= char.codePointAt(0) ?? 0
     hash = Math.imul(hash, 16777619)
   }
   return (hash >>> 0).toString(36)
@@ -62,10 +62,13 @@ function hashText(value: string): string {
 function buildGroupsSignature(groups: RagNoteGroup[]): string {
   return groups
     .map((group) => {
-      const tagsSignature = Array.isArray(group.noteTags) ? [...group.noteTags].sort().join(',') : ''
+      const tagsSignature = Array.isArray(group.noteTags)
+        ? [...group.noteTags].sort((left, right) => left.localeCompare(right)).join(',')
+        : ''
       const chunksSignature = group.chunks
         .map((chunk) =>
-          `${chunk.chunkIndex}:${chunk.charOffset}:${chunk.similarity.toFixed(6)}:${hashText(chunk.content)}`
+          `${chunk.chunkIndex}:${chunk.charOffset}:${chunk.similarity.toFixed(6)}:` +
+          `${hashText(chunk.content)}:${hashText(chunk.bodyContent ?? chunk.content)}:${hashText(chunk.overlapPrefix)}`
         )
         .join('|')
       return `${group.noteId}:${hashText(group.noteTitle)}:${hashText(tagsSignature)}:${group.topScore.toFixed(6)}:${group.hiddenCount}:${chunksSignature}`
@@ -73,41 +76,60 @@ function buildGroupsSignature(groups: RagNoteGroup[]): string {
     .join('||')
 }
 
+function buildChunksSignature(chunks: RagChunk[]): string {
+  return chunks
+    .map((chunk) =>
+      `${chunk.noteId}:${chunk.chunkIndex}:${chunk.charOffset}:${chunk.similarity.toFixed(6)}:` +
+      `${hashText(chunk.content)}:${hashText(chunk.bodyContent ?? chunk.content)}:${hashText(chunk.overlapPrefix)}`
+    )
+    .join('||')
+}
+
 type UseMobileAIPaginatedSearchOptions = {
   query: string
-  preset: SearchPreset
+  topK: number
+  threshold: number
   filterTag: string | null
   isEnabled: boolean
+  resultMode?: 'note' | 'chunk'
 }
 
 export function useMobileAIPaginatedSearch({
   query,
-  preset,
+  topK,
+  threshold,
   filterTag,
   isEnabled,
+  resultMode = 'chunk',
 }: UseMobileAIPaginatedSearchOptions) {
   const { client, user } = useSupabase()
-  const { topK: baseTopK, threshold } = SEARCH_PRESETS[preset]
-  const pageSize = Math.max(1, baseTopK)
+  const pageSize = Math.max(1, Math.min(topK, RAG_SEARCH_TOP_K_MAX))
 
   const [aiOffset, setAiOffset] = useState(0)
   const [aiAccumulatedResults, setAiAccumulatedResults] = useState<RagNoteGroup[]>([])
+  const [aiAccumulatedChunks, setAiAccumulatedChunks] = useState<RagChunk[]>([])
   const lastProcessedDataRef = useRef('')
 
   const trimmedQuery = query.trim()
   const queryEnabled = isEnabled && !!user?.id && trimmedQuery.length >= AI_SEARCH_MIN_QUERY_LENGTH
-  const searchIdentity = `${user?.id ?? 'anonymous'}::${trimmedQuery}::${preset}::${filterTag ?? ''}::${isEnabled}`
+  const normalizedThreshold = threshold.toFixed(2)
+  const normalizedThresholdValue = Number(normalizedThreshold)
+  const searchIdentity =
+    `${user?.id ?? 'anonymous'}::${trimmedQuery}::${pageSize}::${normalizedThreshold}::` +
+    `${filterTag ?? ''}::${isEnabled}::${resultMode}`
   const [committedIdentity, setCommittedIdentity] = useState(searchIdentity)
-  const effectiveAiOffset = committedIdentity !== searchIdentity ? 0 : aiOffset
+  const identityCommitted = committedIdentity === searchIdentity
+  const effectiveAiOffset = identityCommitted ? aiOffset : 0
 
   const requestedTopK = useMemo(
-    () => Math.min(AI_SEARCH_TOP_K_MAX, pageSize + effectiveAiOffset),
+    () => Math.min(RAG_SEARCH_TOP_K_MAX, pageSize + effectiveAiOffset),
     [effectiveAiOffset, pageSize]
   )
 
   const resetAIResults = useCallback(() => {
     setAiOffset(0)
     setAiAccumulatedResults([])
+    setAiAccumulatedChunks([])
     lastProcessedDataRef.current = ''
   }, [])
 
@@ -118,27 +140,61 @@ export function useMobileAIPaginatedSearch({
   }, [committedIdentity, resetAIResults, searchIdentity])
 
   const result = useQuery({
-    queryKey: ['mobileAiSearch', user?.id ?? null, trimmedQuery, preset, filterTag, requestedTopK],
+    queryKey: [
+      'mobileAiSearch',
+      user?.id ?? null,
+      trimmedQuery,
+      pageSize,
+      normalizedThreshold,
+      filterTag,
+      requestedTopK,
+      resultMode,
+    ],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
 
-      const { data, error } = await client.functions.invoke('rag-search', {
-        body: {
-          query: trimmedQuery,
-          topK: requestedTopK,
-          threshold,
-          filterTag: filterTag ?? null,
-        },
-      })
+      const fetchChunkWindow = async (chunkLimit: number) => {
+        const { data, error } = await client.functions.invoke('rag-search', {
+          body: {
+            query: trimmedQuery,
+            topK: chunkLimit,
+            threshold: normalizedThresholdValue,
+            filterTag: filterTag ?? null,
+          },
+        })
 
-      if (error) throw new Error(error.message ?? 'AI Search failed')
+        if (error) throw new Error(error.message ?? 'AI Search failed')
 
-      const chunks = Array.isArray(data?.chunks) ? (data.chunks as RagChunk[]) : []
-      const availableChunkCount =
-        typeof data?.availableChunkCount === 'number' ? data.availableChunkCount : chunks.length
+        const chunks = Array.isArray(data?.chunks) ? (data.chunks as RagChunk[]) : []
+        return {
+          chunkCount: chunks.length,
+          hasMore: data?.hasMore === true,
+          chunks,
+          groups: groupByNote(chunks),
+        }
+      }
+
+      if (resultMode === 'chunk') {
+        return fetchChunkWindow(requestedTopK)
+      }
+
+      let chunkLimit = requestedTopK
+      let noteResult = await fetchChunkWindow(chunkLimit)
+
+      while (
+        noteResult.hasMore &&
+        noteResult.groups.length < requestedTopK &&
+        chunkLimit < RAG_SEARCH_TOP_K_MAX
+      ) {
+        chunkLimit = Math.min(RAG_SEARCH_TOP_K_MAX, chunkLimit + pageSize)
+        noteResult = await fetchChunkWindow(chunkLimit)
+      }
+
       return {
-        availableChunkCount,
-        groups: groupByNote(chunks),
+        chunkCount: noteResult.chunkCount,
+        hasMore: noteResult.groups.length > requestedTopK || noteResult.hasMore,
+        chunks: noteResult.chunks,
+        groups: noteResult.groups.slice(0, requestedTopK),
       }
     },
     enabled: queryEnabled,
@@ -149,6 +205,7 @@ export function useMobileAIPaginatedSearch({
   useEffect(() => {
     if (!queryEnabled) {
       setAiAccumulatedResults([])
+      setAiAccumulatedChunks([])
       setAiOffset(0)
       lastProcessedDataRef.current = ''
       return
@@ -156,27 +213,29 @@ export function useMobileAIPaginatedSearch({
     if (!result.data) return
 
     const dataSignature =
-      `${effectiveAiOffset}-${result.data.availableChunkCount}-${result.data.groups.length}-` +
-      buildGroupsSignature(result.data.groups)
+      `${effectiveAiOffset}-${result.data.chunkCount}-${result.data.groups.length}-` +
+      `${buildChunksSignature(result.data.chunks)}::${buildGroupsSignature(result.data.groups)}`
 
     if (dataSignature === lastProcessedDataRef.current) return
     lastProcessedDataRef.current = dataSignature
     setAiAccumulatedResults(result.data.groups)
+    setAiAccumulatedChunks(result.data.chunks)
   }, [effectiveAiOffset, queryEnabled, result.data])
 
   const aiHasMore =
+    identityCommitted &&
     queryEnabled &&
     !!result.data &&
-    requestedTopK < AI_SEARCH_TOP_K_MAX &&
-    result.data.availableChunkCount >= requestedTopK
+    requestedTopK < RAG_SEARCH_TOP_K_MAX &&
+    result.data.hasMore === true
 
   const aiLoadingMore = result.isFetching && effectiveAiOffset > 0
-  const identitySettled = committedIdentity === searchIdentity
+  const identitySettled = identityCommitted
 
   const loadMoreAI = useCallback(() => {
     if (!queryEnabled || aiLoadingMore || !aiHasMore) return
     setAiOffset((prev) =>
-      Math.min(prev + pageSize, Math.max(0, AI_SEARCH_TOP_K_MAX - pageSize))
+      Math.min(prev + pageSize, Math.max(0, RAG_SEARCH_TOP_K_MAX - pageSize))
     )
   }, [aiHasMore, aiLoadingMore, pageSize, queryEnabled])
 
@@ -198,6 +257,7 @@ export function useMobileAIPaginatedSearch({
 
   return {
     noteGroups: queryEnabled && identitySettled ? aiAccumulatedResults : [],
+    chunks: queryEnabled && identitySettled ? aiAccumulatedChunks : [],
     isLoading,
     isRefreshing,
     error: queryEnabled && identitySettled && result.error ? String(result.error) : null,

@@ -19,7 +19,7 @@ const tabs: SettingsTabDefinition[] = [
   { key: 'import', label: 'Import .enex file' },
   { key: 'export', label: 'Export .enex file' },
   { key: 'wordpress', label: 'WordPress settings' },
-  { key: 'apiKeys', label: 'API Keys' },
+  { key: 'apiKeys', label: 'Indexing (RAG)' },
 ]
 
 const initialVisitedTabs: Record<SettingsTabKey, boolean> = {
