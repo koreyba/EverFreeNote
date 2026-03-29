@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native'
 import { useQueryClient } from '@tanstack/react-query'
 import { KeyRound } from 'lucide-react-native'
@@ -50,6 +50,25 @@ function buildIndexingFormState(settings: RagIndexingSettings) {
   }
 }
 
+function isIndexingFormPristine(
+  formState: ReturnType<typeof buildIndexingFormState>,
+  settings: RagIndexingSettings
+) {
+  return (
+    formState.target_chunk_size === String(settings.target_chunk_size) &&
+    formState.min_chunk_size === String(settings.min_chunk_size) &&
+    formState.max_chunk_size === String(settings.max_chunk_size) &&
+    formState.overlap === String(settings.overlap) &&
+    formState.use_title === settings.use_title &&
+    formState.use_section_headings === settings.use_section_headings &&
+    formState.use_tags === settings.use_tags
+  )
+}
+
+function isRetrievalTopKPristine(topKValue: string, settings: RagSearchSettings) {
+  return topKValue === String(settings.top_k)
+}
+
 export function ApiKeysSettingsPanel() {
   const { client } = useSupabase()
   const queryClient = useQueryClient()
@@ -75,11 +94,31 @@ export function ApiKeysSettingsPanel() {
     buildIndexingFormState(resolveRagIndexingSettings(null))
   )
   const [topKValue, setTopKValue] = useState(String(RAG_SEARCH_EDITABLE_DEFAULTS.top_k))
+  const latestIndexingFormStateRef = useRef(indexingFormState)
+  const latestTopKValueRef = useRef(topKValue)
+  const latestDisplayRagIndexingSettingsRef = useRef(resolveRagIndexingSettings(null))
+  const latestDisplayRagSearchSettingsRef = useRef(resolveRagSearchSettings(null))
 
   const displayRagIndexingSettings = resolvedRagIndexingSettings ?? resolveRagIndexingSettings(null)
   const displayRagSearchSettings = resolvedRagSearchSettings ?? resolveRagSearchSettings(null)
   const canEditIndexing = !isLoading && resolvedRagIndexingSettings !== null
   const canEditRetrieval = !isLoading && resolvedRagSearchSettings !== null
+
+  useEffect(() => {
+    latestIndexingFormStateRef.current = indexingFormState
+  }, [indexingFormState])
+
+  useEffect(() => {
+    latestTopKValueRef.current = topKValue
+  }, [topKValue])
+
+  useEffect(() => {
+    latestDisplayRagIndexingSettingsRef.current = displayRagIndexingSettings
+  }, [displayRagIndexingSettings])
+
+  useEffect(() => {
+    latestDisplayRagSearchSettingsRef.current = displayRagSearchSettings
+  }, [displayRagSearchSettings])
 
   const indexingValidationErrors = useMemo(() => (
     validateRagIndexingEditableSettings({
@@ -171,12 +210,24 @@ export function ApiKeysSettingsPanel() {
       const status = await apiKeysService.upsert(trimmed)
       const ragIndexingSettings = status.ragIndexing ?? displayRagIndexingSettings
       const ragSearchSettings = status.ragSearch ?? displayRagSearchSettings
+      const shouldSyncIndexing = isIndexingFormPristine(
+        latestIndexingFormStateRef.current,
+        latestDisplayRagIndexingSettingsRef.current
+      )
+      const shouldSyncRetrieval = isRetrievalTopKPristine(
+        latestTopKValueRef.current,
+        latestDisplayRagSearchSettingsRef.current
+      )
 
       setConfigured(status.gemini.configured)
-      setResolvedRagIndexingSettings(ragIndexingSettings)
-      setResolvedRagSearchSettings(ragSearchSettings)
-      setIndexingFormState(buildIndexingFormState(ragIndexingSettings))
-      setTopKValue(String(ragSearchSettings.top_k))
+      if (shouldSyncIndexing) {
+        setResolvedRagIndexingSettings(ragIndexingSettings)
+        setIndexingFormState(buildIndexingFormState(ragIndexingSettings))
+      }
+      if (shouldSyncRetrieval) {
+        setResolvedRagSearchSettings(ragSearchSettings)
+        setTopKValue(String(ragSearchSettings.top_k))
+      }
       setValue('')
       setKeyFeedback({ variant: 'success', message: 'Gemini API key saved successfully.' })
       await syncQueryCaches()
@@ -200,12 +251,24 @@ export function ApiKeysSettingsPanel() {
       const status = await apiKeysService.removeGeminiApiKey()
       const ragIndexingSettings = status.ragIndexing ?? displayRagIndexingSettings
       const ragSearchSettings = status.ragSearch ?? displayRagSearchSettings
+      const shouldSyncIndexing = isIndexingFormPristine(
+        latestIndexingFormStateRef.current,
+        latestDisplayRagIndexingSettingsRef.current
+      )
+      const shouldSyncRetrieval = isRetrievalTopKPristine(
+        latestTopKValueRef.current,
+        latestDisplayRagSearchSettingsRef.current
+      )
 
       setConfigured(status.gemini.configured)
-      setResolvedRagIndexingSettings(ragIndexingSettings)
-      setResolvedRagSearchSettings(ragSearchSettings)
-      setIndexingFormState(buildIndexingFormState(ragIndexingSettings))
-      setTopKValue(String(ragSearchSettings.top_k))
+      if (shouldSyncIndexing) {
+        setResolvedRagIndexingSettings(ragIndexingSettings)
+        setIndexingFormState(buildIndexingFormState(ragIndexingSettings))
+      }
+      if (shouldSyncRetrieval) {
+        setResolvedRagSearchSettings(ragSearchSettings)
+        setTopKValue(String(ragSearchSettings.top_k))
+      }
       setValue('')
       setKeyFeedback({ variant: 'success', message: 'Gemini API key removed.' })
       await syncQueryCaches()

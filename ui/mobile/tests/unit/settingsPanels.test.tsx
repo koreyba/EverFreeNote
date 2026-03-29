@@ -380,6 +380,40 @@ describe('settings panels', () => {
     })
   })
 
+  it('does not clobber unsaved indexing and retrieval edits when saving the Gemini key', async () => {
+    mockApiKeysGetStatus.mockResolvedValueOnce({
+      gemini: { configured: false },
+      ragIndexing: resolveRagIndexingSettings({ target_chunk_size: 500 }),
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.55 }),
+    })
+    mockApiKeysUpsert.mockResolvedValueOnce({
+      gemini: { configured: true },
+      ragIndexing: resolveRagIndexingSettings({ target_chunk_size: 900 }),
+      ragSearch: resolveRagSearchSettings({ top_k: 40, similarity_threshold: 0.55 }),
+    })
+
+    renderWithTheme(<ApiKeysSettingsPanel />)
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('500')).toBeTruthy()
+      expect(screen.getByDisplayValue('15')).toBeTruthy()
+    })
+
+    fireEvent.changeText(screen.getByDisplayValue('500'), '650')
+    fireEvent.changeText(screen.getByDisplayValue('15'), '30')
+    fireEvent.changeText(screen.getByPlaceholderText('AIzaSy...'), 'AIza-preserve-drafts')
+    fireEvent.press(screen.getByRole('button', { name: 'Save API key' }))
+
+    await waitFor(() => {
+      expect(mockApiKeysUpsert).toHaveBeenCalledWith('AIza-preserve-drafts')
+      expect(screen.getByText('Gemini API key saved successfully.')).toBeTruthy()
+      expect(screen.getByDisplayValue('650')).toBeTruthy()
+      expect(screen.getByDisplayValue('30')).toBeTruthy()
+      expect(screen.queryByDisplayValue('900')).toBeNull()
+      expect(screen.queryByDisplayValue('40')).toBeNull()
+    })
+  })
+
   it('shows indexing and retrieval settings, saves both, and allows removing a stored key', async () => {
     mockApiKeysGetStatus.mockResolvedValueOnce({
       gemini: { configured: true },
