@@ -9,10 +9,10 @@ description: Mobile parity for persisted retrieval settings and precision tuning
 ## Problem Statement
 **What problem are we solving?**
 
-The web app already supports persisted retrieval settings and an in-search precision control, but the mobile app still uses the older preset-only AI search model.
+The web app already supports persisted retrieval settings, an in-search precision control, and configurable RAG indexing settings, but the mobile app still exposes only part of that configuration surface.
 
 - Affected users: EverFreeNote mobile users who use AI RAG Search and want the same retrieval controls already available on web.
-- Current situation: mobile search still exposes `Strict / Neutral / Broad` presets, derives `topK` and threshold locally from presets, and mobile settings only manage the Gemini API key.
+- Current situation: mobile search still exposes `Strict / Neutral / Broad` presets, derives `topK` and threshold locally from presets, and the mobile `Indexing (RAG)` screen still misses the editable RAG indexing settings that already exist on web.
 - Current workaround: switch to web to tune retrieval behavior, or accept the mobile presets even when they do not match the user’s corpus or query style.
 
 ## Goals & Objectives
@@ -23,6 +23,14 @@ The web app already supports persisted retrieval settings and an in-search preci
 - Replace the mobile preset selector with a precision slider in the mobile search screen.
 - Load and persist retrieval settings on the user level via the existing shared settings services.
 - Expose `topK` in mobile settings as a persisted retrieval setting.
+- Expose editable RAG indexing settings on the same mobile `Indexing (RAG)` screen:
+  - `target_chunk_size`
+  - `min_chunk_size`
+  - `max_chunk_size`
+  - `overlap`
+  - `use_title`
+  - `use_section_headings`
+  - `use_tags`
 - Surface read-only retrieval metadata in mobile settings:
   - `task_type_document`
   - `task_type_query`
@@ -36,7 +44,7 @@ The web app already supports persisted retrieval settings and an in-search preci
 - Align mobile `Load more` behavior with the newer backend `hasMore` contract where possible.
 
 ### Non-goals
-- No changes to indexing or chunking logic.
+- No changes to the indexing or chunking algorithms themselves; only the settings UI and wiring are added on mobile.
 - No changes to Gemini model/task-type behavior.
 - No redesign of mobile search beyond what is needed to support retrieval tuning and parity with web.
 - No new backend feature beyond wiring mobile to what already exists.
@@ -46,12 +54,14 @@ The web app already supports persisted retrieval settings and an in-search preci
 
 - As a mobile user, I want AI search precision controls in the search screen so I can tune results without leaving the app.
 - As a mobile user, I want `topK` in Settings so my retrieval breadth is consistent across sessions.
+- As a mobile user, I want the same indexing controls on mobile that already exist on web so I can tune how future notes are chunked without leaving the app.
 - As a mobile user, I want retrieval settings to match web so search quality behaves consistently across devices.
 - As a mobile user, I want changing the precision slider to trigger a new AI search only after I finish adjusting it.
 - As a mobile user, I want settings defaults and read-only system values to remain visible even before I save anything custom.
 
 ### Key workflows
 - User opens mobile Settings and updates persisted `topK`.
+- User opens mobile Settings and updates RAG indexing settings for future indexing.
 - User opens mobile AI search and adjusts `Precision`.
 - User releases the slider and the current AI search reruns once with the new threshold.
 - User switches between `Notes` and `Chunks` and sees retrieval output that reflects the persisted retrieval settings.
@@ -65,12 +75,13 @@ The web app already supports persisted retrieval settings and an in-search preci
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] Mobile settings expose persisted retrieval settings in addition to the Gemini API key.
+- [ ] Mobile settings expose persisted retrieval settings and editable RAG indexing settings in addition to the Gemini API key.
 - [ ] Mobile search no longer shows `Strict / Neutral / Broad`.
 - [ ] Mobile search shows a precision slider with English copy.
 - [ ] Mobile AI search uses persisted `topK` and committed threshold values instead of local presets.
 - [ ] Mobile retrieval settings are loaded from and saved to the same per-user backend contract used by web.
 - [ ] Mobile UI shows read-only retrieval metadata.
+- [ ] Mobile UI shows editable indexing controls plus relevant read-only indexing metadata.
 - [ ] Existing Gemini key flow on mobile continues to work.
 - [ ] Mobile tests cover the new retrieval settings UI and search behavior.
 
@@ -80,13 +91,14 @@ The web app already supports persisted retrieval settings and an in-search preci
 ### Technical constraints
 - Mobile search currently uses `useMobileAIPaginatedSearch` and `useMobileSearchMode`, both built around local presets.
 - Mobile search/settings screens are implemented in React Native / Expo, not shared web components.
-- Shared retrieval settings types and services already exist in `core`.
+- Shared retrieval and indexing settings types and services already exist in `core`.
 - Backend retrieval settings storage and `rag-search` contract already exist.
 
 ### Assumptions
 - Mobile should follow the same product decisions already made for web:
   - persisted `topK`
   - precision slider for `similarity_threshold`
+  - indexing settings live on the same `Indexing (RAG)` screen
   - English copy
   - fixed Gemini task types
 - Mobile settings should remain under the existing `API Keys` / integration area instead of introducing a brand-new tab.

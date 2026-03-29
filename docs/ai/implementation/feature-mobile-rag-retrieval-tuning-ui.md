@@ -29,6 +29,8 @@ description: Implementation notes for mobile retrieval settings and AI search pr
 **How is the code organized?**
 
 - Shared retrieval settings:
+  - `core/rag/indexingSettings.ts`
+  - `core/services/ragIndexSettings.ts`
   - `core/rag/searchSettings.ts`
   - `core/services/ragSearchSettings.ts`
 - Mobile search:
@@ -48,8 +50,10 @@ description: Implementation notes for mobile retrieval settings and AI search pr
 - Keep `isAIEnabled` and `viewMode` in mobile local state, but remove preset persistence.
 - Persist `similarity_threshold` via `RagSearchSettingsService` on slider commit.
 - Load `topK` and read-only retrieval metadata into the mobile settings panel.
+- Load editable indexing settings and read-only indexing metadata into the same mobile settings panel.
 - Keep Gemini key save/remove on the same settings screen and invalidate `apiKeysStatus` queries after successful saves.
 - Expose raw AI chunks in mobile chunk view instead of flattening only two grouped note chunks.
+- Reuse the existing `ApiKeysSettingsPanel` card rather than creating a second mobile settings destination for indexing.
 
 ### Patterns & Best Practices
 - Follow the web feature's product semantics described in `docs/ai/design/feature-mobile-rag-retrieval-tuning-ui.md` under `Architecture Overview`, `Component Breakdown`, and `Design Decisions`, but keep mobile-native layout and controls.
