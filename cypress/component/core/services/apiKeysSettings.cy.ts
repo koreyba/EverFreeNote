@@ -16,14 +16,18 @@ describe('core/services/ApiKeysSettingsService', () => {
     expect(invoke).to.have.been.calledWith('api-keys-status', { body: {} })
   })
 
-  it('getStatus returns unconfigured state for null response', async () => {
+  it('getStatus throws for null response', async () => {
     const invoke = cy.stub().resolves({ data: null, error: null })
     const supabase = { functions: { invoke } } as unknown as SupabaseClient
 
     const service = new ApiKeysSettingsService(supabase)
-    const result = await service.getStatus()
 
-    expect(result).to.deep.equal({ gemini: { configured: false } })
+    try {
+      await service.getStatus()
+      expect.fail('Expected getStatus to throw')
+    } catch (error) {
+      expect((error as Error).message).to.equal('Unexpected response while loading API key settings')
+    }
   })
 
   it('getStatus surfaces message from error context payload', async () => {
@@ -63,7 +67,7 @@ describe('core/services/ApiKeysSettingsService', () => {
     })
   })
 
-  it('upsert throws for null success response', async () => {
+  it('upsert throws for malformed success response', async () => {
     const invoke = cy.stub().resolves({ data: null, error: null })
     const supabase = { functions: { invoke } } as unknown as SupabaseClient
 
@@ -73,7 +77,7 @@ describe('core/services/ApiKeysSettingsService', () => {
       await service.upsert('test-gemini-key')
       expect.fail('Expected upsert to throw')
     } catch (error) {
-      expect((error as Error).message).to.equal('Unexpected response while saving API key')
+      expect((error as Error).message).to.equal('Unexpected response while updating API key settings')
     }
   })
 

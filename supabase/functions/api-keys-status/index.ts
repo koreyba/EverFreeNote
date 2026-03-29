@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
 import { resolveRagIndexingSettings } from "../../../core/rag/indexingSettings.ts"
+import { resolveRagSearchSettings } from "../../../core/rag/searchSettings.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -19,6 +20,11 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
 
+const readAuthToken = (authHeader: string): string =>
+  authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice("bearer ".length).trim()
+    : ""
+
 serve(async (req: Request) => {
   try {
     if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
@@ -29,8 +35,7 @@ serve(async (req: Request) => {
     if (!supabaseUrl || !serviceRoleKey) return jsonResponse({ error: "Function not configured" }, 500)
 
     const authHeader = req.headers.get("Authorization")?.trim() ?? ""
-    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
-    const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
+    const token = readAuthToken(authHeader)
     if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
@@ -49,6 +54,12 @@ serve(async (req: Request) => {
       .eq("user_id", userData.user.id)
       .maybeSingle()
 
+    const { data: ragSearchData, error: ragSearchError } = await supabaseAdmin
+      .from("user_rag_search_settings")
+      .select("top_k, similarity_threshold")
+      .eq("user_id", userData.user.id)
+      .maybeSingle()
+
     if (error) {
       console.error("[api-keys-status]", error)
       return jsonResponse({ error: "Internal error" }, 500)
@@ -58,9 +69,15 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Internal error" }, 500)
     }
 
+    const ragSearchSettings = ragSearchError
+      ? (console.warn("[api-keys-status] Falling back to default RAG retrieval settings", ragSearchError),
+        resolveRagSearchSettings(null))
+      : resolveRagSearchSettings(ragSearchData ?? null)
+
     return jsonResponse({
       gemini: { configured: Boolean(data?.gemini_api_key_encrypted) },
       ragIndexing: resolveRagIndexingSettings(ragIndexingData ?? null),
+      ragSearch: ragSearchSettings,
     })
   } catch (err) {
     console.error("[api-keys-status]", err)

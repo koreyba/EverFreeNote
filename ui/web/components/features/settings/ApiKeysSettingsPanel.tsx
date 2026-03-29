@@ -4,12 +4,20 @@ import * as React from "react"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RagIndexingSettingsPanel } from "@/components/features/settings/RagIndexingSettingsPanel"
+import { RagSearchSettingsPanel } from "@/components/features/settings/RagSearchSettingsPanel"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
+import {
+  settingsActionButtonClassName,
+  settingsActionRowClassName,
+  settingsInsetPanelClassName,
+  settingsSectionCardClassName,
+} from "@/components/features/settings/settingsLayout"
 
 type ApiKeysSettingsPanelProps = {
   onClose?: () => void
@@ -24,8 +32,8 @@ export function ApiKeysSettingsPanel({
   const service = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
 
   const [geminiApiKey, setGeminiApiKey] = React.useState("")
-  const [configured, setConfigured] = React.useState(false)
-  const [loading, setLoading] = React.useState(false)
+  const [configured, setConfigured] = React.useState<boolean | null>(null)
+  const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
@@ -39,7 +47,7 @@ export function ApiKeysSettingsPanel({
       const status = await service.getStatus()
       setConfigured(status.gemini.configured)
     } catch (error) {
-      setConfigured(false)
+      setConfigured(null)
       setErrorMessage(error instanceof Error ? error.message : "Failed to load API key settings")
     } finally {
       setLoading(false)
@@ -55,11 +63,11 @@ export function ApiKeysSettingsPanel({
     setSuccessMessage(null)
     const trimmedGeminiApiKey = geminiApiKey.trim()
 
-    if (!trimmedGeminiApiKey && !configured) {
+    if (!trimmedGeminiApiKey && configured !== true) {
       setErrorMessage("Gemini API key is required for initial setup.")
       return
     }
-    if (!trimmedGeminiApiKey && configured) {
+    if (!trimmedGeminiApiKey && configured === true) {
       setSuccessMessage("No changes to save.")
       return
     }
@@ -77,35 +85,84 @@ export function ApiKeysSettingsPanel({
     }
   }
 
+  const handleRemove = async () => {
+    if (configured !== true) return
+    const confirmed = window.confirm(
+      "Remove the stored Gemini API key? AI search and note indexing will stop working until you add a new key."
+    )
+    if (!confirmed) return
+
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    setSaving(true)
+
+    try {
+      await service.removeGeminiApiKey()
+      setConfigured(false)
+      setGeminiApiKey("")
+      setSuccessMessage("API key removed.")
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to remove API key")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Gemini API key</CardTitle>
-          <CardDescription>
-            Store the Gemini API key used for note indexing and AI search.
-          </CardDescription>
+      <Card className={settingsSectionCardClassName}>
+        <CardHeader className="space-y-4 pb-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-2">
+              <CardTitle>Gemini API key</CardTitle>
+              <CardDescription>
+                Store the Gemini API key used for note indexing and AI search.
+              </CardDescription>
+            </div>
+            <Badge
+              variant="outline"
+              className={configured === true
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : "border-border/70 bg-background/70 text-muted-foreground"}
+            >
+              {loading ? "Checking..." : configured === true ? "Configured" : configured === false ? "Not configured" : "Status unavailable"}
+            </Badge>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
+        <CardContent className="space-y-5">
+          <div className={settingsInsetPanelClassName}>
             <Label htmlFor="gemini-api-key">Gemini API Key</Label>
-            <Input
-              id="gemini-api-key"
-              type="password"
-              value={geminiApiKey}
-              onChange={(event) => setGeminiApiKey(event.target.value)}
-              placeholder={configured ? "Leave empty to keep current key" : "AIzaSy..."}
-              disabled={loading || saving}
-              autoComplete="off"
-            />
-            {configured ? (
-              <p className="text-xs text-muted-foreground">
-                A key is stored. Enter a new one only to replace it.
-              </p>
-            ) : null}
+            <div className="mt-2">
+              <Input
+                id="gemini-api-key"
+                type="password"
+                value={geminiApiKey}
+                onChange={(event) => setGeminiApiKey(event.target.value)}
+                placeholder={
+                  loading
+                    ? "Checking key status..."
+                    : configured === true
+                      ? "Leave empty to keep current key"
+                      : configured === false
+                        ? "AIzaSy..."
+                        : "Enter Gemini API key"
+                }
+                disabled={loading || saving}
+                autoComplete="off"
+              />
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {loading
+                ? "Checking stored key status..."
+                : configured === true
+                  ? "A key is already stored. Enter a new one to replace it, or use Remove key below."
+                  : configured === false
+                    ? "Your Gemini key is stored encrypted and is never shown again after saving."
+                    : "Stored key status is unavailable. Saving a new key will replace any existing key."}
+            </p>
           </div>
 
-          {configured ? (
+          {configured === true ? (
             <div className="rounded-md border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-600/30 dark:bg-emerald-500/10 dark:text-emerald-300">
               Gemini API key is configured.
             </div>
@@ -125,13 +182,31 @@ export function ApiKeysSettingsPanel({
             </div>
           ) : null}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className={settingsActionRowClassName}>
             {showCloseButton ? (
-              <Button variant="outline" onClick={onClose} disabled={saving}>
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={saving}
+                className={settingsActionButtonClassName}
+              >
                 Close
               </Button>
             ) : null}
-            <Button onClick={handleSave} disabled={loading || saving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleRemove}
+              disabled={loading || saving || configured !== true}
+              className={`${settingsActionButtonClassName} border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive`}
+            >
+              Remove key
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={loading || saving}
+              className={settingsActionButtonClassName}
+            >
               {saving ? "Saving..." : "Save API key"}
             </Button>
           </div>
@@ -139,6 +214,7 @@ export function ApiKeysSettingsPanel({
       </Card>
 
       <RagIndexingSettingsPanel />
+      <RagSearchSettingsPanel />
     </div>
   )
 }

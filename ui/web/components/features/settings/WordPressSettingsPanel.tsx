@@ -9,6 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
+import {
+  settingsActionButtonClassName,
+  settingsActionRowClassName,
+  settingsInsetPanelClassName,
+} from "@/components/features/settings/settingsLayout"
 
 type WordPressSettingsPanelProps = {
   onConfiguredChange?: (configured: boolean) => void
@@ -126,53 +131,55 @@ export function WordPressSettingsPanel({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="wp-site-url">Site URL</Label>
-        <Input
-          id="wp-site-url"
-          value={siteUrl}
-          onChange={(event) => setSiteUrl(event.target.value)}
-          placeholder="https://example.com"
-          disabled={loading || saving}
-        />
-      </div>
+      <div className={`${settingsInsetPanelClassName} space-y-5`}>
+        <div className="space-y-2">
+          <Label htmlFor="wp-site-url">Site URL</Label>
+          <Input
+            id="wp-site-url"
+            value={siteUrl}
+            onChange={(event) => setSiteUrl(event.target.value)}
+            placeholder="https://example.com"
+            disabled={loading || saving}
+          />
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="wp-username">WordPress username</Label>
-        <Input
-          id="wp-username"
-          value={wpUsername}
-          onChange={(event) => setWpUsername(event.target.value)}
-          placeholder="editor-user"
-          disabled={loading || saving}
-        />
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="wp-username">WordPress username</Label>
+          <Input
+            id="wp-username"
+            value={wpUsername}
+            onChange={(event) => setWpUsername(event.target.value)}
+            placeholder="editor-user"
+            disabled={loading || saving}
+          />
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="wp-app-password">Application password</Label>
-        <Input
-          id="wp-app-password"
-          type="password"
-          value={applicationPassword}
-          onChange={(event) => setApplicationPassword(event.target.value)}
-          placeholder={hasStoredPassword ? "Leave empty to keep current password" : "xxxx xxxx xxxx xxxx"}
-          disabled={loading || saving}
-        />
-        {hasStoredPassword ? (
-          <p className="text-xs text-muted-foreground">Stored password exists. Enter a new one only to replace it.</p>
-        ) : null}
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="wp-app-password">Application password</Label>
+          <Input
+            id="wp-app-password"
+            type="password"
+            value={applicationPassword}
+            onChange={(event) => setApplicationPassword(event.target.value)}
+            placeholder={hasStoredPassword ? "Leave empty to keep current password" : "xxxx xxxx xxxx xxxx"}
+            disabled={loading || saving}
+          />
+          {hasStoredPassword ? (
+            <p className="text-xs text-muted-foreground">Stored password exists. Enter a new one only to replace it.</p>
+          ) : null}
+        </div>
 
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="wp-enabled"
-          checked={enabled}
-          onCheckedChange={(checked) => setEnabled(Boolean(checked))}
-          disabled={loading || saving}
-        />
-        <Label htmlFor="wp-enabled" className="cursor-pointer">
-          Enable WordPress export
-        </Label>
+        <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-4 py-3">
+          <Checkbox
+            id="wp-enabled"
+            checked={enabled}
+            onCheckedChange={(checked) => setEnabled(Boolean(checked))}
+            disabled={loading || saving}
+          />
+          <Label htmlFor="wp-enabled" className="cursor-pointer">
+            Enable WordPress export
+          </Label>
+        </div>
       </div>
 
       {configured ? (
@@ -195,14 +202,23 @@ export function WordPressSettingsPanel({
         </div>
       ) : null}
 
-      <div className="flex justify-end gap-2 pt-2">
+      <div className={settingsActionRowClassName}>
         {showCloseButton ? (
-          <Button variant="outline" onClick={onClose} disabled={saving}>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={saving}
+            className={settingsActionButtonClassName}
+          >
             Close
           </Button>
         ) : null}
-        <Button onClick={handleSave} disabled={loading || saving}>
-          {saving ? "Saving..." : "Save"}
+        <Button
+          onClick={handleSave}
+          disabled={loading || saving}
+          className={settingsActionButtonClassName}
+        >
+          {saving ? "Saving..." : "Save settings"}
         </Button>
       </div>
     </div>

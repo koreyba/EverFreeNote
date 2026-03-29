@@ -1,12 +1,9 @@
 import { useState, useCallback } from 'react'
-import type { SearchPreset } from '@core/constants/aiSearch'
-import { DEFAULT_PRESET } from '@core/constants/aiSearch'
 
 export type ViewMode = 'note' | 'chunk'
 
 interface SearchModeState {
   isAIEnabled: boolean
-  preset: SearchPreset
   viewMode: ViewMode
 }
 
@@ -15,17 +12,14 @@ const STORAGE_KEY = 'everfreenote:aiSearchMode'
 function loadState(): SearchModeState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { isAIEnabled: false, preset: DEFAULT_PRESET, viewMode: 'note' }
+    if (!raw) return { isAIEnabled: false, viewMode: 'note' }
     const parsed = JSON.parse(raw) as Partial<SearchModeState>
     return {
       isAIEnabled: parsed.isAIEnabled === true,
-      preset: (['strict', 'neutral', 'broad'] as SearchPreset[]).includes(parsed.preset as SearchPreset)
-        ? (parsed.preset as SearchPreset)
-        : DEFAULT_PRESET,
       viewMode: parsed.viewMode === 'chunk' ? 'chunk' : 'note',
     }
   } catch {
-    return { isAIEnabled: false, preset: DEFAULT_PRESET, viewMode: 'note' }
+    return { isAIEnabled: false, viewMode: 'note' }
   }
 }
 
@@ -48,14 +42,6 @@ export function useSearchMode() {
     })
   }, [])
 
-  const setPreset = useCallback((preset: SearchPreset) => {
-    setState((prev) => {
-      const next = { ...prev, preset }
-      saveState(next)
-      return next
-    })
-  }, [])
-
   const setViewMode = useCallback((viewMode: ViewMode) => {
     setState((prev) => {
       const next = { ...prev, viewMode }
@@ -66,10 +52,8 @@ export function useSearchMode() {
 
   return {
     isAIEnabled: state.isAIEnabled,
-    preset: state.preset,
     viewMode: state.viewMode,
     setIsAIEnabled,
-    setPreset,
     setViewMode,
   }
 }

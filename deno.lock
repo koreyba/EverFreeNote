@@ -79,6 +79,7 @@
         "npm:autoprefixer@^10.4.21",
         "npm:babel-jest@^29.7.0",
         "npm:babel-plugin-istanbul@^7.0.1",
+        "npm:baseline-browser-mapping@^2.10.12",
         "npm:class-variance-authority@~0.7.1",
         "npm:clsx@^2.1.1",
         "npm:cmdk@^1.1.1",

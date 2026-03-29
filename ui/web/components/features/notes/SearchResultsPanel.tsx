@@ -18,12 +18,15 @@ import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { useSearchMode } from "@ui/web/hooks/useSearchMode"
 import { useAIPaginatedSearch } from "@ui/web/hooks/useAIPaginatedSearch"
 import { AI_SEARCH_MIN_QUERY_LENGTH } from "@core/constants/aiSearch"
+import { resolveRagSearchSettings } from "@core/rag/searchSettings"
+import { RagSearchSettingsService } from "@core/services/ragSearchSettings"
+import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 
 import { AiSearchToggle } from "@/components/features/search/AiSearchToggle"
-import { AiSearchPresetSelector } from "@/components/features/search/AiSearchPresetSelector"
+import { AiSearchPrecisionSlider } from "@/components/features/search/AiSearchPrecisionSlider"
 import { AiSearchViewTabs } from "@/components/features/search/AiSearchViewTabs"
 import { NoteSearchResults } from "@/components/features/search/NoteSearchResults"
-import { ChunkSearchResults, getVisibleChunkCount } from "@/components/features/search/ChunkSearchResults"
+import { ChunkSearchResults } from "@/components/features/search/ChunkSearchResults"
 import { NoteList } from "@/components/features/notes/NoteList"
 import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
@@ -50,6 +53,8 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     onClose,
     className
 }: SearchResultsPanelProps, ref) {
+    const { supabase } = useSupabase()
+    const ragSearchSettingsService = React.useMemo(() => new RagSearchSettingsService(supabase), [supabase])
     const {
         searchQuery,
         filterByTag,
@@ -80,11 +85,18 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     const debouncedSearch = useDebouncedCallback(controller.handleSearch, 250)
 
     // AI Search state
-    const { isAIEnabled, preset, viewMode, setIsAIEnabled, setPreset, setViewMode } = useSearchMode()
+    const { isAIEnabled, viewMode, setIsAIEnabled, setViewMode } = useSearchMode()
     const aiEnabled = isAIEnabled && hasGeminiApiKey
     const prevAiEnabledRef = useRef(aiEnabled)
+    const precisionSaveRequestRef = useRef(0)
+    const confirmedRagSearchSettingsRef = useRef(resolveRagSearchSettings())
+    const [ragSearchSettings, setRagSearchSettings] = useState(() => resolveRagSearchSettings())
+    const [draftPrecision, setDraftPrecision] = useState(resolveRagSearchSettings().similarity_threshold)
+    const [ragSearchSettingsLoading, setRagSearchSettingsLoading] = useState(hasGeminiApiKey)
+    const [precisionError, setPrecisionError] = useState<string | null>(null)
     const {
         noteGroups,
+        chunks: aiChunks,
         isLoading: aiLoading,
         error: aiError,
         refetch: aiRefetch,
@@ -94,12 +106,15 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         resetAIResults,
     } = useAIPaginatedSearch({
         query: aiSearchQuery,
-        preset,
+        topK: ragSearchSettings.top_k,
+        threshold: ragSearchSettings.similarity_threshold,
         filterTag: filterByTag,
-        isEnabled: aiEnabled,
+        isEnabled: aiEnabled && !ragSearchSettingsLoading,
+        resultMode: viewMode,
     })
 
     const showAIResults = aiEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH
+    const showAIInitialization = showAIResults && ragSearchSettingsLoading
     const usesVirtualizedList = !showAIResults && (showFTSResults || showTagOnlyResults)
     const selectionSwitchTitle = "Remove selection to switch"
     const canSelectInPanel =
@@ -134,9 +149,8 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         }
 
         if (showAIResults && viewMode === 'chunk') {
-            const visibleChunkCount = getVisibleChunkCount(noteGroups)
             return {
-                count: visibleChunkCount,
+                count: aiChunks.length,
                 singularLabel: 'chunk',
                 pluralLabel: 'chunks',
             }
@@ -156,7 +170,84 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             singularLabel: 'note',
             pluralLabel: 'notes',
         }
-    }, [showAIResults, viewMode, noteGroups, showTagOnlyResults, tagOnlyTotal, ftsData])
+    }, [showAIResults, viewMode, noteGroups, aiChunks.length, showTagOnlyResults, tagOnlyTotal, ftsData])
+
+    useEffect(() => {
+        if (!hasGeminiApiKey) {
+            const defaults = resolveRagSearchSettings()
+            confirmedRagSearchSettingsRef.current = defaults
+            setRagSearchSettings(defaults)
+            setDraftPrecision(defaults.similarity_threshold)
+            setRagSearchSettingsLoading(false)
+            return
+        }
+
+        let isMounted = true
+        setRagSearchSettingsLoading(true)
+        setPrecisionError(null)
+
+        void ragSearchSettingsService
+            .getStatus()
+            .then((settings) => {
+                if (!isMounted) return
+                confirmedRagSearchSettingsRef.current = settings
+                setRagSearchSettings(settings)
+                setDraftPrecision(settings.similarity_threshold)
+            })
+            .catch((error) => {
+                if (!isMounted) return
+                const defaults = resolveRagSearchSettings()
+                confirmedRagSearchSettingsRef.current = defaults
+                setRagSearchSettings(defaults)
+                setDraftPrecision(defaults.similarity_threshold)
+                setPrecisionError(
+                    error instanceof Error ? error.message : "Failed to load AI search precision settings"
+                )
+            })
+            .finally(() => {
+                if (!isMounted) return
+                setRagSearchSettingsLoading(false)
+            })
+
+        return () => {
+            isMounted = false
+        }
+    }, [hasGeminiApiKey, ragSearchSettingsService])
+
+    const handlePrecisionCommit = React.useCallback((nextThreshold: number) => {
+        const normalizedThreshold = Number(nextThreshold.toFixed(2))
+        setDraftPrecision(normalizedThreshold)
+
+        if (normalizedThreshold === ragSearchSettings.similarity_threshold) {
+            return
+        }
+
+        precisionSaveRequestRef.current += 1
+        const requestId = precisionSaveRequestRef.current
+        setPrecisionError(null)
+        setRagSearchSettings((current) => ({
+            ...current,
+            similarity_threshold: normalizedThreshold,
+        }))
+
+        void ragSearchSettingsService
+            .upsert({ similarity_threshold: normalizedThreshold })
+            .then((settings) => {
+                confirmedRagSearchSettingsRef.current = settings
+                if (requestId !== precisionSaveRequestRef.current) return
+                setRagSearchSettings(settings)
+                setDraftPrecision(settings.similarity_threshold)
+            })
+            .catch((error) => {
+                if (requestId !== precisionSaveRequestRef.current) return
+                const rollbackSettings = confirmedRagSearchSettingsRef.current
+                setRagSearchSettings(rollbackSettings)
+                setDraftPrecision(rollbackSettings.similarity_threshold)
+                setPrecisionError(
+                    error instanceof Error ? error.message : "Failed to save AI search precision"
+                )
+            })
+    }, [ragSearchSettings, ragSearchSettingsService])
 
     const selectedCount = panelSelectedIds.size
     const allVisibleSelected =
@@ -530,7 +621,18 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                                 />
                             )}
                         </div>
-                        {isAIEnabled && <AiSearchPresetSelector value={preset} onChange={setPreset} />}
+                        {isAIEnabled && (
+                            <AiSearchPrecisionSlider
+                                value={draftPrecision}
+                                topK={ragSearchSettings.top_k}
+                                disabled={panelSelectionMode || ragSearchSettingsLoading}
+                                onChange={setDraftPrecision}
+                                onCommit={handlePrecisionCommit}
+                            />
+                        )}
+                        {isAIEnabled && precisionError && (
+                            <p className="text-xs text-destructive">{precisionError}</p>
+                        )}
                     </div>
                 )}
             </div>
@@ -545,7 +647,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 {renderResultsHeader()}
                 {showAIResults ? (
                     <div className="px-3 py-2">
-                        {aiLoading && (
+                        {(showAIInitialization || aiLoading) && (
                             <div className="flex flex-col gap-3 py-2">
                                 {[1, 2, 3].map((i) => (
                                     <div key={i} className="space-y-1.5 p-3 rounded-md bg-card border">
@@ -556,7 +658,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                                 ))}
                             </div>
                         )}
-                        {aiError && !aiLoading && (
+                        {aiError && !showAIInitialization && !aiLoading && (
                             <div className="py-2 text-center" data-testid="search-panel-ai-error">
                                 <p className="text-xs text-destructive">AI Search unavailable</p>
                                 <Button data-testid="search-panel-ai-retry" variant="ghost" size="sm" className="h-5 text-xs px-0 mt-1" onClick={() => aiRefetch()}>
@@ -564,9 +666,16 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                                 </Button>
                             </div>
                         )}
-                        {!aiLoading && !aiError && (
+                        {!showAIInitialization && !aiLoading && !aiError && (
                             viewMode === 'chunk' ? (
-                                <ChunkSearchResults noteGroups={noteGroups} onOpenInContext={onOpenInContext} query={aiSearchQuery} />
+                                <ChunkSearchResults
+                                    chunks={aiChunks}
+                                    onOpenInContext={onOpenInContext}
+                                    query={aiSearchQuery}
+                                    hasMore={aiHasMore}
+                                    loadingMore={aiLoadingMore}
+                                    onLoadMore={loadMoreAI}
+                                />
                             ) : (
                                 <NoteSearchResults
                                     noteGroups={noteGroups}

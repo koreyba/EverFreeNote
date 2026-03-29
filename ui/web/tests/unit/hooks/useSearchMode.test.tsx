@@ -12,7 +12,6 @@ describe('useSearchMode', () => {
     const { result } = renderHook(() => useSearchMode())
 
     expect(result.current.isAIEnabled).toBe(false)
-    expect(result.current.preset).toBe('neutral')
     expect(result.current.viewMode).toBe('note')
   })
 
@@ -21,18 +20,16 @@ describe('useSearchMode', () => {
 
     act(() => {
       result.current.setIsAIEnabled(true)
-      result.current.setPreset('broad')
       result.current.setViewMode('chunk')
     })
 
     expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({
       isAIEnabled: true,
-      preset: 'broad',
       viewMode: 'chunk',
     })
   })
 
-  it('restores state from localStorage', () => {
+  it('restores state from localStorage and ignores the legacy preset field', () => {
     window.localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ isAIEnabled: true, preset: 'strict', viewMode: 'chunk' })
@@ -41,7 +38,6 @@ describe('useSearchMode', () => {
     const { result } = renderHook(() => useSearchMode())
 
     expect(result.current.isAIEnabled).toBe(true)
-    expect(result.current.preset).toBe('strict')
     expect(result.current.viewMode).toBe('chunk')
   })
 
@@ -54,7 +50,6 @@ describe('useSearchMode', () => {
     const { result } = renderHook(() => useSearchMode())
 
     expect(result.current.isAIEnabled).toBe(false)
-    expect(result.current.preset).toBe('neutral')
     expect(result.current.viewMode).toBe('note')
   })
 
@@ -64,7 +59,6 @@ describe('useSearchMode', () => {
     const { result } = renderHook(() => useSearchMode())
 
     expect(result.current.isAIEnabled).toBe(false)
-    expect(result.current.preset).toBe('neutral')
     expect(result.current.viewMode).toBe('note')
   })
 
@@ -78,13 +72,11 @@ describe('useSearchMode', () => {
     expect(() => {
       act(() => {
         result.current.setIsAIEnabled(true)
-        result.current.setPreset('broad')
         result.current.setViewMode('chunk')
       })
     }).not.toThrow()
 
     expect(result.current.isAIEnabled).toBe(true)
-    expect(result.current.preset).toBe('broad')
     expect(result.current.viewMode).toBe('chunk')
 
     setItemSpy.mockRestore()

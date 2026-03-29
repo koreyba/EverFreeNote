@@ -12,9 +12,18 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Checkbox } from "@/components/ui/checkbox"
 import { RagIndexSettingsService } from "@core/services/ragIndexSettings"
 import type { RagIndexingEditableSettings, RagIndexingSettings } from "@core/rag/indexingSettings"
-import { RAG_INDEX_EDITABLE_DEFAULTS, validateRagIndexingEditableSettings } from "@core/rag/indexingSettings"
+import {
+  RAG_INDEX_EDITABLE_DEFAULTS,
+  resolveRagIndexingSettings,
+  validateRagIndexingEditableSettings,
+} from "@core/rag/indexingSettings"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { Info } from "lucide-react"
+import {
+  settingsActionButtonClassName,
+  settingsActionRowClassName,
+  settingsSectionCardClassName,
+} from "@/components/features/settings/settingsLayout"
 
 const RAG_DEBUG_CHUNKS_KEY = "rag-debug-chunks"
 
@@ -64,6 +73,7 @@ export function RagIndexingSettingsPanel() {
     use_tags: true,
   }))
   const [debugChunks, setDebugChunks] = React.useState(() => isRagDebugChunksEnabled())
+  const displaySettings = resolvedSettings ?? resolveRagIndexingSettings(null)
 
   const loadSettings = React.useCallback(async () => {
     setLoading(true)
@@ -133,7 +143,7 @@ export function RagIndexingSettingsPanel() {
   }
 
   return (
-    <Card>
+    <Card className={settingsSectionCardClassName}>
       <CardHeader>
         <CardTitle>RAG indexing</CardTitle>
         <CardDescription>
@@ -282,9 +292,13 @@ export function RagIndexingSettingsPanel() {
           />
         </div>
 
-        {resolvedSettings ? (
-          <div className="space-y-5 rounded-xl border bg-muted/20 p-4">
-            <h4 className="text-sm font-semibold">How your notes are chunked</h4>
+        <div className="space-y-5 rounded-xl border bg-muted/20 p-4">
+          {!resolvedSettings && errorMessage ? (
+            <p className="text-xs text-muted-foreground">
+              Showing default system values until live indexing settings can be loaded from the server.
+            </p>
+          ) : null}
+          <h4 className="text-sm font-semibold">How your notes are chunked</h4>
 
             <div className="space-y-3">
               <p className="text-xs text-foreground/80">
@@ -349,16 +363,16 @@ export function RagIndexingSettingsPanel() {
             <div className="space-y-3">
               <div className="text-xs font-medium text-muted-foreground">Embedding settings (system-defined)</div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <ReadOnlyRow label="Vector dimensions" value={String(resolvedSettings.output_dimensionality)} hint="Size of each embedding vector" />
-                <ReadOnlyRow label="Indexing task type" value={resolvedSettings.task_type_document} hint="Used when embedding note chunks" />
-                <ReadOnlyRow label="Search task type" value={resolvedSettings.task_type_query} hint="Used when embedding search queries" />
+                <ReadOnlyRow label="Vector dimensions" value={String(displaySettings.output_dimensionality)} hint="Size of each embedding vector" />
+                <ReadOnlyRow label="Indexing task type" value={displaySettings.task_type_document} hint="Used when embedding note chunks" />
+                <ReadOnlyRow label="Search task type" value={displaySettings.task_type_query} hint="Used when embedding search queries" />
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="text-xs font-medium text-muted-foreground">Each chunk is formatted as</div>
               <pre className="overflow-x-auto rounded-lg border bg-background px-3 py-3 text-xs text-foreground">
-                {resolvedSettings.chunk_template}
+                {displaySettings.chunk_template}
               </pre>
               <p className="text-[11px] text-muted-foreground">
                 The searchable body comes first. Section and Tags lines appear only when enabled above and when the note has the corresponding data.
@@ -367,7 +381,6 @@ export function RagIndexingSettingsPanel() {
               </p>
             </div>
           </div>
-        ) : null}
 
         {errorMessage ? (
           <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -383,8 +396,12 @@ export function RagIndexingSettingsPanel() {
           </div>
         ) : null}
 
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={loading || saving || validationErrors.length > 0}>
+        <div className={settingsActionRowClassName}>
+          <Button
+            onClick={handleSave}
+            disabled={loading || saving || validationErrors.length > 0}
+            className={settingsActionButtonClassName}
+          >
             {saving ? "Saving..." : "Save indexing settings"}
           </Button>
         </div>

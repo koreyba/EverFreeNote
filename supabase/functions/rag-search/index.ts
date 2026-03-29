@@ -6,7 +6,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
 import { getRagChunkBodyText } from "../../../core/rag/chunkTemplate.ts"
-import { getRagReadonlySettings } from "../../../core/rag/indexingSettings.ts"
+import { getRagSearchReadonlySettings } from "../../../core/rag/searchSettings.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -15,7 +15,7 @@ declare const Deno: { env: { get(key: string): string | undefined } }
 // ---------------------------------------------------------------------------
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 const EMBEDDING_MODEL = "models/gemini-embedding-001"
-const READONLY_RAG_SETTINGS = getRagReadonlySettings()
+const READONLY_RAG_SETTINGS = getRagSearchReadonlySettings()
 const OUTPUT_DIMENSIONS = READONLY_RAG_SETTINGS.output_dimensionality
 const GEMINI_TIMEOUT_MS = 10000
 const GEMINI_MAX_RETRIES = 3
@@ -35,6 +35,11 @@ const jsonResponse = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
+
+const readAuthToken = (authHeader: string): string =>
+  authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice("bearer ".length).trim()
+    : ""
 
 const isLegacyMatchNotesSignatureError = (error: unknown): boolean => {
   if (!error || typeof error !== "object") return false
@@ -165,8 +170,7 @@ serve(async (req: Request) => {
   }
 
   const authHeader = req.headers.get("Authorization")?.trim() ?? ""
-  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
-  const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
+  const token = readAuthToken(authHeader)
   if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
@@ -189,6 +193,10 @@ serve(async (req: Request) => {
     return jsonResponse({ error: "threshold must be a number between 0 and 1" }, 400)
   }
   const tagFilter: string | null = typeof filterTag === "string" ? filterTag : null
+  const requestedMatchCount = Math.min(
+    topK + READONLY_RAG_SETTINGS.load_more_overfetch,
+    READONLY_RAG_SETTINGS.max_top_k
+  )
 
   try {
     const { data: apiKeyRow, error: apiKeyError } = await supabaseAdmin
@@ -222,12 +230,12 @@ serve(async (req: Request) => {
     const rpcPayload = tagFilter
       ? {
           query_embedding: queryEmbedding,
-          match_count: topK,
+          match_count: requestedMatchCount,
           filter_tag: tagFilter,
         }
       : {
           query_embedding: queryEmbedding,
-          match_count: topK,
+          match_count: requestedMatchCount,
         }
 
     let { data: chunks, error: rpcError } = await supabaseUser.rpc("match_notes", rpcPayload)
@@ -237,12 +245,12 @@ serve(async (req: Request) => {
       try {
         const fallback = await supabaseUser.rpc("match_notes", {
           query_embedding: queryEmbedding,
-          match_count: topK,
+          match_count: READONLY_RAG_SETTINGS.max_top_k,
         })
         chunks = fallback.data
         rpcError = fallback.error
         if (!fallback.error) {
-          console.warn("[rag-search] Using legacy match_notes fallback without filter_tag")
+          console.warn("[rag-search] Using legacy match_notes fallback without filter_tag and expanding candidate window")
         } else {
           console.error("[rag-search] match_notes fallback failed", {
             primaryRpcError,
@@ -264,7 +272,7 @@ serve(async (req: Request) => {
     }
 
     if (!chunks || chunks.length === 0) {
-      return jsonResponse({ chunks: [], availableChunkCount: 0 })
+      return jsonResponse({ chunks: [], availableChunkCount: 0, hasMore: false })
     }
 
     const filteredChunks = (chunks as Array<{
@@ -278,7 +286,7 @@ serve(async (req: Request) => {
     }>).filter((chunk) => chunk.similarity >= threshold)
 
     if (filteredChunks.length === 0) {
-      return jsonResponse({ chunks: [], availableChunkCount: 0 })
+      return jsonResponse({ chunks: [], availableChunkCount: 0, hasMore: false })
     }
 
     const noteIds = [...new Set(filteredChunks.map((chunk) => chunk.note_id))]
@@ -323,10 +331,13 @@ serve(async (req: Request) => {
       }
     })
 
-    const finalResult = tagFilter ? result.filter((item) => item.noteTags.includes(tagFilter)) : result
+    const filteredResult = tagFilter ? result.filter((item) => item.noteTags.includes(tagFilter)) : result
+    const hasMore = filteredResult.length > topK
+    const finalResult = filteredResult.slice(0, topK)
     return jsonResponse({
       chunks: finalResult,
-      availableChunkCount: result.length,
+      availableChunkCount: filteredResult.length,
+      hasMore,
     })
   } catch (err) {
     console.error("[rag-search]", err)

@@ -57,8 +57,8 @@ const SETTINGS_TABS: SettingsTabDefinition[] = [
   },
   {
     id: "api-keys",
-    label: "Google API",
-    description: "Gemini API key and RAG indexing settings.",
+    label: "Indexing (RAG)",
+    description: "Gemini API key plus indexing and retrieval settings.",
     icon: KeyRound,
   },
 ]
