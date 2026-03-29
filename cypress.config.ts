@@ -17,6 +17,9 @@ export default defineConfig({
     specPattern: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
     supportFile: 'cypress/support/component.ts',
     setupNodeEvents(on, config) {
+      process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA = 'true'
+      process.env.BROWSERSLIST_IGNORE_OLD_DATA = 'true'
+
       // Add code coverage for component tests
       require('@cypress/code-coverage/task')(on, config)
 

@@ -1,10 +1,13 @@
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { resolveRagSearchSettings } from '../../../../core/rag/searchSettings'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import { SearchResultsPanel } from '../../../../ui/web/components/features/notes/SearchResultsPanel'
 import type { NoteViewModel, SearchResult } from '../../../../core/types/domain'
 import type { NoteAppController } from '../../../../ui/web/hooks/useNoteAppController'
+
+const defaultRagSearch = resolveRagSearchSettings(null)
 
 const createFtsResult = (id: string, title: string): SearchResult => ({
   id,
@@ -130,7 +133,21 @@ const createAiSupabase = (chunks: unknown[]) =>
       getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } }, error: null }),
     },
     functions: {
-      invoke: cy.stub().resolves({ data: { chunks }, error: null }),
+      invoke: cy.stub().callsFake((name: string) => {
+        if (name === 'api-keys-status') {
+          return Promise.resolve({
+            data: {
+              gemini: { configured: true },
+              ragSearch: defaultRagSearch,
+            },
+            error: null,
+          })
+        }
+        if (name === 'rag-search') {
+          return Promise.resolve({ data: { chunks }, error: null })
+        }
+        return Promise.resolve({ data: null, error: null })
+      }),
     },
   } as unknown as SupabaseClient)
 
@@ -180,33 +197,48 @@ describe('SearchResultsPanel', () => {
     })
 
     const invoke = cy.stub().resolves({
-      data: {
-        chunks: [
-          {
-            noteId: 'ai-note-1',
-            noteTitle: 'AI Result One',
-            noteTags: ['ontology'],
-            chunkIndex: 0,
-            charOffset: 0,
-            bodyContent: 'Ontology explanation',
-            overlapPrefix: '',
-            content: 'Ontology explanation',
-            similarity: 0.84,
-          },
-          {
-            noteId: 'ai-note-2',
-            noteTitle: 'AI Result Two',
-            noteTags: ['philosophy'],
-            chunkIndex: 0,
-            charOffset: 0,
-            bodyContent: 'Second chunk',
-            overlapPrefix: '',
-            content: 'Second chunk',
-            similarity: 0.78,
-          },
-        ],
-      },
+      data: null,
       error: null,
+    })
+    invoke.callsFake((name: string) => {
+      if (name === 'api-keys-status') {
+        return Promise.resolve({
+          data: { gemini: { configured: true }, ragSearch: defaultRagSearch },
+          error: null,
+        })
+      }
+      if (name === 'rag-search') {
+        return Promise.resolve({
+          data: {
+            chunks: [
+              {
+                noteId: 'ai-note-1',
+                noteTitle: 'AI Result One',
+                noteTags: ['ontology'],
+                chunkIndex: 0,
+                charOffset: 0,
+                bodyContent: 'Ontology explanation',
+                overlapPrefix: '',
+                content: 'Ontology explanation',
+                similarity: 0.84,
+              },
+              {
+                noteId: 'ai-note-2',
+                noteTitle: 'AI Result Two',
+                noteTags: ['philosophy'],
+                chunkIndex: 0,
+                charOffset: 0,
+                bodyContent: 'Second chunk',
+                overlapPrefix: '',
+                content: 'Second chunk',
+                similarity: 0.78,
+              },
+            ],
+          },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
     })
 
     const supabase = {
@@ -267,33 +299,48 @@ describe('SearchResultsPanel', () => {
     })
 
     const invoke = cy.stub().resolves({
-      data: {
-        chunks: [
-          {
-            noteId: 'ai-note-1',
-            noteTitle: 'AI Result One',
-            noteTags: ['ontology'],
-            chunkIndex: 0,
-            charOffset: 0,
-            bodyContent: 'Ontology explanation',
-            overlapPrefix: '',
-            content: 'Ontology explanation',
-            similarity: 0.84,
-          },
-          {
-            noteId: 'ai-note-2',
-            noteTitle: 'AI Result Two',
-            noteTags: ['philosophy'],
-            chunkIndex: 0,
-            charOffset: 0,
-            bodyContent: 'Second chunk',
-            overlapPrefix: '',
-            content: 'Second chunk',
-            similarity: 0.78,
-          },
-        ],
-      },
+      data: null,
       error: null,
+    })
+    invoke.callsFake((name: string) => {
+      if (name === 'api-keys-status') {
+        return Promise.resolve({
+          data: { gemini: { configured: true }, ragSearch: defaultRagSearch },
+          error: null,
+        })
+      }
+      if (name === 'rag-search') {
+        return Promise.resolve({
+          data: {
+            chunks: [
+              {
+                noteId: 'ai-note-1',
+                noteTitle: 'AI Result One',
+                noteTags: ['ontology'],
+                chunkIndex: 0,
+                charOffset: 0,
+                bodyContent: 'Ontology explanation',
+                overlapPrefix: '',
+                content: 'Ontology explanation',
+                similarity: 0.84,
+              },
+              {
+                noteId: 'ai-note-2',
+                noteTitle: 'AI Result Two',
+                noteTags: ['philosophy'],
+                chunkIndex: 0,
+                charOffset: 0,
+                bodyContent: 'Second chunk',
+                overlapPrefix: '',
+                content: 'Second chunk',
+                similarity: 0.78,
+              },
+            ],
+          },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
     })
 
     const supabase = {
@@ -392,11 +439,22 @@ describe('SearchResultsPanel', () => {
       ftsData: undefined,
     })
 
-    const invoke = cy.stub().resolves({
-      data: {
-        chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
-      },
-      error: null,
+    const invoke = cy.stub().callsFake((name: string) => {
+      if (name === 'api-keys-status') {
+        return Promise.resolve({
+          data: { gemini: { configured: true }, ragSearch: defaultRagSearch },
+          error: null,
+        })
+      }
+      if (name === 'rag-search') {
+        return Promise.resolve({
+          data: {
+            chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
+          },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
     })
 
     const supabase = {
@@ -410,7 +468,10 @@ describe('SearchResultsPanel', () => {
 
     cy.get('[data-testid="search-panel-input"]').type('ontology{enter}')
 
-    cy.wrap(invoke).should('have.been.calledOnce')
+    cy.wrap(invoke).should((invokeStub) => {
+      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
+      expect(ragSearchCalls).to.have.length(1)
+    })
     cy.wrap(controller.handleSearch).should('not.have.been.called')
     cy.contains('AI Result One').should('be.visible')
   })
@@ -422,11 +483,22 @@ describe('SearchResultsPanel', () => {
       ftsData: undefined,
     })
 
-    const invoke = cy.stub().as('aiInvoke').resolves({
-      data: {
-        chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
-      },
-      error: null,
+    const invoke = cy.stub().as('aiInvoke').callsFake((name: string) => {
+      if (name === 'api-keys-status') {
+        return Promise.resolve({
+          data: { gemini: { configured: true }, ragSearch: defaultRagSearch },
+          error: null,
+        })
+      }
+      if (name === 'rag-search') {
+        return Promise.resolve({
+          data: {
+            chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
+          },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
     })
 
     const supabase = {
@@ -441,7 +513,10 @@ describe('SearchResultsPanel', () => {
     cy.get('[data-testid="search-panel-input"]').type('ontology{enter}')
 
     cy.wrap(controller.handleSearch).should('have.been.calledWith', 'ontology')
-    cy.get('@aiInvoke').should('not.have.been.called')
+    cy.get('@aiInvoke').should((invokeStub) => {
+      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
+      expect(ragSearchCalls).to.have.length(0)
+    })
   })
 
   it('switching from normal search to AI triggers only AI search for the current query', () => {
@@ -451,11 +526,22 @@ describe('SearchResultsPanel', () => {
       ftsData: undefined,
     })
 
-    const invoke = cy.stub().as('aiInvoke').resolves({
-      data: {
-        chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
-      },
-      error: null,
+    const invoke = cy.stub().as('aiInvoke').callsFake((name: string) => {
+      if (name === 'api-keys-status') {
+        return Promise.resolve({
+          data: { gemini: { configured: true }, ragSearch: defaultRagSearch },
+          error: null,
+        })
+      }
+      if (name === 'rag-search') {
+        return Promise.resolve({
+          data: {
+            chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
+          },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
     })
 
     const supabase = {
@@ -473,7 +559,8 @@ describe('SearchResultsPanel', () => {
     cy.tick(400)
 
     cy.get('@aiInvoke').should((invokeStub) => {
-      expect(invokeStub).to.have.been.calledOnce
+      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
+      expect(ragSearchCalls).to.have.length(1)
       expect(invokeStub).to.have.been.calledWithMatch('rag-search', {
         body: {
           query: 'ontology',
@@ -544,11 +631,22 @@ describe('SearchResultsPanel', () => {
       ftsData: undefined,
     })
 
-    const invoke = cy.stub().as('aiInvoke').resolves({
-      data: {
-        chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
-      },
-      error: null,
+    const invoke = cy.stub().as('aiInvoke').callsFake((name: string) => {
+      if (name === 'api-keys-status') {
+        return Promise.resolve({
+          data: { gemini: { configured: true }, ragSearch: defaultRagSearch },
+          error: null,
+        })
+      }
+      if (name === 'rag-search') {
+        return Promise.resolve({
+          data: {
+            chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
+          },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
     })
 
     const supabase = {
@@ -565,7 +663,10 @@ describe('SearchResultsPanel', () => {
     cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
     cy.tick(400)
 
-    cy.get('@aiInvoke').should('not.have.been.called')
+    cy.get('@aiInvoke').should((invokeStub) => {
+      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
+      expect(ragSearchCalls).to.have.length(0)
+    })
     cy.wrap(controller.handleSearch).should('not.have.been.called')
   })
 
@@ -583,11 +684,22 @@ describe('SearchResultsPanel', () => {
       ftsData: undefined,
     })
 
-    const invoke = cy.stub().as('aiInvoke').resolves({
-      data: {
-        chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
-      },
-      error: null,
+    const invoke = cy.stub().as('aiInvoke').callsFake((name: string) => {
+      if (name === 'api-keys-status') {
+        return Promise.resolve({
+          data: { gemini: { configured: true }, ragSearch: defaultRagSearch },
+          error: null,
+        })
+      }
+      if (name === 'rag-search') {
+        return Promise.resolve({
+          data: {
+            chunks: [createAiChunk('ai-note-1', 'AI Result One', 0, 0.84)],
+          },
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
     })
 
     const supabase = {
@@ -627,11 +739,15 @@ describe('SearchResultsPanel', () => {
 
     cy.mount(<Harness />)
 
-    cy.get('@aiInvoke').should('not.have.been.called')
+    cy.get('@aiInvoke').should((invokeStub) => {
+      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
+      expect(ragSearchCalls).to.have.length(0)
+    })
     cy.get('[data-testid="grant-gemini-key"]').click()
 
     cy.get('@aiInvoke').should((invokeStub) => {
-      expect(invokeStub).to.have.been.calledOnce
+      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
+      expect(ragSearchCalls).to.have.length(1)
       expect(invokeStub).to.have.been.calledWithMatch('rag-search', {
         body: {
           query: 'ontology',
