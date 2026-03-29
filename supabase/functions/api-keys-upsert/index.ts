@@ -176,47 +176,18 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Gemini API key is required for initial setup" }, 400)
     }
 
-    if (shouldRemoveGeminiApiKey) {
-      const { error: deleteError } = await supabaseAdmin
-        .from("user_api_keys")
-        .delete()
-        .eq("user_id", userId)
-
-      if (deleteError) throw deleteError
-    } else if (hasGeminiApiKeyField && encryptedKey) {
-      const { error: upsertError } = await supabaseAdmin
-        .from("user_api_keys")
-        .upsert({ user_id: userId, gemini_api_key_encrypted: encryptedKey, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
-
-      if (upsertError) throw upsertError
-    }
-
-    let resolvedRagIndexingSettings
+    let validatedRagIndexingSettings
     if (hasRagIndexingFields) {
-      let editableSettings
       try {
-        editableSettings = assertValidRagIndexingEditableSettings(coercedRagIndexingSettings)
+        validatedRagIndexingSettings = assertValidRagIndexingEditableSettings(coercedRagIndexingSettings)
       } catch (validationError) {
-        return jsonResponse({ error: validationError instanceof Error ? validationError.message : "Invalid RAG indexing settings" }, 400)
+        return jsonResponse({
+          error: validationError instanceof Error ? validationError.message : "Invalid RAG indexing settings",
+        }, 400)
       }
-      const { error: ragUpsertError } = await supabaseAdmin
-        .from("user_rag_index_settings")
-        .upsert({ user_id: userId, ...editableSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
-
-      if (ragUpsertError) throw ragUpsertError
-      resolvedRagIndexingSettings = resolveRagIndexingSettings(editableSettings)
-    } else {
-      const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
-        .from("user_rag_index_settings")
-        .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
-        .eq("user_id", userId)
-        .maybeSingle()
-
-      if (ragIndexingError) throw ragIndexingError
-      resolvedRagIndexingSettings = resolveRagIndexingSettings(ragIndexingData ?? null)
     }
 
-    let resolvedRagSearchSettings
+    let validatedRagSearchSettings
     if (hasRagSearchFields) {
       const { data: existingRagSearchData, error: existingRagSearchError } = await supabaseAdmin
         .from("user_rag_search_settings")
@@ -234,9 +205,8 @@ serve(async (req: Request) => {
         throw existingRagSearchError
       }
 
-      let editableSettings
       try {
-        editableSettings = assertValidRagSearchEditableSettings(
+        validatedRagSearchSettings = assertValidRagSearchEditableSettings(
           resolveRagSearchEditableSettings({
             ...(existingRagSearchData ?? {}),
             ...coercedRagSearchSettings,
@@ -247,10 +217,47 @@ serve(async (req: Request) => {
           error: validationError instanceof Error ? validationError.message : "Invalid RAG retrieval settings",
         }, 400)
       }
+    }
 
+    if (shouldRemoveGeminiApiKey) {
+      const { error: deleteError } = await supabaseAdmin
+        .from("user_api_keys")
+        .delete()
+        .eq("user_id", userId)
+
+      if (deleteError) throw deleteError
+    } else if (hasGeminiApiKeyField && encryptedKey) {
+      const { error: upsertError } = await supabaseAdmin
+        .from("user_api_keys")
+        .upsert({ user_id: userId, gemini_api_key_encrypted: encryptedKey, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+
+      if (upsertError) throw upsertError
+    }
+
+    let resolvedRagIndexingSettings
+    if (hasRagIndexingFields) {
+      const { error: ragUpsertError } = await supabaseAdmin
+        .from("user_rag_index_settings")
+        .upsert({ user_id: userId, ...validatedRagIndexingSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+
+      if (ragUpsertError) throw ragUpsertError
+      resolvedRagIndexingSettings = resolveRagIndexingSettings(validatedRagIndexingSettings)
+    } else {
+      const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
+        .from("user_rag_index_settings")
+        .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (ragIndexingError) throw ragIndexingError
+      resolvedRagIndexingSettings = resolveRagIndexingSettings(ragIndexingData ?? null)
+    }
+
+    let resolvedRagSearchSettings
+    if (hasRagSearchFields) {
       const { error: ragSearchUpsertError } = await supabaseAdmin
         .from("user_rag_search_settings")
-        .upsert({ user_id: userId, ...editableSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+        .upsert({ user_id: userId, ...validatedRagSearchSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
 
       if (ragSearchUpsertError) {
         if (isMissingRagSearchSettingsTableError(ragSearchUpsertError)) {
@@ -261,7 +268,7 @@ serve(async (req: Request) => {
         }
         throw ragSearchUpsertError
       }
-      resolvedRagSearchSettings = resolveRagSearchSettings(editableSettings)
+      resolvedRagSearchSettings = resolveRagSearchSettings(validatedRagSearchSettings)
     } else {
       const { data: ragSearchData, error: ragSearchError } = await supabaseAdmin
         .from("user_rag_search_settings")
@@ -277,8 +284,14 @@ serve(async (req: Request) => {
       }
     }
 
+    const effectiveGeminiKey = shouldRemoveGeminiApiKey
+      ? null
+      : hasGeminiApiKeyField
+        ? encryptedKey
+        : existing?.gemini_api_key_encrypted
+
     return jsonResponse({
-      gemini: { configured: Boolean(shouldRemoveGeminiApiKey ? null : hasGeminiApiKeyField ? encryptedKey : existing?.gemini_api_key_encrypted) },
+      gemini: { configured: Boolean(effectiveGeminiKey) },
       ragIndexing: resolvedRagIndexingSettings,
       ragSearch: resolvedRagSearchSettings,
     })

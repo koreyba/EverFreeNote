@@ -1,4 +1,9 @@
 import { Slider } from "@/components/ui/slider"
+import {
+  RAG_SEARCH_THRESHOLD_MAX,
+  RAG_SEARCH_THRESHOLD_MIN,
+  RAG_SEARCH_THRESHOLD_STEP,
+} from "@core/rag/searchSettings"
 import { cn } from "@ui/web/lib/utils"
 
 interface AiSearchPrecisionSliderProps {
@@ -32,9 +37,9 @@ export function AiSearchPrecisionSlider({
       </div>
 
       <Slider
-        min={0}
-        max={1}
-        step={0.05}
+        min={RAG_SEARCH_THRESHOLD_MIN}
+        max={RAG_SEARCH_THRESHOLD_MAX}
+        step={RAG_SEARCH_THRESHOLD_STEP}
         value={[value]}
         onValueChange={(values) => onChange(values[0] ?? value)}
         onValueCommit={(values) => onCommit(values[0] ?? value)}

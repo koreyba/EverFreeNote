@@ -58,7 +58,7 @@ export function RagSearchSettingsPanel() {
   }, [service])
 
   React.useEffect(() => {
-    void loadSettings()
+    loadSettings().catch(() => undefined)
   }, [loadSettings])
 
   const validationErrors = React.useMemo(() => {

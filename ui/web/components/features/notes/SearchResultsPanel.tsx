@@ -232,8 +232,8 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         void ragSearchSettingsService
             .upsert({ similarity_threshold: normalizedThreshold })
             .then((settings) => {
-                if (requestId !== precisionSaveRequestRef.current) return
                 confirmedRagSearchSettingsRef.current = settings
+                if (requestId !== precisionSaveRequestRef.current) return
                 setRagSearchSettings(settings)
                 setDraftPrecision(settings.similarity_threshold)
             })
