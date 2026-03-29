@@ -19,6 +19,7 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [x] Fetches first page correctly for the default filter
 - [x] Passes the selected filter to the RPC request
 - [x] Passes ordinary search params to the RPC request
+- [x] Turns stale-schema `PGRST202` RPC failures into actionable migration guidance
 - [x] Exposes `hasMore` / next page behavior correctly
 
 ### AI index row/list UI
@@ -26,6 +27,7 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [x] Renders row actions for indexed and not-indexed states
 - [x] Executes `Index` and `Remove from index` flows
 - [x] Renders the search row and debounces search/filter updates together
+- [x] Surfaces a relogin hint for `401 Unauthorized` row-action failures after switching local Supabase stacks
 - [ ] Add a direct unit test for the virtualized empty-state copy if needed later
 
 ## Integration Tests

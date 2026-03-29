@@ -134,4 +134,29 @@ describe("useAIIndexNotes", () => {
       })
     })
   })
+
+  it("surfaces actionable migration guidance when PostgREST schema cache is stale", async () => {
+    const rpc = jest.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: "PGRST202",
+        message: "Could not find the function public.get_ai_index_notes(filter_status, page_number, page_size, search_language, search_query, search_ts_query) in the schema cache",
+        details: "Searched for the function public.get_ai_index_notes with parameters filter_status, page_number, page_size, search_language, search_query, search_ts_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.",
+        hint: "Perhaps you meant to call the function public.match_notes",
+      },
+    })
+
+    const supabase = { rpc } as unknown as SupabaseClient
+    const { result } = renderHook(() => useAIIndexNotes("all", "hello world"), {
+      wrapper: createWrapper(supabase),
+    })
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+      expect(result.current.error).toBeInstanceOf(Error)
+      expect(result.current.error?.message).toContain("AI Index database function is out of date.")
+      expect(result.current.error?.message).toContain("20260329000002_add_search_to_ai_index_notes_rpc.sql")
+      expect(result.current.error?.message).toContain("Code: PGRST202")
+    })
+  })
 })

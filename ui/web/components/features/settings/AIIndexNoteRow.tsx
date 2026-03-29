@@ -40,8 +40,16 @@ async function extractErrorMessage(err: unknown, fallback: string): Promise<stri
   if (ctx instanceof Response) {
     try {
       const body = await ctx.json() as { error?: string }
+      if (ctx.status === 401) {
+        return body?.error
+          ? `${body.error}. Your local auth session may belong to a different Supabase stack. Sign out and sign in again, then retry.`
+          : "Unauthorized. Your local auth session may belong to a different Supabase stack. Sign out and sign in again, then retry."
+      }
       if (body?.error) return body.error
     } catch {
+      if (ctx.status === 401) {
+        return "Unauthorized. Your local auth session may belong to a different Supabase stack. Sign out and sign in again, then retry."
+      }
       return err.message || fallback
     }
   }

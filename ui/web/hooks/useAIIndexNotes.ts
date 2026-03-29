@@ -17,6 +17,13 @@ type AIIndexRpcRow = {
   total_count: number | string | null
 }
 
+type AIIndexRpcError = {
+  code?: string | null
+  details?: string | null
+  hint?: string | null
+  message?: string | null
+}
+
 function parseTotalCount(rows: AIIndexRpcRow[]): number {
   const rawValue = rows[0]?.total_count
   if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue
@@ -35,6 +42,42 @@ function mapRow(row: AIIndexRpcRow): AIIndexNoteRow {
     lastIndexedAt: row.last_indexed_at,
     status: row.status,
   }
+}
+
+function formatAIIndexRpcError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return new Error("Failed to load AI index notes.")
+  }
+
+  const rpcError = error as AIIndexRpcError
+  const code = rpcError.code?.trim() ?? ""
+  const message = rpcError.message?.trim() ?? "Failed to load AI index notes."
+  const details = rpcError.details?.trim() ?? ""
+  const hint = rpcError.hint?.trim() ?? ""
+  const combinedText = `${message}\n${details}\n${hint}`
+
+  if (code === "PGRST202" && combinedText.includes("get_ai_index_notes")) {
+    return new Error(
+      [
+        "AI Index database function is out of date.",
+        "The UI is calling the search-enabled get_ai_index_notes signature, but PostgREST still sees the older version.",
+        "Apply migration supabase/migrations/20260329000002_add_search_to_ai_index_notes_rpc.sql and refresh the local Supabase schema cache if needed.",
+        code ? `Code: ${code}` : null,
+        message ? `Message: ${message}` : null,
+        details ? `Details: ${details}` : null,
+        hint ? `Hint: ${hint}` : null,
+      ].filter(Boolean).join("\n")
+    )
+  }
+
+  return new Error(
+    [
+      code ? `Code: ${code}` : null,
+      message ? `Message: ${message}` : null,
+      details ? `Details: ${details}` : null,
+      hint ? `Hint: ${hint}` : null,
+    ].filter(Boolean).join("\n") || "Failed to load AI index notes."
+  )
 }
 
 export function getAIIndexNotesQueryPrefix(userId?: string) {
@@ -73,7 +116,7 @@ export function useAIIndexNotes(filter: AIIndexFilter = "all", searchQuery = "",
         search_language: searchLanguage,
       })
 
-      if (error) throw error
+      if (error) throw formatAIIndexRpcError(error)
 
       const rows = (data ?? []) as AIIndexRpcRow[]
       const totalCount = parseTotalCount(rows)

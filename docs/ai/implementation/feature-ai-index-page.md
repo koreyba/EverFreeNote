@@ -68,6 +68,7 @@ ui/web/components/features/settings/
 
 - Surface fetch failures in the tab body with retry affordance if needed.
 - Surface row action failures inline or via toast, matching existing settings behavior.
+- If PostgREST schema cache is stale and still sees the old `get_ai_index_notes` signature, show actionable migration guidance instead of a generic fetch error.
 
 ## Performance Considerations
 
@@ -79,3 +80,4 @@ ui/web/components/features/settings/
 
 - Keep all note/index list data scoped to the authenticated user.
 - Do not expose service secrets to the browser.
+- Browser auth storage must stay isolated per local Supabase stack/port to avoid cross-stack sessions where RPC reads succeed but edge-function writes fail with `Unauthorized`.

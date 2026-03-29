@@ -94,7 +94,7 @@ export function AIIndexTab() {
       <div className="space-y-4">
         <div className={cn(settingsInsetPanelClassName, "border-destructive/30 bg-destructive/5")}>
           <h3 className="text-base font-semibold text-foreground">AI index status is unavailable</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
             {query.error instanceof Error ? query.error.message : "Failed to load AI index notes."}
           </p>
           <Button className="mt-4" variant="outline" onClick={() => void query.refetch()}>
