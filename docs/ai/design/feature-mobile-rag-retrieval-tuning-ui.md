@@ -20,6 +20,8 @@ graph TD
     end
 
     subgraph Shared Core
+        IndexSettings["ragIndexingSettings defaults/validation"]
+        IndexService["RagIndexSettingsService"]
         SearchSettings["ragSearchSettings defaults/validation"]
         SearchService["RagSearchSettingsService"]
         ApiKeys["ApiKeysSettingsService"]
@@ -36,6 +38,7 @@ graph TD
         Embeddings[("note_embeddings")]
     end
 
+    Settings --> IndexService
     Settings --> SearchService
     Settings --> ApiKeys
     Search --> MobileMode
@@ -49,11 +52,12 @@ graph TD
     Status --> SearchSettingsTable
     Upsert --> SearchSettingsTable
     RagSearch --> Embeddings
+    IndexSettings --> IndexService
     SearchSettings --> SearchService
     SearchSettings --> MobileHook
 ```
 
-- Mobile UI gets retrieval settings from the same shared `core` service contract as web.
+- Mobile UI gets retrieval and indexing settings from the same shared `core` service contracts as web.
 - Mobile search still owns its own React Native interaction layer, but no longer owns retrieval presets as product logic.
 - Backend remains unchanged in principle; the mobile task is mostly wiring and UX parity.
 
@@ -129,9 +133,11 @@ interface MobilePrecisionState {
 ### Mobile settings
 - Extend `ui/mobile/components/settings/ApiKeysSettingsPanel.tsx`
   - keep Gemini key management
+  - add indexing settings section(s)
   - add retrieval settings section(s)
+  - show editable indexing controls
   - show editable `topK`
-  - show read-only retrieval metadata
+  - show read-only indexing and retrieval metadata
 
 ### Mobile search controls
 - Update `ui/mobile/components/search/SearchControls.tsx`
@@ -155,8 +161,8 @@ interface MobilePrecisionState {
 ## Design Decisions
 **Why did we choose this approach?**
 
-### 1. Reuse shared retrieval settings contract
-- Reason: web already validated the model and backend contract.
+### 1. Reuse shared indexing and retrieval settings contracts
+- Reason: web already validated the models and backend contracts.
 - Benefit: consistent behavior across platforms and less drift.
 
 ### 2. Keep mobile-specific UI while matching web product semantics

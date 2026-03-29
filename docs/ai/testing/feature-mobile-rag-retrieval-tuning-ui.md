@@ -20,6 +20,7 @@ description: Test strategy for mobile retrieval settings and AI search precision
 - [x] Test case 1: loads retrieval settings defaults/read-only values
 - [x] Test case 2: saves updated `topK`
 - [x] Test case 3: renders friendly fallback state when retrieval settings fail to load
+- [x] Test case 4: loads indexing settings and saves updated indexing values
 - [x] Additional coverage: Gemini key save/remove still works
 
 ### Mobile search controls / state
@@ -40,6 +41,7 @@ description: Test strategy for mobile retrieval settings and AI search precision
 - [x] Search screen loads retrieval settings and renders mobile precision UI
 - [x] Settings screen and search screen stay consistent for the same saved retrieval values
 - [x] Failure path where settings load fails but search/settings still render defaults
+- [x] Settings screen shows indexing controls and persists them via the shared indexing service
 
 ## End-to-End Tests
 **What user flows need validation?**
@@ -64,6 +66,7 @@ description: Test strategy for mobile retrieval settings and AI search precision
 
 ### Executed Checks
 - `npm test -- --runTestsByPath tests/component/useMobileSearchMode.test.tsx tests/component/useMobileAIPaginatedSearch.test.tsx tests/component/searchResultsList.test.tsx tests/unit/settingsPanels.test.tsx tests/integration/searchScreen.test.tsx tests/integration/searchScreenAI.test.tsx`
+- `npm test -- --runTestsByPath tests/unit/settingsPanels.test.tsx tests/integration/settingsScreen.test.tsx`
 - `npm run validate` in `ui/mobile`
 
 ## Manual Testing
