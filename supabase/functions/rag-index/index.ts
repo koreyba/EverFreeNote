@@ -37,6 +37,11 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
 
+const readAuthToken = (authHeader: string): string =>
+  authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice("bearer ".length).trim()
+    : ""
+
 // ---------------------------------------------------------------------------
 // AES-GCM decryption (mirrors api-keys-upsert / wordpress-bridge pattern)
 // ---------------------------------------------------------------------------
@@ -177,8 +182,7 @@ serve(async (req: Request) => {
 
   // Auth
   const authHeader = req.headers.get("Authorization")?.trim() ?? ""
-  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
-  const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
+  const token = readAuthToken(authHeader)
   if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)

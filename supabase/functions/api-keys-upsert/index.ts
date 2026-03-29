@@ -29,14 +29,19 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
 
-const isMissingRagSearchSettingsTableError = (error: unknown): boolean => {
+const readAuthToken = (authHeader: string): string =>
+  authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice("bearer ".length).trim()
+    : ""
+
+const isUnavailableRagSearchSettingsStorageError = (error: unknown): boolean => {
   if (!error || typeof error !== "object") return false
 
   const code = typeof (error as { code?: unknown }).code === "string"
     ? (error as { code: string }).code.toUpperCase()
     : ""
 
-  if (code === "42P01" || code === "PGRST205") return true
+  if (code === "42P01" || code === "42883" || code === "PGRST205" || code === "PGRST202") return true
 
   const message = typeof (error as { message?: unknown }).message === "string"
     ? (error as { message: string }).message
@@ -47,8 +52,17 @@ const isMissingRagSearchSettingsTableError = (error: unknown): boolean => {
   const combined = `${message} ${details}`.toLowerCase()
 
   return (
-    combined.includes("user_rag_search_settings") &&
-    (combined.includes("relation") || combined.includes("table") || combined.includes("schema cache"))
+    (
+      combined.includes("user_rag_search_settings") ||
+      combined.includes("upsert_user_rag_search_settings_partial")
+    ) &&
+    (
+      combined.includes("relation") ||
+      combined.includes("table") ||
+      combined.includes("schema cache") ||
+      combined.includes("function") ||
+      combined.includes("does not exist")
+    )
   )
 }
 
@@ -104,8 +118,7 @@ serve(async (req: Request) => {
     }
 
     const authHeader = req.headers.get("Authorization")?.trim() ?? ""
-    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
-    const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
+    const token = readAuthToken(authHeader)
     if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
@@ -176,6 +189,49 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Gemini API key is required for initial setup" }, 400)
     }
 
+    let validatedRagIndexingSettings
+    if (hasRagIndexingFields) {
+      try {
+        validatedRagIndexingSettings = assertValidRagIndexingEditableSettings(coercedRagIndexingSettings)
+      } catch (validationError) {
+        return jsonResponse({
+          error: validationError instanceof Error ? validationError.message : "Invalid RAG indexing settings",
+        }, 400)
+      }
+    }
+
+    let validatedRagSearchSettings
+    if (hasRagSearchFields) {
+      const { data: existingRagSearchData, error: existingRagSearchError } = await supabaseAdmin
+        .from("user_rag_search_settings")
+        .select("top_k, similarity_threshold")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (existingRagSearchError) {
+        if (isUnavailableRagSearchSettingsStorageError(existingRagSearchError)) {
+          return jsonResponse(
+            { error: "RAG retrieval settings are unavailable until the latest database migration is applied" },
+            503
+          )
+        }
+        throw existingRagSearchError
+      }
+
+      try {
+        validatedRagSearchSettings = assertValidRagSearchEditableSettings(
+          resolveRagSearchEditableSettings({
+            ...(existingRagSearchData ?? {}),
+            ...coercedRagSearchSettings,
+          })
+        )
+      } catch (validationError) {
+        return jsonResponse({
+          error: validationError instanceof Error ? validationError.message : "Invalid RAG retrieval settings",
+        }, 400)
+      }
+    }
+
     if (shouldRemoveGeminiApiKey) {
       const { error: deleteError } = await supabaseAdmin
         .from("user_api_keys")
@@ -193,18 +249,12 @@ serve(async (req: Request) => {
 
     let resolvedRagIndexingSettings
     if (hasRagIndexingFields) {
-      let editableSettings
-      try {
-        editableSettings = assertValidRagIndexingEditableSettings(coercedRagIndexingSettings)
-      } catch (validationError) {
-        return jsonResponse({ error: validationError instanceof Error ? validationError.message : "Invalid RAG indexing settings" }, 400)
-      }
       const { error: ragUpsertError } = await supabaseAdmin
         .from("user_rag_index_settings")
-        .upsert({ user_id: userId, ...editableSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+        .upsert({ user_id: userId, ...validatedRagIndexingSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
 
       if (ragUpsertError) throw ragUpsertError
-      resolvedRagIndexingSettings = resolveRagIndexingSettings(editableSettings)
+      resolvedRagIndexingSettings = resolveRagIndexingSettings(validatedRagIndexingSettings)
     } else {
       const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
         .from("user_rag_index_settings")
@@ -218,42 +268,18 @@ serve(async (req: Request) => {
 
     let resolvedRagSearchSettings
     if (hasRagSearchFields) {
-      const { data: existingRagSearchData, error: existingRagSearchError } = await supabaseAdmin
-        .from("user_rag_search_settings")
-        .select("top_k, similarity_threshold")
-        .eq("user_id", userId)
-        .maybeSingle()
-
-      if (existingRagSearchError) {
-        if (isMissingRagSearchSettingsTableError(existingRagSearchError)) {
-          return jsonResponse(
-            { error: "RAG retrieval settings are unavailable until the latest database migration is applied" },
-            503
-          )
-        }
-        throw existingRagSearchError
-      }
-
-      let editableSettings
-      try {
-        editableSettings = assertValidRagSearchEditableSettings(
-          resolveRagSearchEditableSettings({
-            ...(existingRagSearchData ?? {}),
-            ...coercedRagSearchSettings,
-          })
-        )
-      } catch (validationError) {
-        return jsonResponse({
-          error: validationError instanceof Error ? validationError.message : "Invalid RAG retrieval settings",
-        }, 400)
-      }
-
-      const { error: ragSearchUpsertError } = await supabaseAdmin
-        .from("user_rag_search_settings")
-        .upsert({ user_id: userId, ...editableSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+      const { data: ragSearchUpsertData, error: ragSearchUpsertError } = await supabaseAdmin
+        .rpc("upsert_user_rag_search_settings_partial", {
+          p_user_id: userId,
+          p_top_k: "top_k" in coercedRagSearchSettings ? validatedRagSearchSettings.top_k : null,
+          p_similarity_threshold: "similarity_threshold" in coercedRagSearchSettings
+            ? validatedRagSearchSettings.similarity_threshold
+            : null,
+        })
+        .single()
 
       if (ragSearchUpsertError) {
-        if (isMissingRagSearchSettingsTableError(ragSearchUpsertError)) {
+        if (isUnavailableRagSearchSettingsStorageError(ragSearchUpsertError)) {
           return jsonResponse(
             { error: "RAG retrieval settings are unavailable until the latest database migration is applied" },
             503
@@ -261,7 +287,7 @@ serve(async (req: Request) => {
         }
         throw ragSearchUpsertError
       }
-      resolvedRagSearchSettings = resolveRagSearchSettings(editableSettings)
+      resolvedRagSearchSettings = resolveRagSearchSettings(ragSearchUpsertData)
     } else {
       const { data: ragSearchData, error: ragSearchError } = await supabaseAdmin
         .from("user_rag_search_settings")
@@ -270,15 +296,25 @@ serve(async (req: Request) => {
         .maybeSingle()
 
       if (ragSearchError) {
-        console.warn("[api-keys-upsert] Falling back to default RAG retrieval settings", ragSearchError)
-        resolvedRagSearchSettings = resolveRagSearchSettings(null)
+        if (isUnavailableRagSearchSettingsStorageError(ragSearchError)) {
+          console.warn("[api-keys-upsert] Falling back to default RAG retrieval settings", ragSearchError)
+          resolvedRagSearchSettings = resolveRagSearchSettings(null)
+        } else {
+          throw ragSearchError
+        }
       } else {
         resolvedRagSearchSettings = resolveRagSearchSettings(ragSearchData ?? null)
       }
     }
 
+    const effectiveGeminiKey = shouldRemoveGeminiApiKey
+      ? null
+      : hasGeminiApiKeyField
+        ? encryptedKey
+        : existing?.gemini_api_key_encrypted
+
     return jsonResponse({
-      gemini: { configured: Boolean(shouldRemoveGeminiApiKey ? null : hasGeminiApiKeyField ? encryptedKey : existing?.gemini_api_key_encrypted) },
+      gemini: { configured: Boolean(effectiveGeminiKey) },
       ragIndexing: resolvedRagIndexingSettings,
       ragSearch: resolvedRagSearchSettings,
     })

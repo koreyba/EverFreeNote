@@ -49,6 +49,13 @@ const createAiChunk = (
   similarity,
 })
 
+type StubCall = {
+  args: unknown[]
+}
+
+const getRagSearchCalls = (invoke: { getCalls: () => StubCall[] }): StubCall[] =>
+  invoke.getCalls().filter((call: StubCall) => call.args[0] === 'rag-search')
+
 const createController = (overrides: Partial<NoteAppController> = {}): NoteAppController => {
   const controller = {
     searchQuery: 'query',
@@ -127,7 +134,13 @@ const mountPanel = (
   )
 }
 
-const createAiSupabase = (chunks: unknown[]) =>
+const createAiSupabase = (
+  chunks: unknown[],
+  options: {
+    hasMore?: boolean
+    ragSearch?: ReturnType<typeof resolveRagSearchSettings>
+  } = {}
+) =>
   ({
     auth: {
       getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } }, error: null }),
@@ -138,13 +151,16 @@ const createAiSupabase = (chunks: unknown[]) =>
           return Promise.resolve({
             data: {
               gemini: { configured: true },
-              ragSearch: defaultRagSearch,
+              ragSearch: options.ragSearch ?? defaultRagSearch,
             },
             error: null,
           })
         }
         if (name === 'rag-search') {
-          return Promise.resolve({ data: { chunks }, error: null })
+          return Promise.resolve({
+            data: { chunks, hasMore: options.hasMore === true },
+            error: null,
+          })
         }
         return Promise.resolve({ data: null, error: null })
       }),
@@ -513,9 +529,8 @@ describe('SearchResultsPanel', () => {
     cy.get('[data-testid="search-panel-input"]').type('ontology{enter}')
 
     cy.wrap(controller.handleSearch).should('have.been.calledWith', 'ontology')
-    cy.get('@aiInvoke').should((invokeStub) => {
-      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
-      expect(ragSearchCalls).to.have.length(0)
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(0)
     })
   })
 
@@ -558,10 +573,9 @@ describe('SearchResultsPanel', () => {
     cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
     cy.tick(400)
 
-    cy.get('@aiInvoke').should((invokeStub) => {
-      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
-      expect(ragSearchCalls).to.have.length(1)
-      expect(invokeStub).to.have.been.calledWithMatch('rag-search', {
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(1)
+      expect(invoke).to.have.been.calledWithMatch('rag-search', {
         body: {
           query: 'ontology',
         },
@@ -663,9 +677,8 @@ describe('SearchResultsPanel', () => {
     cy.get('[aria-label="Toggle AI RAG Search"]').click({ force: true })
     cy.tick(400)
 
-    cy.get('@aiInvoke').should((invokeStub) => {
-      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
-      expect(ragSearchCalls).to.have.length(0)
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(0)
     })
     cy.wrap(controller.handleSearch).should('not.have.been.called')
   })
@@ -739,16 +752,14 @@ describe('SearchResultsPanel', () => {
 
     cy.mount(<Harness />)
 
-    cy.get('@aiInvoke').should((invokeStub) => {
-      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
-      expect(ragSearchCalls).to.have.length(0)
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(0)
     })
     cy.get('[data-testid="grant-gemini-key"]').click()
 
-    cy.get('@aiInvoke').should((invokeStub) => {
-      const ragSearchCalls = invokeStub.getCalls().filter((call) => call.args[0] === 'rag-search')
-      expect(ragSearchCalls).to.have.length(1)
-      expect(invokeStub).to.have.been.calledWithMatch('rag-search', {
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(1)
+      expect(invoke).to.have.been.calledWithMatch('rag-search', {
         body: {
           query: 'ontology',
         },
@@ -789,7 +800,7 @@ describe('SearchResultsPanel', () => {
 
     cy.contains('Found: 2 notes').should('be.visible')
     cy.get('[data-testid="ai-search-view-tab-chunk"]').click({ force: true })
-    cy.contains('Found: 3 chunks').should('be.visible')
+    cy.contains('Found: 4 chunks').should('be.visible')
     cy.contains('Found: 99').should('not.exist')
   })
 
@@ -817,5 +828,75 @@ describe('SearchResultsPanel', () => {
     })
 
     cy.contains('Found: 3 chunks').should('be.visible')
+  })
+
+  it('paginates raw chunks in AI chunk view with load more', () => {
+    cy.window().then((win) => {
+      win.localStorage.setItem(
+        'everfreenote:aiSearchMode',
+        JSON.stringify({ isAIEnabled: true, preset: 'broad', viewMode: 'chunk' })
+      )
+    })
+
+    const controller = createController({
+      searchQuery: 'ontology',
+      showFTSResults: false,
+      ftsData: undefined,
+    })
+
+    const firstPage = [
+      createAiChunk('ai-note-1', 'AI Result One', 0, 0.91),
+      createAiChunk('ai-note-1', 'AI Result One', 1, 0.89),
+    ]
+    const secondPage = [
+      ...firstPage,
+      createAiChunk('ai-note-1', 'AI Result One', 2, 0.87),
+      createAiChunk('ai-note-2', 'AI Result Two', 0, 0.81),
+    ]
+
+    const invoke = cy.stub().callsFake((name: string, payload?: { body?: { topK?: number } }) => {
+      if (name === 'api-keys-status') {
+        return Promise.resolve({
+          data: {
+            gemini: { configured: true },
+            ragSearch: {
+              ...defaultRagSearch,
+              top_k: 2,
+            },
+          },
+          error: null,
+        })
+      }
+
+      if (name === 'rag-search') {
+        const requestedTopK = payload?.body?.topK ?? 2
+        return Promise.resolve({
+          data: {
+            chunks: requestedTopK <= 2 ? firstPage : secondPage,
+            hasMore: requestedTopK <= 2,
+          },
+          error: null,
+        })
+      }
+
+      return Promise.resolve({ data: null, error: null })
+    })
+
+    const supabase = {
+      auth: {
+        getUser: cy.stub().resolves({ data: { user: { id: 'user-1' } }, error: null }),
+      },
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    mountPanel(controller, { hasGeminiApiKey: true, supabase })
+
+    cy.contains('Found: 2 chunks').should('be.visible')
+    cy.contains('button', 'Load more...').should('be.visible').click({ force: true })
+    cy.contains('Found: 4 chunks').should('be.visible')
+    cy.contains('button', 'Load more...').should('not.exist')
+    cy.then(() => {
+      expect(getRagSearchCalls(invoke)).to.have.length(2)
+    })
   })
 })

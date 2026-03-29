@@ -41,6 +41,8 @@ describe('settings panels', () => {
     expect(screen.getByText('Current precision threshold')).toBeTruthy()
     expect(screen.getByText(defaultRagSearch.similarity_threshold.toFixed(2))).toBeTruthy()
     expect(screen.getByText(String(defaultRagSearch.output_dimensionality))).toBeTruthy()
+    expect((screen.getByLabelText('Top K per page') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Save retrieval settings' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('shows indexing defaults even when live indexing settings fail to load', async () => {

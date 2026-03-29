@@ -28,6 +28,11 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
 
+const readAuthToken = (authHeader: string): string =>
+  authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice("bearer ".length).trim()
+    : ""
+
 const isValidHttpUrl = (value: string): boolean => {
   try {
     const parsed = new URL(value)
@@ -37,7 +42,13 @@ const isValidHttpUrl = (value: string): boolean => {
   }
 }
 
-const normalizeSiteUrl = (value: string): string => value.replace(/\/+$/, "")
+const normalizeSiteUrl = (value: string): string => {
+  let normalized = value
+  while (normalized.endsWith("/")) {
+    normalized = normalized.slice(0, -1)
+  }
+  return normalized
+}
 
 const getCryptoKey = async (): Promise<CryptoKey> => {
   if (!encryptionSecret) {
@@ -54,7 +65,7 @@ const getCryptoKey = async (): Promise<CryptoKey> => {
 const bytesToBase64 = (bytes: Uint8Array): string => {
   let binary = ""
   for (const byte of bytes) {
-    binary += String.fromCharCode(byte)
+    binary += String.fromCodePoint(byte)
   }
   return btoa(binary)
 }
@@ -78,26 +89,27 @@ if (!supabaseUrl || !serviceRoleKey) {
   console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
 }
 
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders })
-  }
-
-  if (req.method !== "POST") {
-    return jsonResponse({ code: "method_not_allowed", message: "Method not allowed" }, 405)
-  }
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return jsonResponse({ code: "function_not_configured", message: "Function not configured" }, 500)
-  }
-
-  let payload: Record<string, unknown> = {}
+const parseJsonObject = async (req: Request): Promise<Record<string, unknown>> => {
   try {
-    payload = await req.json()
+    const payload = await req.json()
+    return payload && typeof payload === "object" && !Array.isArray(payload)
+      ? payload as Record<string, unknown>
+      : {}
   } catch {
-    payload = {}
+    return {}
   }
+}
 
+const validateWordPressPayload = (
+  payload: Record<string, unknown>
+):
+  | {
+      siteUrl: string
+      wpUsername: string
+      rawPassword: string
+      enabled: boolean
+    }
+  | Response => {
   const rawSiteUrl = typeof payload.siteUrl === "string" ? payload.siteUrl.trim() : ""
   const rawUsername = typeof payload.wpUsername === "string" ? payload.wpUsername.trim() : ""
   const rawPassword = typeof payload.applicationPassword === "string" ? payload.applicationPassword.trim() : ""
@@ -111,11 +123,104 @@ serve(async (req: Request) => {
     return jsonResponse({ code: "invalid_input", message: "Site URL must be a valid HTTP/HTTPS URL" }, 400)
   }
 
-  const siteUrl = normalizeSiteUrl(rawSiteUrl)
+  return {
+    siteUrl: normalizeSiteUrl(rawSiteUrl),
+    wpUsername: rawUsername,
+    rawPassword,
+    enabled,
+  }
+}
 
-  const authHeader = req.headers.get("Authorization")
-  const tokenMatch = authHeader?.match(/^Bearer\s+(.+)$/i)
-  const token = tokenMatch?.[1]?.trim() ?? ""
+const getUserId = async (
+  supabaseAdmin: ReturnType<typeof createClient>,
+  token: string
+): Promise<string | null> => {
+  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
+  if (userError || !userData?.user) {
+    return null
+  }
+  return userData.user.id
+}
+
+const saveWordPressSettings = async (
+  supabaseAdmin: ReturnType<typeof createClient>,
+  userId: string,
+  siteUrl: string,
+  wpUsername: string,
+  rawPassword: string,
+  enabled: boolean
+) => {
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from("wordpress_integrations")
+    .select("wp_app_password_encrypted")
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (existingError) {
+    throw existingError
+  }
+
+  const encryptedPassword = rawPassword
+    ? await encryptValue(rawPassword)
+    : (existing?.wp_app_password_encrypted || "")
+
+  if (!encryptedPassword) {
+    return jsonResponse({
+      code: "invalid_input",
+      message: "Application password is required for initial setup",
+    }, 400)
+  }
+
+  const { error: upsertError } = await supabaseAdmin
+    .from("wordpress_integrations")
+    .upsert(
+      {
+        user_id: userId,
+        site_url: siteUrl,
+        wp_username: wpUsername,
+        wp_app_password_encrypted: encryptedPassword,
+        enabled,
+      },
+      { onConflict: "user_id" }
+    )
+
+  if (upsertError) {
+    throw upsertError
+  }
+
+  return jsonResponse({
+    configured: Boolean(enabled),
+    integration: {
+      siteUrl,
+      wpUsername,
+      enabled,
+      hasPassword: true,
+    },
+  })
+}
+
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders })
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse({ code: "method_not_allowed", message: "Method not allowed" }, 405)
+  }
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return jsonResponse({ code: "function_not_configured", message: "Function not configured" }, 500)
+  }
+
+  const validatedPayload = validateWordPressPayload(await parseJsonObject(req))
+  if (validatedPayload instanceof Response) {
+    return validatedPayload
+  }
+
+  const { siteUrl, wpUsername, rawPassword, enabled } = validatedPayload
+
+  const authHeader = req.headers.get("Authorization")?.trim() ?? ""
+  const token = readAuthToken(authHeader)
   if (!token) {
     return jsonResponse({ code: "unauthorized", message: "Unauthorized" }, 401)
   }
@@ -123,62 +228,11 @@ serve(async (req: Request) => {
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
   try {
-    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
-    if (userError || !userData?.user) {
+    const userId = await getUserId(supabaseAdmin, token)
+    if (!userId) {
       return jsonResponse({ code: "unauthorized", message: "Unauthorized" }, 401)
     }
-
-    const userId = userData.user.id
-
-    const { data: existing, error: existingError } = await supabaseAdmin
-      .from("wordpress_integrations")
-      .select("wp_app_password_encrypted")
-      .eq("user_id", userId)
-      .maybeSingle()
-
-    if (existingError) {
-      throw existingError
-    }
-
-    let encryptedPassword = existing?.wp_app_password_encrypted || ""
-
-    if (rawPassword) {
-      encryptedPassword = await encryptValue(rawPassword)
-    }
-
-    if (!encryptedPassword) {
-      return jsonResponse({
-        code: "invalid_input",
-        message: "Application password is required for initial setup",
-      }, 400)
-    }
-
-    const { error: upsertError } = await supabaseAdmin
-      .from("wordpress_integrations")
-      .upsert(
-        {
-          user_id: userId,
-          site_url: siteUrl,
-          wp_username: rawUsername,
-          wp_app_password_encrypted: encryptedPassword,
-          enabled,
-        },
-        { onConflict: "user_id" }
-      )
-
-    if (upsertError) {
-      throw upsertError
-    }
-
-    return jsonResponse({
-      configured: Boolean(enabled),
-      integration: {
-        siteUrl,
-        wpUsername: rawUsername,
-        enabled,
-        hasPassword: true,
-      },
-    })
+    return await saveWordPressSettings(supabaseAdmin, userId, siteUrl, wpUsername, rawPassword, enabled)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to save WordPress settings"
     return jsonResponse({ code: "settings_upsert_failed", message }, 500)

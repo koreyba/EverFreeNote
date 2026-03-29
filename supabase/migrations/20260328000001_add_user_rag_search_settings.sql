@@ -45,3 +45,54 @@ BEGIN
   END IF;
 END
 $$;
+
+CREATE OR REPLACE FUNCTION public.upsert_user_rag_search_settings_partial(
+  p_user_id uuid,
+  p_top_k integer DEFAULT NULL,
+  p_similarity_threshold numeric DEFAULT NULL
+)
+RETURNS public.user_rag_search_settings
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  result public.user_rag_search_settings;
+BEGIN
+  INSERT INTO public.user_rag_search_settings (
+    user_id,
+    top_k,
+    similarity_threshold,
+    updated_at
+  )
+  VALUES (
+    p_user_id,
+    COALESCE(p_top_k, 15),
+    COALESCE(p_similarity_threshold, 0.55),
+    now()
+  )
+  ON CONFLICT (user_id) DO UPDATE
+  SET
+    top_k = COALESCE(p_top_k, public.user_rag_search_settings.top_k),
+    similarity_threshold = COALESCE(
+      p_similarity_threshold,
+      public.user_rag_search_settings.similarity_threshold
+    ),
+    updated_at = now()
+  RETURNING * INTO result;
+
+  RETURN result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.upsert_user_rag_search_settings_partial(uuid, integer, numeric)
+  TO authenticated, service_role;
+
+-- Rollback:
+-- REVOKE EXECUTE ON FUNCTION public.upsert_user_rag_search_settings_partial(uuid, integer, numeric)
+--   FROM authenticated, service_role;
+-- DROP FUNCTION IF EXISTS public.upsert_user_rag_search_settings_partial(uuid, integer, numeric);
+-- DROP POLICY IF EXISTS "Users can view own rag search settings" ON public.user_rag_search_settings;
+-- DROP POLICY IF EXISTS "Users can insert own rag search settings" ON public.user_rag_search_settings;
+-- DROP POLICY IF EXISTS "Users can update own rag search settings" ON public.user_rag_search_settings;
+-- DROP POLICY IF EXISTS "Users can delete own rag search settings" ON public.user_rag_search_settings;
+-- ALTER TABLE public.user_rag_search_settings DISABLE ROW LEVEL SECURITY;
+-- DROP TABLE IF EXISTS public.user_rag_search_settings;

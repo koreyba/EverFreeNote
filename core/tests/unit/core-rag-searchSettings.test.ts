@@ -56,4 +56,22 @@ describe("core/rag/searchSettings", () => {
       "similarity_threshold must increment by 0.05"
     )
   })
+
+  it("rejects NaN thresholds", () => {
+    expect(() => assertValidRagSearchEditableSettings({ similarity_threshold: Number.NaN })).toThrow(
+      "similarity_threshold must be a number"
+    )
+  })
+
+  it("accepts valid settings and returns resolved values", () => {
+    expect(
+      assertValidRagSearchEditableSettings({
+        top_k: 20,
+        similarity_threshold: 0.6,
+      })
+    ).toEqual({
+      top_k: 20,
+      similarity_threshold: 0.6,
+    })
+  })
 })

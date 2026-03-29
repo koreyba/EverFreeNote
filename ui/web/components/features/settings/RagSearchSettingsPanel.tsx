@@ -40,6 +40,7 @@ export function RagSearchSettingsPanel() {
     top_k: String(RAG_SEARCH_EDITABLE_DEFAULTS.top_k),
   }))
   const displaySettings = resolvedSettings ?? resolveRagSearchSettings(null)
+  const canEdit = !loading && resolvedSettings !== null
 
   const loadSettings = React.useCallback(async () => {
     setLoading(true)
@@ -58,7 +59,7 @@ export function RagSearchSettingsPanel() {
   }, [service])
 
   React.useEffect(() => {
-    void loadSettings()
+    loadSettings().catch(() => undefined)
   }, [loadSettings])
 
   const validationErrors = React.useMemo(() => {
@@ -68,6 +69,8 @@ export function RagSearchSettingsPanel() {
   }, [formState])
 
   const handleSave = async () => {
+    if (!canEdit) return
+
     setErrorMessage(null)
     setSuccessMessage(null)
     setSaving(true)
@@ -106,7 +109,7 @@ export function RagSearchSettingsPanel() {
             inputMode="numeric"
             value={formState.top_k}
             onChange={(event) => setFormState({ top_k: event.target.value })}
-            disabled={loading || saving}
+            disabled={!canEdit || saving}
           />
           <p className="text-xs text-muted-foreground">
             Controls how many chunk candidates are requested for each AI search page. Default: 15.
@@ -182,7 +185,7 @@ export function RagSearchSettingsPanel() {
         <div className={settingsActionRowClassName}>
           <Button
             onClick={handleSave}
-            disabled={loading || saving || validationErrors.length > 0}
+            disabled={!canEdit || saving || validationErrors.length > 0}
             className={settingsActionButtonClassName}
           >
             {saving ? "Saving..." : "Save retrieval settings"}
