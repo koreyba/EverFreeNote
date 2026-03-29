@@ -109,6 +109,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         threshold: ragSearchSettings.similarity_threshold,
         filterTag: filterByTag,
         isEnabled: aiEnabled && !ragSearchSettingsLoading,
+        resultMode: viewMode,
     })
 
     const showAIResults = aiEnabled && aiSearchQuery.trim().length >= AI_SEARCH_MIN_QUERY_LENGTH

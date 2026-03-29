@@ -11,6 +11,7 @@ type HookProps = {
   threshold: number
   filterTag: string | null
   isEnabled: boolean
+  resultMode?: 'note' | 'chunk'
 }
 
 const createChunk = (
@@ -149,6 +150,73 @@ describe('useAIPaginatedSearch', () => {
           filterTag: 'philosophy',
           topK: 10,
         }),
+      })
+    )
+  })
+
+  it('auto-expands chunk retrieval in note mode until the first note page is filled or exhausted', async () => {
+    const invoke = jest.fn().mockImplementation(
+      async (_fn: string, { body }: { body: { topK: number; query: string } }) => {
+        if (body.topK === 15) {
+          return {
+            data: {
+              chunks: Array.from({ length: 15 }, (_, idx) =>
+                createChunk('note-1', 0.9 - idx * 0.001, idx, idx * 400, `note-1 snippet ${idx + 1}`)
+              ),
+              hasMore: true,
+            },
+            error: null,
+          }
+        }
+
+        return {
+          data: {
+            chunks: [
+              ...Array.from({ length: 15 }, (_, idx) =>
+                createChunk('note-1', 0.9 - idx * 0.001, idx, idx * 400, `note-1 snippet ${idx + 1}`)
+              ),
+              createChunk('note-2', 0.72, 0, 0, 'note-2 snippet'),
+            ],
+            hasMore: false,
+          },
+          error: null,
+        }
+      }
+    )
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const { result } = renderHook(
+      () =>
+        useAIPaginatedSearch({
+          query: 'quadrants',
+          topK: 15,
+          threshold: 0.25,
+          filterTag: null,
+          isEnabled: true,
+          resultMode: 'note',
+        }),
+      { wrapper: createWrapper(supabase) }
+    )
+
+    await waitFor(() => {
+      expect(result.current.noteGroups.map((group) => group.noteId)).toEqual(['note-1', 'note-2'])
+      expect(result.current.aiHasMore).toBe(false)
+    })
+
+    expect(invoke).toHaveBeenNthCalledWith(
+      1,
+      'rag-search',
+      expect.objectContaining({
+        body: expect.objectContaining({ query: 'quadrants', topK: 15 }),
+      })
+    )
+    expect(invoke).toHaveBeenNthCalledWith(
+      2,
+      'rag-search',
+      expect.objectContaining({
+        body: expect.objectContaining({ query: 'quadrants', topK: 30 }),
       })
     )
   })
