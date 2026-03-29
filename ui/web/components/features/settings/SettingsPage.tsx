@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Download, Globe, KeyRound, Upload, UserRound, X } from "lucide-react"
+import { ArrowLeft, Database, Download, Globe, KeyRound, Upload, UserRound, X } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { useNoteAuth } from "@ui/web/hooks/useNoteAuth"
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
 import { ApiKeysSettingsPanel } from "@/components/features/settings/ApiKeysSettingsPanel"
+import { AIIndexTab } from "@/components/features/settings/AIIndexTab"
 import { DeleteAccountPanel } from "@/components/features/settings/DeleteAccountPanel"
 import { WordPressSettingsPanel } from "@/components/features/settings/WordPressSettingsPanel"
 import {
@@ -21,7 +22,7 @@ import {
   sanitizeSettingsReturnPath,
 } from "@ui/web/lib/settingsNavigationState"
 
-type SettingsTabId = "wordpress" | "api-keys" | "import" | "export" | "account"
+type SettingsTabId = "wordpress" | "api-keys" | "ai-index" | "import" | "export" | "account"
 
 type SettingsTabDefinition = {
   id: SettingsTabId
@@ -60,6 +61,12 @@ const SETTINGS_TABS: SettingsTabDefinition[] = [
     label: "Indexing (RAG)",
     description: "Gemini API key plus indexing and retrieval settings.",
     icon: KeyRound,
+  },
+  {
+    id: "ai-index",
+    label: "AI Index",
+    description: "Inspect indexed, stale, and unindexed notes without opening them one by one.",
+    icon: Database,
   },
 ]
 
@@ -300,6 +307,9 @@ export function SettingsPage() {
                   ) : null}
                   {activeDefinition.id === "api-keys" ? (
                     <ApiKeysSettingsPanel />
+                  ) : null}
+                  {activeDefinition.id === "ai-index" ? (
+                    <AIIndexTab />
                   ) : null}
                   {activeDefinition.id === "import" ? (
                     <ActionSection
