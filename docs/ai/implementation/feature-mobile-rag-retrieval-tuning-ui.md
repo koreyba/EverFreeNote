@@ -4,6 +4,13 @@ title: Mobile RAG Retrieval Tuning UI
 description: Implementation notes for mobile retrieval settings and AI search precision tuning
 ---
 
+## Related Documents
+
+- `docs/ai/requirements/feature-mobile-rag-retrieval-tuning-ui.md`
+  - Defines the mobile feature scope, acceptance criteria, and user-visible behavior.
+- `docs/ai/design/feature-mobile-rag-retrieval-tuning-ui.md`
+  - Defines the architecture, shared contracts, and product semantics this implementation follows.
+
 # Implementation Guide
 
 ## Development Setup
@@ -45,7 +52,7 @@ description: Implementation notes for mobile retrieval settings and AI search pr
 - Expose raw AI chunks in mobile chunk view instead of flattening only two grouped note chunks.
 
 ### Patterns & Best Practices
-- Follow the web feature’s product semantics, but keep mobile-native layout and controls.
+- Follow the web feature's product semantics described in `docs/ai/design/feature-mobile-rag-retrieval-tuning-ui.md` under `Architecture Overview`, `Component Breakdown`, and `Design Decisions`, but keep mobile-native layout and controls.
 - Prefer shared core constants/defaults over mobile-local retrieval constants where equivalent.
 - Keep fallback/default rendering when settings fail to load.
 

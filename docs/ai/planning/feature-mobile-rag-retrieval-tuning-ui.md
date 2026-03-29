@@ -9,7 +9,7 @@ description: Task breakdown for bringing retrieval tuning parity to the mobile a
 ## Milestones
 **What are the major checkpoints?**
 
-- [x] Milestone 1: Mobile requirements/design docs created and validated
+- [x] Milestone 1: Mobile requirements/design docs created and validated (`docs/ai/requirements/feature-mobile-rag-retrieval-tuning-ui.md`, `docs/ai/design/feature-mobile-rag-retrieval-tuning-ui.md`)
 - [x] Milestone 2: Mobile settings and search UI wired to persisted retrieval settings
 - [x] Milestone 3: Tests and validation pass for mobile retrieval tuning flow
 

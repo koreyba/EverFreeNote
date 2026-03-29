@@ -380,6 +380,7 @@ export default function SearchScreen() {
   const hasGeminiApiKey = geminiConfigured === true
   const precisionSaveRequestRef = useRef(0)
   const confirmedRagSearchSettingsRef = useRef(resolveRagSearchSettings())
+  const [hasHydratedRagSearchSettings, setHasHydratedRagSearchSettings] = useState(false)
 
   const [query, setQuery] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
@@ -395,14 +396,16 @@ export default function SearchScreen() {
   } = useMobileSearchMode()
 
   useEffect(() => {
-    const nextSettings = apiKeysStatus?.ragSearch ?? resolveRagSearchSettings(null)
+    if (!apiKeysStatus) return
+    const nextSettings = apiKeysStatus.ragSearch ?? resolveRagSearchSettings(null)
     confirmedRagSearchSettingsRef.current = nextSettings
     setRagSearchSettings(nextSettings)
     setDraftPrecision(nextSettings.similarity_threshold)
     setPrecisionError(null)
-  }, [apiKeysStatus?.ragSearch])
+    setHasHydratedRagSearchSettings(true)
+  }, [apiKeysStatus])
 
-  const aiModeEnabled = isAIEnabled && hasGeminiApiKey
+  const aiModeEnabled = isAIEnabled && hasGeminiApiKey && hasHydratedRagSearchSettings
   const {
     data,
     isLoading: isRegularLoading,
@@ -586,11 +589,11 @@ export default function SearchScreen() {
       similarity_threshold: normalizedThreshold,
     }))
 
-    void ragSearchSettingsService
-      .upsert({ similarity_threshold: normalizedThreshold })
+    const saveRequest = ragSearchSettingsService.upsert({ similarity_threshold: normalizedThreshold })
+    saveRequest
       .then((settings) => {
-        confirmedRagSearchSettingsRef.current = settings
         if (requestId !== precisionSaveRequestRef.current) return
+        confirmedRagSearchSettingsRef.current = settings
         setRagSearchSettings(settings)
         setDraftPrecision(settings.similarity_threshold)
       })

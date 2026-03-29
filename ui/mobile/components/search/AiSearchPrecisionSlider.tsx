@@ -49,6 +49,15 @@ export const AiSearchPrecisionSlider = memo(function AiSearchPrecisionSlider({
         maximumValue={RAG_SEARCH_THRESHOLD_MAX}
         step={RAG_SEARCH_THRESHOLD_STEP}
         disabled={disabled}
+        accessibilityLabel="Search precision"
+        accessibilityRole="adjustable"
+        accessibilityHint="Adjust how strict AI search is. Lower values return more results, higher values keep results cleaner."
+        accessibilityValue={{
+          min: RAG_SEARCH_THRESHOLD_MIN,
+          max: RAG_SEARCH_THRESHOLD_MAX,
+          now: value,
+          text: value.toFixed(2),
+        }}
         minimumTrackTintColor={colors.primary}
         maximumTrackTintColor={colors.border}
         thumbTintColor={colors.primary}

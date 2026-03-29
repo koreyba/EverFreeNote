@@ -127,28 +127,28 @@ interface MobilePrecisionState {
 **What are the major building blocks?**
 
 ### Mobile settings
-- Extend [`ui/mobile/components/settings/ApiKeysSettingsPanel.tsx`](/C:/Projects/EverFreeNote/ui/mobile/components/settings/ApiKeysSettingsPanel.tsx)
+- Extend `ui/mobile/components/settings/ApiKeysSettingsPanel.tsx`
   - keep Gemini key management
   - add retrieval settings section(s)
   - show editable `topK`
   - show read-only retrieval metadata
 
 ### Mobile search controls
-- Update [`ui/mobile/components/search/SearchControls.tsx`](/C:/Projects/EverFreeNote/ui/mobile/components/search/SearchControls.tsx)
+- Update `ui/mobile/components/search/SearchControls.tsx`
   - remove `AiSearchPresetSelector`
   - add a mobile-friendly precision slider
-- Update [`ui/mobile/hooks/useMobileSearchMode.ts`](/C:/Projects/EverFreeNote/ui/mobile/hooks/useMobileSearchMode.ts)
+- Update `ui/mobile/hooks/useMobileSearchMode.ts`
   - remove persisted preset
   - keep AI enabled flag and `Notes/Chunks` view mode
 
 ### Mobile AI search hook
-- Update [`ui/mobile/hooks/useMobileAIPaginatedSearch.ts`](/C:/Projects/EverFreeNote/ui/mobile/hooks/useMobileAIPaginatedSearch.ts)
+- Update `ui/mobile/hooks/useMobileAIPaginatedSearch.ts`
   - consume persisted retrieval settings instead of `SEARCH_PRESETS`
   - use backend `hasMore`
   - align pagination behavior with web where appropriate
 
 ### Mobile results list
-- Update [`ui/mobile/components/search/SearchResultsList.tsx`](/C:/Projects/EverFreeNote/ui/mobile/components/search/SearchResultsList.tsx)
+- Update `ui/mobile/components/search/SearchResultsList.tsx`
   - if needed, adapt chunk rendering and counts to the newer retrieval behavior
   - preserve mobile-native list performance and gestures
 

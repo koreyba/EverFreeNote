@@ -90,8 +90,8 @@ export function ApiKeysSettingsPanel() {
     }
   }, [apiKeysService])
 
-  const syncQueryCaches = () => {
-    void queryClient.invalidateQueries({ queryKey: ['apiKeysStatus'] })
+  const syncQueryCaches = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['apiKeysStatus'] })
   }
 
   const handleSaveKey = async () => {
@@ -116,7 +116,7 @@ export function ApiKeysSettingsPanel() {
       setTopKValue(String(ragSearchSettings.top_k))
       setValue('')
       setKeyFeedback({ variant: 'success', message: 'Gemini API key saved successfully.' })
-      syncQueryCaches()
+      await syncQueryCaches()
     } catch (error) {
       setKeyFeedback({
         variant: 'error',
@@ -142,7 +142,7 @@ export function ApiKeysSettingsPanel() {
       setTopKValue(String(ragSearchSettings.top_k))
       setValue('')
       setKeyFeedback({ variant: 'success', message: 'Gemini API key removed.' })
-      syncQueryCaches()
+      await syncQueryCaches()
     } catch (error) {
       setKeyFeedback({
         variant: 'error',
@@ -166,7 +166,7 @@ export function ApiKeysSettingsPanel() {
       setResolvedRagSearchSettings(status)
       setTopKValue(String(status.top_k))
       setRetrievalFeedback({ variant: 'success', message: 'RAG retrieval settings saved.' })
-      syncQueryCaches()
+      await syncQueryCaches()
     } catch (error) {
       setRetrievalFeedback({
         variant: 'error',
