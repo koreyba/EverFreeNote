@@ -23,6 +23,7 @@ describe("AIIndexNoteRow", () => {
   it("indexes a not-indexed note and disables remove action", async () => {
     const invoke = jest.fn().mockResolvedValue({ data: { chunkCount: 3 }, error: null })
     const onMutated = jest.fn()
+    const onOpenNote = jest.fn()
 
     renderWithSupabase(
       <AIIndexNoteRow
@@ -34,6 +35,7 @@ describe("AIIndexNoteRow", () => {
           status: "not_indexed",
         }}
         onMutated={onMutated}
+        onOpenNote={onOpenNote}
       />,
       invoke
     )
@@ -57,6 +59,7 @@ describe("AIIndexNoteRow", () => {
   it("removes an indexed note after confirmation", async () => {
     const invoke = jest.fn().mockResolvedValue({ data: { deleted: true }, error: null })
     const onMutated = jest.fn()
+    const onOpenNote = jest.fn()
 
     renderWithSupabase(
       <AIIndexNoteRow
@@ -68,6 +71,7 @@ describe("AIIndexNoteRow", () => {
           status: "indexed",
         }}
         onMutated={onMutated}
+        onOpenNote={onOpenNote}
       />,
       invoke
     )
@@ -87,5 +91,29 @@ describe("AIIndexNoteRow", () => {
     })
 
     expect(onMutated).toHaveBeenCalled()
+  })
+
+  it("opens the note when the row content is clicked", () => {
+    const invoke = jest.fn()
+    const onOpenNote = jest.fn()
+
+    renderWithSupabase(
+      <AIIndexNoteRow
+        note={{
+          id: "note-3",
+          title: "Jump to note",
+          updatedAt: "2026-03-29T10:00:00Z",
+          lastIndexedAt: "2026-03-29T10:05:00Z",
+          status: "indexed",
+        }}
+        onMutated={jest.fn()}
+        onOpenNote={onOpenNote}
+      />,
+      invoke
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Open note Jump to note" }))
+
+    expect(onOpenNote).toHaveBeenCalledWith("note-3")
   })
 })

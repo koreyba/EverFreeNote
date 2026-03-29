@@ -39,6 +39,7 @@ description: Task breakdown for the Settings AI index management page
 - [x] Task 3.3: Add status-specific button labels, timestamps, and disabled states
 - [x] Task 3.4: Document implementation and testing outcomes in feature docs
 - [x] Task 3.5: Reuse ordinary note-search semantics in the AI Index RPC and hook
+- [x] Task 3.6: Make AI Index rows open notes and restore the same Settings state on back navigation
 
 ## Dependencies
 

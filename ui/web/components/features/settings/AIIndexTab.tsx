@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { Database, Loader2, Search, X } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +18,13 @@ import {
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { AIIndexList } from "@/components/features/settings/AIIndexList"
+import {
+  clearActiveSettingsNoteReturnPath,
+  consumeAIIndexViewState,
+  saveAIIndexPendingNoteState,
+  saveAIIndexViewState,
+  type AIIndexViewStateSnapshot,
+} from "@ui/web/lib/aiIndexNavigationState"
 import {
   settingsInsetPanelClassName,
   settingsSectionCardClassName,
@@ -37,11 +45,15 @@ const FILTER_EMPTY_MESSAGES: Record<AIIndexFilter, string> = {
 }
 
 export function AIIndexTab() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const { user } = useSupabase()
   const [filter, setFilter] = React.useState<AIIndexFilter>("all")
   const [searchDraft, setSearchDraft] = React.useState("")
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [initialScrollOffset, setInitialScrollOffset] = React.useState(0)
+  const [scrollOffset, setScrollOffset] = React.useState(0)
+  const restoredStateRef = React.useRef(false)
   const normalizedSearchDraft = searchDraft.trim()
   const isSearchHintVisible =
     normalizedSearchDraft.length > 0 && normalizedSearchDraft.length < SEARCH_CONFIG.MIN_QUERY_LENGTH
@@ -54,6 +66,22 @@ export function AIIndexTab() {
   const query = useAIIndexNotes(filter, activeSearchQuery)
   const notes = useFlattenedAIIndexNotes(query)
   const totalCount = query.data?.pages[0]?.totalCount ?? 0
+
+  React.useEffect(() => {
+    if (restoredStateRef.current) return
+
+    const restoredState = consumeAIIndexViewState()
+    clearActiveSettingsNoteReturnPath()
+    restoredStateRef.current = true
+
+    if (!restoredState) return
+
+    setFilter(restoredState.filter)
+    setSearchDraft(restoredState.searchDraft)
+    setSearchQuery(restoredState.searchQuery)
+    setInitialScrollOffset(restoredState.scrollOffset)
+    setScrollOffset(restoredState.scrollOffset)
+  }, [])
 
   const handleMutated = React.useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) })
@@ -83,6 +111,22 @@ export function AIIndexTab() {
     setSearchDraft("")
     setSearchQuery("")
   }, [debouncedSearch])
+
+  const currentViewState = React.useMemo<AIIndexViewStateSnapshot>(() => ({
+    filter,
+    searchDraft,
+    searchQuery: normalizedSearchDraft.length >= SEARCH_CONFIG.MIN_QUERY_LENGTH ? normalizedSearchDraft : "",
+    scrollOffset,
+  }), [filter, normalizedSearchDraft, scrollOffset, searchDraft])
+
+  const handleOpenNote = React.useCallback((noteId: string) => {
+    saveAIIndexViewState(currentViewState)
+    saveAIIndexPendingNoteState({
+      noteId,
+      returnPath: "/settings?tab=ai-index",
+    })
+    router.push("/")
+  }, [currentViewState, router])
 
   const emptyMessage =
     activeSearchQuery.length > 0
@@ -203,7 +247,10 @@ export function AIIndexTab() {
               }
             }}
             onMutated={handleMutated}
+            onOpenNote={handleOpenNote}
             emptyMessage={emptyMessage}
+            initialScrollOffset={initialScrollOffset}
+            onScrollOffsetChange={setScrollOffset}
           />
         </div>
       </div>

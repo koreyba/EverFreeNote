@@ -69,9 +69,11 @@ function formatTimestamp(value: string | null) {
 export function AIIndexNoteRow({
   note,
   onMutated,
+  onOpenNote,
 }: {
   note: AIIndexNoteRowData
   onMutated: () => void
+  onOpenNote: (noteId: string) => void
 }) {
   const { supabase } = useSupabase()
   const [operation, setOperation] = React.useState<Operation>(null)
@@ -127,9 +129,15 @@ export function AIIndexNoteRow({
     <>
       <article className="rounded-2xl border border-border/60 bg-card/80 p-4 shadow-none">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-3">
+          <button
+            type="button"
+            onClick={() => onOpenNote(note.id)}
+            disabled={isBusy}
+            className="group min-w-0 flex-1 space-y-3 rounded-2xl text-left transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-80"
+            aria-label={`Open note ${note.title.trim() || "Untitled Note"}`}
+          >
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-sm font-semibold sm:text-base">
+              <h3 className="truncate text-sm font-semibold underline-offset-4 group-hover:underline sm:text-base">
                 {note.title.trim() || "Untitled Note"}
               </h3>
               <Badge variant="outline" className={STATUS_STYLES[note.status]}>
@@ -147,7 +155,7 @@ export function AIIndexNoteRow({
                 <dd className="mt-1">{formatTimestamp(note.updatedAt)}</dd>
               </div>
             </dl>
-          </div>
+          </button>
 
           <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0 lg:flex-col">
             <Button

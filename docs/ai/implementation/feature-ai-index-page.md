@@ -50,12 +50,14 @@ ui/web/components/features/settings/
 - Build a dedicated `AIIndexTab` container with filters, ordinary search row, and virtualized list.
 - Use dedicated server-backed status-aware pagination through `get_ai_index_notes`.
 - Reuse the shared search utilities (`SEARCH_CONFIG`, `buildTsQuery`, language mapping) so AI Index search behaves like the main notes search without reusing the notes controller.
+- Make each AI Index row open the corresponding note in the main notes shell while preserving the originating `Settings -> AI Index` view state for back navigation.
 
 ### Patterns & Best Practices
 
 - Follow the `NoteList` virtualization pattern, but do not reuse `NoteCard`.
 - Prefer small focused components over branching existing settings panels heavily.
 - Keep mutation refresh logic centralized so row state updates stay consistent.
+- Persist only the narrow AI Index UI state needed for round-tripping (`filter`, search input/query, list scroll offset, return path) via session storage rather than coupling Settings state to the main notes controller.
 
 ## Integration Points
 
@@ -63,6 +65,7 @@ ui/web/components/features/settings/
 - Writes: existing `rag-index` Edge Function
 - Navigation: existing `tab` query param handling in `SettingsPage`
 - Search semantics: shared text-search utilities from `@core/utils/search`
+- Cross-route note opening: `app/page.tsx` restores note selection via the existing `restoreUiState` bridge and a lightweight AI Index navigation snapshot
 
 ## Error Handling
 

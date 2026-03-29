@@ -9,6 +9,11 @@ import { NotesShell } from "@/components/features/notes/NotesShell"
 import { useNoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { featureFlags } from "@ui/web/featureFlags"
 import { consumeSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
+import {
+  clearActiveSettingsNoteReturnPath,
+  consumeAIIndexPendingNoteState,
+  saveActiveSettingsNoteReturnPath,
+} from "@ui/web/lib/aiIndexNavigationState"
 
 export default function App() {
   const controller = useNoteAppController()
@@ -35,7 +40,26 @@ export default function App() {
     const returnState = consumeSettingsReturnState()
     if (!returnState) return
 
+    clearActiveSettingsNoteReturnPath()
+
     void controller.restoreUiState(returnState.notesUiState)
+  }, [controller, loading, user])
+
+  useEffect(() => {
+    if (loading || !user) return
+
+    const pendingNoteState = consumeAIIndexPendingNoteState()
+    if (!pendingNoteState) return
+
+    saveActiveSettingsNoteReturnPath(pendingNoteState.returnPath)
+    void controller.restoreUiState({
+      selectedNoteId: pendingNoteState.noteId,
+      selectedNote: null,
+      isEditing: false,
+      isSearchPanelOpen: false,
+      searchQuery: '',
+      filterByTag: null,
+    })
   }, [controller, loading, user])
 
   if (loading) {

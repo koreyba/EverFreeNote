@@ -2,6 +2,7 @@
 
 import { memo, useMemo } from "react"
 import type { CSSProperties } from "react"
+import * as React from "react"
 import AutoSizer from "react-virtualized-auto-sizer"
 import * as ReactWindow from "react-window"
 import { Loader2 } from "lucide-react"
@@ -14,6 +15,8 @@ import { AIIndexNoteRow } from "@/components/features/settings/AIIndexNoteRow"
 const VirtualList = ReactWindow.List as any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const useDynamicRowHeight = (ReactWindow as any).useDynamicRowHeight as (options: { defaultRowHeight: number }) => unknown
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const useListRef = (ReactWindow as any).useListRef as () => { current: { element: HTMLDivElement | null } | null }
 
 type RowComponentProps<T> = {
   index: number
@@ -31,10 +34,11 @@ type ItemData = {
   isLoadingMore: boolean
   onLoadMore: () => void
   onMutated: () => void
+  onOpenNote: (noteId: string) => void
 }
 
 const AIIndexRowRenderer = memo(({ index, style, ...props }: RowComponentProps<ItemData>) => {
-  const { items, hasMore, isLoadingMore, onLoadMore, onMutated } = props as unknown as ItemData
+  const { items, hasMore, isLoadingMore, onLoadMore, onMutated, onOpenNote } = props as unknown as ItemData
 
   if (index === items.length) {
     return (
@@ -55,7 +59,7 @@ const AIIndexRowRenderer = memo(({ index, style, ...props }: RowComponentProps<I
 
   return (
     <div style={style} className="px-2 py-1.5">
-      <AIIndexNoteRow note={note} onMutated={onMutated} />
+      <AIIndexNoteRow note={note} onMutated={onMutated} onOpenNote={onOpenNote} />
     </div>
   )
 })
@@ -110,7 +114,10 @@ export const AIIndexList = memo(function AIIndexList({
   isFetchingNextPage,
   onLoadMore,
   onMutated,
+  onOpenNote,
   emptyMessage,
+  initialScrollOffset = 0,
+  onScrollOffsetChange,
   height,
   width,
 }: {
@@ -120,11 +127,16 @@ export const AIIndexList = memo(function AIIndexList({
   isFetchingNextPage: boolean
   onLoadMore: () => void
   onMutated: () => void
+  onOpenNote: (noteId: string) => void
   emptyMessage: string
+  initialScrollOffset?: number
+  onScrollOffsetChange?: (scrollOffset: number) => void
   height?: number
   width?: number
 }) {
   const dynamicRowHeight = useDynamicRowHeight({ defaultRowHeight: 168 })
+  const listRef = useListRef()
+  const restoredScrollOffsetRef = React.useRef<number | null>(null)
 
   const itemData = useMemo(() => ({
     items: notes,
@@ -132,7 +144,19 @@ export const AIIndexList = memo(function AIIndexList({
     isLoadingMore: isFetchingNextPage,
     onLoadMore,
     onMutated,
-  }), [hasMore, isFetchingNextPage, notes, onLoadMore, onMutated])
+    onOpenNote,
+  }), [hasMore, isFetchingNextPage, notes, onLoadMore, onMutated, onOpenNote])
+
+  React.useLayoutEffect(() => {
+    if (initialScrollOffset <= 0) return
+    if (restoredScrollOffsetRef.current === initialScrollOffset) return
+
+    const element = listRef.current?.element
+    if (!element) return
+
+    element.scrollTo({ top: initialScrollOffset, behavior: "auto" })
+    restoredScrollOffsetRef.current = initialScrollOffset
+  }, [initialScrollOffset, listRef, notes.length])
 
   if (isLoading) {
     return <LoadingSkeleton />
@@ -151,12 +175,16 @@ export const AIIndexList = memo(function AIIndexList({
       <Sizer height={height} width={width}>
         {({ height: listHeight, width: listWidth }) => (
           <VirtualList
+            listRef={listRef}
             height={listHeight}
             width={listWidth}
             rowCount={notes.length + (hasMore ? 1 : 0)}
             rowHeight={dynamicRowHeight}
             rowProps={itemData}
             overscanCount={4}
+            onScroll={(event: React.UIEvent<HTMLDivElement>) => {
+              onScrollOffsetChange?.(event.currentTarget.scrollTop)
+            }}
             onRowsRendered={({ stopIndex }: { stopIndex: number }) => {
               if (hasMore && !isFetchingNextPage && stopIndex >= notes.length - 3) {
                 onLoadMore()

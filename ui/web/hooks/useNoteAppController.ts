@@ -17,6 +17,7 @@ import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEdi
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
 import { type NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
+import { clearActiveSettingsNoteReturnPath } from '@ui/web/lib/aiIndexNavigationState'
 import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
 
 export type EditFormState = {
@@ -282,6 +283,7 @@ export function useNoteAppController() {
     const requestId = ++latestSelectRequestRef.current
     await flushPendingEditorSave()
     if (requestId !== latestSelectRequestRef.current) return
+    clearActiveSettingsNoteReturnPath()
     if (note?.id && selectedNoteRef.current?.id === note.id) {
       setIsEditing(false)
       setLastSavedAt(null)
@@ -296,6 +298,7 @@ export function useNoteAppController() {
 
   const wrappedHandleCreateNote = useCallback(async () => {
     await flushPendingEditorSave()
+    clearActiveSettingsNoteReturnPath()
     handleCreateNote()
     setLastSavedAt(null)
   }, [flushPendingEditorSave, handleCreateNote, setLastSavedAt])
@@ -316,6 +319,7 @@ export function useNoteAppController() {
 
   const handleTagClick = useCallback(async (tag: string) => {
     await flushPendingEditorSave()
+    clearActiveSettingsNoteReturnPath()
     onTagClick(tag)
     setSelectedNote(null)
     setIsEditing(false)
@@ -326,6 +330,7 @@ export function useNoteAppController() {
     const requestId = ++latestSearchClickRequestRef.current
     await flushPendingEditorSave()
     if (requestId !== latestSearchClickRequestRef.current) return
+    clearActiveSettingsNoteReturnPath()
     if (note?.id && selectedNoteRef.current?.id === note.id) {
       setIsEditing(false)
       setLastSavedAt(null)

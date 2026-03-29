@@ -4,6 +4,14 @@ import { AIIndexTab } from "@/components/features/settings/AIIndexTab"
 import { SupabaseTestProvider } from "@ui/web/providers/SupabaseProvider"
 import * as aiIndexHooks from "@ui/web/hooks/useAIIndexNotes"
 
+const mockPush = jest.fn()
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}))
+
 jest.mock("@/components/features/settings/AIIndexList", () => ({
   AIIndexList: () => <div data-testid="ai-index-list" />,
 }))
@@ -23,6 +31,7 @@ describe("AIIndexTab", () => {
 
   beforeEach(() => {
     jest.useFakeTimers()
+    mockPush.mockReset()
     jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([])
     jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue(mockQuery as never)
   })
