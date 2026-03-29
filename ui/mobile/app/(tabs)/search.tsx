@@ -4,7 +4,9 @@ import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import type { Note } from '@core/types/domain'
 import { ApiKeysSettingsService } from '@core/services/apiKeysSettings'
+import { RagSearchSettingsService } from '@core/services/ragSearchSettings'
 import { AI_SEARCH_MIN_QUERY_LENGTH } from '@core/constants/aiSearch'
+import { resolveRagSearchSettings } from '@core/rag/searchSettings'
 import { SEARCH_CONFIG } from '@core/constants/search'
 import { shouldUpdateTagFilter } from '@core/utils/search'
 import {
@@ -160,6 +162,7 @@ type SearchScreenBodyProps = {
   isAILoading: boolean
   isResultsRefreshing: boolean
   noteGroups: ReturnType<typeof useMobileAIPaginatedSearch>['noteGroups']
+  aiChunks: ReturnType<typeof useMobileAIPaginatedSearch>['chunks']
   aiQueryReady: boolean
   aiError: string | null
   onRetryAiSearch: () => void
@@ -202,6 +205,7 @@ function SearchScreenBody({
   isAILoading,
   isResultsRefreshing,
   noteGroups,
+  aiChunks,
   aiQueryReady,
   aiError,
   onRetryAiSearch,
@@ -226,6 +230,8 @@ function SearchScreenBody({
   hasGeminiApiKey,
   geminiConfigured,
 }: SearchScreenBodyProps) {
+  const hasAiVisibleResults = activeMode === 'ai-chunk' ? aiChunks.length > 0 : noteGroups.length > 0
+
   if (showHistory) {
     return (
       <View style={styles.historyContainer}>
@@ -267,7 +273,7 @@ function SearchScreenBody({
     )
   }
 
-  if (isAILoading && noteGroups.length === 0 && aiModeEnabled && aiQueryReady) {
+  if (isAILoading && !hasAiVisibleResults && aiModeEnabled && aiQueryReady) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.primary} />
@@ -297,6 +303,7 @@ function SearchScreenBody({
         mode={activeMode}
         regularResults={regularResults}
         aiNoteGroups={noteGroups}
+        aiChunks={aiChunks}
         onRegularNotePress={onRegularNotePress}
         onDeleteRegularNote={onDeleteRegularNote}
         onOpenAiResult={onOpenAiResult}
@@ -322,6 +329,7 @@ function SearchScreenBody({
         mode={activeMode}
         regularResults={[]}
         aiNoteGroups={[]}
+        aiChunks={[]}
         onRegularNotePress={onRegularNotePress}
         onDeleteRegularNote={onDeleteRegularNote}
         onOpenAiResult={onOpenAiResult}
@@ -360,6 +368,7 @@ export default function SearchScreen() {
   const params = useLocalSearchParams<{ tag?: string }>()
 
   const apiKeysSettingsService = useMemo(() => new ApiKeysSettingsService(client), [client])
+  const ragSearchSettingsService = useMemo(() => new RagSearchSettingsService(client), [client])
   const { data: apiKeysStatus } = useQuery({
     queryKey: ['apiKeysStatus', user?.id],
     queryFn: () => apiKeysSettingsService.getStatus(),
@@ -369,20 +378,34 @@ export default function SearchScreen() {
 
   const geminiConfigured = apiKeysStatus?.gemini?.configured ?? null
   const hasGeminiApiKey = geminiConfigured === true
+  const precisionSaveRequestRef = useRef(0)
+  const confirmedRagSearchSettingsRef = useRef(resolveRagSearchSettings())
+  const [hasHydratedRagSearchSettings, setHasHydratedRagSearchSettings] = useState(false)
 
   const [query, setQuery] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [ragSearchSettings, setRagSearchSettings] = useState(() => resolveRagSearchSettings())
+  const [draftPrecision, setDraftPrecision] = useState(resolveRagSearchSettings().similarity_threshold)
+  const [precisionError, setPrecisionError] = useState<string | null>(null)
 
   const {
     isAIEnabled,
-    preset,
     viewMode,
     setIsAIEnabled,
-    setPreset,
     setViewMode,
   } = useMobileSearchMode()
 
-  const aiModeEnabled = isAIEnabled && hasGeminiApiKey
+  useEffect(() => {
+    if (!apiKeysStatus) return
+    const nextSettings = apiKeysStatus.ragSearch ?? resolveRagSearchSettings(null)
+    confirmedRagSearchSettingsRef.current = nextSettings
+    setRagSearchSettings(nextSettings)
+    setDraftPrecision(nextSettings.similarity_threshold)
+    setPrecisionError(null)
+    setHasHydratedRagSearchSettings(true)
+  }, [apiKeysStatus])
+
+  const aiModeEnabled = isAIEnabled && hasGeminiApiKey && hasHydratedRagSearchSettings
   const {
     data,
     isLoading: isRegularLoading,
@@ -395,6 +418,7 @@ export default function SearchScreen() {
 
   const {
     noteGroups,
+    chunks: aiChunks,
     isLoading: isAILoading,
     isRefreshing: isAIRefreshing,
     error: aiError,
@@ -405,9 +429,11 @@ export default function SearchScreen() {
     resetAIResults,
   } = useMobileAIPaginatedSearch({
     query,
-    preset,
+    topK: ragSearchSettings.top_k,
+    threshold: ragSearchSettings.similarity_threshold,
     filterTag: activeTag,
     isEnabled: aiModeEnabled,
+    resultMode: viewMode,
   })
 
   const { mutate: deleteNote } = useDeleteNote()
@@ -432,6 +458,7 @@ export default function SearchScreen() {
     !aiError &&
     !regularResults.length &&
     !noteGroups.length &&
+    !aiChunks.length &&
     !activeTag &&
     queryTrimmed.length === 0
 
@@ -546,6 +573,41 @@ export default function SearchScreen() {
     selectedIds,
   ])
 
+  const handlePrecisionCommit = useCallback((nextThreshold: number) => {
+    const normalizedThreshold = Number(nextThreshold.toFixed(2))
+    setDraftPrecision(normalizedThreshold)
+
+    if (normalizedThreshold === ragSearchSettings.similarity_threshold) {
+      return
+    }
+
+    precisionSaveRequestRef.current += 1
+    const requestId = precisionSaveRequestRef.current
+    setPrecisionError(null)
+    setRagSearchSettings((current) => ({
+      ...current,
+      similarity_threshold: normalizedThreshold,
+    }))
+
+    const saveRequest = ragSearchSettingsService.upsert({ similarity_threshold: normalizedThreshold })
+    saveRequest
+      .then((settings) => {
+        if (requestId !== precisionSaveRequestRef.current) return
+        confirmedRagSearchSettingsRef.current = settings
+        setRagSearchSettings(settings)
+        setDraftPrecision(settings.similarity_threshold)
+      })
+      .catch((error) => {
+        if (requestId !== precisionSaveRequestRef.current) return
+        const rollbackSettings = confirmedRagSearchSettingsRef.current
+        setRagSearchSettings(rollbackSettings)
+        setDraftPrecision(rollbackSettings.similarity_threshold)
+        setPrecisionError(
+          error instanceof Error ? error.message : 'Failed to save AI search precision'
+        )
+      })
+  }, [ragSearchSettings.similarity_threshold, ragSearchSettingsService])
+
   const controlsHelperText = useMemo(() => {
     if (geminiConfigured === false) {
       return 'Add a Gemini API key in Settings to enable AI search.'
@@ -562,7 +624,7 @@ export default function SearchScreen() {
   const activeMode = aiModeEnabled ? (viewMode === 'chunk' ? 'ai-chunk' : 'ai-note') : 'regular'
   const shouldShowResultsList =
     (!aiModeEnabled && regularResults.length > 0) ||
-    (aiModeEnabled && noteGroups.length > 0)
+    (aiModeEnabled && (viewMode === 'chunk' ? aiChunks.length > 0 : noteGroups.length > 0))
   const shouldShowEmptyResults =
     !showHistory &&
     !shouldShowResultsList &&
@@ -620,8 +682,12 @@ export default function SearchScreen() {
           setViewMode(mode)
         }}
         viewModeDisabled={selectionLockActive}
-        preset={preset}
-        onChangePreset={setPreset}
+        precisionValue={draftPrecision}
+        topK={ragSearchSettings.top_k}
+        onChangePrecision={setDraftPrecision}
+        onCommitPrecision={handlePrecisionCommit}
+        precisionDisabled={selectionLockActive}
+        precisionError={precisionError}
         helperText={controlsHelperText}
       />
 
@@ -638,6 +704,7 @@ export default function SearchScreen() {
         isAILoading={isAILoading}
         isResultsRefreshing={isResultsRefreshing}
         noteGroups={noteGroups}
+        aiChunks={aiChunks}
         aiQueryReady={aiQueryReady}
         aiError={aiError}
         onRetryAiSearch={refetchAISearch}

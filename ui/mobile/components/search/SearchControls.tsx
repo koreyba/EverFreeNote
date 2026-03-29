@@ -1,10 +1,9 @@
 import { memo, useMemo } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { Search, X } from 'lucide-react-native'
-import type { SearchPreset } from '@core/constants/aiSearch'
 import type { MobileSearchViewMode } from '@ui/mobile/hooks/useMobileSearchMode'
 import { useTheme } from '@ui/mobile/providers'
-import { AiSearchPresetSelector } from './AiSearchPresetSelector'
+import { AiSearchPrecisionSlider } from './AiSearchPrecisionSlider'
 import { AiSearchToggle } from './AiSearchToggle'
 import { AiSearchViewTabs } from './AiSearchViewTabs'
 
@@ -19,8 +18,12 @@ type SearchControlsProps = {
   viewMode: MobileSearchViewMode
   onChangeViewMode: (mode: MobileSearchViewMode) => void
   viewModeDisabled?: boolean
-  preset: SearchPreset
-  onChangePreset: (preset: SearchPreset) => void
+  precisionValue: number
+  topK: number
+  onChangePrecision: (value: number) => void
+  onCommitPrecision: (value: number) => void
+  precisionDisabled?: boolean
+  precisionError?: string | null
   helperText?: string | null
 }
 
@@ -35,8 +38,12 @@ export const SearchControls = memo(function SearchControls({
   viewMode,
   onChangeViewMode,
   viewModeDisabled = false,
-  preset,
-  onChangePreset,
+  precisionValue,
+  topK,
+  onChangePrecision,
+  onCommitPrecision,
+  precisionDisabled = false,
+  precisionError = null,
   helperText = null,
 }: SearchControlsProps) {
   const { colors } = useTheme()
@@ -77,9 +84,16 @@ export const SearchControls = memo(function SearchControls({
       </View>
 
       {isAIEnabled && (
-        <AiSearchPresetSelector value={preset} onChange={onChangePreset} />
+        <AiSearchPrecisionSlider
+          value={precisionValue}
+          topK={topK}
+          onChange={onChangePrecision}
+          onCommit={onCommitPrecision}
+          disabled={precisionDisabled}
+        />
       )}
 
+      {isAIEnabled && precisionError ? <Text style={styles.errorText}>{precisionError}</Text> : null}
       {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
     </View>
   )
@@ -120,5 +134,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     lineHeight: 18,
     fontFamily: 'Inter_400Regular',
     color: colors.mutedForeground,
+  },
+  errorText: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: 'Inter_500Medium',
+    color: colors.destructive,
   },
 })

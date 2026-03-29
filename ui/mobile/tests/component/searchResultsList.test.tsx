@@ -195,6 +195,7 @@ describe('SearchResultsList', () => {
         mode="regular"
         regularResults={[]}
         aiNoteGroups={[]}
+        aiChunks={[]}
         onRegularNotePress={jest.fn()}
         onDeleteRegularNote={jest.fn()}
         onOpenAiResult={jest.fn()}
@@ -215,6 +216,7 @@ describe('SearchResultsList', () => {
         mode="regular"
         regularResults={[createRegularNote('note-1')]}
         aiNoteGroups={[]}
+        aiChunks={[]}
         onRegularNotePress={onRegularNotePress}
         onDeleteRegularNote={jest.fn()}
         onOpenAiResult={jest.fn()}
@@ -236,6 +238,7 @@ describe('SearchResultsList', () => {
         mode="regular"
         regularResults={[createRegularNote('note-1')]}
         aiNoteGroups={[]}
+        aiChunks={[]}
         onRegularNotePress={onRegularNotePress}
         onDeleteRegularNote={jest.fn()}
         onOpenAiResult={jest.fn()}
@@ -252,16 +255,21 @@ describe('SearchResultsList', () => {
     expect(onRegularNotePress).not.toHaveBeenCalled()
   })
 
-  it('flattens only the top two chunks per AI note and loads more when allowed', () => {
+  it('renders raw AI chunks and loads more when allowed', () => {
     const onOpenAiResult = jest.fn()
     const onLoadMore = jest.fn()
     const onScrollBeginDrag = jest.fn()
+    const aiChunks = [
+      ...createAiGroup('note-a', 3).chunks,
+      ...createAiGroup('note-b', 1).chunks,
+    ]
 
     render(
       <SearchResultsList
         mode="ai-chunk"
         regularResults={[]}
-        aiNoteGroups={[createAiGroup('note-a', 3), createAiGroup('note-b', 1)]}
+        aiNoteGroups={[]}
+        aiChunks={aiChunks}
         onRegularNotePress={jest.fn()}
         onDeleteRegularNote={jest.fn()}
         onOpenAiResult={onOpenAiResult}
@@ -273,7 +281,7 @@ describe('SearchResultsList', () => {
 
     expect(screen.getByTestId('mock-ai-chunk-note-a-0')).toBeTruthy()
     expect(screen.getByTestId('mock-ai-chunk-note-a-1')).toBeTruthy()
-    expect(screen.queryByTestId('mock-ai-chunk-note-a-2')).toBeNull()
+    expect(screen.getByTestId('mock-ai-chunk-note-a-2')).toBeTruthy()
     expect(screen.getByTestId('mock-ai-chunk-note-b-0')).toBeTruthy()
 
     fireEvent.press(screen.getByTestId('mock-ai-chunk-note-a-1'))
@@ -295,6 +303,7 @@ describe('SearchResultsList', () => {
         mode="ai-note"
         regularResults={[]}
         aiNoteGroups={[createAiGroup('note-a', 2)]}
+        aiChunks={[]}
         onRegularNotePress={jest.fn()}
         onDeleteRegularNote={jest.fn()}
         onOpenAiResult={onOpenAiResult}
@@ -323,6 +332,7 @@ describe('SearchResultsList', () => {
         mode="ai-note"
         regularResults={[]}
         aiNoteGroups={[createLegacyAiGroup('note-legacy')]}
+        aiChunks={[]}
         onRegularNotePress={jest.fn()}
         onDeleteRegularNote={jest.fn()}
         onOpenAiResult={onOpenAiResult}
@@ -347,6 +357,7 @@ describe('SearchResultsList', () => {
         mode="regular"
         regularResults={[createRegularNote('note-1')]}
         aiNoteGroups={[]}
+        aiChunks={[]}
         onRegularNotePress={jest.fn()}
         onDeleteRegularNote={jest.fn()}
         onOpenAiResult={jest.fn()}

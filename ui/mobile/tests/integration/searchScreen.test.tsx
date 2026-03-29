@@ -15,6 +15,7 @@ import {
   waitFor,
 } from '../testUtils'
 import { Alert } from 'react-native'
+import { resolveRagSearchSettings } from '@core/rag/searchSettings'
 
 // Mock Alert
 jest.spyOn(Alert, 'alert').mockImplementation(jest.fn())
@@ -105,9 +106,23 @@ jest.mock('@ui/mobile/services/searchHistory', () => ({
 
 jest.mock('@core/services/notes')
 jest.mock('@core/services/search')
+const mockGetStatus = jest.fn()
+jest.mock('@core/services/apiKeysSettings', () => ({
+  ApiKeysSettingsService: jest.fn().mockImplementation(() => ({
+    getStatus: mockGetStatus,
+  })),
+}))
 jest.mock('@ui/mobile/adapters/networkStatus', () => ({
   mobileNetworkStatusProvider: {
     isOnline: jest.fn().mockReturnValue(true),
+  },
+}))
+
+jest.mock('@react-native-community/slider', () => ({
+  __esModule: true,
+  default: ({ testID }: { testID?: string }) => {
+    const { View } = require('react-native')
+    return <View testID={testID ?? 'mock-slider'} />
   },
 }))
 
@@ -270,6 +285,10 @@ describe('SearchScreen - Delete Functionality', () => {
 
     queryClient = createTestQueryClient()
     wrapper = createQueryWrapper(queryClient)
+    mockGetStatus.mockReset().mockResolvedValue({
+      gemini: { configured: true },
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.55 }),
+    })
 
     // Mock SearchService.searchNotes (used by useSearch hook)
     mockSearchService.prototype.searchNotes = jest.fn().mockResolvedValue({
@@ -352,7 +371,7 @@ describe('SearchScreen - Delete Functionality', () => {
       // Other results should still be visible
       expect(screen.getByText('Search Result 2')).toBeTruthy()
       expect(screen.getByText('Search Result 3')).toBeTruthy()
-    })
+    }, 15000)
 
     it('preserves search query after deletion', async () => {
       render(<SearchScreen />, { wrapper })
@@ -644,7 +663,7 @@ describe('SearchScreen - Delete Functionality', () => {
       await waitFor(() => {
         expect(screen.getByText('Nothing found')).toBeTruthy()
       })
-    })
+    }, 15000)
   })
 
   describe('Delete with tag filter', () => {

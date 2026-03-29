@@ -1,6 +1,10 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { Platform } from 'react-native'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { resolveRagIndexingSettings } from '@core/rag/indexingSettings'
+import { resolveRagSearchSettings } from '@core/rag/searchSettings'
+import { createTestQueryClient } from '../testUtils'
 
 const mockUseSupabase = jest.fn()
 const mockGetDocumentAsync = jest.fn()
@@ -12,6 +16,9 @@ const mockWordPressGetStatus = jest.fn()
 const mockWordPressUpsert = jest.fn()
 const mockApiKeysGetStatus = jest.fn()
 const mockApiKeysUpsert = jest.fn()
+const mockApiKeysRemove = jest.fn()
+const mockRagIndexUpsert = jest.fn()
+const mockRagSearchUpsert = jest.fn()
 
 jest.mock('expo-document-picker', () => ({
   getDocumentAsync: (...args: unknown[]) => mockGetDocumentAsync(...args),
@@ -45,6 +52,19 @@ jest.mock('@core/services/apiKeysSettings', () => ({
   ApiKeysSettingsService: jest.fn().mockImplementation(() => ({
     getStatus: mockApiKeysGetStatus,
     upsert: mockApiKeysUpsert,
+    removeGeminiApiKey: mockApiKeysRemove,
+  })),
+}))
+
+jest.mock('@core/services/ragSearchSettings', () => ({
+  RagSearchSettingsService: jest.fn().mockImplementation(() => ({
+    upsert: mockRagSearchUpsert,
+  })),
+}))
+
+jest.mock('@core/services/ragIndexSettings', () => ({
+  RagIndexSettingsService: jest.fn().mockImplementation(() => ({
+    upsert: mockRagIndexUpsert,
   })),
 }))
 
@@ -70,7 +90,14 @@ import { EnexExportPanel } from '@ui/mobile/components/settings/EnexExportPanel'
 import { EnexImportPanel } from '@ui/mobile/components/settings/EnexImportPanel'
 import { WordPressSettingsPanel } from '@ui/mobile/components/settings/WordPressSettingsPanel'
 
-const renderWithTheme = (ui: React.ReactElement) => render(ui)
+const renderWithTheme = (ui: React.ReactElement) => {
+  const queryClient = createTestQueryClient()
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>
+  )
+}
 
 describe('settings panels', () => {
   const expectedPickerType = Platform.OS === 'android' ? '*/*' : ['application/xml', 'text/xml']
@@ -128,8 +155,23 @@ describe('settings panels', () => {
       },
     })
 
-    mockApiKeysGetStatus.mockResolvedValue({ gemini: { configured: false } })
-    mockApiKeysUpsert.mockResolvedValue({ gemini: { configured: true } })
+    mockApiKeysGetStatus.mockResolvedValue({
+      gemini: { configured: false },
+      ragIndexing: resolveRagIndexingSettings(),
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.55 }),
+    })
+    mockApiKeysUpsert.mockResolvedValue({
+      gemini: { configured: true },
+      ragIndexing: resolveRagIndexingSettings(),
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.55 }),
+    })
+    mockApiKeysRemove.mockResolvedValue({
+      gemini: { configured: false },
+      ragIndexing: resolveRagIndexingSettings(),
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.55 }),
+    })
+    mockRagIndexUpsert.mockResolvedValue(resolveRagIndexingSettings({ target_chunk_size: 700 }))
+    mockRagSearchUpsert.mockResolvedValue(resolveRagSearchSettings({ top_k: 30, similarity_threshold: 0.55 }))
   })
 
   it('imports only .enex files and passes the selected asset to the mobile import service', async () => {
@@ -319,10 +361,10 @@ describe('settings panels', () => {
     })
 
     await waitFor(() => {
-      expect(screen.queryByText('Loading API key status...')).toBeNull()
+      expect(screen.queryByText('Loading indexing settings...')).toBeNull()
     })
 
-    fireEvent.press(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Save API key' }))
 
     await waitFor(() => {
       expect(screen.getByText('Enter a Gemini API key to continue.')).toBeTruthy()
@@ -330,11 +372,102 @@ describe('settings panels', () => {
     })
 
     fireEvent.changeText(screen.getByPlaceholderText('AIzaSy...'), '  AIza-unit-test  ')
-    fireEvent.press(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Save API key' }))
 
     await waitFor(() => {
       expect(mockApiKeysUpsert).toHaveBeenCalledWith('AIza-unit-test')
       expect(screen.getByText('Gemini API key saved successfully.')).toBeTruthy()
+    })
+  })
+
+  it('does not clobber unsaved indexing and retrieval edits when saving the Gemini key', async () => {
+    mockApiKeysGetStatus.mockResolvedValueOnce({
+      gemini: { configured: false },
+      ragIndexing: resolveRagIndexingSettings({ target_chunk_size: 500 }),
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.55 }),
+    })
+    mockApiKeysUpsert.mockResolvedValueOnce({
+      gemini: { configured: true },
+      ragIndexing: resolveRagIndexingSettings({ target_chunk_size: 900 }),
+      ragSearch: resolveRagSearchSettings({ top_k: 40, similarity_threshold: 0.55 }),
+    })
+
+    renderWithTheme(<ApiKeysSettingsPanel />)
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('500')).toBeTruthy()
+      expect(screen.getByDisplayValue('15')).toBeTruthy()
+    })
+
+    fireEvent.changeText(screen.getByDisplayValue('500'), '650')
+    fireEvent.changeText(screen.getByDisplayValue('15'), '30')
+    fireEvent.changeText(screen.getByPlaceholderText('AIzaSy...'), 'AIza-preserve-drafts')
+    fireEvent.press(screen.getByRole('button', { name: 'Save API key' }))
+
+    await waitFor(() => {
+      expect(mockApiKeysUpsert).toHaveBeenCalledWith('AIza-preserve-drafts')
+      expect(screen.getByText('Gemini API key saved successfully.')).toBeTruthy()
+      expect(screen.getByDisplayValue('650')).toBeTruthy()
+      expect(screen.getByDisplayValue('30')).toBeTruthy()
+      expect(screen.queryByDisplayValue('900')).toBeNull()
+      expect(screen.queryByDisplayValue('40')).toBeNull()
+    })
+  })
+
+  it('shows indexing and retrieval settings, saves both, and allows removing a stored key', async () => {
+    mockApiKeysGetStatus.mockResolvedValueOnce({
+      gemini: { configured: true },
+      ragIndexing: resolveRagIndexingSettings({ target_chunk_size: 600 }),
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.4 }),
+    })
+
+    renderWithTheme(<ApiKeysSettingsPanel />)
+
+    await waitFor(() => {
+      expect(screen.getByText('RAG indexing')).toBeTruthy()
+      expect(screen.getByDisplayValue('600')).toBeTruthy()
+      expect(screen.getByText('Current precision threshold')).toBeTruthy()
+      expect(screen.getByText('0.40')).toBeTruthy()
+    })
+
+    fireEvent.changeText(screen.getByDisplayValue('600'), '700')
+    fireEvent.press(screen.getByRole('button', { name: 'Save indexing settings' }))
+
+    await waitFor(() => {
+      expect(mockRagIndexUpsert).toHaveBeenCalledWith(expect.objectContaining({
+        target_chunk_size: 700,
+      }))
+      expect(screen.getByText('RAG indexing settings saved. Changes apply to future indexing and future manual reindexing.')).toBeTruthy()
+    })
+
+    fireEvent.changeText(screen.getByDisplayValue('15'), '30')
+    fireEvent.press(screen.getByRole('button', { name: 'Save retrieval settings' }))
+
+    await waitFor(() => {
+      expect(mockRagSearchUpsert).toHaveBeenCalledWith({ top_k: 30 })
+      expect(screen.getByText('RAG retrieval settings saved.')).toBeTruthy()
+    })
+
+    fireEvent.press(screen.getByRole('button', { name: 'Remove key' }))
+
+    await waitFor(() => {
+      expect(mockApiKeysRemove).toHaveBeenCalledTimes(1)
+      expect(screen.getByText('Gemini API key removed.')).toBeTruthy()
+    })
+  })
+
+  it('falls back to default retrieval values when live settings cannot be loaded', async () => {
+    mockApiKeysGetStatus.mockRejectedValueOnce(new Error('Settings service is unavailable.'))
+
+    renderWithTheme(<ApiKeysSettingsPanel />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Showing default indexing values until live settings can be loaded from the server.')).toBeTruthy()
+      expect(screen.getByText('Showing default retrieval values until live settings can be loaded from the server.')).toBeTruthy()
+      expect(screen.getByText('0.55')).toBeTruthy()
+      expect(screen.getByDisplayValue('15')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Save indexing settings' }).props.accessibilityState.disabled).toBe(true)
+      expect(screen.getByRole('button', { name: 'Save retrieval settings' }).props.accessibilityState.disabled).toBe(true)
     })
   })
 })

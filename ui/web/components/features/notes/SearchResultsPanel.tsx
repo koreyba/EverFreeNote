@@ -492,16 +492,21 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     const renderResultsHeader = () => {
         if (panelSelectionMode) {
             return (
-                <SelectionModeActions
-                    selectedCount={selectedCount}
-                    onSelectAll={selectAllVisibleInPanel}
-                    onDelete={requestPanelBulkDelete}
-                    onCancel={exitPanelSelectionMode}
-                    selectingAllDisabled={allVisibleSelected || !visibleResultIds.length || panelBulkDeleting}
-                    deletingDisabled={!selectedCount || panelBulkDeleting}
-                    deleting={panelBulkDeleting}
-                    className="border-b bg-card/70 backdrop-blur"
-                />
+                <div
+                    data-testid="search-results-header"
+                    className="sticky top-0 z-20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/70"
+                >
+                    <SelectionModeActions
+                        selectedCount={selectedCount}
+                        onSelectAll={selectAllVisibleInPanel}
+                        onDelete={requestPanelBulkDelete}
+                        onCancel={exitPanelSelectionMode}
+                        selectingAllDisabled={allVisibleSelected || !visibleResultIds.length || panelBulkDeleting}
+                        deletingDisabled={!selectedCount || panelBulkDeleting}
+                        deleting={panelBulkDeleting}
+                        className="border-b bg-transparent"
+                    />
+                </div>
             )
         }
 
@@ -513,7 +518,10 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 : visibleResultsSummary.pluralLabel
 
         return (
-            <div className="flex items-center justify-between px-3 py-2 text-sm text-muted-foreground border-b bg-card/70">
+            <div
+                data-testid="search-results-header"
+                className="sticky top-0 z-20 flex items-center justify-between border-b bg-card/95 px-3 py-2 text-sm text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-card/70"
+            >
                 <div>
                     Found: <span className="font-semibold">{visibleResultsSummary.count}</span> {resultLabel}
                 </div>
