@@ -29,6 +29,11 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
 
+const readAuthToken = (authHeader: string): string =>
+  authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice("bearer ".length).trim()
+    : ""
+
 const isUnavailableRagSearchSettingsStorageError = (error: unknown): boolean => {
   if (!error || typeof error !== "object") return false
 
@@ -113,8 +118,7 @@ serve(async (req: Request) => {
     }
 
     const authHeader = req.headers.get("Authorization")?.trim() ?? ""
-    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
-    const token = (bearerMatch ? bearerMatch[1] : authHeader).trim()
+    const token = readAuthToken(authHeader)
     if (!token) return jsonResponse({ error: "Unauthorized" }, 401)
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
@@ -292,8 +296,12 @@ serve(async (req: Request) => {
         .maybeSingle()
 
       if (ragSearchError) {
-        console.warn("[api-keys-upsert] Falling back to default RAG retrieval settings", ragSearchError)
-        resolvedRagSearchSettings = resolveRagSearchSettings(null)
+        if (isUnavailableRagSearchSettingsStorageError(ragSearchError)) {
+          console.warn("[api-keys-upsert] Falling back to default RAG retrieval settings", ragSearchError)
+          resolvedRagSearchSettings = resolveRagSearchSettings(null)
+        } else {
+          throw ragSearchError
+        }
       } else {
         resolvedRagSearchSettings = resolveRagSearchSettings(ragSearchData ?? null)
       }

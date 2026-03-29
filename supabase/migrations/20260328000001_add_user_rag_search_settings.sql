@@ -85,3 +85,14 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.upsert_user_rag_search_settings_partial(uuid, integer, numeric)
   TO authenticated, service_role;
+
+-- Rollback:
+-- REVOKE EXECUTE ON FUNCTION public.upsert_user_rag_search_settings_partial(uuid, integer, numeric)
+--   FROM authenticated, service_role;
+-- DROP FUNCTION IF EXISTS public.upsert_user_rag_search_settings_partial(uuid, integer, numeric);
+-- DROP POLICY IF EXISTS "Users can view own rag search settings" ON public.user_rag_search_settings;
+-- DROP POLICY IF EXISTS "Users can insert own rag search settings" ON public.user_rag_search_settings;
+-- DROP POLICY IF EXISTS "Users can update own rag search settings" ON public.user_rag_search_settings;
+-- DROP POLICY IF EXISTS "Users can delete own rag search settings" ON public.user_rag_search_settings;
+-- ALTER TABLE public.user_rag_search_settings DISABLE ROW LEVEL SECURITY;
+-- DROP TABLE IF EXISTS public.user_rag_search_settings;

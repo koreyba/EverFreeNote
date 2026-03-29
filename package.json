@@ -23,7 +23,7 @@
     "db:migration:list": "supabase migration list",
     "db:status": "supabase status",
     "db:studio": "supabase studio",
-    "db:link-project": "supabase link --project-ref <proj_id>",
+    "db:link-project": "supabase link --project-ref yabcuywqxgjlruuyhwin",
     "functions:deploy": "supabase functions deploy",
     "functions:serve": "supabase functions serve --no-verify-jwt --env-file .env.local",
     "db:init-users": "node scripts/init-test-users.js",
