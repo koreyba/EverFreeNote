@@ -29,14 +29,14 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
 
-const isMissingRagSearchSettingsTableError = (error: unknown): boolean => {
+const isUnavailableRagSearchSettingsStorageError = (error: unknown): boolean => {
   if (!error || typeof error !== "object") return false
 
   const code = typeof (error as { code?: unknown }).code === "string"
     ? (error as { code: string }).code.toUpperCase()
     : ""
 
-  if (code === "42P01" || code === "PGRST205") return true
+  if (code === "42P01" || code === "42883" || code === "PGRST205" || code === "PGRST202") return true
 
   const message = typeof (error as { message?: unknown }).message === "string"
     ? (error as { message: string }).message
@@ -47,8 +47,17 @@ const isMissingRagSearchSettingsTableError = (error: unknown): boolean => {
   const combined = `${message} ${details}`.toLowerCase()
 
   return (
-    combined.includes("user_rag_search_settings") &&
-    (combined.includes("relation") || combined.includes("table") || combined.includes("schema cache"))
+    (
+      combined.includes("user_rag_search_settings") ||
+      combined.includes("upsert_user_rag_search_settings_partial")
+    ) &&
+    (
+      combined.includes("relation") ||
+      combined.includes("table") ||
+      combined.includes("schema cache") ||
+      combined.includes("function") ||
+      combined.includes("does not exist")
+    )
   )
 }
 
@@ -196,7 +205,7 @@ serve(async (req: Request) => {
         .maybeSingle()
 
       if (existingRagSearchError) {
-        if (isMissingRagSearchSettingsTableError(existingRagSearchError)) {
+        if (isUnavailableRagSearchSettingsStorageError(existingRagSearchError)) {
           return jsonResponse(
             { error: "RAG retrieval settings are unavailable until the latest database migration is applied" },
             503
@@ -255,12 +264,18 @@ serve(async (req: Request) => {
 
     let resolvedRagSearchSettings
     if (hasRagSearchFields) {
-      const { error: ragSearchUpsertError } = await supabaseAdmin
-        .from("user_rag_search_settings")
-        .upsert({ user_id: userId, ...validatedRagSearchSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+      const { data: ragSearchUpsertData, error: ragSearchUpsertError } = await supabaseAdmin
+        .rpc("upsert_user_rag_search_settings_partial", {
+          p_user_id: userId,
+          p_top_k: "top_k" in coercedRagSearchSettings ? validatedRagSearchSettings.top_k : null,
+          p_similarity_threshold: "similarity_threshold" in coercedRagSearchSettings
+            ? validatedRagSearchSettings.similarity_threshold
+            : null,
+        })
+        .single()
 
       if (ragSearchUpsertError) {
-        if (isMissingRagSearchSettingsTableError(ragSearchUpsertError)) {
+        if (isUnavailableRagSearchSettingsStorageError(ragSearchUpsertError)) {
           return jsonResponse(
             { error: "RAG retrieval settings are unavailable until the latest database migration is applied" },
             503
@@ -268,7 +283,7 @@ serve(async (req: Request) => {
         }
         throw ragSearchUpsertError
       }
-      resolvedRagSearchSettings = resolveRagSearchSettings(validatedRagSearchSettings)
+      resolvedRagSearchSettings = resolveRagSearchSettings(ragSearchUpsertData)
     } else {
       const { data: ragSearchData, error: ragSearchError } = await supabaseAdmin
         .from("user_rag_search_settings")
