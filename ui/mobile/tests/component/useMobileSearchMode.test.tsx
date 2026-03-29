@@ -14,7 +14,6 @@ describe('useMobileSearchMode', () => {
   it('loads persisted mode state and persists updates', async () => {
     mockAsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify({
       isAIEnabled: true,
-      preset: 'broad',
       viewMode: 'chunk',
     }))
 
@@ -22,12 +21,10 @@ describe('useMobileSearchMode', () => {
 
     await waitFor(() => {
       expect(result.current.isAIEnabled).toBe(true)
-      expect(result.current.preset).toBe('broad')
       expect(result.current.viewMode).toBe('chunk')
     })
 
     act(() => {
-      result.current.setPreset('strict')
       result.current.setViewMode('note')
     })
 
@@ -36,7 +33,6 @@ describe('useMobileSearchMode', () => {
         'everfreenote:mobileAiSearchMode',
         JSON.stringify({
           isAIEnabled: true,
-          preset: 'strict',
           viewMode: 'note',
         })
       )
@@ -50,7 +46,6 @@ describe('useMobileSearchMode', () => {
 
     await waitFor(() => {
       expect(result.current.isAIEnabled).toBe(false)
-      expect(result.current.preset).toBe('neutral')
       expect(result.current.viewMode).toBe('note')
     })
 
@@ -59,7 +54,6 @@ describe('useMobileSearchMode', () => {
         'everfreenote:mobileAiSearchMode',
         JSON.stringify({
           isAIEnabled: false,
-          preset: 'neutral',
           viewMode: 'note',
         })
       )
@@ -83,8 +77,27 @@ describe('useMobileSearchMode', () => {
         'everfreenote:mobileAiSearchMode',
         JSON.stringify({
           isAIEnabled: false,
-          preset: 'neutral',
           viewMode: 'note',
+        })
+      )
+    })
+  })
+
+  it('normalizes legacy preset-based payloads back to the reduced shape', async () => {
+    mockAsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify({
+      isAIEnabled: true,
+      preset: 'broad',
+      viewMode: 'chunk',
+    }))
+
+    renderHook(() => useMobileSearchMode())
+
+    await waitFor(() => {
+      expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+        'everfreenote:mobileAiSearchMode',
+        JSON.stringify({
+          isAIEnabled: true,
+          viewMode: 'chunk',
         })
       )
     })
@@ -109,7 +122,6 @@ describe('useMobileSearchMode', () => {
     act(() => {
       resolveStorage?.(JSON.stringify({
         isAIEnabled: false,
-        preset: 'broad',
         viewMode: 'chunk',
       }))
     })
@@ -120,7 +132,6 @@ describe('useMobileSearchMode', () => {
         'everfreenote:mobileAiSearchMode',
         JSON.stringify({
           isAIEnabled: true,
-          preset: 'neutral',
           viewMode: 'note',
         })
       )
@@ -146,7 +157,6 @@ describe('useMobileSearchMode', () => {
     act(() => {
       resolveStorage?.(JSON.stringify({
         isAIEnabled: false,
-        preset: 'strict',
         viewMode: 'chunk',
       }))
     })
@@ -156,7 +166,6 @@ describe('useMobileSearchMode', () => {
         'everfreenote:mobileAiSearchMode',
         JSON.stringify({
           isAIEnabled: true,
-          preset: 'neutral',
           viewMode: 'note',
         })
       )

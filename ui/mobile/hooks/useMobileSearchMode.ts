@@ -1,21 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { asyncStorageAdapter } from '@ui/mobile/adapters'
-import type { SearchPreset } from '@core/constants/aiSearch'
-import { DEFAULT_PRESET } from '@core/constants/aiSearch'
 
 export type MobileSearchViewMode = 'note' | 'chunk'
 
 type MobileSearchModeState = {
   isAIEnabled: boolean
-  preset: SearchPreset
   viewMode: MobileSearchViewMode
 }
 
 const STORAGE_KEY = 'everfreenote:mobileAiSearchMode'
-const VALID_PRESETS: SearchPreset[] = ['strict', 'neutral', 'broad']
 const DEFAULT_STATE: MobileSearchModeState = {
   isAIEnabled: false,
-  preset: DEFAULT_PRESET,
   viewMode: 'note',
 }
 
@@ -30,9 +25,6 @@ function parseState(raw: string | null): MobileSearchModeState {
     const parsed = JSON.parse(raw) as Partial<MobileSearchModeState>
     return {
       isAIEnabled: parsed.isAIEnabled === true,
-      preset: VALID_PRESETS.includes(parsed.preset as SearchPreset)
-        ? (parsed.preset as SearchPreset)
-        : DEFAULT_PRESET,
       viewMode: parsed.viewMode === 'chunk' ? 'chunk' : 'note',
     }
   } catch {
@@ -109,20 +101,14 @@ export function useMobileSearchMode() {
     updateState((prev) => ({ ...prev, isAIEnabled: enabled }))
   }, [updateState])
 
-  const setPreset = useCallback((preset: SearchPreset) => {
-    updateState((prev) => ({ ...prev, preset }))
-  }, [updateState])
-
   const setViewMode = useCallback((viewMode: MobileSearchViewMode) => {
     updateState((prev) => ({ ...prev, viewMode }))
   }, [updateState])
 
   return {
     isAIEnabled: state.isAIEnabled,
-    preset: state.preset,
     viewMode: state.viewMode,
     setIsAIEnabled,
-    setPreset,
     setViewMode,
   }
 }

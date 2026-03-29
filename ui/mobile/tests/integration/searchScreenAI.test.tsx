@@ -2,6 +2,18 @@ import React from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, render, renderHook, screen, waitFor, createQueryWrapper, createTestQueryClient } from '../testUtils'
+import { resolveRagSearchSettings } from '@core/rag/searchSettings'
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+
+  return { promise, resolve, reject }
+}
 
 const mockPush = jest.fn()
 const mockSetParams = jest.fn()
@@ -9,6 +21,7 @@ const mockInvoke = jest.fn()
 const mockSearchNotes = jest.fn()
 const mockGetStatus = jest.fn()
 const mockDeleteNote = jest.fn()
+const mockRagSearchUpsert = jest.fn()
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -112,6 +125,12 @@ jest.mock('@core/services/apiKeysSettings', () => ({
   })),
 }))
 
+jest.mock('@core/services/ragSearchSettings', () => ({
+  RagSearchSettingsService: jest.fn().mockImplementation(() => ({
+    upsert: mockRagSearchUpsert,
+  })),
+}))
+
 jest.mock('@ui/mobile/components/BulkActionBar', () => ({
   BulkActionBar: ({ selectedCount }: { selectedCount: number }) => {
     const { View, Text } = require('react-native')
@@ -154,6 +173,38 @@ jest.mock('@shopify/flash-list', () => ({
   },
 }))
 
+jest.mock('@react-native-community/slider', () => ({
+  __esModule: true,
+  default: ({
+    testID,
+    value,
+    onValueChange,
+    onSlidingComplete,
+  }: {
+    testID?: string
+    value?: number
+    onValueChange?: (next: number) => void
+    onSlidingComplete?: (next: number) => void
+  }) => {
+    const { View, Text, Pressable } = require('react-native')
+    return (
+      <View testID={testID ?? 'mock-slider'}>
+        <Text>{value}</Text>
+        <Pressable
+          testID={`${testID ?? 'mock-slider'}-increase`}
+          onPress={() => {
+            const next = Number(((value ?? 0) + 0.05).toFixed(2))
+            onValueChange?.(next)
+            onSlidingComplete?.(next)
+          }}
+        >
+          <Text>Increase</Text>
+        </Pressable>
+      </View>
+    )
+  },
+}))
+
 import SearchScreen from '@ui/mobile/app/(tabs)/search'
 import { useDeleteNote } from '@ui/mobile/hooks/useNotesMutations'
 
@@ -175,7 +226,11 @@ describe('SearchScreen - AI search', () => {
 
     mockGetStatus.mockResolvedValue({
       gemini: { configured: true },
+      ragSearch: resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.55 }),
     })
+    mockRagSearchUpsert.mockReset().mockResolvedValue(
+      resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.6 })
+    )
     mockDeleteNote.mockReset().mockResolvedValue('ai-note-1')
 
     mockSearchNotes.mockResolvedValue({
@@ -251,6 +306,68 @@ describe('SearchScreen - AI search', () => {
 
     expect(mockSearchNotes).not.toHaveBeenCalled()
     expect(await screen.findByTestId('ai-note-card-ai-note-1')).toBeTruthy()
+  }, 15000)
+
+  it('uses persisted retrieval settings for topK and precision', async () => {
+    mockGetStatus.mockResolvedValueOnce({
+      gemini: { configured: true },
+      ragSearch: resolveRagSearchSettings({ top_k: 30, similarity_threshold: 0.25 }),
+    })
+
+    await enableAISearch()
+
+    fireEvent.changeText(screen.getByPlaceholderText('Search notes...'), 'semantic query')
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith('rag-search', {
+        body: expect.objectContaining({
+          query: 'semantic query',
+          topK: 30,
+          threshold: 0.25,
+        }),
+      })
+    })
+  })
+
+  it('waits for hydrated retrieval settings before auto-enabled AI search runs', async () => {
+    const statusRequest = createDeferred<{
+      gemini: { configured: boolean }
+      ragSearch: ReturnType<typeof resolveRagSearchSettings>
+    }>()
+
+    mockAsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify({
+      isAIEnabled: true,
+      viewMode: 'note',
+    }))
+    mockGetStatus.mockImplementationOnce(() => statusRequest.promise)
+
+    render(<SearchScreen />, { wrapper })
+
+    fireEvent.changeText(screen.getByPlaceholderText('Search notes...'), 'semantic query')
+
+    await waitFor(() => {
+      expect(mockInvoke).not.toHaveBeenCalled()
+    })
+
+    await act(async () => {
+      statusRequest.resolve({
+        gemini: { configured: true },
+        ragSearch: resolveRagSearchSettings({ top_k: 30, similarity_threshold: 0.25 }),
+      })
+      await statusRequest.promise
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-search-toggle').props.accessibilityState.checked).toBe(true)
+      expect(mockInvoke).toHaveBeenCalledTimes(1)
+      expect(mockInvoke).toHaveBeenCalledWith('rag-search', {
+        body: expect.objectContaining({
+          query: 'semantic query',
+          topK: 30,
+          threshold: 0.25,
+        }),
+      })
+    })
   })
 
   it('opens AI note results in context with chunk focus params', async () => {
@@ -287,6 +404,40 @@ describe('SearchScreen - AI search', () => {
 
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it('rolls back failed precision saves to the latest confirmed value only', async () => {
+    const firstSave = createDeferred<ReturnType<typeof resolveRagSearchSettings>>()
+    const secondSave = createDeferred<ReturnType<typeof resolveRagSearchSettings>>()
+
+    mockRagSearchUpsert
+      .mockReset()
+      .mockImplementationOnce(() => firstSave.promise)
+      .mockImplementationOnce(() => secondSave.promise)
+      .mockRejectedValueOnce(new Error('Save failed'))
+
+    await enableAISearch()
+
+    fireEvent.press(screen.getByTestId('ai-search-precision-slider-increase'))
+    fireEvent.press(screen.getByTestId('ai-search-precision-slider-increase'))
+
+    await act(async () => {
+      secondSave.resolve(resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.65 }))
+      await secondSave.promise
+    })
+
+    await act(async () => {
+      firstSave.resolve(resolveRagSearchSettings({ top_k: 15, similarity_threshold: 0.6 }))
+      await firstSave.promise
+    })
+
+    fireEvent.press(screen.getByTestId('ai-search-precision-slider-increase'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Save failed')).toBeTruthy()
+      expect(screen.getAllByText('0.65').length).toBeGreaterThan(0)
+      expect(screen.queryByText('0.60')).toBeNull()
     })
   })
 

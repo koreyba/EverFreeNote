@@ -116,4 +116,4 @@ jest.mock('isomorphic-dompurify', () => ({
         .replace(/<(object|embed|form|input|button)[^>]*>/gi, '')
     }),
   },
-}))
+}), { virtual: true })

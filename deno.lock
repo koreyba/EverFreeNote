@@ -17,6 +17,7 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@babel/runtime@^7.29.2",
         "npm:@cypress/code-coverage@^3.10.0",
         "npm:@eslint/compat@2",
         "npm:@eslint/eslintrc@^3.3.3",

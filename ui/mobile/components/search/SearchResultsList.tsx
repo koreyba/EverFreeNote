@@ -11,7 +11,6 @@ import { AiSearchChunkCard } from './AiSearchChunkCard'
 import { AiSearchNoteCard } from './AiSearchNoteCard'
 import type { SearchResultItem } from './types'
 
-const MAX_CHUNKS_PER_NOTE = 2
 type AiNoteSnapshot = Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'tags' | 'description' | 'created_at' | 'updated_at' | 'user_id'>>
 
 type SearchListMode = 'regular' | 'ai-note' | 'ai-chunk'
@@ -20,6 +19,7 @@ type SearchResultsListProps = {
   mode: SearchListMode
   regularResults: SearchResultItem[]
   aiNoteGroups: RagNoteGroup[]
+  aiChunks: RagChunk[]
   onRegularNotePress: (note: Note) => void
   onDeleteRegularNote: (id: string) => void
   onOpenAiResult: (note: AiNoteSnapshot, charOffset: number, chunkLength: number) => void
@@ -47,10 +47,6 @@ type SelectionProps = {
   selectedIds: Set<string>
   onActivateSelection?: (id: string) => void
   onToggleSelect?: (id: string) => void
-}
-
-function flattenChunks(groups: RagNoteGroup[]): RagChunk[] {
-  return groups.flatMap((group) => group.chunks.slice(0, MAX_CHUNKS_PER_NOTE))
 }
 
 function triggerSelectionHaptics() {
@@ -128,6 +124,7 @@ export const SearchResultsList = memo(function SearchResultsList({
   mode,
   regularResults,
   aiNoteGroups,
+  aiChunks,
   onRegularNotePress,
   onDeleteRegularNote,
   onOpenAiResult,
@@ -174,12 +171,12 @@ export const SearchResultsList = memo(function SearchResultsList({
       }))
     }
 
-    return flattenChunks(aiNoteGroups).map((chunk) => ({
+    return aiChunks.map((chunk) => ({
       key: `ai-chunk-${chunk.noteId}-${chunk.chunkIndex}`,
       kind: 'ai-chunk',
       chunk,
     }))
-  }, [aiNoteGroups, mode, regularResults])
+  }, [aiChunks, aiNoteGroups, mode, regularResults])
 
   const renderItem = useCallback<ListRenderItem<SearchListRow>>(({ item }) => {
     if (item.kind === 'regular') {
