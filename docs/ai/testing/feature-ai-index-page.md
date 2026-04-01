@@ -37,7 +37,9 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [x] Removes the redundant main-content AI Index hero inside `Settings` so the page starts closer to the useful controls
 - [x] Prefetches the main workspace route and first notes page so the first AI Index -> note transition avoids a completely cold start
 - [x] Surfaces a relogin hint for `401 Unauthorized` row-action failures after switching local Supabase stacks
-- [ ] Add a direct unit test for the virtualized empty-state copy if needed later
+- [x] Restores saved AI Index filter/search state on mount and carries the current state into note navigation
+- [x] Renders the AI Index error state with a retry affordance
+- [x] Covers the direct `AIIndexList` empty-state passthrough branch
 
 ## Integration Tests
 
@@ -62,6 +64,7 @@ description: Test strategy for the Settings AI index page and its dedicated data
 ## Test Reporting & Coverage
 
 - Completed:
+  - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexList.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/hooks/useAIIndexNotes.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexNoteRow.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexTab.test.tsx`
@@ -90,5 +93,4 @@ description: Test strategy for the Settings AI index page and its dedicated data
 
 - Remaining gaps:
   - no DB-backed RPC verification yet
-  - no manual QA run yet
-  - mobile/browser back behavior is covered by the new state bridge and static checks, but still needs manual QA in the running app
+  - mobile/browser back behavior has browser QA coverage, but still lacks a dedicated automated end-to-end spec
