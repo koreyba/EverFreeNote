@@ -39,6 +39,7 @@ jest.mock("@/components/features/settings/AIIndexList", () => ({
 describe("AIIndexTab", () => {
   const mockQuery = {
     data: { pages: [{ totalCount: 0, notes: [], hasMore: false }] },
+    dataUpdatedAt: 1,
     isLoading: false,
     hasNextPage: false,
     isFetchingNextPage: false,
@@ -424,5 +425,137 @@ describe("AIIndexTab", () => {
 
     expect(rerenderedListProps.notes).toEqual([])
     expect(rerenderedListProps.exitingNoteIds).toEqual([])
+  })
+
+  it("shows a moved note normally when the user switches into its destination filter", () => {
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-outdated",
+        title: "Outdated note",
+        updatedAt: "2026-03-29T10:00:00Z",
+        lastIndexedAt: "2026-03-29T09:00:00Z",
+        status: "outdated",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+      dataUpdatedAt: 10,
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{} as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Outdated" }))
+
+    const listProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {
+      onMutated: (result: AIIndexMutationResult) => void
+    }
+
+    act(() => {
+      listProps.onMutated({
+        noteId: "note-outdated",
+        previousStatus: "outdated",
+        nextStatus: "indexed",
+      })
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Indexed" }))
+
+    const rerenderedListProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {
+      notes: Array<{ id: string; status: string }>
+      exitingNoteIds?: string[]
+    }
+
+    expect(rerenderedListProps.notes).toEqual([
+      expect.objectContaining({ id: "note-outdated", status: "indexed" }),
+    ])
+    expect(rerenderedListProps.exitingNoteIds).toEqual([])
+  })
+
+  it("stops subtracting optimistic totals after the server refetch catches up", () => {
+    jest.spyOn(Date, "now").mockReturnValue(15)
+
+    let currentNotes = [
+      {
+        id: "note-outdated",
+        title: "Outdated note",
+        updatedAt: "2026-03-29T10:00:00Z",
+        lastIndexedAt: "2026-03-29T09:00:00Z",
+        status: "outdated" as const,
+      },
+      {
+        id: "note-outdated-2",
+        title: "Another outdated note",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: "2026-03-29T10:30:00Z",
+        status: "outdated" as const,
+      },
+    ]
+    let currentQuery = {
+      ...mockQuery,
+      data: { pages: [{ totalCount: 2, notes: [], hasMore: false }] },
+      dataUpdatedAt: 10,
+    }
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockImplementation(() => currentNotes)
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockImplementation(() => currentQuery as never)
+
+    const view = render(
+      <SupabaseTestProvider
+        supabase={{} as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Outdated" }))
+
+    const listProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {
+      onMutated: (result: AIIndexMutationResult) => void
+    }
+
+    act(() => {
+      listProps.onMutated({
+        noteId: "note-outdated",
+        previousStatus: "outdated",
+        nextStatus: "indexed",
+      })
+    })
+
+    expect(screen.getByText("Showing 1 note")).toBeTruthy()
+
+    currentNotes = [
+      {
+        id: "note-outdated-2",
+        title: "Another outdated note",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: "2026-03-29T10:30:00Z",
+        status: "outdated",
+      },
+    ]
+    currentQuery = {
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+      dataUpdatedAt: 20,
+    }
+
+    view.rerender(
+      <SupabaseTestProvider
+        supabase={{} as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    expect(screen.getByText("Showing 1 note")).toBeTruthy()
   })
 })

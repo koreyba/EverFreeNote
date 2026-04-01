@@ -65,6 +65,7 @@ const FILTER_SEARCH_LABELS: Record<AIIndexFilter, string> = {
 const ROW_EXIT_DURATION_MS = 300
 
 type OptimisticMutationState = AIIndexMutationResult & {
+  createdAt: number
   phase: "stable" | "leaving" | "hidden"
   noteSnapshot: AIIndexNoteRowData
   sourceIndex: number
@@ -100,6 +101,17 @@ function getResultsSummaryText(loadedCount: number, totalCount: number) {
   return `Showing ${totalCount} ${totalCount === 1 ? "note" : "notes"}`
 }
 
+function shouldExitInCurrentFilter(
+  filter: AIIndexFilter,
+  optimisticMutation: OptimisticMutationState
+) {
+  // Exit animations only make sense while the note is leaving the *current*
+  // bucket. If the user switches into the destination filter, show the note
+  // normally instead of keeping it visually hidden.
+  return optimisticMutation.phase === "leaving"
+    && !matchesAIIndexFilter(filter, optimisticMutation.nextStatus)
+}
+
 function mergeOptimisticNotes(
   notes: AIIndexNoteRowData[],
   filter: AIIndexFilter,
@@ -121,9 +133,10 @@ function mergeOptimisticNotes(
       lastIndexedAt: optimisticMutation.nextStatus === "not_indexed" ? null : note.lastIndexedAt,
     }
     const matchesFilter = matchesAIIndexFilter(filter, optimisticMutation.nextStatus)
+    const isExiting = shouldExitInCurrentFilter(filter, optimisticMutation)
 
     if (!matchesFilter) {
-      if (optimisticMutation.phase === "leaving") {
+      if (isExiting) {
         return {
           note: projectedNote,
           isExiting: true,
@@ -136,14 +149,14 @@ function mergeOptimisticNotes(
 
     return {
       note: projectedNote,
-      isExiting: optimisticMutation.phase === "leaving",
+      isExiting,
       order: optimisticMutation.sourceIndex,
     }
   }).filter((entry): entry is { note: AIIndexNoteRowData; isExiting: boolean; order: number } => entry !== null)
 
   const visibleIds = new Set(visibleEntries.map((entry) => entry.note.id))
   const exitingEntries = Object.values(optimisticMutations)
-    .filter((mutation) => mutation.phase === "leaving" && !visibleIds.has(mutation.noteId))
+    .filter((mutation) => shouldExitInCurrentFilter(filter, mutation) && !visibleIds.has(mutation.noteId))
     .map((mutation) => ({
       note: {
         ...mutation.noteSnapshot,
@@ -161,9 +174,12 @@ function mergeOptimisticNotes(
 function getOptimisticTotalCount(
   filter: AIIndexFilter,
   totalCount: number,
-  optimisticMutations: Record<string, OptimisticMutationState>
+  optimisticMutations: Record<string, OptimisticMutationState>,
+  lastServerSyncAt: number
 ) {
   const delta = Object.values(optimisticMutations).reduce((sum, mutation) => {
+    if (mutation.createdAt < lastServerSyncAt) return sum
+
     const matchedBefore = matchesAIIndexFilter(filter, mutation.previousStatus)
     const matchedAfter = matchesAIIndexFilter(filter, mutation.nextStatus)
 
@@ -458,6 +474,7 @@ export function AIIndexTab() {
   const query = useAIIndexNotes(filter, activeSearchQuery)
   const notes = useFlattenedAIIndexNotes(query)
   const totalCount = query.data?.pages[0]?.totalCount ?? 0
+  const lastServerSyncAt = query.dataUpdatedAt ?? 0
 
   React.useEffect(() => () => {
     Object.values(exitTimeoutsRef.current).forEach((timeoutId) => clearTimeout(timeoutId))
@@ -535,6 +552,7 @@ export function AIIndexTab() {
         ...previousState,
         [mutationResult.noteId]: {
           ...mutationResult,
+          createdAt: Date.now(),
           phase: shouldExit ? "leaving" : "stable",
           noteSnapshot: sourceNote,
           sourceIndex,
@@ -614,8 +632,8 @@ export function AIIndexTab() {
     [mergedNotes]
   )
   const optimisticTotalCount = React.useMemo(
-    () => getOptimisticTotalCount(filter, totalCount, optimisticMutations),
-    [filter, optimisticMutations, totalCount]
+    () => getOptimisticTotalCount(filter, totalCount, optimisticMutations, lastServerSyncAt),
+    [filter, lastServerSyncAt, optimisticMutations, totalCount]
   )
   const loadedCount = displayedNotes.length
   const hasActiveSearch = activeSearchQuery.length > 0

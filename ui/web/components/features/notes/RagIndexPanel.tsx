@@ -37,6 +37,10 @@ async function extractErrorMessage(err: unknown, fallback: string): Promise<stri
   return err.message || fallback
 }
 
+function getSemanticFailureMessage(message: string | null, fallback: string) {
+  return message ?? fallback
+}
+
 interface RagIndexPanelProps {
   noteId: string
   variant?: 'inline' | 'menu'
@@ -71,10 +75,10 @@ export function RagIndexPanel({ noteId, variant = 'inline', onMenuClose }: RagIn
       if (result.outcome === 'indexed') {
         toast.success(`Indexed into ${result.chunkCount} chunks`)
       } else if (result.outcome === 'skipped') {
-        toast.error(result.message)
+        toast.error(getSemanticFailureMessage(result.message, 'Indexing was skipped.'))
       } else {
         console.warn('[rag-index] Unexpected response payload for index action', data)
-        toast.error(result.message)
+        toast.error(getSemanticFailureMessage(result.message, 'Indexing returned an unexpected response.'))
       }
       refresh()
     } catch (err) {
@@ -95,7 +99,7 @@ export function RagIndexPanel({ noteId, variant = 'inline', onMenuClose }: RagIn
       if (result.outcome === 'deleted') {
         toast.success('RAG index removed')
       } else {
-        toast.error(result.message)
+        toast.error(getSemanticFailureMessage(result.message, 'Delete returned an unexpected response.'))
       }
       refresh()
     } catch (err) {
