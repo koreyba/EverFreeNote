@@ -115,7 +115,7 @@ export const AIIndexList = memo(function AIIndexList({
   onLoadMore,
   onMutated,
   onOpenNote,
-  emptyMessage,
+  emptyState,
   initialScrollOffset = 0,
   onScrollOffsetChange,
   height,
@@ -128,7 +128,7 @@ export const AIIndexList = memo(function AIIndexList({
   onLoadMore: () => void
   onMutated: () => void
   onOpenNote: (noteId: string) => void
-  emptyMessage: string
+  emptyState: React.ReactNode
   initialScrollOffset?: number
   onScrollOffsetChange?: (scrollOffset: number) => void
   height?: number
@@ -164,8 +164,8 @@ export const AIIndexList = memo(function AIIndexList({
 
   if (notes.length === 0) {
     return (
-      <div className="flex h-full min-h-[16rem] items-center justify-center p-6 text-center text-sm text-muted-foreground">
-        {emptyMessage}
+      <div className="flex h-full min-h-[16rem] items-center justify-center p-6 text-center">
+        {emptyState}
       </div>
     )
   }

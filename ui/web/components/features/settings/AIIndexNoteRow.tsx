@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Database, Loader2, RefreshCcw, Trash2 } from "lucide-react"
+import { ArrowUpRight, Database, Loader2, RefreshCcw, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { AIIndexNoteRow as AIIndexNoteRowData } from "@core/types/aiIndex"
+import { cn } from "@ui/web/lib/utils"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 
 type Operation = "indexing" | "deleting" | null
@@ -31,6 +32,12 @@ const STATUS_LABELS: Record<AIIndexNoteRowData["status"], string> = {
   indexed: "Indexed",
   not_indexed: "Not indexed",
   outdated: "Outdated",
+}
+
+const STATUS_DESCRIPTIONS: Record<AIIndexNoteRowData["status"], string> = {
+  indexed: "Already available to AI search.",
+  not_indexed: "Not searchable by AI yet.",
+  outdated: "Changed after the last successful index.",
 }
 
 async function extractErrorMessage(err: unknown, fallback: string): Promise<string> {
@@ -57,15 +64,6 @@ async function extractErrorMessage(err: unknown, fallback: string): Promise<stri
   return err.message || fallback
 }
 
-function formatTimestamp(value: string | null) {
-  if (!value) return "Never"
-
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return "Unknown"
-
-  return parsed.toLocaleString()
-}
-
 export function AIIndexNoteRow({
   note,
   onMutated,
@@ -81,8 +79,15 @@ export function AIIndexNoteRow({
 
   const isIndexed = note.status !== "not_indexed"
   const isBusy = operation !== null
-  const actionLabel = isIndexed ? "Reindex" : "Index"
+  const actionLabel = note.status === "outdated" ? "Update index" : isIndexed ? "Reindex" : "Index note"
   const actionVerb = isIndexed ? "reindexed" : "indexed"
+  const statusDescription = STATUS_DESCRIPTIONS[note.status]
+  const showRemoveAction = isIndexed
+  const primaryActionClassName = note.status === "outdated"
+    ? "bg-amber-500 text-amber-950 hover:bg-amber-400"
+    : note.status === "not_indexed"
+      ? "bg-foreground text-background hover:bg-foreground/90"
+      : ""
 
   const handleIndex = React.useCallback(async () => {
     setOperation("indexing")
@@ -127,43 +132,48 @@ export function AIIndexNoteRow({
 
   return (
     <>
-      <article className="rounded-2xl border border-border/60 bg-card/80 p-4 shadow-none">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <article className="rounded-2xl border border-border/60 bg-card/80 p-3.5 shadow-none">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <button
             type="button"
             onClick={() => onOpenNote(note.id)}
             disabled={isBusy}
-            className="group min-w-0 flex-1 space-y-3 rounded-2xl text-left transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-80"
+            className="group min-w-0 flex-1 text-left transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-80"
             aria-label={`Open note ${note.title.trim() || "Untitled Note"}`}
           >
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-sm font-semibold underline-offset-4 group-hover:underline sm:text-base">
-                {note.title.trim() || "Untitled Note"}
-              </h3>
-              <Badge variant="outline" className={STATUS_STYLES[note.status]}>
-                {STATUS_LABELS[note.status]}
-              </Badge>
+            <div className="flex min-w-0 items-start gap-2">
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="flex min-w-0 items-start gap-1.5">
+                  <h3 className="line-clamp-2 flex-1 text-sm font-semibold leading-snug underline-offset-4 group-hover:underline sm:text-[15px]">
+                    {note.title.trim() || "Untitled Note"}
+                  </h3>
+                  <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "h-6 shrink-0 rounded-full px-2.5 text-[11px] font-medium sm:text-xs",
+                      STATUS_STYLES[note.status]
+                    )}
+                  >
+                    {STATUS_LABELS[note.status]}
+                  </Badge>
+                  <p className="min-w-0 flex-1 text-xs text-muted-foreground sm:text-sm">
+                    {statusDescription}
+                  </p>
+                </div>
+              </div>
             </div>
-
-            <dl className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 sm:gap-3 sm:text-sm">
-              <div className="rounded-xl border border-border/50 bg-background/60 px-3 py-2">
-                <dt className="font-medium text-foreground">Last indexed at</dt>
-                <dd className="mt-1">{formatTimestamp(note.lastIndexedAt)}</dd>
-              </div>
-              <div className="rounded-xl border border-border/50 bg-background/60 px-3 py-2">
-                <dt className="font-medium text-foreground">Last updated</dt>
-                <dd className="mt-1">{formatTimestamp(note.updatedAt)}</dd>
-              </div>
-            </dl>
           </button>
 
-          <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0 lg:flex-col">
+          <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-[168px] xl:flex-none xl:flex-col">
             <Button
-              variant="outline"
+              variant={note.status === "indexed" ? "outline" : "default"}
               size="sm"
               onClick={() => void handleIndex()}
               disabled={isBusy}
-              className="sm:min-w-[152px]"
+              className={`w-full justify-center whitespace-nowrap sm:flex-1 xl:flex-none ${primaryActionClassName}`.trim()}
             >
               {operation === "indexing" ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -174,20 +184,23 @@ export function AIIndexNoteRow({
               )}
               {actionLabel}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDeleteConfirmOpen(true)}
-              disabled={isBusy || !isIndexed}
-              className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive sm:min-w-[152px]"
-            >
-              {operation === "deleting" ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              )}
-              Remove from index
-            </Button>
+
+            {showRemoveAction ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteConfirmOpen(true)}
+                disabled={isBusy}
+                className="w-full justify-center whitespace-nowrap border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-1 xl:flex-none"
+              >
+                {operation === "deleting" ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Remove index
+              </Button>
+            ) : null}
           </div>
         </div>
       </article>
@@ -209,7 +222,7 @@ export function AIIndexNoteRow({
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {operation === "deleting" ? "Removing..." : "Remove from index"}
+              {operation === "deleting" ? "Removing..." : "Remove index"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

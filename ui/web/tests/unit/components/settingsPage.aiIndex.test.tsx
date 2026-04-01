@@ -56,8 +56,7 @@ describe("SettingsPage AI Index tab", () => {
       </SupabaseTestProvider>
     )
 
-    expect(screen.getByRole("heading", { name: "AI Index" })).toBeTruthy()
-    expect(screen.getAllByText("Inspect indexed, stale, and unindexed notes without opening them one by one.").length).toBeGreaterThan(0)
     expect(screen.getByText("AI Index Tab Content")).toBeTruthy()
+    expect(screen.queryByRole("heading", { name: "AI Index" })).toBeNull()
   })
 })

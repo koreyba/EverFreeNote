@@ -40,9 +40,10 @@ describe("AIIndexNoteRow", () => {
       invoke
     )
 
-    expect((screen.getByRole("button", { name: "Remove from index" }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByRole("button", { name: "Remove from index" })).toBeNull()
+    expect(screen.getByText("Not searchable by AI yet.")).toBeTruthy()
 
-    fireEvent.click(screen.getByRole("button", { name: "Index" }))
+    fireEvent.click(screen.getByRole("button", { name: "Index note" }))
 
     await waitFor(() => {
       expect(invoke).toHaveBeenCalledWith("rag-index", {
@@ -76,10 +77,10 @@ describe("AIIndexNoteRow", () => {
       invoke
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove from index" }))
+    fireEvent.click(screen.getByRole("button", { name: "Remove index" }))
 
     const dialog = await screen.findByRole("alertdialog")
-    fireEvent.click(within(dialog).getByRole("button", { name: "Remove from index" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove index" }))
 
     await waitFor(() => {
       expect(invoke).toHaveBeenCalledWith("rag-index", {

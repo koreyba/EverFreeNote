@@ -108,6 +108,7 @@ export function SettingsPage() {
 
   const activeDefinition = SETTINGS_TABS.find((tab) => tab.id === activeTab) ?? SETTINGS_TABS[0]
   const ActiveIcon = activeDefinition.icon
+  const showTabHero = activeDefinition.id !== "ai-index"
 
   const updateMobileTabsIndicator = React.useCallback((showIndicator: boolean) => {
     const element = mobileTabsRef.current
@@ -246,7 +247,7 @@ export function SettingsPage() {
             </aside>
 
             <section className="min-w-0 p-4 sm:p-5 md:p-8">
-              <div className="max-w-3xl">
+              <div className={cn("min-w-0", activeDefinition.id === "ai-index" ? "max-w-5xl" : "max-w-3xl")}>
                 <div className="mb-5 md:hidden">
                   <div
                     ref={mobileTabsRef}
@@ -290,17 +291,19 @@ export function SettingsPage() {
                   ) : null}
                 </div>
 
-                <div className="mb-5 md:mb-8">
-                  <div className="flex items-start gap-3">
-                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-muted/40">
-                      <ActiveIcon className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{activeDefinition.label}</h2>
-                      <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{activeDefinition.description}</p>
+                {showTabHero ? (
+                  <div className="mb-5 md:mb-8">
+                    <div className="flex items-start gap-3">
+                      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-muted/40">
+                        <ActiveIcon className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{activeDefinition.label}</h2>
+                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{activeDefinition.description}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : null}
                 <div className="rounded-3xl border bg-card p-4 shadow-sm sm:p-5 md:p-6">
                   {activeDefinition.id === "wordpress" ? (
                     <WordPressSettingsPanel />

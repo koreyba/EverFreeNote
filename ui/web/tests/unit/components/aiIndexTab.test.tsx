@@ -59,7 +59,7 @@ describe("AIIndexTab", () => {
     fireEvent.change(input, { target: { value: "he" } })
 
     await waitFor(() => {
-      expect(screen.getByText("Search starts after 3 characters, just like the main notes search.")).toBeTruthy()
+      expect(screen.getByText("Search starts after 3 characters.")).toBeTruthy()
     })
 
     act(() => {
