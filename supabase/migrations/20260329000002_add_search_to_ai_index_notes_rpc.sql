@@ -87,6 +87,7 @@ BEGIN
       )::real AS search_rank
     FROM note_states ns
     WHERE normalized_search_ts_query IS NOT NULL
+      AND (filter_status = 'all' OR ns.status = filter_status)
       AND to_tsvector(
             normalized_search_language,
             COALESCE(ns.title, '') || ' ' ||
@@ -117,6 +118,7 @@ BEGIN
       AND (
         COALESCE(ns.title, '') ILIKE '%' || normalized_search_query || '%'
         OR COALESCE(ns.description, '') ILIKE '%' || normalized_search_query || '%'
+        OR COALESCE(array_to_string(ns.tags, ' '), '') ILIKE '%' || normalized_search_query || '%'
       )
   ),
   search_matches AS (

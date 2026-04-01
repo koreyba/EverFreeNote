@@ -170,7 +170,9 @@ export function NotesShell({ controller }: NotesShellProps) {
       return
     }
 
-    void handleSelectNote(null)
+    handleSelectNote(null).catch(() => {
+      // Fire-and-forget: wrappedHandleSelectNote already owns error handling.
+    })
   }, [handleSelectNote, router])
 
   return (

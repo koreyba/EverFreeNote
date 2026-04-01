@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/button"
 import type { AIIndexNoteRow as AIIndexNoteRowData } from "@core/types/aiIndex"
 import { AIIndexNoteRow } from "@/components/features/settings/AIIndexNoteRow"
 
+// react-window v2 uses different API (rowCount, rowHeight, rowComponent, rowProps)
+// and exports useDynamicRowHeight/useListRef hooks. TypeScript may cache old v1
+// types, so these casts keep the v2 runtime API usable until the type cache catches up.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const VirtualList = ReactWindow.List as any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

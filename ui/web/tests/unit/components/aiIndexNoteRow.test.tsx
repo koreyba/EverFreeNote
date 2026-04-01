@@ -57,9 +57,8 @@ describe("AIIndexNoteRow", () => {
           action: "index",
         },
       })
+      expect(onMutated).toHaveBeenCalled()
     })
-
-    expect(onMutated).toHaveBeenCalled()
   })
 
   it("uses the update action for outdated notes and reindexes them", async () => {
@@ -93,9 +92,8 @@ describe("AIIndexNoteRow", () => {
           action: "reindex",
         },
       })
+      expect(onMutated).toHaveBeenCalled()
     })
-
-    expect(onMutated).toHaveBeenCalled()
   })
 
   it("removes an indexed note after confirmation", async () => {
@@ -130,9 +128,8 @@ describe("AIIndexNoteRow", () => {
           action: "delete",
         },
       })
+      expect(onMutated).toHaveBeenCalled()
     })
-
-    expect(onMutated).toHaveBeenCalled()
   })
 
   it("opens the note when the row content is clicked", () => {
@@ -182,40 +179,44 @@ describe("AIIndexNoteRow", () => {
       })
     }
 
-    const invoke = jest.fn().mockResolvedValue({
-      data: null,
-      error: Object.assign(new Error("Unauthorized"), {
-        context: new (globalThis.Response ?? MockResponse)(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
+    try {
+      const invoke = jest.fn().mockResolvedValue({
+        data: null,
+        error: Object.assign(new Error("Unauthorized"), {
+          context: new (globalThis.Response ?? MockResponse)(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+          }),
         }),
-      }),
-    })
+      })
+      const onMutated = jest.fn()
 
-    renderWithSupabase(
-      <AIIndexNoteRow
-        note={{
-          id: "note-4",
-          title: "Needs auth",
-          updatedAt: "2026-03-29T10:00:00Z",
-          lastIndexedAt: null,
-          status: "not_indexed",
-        }}
-        onMutated={jest.fn()}
-        onOpenNote={jest.fn()}
-      />,
-      invoke
-    )
-
-    fireEvent.click(screen.getByRole("button", { name: "Index note" }))
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        "Unauthorized. Your local auth session may belong to a different Supabase stack. Sign out and sign in again, then retry."
+      renderWithSupabase(
+        <AIIndexNoteRow
+          note={{
+            id: "note-4",
+            title: "Needs auth",
+            updatedAt: "2026-03-29T10:00:00Z",
+            lastIndexedAt: null,
+            status: "not_indexed",
+          }}
+          onMutated={onMutated}
+          onOpenNote={jest.fn()}
+        />,
+        invoke
       )
-    })
 
-    if (!OriginalResponse) {
-      delete (globalThis as { Response?: unknown }).Response
+      fireEvent.click(screen.getByRole("button", { name: "Index note" }))
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          "Unauthorized. Your local auth session may belong to a different Supabase stack. Sign out and sign in again, then retry."
+        )
+        expect(onMutated).not.toHaveBeenCalled()
+      })
+    } finally {
+      if (!OriginalResponse) {
+        delete (globalThis as { Response?: unknown }).Response
+      }
     }
   })
 })
