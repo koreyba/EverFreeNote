@@ -376,4 +376,51 @@ describe("AIIndexTab", () => {
     ])
     expect(afterExitProps.exitingNoteIds).toEqual([])
   })
+
+  it("hides stable optimistic rows that stop matching after the user switches filters", async () => {
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-optimistic",
+        title: "Optimistic note",
+        updatedAt: "2026-03-29T10:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{} as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    const listProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {
+      onMutated: (result: AIIndexMutationResult) => void
+    }
+
+    act(() => {
+      listProps.onMutated({
+        noteId: "note-optimistic",
+        previousStatus: "not_indexed",
+        nextStatus: "indexed",
+      })
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Not indexed" }))
+
+    const rerenderedListProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {
+      notes: Array<{ id: string; status: string }>
+      exitingNoteIds?: string[]
+    }
+
+    expect(rerenderedListProps.notes).toEqual([])
+    expect(rerenderedListProps.exitingNoteIds).toEqual([])
+  })
 })

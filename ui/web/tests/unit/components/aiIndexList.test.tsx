@@ -221,7 +221,7 @@ describe("AIIndexList", () => {
   it("marks exiting rows so filtered removals can animate out", () => {
     renderAIIndexList({ exitingNoteIds: ["note-2"] })
 
-    expect(screen.getByTestId("note-row-note-1").getAttribute("data-exiting")).toBe("false")
-    expect(screen.getByTestId("note-row-note-2").getAttribute("data-exiting")).toBe("true")
+    expect((screen.getByTestId("note-row-note-1") as HTMLDivElement).dataset.exiting).toBe("false")
+    expect((screen.getByTestId("note-row-note-2") as HTMLDivElement).dataset.exiting).toBe("true")
   })
 })

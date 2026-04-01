@@ -72,7 +72,6 @@ description: Test strategy for the Settings AI index page and its dedicated data
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/hooks/useAIIndexNotes.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexNoteRow.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexTab.test.tsx`
-  - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexList.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/lib/aiIndexNavigationState.test.ts`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/settingsPage.aiIndex.test.tsx`
   - `npm run test:unit:core -- --runTestsByPath core/tests/unit/core-rag-indexResult.test.ts`

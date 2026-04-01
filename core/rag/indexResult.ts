@@ -4,6 +4,8 @@ export type RagIndexDebugChunkPayload = {
   sectionHeading: string | null
   title: string | null
   content: string
+  bodyContent: string
+  overlapPrefix: string | null
 }
 
 export type RagIndexSkippedReason = "too_short"
@@ -54,6 +56,12 @@ function normalizeMessage(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback
 }
 
+function parseSkippedReason(data: Record<string, unknown>) {
+  if (typeof data.reason === "string") return data.reason
+  if (typeof data.skipped === "string") return data.skipped
+  return null
+}
+
 export function parseRagIndexDebugChunks(data: unknown): RagIndexDebugChunkPayload[] {
   if (!isRecord(data)) return []
 
@@ -65,6 +73,8 @@ export function parseRagIndexDebugChunks(data: unknown): RagIndexDebugChunkPaylo
     return typeof chunk.chunkIndex === "number"
       && typeof chunk.charOffset === "number"
       && typeof chunk.content === "string"
+      && typeof chunk.bodyContent === "string"
+      && (typeof chunk.overlapPrefix === "string" || chunk.overlapPrefix === null)
       && (typeof chunk.sectionHeading === "string" || chunk.sectionHeading === null)
       && (typeof chunk.title === "string" || chunk.title === null)
   })
@@ -84,11 +94,7 @@ export function parseRagIndexResult(data: unknown): NormalizedRagIndexResult {
   }
 
   const debugChunks = parseRagIndexDebugChunks(data)
-  const rawReason = typeof data.reason === "string"
-    ? data.reason
-    : typeof data.skipped === "string"
-      ? data.skipped
-      : null
+  const rawReason = parseSkippedReason(data)
 
   if (data.outcome === "skipped" || rawReason !== null) {
     return {

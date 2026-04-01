@@ -44,6 +44,36 @@ describe("parseRagIndexResult", () => {
     })
   })
 
+  it("keeps the full debug chunk shape returned by the edge function", () => {
+    expect(parseRagIndexResult({
+      outcome: "indexed",
+      chunkCount: 1,
+      debugChunks: [{
+        chunkIndex: 0,
+        charOffset: 12,
+        sectionHeading: "Heading",
+        title: "Title",
+        content: "Chunk content",
+        bodyContent: "Body content",
+        overlapPrefix: "Overlap",
+      }],
+    })).toEqual({
+      outcome: "indexed",
+      chunkCount: 1,
+      droppedChunks: 0,
+      message: null,
+      debugChunks: [{
+        chunkIndex: 0,
+        charOffset: 12,
+        sectionHeading: "Heading",
+        title: "Title",
+        content: "Chunk content",
+        bodyContent: "Body content",
+        overlapPrefix: "Overlap",
+      }],
+    })
+  })
+
   it("supports delete payloads", () => {
     expect(parseRagIndexResult({ deleted: true })).toEqual({
       outcome: "deleted",

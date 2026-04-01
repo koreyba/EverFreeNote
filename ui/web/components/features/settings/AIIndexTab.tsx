@@ -122,7 +122,15 @@ function mergeOptimisticNotes(
     }
     const matchesFilter = matchesAIIndexFilter(filter, optimisticMutation.nextStatus)
 
-    if (!matchesFilter && optimisticMutation.phase === "hidden") {
+    if (!matchesFilter) {
+      if (optimisticMutation.phase === "leaving") {
+        return {
+          note: projectedNote,
+          isExiting: true,
+          order: optimisticMutation.sourceIndex,
+        }
+      }
+
       return null
     }
 

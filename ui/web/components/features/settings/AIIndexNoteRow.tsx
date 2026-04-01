@@ -172,85 +172,83 @@ export function AIIndexNoteRow({
   }, [handleDelete])
 
   return (
-    <>
-      <article
-        className={cn(
-          "rounded-2xl border border-border/60 bg-card/80 p-3.5 shadow-none transition-all duration-300 ease-out",
-          isExiting && "pointer-events-none translate-y-2 scale-[0.985] opacity-0"
-        )}
-        aria-hidden={isExiting}
-      >
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-          <button
-            type="button"
-            onClick={() => onOpenNote(note.id)}
-            disabled={isBusy}
-            className="group min-w-0 flex-1 text-left transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-80"
-            aria-label={`Open note ${note.title.trim() || "Untitled Note"}`}
-          >
-            <div className="flex min-w-0 items-start gap-2">
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <div className="flex min-w-0 items-start gap-1.5">
-                  <h3 className="line-clamp-2 flex-1 text-sm font-semibold leading-snug underline-offset-4 group-hover:underline sm:text-[15px]">
-                    {note.title.trim() || "Untitled Note"}
-                  </h3>
-                  <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "h-6 shrink-0 rounded-full px-2.5 text-[11px] font-medium sm:text-xs",
-                      STATUS_STYLES[note.status]
-                    )}
-                  >
-                    {STATUS_LABELS[note.status]}
-                  </Badge>
-                  <p className="min-w-0 flex-1 text-xs text-muted-foreground sm:text-sm">
-                    {statusDescription}
-                  </p>
-                </div>
+    <article
+      className={cn(
+        "rounded-2xl border border-border/60 bg-card/80 p-3.5 shadow-none transition-all duration-300 ease-out",
+        isExiting && "pointer-events-none translate-y-2 scale-[0.985] opacity-0"
+      )}
+      aria-hidden={isExiting}
+    >
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <button
+          type="button"
+          onClick={() => onOpenNote(note.id)}
+          disabled={isBusy}
+          className="group min-w-0 flex-1 text-left transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-80"
+          aria-label={`Open note ${note.title.trim() || "Untitled Note"}`}
+        >
+          <div className="flex min-w-0 items-start gap-2">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="flex min-w-0 items-start gap-1.5">
+                <h3 className="line-clamp-2 flex-1 text-sm font-semibold leading-snug underline-offset-4 group-hover:underline sm:text-[15px]">
+                  {note.title.trim() || "Untitled Note"}
+                </h3>
+                <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "h-6 shrink-0 rounded-full px-2.5 text-[11px] font-medium sm:text-xs",
+                    STATUS_STYLES[note.status]
+                  )}
+                >
+                  {STATUS_LABELS[note.status]}
+                </Badge>
+                <p className="min-w-0 flex-1 text-xs text-muted-foreground sm:text-sm">
+                  {statusDescription}
+                </p>
               </div>
             </div>
-          </button>
-
-          <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-[168px] xl:flex-none xl:flex-col">
-            <Button
-              variant={note.status === "indexed" ? "outline" : "default"}
-              size="sm"
-              onClick={handleIndexClick}
-              disabled={isBusy}
-              className={`w-full justify-center whitespace-nowrap sm:flex-1 xl:flex-none ${primaryActionClassName}`.trim()}
-            >
-              {operation === "indexing" ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : isIndexed ? (
-                <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-              ) : (
-                <Database className="mr-1.5 h-3.5 w-3.5" />
-              )}
-              {actionLabel}
-            </Button>
-
-            {showRemoveAction ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDeleteClick}
-                disabled={isBusy}
-                className="w-full justify-center whitespace-nowrap border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-1 xl:flex-none"
-              >
-                {operation === "deleting" ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                )}
-                Remove index
-              </Button>
-            ) : null}
           </div>
+        </button>
+
+        <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-[168px] xl:flex-none xl:flex-col">
+          <Button
+            variant={note.status === "indexed" ? "outline" : "default"}
+            size="sm"
+            onClick={handleIndexClick}
+            disabled={isBusy}
+            className={`w-full justify-center whitespace-nowrap sm:flex-1 xl:flex-none ${primaryActionClassName}`.trim()}
+          >
+            {operation === "indexing" ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : isIndexed ? (
+              <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
+            ) : (
+              <Database className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            {actionLabel}
+          </Button>
+
+          {showRemoveAction ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteClick}
+              disabled={isBusy}
+              className="w-full justify-center whitespace-nowrap border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-1 xl:flex-none"
+            >
+              {operation === "deleting" ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Remove index
+            </Button>
+          ) : null}
         </div>
-      </article>
-    </>
+      </div>
+    </article>
   )
 }
