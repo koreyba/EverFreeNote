@@ -190,8 +190,8 @@ export class ContentConverter {
 
     // Нормализуем пустые параграфы: <p><br></p> -> <p></p>
     // Tiptap сам добавит нужный <br> для редактирования
-    html = html.replace(/<p([^>]*)>(?:[^<]*<br\s*\/?>)*<\/p>/gi, (match, attrs) => {
-      const inner = match.replace(/<\/?p[^>]*>/gi, '')
+    html = html.replace(/<p([^>]*)>(?:[^<]|<br\s*\/?>)*<\/p>/gi, (match, attrs) => {
+      const inner = match.replaceAll(/<\/?p[^>]*>/gi, '')
       if (/^(?:\s|&nbsp;|&hairsp;|&#8202;)*<br\s*\/?>(?:\s|&nbsp;|&hairsp;|&#8202;)*$/i.test(inner)) {
         return `<p${attrs}></p>`
       }
