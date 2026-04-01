@@ -226,7 +226,7 @@ describe("AIIndexTab", () => {
   })
 
   it("renders an actionable error state and retries the query", () => {
-    const refetch = jest.fn()
+    const refetch = jest.fn().mockResolvedValue(undefined)
     jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
       ...mockQuery,
       isError: true,
