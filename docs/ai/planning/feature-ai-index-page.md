@@ -43,6 +43,7 @@ description: Task breakdown for the Settings AI index management page
 - [x] Task 3.7: Refine AI Index information hierarchy so summary, filters, search, and list state are easier to scan
 - [x] Task 3.8: Refine row-level UX with clearer status meaning, stronger primary actions, and less disabled-button noise
   - Follow-up refinement kept the compact header but reverted a too-rigid desktop table rhythm back to a more flexible card layout so titles stay readable on desktop and mobile.
+  - Follow-up performance refinement prewarms the main workspace route and the first notes page so the first AI Index -> note transition after a hard reload is less cold.
 
 ## Dependencies
 

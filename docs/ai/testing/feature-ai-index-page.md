@@ -35,6 +35,7 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [x] Keeps row height focused on title/status/actions rather than a large date-metadata block
 - [x] Keeps row cards compact while preserving equal-width action buttons and avoiding status/title collisions on mobile
 - [x] Removes the redundant main-content AI Index hero inside `Settings` so the page starts closer to the useful controls
+- [x] Prefetches the main workspace route and first notes page so the first AI Index -> note transition avoids a completely cold start
 - [x] Surfaces a relogin hint for `401 Unauthorized` row-action failures after switching local Supabase stacks
 - [ ] Add a direct unit test for the virtualized empty-state copy if needed later
 

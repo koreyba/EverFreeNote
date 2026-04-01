@@ -64,6 +64,7 @@ ui/web/components/features/settings/
 - Prefer status-driven action emphasis over always rendering the same button stack. For example, non-indexed notes should emphasize `Index note`, while `Remove from index` should disappear when it is not actionable.
 - Prefer compact rows over metadata-heavy cards. The title should get more room (including two-line truncation), while date details should not dominate the row when status already communicates the main state.
 - Keep the row card-like rather than turning it into a rigid table. The title block should own most of the width, status should live as a compact badge in the metadata line, and action buttons can stay equal-width without stealing title space on desktop or mobile.
+- Because AI Index commonly opens notes in the main workspace after a cold `/settings` load, prefetch the `/` route and prewarm the first main-notes query page while the AI Index tab is already visible.
 
 ## Integration Points
 

@@ -5,10 +5,12 @@ import { SupabaseTestProvider } from "@ui/web/providers/SupabaseProvider"
 import * as aiIndexHooks from "@ui/web/hooks/useAIIndexNotes"
 
 const mockPush = jest.fn()
+const mockPrefetch = jest.fn()
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
     push: mockPush,
+    prefetch: mockPrefetch,
   }),
 }))
 
@@ -32,6 +34,7 @@ describe("AIIndexTab", () => {
   beforeEach(() => {
     jest.useFakeTimers()
     mockPush.mockReset()
+    mockPrefetch.mockReset()
     jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([])
     jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue(mockQuery as never)
   })
@@ -53,6 +56,10 @@ describe("AIIndexTab", () => {
     )
 
     const input = screen.getByLabelText("Search AI index notes")
+
+    await waitFor(() => {
+      expect(mockPrefetch).toHaveBeenCalledWith("/")
+    })
 
     expect(aiIndexHooks.useAIIndexNotes).toHaveBeenLastCalledWith("all", "")
 

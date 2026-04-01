@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SEARCH_CONFIG } from "@core/constants/search"
+import { NoteService } from "@core/services/notes"
 import { cn } from "@ui/web/lib/utils"
 import type { AIIndexFilter } from "@core/types/aiIndex"
 import {
@@ -59,7 +60,8 @@ const FILTER_SEARCH_LABELS: Record<AIIndexFilter, string> = {
 export function AIIndexTab() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { user } = useSupabase()
+  const { user, supabase } = useSupabase()
+  const noteService = React.useMemo(() => new NoteService(supabase), [supabase])
   const [filter, setFilter] = React.useState<AIIndexFilter>("all")
   const [searchDraft, setSearchDraft] = React.useState("")
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -94,6 +96,25 @@ export function AIIndexTab() {
     setInitialScrollOffset(restoredState.scrollOffset)
     setScrollOffset(restoredState.scrollOffset)
   }, [])
+
+  React.useEffect(() => {
+    if (!user?.id) return
+
+    router.prefetch("/")
+
+    void queryClient.prefetchInfiniteQuery({
+      queryKey: ["notes", user.id, "", null],
+      queryFn: ({ pageParam = 0 }) => noteService.getNotes(user.id, {
+        page: pageParam as number,
+        pageSize: SEARCH_CONFIG.PAGE_SIZE,
+        tag: null,
+        searchQuery: "",
+      }),
+      getNextPageParam: (lastPage: { nextCursor?: number }) => lastPage.nextCursor,
+      initialPageParam: 0,
+      staleTime: 1000 * 60 * 10,
+    })
+  }, [noteService, queryClient, router, user?.id])
 
   const handleMutated = React.useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) })
