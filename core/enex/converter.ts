@@ -162,12 +162,12 @@ export class ContentConverter {
     // Удаляем <p> содержащие только пробельные символы, &nbsp;, &hairsp;, <br> и т.д.
     return html
       // Удаляем пустые <p> в начале
-      .replace(/^(\s*<p[^>]*>(\s|&nbsp;|&hairsp;|&#8202;|<br\s*\/?>)*<\/p>\s*)+/gi, '')
+      .replace(/^(?:\s*<p[^>]*>(?:\s|&nbsp;|&hairsp;|&#8202;|<br\s*\/?>)*<\/p>\s*)+/gi, '')
       // Удаляем пустые <p> в конце
-      .replace(/(\s*<p[^>]*>(\s|&nbsp;|&hairsp;|&#8202;|<br\s*\/?>)*<\/p>\s*)+$/gi, '')
+      .replace(/(?:\s*<p[^>]*>(?:\s|&nbsp;|&hairsp;|&#8202;|<br\s*\/?>)*<\/p>\s*)+$/gi, '')
       // Нормализуем пустые параграфы: <p><br></p> -> <p></p>
       // Tiptap сам добавит нужный <br> для редактирования
-      .replace(/<p([^>]*)>(\s|&nbsp;|&hairsp;|&#8202;)*<br\s*\/?>(\s|&nbsp;|&hairsp;|&#8202;)*<\/p>/gi, '<p$1></p>')
+      .replace(/<p([^>]*)>(?:\s|&nbsp;|&hairsp;|&#8202;)*<br\s*\/?>(?:\s|&nbsp;|&hairsp;|&#8202;)*<\/p>/gi, '<p$1></p>')
   }
 
   private normalizeDivsToP(html: string): string {

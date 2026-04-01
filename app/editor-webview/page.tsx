@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useEffect, useState } from 'react'
+import DOMPurify from 'isomorphic-dompurify'
 import RichTextEditorWebView, { type RichTextEditorWebViewHandle } from '@/ui/web/components/RichTextEditorWebView'
 import { consumeChunkedMessage, sendChunkedText, type ChunkBufferStore } from '@core/utils/editorWebViewBridge'
 
@@ -72,7 +73,7 @@ export default function EditorWebViewPage() {
       if (!devHost && !supabaseOrigin) return html
 
       const container = document.createElement('div')
-      container.innerHTML = html
+      container.innerHTML = DOMPurify.sanitize(html)
 
       const imgs = Array.from(container.querySelectorAll('img'))
       for (const img of imgs) {
@@ -128,8 +129,18 @@ export default function EditorWebViewPage() {
     }
 
     // Listen for messages from React Native
+    const isTrustedOrigin = (origin: string) => {
+      // React Native WebView sends messages with empty or null origin
+      if (!origin || origin === 'null' || origin === 'file://') return true
+      // Same-origin messages (dev server, self-hosted)
+      if (origin === window.location.origin) return true
+      return false
+    }
+
     const handleMessage = (event: MessageEvent) => {
       try {
+        if (event.origin && !isTrustedOrigin(event.origin)) return
+
         const raw =
           typeof event.data === 'string'
             ? event.data
