@@ -21,11 +21,12 @@ interface NoteCardProps {
 }
 
 const stripHtml = (value: string) => {
-  let result = value
-  let prev = ''
-  while (result !== prev) {
-    prev = result
-    result = result.replace(/<[^>]*>/g, '')
+  let result = ''
+  let inTag = false
+  for (const ch of value) {
+    if (ch === '<') { inTag = true; continue }
+    if (ch === '>') { inTag = false; continue }
+    if (!inTag) result += ch
   }
   return result
 }

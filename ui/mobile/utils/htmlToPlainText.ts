@@ -30,11 +30,12 @@ export const htmlToPlainText = (html: string) => {
     .replace(/<\/div\s*>/gi, '\n')
     .replace(/<\/li\s*>/gi, '\n')
 
-  let withoutTags = withLineBreaks
-  let prev = ''
-  while (withoutTags !== prev) {
-    prev = withoutTags
-    withoutTags = withoutTags.replace(/<[^>]+>/g, '')
+  let withoutTags = ''
+  let inTag = false
+  for (const ch of withLineBreaks) {
+    if (ch === '<') { inTag = true; continue }
+    if (ch === '>') { inTag = false; continue }
+    if (!inTag) withoutTags += ch
   }
   const decoded = decodeHtmlEntities(withoutTags)
   return decoded.replace(/\n{3,}/g, '\n\n').trim()
