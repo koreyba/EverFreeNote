@@ -81,12 +81,14 @@ interface RagStatus {
 4. `batchEmbedContents` → Gemini REST API (`output_dimensionality: 1536`)
 5. Upsert chunks into `note_embeddings` by `(note_id, chunk_index)`
 6. Delete stale tail chunks where `chunk_index >= newChunkCount`
-7. Return `{ chunkCount: N }`
+7. Return an explicit semantic outcome payload:
+   - success: `{ outcome: "indexed", chunkCount: N }`
+   - skipped-too-short: `{ outcome: "skipped", reason: "too_short", chunkCount: 0, message }`
 
 **action: 'delete'** flow:
 1. Validate JWT → get userId
 2. `DELETE FROM note_embeddings WHERE note_id = ? AND user_id = ?`
-3. Return `{ deleted: true }`
+3. Return `{ outcome: "deleted", deleted: true }`
 
 **Errors:** `400` bad input, `401` unauthorized, `404` note not found, `500` Gemini/DB error
 
@@ -108,6 +110,7 @@ RLS policy on `note_embeddings` enforces per-user isolation (`auth.uid() = user_
 - Uses `useSupabase()` to get the browser client for `functions.invoke()`
 - Uses `useRagStatus(noteId)` for live status (polling)
 - Renders: Index/Re-index button, Delete Index button, status text
+- Normalizes `rag-index` payloads through a shared parser so semantic skips are not shown as success
 
 **UI states:**
 

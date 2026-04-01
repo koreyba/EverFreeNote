@@ -40,6 +40,9 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [x] Restores saved AI Index filter/search state on mount and carries the current state into note navigation
 - [x] Renders the AI Index error state with a retry affordance
 - [x] Covers the direct `AIIndexList` empty-state passthrough branch
+- [x] Updates row status/buttons optimistically on `All notes` immediately after a successful AI-index mutation
+- [x] Animates rows out of filtered views when a successful mutation changes them out of the active status bucket
+- [x] Treats semantic `rag-index` skips such as `outcome: "skipped", reason: "too_short"` as honest failures and restores `not_indexed`
 
 ## Integration Tests
 
@@ -54,6 +57,7 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [ ] Scroll enough to trigger lazy loading
 - [ ] Reindex an outdated note and verify it leaves the `Outdated` filter
 - [ ] Remove an indexed note and verify it becomes `Not indexed`
+- [ ] Reindex an outdated note from `All notes` and verify the primary action switches to the indexed-state button without a page refresh
 
 ## Test Data
 
@@ -68,8 +72,11 @@ description: Test strategy for the Settings AI index page and its dedicated data
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/hooks/useAIIndexNotes.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexNoteRow.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexTab.test.tsx`
+  - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexList.test.tsx`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/lib/aiIndexNavigationState.test.ts`
   - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/settingsPage.aiIndex.test.tsx`
+  - `npm run test:unit:core -- --runTestsByPath core/tests/unit/core-rag-indexResult.test.ts`
+  - `npm run test:component -- --spec "cypress/component/features/settings/AIIndexNoteRow.cy.tsx"`
 - Completed:
   - `npm run type-check`
   - `npm run type-check:tests`

@@ -10,8 +10,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SEARCH_CONFIG } from "@core/constants/search"
 import { NoteService } from "@core/services/notes"
+import type {
+  AIIndexFilter,
+  AIIndexMutationResult,
+  AIIndexNoteRow as AIIndexNoteRowData,
+} from "@core/types/aiIndex"
+import { selectableSurfaceStateClasses } from "@ui/web/lib/selectableSurfaceStyles"
 import { cn } from "@ui/web/lib/utils"
-import type { AIIndexFilter } from "@core/types/aiIndex"
 import {
   getAIIndexNotesQueryPrefix,
   useAIIndexNotes,
@@ -57,10 +62,22 @@ const FILTER_SEARCH_LABELS: Record<AIIndexFilter, string> = {
   outdated: "outdated notes",
 }
 
+const ROW_EXIT_DURATION_MS = 260
+
+type OptimisticMutationState = AIIndexMutationResult & {
+  phase: "stable" | "leaving" | "hidden"
+  noteSnapshot: AIIndexNoteRowData
+  sourceIndex: number
+}
+
 function runBackgroundTask(task: Promise<unknown>) {
   task.catch(() => {
     // Best-effort background work should not break the settings UI.
   })
+}
+
+function matchesAIIndexFilter(filter: AIIndexFilter, status: AIIndexNoteRowData["status"]) {
+  return filter === "all" || filter === status
 }
 
 function getPersistedSearchQuery(searchDraft: string) {
@@ -81,6 +98,72 @@ function getResultsSummaryText(loadedCount: number, totalCount: number) {
   }
 
   return `Showing ${totalCount} ${totalCount === 1 ? "note" : "notes"}`
+}
+
+function mergeOptimisticNotes(
+  notes: AIIndexNoteRowData[],
+  filter: AIIndexFilter,
+  optimisticMutations: Record<string, OptimisticMutationState>
+) {
+  const visibleEntries = notes.map((note, index) => {
+    const optimisticMutation = optimisticMutations[note.id]
+    if (!optimisticMutation) {
+      return {
+        note,
+        isExiting: false,
+        order: index,
+      }
+    }
+
+    const projectedNote: AIIndexNoteRowData = {
+      ...note,
+      status: optimisticMutation.nextStatus,
+      lastIndexedAt: optimisticMutation.nextStatus === "not_indexed" ? null : note.lastIndexedAt,
+    }
+    const matchesFilter = matchesAIIndexFilter(filter, optimisticMutation.nextStatus)
+
+    if (!matchesFilter && optimisticMutation.phase === "hidden") {
+      return null
+    }
+
+    return {
+      note: projectedNote,
+      isExiting: optimisticMutation.phase === "leaving",
+      order: optimisticMutation.sourceIndex,
+    }
+  }).filter((entry): entry is { note: AIIndexNoteRowData; isExiting: boolean; order: number } => entry !== null)
+
+  const visibleIds = new Set(visibleEntries.map((entry) => entry.note.id))
+  const exitingEntries = Object.values(optimisticMutations)
+    .filter((mutation) => mutation.phase === "leaving" && !visibleIds.has(mutation.noteId))
+    .map((mutation) => ({
+      note: {
+        ...mutation.noteSnapshot,
+        status: mutation.nextStatus,
+        lastIndexedAt: mutation.nextStatus === "not_indexed" ? null : mutation.noteSnapshot.lastIndexedAt,
+      },
+      isExiting: true,
+      order: mutation.sourceIndex + 0.5,
+    }))
+
+  return [...visibleEntries, ...exitingEntries]
+    .sort((left, right) => left.order - right.order)
+}
+
+function getOptimisticTotalCount(
+  filter: AIIndexFilter,
+  totalCount: number,
+  optimisticMutations: Record<string, OptimisticMutationState>
+) {
+  const delta = Object.values(optimisticMutations).reduce((sum, mutation) => {
+    const matchedBefore = matchesAIIndexFilter(filter, mutation.previousStatus)
+    const matchedAfter = matchesAIIndexFilter(filter, mutation.nextStatus)
+
+    if (matchedBefore === matchedAfter) return sum
+    return sum + (matchedAfter ? 1 : -1)
+  }, 0)
+
+  return Math.max(0, totalCount + delta)
 }
 
 function AIIndexResetActions({
@@ -187,7 +270,10 @@ function AIIndexToolbar({
     <div className="rounded-2xl border border-border/60 bg-background/70 p-3 sm:p-4">
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap gap-2">
+          <div
+            className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
             {filterOptions.map((option) => {
               const isActive = option.value === filter
               return (
@@ -196,10 +282,8 @@ function AIIndexToolbar({
                   type="button"
                   onClick={() => onFilterChange(option.value)}
                   className={cn(
-                    "rounded-xl border px-4 py-2 text-sm font-medium transition-all",
-                    isActive
-                      ? "border-foreground/15 bg-foreground text-background shadow-sm"
-                      : "border-border/70 bg-background text-foreground hover:bg-muted/50"
+                    "shrink-0 rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                    isActive ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idlePill
                   )}
                 >
                   {option.label}
@@ -350,7 +434,9 @@ export function AIIndexTab() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [initialScrollOffset, setInitialScrollOffset] = React.useState(0)
   const [scrollOffset, setScrollOffset] = React.useState(0)
+  const [optimisticMutations, setOptimisticMutations] = React.useState<Record<string, OptimisticMutationState>>({})
   const restoredStateRef = React.useRef(false)
+  const exitTimeoutsRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const normalizedSearchDraft = searchDraft.trim()
   const persistedSearchQuery = getPersistedSearchQuery(normalizedSearchDraft)
   const isSearchHintVisible =
@@ -364,6 +450,34 @@ export function AIIndexTab() {
   const query = useAIIndexNotes(filter, activeSearchQuery)
   const notes = useFlattenedAIIndexNotes(query)
   const totalCount = query.data?.pages[0]?.totalCount ?? 0
+
+  React.useEffect(() => () => {
+    Object.values(exitTimeoutsRef.current).forEach((timeoutId) => clearTimeout(timeoutId))
+  }, [])
+
+  React.useEffect(() => {
+    setOptimisticMutations((previousState) => {
+      let hasChanges = false
+      const nextState = { ...previousState }
+
+      for (const [noteId, optimisticMutation] of Object.entries(previousState)) {
+        const liveNote = notes.find((note) => note.id === noteId)
+
+        if (liveNote && liveNote.status === optimisticMutation.nextStatus) {
+          delete nextState[noteId]
+          hasChanges = true
+          continue
+        }
+
+        if (!liveNote && optimisticMutation.phase !== "leaving" && !matchesAIIndexFilter(filter, optimisticMutation.nextStatus)) {
+          delete nextState[noteId]
+          hasChanges = true
+        }
+      }
+
+      return hasChanges ? nextState : previousState
+    })
+  }, [filter, notes])
 
   React.useEffect(() => {
     if (restoredStateRef.current) return
@@ -400,9 +514,49 @@ export function AIIndexTab() {
     }))
   }, [noteService, queryClient, router, user?.id])
 
-  const handleMutated = React.useCallback(() => {
+  const handleMutated = React.useCallback((mutationResult: AIIndexMutationResult) => {
+    const sourceIndex = notes.findIndex((note) => note.id === mutationResult.noteId)
+    const sourceNote = sourceIndex >= 0 ? notes[sourceIndex] : null
+    const shouldExit =
+      sourceNote !== null &&
+      filter !== "all" &&
+      !matchesAIIndexFilter(filter, mutationResult.nextStatus)
+
+    if (sourceNote) {
+      setOptimisticMutations((previousState) => ({
+        ...previousState,
+        [mutationResult.noteId]: {
+          ...mutationResult,
+          phase: shouldExit ? "leaving" : "stable",
+          noteSnapshot: sourceNote,
+          sourceIndex,
+        },
+      }))
+    }
+
+    if (shouldExit) {
+      const existingTimeout = exitTimeoutsRef.current[mutationResult.noteId]
+      if (existingTimeout) clearTimeout(existingTimeout)
+
+      exitTimeoutsRef.current[mutationResult.noteId] = setTimeout(() => {
+        setOptimisticMutations((previousState) => {
+          const currentMutation = previousState[mutationResult.noteId]
+          if (!currentMutation) return previousState
+
+          return {
+            ...previousState,
+            [mutationResult.noteId]: {
+              ...currentMutation,
+              phase: "hidden",
+            },
+          }
+        })
+        delete exitTimeoutsRef.current[mutationResult.noteId]
+      }, ROW_EXIT_DURATION_MS)
+    }
+
     runBackgroundTask(queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) }))
-  }, [queryClient, user?.id])
+  }, [filter, notes, queryClient, user?.id])
 
   const handleSearchChange = React.useCallback((value: string) => {
     setSearchDraft(value)
@@ -445,11 +599,21 @@ export function AIIndexTab() {
     router.push("/")
   }, [currentViewState, router])
 
-  const loadedCount = notes.length
+  const mergedNotes = React.useMemo(() => mergeOptimisticNotes(notes, filter, optimisticMutations), [filter, notes, optimisticMutations])
+  const displayedNotes = React.useMemo(() => mergedNotes.map((entry) => entry.note), [mergedNotes])
+  const exitingNoteIds = React.useMemo(
+    () => mergedNotes.filter((entry) => entry.isExiting).map((entry) => entry.note.id),
+    [mergedNotes]
+  )
+  const optimisticTotalCount = React.useMemo(
+    () => getOptimisticTotalCount(filter, totalCount, optimisticMutations),
+    [filter, optimisticMutations, totalCount]
+  )
+  const loadedCount = displayedNotes.length
   const hasActiveSearch = activeSearchQuery.length > 0
   const hasActiveFilter = filter !== "all"
   const emptyMessage = getAIIndexEmptyMessage(filter, activeSearchQuery)
-  const summaryText = getResultsSummaryText(loadedCount, totalCount)
+  const summaryText = getResultsSummaryText(loadedCount, optimisticTotalCount)
   const handleResetFilter = React.useCallback(() => {
     setFilter("all")
   }, [])
@@ -496,7 +660,7 @@ export function AIIndexTab() {
         onSearchChange={handleSearchChange}
         onSearchKeyDown={handleSearchKeyDown}
         searchDraft={searchDraft}
-        totalCount={totalCount}
+        totalCount={optimisticTotalCount}
       />
 
       <div className="rounded-2xl border border-border/60 bg-background/60">
@@ -512,7 +676,8 @@ export function AIIndexTab() {
         />
         <div className="h-[min(72vh,760px)]">
           <AIIndexList
-            notes={notes}
+            notes={displayedNotes}
+            exitingNoteIds={exitingNoteIds}
             isLoading={query.isLoading}
             hasMore={Boolean(query.hasNextPage)}
             isFetchingNextPage={query.isFetchingNextPage}

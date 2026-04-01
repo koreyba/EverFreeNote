@@ -6,17 +6,8 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import type { AIIndexNoteRow as AIIndexNoteRowData } from "@core/types/aiIndex"
+import { parseRagIndexResult } from "@core/rag/indexResult"
+import type { AIIndexMutationResult, AIIndexNoteRow as AIIndexNoteRowData } from "@core/types/aiIndex"
 import { cn } from "@ui/web/lib/utils"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 
@@ -68,17 +59,18 @@ export function AIIndexNoteRow({
   note,
   onMutated,
   onOpenNote,
+  isExiting = false,
 }: Readonly<{
   note: AIIndexNoteRowData
-  onMutated: () => void
+  onMutated: (result: AIIndexMutationResult) => void
   onOpenNote: (noteId: string) => void
+  isExiting?: boolean
 }>) {
   const { supabase } = useSupabase()
   const [operation, setOperation] = React.useState<Operation>(null)
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
 
   const isIndexed = note.status !== "not_indexed"
-  const isBusy = operation !== null
+  const isBusy = operation !== null || isExiting
   let actionLabel = "Index note"
   if (note.status === "outdated") {
     actionLabel = "Update index"
@@ -98,7 +90,7 @@ export function AIIndexNoteRow({
   const handleIndex = React.useCallback(async () => {
     setOperation("indexing")
     try {
-      const { error } = await supabase.functions.invoke("rag-index", {
+      const { data, error } = await supabase.functions.invoke("rag-index", {
         body: {
           noteId: note.id,
           action: isIndexed ? "reindex" : "index",
@@ -106,19 +98,41 @@ export function AIIndexNoteRow({
       })
       if (error) throw error
 
-      toast.success(`Note ${actionVerb}`)
-      onMutated()
+      const result = parseRagIndexResult(data)
+      if (result.outcome === "indexed") {
+        toast.success(`Note ${actionVerb}`)
+        onMutated({
+          noteId: note.id,
+          previousStatus: note.status,
+          nextStatus: "indexed",
+        })
+        return
+      }
+
+      if (result.outcome === "skipped") {
+        toast.error(result.message)
+        if (result.reason === "too_short") {
+          onMutated({
+            noteId: note.id,
+            previousStatus: note.status,
+            nextStatus: "not_indexed",
+          })
+        }
+        return
+      }
+
+      toast.error(result.message)
     } catch (error) {
       toast.error(await extractErrorMessage(error, `${actionLabel} failed`))
     } finally {
       setOperation(null)
     }
-  }, [actionLabel, actionVerb, isIndexed, note.id, onMutated, supabase.functions])
+  }, [actionLabel, actionVerb, isIndexed, note.id, note.status, onMutated, supabase.functions])
 
   const handleDelete = React.useCallback(async () => {
     setOperation("deleting")
     try {
-      const { error } = await supabase.functions.invoke("rag-index", {
+      const { data, error } = await supabase.functions.invoke("rag-index", {
         body: {
           noteId: note.id,
           action: "delete",
@@ -126,15 +140,24 @@ export function AIIndexNoteRow({
       })
       if (error) throw error
 
-      toast.success("Note removed from AI index")
-      onMutated()
+      const result = parseRagIndexResult(data)
+      if (result.outcome === "deleted") {
+        toast.success("Note removed from AI index")
+        onMutated({
+          noteId: note.id,
+          previousStatus: note.status,
+          nextStatus: "not_indexed",
+        })
+        return
+      }
+
+      toast.error(result.message)
     } catch (error) {
       toast.error(await extractErrorMessage(error, "Remove from index failed"))
     } finally {
       setOperation(null)
-      setDeleteConfirmOpen(false)
     }
-  }, [note.id, onMutated, supabase.functions])
+  }, [note.id, note.status, onMutated, supabase.functions])
 
   const handleIndexClick = React.useCallback(() => {
     handleIndex().catch(() => {
@@ -142,8 +165,7 @@ export function AIIndexNoteRow({
     })
   }, [handleIndex])
 
-  const handleDeleteClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
+  const handleDeleteClick = React.useCallback(() => {
     handleDelete().catch(() => {
       // handleDelete already reports failures with a toast.
     })
@@ -151,7 +173,13 @@ export function AIIndexNoteRow({
 
   return (
     <>
-      <article className="rounded-2xl border border-border/60 bg-card/80 p-3.5 shadow-none">
+      <article
+        className={cn(
+          "rounded-2xl border border-border/60 bg-card/80 p-3.5 shadow-none transition-all duration-300 ease-out",
+          isExiting && "pointer-events-none translate-y-2 scale-[0.985] opacity-0"
+        )}
+        aria-hidden={isExiting}
+      >
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <button
             type="button"
@@ -208,7 +236,7 @@ export function AIIndexNoteRow({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setDeleteConfirmOpen(true)}
+                onClick={handleDeleteClick}
                 disabled={isBusy}
                 className="w-full justify-center whitespace-nowrap border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-1 xl:flex-none"
               >
@@ -223,26 +251,6 @@ export function AIIndexNoteRow({
           </div>
         </div>
       </article>
-
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove note from AI index?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This deletes all stored embeddings for the note. You can index it again later from this page.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={operation === "deleting"}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteClick}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {operation === "deleting" ? "Removing..." : "Remove index"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }

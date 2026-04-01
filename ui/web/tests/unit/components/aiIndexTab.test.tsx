@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 import { AIIndexTab } from "@/components/features/settings/AIIndexTab"
+import type { AIIndexMutationResult } from "@core/types/aiIndex"
 import { SupabaseTestProvider } from "@ui/web/providers/SupabaseProvider"
 import * as aiIndexHooks from "@ui/web/hooks/useAIIndexNotes"
 import {
@@ -44,8 +45,8 @@ describe("AIIndexTab", () => {
     isFetching: false,
     isError: false,
     error: null,
-    refetch: jest.fn(),
-    fetchNextPage: jest.fn(),
+    refetch: jest.fn().mockResolvedValue(undefined),
+    fetchNextPage: jest.fn().mockResolvedValue(undefined),
   }
 
   beforeEach(() => {
@@ -249,5 +250,130 @@ describe("AIIndexTab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
 
     expect(refetch).toHaveBeenCalled()
+  })
+
+  it("updates row status immediately on the all-notes view after a successful mutation", async () => {
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-outdated",
+        title: "Outdated note",
+        updatedAt: "2026-03-29T10:00:00Z",
+        lastIndexedAt: "2026-03-29T09:00:00Z",
+        status: "outdated",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{} as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    const latestListProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {
+      notes: Array<{ id: string; status: string }>
+      onMutated: (result: AIIndexMutationResult) => void
+      exitingNoteIds?: string[]
+    }
+
+    act(() => {
+      latestListProps.onMutated({
+        noteId: "note-outdated",
+        previousStatus: "outdated",
+        nextStatus: "indexed",
+      })
+    })
+
+    const rerenderedListProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {
+      notes: Array<{ id: string; status: string }>
+      exitingNoteIds?: string[]
+    }
+
+    expect(rerenderedListProps.notes).toEqual([
+      expect.objectContaining({
+        id: "note-outdated",
+        status: "indexed",
+      }),
+    ])
+    expect(rerenderedListProps.exitingNoteIds).toEqual([])
+  })
+
+  it("animates outdated notes out of the filtered view after a successful reindex", async () => {
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-outdated",
+        title: "Outdated note",
+        updatedAt: "2026-03-29T10:00:00Z",
+        lastIndexedAt: "2026-03-29T09:00:00Z",
+        status: "outdated",
+      },
+      {
+        id: "note-outdated-2",
+        title: "Another outdated note",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: "2026-03-29T10:30:00Z",
+        status: "outdated",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 2, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{} as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Outdated" }))
+
+    const latestListProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {
+      notes: Array<{ id: string; status: string }>
+      onMutated: (result: AIIndexMutationResult) => void
+      exitingNoteIds?: string[]
+    }
+
+    act(() => {
+      latestListProps.onMutated({
+        noteId: "note-outdated",
+        previousStatus: "outdated",
+        nextStatus: "indexed",
+      })
+    })
+
+    const duringExitProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {
+      notes: Array<{ id: string; status: string }>
+      exitingNoteIds?: string[]
+    }
+
+    expect(duringExitProps.notes).toEqual([
+      expect.objectContaining({ id: "note-outdated", status: "indexed" }),
+      expect.objectContaining({ id: "note-outdated-2", status: "outdated" }),
+    ])
+    expect(duringExitProps.exitingNoteIds).toEqual(["note-outdated"])
+
+    act(() => {
+      jest.advanceTimersByTime(260)
+    })
+
+    const afterExitProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {
+      notes: Array<{ id: string; status: string }>
+      exitingNoteIds?: string[]
+    }
+
+    expect(afterExitProps.notes).toEqual([
+      expect.objectContaining({ id: "note-outdated-2", status: "outdated" }),
+    ])
+    expect(afterExitProps.exitingNoteIds).toEqual([])
   })
 })

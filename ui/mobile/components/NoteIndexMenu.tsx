@@ -11,7 +11,8 @@ import { Database, Trash2 } from 'lucide-react-native'
 import { useTheme } from '@ui/mobile/providers'
 import { useSupabase } from '@ui/mobile/providers/SupabaseProvider'
 import { useRagStatus } from '@ui/mobile/hooks/useRagStatus'
-import { logRagIndexDebugChunks, type RagIndexDebugChunk } from '@core/rag/debugLog'
+import { logRagIndexDebugChunks } from '@core/rag/debugLog'
+import { parseRagIndexResult } from '@core/rag/indexResult'
 
 interface NoteIndexMenuProps {
     noteId: string
@@ -20,21 +21,6 @@ interface NoteIndexMenuProps {
 }
 
 type Operation = 'indexing' | 'deleting' | null
-
-function parseDebugChunks(data: unknown): RagIndexDebugChunk[] {
-    if (!data || typeof data !== 'object') return []
-    const value = (data as { debugChunks?: unknown }).debugChunks
-    if (!Array.isArray(value)) return []
-    return value.filter((chunk): chunk is RagIndexDebugChunk => {
-        if (!chunk || typeof chunk !== 'object') return false
-        const candidate = chunk as Partial<RagIndexDebugChunk>
-        return typeof candidate.chunkIndex === 'number'
-            && typeof candidate.charOffset === 'number'
-            && typeof candidate.content === 'string'
-            && (typeof candidate.sectionHeading === 'string' || candidate.sectionHeading === null)
-            && (typeof candidate.title === 'string' || candidate.title === null)
-    })
-}
 
 async function extractErrorMessage(err: unknown, fallback: string): Promise<string> {
     if (!(err instanceof Error)) return fallback
@@ -98,14 +84,15 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
                 body: { noteId, action, debugChunks: true },
             })
             if (error) throw error
-            const debugChunks = parseDebugChunks(data)
-            if (debugChunks.length > 0) {
-                logRagIndexDebugChunks(noteId, debugChunks)
+            const result = parseRagIndexResult(data)
+            if (result.debugChunks.length > 0) {
+                logRagIndexDebugChunks(noteId, result.debugChunks)
             }
-            const count = typeof (data as { chunkCount?: number })?.chunkCount === 'number'
-                ? (data as { chunkCount: number }).chunkCount
-                : null
-            showToast(count === null ? 'Indexed successfully' : `Indexed into ${count} chunks`)
+            if (result.outcome === 'indexed') {
+                showToast(`Indexed into ${result.chunkCount} chunks`)
+            } else {
+                showToast(result.message ?? 'Indexing returned an unexpected response.', true)
+            }
             refresh()
         } catch (err) {
             showToast(await extractErrorMessage(err, 'Indexing failed'), true)
@@ -118,11 +105,16 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
         setOperation('deleting')
         setDeleteConfirmVisible(false)
         try {
-            const { error } = await client.functions.invoke('rag-index', {
+            const { data, error } = await client.functions.invoke('rag-index', {
                 body: { noteId, action: 'delete' },
             })
             if (error) throw error
-            showToast('Removed from AI index')
+            const result = parseRagIndexResult(data)
+            if (result.outcome === 'deleted') {
+                showToast('Removed from AI index')
+            } else {
+                showToast(result.message ?? 'Delete returned an unexpected response.', true)
+            }
             refresh()
         } catch (err) {
             showToast(await extractErrorMessage(err, 'Delete failed'), true)

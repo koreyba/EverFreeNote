@@ -72,6 +72,9 @@ ui/web/components/features/settings/
 - Prefer compact rows over metadata-heavy cards. The title should get more room (including two-line truncation), while date details should not dominate the row when status already communicates the main state.
 - Keep the row card-like rather than turning it into a rigid table. The title block should own most of the width, status should live as a compact badge in the metadata line, and action buttons can stay equal-width without stealing title space on desktop or mobile.
 - Because AI Index commonly opens notes in the main workspace after a cold `/settings` load, prefetch the `/` route and prewarm the first main-notes query page while the AI Index tab is already visible.
+- Treat row mutations as optimistic UI updates: if the current filter still includes the note, swap its status/button state immediately; if the mutation moves the note out of the active filter, keep it around just long enough for a short exit animation before removing it from the visible list.
+- Keep the underlying `rag-index` source of truth aligned with the optimistic UI by writing a fresh `indexed_at` timestamp during reindex upserts; otherwise `Outdated` notes can stay stale even after a successful reindex.
+- Normalize `rag-index` payloads through `core/rag/indexResult.ts` so semantic non-success responses such as `reason: "too_short"` do not show a false success state in AI Index.
 
 ## Integration Points
 

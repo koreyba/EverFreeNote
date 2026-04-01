@@ -44,6 +44,10 @@ description: Task breakdown for the Settings AI index management page
 - [x] Task 3.8: Refine row-level UX with clearer status meaning, stronger primary actions, and less disabled-button noise
   - Follow-up refinement kept the compact header but reverted a too-rigid desktop table rhythm back to a more flexible card layout so titles stay readable on desktop and mobile.
   - Follow-up performance refinement prewarms the main workspace route and the first notes page so the first AI Index -> note transition after a hard reload is less cold.
+- [x] Task 3.9: Make AI Index mutations feel immediate and trustworthy
+  - Successful row actions now update the visible row state optimistically.
+  - Rows that leave the active filter because of a successful mutation animate out instead of disappearing abruptly.
+  - The `rag-index` source of truth now writes a fresh `indexed_at` timestamp during upserts so `Outdated` notes truly become `Indexed`.
 
 ## Dependencies
 
