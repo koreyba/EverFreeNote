@@ -6,6 +6,13 @@ description: Implementation notes for the dedicated Settings AI index management
 
 # Implementation Guide
 
+## Related Documents
+
+- Requirements: [feature-ai-index-page.md](../requirements/feature-ai-index-page.md)
+- Design: [feature-ai-index-page.md](../design/feature-ai-index-page.md)
+
+Expected workflow: align on requirements first, capture the chosen architecture and tradeoffs in design second, and use this implementation guide last to apply those decisions in code.
+
 ## Development Setup
 
 - Use the feature worktree `feature-ai-index-page`.

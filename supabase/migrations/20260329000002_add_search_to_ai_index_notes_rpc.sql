@@ -24,7 +24,9 @@ AS $$
 DECLARE
   normalized_search_query text := NULLIF(BTRIM(search_query), '');
   normalized_search_ts_query text := NULLIF(BTRIM(search_ts_query), '');
-  normalized_search_language regconfig := COALESCE(NULLIF(BTRIM(search_language), '')::regconfig, 'english'::regconfig);
+  normalized_search_language_text text := NULLIF(BTRIM(search_language), '');
+  normalized_search_language regconfig := 'english'::regconfig;
+  parsed_search_ts_query tsquery := NULL;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Unauthorized';
@@ -42,8 +44,19 @@ BEGIN
     RAISE EXCEPTION 'page_size must be between 1 and 100';
   END IF;
 
-  IF NULLIF(BTRIM(search_language), '') IS NOT NULL AND BTRIM(search_language) NOT IN ('english', 'russian') THEN
+  IF normalized_search_language_text IS NOT NULL AND normalized_search_language_text NOT IN ('english', 'russian') THEN
     RAISE EXCEPTION 'Invalid search_language';
+  END IF;
+
+  normalized_search_language := COALESCE(normalized_search_language_text, 'english')::regconfig;
+
+  IF normalized_search_ts_query IS NOT NULL THEN
+    BEGIN
+      parsed_search_ts_query := to_tsquery(normalized_search_language, normalized_search_ts_query);
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE EXCEPTION 'Invalid search_ts_query syntax';
+    END;
   END IF;
 
   RETURN QUERY
@@ -83,7 +96,7 @@ BEGIN
           COALESCE(ns.description, '') || ' ' ||
           COALESCE(array_to_string(ns.tags, ' '), '')
         ),
-        to_tsquery(normalized_search_language, normalized_search_ts_query)
+        parsed_search_ts_query
       )::real AS search_rank
     FROM note_states ns
     WHERE normalized_search_ts_query IS NOT NULL
@@ -93,7 +106,7 @@ BEGIN
             COALESCE(ns.title, '') || ' ' ||
             COALESCE(ns.description, '') || ' ' ||
             COALESCE(array_to_string(ns.tags, ' '), '')
-          ) @@ to_tsquery(normalized_search_language, normalized_search_ts_query)
+          ) @@ parsed_search_ts_query
       AND ts_rank(
             to_tsvector(
               normalized_search_language,
@@ -101,7 +114,7 @@ BEGIN
               COALESCE(ns.description, '') || ' ' ||
               COALESCE(array_to_string(ns.tags, ' '), '')
             ),
-            to_tsquery(normalized_search_language, normalized_search_ts_query)
+            parsed_search_ts_query
           ) >= 0.01
   ),
   has_fts_matches AS (
