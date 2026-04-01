@@ -167,17 +167,17 @@ export class ContentConverter {
       /^(?:\s|&nbsp;|&hairsp;|&#8202;|<br\s*\/?>)*$/i.test(inner)
 
     // Strip leading empty paragraphs
-    html = html.replace(/^\s*/, '')
+    html = html.trimStart()
     while (true) {
       const m = html.match(emptyParagraph)
       if (!m || html.indexOf(m[0]) !== 0) break
       const inner = m[0].replace(/<\/?p[^>]*>/gi, '')
       if (!isEmptyContent(inner)) break
-      html = html.slice(m[0].length).replace(/^\s*/, '')
+      html = html.slice(m[0].length).trimStart()
     }
 
     // Strip trailing empty paragraphs
-    html = html.replace(/\s*$/, '')
+    html = html.trimEnd()
     while (true) {
       const m = html.match(emptyParagraph)
       if (!m) break
@@ -185,7 +185,7 @@ export class ContentConverter {
       if (!html.endsWith(last)) break
       const inner = last.replace(/<\/?p[^>]*>/gi, '')
       if (!isEmptyContent(inner)) break
-      html = html.slice(0, html.length - last.length).replace(/\s*$/, '')
+      html = html.slice(0, html.length - last.length).trimEnd()
     }
 
     // Нормализуем пустые параграфы: <p><br></p> -> <p></p>
