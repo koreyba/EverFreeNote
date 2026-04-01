@@ -22,10 +22,11 @@ SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
+  default_search_language_text constant text := 'english';
   normalized_search_query text := NULLIF(BTRIM(search_query), '');
   normalized_search_ts_query text := NULLIF(BTRIM(search_ts_query), '');
   normalized_search_language_text text := NULLIF(BTRIM(search_language), '');
-  normalized_search_language regconfig := 'english'::regconfig;
+  normalized_search_language regconfig := default_search_language_text::regconfig;
   parsed_search_ts_query tsquery := NULL;
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -48,7 +49,7 @@ BEGIN
     RAISE EXCEPTION 'Invalid search_language';
   END IF;
 
-  normalized_search_language := COALESCE(normalized_search_language_text, 'english')::regconfig;
+  normalized_search_language := COALESCE(normalized_search_language_text, default_search_language_text)::regconfig;
 
   IF normalized_search_ts_query IS NOT NULL THEN
     BEGIN

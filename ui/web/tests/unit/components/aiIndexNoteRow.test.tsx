@@ -160,7 +160,7 @@ describe("AIIndexNoteRow", () => {
     const OriginalResponse = globalThis.Response
     class MockResponse {
       status: number
-      private body: string
+      private readonly body: string
 
       constructor(body: string, init: { status: number }) {
         this.body = body

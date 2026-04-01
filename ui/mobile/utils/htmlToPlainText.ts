@@ -13,11 +13,12 @@ const decodeHtmlEntities = (value: string) => {
       return isValidCodePoint(codePoint) ? String.fromCodePoint(codePoint) : match
     })
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    // Decode &amp; last to prevent double-decoding (e.g. &amp;lt; → &lt; → <)
+    .replace(/&amp;/g, '&')
 }
 
 export const htmlToPlainText = (html: string) => {

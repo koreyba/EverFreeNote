@@ -22,9 +22,9 @@ function readTokenIssuer(accessToken: string | null | undefined) {
   if (!payload) return null
 
   try {
-    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/")
+    const normalizedPayload = payload.replaceAll("-", "+").replaceAll("_", "/")
     const paddedPayload = normalizedPayload.padEnd(normalizedPayload.length + ((4 - normalizedPayload.length % 4) % 4), "=")
-    const decodedPayload = JSON.parse(window.atob(paddedPayload)) as { iss?: unknown }
+    const decodedPayload = JSON.parse(globalThis.atob(paddedPayload)) as { iss?: unknown }
     return typeof decodedPayload.iss === "string" ? decodedPayload.iss : null
   } catch {
     return null
@@ -49,7 +49,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
         event.preventDefault()
       }
     }
-    window.addEventListener("unhandledrejection", handleUnhandledRejection)
+    globalThis.addEventListener("unhandledrejection", handleUnhandledRejection)
 
     const checkAuth = async () => {
       try {
@@ -82,7 +82,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       subscription.unsubscribe()
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection)
+      globalThis.removeEventListener("unhandledrejection", handleUnhandledRejection)
     }
   }, [supabase])
 

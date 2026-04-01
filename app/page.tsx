@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useEffectEvent } from "react"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -19,18 +19,24 @@ export default function App() {
   const controller = useNoteAppController()
   const { user, loading, handleTestLogin, handleSkipAuth, handleSignInWithGoogle } = controller
 
+  const restoreUiState = useEffectEvent((state: Parameters<typeof controller.restoreUiState>[0]) => {
+    controller.restoreUiState(state).catch(() => {
+      // The controller already surfaces restore failures to the user.
+    })
+  })
+
   // Show auth error from URL params
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const error = params.get('error')
-      const message = params.get('message')
+    if (globalThis.window === undefined) return
 
-      if (error === 'auth_callback_failed') {
-        toast.error(`Authentication failed: ${message || 'Unknown error'}`)
-        // Clean up URL
-        window.history.replaceState({}, '', '/')
-      }
+    const params = new URLSearchParams(globalThis.location.search)
+    const error = params.get('error')
+    const message = params.get('message')
+
+    if (error === 'auth_callback_failed') {
+      toast.error(`Authentication failed: ${message || 'Unknown error'}`)
+      // Clean up URL
+      globalThis.history.replaceState({}, '', '/')
     }
   }, [])
 
@@ -41,9 +47,8 @@ export default function App() {
     if (!returnState) return
 
     clearActiveSettingsNoteReturnPath()
-
-    void controller.restoreUiState(returnState.notesUiState)
-  }, [controller, loading, user])
+    restoreUiState(returnState.notesUiState)
+  }, [loading, user])
 
   useEffect(() => {
     if (loading || !user) return
@@ -52,7 +57,7 @@ export default function App() {
     if (!pendingNoteState) return
 
     saveActiveSettingsNoteReturnPath(pendingNoteState.returnPath)
-    void controller.restoreUiState({
+    restoreUiState({
       selectedNoteId: pendingNoteState.noteId,
       selectedNote: null,
       isEditing: false,
@@ -60,7 +65,7 @@ export default function App() {
       searchQuery: '',
       filterByTag: null,
     })
-  }, [controller, loading, user])
+  }, [loading, user])
 
   if (loading) {
     return (

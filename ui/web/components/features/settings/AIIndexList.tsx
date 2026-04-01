@@ -44,15 +44,20 @@ const AIIndexRowRenderer = memo(({ index, style, ...props }: RowComponentProps<I
   const { items, hasMore, isLoadingMore, onLoadMore, onMutated, onOpenNote } = props as unknown as ItemData
 
   if (index === items.length) {
+    let loadMoreContent: React.ReactNode = null
+    if (isLoadingMore) {
+      loadMoreContent = <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+    } else if (hasMore) {
+      loadMoreContent = (
+        <Button variant="ghost" size="sm" onClick={onLoadMore} className="text-xs text-muted-foreground">
+          Load more notes
+        </Button>
+      )
+    }
+
     return (
       <div style={style} className="flex items-center justify-center px-2 py-2">
-        {isLoadingMore ? (
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        ) : hasMore ? (
-          <Button variant="ghost" size="sm" onClick={onLoadMore} className="text-xs text-muted-foreground">
-            Load more notes
-          </Button>
-        ) : null}
+        {loadMoreContent}
       </div>
     )
   }

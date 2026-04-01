@@ -68,26 +68,32 @@ export function AIIndexNoteRow({
   note,
   onMutated,
   onOpenNote,
-}: {
+}: Readonly<{
   note: AIIndexNoteRowData
   onMutated: () => void
   onOpenNote: (noteId: string) => void
-}) {
+}>) {
   const { supabase } = useSupabase()
   const [operation, setOperation] = React.useState<Operation>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
 
   const isIndexed = note.status !== "not_indexed"
   const isBusy = operation !== null
-  const actionLabel = note.status === "outdated" ? "Update index" : isIndexed ? "Reindex" : "Index note"
+  let actionLabel = "Index note"
+  if (note.status === "outdated") {
+    actionLabel = "Update index"
+  } else if (isIndexed) {
+    actionLabel = "Reindex"
+  }
   const actionVerb = isIndexed ? "reindexed" : "indexed"
   const statusDescription = STATUS_DESCRIPTIONS[note.status]
   const showRemoveAction = isIndexed
-  const primaryActionClassName = note.status === "outdated"
-    ? "bg-amber-500 text-amber-950 hover:bg-amber-400"
-    : note.status === "not_indexed"
-      ? "bg-foreground text-background hover:bg-foreground/90"
-      : ""
+  let primaryActionClassName = ""
+  if (note.status === "outdated") {
+    primaryActionClassName = "bg-amber-500 text-amber-950 hover:bg-amber-400"
+  } else if (note.status === "not_indexed") {
+    primaryActionClassName = "bg-foreground text-background hover:bg-foreground/90"
+  }
 
   const handleIndex = React.useCallback(async () => {
     setOperation("indexing")
@@ -130,6 +136,19 @@ export function AIIndexNoteRow({
     }
   }, [note.id, onMutated, supabase.functions])
 
+  const handleIndexClick = React.useCallback(() => {
+    handleIndex().catch(() => {
+      // handleIndex already reports failures with a toast.
+    })
+  }, [handleIndex])
+
+  const handleDeleteClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    handleDelete().catch(() => {
+      // handleDelete already reports failures with a toast.
+    })
+  }, [handleDelete])
+
   return (
     <>
       <article className="rounded-2xl border border-border/60 bg-card/80 p-3.5 shadow-none">
@@ -171,7 +190,7 @@ export function AIIndexNoteRow({
             <Button
               variant={note.status === "indexed" ? "outline" : "default"}
               size="sm"
-              onClick={() => void handleIndex()}
+              onClick={handleIndexClick}
               disabled={isBusy}
               className={`w-full justify-center whitespace-nowrap sm:flex-1 xl:flex-none ${primaryActionClassName}`.trim()}
             >
@@ -216,10 +235,7 @@ export function AIIndexNoteRow({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={operation === "deleting"}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault()
-                void handleDelete()
-              }}
+              onClick={handleDeleteClick}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {operation === "deleting" ? "Removing..." : "Remove index"}

@@ -20,7 +20,7 @@ jest.mock("lucide-react", () => ({
 }))
 
 jest.mock("react-window", () => {
-  const React = jest.requireActual("react") as typeof import("react")
+  const React = jest.requireActual("react")
 
   return {
     List: ({

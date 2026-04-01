@@ -14,7 +14,7 @@ import {
 
 describe("aiIndexNavigationState", () => {
   beforeEach(() => {
-    window.sessionStorage.clear()
+    globalThis.window.sessionStorage.clear()
     clearAIIndexPendingNoteState()
     clearAIIndexViewState()
     clearActiveSettingsNoteReturnPath()

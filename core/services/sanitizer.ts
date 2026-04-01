@@ -24,14 +24,13 @@ export class SanitizationService {
    * Useful for generating plain text previews or search indexing.
    */
   static stripHtml(html: string): string {
-    const withoutDangerousBlocks = stripDangerousBlocks(html)
-    return DOMPurify.sanitize(withoutDangerousBlocks, { ALLOWED_TAGS: [] })
+    // First pass: use DOMPurify to remove dangerous tags AND their content.
+    // KEEP_CONTENT: false ensures script/style inner text doesn't leak.
+    const safe = DOMPurify.sanitize(html, {
+      FORBID_TAGS: ['script', 'style'],
+      FORBID_CONTENTS: ['script', 'style'],
+    })
+    // Second pass: strip all remaining tags, leaving only text.
+    return DOMPurify.sanitize(safe, { ALLOWED_TAGS: [] })
   }
-}
-
-function stripDangerousBlocks(html: string): string {
-  // Remove script/style blocks so their text does not leak into plain output.
-  return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
 }

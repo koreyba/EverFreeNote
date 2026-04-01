@@ -44,6 +44,10 @@ function mapRow(row: AIIndexRpcRow): AIIndexNoteRow {
   }
 }
 
+function normalizeAIIndexRpcRows(data: unknown): AIIndexRpcRow[] {
+  return Array.isArray(data) ? data.filter((row): row is AIIndexRpcRow => typeof row === "object" && row !== null) : []
+}
+
 function formatAIIndexRpcError(error: unknown) {
   if (!error || typeof error !== "object") {
     return new Error("Failed to load AI index notes.")
@@ -118,7 +122,7 @@ export function useAIIndexNotes(filter: AIIndexFilter = "all", searchQuery = "",
 
       if (error) throw formatAIIndexRpcError(error)
 
-      const rows = (data ?? []) as AIIndexRpcRow[]
+      const rows = normalizeAIIndexRpcRows(data)
       const totalCount = parseTotalCount(rows)
       const notes = rows.map(mapRow)
       const hasMore = page * AI_INDEX_PAGE_SIZE + notes.length < totalCount

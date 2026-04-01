@@ -57,6 +57,289 @@ const FILTER_SEARCH_LABELS: Record<AIIndexFilter, string> = {
   outdated: "outdated notes",
 }
 
+function runBackgroundTask(task: Promise<unknown>) {
+  task.catch(() => {
+    // Best-effort background work should not break the settings UI.
+  })
+}
+
+function getPersistedSearchQuery(searchDraft: string) {
+  return searchDraft.length >= SEARCH_CONFIG.MIN_QUERY_LENGTH ? searchDraft : ""
+}
+
+function getAIIndexEmptyMessage(filter: AIIndexFilter, activeSearchQuery: string) {
+  if (activeSearchQuery.length > 0) {
+    return `No ${FILTER_SEARCH_LABELS[filter]} match "${activeSearchQuery}".`
+  }
+
+  return FILTER_EMPTY_MESSAGES[filter]
+}
+
+function getResultsSummaryText(loadedCount: number, totalCount: number) {
+  if (loadedCount < totalCount) {
+    return `Showing ${loadedCount} loaded notes out of ${totalCount}`
+  }
+
+  return `Showing ${totalCount} ${totalCount === 1 ? "note" : "notes"}`
+}
+
+function AIIndexResetActions({
+  hasActiveFilter,
+  hasActiveSearch,
+  onClearSearch,
+  onResetFilter,
+  searchButtonLabel,
+  filterButtonLabel,
+}: Readonly<{
+  hasActiveFilter: boolean
+  hasActiveSearch: boolean
+  onClearSearch: () => void
+  onResetFilter: () => void
+  searchButtonLabel: string
+  filterButtonLabel: string
+}>) {
+  if (!hasActiveFilter && !hasActiveSearch) return null
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {hasActiveSearch ? (
+        <Button variant="ghost" size="sm" onClick={onClearSearch}>
+          {searchButtonLabel}
+        </Button>
+      ) : null}
+      {hasActiveFilter ? (
+        <Button variant="ghost" size="sm" onClick={onResetFilter}>
+          {filterButtonLabel}
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
+function AIIndexEmptyState({
+  emptyMessage,
+  hasActiveFilter,
+  hasActiveSearch,
+  onClearSearch,
+  onResetFilter,
+}: Readonly<{
+  emptyMessage: string
+  hasActiveFilter: boolean
+  hasActiveSearch: boolean
+  onClearSearch: () => void
+  onResetFilter: () => void
+}>) {
+  return (
+    <div className="max-w-md space-y-4">
+      <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-muted/40">
+        <Database className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <div className="space-y-1.5">
+        <h4 className="text-base font-semibold text-foreground">Nothing to review here yet</h4>
+        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <AIIndexResetActions
+          hasActiveFilter={hasActiveFilter}
+          hasActiveSearch={hasActiveSearch}
+          onClearSearch={onClearSearch}
+          onResetFilter={onResetFilter}
+          searchButtonLabel="Clear search"
+          filterButtonLabel="Show all notes"
+        />
+      </div>
+    </div>
+  )
+}
+
+function AIIndexToolbar({
+  activeSearchQuery,
+  filter,
+  filterOptions,
+  hasActiveSearch,
+  isFetching,
+  isFetchingNextPage,
+  isSearchHintVisible,
+  loadedCount,
+  onClearSearch,
+  onFilterChange,
+  onSearchChange,
+  onSearchKeyDown,
+  searchDraft,
+  totalCount,
+}: Readonly<{
+  activeSearchQuery: string
+  filter: AIIndexFilter
+  filterOptions: Array<{ value: AIIndexFilter; label: string }>
+  hasActiveSearch: boolean
+  isFetching: boolean
+  isFetchingNextPage: boolean
+  isSearchHintVisible: boolean
+  loadedCount: number
+  onClearSearch: () => void
+  onFilterChange: (filter: AIIndexFilter) => void
+  onSearchChange: (value: string) => void
+  onSearchKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
+  searchDraft: string
+  totalCount: number
+}>) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/70 p-3 sm:p-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((option) => {
+              const isActive = option.value === filter
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => onFilterChange(option.value)}
+                  className={cn(
+                    "rounded-xl border px-4 py-2 text-sm font-medium transition-all",
+                    isActive
+                      ? "border-foreground/15 bg-foreground text-background shadow-sm"
+                      : "border-border/70 bg-background text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline" className="bg-background">
+              <span className="font-medium text-foreground">{totalCount}</span>&nbsp;visible
+            </Badge>
+            {loadedCount < totalCount ? (
+              <Badge variant="outline" className="bg-background">
+                <span className="font-medium text-foreground">{loadedCount}</span>&nbsp;loaded
+              </Badge>
+            ) : null}
+            <span className="inline-flex items-center gap-1">
+              <Filter className="h-3.5 w-3.5" />
+              {FILTER_LABELS[filter]}
+            </span>
+            {hasActiveSearch ? (
+              <Badge variant="outline" className="max-w-full bg-background">
+                <span className="truncate">Search: {activeSearchQuery}</span>
+              </Badge>
+            ) : null}
+            {isFetching && !isFetchingNextPage ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background px-2.5 py-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Refreshing...
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative w-full max-w-2xl">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/70" />
+            <Input
+              aria-label="Search AI index notes"
+              data-testid="ai-index-search-input"
+              type="text"
+              placeholder="Search notes..."
+              value={searchDraft}
+              onChange={(event) => onSearchChange(event.target.value)}
+              onKeyDown={onSearchKeyDown}
+              className="h-10 bg-background pl-9 pr-10"
+            />
+            {searchDraft ? (
+              <button
+                type="button"
+                aria-label="Clear AI index search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 transition-colors hover:text-foreground"
+                onClick={onClearSearch}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
+          {isSearchHintVisible ? (
+            <p className="text-xs text-muted-foreground">
+              Search starts after {SEARCH_CONFIG.MIN_QUERY_LENGTH} characters.
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AIIndexResultsHeader({
+  activeSearchQuery,
+  filter,
+  hasActiveFilter,
+  hasActiveSearch,
+  isFetchingNextPage,
+  onClearSearch,
+  onResetFilter,
+  summaryText,
+}: Readonly<{
+  activeSearchQuery: string
+  filter: AIIndexFilter
+  hasActiveFilter: boolean
+  hasActiveSearch: boolean
+  isFetchingNextPage: boolean
+  onClearSearch: () => void
+  onResetFilter: () => void
+  summaryText: string
+}>) {
+  return (
+    <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-foreground">{summaryText}</p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant="outline" className="bg-background/70">{FILTER_LABELS[filter]}</Badge>
+          {hasActiveSearch ? (
+            <Badge variant="outline" className="max-w-full bg-background/70">
+              <span className="truncate">Search: {activeSearchQuery}</span>
+            </Badge>
+          ) : null}
+          {isFetchingNextPage ? (
+            <span className="inline-flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading more
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <AIIndexResetActions
+        hasActiveFilter={hasActiveFilter}
+        hasActiveSearch={hasActiveSearch}
+        onClearSearch={onClearSearch}
+        onResetFilter={onResetFilter}
+        searchButtonLabel="Clear search"
+        filterButtonLabel="Reset filter"
+      />
+    </div>
+  )
+}
+
+function AIIndexErrorState({
+  errorMessage,
+  onRetry,
+}: Readonly<{
+  errorMessage: string
+  onRetry: () => void
+}>) {
+  return (
+    <div className="space-y-4">
+      <div className={cn(settingsInsetPanelClassName, "border-destructive/30 bg-destructive/5")}>
+        <h3 className="text-base font-semibold text-foreground">AI index status is unavailable</h3>
+        <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">{errorMessage}</p>
+        <Button className="mt-4" variant="outline" onClick={onRetry}>
+          Try again
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function AIIndexTab() {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -69,6 +352,7 @@ export function AIIndexTab() {
   const [scrollOffset, setScrollOffset] = React.useState(0)
   const restoredStateRef = React.useRef(false)
   const normalizedSearchDraft = searchDraft.trim()
+  const persistedSearchQuery = getPersistedSearchQuery(normalizedSearchDraft)
   const isSearchHintVisible =
     normalizedSearchDraft.length > 0 && normalizedSearchDraft.length < SEARCH_CONFIG.MIN_QUERY_LENGTH
   const activeSearchQuery =
@@ -102,7 +386,7 @@ export function AIIndexTab() {
 
     router.prefetch("/")
 
-    void queryClient.prefetchInfiniteQuery({
+    runBackgroundTask(queryClient.prefetchInfiniteQuery({
       queryKey: ["notes", user.id, "", null],
       queryFn: ({ pageParam = 0 }) => noteService.getNotes(user.id, {
         page: pageParam as number,
@@ -113,11 +397,11 @@ export function AIIndexTab() {
       getNextPageParam: (lastPage: { nextCursor?: number }) => lastPage.nextCursor,
       initialPageParam: 0,
       staleTime: 1000 * 60 * 10,
-    })
+    }))
   }, [noteService, queryClient, router, user?.id])
 
   const handleMutated = React.useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) })
+    runBackgroundTask(queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) }))
   }, [queryClient, user?.id])
 
   const handleSearchChange = React.useCallback((value: string) => {
@@ -148,9 +432,9 @@ export function AIIndexTab() {
   const currentViewState = React.useMemo<AIIndexViewStateSnapshot>(() => ({
     filter,
     searchDraft,
-    searchQuery: normalizedSearchDraft.length >= SEARCH_CONFIG.MIN_QUERY_LENGTH ? normalizedSearchDraft : "",
+    searchQuery: persistedSearchQuery,
     scrollOffset,
-  }), [filter, normalizedSearchDraft, scrollOffset, searchDraft])
+  }), [filter, persistedSearchQuery, scrollOffset, searchDraft])
 
   const handleOpenNote = React.useCallback((noteId: string) => {
     saveAIIndexViewState(currentViewState)
@@ -161,189 +445,78 @@ export function AIIndexTab() {
     router.push("/")
   }, [currentViewState, router])
 
-  const emptyMessage =
-    activeSearchQuery.length > 0
-      ? `No ${FILTER_SEARCH_LABELS[filter]} match "${activeSearchQuery}".`
-      : FILTER_EMPTY_MESSAGES[filter]
   const loadedCount = notes.length
   const hasActiveSearch = activeSearchQuery.length > 0
   const hasActiveFilter = filter !== "all"
-  const hasResettableControls = hasActiveSearch || hasActiveFilter
+  const emptyMessage = getAIIndexEmptyMessage(filter, activeSearchQuery)
+  const summaryText = getResultsSummaryText(loadedCount, totalCount)
+  const handleResetFilter = React.useCallback(() => {
+    setFilter("all")
+  }, [])
+  const handleRefetch = React.useCallback(() => {
+    runBackgroundTask(query.refetch())
+  }, [query])
+  const handleLoadMore = React.useCallback(() => {
+    if (!query.hasNextPage || query.isFetchingNextPage) return
+
+    runBackgroundTask(query.fetchNextPage())
+  }, [query])
   const emptyState = (
-    <div className="max-w-md space-y-4">
-      <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-muted/40">
-        <Database className="h-5 w-5 text-muted-foreground" />
-      </div>
-      <div className="space-y-1.5">
-        <h4 className="text-base font-semibold text-foreground">Nothing to review here yet</h4>
-        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-      </div>
-      {hasResettableControls ? (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {hasActiveSearch ? (
-            <Button variant="outline" size="sm" onClick={handleClearSearch}>
-              Clear search
-            </Button>
-          ) : null}
-          {hasActiveFilter ? (
-            <Button variant="ghost" size="sm" onClick={() => setFilter("all")}>
-              Show all notes
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+    <AIIndexEmptyState
+      emptyMessage={emptyMessage}
+      hasActiveFilter={hasActiveFilter}
+      hasActiveSearch={hasActiveSearch}
+      onClearSearch={handleClearSearch}
+      onResetFilter={handleResetFilter}
+    />
   )
 
   if (query.isError) {
     return (
-      <div className="space-y-4">
-        <div className={cn(settingsInsetPanelClassName, "border-destructive/30 bg-destructive/5")}>
-          <h3 className="text-base font-semibold text-foreground">AI index status is unavailable</h3>
-          <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
-            {query.error instanceof Error ? query.error.message : "Failed to load AI index notes."}
-          </p>
-          <Button className="mt-4" variant="outline" onClick={() => void query.refetch()}>
-            Try again
-          </Button>
-        </div>
-      </div>
+      <AIIndexErrorState
+        errorMessage={query.error instanceof Error ? query.error.message : "Failed to load AI index notes."}
+        onRetry={handleRefetch}
+      />
     )
   }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-border/60 bg-background/70 p-3 sm:p-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {FILTER_OPTIONS.map((option) => {
-                const isActive = option.value === filter
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setFilter(option.value)}
-                    className={cn(
-                      "rounded-xl border px-4 py-2 text-sm font-medium transition-all",
-                      isActive
-                        ? "border-foreground/15 bg-foreground text-background shadow-sm"
-                        : "border-border/70 bg-background text-foreground hover:bg-muted/50"
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="outline" className="bg-background">
-                <span className="font-medium text-foreground">{totalCount}</span>&nbsp;visible
-              </Badge>
-              {loadedCount < totalCount ? (
-                <Badge variant="outline" className="bg-background">
-                  <span className="font-medium text-foreground">{loadedCount}</span>&nbsp;loaded
-                </Badge>
-              ) : null}
-              <span className="inline-flex items-center gap-1">
-                <Filter className="h-3.5 w-3.5" />
-                {FILTER_LABELS[filter]}
-              </span>
-              {hasActiveSearch ? (
-                <Badge variant="outline" className="max-w-full bg-background">
-                  <span className="truncate">Search: {activeSearchQuery}</span>
-                </Badge>
-              ) : null}
-              {query.isFetching && !query.isFetchingNextPage ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background px-2.5 py-1">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Refreshing...
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative w-full max-w-2xl">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/70" />
-              <Input
-                aria-label="Search AI index notes"
-                data-testid="ai-index-search-input"
-                type="text"
-                placeholder="Search notes..."
-                value={searchDraft}
-                onChange={(event) => handleSearchChange(event.target.value)}
-                onKeyDown={handleSearchKeyDown}
-                className="h-10 bg-background pl-9 pr-10"
-              />
-              {searchDraft ? (
-                <button
-                  type="button"
-                  aria-label="Clear AI index search"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 transition-colors hover:text-foreground"
-                  onClick={handleClearSearch}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </div>
-            {isSearchHintVisible ? (
-              <p className="text-xs text-muted-foreground">
-                Search starts after {SEARCH_CONFIG.MIN_QUERY_LENGTH} characters.
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </div>
+      <AIIndexToolbar
+        activeSearchQuery={activeSearchQuery}
+        filter={filter}
+        filterOptions={FILTER_OPTIONS}
+        hasActiveSearch={hasActiveSearch}
+        isFetching={query.isFetching}
+        isFetchingNextPage={query.isFetchingNextPage}
+        isSearchHintVisible={isSearchHintVisible}
+        loadedCount={loadedCount}
+        onClearSearch={handleClearSearch}
+        onFilterChange={setFilter}
+        onSearchChange={handleSearchChange}
+        onSearchKeyDown={handleSearchKeyDown}
+        searchDraft={searchDraft}
+        totalCount={totalCount}
+      />
 
       <div className="rounded-2xl border border-border/60 bg-background/60">
-        <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">
-              {loadedCount < totalCount ? `Showing ${loadedCount} loaded notes out of ${totalCount}` : `Showing ${totalCount} ${totalCount === 1 ? "note" : "notes"}`}
-            </p>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="outline" className="bg-background/70">{FILTER_LABELS[filter]}</Badge>
-              {hasActiveSearch ? (
-                <Badge variant="outline" className="max-w-full bg-background/70">
-                  <span className="truncate">Search: {activeSearchQuery}</span>
-                </Badge>
-              ) : null}
-              {query.isFetchingNextPage ? (
-                <span className="inline-flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Loading more
-                </span>
-              ) : null}
-            </div>
-          </div>
-          {hasResettableControls ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {hasActiveSearch ? (
-                <Button variant="ghost" size="sm" onClick={handleClearSearch}>
-                  Clear search
-                </Button>
-              ) : null}
-              {hasActiveFilter ? (
-                <Button variant="ghost" size="sm" onClick={() => setFilter("all")}>
-                  Reset filter
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+        <AIIndexResultsHeader
+          activeSearchQuery={activeSearchQuery}
+          filter={filter}
+          hasActiveFilter={hasActiveFilter}
+          hasActiveSearch={hasActiveSearch}
+          isFetchingNextPage={query.isFetchingNextPage}
+          onClearSearch={handleClearSearch}
+          onResetFilter={handleResetFilter}
+          summaryText={summaryText}
+        />
         <div className="h-[min(72vh,760px)]">
           <AIIndexList
             notes={notes}
             isLoading={query.isLoading}
             hasMore={Boolean(query.hasNextPage)}
             isFetchingNextPage={query.isFetchingNextPage}
-            onLoadMore={() => {
-              if (query.hasNextPage && !query.isFetchingNextPage) {
-                void query.fetchNextPage()
-              }
-            }}
+            onLoadMore={handleLoadMore}
             onMutated={handleMutated}
             onOpenNote={handleOpenNote}
             emptyState={emptyState}
