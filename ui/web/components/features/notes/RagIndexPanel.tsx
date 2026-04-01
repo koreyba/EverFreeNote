@@ -18,9 +18,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
+import { parseRagIndexResult } from '@core/rag/indexResult'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { useRagStatus } from '@ui/web/hooks/useRagStatus'
-import { logRagIndexDebugChunks, type RagIndexDebugChunk } from '@core/rag/debugLog'
+import { logRagIndexDebugChunks } from '@core/rag/debugLog'
 import { isRagDebugChunksEnabled } from '@ui/web/components/features/settings/RagIndexingSettingsPanel'
 
 async function extractErrorMessage(err: unknown, fallback: string): Promise<string> {
@@ -36,6 +37,10 @@ async function extractErrorMessage(err: unknown, fallback: string): Promise<stri
   return err.message || fallback
 }
 
+function getSemanticFailureMessage(message: string | null, fallback: string) {
+  return message ?? fallback
+}
+
 interface RagIndexPanelProps {
   noteId: string
   variant?: 'inline' | 'menu'
@@ -44,27 +49,6 @@ interface RagIndexPanelProps {
 }
 
 type Operation = 'indexing' | 'deleting' | null
-
-function parseDebugChunks(data: unknown): RagIndexDebugChunk[] {
-  if (!data || typeof data !== 'object') return []
-  const value = (data as { debugChunks?: unknown }).debugChunks
-  if (!Array.isArray(value)) return []
-  return value.filter((chunk): chunk is RagIndexDebugChunk => {
-    if (!chunk || typeof chunk !== 'object') return false
-    const candidate = chunk as Partial<RagIndexDebugChunk>
-    return typeof candidate.chunkIndex === 'number'
-      && typeof candidate.charOffset === 'number'
-      && typeof candidate.content === 'string'
-      && (typeof candidate.sectionHeading === 'string' || candidate.sectionHeading === null)
-      && (typeof candidate.title === 'string' || candidate.title === null)
-  })
-}
-
-function parseChunkCount(data: unknown): number | null {
-  if (!data || typeof data !== 'object') return null
-  const value = (data as { chunkCount?: unknown }).chunkCount
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
-}
 
 export function RagIndexPanel({ noteId, variant = 'inline', onMenuClose }: RagIndexPanelProps) {
   const { supabase } = useSupabase()
@@ -83,16 +67,18 @@ export function RagIndexPanel({ noteId, variant = 'inline', onMenuClose }: RagIn
         body: { noteId, action: isIndexed ? 'reindex' : 'index', ...(debug ? { debugChunks: true } : {}) },
       })
       if (error) throw error
-      const debugChunks = parseDebugChunks(data)
-      if (debugChunks.length > 0) {
-        logRagIndexDebugChunks(noteId, debugChunks)
+      const result = parseRagIndexResult(data)
+      if (result.debugChunks.length > 0) {
+        logRagIndexDebugChunks(noteId, result.debugChunks)
       }
-      const count = parseChunkCount(data)
-      if (count === null) {
-        console.warn('[rag-index] Unexpected response payload for index action', data)
-        toast.success('Indexed successfully')
+
+      if (result.outcome === 'indexed') {
+        toast.success(`Indexed into ${result.chunkCount} chunks`)
+      } else if (result.outcome === 'skipped') {
+        toast.error(getSemanticFailureMessage(result.message, 'Indexing was skipped.'))
       } else {
-        toast.success(`Indexed into ${count} chunks`)
+        console.warn('[rag-index] Unexpected response payload for index action', data)
+        toast.error(getSemanticFailureMessage(result.message, 'Indexing returned an unexpected response.'))
       }
       refresh()
     } catch (err) {
@@ -105,11 +91,16 @@ export function RagIndexPanel({ noteId, variant = 'inline', onMenuClose }: RagIn
   const handleDelete = async () => {
     setOperation('deleting')
     try {
-      const { error } = await supabase.functions.invoke('rag-index', {
+      const { data, error } = await supabase.functions.invoke('rag-index', {
         body: { noteId, action: 'delete' },
       })
       if (error) throw error
-      toast.success('RAG index removed')
+      const result = parseRagIndexResult(data)
+      if (result.outcome === 'deleted') {
+        toast.success('RAG index removed')
+      } else {
+        toast.error(getSemanticFailureMessage(result.message, 'Delete returned an unexpected response.'))
+      }
       refresh()
     } catch (err) {
       toast.error(await extractErrorMessage(err, 'Delete failed'))

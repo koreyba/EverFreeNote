@@ -72,13 +72,15 @@ File: `supabase/functions/rag-index/index.ts`
 4. Call Gemini `batchEmbedContents`
 5. Upsert new chunks by `(note_id, chunk_index)`
 6. Delete stale tail chunks (`chunk_index >= newChunkCount`)
-7. Return `{ chunkCount }`
+7. Return an explicit semantic result:
+   - `{ outcome: "indexed", chunkCount, droppedChunks?, debugChunks? }`
+   - `{ outcome: "skipped", reason: "too_short", chunkCount: 0, message }` when the note is too short and embeddings are cleared
 
 ### action = delete
 
 1. Validate JWT and resolve `userId`
 2. Delete rows from `note_embeddings` by `note_id` and `user_id`
-3. Return `{ deleted: true }`
+3. Return `{ outcome: "deleted", deleted: true }`
 
 ## Client Integration
 
@@ -110,6 +112,13 @@ File: `supabase/functions/rag-index/index.ts`
   - Indexing
   - Indexed
   - Deleting
+- Uses the shared parser in `core/rag/indexResult.ts` so `200 OK` semantic skips are surfaced honestly instead of being treated as success
+
+### `AIIndexNoteRow.tsx` and `NoteIndexMenu.tsx`
+
+- Reuse the same normalized `rag-index` outcome contract
+- Only apply optimistic/status success states when the function explicitly reports `outcome: "indexed"`
+- Treat `reason: "too_short"` as a semantic non-success and keep the note in `not_indexed`
 
 ### `NoteEditor.tsx` and `NoteView.tsx`
 

@@ -8,7 +8,7 @@ import * as ReactWindow from "react-window"
 import { Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import type { AIIndexNoteRow as AIIndexNoteRowData } from "@core/types/aiIndex"
+import type { AIIndexMutationResult, AIIndexNoteRow as AIIndexNoteRowData } from "@core/types/aiIndex"
 import { AIIndexNoteRow } from "@/components/features/settings/AIIndexNoteRow"
 
 // react-window v2 uses different API (rowCount, rowHeight, rowComponent, rowProps)
@@ -33,15 +33,16 @@ type RowComponentProps<T> = {
 
 type ItemData = {
   items: AIIndexNoteRowData[]
+  exitingNoteIds: Set<string>
   hasMore: boolean
   isLoadingMore: boolean
   onLoadMore: () => void
-  onMutated: () => void
+  onMutated: (result: AIIndexMutationResult) => void
   onOpenNote: (noteId: string) => void
 }
 
 const AIIndexRowRenderer = memo(({ index, style, ...props }: RowComponentProps<ItemData>) => {
-  const { items, hasMore, isLoadingMore, onLoadMore, onMutated, onOpenNote } = props as unknown as ItemData
+  const { items, exitingNoteIds, hasMore, isLoadingMore, onLoadMore, onMutated, onOpenNote } = props as unknown as ItemData
 
   if (index === items.length) {
     let loadMoreContent: React.ReactNode = null
@@ -67,7 +68,12 @@ const AIIndexRowRenderer = memo(({ index, style, ...props }: RowComponentProps<I
 
   return (
     <div style={style} className="px-2 py-1.5">
-      <AIIndexNoteRow note={note} onMutated={onMutated} onOpenNote={onOpenNote} />
+      <AIIndexNoteRow
+        note={note}
+        onMutated={onMutated}
+        onOpenNote={onOpenNote}
+        isExiting={exitingNoteIds.has(note.id)}
+      />
     </div>
   )
 })
@@ -117,6 +123,7 @@ function LoadingSkeleton() {
 
 export const AIIndexList = memo(function AIIndexList({
   notes,
+  exitingNoteIds = [],
   isLoading,
   hasMore,
   isFetchingNextPage,
@@ -130,11 +137,12 @@ export const AIIndexList = memo(function AIIndexList({
   width,
 }: {
   notes: AIIndexNoteRowData[]
+  exitingNoteIds?: string[]
   isLoading: boolean
   hasMore: boolean
   isFetchingNextPage: boolean
   onLoadMore: () => void
-  onMutated: () => void
+  onMutated: (result: AIIndexMutationResult) => void
   onOpenNote: (noteId: string) => void
   emptyState: React.ReactNode
   initialScrollOffset?: number
@@ -145,15 +153,17 @@ export const AIIndexList = memo(function AIIndexList({
   const dynamicRowHeight = useDynamicRowHeight({ defaultRowHeight: 168 })
   const listRef = useListRef()
   const restoredScrollOffsetRef = React.useRef<number | null>(null)
+  const exitingNoteIdSet = useMemo(() => new Set(exitingNoteIds), [exitingNoteIds])
 
   const itemData = useMemo(() => ({
     items: notes,
+    exitingNoteIds: exitingNoteIdSet,
     hasMore,
     isLoadingMore: isFetchingNextPage,
     onLoadMore,
     onMutated,
     onOpenNote,
-  }), [hasMore, isFetchingNextPage, notes, onLoadMore, onMutated, onOpenNote])
+  }), [exitingNoteIdSet, hasMore, isFetchingNextPage, notes, onLoadMore, onMutated, onOpenNote])
 
   React.useLayoutEffect(() => {
     if (initialScrollOffset <= 0) return
