@@ -13,4 +13,10 @@ describe("buildBrowserSupabaseStorageKey", () => {
   it("falls back to a sanitized raw URL when parsing fails", () => {
     expect(buildBrowserSupabaseStorageKey("not a url")).toBe("everfreenote-auth-not-a-url")
   })
+
+  it("normalizes nested path segments without leaving leading or trailing separators", () => {
+    expect(buildBrowserSupabaseStorageKey("http://127.0.0.1:54321//auth//v1/")).toBe(
+      "everfreenote-auth-http--127-0-0-1-54321-auth-v1"
+    )
+  })
 })

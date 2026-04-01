@@ -4,14 +4,31 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SupabaseClientFactory } from '@core/adapters/supabaseClient'
 import type { SupabaseConfig } from '@core/adapters/config'
 
+function sanitizeStorageKeyPart(value: string) {
+  let sanitized = ''
+
+  for (const character of value) {
+    const isAsciiLetter = (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z')
+    const isDigit = character >= '0' && character <= '9'
+    sanitized += isAsciiLetter || isDigit || character === '-' ? character : '-'
+  }
+
+  return sanitized
+}
+
+function normalizeUrlPath(pathname: string) {
+  const segments = pathname.split('/').filter((segment) => segment.length > 0)
+  return segments.join('-') || 'root'
+}
+
 export function buildBrowserSupabaseStorageKey(supabaseUrl: string) {
   try {
     const parsedUrl = new URL(supabaseUrl)
-    const pathPart = parsedUrl.pathname.replace(/\/+/g, '-').replace(/^-+|-+$/g, '') || 'root'
+    const pathPart = normalizeUrlPath(parsedUrl.pathname)
     const rawKey = `everfreenote-auth-${parsedUrl.protocol}-${parsedUrl.hostname}-${parsedUrl.port || 'default'}-${pathPart}`
-    return rawKey.replace(/[^a-zA-Z0-9-]/g, '-')
+    return sanitizeStorageKeyPart(rawKey)
   } catch {
-    return `everfreenote-auth-${supabaseUrl.replace(/[^a-zA-Z0-9-]/g, '-')}`
+    return `everfreenote-auth-${sanitizeStorageKeyPart(supabaseUrl)}`
   }
 }
 
