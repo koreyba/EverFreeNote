@@ -99,6 +99,9 @@ export function parseRagIndexResult(data: unknown): NormalizedRagIndexResult {
   if (data.outcome === "skipped" || rawReason !== null) {
     return {
       outcome: "skipped",
+      // Preserve the skipped outcome and backend message even when the reason is
+      // not yet modeled locally. That lets the UI surface the semantic failure
+      // without pretending to understand a new discriminant.
       reason: rawReason === "too_short" ? "too_short" : null,
       chunkCount: 0,
       message: normalizeMessage(data.message, "Indexing was skipped."),

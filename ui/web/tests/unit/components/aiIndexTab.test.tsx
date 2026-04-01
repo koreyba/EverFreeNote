@@ -63,7 +63,9 @@ describe("AIIndexTab", () => {
   })
 
   afterEach(() => {
-    jest.runOnlyPendingTimers()
+    act(() => {
+      jest.runOnlyPendingTimers()
+    })
     jest.useRealTimers()
     jest.restoreAllMocks()
   })
@@ -363,7 +365,7 @@ describe("AIIndexTab", () => {
     expect(duringExitProps.exitingNoteIds).toEqual(["note-outdated"])
 
     act(() => {
-      jest.advanceTimersByTime(260)
+      jest.advanceTimersByTime(300)
     })
 
     const afterExitProps = mockAIIndexList.mock.calls.at(-1)?.[0] as {

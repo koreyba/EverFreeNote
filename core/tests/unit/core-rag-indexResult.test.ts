@@ -1,6 +1,14 @@
 import { parseRagIndexResult } from "@core/rag/indexResult"
 
 describe("parseRagIndexResult", () => {
+  it("falls back to unknown for non-object payloads", () => {
+    expect(parseRagIndexResult(null)).toEqual({
+      outcome: "unknown",
+      message: "Indexing returned an empty response.",
+      debugChunks: [],
+    })
+  })
+
   it("normalizes successful index payloads", () => {
     expect(parseRagIndexResult({
       outcome: "indexed",
@@ -74,6 +82,45 @@ describe("parseRagIndexResult", () => {
     })
   })
 
+  it("drops invalid debug chunks while preserving valid ones", () => {
+    expect(parseRagIndexResult({
+      outcome: "indexed",
+      chunkCount: 1,
+      debugChunks: [
+        {
+          chunkIndex: 0,
+          charOffset: 12,
+          sectionHeading: "Heading",
+          title: "Title",
+          content: "Chunk content",
+          bodyContent: "Body content",
+          overlapPrefix: null,
+        },
+        {
+          chunkIndex: 1,
+          charOffset: 18,
+          sectionHeading: "Heading",
+          title: "Title",
+          content: "Chunk content",
+        },
+      ],
+    })).toEqual({
+      outcome: "indexed",
+      chunkCount: 1,
+      droppedChunks: 0,
+      message: null,
+      debugChunks: [{
+        chunkIndex: 0,
+        charOffset: 12,
+        sectionHeading: "Heading",
+        title: "Title",
+        content: "Chunk content",
+        bodyContent: "Body content",
+        overlapPrefix: null,
+      }],
+    })
+  })
+
   it("supports delete payloads", () => {
     expect(parseRagIndexResult({ deleted: true })).toEqual({
       outcome: "deleted",
@@ -86,6 +133,18 @@ describe("parseRagIndexResult", () => {
     expect(parseRagIndexResult({ chunkCount: 0, message: "No chunks" })).toEqual({
       outcome: "unknown",
       message: "No chunks",
+      debugChunks: [],
+    })
+  })
+
+  it("treats indexed payloads without chunks as unknown", () => {
+    expect(parseRagIndexResult({
+      outcome: "indexed",
+      chunkCount: 0,
+      message: "No chunks created",
+    })).toEqual({
+      outcome: "unknown",
+      message: "No chunks created",
       debugChunks: [],
     })
   })

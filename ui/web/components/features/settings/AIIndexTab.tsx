@@ -62,7 +62,7 @@ const FILTER_SEARCH_LABELS: Record<AIIndexFilter, string> = {
   outdated: "outdated notes",
 }
 
-const ROW_EXIT_DURATION_MS = 260
+const ROW_EXIT_DURATION_MS = 300
 
 type OptimisticMutationState = AIIndexMutationResult & {
   phase: "stable" | "leaving" | "hidden"
