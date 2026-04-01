@@ -50,7 +50,6 @@
         "./ui/mobile/*"
       ]
     },
-    "baseUrl": ".",
     "target": "ESNext"
   },
   "include": [

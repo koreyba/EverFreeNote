@@ -30,6 +30,7 @@ import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 import { saveSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
+import { consumeActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -162,6 +163,18 @@ export function NotesShell({ controller }: NotesShellProps) {
     router.push("/settings")
   }, [controller, router])
 
+  const handleBackFromNote = React.useCallback(() => {
+    const settingsReturnPath = consumeActiveSettingsNoteReturnPath()
+    if (settingsReturnPath) {
+      router.push(settingsReturnPath)
+      return
+    }
+
+    handleSelectNote(null).catch(() => {
+      // Fire-and-forget: wrappedHandleSelectNote already owns error handling.
+    })
+  }, [handleSelectNote, router])
+
   return (
     <div className="flex h-screen max-h-screen bg-muted/20 overflow-hidden">
       <Sidebar
@@ -209,7 +222,7 @@ export function NotesShell({ controller }: NotesShellProps) {
       >
         <EditorPane
           controller={controller}
-          onBack={() => handleSelectNote(null)}
+          onBack={handleBackFromNote}
           noteEditorRef={noteEditorRef}
           wordpressConfigured={wordpressConfigured}
           pendingChunkFocus={pendingChunkFocus}

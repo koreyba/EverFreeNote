@@ -79,7 +79,7 @@ const createController = (overrides: Partial<NoteAppController> = {}): NoteAppCo
     tagOnlyHasMore: false,
     tagOnlyLoadingMore: false,
     selectedNote: null,
-    handleSelectNote: cy.stub(),
+    handleSelectNote: cy.stub().resolves(),
     handleTagClick: cy.stub(),
     handleSearchResultClick: cy.stub(),
     loadMoreFts: cy.stub(),

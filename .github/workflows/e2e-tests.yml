@@ -176,16 +176,16 @@ jobs:
 
     steps:
       - name: Checkout E2E repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: koreyba/EverFreeNote-e2e
           ref: ${{ needs.resolve-e2e-branch.outputs.e2e_ref }}
           path: e2e
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: e2e/package-lock.json
 
@@ -302,7 +302,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-report-${{ github.run_id }}
           path: |

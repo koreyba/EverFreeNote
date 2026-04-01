@@ -1,0 +1,189 @@
+---
+phase: design
+title: AI Index Page - System Design
+description: Architecture for a dedicated Settings flow that lists note AI index state with filtering and manual actions
+---
+
+# System Design & Architecture
+
+## Architecture Overview
+
+```mermaid
+graph TD
+    SP["SettingsPage"] --> TAB["AIIndexTab"]
+    TAB --> FILTERS["StatusFilters"]
+    TAB --> SEARCH["SearchRow"]
+    TAB --> LIST["AIIndexList"]
+    LIST --> ROW["AIIndexNoteRow"]
+    TAB --> HOOK["useAIIndexNotes(status, search, page)"]
+    ROW --> MUTATE["rag-index Edge Function"]
+    HOOK --> FETCH["get_ai_index_notes RPC"]
+
+    FETCH --> NOTES["notes"]
+    FETCH --> EMB["note_embeddings"]
+    MUTATE --> EMB
+    MUTATE --> NOTES
+```
+
+- `SettingsPage` gets a new `AI Index` tab entry.
+- `AIIndexTab` is a standalone settings flow, not a reuse of the notes page controller.
+- `useAIIndexNotes` owns pagination, active filter, loading state, and cache invalidation for this page only.
+- `AIIndexList` reuses the virtualization pattern from `NoteList`, but renders dedicated AI-index rows/cards.
+- `AIIndexNoteRow` renders note metadata and per-row actions.
+- A dedicated server-side RPC returns notes together with aggregated index status so filtering and pagination remain correct.
+
+## Data Models
+
+### AI index row payload
+
+```ts
+type AIIndexStatus = "indexed" | "not_indexed" | "outdated"
+
+interface AIIndexNoteRow {
+  id: string
+  title: string
+  updatedAt: string
+  lastIndexedAt: string | null
+  status: AIIndexStatus
+}
+
+interface AIIndexNotesPage {
+  notes: AIIndexNoteRow[]
+  totalCount: number
+  hasMore: boolean
+  nextCursor?: number
+}
+```
+
+### Status derivation
+
+- `not_indexed`: no `note_embeddings` rows exist for the note.
+- `indexed`: latest embedding `indexed_at >= notes.updated_at`.
+- `outdated`: latest embedding `indexed_at < notes.updated_at`.
+
+The aggregation must collapse many embedding rows into one latest timestamp per note before pagination and filtering are applied.
+
+## API Design
+
+### Dedicated AI index list RPC
+
+- Use a dedicated Postgres RPC named `get_ai_index_notes`.
+- Invocation shape:
+
+```ts
+supabase.rpc("get_ai_index_notes", {
+  filter_status: "all" | "indexed" | "not_indexed" | "outdated",
+  page_number: number,
+  page_size: number,
+  search_query: string | null,
+  search_ts_query: string | null,
+  search_language: "english" | "russian" | null,
+})
+```
+
+### RPC responsibilities
+
+1. Run in the authenticated user's context.
+2. Query the user's notes.
+3. Aggregate latest `indexed_at` per note from `note_embeddings`.
+4. Derive the status in the server response.
+5. If a search query is present, apply the same ordinary note-search semantics as the main notes flow:
+   - `FTS` first using the shared ts-query/lang rules
+   - `ILIKE` fallback when FTS returns no matches
+6. Apply requested filter before pagination output is returned.
+7. Sort rows by search relevance when search is active, otherwise by `notes.updated_at DESC`.
+
+The `all` filter is the default page state so the Settings tab opens with the full note inventory visible before the user narrows it.
+
+### Per-row mutations
+
+- Reuse the existing `rag-index` Edge Function for:
+  - `index`
+  - `reindex`
+  - `delete`
+- After a mutation succeeds, invalidate or refresh the AI index query so the row status and timestamp update immediately.
+
+## Component Breakdown
+
+### `SettingsPage`
+
+- Adds a new `AI Index` tab definition and routes `tab=ai-index`.
+
+### `AIIndexTab`
+
+- Settings-specific container for:
+  - heading / summary
+  - filter pills
+  - ordinary search row below the pills
+  - list body
+  - empty/loading states
+
+### `useAIIndexNotes`
+
+- Dedicated React Query hook for the AI Index flow.
+- Owns:
+  - active filter key
+  - active search key
+  - infinite pagination
+  - flattening pages
+  - total count / hasMore
+  - invalidation after row actions
+
+### `AIIndexList`
+
+- Dedicated virtualized list implementation modeled on `NoteList`.
+- Reuses the same principles:
+  - `react-window` list
+  - dynamic row heights
+  - overscan
+  - automatic `onRowsRendered` prefetch
+
+### `AIIndexNoteRow`
+
+- Dedicated row/card component.
+- Must not directly reuse `NoteCard`.
+- Renders:
+  - note title
+  - status badge
+  - last indexed timestamp
+  - note-level action buttons
+
+## Design Decisions
+
+### Dedicated fetch path instead of client-side joining
+
+- Decision: fetch AI index rows through a dedicated server-side RPC.
+- Rationale: status filtering depends on aggregated `note_embeddings` state. Doing this purely in the browser would either require loading all notes first or produce incorrect pagination/filter behavior.
+
+### Separate list and row components
+
+- Decision: build `AIIndexTab`, `AIIndexList`, and `AIIndexNoteRow` as isolated components.
+- Rationale: the page has different columns, actions, and semantics from `NoteCard`, even though it shares list performance constraints.
+
+### Reuse mutations, isolate reads
+
+- Decision: keep `rag-index` for write actions and add a dedicated RPC read path for AI index state.
+- Rationale: existing mutation behavior is already shipped and tested; the missing capability is efficient list aggregation and filtering.
+
+### Reuse ordinary search semantics without reusing the notes controller
+
+- Decision: reuse the main note-search query construction and UX (`Search` input, debounce, 3-character threshold, FTS-first behavior) inside the dedicated AI Index flow.
+- Rationale: the user asked for the familiar search behavior, but the AI Index page still needs its own server-backed filtering, pagination, and row model rather than the full notes/search controller stack.
+
+### Use virtualization inside Settings
+
+- Decision: keep virtualization for the AI index list instead of rendering a plain settings table.
+- Rationale: the user explicitly wants the same large-dataset behavior as `NoteList`, and Settings may still need to handle hundreds or thousands of notes.
+
+## Non-Functional Requirements
+
+- Performance:
+  - initial page should load only the first slice of rows
+  - list scrolling should trigger prefetch before the user reaches the end
+  - row rendering should stay smooth for large datasets
+- Reliability:
+  - row action failures must not corrupt list state
+  - successful mutations must refresh the affected data without manual reload
+- Security:
+  - all list data remains scoped to the authenticated user
+  - RPC and index mutations continue to rely on authenticated server-side checks

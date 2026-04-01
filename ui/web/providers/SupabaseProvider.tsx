@@ -15,6 +15,22 @@ type SupabaseContextType = {
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
 
+function readTokenIssuer(accessToken: string | null | undefined) {
+  if (!accessToken) return null
+
+  const [, payload] = accessToken.split(".")
+  if (!payload) return null
+
+  try {
+    const normalizedPayload = payload.replaceAll("-", "+").replaceAll("_", "/")
+    const paddedPayload = normalizedPayload.padEnd(normalizedPayload.length + ((4 - normalizedPayload.length % 4) % 4), "=")
+    const decodedPayload = JSON.parse(globalThis.atob(paddedPayload)) as { iss?: unknown }
+    return typeof decodedPayload.iss === "string" ? decodedPayload.iss : null
+  } catch {
+    return null
+  }
+}
+
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const [supabase] = useState(() => {
     return webSupabaseClientFactory.createClient(
@@ -33,11 +49,20 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
         event.preventDefault()
       }
     }
-    window.addEventListener("unhandledrejection", handleUnhandledRejection)
+    globalThis.addEventListener("unhandledrejection", handleUnhandledRejection)
 
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
+        const expectedIssuer = `${supabaseConfig.url}/auth/v1`
+        const tokenIssuer = readTokenIssuer(session?.access_token)
+
+        if (session?.access_token && tokenIssuer && tokenIssuer !== expectedIssuer) {
+          await supabase.auth.signOut()
+          setUser(null)
+          return
+        }
+
         setUser(session?.user || null)
       } catch (error) {
         console.error("Error checking auth session:", error)
@@ -57,7 +82,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       subscription.unsubscribe()
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection)
+      globalThis.removeEventListener("unhandledrejection", handleUnhandledRejection)
     }
   }, [supabase])
 
