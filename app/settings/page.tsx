@@ -12,7 +12,7 @@ export default function SettingsRoute() {
 
 function SettingsPageFallback() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/20">
+    <main className="flex min-h-[100svh] min-h-[100dvh] items-center justify-center bg-muted/20">
       <p className="text-sm text-muted-foreground">Loading settings...</p>
     </main>
   )

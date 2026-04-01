@@ -144,6 +144,11 @@ describe('Mobile Layout Adaptation', () => {
       </ThemeProvider>
     )
 
+    cy.get('[data-testid=\'notes-shell\']')
+      .invoke('attr', 'class')
+      .should('include', 'h-[100dvh]')
+      .and('include', 'min-h-[100svh]')
+
     // Sidebar content should be visible (not hidden)
     cy.get('[data-testid=\'sidebar-container\']').should('not.have.class', 'hidden')
 
