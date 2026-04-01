@@ -51,25 +51,30 @@ export const consumeChunkedMessage = (
     return null
   }
 
+  const isValidTransferId = (id: unknown): id is string =>
+    typeof id === 'string' && id.length > 0 && id.length <= 200 && !/[^a-zA-Z0-9_\-.]/.test(id)
+
   if (type.endsWith(CHUNK_START_SUFFIX)) {
     const p = payload as Partial<ChunkStartPayload>
-    if (!p.transferId || typeof p.total !== 'number') return null
+    if (!isValidTransferId(p.transferId) || typeof p.total !== 'number') return null
+    if (p.total < 1 || p.total > 10_000 || !Number.isInteger(p.total)) return null
     store[p.transferId] = { total: p.total, chunks: [] }
     return null
   }
 
   if (type.endsWith(CHUNK_SUFFIX)) {
     const p = payload as Partial<ChunkPayload>
-    if (!p.transferId || typeof p.index !== 'number' || typeof p.chunk !== 'string') return null
+    if (!isValidTransferId(p.transferId) || typeof p.index !== 'number' || typeof p.chunk !== 'string') return null
     const entry = store[p.transferId]
     if (!entry) return null
+    if (!Number.isInteger(p.index) || p.index < 0 || p.index >= entry.total) return null
     entry.chunks[p.index] = p.chunk
     return null
   }
 
   if (type.endsWith(CHUNK_END_SUFFIX)) {
     const p = payload as Partial<ChunkEndPayload>
-    if (!p.transferId) return null
+    if (!isValidTransferId(p.transferId)) return null
     const entry = store[p.transferId]
     if (!entry) return null
     const text = entry.chunks.join('')

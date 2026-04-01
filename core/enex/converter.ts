@@ -159,15 +159,46 @@ export class ContentConverter {
   }
 
   private removeEmptyParagraphs(html: string): string {
-    // Удаляем <p> содержащие только пробельные символы, &nbsp;, &hairsp;, <br> и т.д.
+    // Match a single empty <p>...</p> with only whitespace/entities/br inside.
+    // Uses atomic-style matching: the inner content class is non-overlapping.
+    const emptyParagraph = /<p[^>]*>(?:[^<]|<br\s*\/?>)*<\/p>/gi
+
+    const isEmptyContent = (inner: string) =>
+      /^(?:\s|&nbsp;|&hairsp;|&#8202;|<br\s*\/?>)*$/i.test(inner)
+
+    // Strip leading empty paragraphs
+    html = html.trimStart()
+    while (true) {
+      const m = html.match(emptyParagraph)
+      if (!m || !html.startsWith(m[0])) break
+      const inner = m[0].replaceAll(/<\/?p[^>]*>/gi, '')
+      if (!isEmptyContent(inner)) break
+      html = html.slice(m[0].length).trimStart()
+    }
+
+    // Strip trailing empty paragraphs
+    html = html.trimEnd()
+    while (true) {
+      const m = html.match(emptyParagraph)
+      if (!m) break
+      const last = m.at(-1)!
+      if (!html.endsWith(last)) break
+      const inner = last.replaceAll(/<\/?p[^>]*>/gi, '')
+      if (!isEmptyContent(inner)) break
+      html = html.slice(0, html.length - last.length).trimEnd()
+    }
+
+    // Нормализуем пустые параграфы: <p><br></p> -> <p></p>
+    // Tiptap сам добавит нужный <br> для редактирования
+    html = html.replaceAll(/<p([^>]*)>(?:[^<]|<br\s*\/?>)*<\/p>/gi, (match, attrs) => {
+      const inner = match.replaceAll(/<\/?p[^>]*>/gi, '')
+      if (/^(?:\s|&nbsp;|&hairsp;|&#8202;)*<br\s*\/?>(?:\s|&nbsp;|&hairsp;|&#8202;)*$/i.test(inner)) {
+        return `<p${attrs}></p>`
+      }
+      return match
+    })
+
     return html
-      // Удаляем пустые <p> в начале
-      .replace(/^(\s*<p[^>]*>(\s|&nbsp;|&hairsp;|&#8202;|<br\s*\/?>)*<\/p>\s*)+/gi, '')
-      // Удаляем пустые <p> в конце
-      .replace(/(\s*<p[^>]*>(\s|&nbsp;|&hairsp;|&#8202;|<br\s*\/?>)*<\/p>\s*)+$/gi, '')
-      // Нормализуем пустые параграфы: <p><br></p> -> <p></p>
-      // Tiptap сам добавит нужный <br> для редактирования
-      .replace(/<p([^>]*)>(\s|&nbsp;|&hairsp;|&#8202;)*<br\s*\/?>(\s|&nbsp;|&hairsp;|&#8202;)*<\/p>/gi, '<p$1></p>')
   }
 
   private normalizeDivsToP(html: string): string {
