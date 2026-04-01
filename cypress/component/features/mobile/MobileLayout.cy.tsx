@@ -13,7 +13,11 @@ describe('Mobile Layout Adaptation', () => {
   let mockSupabase: SupabaseClient
 
   beforeEach(() => {
-    createMockController = (overrides: Partial<NoteAppController> = {}): NoteAppController => ({
+    createMockController = (overrides: Partial<NoteAppController> = {}): NoteAppController => {
+      const handleSelectNote = cy.stub().as('handleSelectNote')
+      handleSelectNote.resolves()
+
+      return ({
       user: mockUser,
       loading: false,
       notes: [],
@@ -50,7 +54,7 @@ describe('Mobile Layout Adaptation', () => {
       observerTarget: { current: null },
       deleteAccountLoading: false,
 
-      handleSelectNote: cy.stub().resolves().as('handleSelectNote'),
+      handleSelectNote,
       handleCreateNote: cy.stub(),
       handleEditNote: cy.stub().resolves(),
       handleSaveNote: cy.stub().resolves(),
@@ -105,6 +109,7 @@ describe('Mobile Layout Adaptation', () => {
       restoreUiState: overrides.restoreUiState ?? cy.stub(),
       deleteNotesByIds: overrides.deleteNotesByIds ?? cy.stub().resolves({ total: 0, failed: 0, queuedOffline: false }),
     })
+    }
 
     mockSupabase = {
       auth: {
