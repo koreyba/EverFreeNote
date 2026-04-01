@@ -133,7 +133,7 @@ export default function EditorWebViewPage() {
       // React Native WebView sends messages with empty or null origin
       if (!origin || origin === 'null' || origin === 'file://') return true
       // Same-origin messages (dev server, self-hosted)
-      if (origin === window.location.origin) return true
+      if (origin === globalThis.location.origin) return true
       return false
     }
 

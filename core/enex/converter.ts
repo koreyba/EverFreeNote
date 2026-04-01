@@ -170,8 +170,8 @@ export class ContentConverter {
     html = html.trimStart()
     while (true) {
       const m = html.match(emptyParagraph)
-      if (!m || html.indexOf(m[0]) !== 0) break
-      const inner = m[0].replace(/<\/?p[^>]*>/gi, '')
+      if (!m || !html.startsWith(m[0])) break
+      const inner = m[0].replaceAll(/<\/?p[^>]*>/gi, '')
       if (!isEmptyContent(inner)) break
       html = html.slice(m[0].length).trimStart()
     }
@@ -181,16 +181,16 @@ export class ContentConverter {
     while (true) {
       const m = html.match(emptyParagraph)
       if (!m) break
-      const last = m[m.length - 1]
+      const last = m.at(-1)!
       if (!html.endsWith(last)) break
-      const inner = last.replace(/<\/?p[^>]*>/gi, '')
+      const inner = last.replaceAll(/<\/?p[^>]*>/gi, '')
       if (!isEmptyContent(inner)) break
       html = html.slice(0, html.length - last.length).trimEnd()
     }
 
     // Нормализуем пустые параграфы: <p><br></p> -> <p></p>
     // Tiptap сам добавит нужный <br> для редактирования
-    html = html.replace(/<p([^>]*)>(?:[^<]|<br\s*\/?>)*<\/p>/gi, (match, attrs) => {
+    html = html.replaceAll(/<p([^>]*)>(?:[^<]|<br\s*\/?>)*<\/p>/gi, (match, attrs) => {
       const inner = match.replaceAll(/<\/?p[^>]*>/gi, '')
       if (/^(?:\s|&nbsp;|&hairsp;|&#8202;)*<br\s*\/?>(?:\s|&nbsp;|&hairsp;|&#8202;)*$/i.test(inner)) {
         return `<p${attrs}></p>`
