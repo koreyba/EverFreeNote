@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AccountSettingsPanel } from '@ui/mobile/components/settings/AccountSettingsPanel'
+import { AIIndexPanel } from '@ui/mobile/components/settings/AIIndexPanel'
 import { ApiKeysSettingsPanel } from '@ui/mobile/components/settings/ApiKeysSettingsPanel'
 import { EnexExportPanel } from '@ui/mobile/components/settings/EnexExportPanel'
 import { EnexImportPanel } from '@ui/mobile/components/settings/EnexImportPanel'
@@ -20,6 +21,7 @@ const tabs: SettingsTabDefinition[] = [
   { key: 'export', label: 'Export .enex file' },
   { key: 'wordpress', label: 'WordPress settings' },
   { key: 'apiKeys', label: 'Indexing (RAG)' },
+  { key: 'aiIndex', label: 'AI Index' },
 ]
 
 const initialVisitedTabs: Record<SettingsTabKey, boolean> = {
@@ -28,6 +30,7 @@ const initialVisitedTabs: Record<SettingsTabKey, boolean> = {
   export: false,
   wordpress: false,
   apiKeys: false,
+  aiIndex: false,
 }
 
 type PanelConfig = {
@@ -110,6 +113,11 @@ export default function SettingsScreen() {
       key: 'apiKeys',
       isVisited: visitedTabs.apiKeys,
       content: <ApiKeysSettingsPanel />,
+    },
+    {
+      key: 'aiIndex',
+      isVisited: visitedTabs.aiIndex,
+      content: <AIIndexPanel />,
     },
   ]
 

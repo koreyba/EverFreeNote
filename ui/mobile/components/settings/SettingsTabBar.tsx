@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 
 import { useTheme } from '@ui/mobile/providers'
 
-export type SettingsTabKey = 'account' | 'import' | 'export' | 'wordpress' | 'apiKeys'
+export type SettingsTabKey = 'account' | 'import' | 'export' | 'wordpress' | 'apiKeys' | 'aiIndex'
 
 export type SettingsTabDefinition = Readonly<{
   key: SettingsTabKey

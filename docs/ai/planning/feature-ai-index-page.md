@@ -12,6 +12,7 @@ description: Task breakdown for the Settings AI index management page
 - [x] Milestone 2: `Settings -> AI Index` tab renders filtered, virtualized note rows
 - [x] Milestone 3: Row actions refresh list state correctly and tests cover the new flow
 - [x] Milestone 4: AI Index supports ordinary note search semantics below the status tabs
+- [x] Milestone 5: Mobile AI Index page with filters, search, actions, and tests
 
 ## Task Breakdown
 
@@ -48,6 +49,16 @@ description: Task breakdown for the Settings AI index management page
   - Successful row actions now update the visible row state optimistically.
   - Rows that leave the active filter because of a successful mutation animate out instead of disappearing abruptly.
   - The `rag-index` source of truth now writes a fresh `indexed_at` timestamp during upserts so `Outdated` notes truly become `Indexed`.
+
+### Phase 4: Mobile platform
+
+- [x] Task 4.1: Port `useAIIndexNotes` hook to mobile (`ui/mobile/hooks/useAIIndexNotes.ts`)
+- [x] Task 4.2: Create `AIIndexNoteCard` component (`ui/mobile/components/settings/AIIndexNoteCard.tsx`)
+- [x] Task 4.3: Create `AIIndexPanel` component (`ui/mobile/components/settings/AIIndexPanel.tsx`)
+- [x] Task 4.4: Add `'aiIndex'` to `SettingsTabKey` union in `SettingsTabBar.tsx`
+- [x] Task 4.5: Add AI Index tab, initial state, and panel config to `settings.tsx`
+- [x] Task 4.6: Write unit tests for hook, card, and panel (21 tests)
+- [x] Task 4.7: Pass type-check and lint with zero errors
 
 ## Dependencies
 

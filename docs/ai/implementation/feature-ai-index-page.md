@@ -76,6 +76,44 @@ ui/web/components/features/settings/
 - Keep the underlying `rag-index` source of truth aligned with the optimistic UI by writing a fresh `indexed_at` timestamp during reindex upserts; otherwise `Outdated` notes can stay stale even after a successful reindex.
 - Normalize `rag-index` payloads through `core/rag/indexResult.ts` so semantic non-success responses such as `reason: "too_short"` do not show a false success state in AI Index.
 
+## Mobile Implementation
+
+### Implemented files
+
+```text
+ui/mobile/hooks/
+  useAIIndexNotes.ts
+
+ui/mobile/components/settings/
+  AIIndexPanel.tsx
+  AIIndexNoteCard.tsx
+  SettingsTabBar.tsx (modified — added 'aiIndex' to SettingsTabKey)
+
+ui/mobile/app/(tabs)/
+  settings.tsx (modified — added AI Index tab, initial state, panel config)
+```
+
+### Mobile-specific patterns
+
+- `createStyles(colors)` + `StyleSheet.create()` for styling.
+- `memo()` on `AIIndexNoteCard` for FlatList performance.
+- `useTheme()` for colors, `useSupabase()` for `{ client, user }` (mobile provider pattern).
+- `Badge` with custom `style`/`textStyle` for status-specific colors.
+- `Button` with `variant` (default/outline), `size` (sm), `loading` prop.
+- `Toast.show({ type, text1 })` for success/error feedback.
+- `void` operator on floating promises to satisfy `@typescript-eslint/no-floating-promises`.
+- `?? undefined` on `result.message` (type is `string | null`) for Toast's `string | undefined` expectation.
+
+### Key differences from web
+
+| Concern | Web | Mobile |
+|---------|-----|--------|
+| List virtualization | `react-window` with dynamic heights | `FlatList` with `onEndReached` |
+| Mutation feedback | Optimistic UI + exit animation | Cache invalidation + toast |
+| Note navigation | Row click opens note, preserves Settings state | Not implemented (action-only cards) |
+| Search debounce | `useDebouncedCallback` hook | `useRef` + `setTimeout` (300ms) |
+| Error extraction | `extractErrorMessage` with Response body parsing | Simple `err.message` fallback |
+
 ## Integration Points
 
 - Reads: Postgres RPC `get_ai_index_notes`

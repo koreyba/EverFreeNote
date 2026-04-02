@@ -175,6 +175,55 @@ The `all` filter is the default page state so the Settings tab opens with the fu
 - Decision: keep virtualization for the AI index list instead of rendering a plain settings table.
 - Rationale: the user explicitly wants the same large-dataset behavior as `NoteList`, and Settings may still need to handle hundreds or thousands of notes.
 
+## Mobile Architecture
+
+### Component Diagram
+
+```mermaid
+graph TD
+    SS["Settings Screen"] --> TB["SettingsTabBar"]
+    SS --> AIP["AIIndexPanel"]
+    AIP --> CHIPS["Filter Chips (Pressable)"]
+    AIP --> SINPUT["Search TextInput"]
+    AIP --> FL["FlatList"]
+    FL --> CARD["AIIndexNoteCard (memo)"]
+    AIP --> HOOK["useAIIndexNotes(filter, search)"]
+    CARD --> MUTATE["rag-index Edge Function"]
+    HOOK --> FETCH["get_ai_index_notes RPC"]
+```
+
+### Mobile Component Breakdown
+
+#### `SettingsTabBar` (modified)
+- Added `'aiIndex'` to `SettingsTabKey` union type.
+
+#### `AIIndexPanel`
+- Standalone panel component (not wrapped in ScrollView — uses its own FlatList).
+- Filter row: horizontal Pressable chips matching SettingsTabBar visual style.
+- Search TextInput with clear button, debounced at 300ms.
+- FlatList with `onEndReached` for infinite scroll, `onRefresh` for pull-to-refresh.
+- Loading spinner, empty message, and error + retry states.
+- Summary text ("X notes" or "Showing X of Y notes").
+
+#### `AIIndexNoteCard` (memo)
+- Per-note card with title, status badge, status description, and action buttons.
+- Status badge colors: green (indexed), gray (not_indexed), amber (outdated).
+- Action labels change by status: "Index note" / "Reindex" / "Update index".
+- "Remove index" button shown only when indexed/outdated.
+- Calls `supabase.functions.invoke('rag-index', ...)` for mutations.
+- Toast notifications via `react-native-toast-message`.
+
+#### `useAIIndexNotes` hook
+- Port of web `useAIIndexNotes` using `useInfiniteQuery`.
+- Same RPC contract (`get_ai_index_notes`), same search utilities (`buildTsQuery`, `detectLanguage`, `ftsLanguage`).
+- Difference from web: uses `useSupabase()` returning `{ client, user }` (mobile provider pattern).
+
+### Mobile Design Decisions
+
+- **FlatList over FlashList**: Settings already uses ScrollView context; FlatList integrates naturally with `nestedScrollEnabled`.
+- **Query cache invalidation over optimistic updates**: Simpler than the web's optimistic exit-animation approach; mobile mutation flow invalidates all filter views on success.
+- **No note navigation from card**: Mobile settings doesn't have the web's cross-route navigation bridge; cards are action-only.
+
 ## Non-Functional Requirements
 
 - Performance:

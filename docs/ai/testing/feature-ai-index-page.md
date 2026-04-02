@@ -95,6 +95,53 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - Confirm virtualization still works with large note counts
 - Confirm infinite loading triggers before the user hits the end of the list
 
+## Mobile Unit Tests
+
+### Hook: `useAIIndexNotes` (6 tests)
+
+- [x] Returns mapped notes on success with correct field mapping
+- [x] Passes filter to RPC correctly
+- [x] Does not fetch when no user (query disabled)
+- [x] Handles RPC error → `isError: true`
+- [x] `useFlattenedAIIndexNotes` flattens multi-page data
+- [x] `useFlattenedAIIndexNotes` returns empty array when no data
+
+### Component: `AIIndexNoteCard` (8 tests)
+
+- [x] Renders title and status for not_indexed
+- [x] Shows "Untitled Note" when title is blank
+- [x] Shows "Index note" for not_indexed, no "Remove index"
+- [x] Shows "Reindex" and "Remove index" for indexed
+- [x] Shows "Update index" for outdated
+- [x] Calls invoke with correct index action and triggers toast/onMutated
+- [x] Calls invoke with delete action on Remove press
+- [x] Shows error toast on invoke failure
+
+### Component: `AIIndexPanel` (7 tests)
+
+- [x] Renders all 4 filter chips
+- [x] Renders search input
+- [x] Renders note cards from mock data
+- [x] Shows summary text
+- [x] Shows loading state
+- [x] Shows empty state message
+- [x] Shows error state with retry button
+
+### Mobile test commands
+
+```bash
+cd ui/mobile && npx jest tests/component/useAIIndexNotes.test.tsx --no-coverage
+cd ui/mobile && npx jest tests/component/aiIndexNoteCard.test.tsx --no-coverage
+cd ui/mobile && npx jest tests/component/aiIndexPanel.test.tsx --no-coverage
+# All three:
+cd ui/mobile && npx jest tests/component/useAIIndexNotes.test.tsx tests/component/aiIndexNoteCard.test.tsx tests/component/aiIndexPanel.test.tsx --no-coverage
+```
+
+### Mobile test results
+
+- 3 test suites, 21 tests, all passing
+- Full mobile suite: 42 suites, 354 tests, all passing
+
 ## Bug Tracking
 
 - Remaining gaps:
