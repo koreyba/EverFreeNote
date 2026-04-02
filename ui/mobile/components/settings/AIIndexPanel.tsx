@@ -24,7 +24,12 @@ import {
 } from '@ui/mobile/hooks/useAIIndexNotes'
 import { useSupabase, useTheme } from '@ui/mobile/providers'
 
-const FILTER_OPTIONS: Array<{ value: AIIndexFilter; label: string }> = [
+type FilterOption = Readonly<{
+  value: AIIndexFilter
+  label: string
+}>
+
+const FILTER_OPTIONS: readonly FilterOption[] = [
   { value: 'all', label: 'All notes' },
   { value: 'indexed', label: 'Indexed' },
   { value: 'not_indexed', label: 'Not indexed' },
@@ -49,6 +54,10 @@ function getSummaryText(loadedCount: number, totalCount: number) {
   if (loadedCount === 0) return null
   if (loadedCount < totalCount) return `Showing ${loadedCount} of ${totalCount} notes`
   return `${totalCount} note${totalCount === 1 ? '' : 's'}`
+}
+
+function getFilterLabel(filter: AIIndexFilter) {
+  return FILTER_OPTIONS.find((option) => option.value === filter)?.label ?? 'All notes'
 }
 
 export function AIIndexPanel() {
@@ -95,6 +104,7 @@ export function AIIndexPanel() {
   const totalCount = queryResult.data?.pages[0]?.totalCount ?? 0
   const summaryText = getSummaryText(notes.length, totalCount)
   const emptyMessage = getEmptyMessage(filter, searchQuery)
+  const activeFilterLabel = getFilterLabel(filter)
 
   const handleMutated = useCallback(
     (_result: AIIndexMutationResult) => {
@@ -109,11 +119,11 @@ export function AIIndexPanel() {
     if (queryResult.hasNextPage && !queryResult.isFetchingNextPage) {
       void queryResult.fetchNextPage()
     }
-  }, [queryResult])
+  }, [queryResult.fetchNextPage, queryResult.hasNextPage, queryResult.isFetchingNextPage])
 
   const handleRefresh = useCallback(() => {
     void queryResult.refetch()
-  }, [queryResult])
+  }, [queryResult.refetch])
 
   const handleClearSearch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -179,9 +189,7 @@ export function AIIndexPanel() {
           <Badge variant="outline" style={styles.metaBadge}>
             {`${totalCount} visible`}
           </Badge>
-          <Text style={styles.metaText}>
-            {FILTER_OPTIONS.find((option) => option.value === filter)?.label ?? 'All notes'}
-          </Text>
+          <Text style={styles.metaText}>{activeFilterLabel}</Text>
         </View>
 
         <View style={styles.searchWrap}>

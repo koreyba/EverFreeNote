@@ -10,16 +10,31 @@ import { useSupabase, useTheme } from '@ui/mobile/providers'
 
 type Operation = 'indexing' | 'deleting' | null
 
-const STATUS_LABELS: Record<AIIndexNoteRow['status'], string> = {
-  indexed: 'Indexed',
-  not_indexed: 'Not indexed',
-  outdated: 'Outdated',
+type StatusPresentation = {
+  label: string
+  description: string
 }
 
-const STATUS_DESCRIPTIONS: Record<AIIndexNoteRow['status'], string> = {
-  indexed: 'Available to AI search.',
-  not_indexed: 'Not searchable by AI yet.',
-  outdated: 'Changed after the last successful index.',
+const STATUS_PRESENTATION: Record<AIIndexNoteRow['status'], StatusPresentation> = {
+  indexed: {
+    label: 'Indexed',
+    description: 'Available to AI search.',
+  },
+  not_indexed: {
+    label: 'Not indexed',
+    description: 'Not searchable by AI yet.',
+  },
+  outdated: {
+    label: 'Outdated',
+    description: 'Changed after the last successful index.',
+  },
+}
+
+type IndexActionPresentation = {
+  label: string
+  successToast: string
+  successStatus: AIIndexMutationResult['nextStatus']
+  variant: 'default' | 'outline'
 }
 
 type Props = Readonly<{
@@ -31,6 +46,66 @@ function getSemanticFailureMessage(message: string | null, fallback: string) {
   return message ?? fallback
 }
 
+function getIndexActionPresentation(status: AIIndexNoteRow['status']): IndexActionPresentation {
+  if (status === 'outdated') {
+    return {
+      label: 'Update index',
+      successToast: 'Note reindexed',
+      successStatus: 'indexed',
+      variant: 'default',
+    }
+  }
+
+  if (status === 'indexed') {
+    return {
+      label: 'Reindex',
+      successToast: 'Note reindexed',
+      successStatus: 'indexed',
+      variant: 'outline',
+    }
+  }
+
+  return {
+    label: 'Index note',
+    successToast: 'Note indexed',
+    successStatus: 'indexed',
+    variant: 'default',
+  }
+}
+
+function getStatusBadgeStyle(
+  status: AIIndexNoteRow['status'],
+  colors: ReturnType<typeof useTheme>['colors'],
+) {
+  if (status === 'indexed') {
+    return {
+      bg: {
+        backgroundColor: 'rgba(22,163,74,0.1)',
+        borderColor: 'rgba(22,163,74,0.3)',
+      },
+      text: { color: '#16a34a' },
+    }
+  }
+
+  if (status === 'outdated') {
+    return {
+      bg: {
+        backgroundColor: 'rgba(245,158,11,0.1)',
+        borderColor: 'rgba(245,158,11,0.3)',
+      },
+      text: { color: '#f59e0b' },
+    }
+  }
+
+  return {
+    bg: {
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+    },
+    text: { color: colors.mutedForeground },
+  }
+}
+
 export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }: Props) {
   const { client: supabase } = useSupabase()
   const { colors } = useTheme()
@@ -39,21 +114,12 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
 
   const isIndexed = note.status !== 'not_indexed'
   const isBusy = operation !== null
-
-  let actionLabel = 'Index note'
-  if (note.status === 'outdated') actionLabel = 'Update index'
-  else if (isIndexed) actionLabel = 'Reindex'
-  const primaryVariant = note.status === 'indexed' ? 'outline' : 'default'
-
-  const actionVerb = isIndexed ? 'reindexed' : 'indexed'
-
-  const statusBadgeStyle = useMemo(() => {
-    if (note.status === 'indexed')
-      return { bg: { backgroundColor: 'rgba(22,163,74,0.1)', borderColor: 'rgba(22,163,74,0.3)' }, text: { color: '#16a34a' } }
-    if (note.status === 'outdated')
-      return { bg: { backgroundColor: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.3)' }, text: { color: '#f59e0b' } }
-    return { bg: { backgroundColor: colors.card, borderColor: colors.border }, text: { color: colors.mutedForeground } }
-  }, [note.status, colors])
+  const statusPresentation = STATUS_PRESENTATION[note.status]
+  const indexAction = getIndexActionPresentation(note.status)
+  const statusBadgeStyle = useMemo(
+    () => getStatusBadgeStyle(note.status, colors),
+    [note.status, colors],
+  )
 
   const handleIndex = useCallback(async () => {
     setOperation('indexing')
@@ -65,12 +131,19 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
 
       const result = parseRagIndexResult(data)
       if (result.outcome === 'indexed') {
-        Toast.show({ type: 'success', text1: `Note ${actionVerb}` })
-        onMutated({ noteId: note.id, previousStatus: note.status, nextStatus: 'indexed' })
+        Toast.show({ type: 'success', text1: indexAction.successToast })
+        onMutated({
+          noteId: note.id,
+          previousStatus: note.status,
+          nextStatus: indexAction.successStatus,
+        })
         return
       }
       if (result.outcome === 'skipped') {
-        Toast.show({ type: 'error', text1: getSemanticFailureMessage(result.message, 'Indexing was skipped.') })
+        Toast.show({
+          type: 'error',
+          text1: getSemanticFailureMessage(result.message, 'Indexing was skipped.'),
+        })
         if (result.reason === 'too_short') {
           onMutated({ noteId: note.id, previousStatus: note.status, nextStatus: 'not_indexed' })
         }
@@ -81,12 +154,12 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
         text1: getSemanticFailureMessage(result.message, 'Indexing returned an unexpected response.'),
       })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : `${actionLabel} failed`
+      const msg = err instanceof Error ? err.message : `${indexAction.label} failed`
       Toast.show({ type: 'error', text1: msg })
     } finally {
       setOperation(null)
     }
-  }, [actionLabel, actionVerb, isIndexed, note.id, note.status, onMutated, supabase.functions])
+  }, [indexAction, isIndexed, note.id, note.status, onMutated, supabase.functions])
 
   const handleDelete = useCallback(async () => {
     setOperation('deleting')
@@ -126,21 +199,21 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
           style={{ ...statusBadgeStyle.bg, borderWidth: 1 }}
           textStyle={statusBadgeStyle.text}
         >
-          {STATUS_LABELS[note.status]}
+          {statusPresentation.label}
         </Badge>
-        <Text style={styles.statusDescription}>{STATUS_DESCRIPTIONS[note.status]}</Text>
+        <Text style={styles.statusDescription}>{statusPresentation.description}</Text>
       </View>
 
       <View style={styles.actions}>
         <Button
-          variant={primaryVariant}
+          variant={indexAction.variant}
           size="sm"
           loading={operation === 'indexing'}
           disabled={isBusy}
           onPress={() => { void handleIndex() }}
           style={styles.actionButton}
         >
-          {actionLabel}
+          {indexAction.label}
         </Button>
 
         {isIndexed ? (

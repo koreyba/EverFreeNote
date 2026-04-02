@@ -24,17 +24,18 @@ const tabs: SettingsTabDefinition[] = [
   { key: 'aiIndex', label: 'AI Index' },
 ]
 
-const initialVisitedTabs: Record<SettingsTabKey, boolean> = {
+type CachedSettingsTabKey = Exclude<SettingsTabKey, 'aiIndex'>
+
+const initialVisitedTabs: Record<CachedSettingsTabKey, boolean> = {
   account: true,
   import: false,
   export: false,
   wordpress: false,
   apiKeys: false,
-  aiIndex: false,
 }
 
 type PanelConfig = {
-  key: SettingsTabKey
+  key: CachedSettingsTabKey
   isVisited: boolean
   content: ReactNode
 }
@@ -77,6 +78,7 @@ export default function SettingsScreen() {
 
   const handleTabChange = (tab: SettingsTabKey) => {
     setActiveTab(tab)
+    if (tab === 'aiIndex') return
     setVisitedTabs((current) => (current[tab] ? current : { ...current, [tab]: true }))
   }
 
