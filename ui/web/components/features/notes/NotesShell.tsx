@@ -176,7 +176,10 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [handleSelectNote, router])
 
   return (
-    <div className="flex h-screen max-h-screen bg-muted/20 overflow-hidden">
+    <div
+      className="flex h-[100dvh] max-h-[100dvh] min-h-[100svh] bg-muted/20 overflow-hidden"
+      data-testid="notes-shell"
+    >
       <Sidebar
         user={user!}
         filterByTag={filterByTag}

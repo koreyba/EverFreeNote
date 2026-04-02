@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type React from "react"
 import { toast } from "sonner"
 
@@ -57,12 +57,16 @@ describe("AIIndexNoteRow", () => {
           action: "index",
         },
       })
-      expect(onMutated).toHaveBeenCalled()
+      expect(onMutated).toHaveBeenCalledWith({
+        noteId: "note-1",
+        previousStatus: "not_indexed",
+        nextStatus: "indexed",
+      })
     })
   })
 
   it("uses the update action for outdated notes and reindexes them", async () => {
-    const invoke = jest.fn().mockResolvedValue({ data: { chunkCount: 5 }, error: null })
+    const invoke = jest.fn().mockResolvedValue({ data: { outcome: "indexed", chunkCount: 5 }, error: null })
     const onMutated = jest.fn()
 
     renderWithSupabase(
@@ -92,12 +96,16 @@ describe("AIIndexNoteRow", () => {
           action: "reindex",
         },
       })
-      expect(onMutated).toHaveBeenCalled()
+      expect(onMutated).toHaveBeenCalledWith({
+        noteId: "note-outdated",
+        previousStatus: "outdated",
+        nextStatus: "indexed",
+      })
     })
   })
 
-  it("removes an indexed note after confirmation", async () => {
-    const invoke = jest.fn().mockResolvedValue({ data: { deleted: true }, error: null })
+  it("removes an indexed note immediately", async () => {
+    const invoke = jest.fn().mockResolvedValue({ data: { outcome: "deleted", deleted: true }, error: null })
     const onMutated = jest.fn()
     const onOpenNote = jest.fn()
 
@@ -118,9 +126,6 @@ describe("AIIndexNoteRow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Remove index" }))
 
-    const dialog = await screen.findByRole("alertdialog")
-    fireEvent.click(within(dialog).getByRole("button", { name: "Remove index" }))
-
     await waitFor(() => {
       expect(invoke).toHaveBeenCalledWith("rag-index", {
         body: {
@@ -128,7 +133,51 @@ describe("AIIndexNoteRow", () => {
           action: "delete",
         },
       })
-      expect(onMutated).toHaveBeenCalled()
+      expect(onMutated).toHaveBeenCalledWith({
+        noteId: "note-2",
+        previousStatus: "indexed",
+        nextStatus: "not_indexed",
+      })
+    })
+  })
+
+  it("treats too-short index responses as a semantic failure and restores not-indexed state", async () => {
+    const invoke = jest.fn().mockResolvedValue({
+      data: {
+        outcome: "skipped",
+        reason: "too_short",
+        chunkCount: 0,
+        message: "Note is too short for indexing (minimum: 250 characters)",
+      },
+      error: null,
+    })
+    const onMutated = jest.fn()
+
+    renderWithSupabase(
+      <AIIndexNoteRow
+        note={{
+          id: "note-short",
+          title: "Too short",
+          updatedAt: "2026-03-29T10:00:00Z",
+          lastIndexedAt: "2026-03-29T09:00:00Z",
+          status: "outdated",
+        }}
+        onMutated={onMutated}
+        onOpenNote={jest.fn()}
+      />,
+      invoke
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Update index" }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Note is too short for indexing (minimum: 250 characters)")
+      expect(toast.success).not.toHaveBeenCalled()
+      expect(onMutated).toHaveBeenCalledWith({
+        noteId: "note-short",
+        previousStatus: "outdated",
+        nextStatus: "not_indexed",
+      })
     })
   })
 

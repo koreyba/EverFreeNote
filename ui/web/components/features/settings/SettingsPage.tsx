@@ -167,14 +167,14 @@ export function SettingsPage() {
 
   if (loading || !user) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-muted/20">
+      <main className="flex min-h-[100svh] min-h-[100dvh] items-center justify-center bg-muted/20">
         <p className="text-sm text-muted-foreground">Loading settings...</p>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-muted/20 px-3 py-3 sm:px-4 sm:py-5 md:px-6 md:py-6">
+    <main className="min-h-[100svh] min-h-[100dvh] bg-muted/20 px-3 py-3 sm:px-4 sm:py-5 md:px-6 md:py-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 md:gap-4">
         <div className="rounded-3xl border bg-background/95 shadow-sm">
           <div className="border-b px-4 py-4 sm:px-5 md:px-6">

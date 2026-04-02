@@ -212,7 +212,7 @@ serve(async (req: Request) => {
         .eq("note_id", noteId)
         .eq("user_id", userId)
       if (error) throw error
-      return jsonResponse({ deleted: true })
+      return jsonResponse({ outcome: "deleted", deleted: true })
     }
 
     const { data: apiKeyRow, error: apiKeyError } = await supabaseAdmin
@@ -280,6 +280,8 @@ serve(async (req: Request) => {
         .eq("user_id", userId)
       if (clearError) throw clearError
       return jsonResponse({
+        outcome: "skipped",
+        reason: "too_short",
         chunkCount: 0,
         skipped: "too_short",
         message: `Note is too short for indexing (minimum: ${settings.min_chunk_size} characters)`,
@@ -298,6 +300,8 @@ serve(async (req: Request) => {
       throw new Error(`Gemini returned ${vectors.length} vectors for ${chunksForIndexing.length} chunks`)
     }
 
+    const indexedAt = new Date().toISOString()
+
     const rows = chunksForIndexing.map((chunk, index) => ({
       note_id: noteId,
       user_id: userId,
@@ -307,6 +311,7 @@ serve(async (req: Request) => {
       body_content: chunk.bodyContent,
       overlap_prefix: chunk.overlapPrefix,
       embedding: vectors[index],
+      indexed_at: indexedAt,
     }))
 
     const { error: upsertError } = await supabaseAdmin
@@ -336,6 +341,7 @@ serve(async (req: Request) => {
     })
 
     return jsonResponse({
+      outcome: "indexed",
       chunkCount: chunksForIndexing.length,
       droppedChunks: droppedChunkCount > 0 ? droppedChunkCount : undefined,
       debugChunks: debugChunks

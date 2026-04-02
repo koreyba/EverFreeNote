@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type React from "react"
 
 import { AIIndexList } from "@/components/features/settings/AIIndexList"
-import type { AIIndexNoteRow as AIIndexNoteRowData } from "@core/types/aiIndex"
+import type { AIIndexMutationResult, AIIndexNoteRow as AIIndexNoteRowData } from "@core/types/aiIndex"
 
 const mockScrollTo = jest.fn()
 const mockListRef = {
@@ -68,18 +68,27 @@ jest.mock("@/components/features/settings/AIIndexNoteRow", () => ({
     note,
     onMutated,
     onOpenNote,
+    isExiting,
   }: {
     note: AIIndexNoteRowData
-    onMutated: () => void
+    onMutated: (result: AIIndexMutationResult) => void
     onOpenNote: (noteId: string) => void
+    isExiting?: boolean
   }) => (
-    <div data-testid={`note-row-${note.id}`}>
+    <div data-testid={`note-row-${note.id}`} data-exiting={isExiting ? "true" : "false"}>
       <span>{note.title}</span>
       <span>{note.status}</span>
       <button type="button" onClick={() => onOpenNote(note.id)}>
         Open {note.id}
       </button>
-      <button type="button" onClick={onMutated}>
+      <button
+        type="button"
+        onClick={() => onMutated({
+          noteId: note.id,
+          previousStatus: note.status,
+          nextStatus: "indexed",
+        })}
+      >
         Refresh {note.id}
       </button>
     </div>
@@ -207,5 +216,12 @@ describe("AIIndexList", () => {
     fireEvent.scroll(list)
 
     expect(onScrollOffsetChange).toHaveBeenCalledWith(72)
+  })
+
+  it("marks exiting rows so filtered removals can animate out", () => {
+    renderAIIndexList({ exitingNoteIds: ["note-2"] })
+
+    expect((screen.getByTestId("note-row-note-1") as HTMLDivElement).dataset.exiting).toBe("false")
+    expect((screen.getByTestId("note-row-note-2") as HTMLDivElement).dataset.exiting).toBe("true")
   })
 })
