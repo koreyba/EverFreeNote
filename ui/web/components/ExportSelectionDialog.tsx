@@ -229,7 +229,16 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
                         </div>
                         {note.description && (
                           <p className="text-xs text-muted-foreground truncate">
-                            {note.description.replace(/<[^>]*>/g, "")}
+                            {(() => {
+                              let result = ''
+                              let inTag = false
+                              for (const ch of note.description) {
+                                if (ch === '<') { inTag = true; continue }
+                                if (ch === '>') { inTag = false; continue }
+                                if (!inTag) result += ch
+                              }
+                              return result
+                            })()}
                           </p>
                         )}
                         {note.tags && note.tags.length > 0 && (

@@ -20,7 +20,16 @@ interface NoteCardProps {
   isSelected?: boolean
 }
 
-const stripHtml = (value: string) => value.replace(/<[^>]*>/g, '')
+const stripHtml = (value: string) => {
+  let result = ''
+  let inTag = false
+  for (const ch of value) {
+    if (ch === '<') { inTag = true; continue }
+    if (ch === '>') { inTag = false; continue }
+    if (!inTag) result += ch
+  }
+  return result
+}
 
 const renderHighlightedText = (raw: string, styles: ReturnType<typeof createStyles>) => {
   if (!raw) return null
