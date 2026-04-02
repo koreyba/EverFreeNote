@@ -73,6 +73,7 @@ export default function SettingsScreen() {
   const styles = useMemo(() => createStyles(colors, insets.bottom ?? 0), [colors, insets.bottom])
   const [activeTab, setActiveTab] = useState<SettingsTabKey>('account')
   const [visitedTabs, setVisitedTabs] = useState(initialVisitedTabs)
+  const isAIIndexTabActive = activeTab === 'aiIndex'
 
   const handleTabChange = (tab: SettingsTabKey) => {
     setActiveTab(tab)
@@ -114,15 +115,10 @@ export default function SettingsScreen() {
       isVisited: visitedTabs.apiKeys,
       content: <ApiKeysSettingsPanel />,
     },
-    {
-      key: 'aiIndex',
-      isVisited: visitedTabs.aiIndex,
-      content: <AIIndexPanel />,
-    },
   ]
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <View style={styles.container}>
       <View style={styles.shell}>
         <View style={styles.header}>
           <Text style={styles.title}>Settings</Text>
@@ -131,20 +127,32 @@ export default function SettingsScreen() {
 
         <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
-        <View style={styles.panelWrap}>
-          {panelConfigs.map((panel) =>
-            panel.isVisited ? (
-              <SettingsPanel
-                key={panel.key}
-                isActive={activeTab === panel.key}
-                content={panel.content}
-                styles={styles}
-              />
-            ) : null
-          )}
-        </View>
+        {isAIIndexTabActive ? (
+          <View style={styles.aiIndexViewport}>
+            <AIIndexPanel />
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.panelScroll}
+            contentContainerStyle={styles.panelScrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.panelWrap}>
+              {panelConfigs.map((panel) =>
+                panel.isVisited ? (
+                  <SettingsPanel
+                    key={panel.key}
+                    isActive={activeTab === panel.key}
+                    content={panel.content}
+                    styles={styles}
+                  />
+                ) : null
+              )}
+            </View>
+          </ScrollView>
+        )}
       </View>
-    </ScrollView>
+    </View>
   )
 }
 
@@ -153,13 +161,12 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    contentContainer: {
       paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: bottomInset + 24,
     },
     shell: {
+      flex: 1,
       borderRadius: 28,
       borderWidth: 1,
       borderColor: colors.border,
@@ -187,10 +194,20 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset
     panelWrap: {
       gap: 14,
     },
+    panelScroll: {
+      flex: 1,
+    },
+    panelScrollContent: {
+      paddingBottom: 4,
+    },
     panel: {
       width: '100%',
     },
     panelHidden: {
       display: 'none',
+    },
+    aiIndexViewport: {
+      flex: 1,
+      minHeight: 420,
     },
   })

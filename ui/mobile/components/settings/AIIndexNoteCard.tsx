@@ -27,6 +27,10 @@ type Props = Readonly<{
   onMutated: (result: AIIndexMutationResult) => void
 }>
 
+function getSemanticFailureMessage(message: string | null, fallback: string) {
+  return message ?? fallback
+}
+
 export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }: Props) {
   const { client: supabase } = useSupabase()
   const { colors } = useTheme()
@@ -39,6 +43,7 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
   let actionLabel = 'Index note'
   if (note.status === 'outdated') actionLabel = 'Update index'
   else if (isIndexed) actionLabel = 'Reindex'
+  const primaryVariant = note.status === 'indexed' ? 'outline' : 'default'
 
   const actionVerb = isIndexed ? 'reindexed' : 'indexed'
 
@@ -65,13 +70,16 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
         return
       }
       if (result.outcome === 'skipped') {
-        Toast.show({ type: 'error', text1: result.message ?? undefined })
+        Toast.show({ type: 'error', text1: getSemanticFailureMessage(result.message, 'Indexing was skipped.') })
         if (result.reason === 'too_short') {
           onMutated({ noteId: note.id, previousStatus: note.status, nextStatus: 'not_indexed' })
         }
         return
       }
-      Toast.show({ type: 'error', text1: result.message ?? undefined })
+      Toast.show({
+        type: 'error',
+        text1: getSemanticFailureMessage(result.message, 'Indexing returned an unexpected response.'),
+      })
     } catch (err) {
       const msg = err instanceof Error ? err.message : `${actionLabel} failed`
       Toast.show({ type: 'error', text1: msg })
@@ -94,7 +102,10 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
         onMutated({ noteId: note.id, previousStatus: note.status, nextStatus: 'not_indexed' })
         return
       }
-      Toast.show({ type: 'error', text1: result.message ?? undefined })
+      Toast.show({
+        type: 'error',
+        text1: getSemanticFailureMessage(result.message, 'Delete returned an unexpected response.'),
+      })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Remove from index failed'
       Toast.show({ type: 'error', text1: msg })
@@ -122,7 +133,7 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
 
       <View style={styles.actions}>
         <Button
-          variant={isIndexed ? 'outline' : 'default'}
+          variant={primaryVariant}
           size="sm"
           loading={operation === 'indexing'}
           disabled={isBusy}
@@ -179,7 +190,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       flex: 1,
     },
     actions: {
-      flexDirection: 'row',
+      flexDirection: 'column',
       gap: 8,
     },
     actionButton: {

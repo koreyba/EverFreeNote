@@ -116,16 +116,25 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [x] Calls invoke with correct index action and triggers toast/onMutated
 - [x] Calls invoke with delete action on Remove press
 - [x] Shows error toast on invoke failure
+- [x] Falls back to a clear error toast when indexing is skipped without a backend message
 
-### Component: `AIIndexPanel` (7 tests)
+### Component: `AIIndexPanel` (9 tests)
 
 - [x] Renders all 4 filter chips
 - [x] Renders search input
 - [x] Renders note cards from mock data
 - [x] Shows summary text
+- [x] Exposes all 4 filter chips with tab semantics
 - [x] Shows loading state
 - [x] Shows empty state message
 - [x] Shows error state with retry button
+- [x] Invalidates the user-scoped AI Index query prefix after a card mutation
+- [x] Calls `fetchNextPage` when the list reaches the pagination threshold
+
+### Integration: `SettingsScreen`
+
+- [x] Opens the dedicated AI Index viewport when the `AI Index` tab is selected
+- [x] Keeps the ordinary settings panels out of the accessibility tree when AI Index is active
 
 ### Mobile test commands
 
@@ -133,17 +142,20 @@ description: Test strategy for the Settings AI index page and its dedicated data
 cd ui/mobile && npx jest tests/component/useAIIndexNotes.test.tsx --no-coverage
 cd ui/mobile && npx jest tests/component/aiIndexNoteCard.test.tsx --no-coverage
 cd ui/mobile && npx jest tests/component/aiIndexPanel.test.tsx --no-coverage
-# All three:
-cd ui/mobile && npx jest tests/component/useAIIndexNotes.test.tsx tests/component/aiIndexNoteCard.test.tsx tests/component/aiIndexPanel.test.tsx --no-coverage
+cd ui/mobile && npx jest tests/integration/settingsScreen.test.tsx --no-coverage
+# Combined AI Index mobile pass:
+cd ui/mobile && npx jest tests/component/useAIIndexNotes.test.tsx tests/component/aiIndexNoteCard.test.tsx tests/component/aiIndexPanel.test.tsx tests/integration/settingsScreen.test.tsx --no-coverage
+cd ui/mobile && npm run validate
 ```
 
 ### Mobile test results
 
-- 3 test suites, 21 tests, all passing
-- Full mobile suite: 42 suites, 354 tests, all passing
+- Focused AI Index mobile pass: 4 test suites, 32 tests, all passing
+- Validation: `ui/mobile` `type-check` and `lint` passing via `npm run validate`
 
 ## Bug Tracking
 
 - Remaining gaps:
   - no DB-backed RPC verification yet
-  - mobile/browser back behavior has browser QA coverage, but still lacks a dedicated automated end-to-end spec
+  - mobile AI Index still lacks a dedicated end-to-end spec that exercises pagination, indexing, and removal against a real backend
+  - mobile does not implement note-opening/back-navigation from AI Index cards; the mobile flow remains action-only by design

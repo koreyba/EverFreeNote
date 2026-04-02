@@ -17,6 +17,13 @@ type AIIndexRpcRow = {
   total_count: number | string | null
 }
 
+type AIIndexRpcError = {
+  code?: string | null
+  details?: string | null
+  hint?: string | null
+  message?: string | null
+}
+
 function parseTotalCount(rows: AIIndexRpcRow[]): number {
   const rawValue = rows[0]?.total_count
   if (typeof rawValue === 'number' && Number.isFinite(rawValue)) return rawValue
@@ -43,6 +50,42 @@ function normalizeAIIndexRpcRows(data: unknown): AIIndexRpcRow[] {
     : []
 }
 
+function formatAIIndexRpcError(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return new Error('Failed to load AI index notes.')
+  }
+
+  const rpcError = error as AIIndexRpcError
+  const code = rpcError.code?.trim() ?? ''
+  const message = rpcError.message?.trim() ?? 'Failed to load AI index notes.'
+  const details = rpcError.details?.trim() ?? ''
+  const hint = rpcError.hint?.trim() ?? ''
+  const combinedText = `${message}\n${details}\n${hint}`
+
+  if (code === 'PGRST202' && combinedText.includes('get_ai_index_notes')) {
+    return new Error(
+      [
+        'AI Index database function is out of date.',
+        'The app is calling the search-enabled get_ai_index_notes signature, but PostgREST still sees the older version.',
+        'Apply migration supabase/migrations/20260329000002_add_search_to_ai_index_notes_rpc.sql and refresh the local Supabase schema cache if needed.',
+        code ? `Code: ${code}` : null,
+        message ? `Message: ${message}` : null,
+        details ? `Details: ${details}` : null,
+        hint ? `Hint: ${hint}` : null,
+      ].filter(Boolean).join('\n')
+    )
+  }
+
+  return new Error(
+    [
+      code ? `Code: ${code}` : null,
+      message ? `Message: ${message}` : null,
+      details ? `Details: ${details}` : null,
+      hint ? `Hint: ${hint}` : null,
+    ].filter(Boolean).join('\n') || 'Failed to load AI index notes.'
+  )
+}
+
 function normalizeSearchQuery(searchQuery: string) {
   return searchQuery.trim()
 }
@@ -53,6 +96,10 @@ export function getAIIndexNotesQueryKey(
   searchQuery = ''
 ) {
   return ['ai-index-notes', userId ?? null, filter, normalizeSearchQuery(searchQuery)] as const
+}
+
+export function getAIIndexNotesQueryPrefix(userId?: string) {
+  return ['ai-index-notes', userId ?? null] as const
 }
 
 export function useAIIndexNotes(filter: AIIndexFilter = 'all', searchQuery = '', enabled = true) {
@@ -79,7 +126,7 @@ export function useAIIndexNotes(filter: AIIndexFilter = 'all', searchQuery = '',
         search_language: searchLanguage,
       })
 
-      if (error) throw new Error(error.message || 'Failed to load AI index notes.')
+      if (error) throw formatAIIndexRpcError(error)
 
       const rows = normalizeAIIndexRpcRows(data)
       const totalCount = parseTotalCount(rows)

@@ -90,7 +90,7 @@ ui/mobile/components/settings/
   SettingsTabBar.tsx (modified — added 'aiIndex' to SettingsTabKey)
 
 ui/mobile/app/(tabs)/
-  settings.tsx (modified — added AI Index tab, initial state, panel config)
+  settings.tsx (modified — added AI Index tab and a dedicated AI Index viewport path)
 ```
 
 ### Mobile-specific patterns
@@ -102,17 +102,25 @@ ui/mobile/app/(tabs)/
 - `Button` with `variant` (default/outline), `size` (sm), `loading` prop.
 - `Toast.show({ type, text1 })` for success/error feedback.
 - `void` operator on floating promises to satisfy `@typescript-eslint/no-floating-promises`.
-- `?? undefined` on `result.message` (type is `string | null`) for Toast's `string | undefined` expectation.
+- `parseRagIndexResult()` for semantic success vs. skipped/error handling so the mobile UI does not treat every `200 OK` payload as a successful index.
+- Query invalidation uses the user-scoped prefix from `getAIIndexNotesQueryPrefix(userId)` so every AI Index filter/search view refreshes consistently after a mutation.
 
 ### Key differences from web
 
 | Concern | Web | Mobile |
 |---------|-----|--------|
-| List virtualization | `react-window` with dynamic heights | `FlatList` with `onEndReached` |
+| List virtualization | `react-window` with dynamic heights | `FlatList` with `onEndReached` in a dedicated settings viewport |
 | Mutation feedback | Optimistic UI + exit animation | Cache invalidation + toast |
 | Note navigation | Row click opens note, preserves Settings state | Not implemented (action-only cards) |
 | Search debounce | `useDebouncedCallback` hook | `useRef` + `setTimeout` (300ms) |
-| Error extraction | `extractErrorMessage` with Response body parsing | Simple `err.message` fallback |
+| Error extraction | `extractErrorMessage` with Response body parsing | Actionable `PGRST202` formatting plus ordinary `err.message` fallback |
+
+### Mobile implementation notes
+
+- The mobile `SettingsScreen` now gives AI Index its own `flex: 1` viewport instead of wrapping it in the general settings `ScrollView`. This avoids nesting a `FlatList` inside a parent scroll container and keeps pagination and pull-to-refresh behavior reliable.
+- AI Index filter tabs intentionally match the top `SettingsTabBar` interaction model: one horizontal scroll rail, no wrapping, and no extra boxed card around them.
+- The filter rail is visually separated with a divider rather than another surface, so the first useful content stays closer to the top of the screen.
+- Mobile action buttons are stacked vertically inside each AI Index card to keep long labels readable on narrow screens.
 
 ## Integration Points
 

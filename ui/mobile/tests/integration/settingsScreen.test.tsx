@@ -81,6 +81,18 @@ jest.mock('@ui/mobile/providers/SupabaseProvider', () => ({
   SupabaseProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
+jest.mock('@ui/mobile/components/settings/AIIndexPanel', () => ({
+  AIIndexPanel: () => {
+    const { Text, View } = require('react-native') as typeof import('react-native')
+    return (
+      <View>
+        <Text>AI Index panel marker</Text>
+        <Text>All notes</Text>
+      </View>
+    )
+  },
+}))
+
 import SettingsScreen from '@ui/mobile/app/(tabs)/settings'
 
 const renderScreen = () =>
@@ -226,6 +238,21 @@ describe('SettingsScreen', () => {
       expect(mockApiKeysUpsert).toHaveBeenCalledWith('AIza-test')
       expect(screen.getByText('Gemini API key saved successfully.')).toBeTruthy()
     })
+  })
+
+  it('opens the AI Index tab inside the dedicated settings viewport', async () => {
+    renderScreen()
+
+    expect(screen.queryByText('AI Index panel marker')).toBeNull()
+
+    fireEvent.press(screen.getByRole('tab', { name: 'AI Index' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('AI Index panel marker')).toBeTruthy()
+      expect(screen.getByText('All notes')).toBeTruthy()
+    })
+
+    expect(screen.queryByText('test@example.com')).toBeNull()
   })
 
   it('handles import, export, and WordPress save flows', async () => {

@@ -198,8 +198,8 @@ graph TD
 - Added `'aiIndex'` to `SettingsTabKey` union type.
 
 #### `AIIndexPanel`
-- Standalone panel component (not wrapped in ScrollView — uses its own FlatList).
-- Filter row: horizontal Pressable chips matching SettingsTabBar visual style.
+- Standalone panel component rendered inside a dedicated `flex: 1` AI Index viewport in `SettingsScreen` (not wrapped in the general settings `ScrollView`).
+- Filter row: one horizontally scrolling Pressable-chip rail matching `SettingsTabBar` interaction and sizing.
 - Search TextInput with clear button, debounced at 300ms.
 - FlatList with `onEndReached` for infinite scroll, `onRefresh` for pull-to-refresh.
 - Loading spinner, empty message, and error + retry states.
@@ -220,9 +220,11 @@ graph TD
 
 ### Mobile Design Decisions
 
-- **FlatList over FlashList**: Settings already uses ScrollView context; FlatList integrates naturally with `nestedScrollEnabled`.
+- **Dedicated viewport for AI Index**: the settings screen should branch to a dedicated AI Index viewport instead of nesting a `FlatList` under the main settings `ScrollView`.
+- **FlatList over FlashList**: the existing mobile stack already uses React Native primitives and does not need another list dependency for this settings feature.
 - **Query cache invalidation over optimistic updates**: Simpler than the web's optimistic exit-animation approach; mobile mutation flow invalidates all filter views on success.
 - **No note navigation from card**: Mobile settings doesn't have the web's cross-route navigation bridge; cards are action-only.
+- **Scrollable filter rail, not a boxed sub-panel**: the filter chips should behave like the top settings tabs and stay visually light, separated with a divider rather than another full card surface.
 
 ## Non-Functional Requirements
 

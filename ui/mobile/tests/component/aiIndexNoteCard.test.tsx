@@ -174,4 +174,20 @@ describe('AIIndexNoteCard', () => {
 
     expect(onMutated).not.toHaveBeenCalled()
   })
+
+  it('shows a fallback toast when the backend skips indexing without a message', async () => {
+    mockInvoke.mockResolvedValue({ data: {}, error: null })
+    parseRagIndexResult.mockReturnValue({ outcome: 'skipped', reason: null, message: null })
+
+    render(<AIIndexNoteCard note={makeNote()} onMutated={onMutated} />)
+    fireEvent.press(screen.getByText('Index note'))
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', text1: 'Indexing was skipped.' })
+      )
+    })
+
+    expect(onMutated).not.toHaveBeenCalled()
+  })
 })
