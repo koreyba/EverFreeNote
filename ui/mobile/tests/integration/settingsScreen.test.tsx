@@ -194,7 +194,7 @@ describe('SettingsScreen', () => {
     renderScreen()
 
     await waitFor(() => {
-      expect(screen.getByText('Settings')).toBeTruthy()
+      expect(screen.getAllByText('My Account').length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('test@example.com')).toBeTruthy()
       expect(screen.getByText('Current: light (light)')).toBeTruthy()
     })

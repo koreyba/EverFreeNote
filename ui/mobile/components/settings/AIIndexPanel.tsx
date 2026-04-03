@@ -334,41 +334,33 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       gap: 12,
     },
     filterRail: {
-      paddingBottom: 12,
-      borderBottomWidth: 1,
+      paddingBottom: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
     controlsSection: {
       gap: 10,
     },
     filterRow: {
-      gap: 10,
+      gap: 16,
       paddingRight: 8,
+      alignItems: 'center',
     },
     chip: {
-      minHeight: 40,
-      paddingHorizontal: 16,
-      paddingVertical: 9,
-      borderRadius: 14,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      justifyContent: 'center',
+      paddingVertical: 4,
     },
-    chipActive: {
-      backgroundColor: colors.selectionBackground,
-      borderColor: colors.selectionBorder,
-    },
+    chipActive: {},
     chipPressed: {
-      opacity: 0.85,
+      opacity: 0.6,
     },
     chipLabel: {
       color: colors.mutedForeground,
-      fontFamily: 'Inter_600SemiBold',
-      fontSize: 14,
+      fontFamily: 'Inter_500Medium',
+      fontSize: 13,
     },
     chipLabelActive: {
-      color: colors.selectionForeground,
+      color: colors.foreground,
+      fontFamily: 'Inter_600SemiBold',
     },
     metaRow: {
       flexDirection: 'row',

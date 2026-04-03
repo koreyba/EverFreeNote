@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AccountSettingsPanel } from '@ui/mobile/components/settings/AccountSettingsPanel'
@@ -123,13 +123,7 @@ export default function SettingsScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.shell}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Settings</Text>
-            <Text style={styles.subtitle}>Everything for your account, imports, exports, and integrations.</Text>
-          </View>
-
           <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
-
           <AIIndexPanel />
         </View>
       </View>
@@ -139,11 +133,6 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
       <View style={styles.shell}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>Everything for your account, imports, exports, and integrations.</Text>
-        </View>
-
         <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
         <View style={styles.panelWrap}>
@@ -189,23 +178,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset
       backgroundColor: colors.background,
       padding: 14,
       gap: 16,
-    },
-    header: {
-      gap: 6,
-      paddingHorizontal: 2,
-    },
-    title: {
-      color: colors.foreground,
-      fontFamily: 'Inter_700Bold',
-      fontSize: 34,
-      lineHeight: 40,
-    },
-    subtitle: {
-      color: colors.mutedForeground,
-      fontFamily: 'Inter_400Regular',
-      fontSize: 14,
-      lineHeight: 20,
-      maxWidth: 320,
     },
     panelWrap: {
       gap: 14,
