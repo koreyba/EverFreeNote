@@ -59,11 +59,7 @@ jest.mock('@ui/mobile/components/settings/AIIndexNoteCard', () => ({
       onMutated: (result: { noteId: string; previousStatus: string; nextStatus: string }) => void
     }
 
-    return (
-      <>
-        <>{typedProps.note.title}</>
-      </>
-    )
+    return <>{typedProps.note.title}</>
   },
 }))
 

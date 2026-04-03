@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query"
 
 import { SEARCH_CONFIG } from "@core/constants/search"
@@ -135,5 +136,8 @@ export function useAIIndexNotes(filter: AIIndexFilter = "all", searchQuery = "",
 }
 
 export function useFlattenedAIIndexNotes(queryResult: { data?: InfiniteData<AIIndexNotesPage> }) {
-  return queryResult.data?.pages.flatMap((page) => page.notes) ?? []
+  return useMemo(
+    () => queryResult.data?.pages.flatMap((page) => page.notes) ?? [],
+    [queryResult.data],
+  )
 }

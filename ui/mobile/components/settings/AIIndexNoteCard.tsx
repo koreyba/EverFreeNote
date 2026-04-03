@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Alert, StyleSheet, Text, View } from 'react-native'
 import Toast from 'react-native-toast-message'
 
 import {
@@ -27,20 +27,20 @@ function getStatusBadgeStyle(
   if (status === 'indexed') {
     return {
       bg: {
-        backgroundColor: 'rgba(22,163,74,0.1)',
-        borderColor: 'rgba(22,163,74,0.3)',
+        backgroundColor: colors.statusIndexedBg,
+        borderColor: colors.statusIndexedBorder,
       },
-      text: { color: '#16a34a' },
+      text: { color: colors.statusIndexed },
     }
   }
 
   if (status === 'outdated') {
     return {
       bg: {
-        backgroundColor: 'rgba(245,158,11,0.1)',
-        borderColor: 'rgba(245,158,11,0.3)',
+        backgroundColor: colors.statusOutdatedBg,
+        borderColor: colors.statusOutdatedBorder,
       },
-      text: { color: '#f59e0b' },
+      text: { color: colors.statusOutdated },
     }
   }
 
@@ -100,7 +100,7 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
     }
   }, [indexAction, note.id, note.status, onMutated, supabase.functions])
 
-  const handleDelete = useCallback(async () => {
+  const performDelete = useCallback(async () => {
     setOperation('deleting')
     try {
       const { data, error } = await supabase.functions.invoke('rag-index', {
@@ -122,6 +122,17 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
       setOperation(null)
     }
   }, [note.id, note.status, onMutated, supabase.functions])
+
+  const handleDelete = useCallback(() => {
+    Alert.alert(
+      'Remove from AI index',
+      'This note will no longer be searchable by AI. You can re-index it later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => { void performDelete() } },
+      ],
+    )
+  }, [performDelete])
 
   return (
     <View style={styles.card}>
@@ -158,7 +169,7 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
             size="sm"
             loading={operation === 'deleting'}
             disabled={isBusy}
-            onPress={() => { void handleDelete() }}
+            onPress={handleDelete}
             style={styles.actionButton}
             textStyle={{ color: colors.destructive }}
           >

@@ -124,28 +124,32 @@ export default function SettingsScreen() {
       <View style={[styles.shell, isAIIndexTabActive && styles.shellFlex]}>
         <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
-        {isAIIndexTabActive ? (
+        <View
+          {...getPanelAccessibilityProps(isAIIndexTabActive)}
+          style={[styles.aiIndexViewport, !isAIIndexTabActive && styles.panelHidden]}
+        >
           <AIIndexPanel />
-        ) : (
-          <ScrollView
-            style={styles.panelScroll}
-            contentContainerStyle={styles.panelScrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.panelWrap}>
-              {panelConfigs.map((panel) =>
-                panel.isVisited ? (
-                  <SettingsPanel
-                    key={panel.key}
-                    isActive={activeTab === panel.key}
-                    content={panel.content}
-                    styles={styles}
-                  />
-                ) : null
-              )}
-            </View>
-          </ScrollView>
-        )}
+        </View>
+
+        <ScrollView
+          {...getPanelAccessibilityProps(!isAIIndexTabActive)}
+          style={[styles.panelScroll, isAIIndexTabActive && styles.panelHidden]}
+          contentContainerStyle={styles.panelScrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.panelWrap}>
+            {panelConfigs.map((panel) =>
+              panel.isVisited ? (
+                <SettingsPanel
+                  key={panel.key}
+                  isActive={activeTab === panel.key}
+                  content={panel.content}
+                  styles={styles}
+                />
+              ) : null
+            )}
+          </View>
+        </ScrollView>
       </View>
     </View>
   )
@@ -169,6 +173,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset
       gap: 16,
     },
     shellFlex: {
+      flex: 1,
+    },
+    aiIndexViewport: {
       flex: 1,
     },
     panelScroll: {

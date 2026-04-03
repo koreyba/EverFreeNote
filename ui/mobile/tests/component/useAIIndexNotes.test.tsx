@@ -116,13 +116,13 @@ describe('useFlattenedAIIndexNotes', () => {
       },
     }
 
-    const notes = useFlattenedAIIndexNotes(mockQueryResult as never)
-    expect(notes).toHaveLength(4)
-    expect(notes.map((n) => n.id)).toEqual(['a', 'b', 'c', 'd'])
+    const { result } = renderHook(() => useFlattenedAIIndexNotes(mockQueryResult as never))
+    expect(result.current).toHaveLength(4)
+    expect(result.current.map((n) => n.id)).toEqual(['a', 'b', 'c', 'd'])
   })
 
   it('returns empty array when no data', () => {
-    const notes = useFlattenedAIIndexNotes({})
-    expect(notes).toEqual([])
+    const { result } = renderHook(() => useFlattenedAIIndexNotes({}))
+    expect(result.current).toEqual([])
   })
 })

@@ -60,6 +60,20 @@ function getFilterLabel(filter: AIIndexFilter) {
   return FILTER_OPTIONS.find((option) => option.value === filter)?.label ?? 'All notes'
 }
 
+function patchNoteStatus(note: AIIndexNoteRow, result: AIIndexMutationResult): AIIndexNoteRow {
+  if (note.id !== result.noteId) return note
+  return {
+    ...note,
+    status: result.nextStatus,
+    lastIndexedAt: result.nextStatus === 'not_indexed' ? null : new Date().toISOString(),
+  }
+}
+
+function shouldKeepNote(note: AIIndexNoteRow, result: AIIndexMutationResult, filter: AIIndexFilter): boolean {
+  if (filter === 'all') return true
+  return note.id !== result.noteId || note.status === filter
+}
+
 export function AIIndexPanel() {
   const { colors } = useTheme()
   const { user } = useSupabase()
@@ -108,7 +122,6 @@ export function AIIndexPanel() {
 
   const handleMutated = useCallback(
     (result: AIIndexMutationResult) => {
-      // Optimistically update the note status in all cached query pages
       queryClient.setQueriesData<InfiniteData<AIIndexNotesPage>>(
         { queryKey: getAIIndexNotesQueryPrefix(user?.id) },
         (old) => {
@@ -118,28 +131,12 @@ export function AIIndexPanel() {
             pages: old.pages.map((page) => ({
               ...page,
               notes: page.notes
-                .map((note) =>
-                  note.id === result.noteId
-                    ? {
-                        ...note,
-                        status: result.nextStatus,
-                        lastIndexedAt:
-                          result.nextStatus === 'not_indexed'
-                            ? null
-                            : new Date().toISOString(),
-                      }
-                    : note,
-                )
-                .filter((note) => {
-                  // Remove note from filtered views if it no longer matches
-                  if (filter === 'all') return true
-                  return note.id !== result.noteId || note.status === filter
-                }),
+                .map((note) => patchNoteStatus(note, result))
+                .filter((note) => shouldKeepNote(note, result, filter)),
             })),
           }
         },
       )
-      // Background refetch for eventual consistency
       void queryClient.invalidateQueries({
         queryKey: getAIIndexNotesQueryPrefix(user?.id),
       })

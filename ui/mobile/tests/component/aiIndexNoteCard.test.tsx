@@ -1,7 +1,9 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { AIIndexNoteCard } from '@ui/mobile/components/settings/AIIndexNoteCard'
 import type { AIIndexNoteRow } from '@core/types/aiIndex'
+
+import { Alert } from 'react-native'
 
 const mockInvoke = jest.fn()
 const mockToastShow = jest.fn()
@@ -133,7 +135,29 @@ describe('AIIndexNoteCard', () => {
     })
   })
 
-  it('calls invoke with delete action on Remove press', async () => {
+  it('shows confirmation alert before removing index', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert')
+    render(
+      <AIIndexNoteCard
+        note={makeNote({ status: 'indexed', lastIndexedAt: '2025-06-01T00:00:00Z' })}
+        onMutated={onMutated}
+      />
+    )
+    fireEvent.press(screen.getByText('Remove index'))
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Remove from AI index',
+      expect.any(String),
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
+        expect.objectContaining({ text: 'Remove', style: 'destructive' }),
+      ]),
+    )
+    alertSpy.mockRestore()
+  })
+
+  it('calls invoke with delete action after confirming removal', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert')
     mockInvoke.mockResolvedValue({ data: {}, error: null })
     parseRagIndexResult.mockReturnValue({ outcome: 'deleted', message: null })
 
@@ -144,6 +168,11 @@ describe('AIIndexNoteCard', () => {
       />
     )
     fireEvent.press(screen.getByText('Remove index'))
+
+    // Simulate pressing "Remove" in the alert
+    const alertButtons = alertSpy.mock.calls[0]?.[2] as Array<{ text: string; onPress?: () => void }>
+    const removeButton = alertButtons.find((b) => b.text === 'Remove')
+    await act(async () => { removeButton?.onPress?.() })
 
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledWith('rag-index', {
@@ -158,6 +187,7 @@ describe('AIIndexNoteCard', () => {
         nextStatus: 'not_indexed',
       })
     })
+    alertSpy.mockRestore()
   })
 
   it('shows error toast on invoke failure', async () => {
