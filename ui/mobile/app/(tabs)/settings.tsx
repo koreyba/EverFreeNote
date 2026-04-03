@@ -119,65 +119,65 @@ export default function SettingsScreen() {
     },
   ]
 
-  if (isAIIndexTabActive) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.shell}>
-          <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
-          <AIIndexPanel />
-        </View>
-      </View>
-    )
-  }
-
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.shell}>
+    <View style={styles.outerContainer}>
+      <View style={[styles.shell, isAIIndexTabActive && styles.shellFlex]}>
         <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
-        <View style={styles.panelWrap}>
-          {panelConfigs.map((panel) =>
-            panel.isVisited ? (
-              <SettingsPanel
-                key={panel.key}
-                isActive={activeTab === panel.key}
-                content={panel.content}
-                styles={styles}
-              />
-            ) : null
-          )}
-        </View>
+        {isAIIndexTabActive ? (
+          <AIIndexPanel />
+        ) : (
+          <ScrollView
+            style={styles.panelScroll}
+            contentContainerStyle={styles.panelScrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.panelWrap}>
+              {panelConfigs.map((panel) =>
+                panel.isVisited ? (
+                  <SettingsPanel
+                    key={panel.key}
+                    isActive={activeTab === panel.key}
+                    content={panel.content}
+                    styles={styles}
+                  />
+                ) : null
+              )}
+            </View>
+          </ScrollView>
+        )}
       </View>
-    </ScrollView>
+    </View>
   )
 }
 
 const createStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset: number) =>
   StyleSheet.create({
-    container: {
+    outerContainer: {
       flex: 1,
       backgroundColor: colors.background,
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: bottomInset + 24,
-    },
-    scrollContainer: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    scrollContent: {
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: bottomInset + 24,
+      paddingBottom: bottomInset,
     },
     shell: {
-      flex: 1,
       borderRadius: 28,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.background,
       padding: 14,
       gap: 16,
+    },
+    shellFlex: {
+      flex: 1,
+    },
+    panelScroll: {
+      marginHorizontal: -14,
+      marginBottom: -14,
+      paddingHorizontal: 14,
+    },
+    panelScrollContent: {
+      paddingBottom: 14,
     },
     panelWrap: {
       gap: 14,

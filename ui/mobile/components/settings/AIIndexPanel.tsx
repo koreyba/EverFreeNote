@@ -204,7 +204,6 @@ export function AIIndexPanel() {
                 onPress={() => setFilter(option.value)}
                 style={({ pressed }) => [
                   styles.chip,
-                  isActive && styles.chipActive,
                   pressed && styles.chipPressed,
                 ]}
               >
@@ -349,7 +348,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     chip: {
       paddingVertical: 4,
     },
-    chipActive: {},
     chipPressed: {
       opacity: 0.6,
     },

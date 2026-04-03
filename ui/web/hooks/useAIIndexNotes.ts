@@ -88,17 +88,13 @@ export function getAIIndexNotesQueryPrefix(userId?: string) {
   return ["ai-index-notes", userId ?? null] as const
 }
 
-function normalizeSearchQuery(searchQuery: string) {
-  return searchQuery.trim()
-}
-
 export function getAIIndexNotesQueryKey(userId: string | undefined, filter: AIIndexFilter, searchQuery = "") {
-  return [...getAIIndexNotesQueryPrefix(userId), filter, normalizeSearchQuery(searchQuery)] as const
+  return [...getAIIndexNotesQueryPrefix(userId), filter, searchQuery.trim()] as const
 }
 
 export function useAIIndexNotes(filter: AIIndexFilter = "all", searchQuery = "", enabled = true) {
   const { supabase, user } = useSupabase()
-  const normalizedSearchQuery = normalizeSearchQuery(searchQuery)
+  const normalizedSearchQuery = searchQuery.trim()
   const activeSearchQuery =
     normalizedSearchQuery.length >= SEARCH_CONFIG.MIN_QUERY_LENGTH ? normalizedSearchQuery : ""
   const searchTsQuery = buildTsQuery(activeSearchQuery)

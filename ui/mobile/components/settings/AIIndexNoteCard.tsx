@@ -2,6 +2,11 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Toast from 'react-native-toast-message'
 
+import {
+  AI_INDEX_STATUS_LABELS,
+  AI_INDEX_STATUS_DESCRIPTIONS,
+  getAIIndexActionPresentation,
+} from '@core/constants/aiIndex'
 import { parseRagIndexResult } from '@core/rag/indexResult'
 import type { AIIndexMutationResult, AIIndexNoteRow } from '@core/types/aiIndex'
 import { Badge } from '@ui/mobile/components/ui/Badge'
@@ -10,68 +15,10 @@ import { useSupabase, useTheme } from '@ui/mobile/providers'
 
 type Operation = 'indexing' | 'deleting' | null
 
-type StatusPresentation = {
-  label: string
-  description: string
-}
-
-const STATUS_PRESENTATION: Record<AIIndexNoteRow['status'], StatusPresentation> = {
-  indexed: {
-    label: 'Indexed',
-    description: 'Available to AI search.',
-  },
-  not_indexed: {
-    label: 'Not indexed',
-    description: 'Not searchable by AI yet.',
-  },
-  outdated: {
-    label: 'Outdated',
-    description: 'Changed after the last successful index.',
-  },
-}
-
-type IndexActionPresentation = {
-  label: string
-  successToast: string
-  successStatus: AIIndexMutationResult['nextStatus']
-  variant: 'default' | 'outline'
-}
-
 type Props = Readonly<{
   note: AIIndexNoteRow
   onMutated: (result: AIIndexMutationResult) => void
 }>
-
-function getSemanticFailureMessage(message: string | null, fallback: string) {
-  return message ?? fallback
-}
-
-function getIndexActionPresentation(status: AIIndexNoteRow['status']): IndexActionPresentation {
-  if (status === 'outdated') {
-    return {
-      label: 'Update index',
-      successToast: 'Note reindexed',
-      successStatus: 'indexed',
-      variant: 'default',
-    }
-  }
-
-  if (status === 'indexed') {
-    return {
-      label: 'Reindex',
-      successToast: 'Note reindexed',
-      successStatus: 'indexed',
-      variant: 'outline',
-    }
-  }
-
-  return {
-    label: 'Index note',
-    successToast: 'Note indexed',
-    successStatus: 'indexed',
-    variant: 'default',
-  }
-}
 
 function getStatusBadgeStyle(
   status: AIIndexNoteRow['status'],
@@ -112,10 +59,8 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
   const styles = useMemo(() => createStyles(colors), [colors])
   const [operation, setOperation] = useState<Operation>(null)
 
-  const isIndexed = note.status !== 'not_indexed'
   const isBusy = operation !== null
-  const statusPresentation = STATUS_PRESENTATION[note.status]
-  const indexAction = getIndexActionPresentation(note.status)
+  const indexAction = getAIIndexActionPresentation(note.status)
   const statusBadgeStyle = useMemo(
     () => getStatusBadgeStyle(note.status, colors),
     [note.status, colors],
@@ -125,7 +70,7 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
     setOperation('indexing')
     try {
       const { data, error } = await supabase.functions.invoke('rag-index', {
-        body: { noteId: note.id, action: isIndexed ? 'reindex' : 'index' },
+        body: { noteId: note.id, action: indexAction.action },
       })
       if (error) throw error
 
@@ -140,26 +85,20 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
         return
       }
       if (result.outcome === 'skipped') {
-        Toast.show({
-          type: 'error',
-          text1: getSemanticFailureMessage(result.message, 'Indexing was skipped.'),
-        })
+        Toast.show({ type: 'error', text1: result.message ?? 'Indexing was skipped.' })
         if (result.reason === 'too_short') {
           onMutated({ noteId: note.id, previousStatus: note.status, nextStatus: 'not_indexed' })
         }
         return
       }
-      Toast.show({
-        type: 'error',
-        text1: getSemanticFailureMessage(result.message, 'Indexing returned an unexpected response.'),
-      })
+      Toast.show({ type: 'error', text1: result.message ?? 'Unexpected response.' })
     } catch (err) {
       const msg = err instanceof Error ? err.message : `${indexAction.label} failed`
       Toast.show({ type: 'error', text1: msg })
     } finally {
       setOperation(null)
     }
-  }, [indexAction, isIndexed, note.id, note.status, onMutated, supabase.functions])
+  }, [indexAction, note.id, note.status, onMutated, supabase.functions])
 
   const handleDelete = useCallback(async () => {
     setOperation('deleting')
@@ -175,10 +114,7 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
         onMutated({ noteId: note.id, previousStatus: note.status, nextStatus: 'not_indexed' })
         return
       }
-      Toast.show({
-        type: 'error',
-        text1: getSemanticFailureMessage(result.message, 'Delete returned an unexpected response.'),
-      })
+      Toast.show({ type: 'error', text1: result.message ?? 'Unexpected response.' })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Remove from index failed'
       Toast.show({ type: 'error', text1: msg })
@@ -199,14 +135,14 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
           style={{ ...statusBadgeStyle.bg, borderWidth: 1 }}
           textStyle={statusBadgeStyle.text}
         >
-          {statusPresentation.label}
+          {AI_INDEX_STATUS_LABELS[note.status]}
         </Badge>
-        <Text style={styles.statusDescription}>{statusPresentation.description}</Text>
+        <Text style={styles.statusDescription}>{AI_INDEX_STATUS_DESCRIPTIONS[note.status]}</Text>
       </View>
 
       <View style={styles.actions}>
         <Button
-          variant={indexAction.variant}
+          variant={indexAction.buttonVariant}
           size="sm"
           loading={operation === 'indexing'}
           disabled={isBusy}
@@ -216,7 +152,7 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
           {indexAction.label}
         </Button>
 
-        {isIndexed ? (
+        {indexAction.action === 'reindex' ? (
           <Button
             variant="outline"
             size="sm"
