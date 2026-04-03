@@ -182,6 +182,73 @@ export function AIIndexPanel() {
     ? queryResult.error.message
     : 'Failed to load AI index notes.'
 
+  const renderContent = () => {
+    if (queryResult.isLoading) {
+      return (
+        <View style={styles.centerState}>
+          <ActivityIndicator color={colors.foreground} />
+          <Text style={styles.statusText}>Loading AI index notes...</Text>
+        </View>
+      )
+    }
+
+    if (queryResult.isError) {
+      return (
+        <View style={styles.centerState}>
+          <Text style={styles.errorTitle}>AI Index is unavailable</Text>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+          <Button variant="outline" size="sm" onPress={handleRefresh}>
+            Retry
+          </Button>
+        </View>
+      )
+    }
+
+    if (notes.length === 0) {
+      return (
+        <View style={styles.centerState}>
+          <Text style={styles.statusText}>{emptyMessage}</Text>
+          {(hasActiveSearch || hasActiveFilter) ? (
+            <View style={styles.emptyActions}>
+              {hasActiveSearch ? (
+                <Button variant="ghost" size="sm" onPress={handleClearSearch}>
+                  Clear search
+                </Button>
+              ) : null}
+              {hasActiveFilter ? (
+                <Button variant="ghost" size="sm" onPress={handleResetFilter}>
+                  Show all notes
+                </Button>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      )
+    }
+
+    return (
+      <FlatList
+        ref={listRef}
+        testID="ai-index-list"
+        data={notes}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.4}
+        refreshing={queryResult.isRefetching && !queryResult.isFetchingNextPage}
+        onRefresh={handleRefresh}
+        keyboardShouldPersistTaps="handled"
+        ListFooterComponent={
+          queryResult.isFetchingNextPage ? (
+            <ActivityIndicator style={styles.footer} color={colors.foreground} />
+          ) : null
+        }
+      />
+    )
+  }
+
   return (
     <View style={styles.root}>
       <View style={styles.filterRail}>
@@ -270,58 +337,7 @@ export function AIIndexPanel() {
         ) : null}
       </View>
 
-      {queryResult.isLoading ? (
-        <View style={styles.centerState}>
-          <ActivityIndicator color={colors.foreground} />
-          <Text style={styles.statusText}>Loading AI index notes...</Text>
-        </View>
-      ) : queryResult.isError ? (
-        <View style={styles.centerState}>
-          <Text style={styles.errorTitle}>AI Index is unavailable</Text>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <Button variant="outline" size="sm" onPress={handleRefresh}>
-            Retry
-          </Button>
-        </View>
-      ) : notes.length === 0 ? (
-        <View style={styles.centerState}>
-          <Text style={styles.statusText}>{emptyMessage}</Text>
-          {(hasActiveSearch || hasActiveFilter) ? (
-            <View style={styles.emptyActions}>
-              {hasActiveSearch ? (
-                <Button variant="ghost" size="sm" onPress={handleClearSearch}>
-                  Clear search
-                </Button>
-              ) : null}
-              {hasActiveFilter ? (
-                <Button variant="ghost" size="sm" onPress={handleResetFilter}>
-                  Show all notes
-                </Button>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-      ) : (
-        <FlatList
-          ref={listRef}
-          testID="ai-index-list"
-          data={notes}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          style={styles.list}
-          contentContainerStyle={styles.listContent}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.4}
-          refreshing={queryResult.isRefetching && !queryResult.isFetchingNextPage}
-          onRefresh={handleRefresh}
-          keyboardShouldPersistTaps="handled"
-          ListFooterComponent={
-            queryResult.isFetchingNextPage ? (
-              <ActivityIndicator style={styles.footer} color={colors.foreground} />
-            ) : null
-          }
-        />
-      )}
+      {renderContent()}
     </View>
   )
 }
