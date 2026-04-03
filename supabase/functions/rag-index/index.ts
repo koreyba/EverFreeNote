@@ -300,7 +300,16 @@ serve(async (req: Request) => {
       throw new Error(`Gemini returned ${vectors.length} vectors for ${chunksForIndexing.length} chunks`)
     }
 
-    const indexedAt = new Date().toISOString()
+    // Use delete-then-insert instead of upsert so that indexed_at uses the
+    // database's NOW() (same clock as notes.updated_at) rather than the Edge
+    // Function's JS clock, which can drift on local/Docker setups and cause
+    // notes to stay permanently "outdated".
+    const { error: deleteError } = await supabaseAdmin
+      .from("note_embeddings")
+      .delete()
+      .eq("note_id", noteId)
+      .eq("user_id", userId)
+    if (deleteError) throw deleteError
 
     const rows = chunksForIndexing.map((chunk, index) => ({
       note_id: noteId,
@@ -311,21 +320,13 @@ serve(async (req: Request) => {
       body_content: chunk.bodyContent,
       overlap_prefix: chunk.overlapPrefix,
       embedding: vectors[index],
-      indexed_at: indexedAt,
+      // indexed_at intentionally omitted — uses column DEFAULT now()
     }))
 
-    const { error: upsertError } = await supabaseAdmin
+    const { error: insertError } = await supabaseAdmin
       .from("note_embeddings")
-      .upsert(rows, { onConflict: "note_id,chunk_index" })
-    if (upsertError) throw upsertError
-
-    const { error: cleanupError } = await supabaseAdmin
-      .from("note_embeddings")
-      .delete()
-      .eq("note_id", noteId)
-      .eq("user_id", userId)
-      .gte("chunk_index", chunksForIndexing.length)
-    if (cleanupError) throw cleanupError
+      .insert(rows)
+    if (insertError) throw insertError
 
     console.info("[rag-index] Indexed note with settings", {
       noteId,

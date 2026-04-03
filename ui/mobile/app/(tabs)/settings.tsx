@@ -119,8 +119,25 @@ export default function SettingsScreen() {
     },
   ]
 
+  if (isAIIndexTabActive) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.shell}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Settings</Text>
+            <Text style={styles.subtitle}>Everything for your account, imports, exports, and integrations.</Text>
+          </View>
+
+          <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
+
+          <AIIndexPanel />
+        </View>
+      </View>
+    )
+  }
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
       <View style={styles.shell}>
         <View style={styles.header}>
           <Text style={styles.title}>Settings</Text>
@@ -129,30 +146,20 @@ export default function SettingsScreen() {
 
         <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
-        <View style={[styles.aiIndexViewport, !isAIIndexTabActive && styles.panelHidden]}>
-          <AIIndexPanel />
+        <View style={styles.panelWrap}>
+          {panelConfigs.map((panel) =>
+            panel.isVisited ? (
+              <SettingsPanel
+                key={panel.key}
+                isActive={activeTab === panel.key}
+                content={panel.content}
+                styles={styles}
+              />
+            ) : null
+          )}
         </View>
-
-        <ScrollView
-          style={[styles.panelScroll, isAIIndexTabActive && styles.panelHidden]}
-          contentContainerStyle={styles.panelScrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.panelWrap}>
-            {panelConfigs.map((panel) =>
-              panel.isVisited ? (
-                <SettingsPanel
-                  key={panel.key}
-                  isActive={activeTab === panel.key}
-                  content={panel.content}
-                  styles={styles}
-                />
-              ) : null
-            )}
-          </View>
-        </ScrollView>
       </View>
-    </View>
+    </ScrollView>
   )
 }
 
@@ -161,6 +168,15 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset
     container: {
       flex: 1,
       backgroundColor: colors.background,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: bottomInset + 24,
+    },
+    scrollContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContent: {
       paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: bottomInset + 24,
@@ -194,20 +210,10 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset
     panelWrap: {
       gap: 14,
     },
-    panelScroll: {
-      flex: 1,
-    },
-    panelScrollContent: {
-      paddingBottom: 4,
-    },
     panel: {
       width: '100%',
     },
     panelHidden: {
       display: 'none',
-    },
-    aiIndexViewport: {
-      flex: 1,
-      minHeight: 420,
     },
   })
