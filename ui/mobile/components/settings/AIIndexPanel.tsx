@@ -10,10 +10,10 @@ import {
   View,
 } from 'react-native'
 import { Search, X } from 'lucide-react-native'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
 
 import { SEARCH_CONFIG } from '@core/constants/search'
-import type { AIIndexFilter, AIIndexMutationResult, AIIndexNoteRow } from '@core/types/aiIndex'
+import type { AIIndexFilter, AIIndexMutationResult, AIIndexNoteRow, AIIndexNotesPage } from '@core/types/aiIndex'
 import { Badge } from '@ui/mobile/components/ui/Badge'
 import { Button } from '@ui/mobile/components/ui/Button'
 import { AIIndexNoteCard } from '@ui/mobile/components/settings/AIIndexNoteCard'
@@ -107,12 +107,44 @@ export function AIIndexPanel() {
   const activeFilterLabel = getFilterLabel(filter)
 
   const handleMutated = useCallback(
-    (_result: AIIndexMutationResult) => {
+    (result: AIIndexMutationResult) => {
+      // Optimistically update the note status in all cached query pages
+      queryClient.setQueriesData<InfiniteData<AIIndexNotesPage>>(
+        { queryKey: getAIIndexNotesQueryPrefix(user?.id) },
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              notes: page.notes
+                .map((note) =>
+                  note.id === result.noteId
+                    ? {
+                        ...note,
+                        status: result.nextStatus,
+                        lastIndexedAt:
+                          result.nextStatus === 'not_indexed'
+                            ? null
+                            : new Date().toISOString(),
+                      }
+                    : note,
+                )
+                .filter((note) => {
+                  // Remove note from filtered views if it no longer matches
+                  if (filter === 'all') return true
+                  return note.id !== result.noteId || note.status === filter
+                }),
+            })),
+          }
+        },
+      )
+      // Background refetch for eventual consistency
       void queryClient.invalidateQueries({
         queryKey: getAIIndexNotesQueryPrefix(user?.id),
       })
     },
-    [queryClient, user?.id],
+    [filter, queryClient, user?.id],
   )
 
   const handleLoadMore = useCallback(() => {

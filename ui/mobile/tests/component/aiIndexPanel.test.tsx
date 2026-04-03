@@ -41,7 +41,7 @@ jest.mock('@tanstack/react-query', () => {
   const actual = jest.requireActual('@tanstack/react-query')
   return {
     ...actual,
-    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries, setQueriesData: jest.fn() }),
   }
 })
 
