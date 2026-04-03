@@ -190,4 +190,30 @@ describe('AIIndexNoteCard', () => {
 
     expect(onMutated).not.toHaveBeenCalled()
   })
+
+  it('restores not_indexed when skip reason is too_short', async () => {
+    mockInvoke.mockResolvedValue({ data: {}, error: null })
+    parseRagIndexResult.mockReturnValue({
+      outcome: 'skipped',
+      reason: 'too_short',
+      chunkCount: 0,
+      message: 'Note is too short for indexing',
+      debugChunks: [],
+    })
+
+    render(<AIIndexNoteCard note={makeNote()} onMutated={onMutated} />)
+    fireEvent.press(screen.getByText('Index note'))
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', text1: 'Note is too short for indexing' })
+      )
+    })
+
+    expect(onMutated).toHaveBeenCalledWith({
+      noteId: 'note-1',
+      previousStatus: 'not_indexed',
+      nextStatus: 'not_indexed',
+    })
+  })
 })

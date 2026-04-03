@@ -116,8 +116,7 @@ describe('useFlattenedAIIndexNotes', () => {
       },
     }
 
-    // Call the function directly (it's not a hook, just a utility)
-    const notes = mockQueryResult.data.pages.flatMap((p) => p.notes)
+    const notes = useFlattenedAIIndexNotes(mockQueryResult as never)
     expect(notes).toHaveLength(4)
     expect(notes.map((n) => n.id)).toEqual(['a', 'b', 'c', 'd'])
   })

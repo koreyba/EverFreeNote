@@ -129,30 +129,28 @@ export default function SettingsScreen() {
 
         <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
-        {isAIIndexTabActive ? (
-          <View style={styles.aiIndexViewport}>
-            <AIIndexPanel />
+        <View style={[styles.aiIndexViewport, !isAIIndexTabActive && styles.panelHidden]}>
+          <AIIndexPanel />
+        </View>
+
+        <ScrollView
+          style={[styles.panelScroll, isAIIndexTabActive && styles.panelHidden]}
+          contentContainerStyle={styles.panelScrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.panelWrap}>
+            {panelConfigs.map((panel) =>
+              panel.isVisited ? (
+                <SettingsPanel
+                  key={panel.key}
+                  isActive={activeTab === panel.key}
+                  content={panel.content}
+                  styles={styles}
+                />
+              ) : null
+            )}
           </View>
-        ) : (
-          <ScrollView
-            style={styles.panelScroll}
-            contentContainerStyle={styles.panelScrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.panelWrap}>
-              {panelConfigs.map((panel) =>
-                panel.isVisited ? (
-                  <SettingsPanel
-                    key={panel.key}
-                    isActive={activeTab === panel.key}
-                    content={panel.content}
-                    styles={styles}
-                  />
-                ) : null
-              )}
-            </View>
-          </ScrollView>
-        )}
+        </ScrollView>
       </View>
     </View>
   )

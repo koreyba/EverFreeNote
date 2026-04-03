@@ -156,6 +156,7 @@ export function AIIndexPanel() {
         <ScrollView
           accessibilityRole="tablist"
           horizontal
+          keyboardShouldPersistTaps="handled"
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterRow}
         >

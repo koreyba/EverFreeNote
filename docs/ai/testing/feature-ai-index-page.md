@@ -106,7 +106,7 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [x] `useFlattenedAIIndexNotes` flattens multi-page data
 - [x] `useFlattenedAIIndexNotes` returns empty array when no data
 
-### Component: `AIIndexNoteCard` (8 tests)
+### Component: `AIIndexNoteCard` (10 tests)
 
 - [x] Renders title and status for not_indexed
 - [x] Shows "Untitled Note" when title is blank
@@ -117,6 +117,7 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [x] Calls invoke with delete action on Remove press
 - [x] Shows error toast on invoke failure
 - [x] Falls back to a clear error toast when indexing is skipped without a backend message
+- [x] Restores `not_indexed` when skip reason is `too_short`
 
 ### Component: `AIIndexPanel` (9 tests)
 
@@ -150,7 +151,7 @@ cd ui/mobile && npm run validate
 
 ### Mobile test results
 
-- Focused AI Index mobile pass: 4 test suites, 32 tests, all passing
+- Focused AI Index mobile pass: 4 test suites, 33 tests, all passing
 - Validation: `ui/mobile` `type-check` and `lint` passing via `npm run validate`
 
 ## Bug Tracking
