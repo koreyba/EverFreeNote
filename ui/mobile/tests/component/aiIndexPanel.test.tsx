@@ -105,7 +105,6 @@ describe('AIIndexPanel', () => {
     expect(screen.getAllByText('Indexed').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Not indexed').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('Outdated')).toBeTruthy()
-    expect(screen.getByText('2 visible')).toBeTruthy()
     expect(screen.getByText('2 notes')).toBeTruthy()
     expect(screen.getAllByRole('tab')).toHaveLength(4)
     expect(mockNoteCard).toHaveBeenCalledTimes(2)

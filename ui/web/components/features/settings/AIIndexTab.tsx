@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Database, Filter, Loader2, Search, X } from "lucide-react"
+import { Database, Loader2, Search, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
@@ -260,35 +260,23 @@ function AIIndexEmptyState({
 }
 
 function AIIndexToolbar({
-  activeSearchQuery,
   filter,
   filterOptions,
-  hasActiveSearch,
-  isFetching,
-  isFetchingNextPage,
   isSearchHintVisible,
-  loadedCount,
   onClearSearch,
   onFilterChange,
   onSearchChange,
   onSearchKeyDown,
   searchDraft,
-  totalCount,
 }: Readonly<{
-  activeSearchQuery: string
   filter: AIIndexFilter
   filterOptions: Array<{ value: AIIndexFilter; label: string }>
-  hasActiveSearch: boolean
-  isFetching: boolean
-  isFetchingNextPage: boolean
   isSearchHintVisible: boolean
-  loadedCount: number
   onClearSearch: () => void
   onFilterChange: (filter: AIIndexFilter) => void
   onSearchChange: (value: string) => void
   onSearchKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
   searchDraft: string
-  totalCount: number
 }>) {
   return (
     <div className="rounded-2xl border border-border/60 bg-background/70 p-3 sm:p-4">
@@ -320,32 +308,6 @@ function AIIndexToolbar({
                 </button>
               )
             })}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="outline" className="bg-background">
-              <span className="font-medium text-foreground">{totalCount}</span>&nbsp;visible
-            </Badge>
-            {loadedCount < totalCount ? (
-              <Badge variant="outline" className="bg-background">
-                <span className="font-medium text-foreground">{loadedCount}</span>&nbsp;loaded
-              </Badge>
-            ) : null}
-            <span className="inline-flex items-center gap-1">
-              <Filter className="h-3.5 w-3.5" />
-              {FILTER_LABELS[filter]}
-            </span>
-            {hasActiveSearch ? (
-              <Badge variant="outline" className="max-w-full bg-background">
-                <span className="truncate">Search: {activeSearchQuery}</span>
-              </Badge>
-            ) : null}
-            {isFetching && !isFetchingNextPage ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background px-2.5 py-1">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Refreshing...
-              </span>
-            ) : null}
           </div>
         </div>
 
@@ -389,6 +351,7 @@ function AIIndexResultsHeader({
   filter,
   hasActiveFilter,
   hasActiveSearch,
+  isFetching,
   isFetchingNextPage,
   onClearSearch,
   onResetFilter,
@@ -398,6 +361,7 @@ function AIIndexResultsHeader({
   filter: AIIndexFilter
   hasActiveFilter: boolean
   hasActiveSearch: boolean
+  isFetching: boolean
   isFetchingNextPage: boolean
   onClearSearch: () => void
   onResetFilter: () => void
@@ -413,6 +377,12 @@ function AIIndexResultsHeader({
             <Badge variant="outline" className="max-w-full bg-background/70">
               <span className="truncate">Search: {activeSearchQuery}</span>
             </Badge>
+          ) : null}
+          {isFetching && !isFetchingNextPage ? (
+            <span className="inline-flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Refreshing…
+            </span>
           ) : null}
           {isFetchingNextPage ? (
             <span className="inline-flex items-center gap-1">
@@ -679,20 +649,14 @@ export function AIIndexTab() {
   return (
     <div className="space-y-4">
       <AIIndexToolbar
-        activeSearchQuery={activeSearchQuery}
         filter={filter}
         filterOptions={FILTER_OPTIONS}
-        hasActiveSearch={hasActiveSearch}
-        isFetching={query.isFetching}
-        isFetchingNextPage={query.isFetchingNextPage}
         isSearchHintVisible={isSearchHintVisible}
-        loadedCount={loadedCount}
         onClearSearch={handleClearSearch}
         onFilterChange={setFilter}
         onSearchChange={handleSearchChange}
         onSearchKeyDown={handleSearchKeyDown}
         searchDraft={searchDraft}
-        totalCount={optimisticTotalCount}
       />
 
       <div className="rounded-2xl border border-border/60 bg-background/60">
@@ -701,6 +665,7 @@ export function AIIndexTab() {
           filter={filter}
           hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}
+          isFetching={query.isFetching}
           isFetchingNextPage={query.isFetchingNextPage}
           onClearSearch={handleClearSearch}
           onResetFilter={handleResetFilter}

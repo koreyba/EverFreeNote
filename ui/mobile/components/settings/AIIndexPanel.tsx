@@ -14,7 +14,6 @@ import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
 
 import { SEARCH_CONFIG } from '@core/constants/search'
 import type { AIIndexFilter, AIIndexMutationResult, AIIndexNoteRow, AIIndexNotesPage } from '@core/types/aiIndex'
-import { Badge } from '@ui/mobile/components/ui/Badge'
 import { Button } from '@ui/mobile/components/ui/Button'
 import { AIIndexNoteCard } from '@ui/mobile/components/settings/AIIndexNoteCard'
 import {
@@ -54,10 +53,6 @@ function getSummaryText(loadedCount: number, totalCount: number) {
   if (loadedCount === 0) return null
   if (loadedCount < totalCount) return `Showing ${loadedCount} of ${totalCount} notes`
   return `${totalCount} note${totalCount === 1 ? '' : 's'}`
-}
-
-function getFilterLabel(filter: AIIndexFilter) {
-  return FILTER_OPTIONS.find((option) => option.value === filter)?.label ?? 'All notes'
 }
 
 function patchNoteStatus(note: AIIndexNoteRow, result: AIIndexMutationResult): AIIndexNoteRow {
@@ -118,7 +113,7 @@ export function AIIndexPanel() {
   const totalCount = queryResult.data?.pages[0]?.totalCount ?? 0
   const summaryText = getSummaryText(notes.length, totalCount)
   const emptyMessage = getEmptyMessage(filter, searchQuery)
-  const activeFilterLabel = getFilterLabel(filter)
+
 
   const handleMutated = useCallback(
     (result: AIIndexMutationResult) => {
@@ -281,13 +276,6 @@ export function AIIndexPanel() {
       </View>
 
       <View style={styles.controlsSection}>
-        <View style={styles.metaRow}>
-          <Badge variant="outline" style={styles.metaBadge}>
-            {`${totalCount} visible`}
-          </Badge>
-          <Text style={styles.metaText}>{activeFilterLabel}</Text>
-        </View>
-
         <View style={styles.searchWrap}>
           <Search size={16} color={colors.mutedForeground} />
           <TextInput
@@ -372,20 +360,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     chipLabelActive: {
       color: colors.foreground,
       fontFamily: 'Inter_600SemiBold',
-    },
-    metaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      flexWrap: 'wrap',
-    },
-    metaBadge: {
-      backgroundColor: colors.background,
-    },
-    metaText: {
-      fontSize: 12,
-      fontFamily: 'Inter_400Regular',
-      color: colors.mutedForeground,
     },
     searchWrap: {
       flexDirection: 'row',
