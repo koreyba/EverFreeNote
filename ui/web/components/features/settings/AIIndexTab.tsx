@@ -295,7 +295,7 @@ function AIIndexToolbar({
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div
-            className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden"
+            className="flex gap-4 overflow-x-auto pb-1 sm:gap-2 [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             {filterOptions.map((option) => {
@@ -306,8 +306,14 @@ function AIIndexToolbar({
                   type="button"
                   onClick={() => onFilterChange(option.value)}
                   className={cn(
-                    "shrink-0 rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
-                    isActive ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idlePill
+                    "shrink-0 text-sm transition-colors",
+                    // Mobile: compact text labels (no border/bg)
+                    "rounded-none border-none bg-transparent px-0 py-1",
+                    // Desktop: pill buttons with border/bg
+                    "sm:rounded-xl sm:border sm:px-4 sm:py-2",
+                    isActive
+                      ? "font-semibold text-foreground sm:border-primary/60 sm:bg-accent"
+                      : "font-medium text-muted-foreground sm:border-transparent hover:text-foreground sm:hover:bg-muted/50"
                   )}
                 >
                   {option.label}
