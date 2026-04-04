@@ -223,7 +223,7 @@ graph TD
 - **Dedicated viewport for AI Index**: the settings screen should branch to a dedicated AI Index viewport instead of nesting a `FlatList` under the main settings `ScrollView`.
 - **FlatList over FlashList**: the existing mobile stack already uses React Native primitives and does not need another list dependency for this settings feature.
 - **Query cache invalidation over optimistic updates**: Simpler than the web's optimistic exit-animation approach; mobile mutation flow invalidates all filter views on success.
-- **No note navigation from card**: Mobile settings doesn't have the web's cross-route navigation bridge; cards are action-only.
+- **Note navigation via modal**: Tapping the note title in `AIIndexNoteCard` opens the note editor as a modal via `useOpenNote`. `router.back()` returns to the settings screen with AI Index state preserved (always-mounted panels with `display: 'none'` toggle). Unlike the web's sessionStorage bridge, mobile relies on the modal stack and always-mounted settings panels.
 - **Scrollable filter rail, not a boxed sub-panel**: the filter chips should behave like the top settings tabs and stay visually light, separated with a divider rather than another full card surface.
 
 ## Non-Functional Requirements

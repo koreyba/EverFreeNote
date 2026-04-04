@@ -7,6 +7,11 @@ import { Alert } from 'react-native'
 
 const mockInvoke = jest.fn()
 const mockToastShow = jest.fn()
+const mockOpenNote = jest.fn()
+
+jest.mock('@ui/mobile/hooks', () => ({
+  useOpenNote: () => mockOpenNote,
+}))
 
 jest.mock('@ui/mobile/providers', () => ({
   useTheme: () => ({
@@ -27,6 +32,12 @@ jest.mock('@ui/mobile/providers', () => ({
       destructiveForeground: '#ffffff',
       accent: '#f2f2f2',
       ring: '#00aa00',
+      statusIndexed: '#16a34a',
+      statusIndexedBg: 'rgba(22,163,74,0.1)',
+      statusIndexedBorder: 'rgba(22,163,74,0.3)',
+      statusOutdated: '#f59e0b',
+      statusOutdatedBg: 'rgba(245,158,11,0.1)',
+      statusOutdatedBorder: 'rgba(245,158,11,0.3)',
     },
   }),
   useSupabase: () => ({
@@ -219,6 +230,14 @@ describe('AIIndexNoteCard', () => {
     })
 
     expect(onMutated).not.toHaveBeenCalled()
+  })
+
+  it('navigates to note when title is pressed', () => {
+    render(<AIIndexNoteCard note={makeNote()} onMutated={onMutated} />)
+
+    fireEvent.press(screen.getByRole('button', { name: 'Open note My Note' }))
+
+    expect(mockOpenNote).toHaveBeenCalledWith({ id: 'note-1', title: 'My Note' })
   })
 
   it('restores not_indexed when skip reason is too_short', async () => {

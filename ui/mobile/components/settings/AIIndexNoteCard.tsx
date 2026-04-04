@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo, useState } from 'react'
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ChevronRight } from 'lucide-react-native'
 import Toast from 'react-native-toast-message'
 
 import {
@@ -11,6 +12,7 @@ import { parseRagIndexResult } from '@core/rag/indexResult'
 import type { AIIndexMutationResult, AIIndexNoteRow } from '@core/types/aiIndex'
 import { Badge } from '@ui/mobile/components/ui/Badge'
 import { Button } from '@ui/mobile/components/ui/Button'
+import { useOpenNote } from '@ui/mobile/hooks'
 import { useSupabase, useTheme } from '@ui/mobile/providers'
 
 type Operation = 'indexing' | 'deleting' | null
@@ -56,6 +58,7 @@ function getStatusBadgeStyle(
 export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }: Props) {
   const { client: supabase } = useSupabase()
   const { colors } = useTheme()
+  const openNote = useOpenNote()
   const styles = useMemo(() => createStyles(colors), [colors])
   const [operation, setOperation] = useState<Operation>(null)
 
@@ -65,6 +68,10 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
     () => getStatusBadgeStyle(note.status, colors),
     [note.status, colors],
   )
+
+  const handleOpenNote = useCallback(() => {
+    void openNote({ id: note.id, title: note.title })
+  }, [note.id, note.title, openNote])
 
   const handleIndex = useCallback(async () => {
     setOperation('indexing')
@@ -136,9 +143,17 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title} numberOfLines={2}>
-        {note.title.trim() || 'Untitled Note'}
-      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open note ${note.title.trim() || 'Untitled Note'}`}
+        onPress={handleOpenNote}
+        style={({ pressed }) => [styles.titleRow, pressed && styles.titleRowPressed]}
+      >
+        <Text style={styles.title} numberOfLines={2}>
+          {note.title.trim() || 'Untitled Note'}
+        </Text>
+        <ChevronRight size={16} color={colors.mutedForeground} />
+      </Pressable>
 
       <View style={styles.statusRow}>
         <Badge
@@ -191,7 +206,16 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       padding: 14,
       gap: 10,
     },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    titleRowPressed: {
+      opacity: 0.6,
+    },
     title: {
+      flex: 1,
       fontSize: 14,
       fontFamily: 'Inter_600SemiBold',
       color: colors.foreground,
