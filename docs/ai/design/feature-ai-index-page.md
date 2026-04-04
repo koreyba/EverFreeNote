@@ -175,6 +175,57 @@ The `all` filter is the default page state so the Settings tab opens with the fu
 - Decision: keep virtualization for the AI index list instead of rendering a plain settings table.
 - Rationale: the user explicitly wants the same large-dataset behavior as `NoteList`, and Settings may still need to handle hundreds or thousands of notes.
 
+## Mobile Architecture
+
+### Component Diagram
+
+```mermaid
+graph TD
+    SS["Settings Screen"] --> TB["SettingsTabBar"]
+    SS --> AIP["AIIndexPanel"]
+    AIP --> CHIPS["Filter Chips (Pressable)"]
+    AIP --> SINPUT["Search TextInput"]
+    AIP --> FL["FlatList"]
+    FL --> CARD["AIIndexNoteCard (memo)"]
+    AIP --> HOOK["useAIIndexNotes(filter, search)"]
+    CARD --> MUTATE["rag-index Edge Function"]
+    HOOK --> FETCH["get_ai_index_notes RPC"]
+```
+
+### Mobile Component Breakdown
+
+#### `SettingsTabBar` (modified)
+- Added `'aiIndex'` to `SettingsTabKey` union type.
+
+#### `AIIndexPanel`
+- Standalone panel component rendered inside a dedicated `flex: 1` AI Index viewport in `SettingsScreen` (not wrapped in the general settings `ScrollView`).
+- Filter row: one horizontally scrolling Pressable-chip rail matching `SettingsTabBar` interaction and sizing.
+- Search TextInput with clear button, debounced at 300ms.
+- FlatList with `onEndReached` for infinite scroll, `onRefresh` for pull-to-refresh.
+- Loading spinner, empty message, and error + retry states.
+- Summary text ("X notes" or "Showing X of Y notes").
+
+#### `AIIndexNoteCard` (memo)
+- Per-note card with title, status badge, status description, and action buttons.
+- Status badge colors: green (indexed), gray (not_indexed), amber (outdated).
+- Action labels change by status: "Index note" / "Reindex" / "Update index".
+- "Remove index" button shown only when indexed/outdated.
+- Calls `supabase.functions.invoke('rag-index', ...)` for mutations.
+- Toast notifications via `react-native-toast-message`.
+
+#### `useAIIndexNotes` hook
+- Port of web `useAIIndexNotes` using `useInfiniteQuery`.
+- Same RPC contract (`get_ai_index_notes`), same search utilities (`buildTsQuery`, `detectLanguage`, `ftsLanguage`).
+- Difference from web: uses `useSupabase()` returning `{ client, user }` (mobile provider pattern).
+
+### Mobile Design Decisions
+
+- **Dedicated viewport for AI Index**: the settings screen should branch to a dedicated AI Index viewport instead of nesting a `FlatList` under the main settings `ScrollView`.
+- **FlatList over FlashList**: the existing mobile stack already uses React Native primitives and does not need another list dependency for this settings feature.
+- **Query cache invalidation over optimistic updates**: Simpler than the web's optimistic exit-animation approach; mobile mutation flow invalidates all filter views on success.
+- **Note navigation via modal**: Tapping the note title in `AIIndexNoteCard` opens the note editor as a modal via `useOpenNote`. `router.back()` returns to the settings screen with AI Index state preserved (always-mounted panels with `display: 'none'` toggle). Unlike the web's sessionStorage bridge, mobile relies on the modal stack and always-mounted settings panels.
+- **Scrollable filter rail, not a boxed sub-panel**: the filter chips should behave like the top settings tabs and stay visually light, separated with a divider rather than another full card surface.
+
 ## Non-Functional Requirements
 
 - Performance:

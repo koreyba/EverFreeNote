@@ -45,6 +45,14 @@ export const colors = {
 
     // Focus ring
     ring: '#22c55e',                 // oklch(55% 0.15 145) → green-500
+
+    // Semantic status colors (AI Index badges, etc.)
+    statusIndexed: '#16a34a',              // green-600 — text
+    statusIndexedBg: 'rgba(22,163,74,0.1)',
+    statusIndexedBorder: 'rgba(22,163,74,0.3)',
+    statusOutdated: '#f59e0b',             // amber-500 — text
+    statusOutdatedBg: 'rgba(245,158,11,0.1)',
+    statusOutdatedBorder: 'rgba(245,158,11,0.3)',
   },
 
   dark: {
@@ -87,6 +95,14 @@ export const colors = {
 
     // Focus ring
     ring: '#22c55e',                 // oklch(65% 0.18 145) → green-500
+
+    // Semantic status colors (AI Index badges, etc.)
+    statusIndexed: '#4ade80',              // green-400 — higher contrast on dark bg
+    statusIndexedBg: 'rgba(74,222,128,0.12)',
+    statusIndexedBorder: 'rgba(74,222,128,0.3)',
+    statusOutdated: '#fbbf24',             // amber-400 — higher contrast on dark bg
+    statusOutdatedBg: 'rgba(251,191,36,0.12)',
+    statusOutdatedBorder: 'rgba(251,191,36,0.3)',
   },
 } as const
 

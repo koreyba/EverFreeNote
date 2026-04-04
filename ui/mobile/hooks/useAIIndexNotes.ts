@@ -1,10 +1,10 @@
-import { useMemo } from "react"
-import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query"
+import { useMemo } from 'react'
+import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query'
 
-import { SEARCH_CONFIG } from "@core/constants/search"
-import type { AIIndexFilter, AIIndexNotesPage, AIIndexNoteRow, AIIndexStatus } from "@core/types/aiIndex"
-import { buildTsQuery, detectLanguage, ftsLanguage } from "@core/utils/search"
-import { useSupabase } from "@ui/web/providers/SupabaseProvider"
+import { SEARCH_CONFIG } from '@core/constants/search'
+import type { AIIndexFilter, AIIndexNotesPage, AIIndexNoteRow, AIIndexStatus } from '@core/types/aiIndex'
+import { buildTsQuery, detectLanguage, ftsLanguage } from '@core/utils/search'
+import { useSupabase } from '@ui/mobile/providers'
 
 const AI_INDEX_PAGE_SIZE = 50
 const AI_INDEX_STALE_TIME_MS = 30_000
@@ -27,8 +27,8 @@ type AIIndexRpcError = {
 
 function parseTotalCount(rows: AIIndexRpcRow[]): number {
   const rawValue = rows[0]?.total_count
-  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue
-  if (typeof rawValue === "string") {
+  if (typeof rawValue === 'number' && Number.isFinite(rawValue)) return rawValue
+  if (typeof rawValue === 'string') {
     const parsed = Number.parseInt(rawValue, 10)
     return Number.isFinite(parsed) ? parsed : 0
   }
@@ -38,7 +38,7 @@ function parseTotalCount(rows: AIIndexRpcRow[]): number {
 function mapRow(row: AIIndexRpcRow): AIIndexNoteRow {
   return {
     id: row.id,
-    title: typeof row.title === "string" ? row.title : "",
+    title: typeof row.title === 'string' ? row.title : '',
     updatedAt: row.updated_at,
     lastIndexedAt: row.last_indexed_at,
     status: row.status,
@@ -46,32 +46,34 @@ function mapRow(row: AIIndexRpcRow): AIIndexNoteRow {
 }
 
 function normalizeAIIndexRpcRows(data: unknown): AIIndexRpcRow[] {
-  return Array.isArray(data) ? data.filter((row): row is AIIndexRpcRow => typeof row === "object" && row !== null) : []
+  return Array.isArray(data)
+    ? data.filter((row): row is AIIndexRpcRow => typeof row === 'object' && row !== null)
+    : []
 }
 
 function formatAIIndexRpcError(error: unknown) {
-  if (!error || typeof error !== "object") {
-    return new Error("Failed to load AI index notes.")
+  if (!error || typeof error !== 'object') {
+    return new Error('Failed to load AI index notes.')
   }
 
   const rpcError = error as AIIndexRpcError
-  const code = rpcError.code?.trim() ?? ""
-  const message = rpcError.message?.trim() ?? "Failed to load AI index notes."
-  const details = rpcError.details?.trim() ?? ""
-  const hint = rpcError.hint?.trim() ?? ""
+  const code = rpcError.code?.trim() ?? ''
+  const message = rpcError.message?.trim() ?? 'Failed to load AI index notes.'
+  const details = rpcError.details?.trim() ?? ''
+  const hint = rpcError.hint?.trim() ?? ''
   const combinedText = `${message}\n${details}\n${hint}`
 
-  if (code === "PGRST202" && combinedText.includes("get_ai_index_notes")) {
+  if (code === 'PGRST202' && combinedText.includes('get_ai_index_notes')) {
     return new Error(
       [
-        "AI Index database function is out of date.",
-        "The UI is calling the search-enabled get_ai_index_notes signature, but PostgREST still sees the older version.",
-        "Apply migration supabase/migrations/20260329000002_add_search_to_ai_index_notes_rpc.sql and refresh the local Supabase schema cache if needed.",
+        'AI Index database function is out of date.',
+        'The app is calling the search-enabled get_ai_index_notes signature, but PostgREST still sees the older version.',
+        'Apply migration supabase/migrations/20260329000002_add_search_to_ai_index_notes_rpc.sql and refresh the local Supabase schema cache if needed.',
         code ? `Code: ${code}` : null,
         message ? `Message: ${message}` : null,
         details ? `Details: ${details}` : null,
         hint ? `Hint: ${hint}` : null,
-      ].filter(Boolean).join("\n")
+      ].filter(Boolean).join('\n')
     )
   }
 
@@ -81,23 +83,27 @@ function formatAIIndexRpcError(error: unknown) {
       message ? `Message: ${message}` : null,
       details ? `Details: ${details}` : null,
       hint ? `Hint: ${hint}` : null,
-    ].filter(Boolean).join("\n") || "Failed to load AI index notes."
+    ].filter(Boolean).join('\n') || 'Failed to load AI index notes.'
   )
 }
 
+export function getAIIndexNotesQueryKey(
+  userId: string | undefined,
+  filter: AIIndexFilter,
+  searchQuery = ''
+) {
+  return ['ai-index-notes', userId ?? null, filter, searchQuery.trim()] as const
+}
+
 export function getAIIndexNotesQueryPrefix(userId?: string) {
-  return ["ai-index-notes", userId ?? null] as const
+  return ['ai-index-notes', userId ?? null] as const
 }
 
-export function getAIIndexNotesQueryKey(userId: string | undefined, filter: AIIndexFilter, searchQuery = "") {
-  return [...getAIIndexNotesQueryPrefix(userId), filter, searchQuery.trim()] as const
-}
-
-export function useAIIndexNotes(filter: AIIndexFilter = "all", searchQuery = "", enabled = true) {
-  const { supabase, user } = useSupabase()
+export function useAIIndexNotes(filter: AIIndexFilter = 'all', searchQuery = '', enabled = true) {
+  const { client: supabase, user } = useSupabase()
   const normalizedSearchQuery = searchQuery.trim()
   const activeSearchQuery =
-    normalizedSearchQuery.length >= SEARCH_CONFIG.MIN_QUERY_LENGTH ? normalizedSearchQuery : ""
+    normalizedSearchQuery.length >= SEARCH_CONFIG.MIN_QUERY_LENGTH ? normalizedSearchQuery : ''
   const searchTsQuery = buildTsQuery(activeSearchQuery)
   const searchLanguage = searchTsQuery ? ftsLanguage(detectLanguage(activeSearchQuery)) : null
 
@@ -108,7 +114,7 @@ export function useAIIndexNotes(filter: AIIndexFilter = "all", searchQuery = "",
     staleTime: AI_INDEX_STALE_TIME_MS,
     queryFn: async ({ pageParam = 0 }) => {
       const page = pageParam as number
-      const { data, error } = await supabase.rpc("get_ai_index_notes", {
+      const { data, error } = await supabase.rpc('get_ai_index_notes', {
         filter_status: filter,
         page_number: page,
         page_size: AI_INDEX_PAGE_SIZE,
@@ -135,7 +141,9 @@ export function useAIIndexNotes(filter: AIIndexFilter = "all", searchQuery = "",
   })
 }
 
-export function useFlattenedAIIndexNotes(queryResult: { data?: InfiniteData<AIIndexNotesPage> }) {
+export function useFlattenedAIIndexNotes(queryResult: {
+  data?: InfiniteData<AIIndexNotesPage>
+}) {
   return useMemo(
     () => queryResult.data?.pages.flatMap((page) => page.notes) ?? [],
     [queryResult.data],
