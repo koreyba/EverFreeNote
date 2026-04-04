@@ -43,7 +43,7 @@ function createMockClient(
         order: () => builder,
         limit: () => builder,
         then: (onFulfilled: (value: CountResponse | LatestResponse) => unknown, onRejected?: (reason: unknown) => unknown) => {
-          const noteId = state.noteId
+          const noteId = state.noteId ?? ''
           const result =
             (state.mode === 'count' ? countResolvers[noteId] : latestResolvers[noteId]) ??
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

@@ -145,7 +145,6 @@ export function ApiKeysSettingsPanel() {
     void (async () => {
       try {
         const status = await apiKeysService.getStatus()
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!isMounted) return
 
         const ragIndexingSettings = status.ragIndexing ?? resolveRagIndexingSettings(null)
@@ -164,7 +163,6 @@ export function ApiKeysSettingsPanel() {
         setIndexingFeedback(null)
         setRetrievalFeedback(null)
       } catch (error) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!isMounted) return
 
         setKeyFeedback({
@@ -180,7 +178,6 @@ export function ApiKeysSettingsPanel() {
           message: 'Showing default retrieval values until live settings can be loaded from the server.',
         })
       } finally {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (isMounted) {
           setIsLoading(false)
         }

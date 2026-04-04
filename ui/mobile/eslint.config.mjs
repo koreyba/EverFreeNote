@@ -52,7 +52,7 @@ export default [
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
-      '@typescript-eslint/no-unnecessary-condition': ['warn', { allowConstantLoopConditions: true }],
+
       'react-hooks/exhaustive-deps': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-debugger': 'error',

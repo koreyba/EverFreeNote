@@ -33,12 +33,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY)
         const saved = raw === 'light' || raw === 'dark' || raw === 'system' ? (raw as ThemeMode) : null
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!cancelled && saved) {
           setModeState(saved)
         }
       } finally {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!cancelled) setIsHydrated(true)
       }
     })()

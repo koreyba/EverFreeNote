@@ -1,6 +1,6 @@
 import { defineConfig } from 'eslint/config';
 import js from '@eslint/js';
-import { createRequire } from 'module';
+import { createRequire } from 'node:module';
 import globals from 'globals';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 

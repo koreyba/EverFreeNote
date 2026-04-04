@@ -530,7 +530,7 @@ describe('SearchScreen - Delete Functionality', () => {
       })
 
       await waitFor(() => {
-        const noteCache = queryClient.getQueryData(['note', 'search-note-1'])
+        const noteCache = queryClient.getQueryData(['note', 'search-note-1']) as { note?: { title?: string } } | undefined
         expect(noteCache?.note?.title).toBe('Updated Title')
       })
 

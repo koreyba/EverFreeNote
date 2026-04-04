@@ -230,7 +230,6 @@ export function GeminiApiKeySection({ isFirst, isLast }: GeminiApiKeySectionProp
                                     <Text style={styles.buttonOutlineText}>Close</Text>
                                 </Pressable>
                                 <Pressable
-                                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                                     style={({ pressed }) => [styles.button, styles.buttonPrimary, (saving || loading) && styles.buttonDisabled, pressed && !saving && { opacity: 0.85 }]}
                                     onPress={() => { void handleSave() }}
                                     disabled={saving || loading}
