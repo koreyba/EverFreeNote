@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { ChevronRight } from 'lucide-react-native'
 import Toast from 'react-native-toast-message'
 
@@ -107,7 +107,7 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
     }
   }, [indexAction, note.id, note.status, onMutated, supabase.functions])
 
-  const performDelete = useCallback(async () => {
+  const handleDelete = useCallback(async () => {
     setOperation('deleting')
     try {
       const { data, error } = await supabase.functions.invoke('rag-index', {
@@ -129,17 +129,6 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
       setOperation(null)
     }
   }, [note.id, note.status, onMutated, supabase.functions])
-
-  const handleDelete = useCallback(() => {
-    Alert.alert(
-      'Remove from AI index',
-      'This note will no longer be searchable by AI. You can re-index it later.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => { void performDelete() } },
-      ],
-    )
-  }, [performDelete])
 
   return (
     <View style={styles.card}>
@@ -184,7 +173,7 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
             size="sm"
             loading={operation === 'deleting'}
             disabled={isBusy}
-            onPress={handleDelete}
+            onPress={() => { void handleDelete() }}
             style={styles.actionButton}
             textStyle={{ color: colors.destructive }}
           >
