@@ -15,7 +15,6 @@ import type {
   AIIndexMutationResult,
   AIIndexNoteRow as AIIndexNoteRowData,
 } from "@core/types/aiIndex"
-import { selectableSurfaceStateClasses } from "@ui/web/lib/selectableSurfaceStyles"
 import { cn } from "@ui/web/lib/utils"
 import {
   getAIIndexNotesQueryPrefix,
