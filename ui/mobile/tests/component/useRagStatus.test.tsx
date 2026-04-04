@@ -43,10 +43,11 @@ function createMockClient(
         order: () => builder,
         limit: () => builder,
         then: (onFulfilled: (value: CountResponse | LatestResponse) => unknown, onRejected?: (reason: unknown) => unknown) => {
-          const noteId = state.noteId ?? ''
+          const noteId = state.noteId
           const result =
             (state.mode === 'count' ? countResolvers[noteId] : latestResolvers[noteId]) ??
-            Promise.reject(new Error(`No resolver for noteId: ${noteId || '<missing>'}`))
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          Promise.reject(new Error(`No resolver for noteId: ${noteId || '<missing>'}`))
           return result.then(onFulfilled, onRejected)
         },
       }
@@ -57,9 +58,7 @@ function createMockClient(
 }
 
 describe('hooks/useRagStatus', () => {
-  const { useSupabase } = jest.requireMock('@ui/mobile/providers/SupabaseProvider') as {
-    useSupabase: jest.Mock
-  }
+  const { useSupabase } = jest.requireMock('@ui/mobile/providers/SupabaseProvider')
 
   beforeEach(() => {
     jest.clearAllMocks()

@@ -69,7 +69,7 @@ function formatAIIndexRpcError(error: unknown) {
         'AI Index database function is out of date.',
         'The app is calling the search-enabled get_ai_index_notes signature, but PostgREST still sees the older version.',
         'Apply migration supabase/migrations/20260329000002_add_search_to_ai_index_notes_rpc.sql and refresh the local Supabase schema cache if needed.',
-        code ? `Code: ${code}` : null,
+        `Code: ${code}`,
         message ? `Message: ${message}` : null,
         details ? `Details: ${details}` : null,
         hint ? `Hint: ${hint}` : null,

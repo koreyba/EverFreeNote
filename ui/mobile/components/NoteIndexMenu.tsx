@@ -28,7 +28,7 @@ async function extractErrorMessage(err: unknown, fallback: string): Promise<stri
     if (ctx instanceof Response) {
         try {
             const body = await ctx.json() as { error?: string }
-            if (body?.error) return body.error
+            if (body.error) return body.error
         } catch { /* fall through */ }
     }
     return err.message || fallback

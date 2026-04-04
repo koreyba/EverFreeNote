@@ -92,7 +92,7 @@ export const AIIndexNoteCard = memo(function AIIndexNoteCard({ note, onMutated }
         return
       }
       if (result.outcome === 'skipped') {
-        Toast.show({ type: 'error', text1: result.message ?? 'Indexing was skipped.' })
+        Toast.show({ type: 'error', text1: result.message || 'Indexing was skipped.' })
         if (result.reason === 'too_short') {
           onMutated({ noteId: note.id, previousStatus: note.status, nextStatus: 'not_indexed' })
         }

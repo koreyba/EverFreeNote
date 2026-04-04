@@ -1,4 +1,4 @@
-﻿import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+﻿import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View, ActivityIndicator, Text, Pressable } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import Constants from 'expo-constants'
@@ -122,33 +122,15 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             }
         }, [isConnected, isReady, localBundleUrl, remoteUrl])
 
-        useEffect(() => {
-            if (isReady) return
-            if (editorSource?.source !== 'remote') return
-            if (readyTimeoutRef.current) {
-                clearTimeout(readyTimeoutRef.current)
-            }
-            readyTimeoutRef.current = setTimeout(() => {
-                fallbackToLocal('ready-timeout', 'WebView READY timeout')
-            }, 2000)
-
-            return () => {
-                if (readyTimeoutRef.current) {
-                    clearTimeout(readyTimeoutRef.current)
-                    readyTimeoutRef.current = null
-                }
-            }
-        }, [editorSource?.source, isReady])
-
-        const post = (message: { type: string; payload?: unknown }) => {
+        const post = useCallback((message: { type: string; payload?: unknown }) => {
             webViewRef.current?.postMessage(JSON.stringify(message))
-        }
+        }, [])
 
-        const sendText = (type: string, text: string) => {
+        const sendText = useCallback((type: string, text: string) => {
             sendChunkedText(post, type, text)
-        }
+        }, [post])
 
-        const fallbackToLocal = (reason: EditorWebViewSource['reason'], errorMessage?: string) => {
+        const fallbackToLocal = useCallback((reason: EditorWebViewSource['reason'], errorMessage?: string) => {
             if (hasFallback.current) {
                 if (errorMessage) {
                     setLoadError(errorMessage)
@@ -168,7 +150,25 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             hasFallback.current = true
             setLoadError(null)
             setEditorSource({ uri: localBundleUrl, source: 'local', reason })
-        }
+        }, [editorSource?.source, localBundleUrl])
+
+        useEffect(() => {
+            if (isReady) return
+            if (editorSource?.source !== 'remote') return
+            if (readyTimeoutRef.current) {
+                clearTimeout(readyTimeoutRef.current)
+            }
+            readyTimeoutRef.current = setTimeout(() => {
+                fallbackToLocal('ready-timeout', 'WebView READY timeout')
+            }, 2000)
+
+            return () => {
+                if (readyTimeoutRef.current) {
+                    clearTimeout(readyTimeoutRef.current)
+                    readyTimeoutRef.current = null
+                }
+            }
+        }, [editorSource?.source, isReady, fallbackToLocal])
 
         useImperativeHandle(ref, () => ({
             setContent(html: string) {
@@ -201,7 +201,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     }, 2000)
                 })
             },
-        }), [isReady])
+        }), [isReady, sendText, post])
 
         const editorUrl = editorSource?.uri ?? ''
 
@@ -261,9 +261,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                             sendText('SET_CONTENT', pendingContent.current)
                             pendingContent.current = null
                         }
-                        if (pendingTheme.current) {
-                            post({ type: 'SET_THEME', payload: pendingTheme.current })
-                        }
+                        post({ type: 'SET_THEME', payload: pendingTheme.current })
                         if (pendingChunkFocus.current) {
                             post({ type: 'SCROLL_TO_CHUNK', payload: pendingChunkFocus.current })
                             pendingChunkFocus.current = null
@@ -286,7 +284,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         break
                     case 'IMAGE_ERROR': {
                         const p = payload as { src?: unknown; message?: unknown }
-                        console.error('[EditorWebView] Image failed to load:', p?.src, p?.message)
+                        console.error('[EditorWebView] Image failed to load:', p.src, p.message)
                         break
                     }
                     case 'EDITOR_FOCUS':
@@ -321,13 +319,13 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             if (isReady) {
                 post({ type: 'SET_THEME', payload: colorScheme })
             }
-        }, [colorScheme, isReady])
+        }, [colorScheme, isReady, post])
 
         useEffect(() => {
             if (isReady) {
                 post({ type: 'NETWORK_STATUS', payload: isConnected })
             }
-        }, [isConnected, isReady])
+        }, [isConnected, isReady, post])
 
         if (!editorUrl) {
             return (

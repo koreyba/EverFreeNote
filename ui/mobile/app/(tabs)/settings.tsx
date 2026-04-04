@@ -71,7 +71,7 @@ export default function SettingsScreen() {
   const { signOut, deleteAccount } = useAuth()
   const { user } = useSupabase()
   const insets = useSafeAreaInsets()
-  const styles = useMemo(() => createStyles(colors, insets.bottom ?? 0), [colors, insets.bottom])
+  const styles = useMemo(() => createStyles(colors, insets.bottom), [colors, insets.bottom])
   const [activeTab, setActiveTab] = useState<SettingsTabKey>('account')
   const [visitedTabs, setVisitedTabs] = useState(initialVisitedTabs)
   const isAIIndexTabActive = activeTab === 'aiIndex'

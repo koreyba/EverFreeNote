@@ -25,7 +25,7 @@ export function TagList({
   style,
   chipStyle,
 }: TagListProps) {
-  if (!tags || tags.length === 0) return null
+  if (tags.length === 0) return null
 
   const visibleTags = typeof maxVisible === 'number' ? tags.slice(0, maxVisible) : tags
   const hiddenCount = typeof maxVisible === 'number' ? tags.length - visibleTags.length : 0

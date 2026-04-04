@@ -51,6 +51,7 @@ export function useMobileSearchMode() {
 
       try {
         raw = await asyncStorageAdapter.getItem(STORAGE_KEY)
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!active) return
 
         const parsed = parseState(raw)
@@ -65,8 +66,10 @@ export function useMobileSearchMode() {
         console.warn('Failed to load mobile search mode from storage', error)
       } finally {
         const shouldPersistLocalEdit = localEditedRef.current
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         const shouldPersistNormalized = active && !localEditedRef.current && shouldPersistNormalizedState
 
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (active) {
           hasLoadedRef.current = true
         }

@@ -28,6 +28,7 @@ export function SettingsTabBar({ tabs, activeTab, onChange }: SettingsTabBarProp
 
   const handleTabPress = useCallback((key: SettingsTabKey) => {
     const x = layoutsRef.current[key]
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (x != null) {
       scrollRef.current?.scrollTo({ x: Math.max(0, x - 16), animated: true })
     }

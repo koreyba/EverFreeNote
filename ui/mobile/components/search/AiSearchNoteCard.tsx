@@ -54,7 +54,7 @@ function MoreFragmentsSection({
       {hasExpandableContent ? (
         <Pressable
           onPress={(event) => {
-            event?.stopPropagation?.()
+            event.stopPropagation()
             onToggleExpanded()
           }}
           disabled={selectionMode}
@@ -89,7 +89,7 @@ function MoreFragmentsSection({
             key={`${chunk.noteId}-${chunk.chunkIndex}`}
             testID={`ai-note-extra-chunk-${chunk.noteId}-${chunk.chunkIndex}`}
             onPress={(event) => {
-              event?.stopPropagation?.()
+              event.stopPropagation()
               onOpenChunk(chunk.charOffset, getRagChunkBodyLength(chunk.bodyContent))
             }}
             accessibilityRole="button"
@@ -148,7 +148,6 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
       <Pressable
         testID={`ai-note-card-${group.noteId}`}
         onPress={() => {
-          if (!topChunk) return
           handleOpenChunk(topChunk.charOffset, getRagChunkBodyLength(topChunk.bodyContent))
         }}
         onLongPress={selectionMode ? undefined : onLongPress}
@@ -185,11 +184,10 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
         />
       )}
 
-      {topChunk ? (
-        <Pressable
+      <Pressable
           testID={`ai-note-top-chunk-${group.noteId}`}
           onPress={(event) => {
-            event?.stopPropagation?.()
+            event.stopPropagation()
             handleOpenChunk(topChunk.charOffset, getRagChunkBodyLength(topChunk.bodyContent))
           }}
           accessibilityRole="button"
@@ -203,7 +201,6 @@ export const AiSearchNoteCard = memo(function AiSearchNoteCard({
             {topChunk.bodyContent}
           </Text>
         </Pressable>
-      ) : null}
 
       <MoreFragmentsSection
         group={group}

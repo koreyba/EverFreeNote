@@ -93,7 +93,7 @@ jest.mock('@ui/mobile/components/search/AiSearchNoteCard', () => ({
   }) => {
     const { Pressable, Text } = require('react-native')
     const topChunk = group.chunks[0]
-    const chunkText = topChunk.bodyContent ?? topChunk.content ?? ''
+    const chunkText = topChunk.bodyContent
     return (
       <Pressable
         testID={`mock-ai-note-${group.noteId}`}

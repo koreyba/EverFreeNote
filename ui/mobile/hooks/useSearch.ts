@@ -55,8 +55,8 @@ export function useSearch(query: string, options: { tag?: string | null; enabled
                             limit: SEARCH_CONFIG.PAGE_SIZE,
                             offset,
                         })
-                        const results = (result.results ?? []) as SearchResultItem[]
-                        const total = result.total ?? results.length
+                        const results = result.results as SearchResultItem[]
+                        const total = result.total
                         const hasMore = offset + results.length < total
                         return {
                             results,

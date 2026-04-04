@@ -70,7 +70,7 @@ export default function CallbackScreen() {
       }
       router.replace('/(auth)/login')
     }
-  }, [client.auth, params.access_token, params.code, params.refresh_token, router])
+  }, [client.auth, params, router])
 
   useEffect(() => {
     void handleCallback()

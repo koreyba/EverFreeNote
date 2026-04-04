@@ -31,6 +31,7 @@ export class MobileEnexExportService {
     let page = 0
     let totalCount = 0
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
       const result = await this.noteService.getNotes(userId, { page, pageSize })
       totalCount = result.totalCount

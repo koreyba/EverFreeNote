@@ -69,6 +69,7 @@ export function useRagStatus(noteId: string | undefined): RagStatus {
         }
 
         const chunkCount = countResult.count ?? 0
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         const indexedAt = chunkCount > 0 ? (latestResult.data?.[0] as RagStatusTimestampRow | undefined)?.indexed_at ?? null : null
         setStatus({ chunkCount, indexedAt, isLoading: false })
       } finally {

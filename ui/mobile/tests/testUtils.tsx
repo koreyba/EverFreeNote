@@ -111,7 +111,7 @@ export function createMockNoteService(state: MockNoteServiceState) {
       let filteredNotes = activeNotes
       const tag = _options?.tag
       if (tag) {
-        filteredNotes = activeNotes.filter(note => note.tags?.includes(tag))
+        filteredNotes = activeNotes.filter(note => note.tags.includes(tag))
       }
 
       // Apply search filter if provided
@@ -119,7 +119,7 @@ export function createMockNoteService(state: MockNoteServiceState) {
         const query = _options.searchQuery.toLowerCase()
         filteredNotes = filteredNotes.filter(note =>
           note.title.toLowerCase().includes(query) ||
-          note.description?.toLowerCase().includes(query)
+          note.description.toLowerCase().includes(query)
         )
       }
 

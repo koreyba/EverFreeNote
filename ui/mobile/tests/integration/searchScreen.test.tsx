@@ -218,7 +218,7 @@ jest.mock('@shopify/flash-list', () => ({
         testID="search-results-list"
         onScrollBeginDrag={onScrollBeginDrag}
       >
-        {data?.map((item: unknown) => (
+        {data.map((item: unknown) => (
           <View key={keyExtractor(item)}>
             {renderItem({ item })}
           </View>
@@ -530,10 +530,7 @@ describe('SearchScreen - Delete Functionality', () => {
       })
 
       await waitFor(() => {
-        const noteCache = queryClient.getQueryData(['note', 'search-note-1']) as {
-          note?: { title?: string } | null
-          status?: string
-        } | undefined
+        const noteCache = queryClient.getQueryData(['note', 'search-note-1'])
         expect(noteCache?.note?.title).toBe('Updated Title')
       })
 

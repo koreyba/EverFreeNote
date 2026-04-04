@@ -35,6 +35,7 @@ export function WordPressSettingsPanel() {
     void (async () => {
       try {
         const status = await service.getStatus()
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!isMounted) return
 
         setSiteUrl(status.integration?.siteUrl ?? '')
@@ -52,12 +53,14 @@ export function WordPressSettingsPanel() {
             : null
         )
       } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!isMounted) return
         setFeedback({
           variant: 'error',
           message: error instanceof Error ? error.message : 'Failed to load WordPress settings',
         })
       } finally {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (isMounted) {
           setIsLoading(false)
         }

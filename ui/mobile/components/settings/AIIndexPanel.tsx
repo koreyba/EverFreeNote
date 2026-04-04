@@ -143,11 +143,11 @@ export function AIIndexPanel() {
     if (queryResult.hasNextPage && !queryResult.isFetchingNextPage) {
       void queryResult.fetchNextPage()
     }
-  }, [queryResult.fetchNextPage, queryResult.hasNextPage, queryResult.isFetchingNextPage])
+  }, [queryResult])
 
   const handleRefresh = useCallback(() => {
     void queryResult.refetch()
-  }, [queryResult.refetch])
+  }, [queryResult])
 
   const handleClearSearch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)

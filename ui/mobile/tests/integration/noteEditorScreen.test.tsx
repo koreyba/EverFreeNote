@@ -491,7 +491,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       const buttons = alertSpy.mock.calls[0]?.[2]
       const okButton = Array.isArray(buttons)
-        ? buttons.find((button) => button?.text === 'OK')
+        ? buttons.find((button) => (button as { text?: string }).text === 'OK')
         : undefined
 
       act(() => {

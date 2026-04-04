@@ -67,7 +67,7 @@ export function useNotes(options: {
       // Fallback to local DB (first page only)
       const localNotes = await databaseService.getLocalNotes(user.id)
       return {
-        notes: localNotes as Note[],
+        notes: localNotes,
         totalCount: localNotes.length,
         hasMore: false,
         nextCursor: undefined,
@@ -104,7 +104,7 @@ export function useNote(id: string) {
         if (remoteResult.status === 'found') {
           await databaseService.saveNotes([remoteResult.note])
           return {
-            note: remoteResult.note as Note,
+            note: remoteResult.note,
             status: 'found' as const,
           }
         }

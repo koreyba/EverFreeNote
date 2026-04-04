@@ -174,7 +174,7 @@ jest.mock('@shopify/flash-list', () => ({
     const { View } = require('react-native')
     return (
       <View testID="flash-list">
-        {data?.map((item: unknown) => (
+        {data.map((item: unknown) => (
           <View key={keyExtractor(item)}>
             {renderItem({ item })}
           </View>
