@@ -20,7 +20,7 @@ export function SettingsTabBar({ tabs, activeTab, onChange }: SettingsTabBarProp
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const scrollRef = useRef<ScrollView>(null)
-  const layoutsRef = useRef<Record<string, number>>({})
+  const layoutsRef = useRef<Partial<Record<string, number>>>({})
 
   const handleTabLayout = useCallback((key: string, event: LayoutChangeEvent) => {
     layoutsRef.current[key] = event.nativeEvent.layout.x
@@ -28,7 +28,6 @@ export function SettingsTabBar({ tabs, activeTab, onChange }: SettingsTabBarProp
 
   const handleTabPress = useCallback((key: SettingsTabKey) => {
     const x = layoutsRef.current[key]
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (x != null) {
       scrollRef.current?.scrollTo({ x: Math.max(0, x - 16), animated: true })
     }

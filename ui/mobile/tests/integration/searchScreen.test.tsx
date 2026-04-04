@@ -206,7 +206,7 @@ jest.mock('@ui/mobile/components/tags', () => ({
 // Mock FlashList
 jest.mock('@shopify/flash-list', () => ({
   FlashList: ({ data, renderItem, keyExtractor, onScrollBeginDrag, onRefresh }: {
-    data: unknown[];
+    data: unknown[] | undefined;
     renderItem: (info: { item: unknown }) => React.ReactElement;
     keyExtractor: (item: unknown) => string;
     onScrollBeginDrag?: () => void;
@@ -218,7 +218,7 @@ jest.mock('@shopify/flash-list', () => ({
         testID="search-results-list"
         onScrollBeginDrag={onScrollBeginDrag}
       >
-        {data.map((item: unknown) => (
+        {data?.map((item: unknown) => (
           <View key={keyExtractor(item)}>
             {renderItem({ item })}
           </View>

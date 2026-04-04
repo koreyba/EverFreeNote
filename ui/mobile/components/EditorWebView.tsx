@@ -283,7 +283,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         }
                         break
                     case 'IMAGE_ERROR': {
-                        const p = payload as { src?: unknown; message?: unknown }
+                        const p = (payload ?? {}) as { src?: unknown; message?: unknown }
                         console.error('[EditorWebView] Image failed to load:', p.src, p.message)
                         break
                     }
