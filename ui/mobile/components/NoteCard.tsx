@@ -72,8 +72,8 @@ export const NoteCard = memo(function NoteCard({
 }: NoteCardProps) {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
-  const description = stripHtml(note.description)
-  const searchSnippet = note.headline ?? note.snippet ?? note.description
+  const description = stripHtml(note.description ?? '')
+  const searchSnippet = note.headline ?? note.snippet ?? note.description ?? ''
   const hasSearchSnippet = stripHtml(searchSnippet).length > 0
 
   const checkboxOpacity = useSharedValue(0)
@@ -130,7 +130,7 @@ export const NoteCard = memo(function NoteCard({
               </Text>
             ) : null
           )}
-          {note.tags.length > 0 && (
+          {!!note.tags?.length && (
             <TagList
               tags={note.tags}
               onTagPress={onTagPress}

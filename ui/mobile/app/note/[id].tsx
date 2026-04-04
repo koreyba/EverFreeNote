@@ -255,11 +255,11 @@ export default function NoteEditorScreen() {
         lastHydratedNoteIdRef.current = note.id
       }
       setTitle(note.title || '')
-      setTags(note.tags)
+      setTags(note.tags ?? [])
       lastSavedRef.current = {
-        title: note.title,
-        description: note.description,
-        tags: note.tags,
+        title: note.title ?? '',
+        description: note.description ?? '',
+        tags: note.tags ?? [],
       }
       latestDraftRef.current = lastSavedRef.current
       saverRef.current?.reset(lastSavedRef.current)
