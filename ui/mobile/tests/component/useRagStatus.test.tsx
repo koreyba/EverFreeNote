@@ -46,7 +46,6 @@ function createMockClient(
           const noteId = state.noteId ?? ''
           const result =
             (state.mode === 'count' ? countResolvers[noteId] : latestResolvers[noteId]) ??
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           Promise.reject(new Error(`No resolver for noteId: ${noteId || '<missing>'}`))
           return result.then(onFulfilled, onRejected)
         },
