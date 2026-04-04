@@ -261,7 +261,9 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                             sendText('SET_CONTENT', pendingContent.current)
                             pendingContent.current = null
                         }
-                        post({ type: 'SET_THEME', payload: pendingTheme.current })
+                        if (pendingTheme.current) {
+                            post({ type: 'SET_THEME', payload: pendingTheme.current })
+                        }
                         if (pendingChunkFocus.current) {
                             post({ type: 'SCROLL_TO_CHUNK', payload: pendingChunkFocus.current })
                             pendingChunkFocus.current = null

@@ -178,8 +178,10 @@ const createLegacyAiGroup = (noteId: string): RagNoteGroup =>
         chunkIndex: 0,
         charOffset: 40,
         content: 'Legacy chunk only content',
+        bodyContent: 'Legacy chunk only content',
+        overlapPrefix: '',
         similarity: 0.88,
-      } as never,
+      },
     ],
   } as RagNoteGroup)
 
