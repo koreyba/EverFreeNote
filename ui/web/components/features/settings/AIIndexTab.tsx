@@ -449,7 +449,7 @@ function AIIndexResultsHeader({
   summaryText: string
 }>) {
   return (
-    <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3 xl:flex-row xl:items-start xl:justify-between">
+    <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3 xl:flex-row xl:items-start xl:justify-between xl:px-6">
       <div className="min-w-0 space-y-2">
         <p className="text-sm font-semibold text-foreground">{summaryText}</p>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
