@@ -866,6 +866,67 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         expect(mockScrollToChunk).toHaveBeenCalledWith(14, 5)
       })
     })
+
+    it('keeps chunk focus working when switching notes without a second editor ready event', async () => {
+      ;(mockNoteService.prototype as typeof mockNoteService.prototype & {
+        getNoteStatus: jest.Mock
+      }).getNoteStatus = jest.fn().mockImplementation(async (noteId: string) => {
+        if (noteId === 'other-note-id') {
+          return {
+            status: 'found',
+            note: {
+              ...defaultNote,
+              id: 'other-note-id',
+              title: 'Other Note',
+            },
+          }
+        }
+
+        return {
+          status: 'found',
+          note: defaultNote,
+        }
+      })
+
+      mockLocalSearchParams = {
+        id: 'test-note-id',
+        focusOffset: '14',
+        focusLength: '5',
+        focusRequestId: 'focus-request-1',
+      }
+
+      const rendered = render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onReady?.()
+      })
+
+      await waitFor(() => {
+        expect(mockScrollToChunk).toHaveBeenCalledWith(14, 5)
+      })
+
+      mockScrollToChunk.mockClear()
+      mockLocalSearchParams = {
+        id: 'other-note-id',
+        focusOffset: '22',
+        focusLength: '4',
+        focusRequestId: 'focus-request-2',
+      }
+
+      rendered.rerender(<NoteEditorScreen />)
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Other Note')).toBeTruthy()
+      })
+
+      await waitFor(() => {
+        expect(mockScrollToChunk).toHaveBeenCalledWith(22, 4)
+      })
+    })
   })
 
   describe('Toolbar visibility', () => {

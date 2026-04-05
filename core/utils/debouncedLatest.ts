@@ -30,6 +30,8 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
   let timer: ReturnType<typeof setTimeout> | null = null
   let pending: T | null = null
   let lastFlushed: T | null = null
+  let inFlight: Promise<void> | null = null
+  let inFlightValue: T | null = null
 
   const clearTimer = () => {
     if (!timer) return
@@ -37,14 +39,17 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
     timer = null
   }
 
+  const areEqual = (left: T, right: T) => (
+    isEqual ? isEqual(left, right) : Object.is(left, right)
+  )
+
   const shouldSkip = (next: T) => {
-    if (!isEqual) return false
     if (lastFlushed === null) return false
-    return isEqual(lastFlushed, next)
+    return areEqual(lastFlushed, next)
   }
 
   const flushNow = async () => {
-    clearTimer()
+    if (inFlight) return inFlight
     if (pending === null) return
 
     const next = pending
@@ -55,17 +60,35 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
       return
     }
 
-    const previousBaseline = lastFlushed
-    lastFlushed = next
-    try {
-      await onFlush(next)
-    } catch (error) {
-      lastFlushed = previousBaseline
-      throw error
-    }
+    inFlightValue = next
+    inFlight = (async () => {
+      try {
+        await onFlush(next)
+        lastFlushed = next
+
+        if (pending !== null && shouldSkip(pending)) {
+          pending = null
+          clearTimer()
+        }
+      } catch (error) {
+        if (pending === null) {
+          queuePending(next)
+        }
+        throw error
+      } finally {
+        inFlight = null
+        inFlightValue = null
+
+        if (pending !== null && timer === null && !shouldSkip(pending)) {
+          queuePending(pending, { restartTimer: false })
+        }
+      }
+    })()
+
+    return inFlight
   }
 
-  const queuePending = (nextPending: T | null) => {
+  const queuePending = (nextPending: T | null, options: { restartTimer?: boolean } = {}) => {
     pending = nextPending
 
     if (pending === null || shouldSkip(pending)) {
@@ -74,8 +97,18 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
       return
     }
 
+    if (inFlightValue !== null && areEqual(inFlightValue, pending)) {
+      clearTimer()
+      return
+    }
+
+    if (options.restartTimer === false && timer !== null) {
+      return
+    }
+
     clearTimer()
     timer = setTimeout(() => {
+      timer = null
       void flushNow()
     }, delayMs)
   }
@@ -101,7 +134,7 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
     rebase: (base: T, nextPending?: T | null) => {
       lastFlushed = base
       // Default behavior: keep the current pending draft when caller omits nextPending.
-      queuePending(nextPending === undefined ? pending : nextPending)
+      queuePending(nextPending === undefined ? pending : nextPending, { restartTimer: false })
     },
 
     getBaseline: () => lastFlushed,

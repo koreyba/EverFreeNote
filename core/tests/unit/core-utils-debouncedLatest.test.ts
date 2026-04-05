@@ -48,23 +48,32 @@ describe('createDebouncedLatest', () => {
     expect(debounced.getPending()).toBeNull()
   })
 
-  it('updates the debouncer baseline before an async flush resolves', async () => {
-    let resolveFlush!: () => void
+  it('retries an in-flight value if the flush fails after the same payload is re-queued', async () => {
+    let rejectFlush!: (error: Error) => void
+    const onFlush = jest.fn().mockImplementation(() => new Promise<void>((_, reject) => {
+      rejectFlush = reject
+    }))
     const debounced = createDebouncedLatest({
       delayMs: 100,
-      onFlush: () => new Promise<void>((resolve) => {
-        resolveFlush = resolve
-      }),
+      onFlush,
       isEqual: (left: { title: string }, right: { title: string }) => left.title === right.title,
     })
 
     debounced.schedule({ title: 'Saved' })
+    const flushPromise = debounced.flush()
+    debounced.schedule({ title: 'Saved' })
 
+    rejectFlush(new Error('boom'))
+
+    await expect(flushPromise).rejects.toThrow('boom')
+    expect(debounced.getPending()).toEqual({ title: 'Saved' })
+
+    onFlush.mockResolvedValueOnce(undefined)
     await jest.advanceTimersByTimeAsync(100)
 
+    expect(onFlush).toHaveBeenCalledTimes(2)
     expect(debounced.getBaseline()).toEqual({ title: 'Saved' })
-
-    resolveFlush()
+    expect(debounced.getPending()).toBeNull()
   })
 
   it('cancels pending work and prevents the timer from flushing', async () => {
@@ -126,5 +135,26 @@ describe('createDebouncedLatest', () => {
     debounced.schedule({ title: 'Saved' })
 
     expect(debounced.getPending()).toBeNull()
+  })
+
+  it('keeps the original debounce deadline when rebasing pending work', async () => {
+    const onFlush = jest.fn().mockResolvedValue(undefined)
+    const debounced = createDebouncedLatest({
+      delayMs: 100,
+      onFlush,
+      isEqual: (left: { title: string }, right: { title: string }) => left.title === right.title,
+    })
+
+    debounced.schedule({ title: 'Local' })
+
+    await jest.advanceTimersByTimeAsync(50)
+
+    debounced.rebase({ title: 'Remote' }, { title: 'Local' })
+
+    await jest.advanceTimersByTimeAsync(49)
+    expect(onFlush).not.toHaveBeenCalled()
+
+    await jest.advanceTimersByTimeAsync(1)
+    expect(onFlush).toHaveBeenCalledWith({ title: 'Local' })
   })
 })

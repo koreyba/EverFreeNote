@@ -301,7 +301,6 @@ export default function NoteEditorScreen() {
       })
       if (sessionChange === 'switched') {
         setHistoryState({ canUndo: false, canRedo: false })
-        setIsEditorReady(false)
       }
       const reconcileResult = reconcileExternalNoteSnapshot({
         currentNoteId: lastHydratedNoteIdRef.current,
