@@ -275,15 +275,20 @@ describe('NoteEditor Component', () => {
 
       const handleAutoSave = async (payload: { noteId?: string; title: string; description: string; tags: string }) => {
         onAutoSave(payload)
+        const assignedNoteId = state.noteId ?? 'note-1'
 
         // Simulate the controller: first autosave creates the note and assigns an id,
         // subsequent autosaves keep updating the selected note fields.
         setState((prev) => ({
-          noteId: prev.noteId ?? 'note-1',
+          noteId: prev.noteId ?? assignedNoteId,
           title: payload.title,
           description: payload.description,
           tags: payload.tags,
         }))
+
+        if (!state.noteId) {
+          return { noteId: assignedNoteId }
+        }
       }
 
       return (
@@ -545,6 +550,7 @@ describe('NoteEditor – autosave race condition on new note create', () => {
               tags: serverSnapshot.tags,
             })
             setInflight(false)
+            return { noteId: 'server-uuid-1' }
           }
         },
         [state.noteId],

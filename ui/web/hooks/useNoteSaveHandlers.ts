@@ -138,14 +138,6 @@ export function useNoteSaveHandlers({
     // For new notes, skip if all fields are empty
     if (isNewNote && !nextTitle.trim() && !nextDescription.trim() && !nextTags.trim()) return
 
-    // Diff check for existing notes: skip if unchanged
-    if (!isNewNote) {
-      const sameTitle = current?.title === nextTitle
-      const sameDesc = (current?.description ?? '') === nextDescription
-      const sameTags = (current?.tags ?? []).join(', ') === nextTags
-      if (sameTitle && sameDesc && sameTags) return
-    }
-
     setAutoSaving(true)
     const guard = setTimeout(() => setAutoSaving(false), 5000)
     try {

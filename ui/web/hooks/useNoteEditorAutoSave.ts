@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { toast } from 'sonner'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 import {
   reconcileExternalNoteSnapshot,
@@ -78,6 +79,11 @@ export function useNoteEditorAutoSave({
   onNoteSwitch,
   cancelDebouncedTagQuery,
 }: UseNoteEditorAutoSaveParams): UseNoteEditorAutoSaveResult {
+  const onAutoSaveRef = useRef(onAutoSave)
+  useEffect(() => {
+    onAutoSaveRef.current = onAutoSave
+  }, [onAutoSave])
+
   const [editorSessionKey, setEditorSessionKey] = useState(0)
   const getIncomingSnapshot = useCallback((): NoteEditorSnapshot => ({
     title: initialTitle,
@@ -109,6 +115,21 @@ export function useNoteEditorAutoSave({
     ...overrides,
   }), [getFormData])
 
+  const flushAutoSave = useCallback(async (payload: NoteAutoSavePayload) => {
+    if (!onAutoSaveRef.current) return
+    try {
+      const result = await onAutoSaveRef.current(payload)
+      toast.dismiss('note-autosave-failed')
+      if (!payload.noteId) {
+        setPendingCreateAssignedNoteId(result?.noteId ?? null)
+      }
+    } catch (error) {
+      toast.error('Auto-save failed. Your changes will retry.', { id: 'note-autosave-failed' })
+      throw error
+    }
+  }, [])
+
+  // eslint-disable-next-line react-hooks/refs -- the debouncer stores the callback for later flushes; the ref is read only when onFlush runs outside render
   const debouncedAutoSave = useMemo(() => createDebouncedLatest<NoteAutoSavePayload>({
     delayMs: autosaveDelayMs,
     isEqual: (a, b) =>
@@ -116,14 +137,8 @@ export function useNoteEditorAutoSave({
       a.title === b.title &&
       a.description === b.description &&
       a.tags === b.tags,
-    onFlush: async (payload) => {
-      if (!onAutoSave) return
-      const result = await onAutoSave(payload)
-      if (!payload.noteId) {
-        setPendingCreateAssignedNoteId(result?.noteId ?? null)
-      }
-    },
-  }), [autosaveDelayMs, onAutoSave])
+    onFlush: flushAutoSave,
+  }), [autosaveDelayMs, flushAutoSave])
 
   const previousDebouncedAutoSaveRef = useRef<typeof debouncedAutoSave | null>(null)
   useEffect(() => {
@@ -188,7 +203,6 @@ export function useNoteEditorAutoSave({
           ? { noteId: nextNoteId, ...getDraftSnapshot() }
           : null
       )
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear the temporary create-assignment marker once the session has adopted its server id
       setPendingCreateAssignedNoteId(null)
       return
     }
