@@ -142,7 +142,7 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     }))
   })
 
-  it('adopts clean external updates for title, body, and tags on same-note refresh', () => {
+  it('adopts clean external updates for title, body, and tags on same-note refresh', async () => {
     const { rerender, ref, onAutoSave } = renderEditor()
 
     rerender(
@@ -163,14 +163,14 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     expect(mockSetEditorContent).toHaveBeenCalledWith('<p>Remote body</p>')
     expect(screen.getByTestId('selected-tags').textContent).toBe('remote-tag')
 
-    act(() => {
-      void ref.current?.flushPendingSave()
+    await act(async () => {
+      await ref.current?.flushPendingSave()
     })
 
     expect(onAutoSave).not.toHaveBeenCalled()
   })
 
-  it('preserves dirty fields while still applying clean external fields', () => {
+  it('preserves dirty fields while still applying clean external fields', async () => {
     const { rerender, ref, onAutoSave } = renderEditor()
 
     fireEvent.change(screen.getByPlaceholderText('Note title'), {
@@ -195,8 +195,8 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     expect(mockSetEditorContent).toHaveBeenCalledWith('<p>Remote body</p>')
     expect(screen.getByTestId('selected-tags').textContent).toBe('remote-tag')
 
-    act(() => {
-      void ref.current?.flushPendingSave()
+    await act(async () => {
+      await ref.current?.flushPendingSave()
     })
 
     expect(onAutoSave).toHaveBeenCalledWith(expect.objectContaining({
