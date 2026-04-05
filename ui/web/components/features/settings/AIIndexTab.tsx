@@ -345,7 +345,6 @@ function AIIndexEmptyState({
 }
 
 function AIIndexToolbar({
-  bulkAction,
   filter,
   filterOptions,
   isSearchHintVisible,
@@ -355,7 +354,6 @@ function AIIndexToolbar({
   onSearchKeyDown,
   searchDraft,
 }: Readonly<{
-  bulkAction?: React.ReactNode
   filter: AIIndexFilter
   filterOptions: Array<{ value: AIIndexFilter; label: string }>
   isSearchHintVisible: boolean
@@ -395,7 +393,6 @@ function AIIndexToolbar({
                 </button>
               )
             })}
-            {bulkAction}
           </div>
         </div>
 
@@ -436,6 +433,7 @@ function AIIndexToolbar({
 
 function AIIndexResultsHeader({
   activeSearchQuery,
+  bulkAction,
   filter,
   hasActiveFilter,
   hasActiveSearch,
@@ -446,6 +444,7 @@ function AIIndexResultsHeader({
   summaryText,
 }: Readonly<{
   activeSearchQuery: string
+  bulkAction?: React.ReactNode
   filter: AIIndexFilter
   hasActiveFilter: boolean
   hasActiveSearch: boolean
@@ -455,8 +454,10 @@ function AIIndexResultsHeader({
   onResetFilter: () => void
   summaryText: string
 }>) {
+  const hasDetailRow = Boolean(bulkAction) || hasActiveFilter || hasActiveSearch || isFetching || isFetchingNextPage
+
   return (
-    <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-3 border-b border-border/60 px-4 py-3">
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">{summaryText}</p>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -480,7 +481,8 @@ function AIIndexResultsHeader({
           ) : null}
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+        {bulkAction}
         <AIIndexResetActions
           hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}
@@ -830,7 +832,6 @@ export function AIIndexTab() {
   return (
     <div className="space-y-4">
       <AIIndexToolbar
-        bulkAction={bulkAction}
         filter={filter}
         filterOptions={FILTER_OPTIONS}
         isSearchHintVisible={isSearchHintVisible}
@@ -844,6 +845,7 @@ export function AIIndexTab() {
       <div className="rounded-2xl border border-border/60 bg-background/60">
         <AIIndexResultsHeader
           activeSearchQuery={activeSearchQuery}
+          bulkAction={bulkAction}
           filter={filter}
           hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}

@@ -192,6 +192,7 @@ async function processBulkIndexNote({
 }
 
 function AIIndexSummary({
+  bulkAction,
   hasActiveFilter,
   hasActiveSearch,
   onClearSearch,
@@ -199,6 +200,7 @@ function AIIndexSummary({
   styles,
   summaryText,
 }: Readonly<{
+  bulkAction?: ReactElement | null
   hasActiveFilter: boolean
   hasActiveSearch: boolean
   onClearSearch: () => void
@@ -208,13 +210,14 @@ function AIIndexSummary({
 }>) {
   if (!summaryText) return null
 
-  const showSummaryActions = hasActiveSearch || hasActiveFilter
+  const showSummaryActions = Boolean(bulkAction) || hasActiveSearch || hasActiveFilter
 
   return (
     <View style={styles.summaryRow}>
       <Text style={styles.summaryText}>{summaryText}</Text>
       {showSummaryActions ? (
         <View style={styles.summaryActions}>
+          {bulkAction}
           {hasActiveSearch ? (
             <Button variant="ghost" size="sm" onPress={onClearSearch}>
               Clear search
@@ -222,7 +225,7 @@ function AIIndexSummary({
           ) : null}
           {hasActiveFilter ? (
             <Button variant="ghost" size="sm" onPress={onResetFilter}>
-              Show all
+              Reset filter
             </Button>
           ) : null}
         </View>
@@ -498,6 +501,29 @@ export function AIIndexPanel() {
   const bulkActionLabel = bulkIndexProgress
     ? `${bulkIndexProgress.completed}/${bulkIndexProgress.total}`
     : 'Index loaded'
+  const bulkAction = showBulkAction ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={bulkIndexProgress ? 'Indexing loaded notes' : 'Index loaded notes'}
+      accessibilityState={{ disabled: bulkIndexProgress !== null }}
+      disabled={bulkIndexProgress !== null}
+      onPress={handleBulkIndexPress}
+      style={({ pressed }) => [
+        styles.actionChip,
+        bulkIndexProgress !== null && styles.actionChipDisabled,
+        pressed && bulkIndexProgress === null && styles.actionChipPressed,
+      ]}
+    >
+      <View style={styles.actionChipContent}>
+        {bulkIndexProgress ? (
+          <ActivityIndicator size="small" color={colors.primary} style={styles.actionChipSpinner} />
+        ) : (
+          <Database size={12} color={colors.primary} />
+        )}
+        <Text style={styles.actionChipLabel}>{bulkActionLabel}</Text>
+      </View>
+    </Pressable>
+  ) : null
 
   return (
     <View style={styles.root}>
@@ -529,29 +555,6 @@ export function AIIndexPanel() {
               </Pressable>
             )
           })}
-          {showBulkAction ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={bulkIndexProgress ? 'Indexing loaded notes' : 'Index loaded notes'}
-              accessibilityState={{ disabled: bulkIndexProgress !== null }}
-              disabled={bulkIndexProgress !== null}
-              onPress={handleBulkIndexPress}
-              style={({ pressed }) => [
-                styles.actionChip,
-                bulkIndexProgress !== null && styles.actionChipDisabled,
-                pressed && bulkIndexProgress === null && styles.actionChipPressed,
-              ]}
-            >
-              <View style={styles.actionChipContent}>
-                {bulkIndexProgress ? (
-                  <ActivityIndicator size="small" color={colors.primary} style={styles.actionChipSpinner} />
-                ) : (
-                  <Database size={12} color={colors.primary} />
-                )}
-                <Text style={styles.actionChipLabel}>{bulkActionLabel}</Text>
-              </View>
-            </Pressable>
-          ) : null}
         </ScrollView>
       </View>
 
@@ -582,6 +585,7 @@ export function AIIndexPanel() {
         ) : null}
 
         <AIIndexSummary
+          bulkAction={bulkAction}
           hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}
           onClearSearch={handleClearSearch}
@@ -700,11 +704,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       color: colors.mutedForeground,
     },
     summaryRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-      flexWrap: 'wrap',
+      gap: 8,
     },
     summaryText: {
       fontSize: 12,
@@ -715,6 +715,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       flexDirection: 'row',
       gap: 6,
       flexWrap: 'wrap',
+      alignItems: 'center',
     },
     list: {
       flex: 1,
