@@ -188,11 +188,12 @@ export function useNoteEditorAutoSave({
           ? { noteId: nextNoteId, ...getDraftSnapshot() }
           : null
       )
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear the temporary create-assignment marker once the session has adopted its server id
+      setPendingCreateAssignedNoteId(null)
       return
     }
 
     // Real note switch: reset session key (remounts editor + title input) and notify caller.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional remount signal for a true note switch
     setEditorSessionKey((k) => k + 1)
     cancelDebouncedTagQuery()
     onNoteSwitch?.()
