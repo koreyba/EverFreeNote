@@ -449,7 +449,7 @@ function AIIndexResultsHeader({
   summaryText: string
 }>) {
   return (
-    <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3 xl:flex-row xl:items-start xl:justify-between">
       <div className="min-w-0 space-y-2">
         <p className="text-sm font-semibold text-foreground">{summaryText}</p>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -473,7 +473,7 @@ function AIIndexResultsHeader({
           ) : null}
         </div>
       </div>
-      <div className="flex w-full shrink-0 items-center justify-end sm:w-[168px]">
+      <div className="flex w-full shrink-0 items-center justify-end xl:w-[168px]">
         {bulkAction}
       </div>
     </div>
@@ -785,17 +785,18 @@ export function AIIndexTab() {
   }
 
   const bulkAction = actionableLoadedNotes.length > 0 || bulkIndexProgress ? (
-    <button
+    <Button
       type="button"
+      size="sm"
       aria-label={bulkIndexProgress ? "Indexing loaded notes" : "Index loaded notes"}
       aria-busy={bulkIndexProgress !== null}
       onClick={handleBulkIndexClick}
       disabled={bulkIndexProgress !== null}
       className={cn(
-        "inline-flex h-9 w-full items-center justify-center rounded-md border px-3 text-sm whitespace-nowrap transition-colors",
+        "w-full justify-center whitespace-nowrap border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
         bulkIndexProgress
           ? "cursor-default border-primary/20 bg-primary/10 text-primary/75"
-          : "border-primary/25 bg-primary/10 font-medium text-primary hover:border-primary/35 hover:bg-primary/15"
+          : "font-medium"
       )}
     >
       <span className="inline-flex items-center gap-1.5">
@@ -810,7 +811,7 @@ export function AIIndexTab() {
             : "Index loaded"}
         </span>
       </span>
-    </button>
+    </Button>
   ) : null
 
   return (

@@ -508,28 +508,26 @@ export function AIIndexPanel() {
     ? `${bulkIndexProgress.completed}/${bulkIndexProgress.total}`
     : 'Index loaded'
   const bulkAction = showBulkAction ? (
-    <Pressable
-      accessibilityRole="button"
+    <Button
+      variant="default"
+      size="sm"
       accessibilityLabel={bulkIndexProgress ? 'Indexing loaded notes' : 'Index loaded notes'}
-      accessibilityState={{ disabled: bulkIndexProgress !== null }}
       disabled={bulkIndexProgress !== null}
       onPress={handleBulkIndexPress}
-      style={({ pressed }) => [
+      style={[
         styles.actionChip,
         styles.actionButton,
-        bulkIndexProgress !== null && styles.actionChipDisabled,
-        pressed && bulkIndexProgress === null && styles.actionChipPressed,
       ]}
     >
       <View style={styles.actionChipContent}>
         {bulkIndexProgress ? (
-          <ActivityIndicator size="small" color={colors.primary} style={styles.actionChipSpinner} />
+          <ActivityIndicator size="small" color={colors.primaryForeground} style={styles.actionChipSpinner} />
         ) : (
-          <Database size={12} color={colors.primary} />
+          <Database size={12} color={colors.primaryForeground} />
         )}
-        <Text style={styles.actionChipLabel}>{bulkActionLabel}</Text>
+        <Text style={styles.actionButtonLabel}>{bulkActionLabel}</Text>
       </View>
-    </Pressable>
+    </Button>
   ) : null
 
   return (
@@ -646,36 +644,20 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       paddingVertical: 4,
     },
     actionChip: {
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: colors.primary,
-      backgroundColor: colors.selectionBackground,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
+      backgroundColor: colors.primary,
     },
     actionButton: {
-      minHeight: 36,
-      alignSelf: 'stretch',
-      justifyContent: 'center',
-    },
-    actionChipDisabled: {
-      opacity: 0.7,
-    },
-    actionChipPressed: {
-      opacity: 0.85,
+      flex: 1,
     },
     actionChipContent: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
     },
-    actionChipSpinner: {
-      transform: [{ scale: 0.7 }],
-    },
-    actionChipLabel: {
-      color: colors.primary,
+    actionButtonLabel: {
+      color: colors.primaryForeground,
       fontFamily: 'Inter_500Medium',
-      fontSize: 12,
+      fontSize: 13,
     },
     chipPressed: {
       opacity: 0.6,
