@@ -29,21 +29,23 @@ description: Technical implementation notes, patterns, and code guidelines
   1) Skip if no diff from latest cached/overlay values.
   2) `offlineCache.saveNote(partial)` then `applyNoteOverlay` to update UI immediately.
   3) `offlineQueue.enqueue({ operation: 'update', payload: partial, clientUpdatedAt })`; pendingCount increments; rely on SyncManager for draining/backoff/compaction.
-  4) Update `lastSavedAt`; keep Save disabled while autosave is in-flight; show Saving… for ≥500ms.
+  4) Update `lastSavedAt`; keep Save disabled while autosave is in-flight; show Saving... for >=500ms.
+- Same-note refreshes are acknowledgements, not full hydration events: if the user already has a newer dirty draft locally, an external refresh of that same note must not overwrite title/body/tags in the active editor session.
 
 ### Manual Save
-- `handleSaveNote` continues to run full save logic but also updates overlay/cache/queue with `clientUpdatedAt`. Save button text: Saving…/Saved; Cancel renamed to Read (return to view mode).
+- `handleSaveNote` continues to run full save logic but also updates overlay/cache/queue with `clientUpdatedAt`. Save button text: Saving.../Saved; Cancel renamed to Read (return to view mode).
 
 ### Patterns & Best Practices
 - Always go through controller; do not call Supabase directly from UI for autosave.
 - Keep payloads minimal; avoid sending full HTML on every change.
 - Maintain offline-first UX: overlay reflects edits instantly even when offline; counters show pending/failed.
 - Respect compaction/enforceLimit policies; do not bypass OfflineQueueService.
+- Keep autosave session semantics shared across clients: real note switches, same-note refreshes, and autosave create-id assignments must be handled explicitly even when the editor bindings are platform-specific.
 
 ## Integration Points
 **How do pieces connect?**
 
-- `NoteEditor` → debounced `onAutoSave` → `useNoteAppController.handleAutoSave` → offline cache + overlay → queue → `OfflineSyncManager` → Supabase.
+- `NoteEditor` -> debounced `onAutoSave` -> `useNoteAppController.handleAutoSave` -> offline cache + overlay -> queue -> `OfflineSyncManager` -> Supabase.
 - `Sidebar`/`NoteList` read from overlay/cache and pending/failed counters; lastSavedAt shown near editor controls.
 
 ## Error Handling

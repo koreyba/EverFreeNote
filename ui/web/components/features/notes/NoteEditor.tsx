@@ -35,7 +35,7 @@ interface NoteEditorProps {
   isSaving: boolean
   onSave: (data: { title: string; description: string; tags: string }) => void
   onRead: (data: { title: string; description: string; tags: string }) => void
-  onAutoSave?: (data: { noteId?: string; title: string; description: string; tags: string }) => Promise<void> | void
+  onAutoSave?: (data: { noteId?: string; title: string; description: string; tags: string }) => Promise<{ noteId?: string } | void> | { noteId?: string } | void
   isAutoSaving?: boolean
   autosaveDelayMs?: number
   lastSavedAt?: string | null
@@ -88,6 +88,27 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     tags: buildTagString(selectedTagsRef.current),
   }), [initialTitle, initialDescription])
 
+  const applyExternalSnapshot = React.useCallback((
+    snapshot: { title: string; description: string; tags: string },
+    fieldDecisions: Record<'title' | 'description' | 'tags', 'accept-external' | 'acknowledge-local' | 'preserve-local'>
+  ) => {
+    if (fieldDecisions.title === 'accept-external' && titleInputRef.current && titleInputRef.current.value !== snapshot.title) {
+      titleInputRef.current.value = snapshot.title
+    }
+
+    if (fieldDecisions.description === 'accept-external' && editorRef.current?.getHTML() !== snapshot.description) {
+      editorRef.current?.setContent(snapshot.description)
+    }
+
+    if (fieldDecisions.tags === 'accept-external' && buildTagString(selectedTagsRef.current) !== snapshot.tags) {
+      const parsed = parseTagString(snapshot.tags)
+      selectedTagsRef.current = parsed
+      setSelectedTags(parsed)
+      debouncedTagQuery.cancel()
+      setTagQuery("")
+    }
+  }, [debouncedTagQuery])
+
   const { editorSessionKey, handleContentChange, scheduleAutoSave, cancelAutoSave, flushPendingSave } =
     useNoteEditorAutoSave({
       noteId,
@@ -97,6 +118,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       autosaveDelayMs,
       onAutoSave,
       getFormData,
+      applyExternalSnapshot,
       cancelDebouncedTagQuery: debouncedTagQuery.cancel,
       onNoteSwitch: () => {
         const parsed = parseTagString(initialTags)
