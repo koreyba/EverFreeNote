@@ -42,7 +42,11 @@ jest.mock('@tanstack/react-query', () => {
   const actual = jest.requireActual('@tanstack/react-query')
   return {
     ...actual,
-    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries, setQueriesData: jest.fn() }),
+    useQueryClient: () => ({
+      invalidateQueries: mockInvalidateQueries,
+      setQueriesData: jest.fn(),
+      setQueryData: jest.fn(),
+    }),
   }
 })
 
@@ -207,7 +211,7 @@ describe('AIIndexPanel', () => {
   it('shows the bulk button only when the loaded list contains actionable notes', () => {
     const view = render(<AIIndexPanel />)
 
-    expect(screen.getByText('Index loaded notes')).toBeTruthy()
+    expect(screen.getByLabelText('Index loaded notes')).toBeTruthy()
 
     view.unmount()
     setupMocks({}, [
@@ -216,7 +220,7 @@ describe('AIIndexPanel', () => {
 
     render(<AIIndexPanel />)
 
-    expect(screen.queryByText('Index loaded notes')).toBeNull()
+    expect(screen.queryByLabelText('Index loaded notes')).toBeNull()
   })
 
   it('bulk-indexes only loaded actionable notes and skips indexed cards', async () => {
@@ -231,7 +235,7 @@ describe('AIIndexPanel', () => {
 
     render(<AIIndexPanel />)
 
-    fireEvent.press(screen.getByText('Index loaded notes'))
+    fireEvent.press(screen.getByLabelText('Index loaded notes'))
 
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledTimes(2)

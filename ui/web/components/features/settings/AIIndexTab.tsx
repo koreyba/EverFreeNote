@@ -345,6 +345,7 @@ function AIIndexEmptyState({
 }
 
 function AIIndexToolbar({
+  bulkAction,
   filter,
   filterOptions,
   isSearchHintVisible,
@@ -354,6 +355,7 @@ function AIIndexToolbar({
   onSearchKeyDown,
   searchDraft,
 }: Readonly<{
+  bulkAction?: React.ReactNode
   filter: AIIndexFilter
   filterOptions: Array<{ value: AIIndexFilter; label: string }>
   isSearchHintVisible: boolean
@@ -393,6 +395,7 @@ function AIIndexToolbar({
                 </button>
               )
             })}
+            {bulkAction}
           </div>
         </div>
 
@@ -433,7 +436,6 @@ function AIIndexToolbar({
 
 function AIIndexResultsHeader({
   activeSearchQuery,
-  bulkAction,
   filter,
   hasActiveFilter,
   hasActiveSearch,
@@ -444,7 +446,6 @@ function AIIndexResultsHeader({
   summaryText,
 }: Readonly<{
   activeSearchQuery: string
-  bulkAction?: React.ReactNode
   filter: AIIndexFilter
   hasActiveFilter: boolean
   hasActiveSearch: boolean
@@ -480,7 +481,6 @@ function AIIndexResultsHeader({
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {bulkAction}
         <AIIndexResetActions
           hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}
@@ -735,6 +735,9 @@ export function AIIndexTab() {
 
     runBackgroundTask(query.fetchNextPage())
   }, [query])
+  const invokeBulkIndex = React.useCallback<BulkIndexInvoke>((name, options) => {
+    return supabase.functions.invoke(name, options)
+  }, [supabase.functions])
   const handleBulkIndexLoaded = React.useCallback(async () => {
     if (bulkIndexProgress || actionableLoadedNotes.length === 0) return
 
@@ -750,7 +753,7 @@ export function AIIndexTab() {
       for (const [index, note] of actionableLoadedNotes.entries()) {
         const outcome = await processBulkIndexNote({
           applyMutationResult,
-          invoke: supabase.functions.invoke as BulkIndexInvoke,
+          invoke: invokeBulkIndex,
           note,
         })
         counters = incrementBulkIndexCounters(counters, outcome)
@@ -770,7 +773,7 @@ export function AIIndexTab() {
       setBulkIndexProgress(null)
       runBackgroundTask(queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) }))
     }
-  }, [actionableLoadedNotes, applyMutationResult, bulkIndexProgress, queryClient, supabase.functions, user?.id])
+  }, [actionableLoadedNotes, applyMutationResult, bulkIndexProgress, invokeBulkIndex, queryClient, user?.id])
   const handleBulkIndexClick = React.useCallback(() => {
     handleBulkIndexLoaded().catch(() => {
       toast.error("Bulk indexing failed")
@@ -796,26 +799,37 @@ export function AIIndexTab() {
   }
 
   const bulkAction = actionableLoadedNotes.length > 0 || bulkIndexProgress ? (
-    <Button
-      size="sm"
+    <button
+      type="button"
+      aria-label={bulkIndexProgress ? "Indexing loaded notes" : "Index loaded notes"}
       onClick={handleBulkIndexClick}
       disabled={bulkIndexProgress !== null}
-      className="min-w-[10rem] justify-center"
-    >
-      {bulkIndexProgress ? (
-        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Database className="mr-1.5 h-3.5 w-3.5" />
+      className={cn(
+        "shrink-0 rounded-full border px-3 py-1 text-sm transition-colors sm:rounded-xl sm:px-4 sm:py-2",
+        bulkIndexProgress
+          ? "cursor-default border-primary/20 bg-primary/10 text-primary/75"
+          : "border-primary/25 bg-primary/10 font-medium text-primary hover:border-primary/35 hover:bg-primary/15"
       )}
-      {bulkIndexProgress
-        ? `Indexing ${Math.min(bulkIndexProgress.total, bulkIndexProgress.completed + 1)}/${bulkIndexProgress.total}`
-        : "Index loaded notes"}
-    </Button>
+    >
+      <span className="inline-flex items-center gap-1.5">
+        {bulkIndexProgress ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Database className="h-3.5 w-3.5" />
+        )}
+        <span>
+          {bulkIndexProgress
+            ? `${Math.min(bulkIndexProgress.total, bulkIndexProgress.completed + 1)}/${bulkIndexProgress.total}`
+            : "Index loaded"}
+        </span>
+      </span>
+    </button>
   ) : null
 
   return (
     <div className="space-y-4">
       <AIIndexToolbar
+        bulkAction={bulkAction}
         filter={filter}
         filterOptions={FILTER_OPTIONS}
         isSearchHintVisible={isSearchHintVisible}
@@ -829,7 +843,6 @@ export function AIIndexTab() {
       <div className="rounded-2xl border border-border/60 bg-background/60">
         <AIIndexResultsHeader
           activeSearchQuery={activeSearchQuery}
-          bulkAction={bulkAction}
           filter={filter}
           hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}

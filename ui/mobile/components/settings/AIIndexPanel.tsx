@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { Search, X } from 'lucide-react-native'
+import { Database, Search, X } from 'lucide-react-native'
 import Toast from 'react-native-toast-message'
 import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
 
@@ -182,21 +182,15 @@ async function processBulkIndexNote({
 }
 
 function AIIndexSummary({
-  actionableLoadedCount,
-  bulkIndexProgress,
   hasActiveFilter,
   hasActiveSearch,
-  onBulkIndexPress,
   onClearSearch,
   onResetFilter,
   styles,
   summaryText,
 }: Readonly<{
-  actionableLoadedCount: number
-  bulkIndexProgress: BulkIndexProgress | null
   hasActiveFilter: boolean
   hasActiveSearch: boolean
-  onBulkIndexPress: () => void
   onClearSearch: () => void
   onResetFilter: () => void
   styles: ReturnType<typeof createStyles>
@@ -204,25 +198,13 @@ function AIIndexSummary({
 }>) {
   if (!summaryText) return null
 
-  const showBulkButton = actionableLoadedCount > 0 || bulkIndexProgress !== null
-  const showSummaryActions = showBulkButton || hasActiveSearch || hasActiveFilter
+  const showSummaryActions = hasActiveSearch || hasActiveFilter
 
   return (
     <View style={styles.summaryRow}>
       <Text style={styles.summaryText}>{summaryText}</Text>
       {showSummaryActions ? (
         <View style={styles.summaryActions}>
-          {showBulkButton ? (
-            <Button
-              size="sm"
-              disabled={bulkIndexProgress !== null}
-              onPress={onBulkIndexPress}
-            >
-              {bulkIndexProgress
-                ? `Indexing ${Math.min(bulkIndexProgress.total, bulkIndexProgress.completed + 1)}/${bulkIndexProgress.total}`
-                : 'Index loaded notes'}
-            </Button>
-          ) : null}
           {hasActiveSearch ? (
             <Button variant="ghost" size="sm" onPress={onClearSearch}>
               Clear search
@@ -441,6 +423,10 @@ export function AIIndexPanel() {
     runAsyncTask(queryResult.refetch())
   }, [queryResult])
 
+  const invokeBulkIndex = useCallback<BulkIndexInvoke>((name, options) => {
+    return supabase.functions.invoke(name, options)
+  }, [supabase.functions])
+
   const handleClearSearch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     setSearchDraft('')
@@ -461,7 +447,7 @@ export function AIIndexPanel() {
       for (const [index, note] of actionableLoadedNotes.entries()) {
         const outcome = await processBulkIndexNote({
           applyMutationResult: (result) => applyMutationResultToQuery(activeQueryKey, result),
-          invoke: supabase.functions.invoke as BulkIndexInvoke,
+          invoke: invokeBulkIndex,
           note,
         })
         counts = incrementBulkCounts(counts, outcome)
@@ -475,7 +461,7 @@ export function AIIndexPanel() {
         queryKey: getAIIndexNotesQueryPrefix(user?.id),
       })
     }
-  }, [actionableLoadedNotes, activeQueryKey, applyMutationResultToQuery, bulkIndexProgress, queryClient, supabase.functions.invoke, user?.id])
+  }, [actionableLoadedNotes, activeQueryKey, applyMutationResultToQuery, bulkIndexProgress, invokeBulkIndex, queryClient, user?.id])
 
   const handleBulkIndexPress = useCallback(() => {
     runAsyncTask(handleBulkIndexLoaded())
@@ -495,12 +481,15 @@ export function AIIndexPanel() {
   const errorMessage = queryResult.error instanceof Error
     ? queryResult.error.message
     : 'Failed to load AI index notes.'
+  const showBulkAction = actionableLoadedNotes.length > 0 || bulkIndexProgress !== null
+  const bulkActionLabel = bulkIndexProgress
+    ? `${Math.min(bulkIndexProgress.total, bulkIndexProgress.completed + 1)}/${bulkIndexProgress.total}`
+    : 'Index loaded'
 
   return (
     <View style={styles.root}>
       <View style={styles.filterRail}>
         <ScrollView
-          accessibilityRole="tablist"
           horizontal
           keyboardShouldPersistTaps="handled"
           showsHorizontalScrollIndicator={false}
@@ -527,6 +516,25 @@ export function AIIndexPanel() {
               </Pressable>
             )
           })}
+          {showBulkAction ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={bulkIndexProgress ? 'Indexing loaded notes' : 'Index loaded notes'}
+              accessibilityState={{ disabled: bulkIndexProgress !== null }}
+              disabled={bulkIndexProgress !== null}
+              onPress={handleBulkIndexPress}
+              style={({ pressed }) => [
+                styles.actionChip,
+                bulkIndexProgress !== null && styles.actionChipDisabled,
+                pressed && bulkIndexProgress === null && styles.actionChipPressed,
+              ]}
+            >
+              <View style={styles.actionChipContent}>
+                <Database size={12} color={colors.primary} />
+                <Text style={styles.actionChipLabel}>{bulkActionLabel}</Text>
+              </View>
+            </Pressable>
+          ) : null}
         </ScrollView>
       </View>
 
@@ -557,11 +565,8 @@ export function AIIndexPanel() {
         ) : null}
 
         <AIIndexSummary
-          actionableLoadedCount={actionableLoadedNotes.length}
-          bulkIndexProgress={bulkIndexProgress}
           hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}
-          onBulkIndexPress={handleBulkIndexPress}
           onClearSearch={handleClearSearch}
           onResetFilter={handleResetFilter}
           styles={styles}
@@ -611,6 +616,30 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     },
     chip: {
       paddingVertical: 4,
+    },
+    actionChip: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      backgroundColor: colors.selectionBackground,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    actionChipDisabled: {
+      opacity: 0.7,
+    },
+    actionChipPressed: {
+      opacity: 0.85,
+    },
+    actionChipContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    actionChipLabel: {
+      color: colors.primary,
+      fontFamily: 'Inter_500Medium',
+      fontSize: 12,
     },
     chipPressed: {
       opacity: 0.6,
