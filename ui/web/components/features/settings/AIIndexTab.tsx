@@ -73,10 +73,36 @@ type OptimisticMutationState = AIIndexMutationResult & {
   sourceIndex: number
 }
 
+type BulkIndexOutcome = "indexed" | "skipped" | "failed"
+
+type BulkIndexCounters = {
+  successCount: number
+  skippedCount: number
+  errorCount: number
+}
+
+type BulkIndexInvoke = (
+  name: string,
+  options: { body: { noteId: string; action: "index" | "reindex" } }
+) => Promise<{ data: unknown; error: unknown }>
+
 function runBackgroundTask(task: Promise<unknown>) {
   task.catch(() => {
     // Best-effort background work should not break the settings UI.
   })
+}
+
+function incrementBulkIndexCounters(
+  counters: BulkIndexCounters,
+  outcome: BulkIndexOutcome
+): BulkIndexCounters {
+  if (outcome === "indexed") {
+    return { ...counters, successCount: counters.successCount + 1 }
+  }
+  if (outcome === "skipped") {
+    return { ...counters, skippedCount: counters.skippedCount + 1 }
+  }
+  return { ...counters, errorCount: counters.errorCount + 1 }
 }
 
 function formatBulkIndexSummary(successCount: number, skippedCount: number, errorCount: number) {
@@ -87,6 +113,53 @@ function formatBulkIndexSummary(successCount: number, skippedCount: number, erro
   ].filter(Boolean)
 
   return parts.join(" • ")
+}
+
+async function processBulkIndexNote({
+  applyMutationResult,
+  invoke,
+  note,
+}: Readonly<{
+  applyMutationResult: (mutationResult: AIIndexMutationResult, options?: { invalidate?: boolean }) => void
+  invoke: BulkIndexInvoke
+  note: AIIndexNoteRowData
+}>): Promise<BulkIndexOutcome> {
+  const actionPresentation = getAIIndexActionPresentation(note.status)
+
+  try {
+    const { data, error } = await invoke("rag-index", {
+      body: {
+        noteId: note.id,
+        action: actionPresentation.action,
+      },
+    })
+    if (error) throw error
+
+    const result = parseRagIndexResult(data)
+    if (result.outcome === "indexed") {
+      applyMutationResult({
+        noteId: note.id,
+        previousStatus: note.status,
+        nextStatus: actionPresentation.successStatus,
+      }, { invalidate: false })
+      return "indexed"
+    }
+
+    if (result.outcome === "skipped") {
+      if (result.reason === "too_short") {
+        applyMutationResult({
+          noteId: note.id,
+          previousStatus: note.status,
+          nextStatus: "not_indexed",
+        }, { invalidate: false })
+      }
+      return "skipped"
+    }
+
+    return "failed"
+  } catch {
+    return "failed"
+  }
 }
 
 function matchesAIIndexFilter(filter: AIIndexFilter, status: AIIndexNoteRowData["status"]) {
@@ -665,59 +738,32 @@ export function AIIndexTab() {
   const handleBulkIndexLoaded = React.useCallback(async () => {
     if (bulkIndexProgress || actionableLoadedNotes.length === 0) return
 
-    const notesToProcess = actionableLoadedNotes
-    let successCount = 0
-    let skippedCount = 0
-    let errorCount = 0
+    let counters: BulkIndexCounters = {
+      successCount: 0,
+      skippedCount: 0,
+      errorCount: 0,
+    }
 
-    setBulkIndexProgress({ completed: 0, total: notesToProcess.length })
+    setBulkIndexProgress({ completed: 0, total: actionableLoadedNotes.length })
 
     try {
-      for (const [index, note] of notesToProcess.entries()) {
-        const actionPresentation = getAIIndexActionPresentation(note.status)
-        try {
-          const { data, error } = await supabase.functions.invoke("rag-index", {
-            body: {
-              noteId: note.id,
-              action: actionPresentation.action,
-            },
-          })
-          if (error) throw error
-
-          const result = parseRagIndexResult(data)
-          if (result.outcome === "indexed") {
-            successCount += 1
-            applyMutationResult({
-              noteId: note.id,
-              previousStatus: note.status,
-              nextStatus: actionPresentation.successStatus,
-            }, { invalidate: false })
-          } else if (result.outcome === "skipped") {
-            skippedCount += 1
-            if (result.reason === "too_short") {
-              applyMutationResult({
-                noteId: note.id,
-                previousStatus: note.status,
-                nextStatus: "not_indexed",
-              }, { invalidate: false })
-            }
-          } else {
-            errorCount += 1
-          }
-        } catch {
-          errorCount += 1
-        } finally {
-          setBulkIndexProgress({
-            completed: index + 1,
-            total: notesToProcess.length,
-          })
-        }
+      for (const [index, note] of actionableLoadedNotes.entries()) {
+        const outcome = await processBulkIndexNote({
+          applyMutationResult,
+          invoke: supabase.functions.invoke as BulkIndexInvoke,
+          note,
+        })
+        counters = incrementBulkIndexCounters(counters, outcome)
+        setBulkIndexProgress({
+          completed: index + 1,
+          total: actionableLoadedNotes.length,
+        })
       }
 
-      const summary = formatBulkIndexSummary(successCount, skippedCount, errorCount)
-      if (successCount > 0 && errorCount === 0) {
+      const summary = formatBulkIndexSummary(counters.successCount, counters.skippedCount, counters.errorCount)
+      if (counters.successCount > 0 && counters.errorCount === 0) {
         toast.success(summary || "Loaded notes indexed")
-      } else if (successCount > 0 || skippedCount > 0 || errorCount > 0) {
+      } else if (counters.successCount > 0 || counters.skippedCount > 0 || counters.errorCount > 0) {
         toast.message(summary || "Bulk indexing finished")
       }
     } finally {
@@ -725,6 +771,11 @@ export function AIIndexTab() {
       runBackgroundTask(queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) }))
     }
   }, [actionableLoadedNotes, applyMutationResult, bulkIndexProgress, queryClient, supabase.functions, user?.id])
+  const handleBulkIndexClick = React.useCallback(() => {
+    handleBulkIndexLoaded().catch(() => {
+      toast.error("Bulk indexing failed")
+    })
+  }, [handleBulkIndexLoaded])
   const emptyState = (
     <AIIndexEmptyState
       emptyMessage={emptyMessage}
@@ -747,11 +798,7 @@ export function AIIndexTab() {
   const bulkAction = actionableLoadedNotes.length > 0 || bulkIndexProgress ? (
     <Button
       size="sm"
-      onClick={() => {
-        handleBulkIndexLoaded().catch(() => {
-          toast.error("Bulk indexing failed")
-        })
-      }}
+      onClick={handleBulkIndexClick}
       disabled={bulkIndexProgress !== null}
       className="min-w-[10rem] justify-center"
     >

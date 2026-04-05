@@ -49,6 +49,7 @@ jest.mock('@tanstack/react-query', () => {
 jest.mock('@ui/mobile/hooks/useAIIndexNotes', () => ({
   useAIIndexNotes: (...args: unknown[]) => mockUseAIIndexNotes(...args),
   useFlattenedAIIndexNotes: (...args: unknown[]) => mockUseFlattenedAIIndexNotes(...args),
+  getAIIndexNotesQueryKey: jest.fn((userId: string | undefined, filter: string, searchQuery = '') => ['ai-index-notes', userId ?? null, filter, searchQuery.trim()]),
   getAIIndexNotesQueryPrefix: jest.fn((userId: string | undefined) => ['ai-index-notes', userId ?? null]),
 }))
 

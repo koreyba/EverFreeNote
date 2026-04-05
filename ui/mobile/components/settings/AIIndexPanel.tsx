@@ -1,3 +1,4 @@
+import type { MutableRefObject, ReactElement } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -20,6 +21,7 @@ import type { AIIndexFilter, AIIndexMutationResult, AIIndexNoteRow, AIIndexNotes
 import { Button } from '@ui/mobile/components/ui/Button'
 import { AIIndexNoteCard } from '@ui/mobile/components/settings/AIIndexNoteCard'
 import {
+  getAIIndexNotesQueryKey,
   getAIIndexNotesQueryPrefix,
   useAIIndexNotes,
   useFlattenedAIIndexNotes,
@@ -30,6 +32,18 @@ type FilterOption = Readonly<{
   value: AIIndexFilter
   label: string
 }>
+
+type BulkIndexProgress = {
+  completed: number
+  total: number
+}
+
+type BulkIndexOutcome = 'indexed' | 'skipped' | 'failed'
+
+type BulkIndexInvoke = (
+  name: string,
+  options: { body: { noteId: string; action: 'index' | 'reindex' } }
+) => Promise<{ data: unknown; error: unknown }>
 
 const FILTER_OPTIONS: readonly FilterOption[] = [
   { value: 'all', label: 'All notes' },
@@ -46,6 +60,12 @@ const FILTER_EMPTY_MESSAGES: Record<AIIndexFilter, string> = {
 }
 
 const DEBOUNCE_MS = 300
+
+function runAsyncTask(task: Promise<unknown> | unknown) {
+  Promise.resolve(task).catch(() => {
+    // Best-effort background work should not break the settings UI.
+  })
+}
 
 function getEmptyMessage(filter: AIIndexFilter, searchQuery: string) {
   if (searchQuery.length > 0) return `No notes match "${searchQuery}".`
@@ -80,6 +100,244 @@ function shouldKeepNote(note: AIIndexNoteRow, result: AIIndexMutationResult, fil
   return note.id !== result.noteId || note.status === filter
 }
 
+function incrementBulkCounts(
+  counts: Readonly<{ successCount: number; skippedCount: number; errorCount: number }>,
+  outcome: BulkIndexOutcome,
+) {
+  if (outcome === 'indexed') {
+    return { ...counts, successCount: counts.successCount + 1 }
+  }
+  if (outcome === 'skipped') {
+    return { ...counts, skippedCount: counts.skippedCount + 1 }
+  }
+  return { ...counts, errorCount: counts.errorCount + 1 }
+}
+
+function showBulkIndexToast(successCount: number, skippedCount: number, errorCount: number) {
+  const summary = getBulkSummaryText(successCount, skippedCount, errorCount)
+
+  if (successCount > 0 && errorCount === 0) {
+    Toast.show({ type: 'success', text1: summary || 'Loaded notes indexed' })
+    return
+  }
+
+  if (successCount > 0 || skippedCount > 0 || errorCount > 0) {
+    Toast.show({ type: 'info', text1: summary || 'Bulk indexing finished' })
+  }
+}
+
+function updateBulkProgress(
+  index: number,
+  total: number,
+  setBulkIndexProgress: (progress: BulkIndexProgress) => void,
+) {
+  setBulkIndexProgress({
+    completed: index + 1,
+    total,
+  })
+}
+
+async function processBulkIndexNote({
+  applyMutationResult,
+  invoke,
+  note,
+}: Readonly<{
+  applyMutationResult: (result: AIIndexMutationResult) => void
+  invoke: BulkIndexInvoke
+  note: AIIndexNoteRow
+}>): Promise<BulkIndexOutcome> {
+  const actionPresentation = getAIIndexActionPresentation(note.status)
+
+  try {
+    const { data, error } = await invoke('rag-index', {
+      body: { noteId: note.id, action: actionPresentation.action },
+    })
+    if (error) throw error
+
+    const result = parseRagIndexResult(data)
+    if (result.outcome === 'indexed') {
+      applyMutationResult({
+        noteId: note.id,
+        previousStatus: note.status,
+        nextStatus: actionPresentation.successStatus,
+      })
+      return 'indexed'
+    }
+
+    if (result.outcome === 'skipped') {
+      if (result.reason === 'too_short') {
+        applyMutationResult({
+          noteId: note.id,
+          previousStatus: note.status,
+          nextStatus: 'not_indexed',
+        })
+      }
+      return 'skipped'
+    }
+
+    return 'failed'
+  } catch {
+    return 'failed'
+  }
+}
+
+function AIIndexSummary({
+  actionableLoadedCount,
+  bulkIndexProgress,
+  hasActiveFilter,
+  hasActiveSearch,
+  onBulkIndexPress,
+  onClearSearch,
+  onResetFilter,
+  styles,
+  summaryText,
+}: Readonly<{
+  actionableLoadedCount: number
+  bulkIndexProgress: BulkIndexProgress | null
+  hasActiveFilter: boolean
+  hasActiveSearch: boolean
+  onBulkIndexPress: () => void
+  onClearSearch: () => void
+  onResetFilter: () => void
+  styles: ReturnType<typeof createStyles>
+  summaryText: string | null
+}>) {
+  if (!summaryText) return null
+
+  const showBulkButton = actionableLoadedCount > 0 || bulkIndexProgress !== null
+  const showSummaryActions = showBulkButton || hasActiveSearch || hasActiveFilter
+
+  return (
+    <View style={styles.summaryRow}>
+      <Text style={styles.summaryText}>{summaryText}</Text>
+      {showSummaryActions ? (
+        <View style={styles.summaryActions}>
+          {showBulkButton ? (
+            <Button
+              size="sm"
+              disabled={bulkIndexProgress !== null}
+              onPress={onBulkIndexPress}
+            >
+              {bulkIndexProgress
+                ? `Indexing ${Math.min(bulkIndexProgress.total, bulkIndexProgress.completed + 1)}/${bulkIndexProgress.total}`
+                : 'Index loaded notes'}
+            </Button>
+          ) : null}
+          {hasActiveSearch ? (
+            <Button variant="ghost" size="sm" onPress={onClearSearch}>
+              Clear search
+            </Button>
+          ) : null}
+          {hasActiveFilter ? (
+            <Button variant="ghost" size="sm" onPress={onResetFilter}>
+              Show all
+            </Button>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+function AIIndexContent({
+  colors,
+  emptyMessage,
+  errorMessage,
+  hasActiveFilter,
+  hasActiveSearch,
+  keyExtractor,
+  listRef,
+  notes,
+  onClearSearch,
+  onLoadMore,
+  onRefresh,
+  onResetFilter,
+  queryResult,
+  renderItem,
+  styles,
+}: Readonly<{
+  colors: ReturnType<typeof useTheme>['colors']
+  emptyMessage: string
+  errorMessage: string
+  hasActiveFilter: boolean
+  hasActiveSearch: boolean
+  keyExtractor: (item: AIIndexNoteRow) => string
+  listRef: MutableRefObject<FlatList<AIIndexNoteRow> | null>
+  notes: AIIndexNoteRow[]
+  onClearSearch: () => void
+  onLoadMore: () => void
+  onRefresh: () => void
+  onResetFilter: () => void
+  queryResult: ReturnType<typeof useAIIndexNotes>
+  renderItem: ({ item }: { item: AIIndexNoteRow }) => ReactElement
+  styles: ReturnType<typeof createStyles>
+}>) {
+  if (queryResult.isLoading) {
+    return (
+      <View style={styles.centerState}>
+        <ActivityIndicator color={colors.foreground} />
+        <Text style={styles.statusText}>Loading AI index notes...</Text>
+      </View>
+    )
+  }
+
+  if (queryResult.isError) {
+    return (
+      <View style={styles.centerState}>
+        <Text style={styles.errorTitle}>AI Index is unavailable</Text>
+        <Text style={styles.errorText}>{errorMessage}</Text>
+        <Button variant="outline" size="sm" onPress={onRefresh}>
+          Retry
+        </Button>
+      </View>
+    )
+  }
+
+  if (notes.length === 0) {
+    return (
+      <View style={styles.centerState}>
+        <Text style={styles.statusText}>{emptyMessage}</Text>
+        {(hasActiveSearch || hasActiveFilter) ? (
+          <View style={styles.emptyActions}>
+            {hasActiveSearch ? (
+              <Button variant="ghost" size="sm" onPress={onClearSearch}>
+                Clear search
+              </Button>
+            ) : null}
+            {hasActiveFilter ? (
+              <Button variant="ghost" size="sm" onPress={onResetFilter}>
+                Show all notes
+              </Button>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    )
+  }
+
+  return (
+    <FlatList
+      ref={listRef}
+      testID="ai-index-list"
+      data={notes}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      style={styles.list}
+      contentContainerStyle={styles.listContent}
+      onEndReached={onLoadMore}
+      onEndReachedThreshold={0.4}
+      refreshing={queryResult.isRefetching && !queryResult.isFetchingNextPage}
+      onRefresh={onRefresh}
+      keyboardShouldPersistTaps="handled"
+      ListFooterComponent={
+        queryResult.isFetchingNextPage ? (
+          <ActivityIndicator style={styles.footer} color={colors.foreground} />
+        ) : null
+      }
+    />
+  )
+}
+
 export function AIIndexPanel() {
   const { colors } = useTheme()
   const { client: supabase, user } = useSupabase()
@@ -91,7 +349,7 @@ export function AIIndexPanel() {
   const [filter, setFilter] = useState<AIIndexFilter>('all')
   const [searchDraft, setSearchDraft] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [bulkIndexProgress, setBulkIndexProgress] = useState<{ completed: number; total: number } | null>(null)
+  const [bulkIndexProgress, setBulkIndexProgress] = useState<BulkIndexProgress | null>(null)
 
   const normalizedSearchDraft = searchDraft.trim()
   const isSearchHintVisible =
@@ -122,51 +380,65 @@ export function AIIndexPanel() {
 
   const queryResult = useAIIndexNotes(filter, searchQuery)
   const notes = useFlattenedAIIndexNotes(queryResult)
+  const activeQueryKey = useMemo(
+    () => getAIIndexNotesQueryKey(user?.id, filter, searchQuery),
+    [filter, searchQuery, user?.id],
+  )
   const totalCount = queryResult.data?.pages[0]?.totalCount ?? 0
   const summaryText = getSummaryText(notes.length, totalCount)
   const emptyMessage = getEmptyMessage(filter, searchQuery)
   const actionableLoadedNotes = useMemo(() => getAIIndexActionableNotes(notes), [notes])
 
+  const applyMutationResultToQuery = useCallback((
+    queryKey: readonly unknown[],
+    result: AIIndexMutationResult,
+  ) => {
+    queryClient.setQueryData<InfiniteData<AIIndexNotesPage>>(queryKey, (old) => {
+      if (!old) return old
+      return {
+        ...old,
+        pages: old.pages.map((page) => ({
+          ...page,
+          notes: page.notes
+            .map((note) => patchNoteStatus(note, result))
+            .filter((note) => shouldKeepNote(note, result, filter)),
+        })),
+      }
+    })
+  }, [filter, queryClient])
 
-  const applyMutationResult = useCallback(
-    (result: AIIndexMutationResult) => {
-      queryClient.setQueriesData<InfiniteData<AIIndexNotesPage>>(
-        { queryKey: getAIIndexNotesQueryPrefix(user?.id) },
-        (old) => {
-          if (!old) return old
-          return {
-            ...old,
-            pages: old.pages.map((page) => ({
-              ...page,
-              notes: page.notes
-                .map((note) => patchNoteStatus(note, result))
-                .filter((note) => shouldKeepNote(note, result, filter)),
-            })),
-          }
-        },
-      )
-    },
-    [filter, queryClient, user?.id],
-  )
+  const applyMutationResult = useCallback((result: AIIndexMutationResult) => {
+    queryClient.setQueriesData<InfiniteData<AIIndexNotesPage>>(
+      { queryKey: getAIIndexNotesQueryPrefix(user?.id) },
+      (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            notes: page.notes
+              .map((note) => patchNoteStatus(note, result))
+              .filter((note) => shouldKeepNote(note, result, filter)),
+          })),
+        }
+      },
+    )
+  }, [filter, queryClient, user?.id])
 
-  const handleMutated = useCallback(
-    (result: AIIndexMutationResult) => {
-      applyMutationResult(result)
-      void queryClient.invalidateQueries({
-        queryKey: getAIIndexNotesQueryPrefix(user?.id),
-      })
-    },
-    [applyMutationResult, queryClient, user?.id],
-  )
+  const handleMutated = useCallback((result: AIIndexMutationResult) => {
+    applyMutationResult(result)
+    runAsyncTask(queryClient.invalidateQueries({
+      queryKey: getAIIndexNotesQueryPrefix(user?.id),
+    }))
+  }, [applyMutationResult, queryClient, user?.id])
 
   const handleLoadMore = useCallback(() => {
-    if (queryResult.hasNextPage && !queryResult.isFetchingNextPage) {
-      void queryResult.fetchNextPage()
-    }
+    if (!queryResult.hasNextPage || queryResult.isFetchingNextPage) return
+    runAsyncTask(queryResult.fetchNextPage())
   }, [queryResult])
 
   const handleRefresh = useCallback(() => {
-    void queryResult.refetch()
+    runAsyncTask(queryResult.refetch())
   }, [queryResult])
 
   const handleClearSearch = useCallback(() => {
@@ -182,65 +454,32 @@ export function AIIndexPanel() {
   const handleBulkIndexLoaded = useCallback(async () => {
     if (bulkIndexProgress || actionableLoadedNotes.length === 0) return
 
-    const notesToProcess = actionableLoadedNotes
-    let successCount = 0
-    let skippedCount = 0
-    let errorCount = 0
-
-    setBulkIndexProgress({ completed: 0, total: notesToProcess.length })
+    let counts = { successCount: 0, skippedCount: 0, errorCount: 0 }
+    setBulkIndexProgress({ completed: 0, total: actionableLoadedNotes.length })
 
     try {
-      for (const [index, note] of notesToProcess.entries()) {
-        const actionPresentation = getAIIndexActionPresentation(note.status)
-        try {
-          const { data, error } = await supabase.functions.invoke('rag-index', {
-            body: { noteId: note.id, action: actionPresentation.action },
-          })
-          if (error) throw error
-
-          const result = parseRagIndexResult(data)
-          if (result.outcome === 'indexed') {
-            successCount += 1
-            applyMutationResult({
-              noteId: note.id,
-              previousStatus: note.status,
-              nextStatus: actionPresentation.successStatus,
-            })
-          } else if (result.outcome === 'skipped') {
-            skippedCount += 1
-            if (result.reason === 'too_short') {
-              applyMutationResult({
-                noteId: note.id,
-                previousStatus: note.status,
-                nextStatus: 'not_indexed',
-              })
-            }
-          } else {
-            errorCount += 1
-          }
-        } catch {
-          errorCount += 1
-        } finally {
-          setBulkIndexProgress({
-            completed: index + 1,
-            total: notesToProcess.length,
-          })
-        }
+      for (const [index, note] of actionableLoadedNotes.entries()) {
+        const outcome = await processBulkIndexNote({
+          applyMutationResult: (result) => applyMutationResultToQuery(activeQueryKey, result),
+          invoke: supabase.functions.invoke as BulkIndexInvoke,
+          note,
+        })
+        counts = incrementBulkCounts(counts, outcome)
+        updateBulkProgress(index, actionableLoadedNotes.length, setBulkIndexProgress)
       }
 
-      const summary = getBulkSummaryText(successCount, skippedCount, errorCount)
-      if (successCount > 0 && errorCount === 0) {
-        Toast.show({ type: 'success', text1: summary || 'Loaded notes indexed' })
-      } else if (successCount > 0 || skippedCount > 0 || errorCount > 0) {
-        Toast.show({ type: 'info', text1: summary || 'Bulk indexing finished' })
-      }
+      showBulkIndexToast(counts.successCount, counts.skippedCount, counts.errorCount)
     } finally {
       setBulkIndexProgress(null)
-      void queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey: getAIIndexNotesQueryPrefix(user?.id),
       })
     }
-  }, [actionableLoadedNotes, applyMutationResult, bulkIndexProgress, queryClient, supabase.functions, user?.id])
+  }, [actionableLoadedNotes, activeQueryKey, applyMutationResultToQuery, bulkIndexProgress, queryClient, supabase.functions.invoke, user?.id])
+
+  const handleBulkIndexPress = useCallback(() => {
+    runAsyncTask(handleBulkIndexLoaded())
+  }, [handleBulkIndexLoaded])
 
   const renderItem = useCallback(
     ({ item }: { item: AIIndexNoteRow }) => (
@@ -256,73 +495,6 @@ export function AIIndexPanel() {
   const errorMessage = queryResult.error instanceof Error
     ? queryResult.error.message
     : 'Failed to load AI index notes.'
-
-  const renderContent = () => {
-    if (queryResult.isLoading) {
-      return (
-        <View style={styles.centerState}>
-          <ActivityIndicator color={colors.foreground} />
-          <Text style={styles.statusText}>Loading AI index notes...</Text>
-        </View>
-      )
-    }
-
-    if (queryResult.isError) {
-      return (
-        <View style={styles.centerState}>
-          <Text style={styles.errorTitle}>AI Index is unavailable</Text>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <Button variant="outline" size="sm" onPress={handleRefresh}>
-            Retry
-          </Button>
-        </View>
-      )
-    }
-
-    if (notes.length === 0) {
-      return (
-        <View style={styles.centerState}>
-          <Text style={styles.statusText}>{emptyMessage}</Text>
-          {(hasActiveSearch || hasActiveFilter) ? (
-            <View style={styles.emptyActions}>
-              {hasActiveSearch ? (
-                <Button variant="ghost" size="sm" onPress={handleClearSearch}>
-                  Clear search
-                </Button>
-              ) : null}
-              {hasActiveFilter ? (
-                <Button variant="ghost" size="sm" onPress={handleResetFilter}>
-                  Show all notes
-                </Button>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-      )
-    }
-
-    return (
-      <FlatList
-        ref={listRef}
-        testID="ai-index-list"
-        data={notes}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.4}
-        refreshing={queryResult.isRefetching && !queryResult.isFetchingNextPage}
-        onRefresh={handleRefresh}
-        keyboardShouldPersistTaps="handled"
-        ListFooterComponent={
-          queryResult.isFetchingNextPage ? (
-            <ActivityIndicator style={styles.footer} color={colors.foreground} />
-          ) : null
-        }
-      />
-    )
-  }
 
   return (
     <View style={styles.root}>
@@ -384,39 +556,36 @@ export function AIIndexPanel() {
           </Text>
         ) : null}
 
-        {summaryText ? (
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryText}>{summaryText}</Text>
-            {(actionableLoadedNotes.length > 0 || bulkIndexProgress || hasActiveSearch || hasActiveFilter) ? (
-              <View style={styles.summaryActions}>
-                {(actionableLoadedNotes.length > 0 || bulkIndexProgress) ? (
-                  <Button
-                    size="sm"
-                    disabled={bulkIndexProgress !== null}
-                    onPress={() => { void handleBulkIndexLoaded() }}
-                  >
-                    {bulkIndexProgress
-                      ? `Indexing ${Math.min(bulkIndexProgress.total, bulkIndexProgress.completed + 1)}/${bulkIndexProgress.total}`
-                      : 'Index loaded notes'}
-                  </Button>
-                ) : null}
-                {hasActiveSearch ? (
-                  <Button variant="ghost" size="sm" onPress={handleClearSearch}>
-                    Clear search
-                  </Button>
-                ) : null}
-                {hasActiveFilter ? (
-                  <Button variant="ghost" size="sm" onPress={handleResetFilter}>
-                    Show all
-                  </Button>
-                ) : null}
-              </View>
-            ) : null}
-          </View>
-        ) : null}
+        <AIIndexSummary
+          actionableLoadedCount={actionableLoadedNotes.length}
+          bulkIndexProgress={bulkIndexProgress}
+          hasActiveFilter={hasActiveFilter}
+          hasActiveSearch={hasActiveSearch}
+          onBulkIndexPress={handleBulkIndexPress}
+          onClearSearch={handleClearSearch}
+          onResetFilter={handleResetFilter}
+          styles={styles}
+          summaryText={summaryText}
+        />
       </View>
 
-      {renderContent()}
+      <AIIndexContent
+        colors={colors}
+        emptyMessage={emptyMessage}
+        errorMessage={errorMessage}
+        hasActiveFilter={hasActiveFilter}
+        hasActiveSearch={hasActiveSearch}
+        keyExtractor={keyExtractor}
+        listRef={listRef}
+        notes={notes}
+        onClearSearch={handleClearSearch}
+        onLoadMore={handleLoadMore}
+        onRefresh={handleRefresh}
+        onResetFilter={handleResetFilter}
+        queryResult={queryResult}
+        renderItem={renderItem}
+        styles={styles}
+      />
     </View>
   )
 }
