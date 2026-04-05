@@ -162,6 +162,12 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     expect((screen.getByPlaceholderText('Note title') as HTMLInputElement).value).toBe('Remote title')
     expect(mockSetEditorContent).toHaveBeenCalledWith('<p>Remote body</p>')
     expect(screen.getByTestId('selected-tags').textContent).toBe('remote-tag')
+
+    act(() => {
+      void ref.current?.flushPendingSave()
+    })
+
+    expect(onAutoSave).not.toHaveBeenCalled()
   })
 
   it('preserves dirty fields while still applying clean external fields', () => {
@@ -188,5 +194,44 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     expect((screen.getByPlaceholderText('Note title') as HTMLInputElement).value).toBe('Local title')
     expect(mockSetEditorContent).toHaveBeenCalledWith('<p>Remote body</p>')
     expect(screen.getByTestId('selected-tags').textContent).toBe('remote-tag')
+
+    act(() => {
+      void ref.current?.flushPendingSave()
+    })
+
+    expect(onAutoSave).toHaveBeenCalledWith(expect.objectContaining({
+      noteId: 'note-1',
+      title: 'Local title',
+      description: '<p>Remote body</p>',
+      tags: 'remote-tag',
+    }))
+  })
+
+  it('treats a matching same-note refresh as an acknowledgement and avoids a duplicate flush save', async () => {
+    const { rerender, ref, onAutoSave } = renderEditor()
+
+    fireEvent.change(screen.getByPlaceholderText('Note title'), {
+      target: { value: 'Saved locally' },
+    })
+
+    rerender(
+      <NoteEditor
+        ref={ref}
+        noteId="note-1"
+        initialTitle="Saved locally"
+        initialDescription="<p>Body A</p>"
+        initialTags="tag-a"
+        isSaving={false}
+        onSave={jest.fn()}
+        onRead={jest.fn()}
+        onAutoSave={onAutoSave}
+      />
+    )
+
+    await act(async () => {
+      await ref.current?.flushPendingSave()
+    })
+
+    expect(onAutoSave).not.toHaveBeenCalled()
   })
 })

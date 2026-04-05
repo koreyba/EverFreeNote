@@ -33,9 +33,16 @@ description: Define testing approach, test cases, and quality assurance
 - [x] Mobile editor preserves a newer local title when the same note refreshes with an older title
 - [x] Mobile editor adopts newer external values for clean fields
 - [x] Mobile editor preserves dirty fields while still applying clean-field external updates
+- [x] Mobile editor acknowledges a matching remote refresh for a dirty local field and avoids a duplicate save on blur
 - [x] Body updates use `EditorWebViewHandle.setContent` instead of remounting
 - [x] Blur/unmount flush still persists a dirty reconciled draft when no timer is pending
 - [x] Web editor matches mobile behavior for clean-field adoption, dirty-field preservation, and autosave acknowledgement on same-note refreshes
+
+Remote update save matrix:
+- [x] Clean local field + newer remote value -> adopt remote value, do not emit a compensating autosave
+- [x] Dirty local field + stale remote value -> preserve local draft, next flush saves local field
+- [x] Dirty local field + matching remote value -> treat as acknowledgement, clear pending work, avoid duplicate save
+- [x] Mixed snapshot (some clean, some dirty) -> adopt clean fields, preserve dirty fields, next save includes only still-dirty local changes
 
 ## End-to-End Tests
 **What user flows need validation?**

@@ -141,6 +141,7 @@ const mockToolbarCallbacks: {
   onMenuVisibilityChange?: (visible: boolean) => void
 } = {}
 const mockScrollToChunk = jest.fn()
+const mockSetEditorContent = jest.fn()
 const defaultNote = {
   id: 'test-note-id',
   title: 'Test Note',
@@ -164,6 +165,7 @@ jest.mock('@ui/mobile/components/EditorWebView', () => {
 
     React.useImperativeHandle(ref, () => ({
       runCommand: jest.fn(),
+      setContent: mockSetEditorContent,
       scrollToChunk: mockScrollToChunk,
     }))
 
@@ -245,6 +247,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     mockEditorCallbacks.onReady = undefined
     mockToolbarCallbacks.onMenuVisibilityChange = undefined
     mockScrollToChunk.mockReset()
+    mockSetEditorContent.mockReset()
     mockSetParams.mockReset()
     mockReplace.mockReset()
     alertSpy.mockClear()
@@ -600,6 +603,128 @@ describe('NoteEditorScreen - Delete Functionality', () => {
           expect.objectContaining({ title: 'Second title' })
         )
       })
+    })
+
+    it('adopts clean remote updates without emitting a compensating save on blur', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      mockNoteService.prototype.updateNote.mockClear()
+
+      await act(async () => {
+        queryClient.setQueryData(['note', 'test-note-id'], {
+          note: {
+            ...defaultNote,
+            title: 'Remote title',
+            description: '<p>Remote body</p>',
+            tags: ['remote-tag'],
+          },
+          status: 'found',
+        })
+      })
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Remote title')).toBeTruthy()
+      })
+      await waitFor(() => {
+        expect(screen.getByText('remote-tag')).toBeTruthy()
+      })
+      await waitFor(() => {
+        expect(mockSetEditorContent).toHaveBeenCalledWith('<p>Remote body</p>')
+      })
+
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(mockNoteService.prototype.updateNote).not.toHaveBeenCalled()
+    })
+
+    it('preserves dirty local fields, adopts clean remote fields, and saves only the remaining dirty patch', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      const titleInput = screen.getByDisplayValue('Test Note')
+      fireEvent.changeText(titleInput, 'Local title')
+
+      await act(async () => {
+        queryClient.setQueryData(['note', 'test-note-id'], {
+          note: {
+            ...defaultNote,
+            title: 'Remote title',
+            description: '<p>Remote body</p>',
+            tags: ['remote-tag'],
+          },
+          status: 'found',
+        })
+      })
+
+      expect(screen.getByDisplayValue('Local title')).toBeTruthy()
+      await waitFor(() => {
+        expect(screen.getByText('remote-tag')).toBeTruthy()
+      })
+      await waitFor(() => {
+        expect(mockSetEditorContent).toHaveBeenCalledWith('<p>Remote body</p>')
+      })
+
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      await waitFor(() => {
+        expect(mockNoteService.prototype.updateNote).toHaveBeenCalledWith(
+          'test-note-id',
+          { title: 'Local title' }
+        )
+      })
+    })
+
+    it('treats a matching remote refresh as an acknowledgement and skips duplicate save on blur', async () => {
+      jest.useFakeTimers()
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      const titleInput = screen.getByDisplayValue('Test Note')
+      fireEvent.changeText(titleInput, 'Local title')
+
+      await act(async () => {
+        queryClient.setQueryData(['note', 'test-note-id'], {
+          note: {
+            ...defaultNote,
+            title: 'Local title',
+          },
+          status: 'found',
+        })
+      })
+
+      act(() => {
+        jest.advanceTimersByTime(1)
+      })
+
+      mockNoteService.prototype.updateNote.mockClear()
+
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      act(() => {
+        jest.advanceTimersByTime(1000)
+      })
+
+      expect(mockNoteService.prototype.updateNote).not.toHaveBeenCalled()
+
+      jest.useRealTimers()
     })
   })
 
