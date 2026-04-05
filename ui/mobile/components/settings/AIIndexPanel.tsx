@@ -514,10 +514,7 @@ export function AIIndexPanel() {
       accessibilityLabel={bulkIndexProgress ? 'Indexing loaded notes' : 'Index loaded notes'}
       disabled={bulkIndexProgress !== null}
       onPress={handleBulkIndexPress}
-      style={[
-        styles.actionChip,
-        styles.actionButton,
-      ]}
+      style={styles.actionButton}
     >
       <View style={styles.actionChipContent}>
         {bulkIndexProgress ? (
@@ -643,16 +640,17 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     chip: {
       paddingVertical: 4,
     },
-    actionChip: {
-      backgroundColor: colors.primary,
-    },
     actionButton: {
+      backgroundColor: colors.primary,
       flex: 1,
     },
     actionChipContent: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
+    },
+    actionChipSpinner: {
+      transform: [{ scale: 0.8 }],
     },
     actionButtonLabel: {
       color: colors.primaryForeground,
