@@ -530,7 +530,11 @@ export function AIIndexPanel() {
               ]}
             >
               <View style={styles.actionChipContent}>
-                <Database size={12} color={colors.primary} />
+                {bulkIndexProgress ? (
+                  <ActivityIndicator size="small" color={colors.primary} style={styles.actionChipSpinner} />
+                ) : (
+                  <Database size={12} color={colors.primary} />
+                )}
                 <Text style={styles.actionChipLabel}>{bulkActionLabel}</Text>
               </View>
             </Pressable>
@@ -635,6 +639,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
+    },
+    actionChipSpinner: {
+      transform: [{ scale: 0.7 }],
     },
     actionChipLabel: {
       color: colors.primary,

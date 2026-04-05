@@ -802,6 +802,7 @@ export function AIIndexTab() {
     <button
       type="button"
       aria-label={bulkIndexProgress ? "Indexing loaded notes" : "Index loaded notes"}
+      aria-busy={bulkIndexProgress !== null}
       onClick={handleBulkIndexClick}
       disabled={bulkIndexProgress !== null}
       className={cn(

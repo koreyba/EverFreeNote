@@ -677,6 +677,51 @@ describe("AIIndexTab", () => {
     })
   })
 
+  it("shows an active loading state on the bulk action while indexing runs", async () => {
+    let resolveInvoke: ((value: { data: { outcome: string; chunkCount: number }; error: null }) => void) | null = null
+    const invoke = jest.fn().mockImplementation(() => new Promise((resolve) => {
+      resolveInvoke = resolve
+    }))
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-not-indexed",
+        title: "Need index",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{ functions: { invoke } } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Index loaded notes" }))
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Indexing loaded notes" }).getAttribute("aria-busy")).toBe("true")
+      expect(screen.getByText("1/1")).toBeTruthy()
+    })
+
+    await act(async () => {
+      resolveInvoke?.({ data: { outcome: "indexed", chunkCount: 1 }, error: null })
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Indexing loaded notes" })).toBeNull()
+    })
+  })
+
   it("keeps the supabase function context during bulk indexing", async () => {
     const note = {
       id: "note-not-indexed",

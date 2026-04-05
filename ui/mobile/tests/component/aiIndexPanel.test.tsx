@@ -248,4 +248,31 @@ describe('AIIndexPanel', () => {
       body: { noteId: 'n3', action: 'reindex' },
     })
   })
+
+  it('shows an active loading state on the bulk action while indexing runs', async () => {
+    let resolveInvoke: ((value: { data: { outcome: string; chunkCount: number }; error: null }) => void) | null = null
+    setupMocks({}, [
+      { id: 'n2', title: 'Need Index', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+    ])
+    mockInvoke.mockImplementation(() => new Promise((resolve) => {
+      resolveInvoke = resolve
+    }))
+
+    render(<AIIndexPanel />)
+
+    fireEvent.press(screen.getByLabelText('Index loaded notes'))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Indexing loaded notes')).toBeTruthy()
+      expect(screen.getByText('1/1')).toBeTruthy()
+    })
+
+    await act(async () => {
+      resolveInvoke?.({ data: { outcome: 'indexed', chunkCount: 1 }, error: null })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Index loaded notes')).toBeTruthy()
+    })
+  })
 })
