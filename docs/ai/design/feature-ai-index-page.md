@@ -13,6 +13,7 @@ graph TD
     SP["SettingsPage"] --> TAB["AIIndexTab"]
     TAB --> FILTERS["StatusFilters"]
     TAB --> SEARCH["SearchRow"]
+    TAB --> BULK["Bulk Index Loaded Action"]
     TAB --> LIST["AIIndexList"]
     LIST --> ROW["AIIndexNoteRow"]
     TAB --> HOOK["useAIIndexNotes(status, search, page)"]
@@ -28,6 +29,7 @@ graph TD
 - `SettingsPage` gets a new `AI Index` tab entry.
 - `AIIndexTab` is a standalone settings flow, not a reuse of the notes page controller.
 - `useAIIndexNotes` owns pagination, active filter, loading state, and cache invalidation for this page only.
+- `AIIndexTab` also owns the summary-level bulk action state for the currently loaded result set.
 - `AIIndexList` reuses the virtualization pattern from `NoteList`, but renders dedicated AI-index rows/cards.
 - `AIIndexNoteRow` renders note metadata and per-row actions.
 - A dedicated server-side RPC returns notes together with aggregated index status so filtering and pagination remain correct.
@@ -113,6 +115,7 @@ The `all` filter is the default page state so the Settings tab opens with the fu
 
 - Settings-specific container for:
   - heading / summary
+  - summary-level bulk action button for loaded notes
   - filter pills
   - ordinary search row below the pills
   - list body
@@ -148,6 +151,19 @@ The `all` filter is the default page state so the Settings tab opens with the fu
   - last indexed timestamp
   - note-level action buttons
 
+### Bulk action behavior
+
+- The summary/header area gets one bulk action button beside the existing reset/filter context.
+- The bulk action scopes itself to the currently loaded client list after server-side filter and search have already been applied.
+- It must not fetch additional pages or infer unseen matches from `totalCount`.
+- Eligible rows:
+  - `not_indexed`: invoke `rag-index` with `action: "index"`
+  - `outdated`: invoke `rag-index` with `action: "reindex"`
+  - `indexed`: skip
+- The implementation reuses the existing single-note `rag-index` contract in a client-side loop instead of adding a separate bulk RPC or Edge Function.
+- On web, successful mutations should flow through the same optimistic row-update and exit-animation pipeline already used for per-row actions so filtered rows disappear gracefully.
+- On mobile, successful mutations should reuse the same cache patch + invalidate path already used for per-row actions so cards disappear from filtered views consistently.
+
 ## Design Decisions
 
 ### Dedicated fetch path instead of client-side joining
@@ -164,6 +180,16 @@ The `all` filter is the default page state so the Settings tab opens with the fu
 
 - Decision: keep `rag-index` for write actions and add a dedicated RPC read path for AI index state.
 - Rationale: existing mutation behavior is already shipped and tested; the missing capability is efficient list aggregation and filtering.
+
+### Bulk action targets loaded notes, not all matching notes
+
+- Decision: the bulk button processes only the currently loaded notes that remain visible after the active filter and active committed search query.
+- Rationale: this matches the mental model already shown in the summary ("Showing X loaded notes out of Y"), avoids hidden work on notes the user cannot currently inspect, and keeps the feature aligned with the paginated/infinite-list architecture on both web and mobile.
+
+### Bulk action stays on the client and reuses the single-note mutation API
+
+- Decision: do not add a backend bulk-index endpoint for this refinement.
+- Rationale: the existing `rag-index` function is explicitly single-note, the AI Index page already owns the loaded list on the client, and reusing the current mutation path is the smallest, safest change for web and mobile parity.
 
 ### Reuse ordinary search semantics without reusing the notes controller
 
@@ -185,6 +211,7 @@ graph TD
     SS --> AIP["AIIndexPanel"]
     AIP --> CHIPS["Filter Chips (Pressable)"]
     AIP --> SINPUT["Search TextInput"]
+    AIP --> BCTA["Bulk Index Loaded Button"]
     AIP --> FL["FlatList"]
     FL --> CARD["AIIndexNoteCard (memo)"]
     AIP --> HOOK["useAIIndexNotes(filter, search)"]
@@ -201,6 +228,7 @@ graph TD
 - Standalone panel component rendered inside a dedicated `flex: 1` AI Index viewport in `SettingsScreen` (not wrapped in the general settings `ScrollView`).
 - Filter row: one horizontally scrolling Pressable-chip rail matching `SettingsTabBar` interaction and sizing.
 - Search TextInput with clear button, debounced at 300ms.
+- Summary row can expose one bulk button near the count/reset affordances when the current loaded list contains `not_indexed` or `outdated` cards.
 - FlatList with `onEndReached` for infinite scroll, `onRefresh` for pull-to-refresh.
 - Loading spinner, empty message, and error + retry states.
 - Summary text ("X notes" or "Showing X of Y notes").
