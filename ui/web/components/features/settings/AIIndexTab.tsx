@@ -435,23 +435,17 @@ function AIIndexResultsHeader({
   activeSearchQuery,
   bulkAction,
   filter,
-  hasActiveFilter,
   hasActiveSearch,
   isFetching,
   isFetchingNextPage,
-  onClearSearch,
-  onResetFilter,
   summaryText,
 }: Readonly<{
   activeSearchQuery: string
   bulkAction?: React.ReactNode
   filter: AIIndexFilter
-  hasActiveFilter: boolean
   hasActiveSearch: boolean
   isFetching: boolean
   isFetchingNextPage: boolean
-  onClearSearch: () => void
-  onResetFilter: () => void
   summaryText: string
 }>) {
   return (
@@ -479,16 +473,8 @@ function AIIndexResultsHeader({
           ) : null}
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 sm:justify-end">
+      <div className="flex w-full shrink-0 items-center justify-end sm:w-[168px]">
         {bulkAction}
-        <AIIndexResetActions
-          hasActiveFilter={hasActiveFilter}
-          hasActiveSearch={hasActiveSearch}
-          onClearSearch={onClearSearch}
-          onResetFilter={onResetFilter}
-          searchButtonLabel="Clear search"
-          filterButtonLabel="Reset filter"
-        />
       </div>
     </div>
   )
@@ -806,7 +792,7 @@ export function AIIndexTab() {
       onClick={handleBulkIndexClick}
       disabled={bulkIndexProgress !== null}
       className={cn(
-        "inline-flex h-8 shrink-0 items-center rounded-lg border px-3 text-sm transition-colors",
+        "inline-flex h-9 w-full items-center justify-center rounded-md border px-3 text-sm whitespace-nowrap transition-colors",
         bulkIndexProgress
           ? "cursor-default border-primary/20 bg-primary/10 text-primary/75"
           : "border-primary/25 bg-primary/10 font-medium text-primary hover:border-primary/35 hover:bg-primary/15"
@@ -845,12 +831,9 @@ export function AIIndexTab() {
           activeSearchQuery={activeSearchQuery}
           bulkAction={bulkAction}
           filter={filter}
-          hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}
           isFetching={query.isFetching}
           isFetchingNextPage={query.isFetchingNextPage}
-          onClearSearch={handleClearSearch}
-          onResetFilter={handleResetFilter}
           summaryText={summaryText}
         />
         <div className="h-[min(72vh,760px)]">

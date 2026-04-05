@@ -194,29 +194,23 @@ async function processBulkIndexNote({
 function AIIndexSummary({
   bulkAction,
   filterLabel,
-  hasActiveFilter,
   hasActiveSearch,
   isFetching,
   isFetchingNextPage,
-  onClearSearch,
-  onResetFilter,
   styles,
   summaryText,
 }: Readonly<{
   bulkAction?: ReactElement | null
   filterLabel: string
-  hasActiveFilter: boolean
   hasActiveSearch: boolean
   isFetching: boolean
   isFetchingNextPage: boolean
-  onClearSearch: () => void
-  onResetFilter: () => void
   styles: ReturnType<typeof createStyles>
   summaryText: string | null
 }>) {
   if (!summaryText) return null
 
-  const showSummaryActions = Boolean(bulkAction) || hasActiveSearch || hasActiveFilter
+  const showSummaryActions = Boolean(bulkAction)
 
   return (
     <View style={styles.summaryRow}>
@@ -240,16 +234,6 @@ function AIIndexSummary({
       {showSummaryActions ? (
         <View style={styles.summaryActions}>
           {bulkAction}
-          {hasActiveSearch ? (
-            <Button variant="ghost" size="sm" onPress={onClearSearch}>
-              Clear search
-            </Button>
-          ) : null}
-          {hasActiveFilter ? (
-            <Button variant="ghost" size="sm" onPress={onResetFilter}>
-              Reset filter
-            </Button>
-          ) : null}
         </View>
       ) : null}
     </View>
@@ -532,6 +516,7 @@ export function AIIndexPanel() {
       onPress={handleBulkIndexPress}
       style={({ pressed }) => [
         styles.actionChip,
+        styles.actionButton,
         bulkIndexProgress !== null && styles.actionChipDisabled,
         pressed && bulkIndexProgress === null && styles.actionChipPressed,
       ]}
@@ -609,12 +594,9 @@ export function AIIndexPanel() {
         <AIIndexSummary
           bulkAction={bulkAction}
           filterLabel={FILTER_OPTIONS.find((option) => option.value === filter)?.label ?? 'All notes'}
-          hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}
           isFetching={queryResult.isRefetching}
           isFetchingNextPage={queryResult.isFetchingNextPage}
-          onClearSearch={handleClearSearch}
-          onResetFilter={handleResetFilter}
           styles={styles}
           summaryText={summaryText}
         />
@@ -670,6 +652,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       backgroundColor: colors.selectionBackground,
       paddingHorizontal: 10,
       paddingVertical: 5,
+    },
+    actionButton: {
+      minHeight: 36,
+      alignSelf: 'stretch',
+      justifyContent: 'center',
     },
     actionChipDisabled: {
       opacity: 0.7,
@@ -765,6 +752,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       gap: 8,
       flexWrap: 'wrap',
       alignItems: 'center',
+      width: '100%',
     },
     list: {
       flex: 1,
