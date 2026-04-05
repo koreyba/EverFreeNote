@@ -32,6 +32,7 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
   let lastFlushed: T | null = null
   let inFlight: Promise<void> | null = null
   let inFlightValue: T | null = null
+  let baselineRevision = 0
 
   const clearTimer = () => {
     if (!timer) return
@@ -53,6 +54,7 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
     if (pending === null) return
 
     const next = pending
+    const flushRevision = baselineRevision
     pending = null
 
     if (shouldSkip(next)) {
@@ -64,7 +66,9 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
     inFlight = (async () => {
       try {
         await onFlush(next)
-        lastFlushed = next
+        if (baselineRevision === flushRevision) {
+          lastFlushed = next
+        }
 
         if (pending !== null && shouldSkip(pending)) {
           pending = null
@@ -128,10 +132,12 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
     reset: (base: T) => {
       clearTimer()
       pending = null
+      baselineRevision += 1
       lastFlushed = base
     },
 
     rebase: (base: T, nextPending?: T | null) => {
+      baselineRevision += 1
       lastFlushed = base
       // Default behavior: keep the current pending draft when caller omits nextPending.
       queuePending(nextPending === undefined ? pending : nextPending, { restartTimer: false })

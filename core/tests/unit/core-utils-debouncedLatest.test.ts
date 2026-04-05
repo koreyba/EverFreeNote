@@ -157,4 +157,28 @@ describe('createDebouncedLatest', () => {
     await jest.advanceTimersByTimeAsync(1)
     expect(onFlush).toHaveBeenCalledWith({ title: 'Local' })
   })
+
+  it('does not let an in-flight flush overwrite a rebased baseline', async () => {
+    let resolveFlush!: () => void
+    const onFlush = jest.fn().mockImplementation(() => new Promise<void>((resolve) => {
+      resolveFlush = resolve
+    }))
+    const debounced = createDebouncedLatest({
+      delayMs: 100,
+      onFlush,
+      isEqual: (left: { title: string }, right: { title: string }) => left.title === right.title,
+    })
+
+    debounced.reset({ title: 'Saved' })
+    debounced.schedule({ title: 'Local' })
+    const flushPromise = debounced.flush()
+
+    debounced.rebase({ title: 'Remote' })
+    resolveFlush()
+
+    await flushPromise
+
+    expect(debounced.getBaseline()).toEqual({ title: 'Remote' })
+    expect(debounced.getPending()).toBeNull()
+  })
 })

@@ -99,8 +99,9 @@ export function useNoteEditorAutoSave({
   // Tracks the last noteId that caused a session reset (not autosave assignment)
   const lastResetNoteIdRef = useRef<string | undefined>(noteId)
 
-  // Tracks whether an autosave-create (noteId=undefined) is in-flight.
-  // Set to true before scheduling a create; cleared when ID is assigned or note switches.
+  // Stores the server-assigned note ID returned by a create autosave until the
+  // parent updates `noteId`, so the next refresh can be reconciled as an
+  // assigned-id bridge for this editing session instead of a real note switch.
   const [pendingCreateAssignedNoteId, setPendingCreateAssignedNoteId] = useState<string | null>(null)
   const lastAcceptedRef = useRef<NoteEditorSnapshot>(getIncomingSnapshot())
 
@@ -228,13 +229,11 @@ export function useNoteEditorAutoSave({
 
   const handleContentChange = useCallback(() => {
     if (!onAutoSave) return
-    if (!noteIdRef.current) setPendingCreateAssignedNoteId(null)
     debouncedAutoSave.schedule(getAutoSavePayload())
   }, [debouncedAutoSave, getAutoSavePayload, onAutoSave])
 
   const scheduleAutoSave = useCallback((overrides: Partial<NoteAutoSavePayload> = {}) => {
     if (!onAutoSave) return
-    if (!noteIdRef.current) setPendingCreateAssignedNoteId(null)
     debouncedAutoSave.schedule(getAutoSavePayload(overrides))
   }, [debouncedAutoSave, getAutoSavePayload, onAutoSave])
 

@@ -317,6 +317,54 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     expect((screen.getByPlaceholderText('Note title') as HTMLInputElement).value).toBe('Draft title')
   })
 
+  it('preserves continued typing between create assignment and parent noteId update', async () => {
+    const onAutoSave = jest.fn().mockResolvedValue({ noteId: 'created-note-id' })
+    const { rerender, ref } = renderEditor({
+      noteId: undefined,
+      initialTitle: '',
+      initialDescription: '',
+      initialTags: '',
+      onAutoSave,
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Note title'), {
+      target: { value: 'Draft title' },
+    })
+
+    await act(async () => {
+      await ref.current?.flushPendingSave()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Note title'), {
+      target: { value: 'Continued draft' },
+    })
+
+    rerender(
+      <NoteEditor
+        ref={ref}
+        noteId="created-note-id"
+        initialTitle="Draft title"
+        initialDescription=""
+        initialTags=""
+        isSaving={false}
+        onSave={jest.fn()}
+        onRead={jest.fn()}
+        onAutoSave={onAutoSave}
+      />
+    )
+
+    expect((screen.getByPlaceholderText('Note title') as HTMLInputElement).value).toBe('Continued draft')
+
+    await act(async () => {
+      await ref.current?.flushPendingSave()
+    })
+
+    expect(onAutoSave).toHaveBeenLastCalledWith(expect.objectContaining({
+      noteId: 'created-note-id',
+      title: 'Continued draft',
+    }))
+  })
+
   it('does not rebind an abandoned untitled draft onto a different existing note', () => {
     const onAutoSave = jest.fn()
     const { rerender } = renderEditor({
