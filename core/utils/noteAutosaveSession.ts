@@ -76,8 +76,8 @@ export function reconcileExternalNoteSnapshot<
   const dirtyFields: TField[] = []
 
   for (const field of fields) {
-    const isEqual = (comparators[field] ??
-      ((left: TSnapshot[TField], right: TSnapshot[TField]) => Object.is(left, right))) as FieldComparator<TSnapshot[TField]>
+    const isEqual: FieldComparator<TSnapshot[TField]> = comparators[field] ??
+      ((left, right) => Object.is(left, right))
 
     const draftValue = currentDraft[field]
     const baselineValue = currentBaseline[field]

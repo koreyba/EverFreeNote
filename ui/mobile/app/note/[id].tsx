@@ -28,6 +28,12 @@ type DraftSnapshot = {
   tags: string[]
 }
 
+type NoteDraftSource = {
+  title?: string | null
+  description?: string | null
+  tags?: string[] | null
+}
+
 const areStringArraysEqual = (a: string[], b: string[]) => {
   if (a === b) return true
   if (a.length !== b.length) return false
@@ -47,6 +53,12 @@ const DRAFT_FIELDS = ['title', 'description', 'tags'] as const
 const DRAFT_COMPARATORS = {
   tags: areStringArraysEqual,
 }
+
+const getIncomingDraftSnapshot = (nextNote: NoteDraftSource): DraftSnapshot => ({
+  title: nextNote.title ?? '',
+  description: nextNote.description ?? '',
+  tags: nextNote.tags ?? [],
+})
 
 type HeaderLeftActionsProps = Readonly<{
   styles: NoteEditorHeaderStyles
@@ -269,6 +281,35 @@ export default function NoteEditorScreen() {
     }
   }, [flushPendingUpdates])
 
+  const applyReplacedDraft = useCallback((nextDraft: DraftSnapshot, nextBaseline: DraftSnapshot) => {
+    setTitle(nextDraft.title)
+    setTags(nextDraft.tags)
+    editorRef.current?.setContent?.(nextDraft.description)
+    saverRef.current?.reset(nextBaseline)
+  }, [])
+
+  const applyAcceptedExternalFields = useCallback((previousDraft: DraftSnapshot, nextDraft: DraftSnapshot) => {
+    if (previousDraft.title !== nextDraft.title) {
+      setTitle(nextDraft.title)
+    }
+
+    if (previousDraft.description !== nextDraft.description) {
+      editorRef.current?.setContent?.(nextDraft.description)
+    }
+
+    if (!areStringArraysEqual(previousDraft.tags, nextDraft.tags)) {
+      setTags(nextDraft.tags)
+    }
+  }, [])
+
+  const rebaseDraftSaver = useCallback((baseline: DraftSnapshot, nextDraft: DraftSnapshot) => {
+    const currentPending = saverRef.current?.getPending() ?? null
+    saverRef.current?.rebase(
+      baseline,
+      currentPending ? { ...nextDraft } : null
+    )
+  }, [])
+
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -285,72 +326,44 @@ export default function NoteEditorScreen() {
   }, [])
 
   useEffect(() => {
-    if (note) {
-      const incomingSnapshot = {
-        title: note.title ?? '',
-        description: note.description ?? '',
-        tags: note.tags ?? [],
-      }
-      const previousDraft = latestDraftRef.current
-      const sessionChange = resolveNoteAutosaveSessionChange({
-        previousNoteId: lastHydratedNoteIdRef.current,
-        nextNoteId: note.id,
-        // Mobile note routes always target an existing note ID, so there is no local
-        // "create then assign server ID" session transition on this screen.
-        pendingCreateAssignedNoteId: null,
-      })
-      if (sessionChange === 'switched') {
-        setHistoryState({ canUndo: false, canRedo: false })
-      }
-      const reconcileResult = reconcileExternalNoteSnapshot({
-        currentNoteId: lastHydratedNoteIdRef.current,
-        incomingNoteId: note.id,
-        currentDraft: latestDraftRef.current,
-        currentBaseline: lastSavedRef.current,
-        incomingSnapshot,
-        fields: DRAFT_FIELDS,
-        comparators: {
-          ...DRAFT_COMPARATORS,
-        },
-      })
+    if (!note) return
 
-      lastHydratedNoteIdRef.current = note.id
-      latestDraftRef.current = reconcileResult.draft
-      lastSavedRef.current = reconcileResult.baseline
+    const previousDraft = latestDraftRef.current
+    const incomingSnapshot = getIncomingDraftSnapshot(note)
+    const sessionChange = resolveNoteAutosaveSessionChange({
+      previousNoteId: lastHydratedNoteIdRef.current,
+      nextNoteId: note.id,
+      // Mobile note routes always target an existing note ID, so there is no local
+      // "create then assign server ID" session transition on this screen.
+      pendingCreateAssignedNoteId: null,
+    })
 
-      if (reconcileResult.mode === 'replace-draft') {
-        setTitle(reconcileResult.draft.title)
-        setTags(reconcileResult.draft.tags)
-        editorRef.current?.setContent?.(reconcileResult.draft.description)
-        saverRef.current?.reset(reconcileResult.baseline)
-        return
-      }
-
-      if (reconcileResult.fieldDecisions.title === 'accept-external' && previousDraft.title !== reconcileResult.draft.title) {
-        setTitle(reconcileResult.draft.title)
-      }
-
-      if (
-        reconcileResult.fieldDecisions.description === 'accept-external' &&
-        previousDraft.description !== reconcileResult.draft.description
-      ) {
-        editorRef.current?.setContent?.(reconcileResult.draft.description)
-      }
-
-      if (
-        reconcileResult.fieldDecisions.tags === 'accept-external' &&
-        !areStringArraysEqual(previousDraft.tags, reconcileResult.draft.tags)
-      ) {
-        setTags(reconcileResult.draft.tags)
-      }
-
-      const currentPending = saverRef.current?.getPending() ?? null
-      saverRef.current?.rebase(
-        reconcileResult.baseline,
-        currentPending ? { ...reconcileResult.draft } : null
-      )
+    if (sessionChange === 'switched') {
+      setHistoryState({ canUndo: false, canRedo: false })
     }
-  }, [note])
+
+    const reconcileResult = reconcileExternalNoteSnapshot({
+      currentNoteId: lastHydratedNoteIdRef.current,
+      incomingNoteId: note.id,
+      currentDraft: latestDraftRef.current,
+      currentBaseline: lastSavedRef.current,
+      incomingSnapshot,
+      fields: DRAFT_FIELDS,
+      comparators: DRAFT_COMPARATORS,
+    })
+
+    lastHydratedNoteIdRef.current = note.id
+    latestDraftRef.current = reconcileResult.draft
+    lastSavedRef.current = reconcileResult.baseline
+
+    if (reconcileResult.mode === 'replace-draft') {
+      applyReplacedDraft(reconcileResult.draft, reconcileResult.baseline)
+      return
+    }
+
+    applyAcceptedExternalFields(previousDraft, reconcileResult.draft)
+    rebaseDraftSaver(reconcileResult.baseline, reconcileResult.draft)
+  }, [applyAcceptedExternalFields, applyReplacedDraft, note, rebaseDraftSaver])
 
   useEffect(() => {
     if (noteState?.status !== 'deleted') return

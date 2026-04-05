@@ -868,9 +868,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     })
 
     it('keeps chunk focus working when switching notes without a second editor ready event', async () => {
-      ;(mockNoteService.prototype as typeof mockNoteService.prototype & {
-        getNoteStatus: jest.Mock
-      }).getNoteStatus = jest.fn().mockImplementation(async (noteId: string) => {
+      mockNoteService.prototype.getNoteStatus = jest.fn().mockImplementation(async (noteId: string) => {
         if (noteId === 'other-note-id') {
           return {
             status: 'found',
