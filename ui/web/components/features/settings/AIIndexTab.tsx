@@ -4,11 +4,14 @@ import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { Database, Loader2, Search, X } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { getAIIndexActionPresentation, getAIIndexActionableNotes } from "@core/constants/aiIndex"
 import { SEARCH_CONFIG } from "@core/constants/search"
+import { parseRagIndexResult } from "@core/rag/indexResult"
 import { NoteService } from "@core/services/notes"
 import type {
   AIIndexFilter,
@@ -74,6 +77,16 @@ function runBackgroundTask(task: Promise<unknown>) {
   task.catch(() => {
     // Best-effort background work should not break the settings UI.
   })
+}
+
+function formatBulkIndexSummary(successCount: number, skippedCount: number, errorCount: number) {
+  const parts = [
+    successCount > 0 ? `${successCount} indexed` : null,
+    skippedCount > 0 ? `${skippedCount} skipped` : null,
+    errorCount > 0 ? `${errorCount} failed` : null,
+  ].filter(Boolean)
+
+  return parts.join(" • ")
 }
 
 function matchesAIIndexFilter(filter: AIIndexFilter, status: AIIndexNoteRowData["status"]) {
@@ -347,6 +360,7 @@ function AIIndexToolbar({
 
 function AIIndexResultsHeader({
   activeSearchQuery,
+  bulkAction,
   filter,
   hasActiveFilter,
   hasActiveSearch,
@@ -357,6 +371,7 @@ function AIIndexResultsHeader({
   summaryText,
 }: Readonly<{
   activeSearchQuery: string
+  bulkAction?: React.ReactNode
   filter: AIIndexFilter
   hasActiveFilter: boolean
   hasActiveSearch: boolean
@@ -391,14 +406,17 @@ function AIIndexResultsHeader({
           ) : null}
         </div>
       </div>
-      <AIIndexResetActions
-        hasActiveFilter={hasActiveFilter}
-        hasActiveSearch={hasActiveSearch}
-        onClearSearch={onClearSearch}
-        onResetFilter={onResetFilter}
-        searchButtonLabel="Clear search"
-        filterButtonLabel="Reset filter"
-      />
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {bulkAction}
+        <AIIndexResetActions
+          hasActiveFilter={hasActiveFilter}
+          hasActiveSearch={hasActiveSearch}
+          onClearSearch={onClearSearch}
+          onResetFilter={onResetFilter}
+          searchButtonLabel="Clear search"
+          filterButtonLabel="Reset filter"
+        />
+      </div>
     </div>
   )
 }
@@ -433,6 +451,7 @@ export function AIIndexTab() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [initialScrollOffset, setInitialScrollOffset] = React.useState(0)
   const [scrollOffset, setScrollOffset] = React.useState(0)
+  const [bulkIndexProgress, setBulkIndexProgress] = React.useState<{ completed: number; total: number } | null>(null)
   const [optimisticMutations, setOptimisticMutations] = React.useState<Record<string, OptimisticMutationState>>({})
   const restoredStateRef = React.useRef(false)
   const exitTimeoutsRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -514,7 +533,10 @@ export function AIIndexTab() {
     }))
   }, [noteService, queryClient, router, user?.id])
 
-  const handleMutated = React.useCallback((mutationResult: AIIndexMutationResult) => {
+  const applyMutationResult = React.useCallback((
+    mutationResult: AIIndexMutationResult,
+    options?: { invalidate?: boolean }
+  ) => {
     const sourceIndex = notes.findIndex((note) => note.id === mutationResult.noteId)
     const sourceNote = sourceIndex >= 0 ? notes[sourceIndex] : null
     const shouldExit =
@@ -556,8 +578,14 @@ export function AIIndexTab() {
       }, ROW_EXIT_DURATION_MS)
     }
 
-    runBackgroundTask(queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) }))
+    if (options?.invalidate !== false) {
+      runBackgroundTask(queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) }))
+    }
   }, [filter, notes, queryClient, user?.id])
+
+  const handleMutated = React.useCallback((mutationResult: AIIndexMutationResult) => {
+    applyMutationResult(mutationResult)
+  }, [applyMutationResult])
 
   const handleSearchChange = React.useCallback((value: string) => {
     setSearchDraft(value)
@@ -606,6 +634,14 @@ export function AIIndexTab() {
     () => mergedNotes.filter((entry) => entry.isExiting).map((entry) => entry.note.id),
     [mergedNotes]
   )
+  const visibleLoadedNotes = React.useMemo(
+    () => mergedNotes.filter((entry) => !entry.isExiting).map((entry) => entry.note),
+    [mergedNotes]
+  )
+  const actionableLoadedNotes = React.useMemo(
+    () => getAIIndexActionableNotes(visibleLoadedNotes),
+    [visibleLoadedNotes]
+  )
   const optimisticTotalCount = React.useMemo(
     () => getOptimisticTotalCount(filter, totalCount, optimisticMutations, lastServerSyncAt),
     [filter, lastServerSyncAt, optimisticMutations, totalCount]
@@ -626,6 +662,69 @@ export function AIIndexTab() {
 
     runBackgroundTask(query.fetchNextPage())
   }, [query])
+  const handleBulkIndexLoaded = React.useCallback(async () => {
+    if (bulkIndexProgress || actionableLoadedNotes.length === 0) return
+
+    const notesToProcess = actionableLoadedNotes
+    let successCount = 0
+    let skippedCount = 0
+    let errorCount = 0
+
+    setBulkIndexProgress({ completed: 0, total: notesToProcess.length })
+
+    try {
+      for (const [index, note] of notesToProcess.entries()) {
+        const actionPresentation = getAIIndexActionPresentation(note.status)
+        try {
+          const { data, error } = await supabase.functions.invoke("rag-index", {
+            body: {
+              noteId: note.id,
+              action: actionPresentation.action,
+            },
+          })
+          if (error) throw error
+
+          const result = parseRagIndexResult(data)
+          if (result.outcome === "indexed") {
+            successCount += 1
+            applyMutationResult({
+              noteId: note.id,
+              previousStatus: note.status,
+              nextStatus: actionPresentation.successStatus,
+            }, { invalidate: false })
+          } else if (result.outcome === "skipped") {
+            skippedCount += 1
+            if (result.reason === "too_short") {
+              applyMutationResult({
+                noteId: note.id,
+                previousStatus: note.status,
+                nextStatus: "not_indexed",
+              }, { invalidate: false })
+            }
+          } else {
+            errorCount += 1
+          }
+        } catch {
+          errorCount += 1
+        } finally {
+          setBulkIndexProgress({
+            completed: index + 1,
+            total: notesToProcess.length,
+          })
+        }
+      }
+
+      const summary = formatBulkIndexSummary(successCount, skippedCount, errorCount)
+      if (successCount > 0 && errorCount === 0) {
+        toast.success(summary || "Loaded notes indexed")
+      } else if (successCount > 0 || skippedCount > 0 || errorCount > 0) {
+        toast.message(summary || "Bulk indexing finished")
+      }
+    } finally {
+      setBulkIndexProgress(null)
+      runBackgroundTask(queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) }))
+    }
+  }, [actionableLoadedNotes, applyMutationResult, bulkIndexProgress, queryClient, supabase.functions, user?.id])
   const emptyState = (
     <AIIndexEmptyState
       emptyMessage={emptyMessage}
@@ -645,6 +744,28 @@ export function AIIndexTab() {
     )
   }
 
+  const bulkAction = actionableLoadedNotes.length > 0 || bulkIndexProgress ? (
+    <Button
+      size="sm"
+      onClick={() => {
+        handleBulkIndexLoaded().catch(() => {
+          toast.error("Bulk indexing failed")
+        })
+      }}
+      disabled={bulkIndexProgress !== null}
+      className="min-w-[10rem] justify-center"
+    >
+      {bulkIndexProgress ? (
+        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Database className="mr-1.5 h-3.5 w-3.5" />
+      )}
+      {bulkIndexProgress
+        ? `Indexing ${Math.min(bulkIndexProgress.total, bulkIndexProgress.completed + 1)}/${bulkIndexProgress.total}`
+        : "Index loaded notes"}
+    </Button>
+  ) : null
+
   return (
     <div className="space-y-4">
       <AIIndexToolbar
@@ -661,6 +782,7 @@ export function AIIndexTab() {
       <div className="rounded-2xl border border-border/60 bg-background/60">
         <AIIndexResultsHeader
           activeSearchQuery={activeSearchQuery}
+          bulkAction={bulkAction}
           filter={filter}
           hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}

@@ -9,6 +9,7 @@ const mockInvalidateQueries = jest.fn()
 const mockUseAIIndexNotes = jest.fn()
 const mockUseFlattenedAIIndexNotes = jest.fn()
 const mockNoteCard = jest.fn()
+const mockInvoke = jest.fn()
 
 jest.mock('@ui/mobile/providers', () => ({
   useTheme: () => ({
@@ -32,7 +33,7 @@ jest.mock('@ui/mobile/providers', () => ({
     },
   }),
   useSupabase: () => ({
-    client: { functions: { invoke: jest.fn() } },
+    client: { functions: { invoke: mockInvoke } },
     user: { id: 'test-user-id' },
   }),
 }))
@@ -88,6 +89,7 @@ describe('AIIndexPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
+    mockInvoke.mockReset()
     setupMocks()
   })
 
@@ -198,6 +200,47 @@ describe('AIIndexPanel', () => {
 
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['ai-index-notes', 'test-user-id'],
+    })
+  })
+
+  it('shows the bulk button only when the loaded list contains actionable notes', () => {
+    const view = render(<AIIndexPanel />)
+
+    expect(screen.getByText('Index loaded notes')).toBeTruthy()
+
+    view.unmount()
+    setupMocks({}, [
+      { id: 'n1', title: 'Indexed One', updatedAt: '2025-06-01', lastIndexedAt: '2025-06-01', status: 'indexed' },
+    ])
+
+    render(<AIIndexPanel />)
+
+    expect(screen.queryByText('Index loaded notes')).toBeNull()
+  })
+
+  it('bulk-indexes only loaded actionable notes and skips indexed cards', async () => {
+    setupMocks({}, [
+      { id: 'n1', title: 'Indexed One', updatedAt: '2025-06-01', lastIndexedAt: '2025-06-01', status: 'indexed' },
+      { id: 'n2', title: 'Need Index', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+      { id: 'n3', title: 'Need Reindex', updatedAt: '2025-06-01', lastIndexedAt: '2025-05-01', status: 'outdated' },
+    ])
+    mockInvoke
+      .mockResolvedValueOnce({ data: { outcome: 'indexed', chunkCount: 1 }, error: null })
+      .mockResolvedValueOnce({ data: { outcome: 'indexed', chunkCount: 1 }, error: null })
+
+    render(<AIIndexPanel />)
+
+    fireEvent.press(screen.getByText('Index loaded notes'))
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledTimes(2)
+    })
+
+    expect(mockInvoke).toHaveBeenNthCalledWith(1, 'rag-index', {
+      body: { noteId: 'n2', action: 'index' },
+    })
+    expect(mockInvoke).toHaveBeenNthCalledWith(2, 'rag-index', {
+      body: { noteId: 'n3', action: 'reindex' },
     })
   })
 })

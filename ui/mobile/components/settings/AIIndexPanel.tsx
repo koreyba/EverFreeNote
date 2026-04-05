@@ -10,9 +10,12 @@ import {
   View,
 } from 'react-native'
 import { Search, X } from 'lucide-react-native'
+import Toast from 'react-native-toast-message'
 import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
 
+import { getAIIndexActionPresentation, getAIIndexActionableNotes } from '@core/constants/aiIndex'
 import { SEARCH_CONFIG } from '@core/constants/search'
+import { parseRagIndexResult } from '@core/rag/indexResult'
 import type { AIIndexFilter, AIIndexMutationResult, AIIndexNoteRow, AIIndexNotesPage } from '@core/types/aiIndex'
 import { Button } from '@ui/mobile/components/ui/Button'
 import { AIIndexNoteCard } from '@ui/mobile/components/settings/AIIndexNoteCard'
@@ -55,6 +58,14 @@ function getSummaryText(loadedCount: number, totalCount: number) {
   return `${totalCount} note${totalCount === 1 ? '' : 's'}`
 }
 
+function getBulkSummaryText(successCount: number, skippedCount: number, errorCount: number) {
+  return [
+    successCount > 0 ? `${successCount} indexed` : null,
+    skippedCount > 0 ? `${skippedCount} skipped` : null,
+    errorCount > 0 ? `${errorCount} failed` : null,
+  ].filter(Boolean).join(' • ')
+}
+
 function patchNoteStatus(note: AIIndexNoteRow, result: AIIndexMutationResult): AIIndexNoteRow {
   if (note.id !== result.noteId) return note
   return {
@@ -71,7 +82,7 @@ function shouldKeepNote(note: AIIndexNoteRow, result: AIIndexMutationResult, fil
 
 export function AIIndexPanel() {
   const { colors } = useTheme()
-  const { user } = useSupabase()
+  const { client: supabase, user } = useSupabase()
   const queryClient = useQueryClient()
   const styles = useMemo(() => createStyles(colors), [colors])
   const listRef = useRef<FlatList<AIIndexNoteRow> | null>(null)
@@ -80,6 +91,7 @@ export function AIIndexPanel() {
   const [filter, setFilter] = useState<AIIndexFilter>('all')
   const [searchDraft, setSearchDraft] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [bulkIndexProgress, setBulkIndexProgress] = useState<{ completed: number; total: number } | null>(null)
 
   const normalizedSearchDraft = searchDraft.trim()
   const isSearchHintVisible =
@@ -113,9 +125,10 @@ export function AIIndexPanel() {
   const totalCount = queryResult.data?.pages[0]?.totalCount ?? 0
   const summaryText = getSummaryText(notes.length, totalCount)
   const emptyMessage = getEmptyMessage(filter, searchQuery)
+  const actionableLoadedNotes = useMemo(() => getAIIndexActionableNotes(notes), [notes])
 
 
-  const handleMutated = useCallback(
+  const applyMutationResult = useCallback(
     (result: AIIndexMutationResult) => {
       queryClient.setQueriesData<InfiniteData<AIIndexNotesPage>>(
         { queryKey: getAIIndexNotesQueryPrefix(user?.id) },
@@ -132,11 +145,18 @@ export function AIIndexPanel() {
           }
         },
       )
+    },
+    [filter, queryClient, user?.id],
+  )
+
+  const handleMutated = useCallback(
+    (result: AIIndexMutationResult) => {
+      applyMutationResult(result)
       void queryClient.invalidateQueries({
         queryKey: getAIIndexNotesQueryPrefix(user?.id),
       })
     },
-    [filter, queryClient, user?.id],
+    [applyMutationResult, queryClient, user?.id],
   )
 
   const handleLoadMore = useCallback(() => {
@@ -158,6 +178,69 @@ export function AIIndexPanel() {
   const handleResetFilter = useCallback(() => {
     setFilter('all')
   }, [])
+
+  const handleBulkIndexLoaded = useCallback(async () => {
+    if (bulkIndexProgress || actionableLoadedNotes.length === 0) return
+
+    const notesToProcess = actionableLoadedNotes
+    let successCount = 0
+    let skippedCount = 0
+    let errorCount = 0
+
+    setBulkIndexProgress({ completed: 0, total: notesToProcess.length })
+
+    try {
+      for (const [index, note] of notesToProcess.entries()) {
+        const actionPresentation = getAIIndexActionPresentation(note.status)
+        try {
+          const { data, error } = await supabase.functions.invoke('rag-index', {
+            body: { noteId: note.id, action: actionPresentation.action },
+          })
+          if (error) throw error
+
+          const result = parseRagIndexResult(data)
+          if (result.outcome === 'indexed') {
+            successCount += 1
+            applyMutationResult({
+              noteId: note.id,
+              previousStatus: note.status,
+              nextStatus: actionPresentation.successStatus,
+            })
+          } else if (result.outcome === 'skipped') {
+            skippedCount += 1
+            if (result.reason === 'too_short') {
+              applyMutationResult({
+                noteId: note.id,
+                previousStatus: note.status,
+                nextStatus: 'not_indexed',
+              })
+            }
+          } else {
+            errorCount += 1
+          }
+        } catch {
+          errorCount += 1
+        } finally {
+          setBulkIndexProgress({
+            completed: index + 1,
+            total: notesToProcess.length,
+          })
+        }
+      }
+
+      const summary = getBulkSummaryText(successCount, skippedCount, errorCount)
+      if (successCount > 0 && errorCount === 0) {
+        Toast.show({ type: 'success', text1: summary || 'Loaded notes indexed' })
+      } else if (successCount > 0 || skippedCount > 0 || errorCount > 0) {
+        Toast.show({ type: 'info', text1: summary || 'Bulk indexing finished' })
+      }
+    } finally {
+      setBulkIndexProgress(null)
+      void queryClient.invalidateQueries({
+        queryKey: getAIIndexNotesQueryPrefix(user?.id),
+      })
+    }
+  }, [actionableLoadedNotes, applyMutationResult, bulkIndexProgress, queryClient, supabase.functions, user?.id])
 
   const renderItem = useCallback(
     ({ item }: { item: AIIndexNoteRow }) => (
@@ -304,8 +387,19 @@ export function AIIndexPanel() {
         {summaryText ? (
           <View style={styles.summaryRow}>
             <Text style={styles.summaryText}>{summaryText}</Text>
-            {(hasActiveSearch || hasActiveFilter) ? (
+            {(actionableLoadedNotes.length > 0 || bulkIndexProgress || hasActiveSearch || hasActiveFilter) ? (
               <View style={styles.summaryActions}>
+                {(actionableLoadedNotes.length > 0 || bulkIndexProgress) ? (
+                  <Button
+                    size="sm"
+                    disabled={bulkIndexProgress !== null}
+                    onPress={() => { void handleBulkIndexLoaded() }}
+                  >
+                    {bulkIndexProgress
+                      ? `Indexing ${Math.min(bulkIndexProgress.total, bulkIndexProgress.completed + 1)}/${bulkIndexProgress.total}`
+                      : 'Index loaded notes'}
+                  </Button>
+                ) : null}
                 {hasActiveSearch ? (
                   <Button variant="ghost" size="sm" onPress={handleClearSearch}>
                     Clear search
