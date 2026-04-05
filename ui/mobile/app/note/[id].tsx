@@ -193,6 +193,11 @@ export default function NoteEditorScreen() {
   const insets = useSafeAreaInsets()
   const note = noteState?.note ?? null
 
+  const idRef = useRef(id)
+  useEffect(() => {
+    idRef.current = id
+  }, [id])
+
   const editorRef = useRef<EditorWebViewHandle>(null)
   const deletedMessageShownRef = useRef(false)
   const [title, setTitle] = useState('')
@@ -238,7 +243,7 @@ export default function NoteEditorScreen() {
     onFlush: (next) => {
       const patch = buildPatch(next)
       if (Object.keys(patch).length === 0) return
-      updateNote({ id, updates: patch })
+      updateNote({ id: idRef.current, updates: patch })
     },
   })
 
@@ -290,6 +295,8 @@ export default function NoteEditorScreen() {
       const sessionChange = resolveNoteAutosaveSessionChange({
         previousNoteId: lastHydratedNoteIdRef.current,
         nextNoteId: note.id,
+        // Mobile note routes always target an existing note ID, so there is no local
+        // "create then assign server ID" session transition on this screen.
         hasPendingCreateAssignment: false,
       })
       if (sessionChange === 'switched') {

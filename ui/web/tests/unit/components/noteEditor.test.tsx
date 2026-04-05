@@ -12,25 +12,30 @@ jest.mock('@/components/ui/button', () => ({
 }))
 
 jest.mock('@/components/ui/input', () => ({
-  Input: require('react').forwardRef((props: React.InputHTMLAttributes<HTMLInputElement>, ref: React.ForwardedRef<HTMLInputElement>) => (
-    <input ref={ref} {...props} />
-  )),
+  Input: (() => {
+    const ReactModule = jest.requireActual<typeof import('react')>('react')
+    const MockInput = ReactModule.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>((props, ref) => (
+      <input ref={ref} {...props} />
+    ))
+    MockInput.displayName = 'MockInput'
+    return MockInput
+  })(),
 }))
 
 jest.mock('@/components/RichTextEditor', () => {
-  const React = require('react')
+  const ReactModule = jest.requireActual<typeof import('react')>('react')
 
-  return React.forwardRef((
-    props: { initialContent: string; onContentChange?: () => void },
-    ref: React.ForwardedRef<{ getHTML: () => string; setContent: (html: string) => void; scrollToChunk: () => void }>
-  ) => {
-    const initializedRef = React.useRef(false)
+  const MockRichTextEditor = ReactModule.forwardRef<
+    { getHTML: () => string; setContent: (html: string) => void; runCommand: () => void; scrollToChunk: () => void },
+    { initialContent: string; onContentChange?: () => void }
+  >((props, ref) => {
+    const initializedRef = ReactModule.useRef(false)
     if (!initializedRef.current) {
       mockEditorHtml = props.initialContent
       initializedRef.current = true
     }
 
-    React.useImperativeHandle(ref, () => ({
+    ReactModule.useImperativeHandle(ref, () => ({
       getHTML: () => mockEditorHtml,
       setContent: (html: string) => {
         mockSetEditorContent(html)
@@ -55,6 +60,9 @@ jest.mock('@/components/RichTextEditor', () => {
       </div>
     )
   })
+
+  MockRichTextEditor.displayName = 'MockRichTextEditor'
+  return MockRichTextEditor
 })
 
 jest.mock('@/components/TagInput', () => ({
@@ -86,6 +94,10 @@ describe('NoteEditor same-note autosave reconciliation', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockEditorHtml = '<p>Body A</p>'
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
   })
 
   const renderEditor = (props: Partial<React.ComponentProps<typeof NoteEditor>> = {}) => {
@@ -233,5 +245,40 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     })
 
     expect(onAutoSave).not.toHaveBeenCalled()
+  })
+
+  it('keeps a pending autosave alive when the parent re-renders with a new onAutoSave callback', async () => {
+    jest.useFakeTimers()
+
+    const firstOnAutoSave = jest.fn()
+    const secondOnAutoSave = jest.fn()
+    const { rerender } = renderEditor({ onAutoSave: firstOnAutoSave })
+
+    fireEvent.change(screen.getByPlaceholderText('Note title'), {
+      target: { value: 'Pending local title' },
+    })
+
+    rerender(
+      <NoteEditor
+        noteId="note-1"
+        initialTitle="First"
+        initialDescription="<p>Body A</p>"
+        initialTags="tag-a"
+        isSaving={false}
+        onSave={jest.fn()}
+        onRead={jest.fn()}
+        onAutoSave={secondOnAutoSave}
+      />
+    )
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(500)
+    })
+
+    expect(firstOnAutoSave).not.toHaveBeenCalled()
+    expect(secondOnAutoSave).toHaveBeenCalledWith(expect.objectContaining({
+      noteId: 'note-1',
+      title: 'Pending local title',
+    }))
   })
 })

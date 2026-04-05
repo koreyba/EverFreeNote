@@ -98,9 +98,10 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
       lastFlushed = base
     },
 
-    rebase: (base: T, nextPending: T | null = pending) => {
+    rebase: (base: T, nextPending?: T | null) => {
       lastFlushed = base
-      queuePending(nextPending)
+      // Default behavior: keep the current pending draft when caller omits nextPending.
+      queuePending(nextPending === undefined ? pending : nextPending)
     },
 
     getBaseline: () => lastFlushed,

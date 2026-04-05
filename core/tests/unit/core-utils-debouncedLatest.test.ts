@@ -66,4 +66,65 @@ describe('createDebouncedLatest', () => {
 
     resolveFlush()
   })
+
+  it('cancels pending work and prevents the timer from flushing', async () => {
+    const onFlush = jest.fn().mockResolvedValue(undefined)
+    const debounced = createDebouncedLatest({
+      delayMs: 100,
+      onFlush,
+      isEqual: (left: { title: string }, right: { title: string }) => left.title === right.title,
+    })
+
+    debounced.schedule({ title: 'Local' })
+    debounced.cancel()
+
+    await jest.advanceTimersByTimeAsync(100)
+
+    expect(debounced.getPending()).toBeNull()
+    expect(onFlush).not.toHaveBeenCalled()
+  })
+
+  it('uses the reset baseline for future equality checks', () => {
+    const debounced = createDebouncedLatest({
+      delayMs: 100,
+      onFlush: jest.fn(),
+      isEqual: (left: { title: string }, right: { title: string }) => left.title === right.title,
+    })
+
+    debounced.reset({ title: 'Saved' })
+    debounced.schedule({ title: 'Saved' })
+
+    expect(debounced.getPending()).toBeNull()
+  })
+
+  it('rolls back the baseline when flush fails', async () => {
+    const onFlush = jest.fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('boom'))
+    const debounced = createDebouncedLatest({
+      delayMs: 100,
+      onFlush,
+      isEqual: (left: { title: string }, right: { title: string }) => left.title === right.title,
+    })
+
+    debounced.schedule({ title: 'Saved' })
+    await debounced.flush()
+    debounced.schedule({ title: 'Broken' })
+
+    await expect(debounced.flush()).rejects.toThrow('boom')
+    expect(debounced.getBaseline()).toEqual({ title: 'Saved' })
+  })
+
+  it('does not queue a value that already matches the current baseline', () => {
+    const debounced = createDebouncedLatest({
+      delayMs: 100,
+      onFlush: jest.fn(),
+      isEqual: (left: { title: string }, right: { title: string }) => left.title === right.title,
+    })
+
+    debounced.reset({ title: 'Saved' })
+    debounced.schedule({ title: 'Saved' })
+
+    expect(debounced.getPending()).toBeNull()
+  })
 })

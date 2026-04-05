@@ -114,13 +114,30 @@ export function useNoteEditorAutoSave({
       a.tags === b.tags,
     onFlush: async (payload) => {
       if (!onAutoSave) return
-      try {
-        await onAutoSave(payload)
-      } catch {
-        // Errors handled upstream
-      }
+      await onAutoSave(payload)
     },
   }), [autosaveDelayMs, onAutoSave])
+
+  const previousDebouncedAutoSaveRef = useRef<typeof debouncedAutoSave | null>(null)
+  useEffect(() => {
+    const previousDebouncedAutoSave = previousDebouncedAutoSaveRef.current
+    if (!previousDebouncedAutoSave || previousDebouncedAutoSave === debouncedAutoSave) {
+      previousDebouncedAutoSaveRef.current = debouncedAutoSave
+      return
+    }
+
+    const previousPending = previousDebouncedAutoSave.getPending()
+    const previousBaseline = previousDebouncedAutoSave.getBaseline()
+
+    previousDebouncedAutoSave.cancel()
+    if (previousBaseline) {
+      debouncedAutoSave.rebase(previousBaseline, previousPending)
+    } else if (previousPending) {
+      debouncedAutoSave.schedule(previousPending)
+    }
+
+    previousDebouncedAutoSaveRef.current = debouncedAutoSave
+  }, [debouncedAutoSave])
 
   // Detect note switches vs autosave ID assignments.
   useEffect(() => {
@@ -211,6 +228,8 @@ export function useNoteEditorAutoSave({
     if (
       debouncedAutoSave.getPending() === null &&
       !areSnapshotsEqual(currentDraft, lastAcceptedRef.current) &&
+      // Edge case: same-note reconcile can leave the editor dirty without an active timer,
+      // so blur/unmount must re-enqueue the latest draft before flushing.
       (!debouncerBaseline || currentDraft.title !== debouncerBaseline.title || currentDraft.description !== debouncerBaseline.description || currentDraft.tags !== debouncerBaseline.tags)
     ) {
       debouncedAutoSave.schedule({
@@ -219,7 +238,7 @@ export function useNoteEditorAutoSave({
       })
     }
     await debouncedAutoSave.flush()
-  }, [debouncedAutoSave, onAutoSave, getDraftSnapshot])
+  }, [debouncedAutoSave, getDraftSnapshot, onAutoSave])
 
   return {
     editorSessionKey,
