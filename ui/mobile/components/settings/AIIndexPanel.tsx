@@ -193,16 +193,22 @@ async function processBulkIndexNote({
 
 function AIIndexSummary({
   bulkAction,
+  filterLabel,
   hasActiveFilter,
   hasActiveSearch,
+  isFetching,
+  isFetchingNextPage,
   onClearSearch,
   onResetFilter,
   styles,
   summaryText,
 }: Readonly<{
   bulkAction?: ReactElement | null
+  filterLabel: string
   hasActiveFilter: boolean
   hasActiveSearch: boolean
+  isFetching: boolean
+  isFetchingNextPage: boolean
   onClearSearch: () => void
   onResetFilter: () => void
   styles: ReturnType<typeof createStyles>
@@ -215,6 +221,22 @@ function AIIndexSummary({
   return (
     <View style={styles.summaryRow}>
       <Text style={styles.summaryText}>{summaryText}</Text>
+      <View style={styles.summaryMeta}>
+        <View style={styles.summaryBadge}>
+          <Text style={styles.summaryBadgeLabel}>{filterLabel}</Text>
+        </View>
+        {hasActiveSearch ? (
+          <View style={styles.summaryBadge}>
+            <Text style={styles.summaryBadgeLabel}>Search active</Text>
+          </View>
+        ) : null}
+        {isFetching && !isFetchingNextPage ? (
+          <Text style={styles.summaryMetaText}>Refreshing...</Text>
+        ) : null}
+        {isFetchingNextPage ? (
+          <Text style={styles.summaryMetaText}>Loading more</Text>
+        ) : null}
+      </View>
       {showSummaryActions ? (
         <View style={styles.summaryActions}>
           {bulkAction}
@@ -586,8 +608,11 @@ export function AIIndexPanel() {
 
         <AIIndexSummary
           bulkAction={bulkAction}
+          filterLabel={FILTER_OPTIONS.find((option) => option.value === filter)?.label ?? 'All notes'}
           hasActiveFilter={hasActiveFilter}
           hasActiveSearch={hasActiveSearch}
+          isFetching={queryResult.isRefetching}
+          isFetchingNextPage={queryResult.isFetchingNextPage}
           onClearSearch={handleClearSearch}
           onResetFilter={handleResetFilter}
           styles={styles}
@@ -706,14 +731,38 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     summaryRow: {
       gap: 8,
     },
-    summaryText: {
+    summaryMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexWrap: 'wrap',
+    },
+    summaryBadge: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+    },
+    summaryBadgeLabel: {
+      fontSize: 12,
+      fontFamily: 'Inter_500Medium',
+      color: colors.foreground,
+    },
+    summaryMetaText: {
       fontSize: 12,
       fontFamily: 'Inter_400Regular',
       color: colors.mutedForeground,
     },
+    summaryText: {
+      fontSize: 13,
+      fontFamily: 'Inter_600SemiBold',
+      color: colors.foreground,
+    },
     summaryActions: {
       flexDirection: 'row',
-      gap: 6,
+      gap: 8,
       flexWrap: 'wrap',
       alignItems: 'center',
     },

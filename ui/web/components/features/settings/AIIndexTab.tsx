@@ -295,12 +295,12 @@ function AIIndexResetActions({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {hasActiveSearch ? (
-        <Button variant="ghost" size="sm" onClick={onClearSearch}>
+        <Button variant="ghost" size="sm" className="h-8 px-2.5 text-muted-foreground hover:text-foreground" onClick={onClearSearch}>
           {searchButtonLabel}
         </Button>
       ) : null}
       {hasActiveFilter ? (
-        <Button variant="ghost" size="sm" onClick={onResetFilter}>
+        <Button variant="ghost" size="sm" className="h-8 px-2.5 text-muted-foreground hover:text-foreground" onClick={onResetFilter}>
           {filterButtonLabel}
         </Button>
       ) : null}
@@ -454,12 +454,10 @@ function AIIndexResultsHeader({
   onResetFilter: () => void
   summaryText: string
 }>) {
-  const hasDetailRow = Boolean(bulkAction) || hasActiveFilter || hasActiveSearch || isFetching || isFetchingNextPage
-
   return (
-    <div className="space-y-3 border-b border-border/60 px-4 py-3">
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">{summaryText}</p>
+    <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0 space-y-2">
+        <p className="text-sm font-semibold text-foreground">{summaryText}</p>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="outline" className="bg-background/70">{FILTER_LABELS[filter]}</Badge>
           {hasActiveSearch ? (
@@ -481,7 +479,7 @@ function AIIndexResultsHeader({
           ) : null}
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+      <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 sm:justify-end">
         {bulkAction}
         <AIIndexResetActions
           hasActiveFilter={hasActiveFilter}
@@ -808,7 +806,7 @@ export function AIIndexTab() {
       onClick={handleBulkIndexClick}
       disabled={bulkIndexProgress !== null}
       className={cn(
-        "shrink-0 rounded-full border px-3 py-1 text-sm transition-colors sm:rounded-xl sm:px-4 sm:py-2",
+        "inline-flex h-8 shrink-0 items-center rounded-lg border px-3 text-sm transition-colors",
         bulkIndexProgress
           ? "cursor-default border-primary/20 bg-primary/10 text-primary/75"
           : "border-primary/25 bg-primary/10 font-medium text-primary hover:border-primary/35 hover:bg-primary/15"
