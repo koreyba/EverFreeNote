@@ -100,6 +100,16 @@ function shouldKeepNote(note: AIIndexNoteRow, result: AIIndexMutationResult, fil
   return note.id !== result.noteId || note.status === filter
 }
 
+function getFilterFromAIIndexQueryKey(queryKey: readonly unknown[]): AIIndexFilter {
+  const rawFilter = Array.isArray(queryKey) ? queryKey[2] : null
+  return rawFilter === 'indexed'
+    || rawFilter === 'not_indexed'
+    || rawFilter === 'outdated'
+    || rawFilter === 'all'
+    ? rawFilter
+    : 'all'
+}
+
 function incrementBulkCounts(
   counts: Readonly<{ successCount: number; skippedCount: number; errorCount: number }>,
   outcome: BulkIndexOutcome,
@@ -390,22 +400,25 @@ export function AIIndexPanel() {
   }, [filter, queryClient])
 
   const applyMutationResult = useCallback((result: AIIndexMutationResult) => {
-    queryClient.setQueriesData<InfiniteData<AIIndexNotesPage>>(
-      { queryKey: getAIIndexNotesQueryPrefix(user?.id) },
-      (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            notes: page.notes
-              .map((note) => patchNoteStatus(note, result))
-              .filter((note) => shouldKeepNote(note, result, filter)),
-          })),
-        }
-      },
-    )
-  }, [filter, queryClient, user?.id])
+    const cachedQueries = queryClient.getQueriesData<InfiniteData<AIIndexNotesPage>>({
+      queryKey: getAIIndexNotesQueryPrefix(user?.id),
+    })
+
+    for (const [queryKey, queryData] of cachedQueries) {
+      if (!queryData) continue
+
+      const queryFilter = getFilterFromAIIndexQueryKey(queryKey)
+      queryClient.setQueryData<InfiniteData<AIIndexNotesPage>>(queryKey, {
+        ...queryData,
+        pages: queryData.pages.map((page) => ({
+          ...page,
+          notes: page.notes
+            .map((note) => patchNoteStatus(note, result))
+            .filter((note) => shouldKeepNote(note, result, queryFilter)),
+        })),
+      })
+    }
+  }, [queryClient, user?.id])
 
   const handleMutated = useCallback((result: AIIndexMutationResult) => {
     applyMutationResult(result)
@@ -483,7 +496,7 @@ export function AIIndexPanel() {
     : 'Failed to load AI index notes.'
   const showBulkAction = actionableLoadedNotes.length > 0 || bulkIndexProgress !== null
   const bulkActionLabel = bulkIndexProgress
-    ? `${Math.min(bulkIndexProgress.total, bulkIndexProgress.completed + 1)}/${bulkIndexProgress.total}`
+    ? `${bulkIndexProgress.completed}/${bulkIndexProgress.total}`
     : 'Index loaded'
 
   return (

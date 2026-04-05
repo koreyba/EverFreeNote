@@ -6,6 +6,8 @@ import type { AIIndexNoteRow } from '@core/types/aiIndex'
 const mockRefetch = jest.fn()
 const mockFetchNextPage = jest.fn()
 const mockInvalidateQueries = jest.fn()
+const mockGetQueriesData = jest.fn()
+const mockSetQueryData = jest.fn()
 const mockUseAIIndexNotes = jest.fn()
 const mockUseFlattenedAIIndexNotes = jest.fn()
 const mockNoteCard = jest.fn()
@@ -44,8 +46,9 @@ jest.mock('@tanstack/react-query', () => {
     ...actual,
     useQueryClient: () => ({
       invalidateQueries: mockInvalidateQueries,
+      getQueriesData: mockGetQueriesData,
       setQueriesData: jest.fn(),
-      setQueryData: jest.fn(),
+      setQueryData: mockSetQueryData,
     }),
   }
 })
@@ -95,6 +98,7 @@ describe('AIIndexPanel', () => {
     jest.clearAllMocks()
     jest.useFakeTimers()
     mockInvoke.mockReset()
+    mockGetQueriesData.mockReturnValue([])
     setupMocks()
   })
 
@@ -264,7 +268,7 @@ describe('AIIndexPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText('Indexing loaded notes')).toBeTruthy()
-      expect(screen.getByText('1/1')).toBeTruthy()
+      expect(screen.getByText('0/1')).toBeTruthy()
     })
 
     await act(async () => {
@@ -273,6 +277,67 @@ describe('AIIndexPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText('Index loaded notes')).toBeTruthy()
+    })
+  })
+
+  it('updates cached query variants with their own filter after a card mutation', () => {
+    mockGetQueriesData.mockReturnValue([
+      [
+        ['ai-index-notes', 'test-user-id', 'all', ''],
+        {
+          pages: [{
+            notes: [
+              { id: 'n1', title: 'Note One', updatedAt: '2025-06-01', lastIndexedAt: '2025-06-01', status: 'indexed' },
+            ],
+            totalCount: 1,
+            hasMore: false,
+          }],
+        },
+      ],
+      [
+        ['ai-index-notes', 'test-user-id', 'indexed', ''],
+        {
+          pages: [{
+            notes: [
+              { id: 'n1', title: 'Note One', updatedAt: '2025-06-01', lastIndexedAt: '2025-06-01', status: 'indexed' },
+            ],
+            totalCount: 1,
+            hasMore: false,
+          }],
+        },
+      ],
+    ])
+
+    render(<AIIndexPanel />)
+
+    const cardProps = mockNoteCard.mock.calls.at(-1)?.[0] as {
+      onMutated: (result: { noteId: string; previousStatus: string; nextStatus: string }) => void
+    }
+
+    act(() => {
+      cardProps.onMutated({
+        noteId: 'n1',
+        previousStatus: 'indexed',
+        nextStatus: 'not_indexed',
+      })
+    })
+
+    expect(mockSetQueryData).toHaveBeenCalledTimes(2)
+    expect(mockSetQueryData).toHaveBeenNthCalledWith(1, ['ai-index-notes', 'test-user-id', 'all', ''], {
+      pages: [{
+        notes: [
+          expect.objectContaining({ id: 'n1', status: 'not_indexed' }),
+        ],
+        totalCount: 1,
+        hasMore: false,
+      }],
+    })
+    expect(mockSetQueryData).toHaveBeenNthCalledWith(2, ['ai-index-notes', 'test-user-id', 'indexed', ''], {
+      pages: [{
+        notes: [],
+        totalCount: 1,
+        hasMore: false,
+      }],
     })
   })
 })

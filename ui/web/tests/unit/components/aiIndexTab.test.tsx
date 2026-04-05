@@ -710,7 +710,7 @@ describe("AIIndexTab", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Indexing loaded notes" }).getAttribute("aria-busy")).toBe("true")
-      expect(screen.getByText("1/1")).toBeTruthy()
+      expect(screen.getByText("0/1")).toBeTruthy()
     })
 
     await act(async () => {
@@ -723,6 +723,15 @@ describe("AIIndexTab", () => {
   })
 
   it("keeps the supabase function context during bulk indexing", async () => {
+    type FunctionsMock = {
+      calls: Array<[string, { body: { noteId: string; action: string } }]>
+      invoke: (
+        this: FunctionsMock,
+        name: string,
+        options: { body: { noteId: string; action: string } }
+      ) => Promise<{ data: { outcome: "indexed"; chunkCount: number }; error: null }>
+    }
+
     const note = {
       id: "note-not-indexed",
       title: "Need index",
@@ -730,9 +739,9 @@ describe("AIIndexTab", () => {
       lastIndexedAt: null,
       status: "not_indexed" as const,
     }
-    const functions = {
-      calls: [] as Array<[string, { body: { noteId: string; action: string } }]>,
-      invoke(this: typeof functions, name: string, options: { body: { noteId: string; action: string } }) {
+    const functions: FunctionsMock = {
+      calls: [],
+      invoke(this: FunctionsMock, name: string, options: { body: { noteId: string; action: string } }) {
         if (this !== functions) {
           return Promise.reject(new Error("lost functions context"))
         }

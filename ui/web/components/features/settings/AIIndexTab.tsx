@@ -820,7 +820,7 @@ export function AIIndexTab() {
         )}
         <span>
           {bulkIndexProgress
-            ? `${Math.min(bulkIndexProgress.total, bulkIndexProgress.completed + 1)}/${bulkIndexProgress.total}`
+            ? `${bulkIndexProgress.completed}/${bulkIndexProgress.total}`
             : "Index loaded"}
         </span>
       </span>
