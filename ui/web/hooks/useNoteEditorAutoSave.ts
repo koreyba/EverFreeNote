@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
+import { resolveNoteAutosaveSessionChange } from '@core/utils/noteAutosaveSession'
 import { buildTagString, parseTagString } from '@ui/web/lib/tags'
 
 export type NoteAutoSavePayload = {
@@ -25,15 +26,15 @@ type UseNoteEditorAutoSaveParams = {
 }
 
 export type UseNoteEditorAutoSaveResult = {
-  /** Increments on real note switch — use as `key` prop to remount editor/title input */
+  /** Increments on real note switch; use as `key` prop to remount editor/title input */
   editorSessionKey: number
   /** Pass to title input onChange and editor onContentChange */
   handleContentChange: () => void
   /** Schedule an autosave, optionally overriding fields (e.g. after tag changes) */
   scheduleAutoSave: (overrides?: Partial<NoteAutoSavePayload>) => void
-  /** Cancel pending autosave — call before manual Save or Read */
+  /** Cancel pending autosave; call before manual Save or Read */
   cancelAutoSave: () => void
-  /** Flush pending autosave immediately — for useImperativeHandle */
+  /** Flush pending autosave immediately; for useImperativeHandle */
   flushPendingSave: () => Promise<void>
 }
 
@@ -41,9 +42,7 @@ export type UseNoteEditorAutoSaveResult = {
  * Owns the autosave lifecycle and note-switch detection for NoteEditor.
  *
  * Key responsibility: distinguish between "autosave just created a note and
- * assigned a server ID" (undefined → id, pendingCreateRef=true) and "user
- * navigated to a different note" (both cause noteId to change but require
- * opposite responses: no remount vs remount).
+ * assigned a server ID" and "user navigated to a different note".
  */
 export function useNoteEditorAutoSave({
   noteId,
@@ -97,12 +96,16 @@ export function useNoteEditorAutoSave({
   useEffect(() => {
     const prevNoteId = lastResetNoteIdRef.current
     const nextNoteId = noteId
+    const sessionChange = resolveNoteAutosaveSessionChange({
+      previousNoteId: prevNoteId,
+      nextNoteId,
+      hasPendingCreateAssignment: pendingCreateRef.current,
+    })
 
-    if (prevNoteId === nextNoteId) return
+    if (sessionChange === 'unchanged') return
     lastResetNoteIdRef.current = nextNoteId
 
-    // undefined → id during autosave: same editing session, just update the debounced payload.
-    if (!prevNoteId && nextNoteId && pendingCreateRef.current) {
+    if (sessionChange === 'assigned-id') {
       pendingCreateRef.current = false
       debouncedAutoSave.reset(getAutoSavePayload({ noteId: nextNoteId }))
       return

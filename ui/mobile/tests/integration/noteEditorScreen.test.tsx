@@ -566,6 +566,41 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         expect(mockNoteService.prototype.deleteNote).toHaveBeenCalledWith('test-note-id')
       })
     })
+
+    it('does not let a same-note refresh restore an older title over a newer draft', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      const titleInput = screen.getByDisplayValue('Test Note')
+      fireEvent.changeText(titleInput, 'First title')
+      fireEvent.changeText(titleInput, 'Second title')
+
+      await act(async () => {
+        queryClient.setQueryData(['note', 'test-note-id'], {
+          note: {
+            ...defaultNote,
+            title: 'First title',
+          },
+          status: 'found',
+        })
+      })
+
+      expect(screen.getByDisplayValue('Second title')).toBeTruthy()
+
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      await waitFor(() => {
+        expect(mockNoteService.prototype.updateNote).toHaveBeenCalledWith(
+          'test-note-id',
+          expect.objectContaining({ title: 'Second title' })
+        )
+      })
+    })
   })
 
   describe('Accessibility', () => {

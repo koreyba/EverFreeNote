@@ -10,6 +10,10 @@ import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
 import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical } from 'lucide-react-native'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
+import {
+  resolveExternalDraftHydration,
+  resolveNoteAutosaveSessionChange,
+} from '@core/utils/noteAutosaveSession'
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
 import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
 
@@ -18,6 +22,26 @@ const HEADER_BUTTON_PADDING = 8
 
 type NoteEditorHeaderStyles = ReturnType<typeof createStyles>
 type ThemeColors = ReturnType<typeof useTheme>['colors']
+type DraftSnapshot = {
+  title: string
+  description: string
+  tags: string[]
+}
+
+const areStringArraysEqual = (a: string[], b: string[]) => {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
+
+const areDraftSnapshotsEqual = (a: DraftSnapshot, b: DraftSnapshot) => (
+  a.title === b.title &&
+  a.description === b.description &&
+  areStringArraysEqual(a.tags, b.tags)
+)
 
 type HeaderLeftActionsProps = Readonly<{
   styles: NoteEditorHeaderStyles
@@ -182,28 +206,19 @@ export default function NoteEditorScreen() {
   const [isEditorReady, setIsEditorReady] = useState(false)
   const lastHydratedNoteIdRef = useRef<string | null>(null)
   const lastAppliedChunkFocusRequestIdRef = useRef<string | null>(null)
-  const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
+  const latestDraftRef = useRef<DraftSnapshot>({
     title: '',
     description: '',
     tags: [],
   })
 
-  const lastSavedRef = useRef<{ title: string; description: string; tags: string[] }>({
+  const lastSavedRef = useRef<DraftSnapshot>({
     title: '',
     description: '',
     tags: [],
   })
 
-  const areStringArraysEqual = (a: string[], b: string[]) => {
-    if (a === b) return true
-    if (a.length !== b.length) return false
-    for (let i = 0; i < a.length; i += 1) {
-      if (a[i] !== b[i]) return false
-    }
-    return true
-  }
-
-  const buildPatch = useCallback((next: { title: string; description: string; tags: string[] }) => {
+  const buildPatch = useCallback((next: DraftSnapshot) => {
     const patch: { title?: string; description?: string; tags?: string[] } = {}
     if (next.title !== lastSavedRef.current.title) patch.title = next.title
     if (next.description !== lastSavedRef.current.description) patch.description = next.description
@@ -211,7 +226,7 @@ export default function NoteEditorScreen() {
     return patch
   }, [])
 
-  const saverRef = useRef<ReturnType<typeof createDebouncedLatest<{ title: string; description: string; tags: string[] }>> | null>(null)
+  const saverRef = useRef<ReturnType<typeof createDebouncedLatest<DraftSnapshot>> | null>(null)
   saverRef.current ??= createDebouncedLatest({
     delayMs: 1000,
     isEqual: (a, b) => a.title === b.title && a.description === b.description && areStringArraysEqual(a.tags, b.tags),
@@ -248,21 +263,43 @@ export default function NoteEditorScreen() {
 
   useEffect(() => {
     if (note) {
-      const hasNoteSwitched = lastHydratedNoteIdRef.current !== note.id
-      if (hasNoteSwitched) {
-        setHistoryState({ canUndo: false, canRedo: false })
-        setIsEditorReady(false)
-        lastHydratedNoteIdRef.current = note.id
-      }
-      setTitle(note.title || '')
-      setTags(note.tags ?? [])
-      lastSavedRef.current = {
+      const incomingSnapshot = {
         title: note.title ?? '',
         description: note.description ?? '',
         tags: note.tags ?? [],
       }
-      latestDraftRef.current = lastSavedRef.current
-      saverRef.current?.reset(lastSavedRef.current)
+      const sessionChange = resolveNoteAutosaveSessionChange({
+        previousNoteId: lastHydratedNoteIdRef.current,
+        nextNoteId: note.id,
+        hasPendingCreateAssignment: false,
+      })
+      if (sessionChange === 'switched') {
+        setHistoryState({ canUndo: false, canRedo: false })
+        setIsEditorReady(false)
+      }
+      const hydrationDecision = resolveExternalDraftHydration({
+        currentNoteId: lastHydratedNoteIdRef.current,
+        incomingNoteId: note.id,
+        currentDraft: latestDraftRef.current,
+        incomingSnapshot,
+        isEqual: areDraftSnapshotsEqual,
+      })
+
+      lastHydratedNoteIdRef.current = note.id
+
+      if (hydrationDecision === 'replace-draft') {
+        setTitle(incomingSnapshot.title)
+        setTags(incomingSnapshot.tags)
+        lastSavedRef.current = incomingSnapshot
+        latestDraftRef.current = incomingSnapshot
+        saverRef.current?.reset(incomingSnapshot)
+        return
+      }
+
+      if (hydrationDecision === 'acknowledge-external') {
+        lastSavedRef.current = incomingSnapshot
+        saverRef.current?.reset(incomingSnapshot)
+      }
     }
   }, [note])
 
