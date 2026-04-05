@@ -23,7 +23,7 @@ export const AiSearchChunkCard = memo(function AiSearchChunkCard({
 }: AiSearchChunkCardProps) {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
-  const noteTags = chunk.noteTags ?? []
+  const noteTags = chunk.noteTags
   const noteSnapshot = useMemo(() => ({
     id: chunk.noteId,
     title: chunk.noteTitle,

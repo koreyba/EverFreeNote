@@ -119,7 +119,7 @@ export const NoteCard = memo(function NoteCard({
         )}
         <View style={styles.cardContent}>
           <Text style={styles.title} numberOfLines={1}>
-            {note.title ?? 'Untitled'}
+            {note.title || 'Untitled'}
           </Text>
           {variant === 'search' ? (
             hasSearchSnippet ? renderHighlightedText(searchSnippet, styles) : null

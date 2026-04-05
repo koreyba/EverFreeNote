@@ -126,11 +126,12 @@ jest.mock('@ui/mobile/components/EditorWebView', () => {
   const { View, Text } = require('react-native')
 
   return React.forwardRef((props: { onHistoryStateChange?: (state: HistoryState) => void }, ref: unknown) => {
-    emitHistoryState = props.onHistoryStateChange ?? null
+    const { onHistoryStateChange } = props
+    emitHistoryState = onHistoryStateChange ?? null
 
     React.useEffect(() => {
-      props.onHistoryStateChange?.({ canUndo: false, canRedo: false })
-    }, [props.onHistoryStateChange])
+      onHistoryStateChange?.({ canUndo: false, canRedo: false })
+    }, [onHistoryStateChange])
 
     React.useImperativeHandle(ref, () => ({
       runCommand: mockRunCommand,

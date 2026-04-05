@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import tsPlugin from '@typescript-eslint/eslint-plugin'
 import tsParser from '@typescript-eslint/parser'
+import reactHooksPlugin from 'eslint-plugin-react-hooks'
 
 export default [
   js.configs.recommended,
@@ -32,6 +33,7 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
+      'react-hooks': reactHooksPlugin,
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
@@ -49,6 +51,10 @@ export default [
       '@typescript-eslint/prefer-optional-chain': 'warn',
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-debugger': 'error',
       'prefer-const': 'error',

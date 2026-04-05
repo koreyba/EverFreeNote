@@ -20,7 +20,7 @@ export function SettingsTabBar({ tabs, activeTab, onChange }: SettingsTabBarProp
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const scrollRef = useRef<ScrollView>(null)
-  const layoutsRef = useRef<Record<string, number>>({})
+  const layoutsRef = useRef<Partial<Record<string, number>>>({})
 
   const handleTabLayout = useCallback((key: string, event: LayoutChangeEvent) => {
     layoutsRef.current[key] = event.nativeEvent.layout.x

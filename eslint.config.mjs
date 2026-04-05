@@ -1,7 +1,8 @@
 import { defineConfig } from 'eslint/config';
 import js from '@eslint/js';
-import { createRequire } from 'module';
+import { createRequire } from 'node:module';
 import globals from 'globals';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
 
 const require = createRequire(import.meta.url);
 
@@ -31,6 +32,16 @@ export default defineConfig([
     ],
   },
   
+  // Additional rules
+  {
+    plugins: {
+      'react-hooks': reactHooksPlugin,
+    },
+    rules: {
+      'react-hooks/exhaustive-deps': 'error',
+    },
+  },
+
   // Override for UI components
   {
     files: ['components/ui/*.tsx'],

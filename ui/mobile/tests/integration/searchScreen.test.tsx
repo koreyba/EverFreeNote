@@ -206,7 +206,7 @@ jest.mock('@ui/mobile/components/tags', () => ({
 // Mock FlashList
 jest.mock('@shopify/flash-list', () => ({
   FlashList: ({ data, renderItem, keyExtractor, onScrollBeginDrag, onRefresh }: {
-    data: unknown[];
+    data: unknown[] | undefined;
     renderItem: (info: { item: unknown }) => React.ReactElement;
     keyExtractor: (item: unknown) => string;
     onScrollBeginDrag?: () => void;
@@ -530,10 +530,7 @@ describe('SearchScreen - Delete Functionality', () => {
       })
 
       await waitFor(() => {
-        const noteCache = queryClient.getQueryData(['note', 'search-note-1']) as {
-          note?: { title?: string } | null
-          status?: string
-        } | undefined
+        const noteCache = queryClient.getQueryData<{ note?: { title?: string } }>(['note', 'search-note-1'])
         expect(noteCache?.note?.title).toBe('Updated Title')
       })
 

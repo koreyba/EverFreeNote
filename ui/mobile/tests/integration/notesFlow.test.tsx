@@ -332,7 +332,7 @@ describe('Notes Flow Integration', () => {
       })
 
       // Should have multiple pages in cache
-      const cacheData = queryClient.getQueryData(['search', TEST_USER_ID, 'test query', null]) as unknown as { pages?: unknown[] }
+      const cacheData = queryClient.getQueryData<{ pages?: unknown[] }>(['search', TEST_USER_ID, 'test query', null])
       expect(cacheData?.pages).toBeDefined()
     })
   })

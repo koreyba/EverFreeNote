@@ -106,7 +106,7 @@ export const buildEnexExportFileName = (date: Date = new Date()) => {
 
 export const toEnexExportNotes = (notes: NoteRow[]): ExportNote[] =>
   notes.map((note) => ({
-    title: note.title ?? 'Untitled',
+    title: note.title || 'Untitled',
     content: note.description ?? '',
     created: new Date(note.created_at),
     updated: new Date(note.updated_at ?? note.created_at),

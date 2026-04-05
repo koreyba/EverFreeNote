@@ -93,7 +93,7 @@ jest.mock('@ui/mobile/components/search/AiSearchNoteCard', () => ({
   }) => {
     const { Pressable, Text } = require('react-native')
     const topChunk = group.chunks[0]
-    const chunkText = topChunk.bodyContent ?? topChunk.content ?? ''
+    const chunkText = topChunk.bodyContent
     return (
       <Pressable
         testID={`mock-ai-note-${group.noteId}`}
@@ -178,8 +178,10 @@ const createLegacyAiGroup = (noteId: string): RagNoteGroup =>
         chunkIndex: 0,
         charOffset: 40,
         content: 'Legacy chunk only content',
+        bodyContent: 'Legacy chunk only content',
+        overlapPrefix: '',
         similarity: 0.88,
-      } as never,
+      },
     ],
   } as RagNoteGroup)
 
