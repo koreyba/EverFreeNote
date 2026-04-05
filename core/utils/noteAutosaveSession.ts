@@ -3,16 +3,16 @@ export type NoteAutosaveSessionChange = 'unchanged' | 'assigned-id' | 'switched'
 type ResolveNoteAutosaveSessionChangeParams = {
   previousNoteId?: string | null
   nextNoteId?: string | null
-  hasPendingCreateAssignment: boolean
+  pendingCreateAssignedNoteId?: string | null
 }
 
 export function resolveNoteAutosaveSessionChange({
   previousNoteId,
   nextNoteId,
-  hasPendingCreateAssignment,
+  pendingCreateAssignedNoteId,
 }: ResolveNoteAutosaveSessionChangeParams): NoteAutosaveSessionChange {
   if (previousNoteId === nextNoteId) return 'unchanged'
-  if (!previousNoteId && !!nextNoteId && hasPendingCreateAssignment) return 'assigned-id'
+  if (!previousNoteId && !!nextNoteId && pendingCreateAssignedNoteId === nextNoteId) return 'assigned-id'
   return 'switched'
 }
 

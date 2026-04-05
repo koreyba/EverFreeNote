@@ -149,6 +149,7 @@ export function useNoteSaveHandlers({
     setAutoSaving(true)
     const guard = setTimeout(() => setAutoSaving(false), 5000)
     try {
+      let assignedNoteId: string | undefined
       const clientUpdatedAt = new Date().toISOString()
       const parsedTags = parseTagString(nextTags)
 
@@ -172,9 +173,11 @@ export function useNoteSaveHandlers({
             updated_at: clientUpdatedAt,
             user_id: user.id,
           } as NoteViewModel)
+          assignedNoteId = tempId
         } else {
           const created = await createNoteMutation.mutateAsync(noteData)
           syncSelectedNote(created as NoteViewModel)
+          assignedNoteId = created.id
         }
         setLastSavedAt(clientUpdatedAt)
       } else {
@@ -207,6 +210,10 @@ export function useNoteSaveHandlers({
       const queue = await offlineQueueRef.current.getQueue()
       setPendingCount(queue.filter((q) => q.status === 'pending').length)
       setFailedCount(queue.filter((q) => q.status === 'failed').length)
+
+      if (assignedNoteId) {
+        return { noteId: assignedNoteId }
+      }
     } finally {
       clearTimeout(guard)
       setAutoSaving(false)

@@ -35,7 +35,7 @@ interface NoteEditorProps {
   isSaving: boolean
   onSave: (data: { title: string; description: string; tags: string }) => void
   onRead: (data: { title: string; description: string; tags: string }) => void
-  onAutoSave?: (data: { noteId?: string; title: string; description: string; tags: string }) => Promise<void> | void
+  onAutoSave?: (data: { noteId?: string; title: string; description: string; tags: string }) => Promise<{ noteId?: string } | void> | { noteId?: string } | void
   isAutoSaving?: boolean
   autosaveDelayMs?: number
   lastSavedAt?: string | null

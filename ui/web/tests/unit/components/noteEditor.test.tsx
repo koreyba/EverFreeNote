@@ -281,4 +281,71 @@ describe('NoteEditor same-note autosave reconciliation', () => {
       title: 'Pending local title',
     }))
   })
+
+  it('treats a confirmed create assignment as the same editing session', async () => {
+    const onAutoSave = jest.fn().mockResolvedValue({ noteId: 'created-note-id' })
+    const { rerender, ref } = renderEditor({
+      noteId: undefined,
+      initialTitle: '',
+      initialDescription: '',
+      initialTags: '',
+      onAutoSave,
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Note title'), {
+      target: { value: 'Draft title' },
+    })
+
+    await act(async () => {
+      await ref.current?.flushPendingSave()
+    })
+
+    rerender(
+      <NoteEditor
+        ref={ref}
+        noteId="created-note-id"
+        initialTitle="Draft title"
+        initialDescription=""
+        initialTags=""
+        isSaving={false}
+        onSave={jest.fn()}
+        onRead={jest.fn()}
+        onAutoSave={onAutoSave}
+      />
+    )
+
+    expect((screen.getByPlaceholderText('Note title') as HTMLInputElement).value).toBe('Draft title')
+  })
+
+  it('does not rebind an abandoned untitled draft onto a different existing note', () => {
+    const onAutoSave = jest.fn()
+    const { rerender } = renderEditor({
+      noteId: undefined,
+      initialTitle: '',
+      initialDescription: '',
+      initialTags: '',
+      onAutoSave,
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Note title'), {
+      target: { value: 'Abandoned draft' },
+    })
+
+    rerender(
+      <NoteEditor
+        noteId="note-2"
+        initialTitle="Existing note"
+        initialDescription="<p>Remote body</p>"
+        initialTags="remote-tag"
+        isSaving={false}
+        onSave={jest.fn()}
+        onRead={jest.fn()}
+        onAutoSave={onAutoSave}
+      />
+    )
+
+    expect((screen.getByPlaceholderText('Note title') as HTMLInputElement).value).toBe('Existing note')
+    expect(screen.getByText('<p>Remote body</p>')).toBeTruthy()
+    expect(screen.getByTestId('selected-tags').textContent).toBe('remote-tag')
+  })
 })

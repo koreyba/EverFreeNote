@@ -21,15 +21,15 @@ describe('noteAutosaveSession', () => {
       expect(resolveNoteAutosaveSessionChange({
         previousNoteId: 'note-1',
         nextNoteId: 'note-1',
-        hasPendingCreateAssignment: false,
+        pendingCreateAssignedNoteId: null,
       })).toBe('unchanged')
     })
 
-    it('returns assigned-id when a pending create receives a real note id', () => {
+    it('returns assigned-id when a pending create receives its assigned note id', () => {
       expect(resolveNoteAutosaveSessionChange({
         previousNoteId: undefined,
         nextNoteId: 'note-1',
-        hasPendingCreateAssignment: true,
+        pendingCreateAssignedNoteId: 'note-1',
       })).toBe('assigned-id')
     })
 
@@ -37,15 +37,23 @@ describe('noteAutosaveSession', () => {
       expect(resolveNoteAutosaveSessionChange({
         previousNoteId: 'note-1',
         nextNoteId: 'note-2',
-        hasPendingCreateAssignment: false,
+        pendingCreateAssignedNoteId: null,
       })).toBe('switched')
     })
 
-    it('treats undefined to id without a pending create as a real switch', () => {
+    it('treats undefined to id without a matching create assignment as a real switch', () => {
       expect(resolveNoteAutosaveSessionChange({
         previousNoteId: undefined,
         nextNoteId: 'note-1',
-        hasPendingCreateAssignment: false,
+        pendingCreateAssignedNoteId: null,
+      })).toBe('switched')
+    })
+
+    it('treats a different assigned note id as a real switch', () => {
+      expect(resolveNoteAutosaveSessionChange({
+        previousNoteId: undefined,
+        nextNoteId: 'note-2',
+        pendingCreateAssignedNoteId: 'note-1',
       })).toBe('switched')
     })
   })

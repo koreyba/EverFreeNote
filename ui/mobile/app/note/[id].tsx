@@ -185,7 +185,7 @@ export default function NoteEditorScreen() {
     focusRequestId?: string
   }>()
   const { data: noteState, isLoading, error } = useNote(id)
-  const { mutate: updateNote } = useUpdateNote()
+  const { mutateAsync: updateNote } = useUpdateNote()
   const { mutate: deleteNote, isPending: isDeleting } = useDeleteNote()
   const router = useRouter()
   const { colors } = useTheme()
@@ -243,7 +243,7 @@ export default function NoteEditorScreen() {
     onFlush: (next) => {
       const patch = buildPatch(next)
       if (Object.keys(patch).length === 0) return
-      updateNote({ id: idRef.current, updates: patch })
+      return updateNote({ id: idRef.current, updates: patch })
     },
   })
 
@@ -297,7 +297,7 @@ export default function NoteEditorScreen() {
         nextNoteId: note.id,
         // Mobile note routes always target an existing note ID, so there is no local
         // "create then assign server ID" session transition on this screen.
-        hasPendingCreateAssignment: false,
+        pendingCreateAssignedNoteId: null,
       })
       if (sessionChange === 'switched') {
         setHistoryState({ canUndo: false, canRedo: false })

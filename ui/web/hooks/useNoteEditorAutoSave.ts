@@ -14,6 +14,10 @@ export type NoteAutoSavePayload = {
   tags: string
 }
 
+type NoteAutoSaveResult = {
+  noteId?: string
+} | void
+
 type NoteEditorSnapshot = Omit<NoteAutoSavePayload, 'noteId'>
 const SNAPSHOT_FIELDS = ['title', 'description', 'tags'] as const
 
@@ -29,7 +33,7 @@ type UseNoteEditorAutoSaveParams = {
   initialDescription: string
   initialTags: string
   autosaveDelayMs: number
-  onAutoSave?: (data: NoteAutoSavePayload) => Promise<void> | void
+  onAutoSave?: (data: NoteAutoSavePayload) => Promise<NoteAutoSaveResult> | NoteAutoSaveResult
   /** Reads current title/description/tags from DOM refs in NoteEditor */
   getFormData: () => { title: string; description: string; tags: string }
   /** Applies accepted same-note refreshes to the platform-specific editor bindings. */
@@ -91,7 +95,7 @@ export function useNoteEditorAutoSave({
 
   // Tracks whether an autosave-create (noteId=undefined) is in-flight.
   // Set to true before scheduling a create; cleared when ID is assigned or note switches.
-  const pendingCreateRef = useRef(false)
+  const [pendingCreateAssignedNoteId, setPendingCreateAssignedNoteId] = useState<string | null>(null)
   const lastAcceptedRef = useRef<NoteEditorSnapshot>(getIncomingSnapshot())
 
   const getDraftSnapshot = useCallback((overrides: Partial<NoteEditorSnapshot> = {}): NoteEditorSnapshot => ({
@@ -114,7 +118,10 @@ export function useNoteEditorAutoSave({
       a.tags === b.tags,
     onFlush: async (payload) => {
       if (!onAutoSave) return
-      await onAutoSave(payload)
+      const result = await onAutoSave(payload)
+      if (!payload.noteId) {
+        setPendingCreateAssignedNoteId(result?.noteId ?? null)
+      }
     },
   }), [autosaveDelayMs, onAutoSave])
 
@@ -147,7 +154,7 @@ export function useNoteEditorAutoSave({
     const sessionChange = resolveNoteAutosaveSessionChange({
       previousNoteId: prevNoteId,
       nextNoteId,
-      hasPendingCreateAssignment: pendingCreateRef.current,
+      pendingCreateAssignedNoteId,
     })
 
     if (sessionChange === 'unchanged') {
@@ -175,7 +182,6 @@ export function useNoteEditorAutoSave({
     lastAcceptedRef.current = incomingSnapshot
 
     if (sessionChange === 'assigned-id') {
-      pendingCreateRef.current = false
       debouncedAutoSave.rebase(
         { noteId: nextNoteId, ...incomingSnapshot },
         debouncedAutoSave.getPending()
@@ -186,8 +192,7 @@ export function useNoteEditorAutoSave({
     }
 
     // Real note switch: reset session key (remounts editor + title input) and notify caller.
-    pendingCreateRef.current = false
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: signals a note switch, not a cascading render
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional remount signal for a true note switch
     setEditorSessionKey((k) => k + 1)
     cancelDebouncedTagQuery()
     onNoteSwitch?.()
@@ -203,21 +208,23 @@ export function useNoteEditorAutoSave({
     getDraftSnapshot,
     getIncomingSnapshot,
     applyExternalSnapshot,
+    pendingCreateAssignedNoteId,
   ])
 
   const handleContentChange = useCallback(() => {
     if (!onAutoSave) return
-    if (!noteIdRef.current) pendingCreateRef.current = true
+    if (!noteIdRef.current) setPendingCreateAssignedNoteId(null)
     debouncedAutoSave.schedule(getAutoSavePayload())
   }, [debouncedAutoSave, getAutoSavePayload, onAutoSave])
 
   const scheduleAutoSave = useCallback((overrides: Partial<NoteAutoSavePayload> = {}) => {
     if (!onAutoSave) return
-    if (!noteIdRef.current) pendingCreateRef.current = true
+    if (!noteIdRef.current) setPendingCreateAssignedNoteId(null)
     debouncedAutoSave.schedule(getAutoSavePayload(overrides))
   }, [debouncedAutoSave, getAutoSavePayload, onAutoSave])
 
   const cancelAutoSave = useCallback(() => {
+    setPendingCreateAssignedNoteId(null)
     debouncedAutoSave.cancel()
   }, [debouncedAutoSave])
 
