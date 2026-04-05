@@ -9,6 +9,8 @@ export type DebouncedLatest<T> = {
   flush: () => Promise<void>
   cancel: () => void
   reset: (base: T) => void
+  rebase: (base: T, nextPending?: T | null) => void
+  getBaseline: () => T | null
   getPending: () => T | null
 }
 
@@ -19,6 +21,8 @@ export type DebouncedLatest<T> = {
  * - If a debounced flush already ran, subsequent flush() does nothing until schedule() is called again.
  * - flush() cancels the timer to avoid double-saves (timer + flush).
  * - reset(base) cancels pending work and sets the last-flushed baseline for equality checks.
+ * - rebase(base, nextPending) updates the baseline after an external refresh and optionally
+ *   keeps a merged pending value alive without treating it as a note switch.
  */
 export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): DebouncedLatest<T> {
   const { delayMs, onFlush, isEqual } = options
@@ -51,26 +55,34 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
       return
     }
 
-    await onFlush(next)
+    const previousBaseline = lastFlushed
     lastFlushed = next
+    try {
+      await onFlush(next)
+    } catch (error) {
+      lastFlushed = previousBaseline
+      throw error
+    }
+  }
+
+  const queuePending = (nextPending: T | null) => {
+    pending = nextPending
+
+    if (pending === null || shouldSkip(pending)) {
+      pending = null
+      clearTimer()
+      return
+    }
+
+    clearTimer()
+    timer = setTimeout(() => {
+      void flushNow()
+    }, delayMs)
   }
 
   return {
     schedule: (next: T) => {
-      pending = next
-
-      // If the new pending value equals the baseline, cancel any pending work.
-      if (shouldSkip(next)) {
-        pending = null
-        clearTimer()
-        return
-      }
-
-      clearTimer()
-      timer = setTimeout(() => {
-        // Fire-and-forget; callers should handle errors in onFlush.
-        void flushNow()
-      }, delayMs)
+      queuePending(next)
     },
 
     flush: flushNow,
@@ -85,6 +97,13 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
       pending = null
       lastFlushed = base
     },
+
+    rebase: (base: T, nextPending: T | null = pending) => {
+      lastFlushed = base
+      queuePending(nextPending)
+    },
+
+    getBaseline: () => lastFlushed,
 
     getPending: () => pending,
   }

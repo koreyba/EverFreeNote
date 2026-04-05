@@ -16,24 +16,94 @@ export function resolveNoteAutosaveSessionChange({
   return 'switched'
 }
 
-export type ExternalDraftHydrationDecision = 'replace-draft' | 'acknowledge-external' | 'preserve-draft'
+export type NoteAutosaveFieldDecision = 'accept-external' | 'acknowledge-local' | 'preserve-local'
 
-type ResolveExternalDraftHydrationParams<TSnapshot> = {
+type FieldComparator<TValue> = (left: TValue, right: TValue) => boolean
+type FieldComparatorMap<TSnapshot extends Record<string, unknown>> = {
+  [K in keyof TSnapshot]?: FieldComparator<TSnapshot[K]>
+}
+
+type ReconcileExternalNoteSnapshotParams<TSnapshot extends Record<string, unknown>, TField extends keyof TSnapshot> = {
   currentNoteId?: string | null
   incomingNoteId?: string | null
   currentDraft: TSnapshot
+  currentBaseline: TSnapshot
   incomingSnapshot: TSnapshot
-  isEqual: (left: TSnapshot, right: TSnapshot) => boolean
+  fields: readonly TField[]
+  comparators?: Pick<FieldComparatorMap<TSnapshot>, TField>
 }
 
-export function resolveExternalDraftHydration<TSnapshot>({
+export type ReconcileExternalNoteSnapshotResult<
+  TSnapshot extends Record<string, unknown>,
+  TField extends keyof TSnapshot,
+> = {
+  mode: 'replace-draft' | 'merge-same-note'
+  draft: TSnapshot
+  baseline: TSnapshot
+  dirtyFields: TField[]
+  fieldDecisions: Record<TField, NoteAutosaveFieldDecision>
+}
+
+export function reconcileExternalNoteSnapshot<
+  TSnapshot extends Record<string, unknown>,
+  TField extends keyof TSnapshot,
+>({
   currentNoteId,
   incomingNoteId,
   currentDraft,
+  currentBaseline,
   incomingSnapshot,
-  isEqual,
-}: ResolveExternalDraftHydrationParams<TSnapshot>): ExternalDraftHydrationDecision {
-  if (currentNoteId !== incomingNoteId) return 'replace-draft'
-  if (isEqual(currentDraft, incomingSnapshot)) return 'acknowledge-external'
-  return 'preserve-draft'
+  fields,
+  comparators = {} as Pick<FieldComparatorMap<TSnapshot>, TField>,
+}: ReconcileExternalNoteSnapshotParams<TSnapshot, TField>): ReconcileExternalNoteSnapshotResult<TSnapshot, TField> {
+  const fieldDecisions = {} as Record<TField, NoteAutosaveFieldDecision>
+
+  if (currentNoteId !== incomingNoteId) {
+    for (const field of fields) {
+      fieldDecisions[field] = 'accept-external'
+    }
+    return {
+      mode: 'replace-draft',
+      draft: incomingSnapshot,
+      baseline: incomingSnapshot,
+      dirtyFields: [],
+      fieldDecisions,
+    }
+  }
+
+  const nextDraft = { ...currentDraft }
+  const nextBaseline = { ...currentBaseline }
+  const dirtyFields: TField[] = []
+
+  for (const field of fields) {
+    const isEqual = (comparators[field] ??
+      ((left: TSnapshot[TField], right: TSnapshot[TField]) => Object.is(left, right))) as FieldComparator<TSnapshot[TField]>
+
+    const draftValue = currentDraft[field]
+    const baselineValue = currentBaseline[field]
+    const incomingValue = incomingSnapshot[field]
+    const isDirty = !isEqual(draftValue, baselineValue)
+
+    if (!isDirty) {
+      nextDraft[field] = incomingValue
+      fieldDecisions[field] = 'accept-external'
+    } else if (isEqual(draftValue, incomingValue)) {
+      fieldDecisions[field] = 'acknowledge-local'
+    } else {
+      fieldDecisions[field] = 'preserve-local'
+    }
+
+    nextBaseline[field] = incomingValue
+    if (!isEqual(nextDraft[field], nextBaseline[field])) {
+      dirtyFields.push(field)
+    }
+  }
+
+  return {
+    mode: 'merge-same-note',
+    draft: nextDraft,
+    baseline: nextBaseline,
+    dirtyFields,
+    fieldDecisions,
+  }
 }

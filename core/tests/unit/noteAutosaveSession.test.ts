@@ -1,7 +1,19 @@
 import {
-  resolveExternalDraftHydration,
+  reconcileExternalNoteSnapshot,
   resolveNoteAutosaveSessionChange,
 } from '@core/utils/noteAutosaveSession'
+
+type DraftSnapshot = {
+  title: string
+  description: string
+  tags: string[]
+}
+
+const fields = ['title', 'description', 'tags'] as const
+
+const comparators = {
+  tags: (left: DraftSnapshot['tags'], right: DraftSnapshot['tags']) => left.join('|') === right.join('|'),
+}
 
 describe('noteAutosaveSession', () => {
   describe('resolveNoteAutosaveSessionChange', () => {
@@ -38,37 +50,144 @@ describe('noteAutosaveSession', () => {
     })
   })
 
-  describe('resolveExternalDraftHydration', () => {
-    const isEqual = (left: { title: string }, right: { title: string }) => left.title === right.title
+  describe('reconcileExternalNoteSnapshot', () => {
+    const draft = (overrides: Partial<DraftSnapshot> = {}): DraftSnapshot => ({
+      title: 'Baseline title',
+      description: '<p>Baseline body</p>',
+      tags: ['baseline'],
+      ...overrides,
+    })
 
-    it('replaces the draft when a different note is loaded', () => {
-      expect(resolveExternalDraftHydration({
+    it('fully replaces draft and baseline when a different note is loaded', () => {
+      const incoming = draft({
+        title: 'Incoming title',
+        description: '<p>Incoming body</p>',
+        tags: ['incoming'],
+      })
+
+      expect(reconcileExternalNoteSnapshot({
         currentNoteId: 'note-1',
         incomingNoteId: 'note-2',
-        currentDraft: { title: 'Draft A' },
-        incomingSnapshot: { title: 'Draft B' },
-        isEqual,
-      })).toBe('replace-draft')
+        currentDraft: draft({ title: 'Local title' }),
+        currentBaseline: draft(),
+        incomingSnapshot: incoming,
+        fields,
+        comparators,
+      })).toEqual({
+        mode: 'replace-draft',
+        draft: incoming,
+        baseline: incoming,
+        dirtyFields: [],
+        fieldDecisions: {
+          title: 'accept-external',
+          description: 'accept-external',
+          tags: 'accept-external',
+        },
+      })
     })
 
-    it('acknowledges same-note refreshes that match the current draft', () => {
-      expect(resolveExternalDraftHydration({
+    it('accepts external updates for clean fields', () => {
+      const result = reconcileExternalNoteSnapshot({
         currentNoteId: 'note-1',
         incomingNoteId: 'note-1',
-        currentDraft: { title: 'Current draft' },
-        incomingSnapshot: { title: 'Current draft' },
-        isEqual,
-      })).toBe('acknowledge-external')
+        currentDraft: draft(),
+        currentBaseline: draft(),
+        incomingSnapshot: draft({
+          title: 'Remote title',
+          description: '<p>Remote body</p>',
+          tags: ['remote'],
+        }),
+        fields,
+        comparators,
+      })
+
+      expect(result.draft).toEqual({
+        title: 'Remote title',
+        description: '<p>Remote body</p>',
+        tags: ['remote'],
+      })
+      expect(result.baseline).toEqual(result.draft)
+      expect(result.dirtyFields).toEqual([])
+      expect(result.fieldDecisions).toEqual({
+        title: 'accept-external',
+        description: 'accept-external',
+        tags: 'accept-external',
+      })
     })
 
-    it('preserves the current draft when the same-note refresh is stale', () => {
-      expect(resolveExternalDraftHydration({
+    it('acknowledges dirty fields when the incoming snapshot matches the local draft', () => {
+      const result = reconcileExternalNoteSnapshot({
         currentNoteId: 'note-1',
         incomingNoteId: 'note-1',
-        currentDraft: { title: 'Second title' },
-        incomingSnapshot: { title: 'First title' },
-        isEqual,
-      })).toBe('preserve-draft')
+        currentDraft: draft({ title: 'Saved title' }),
+        currentBaseline: draft(),
+        incomingSnapshot: draft({ title: 'Saved title' }),
+        fields,
+        comparators,
+      })
+
+      expect(result.draft.title).toBe('Saved title')
+      expect(result.baseline.title).toBe('Saved title')
+      expect(result.dirtyFields).toEqual([])
+      expect(result.fieldDecisions.title).toBe('acknowledge-local')
+    })
+
+    it('preserves dirty local fields while advancing the baseline to a concurrent remote change', () => {
+      const result = reconcileExternalNoteSnapshot({
+        currentNoteId: 'note-1',
+        incomingNoteId: 'note-1',
+        currentDraft: draft({ title: 'Local title' }),
+        currentBaseline: draft(),
+        incomingSnapshot: draft({ title: 'Remote title' }),
+        fields,
+        comparators,
+      })
+
+      expect(result.draft.title).toBe('Local title')
+      expect(result.baseline.title).toBe('Remote title')
+      expect(result.dirtyFields).toEqual(['title'])
+      expect(result.fieldDecisions.title).toBe('preserve-local')
+    })
+
+    it('reconciles mixed same-note refreshes field-by-field', () => {
+      const result = reconcileExternalNoteSnapshot({
+        currentNoteId: 'note-1',
+        incomingNoteId: 'note-1',
+        currentDraft: draft({
+          title: 'Local title',
+          description: '<p>Saved body</p>',
+          tags: ['saved', 'local'],
+        }),
+        currentBaseline: draft({
+          title: 'Saved title',
+          description: '<p>Saved body</p>',
+          tags: ['saved'],
+        }),
+        incomingSnapshot: draft({
+          title: 'Remote title',
+          description: '<p>Remote body</p>',
+          tags: ['saved', 'local'],
+        }),
+        fields,
+        comparators,
+      })
+
+      expect(result.draft).toEqual({
+        title: 'Local title',
+        description: '<p>Remote body</p>',
+        tags: ['saved', 'local'],
+      })
+      expect(result.baseline).toEqual({
+        title: 'Remote title',
+        description: '<p>Remote body</p>',
+        tags: ['saved', 'local'],
+      })
+      expect(result.dirtyFields).toEqual(['title'])
+      expect(result.fieldDecisions).toEqual({
+        title: 'preserve-local',
+        description: 'accept-external',
+        tags: 'acknowledge-local',
+      })
     })
   })
 })

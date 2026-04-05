@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
-import { resolveNoteAutosaveSessionChange } from '@core/utils/noteAutosaveSession'
+import {
+  reconcileExternalNoteSnapshot,
+  type NoteAutosaveFieldDecision,
+  resolveNoteAutosaveSessionChange,
+} from '@core/utils/noteAutosaveSession'
 import { buildTagString, parseTagString } from '@ui/web/lib/tags'
 
 export type NoteAutoSavePayload = {
@@ -9,6 +13,15 @@ export type NoteAutoSavePayload = {
   description: string
   tags: string
 }
+
+type NoteEditorSnapshot = Omit<NoteAutoSavePayload, 'noteId'>
+const SNAPSHOT_FIELDS = ['title', 'description', 'tags'] as const
+
+const areSnapshotsEqual = (left: NoteEditorSnapshot, right: NoteEditorSnapshot) => (
+  left.title === right.title &&
+  left.description === right.description &&
+  left.tags === right.tags
+)
 
 type UseNoteEditorAutoSaveParams = {
   noteId?: string
@@ -19,6 +32,11 @@ type UseNoteEditorAutoSaveParams = {
   onAutoSave?: (data: NoteAutoSavePayload) => Promise<void> | void
   /** Reads current title/description/tags from DOM refs in NoteEditor */
   getFormData: () => { title: string; description: string; tags: string }
+  /** Applies accepted same-note refreshes to the platform-specific editor bindings. */
+  applyExternalSnapshot?: (
+    snapshot: NoteEditorSnapshot,
+    fieldDecisions: Record<(typeof SNAPSHOT_FIELDS)[number], NoteAutosaveFieldDecision>
+  ) => void
   /** Called by hook when user performs a real note switch (not autosave ID assignment) */
   onNoteSwitch?: () => void
   /** Cancels the debounced tag query (owned by NoteEditor) on note switch */
@@ -52,10 +70,16 @@ export function useNoteEditorAutoSave({
   autosaveDelayMs,
   onAutoSave,
   getFormData,
+  applyExternalSnapshot,
   onNoteSwitch,
   cancelDebouncedTagQuery,
 }: UseNoteEditorAutoSaveParams): UseNoteEditorAutoSaveResult {
   const [editorSessionKey, setEditorSessionKey] = useState(0)
+  const getIncomingSnapshot = useCallback((): NoteEditorSnapshot => ({
+    title: initialTitle,
+    description: initialDescription,
+    tags: buildTagString(parseTagString(initialTags)),
+  }), [initialTitle, initialDescription, initialTags])
 
   const noteIdRef = useRef(noteId)
   useEffect(() => {
@@ -68,6 +92,12 @@ export function useNoteEditorAutoSave({
   // Tracks whether an autosave-create (noteId=undefined) is in-flight.
   // Set to true before scheduling a create; cleared when ID is assigned or note switches.
   const pendingCreateRef = useRef(false)
+  const lastAcceptedRef = useRef<NoteEditorSnapshot>(getIncomingSnapshot())
+
+  const getDraftSnapshot = useCallback((overrides: Partial<NoteEditorSnapshot> = {}): NoteEditorSnapshot => ({
+    ...getFormData(),
+    ...overrides,
+  }), [getFormData])
 
   const getAutoSavePayload = useCallback((overrides: Partial<NoteAutoSavePayload> = {}): NoteAutoSavePayload => ({
     noteId: noteIdRef.current,
@@ -96,18 +126,45 @@ export function useNoteEditorAutoSave({
   useEffect(() => {
     const prevNoteId = lastResetNoteIdRef.current
     const nextNoteId = noteId
+    const incomingSnapshot = getIncomingSnapshot()
     const sessionChange = resolveNoteAutosaveSessionChange({
       previousNoteId: prevNoteId,
       nextNoteId,
       hasPendingCreateAssignment: pendingCreateRef.current,
     })
 
-    if (sessionChange === 'unchanged') return
+    if (sessionChange === 'unchanged') {
+      const reconcileResult = reconcileExternalNoteSnapshot({
+        currentNoteId: prevNoteId,
+        incomingNoteId: nextNoteId,
+        currentDraft: getDraftSnapshot(),
+        currentBaseline: lastAcceptedRef.current,
+        incomingSnapshot,
+        fields: SNAPSHOT_FIELDS,
+      })
+
+      lastAcceptedRef.current = reconcileResult.baseline
+      applyExternalSnapshot?.(reconcileResult.draft, reconcileResult.fieldDecisions)
+
+      const currentPending = debouncedAutoSave.getPending()
+      debouncedAutoSave.rebase(
+        { noteId: nextNoteId, ...reconcileResult.baseline },
+        currentPending ? { noteId: noteIdRef.current, ...reconcileResult.draft } : null
+      )
+      return
+    }
+
     lastResetNoteIdRef.current = nextNoteId
+    lastAcceptedRef.current = incomingSnapshot
 
     if (sessionChange === 'assigned-id') {
       pendingCreateRef.current = false
-      debouncedAutoSave.reset(getAutoSavePayload({ noteId: nextNoteId }))
+      debouncedAutoSave.rebase(
+        { noteId: nextNoteId, ...incomingSnapshot },
+        debouncedAutoSave.getPending()
+          ? { noteId: nextNoteId, ...getDraftSnapshot() }
+          : null
+      )
       return
     }
 
@@ -117,14 +174,19 @@ export function useNoteEditorAutoSave({
     setEditorSessionKey((k) => k + 1)
     cancelDebouncedTagQuery()
     onNoteSwitch?.()
-    const parsedTags = parseTagString(initialTags)
     debouncedAutoSave.reset({
-      noteId,
-      title: initialTitle,
-      description: initialDescription,
-      tags: buildTagString(parsedTags),
+      noteId: nextNoteId,
+      ...incomingSnapshot,
     })
-  }, [noteId, initialTitle, initialDescription, initialTags, debouncedAutoSave, cancelDebouncedTagQuery, onNoteSwitch, getAutoSavePayload])
+  }, [
+    noteId,
+    debouncedAutoSave,
+    cancelDebouncedTagQuery,
+    onNoteSwitch,
+    getDraftSnapshot,
+    getIncomingSnapshot,
+    applyExternalSnapshot,
+  ])
 
   const handleContentChange = useCallback(() => {
     if (!onAutoSave) return
@@ -144,8 +206,20 @@ export function useNoteEditorAutoSave({
 
   const flushPendingSave = useCallback(async () => {
     if (!onAutoSave) return
+    const currentDraft = getDraftSnapshot()
+    const debouncerBaseline = debouncedAutoSave.getBaseline()
+    if (
+      debouncedAutoSave.getPending() === null &&
+      !areSnapshotsEqual(currentDraft, lastAcceptedRef.current) &&
+      (!debouncerBaseline || currentDraft.title !== debouncerBaseline.title || currentDraft.description !== debouncerBaseline.description || currentDraft.tags !== debouncerBaseline.tags)
+    ) {
+      debouncedAutoSave.schedule({
+        noteId: noteIdRef.current,
+        ...currentDraft,
+      })
+    }
     await debouncedAutoSave.flush()
-  }, [debouncedAutoSave, onAutoSave])
+  }, [debouncedAutoSave, onAutoSave, getDraftSnapshot])
 
   return {
     editorSessionKey,

@@ -11,7 +11,7 @@ import { TagInput } from '@ui/mobile/components/tags/TagInput'
 import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical } from 'lucide-react-native'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 import {
-  resolveExternalDraftHydration,
+  reconcileExternalNoteSnapshot,
   resolveNoteAutosaveSessionChange,
 } from '@core/utils/noteAutosaveSession'
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
@@ -42,6 +42,11 @@ const areDraftSnapshotsEqual = (a: DraftSnapshot, b: DraftSnapshot) => (
   a.description === b.description &&
   areStringArraysEqual(a.tags, b.tags)
 )
+
+const DRAFT_FIELDS = ['title', 'description', 'tags'] as const
+const DRAFT_COMPARATORS = {
+  tags: areStringArraysEqual,
+}
 
 type HeaderLeftActionsProps = Readonly<{
   styles: NoteEditorHeaderStyles
@@ -234,11 +239,24 @@ export default function NoteEditorScreen() {
       const patch = buildPatch(next)
       if (Object.keys(patch).length === 0) return
       updateNote({ id, updates: patch })
-      lastSavedRef.current = next
     },
   })
 
-  const flushPendingUpdates = useCallback(() => saverRef.current?.flush(), [])
+  const flushPendingUpdates = useCallback(async () => {
+    const saver = saverRef.current
+    if (!saver) return
+    const debouncerBaseline = saver.getBaseline()
+
+    if (
+      saver.getPending() === null &&
+      !areDraftSnapshotsEqual(latestDraftRef.current, lastSavedRef.current) &&
+      (!debouncerBaseline || !areDraftSnapshotsEqual(latestDraftRef.current, debouncerBaseline))
+    ) {
+      saver.schedule({ ...latestDraftRef.current })
+    }
+
+    await saver.flush()
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -268,6 +286,7 @@ export default function NoteEditorScreen() {
         description: note.description ?? '',
         tags: note.tags ?? [],
       }
+      const previousDraft = latestDraftRef.current
       const sessionChange = resolveNoteAutosaveSessionChange({
         previousNoteId: lastHydratedNoteIdRef.current,
         nextNoteId: note.id,
@@ -277,29 +296,53 @@ export default function NoteEditorScreen() {
         setHistoryState({ canUndo: false, canRedo: false })
         setIsEditorReady(false)
       }
-      const hydrationDecision = resolveExternalDraftHydration({
+      const reconcileResult = reconcileExternalNoteSnapshot({
         currentNoteId: lastHydratedNoteIdRef.current,
         incomingNoteId: note.id,
         currentDraft: latestDraftRef.current,
+        currentBaseline: lastSavedRef.current,
         incomingSnapshot,
-        isEqual: areDraftSnapshotsEqual,
+        fields: DRAFT_FIELDS,
+        comparators: {
+          ...DRAFT_COMPARATORS,
+        },
       })
 
       lastHydratedNoteIdRef.current = note.id
+      latestDraftRef.current = reconcileResult.draft
+      lastSavedRef.current = reconcileResult.baseline
 
-      if (hydrationDecision === 'replace-draft') {
-        setTitle(incomingSnapshot.title)
-        setTags(incomingSnapshot.tags)
-        lastSavedRef.current = incomingSnapshot
-        latestDraftRef.current = incomingSnapshot
-        saverRef.current?.reset(incomingSnapshot)
+      if (reconcileResult.mode === 'replace-draft') {
+        setTitle(reconcileResult.draft.title)
+        setTags(reconcileResult.draft.tags)
+        editorRef.current?.setContent?.(reconcileResult.draft.description)
+        saverRef.current?.reset(reconcileResult.baseline)
         return
       }
 
-      if (hydrationDecision === 'acknowledge-external') {
-        lastSavedRef.current = incomingSnapshot
-        saverRef.current?.reset(incomingSnapshot)
+      if (reconcileResult.fieldDecisions.title === 'accept-external' && previousDraft.title !== reconcileResult.draft.title) {
+        setTitle(reconcileResult.draft.title)
       }
+
+      if (
+        reconcileResult.fieldDecisions.description === 'accept-external' &&
+        previousDraft.description !== reconcileResult.draft.description
+      ) {
+        editorRef.current?.setContent?.(reconcileResult.draft.description)
+      }
+
+      if (
+        reconcileResult.fieldDecisions.tags === 'accept-external' &&
+        !areStringArraysEqual(previousDraft.tags, reconcileResult.draft.tags)
+      ) {
+        setTags(reconcileResult.draft.tags)
+      }
+
+      const currentPending = saverRef.current?.getPending() ?? null
+      saverRef.current?.rebase(
+        reconcileResult.baseline,
+        currentPending ? { ...reconcileResult.draft } : null
+      )
     }
   }, [note])
 
