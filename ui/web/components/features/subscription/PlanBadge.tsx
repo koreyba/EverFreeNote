@@ -19,7 +19,7 @@ export function PlanBadge({ plan, className, onClick }: PlanBadgeProps) {
     if (onClick) {
       onClick();
     } else {
-      // Default action: navigate to pricing page if no custom handler provided
+      // Default behavior: navigate to pricing page to encourage upgrades
       router.push("/pricing");
     }
   };
@@ -31,6 +31,7 @@ export function PlanBadge({ plan, className, onClick }: PlanBadgeProps) {
       variant={isPaid ? "default" : "outline"}
       className={cn(
         "cursor-pointer transition-opacity hover:opacity-80",
+        // Emerald color for Pro plan creates positive association and differentiates from error states
         isPaid
           ? "border-emerald-500/30 bg-emerald-500 text-white hover:bg-emerald-500/90"
           : "border-border/70 bg-background/70 text-muted-foreground",

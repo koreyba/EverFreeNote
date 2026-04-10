@@ -16,23 +16,32 @@ export class SubscriptionService {
     return data as UserSubscription | null;
   }
 
+  /**
+   * Determine effective plan tier from subscription record.
+   *
+   * Status handling:
+   * - active: Full paid access
+   * - past_due: Grace period - payment failed but user retains access while we retry
+   * - expired/cancelled/paused/unpaid: Revert to free tier
+   *
+   * No subscription record = never subscribed = free tier
+   */
   getUserPlan(subscription: UserSubscription | null): Plan {
-    // No subscription row means user has never subscribed
     if (!subscription) return "free";
 
-    // Active and past_due subscriptions still grant paid features
-    // past_due allows grace period before downgrading
-    if (
+    const hasActivePaidAccess =
       subscription.plan === "paid" &&
-      (subscription.status === "active" || subscription.status === "past_due")
-    ) {
-      return "paid";
-    }
+      (subscription.status === "active" || subscription.status === "past_due");
 
-    // All other statuses (expired, cancelled, paused, unpaid) revert to free tier
-    return "free";
+    return hasActivePaidAccess ? "paid" : "free";
   }
 
+  /**
+   * Check if user can create another note based on plan and current count.
+   *
+   * Pro users: unlimited notes
+   * Free users: limited by FREE_PLAN_NOTE_LIMIT
+   */
   canCreateNote(plan: Plan, currentNoteCount: number): boolean {
     if (plan === "paid") return true;
     return currentNoteCount < FREE_PLAN_NOTE_LIMIT;

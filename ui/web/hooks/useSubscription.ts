@@ -21,10 +21,16 @@ interface UseSubscriptionResult {
 }
 
 /**
- * Custom hook for fetching user subscription status and plan information.
+ * Fetch and cache user subscription status and plan information.
  *
- * Uses React Query for caching with 5-minute stale time to reduce database load
- * while keeping subscription status reasonably fresh for billing changes.
+ * Caching strategy:
+ * - 5-minute stale time balances freshness with performance
+ * - Reduces database load for frequently accessed subscription data
+ * - Fresh enough to reflect billing changes within a reasonable window
+ *
+ * Returns helper methods:
+ * - canCreateNote: checks if user can create another note based on plan and count
+ * - isPaid/isFree: boolean flags for conditional rendering
  */
 export function useSubscription({
   userId,

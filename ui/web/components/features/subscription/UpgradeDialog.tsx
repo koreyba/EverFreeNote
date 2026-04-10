@@ -33,10 +33,6 @@ export function UpgradeDialog({
     router.push("/pricing");
   };
 
-  const handleClose = () => {
-    onOpenChange(false);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -46,6 +42,7 @@ export function UpgradeDialog({
             <DialogTitle>Note limit reached</DialogTitle>
           </div>
           <DialogDescription className="pt-4 text-base">
+            {/* Show current usage to help user understand their situation */}
             You&apos;ve used{" "}
             <span className="font-semibold">
               {currentCount} of {limit} notes
@@ -55,7 +52,7 @@ export function UpgradeDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Maybe later
           </Button>
           <Button onClick={handleViewPlans}>View plans</Button>

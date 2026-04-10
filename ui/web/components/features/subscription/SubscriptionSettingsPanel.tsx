@@ -25,6 +25,19 @@ import {
   settingsSectionCardClassName,
 } from "@/components/features/settings/settingsLayout";
 
+/**
+ * Format a date string for display in the subscription panel.
+ * Returns a localized long-form date (e.g., "January 15, 2024").
+ */
+function formatDate(dateString: string | null): string {
+  if (!dateString) return "N/A";
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export function SubscriptionSettingsPanel() {
   const router = useRouter();
   const { user } = useNoteAuth();
@@ -32,7 +45,6 @@ export function SubscriptionSettingsPanel() {
     userId: user?.id,
   });
 
-  // Get total note count
   const notesQuery = useNotesQuery({ userId: user?.id, enabled: !!user?.id });
   const totalNotes = notesQuery.data?.pages[0]?.totalCount ?? 0;
 
@@ -41,22 +53,14 @@ export function SubscriptionSettingsPanel() {
   };
 
   const handleManageSubscription = () => {
-    // Open Lemon Squeezy my-orders page where users can manage their subscriptions
-    // This is the standard approach until Lemon Squeezy provides customer portal URLs via API
+    // Direct users to Lemon Squeezy's my-orders page for subscription management
+    // This is the recommended approach - Lemon Squeezy doesn't yet provide per-subscription
+    // portal URLs via API, so this is the simplest self-service option
     window.open(
       "https://app.lemonsqueezy.com/my-orders",
       "_blank",
       "noopener,noreferrer",
     );
-  };
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
   };
 
   return (

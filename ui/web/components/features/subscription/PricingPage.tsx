@@ -10,13 +10,32 @@ import { useSubscription } from "@ui/web/hooks/useSubscription";
 import { openCheckout } from "@ui/web/lib/lemonsqueezy";
 import { FREE_PLAN_NOTE_LIMIT } from "@core/constants/subscription";
 
+// Feature lists for each tier - defined at module level for clarity and potential reuse
+const FREE_PLAN_FEATURES = [
+  `Up to ${FREE_PLAN_NOTE_LIMIT} notes`,
+  "Basic note creation and editing",
+  "Tag organization",
+  "Full-text search",
+];
+
+const PRO_PLAN_FEATURES = [
+  "Unlimited notes",
+  "All Free plan features",
+  "AI-powered semantic search",
+  "WordPress integration",
+  "ENEX import/export",
+  "Priority support",
+  "Support future development",
+];
+
 export function PricingPage() {
   const router = useRouter();
   const { user } = useNoteAuth();
   const { isPaid, isLoading } = useSubscription({ userId: user?.id });
 
   const handleSubscribe = () => {
-    // Don't open checkout for unauthenticated users
+    // Guard: only authenticated users can start checkout flow
+    // Prevents opening payment window for logged-out users
     if (!user) return;
 
     openCheckout({
@@ -28,24 +47,6 @@ export function PricingPage() {
   const handleBack = () => {
     router.back();
   };
-
-  // Feature lists for each tier
-  const freePlanFeatures = [
-    `Up to ${FREE_PLAN_NOTE_LIMIT} notes`,
-    "Basic note creation and editing",
-    "Tag organization",
-    "Full-text search",
-  ];
-
-  const proPlanFeatures = [
-    "Unlimited notes",
-    "All Free plan features",
-    "AI-powered semantic search",
-    "WordPress integration",
-    "ENEX import/export",
-    "Priority support",
-    "Support future development",
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,7 +86,7 @@ export function PricingPage() {
               name="Free"
               price="$0"
               description="Perfect for getting started"
-              features={freePlanFeatures}
+              features={FREE_PLAN_FEATURES}
               ctaLabel={isPaid ? "Downgrade" : "Current plan"}
               ctaDisabled={true}
               isCurrent={!isPaid && !isLoading}
@@ -96,7 +97,7 @@ export function PricingPage() {
               name="Pro"
               price="$5/mo"
               description="For serious note-takers"
-              features={proPlanFeatures}
+              features={PRO_PLAN_FEATURES}
               ctaLabel={isPaid ? "Manage subscription" : "Subscribe"}
               ctaDisabled={isLoading || !user}
               onCtaClick={handleSubscribe}
