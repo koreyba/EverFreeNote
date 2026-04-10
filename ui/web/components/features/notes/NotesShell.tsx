@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 
 import { cn } from "@ui/web/lib/utils"
 import { Sidebar } from "@/components/features/notes/Sidebar"
@@ -22,6 +23,7 @@ import { NoteEditor, type NoteEditorHandle, type PendingChunkFocus } from "@/com
 import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
 import { SearchResultsPanel } from "@/components/features/notes/SearchResultsPanel"
+import { NotesGraphView } from "@/components/features/notes/NotesGraphView"
 import type { SearchResultsPanelHandle } from "@/components/features/notes/SearchResultsPanel"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
@@ -52,6 +54,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   const [wordpressConfigured, setWordpressConfigured] = React.useState(false)
 
   const [pendingChunkFocus, setPendingChunkFocus] = React.useState<PendingChunkFocus | null>(null)
+  const [showGraphView, setShowGraphView] = React.useState(false)
 
   React.useEffect(() => {
     controller.registerNoteEditorRef(noteEditorRef)
@@ -138,6 +141,25 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [controller, supabase])
 
   const showEditor = !!(selectedNote || isEditing)
+  
+  const handleOpenGraphView = React.useCallback(() => {
+    setShowGraphView(true)
+  }, [])
+
+  const handleCloseGraphView = React.useCallback(() => {
+    setShowGraphView(false)
+  }, [])
+
+  const handleGraphNodeClick = React.useCallback((noteId: string) => {
+    const note = controller.notes.find((n) => n.id === noteId)
+    if (note) {
+      setShowGraphView(false)
+      handleSelectNote(note).catch(() => {
+        // Error handling in handleSelectNote
+      })
+    }
+  }, [controller.notes, handleSelectNote])
+
   const handleOpenSearchPanel = React.useCallback(() => {
     if (isSearchPanelOpen) {
       searchPanelRef.current?.focusInput()
@@ -199,7 +221,8 @@ export function NotesShell({ controller }: NotesShellProps) {
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
         onOpenSearch={handleOpenSearchPanel}
-        className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
+        onOpenGraphView={handleOpenGraphView}
+        className={cn((showEditor || isSearchPanelOpen || showGraphView) ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
       >
         <ListPane controller={controller} />
@@ -212,8 +235,28 @@ export function NotesShell({ controller }: NotesShellProps) {
           hasGeminiApiKey={hasGeminiApiKey}
           onOpenInContext={handleOpenInContext}
           onClose={() => setIsSearchPanelOpen(false)}
-          className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
+          className={cn(showEditor || showGraphView ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
         />
+      )}
+
+      {showGraphView && (
+        <div className={cn(
+          "flex-1 flex flex-col h-full overflow-hidden bg-background",
+          showEditor ? "hidden md:flex" : "w-full"
+        )}>
+          <div className="border-b p-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Notes Graph View</h2>
+            <Button variant="ghost" size="sm" onClick={handleCloseGraphView}>
+              Close
+            </Button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <NotesGraphView
+              notes={controller.notes}
+              onNodeClick={handleGraphNodeClick}
+            />
+          </div>
+        </div>
       )}
 
       <div

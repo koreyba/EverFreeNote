@@ -1,6 +1,6 @@
 "use client"
 
-import { BookOpen, LogOut, Plus, Search, Settings } from "lucide-react"
+import { BookOpen, LogOut, Network, Plus, Search, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
@@ -26,6 +26,7 @@ interface SidebarProps {
   onClearTagFilter: () => void
   onOpenSearch: () => void
   onOpenSettings: () => void
+  onOpenGraphView?: () => void
   onCreateNote: () => void
   onSignOut: () => void
   children: React.ReactNode // For the NoteList
@@ -48,6 +49,7 @@ export function Sidebar({
   onBulkDelete,
   onOpenSearch,
   onOpenSettings,
+  onOpenGraphView,
   onCreateNote,
   onSignOut,
   children,
@@ -131,6 +133,16 @@ export function Sidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
+        {onOpenGraphView && (
+          <Button
+            onClick={onOpenGraphView}
+            variant="outline"
+            className="w-full"
+          >
+            <Network className="w-4 h-4 mr-2" />
+            Graph View
+          </Button>
+        )}
         <p className="text-xs text-muted-foreground text-center">
           Notes displayed: {typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of {typeof notesTotal === "number" ? notesTotal : "unknown"}
         </p>
