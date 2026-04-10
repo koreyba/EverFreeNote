@@ -437,6 +437,7 @@ export function AIIndexTab() {
   const [optimisticMutations, setOptimisticMutations] = React.useState<Record<string, OptimisticMutationState>>({})
   const restoredStateRef = React.useRef(false)
   const exitTimeoutsRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const bulkIndexInFlightRef = React.useRef(false)
   const normalizedSearchDraft = searchDraft.trim()
   const persistedSearchQuery = getPersistedSearchQuery(normalizedSearchDraft)
   const isSearchHintVisible =
@@ -648,7 +649,8 @@ export function AIIndexTab() {
     return supabase.functions.invoke(name, options)
   }, [supabase.functions])
   const handleBulkIndexLoaded = React.useCallback(async () => {
-    if (bulkIndexProgress || actionableLoadedNotes.length === 0) return
+    if (bulkIndexInFlightRef.current || actionableLoadedNotes.length === 0) return
+    bulkIndexInFlightRef.current = true
 
     let counters: BulkIndexCounters = {
       successCount: 0,
@@ -679,10 +681,11 @@ export function AIIndexTab() {
         toast.message(summary || "Bulk indexing finished")
       }
     } finally {
+      bulkIndexInFlightRef.current = false
       setBulkIndexProgress(null)
       runBackgroundTask(queryClient.invalidateQueries({ queryKey: getAIIndexNotesQueryPrefix(user?.id) }))
     }
-  }, [actionableLoadedNotes, applyMutationResult, bulkIndexProgress, invokeBulkIndex, queryClient, user?.id])
+  }, [actionableLoadedNotes, applyMutationResult, invokeBulkIndex, queryClient, user?.id])
   const handleBulkIndexClick = React.useCallback(() => {
     handleBulkIndexLoaded().catch(() => {
       toast.error("Bulk indexing failed")

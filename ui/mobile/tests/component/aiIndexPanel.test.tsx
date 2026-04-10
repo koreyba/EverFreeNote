@@ -12,6 +12,12 @@ const mockUseAIIndexNotes = jest.fn()
 const mockUseFlattenedAIIndexNotes = jest.fn()
 const mockNoteCard = jest.fn()
 const mockInvoke = jest.fn()
+const mockToastShow = jest.fn()
+
+jest.mock('react-native-toast-message', () => ({
+  __esModule: true,
+  default: { show: (...args: unknown[]) => mockToastShow(...args) },
+}))
 
 jest.mock('@ui/mobile/providers', () => ({
   useTheme: () => ({
@@ -98,6 +104,7 @@ describe('AIIndexPanel', () => {
     jest.clearAllMocks()
     jest.useFakeTimers()
     mockInvoke.mockReset()
+    mockToastShow.mockReset()
     mockGetQueriesData.mockReturnValue([])
     setupMocks()
   })
@@ -335,9 +342,52 @@ describe('AIIndexPanel', () => {
     expect(mockSetQueryData).toHaveBeenNthCalledWith(2, ['ai-index-notes', 'test-user-id', 'indexed', ''], {
       pages: [{
         notes: [],
-        totalCount: 1,
+        totalCount: 0,
         hasMore: false,
       }],
+    })
+  })
+
+  it('reports skipped and failed outcomes in the bulk summary toast', async () => {
+    setupMocks({}, [
+      { id: 'n1', title: 'OK note', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+      { id: 'n2', title: 'Short note', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+      { id: 'n3', title: 'Broken note', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+    ])
+    mockInvoke
+      .mockResolvedValueOnce({ data: { outcome: 'indexed', chunkCount: 1 }, error: null })
+      .mockResolvedValueOnce({ data: { outcome: 'skipped', reason: 'too_short' }, error: null })
+      .mockResolvedValueOnce({ data: null, error: new Error('edge fn error') })
+
+    render(<AIIndexPanel />)
+
+    fireEvent.press(screen.getByLabelText('Index loaded notes'))
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledTimes(3)
+    })
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'info', text1: '1 indexed • 1 skipped • 1 failed' })
+      )
+    })
+  })
+
+  it('shows success toast when all notes are indexed without errors', async () => {
+    setupMocks({}, [
+      { id: 'n1', title: 'Need Index', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+    ])
+    mockInvoke.mockResolvedValue({ data: { outcome: 'indexed', chunkCount: 1 }, error: null })
+
+    render(<AIIndexPanel />)
+
+    fireEvent.press(screen.getByLabelText('Index loaded notes'))
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'success', text1: '1 indexed' })
+      )
     })
   })
 })

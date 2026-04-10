@@ -59,7 +59,7 @@ Users can currently index or delete the AI/RAG index only from inside an individ
 - As a user, I want to filter to `Not indexed` notes so I can decide what should enter the AI index.
 - As a user, I want to reindex an outdated or already indexed note without opening it first.
 - As a user, I want to remove a note from the AI index from the same list view.
-- As a user, I want one bulk button that indexes only the notes currently loaded in the visible AI Index list, so search and filters naturally limit its scope.
+- As a user, I want a single bulk button that indexes only currently loaded notes in the visible AI Index list, so active search and filters naturally limit scope.
 
 ### Status rules
 

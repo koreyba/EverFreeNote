@@ -825,4 +825,92 @@ describe("AIIndexTab", () => {
       body: { noteId: "note-search-hit", action: "index" },
     })
   })
+
+  it("reports skipped and failed outcomes in the bulk summary toast", async () => {
+    const invoke = jest.fn()
+      .mockResolvedValueOnce({ data: { outcome: "indexed", chunkCount: 1 }, error: null })
+      .mockResolvedValueOnce({ data: { outcome: "skipped", reason: "too_short" }, error: null })
+      .mockResolvedValueOnce({ data: null, error: new Error("edge fn error") })
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-1",
+        title: "OK note",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+      {
+        id: "note-2",
+        title: "Short note",
+        updatedAt: "2026-03-29T12:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+      {
+        id: "note-3",
+        title: "Broken note",
+        updatedAt: "2026-03-29T13:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 3, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{ functions: { invoke } } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Index loaded notes" }))
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledTimes(3)
+    })
+
+    await waitFor(() => {
+      expect(mockToastMessage).toHaveBeenCalledWith("1 indexed • 1 skipped • 1 failed")
+    })
+  })
+
+  it("shows success toast when all notes are indexed without errors", async () => {
+    const invoke = jest.fn()
+      .mockResolvedValue({ data: { outcome: "indexed", chunkCount: 1 }, error: null })
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-1",
+        title: "Note one",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{ functions: { invoke } } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Index loaded notes" }))
+
+    await waitFor(() => {
+      expect(mockToastSuccess).toHaveBeenCalledWith("1 indexed")
+    })
+  })
 })

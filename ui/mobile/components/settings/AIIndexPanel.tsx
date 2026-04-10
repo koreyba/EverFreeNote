@@ -91,6 +91,14 @@ function shouldKeepNote(note: AIIndexNoteRow, result: AIIndexMutationResult, fil
   return note.id !== result.noteId || note.status === filter
 }
 
+function getTotalCountDelta(queryFilter: AIIndexFilter, result: AIIndexMutationResult): number {
+  if (queryFilter === 'all') return 0
+  const matchedBefore = result.previousStatus === queryFilter
+  const matchedAfter = result.nextStatus === queryFilter
+  if (matchedBefore === matchedAfter) return 0
+  return matchedAfter ? 1 : -1
+}
+
 function getFilterFromAIIndexQueryKey(queryKey: readonly unknown[]): AIIndexFilter {
   const rawFilter = Array.isArray(queryKey) ? queryKey[2] : null
   return rawFilter === 'indexed'
@@ -280,6 +288,7 @@ export function AIIndexPanel() {
   const styles = useMemo(() => createStyles(colors), [colors])
   const listRef = useRef<FlatList<AIIndexNoteRow> | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const bulkIndexInFlightRef = useRef(false)
 
   const [filter, setFilter] = useState<AIIndexFilter>('all')
   const [searchDraft, setSearchDraft] = useState('')
@@ -329,12 +338,14 @@ export function AIIndexPanel() {
     result: AIIndexMutationResult,
   ) => {
     const queryFilter = getFilterFromAIIndexQueryKey(queryKey)
+    const delta = getTotalCountDelta(queryFilter, result)
     queryClient.setQueryData<InfiniteData<AIIndexNotesPage>>(queryKey, (old) => {
       if (!old) return old
       return {
         ...old,
         pages: old.pages.map((page) => ({
           ...page,
+          totalCount: Math.max(0, page.totalCount + delta),
           notes: page.notes
             .map((note) => patchNoteStatus(note, result))
             .filter((note) => shouldKeepNote(note, result, queryFilter)),
@@ -352,10 +363,12 @@ export function AIIndexPanel() {
       if (!queryData) continue
 
       const queryFilter = getFilterFromAIIndexQueryKey(queryKey)
+      const delta = getTotalCountDelta(queryFilter, result)
       queryClient.setQueryData<InfiniteData<AIIndexNotesPage>>(queryKey, {
         ...queryData,
         pages: queryData.pages.map((page) => ({
           ...page,
+          totalCount: Math.max(0, page.totalCount + delta),
           notes: page.notes
             .map((note) => patchNoteStatus(note, result))
             .filter((note) => shouldKeepNote(note, result, queryFilter)),
@@ -395,7 +408,8 @@ export function AIIndexPanel() {
   }, [])
 
   const handleBulkIndexLoaded = useCallback(async () => {
-    if (bulkIndexProgress || actionableLoadedNotes.length === 0) return
+    if (bulkIndexInFlightRef.current || actionableLoadedNotes.length === 0) return
+    bulkIndexInFlightRef.current = true
 
     let counts: BulkIndexCounters = { successCount: 0, skippedCount: 0, errorCount: 0 }
     setBulkIndexProgress({ completed: 0, total: actionableLoadedNotes.length })
@@ -413,12 +427,13 @@ export function AIIndexPanel() {
 
       showBulkIndexToast(counts.successCount, counts.skippedCount, counts.errorCount)
     } finally {
+      bulkIndexInFlightRef.current = false
       setBulkIndexProgress(null)
       await queryClient.invalidateQueries({
         queryKey: getAIIndexNotesQueryPrefix(user?.id),
       })
     }
-  }, [actionableLoadedNotes, activeQueryKey, applyMutationResultToQuery, bulkIndexProgress, invokeBulkIndex, queryClient, user?.id])
+  }, [actionableLoadedNotes, activeQueryKey, applyMutationResultToQuery, invokeBulkIndex, queryClient, user?.id])
 
   const handleBulkIndexPress = useCallback(() => {
     runAsyncTask(handleBulkIndexLoaded())
