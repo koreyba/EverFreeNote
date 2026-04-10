@@ -22,6 +22,34 @@ type ReadNoteArgs = {
   noteId: string;
 };
 
+/**
+ * Format a note's full details into a readable text response.
+ * Includes title, tags, dates, and the note content as plain text.
+ */
+function formatNoteDetails(note: {
+  title: string;
+  description: string | null;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}): string {
+  const plainText = stripHtml(note.description ?? "");
+  const tagsStr = note.tags.length > 0 ? note.tags.join(", ") : "none";
+  const createdDate = new Date(note.created_at).toISOString().split("T")[0];
+  const updatedDate = new Date(note.updated_at).toISOString().split("T")[0];
+
+  const lines: string[] = [];
+  lines.push(`Title: ${note.title}`);
+  lines.push(`Tags: ${tagsStr}`);
+  lines.push(`Created: ${createdDate}`);
+  lines.push(`Updated: ${updatedDate}`);
+  lines.push("");
+  lines.push("Content:");
+  lines.push(plainText || "(empty note)");
+
+  return lines.join("\n");
+}
+
 export async function readNote(args: ReadNoteArgs): Promise<string> {
   const { noteId } = args;
 
@@ -43,23 +71,7 @@ export async function readNote(args: ReadNoteArgs): Promise<string> {
       return `Error: ${error.message}`;
     }
 
-    const note = data;
-    // Convert TipTap HTML to plain text for LLM consumption
-    const plainText = stripHtml(note.description ?? "");
-    const tagsStr = note.tags.length > 0 ? note.tags.join(", ") : "none";
-    const createdDate = new Date(note.created_at).toISOString().split("T")[0];
-    const updatedDate = new Date(note.updated_at).toISOString().split("T")[0];
-
-    const lines: string[] = [];
-    lines.push(`Title: ${note.title}`);
-    lines.push(`Tags: ${tagsStr}`);
-    lines.push(`Created: ${createdDate}`);
-    lines.push(`Updated: ${updatedDate}`);
-    lines.push("");
-    lines.push("Content:");
-    lines.push(plainText || "(empty note)");
-
-    return lines.join("\n");
+    return formatNoteDetails(data);
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     return `Error reading note: ${errorMsg}`;

@@ -31,6 +31,40 @@ type ListNotesArgs = {
   limit?: number;
 };
 
+/**
+ * Format a list of notes into a readable text response.
+ * Displays note title, tags, last updated date, and ID.
+ */
+function formatNotesList(
+  notes: Array<{
+    id: string;
+    title: string;
+    tags: string[];
+    updated_at: string;
+  }>,
+  tag?: string,
+): string {
+  const lines: string[] = [];
+
+  if (tag) {
+    lines.push(`Found ${notes.length} note(s) with tag "${tag}":\n`);
+  } else {
+    lines.push(`Found ${notes.length} note(s):\n`);
+  }
+
+  for (const [index, note] of notes.entries()) {
+    const tagsStr = formatTags(note.tags);
+    const date = new Date(note.updated_at).toISOString().split("T")[0];
+
+    lines.push(
+      `${index + 1}. "${note.title}" (${tagsStr}) — updated ${date}`,
+    );
+    lines.push(`   ID: ${note.id}`);
+  }
+
+  return lines.join("\n");
+}
+
 export async function listNotes(args: ListNotesArgs): Promise<string> {
   const { tag, limit = 20 } = args;
 
@@ -64,24 +98,7 @@ export async function listNotes(args: ListNotesArgs): Promise<string> {
       return "No notes found. Create some notes in EverFreeNote first!";
     }
 
-    const lines: string[] = [];
-    if (tag) {
-      lines.push(`Found ${notes.length} note(s) with tag "${tag}":\n`);
-    } else {
-      lines.push(`Found ${notes.length} note(s):\n`);
-    }
-
-    for (const [index, note] of notes.entries()) {
-      const tagsStr = formatTags(note.tags);
-      const date = new Date(note.updated_at).toISOString().split("T")[0];
-
-      lines.push(
-        `${index + 1}. "${note.title}" (${tagsStr}) — updated ${date}`,
-      );
-      lines.push(`   ID: ${note.id}`);
-    }
-
-    return lines.join("\n");
+    return formatNotesList(notes, tag);
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     return `Error listing notes: ${errorMsg}`;

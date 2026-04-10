@@ -59,6 +59,8 @@ type RagSearchResponse = {
 };
 
 export async function searchNotes(args: SearchNotesArgs): Promise<string> {
+  // Default topK=15 provides a good balance between result quality and response size.
+  // Default threshold=0.55 filters out low-relevance chunks while keeping useful matches.
   const { query, topK = 15, threshold = 0.55, filterTag } = args;
 
   const supabase = getSupabaseClient();

@@ -8,6 +8,9 @@ import {
 import type { FtsSearchResult } from "@/supabase/types";
 import { formatTags } from "../helpers/formatTags.js";
 
+// Minimum query length required for full-text search to be effective
+const MIN_QUERY_LENGTH = 3;
+
 // Tool definition for MCP protocol
 export const FTS_SEARCH_TOOL = {
   name: "search_notes_fts",
@@ -44,11 +47,59 @@ type FtsSearchArgs = {
   tag?: string;
 };
 
+/**
+ * Build a user-friendly message when no search results are found.
+ */
+function buildNoResultsMessage(query: string, tag?: string): string {
+  if (tag) {
+    return `No results found for "${query}" with tag "${tag}".`;
+  }
+  return `No results found for "${query}".`;
+}
+
+/**
+ * Format FTS search results into a readable text response.
+ * Each result includes rank (relevance score) and a highlighted snippet.
+ */
+function formatFtsResults(
+  results: FtsSearchResult[],
+  query: string,
+  tag?: string,
+): string {
+  const lines: string[] = [];
+
+  if (tag) {
+    lines.push(
+      `Found ${results.length} result(s) for "${query}" with tag "${tag}":\n`,
+    );
+  } else {
+    lines.push(`Found ${results.length} result(s) for "${query}":\n`);
+  }
+
+  for (const [index, result] of results.entries()) {
+    const tagsStr = formatTags(result.tags);
+
+    lines.push(
+      `${index + 1}. "${result.title}" (rank: ${result.rank.toFixed(2)}, ${tagsStr})`,
+    );
+
+    if (result.headline) {
+      // Headline contains PostgreSQL ts_headline output with <b> tags highlighting matches
+      lines.push(`   ${result.headline}`);
+    }
+
+    lines.push(`   ID: ${result.id}`);
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
 export async function ftsSearch(args: FtsSearchArgs): Promise<string> {
   const { query, limit = 20, tag } = args;
 
-  if (query.trim().length < 3) {
-    return "Query must be at least 3 characters long.";
+  if (query.trim().length < MIN_QUERY_LENGTH) {
+    return `Query must be at least ${MIN_QUERY_LENGTH} characters long.`;
   }
 
   const supabase = getSupabaseClient();
@@ -62,13 +113,14 @@ export async function ftsSearch(args: FtsSearchArgs): Promise<string> {
     const tsQuery = buildTsQuery(query);
 
     if (!tsQuery) {
-      return "Invalid search query. Please use at least 3 characters.";
+      return `Invalid search query. Please use at least ${MIN_QUERY_LENGTH} characters.`;
     }
 
     const ftsLang = ftsLanguage(language as LanguageCode);
 
     // Call the PostgreSQL full-text search RPC function defined in the database.
     // Results include rank (relevance score) and headline (highlighted snippet with <b> tags).
+    // min_rank 0.01 filters out extremely weak matches while keeping most relevant results.
     const { data, error } = await supabase.rpc("search_notes_fts", {
       search_query: tsQuery,
       search_language: ftsLang,
@@ -86,36 +138,10 @@ export async function ftsSearch(args: FtsSearchArgs): Promise<string> {
     const results = (data ?? []) as FtsSearchResult[];
 
     if (results.length === 0) {
-      if (tag) {
-        return `No results found for "${query}" with tag "${tag}".`;
-      }
-      return `No results found for "${query}".`;
+      return buildNoResultsMessage(query, tag);
     }
 
-    const lines: string[] = [];
-    if (tag) {
-      lines.push(
-        `Found ${results.length} result(s) for "${query}" with tag "${tag}":\n`,
-      );
-    } else {
-      lines.push(`Found ${results.length} result(s) for "${query}":\n`);
-    }
-
-    for (const [index, result] of results.entries()) {
-      const tagsStr = formatTags(result.tags);
-
-      lines.push(
-        `${index + 1}. "${result.title}" (rank: ${result.rank.toFixed(2)}, ${tagsStr})`,
-      );
-      if (result.headline) {
-        // Headline contains PostgreSQL ts_headline output with <b> tags highlighting matches
-        lines.push(`   ${result.headline}`);
-      }
-      lines.push(`   ID: ${result.id}`);
-      lines.push("");
-    }
-
-    return lines.join("\n");
+    return formatFtsResults(results, query, tag);
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     return `Error performing full-text search: ${errorMsg}`;
