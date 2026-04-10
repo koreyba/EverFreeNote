@@ -80,6 +80,90 @@ interface NotesGraphViewProps {
 }
 
 /**
+ * Add a note node to the graph.
+ */
+function addNoteNode(note: Note, nodes: GraphNode[]): void {
+  nodes.push({
+    id: `note-${note.id}`,
+    label: note.title || "Untitled",
+    type: "note",
+    noteId: note.id,
+    size: NODE_SIZES.note,
+  });
+}
+
+/**
+ * Process tags for a note, creating tag nodes and links as needed.
+ */
+function processNoteTags(
+  note: Note,
+  tagNodeMap: Map<string, GraphNode>,
+  nodes: GraphNode[],
+  links: GraphLink[],
+): void {
+  if (!note.tags || note.tags.length === 0) return;
+
+  note.tags.forEach((tag) => {
+    // Create tag node if it doesn't exist
+    if (!tagNodeMap.has(tag)) {
+      const tagNode: GraphNode = {
+        id: `tag-${tag}`,
+        label: tag,
+        type: "tag",
+        tagName: tag,
+        size: NODE_SIZES.tagBase,
+      };
+      tagNodeMap.set(tag, tagNode);
+      nodes.push(tagNode);
+    }
+
+    // Create link between note and tag
+    links.push({
+      source: `note-${note.id}`,
+      target: `tag-${tag}`,
+    });
+  });
+}
+
+/**
+ * Count the number of connections to a specific tag node.
+ */
+function countTagConnections(links: GraphLink[], tagId: string): number {
+  return links.filter((link) => link.target === tagId).length;
+}
+
+/**
+ * Calculate tag node size based on connection count.
+ * More popular tags are rendered larger (clamped to min/max bounds).
+ */
+function calculateTagSize(connectionCount: number): number {
+  return Math.max(
+    NODE_SIZES.tagMin,
+    Math.min(connectionCount * NODE_SIZES.tagScaleFactor, NODE_SIZES.tagMax),
+  );
+}
+
+/**
+ * Draw a text label below a node on the canvas.
+ * Font size is scaled inversely with zoom to keep labels readable.
+ */
+function drawNodeLabel(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  x: number,
+  y: number,
+  nodeSize: number,
+  globalScale: number,
+): void {
+  const fontSize = LABEL_FONT_SIZE / globalScale;
+  ctx.font = `${fontSize}px Inter, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = GRAPH_COLORS.label;
+  ctx.fillText(label, x, y + nodeSize + fontSize);
+}
+
+/**
  * Transform notes into graph data structure.
  *
  * Creates a bipartite graph with:
@@ -100,50 +184,15 @@ function buildGraphData(notes: Note[]): GraphData {
 
   // Create note nodes and tag nodes
   notes.forEach((note) => {
-    // Add note node
-    nodes.push({
-      id: `note-${note.id}`,
-      label: note.title || "Untitled",
-      type: "note",
-      noteId: note.id,
-      size: NODE_SIZES.note,
-    });
-
-    // Process tags
-    if (note.tags && note.tags.length > 0) {
-      note.tags.forEach((tag) => {
-        // Create tag node if it doesn't exist
-        if (!tagNodeMap.has(tag)) {
-          const tagNode: GraphNode = {
-            id: `tag-${tag}`,
-            label: tag,
-            type: "tag",
-            tagName: tag,
-            size: NODE_SIZES.tagBase,
-          };
-          tagNodeMap.set(tag, tagNode);
-          nodes.push(tagNode);
-        }
-
-        // Create link between note and tag
-        links.push({
-          source: `note-${note.id}`,
-          target: `tag-${tag}`,
-        });
-      });
-    }
+    addNoteNode(note, nodes);
+    processNoteTags(note, tagNodeMap, nodes, links);
   });
 
   // Scale tag sizes based on connections - more connected tags are visually larger
   // This provides a quick visual indicator of which tags are most commonly used
   tagNodeMap.forEach((tagNode) => {
-    const connectionCount = links.filter(
-      (link) => link.target === tagNode.id,
-    ).length;
-    tagNode.size = Math.max(
-      NODE_SIZES.tagMin,
-      Math.min(connectionCount * NODE_SIZES.tagScaleFactor, NODE_SIZES.tagMax),
-    );
+    const connectionCount = countTagConnections(links, tagNode.id);
+    tagNode.size = calculateTagSize(connectionCount);
   });
 
   return { nodes, links };
@@ -195,7 +244,6 @@ export function NotesGraphView({
       const graphNode = node as GraphNode;
       const label = graphNode.label;
       const size = graphNode.size || 5;
-
       const nodeColor = NODE_COLORS[graphNode.type];
 
       // Draw node circle
@@ -205,13 +253,9 @@ export function NotesGraphView({
       ctx.fill();
 
       // Only show labels when zoomed in to avoid visual clutter
+      // This prevents overlapping text when viewing the full graph
       if (globalScale > LABEL_MIN_ZOOM) {
-        const fontSize = LABEL_FONT_SIZE / globalScale;
-        ctx.font = `${fontSize}px Inter, sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = GRAPH_COLORS.label;
-        ctx.fillText(label, node.x || 0, (node.y || 0) + size + fontSize);
+        drawNodeLabel(ctx, label, node.x || 0, node.y || 0, size, globalScale);
       }
     },
     [],
