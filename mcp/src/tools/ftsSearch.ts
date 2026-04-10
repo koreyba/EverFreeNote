@@ -6,6 +6,7 @@ import {
   type LanguageCode,
 } from "@core/utils/search";
 import type { FtsSearchResult } from "@/supabase/types";
+import { formatTags } from "../helpers/formatTags.js";
 
 // Tool definition for MCP protocol
 export const FTS_SEARCH_TOOL = {
@@ -55,8 +56,8 @@ export async function ftsSearch(args: FtsSearchArgs): Promise<string> {
   try {
     const userId = await getUserId();
 
-    // Detect language (Russian or English) and build PostgreSQL ts_query format
-    // The search utils handle tokenization and stemming appropriate for each language
+    // Detect language (Russian or English) to apply appropriate text search configuration.
+    // The search utils handle tokenization, stemming, and stop words for each language.
     const language = detectLanguage(query);
     const tsQuery = buildTsQuery(query);
 
@@ -66,8 +67,8 @@ export async function ftsSearch(args: FtsSearchArgs): Promise<string> {
 
     const ftsLang = ftsLanguage(language as LanguageCode);
 
-    // Call the PostgreSQL full-text search RPC function
-    // Results include rank (relevance score) and headline (highlighted snippet)
+    // Call the PostgreSQL full-text search RPC function defined in the database.
+    // Results include rank (relevance score) and headline (highlighted snippet with <b> tags).
     const { data, error } = await supabase.rpc("search_notes_fts", {
       search_query: tsQuery,
       search_language: ftsLang,
@@ -101,14 +102,13 @@ export async function ftsSearch(args: FtsSearchArgs): Promise<string> {
     }
 
     for (const [index, result] of results.entries()) {
-      const tagsStr =
-        result.tags.length > 0 ? `tags: ${result.tags.join(", ")}` : "no tags";
+      const tagsStr = formatTags(result.tags);
 
       lines.push(
         `${index + 1}. "${result.title}" (rank: ${result.rank.toFixed(2)}, ${tagsStr})`,
       );
       if (result.headline) {
-        // headline contains text snippets with <b> tags around matches (shown as-is for plain text)
+        // Headline contains PostgreSQL ts_headline output with <b> tags highlighting matches
         lines.push(`   ${result.headline}`);
       }
       lines.push(`   ID: ${result.id}`);

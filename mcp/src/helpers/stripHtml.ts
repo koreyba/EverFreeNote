@@ -10,14 +10,17 @@ export function stripHtml(html: string): string {
 
   let text = html;
 
-  // Replace block-level tags with newlines to preserve paragraph structure
+  // Replace block-level tags with newlines to preserve paragraph structure.
+  // TipTap outputs semantic HTML like <p>, <h1>, <li>, so converting these
+  // to newlines maintains readability in the plain text output.
   text = text.replace(/<\/?(p|div|br|li|h[1-6])[^>]*>/gi, "\n");
 
-  // Strip all remaining HTML tags (inline formatting, etc.)
+  // Strip all remaining HTML tags (inline formatting like <strong>, <em>, etc.).
+  // These don't affect semantic meaning for LLM consumption.
   text = text.replace(/<[^>]+>/g, "");
 
-  // Decode common HTML entities to plain characters
-  // TipTap may encode these when users type special characters
+  // Decode common HTML entities to plain characters.
+  // TipTap may encode these when users type special characters.
   text = text
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -26,10 +29,12 @@ export function stripHtml(html: string): string {
     .replace(/&nbsp;/g, " ")
     .replace(/&#39;/g, "'");
 
-  // Normalize whitespace for cleaner LLM input
+  // Normalize whitespace for cleaner LLM input:
+  // - Collapse multiple consecutive newlines to max 2 (preserve paragraph breaks)
+  // - Collapse runs of spaces/tabs to single space
   text = text
-    .replace(/\n{3,}/g, "\n\n") // Max 2 consecutive newlines
-    .replace(/[ \t]+/g, " ") // Collapse horizontal whitespace
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]+/g, " ")
     .trim();
 
   return text;

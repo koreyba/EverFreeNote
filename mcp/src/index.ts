@@ -50,6 +50,8 @@ async function validateEnvironment(): Promise<void> {
 
 /**
  * Register all available tools.
+ * MCP clients call this to discover what tools the server provides.
+ * Each tool includes a name, description, and JSON schema for its parameters.
  */
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -97,6 +99,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 /**
  * Execute a tool by name with the given arguments.
+ * Routes tool calls to their implementation functions. Type casting is safe here
+ * because the MCP SDK validates arguments against the tool's inputSchema before calling.
  * @throws Error if the tool name is not recognized
  */
 async function executeToolByName(name: string, args: unknown): Promise<string> {

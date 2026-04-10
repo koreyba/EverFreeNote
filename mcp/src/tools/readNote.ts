@@ -35,7 +35,8 @@ export async function readNote(args: ReadNoteArgs): Promise<string> {
       .single();
 
     if (error) {
-      // PGRST116 is Supabase's error code for "no rows returned"
+      // PGRST116 is PostgREST's standard error code for "no rows returned" when using .single().
+      // This can mean the note doesn't exist, or RLS prevents access to it.
       if (error.code === "PGRST116") {
         return `Note not found: ${noteId}\n\nThe note either doesn't exist or you don't have access to it.`;
       }

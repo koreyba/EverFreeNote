@@ -1,7 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/supabase/types";
 
-// Cache client and user ID for the lifetime of the MCP server process
+// Cache client and user ID for the lifetime of the MCP server process.
+// MCP servers are long-lived (one per user session), so we validate the JWT once
+// at startup and reuse the client for all subsequent operations.
 let cachedClient: SupabaseClient<Database> | null = null;
 let cachedUserId: string | null = null;
 
@@ -30,9 +32,10 @@ export function getSupabaseClient(): SupabaseClient<Database> {
     );
   }
 
-  // Create client with JWT injected via global headers
+  // Create client with JWT injected via global headers.
   // The anon key is used for RLS policy evaluation, while the JWT determines
-  // which user's data is accessible. This ensures all queries respect Row Level Security.
+  // which user's data is accessible. This ensures all database queries automatically
+  // respect Row Level Security policies without additional user_id filters.
   cachedClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     global: {
       headers: {

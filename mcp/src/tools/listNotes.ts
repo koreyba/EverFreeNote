@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "../supabaseClient.js";
+import { formatTags } from "../helpers/formatTags.js";
 
 // Tool definition for MCP protocol
 export const LIST_NOTES_TOOL = {
@@ -71,8 +72,7 @@ export async function listNotes(args: ListNotesArgs): Promise<string> {
     }
 
     for (const [index, note] of notes.entries()) {
-      const tagsStr =
-        note.tags.length > 0 ? `tags: ${note.tags.join(", ")}` : "no tags";
+      const tagsStr = formatTags(note.tags);
       const date = new Date(note.updated_at).toISOString().split("T")[0];
 
       lines.push(

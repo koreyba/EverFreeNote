@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "../supabaseClient.js";
+import { formatTags } from "../helpers/formatTags.js";
 
 // Tool definition for MCP protocol
 export const SEARCH_NOTES_TOOL = {
@@ -63,6 +64,9 @@ export async function searchNotes(args: SearchNotesArgs): Promise<string> {
   const supabase = getSupabaseClient();
 
   try {
+    // Call the rag-search Edge Function to perform semantic search.
+    // The Edge Function handles Gemini API key decryption, query embedding,
+    // and vector similarity search against indexed notes.
     const { data, error } = await supabase.functions.invoke<RagSearchResponse>(
       "rag-search",
       {
@@ -80,7 +84,8 @@ export async function searchNotes(args: SearchNotesArgs): Promise<string> {
     }
 
     if (data?.error) {
-      // Handle specific error cases from the Edge Function
+      // Edge Function returns errors as { error: string } in the response body
+      // rather than throwing, so we check data.error separately.
       if (data.error.includes("Gemini API key not configured")) {
         return (
           "Gemini API key not configured. Please add your Gemini API key in EverFreeNote Settings → Google API.\n\n" +
@@ -116,7 +121,7 @@ export async function searchNotes(args: SearchNotesArgs): Promise<string> {
  * Groups chunks by note_id and presents them in a readable format for LLM consumption.
  */
 function formatSearchResults(chunks: RagChunk[]): string {
-  // Group chunks by note
+  // Group chunks by note_id to show all matching chunks from the same note together
   const noteGroups = new Map<string, RagChunk[]>();
   for (const chunk of chunks) {
     const existing = noteGroups.get(chunk.note_id) ?? [];
@@ -132,10 +137,7 @@ function formatSearchResults(chunks: RagChunk[]): string {
 
   for (const noteChunks of noteGroups.values()) {
     const firstChunk = noteChunks[0];
-    const tagsStr =
-      firstChunk.note_tags.length > 0
-        ? `tags: ${firstChunk.note_tags.join(", ")}`
-        : "no tags";
+    const tagsStr = formatTags(firstChunk.note_tags);
 
     lines.push(`=== Note: "${firstChunk.note_title}" (${tagsStr}) ===`);
 
