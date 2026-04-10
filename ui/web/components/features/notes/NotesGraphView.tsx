@@ -80,8 +80,18 @@ interface NotesGraphViewProps {
 }
 
 /**
- * Transform notes into graph data structure
- * Creates nodes for notes and tags, and links between them
+ * Transform notes into graph data structure.
+ *
+ * Creates a bipartite graph with:
+ * - Note nodes (green circles) representing individual notes
+ * - Tag nodes (blue circles) representing tags, sized by connection count
+ * - Links connecting notes to their tags
+ *
+ * Tags shared across multiple notes become visual hubs, making it easy to
+ * identify common themes and connections between notes.
+ *
+ * @param notes - Array of notes to visualize
+ * @returns Graph data with nodes and links ready for force-directed layout
  */
 function buildGraphData(notes: Note[]): GraphData {
   const nodes: GraphNode[] = [];
@@ -139,6 +149,20 @@ function buildGraphData(notes: Note[]): GraphData {
   return { nodes, links };
 }
 
+/**
+ * Interactive force-directed graph visualization of notes and their tag relationships.
+ *
+ * Features:
+ * - Notes rendered as green nodes, tags as blue nodes (sized by popularity)
+ * - Click note nodes to navigate to that note
+ * - Auto-zoom to fit all nodes in viewport on load
+ * - Labels appear when zoomed in for readability
+ * - Responsive to container size changes
+ *
+ * @param notes - Array of notes to visualize
+ * @param onNodeClick - Callback fired when a note node is clicked (not tags)
+ * @param className - Optional CSS classes for the container
+ */
 export function NotesGraphView({
   notes,
   onNodeClick,
@@ -189,6 +213,19 @@ export function NotesGraphView({
         ctx.fillStyle = GRAPH_COLORS.label;
         ctx.fillText(label, node.x || 0, (node.y || 0) + size + fontSize);
       }
+    },
+    [],
+  );
+
+  // Define pointer area for node interaction - slightly larger than visual size for easier clicking
+  const nodePointerAreaPaint = useCallback(
+    (node: NodeObject, color: string, ctx: CanvasRenderingContext2D) => {
+      const graphNode = node as GraphNode;
+      const size = graphNode.size || 5;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(node.x || 0, node.y || 0, size + 2, 0, 2 * Math.PI, false);
+      ctx.fill();
     },
     [],
   );
@@ -261,14 +298,7 @@ export function NotesGraphView({
           linkDirectionalParticleWidth={GRAPH_PHYSICS.linkParticleWidth}
           linkDirectionalParticleSpeed={GRAPH_PHYSICS.linkParticleSpeed}
           onNodeClick={handleNodeClick}
-          nodePointerAreaPaint={(node, color, ctx) => {
-            const graphNode = node as GraphNode;
-            const size = graphNode.size || 5;
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(node.x || 0, node.y || 0, size + 2, 0, 2 * Math.PI, false);
-            ctx.fill();
-          }}
+          nodePointerAreaPaint={nodePointerAreaPaint}
           cooldownTicks={GRAPH_PHYSICS.cooldownTicks}
           d3AlphaDecay={GRAPH_PHYSICS.alphaDecay}
           d3VelocityDecay={GRAPH_PHYSICS.velocityDecay}
