@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
-import { NotesGraphView } from "./NotesGraphView"
-import type { Note } from "@core/types/domain"
+import type { Meta, StoryObj } from "@storybook/react";
+import { NotesGraphView } from "./NotesGraphView";
+import type { Note } from "@core/types/domain";
 
 const meta: Meta<typeof NotesGraphView> = {
   title: "Features/Notes/NotesGraphView",
@@ -15,10 +15,10 @@ const meta: Meta<typeof NotesGraphView> = {
       </div>
     ),
   ],
-}
+};
 
-export default meta
-type Story = StoryObj<typeof NotesGraphView>
+export default meta;
+type Story = StoryObj<typeof NotesGraphView>;
 
 // Mock notes data showing multiple connected notes with tags
 const mockNotes: Note[] = [
@@ -94,7 +94,7 @@ const mockNotes: Note[] = [
     updated_at: "2024-01-22T10:45:00Z",
     user_id: "user-1",
   },
-]
+];
 
 /**
  * Default story showing the graph visualization with multiple connected notes.
@@ -104,11 +104,8 @@ const mockNotes: Note[] = [
 export const Default: Story = {
   args: {
     notes: mockNotes,
-    onNodeClick: (noteId: string) => {
-      console.log("Clicked note:", noteId)
-    },
   },
-}
+};
 
 /**
  * Story showing the empty state when no notes are provided.
@@ -117,7 +114,7 @@ export const EmptyState: Story = {
   args: {
     notes: [],
   },
-}
+};
 
 /**
  * Story with a single note that has multiple tags.
@@ -136,7 +133,7 @@ export const SingleNote: Story = {
       },
     ],
   },
-}
+};
 
 /**
  * Story with notes that share many common tags.
@@ -190,8 +187,5 @@ export const HighlyConnected: Story = {
         user_id: "user-1",
       },
     ],
-    onNodeClick: (noteId: string) => {
-      console.log("Clicked note:", noteId)
-    },
   },
-}
+};
