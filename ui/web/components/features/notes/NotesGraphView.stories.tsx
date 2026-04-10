@@ -10,8 +10,10 @@ const meta: Meta<typeof NotesGraphView> = {
   },
   decorators: [
     (Story) => (
-      <div style={{ width: "100vw", height: "100vh", background: "#fff", overflow: "hidden" }}>
-        <Story />
+      <div style={{ width: "100vw", height: "100vh", background: "#fff", overflow: "hidden", padding: "40px", boxSizing: "border-box" }}>
+        <div style={{ width: "100%", height: "100%", position: "relative" }}>
+          <Story />
+        </div>
       </div>
     ),
   ],
