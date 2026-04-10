@@ -14,6 +14,17 @@ import {
 const mockPush = jest.fn()
 const mockPrefetch = jest.fn()
 const mockAIIndexList = jest.fn()
+const mockToastError = jest.fn()
+const mockToastMessage = jest.fn()
+const mockToastSuccess = jest.fn()
+
+jest.mock("sonner", () => ({
+  toast: {
+    error: (...args: unknown[]) => mockToastError(...args),
+    message: (...args: unknown[]) => mockToastMessage(...args),
+    success: (...args: unknown[]) => mockToastSuccess(...args),
+  },
+}))
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -55,6 +66,9 @@ describe("AIIndexTab", () => {
     mockPush.mockReset()
     mockPrefetch.mockReset()
     mockAIIndexList.mockReset()
+    mockToastError.mockReset()
+    mockToastMessage.mockReset()
+    mockToastSuccess.mockReset()
     jest.mocked(consumeAIIndexViewState).mockReturnValue(null)
     jest.mocked(clearActiveSettingsNoteReturnPath).mockReset()
     jest.mocked(saveAIIndexViewState).mockReset()
@@ -557,5 +571,346 @@ describe("AIIndexTab", () => {
     )
 
     expect(screen.getByText("Showing 1 note")).toBeTruthy()
+  })
+
+  it("shows the bulk button only when the loaded list contains actionable notes", () => {
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-indexed",
+        title: "Indexed note",
+        updatedAt: "2026-03-29T10:00:00Z",
+        lastIndexedAt: "2026-03-29T10:00:00Z",
+        status: "indexed",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+    } as never)
+
+    const view = render(
+      <SupabaseTestProvider
+        supabase={{ functions: { invoke: jest.fn() } } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    expect(screen.queryByRole("button", { name: "Index loaded notes" })).toBeNull()
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-not-indexed",
+        title: "Need index",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+    ])
+
+    view.rerender(
+      <SupabaseTestProvider
+        supabase={{ functions: { invoke: jest.fn() } } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    expect(screen.getByRole("button", { name: "Index loaded notes" })).toBeTruthy()
+  })
+
+  it("bulk-indexes only loaded actionable notes and skips indexed rows", async () => {
+    const invoke = jest.fn()
+      .mockResolvedValueOnce({ data: { outcome: "indexed", chunkCount: 1 }, error: null })
+      .mockResolvedValueOnce({ data: { outcome: "indexed", chunkCount: 2 }, error: null })
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-indexed",
+        title: "Indexed note",
+        updatedAt: "2026-03-29T10:00:00Z",
+        lastIndexedAt: "2026-03-29T10:00:00Z",
+        status: "indexed",
+      },
+      {
+        id: "note-not-indexed",
+        title: "Need index",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+      {
+        id: "note-outdated",
+        title: "Need reindex",
+        updatedAt: "2026-03-29T12:00:00Z",
+        lastIndexedAt: "2026-03-29T11:30:00Z",
+        status: "outdated",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 3, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{ functions: { invoke } } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Index loaded notes" }))
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledTimes(2)
+    })
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "rag-index", {
+      body: { noteId: "note-not-indexed", action: "index" },
+    })
+    expect(invoke).toHaveBeenNthCalledWith(2, "rag-index", {
+      body: { noteId: "note-outdated", action: "reindex" },
+    })
+  })
+
+  it("shows an active loading state on the bulk action while indexing runs", async () => {
+    let resolveInvoke: ((value: { data: { outcome: string; chunkCount: number }; error: null }) => void) | null = null
+    const invoke = jest.fn().mockImplementation(() => new Promise((resolve) => {
+      resolveInvoke = resolve
+    }))
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-not-indexed",
+        title: "Need index",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{ functions: { invoke } } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Index loaded notes" }))
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Indexing loaded notes" }).getAttribute("aria-busy")).toBe("true")
+      expect(screen.getByText("0/1")).toBeTruthy()
+    })
+
+    await act(async () => {
+      resolveInvoke?.({ data: { outcome: "indexed", chunkCount: 1 }, error: null })
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Indexing loaded notes" })).toBeNull()
+    })
+  })
+
+  it("keeps the supabase function context during bulk indexing", async () => {
+    type FunctionsMock = {
+      calls: Array<[string, { body: { noteId: string; action: string } }]>
+      invoke: (
+        this: FunctionsMock,
+        name: string,
+        options: { body: { noteId: string; action: string } }
+      ) => Promise<{ data: { outcome: "indexed"; chunkCount: number }; error: null }>
+    }
+
+    const note = {
+      id: "note-not-indexed",
+      title: "Need index",
+      updatedAt: "2026-03-29T11:00:00Z",
+      lastIndexedAt: null,
+      status: "not_indexed" as const,
+    }
+    const functions: FunctionsMock = {
+      calls: [],
+      invoke(this: FunctionsMock, name: string, options: { body: { noteId: string; action: string } }) {
+        if (this !== functions) {
+          return Promise.reject(new Error("lost functions context"))
+        }
+
+        this.calls.push([name, options])
+        return Promise.resolve({ data: { outcome: "indexed", chunkCount: 1 }, error: null })
+      },
+    }
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([note])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{ functions } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Index loaded notes" }))
+
+    await waitFor(() => {
+      expect(functions.calls).toHaveLength(1)
+    })
+
+    expect(functions.calls[0]).toEqual([
+      "rag-index",
+      { body: { noteId: "note-not-indexed", action: "index" } },
+    ])
+    expect(mockToastError).not.toHaveBeenCalledWith("Bulk indexing failed")
+  })
+
+  it("keeps the bulk action scoped to the committed search results", async () => {
+    const invoke = jest.fn().mockResolvedValue({ data: { outcome: "indexed", chunkCount: 1 }, error: null })
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-search-hit",
+        title: "Matched note",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{ functions: { invoke } } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.change(screen.getByLabelText("Search AI index notes"), { target: { value: "match" } })
+
+    act(() => {
+      jest.advanceTimersByTime(300)
+    })
+
+    await waitFor(() => {
+      expect(aiIndexHooks.useAIIndexNotes).toHaveBeenLastCalledWith("all", "match")
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Index loaded notes" }))
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledTimes(1)
+    })
+
+    expect(invoke).toHaveBeenCalledWith("rag-index", {
+      body: { noteId: "note-search-hit", action: "index" },
+    })
+  })
+
+  it("reports skipped and failed outcomes in the bulk summary toast", async () => {
+    const invoke = jest.fn()
+      .mockResolvedValueOnce({ data: { outcome: "indexed", chunkCount: 1 }, error: null })
+      .mockResolvedValueOnce({ data: { outcome: "skipped", reason: "too_short" }, error: null })
+      .mockResolvedValueOnce({ data: null, error: new Error("edge fn error") })
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-1",
+        title: "OK note",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+      {
+        id: "note-2",
+        title: "Short note",
+        updatedAt: "2026-03-29T12:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+      {
+        id: "note-3",
+        title: "Broken note",
+        updatedAt: "2026-03-29T13:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 3, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{ functions: { invoke } } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Index loaded notes" }))
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledTimes(3)
+    })
+
+    await waitFor(() => {
+      expect(mockToastMessage).toHaveBeenCalledWith("1 indexed • 1 skipped • 1 failed")
+    })
+  })
+
+  it("shows success toast when all notes are indexed without errors", async () => {
+    const invoke = jest.fn()
+      .mockResolvedValue({ data: { outcome: "indexed", chunkCount: 1 }, error: null })
+
+    jest.spyOn(aiIndexHooks, "useFlattenedAIIndexNotes").mockReturnValue([
+      {
+        id: "note-1",
+        title: "Note one",
+        updatedAt: "2026-03-29T11:00:00Z",
+        lastIndexedAt: null,
+        status: "not_indexed",
+      },
+    ])
+    jest.spyOn(aiIndexHooks, "useAIIndexNotes").mockReturnValue({
+      ...mockQuery,
+      data: { pages: [{ totalCount: 1, notes: [], hasMore: false }] },
+    } as never)
+
+    render(
+      <SupabaseTestProvider
+        supabase={{ functions: { invoke } } as never}
+        user={{ id: "user-1", email: "user@example.com" } as never}
+      >
+        <AIIndexTab />
+      </SupabaseTestProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Index loaded notes" }))
+
+    await waitFor(() => {
+      expect(mockToastSuccess).toHaveBeenCalledWith("1 indexed")
+    })
   })
 })
