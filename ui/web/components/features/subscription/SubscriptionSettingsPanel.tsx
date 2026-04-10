@@ -53,9 +53,8 @@ export function SubscriptionSettingsPanel() {
   };
 
   const handleManageSubscription = () => {
-    // Direct users to Lemon Squeezy's my-orders page for subscription management
-    // This is the recommended approach - Lemon Squeezy doesn't yet provide per-subscription
-    // portal URLs via API, so this is the simplest self-service option
+    // Lemon Squeezy's customer portal for subscription management (cancel, update payment method)
+    // Lemon Squeezy doesn't provide per-subscription portal URLs via API, so we use the global portal
     window.open(
       "https://app.lemonsqueezy.com/my-orders",
       "_blank",

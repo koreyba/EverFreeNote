@@ -35,7 +35,6 @@ export function PricingPage() {
 
   const handleSubscribe = () => {
     // Guard: only authenticated users can start checkout flow
-    // Prevents opening payment window for logged-out users
     if (!user) return;
 
     openCheckout({
@@ -99,6 +98,7 @@ export function PricingPage() {
               description="For serious note-takers"
               features={PRO_PLAN_FEATURES}
               ctaLabel={isPaid ? "Manage subscription" : "Subscribe"}
+              // Disable during loading to prevent duplicate requests, or if user not authenticated
               ctaDisabled={isLoading || !user}
               onCtaClick={handleSubscribe}
               isCurrent={isPaid}

@@ -107,8 +107,10 @@ export function NotesShell({ controller }: NotesShellProps) {
     setIsSearchPanelOpen,
   } = controller;
 
-  // Guard note creation with subscription limit check
-  // Free users who hit the limit see upgrade dialog instead of creating
+  /**
+   * Enforce subscription note limits before creating a new note.
+   * Free users who have reached the limit see the upgrade dialog instead.
+   */
   const handleCreateNote = React.useCallback(() => {
     if (!canCreateNote(notesTotal ?? 0)) {
       setUpgradeDialogOpen(true);
@@ -151,6 +153,7 @@ export function NotesShell({ controller }: NotesShellProps) {
           if (!data) return;
           note = data as Note;
         } catch (error) {
+          // Log error but don't throw - this is a user-triggered navigation
           console.error("Failed to fetch note for open-in-context", {
             noteId,
             error,

@@ -140,7 +140,7 @@ export function Sidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
-        {/* Free tier shows progress toward limit; paid users see full count */}
+        {/* Note count: Free users see limit progress, paid users see displayed/total */}
         <p className="text-xs text-muted-foreground text-center">
           {plan === "free" && typeof notesTotal === "number"
             ? `${notesTotal} of ${FREE_PLAN_NOTE_LIMIT} notes`
