@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
+import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -9,28 +9,33 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Sparkles } from "lucide-react"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
 
 interface UpgradeDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  currentCount: number
-  limit: number
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentCount: number;
+  limit: number;
 }
 
-export function UpgradeDialog({ open, onOpenChange, currentCount, limit }: UpgradeDialogProps) {
-  const router = useRouter()
+export function UpgradeDialog({
+  open,
+  onOpenChange,
+  currentCount,
+  limit,
+}: UpgradeDialogProps) {
+  const router = useRouter();
 
   const handleViewPlans = () => {
-    onOpenChange(false)
-    router.push('/pricing')
-  }
+    onOpenChange(false);
+    router.push("/pricing");
+  };
 
   const handleClose = () => {
-    onOpenChange(false)
-  }
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -41,19 +46,21 @@ export function UpgradeDialog({ open, onOpenChange, currentCount, limit }: Upgra
             <DialogTitle>Note limit reached</DialogTitle>
           </div>
           <DialogDescription className="pt-4 text-base">
-            You've used <span className="font-semibold">{currentCount} of {limit} notes</span> on the Free plan.
-            Upgrade to Pro for unlimited notes and support future development.
+            You&apos;ve used{" "}
+            <span className="font-semibold">
+              {currentCount} of {limit} notes
+            </span>{" "}
+            on the Free plan. Upgrade to Pro for unlimited notes and support
+            future development.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={handleClose}>
             Maybe later
           </Button>
-          <Button onClick={handleViewPlans}>
-            View plans
-          </Button>
+          <Button onClick={handleViewPlans}>View plans</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

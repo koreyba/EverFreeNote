@@ -1,6 +1,13 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { Meta, StoryObj } from "@storybook/react";
 import * as React from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, BookOpen, Check } from "lucide-react";
@@ -40,7 +47,7 @@ function PlanCard({
       className={cn(
         "relative flex flex-col",
         isRecommended && "border-primary shadow-lg",
-        className
+        className,
       )}
     >
       {isRecommended && (
@@ -50,7 +57,7 @@ function PlanCard({
           </Badge>
         </div>
       )}
-      
+
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{name}</span>
@@ -97,7 +104,11 @@ interface PricingPageStoryProps {
   hasUser?: boolean;
 }
 
-function PricingPageStory({ isPaid, isLoading = false, hasUser = true }: PricingPageStoryProps) {
+function PricingPageStory({
+  isPaid,
+  isLoading = false,
+  hasUser = true,
+}: PricingPageStoryProps) {
   const freePlanFeatures = [
     `Up to ${FREE_PLAN_NOTE_LIMIT} notes`,
     "Basic note creation and editing",
@@ -116,13 +127,11 @@ function PricingPageStory({ isPaid, isLoading = false, hasUser = true }: Pricing
   ];
 
   const handleSubscribe = () => {
-    // Mock action - would open Lemon Squeezy checkout
-    console.log("Opening checkout...");
+    // Mock action - in real app, would open Lemon Squeezy checkout
   };
 
   const handleBack = () => {
-    // Mock action - would navigate back
-    console.log("Going back...");
+    // Mock action - in real app, would navigate back
   };
 
   return (
@@ -186,7 +195,8 @@ function PricingPageStory({ isPaid, isLoading = false, hasUser = true }: Pricing
           {/* Footer Note */}
           <div className="mt-12 text-center">
             <p className="text-sm text-muted-foreground">
-              All existing notes remain accessible when downgrading. You just can&apos;t create new notes if you exceed the limit.
+              All existing notes remain accessible when downgrading. You just
+              can&apos;t create new notes if you exceed the limit.
             </p>
           </div>
         </div>

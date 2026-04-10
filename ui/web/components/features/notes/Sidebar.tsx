@@ -1,42 +1,41 @@
-"use client"
+"use client";
 
-import { BookOpen, LogOut, Plus, Search, Settings } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
-import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
-import { PlanBadge } from "@/components/features/subscription/PlanBadge"
-import { User } from "@supabase/supabase-js"
-import { cn } from "@ui/web/lib/utils"
-import { useBulkDeleteConfirm } from "@ui/web/hooks/useBulkDeleteConfirm"
-import type { Plan } from "@core/types/subscription"
-import { FREE_PLAN_NOTE_LIMIT } from "@core/constants/subscription"
+import { BookOpen, LogOut, Plus, Search, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog";
+import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions";
+import { PlanBadge } from "@/components/features/subscription/PlanBadge";
+import { User } from "@supabase/supabase-js";
+import { cn } from "@ui/web/lib/utils";
+import { useBulkDeleteConfirm } from "@ui/web/hooks/useBulkDeleteConfirm";
+import type { Plan } from "@core/types/subscription";
+import { FREE_PLAN_NOTE_LIMIT } from "@core/constants/subscription";
 
 interface SidebarProps {
-  user: User
-  notesDisplayed?: number
-  notesTotal?: number
-  pendingCount?: number
-  failedCount?: number
-  isOffline: boolean
-  selectionMode: boolean
-  selectedCount: number
-  bulkDeleting: boolean
-  onExitSelectionMode: () => void
-  onSelectAll: () => void
-  onBulkDelete: () => void
-  filterByTag: string | null
-  onClearTagFilter: () => void
-  onOpenSearch: () => void
-  onOpenSettings: () => void
-  onCreateNote: () => void
-  onSignOut: () => void
-  plan?: Plan
-  canCreateNote?: boolean
-  onUpgrade?: () => void
-  children: React.ReactNode // For the NoteList
-  className?: string
-  "data-testid"?: string
+  user: User;
+  notesDisplayed?: number;
+  notesTotal?: number;
+  pendingCount?: number;
+  failedCount?: number;
+  isOffline: boolean;
+  selectionMode: boolean;
+  selectedCount: number;
+  bulkDeleting: boolean;
+  onExitSelectionMode: () => void;
+  onSelectAll: () => void;
+  onBulkDelete: () => void;
+  filterByTag: string | null;
+  onClearTagFilter: () => void;
+  onOpenSearch: () => void;
+  onOpenSettings: () => void;
+  onCreateNote: () => void;
+  onSignOut: () => void;
+  plan?: Plan;
+  onUpgrade?: () => void;
+  children: React.ReactNode; // For the NoteList
+  className?: string;
+  "data-testid"?: string;
 }
 
 export function Sidebar({
@@ -56,17 +55,18 @@ export function Sidebar({
   onOpenSettings,
   onCreateNote,
   onSignOut,
-  plan = 'free',
-  canCreateNote = true,
+  plan = "free",
   onUpgrade,
   children,
   className,
-  "data-testid": dataTestId
+  "data-testid": dataTestId,
 }: SidebarProps) {
-  const hasVisibleNotes = typeof notesDisplayed === "number" ? notesDisplayed > 0 : true
-  const allVisibleSelected = typeof notesDisplayed === "number"
-    ? notesDisplayed > 0 && selectedCount >= notesDisplayed
-    : false
+  const hasVisibleNotes =
+    typeof notesDisplayed === "number" ? notesDisplayed > 0 : true;
+  const allVisibleSelected =
+    typeof notesDisplayed === "number"
+      ? notesDisplayed > 0 && selectedCount >= notesDisplayed
+      : false;
 
   const {
     isDialogOpen: bulkDialogOpen,
@@ -75,13 +75,13 @@ export function Sidebar({
     confirmDelete: handleBulkConfirm,
     error: bulkDeleteError,
     clearError: clearBulkDeleteError,
-  } = useBulkDeleteConfirm(onBulkDelete)
+  } = useBulkDeleteConfirm(onBulkDelete);
 
   return (
     <div
       className={cn(
         "w-80 bg-card border-r flex flex-col h-full md:sticky md:top-0 md:h-screen md:overflow-hidden",
-        className
+        className,
       )}
       data-testid={dataTestId}
     >
@@ -124,7 +124,10 @@ export function Sidebar({
           data-testid="sidebar-search-trigger"
           aria-label="Open search panel"
         >
-          <Search aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground mr-2 pointer-events-none" />
+          <Search
+            aria-hidden="true"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground mr-2 pointer-events-none"
+          />
           <div className="flex w-full items-center h-10 px-3 pl-9 py-2 rounded-md border border-input bg-background/50 hover:bg-background/80 transition-colors text-sm text-muted-foreground text-left">
             Click to search
           </div>
@@ -133,18 +136,15 @@ export function Sidebar({
 
       {/* New Note Button */}
       <div className="p-4 border-b space-y-3">
-        <Button
-          onClick={onCreateNote}
-          className="w-full"
-        >
+        <Button onClick={onCreateNote} className="w-full">
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
+        {/* Free tier shows progress toward limit; paid users see full count */}
         <p className="text-xs text-muted-foreground text-center">
-          {plan === 'free' && typeof notesTotal === 'number'
+          {plan === "free" && typeof notesTotal === "number"
             ? `${notesTotal} of ${FREE_PLAN_NOTE_LIMIT} notes`
-            : `Notes displayed: ${typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of ${typeof notesTotal === "number" ? notesTotal : "unknown"}`
-          }
+            : `Notes displayed: ${typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of ${typeof notesTotal === "number" ? notesTotal : "unknown"}`}
         </p>
         {selectionMode && (
           <SelectionModeActions
@@ -152,7 +152,9 @@ export function Sidebar({
             onSelectAll={onSelectAll}
             onDelete={requestBulkDelete}
             onCancel={onExitSelectionMode}
-            selectingAllDisabled={!hasVisibleNotes || allVisibleSelected || bulkDeleting}
+            selectingAllDisabled={
+              !hasVisibleNotes || allVisibleSelected || bulkDeleting
+            }
             deletingDisabled={selectedCount === 0 || bulkDeleting}
             deleting={bulkDeleting}
             className="rounded-md border bg-card/70 backdrop-blur"
@@ -185,11 +187,7 @@ export function Sidebar({
           >
             <Settings className="w-4 h-4" />
           </Button>
-          <Button
-            onClick={onSignOut}
-            variant="ghost"
-            size="sm"
-          >
+          <Button onClick={onSignOut} variant="ghost" size="sm">
             <LogOut className="w-4 h-4" />
           </Button>
         </div>
@@ -209,5 +207,5 @@ export function Sidebar({
         onClearError={clearBulkDeleteError}
       />
     </div>
-  )
+  );
 }

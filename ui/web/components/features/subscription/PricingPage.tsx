@@ -1,38 +1,41 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, BookOpen } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { PlanCard } from "@/components/features/subscription/PlanCard"
-import { useNoteAuth } from "@ui/web/hooks/useNoteAuth"
-import { useSubscription } from "@ui/web/hooks/useSubscription"
-import { openCheckout } from "@ui/web/lib/lemonsqueezy"
-import { FREE_PLAN_NOTE_LIMIT } from "@core/constants/subscription"
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PlanCard } from "@/components/features/subscription/PlanCard";
+import { useNoteAuth } from "@ui/web/hooks/useNoteAuth";
+import { useSubscription } from "@ui/web/hooks/useSubscription";
+import { openCheckout } from "@ui/web/lib/lemonsqueezy";
+import { FREE_PLAN_NOTE_LIMIT } from "@core/constants/subscription";
 
 export function PricingPage() {
-  const router = useRouter()
-  const { user } = useNoteAuth()
-  const { plan, isPaid, isLoading } = useSubscription({ userId: user?.id })
+  const router = useRouter();
+  const { user } = useNoteAuth();
+  const { isPaid, isLoading } = useSubscription({ userId: user?.id });
 
   const handleSubscribe = () => {
-    if (!user) return
+    // Don't open checkout for unauthenticated users
+    if (!user) return;
+
     openCheckout({
       email: user.email ?? undefined,
       userId: user.id,
-    })
-  }
+    });
+  };
 
   const handleBack = () => {
-    router.back()
-  }
+    router.back();
+  };
 
+  // Feature lists for each tier
   const freePlanFeatures = [
     `Up to ${FREE_PLAN_NOTE_LIMIT} notes`,
     "Basic note creation and editing",
     "Tag organization",
     "Full-text search",
-  ]
+  ];
 
   const proPlanFeatures = [
     "Unlimited notes",
@@ -42,7 +45,7 @@ export function PricingPage() {
     "ENEX import/export",
     "Priority support",
     "Support future development",
-  ]
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,11 +108,12 @@ export function PricingPage() {
           {/* Footer Note */}
           <div className="mt-12 text-center">
             <p className="text-sm text-muted-foreground">
-              All existing notes remain accessible when downgrading. You just can't create new notes if you exceed the limit.
+              All existing notes remain accessible when downgrading. You just
+              can&apos;t create new notes if you exceed the limit.
             </p>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

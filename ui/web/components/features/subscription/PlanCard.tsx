@@ -1,23 +1,30 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Check } from "lucide-react"
-import { cn } from "@ui/web/lib/utils"
+import * as React from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Check } from "lucide-react";
+import { cn } from "@ui/web/lib/utils";
 
 interface PlanCardProps {
-  name: string
-  price: string
-  description: string
-  features: string[]
-  ctaLabel: string
-  ctaDisabled?: boolean
-  onCtaClick?: () => void
-  isCurrent?: boolean
-  isRecommended?: boolean
-  className?: string
+  name: string;
+  price: string;
+  description: string;
+  features: string[];
+  ctaLabel: string;
+  ctaDisabled?: boolean;
+  onCtaClick?: () => void;
+  isCurrent?: boolean;
+  isRecommended?: boolean;
+  className?: string;
 }
 
 export function PlanCard({
@@ -36,8 +43,9 @@ export function PlanCard({
     <Card
       className={cn(
         "relative flex flex-col",
+        // Highlight recommended plans with primary border and shadow
         isRecommended && "border-primary shadow-lg",
-        className
+        className,
       )}
     >
       {isRecommended && (
@@ -47,7 +55,7 @@ export function PlanCard({
           </Badge>
         </div>
       )}
-      
+
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{name}</span>
@@ -79,11 +87,12 @@ export function PlanCard({
           className="w-full"
           onClick={onCtaClick}
           disabled={ctaDisabled}
+          // Use solid button for recommended plan, outline for others — creates visual hierarchy
           variant={isRecommended ? "default" : "outline"}
         >
           {ctaLabel}
         </Button>
       </CardFooter>
     </Card>
-  )
+  );
 }

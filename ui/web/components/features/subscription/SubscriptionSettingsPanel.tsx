@@ -1,48 +1,63 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useNoteAuth } from "@ui/web/hooks/useNoteAuth"
-import { useSubscription } from "@ui/web/hooks/useSubscription"
-import { FREE_PLAN_NOTE_LIMIT, PLAN_DISPLAY_NAMES } from "@core/constants/subscription"
-import { useNotesQuery } from "@ui/web/hooks/useNotesQuery"
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useNoteAuth } from "@ui/web/hooks/useNoteAuth";
+import { useSubscription } from "@ui/web/hooks/useSubscription";
+import {
+  FREE_PLAN_NOTE_LIMIT,
+  PLAN_DISPLAY_NAMES,
+} from "@core/constants/subscription";
+import { useNotesQuery } from "@ui/web/hooks/useNotesQuery";
 import {
   settingsActionButtonClassName,
   settingsActionRowClassName,
   settingsInsetPanelClassName,
   settingsSectionCardClassName,
-} from "@/components/features/settings/settingsLayout"
+} from "@/components/features/settings/settingsLayout";
 
 export function SubscriptionSettingsPanel() {
-  const router = useRouter()
-  const { user } = useNoteAuth()
-  const { plan, isPaid, subscription, isLoading } = useSubscription({ userId: user?.id })
-  
+  const router = useRouter();
+  const { user } = useNoteAuth();
+  const { plan, isPaid, subscription, isLoading } = useSubscription({
+    userId: user?.id,
+  });
+
   // Get total note count
-  const notesQuery = useNotesQuery({ userId: user?.id, enabled: !!user?.id })
-  const totalNotes = notesQuery.data?.pages[0]?.totalCount ?? 0
+  const notesQuery = useNotesQuery({ userId: user?.id, enabled: !!user?.id });
+  const totalNotes = notesQuery.data?.pages[0]?.totalCount ?? 0;
 
   const handleUpgrade = () => {
-    router.push('/pricing')
-  }
+    router.push("/pricing");
+  };
 
   const handleManageSubscription = () => {
-    // Open Lemon Squeezy customer portal
-    // TODO: Implement customer portal URL generation when available
-    window.open('https://app.lemonsqueezy.com/my-orders', '_blank', 'noopener,noreferrer')
-  }
+    // Open Lemon Squeezy my-orders page where users can manage their subscriptions
+    // This is the standard approach until Lemon Squeezy provides customer portal URLs via API
+    window.open(
+      "https://app.lemonsqueezy.com/my-orders",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
-  }
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -110,7 +125,8 @@ export function SubscriptionSettingsPanel() {
           {/* Info Message */}
           {isPaid ? (
             <div className="rounded-md border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-600/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-              You have unlimited notes on the Pro plan. Thank you for supporting EverFreeNote!
+              You have unlimited notes on the Pro plan. Thank you for supporting
+              EverFreeNote!
             </div>
           ) : (
             <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
@@ -139,5 +155,5 @@ export function SubscriptionSettingsPanel() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
