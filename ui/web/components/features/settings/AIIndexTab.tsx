@@ -9,15 +9,21 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { getAIIndexActionPresentation, getAIIndexActionableNotes } from "@core/constants/aiIndex"
+import { getAIIndexActionableNotes } from "@core/constants/aiIndex"
 import { SEARCH_CONFIG } from "@core/constants/search"
-import { parseRagIndexResult } from "@core/rag/indexResult"
 import { NoteService } from "@core/services/notes"
 import type {
   AIIndexFilter,
   AIIndexMutationResult,
   AIIndexNoteRow as AIIndexNoteRowData,
 } from "@core/types/aiIndex"
+import {
+  type BulkIndexCounters,
+  type BulkIndexInvoke,
+  formatBulkIndexSummary,
+  incrementBulkIndexCounters,
+  processBulkIndexNote,
+} from "@core/bulkIndex"
 import { cn } from "@ui/web/lib/utils"
 import {
   getAIIndexNotesQueryPrefix,
@@ -73,93 +79,10 @@ type OptimisticMutationState = AIIndexMutationResult & {
   sourceIndex: number
 }
 
-type BulkIndexOutcome = "indexed" | "skipped" | "failed"
-
-type BulkIndexCounters = {
-  successCount: number
-  skippedCount: number
-  errorCount: number
-}
-
-type BulkIndexInvoke = (
-  name: string,
-  options: { body: { noteId: string; action: "index" | "reindex" } }
-) => Promise<{ data: unknown; error: unknown }>
-
 function runBackgroundTask(task: Promise<unknown>) {
   task.catch(() => {
     // Best-effort background work should not break the settings UI.
   })
-}
-
-function incrementBulkIndexCounters(
-  counters: BulkIndexCounters,
-  outcome: BulkIndexOutcome
-): BulkIndexCounters {
-  if (outcome === "indexed") {
-    return { ...counters, successCount: counters.successCount + 1 }
-  }
-  if (outcome === "skipped") {
-    return { ...counters, skippedCount: counters.skippedCount + 1 }
-  }
-  return { ...counters, errorCount: counters.errorCount + 1 }
-}
-
-function formatBulkIndexSummary(successCount: number, skippedCount: number, errorCount: number) {
-  const parts = [
-    successCount > 0 ? `${successCount} indexed` : null,
-    skippedCount > 0 ? `${skippedCount} skipped` : null,
-    errorCount > 0 ? `${errorCount} failed` : null,
-  ].filter(Boolean)
-
-  return parts.join(" • ")
-}
-
-async function processBulkIndexNote({
-  applyMutationResult,
-  invoke,
-  note,
-}: Readonly<{
-  applyMutationResult: (mutationResult: AIIndexMutationResult, options?: { invalidate?: boolean }) => void
-  invoke: BulkIndexInvoke
-  note: AIIndexNoteRowData
-}>): Promise<BulkIndexOutcome> {
-  const actionPresentation = getAIIndexActionPresentation(note.status)
-
-  try {
-    const { data, error } = await invoke("rag-index", {
-      body: {
-        noteId: note.id,
-        action: actionPresentation.action,
-      },
-    })
-    if (error) throw error
-
-    const result = parseRagIndexResult(data)
-    if (result.outcome === "indexed") {
-      applyMutationResult({
-        noteId: note.id,
-        previousStatus: note.status,
-        nextStatus: actionPresentation.successStatus,
-      }, { invalidate: false })
-      return "indexed"
-    }
-
-    if (result.outcome === "skipped") {
-      if (result.reason === "too_short") {
-        applyMutationResult({
-          noteId: note.id,
-          previousStatus: note.status,
-          nextStatus: "not_indexed",
-        }, { invalidate: false })
-      }
-      return "skipped"
-    }
-
-    return "failed"
-  } catch {
-    return "failed"
-  }
 }
 
 function matchesAIIndexFilter(filter: AIIndexFilter, status: AIIndexNoteRowData["status"]) {
@@ -738,7 +661,7 @@ export function AIIndexTab() {
     try {
       for (const [index, note] of actionableLoadedNotes.entries()) {
         const outcome = await processBulkIndexNote({
-          applyMutationResult,
+          applyMutationResult: (result) => applyMutationResult(result, { invalidate: false }),
           invoke: invokeBulkIndex,
           note,
         })

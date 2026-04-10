@@ -14,9 +14,15 @@ import { Database, Search, X } from 'lucide-react-native'
 import Toast from 'react-native-toast-message'
 import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
 
-import { getAIIndexActionPresentation, getAIIndexActionableNotes } from '@core/constants/aiIndex'
+import {
+  type BulkIndexCounters,
+  type BulkIndexInvoke,
+  formatBulkIndexSummary,
+  incrementBulkIndexCounters,
+  processBulkIndexNote,
+} from '@core/bulkIndex'
+import { getAIIndexActionableNotes } from '@core/constants/aiIndex'
 import { SEARCH_CONFIG } from '@core/constants/search'
-import { parseRagIndexResult } from '@core/rag/indexResult'
 import type { AIIndexFilter, AIIndexMutationResult, AIIndexNoteRow, AIIndexNotesPage } from '@core/types/aiIndex'
 import { Button } from '@ui/mobile/components/ui/Button'
 import { AIIndexNoteCard } from '@ui/mobile/components/settings/AIIndexNoteCard'
@@ -37,13 +43,6 @@ type BulkIndexProgress = {
   completed: number
   total: number
 }
-
-type BulkIndexOutcome = 'indexed' | 'skipped' | 'failed'
-
-type BulkIndexInvoke = (
-  name: string,
-  options: { body: { noteId: string; action: 'index' | 'reindex' } }
-) => Promise<{ data: unknown; error: unknown }>
 
 const FILTER_OPTIONS: readonly FilterOption[] = [
   { value: 'all', label: 'All notes' },
@@ -78,14 +77,6 @@ function getSummaryText(loadedCount: number, totalCount: number) {
   return `${totalCount} note${totalCount === 1 ? '' : 's'}`
 }
 
-function getBulkSummaryText(successCount: number, skippedCount: number, errorCount: number) {
-  return [
-    successCount > 0 ? `${successCount} indexed` : null,
-    skippedCount > 0 ? `${skippedCount} skipped` : null,
-    errorCount > 0 ? `${errorCount} failed` : null,
-  ].filter(Boolean).join(' • ')
-}
-
 function patchNoteStatus(note: AIIndexNoteRow, result: AIIndexMutationResult): AIIndexNoteRow {
   if (note.id !== result.noteId) return note
   return {
@@ -110,21 +101,8 @@ function getFilterFromAIIndexQueryKey(queryKey: readonly unknown[]): AIIndexFilt
     : 'all'
 }
 
-function incrementBulkCounts(
-  counts: Readonly<{ successCount: number; skippedCount: number; errorCount: number }>,
-  outcome: BulkIndexOutcome,
-) {
-  if (outcome === 'indexed') {
-    return { ...counts, successCount: counts.successCount + 1 }
-  }
-  if (outcome === 'skipped') {
-    return { ...counts, skippedCount: counts.skippedCount + 1 }
-  }
-  return { ...counts, errorCount: counts.errorCount + 1 }
-}
-
 function showBulkIndexToast(successCount: number, skippedCount: number, errorCount: number) {
-  const summary = getBulkSummaryText(successCount, skippedCount, errorCount)
+  const summary = formatBulkIndexSummary(successCount, skippedCount, errorCount)
 
   if (successCount > 0 && errorCount === 0) {
     Toast.show({ type: 'success', text1: summary || 'Loaded notes indexed' })
@@ -145,50 +123,6 @@ function updateBulkProgress(
     completed: index + 1,
     total,
   })
-}
-
-async function processBulkIndexNote({
-  applyMutationResult,
-  invoke,
-  note,
-}: Readonly<{
-  applyMutationResult: (result: AIIndexMutationResult) => void
-  invoke: BulkIndexInvoke
-  note: AIIndexNoteRow
-}>): Promise<BulkIndexOutcome> {
-  const actionPresentation = getAIIndexActionPresentation(note.status)
-
-  try {
-    const { data, error } = await invoke('rag-index', {
-      body: { noteId: note.id, action: actionPresentation.action },
-    })
-    if (error) throw error
-
-    const result = parseRagIndexResult(data)
-    if (result.outcome === 'indexed') {
-      applyMutationResult({
-        noteId: note.id,
-        previousStatus: note.status,
-        nextStatus: actionPresentation.successStatus,
-      })
-      return 'indexed'
-    }
-
-    if (result.outcome === 'skipped') {
-      if (result.reason === 'too_short') {
-        applyMutationResult({
-          noteId: note.id,
-          previousStatus: note.status,
-          nextStatus: 'not_indexed',
-        })
-      }
-      return 'skipped'
-    }
-
-    return 'failed'
-  } catch {
-    return 'failed'
-  }
 }
 
 function AIIndexSummary({
@@ -394,6 +328,7 @@ export function AIIndexPanel() {
     queryKey: readonly unknown[],
     result: AIIndexMutationResult,
   ) => {
+    const queryFilter = getFilterFromAIIndexQueryKey(queryKey)
     queryClient.setQueryData<InfiniteData<AIIndexNotesPage>>(queryKey, (old) => {
       if (!old) return old
       return {
@@ -402,11 +337,11 @@ export function AIIndexPanel() {
           ...page,
           notes: page.notes
             .map((note) => patchNoteStatus(note, result))
-            .filter((note) => shouldKeepNote(note, result, filter)),
+            .filter((note) => shouldKeepNote(note, result, queryFilter)),
         })),
       }
     })
-  }, [filter, queryClient])
+  }, [queryClient])
 
   const applyMutationResult = useCallback((result: AIIndexMutationResult) => {
     const cachedQueries = queryClient.getQueriesData<InfiniteData<AIIndexNotesPage>>({
@@ -462,7 +397,7 @@ export function AIIndexPanel() {
   const handleBulkIndexLoaded = useCallback(async () => {
     if (bulkIndexProgress || actionableLoadedNotes.length === 0) return
 
-    let counts = { successCount: 0, skippedCount: 0, errorCount: 0 }
+    let counts: BulkIndexCounters = { successCount: 0, skippedCount: 0, errorCount: 0 }
     setBulkIndexProgress({ completed: 0, total: actionableLoadedNotes.length })
 
     try {
@@ -472,7 +407,7 @@ export function AIIndexPanel() {
           invoke: invokeBulkIndex,
           note,
         })
-        counts = incrementBulkCounts(counts, outcome)
+        counts = incrementBulkIndexCounters(counts, outcome)
         updateBulkProgress(index, actionableLoadedNotes.length, setBulkIndexProgress)
       }
 
