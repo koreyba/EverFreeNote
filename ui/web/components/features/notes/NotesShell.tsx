@@ -153,7 +153,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   const handleGraphNodeClick = React.useCallback((noteId: string) => {
     const note = controller.notes.find((n) => n.id === noteId)
     if (note) {
-      setShowGraphView(false)
+      // Keep graph view open and open the note in the editor
       handleSelectNote(note).catch(() => {
         // Error handling in handleSelectNote
       })
@@ -242,7 +242,7 @@ export function NotesShell({ controller }: NotesShellProps) {
       {showGraphView && (
         <div className={cn(
           "flex-1 flex flex-col h-full overflow-hidden bg-background",
-          showEditor ? "hidden md:flex" : "w-full"
+          (showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full"
         )}>
           <div className="border-b p-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Notes Graph View</h2>
