@@ -1,6 +1,13 @@
 import { getSupabaseClient } from "../supabaseClient.js";
 import { formatTags } from "../helpers/formatTags.js";
 
+// Default topK=15 provides a good balance between result quality and response size
+const DEFAULT_TOP_K = 15;
+
+// Default threshold=0.55 filters out low-relevance chunks while keeping useful matches.
+// Similarity scores range from 0 (completely different) to 1 (identical).
+const DEFAULT_SIMILARITY_THRESHOLD = 0.55;
+
 // Tool definition for MCP protocol
 export const SEARCH_NOTES_TOOL = {
   name: "search_notes",
@@ -16,15 +23,13 @@ export const SEARCH_NOTES_TOOL = {
       },
       topK: {
         type: "number",
-        description: "Maximum number of chunks to return (1-100)",
-        default: 15,
+        description: `Maximum number of chunks to return (1-100). Default: ${DEFAULT_TOP_K}`,
         minimum: 1,
         maximum: 100,
       },
       threshold: {
         type: "number",
-        description: "Minimum similarity score (0-1)",
-        default: 0.55,
+        description: `Minimum similarity score (0-1). Default: ${DEFAULT_SIMILARITY_THRESHOLD}`,
         minimum: 0,
         maximum: 1,
       },
@@ -59,9 +64,12 @@ type RagSearchResponse = {
 };
 
 export async function searchNotes(args: SearchNotesArgs): Promise<string> {
-  // Default topK=15 provides a good balance between result quality and response size.
-  // Default threshold=0.55 filters out low-relevance chunks while keeping useful matches.
-  const { query, topK = 15, threshold = 0.55, filterTag } = args;
+  const {
+    query,
+    topK = DEFAULT_TOP_K,
+    threshold = DEFAULT_SIMILARITY_THRESHOLD,
+    filterTag,
+  } = args;
 
   const supabase = getSupabaseClient();
 
@@ -119,19 +127,27 @@ export async function searchNotes(args: SearchNotesArgs): Promise<string> {
 }
 
 /**
- * Format search results grouped by note.
- * Groups chunks by note_id and presents them in a readable format for LLM consumption.
+ * Group chunks by note_id to keep related content together.
+ * Embeddings searches can return multiple chunks from the same note, and
+ * grouping them helps the LLM understand which chunks belong to the same source.
  */
-function formatSearchResults(chunks: RagChunk[]): string {
-  // Group chunks by note_id to show all matching chunks from the same note together
+function groupChunksByNote(chunks: RagChunk[]): Map<string, RagChunk[]> {
   const noteGroups = new Map<string, RagChunk[]>();
   for (const chunk of chunks) {
     const existing = noteGroups.get(chunk.note_id) ?? [];
     existing.push(chunk);
     noteGroups.set(chunk.note_id, existing);
   }
+  return noteGroups;
+}
 
-  // Format output
+/**
+ * Format search results grouped by note.
+ * Groups chunks by note_id and presents them in a readable format for LLM consumption.
+ */
+function formatSearchResults(chunks: RagChunk[]): string {
+  const noteGroups = groupChunksByNote(chunks);
+
   const lines: string[] = [];
   lines.push(
     `Found ${noteGroups.size} relevant note(s) (${chunks.length} chunk(s)):\n`,

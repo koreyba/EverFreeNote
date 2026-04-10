@@ -11,6 +11,14 @@ import { formatTags } from "../helpers/formatTags.js";
 // Minimum query length required for full-text search to be effective
 const MIN_QUERY_LENGTH = 3;
 
+// Minimum rank threshold filters out extremely weak matches (0.01 = 1%)
+// while keeping most relevant results. PostgreSQL's ts_rank typically returns
+// values between 0 (no match) and 1 (perfect match).
+const MIN_RANK_THRESHOLD = 0.01;
+
+// Default limit for search results - enough to be useful without overwhelming
+const DEFAULT_LIMIT = 20;
+
 // Tool definition for MCP protocol
 export const FTS_SEARCH_TOOL = {
   name: "search_notes_fts",
@@ -27,8 +35,7 @@ export const FTS_SEARCH_TOOL = {
       },
       limit: {
         type: "number",
-        description: "Maximum number of results to return (1-100)",
-        default: 20,
+        description: `Maximum number of results to return (1-100). Default: ${DEFAULT_LIMIT}`,
         minimum: 1,
         maximum: 100,
       },
@@ -96,7 +103,7 @@ function formatFtsResults(
 }
 
 export async function ftsSearch(args: FtsSearchArgs): Promise<string> {
-  const { query, limit = 20, tag } = args;
+  const { query, limit = DEFAULT_LIMIT, tag } = args;
 
   if (query.trim().length < MIN_QUERY_LENGTH) {
     return `Query must be at least ${MIN_QUERY_LENGTH} characters long.`;
@@ -120,11 +127,10 @@ export async function ftsSearch(args: FtsSearchArgs): Promise<string> {
 
     // Call the PostgreSQL full-text search RPC function defined in the database.
     // Results include rank (relevance score) and headline (highlighted snippet with <b> tags).
-    // min_rank 0.01 filters out extremely weak matches while keeping most relevant results.
     const { data, error } = await supabase.rpc("search_notes_fts", {
       search_query: tsQuery,
       search_language: ftsLang,
-      min_rank: 0.01,
+      min_rank: MIN_RANK_THRESHOLD,
       result_limit: limit,
       result_offset: 0,
       search_user_id: userId,

@@ -1,6 +1,9 @@
 import { getSupabaseClient } from "../supabaseClient.js";
 import { formatTags } from "../helpers/formatTags.js";
 
+// Default limit for list operations - enough to be useful without overwhelming
+const DEFAULT_LIMIT = 20;
+
 // Tool definition for MCP protocol
 export const LIST_NOTES_TOOL = {
   name: "list_notes",
@@ -16,8 +19,7 @@ export const LIST_NOTES_TOOL = {
       },
       limit: {
         type: "number",
-        description: "Maximum number of notes to return (1-100)",
-        default: 20,
+        description: `Maximum number of notes to return (1-100). Default: ${DEFAULT_LIMIT}`,
         minimum: 1,
         maximum: 100,
       },
@@ -66,7 +68,7 @@ function formatNotesList(
 }
 
 export async function listNotes(args: ListNotesArgs): Promise<string> {
-  const { tag, limit = 20 } = args;
+  const { tag, limit = DEFAULT_LIMIT } = args;
 
   const supabase = getSupabaseClient();
 
