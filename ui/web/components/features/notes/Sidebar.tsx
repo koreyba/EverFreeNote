@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
 import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
+import { PlanBadge } from "@/components/features/subscription/PlanBadge"
 import { User } from "@supabase/supabase-js"
 import { cn } from "@ui/web/lib/utils"
 import { useBulkDeleteConfirm } from "@ui/web/hooks/useBulkDeleteConfirm"
+import type { Plan } from "@core/types/subscription"
+import { FREE_PLAN_NOTE_LIMIT } from "@core/constants/subscription"
 
 interface SidebarProps {
   user: User
@@ -28,6 +31,9 @@ interface SidebarProps {
   onOpenSettings: () => void
   onCreateNote: () => void
   onSignOut: () => void
+  plan?: Plan
+  canCreateNote?: boolean
+  onUpgrade?: () => void
   children: React.ReactNode // For the NoteList
   className?: string
   "data-testid"?: string
@@ -50,6 +56,9 @@ export function Sidebar({
   onOpenSettings,
   onCreateNote,
   onSignOut,
+  plan = 'free',
+  canCreateNote = true,
+  onUpgrade,
   children,
   className,
   "data-testid": dataTestId
@@ -132,7 +141,10 @@ export function Sidebar({
           New Note
         </Button>
         <p className="text-xs text-muted-foreground text-center">
-          Notes displayed: {typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of {typeof notesTotal === "number" ? notesTotal : "unknown"}
+          {plan === 'free' && typeof notesTotal === 'number'
+            ? `${notesTotal} of ${FREE_PLAN_NOTE_LIMIT} notes`
+            : `Notes displayed: ${typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of ${typeof notesTotal === "number" ? notesTotal : "unknown"}`
+          }
         </p>
         {selectionMode && (
           <SelectionModeActions
@@ -155,7 +167,7 @@ export function Sidebar({
 
       {/* User Profile */}
       <div className="p-4 border-t">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
               <span className="text-sm font-semibold text-accent-foreground">
@@ -180,6 +192,10 @@ export function Sidebar({
           >
             <LogOut className="w-4 h-4" />
           </Button>
+        </div>
+        {/* Plan Badge */}
+        <div className="flex justify-center">
+          <PlanBadge plan={plan} onClick={onUpgrade} />
         </div>
       </div>
 

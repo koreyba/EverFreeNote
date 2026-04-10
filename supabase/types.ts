@@ -39,6 +39,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          user_id: string
+          plan: string
+          ls_subscription_id: string | null
+          ls_customer_id: string | null
+          status: string
+          current_period_end: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          plan?: string
+          ls_subscription_id?: string | null
+          ls_customer_id?: string | null
+          status?: string
+          current_period_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          plan?: string
+          ls_subscription_id?: string | null
+          ls_customer_id?: string | null
+          status?: string
+          current_period_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       wordpress_export_preferences: {
         Row: {
           user_id: string

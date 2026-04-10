@@ -23,6 +23,7 @@ import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
 import { SearchResultsPanel } from "@/components/features/notes/SearchResultsPanel"
 import type { SearchResultsPanelHandle } from "@/components/features/notes/SearchResultsPanel"
+import { UpgradeDialog } from "@/components/features/subscription/UpgradeDialog"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { normalizeTagList } from "@ui/web/lib/tags"
@@ -31,6 +32,8 @@ import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 import { saveSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
 import { consumeActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
+import { useSubscription } from "@ui/web/hooks/useSubscription"
+import { FREE_PLAN_NOTE_LIMIT } from "@core/constants/subscription"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -52,6 +55,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   const [wordpressConfigured, setWordpressConfigured] = React.useState(false)
 
   const [pendingChunkFocus, setPendingChunkFocus] = React.useState<PendingChunkFocus | null>(null)
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = React.useState(false)
 
   React.useEffect(() => {
     controller.registerNoteEditorRef(noteEditorRef)
@@ -66,6 +70,9 @@ export function NotesShell({ controller }: NotesShellProps) {
   })
   const hasGeminiApiKey = apiKeysStatus?.gemini?.configured ?? false
 
+  // Subscription status
+  const { plan, canCreateNote } = useSubscription({ userId: user?.id })
+
   const {
     notesDisplayed,
     notesTotal,
@@ -77,7 +84,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     deleteSelectedNotes,
     filterByTag,
     handleClearTagFilter,
-    handleCreateNote,
+    handleCreateNote: controllerCreateNote,
     handleSignOut,
     pendingCount,
     failedCount,
@@ -88,6 +95,19 @@ export function NotesShell({ controller }: NotesShellProps) {
     isSearchPanelOpen,
     setIsSearchPanelOpen,
   } = controller
+
+  // Wrap handleCreateNote to check subscription limit
+  const handleCreateNote = React.useCallback(() => {
+    if (!canCreateNote(notesTotal ?? 0)) {
+      setUpgradeDialogOpen(true)
+      return
+    }
+    controllerCreateNote()
+  }, [canCreateNote, notesTotal, controllerCreateNote])
+
+  const handleUpgrade = React.useCallback(() => {
+    router.push('/pricing')
+  }, [router])
 
   const refreshWordPressStatus = React.useCallback(async () => {
     try {
@@ -199,6 +219,9 @@ export function NotesShell({ controller }: NotesShellProps) {
         onCreateNote={handleCreateNote}
         onSignOut={handleSignOut}
         onOpenSearch={handleOpenSearchPanel}
+        plan={plan}
+        canCreateNote={canCreateNote(notesTotal ?? 0)}
+        onUpgrade={handleUpgrade}
         className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
         data-testid="sidebar-container"
       >
@@ -234,6 +257,13 @@ export function NotesShell({ controller }: NotesShellProps) {
       </div>
 
       <DeleteNoteDialog controller={controller} />
+
+      <UpgradeDialog
+        open={upgradeDialogOpen}
+        onOpenChange={setUpgradeDialogOpen}
+        currentCount={notesTotal ?? 0}
+        limit={FREE_PLAN_NOTE_LIMIT}
+      />
     </div>
   )
 }

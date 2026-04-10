@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Database, Download, Globe, KeyRound, Upload, UserRound, X } from "lucide-react"
+import { ArrowLeft, CreditCard, Database, Download, Globe, KeyRound, Upload, UserRound, X } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -16,13 +16,14 @@ import { ApiKeysSettingsPanel } from "@/components/features/settings/ApiKeysSett
 import { AIIndexTab } from "@/components/features/settings/AIIndexTab"
 import { DeleteAccountPanel } from "@/components/features/settings/DeleteAccountPanel"
 import { WordPressSettingsPanel } from "@/components/features/settings/WordPressSettingsPanel"
+import { SubscriptionSettingsPanel } from "@/components/features/subscription/SubscriptionSettingsPanel"
 import {
   clearSettingsReturnState,
   readSettingsReturnState,
   sanitizeSettingsReturnPath,
 } from "@ui/web/lib/settingsNavigationState"
 
-type SettingsTabId = "wordpress" | "api-keys" | "ai-index" | "import" | "export" | "account"
+type SettingsTabId = "subscription" | "wordpress" | "api-keys" | "ai-index" | "import" | "export" | "account"
 
 type SettingsTabDefinition = {
   id: SettingsTabId
@@ -32,6 +33,12 @@ type SettingsTabDefinition = {
 }
 
 const SETTINGS_TABS: SettingsTabDefinition[] = [
+  {
+    id: "subscription",
+    label: "Subscription",
+    description: "Plan and billing.",
+    icon: CreditCard,
+  },
   {
     id: "account",
     label: "My Account",
@@ -305,6 +312,9 @@ export function SettingsPage() {
                   </div>
                 ) : null}
                 <div className="rounded-3xl border bg-card p-4 shadow-sm sm:p-5 md:p-6">
+                  {activeDefinition.id === "subscription" ? (
+                    <SubscriptionSettingsPanel />
+                  ) : null}
                   {activeDefinition.id === "wordpress" ? (
                     <WordPressSettingsPanel />
                   ) : null}

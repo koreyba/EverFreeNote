@@ -5,3 +5,8 @@ export const supabaseConfig = {
 
 export const webOAuthRedirectUri =
   (typeof window !== 'undefined' ? window.location.origin : '') + '/auth/callback'
+
+export const lemonSqueezyConfig = {
+  storeId: process.env.NEXT_PUBLIC_LEMONSQUEEZY_STORE_ID ?? '',
+  variantId: process.env.NEXT_PUBLIC_LEMONSQUEEZY_VARIANT_ID ?? '',
+}
