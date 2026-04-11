@@ -71,9 +71,11 @@ type RagIndexModelKey = (typeof RAG_INDEX_EDITABLE_MODEL_KEYS)[number]
 export function resolveRagIndexingEditableSettings(
   input?: Partial<RagIndexingEditableSettings> | null
 ): RagIndexingEditableSettings {
+  const mergedInput = input ? { ...input } : undefined
+
   return {
     ...RAG_INDEX_EDITABLE_DEFAULTS,
-    ...(input ?? {}),
+    ...mergedInput,
     embedding_model: resolveRagEmbeddingModel(input?.embedding_model),
   }
 }

@@ -82,7 +82,7 @@ description: Implementation guide for persisted retrieval settings and the web p
   - no automatic background reindex on save and no hidden retry loop in `rag-search`
 - Search surfaces should replace result content with the warning banner when the mismatch response is received; do not show a generic "try again later" message
 - Settings surfaces should show inline helper text near the retrieval preset dropdown explaining that changing the preset pauses AI search until reindex completes
-- Keep retrieval defaults on `models/gemini-embedding-001` so existing users do not change behavior until they opt into Gemini Embedding 2
+- Keep retrieval defaults on `models/gemini-embedding-001` so existing users do not change behavior until they opt into Gemini Embedding 2 (`models/gemini-embedding-2-preview`; canonical preset list lives in `core/rag/embeddingModels.ts`)
 - Translate local service/network boot failures into a friendly settings-service message instead of surfacing raw resolution/runtime errors
 - Keep read-only indexing/retrieval metadata visible by rendering default system values when live settings fail to load
 - Follow the warning banner + `Reindex now` CTA contract from [feature-rag-embedding-model-mismatch.md](../design/feature-rag-embedding-model-mismatch.md) on both web and mobile
