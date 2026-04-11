@@ -240,11 +240,12 @@ serve(async (req: Request) => {
       }
 
       try {
+        const mergedRagSearchSettings = {
+          ...resolveRagSearchEditableSettings(existingRagSearchSettingsRow ?? null),
+          ...coercedRagSearchSettings,
+        }
         validatedRagSearchSettings = assertValidRagSearchEditableSettings(
-          resolveRagSearchEditableSettings({
-            ...(existingRagSearchSettingsRow ?? {}),
-            ...coercedRagSearchSettings,
-          })
+          mergedRagSearchSettings
         )
       } catch (validationError) {
         return jsonResponse({
