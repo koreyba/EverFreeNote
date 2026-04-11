@@ -37,15 +37,19 @@ description: Testing strategy for persisted retrieval settings, precision slider
 - [x] Test case 2: indexing settings panel still renders default system values when live settings fail to load
 - [x] Test case 3: API key panel keeps `Remove key` disabled until a Gemini key is configured
 - [x] Test case 4: explicit `removeGeminiApiKey` action is sent through the settings service
+- [x] Test case 5: indexing and retrieval settings panels persist the selected embedding-model preset through the shared settings services
 - [x] Additional coverage: removing a configured Gemini key from the settings panel updates the UI state
   - Covered by `ui/web/tests/unit/components/settingsPanels.test.tsx`
   - Covered by `core/tests/unit/core-services-apiKeysSettings.test.ts`
+  - Covered by `ui/mobile/tests/unit/settingsPanels.test.tsx`
 
 ## Integration Tests
 **How do we test component interactions?**
 
 - [ ] `api-keys-status` returns `ragSearch` alongside existing settings payloads
 - [ ] `api-keys-upsert` persists retrieval settings without regressing Gemini/indexing updates
+- [ ] Edge functions keep reading legacy settings rows while `embedding_model` is not yet migrated
+- [ ] `rag-search` uses the retrieval-side embedding-model preset and `rag-index` uses the indexing-side preset
 - [ ] `rag-search` overfetches by one and returns an exact `hasMore`
 - [ ] Search results panel hides `Load more` when `hasMore` is false
 
@@ -67,13 +71,12 @@ description: Testing strategy for persisted retrieval settings, precision slider
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
 
-- Targeted automated checks completed on 2026-03-28:
-  - `npx jest --config jest.config.cjs --selectProjects unit-core unit-web --runTestsByPath core/tests/unit/core-rag-searchSettings.test.ts ui/web/tests/unit/hooks/useSearchMode.test.tsx ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx`
-  - `npx jest --config jest.config.cjs --selectProjects unit-core unit-web --runTestsByPath core/tests/unit/core-services-apiKeysSettings.test.ts ui/web/tests/unit/components/settingsPanels.test.tsx`
-  - `npm run test:unit`
+- Targeted automated checks completed on 2026-04-11:
+  - `npx jest --config jest.config.cjs --selectProjects unit-core unit-web --runTestsByPath core/tests/unit/core-rag-searchSettings.test.ts core/tests/unit/core-services-ragSettings.test.ts core/tests/unit/core-services-apiKeysSettings.test.ts ui/web/tests/unit/components/settingsPanels.test.tsx`
+  - `npm test -- settingsPanels.test.tsx --runInBand` (from `ui/mobile`)
   - `npm run type-check`
-  - `npm run type-check:tests`
-  - `npx deno check supabase/functions/api-keys-status/index.ts supabase/functions/api-keys-upsert/index.ts supabase/functions/rag-search/index.ts`
+  - `npm run type-check` (from `ui/mobile`)
+  - `npm run deno-check`
 - Result: all executed checks passed.
 - Remaining gaps:
   - no automated integration test yet for `api-keys-status` / `api-keys-upsert` retrieval payloads

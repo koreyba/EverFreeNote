@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useEffect, useState, useRef } from "react"
 import { ChevronLeft, Search, X } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
@@ -16,7 +17,10 @@ import {
 
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { useSearchMode } from "@ui/web/hooks/useSearchMode"
-import { useAIPaginatedSearch } from "@ui/web/hooks/useAIPaginatedSearch"
+import {
+    RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE,
+    useAIPaginatedSearch,
+} from "@ui/web/hooks/useAIPaginatedSearch"
 import { AI_SEARCH_MIN_QUERY_LENGTH } from "@core/constants/aiSearch"
 import { resolveRagSearchSettings } from "@core/rag/searchSettings"
 import { RagSearchSettingsService } from "@core/services/ragSearchSettings"
@@ -53,6 +57,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     onClose,
     className
 }: SearchResultsPanelProps, ref) {
+    const router = useRouter()
     const { supabase } = useSupabase()
     const ragSearchSettingsService = React.useMemo(() => new RagSearchSettingsService(supabase), [supabase])
     const {
@@ -99,6 +104,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         chunks: aiChunks,
         isLoading: aiLoading,
         error: aiError,
+        errorCode: aiErrorCode,
         refetch: aiRefetch,
         aiHasMore,
         aiLoadingMore,
@@ -248,6 +254,11 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 )
             })
     }, [ragSearchSettings, ragSearchSettingsService])
+
+    const handleOpenAIIndex = React.useCallback(() => {
+        onClose()
+        router.push("/settings?tab=ai-index")
+    }, [onClose, router])
 
     const selectedCount = panelSelectedIds.size
     const allVisibleSelected =
@@ -668,10 +679,27 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                         )}
                         {aiError && !showAIInitialization && !aiLoading && (
                             <div className="py-2 text-center" data-testid="search-panel-ai-error">
-                                <p className="text-xs text-destructive">AI Search unavailable</p>
-                                <Button data-testid="search-panel-ai-retry" variant="ghost" size="sm" className="h-5 text-xs px-0 mt-1" onClick={() => aiRefetch()}>
-                                    Retry
-                                </Button>
+                                {aiErrorCode === RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE ? (
+                                    <>
+                                        <p className="text-xs text-amber-700 dark:text-amber-300">{aiError}</p>
+                                        <Button
+                                            data-testid="search-panel-ai-reindex"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 text-xs px-0 mt-1"
+                                            onClick={handleOpenAIIndex}
+                                        >
+                                            Reindex now
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-xs text-destructive">AI Search unavailable</p>
+                                        <Button data-testid="search-panel-ai-retry" variant="ghost" size="sm" className="h-5 text-xs px-0 mt-1" onClick={() => aiRefetch()}>
+                                            Retry
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         )}
                         {!showAIInitialization && !aiLoading && !aiError && (

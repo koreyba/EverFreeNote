@@ -1,7 +1,7 @@
--- Atomic upsert of note embeddings in a single transaction. Existing chunks are
--- inserted/updated via ON CONFLICT and stale tail chunks are deleted afterward.
--- indexed_at uses the database clock (now()) so it stays consistent with
--- notes.updated_at.
+-- Fix upsert_note_embeddings to resolve the pgvector type inside Supabase.
+-- The `vector` type lives in the `extensions` schema, so the function must
+-- include it in search_path when casting incoming JSON rows to vector(1536).
+
 CREATE OR REPLACE FUNCTION public.upsert_note_embeddings(
   p_note_id uuid,
   p_user_id uuid,
@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION public.upsert_note_embeddings(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_rows jsonb := COALESCE(p_rows, '[]'::jsonb);
@@ -24,7 +24,7 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT MAX((row_value->>'chunk_index')::integer)
+  SELECT COALESCE(MAX((row_value->>'chunk_index')::integer), -1)
   INTO v_max_index
   FROM jsonb_array_elements(v_rows) AS row_value;
 

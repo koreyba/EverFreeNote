@@ -431,20 +431,28 @@ describe('settings panels', () => {
     })
 
     fireEvent.changeText(screen.getByDisplayValue('600'), '700')
+    fireEvent.press(screen.getByRole('button', { name: 'Index embedding model' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Gemini Embedding 2' }))
     fireEvent.press(screen.getByRole('button', { name: 'Save indexing settings' }))
 
     await waitFor(() => {
       expect(mockRagIndexUpsert).toHaveBeenCalledWith(expect.objectContaining({
         target_chunk_size: 700,
+        embedding_model: 'models/gemini-embedding-2-preview',
       }))
       expect(screen.getByText('RAG indexing settings saved. Changes apply to future indexing and future manual reindexing.')).toBeTruthy()
     })
 
     fireEvent.changeText(screen.getByDisplayValue('15'), '30')
+    fireEvent.press(screen.getByRole('button', { name: 'Search embedding model' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Gemini Embedding 2' }))
     fireEvent.press(screen.getByRole('button', { name: 'Save retrieval settings' }))
 
     await waitFor(() => {
-      expect(mockRagSearchUpsert).toHaveBeenCalledWith({ top_k: 30 })
+      expect(mockRagSearchUpsert).toHaveBeenCalledWith({
+        top_k: 30,
+        embedding_model: 'models/gemini-embedding-2-preview',
+      })
       expect(screen.getByText('RAG retrieval settings saved.')).toBeTruthy()
     })
 

@@ -18,6 +18,10 @@ graph TD
         Hook["useAIPaginatedSearch / useSearchMode"]
     end
 
+    subgraph Mobile UI
+        MobileSettings["Retrieval Settings Panel"]
+    end
+
     subgraph Shared Core
         Types["ragSearchSettings types/defaults/validation"]
         Service["RagSearchSettingsService"]
@@ -37,6 +41,7 @@ graph TD
     end
 
     Settings --> Service
+    MobileSettings --> Service
     SearchUI --> Hook
     Slider --> Hook
     Hook --> Service
@@ -53,7 +58,7 @@ graph TD
     RagSearch --> Types
 ```
 
-- Web Settings exposes persisted retrieval configuration, including editable and read-only values.
+- Web and mobile Settings expose persisted retrieval configuration, including editable values and read-only system metadata.
 - Web search consumes persisted defaults plus a search-time precision slider.
 - Shared core owns retrieval settings schema, defaults, validation, and service contracts.
 - `rag-search` keeps Gemini query embedding and vector retrieval responsibilities.
@@ -67,6 +72,7 @@ graph TD
 interface RagSearchEditableSettings {
   top_k: number
   similarity_threshold: number
+  embedding_model: "models/gemini-embedding-001" | "models/gemini-embedding-2-preview"
 }
 
 interface RagSearchReadonlySettings {
@@ -87,6 +93,7 @@ user_rag_search_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
   top_k int not null,
   similarity_threshold numeric not null,
+  embedding_model text not null default 'models/gemini-embedding-001',
   updated_at timestamptz not null default now()
 )
 ```
@@ -117,6 +124,7 @@ Example response fragment:
   ragSearch: {
     top_k: 15,
     similarity_threshold: 0.55,
+    embedding_model: "models/gemini-embedding-001",
     output_dimensionality: 1536,
     task_type_document: "RETRIEVAL_DOCUMENT",
     task_type_query: "RETRIEVAL_QUERY",
@@ -132,11 +140,18 @@ Example response fragment:
 - Validation rules:
   - `top_k` integer, `1..100`
   - `similarity_threshold` number, `0..1`
+  - `embedding_model` must be one of the supported Gemini presets
 - Existing Gemini and indexing update flows remain backward compatible.
 
 ### `rag-search`
 - Continue accepting numeric retrieval parameters directly.
 - Request contract remains numeric, but the caller now derives values from persisted user settings plus committed slider state.
+- Query embedding model is now resolved server-side from `user_rag_search_settings.embedding_model`.
+- `rag-search` compares the retrieval preset against `user_rag_index_settings.embedding_model` before embedding the query.
+- When the presets differ, `rag-search` returns `409 Conflict` with:
+  - `code: "embedding_model_mismatch"`
+  - `error: "Embedding model changed. Please reindex your notes to enable search."`
+- Frontends must treat that response as a blocking warning state, not as a generic transient error.
 
 Request:
 ```typescript
@@ -154,6 +169,14 @@ Response change:
   chunks: RagChunk[]
   hasMore: boolean
   availableChunkCount: number
+}
+```
+
+Mismatch response:
+```typescript
+{
+  code: "embedding_model_mismatch"
+  error: "Embedding model changed. Please reindex your notes to enable search."
 }
 ```
 
@@ -179,6 +202,7 @@ This removes the old UI heuristic that guessed `hasMore` from `returnedCount >= 
 - New or extended settings panel to expose retrieval settings.
 - Editable:
   - `topK`
+  - `embedding_model` via a preset dropdown
 - Read-only:
   - `task_type_document`
   - `task_type_query`
@@ -224,13 +248,38 @@ This removes the old UI heuristic that guessed `hasMore` from `returnedCount >= 
 - Reason: task types are system constraints, not user preferences.
 - Benefit: transparency without introducing unsupported combinations.
 
-### 5. Keep retrieval settings logic in core, web UI in web
-- Reason: this feature is web-only now, but mobile will need the same schema and defaults later.
-- Benefit: avoids re-modeling settings for mobile.
+### 5. Keep retrieval settings logic in core, shared across web and mobile UI
+- Reason: retrieval settings are now edited on both clients and must stay identical.
+- Benefit: avoids re-modeling settings or introducing client-specific preset drift.
 
 ### 6. Use backend `+1` overfetch instead of client-side guesswork
 - Reason: `Load more` should hide predictably when no more backend results exist.
 - Trade-off: one extra chunk candidate per request, which is small compared to improved UX.
+
+### 7. Block retrieval when indexing and retrieval embedding spaces diverge
+- Reason: query vectors and indexed note vectors must stay in the same embedding space; mixing presets produces misleading similarity scores.
+- Detailed API and UX contract: [feature-rag-embedding-model-mismatch.md](feature-rag-embedding-model-mismatch.md)
+- User-facing handling:
+  - `rag-search` logs a warning-level event with the mismatch code and both preset ids, but without note content or API secrets.
+  - Web search, web settings, and mobile settings surface the same warning copy with warning severity:
+    - `Embedding model changed. Please reindex your notes to enable search.`
+  - Retrieval UI adds inline helper text below the embedding-model selector:
+    - `Changing the search model pauses AI search until your indexed notes are rebuilt with the same model.`
+  - Web search replaces the results area with a blocking warning banner when it receives `409` plus `code: "embedding_model_mismatch"`.
+  - Settings screens show a proactive warning banner as soon as saved indexing and retrieval presets differ, plus a `Reindex now` action that routes to the existing AI Index workflow.
+- Discovery / reindex flow:
+  - The warning banner remains visible until the active indexing preset matches the retrieval preset again.
+  - `Reindex now` routes to the AI Index page / screen and relies on the existing manual reindex tooling documented in [AI Index requirements](../requirements/feature-ai-index-page.md) and [AI Index implementation](../implementation/feature-ai-index-page.md).
+  - No automatic background reindex is triggered from saving the preset change.
+- Migration strategy:
+  - Existing users are migrated onto the default retrieval preset (`models/gemini-embedding-001`) via schema defaults and legacy fallback resolution, so rollout does not pause search for them.
+  - Switching to another retrieval preset is opt-in and immediately enters the warning state until the user completes a manual reindex.
+  - This feature does not introduce a bulk reindex migration job; teams can rely on the existing AI Index bulk tooling instead of hidden background mutation.
+- Cross-references:
+  - [RAG Retrieval Tuning requirements](../requirements/feature-rag-retrieval-tuning-ui.md)
+  - [RAG Retrieval Tuning implementation](../implementation/feature-rag-retrieval-tuning-ui.md)
+  - [AI Index requirements](../requirements/feature-ai-index-page.md)
+  - [AI Index implementation](../implementation/feature-ai-index-page.md)
 
 ## Non-Functional Requirements
 **How should the system perform?**
@@ -249,4 +298,5 @@ This removes the old UI heuristic that guessed `hasMore` from `returnedCount >= 
   - web-specific interaction logic stays in web hooks/components
 - Compatibility:
   - all UI strings introduced by this feature are English
-  - mobile is not implemented yet, but the core data model is ready for reuse
+  - retrieval settings are supported on both web and mobile settings screens
+  - the precision slider remains a web search control for now

@@ -1,3 +1,10 @@
+import {
+  DEFAULT_RAG_EMBEDDING_MODEL,
+  isRagEmbeddingModelPreset,
+  resolveRagEmbeddingModel,
+  type RagEmbeddingModelPreset,
+} from "./embeddingModels.ts"
+
 export const RAG_INDEX_NUMERIC_MIN = 50
 export const RAG_INDEX_NUMERIC_MAX = 5000
 
@@ -9,6 +16,7 @@ export const RAG_INDEX_EDITABLE_DEFAULTS = {
   use_title: true,
   use_section_headings: true,
   use_tags: true,
+  embedding_model: DEFAULT_RAG_EMBEDDING_MODEL,
 } as const
 
 export const RAG_INDEX_READONLY_SETTINGS = {
@@ -32,6 +40,7 @@ export type RagIndexingEditableSettings = {
   use_title: boolean
   use_section_headings: boolean
   use_tags: boolean
+  embedding_model: RagEmbeddingModelPreset
 }
 
 export type RagIndexingSettings = RagIndexingEditableSettings & typeof RAG_INDEX_READONLY_SETTINGS
@@ -51,15 +60,23 @@ export const RAG_INDEX_EDITABLE_BOOLEAN_KEYS = [
   "use_tags",
 ] as const
 
+export const RAG_INDEX_EDITABLE_MODEL_KEYS = [
+  "embedding_model",
+] as const
+
 type RagIndexNumericKey = (typeof RAG_INDEX_EDITABLE_NUMERIC_KEYS)[number]
 type RagIndexBooleanKey = (typeof RAG_INDEX_EDITABLE_BOOLEAN_KEYS)[number]
+type RagIndexModelKey = (typeof RAG_INDEX_EDITABLE_MODEL_KEYS)[number]
 
 export function resolveRagIndexingEditableSettings(
   input?: Partial<RagIndexingEditableSettings> | null
 ): RagIndexingEditableSettings {
+  const mergedInput = input ? { ...input } : undefined
+
   return {
     ...RAG_INDEX_EDITABLE_DEFAULTS,
-    ...(input ?? {}),
+    ...mergedInput,
+    embedding_model: resolveRagEmbeddingModel(input?.embedding_model),
   }
 }
 
@@ -97,6 +114,10 @@ export function validateRagIndexingEditableSettings(
     }
   }
 
+  if (input?.embedding_model !== undefined && !isRagEmbeddingModelPreset(input.embedding_model)) {
+    errors.push("embedding_model must be one of the supported Gemini embedding presets")
+  }
+
   if (resolved.min_chunk_size > resolved.target_chunk_size) {
     errors.push("min_chunk_size must be less than or equal to target_chunk_size")
   }
@@ -114,7 +135,7 @@ export function assertValidRagIndexingEditableSettings(
   input: Partial<RagIndexingEditableSettings> | null | undefined
 ): RagIndexingEditableSettings {
   const resolved = resolveRagIndexingEditableSettings(input)
-  const errors = validateRagIndexingEditableSettings(resolved)
+  const errors = validateRagIndexingEditableSettings(input)
   if (errors.length > 0) {
     throw new Error(errors.join(". "))
   }
@@ -142,6 +163,12 @@ export function coerceRagIndexingEditableSettings(
     const value = input[key]
     if (value === undefined) continue
     settings[key] = value as RagIndexingEditableSettings[RagIndexBooleanKey]
+  }
+
+  for (const key of RAG_INDEX_EDITABLE_MODEL_KEYS) {
+    const value = input[key]
+    if (value === undefined) continue
+    settings[key] = value as RagIndexingEditableSettings[RagIndexModelKey]
   }
 
   return settings

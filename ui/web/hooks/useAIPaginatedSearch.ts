@@ -7,6 +7,19 @@ import type { RagChunk, RagNoteGroup } from '@core/types/ragSearch'
 
 const STALE_TIME_MS = 30_000
 const READONLY_RAG_SEARCH_SETTINGS = getRagSearchReadonlySettings()
+export const RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE = 'embedding_model_mismatch'
+export const RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_MESSAGE =
+  'Embedding model changed. Please reindex your notes to enable search.'
+
+class RagSearchRequestError extends Error {
+  code: string | null
+
+  constructor(message: string, code: string | null = null) {
+    super(message)
+    this.name = 'RagSearchRequestError'
+    this.code = code
+  }
+}
 
 function deduplicateChunks(
   chunks: RagChunk[],
@@ -96,6 +109,7 @@ interface UseAIPaginatedSearchResult {
   chunks: RagChunk[]
   isLoading: boolean
   error: string | null
+  errorCode: string | null
   refetch: () => void
   aiOffset: number
   aiAccumulatedResults: RagNoteGroup[]
@@ -105,6 +119,53 @@ interface UseAIPaginatedSearchResult {
   loadMoreAI: () => void
   resetAIResults: () => void
 }
+
+const readInvokeErrorPayload = async (error: unknown): Promise<{ message: string | null; code: string | null }> => {
+  const context = (error as { context?: unknown } | null)?.context as {
+    clone?: () => { json?: () => Promise<unknown> }
+    json?: () => Promise<unknown>
+  } | undefined
+
+  const reader = typeof context?.clone === 'function'
+    ? context.clone()
+    : context
+
+  if (!reader || typeof reader.json !== 'function') {
+    return { message: null, code: null }
+  }
+
+  try {
+    const payload = await reader.json()
+    return {
+      message: typeof (payload as { error?: unknown } | null)?.error === 'string'
+        ? (payload as { error: string }).error
+        : null,
+      code: typeof (payload as { code?: unknown } | null)?.code === 'string'
+        ? (payload as { code: string }).code
+        : null,
+    }
+  } catch {
+    return { message: null, code: null }
+  }
+}
+
+const toRagSearchRequestError = async (error: unknown): Promise<RagSearchRequestError> => {
+  const payload = await readInvokeErrorPayload(error)
+  const fallbackMessage = error instanceof Error
+    ? error.message
+    : typeof (error as { message?: unknown } | null)?.message === 'string'
+      ? (error as { message: string }).message
+      : 'AI Search failed'
+  return new RagSearchRequestError(payload.message ?? fallbackMessage, payload.code)
+}
+
+const shouldRetryAiSearch = (failureCount: number, error: unknown) => (
+  !(
+    error instanceof RagSearchRequestError &&
+    error.code === RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE
+  ) &&
+  failureCount < 1
+)
 
 export function useAIPaginatedSearch({
   query,
@@ -166,7 +227,7 @@ export function useAIPaginatedSearch({
           },
         })
 
-        if (error) throw new Error(error.message ?? 'AI Search failed')
+        if (error) throw await toRagSearchRequestError(error)
 
         const chunks = Array.isArray(data?.chunks) ? (data.chunks as RagChunk[]) : []
         return {
@@ -202,7 +263,7 @@ export function useAIPaginatedSearch({
     },
     enabled: queryEnabled,
     staleTime: STALE_TIME_MS,
-    retry: 1,
+    retry: shouldRetryAiSearch,
   })
 
   useEffect(() => {
@@ -260,7 +321,10 @@ export function useAIPaginatedSearch({
     noteGroups: queryEnabled && identityCommitted ? aiAccumulatedResults : [],
     chunks: queryEnabled && identityCommitted ? aiAccumulatedChunks : [],
     isLoading: initialLoading,
-    error: result.error ? String(result.error) : null,
+    error: result.error instanceof Error
+      ? result.error.message
+      : (result.error ? String(result.error) : null),
+    errorCode: result.error instanceof RagSearchRequestError ? result.error.code : null,
     refetch,
     aiOffset: effectiveAiOffset,
     aiAccumulatedResults: queryEnabled && identityCommitted ? aiAccumulatedResults : [],
