@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/web/components/ui/select"
-import { RAG_EMBEDDING_MODEL_PRESETS, getRagEmbeddingModelLabel } from "@core/rag/embeddingModels"
 import {
   RAG_SEARCH_EDITABLE_DEFAULTS,
   resolveRagSearchSettings,
@@ -26,7 +24,6 @@ import {
 function buildEditableState(settings: RagSearchSettings) {
   return {
     top_k: String(settings.top_k),
-    embedding_model: settings.embedding_model,
   }
 }
 
@@ -41,7 +38,6 @@ export function RagSearchSettingsPanel() {
   const [resolvedSettings, setResolvedSettings] = React.useState<RagSearchSettings | null>(null)
   const [formState, setFormState] = React.useState(() => ({
     top_k: String(RAG_SEARCH_EDITABLE_DEFAULTS.top_k),
-    embedding_model: RAG_SEARCH_EDITABLE_DEFAULTS.embedding_model,
   }))
   const displaySettings = resolvedSettings ?? resolveRagSearchSettings(null)
   const canEdit = !loading && resolvedSettings !== null
@@ -69,7 +65,6 @@ export function RagSearchSettingsPanel() {
   const validationErrors = React.useMemo(() => {
     return validateRagSearchEditableSettings({
       top_k: Number(formState.top_k),
-      embedding_model: formState.embedding_model,
     })
   }, [formState])
 
@@ -83,7 +78,6 @@ export function RagSearchSettingsPanel() {
     try {
       const status = await service.upsert({
         top_k: Number(formState.top_k),
-        embedding_model: formState.embedding_model,
       })
       setResolvedSettings(status)
       setFormState(buildEditableState(status))
@@ -114,34 +108,11 @@ export function RagSearchSettingsPanel() {
             step={1}
             inputMode="numeric"
             value={formState.top_k}
-            onChange={(event) => setFormState((current) => ({ ...current, top_k: event.target.value }))}
+            onChange={(event) => setFormState({ top_k: event.target.value })}
             disabled={!canEdit || saving}
           />
           <p className="text-xs text-muted-foreground">
             Controls how many chunk candidates are requested for each AI search page. Default: 15.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="rag-search-embedding-model">Embedding model</Label>
-          <Select
-            value={formState.embedding_model}
-            onValueChange={(value) => setFormState((current) => ({ ...current, embedding_model: value as typeof current.embedding_model }))}
-            disabled={!canEdit || saving}
-          >
-            <SelectTrigger id="rag-search-embedding-model">
-              <SelectValue placeholder="Choose embedding model" />
-            </SelectTrigger>
-            <SelectContent>
-              {RAG_EMBEDDING_MODEL_PRESETS.map((preset) => (
-                <SelectItem key={preset.value} value={preset.value}>
-                  {preset.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Controls which Gemini embedding preset is used when embedding search queries.
           </p>
         </div>
 
@@ -164,11 +135,6 @@ export function RagSearchSettingsPanel() {
           ) : null}
           <div className="text-xs font-medium text-muted-foreground">Search system settings</div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <ReadOnlyRow
-              label="Embedding model"
-              value={getRagEmbeddingModelLabel(displaySettings.embedding_model)}
-              hint="Selected preset for future AI searches."
-            />
             <ReadOnlyRow
               label="Current precision threshold"
               value={displaySettings.similarity_threshold.toFixed(2)}

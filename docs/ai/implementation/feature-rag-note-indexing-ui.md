@@ -12,7 +12,6 @@ RAG indexing for web notes is implemented through Supabase Edge Function `supaba
 
 - Browser UI triggers `supabase.functions.invoke('rag-index', { body: { noteId, action } })`
 - Edge Function performs auth validation, chunking, embedding, and DB writes
-- Edge Function resolves the indexing embedding model from `user_rag_index_settings.embedding_model`
 - Browser polls `note_embeddings` via `useRagStatus.ts` for live status
 
 The old Next.js API route flow is not used.
@@ -70,11 +69,10 @@ File: `supabase/functions/rag-index/index.ts`
 1. Validate JWT and resolve `userId`
 2. Load note content from `notes`
 3. Convert HTML to plain text and split into chunks
-4. Load the persisted indexing embedding-model preset
-5. Call Gemini `batchEmbedContents`
-6. Upsert new chunks by `(note_id, chunk_index)`
-7. Delete stale tail chunks (`chunk_index >= newChunkCount`)
-8. Return an explicit semantic result:
+4. Call Gemini `batchEmbedContents`
+5. Upsert new chunks by `(note_id, chunk_index)`
+6. Delete stale tail chunks (`chunk_index >= newChunkCount`)
+7. Return an explicit semantic result:
    - `{ outcome: "indexed", chunkCount, droppedChunks?, debugChunks? }`
    - `{ outcome: "skipped", reason: "too_short", chunkCount: 0, message }` when the note is too short and embeddings are cleared
 

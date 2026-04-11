@@ -20,8 +20,7 @@ graph TD
     subgraph Supabase Edge Function
         EF[rag-index\nDeno runtime]
         ADMIN[Service Role Client]
-        SETTINGS[("user_rag_index_settings\nembedding_model + chunk settings")]
-        GEMINI[Gemini REST API\nselected embedding preset\noutput_dimensionality=1536]
+        GEMINI[Gemini REST API\ngemini-embedding-001\noutput_dimensionality=1536]
     end
 
     subgraph Supabase DB
@@ -35,7 +34,6 @@ graph TD
     SC --> EMB_TBL
     EF --> ADMIN
     ADMIN -->|fetch note| NE_TBL
-    ADMIN -->|load indexing settings| SETTINGS
     ADMIN -->|embedTexts via fetch| GEMINI
     ADMIN -->|upsert chunks + tail cleanup| EMB_TBL
 ```
@@ -81,7 +79,6 @@ interface RagStatus {
 2. Fetch note `title` + `description` from `notes` (ownership check via `user_id`)
 3. Strip HTML → prepend title → `chunkText(1500 chars, overlap 200)`
 4. `batchEmbedContents` → Gemini REST API (`output_dimensionality: 1536`)
-   - model preset comes from `user_rag_index_settings.embedding_model`
 5. Upsert chunks into `note_embeddings` by `(note_id, chunk_index)`
 6. Delete stale tail chunks where `chunk_index >= newChunkCount`
 7. Return an explicit semantic outcome payload:
@@ -134,7 +131,6 @@ RLS policy on `note_embeddings` enforces per-user isolation (`auth.uid() = user_
 - Deno runtime, self-contained (chunking + embedding logic inline)
 - Auth via JWT verification with service role client
 - Pattern matches all other existing Edge Functions in the project
-- Reads the active indexing embedding preset from persisted user settings before calling Gemini
 
 - All chunking and embedding logic is self-contained in this Edge Function (no shared browser-side lib needed). The `ui/web/lib/rag/` directory was removed.
 

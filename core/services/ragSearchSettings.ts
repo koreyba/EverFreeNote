@@ -17,7 +17,6 @@ const readRagSearchSettings = (data: unknown): RagSearchSettings | null => {
   const editableSettings = {
     top_k: (ragSearch as { top_k?: unknown }).top_k,
     similarity_threshold: (ragSearch as { similarity_threshold?: unknown }).similarity_threshold,
-    embedding_model: (ragSearch as { embedding_model?: unknown }).embedding_model,
   } as Partial<RagSearchEditableSettings>
 
   if (validateRagSearchEditableSettings(editableSettings).length > 0) {

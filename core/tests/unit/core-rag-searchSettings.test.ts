@@ -4,7 +4,6 @@ import {
   resolveRagSearchSettings,
   RAG_SEARCH_EDITABLE_DEFAULTS,
 } from "@core/rag/searchSettings"
-import { DEFAULT_RAG_EMBEDDING_MODEL } from "@core/rag/embeddingModels"
 
 describe("core/rag/searchSettings", () => {
   it("returns defaults plus read-only settings when no editable overrides exist", () => {
@@ -12,7 +11,6 @@ describe("core/rag/searchSettings", () => {
 
     expect(settings.top_k).toBe(RAG_SEARCH_EDITABLE_DEFAULTS.top_k)
     expect(settings.similarity_threshold).toBe(RAG_SEARCH_EDITABLE_DEFAULTS.similarity_threshold)
-    expect(settings.embedding_model).toBe(DEFAULT_RAG_EMBEDDING_MODEL)
     expect(settings.output_dimensionality).toBe(1536)
     expect(settings.task_type_document).toBe("RETRIEVAL_DOCUMENT")
     expect(settings.task_type_query).toBe("RETRIEVAL_QUERY")
@@ -27,7 +25,6 @@ describe("core/rag/searchSettings", () => {
 
     expect(settings.top_k).toBe(RAG_SEARCH_EDITABLE_DEFAULTS.top_k)
     expect(settings.similarity_threshold).toBe(RAG_SEARCH_EDITABLE_DEFAULTS.similarity_threshold)
-    expect(settings.embedding_model).toBe(DEFAULT_RAG_EMBEDDING_MODEL)
   })
 
   it("rejects top_k values outside the allowed range", () => {
@@ -66,25 +63,15 @@ describe("core/rag/searchSettings", () => {
     )
   })
 
-  it("rejects unsupported embedding model presets", () => {
-    expect(() =>
-      assertValidRagSearchEditableSettings({
-        embedding_model: "models/not-supported" as never,
-      })
-    ).toThrow("embedding_model must be one of the supported Gemini embedding presets")
-  })
-
   it("accepts valid settings and returns resolved values", () => {
     expect(
       assertValidRagSearchEditableSettings({
         top_k: 20,
         similarity_threshold: 0.6,
-        embedding_model: DEFAULT_RAG_EMBEDDING_MODEL,
       })
     ).toEqual({
       top_k: 20,
       similarity_threshold: 0.6,
-      embedding_model: DEFAULT_RAG_EMBEDDING_MODEL,
     })
   })
 })
