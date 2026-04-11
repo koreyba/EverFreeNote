@@ -18,6 +18,10 @@ graph TD
         Hook["useAIPaginatedSearch / useSearchMode"]
     end
 
+    subgraph Mobile UI
+        MobileSettings["Retrieval Settings Panel"]
+    end
+
     subgraph Shared Core
         Types["ragSearchSettings types/defaults/validation"]
         Service["RagSearchSettingsService"]
@@ -37,6 +41,7 @@ graph TD
     end
 
     Settings --> Service
+    MobileSettings --> Service
     SearchUI --> Hook
     Slider --> Hook
     Hook --> Service

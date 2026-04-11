@@ -7,6 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
 
 import { buildRagIndexChunks } from "../../../core/rag/chunking.ts"
 import { getRagReadonlySettings, resolveRagIndexingEditableSettings } from "../../../core/rag/indexingSettings.ts"
+import { isMissingEmbeddingModelColumnError } from "../_shared/errorDetection.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -243,7 +244,19 @@ serve(async (req: Request) => {
       .eq("user_id", userId)
       .maybeSingle()
 
-    if (settingsError) throw settingsError
+    let resolvedSettingsRow = settingsRow
+    if (settingsError && isMissingEmbeddingModelColumnError(settingsError)) {
+      const { data: legacySettingsRow, error: legacySettingsError } = await supabaseAdmin
+        .from("user_rag_index_settings")
+        .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (legacySettingsError) throw legacySettingsError
+      resolvedSettingsRow = legacySettingsRow
+    } else if (settingsError) {
+      throw settingsError
+    }
 
     const { data: note, error: noteError } = await supabaseAdmin
       .from("notes")
@@ -255,7 +268,7 @@ serve(async (req: Request) => {
     if (noteError) throw noteError
     if (!note) return jsonResponse({ error: "Note not found" }, 404)
 
-    const settings = resolveRagIndexingEditableSettings(settingsRow ?? null)
+    const settings = resolveRagIndexingEditableSettings(resolvedSettingsRow ?? null)
     const chunks = buildRagIndexChunks({
       title: note.title ?? "",
       html: note.description ?? "",
@@ -301,32 +314,21 @@ serve(async (req: Request) => {
       throw new Error(`Gemini returned ${vectors.length} vectors for ${chunksForIndexing.length} chunks`)
     }
 
-    const indexedAt = new Date().toISOString()
-
     const rows = chunksForIndexing.map((chunk, index) => ({
-      note_id: noteId,
-      user_id: userId,
       chunk_index: index,
       char_offset: chunk.charOffset,
       content: chunk.content,
       body_content: chunk.bodyContent,
       overlap_prefix: chunk.overlapPrefix,
       embedding: vectors[index],
-      indexed_at: indexedAt,
     }))
 
-    const { error: upsertError } = await supabaseAdmin
-      .from("note_embeddings")
-      .upsert(rows, { onConflict: "note_id,chunk_index" })
+    const { error: upsertError } = await supabaseAdmin.rpc("upsert_note_embeddings", {
+      p_note_id: noteId,
+      p_user_id: userId,
+      p_rows: rows,
+    })
     if (upsertError) throw upsertError
-
-    const { error: cleanupError } = await supabaseAdmin
-      .from("note_embeddings")
-      .delete()
-      .eq("note_id", noteId)
-      .eq("user_id", userId)
-      .gte("chunk_index", chunksForIndexing.length)
-    if (cleanupError) throw cleanupError
 
     console.info("[rag-index] Indexed note with settings", {
       noteId,

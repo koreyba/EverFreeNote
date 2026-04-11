@@ -50,7 +50,7 @@ const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
 
 ```text
 supabase/functions/rag-index/
-  index.ts                <- Edge Function (auth + chunk + embed + upsert/cleanup)
+  index.ts                <- Edge Function (auth + chunk + embed + atomic embeddings RPC)
 
 ui/web/hooks/
   useRagStatus.ts         <- Polling of note_embeddings status for one note
@@ -72,11 +72,10 @@ File: `supabase/functions/rag-index/index.ts`
 3. Convert HTML to plain text and split into chunks
 4. Load the persisted indexing embedding-model preset
 5. Call Gemini `batchEmbedContents`
-6. Upsert new chunks by `(note_id, chunk_index)`
-7. Delete stale tail chunks (`chunk_index >= newChunkCount`)
-8. Return an explicit semantic result:
-   - `{ outcome: "indexed", chunkCount, droppedChunks?, debugChunks? }`
-   - `{ outcome: "skipped", reason: "too_short", chunkCount: 0, message }` when the note is too short and embeddings are cleared
+6. Call `upsert_note_embeddings` to atomically upsert chunks and delete stale tail rows
+7. Return an explicit semantic result:
+  - `{ outcome: "indexed", chunkCount, droppedChunks?, debugChunks? }`
+  - `{ outcome: "skipped", reason: "too_short", chunkCount: 0, message }` when the note is too short and embeddings are cleared
 
 ### action = delete
 

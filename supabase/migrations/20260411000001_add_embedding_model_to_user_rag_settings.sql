@@ -10,6 +10,7 @@ BEGIN
     SELECT 1
     FROM pg_constraint
     WHERE conname = 'user_rag_index_settings_embedding_model_check'
+      AND conrelid = 'public.user_rag_index_settings'::regclass
   ) THEN
     ALTER TABLE public.user_rag_index_settings
     ADD CONSTRAINT user_rag_index_settings_embedding_model_check
@@ -20,6 +21,7 @@ BEGIN
     SELECT 1
     FROM pg_constraint
     WHERE conname = 'user_rag_search_settings_embedding_model_check'
+      AND conrelid = 'public.user_rag_search_settings'::regclass
   ) THEN
     ALTER TABLE public.user_rag_search_settings
     ADD CONSTRAINT user_rag_search_settings_embedding_model_check

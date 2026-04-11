@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js"
 import { getRagChunkBodyText } from "../../../core/rag/chunkTemplate.ts"
 import { DEFAULT_RAG_EMBEDDING_MODEL } from "../../../core/rag/embeddingModels.ts"
 import { getRagSearchReadonlySettings, resolveRagSearchSettings } from "../../../core/rag/searchSettings.ts"
+import { isMissingEmbeddingModelColumnError } from "../_shared/errorDetection.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -60,25 +61,6 @@ const isLegacyMatchNotesSignatureError = (error: unknown): boolean => {
   return combined.includes("match_notes") && combined.includes("filter_tag") && combined.includes("function")
 }
 
-const isMissingEmbeddingModelColumnError = (error: unknown): boolean => {
-  if (!error || typeof error !== "object") return false
-
-  const code = typeof (error as { code?: unknown }).code === "string"
-    ? (error as { code: string }).code.toUpperCase()
-    : ""
-  if (code === "42703") return true
-
-  const message = typeof (error as { message?: unknown }).message === "string"
-    ? (error as { message: string }).message
-    : ""
-  const details = typeof (error as { details?: unknown }).details === "string"
-    ? (error as { details: string }).details
-    : ""
-  const combined = `${message} ${details}`.toLowerCase()
-
-  return combined.includes("embedding_model") && combined.includes("does not exist")
-}
-
 // ---------------------------------------------------------------------------
 // AES-GCM decryption (mirrors rag-index pattern)
 // ---------------------------------------------------------------------------
@@ -114,6 +96,11 @@ const decryptValue = async (encrypted: string, secret: string): Promise<string> 
 // ---------------------------------------------------------------------------
 async function embedQuery(query: string, apiKey: string, embeddingModel: string): Promise<number[]> {
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+  // Gemini's stable embedding model accepts READONLY_RAG_SETTINGS.task_type_query
+  // plus structured content, while the preview preset currently expects the
+  // retrieval instruction to be prefixed into the text body itself. Both shapes
+  // still request the same OUTPUT_DIMENSIONS so query embeddings stay in the
+  // expected vector space for the active preset.
   const requestBody = embeddingModel === DEFAULT_RAG_EMBEDDING_MODEL
     ? {
         model: embeddingModel,
@@ -172,6 +159,19 @@ async function embedQuery(query: string, apiKey: string, embeddingModel: string)
   }
 
   throw new Error("Gemini embedContent failed after retries")
+}
+
+const getIndexingEmbeddingModel = (
+  ragIndexingSettingsError: unknown,
+  ragIndexingSettingsRow: { embedding_model?: unknown } | null
+) => {
+  if (isMissingEmbeddingModelColumnError(ragIndexingSettingsError)) {
+    return DEFAULT_RAG_EMBEDDING_MODEL
+  }
+
+  return typeof ragIndexingSettingsRow?.embedding_model === "string"
+    ? ragIndexingSettingsRow.embedding_model
+    : DEFAULT_RAG_EMBEDDING_MODEL
 }
 
 // ---------------------------------------------------------------------------
@@ -253,12 +253,25 @@ serve(async (req: Request) => {
       .eq("user_id", userId)
       .maybeSingle()
 
-    if (ragSearchSettingsError) {
+    let ragSearchSettings = resolveRagSearchSettings(ragSearchSettingsRow ?? null)
+
+    if (ragSearchSettingsError && isMissingEmbeddingModelColumnError(ragSearchSettingsError)) {
+      const { data: legacyRagSearchSettingsRow, error: legacyRagSearchSettingsError } = await supabaseAdmin
+        .from("user_rag_search_settings")
+        .select("top_k, similarity_threshold")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (legacyRagSearchSettingsError) {
+        console.error("[rag-search] Failed to load legacy retrieval settings", legacyRagSearchSettingsError)
+        return jsonResponse({ error: "Internal error" }, 500)
+      }
+
+      ragSearchSettings = resolveRagSearchSettings(legacyRagSearchSettingsRow ?? null)
+    } else if (ragSearchSettingsError) {
       console.error("[rag-search] Failed to load retrieval settings", ragSearchSettingsError)
       return jsonResponse({ error: "Internal error" }, 500)
     }
-
-    const ragSearchSettings = resolveRagSearchSettings(ragSearchSettingsRow ?? null)
 
     const { data: ragIndexingSettingsRow, error: ragIndexingSettingsError } = await supabaseAdmin
       .from("user_rag_index_settings")
@@ -271,11 +284,7 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Internal error" }, 500)
     }
 
-    const indexingEmbeddingModel = isMissingEmbeddingModelColumnError(ragIndexingSettingsError)
-      ? DEFAULT_RAG_EMBEDDING_MODEL
-      : typeof ragIndexingSettingsRow?.embedding_model === "string"
-        ? ragIndexingSettingsRow.embedding_model
-        : DEFAULT_RAG_EMBEDDING_MODEL
+    const indexingEmbeddingModel = getIndexingEmbeddingModel(ragIndexingSettingsError, ragIndexingSettingsRow ?? null)
 
     if (indexingEmbeddingModel !== ragSearchSettings.embedding_model) {
       return jsonResponse(

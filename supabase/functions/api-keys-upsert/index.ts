@@ -14,6 +14,7 @@ import {
   resolveRagSearchEditableSettings,
   resolveRagSearchSettings,
 } from "@core/rag/searchSettings.ts"
+import { isMissingEmbeddingModelColumnError } from "../_shared/errorDetection.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -64,26 +65,6 @@ const isUnavailableRagSearchSettingsStorageError = (error: unknown): boolean => 
       combined.includes("does not exist")
     )
   )
-}
-
-const isMissingEmbeddingModelColumnError = (error: unknown): boolean => {
-  if (!error || typeof error !== "object") return false
-
-  const code = typeof (error as { code?: unknown }).code === "string"
-    ? (error as { code: string }).code.toUpperCase()
-    : ""
-
-  if (code === "42703") return true
-
-  const message = typeof (error as { message?: unknown }).message === "string"
-    ? (error as { message: string }).message
-    : ""
-  const details = typeof (error as { details?: unknown }).details === "string"
-    ? (error as { details: string }).details
-    : ""
-  const combined = `${message} ${details}`.toLowerCase()
-
-  return combined.includes("embedding_model") && combined.includes("does not exist")
 }
 
 // ---------------------------------------------------------------------------
@@ -228,7 +209,27 @@ serve(async (req: Request) => {
         .eq("user_id", userId)
         .maybeSingle()
 
-      if (existingRagSearchError) {
+      let existingRagSearchSettingsRow = existingRagSearchData
+
+      if (existingRagSearchError && isMissingEmbeddingModelColumnError(existingRagSearchError)) {
+        const { data: legacyRagSearchData, error: legacyRagSearchError } = await supabaseAdmin
+          .from("user_rag_search_settings")
+          .select("top_k, similarity_threshold")
+          .eq("user_id", userId)
+          .maybeSingle()
+
+        if (legacyRagSearchError) {
+          if (isUnavailableRagSearchSettingsStorageError(legacyRagSearchError)) {
+            return jsonResponse(
+              { error: "RAG retrieval settings are unavailable until the latest database migration is applied" },
+              503
+            )
+          }
+          throw legacyRagSearchError
+        }
+
+        existingRagSearchSettingsRow = legacyRagSearchData
+      } else if (existingRagSearchError) {
         if (isUnavailableRagSearchSettingsStorageError(existingRagSearchError)) {
           return jsonResponse(
             { error: "RAG retrieval settings are unavailable until the latest database migration is applied" },
@@ -241,7 +242,7 @@ serve(async (req: Request) => {
       try {
         validatedRagSearchSettings = assertValidRagSearchEditableSettings(
           resolveRagSearchEditableSettings({
-            ...(existingRagSearchData ?? {}),
+            ...(existingRagSearchSettingsRow ?? {}),
             ...coercedRagSearchSettings,
           })
         )
@@ -273,33 +274,40 @@ serve(async (req: Request) => {
         .from("user_rag_index_settings")
         .upsert({ user_id: userId, ...validatedRagIndexingSettings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
 
-      if (ragUpsertError) throw ragUpsertError
+      if (ragUpsertError) {
+        if (isMissingEmbeddingModelColumnError(ragUpsertError)) {
+          return jsonResponse(
+            { error: "RAG indexing settings are unavailable until the latest database migration is applied" },
+            503
+          )
+        }
+        throw ragUpsertError
+      }
       resolvedRagIndexingSettings = resolveRagIndexingSettings(validatedRagIndexingSettings)
     } else {
-      try {
-        const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
+      const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
+        .from("user_rag_index_settings")
+        .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags, embedding_model")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (ragIndexingError && isMissingEmbeddingModelColumnError(ragIndexingError)) {
+        const { data: legacyRagIndexingData, error: legacyRagIndexingError } = await supabaseAdmin
           .from("user_rag_index_settings")
-          .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags, embedding_model")
+          .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
           .eq("user_id", userId)
           .maybeSingle()
 
-        if (ragIndexingError) {
-          if (isMissingEmbeddingModelColumnError(ragIndexingError)) {
-            console.warn("[api-keys-upsert] Falling back to default RAG indexing settings", ragIndexingError)
-            resolvedRagIndexingSettings = resolveRagIndexingSettings(null)
-          } else {
-            throw ragIndexingError
-          }
-        } else {
-          resolvedRagIndexingSettings = resolveRagIndexingSettings(ragIndexingData ?? null)
-        }
-      } catch (error) {
-        if (isMissingEmbeddingModelColumnError(error)) {
-          console.warn("[api-keys-upsert] Falling back to default RAG indexing settings", error)
+        if (legacyRagIndexingError) {
+          console.warn("[api-keys-upsert] Falling back to default RAG indexing settings", legacyRagIndexingError)
           resolvedRagIndexingSettings = resolveRagIndexingSettings(null)
         } else {
-          throw error
+          resolvedRagIndexingSettings = resolveRagIndexingSettings(legacyRagIndexingData ?? null)
         }
+      } else if (ragIndexingError) {
+        throw ragIndexingError
+      } else {
+        resolvedRagIndexingSettings = resolveRagIndexingSettings(ragIndexingData ?? null)
       }
     }
 
@@ -335,7 +343,24 @@ serve(async (req: Request) => {
         .eq("user_id", userId)
         .maybeSingle()
 
-      if (ragSearchError) {
+      if (ragSearchError && isMissingEmbeddingModelColumnError(ragSearchError)) {
+        const { data: legacyRagSearchData, error: legacyRagSearchError } = await supabaseAdmin
+          .from("user_rag_search_settings")
+          .select("top_k, similarity_threshold")
+          .eq("user_id", userId)
+          .maybeSingle()
+
+        if (legacyRagSearchError) {
+          if (isUnavailableRagSearchSettingsStorageError(legacyRagSearchError)) {
+            console.warn("[api-keys-upsert] Falling back to default RAG retrieval settings", legacyRagSearchError)
+            resolvedRagSearchSettings = resolveRagSearchSettings(null)
+          } else {
+            throw legacyRagSearchError
+          }
+        } else {
+          resolvedRagSearchSettings = resolveRagSearchSettings(legacyRagSearchData ?? null)
+        }
+      } else if (ragSearchError) {
         if (isUnavailableRagSearchSettingsStorageError(ragSearchError)) {
           console.warn("[api-keys-upsert] Falling back to default RAG retrieval settings", ragSearchError)
           resolvedRagSearchSettings = resolveRagSearchSettings(null)

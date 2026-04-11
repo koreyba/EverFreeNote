@@ -48,6 +48,7 @@ description: Testing strategy for persisted retrieval settings, precision slider
 
 - [ ] `api-keys-status` returns `ragSearch` alongside existing settings payloads
 - [ ] `api-keys-upsert` persists retrieval settings without regressing Gemini/indexing updates
+- [ ] Edge functions keep reading legacy settings rows while `embedding_model` is not yet migrated
 - [ ] `rag-search` uses the retrieval-side embedding-model preset and `rag-index` uses the indexing-side preset
 - [ ] `rag-search` overfetches by one and returns an exact `hasMore`
 - [ ] Search results panel hides `Load more` when `hasMore` is false

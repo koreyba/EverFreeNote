@@ -60,7 +60,7 @@ describe('settings panels', () => {
     })
 
     expect(screen.getByText('Embedding settings')).toBeTruthy()
-    expect(screen.getByLabelText('Embedding model').textContent).toContain('Gemini Embedding 1')
+    expect(screen.getByLabelText('Embedding model').textContent).toBe('Gemini Embedding 1')
     expect(screen.getByText(String(defaultRagIndexing.output_dimensionality))).toBeTruthy()
     expect(
       screen.getByText((content) => content.includes('Tags: {tag1}, {tag2}, {tag3}'))

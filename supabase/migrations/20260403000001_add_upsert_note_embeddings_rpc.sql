@@ -1,6 +1,7 @@
--- Atomic upsert of note embeddings: deletes all existing chunks for the note
--- and inserts new ones in a single transaction. indexed_at uses the database
--- clock (now()) so it stays consistent with notes.updated_at.
+-- Atomic upsert of note embeddings in a single transaction. Existing chunks are
+-- inserted/updated via ON CONFLICT and stale tail chunks are deleted afterward.
+-- indexed_at uses the database clock (now()) so it stays consistent with
+-- notes.updated_at.
 CREATE OR REPLACE FUNCTION public.upsert_note_embeddings(
   p_note_id uuid,
   p_user_id uuid,
@@ -11,10 +12,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_rows jsonb := COALESCE(p_rows, '[]'::jsonb);
+  v_chunk_count integer := jsonb_array_length(v_rows);
 BEGIN
-  DELETE FROM public.note_embeddings
-  WHERE note_id = p_note_id AND user_id = p_user_id;
-
   INSERT INTO public.note_embeddings (
     note_id, user_id, chunk_index, char_offset,
     content, body_content, overlap_prefix, embedding
@@ -28,6 +29,20 @@ BEGIN
     row_value->>'body_content',
     row_value->>'overlap_prefix',
     (row_value->>'embedding')::vector(1536)
-  FROM jsonb_array_elements(p_rows) AS row_value;
+  FROM jsonb_array_elements(v_rows) AS row_value
+  ON CONFLICT (note_id, chunk_index) DO UPDATE
+  SET
+    user_id = EXCLUDED.user_id,
+    char_offset = EXCLUDED.char_offset,
+    content = EXCLUDED.content,
+    body_content = EXCLUDED.body_content,
+    overlap_prefix = EXCLUDED.overlap_prefix,
+    embedding = EXCLUDED.embedding,
+    indexed_at = now();
+
+  DELETE FROM public.note_embeddings
+  WHERE note_id = p_note_id
+    AND user_id = p_user_id
+    AND chunk_index >= v_chunk_count;
 END;
 $$;

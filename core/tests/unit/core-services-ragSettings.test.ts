@@ -5,7 +5,7 @@ import { RagSearchSettingsService } from "@core/services/ragSearchSettings"
 
 describe("core/services/rag settings", () => {
   it("accepts indexing settings payloads that omit embedding_model", async () => {
-    const statusPayload = JSON.parse(JSON.stringify(resolveRagIndexingSettings(null))) as Record<string, unknown>
+    const statusPayload = structuredClone(resolveRagIndexingSettings(null)) as Record<string, unknown>
     delete statusPayload.embedding_model
 
     const invoke = jest.fn().mockResolvedValue({
