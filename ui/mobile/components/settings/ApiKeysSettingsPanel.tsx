@@ -1,14 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native'
+import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native'
 import { useQueryClient } from '@tanstack/react-query'
 import { KeyRound } from 'lucide-react-native'
 
 import { ApiKeysSettingsService } from '@core/services/apiKeysSettings'
-import {
-  RAG_EMBEDDING_MODEL_PRESETS,
-  getRagEmbeddingModelLabel,
-  type RagEmbeddingModelPreset,
-} from '@core/rag/embeddingModels'
 import {
   resolveRagIndexingSettings,
   validateRagIndexingEditableSettings,
@@ -16,6 +11,7 @@ import {
   type RagIndexingSettings,
 } from '@core/rag/indexingSettings'
 import {
+  RAG_SEARCH_EDITABLE_DEFAULTS,
   resolveRagSearchSettings,
   validateRagSearchEditableSettings,
   type RagSearchSettings,
@@ -51,7 +47,6 @@ function buildIndexingFormState(settings: RagIndexingSettings) {
     use_title: settings.use_title,
     use_section_headings: settings.use_section_headings,
     use_tags: settings.use_tags,
-    embedding_model: settings.embedding_model,
   }
 }
 
@@ -66,26 +61,12 @@ function isIndexingFormPristine(
     formState.overlap === String(settings.overlap) &&
     formState.use_title === settings.use_title &&
     formState.use_section_headings === settings.use_section_headings &&
-    formState.use_tags === settings.use_tags &&
-    formState.embedding_model === settings.embedding_model
+    formState.use_tags === settings.use_tags
   )
 }
 
-function buildRetrievalFormState(settings: RagSearchSettings) {
-  return {
-    top_k: String(settings.top_k),
-    embedding_model: settings.embedding_model,
-  }
-}
-
-function isRetrievalFormPristine(
-  formState: ReturnType<typeof buildRetrievalFormState>,
-  settings: RagSearchSettings
-) {
-  return (
-    formState.top_k === String(settings.top_k) &&
-    formState.embedding_model === settings.embedding_model
-  )
+function isRetrievalTopKPristine(topKValue: string, settings: RagSearchSettings) {
+  return topKValue === String(settings.top_k)
 }
 
 export function ApiKeysSettingsPanel() {
@@ -112,11 +93,9 @@ export function ApiKeysSettingsPanel() {
   const [indexingFormState, setIndexingFormState] = useState(() =>
     buildIndexingFormState(resolveRagIndexingSettings(null))
   )
-  const [retrievalFormState, setRetrievalFormState] = useState(() =>
-    buildRetrievalFormState(resolveRagSearchSettings(null))
-  )
+  const [topKValue, setTopKValue] = useState(String(RAG_SEARCH_EDITABLE_DEFAULTS.top_k))
   const latestIndexingFormStateRef = useRef(indexingFormState)
-  const latestRetrievalFormStateRef = useRef(retrievalFormState)
+  const latestTopKValueRef = useRef(topKValue)
   const latestDisplayRagIndexingSettingsRef = useRef(resolveRagIndexingSettings(null))
   const latestDisplayRagSearchSettingsRef = useRef(resolveRagSearchSettings(null))
 
@@ -130,8 +109,8 @@ export function ApiKeysSettingsPanel() {
   }, [indexingFormState])
 
   useEffect(() => {
-    latestRetrievalFormStateRef.current = retrievalFormState
-  }, [retrievalFormState])
+    latestTopKValueRef.current = topKValue
+  }, [topKValue])
 
   useEffect(() => {
     latestDisplayRagIndexingSettingsRef.current = displayRagIndexingSettings
@@ -150,17 +129,15 @@ export function ApiKeysSettingsPanel() {
       use_title: indexingFormState.use_title,
       use_section_headings: indexingFormState.use_section_headings,
       use_tags: indexingFormState.use_tags,
-      embedding_model: indexingFormState.embedding_model,
     })
   ), [indexingFormState])
 
   const retrievalValidationErrors = useMemo(() => (
     validateRagSearchEditableSettings({
-      top_k: Number(retrievalFormState.top_k),
+      top_k: Number(topKValue),
       similarity_threshold: displayRagSearchSettings.similarity_threshold,
-      embedding_model: retrievalFormState.embedding_model,
     })
-  ), [displayRagSearchSettings.similarity_threshold, retrievalFormState])
+  ), [displayRagSearchSettings.similarity_threshold, topKValue])
 
   useEffect(() => {
     let isMounted = true
@@ -177,7 +154,7 @@ export function ApiKeysSettingsPanel() {
         setResolvedRagIndexingSettings(ragIndexingSettings)
         setResolvedRagSearchSettings(ragSearchSettings)
         setIndexingFormState(buildIndexingFormState(ragIndexingSettings))
-        setRetrievalFormState(buildRetrievalFormState(ragSearchSettings))
+        setTopKValue(String(ragSearchSettings.top_k))
         setKeyFeedback(
           status.gemini.configured
             ? { variant: 'info', message: 'A Gemini API key is already stored securely.' }
@@ -237,8 +214,8 @@ export function ApiKeysSettingsPanel() {
         latestIndexingFormStateRef.current,
         latestDisplayRagIndexingSettingsRef.current
       )
-      const shouldSyncRetrieval = isRetrievalFormPristine(
-        latestRetrievalFormStateRef.current,
+      const shouldSyncRetrieval = isRetrievalTopKPristine(
+        latestTopKValueRef.current,
         latestDisplayRagSearchSettingsRef.current
       )
 
@@ -249,7 +226,7 @@ export function ApiKeysSettingsPanel() {
       }
       if (shouldSyncRetrieval) {
         setResolvedRagSearchSettings(ragSearchSettings)
-        setRetrievalFormState(buildRetrievalFormState(ragSearchSettings))
+        setTopKValue(String(ragSearchSettings.top_k))
       }
       setValue('')
       setKeyFeedback({ variant: 'success', message: 'Gemini API key saved successfully.' })
@@ -278,8 +255,8 @@ export function ApiKeysSettingsPanel() {
         latestIndexingFormStateRef.current,
         latestDisplayRagIndexingSettingsRef.current
       )
-      const shouldSyncRetrieval = isRetrievalFormPristine(
-        latestRetrievalFormStateRef.current,
+      const shouldSyncRetrieval = isRetrievalTopKPristine(
+        latestTopKValueRef.current,
         latestDisplayRagSearchSettingsRef.current
       )
 
@@ -290,7 +267,7 @@ export function ApiKeysSettingsPanel() {
       }
       if (shouldSyncRetrieval) {
         setResolvedRagSearchSettings(ragSearchSettings)
-        setRetrievalFormState(buildRetrievalFormState(ragSearchSettings))
+        setTopKValue(String(ragSearchSettings.top_k))
       }
       setValue('')
       setKeyFeedback({ variant: 'success', message: 'Gemini API key removed.' })
@@ -333,7 +310,6 @@ export function ApiKeysSettingsPanel() {
       use_title: indexingFormState.use_title,
       use_section_headings: indexingFormState.use_section_headings,
       use_tags: indexingFormState.use_tags,
-      embedding_model: indexingFormState.embedding_model,
     }
 
     try {
@@ -363,11 +339,10 @@ export function ApiKeysSettingsPanel() {
 
     try {
       const status = await ragSearchSettingsService.upsert({
-        top_k: Number(retrievalFormState.top_k),
-        embedding_model: retrievalFormState.embedding_model,
+        top_k: Number(topKValue),
       })
       setResolvedRagSearchSettings(status)
-      setRetrievalFormState(buildRetrievalFormState(status))
+      setTopKValue(String(status.top_k))
       setRetrievalFeedback({ variant: 'success', message: 'RAG retrieval settings saved.' })
       await syncQueryCaches()
     } catch (error) {
@@ -483,15 +458,6 @@ export function ApiKeysSettingsPanel() {
           />
         </View>
 
-        <SelectSettingField
-          label="Index embedding model"
-          value={indexingFormState.embedding_model}
-          options={RAG_EMBEDDING_MODEL_PRESETS}
-          disabled={!canEditIndexing || isSavingIndexing}
-          helperText="Choose which Gemini embedding preset is used when indexing note chunks."
-          onValueChange={(nextValue) => setIndexingFormState((current) => ({ ...current, embedding_model: nextValue }))}
-        />
-
         <View style={styles.toggleList}>
           <BooleanSettingRow
             label="Use title for embeddings"
@@ -525,11 +491,6 @@ export function ApiKeysSettingsPanel() {
         ) : null}
 
         <View style={styles.readonlyGrid}>
-          <ReadOnlySetting
-            label="Embedding model"
-            value={getRagEmbeddingModelLabel(displayRagIndexingSettings.embedding_model)}
-            hint="Selected preset for future indexing."
-          />
           <ReadOnlySetting
             label="Vector dimensions"
             value={String(displayRagIndexingSettings.output_dimensionality)}
@@ -573,9 +534,9 @@ export function ApiKeysSettingsPanel() {
 
         <Input
           label="Top K per page"
-          value={retrievalFormState.top_k}
+          value={topKValue}
           onChangeText={(next) => {
-            setRetrievalFormState((current) => ({ ...current, top_k: next }))
+            setTopKValue(next)
             if (retrievalFeedback?.variant === 'error') {
               setRetrievalFeedback(null)
             }
@@ -584,15 +545,6 @@ export function ApiKeysSettingsPanel() {
           inputMode="numeric"
           placeholder="15"
           disabled={!canEditRetrieval || isSavingRetrieval}
-        />
-
-        <SelectSettingField
-          label="Search embedding model"
-          value={retrievalFormState.embedding_model}
-          options={RAG_EMBEDDING_MODEL_PRESETS}
-          disabled={!canEditRetrieval || isSavingRetrieval}
-          helperText="Choose which Gemini embedding preset is used when embedding AI search queries."
-          onValueChange={(nextValue) => setRetrievalFormState((current) => ({ ...current, embedding_model: nextValue }))}
         />
 
         {retrievalValidationErrors.length > 0 ? (
@@ -604,11 +556,6 @@ export function ApiKeysSettingsPanel() {
         ) : null}
 
         <View style={styles.readonlyGrid}>
-          <ReadOnlySetting
-            label="Embedding model"
-            value={getRagEmbeddingModelLabel(displayRagSearchSettings.embedding_model)}
-            hint="Selected preset for future AI searches."
-          />
           <ReadOnlySetting
             label="Current precision threshold"
             value={displayRagSearchSettings.similarity_threshold.toFixed(2)}
@@ -687,85 +634,6 @@ function BooleanSettingRow({
         trackColor={{ false: colors.border, true: colors.primary }}
         thumbColor={colors.background}
       />
-    </View>
-  )
-}
-
-function SelectSettingField({
-  label,
-  value,
-  options,
-  disabled,
-  helperText,
-  onValueChange,
-}: Readonly<{
-  label: string
-  value: RagEmbeddingModelPreset
-  options: typeof RAG_EMBEDDING_MODEL_PRESETS
-  disabled: boolean
-  helperText: string
-  onValueChange: (nextValue: RagEmbeddingModelPreset) => void
-}>) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => createSelectStyles(colors), [colors])
-  const [isOpen, setIsOpen] = useState(false)
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        disabled={disabled}
-        onPress={() => setIsOpen(true)}
-        style={({ pressed }) => [
-          styles.trigger,
-          disabled && styles.triggerDisabled,
-          pressed && !disabled ? styles.triggerPressed : null,
-        ]}
-      >
-        <Text style={styles.triggerValue}>{getRagEmbeddingModelLabel(value)}</Text>
-        <Text style={styles.triggerHint}>Select</Text>
-      </Pressable>
-      <Text style={styles.helperText}>{helperText}</Text>
-
-      <Modal
-        animationType="fade"
-        transparent
-        visible={isOpen}
-        onRequestClose={() => setIsOpen(false)}
-      >
-        <Pressable style={styles.overlay} onPress={() => setIsOpen(false)}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{label}</Text>
-            {options.map((option) => {
-              const selected = option.value === value
-              return (
-                <Pressable
-                  key={option.value}
-                  accessibilityRole="button"
-                  accessibilityLabel={option.label}
-                  onPress={() => {
-                    onValueChange(option.value)
-                    setIsOpen(false)
-                  }}
-                  style={({ pressed }) => [
-                    styles.option,
-                    selected && styles.optionSelected,
-                    pressed ? styles.optionPressed : null,
-                  ]}
-                >
-                  <View style={styles.optionCopy}>
-                    <Text style={styles.optionLabel}>{option.label}</Text>
-                    <Text style={styles.optionDescription}>{option.description}</Text>
-                  </View>
-                  {selected ? <Text style={styles.optionSelectedText}>Selected</Text> : null}
-                </Pressable>
-              )
-            })}
-          </View>
-        </Pressable>
-      </Modal>
     </View>
   )
 }
@@ -872,118 +740,6 @@ const createToggleStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       lineHeight: 18,
       fontFamily: 'Inter_400Regular',
       color: colors.mutedForeground,
-    },
-  })
-
-const createSelectStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
-  StyleSheet.create({
-    container: {
-      gap: 6,
-    },
-    label: {
-      fontSize: 14,
-      lineHeight: 18,
-      fontFamily: 'Inter_500Medium',
-      color: colors.foreground,
-    },
-    trigger: {
-      minHeight: 48,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.background,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    triggerDisabled: {
-      opacity: 0.65,
-    },
-    triggerPressed: {
-      opacity: 0.8,
-    },
-    triggerValue: {
-      flex: 1,
-      fontSize: 14,
-      lineHeight: 20,
-      fontFamily: 'Inter_400Regular',
-      color: colors.foreground,
-    },
-    triggerHint: {
-      fontSize: 12,
-      lineHeight: 16,
-      fontFamily: 'Inter_600SemiBold',
-      color: colors.mutedForeground,
-    },
-    helperText: {
-      fontSize: 12,
-      lineHeight: 18,
-      fontFamily: 'Inter_400Regular',
-      color: colors.mutedForeground,
-    },
-    overlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
-      justifyContent: 'center',
-      padding: 20,
-    },
-    sheet: {
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.card,
-      padding: 16,
-      gap: 10,
-    },
-    sheetTitle: {
-      fontSize: 16,
-      lineHeight: 20,
-      fontFamily: 'Inter_700Bold',
-      color: colors.foreground,
-    },
-    option: {
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.background,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    optionPressed: {
-      opacity: 0.85,
-    },
-    optionSelected: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary + '14',
-    },
-    optionCopy: {
-      flex: 1,
-      gap: 2,
-    },
-    optionLabel: {
-      fontSize: 14,
-      lineHeight: 18,
-      fontFamily: 'Inter_600SemiBold',
-      color: colors.foreground,
-    },
-    optionDescription: {
-      fontSize: 12,
-      lineHeight: 18,
-      fontFamily: 'Inter_400Regular',
-      color: colors.mutedForeground,
-    },
-    optionSelectedText: {
-      fontSize: 12,
-      lineHeight: 16,
-      fontFamily: 'Inter_600SemiBold',
-      color: colors.primary,
     },
   })
 

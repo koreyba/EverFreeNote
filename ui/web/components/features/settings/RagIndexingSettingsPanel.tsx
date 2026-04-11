@@ -10,10 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/web/components/ui/select"
 import { RagIndexSettingsService } from "@core/services/ragIndexSettings"
 import type { RagIndexingEditableSettings, RagIndexingSettings } from "@core/rag/indexingSettings"
-import { RAG_EMBEDDING_MODEL_PRESETS, getRagEmbeddingModelLabel } from "@core/rag/embeddingModels"
 import {
   RAG_INDEX_EDITABLE_DEFAULTS,
   resolveRagIndexingSettings,
@@ -53,7 +51,6 @@ function buildEditableState(settings: RagIndexingSettings) {
     use_title: settings.use_title,
     use_section_headings: settings.use_section_headings,
     use_tags: settings.use_tags,
-    embedding_model: settings.embedding_model,
   }
 }
 
@@ -74,7 +71,6 @@ export function RagIndexingSettingsPanel() {
     use_title: true,
     use_section_headings: true,
     use_tags: true,
-    embedding_model: RAG_INDEX_EDITABLE_DEFAULTS.embedding_model,
   }))
   const [debugChunks, setDebugChunks] = React.useState(() => isRagDebugChunksEnabled())
   const displaySettings = resolvedSettings ?? resolveRagIndexingSettings(null)
@@ -116,7 +112,6 @@ export function RagIndexingSettingsPanel() {
       use_title: formState.use_title,
       use_section_headings: formState.use_section_headings,
       use_tags: formState.use_tags,
-      embedding_model: formState.embedding_model,
     })
   }, [formState])
 
@@ -132,7 +127,6 @@ export function RagIndexingSettingsPanel() {
       use_title: formState.use_title,
       use_section_headings: formState.use_section_headings,
       use_tags: formState.use_tags,
-      embedding_model: formState.embedding_model,
     }
 
     setSaving(true)
@@ -222,29 +216,6 @@ export function RagIndexingSettingsPanel() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="rag-index-embedding-model">Embedding model</Label>
-          <Select
-            value={formState.embedding_model}
-            onValueChange={(value) => setFormState((current) => ({ ...current, embedding_model: value as typeof current.embedding_model }))}
-            disabled={loading || saving}
-          >
-            <SelectTrigger id="rag-index-embedding-model">
-              <SelectValue placeholder="Choose embedding model" />
-            </SelectTrigger>
-            <SelectContent>
-              {RAG_EMBEDDING_MODEL_PRESETS.map((preset) => (
-                <SelectItem key={preset.value} value={preset.value}>
-                  {preset.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Controls which Gemini embedding preset is used when you index note chunks.
-          </p>
-        </div>
-
         <div className="flex items-center justify-between -mt-2">
           <div className="flex items-center gap-2">
             <Checkbox
@@ -274,7 +245,6 @@ export function RagIndexingSettingsPanel() {
                 use_title: true,
                 use_section_headings: true,
                 use_tags: true,
-                embedding_model: RAG_INDEX_EDITABLE_DEFAULTS.embedding_model,
               })
               setDebugChunks(false)
               try { localStorage.removeItem(RAG_DEBUG_CHUNKS_KEY) } catch { /* ignore */ }
@@ -391,13 +361,8 @@ export function RagIndexingSettingsPanel() {
             </div>
 
             <div className="space-y-3">
-              <div className="text-xs font-medium text-muted-foreground">Embedding settings</div>
+              <div className="text-xs font-medium text-muted-foreground">Embedding settings (system-defined)</div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <ReadOnlyRow
-                  label="Embedding model"
-                  value={getRagEmbeddingModelLabel(displaySettings.embedding_model)}
-                  hint="Selected preset for future indexing."
-                />
                 <ReadOnlyRow label="Vector dimensions" value={String(displaySettings.output_dimensionality)} hint="Size of each embedding vector" />
                 <ReadOnlyRow label="Indexing task type" value={displaySettings.task_type_document} hint="Used when embedding note chunks" />
                 <ReadOnlyRow label="Search task type" value={displaySettings.task_type_query} hint="Used when embedding search queries" />

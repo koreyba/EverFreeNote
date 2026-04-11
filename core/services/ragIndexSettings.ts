@@ -1,41 +1,27 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import type { ApiKeysStatus } from "@core/services/apiKeysSettings"
-import {
-  resolveRagIndexingSettings,
-  validateRagIndexingEditableSettings,
-  type RagIndexingEditableSettings,
-  type RagIndexingSettings,
-} from "@core/rag/indexingSettings"
+import type { RagIndexingEditableSettings, RagIndexingSettings } from "@core/rag/indexingSettings"
 import { readSettingsErrorMessage } from "@core/services/settingsErrorMessage"
+
+const isRagIndexingSettings = (data: unknown): data is RagIndexingSettings => {
+  if (!data || typeof data !== "object") return false
+  return (
+    typeof (data as { target_chunk_size?: unknown }).target_chunk_size === "number" &&
+    typeof (data as { min_chunk_size?: unknown }).min_chunk_size === "number" &&
+    typeof (data as { max_chunk_size?: unknown }).max_chunk_size === "number" &&
+    typeof (data as { overlap?: unknown }).overlap === "number" &&
+    typeof (data as { use_title?: unknown }).use_title === "boolean" &&
+    typeof (data as { use_section_headings?: unknown }).use_section_headings === "boolean" &&
+    typeof (data as { use_tags?: unknown }).use_tags === "boolean" &&
+    typeof (data as { output_dimensionality?: unknown }).output_dimensionality === "number"
+  )
+}
 
 const readRagIndexingSettings = (data: unknown): RagIndexingSettings | null => {
   if (!data || typeof data !== "object") return null
   const ragIndexing = (data as ApiKeysStatus).ragIndexing
-  if (!ragIndexing || typeof ragIndexing !== "object") return null
-
-  const editableSettings = {
-    target_chunk_size: (ragIndexing as { target_chunk_size?: unknown }).target_chunk_size,
-    min_chunk_size: (ragIndexing as { min_chunk_size?: unknown }).min_chunk_size,
-    max_chunk_size: (ragIndexing as { max_chunk_size?: unknown }).max_chunk_size,
-    overlap: (ragIndexing as { overlap?: unknown }).overlap,
-    use_title: (ragIndexing as { use_title?: unknown }).use_title,
-    use_section_headings: (ragIndexing as { use_section_headings?: unknown }).use_section_headings,
-    use_tags: (ragIndexing as { use_tags?: unknown }).use_tags,
-    embedding_model: (ragIndexing as { embedding_model?: unknown }).embedding_model,
-  } as Partial<RagIndexingEditableSettings>
-
-  if (validateRagIndexingEditableSettings(editableSettings).length > 0) {
-    return null
-  }
-
-  const resolvedSettings = resolveRagIndexingSettings(editableSettings)
-  const rawSettings = ragIndexing as Record<string, unknown>
-  const matchesResolvedShape = Object.entries(resolvedSettings).every(
-    ([key, value]) => rawSettings[key] === value
-  )
-
-  return matchesResolvedShape ? resolvedSettings : null
+  return isRagIndexingSettings(ragIndexing) ? ragIndexing : null
 }
 
 export class RagIndexSettingsService {

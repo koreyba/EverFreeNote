@@ -14,6 +14,7 @@ declare const Deno: { env: { get(key: string): string | undefined } }
 // Config
 // ---------------------------------------------------------------------------
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
+const EMBEDDING_MODEL = "models/gemini-embedding-001"
 const READONLY_RAG_SETTINGS = getRagReadonlySettings()
 const OUTPUT_DIMENSIONS = READONLY_RAG_SETTINGS.output_dimensionality
 const MAX_CHUNKS_PER_NOTE = 128
@@ -90,11 +91,10 @@ const decryptValue = async (encrypted: string, secret: string): Promise<string> 
 // ---------------------------------------------------------------------------
 async function embedTexts(
   texts: Array<{ text: string; title: string | null }>,
-  apiKey: string,
-  embeddingModel: string
+  apiKey: string
 ): Promise<number[][]> {
   const requests = texts.map(({ text, title }) => ({
-    model: embeddingModel,
+    model: EMBEDDING_MODEL,
     ...(title ? { title } : {}),
     content: { parts: [{ text }] },
     taskType: READONLY_RAG_SETTINGS.task_type_document,
@@ -108,7 +108,7 @@ async function embedTexts(
     const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
     try {
       const response = await fetch(
-        `${GEMINI_API_BASE}/${embeddingModel}:batchEmbedContents?key=${apiKey}`,
+        `${GEMINI_API_BASE}/${EMBEDDING_MODEL}:batchEmbedContents?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -239,7 +239,7 @@ serve(async (req: Request) => {
 
     const { data: settingsRow, error: settingsError } = await supabaseAdmin
       .from("user_rag_index_settings")
-      .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags, embedding_model")
+      .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
       .eq("user_id", userId)
       .maybeSingle()
 
@@ -293,8 +293,7 @@ serve(async (req: Request) => {
         text: chunk.content,
         title: chunk.title,
       })),
-      geminiApiKey,
-      settings.embedding_model
+      geminiApiKey
     )
 
     if (vectors.length !== chunksForIndexing.length) {

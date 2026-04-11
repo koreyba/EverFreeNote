@@ -204,7 +204,7 @@ serve(async (req: Request) => {
     if (hasRagSearchFields) {
       const { data: existingRagSearchData, error: existingRagSearchError } = await supabaseAdmin
         .from("user_rag_search_settings")
-        .select("top_k, similarity_threshold, embedding_model")
+        .select("top_k, similarity_threshold")
         .eq("user_id", userId)
         .maybeSingle()
 
@@ -258,7 +258,7 @@ serve(async (req: Request) => {
     } else {
       const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
         .from("user_rag_index_settings")
-        .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags, embedding_model")
+        .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
         .eq("user_id", userId)
         .maybeSingle()
 
@@ -274,9 +274,6 @@ serve(async (req: Request) => {
           p_top_k: "top_k" in coercedRagSearchSettings ? validatedRagSearchSettings.top_k : null,
           p_similarity_threshold: "similarity_threshold" in coercedRagSearchSettings
             ? validatedRagSearchSettings.similarity_threshold
-            : null,
-          p_embedding_model: "embedding_model" in coercedRagSearchSettings
-            ? validatedRagSearchSettings.embedding_model
             : null,
         })
         .single()
@@ -294,7 +291,7 @@ serve(async (req: Request) => {
     } else {
       const { data: ragSearchData, error: ragSearchError } = await supabaseAdmin
         .from("user_rag_search_settings")
-        .select("top_k, similarity_threshold, embedding_model")
+        .select("top_k, similarity_threshold")
         .eq("user_id", userId)
         .maybeSingle()
 
