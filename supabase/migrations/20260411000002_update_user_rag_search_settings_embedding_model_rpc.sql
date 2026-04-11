@@ -44,6 +44,3 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.upsert_user_rag_search_settings_partial(uuid, integer, numeric, text)
   TO authenticated, service_role;
-
-REVOKE EXECUTE ON FUNCTION public.upsert_user_rag_search_settings_partial(uuid, integer, numeric)
-  FROM authenticated, service_role;

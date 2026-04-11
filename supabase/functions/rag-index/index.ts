@@ -332,6 +332,7 @@ serve(async (req: Request) => {
       noteId,
       userId,
       chunkCount: chunksForIndexing.length,
+      embedding_model: settings.embedding_model,
       target_chunk_size: settings.target_chunk_size,
       min_chunk_size: settings.min_chunk_size,
       max_chunk_size: settings.max_chunk_size,

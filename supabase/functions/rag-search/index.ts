@@ -6,6 +6,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
 import { getRagChunkBodyText } from "../../../core/rag/chunkTemplate.ts"
+import { DEFAULT_RAG_EMBEDDING_MODEL } from "../../../core/rag/embeddingModels.ts"
 import { getRagSearchReadonlySettings, resolveRagSearchSettings } from "../../../core/rag/searchSettings.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
@@ -59,6 +60,25 @@ const isLegacyMatchNotesSignatureError = (error: unknown): boolean => {
   return combined.includes("match_notes") && combined.includes("filter_tag") && combined.includes("function")
 }
 
+const isMissingEmbeddingModelColumnError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") return false
+
+  const code = typeof (error as { code?: unknown }).code === "string"
+    ? (error as { code: string }).code.toUpperCase()
+    : ""
+  if (code === "42703") return true
+
+  const message = typeof (error as { message?: unknown }).message === "string"
+    ? (error as { message: string }).message
+    : ""
+  const details = typeof (error as { details?: unknown }).details === "string"
+    ? (error as { details: string }).details
+    : ""
+  const combined = `${message} ${details}`.toLowerCase()
+
+  return combined.includes("embedding_model") && combined.includes("does not exist")
+}
+
 // ---------------------------------------------------------------------------
 // AES-GCM decryption (mirrors rag-index pattern)
 // ---------------------------------------------------------------------------
@@ -94,6 +114,18 @@ const decryptValue = async (encrypted: string, secret: string): Promise<string> 
 // ---------------------------------------------------------------------------
 async function embedQuery(query: string, apiKey: string, embeddingModel: string): Promise<number[]> {
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+  const requestBody = embeddingModel === DEFAULT_RAG_EMBEDDING_MODEL
+    ? {
+        model: embeddingModel,
+        content: { parts: [{ text: query }] },
+        taskType: READONLY_RAG_SETTINGS.task_type_query,
+        outputDimensionality: OUTPUT_DIMENSIONS,
+      }
+    : {
+        model: embeddingModel,
+        content: { parts: [{ text: `task: retrieval_query | ${query}` }] },
+        outputDimensionality: OUTPUT_DIMENSIONS,
+      }
 
   for (let attempt = 1; attempt <= GEMINI_MAX_RETRIES; attempt++) {
     const controller = new AbortController()
@@ -104,12 +136,7 @@ async function embedQuery(query: string, apiKey: string, embeddingModel: string)
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: embeddingModel,
-            content: { parts: [{ text: query }] },
-            taskType: READONLY_RAG_SETTINGS.task_type_query,
-            outputDimensionality: OUTPUT_DIMENSIONS,
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal,
         }
       )
@@ -232,6 +259,31 @@ serve(async (req: Request) => {
     }
 
     const ragSearchSettings = resolveRagSearchSettings(ragSearchSettingsRow ?? null)
+
+    const { data: ragIndexingSettingsRow, error: ragIndexingSettingsError } = await supabaseAdmin
+      .from("user_rag_index_settings")
+      .select("embedding_model")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (ragIndexingSettingsError && !isMissingEmbeddingModelColumnError(ragIndexingSettingsError)) {
+      console.error("[rag-search] Failed to load indexing settings", ragIndexingSettingsError)
+      return jsonResponse({ error: "Internal error" }, 500)
+    }
+
+    const indexingEmbeddingModel = isMissingEmbeddingModelColumnError(ragIndexingSettingsError)
+      ? DEFAULT_RAG_EMBEDDING_MODEL
+      : typeof ragIndexingSettingsRow?.embedding_model === "string"
+        ? ragIndexingSettingsRow.embedding_model
+        : DEFAULT_RAG_EMBEDDING_MODEL
+
+    if (indexingEmbeddingModel !== ragSearchSettings.embedding_model) {
+      return jsonResponse(
+        { error: "Embedding model mismatch between indexing and search. Re-index your notes with the current model first." },
+        400
+      )
+    }
+
     const queryEmbedding = await embedQuery(query.trim(), geminiApiKey, ragSearchSettings.embedding_model)
 
     const supabaseUser = createClient(supabaseUrl, anonKey, {

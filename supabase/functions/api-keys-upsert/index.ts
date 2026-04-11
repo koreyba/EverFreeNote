@@ -66,6 +66,26 @@ const isUnavailableRagSearchSettingsStorageError = (error: unknown): boolean => 
   )
 }
 
+const isMissingEmbeddingModelColumnError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") return false
+
+  const code = typeof (error as { code?: unknown }).code === "string"
+    ? (error as { code: string }).code.toUpperCase()
+    : ""
+
+  if (code === "42703") return true
+
+  const message = typeof (error as { message?: unknown }).message === "string"
+    ? (error as { message: string }).message
+    : ""
+  const details = typeof (error as { details?: unknown }).details === "string"
+    ? (error as { details: string }).details
+    : ""
+  const combined = `${message} ${details}`.toLowerCase()
+
+  return combined.includes("embedding_model") && combined.includes("does not exist")
+}
+
 // ---------------------------------------------------------------------------
 // AES-GCM encryption (same pattern as wordpress-settings-upsert)
 // ---------------------------------------------------------------------------
@@ -256,14 +276,31 @@ serve(async (req: Request) => {
       if (ragUpsertError) throw ragUpsertError
       resolvedRagIndexingSettings = resolveRagIndexingSettings(validatedRagIndexingSettings)
     } else {
-      const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
-        .from("user_rag_index_settings")
-        .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags, embedding_model")
-        .eq("user_id", userId)
-        .maybeSingle()
+      try {
+        const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
+          .from("user_rag_index_settings")
+          .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags, embedding_model")
+          .eq("user_id", userId)
+          .maybeSingle()
 
-      if (ragIndexingError) throw ragIndexingError
-      resolvedRagIndexingSettings = resolveRagIndexingSettings(ragIndexingData ?? null)
+        if (ragIndexingError) {
+          if (isMissingEmbeddingModelColumnError(ragIndexingError)) {
+            console.warn("[api-keys-upsert] Falling back to default RAG indexing settings", ragIndexingError)
+            resolvedRagIndexingSettings = resolveRagIndexingSettings(null)
+          } else {
+            throw ragIndexingError
+          }
+        } else {
+          resolvedRagIndexingSettings = resolveRagIndexingSettings(ragIndexingData ?? null)
+        }
+      } catch (error) {
+        if (isMissingEmbeddingModelColumnError(error)) {
+          console.warn("[api-keys-upsert] Falling back to default RAG indexing settings", error)
+          resolvedRagIndexingSettings = resolveRagIndexingSettings(null)
+        } else {
+          throw error
+        }
+      }
     }
 
     let resolvedRagSearchSettings

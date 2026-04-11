@@ -35,25 +35,27 @@ description: Implementation guide for persisted retrieval settings and the web p
   - backend-provided `hasMore`
 - Feature 4: Keep the settings screen resilient and operable when local settings services are temporarily unavailable
 - Feature 5: Support explicit Gemini API key removal without overloading the empty-input save flow
-- Feature 6: Persist an independent embedding-model preset for retrieval so AI search can choose a different Gemini embedding model than indexing
+- Feature 6: Persist a separate retrieval embedding-model preset, but block retrieval until it matches the active indexing preset so users reindex before switching embedding spaces
 
 ### Patterns & best practices
 - Preserve current neutral defaults to minimize rollout surprise
 - Keep UI strings in English
 - Use commit-on-release interactions for the slider
-- Keep mobile reuse in mind, but do not add mobile UI in this feature
+- Keep the web and mobile settings screens aligned by reusing the shared core schema and preset catalogue
 - Keep settings action rows visually consistent across panels by reusing shared layout classes in web settings UI
 
 ## Integration Points
 **How do pieces connect?**
 
 - Web settings panel loads and saves retrieval settings through the shared service
+- Mobile settings panel loads and saves the same retrieval settings through the shared service contract
 - Web search hook loads the same persisted settings and applies runtime slider commits
 - `rag-search` receives numeric `topK` and threshold values derived from settings/UI
 - `api-keys-status` and `api-keys-upsert` remain the primary settings transport layer unless implementation reveals a cleaner existing endpoint pattern
 - API key management, indexing settings, and retrieval settings now intentionally share the same settings screen vocabulary and action layout
 - `api-keys-upsert` now handles both key replacement and explicit key removal while continuing to preserve indexing/retrieval settings payloads
 - `rag-search` now reads the active retrieval embedding preset from `user_rag_search_settings` instead of hardcoding `models/gemini-embedding-001`
+- `rag-search` rejects requests when retrieval and indexing presets differ, so users must reindex before querying with a new embedding space
 
 ## Error Handling
 **How do we handle failures?**

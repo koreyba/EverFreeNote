@@ -141,7 +141,8 @@ Example response fragment:
 ### `rag-search`
 - Continue accepting numeric retrieval parameters directly.
 - Request contract remains numeric, but the caller now derives values from persisted user settings plus committed slider state.
-- Query embedding model is now resolved server-side from `user_rag_search_settings`, independently from indexing settings.
+- Query embedding model is now resolved server-side from `user_rag_search_settings`.
+- Retrieval is blocked when the retrieval preset does not match the active indexing preset, forcing a reindex before switching embedding spaces.
 
 Request:
 ```typescript
@@ -255,4 +256,5 @@ This removes the old UI heuristic that guessed `hasMore` from `returnedCount >= 
   - web-specific interaction logic stays in web hooks/components
 - Compatibility:
   - all UI strings introduced by this feature are English
-  - mobile is not implemented yet, but the core data model is ready for reuse
+  - retrieval settings are supported on both web and mobile settings screens
+  - the precision slider remains a web search control for now

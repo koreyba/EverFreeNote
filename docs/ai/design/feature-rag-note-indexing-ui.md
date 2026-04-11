@@ -20,13 +20,13 @@ graph TD
     subgraph Supabase Edge Function
         EF[rag-index\nDeno runtime]
         ADMIN[Service Role Client]
-        SETTINGS[("user_rag_index_settings\nembedding_model + chunk settings")]
         GEMINI[Gemini REST API\nselected embedding preset\noutput_dimensionality=1536]
     end
 
     subgraph Supabase DB
         NE_TBL[(notes)]
         EMB_TBL[(note_embeddings\nvector 1536, HNSW)]
+        SETTINGS[("user_rag_index_settings\nembedding_model + chunk settings")]
     end
 
     NE --> RIP

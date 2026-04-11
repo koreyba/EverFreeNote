@@ -23,6 +23,7 @@ describe("core/rag/searchSettings", () => {
     const settings = resolveRagSearchEditableSettings({
       top_k: undefined,
       similarity_threshold: undefined,
+      embedding_model: undefined,
     })
 
     expect(settings.top_k).toBe(RAG_SEARCH_EDITABLE_DEFAULTS.top_k)

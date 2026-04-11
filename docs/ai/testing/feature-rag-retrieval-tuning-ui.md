@@ -70,14 +70,12 @@ description: Testing strategy for persisted retrieval settings, precision slider
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
 
-- Targeted automated checks completed on 2026-03-28:
-  - `npx jest --config jest.config.cjs --selectProjects unit-core unit-web --runTestsByPath core/tests/unit/core-rag-searchSettings.test.ts ui/web/tests/unit/hooks/useSearchMode.test.tsx ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx`
-  - `npx jest --config jest.config.cjs --selectProjects unit-core unit-web --runTestsByPath core/tests/unit/core-services-apiKeysSettings.test.ts ui/web/tests/unit/components/settingsPanels.test.tsx`
+- Targeted automated checks completed on 2026-04-11:
+  - `npx jest --config jest.config.cjs --selectProjects unit-core unit-web --runTestsByPath core/tests/unit/core-rag-searchSettings.test.ts core/tests/unit/core-services-ragSettings.test.ts core/tests/unit/core-services-apiKeysSettings.test.ts ui/web/tests/unit/components/settingsPanels.test.tsx`
   - `npm test -- settingsPanels.test.tsx --runInBand` (from `ui/mobile`)
-  - `npm run test:unit`
   - `npm run type-check`
-  - `npm run type-check:tests`
-  - `npx deno check supabase/functions/api-keys-status/index.ts supabase/functions/api-keys-upsert/index.ts supabase/functions/rag-search/index.ts`
+  - `npm run type-check` (from `ui/mobile`)
+  - `npm run deno-check`
 - Result: all executed checks passed.
 - Remaining gaps:
   - no automated integration test yet for `api-keys-status` / `api-keys-upsert` retrieval payloads

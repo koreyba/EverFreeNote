@@ -9,6 +9,14 @@ import {
 } from "@core/rag/indexingSettings"
 import { readSettingsErrorMessage } from "@core/services/settingsErrorMessage"
 
+const areSettingsValuesEqual = (expected: unknown, actual: unknown): boolean => {
+  if (Array.isArray(expected) && Array.isArray(actual)) {
+    return expected.length === actual.length && expected.every((value, index) => value === actual[index])
+  }
+
+  return expected === actual
+}
+
 const readRagIndexingSettings = (data: unknown): RagIndexingSettings | null => {
   if (!data || typeof data !== "object") return null
   const ragIndexing = (data as ApiKeysStatus).ragIndexing
@@ -31,8 +39,10 @@ const readRagIndexingSettings = (data: unknown): RagIndexingSettings | null => {
 
   const resolvedSettings = resolveRagIndexingSettings(editableSettings)
   const rawSettings = ragIndexing as Record<string, unknown>
-  const matchesResolvedShape = Object.entries(resolvedSettings).every(
-    ([key, value]) => rawSettings[key] === value
+  const matchesResolvedShape = Object.entries(rawSettings).every(
+    ([key, value]) =>
+      key in resolvedSettings &&
+      areSettingsValuesEqual(resolvedSettings[key as keyof RagIndexingSettings], value)
   )
 
   return matchesResolvedShape ? resolvedSettings : null

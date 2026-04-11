@@ -13,7 +13,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/web/components/ui/select"
 import { RagIndexSettingsService } from "@core/services/ragIndexSettings"
 import type { RagIndexingEditableSettings, RagIndexingSettings } from "@core/rag/indexingSettings"
-import { RAG_EMBEDDING_MODEL_PRESETS, getRagEmbeddingModelLabel } from "@core/rag/embeddingModels"
+import {
+  RAG_EMBEDDING_MODEL_PRESETS,
+  getRagEmbeddingModelLabel,
+  resolveRagEmbeddingModel,
+} from "@core/rag/embeddingModels"
 import {
   RAG_INDEX_EDITABLE_DEFAULTS,
   resolveRagIndexingSettings,
@@ -44,7 +48,18 @@ type EditableNumericKey = keyof Pick<
 
 type EditableBooleanKey = keyof Pick<RagIndexingEditableSettings, "use_title" | "use_section_headings" | "use_tags">
 
-function buildEditableState(settings: RagIndexingSettings) {
+type RagIndexingFormState = ReturnType<typeof buildEditableState>
+
+function buildEditableState(settings: RagIndexingSettings): {
+  target_chunk_size: string
+  min_chunk_size: string
+  max_chunk_size: string
+  overlap: string
+  use_title: boolean
+  use_section_headings: boolean
+  use_tags: boolean
+  embedding_model: RagIndexingEditableSettings["embedding_model"]
+} {
   return {
     target_chunk_size: String(settings.target_chunk_size),
     min_chunk_size: String(settings.min_chunk_size),
@@ -57,6 +72,19 @@ function buildEditableState(settings: RagIndexingSettings) {
   }
 }
 
+function buildDefaultEditableState(): RagIndexingFormState {
+  return {
+    target_chunk_size: String(RAG_INDEX_EDITABLE_DEFAULTS.target_chunk_size),
+    min_chunk_size: String(RAG_INDEX_EDITABLE_DEFAULTS.min_chunk_size),
+    max_chunk_size: String(RAG_INDEX_EDITABLE_DEFAULTS.max_chunk_size),
+    overlap: String(RAG_INDEX_EDITABLE_DEFAULTS.overlap),
+    use_title: RAG_INDEX_EDITABLE_DEFAULTS.use_title,
+    use_section_headings: RAG_INDEX_EDITABLE_DEFAULTS.use_section_headings,
+    use_tags: RAG_INDEX_EDITABLE_DEFAULTS.use_tags,
+    embedding_model: RAG_INDEX_EDITABLE_DEFAULTS.embedding_model,
+  }
+}
+
 export function RagIndexingSettingsPanel() {
   const { supabase } = useSupabase()
   const service = React.useMemo(() => new RagIndexSettingsService(supabase), [supabase])
@@ -66,16 +94,7 @@ export function RagIndexingSettingsPanel() {
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
   const [resolvedSettings, setResolvedSettings] = React.useState<RagIndexingSettings | null>(null)
-  const [formState, setFormState] = React.useState(() => ({
-    target_chunk_size: "500",
-    min_chunk_size: "200",
-    max_chunk_size: "1500",
-    overlap: "100",
-    use_title: true,
-    use_section_headings: true,
-    use_tags: true,
-    embedding_model: RAG_INDEX_EDITABLE_DEFAULTS.embedding_model,
-  }))
+  const [formState, setFormState] = React.useState(buildDefaultEditableState)
   const [debugChunks, setDebugChunks] = React.useState(() => isRagDebugChunksEnabled())
   const displaySettings = resolvedSettings ?? resolveRagIndexingSettings(null)
 
@@ -226,7 +245,11 @@ export function RagIndexingSettingsPanel() {
           <Label htmlFor="rag-index-embedding-model">Embedding model</Label>
           <Select
             value={formState.embedding_model}
-            onValueChange={(value) => setFormState((current) => ({ ...current, embedding_model: value as typeof current.embedding_model }))}
+            onValueChange={(value) =>
+              setFormState((current) => ({
+                ...current,
+                embedding_model: resolveRagEmbeddingModel(value),
+              }))}
             disabled={loading || saving}
           >
             <SelectTrigger id="rag-index-embedding-model">
@@ -266,16 +289,7 @@ export function RagIndexingSettingsPanel() {
             className="text-xs text-muted-foreground underline-offset-4 hover:underline hover:text-foreground transition-colors disabled:opacity-50 disabled:pointer-events-none"
             disabled={loading || saving}
             onClick={() => {
-              setFormState({
-                target_chunk_size: "500",
-                min_chunk_size: "200",
-                max_chunk_size: "1500",
-                overlap: String(RAG_INDEX_EDITABLE_DEFAULTS.overlap),
-                use_title: true,
-                use_section_headings: true,
-                use_tags: true,
-                embedding_model: RAG_INDEX_EDITABLE_DEFAULTS.embedding_model,
-              })
+              setFormState(buildDefaultEditableState())
               setDebugChunks(false)
               try { localStorage.removeItem(RAG_DEBUG_CHUNKS_KEY) } catch { /* ignore */ }
             }}

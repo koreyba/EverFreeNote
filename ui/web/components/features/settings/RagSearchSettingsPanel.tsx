@@ -8,7 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/web/components/ui/select"
-import { RAG_EMBEDDING_MODEL_PRESETS, getRagEmbeddingModelLabel } from "@core/rag/embeddingModels"
+import {
+  RAG_EMBEDDING_MODEL_PRESETS,
+  getRagEmbeddingModelLabel,
+  resolveRagEmbeddingModel,
+} from "@core/rag/embeddingModels"
 import {
   RAG_SEARCH_EDITABLE_DEFAULTS,
   resolveRagSearchSettings,
@@ -126,7 +130,11 @@ export function RagSearchSettingsPanel() {
           <Label htmlFor="rag-search-embedding-model">Embedding model</Label>
           <Select
             value={formState.embedding_model}
-            onValueChange={(value) => setFormState((current) => ({ ...current, embedding_model: value as typeof current.embedding_model }))}
+            onValueChange={(value) =>
+              setFormState((current) => ({
+                ...current,
+                embedding_model: resolveRagEmbeddingModel(value),
+              }))}
             disabled={!canEdit || saving}
           >
             <SelectTrigger id="rag-search-embedding-model">
