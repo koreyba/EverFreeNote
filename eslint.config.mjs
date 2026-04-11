@@ -97,5 +97,14 @@ export default defineConfig([
       },
     },
   },
+
+  // Override for Storybook story files
+  {
+    files: ['**/*.stories.ts', '**/*.stories.tsx'],
+    rules: {
+      // Stories use default exports (required by Storybook CSF format)
+      'import/no-default-export': 'off',
+    },
+  },
 ]);
 

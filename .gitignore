@@ -26,6 +26,9 @@ node_modules/
 # Testing
 /coverage
 
+# Storybook
+storybook-static/
+
 # Test artifacts (keep test runners in build/, exclude temp results)
 TEST_SUMMARY.md
 TESTING_LOG.md
