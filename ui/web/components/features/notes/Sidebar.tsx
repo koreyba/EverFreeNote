@@ -140,7 +140,11 @@ export function Sidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
-        {/* Note count: Free users see limit progress, paid users see displayed/total */}
+        {/*
+          Note count display adapts to plan:
+          - Free users: Show progress toward limit (e.g., "3 of 5 notes") to make limit visible
+          - Pro users: Show pagination info (displayed/total) since no limit exists
+        */}
         <p className="text-xs text-muted-foreground text-center">
           {plan === "free" && typeof notesTotal === "number"
             ? `${notesTotal} of ${FREE_PLAN_NOTE_LIMIT} notes`

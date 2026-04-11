@@ -81,7 +81,11 @@ export function NotesShell({ controller }: NotesShellProps) {
   });
   const hasGeminiApiKey = apiKeysStatus?.gemini?.configured ?? false;
 
-  // Check subscription plan to enforce note limits on free tier
+  /**
+   * Fetch subscription to enforce note limits.
+   * Free tier users are limited to FREE_PLAN_NOTE_LIMIT notes.
+   * Pro users have unlimited note creation.
+   */
   const { plan, canCreateNote } = useSubscription({ userId: user?.id });
 
   const {

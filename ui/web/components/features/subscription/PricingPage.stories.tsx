@@ -14,8 +14,13 @@ import { ArrowLeft, BookOpen, Check } from "lucide-react";
 import { cn } from "@ui/web/lib/utils";
 import { FREE_PLAN_NOTE_LIMIT } from "@core/constants/subscription";
 
-// Since we can't use jest.mock in Storybook with Vite, we'll create a self-contained
-// PricingPage component that doesn't rely on hooks that need mocking
+/**
+ * Storybook-specific PricingPage implementation.
+ *
+ * This duplicates the PlanCard component instead of importing it because we need
+ * a self-contained story that doesn't rely on external hooks (useNoteAuth, useSubscription)
+ * that would require mocking in Storybook's Vite environment.
+ */
 
 interface PlanCardProps {
   name: string;

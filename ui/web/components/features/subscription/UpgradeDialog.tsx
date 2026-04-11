@@ -42,7 +42,10 @@ export function UpgradeDialog({
             <DialogTitle>Note limit reached</DialogTitle>
           </div>
           <DialogDescription className="pt-4 text-base">
-            {/* Show current usage to help user understand their situation */}
+            {/*
+              Display current usage to provide context for why the upgrade is needed.
+              Showing the numbers helps users understand how close they are to the limit.
+            */}
             You&apos;ve used{" "}
             <span className="font-semibold">
               {currentCount} of {limit} notes

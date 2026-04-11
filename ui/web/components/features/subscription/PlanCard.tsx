@@ -43,7 +43,7 @@ export function PlanCard({
     <Card
       className={cn(
         "relative flex flex-col",
-        // Highlight recommended plans with primary border and shadow
+        // Highlight recommended plans with primary border and shadow to draw attention
         isRecommended && "border-primary shadow-lg",
         className,
       )}
@@ -87,7 +87,7 @@ export function PlanCard({
           className="w-full"
           onClick={onCtaClick}
           disabled={ctaDisabled}
-          // Use solid button for recommended plan, outline for others — creates visual hierarchy
+          // Use solid button for recommended plan, outline for others to create visual hierarchy and guide user attention
           variant={isRecommended ? "default" : "outline"}
         >
           {ctaLabel}
