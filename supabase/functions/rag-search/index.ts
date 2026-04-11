@@ -6,7 +6,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
 import { getRagChunkBodyText } from "../../../core/rag/chunkTemplate.ts"
-import { getRagSearchReadonlySettings } from "../../../core/rag/searchSettings.ts"
+import { getRagSearchReadonlySettings, resolveRagSearchSettings } from "../../../core/rag/searchSettings.ts"
 
 declare const Deno: { env: { get(key: string): string | undefined } }
 
@@ -14,7 +14,6 @@ declare const Deno: { env: { get(key: string): string | undefined } }
 // Config
 // ---------------------------------------------------------------------------
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
-const EMBEDDING_MODEL = "models/gemini-embedding-001"
 const READONLY_RAG_SETTINGS = getRagSearchReadonlySettings()
 const OUTPUT_DIMENSIONS = READONLY_RAG_SETTINGS.output_dimensionality
 const GEMINI_TIMEOUT_MS = 10000
@@ -93,7 +92,7 @@ const decryptValue = async (encrypted: string, secret: string): Promise<string> 
 // ---------------------------------------------------------------------------
 // Single-text embedding via Gemini REST API (RETRIEVAL_QUERY task type)
 // ---------------------------------------------------------------------------
-async function embedQuery(query: string, apiKey: string): Promise<number[]> {
+async function embedQuery(query: string, apiKey: string, embeddingModel: string): Promise<number[]> {
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
   for (let attempt = 1; attempt <= GEMINI_MAX_RETRIES; attempt++) {
@@ -101,12 +100,12 @@ async function embedQuery(query: string, apiKey: string): Promise<number[]> {
     const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
     try {
       const response = await fetch(
-        `${GEMINI_API_BASE}/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`,
+        `${GEMINI_API_BASE}/${embeddingModel}:embedContent?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: EMBEDDING_MODEL,
+            model: embeddingModel,
             content: { parts: [{ text: query }] },
             taskType: READONLY_RAG_SETTINGS.task_type_query,
             outputDimensionality: OUTPUT_DIMENSIONS,
@@ -221,7 +220,19 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Internal error" }, 500)
     }
 
-    const queryEmbedding = await embedQuery(query.trim(), geminiApiKey)
+    const { data: ragSearchSettingsRow, error: ragSearchSettingsError } = await supabaseAdmin
+      .from("user_rag_search_settings")
+      .select("top_k, similarity_threshold, embedding_model")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (ragSearchSettingsError) {
+      console.error("[rag-search] Failed to load retrieval settings", ragSearchSettingsError)
+      return jsonResponse({ error: "Internal error" }, 500)
+    }
+
+    const ragSearchSettings = resolveRagSearchSettings(ragSearchSettingsRow ?? null)
+    const queryEmbedding = await embedQuery(query.trim(), geminiApiKey, ragSearchSettings.embedding_model)
 
     const supabaseUser = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },

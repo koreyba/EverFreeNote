@@ -50,13 +50,13 @@ serve(async (req: Request) => {
 
     const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
       .from("user_rag_index_settings")
-      .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
+      .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags, embedding_model")
       .eq("user_id", userData.user.id)
       .maybeSingle()
 
     const { data: ragSearchData, error: ragSearchError } = await supabaseAdmin
       .from("user_rag_search_settings")
-      .select("top_k, similarity_threshold")
+      .select("top_k, similarity_threshold, embedding_model")
       .eq("user_id", userData.user.id)
       .maybeSingle()
 
