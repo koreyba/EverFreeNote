@@ -3,8 +3,8 @@ import {
   isRagEmbeddingModelPreset,
   resolveRagEmbeddingModel,
   type RagEmbeddingModelPreset,
-} from "@core/rag/embeddingModels"
-import { getRagReadonlySettings } from "@core/rag/indexingSettings.ts"
+} from "./embeddingModels.ts"
+import { getRagReadonlySettings } from "./indexingSettings.ts"
 
 const RAG_READONLY_INDEXING_SETTINGS = getRagReadonlySettings()
 

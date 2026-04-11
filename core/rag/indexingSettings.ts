@@ -3,7 +3,7 @@ import {
   isRagEmbeddingModelPreset,
   resolveRagEmbeddingModel,
   type RagEmbeddingModelPreset,
-} from "@core/rag/embeddingModels"
+} from "./embeddingModels.ts"
 
 export const RAG_INDEX_NUMERIC_MIN = 50
 export const RAG_INDEX_NUMERIC_MAX = 5000
