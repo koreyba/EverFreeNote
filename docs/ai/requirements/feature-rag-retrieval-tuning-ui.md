@@ -20,9 +20,11 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
 
 ### Primary goals
 - Make retrieval settings configurable at the user level, not hard-coded in the web UI.
-- Keep Gemini embedding task types fixed and visible:
-  - document/chunk embeddings use `RETRIEVAL_DOCUMENT`
-  - search query embeddings use `RETRIEVAL_QUERY`
+- Keep retrieval intent fixed and visible across supported embedding presets:
+  - document/chunk embeddings continue using `RETRIEVAL_DOCUMENT`
+  - search query embeddings use one of two preset-specific Gemini request shapes:
+    - `models/gemini-embedding-001` sends `taskType: RETRIEVAL_QUERY`
+    - `models/gemini-embedding-2-preview` prefixes the retrieval instruction into the request body text instead of sending `taskType`
 - Move `topK` into persisted user settings with default `15`.
 - Replace the current 3-state preset control in the web search UI with a similarity-threshold slider.
 - Persist the slider's committed threshold value at the user level.
@@ -81,9 +83,10 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
 - [ ] Web AI search exposes a similarity-threshold slider with English UI copy.
 - [ ] The committed slider value is persisted per user.
 - [ ] Slider-driven refetch happens only on commit/release when the committed value changed.
-- [ ] `rag-search` continues using fixed Gemini task types:
-  - `RETRIEVAL_DOCUMENT` for note chunks
-  - `RETRIEVAL_QUERY` for search queries
+- [ ] `rag-search` continues using fixed retrieval intent for each supported preset:
+  - note chunks are indexed with `RETRIEVAL_DOCUMENT`
+  - `models/gemini-embedding-001` query requests send `taskType: RETRIEVAL_QUERY`
+  - `models/gemini-embedding-2-preview` query requests encode the retrieval instruction in the text body instead of `taskType`
 - [ ] `rag-search` resolves the active retrieval embedding preset from `user_rag_search_settings.embedding_model`.
 - [ ] `rag-search` blocks mismatched embedding spaces with `409`, `code: "embedding_model_mismatch"`, and message `Embedding model changed. Please reindex your notes to enable search.`
 - [ ] UI exposes the task types and `output_dimensionality`, even if read-only.
@@ -98,13 +101,16 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
 
 ### Technical constraints
 - The current AI search flow already relies on `rag-search`, `match_notes`, client-side grouping, and offset-based deduplication.
-- Gemini embedding logic is fixed:
-  - `rag-index` uses `RETRIEVAL_DOCUMENT`
-  - `rag-search` uses `RETRIEVAL_QUERY`
+- Gemini embedding behavior is preset-aware but fixed per supported model:
+  - `rag-index` continues using `RETRIEVAL_DOCUMENT` for note chunks
+  - `rag-search` reads `user_rag_search_settings.embedding_model` and emits one of two supported query request shapes:
+    - `models/gemini-embedding-001`: structured content plus `taskType: RETRIEVAL_QUERY`
+    - `models/gemini-embedding-2-preview`: structured content whose text body carries the retrieval instruction prefix instead of a `taskType` field
 - `output_dimensionality` is currently fixed at `1536`.
 - Search results UI changes are web-only for now, but settings persistence and mismatch warnings must stay compatible with mobile settings.
 - Retrieval settings must be persisted at the user level, not just in `localStorage`.
 - Server-side retrieval preset resolution is sourced from `user_rag_search_settings`, while active indexing preset resolution stays in `user_rag_index_settings`.
+- `rag-search` must return `409` and `code: "embedding_model_mismatch"` whenever those resolved presets differ, and clients should route users into a manual reindex flow rather than auto-reindexing in the background.
 
 ### Assumptions
 - A new persisted retrieval-settings record can be introduced without changing note-index schema.

@@ -32,7 +32,7 @@ description: Task breakdown for per-note RAG indexing controls
   - (Retained for future Node.js/testing use; production uses Edge Function)
 
 - [x] **1.4** Create Supabase Edge Function `supabase/functions/rag-index/index.ts`
-  - Body: `{ noteId: string, action: 'index' | 'delete' }`
+  - Body: `{ noteId: string, action: 'index' | 'reindex' | 'delete' }`
   - JWT auth via Authorization header + service role client
   - Chunking + Gemini embedding logic self-contained (Deno-compatible, via fetch)
   - ~~Next.js API route~~ — not applicable (static SPA, `output: 'export'`)

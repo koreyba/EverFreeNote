@@ -65,7 +65,12 @@ ui/web/components/features/notes/
 
 File: `supabase/functions/rag-index/index.ts`
 
-### action = index
+Supported actions:
+- `index` -> full indexing flow
+- `reindex` -> explicit alias of `index`, used when the UI knows the note already has embeddings
+- `delete` -> remove embeddings for the note
+
+### action = index / reindex
 
 1. Validate JWT and resolve `userId`
 2. Load note content from `notes`
@@ -106,6 +111,7 @@ File: `supabase/functions/rag-index/index.ts`
 - Invokes:
   ```ts
   supabase.functions.invoke("rag-index", { body: { noteId, action: "index" } })
+  supabase.functions.invoke("rag-index", { body: { noteId, action: "reindex" } })
   supabase.functions.invoke("rag-index", { body: { noteId, action: "delete" } })
   ```
 - UI states:

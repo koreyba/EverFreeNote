@@ -19,7 +19,8 @@ DECLARE
 BEGIN
   IF p_rows IS NULL OR v_chunk_count = 0 THEN
     DELETE FROM public.note_embeddings
-    WHERE note_id = p_note_id;
+    WHERE note_id = p_note_id
+      AND user_id = p_user_id;
     RETURN;
   END IF;
 
@@ -53,6 +54,7 @@ BEGIN
 
   DELETE FROM public.note_embeddings
   WHERE note_id = p_note_id
+    AND user_id = p_user_id
     AND chunk_index > v_max_index;
 END;
 $$;

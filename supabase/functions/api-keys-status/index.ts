@@ -35,24 +35,11 @@ const loadRagIndexingSettings = async (supabaseAdmin: ReturnType<typeof createCl
 
   if (!error) return resolveRagIndexingSettings(data ?? null)
 
-  console.error("[api-keys-status] Failed to load RAG indexing settings", error)
-
   if (!isMissingEmbeddingModelColumnError(error)) {
+    console.error("[api-keys-status] Failed to load RAG indexing settings", error)
     return resolveRagIndexingSettings(null)
   }
-
-  const { data: legacyData, error: legacyError } = await supabaseAdmin
-    .from("user_rag_index_settings")
-    .select("target_chunk_size, min_chunk_size, max_chunk_size, overlap, use_title, use_section_headings, use_tags")
-    .eq("user_id", userId)
-    .maybeSingle()
-
-  if (legacyError) {
-    console.error("[api-keys-status] Failed to load legacy RAG indexing settings", legacyError)
-    return resolveRagIndexingSettings(null)
-  }
-
-  return resolveRagIndexingSettings(legacyData ?? null)
+  return resolveRagIndexingSettings(null)
 }
 
 const loadRagSearchSettings = async (supabaseAdmin: ReturnType<typeof createClient>, userId: string) => {

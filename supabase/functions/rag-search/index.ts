@@ -6,7 +6,10 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
 import { getRagChunkBodyText } from "../../../core/rag/chunkTemplate.ts"
-import { DEFAULT_RAG_EMBEDDING_MODEL } from "../../../core/rag/embeddingModels.ts"
+import {
+  DEFAULT_RAG_EMBEDDING_MODEL,
+  resolveRagEmbeddingModel,
+} from "../../../core/rag/embeddingModels.ts"
 import { getRagSearchReadonlySettings, resolveRagSearchSettings } from "../../../core/rag/searchSettings.ts"
 import { isMissingEmbeddingModelColumnError } from "../_shared/errorDetection.ts"
 
@@ -57,6 +60,7 @@ const GEMINI_RETRY_BASE_MS = 400
 const EMBEDDING_MODEL_MISMATCH_ERROR_CODE = "embedding_model_mismatch"
 const EMBEDDING_MODEL_MISMATCH_ERROR_MESSAGE =
   "Embedding model changed. Please reindex your notes to enable search."
+const GEMINI_TASK_TYPE_QUERY_MODELS = new Set<string>(["models/gemini-embedding-001"])
 
 // ---------------------------------------------------------------------------
 // CORS
@@ -167,7 +171,7 @@ const shouldRetryNetworkError = (error: unknown) =>
   (error instanceof DOMException && error.name === "AbortError") || isRetryableFetchTypeError(error)
 
 const buildEmbedQueryRequestBody = (query: string, embeddingModel: string) => {
-  if (embeddingModel === DEFAULT_RAG_EMBEDDING_MODEL) {
+  if (GEMINI_TASK_TYPE_QUERY_MODELS.has(embeddingModel)) {
     return {
       model: embeddingModel,
       content: { parts: [{ text: query }] },
@@ -374,9 +378,9 @@ const getIndexingEmbeddingModel = (
     return DEFAULT_RAG_EMBEDDING_MODEL
   }
 
-  return typeof ragIndexingSettingsRow?.embedding_model === "string"
-    ? ragIndexingSettingsRow.embedding_model
-    : DEFAULT_RAG_EMBEDDING_MODEL
+  return resolveRagSearchSettings({
+    embedding_model: resolveRagEmbeddingModel(ragIndexingSettingsRow?.embedding_model),
+  }).embedding_model
 }
 
 const loadStoredIndexingEmbeddingModel = async (

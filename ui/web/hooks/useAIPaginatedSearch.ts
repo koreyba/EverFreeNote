@@ -321,7 +321,9 @@ export function useAIPaginatedSearch({
     noteGroups: queryEnabled && identityCommitted ? aiAccumulatedResults : [],
     chunks: queryEnabled && identityCommitted ? aiAccumulatedChunks : [],
     isLoading: initialLoading,
-    error: result.error ? String(result.error) : null,
+    error: result.error instanceof Error
+      ? result.error.message
+      : (result.error ? String(result.error) : null),
     errorCode: result.error instanceof RagSearchRequestError ? result.error.code : null,
     refetch,
     aiOffset: effectiveAiOffset,

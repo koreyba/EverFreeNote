@@ -30,7 +30,7 @@ graph TD
     end
 
     NE --> RIP
-    RIP -->|"supabase.functions.invoke('rag-index')\n{ noteId, action: 'index'|'delete' }"| EF
+    RIP -->|"supabase.functions.invoke('rag-index')\n{ noteId, action: 'index'|'reindex'|'delete' }"| EF
     HOOK -->|"SELECT chunk_index, indexed_at\nWHERE note_id = ?"| SC
     SC --> EMB_TBL
     EF --> ADMIN
@@ -97,7 +97,12 @@ interface RagStatus {
 **Auth:** User JWT automatically forwarded by Supabase client in Authorization header
 **Secrets (server-side only):** `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`
 
-**action: 'index'** flow:
+Supported actions:
+- `action: "index"` indexes the note with the active settings row
+- `action: "reindex"` is an explicit alias of `index` for status-aware UIs such as AI Index
+- `action: "delete"` removes the note's stored embeddings
+
+**action: 'index' | 'reindex'** flow:
 1. Validate JWT → get userId
 2. Fetch note `title` + `description` from `notes` (ownership check via `user_id`)
 3. Strip HTML, prepend title, then chunk using the loaded `user_rag_index_settings` values:

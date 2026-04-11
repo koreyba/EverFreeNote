@@ -42,3 +42,37 @@ BEGIN
   END IF;
 END
 $$;
+
+/*
+Down (manual rollback)
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'user_rag_index_settings_embedding_model_check'
+      AND conrelid = 'public.user_rag_index_settings'::regclass
+  ) THEN
+    ALTER TABLE public.user_rag_index_settings
+      DROP CONSTRAINT IF EXISTS user_rag_index_settings_embedding_model_check;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'user_rag_search_settings_embedding_model_check'
+      AND conrelid = 'public.user_rag_search_settings'::regclass
+  ) THEN
+    ALTER TABLE public.user_rag_search_settings
+      DROP CONSTRAINT IF EXISTS user_rag_search_settings_embedding_model_check;
+  END IF;
+
+  ALTER TABLE public.user_rag_index_settings
+    DROP COLUMN IF EXISTS embedding_model;
+
+  ALTER TABLE public.user_rag_search_settings
+    DROP COLUMN IF EXISTS embedding_model;
+END
+$$;
+*/

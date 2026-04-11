@@ -464,6 +464,7 @@ serve(async (req: Request) => {
       return jsonResponse({ outcome: "deleted", deleted: true })
     }
 
+    // `reindex` is an explicit client-facing alias of the normal indexing flow.
     const geminiApiKey = await loadGeminiApiKey(supabaseAdmin, userId, encryptionSecret)
     return jsonResponse(await indexNote(supabaseAdmin, noteId, userId, geminiApiKey, debugChunks))
   } catch (err) {
