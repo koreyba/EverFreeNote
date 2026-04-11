@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useMemo, useCallback, useEffect, useRef, useState } from "react";
+import { useMemo, useCallback, useEffect, useRef } from "react";
 import type {
   ForceGraphMethods,
   NodeObject,
