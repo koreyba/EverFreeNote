@@ -43,6 +43,9 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [x] Updates row status/buttons optimistically on `All notes` immediately after a successful AI-index mutation
 - [x] Animates rows out of filtered views when a successful mutation changes them out of the active status bucket
 - [x] Treats semantic `rag-index` skips such as `outcome: "skipped", reason: "too_short"` as honest failures and restores `not_indexed`
+- [x] Exposes a summary-level `Index loaded notes` button only when the current loaded result set contains actionable rows
+- [x] Ensures the web bulk action processes only the currently loaded notes from the active filter and active committed search query
+- [x] Ensures the mobile bulk action uses the same loaded-only scope and skips already indexed rows
 
 ## Integration Tests
 
@@ -77,9 +80,12 @@ description: Test strategy for the Settings AI index page and its dedicated data
   - `npm run test:unit:core -- --runTestsByPath core/tests/unit/core-rag-indexResult.test.ts`
   - `npm run test:component -- --spec "cypress/component/features/settings/AIIndexNoteRow.cy.tsx"`
 - Completed:
+  - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexTab.test.tsx` (bulk button visibility, loaded-only scope, search-limited scope)
+  - `cd ui/mobile && npx jest tests/component/aiIndexPanel.test.tsx --no-coverage` (mobile bulk button visibility and loaded-only scope)
   - `npm run type-check`
   - `npm run type-check:tests`
   - `npx eslint ui/web/components/features/settings/AIIndexTab.tsx ui/web/components/features/settings/AIIndexList.tsx ui/web/components/features/settings/AIIndexNoteRow.tsx ui/web/tests/unit/components/aiIndexNoteRow.test.tsx ui/web/tests/unit/components/aiIndexTab.test.tsx`
+  - `cd ui/mobile && npm run validate`
   - Browser QA in local Next dev server via Playwright: desktop auth-skip flow, `Settings -> AI Index`, empty-state flow, row open, browser back return, and mobile viewport snapshot review
 
 ## Manual Testing
@@ -89,14 +95,76 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - Verify timestamps and status badges are understandable
 - Verify opening a note from `Settings -> AI Index`, then using browser back and mobile in-note back to return to the same filtered/scrolled AI Index view
 - Verify the page still feels usable when there are only a few notes and when the current filter/search returns nothing
+- Verify the bulk button does not appear for fully indexed loaded results
+- Verify search limits the bulk action scope so notes outside the committed query are not indexed
 
 ## Performance Testing
 
 - Confirm virtualization still works with large note counts
 - Confirm infinite loading triggers before the user hits the end of the list
 
+## Mobile Unit Tests
+
+### Hook: `useAIIndexNotes` (6 tests)
+
+- [x] Returns mapped notes on success with correct field mapping
+- [x] Passes filter to RPC correctly
+- [x] Does not fetch when no user (query disabled)
+- [x] Handles RPC error → `isError: true`
+- [x] `useFlattenedAIIndexNotes` flattens multi-page data
+- [x] `useFlattenedAIIndexNotes` returns empty array when no data
+
+### Component: `AIIndexNoteCard` (10 tests)
+
+- [x] Renders title and status for not_indexed
+- [x] Shows "Untitled Note" when title is blank
+- [x] Shows "Index note" for not_indexed, no "Remove index"
+- [x] Shows "Reindex" and "Remove index" for indexed
+- [x] Shows "Update index" for outdated
+- [x] Calls invoke with correct index action and triggers toast/onMutated
+- [x] Calls invoke with delete action on Remove press
+- [x] Shows error toast on invoke failure
+- [x] Falls back to a clear error toast when indexing is skipped without a backend message
+- [x] Restores `not_indexed` when skip reason is `too_short`
+
+### Component: `AIIndexPanel` (9 tests)
+
+- [x] Renders all 4 filter chips
+- [x] Renders search input
+- [x] Renders note cards from mock data
+- [x] Shows summary text
+- [x] Exposes all 4 filter chips with tab semantics
+- [x] Shows loading state
+- [x] Shows empty state message
+- [x] Shows error state with retry button
+- [x] Invalidates the user-scoped AI Index query prefix after a card mutation
+- [x] Calls `fetchNextPage` when the list reaches the pagination threshold
+
+### Integration: `SettingsScreen`
+
+- [x] Opens the dedicated AI Index viewport when the `AI Index` tab is selected
+- [x] Keeps the ordinary settings panels out of the accessibility tree when AI Index is active
+
+### Mobile test commands
+
+```bash
+cd ui/mobile && npx jest tests/component/useAIIndexNotes.test.tsx --no-coverage
+cd ui/mobile && npx jest tests/component/aiIndexNoteCard.test.tsx --no-coverage
+cd ui/mobile && npx jest tests/component/aiIndexPanel.test.tsx --no-coverage
+cd ui/mobile && npx jest tests/integration/settingsScreen.test.tsx --no-coverage
+# Combined AI Index mobile pass:
+cd ui/mobile && npx jest tests/component/useAIIndexNotes.test.tsx tests/component/aiIndexNoteCard.test.tsx tests/component/aiIndexPanel.test.tsx tests/integration/settingsScreen.test.tsx --no-coverage
+cd ui/mobile && npm run validate
+```
+
+### Mobile test results
+
+- Focused AI Index mobile pass: 4 test suites, 33 tests, all passing
+- Validation: `ui/mobile` `type-check` and `lint` passing via `npm run validate`
+
 ## Bug Tracking
 
 - Remaining gaps:
   - no DB-backed RPC verification yet
-  - mobile/browser back behavior has browser QA coverage, but still lacks a dedicated automated end-to-end spec
+  - mobile AI Index still lacks a dedicated end-to-end spec that exercises pagination, indexing, and removal against a real backend
+  - mobile does not implement note-opening/back-navigation from AI Index cards; the mobile flow remains action-only by design

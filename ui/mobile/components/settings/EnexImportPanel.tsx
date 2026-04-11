@@ -56,7 +56,7 @@ export function EnexImportPanel() {
         multiple: false,
       })
 
-      if (result.canceled || !result.assets?.length) {
+      if (result.canceled || !result.assets.length) {
         return
       }
 

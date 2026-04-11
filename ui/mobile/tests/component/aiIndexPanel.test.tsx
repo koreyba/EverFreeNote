@@ -1,0 +1,393 @@
+import React from 'react'
+import { fireEvent, render, screen, waitFor, act } from '@testing-library/react-native'
+import { AIIndexPanel } from '@ui/mobile/components/settings/AIIndexPanel'
+import type { AIIndexNoteRow } from '@core/types/aiIndex'
+
+const mockRefetch = jest.fn()
+const mockFetchNextPage = jest.fn()
+const mockInvalidateQueries = jest.fn()
+const mockGetQueriesData = jest.fn()
+const mockSetQueryData = jest.fn()
+const mockUseAIIndexNotes = jest.fn()
+const mockUseFlattenedAIIndexNotes = jest.fn()
+const mockNoteCard = jest.fn()
+const mockInvoke = jest.fn()
+const mockToastShow = jest.fn()
+
+jest.mock('react-native-toast-message', () => ({
+  __esModule: true,
+  default: { show: (...args: unknown[]) => mockToastShow(...args) },
+}))
+
+jest.mock('@ui/mobile/providers', () => ({
+  useTheme: () => ({
+    colors: {
+      background: '#ffffff',
+      foreground: '#111111',
+      card: '#ffffff',
+      border: '#e0e0e0',
+      mutedForeground: '#666666',
+      destructive: '#ff0000',
+      selectionBackground: '#f2fff2',
+      selectionBorder: '#00aa00',
+      selectionForeground: '#006600',
+      primary: '#00aa00',
+      primaryForeground: '#ffffff',
+      secondary: '#f7f7f7',
+      secondaryForeground: '#222222',
+      destructiveForeground: '#ffffff',
+      accent: '#f2f2f2',
+      ring: '#00aa00',
+    },
+  }),
+  useSupabase: () => ({
+    client: { functions: { invoke: mockInvoke } },
+    user: { id: 'test-user-id' },
+  }),
+}))
+
+jest.mock('@tanstack/react-query', () => {
+  const actual = jest.requireActual('@tanstack/react-query')
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      invalidateQueries: mockInvalidateQueries,
+      getQueriesData: mockGetQueriesData,
+      setQueriesData: jest.fn(),
+      setQueryData: mockSetQueryData,
+    }),
+  }
+})
+
+jest.mock('@ui/mobile/hooks/useAIIndexNotes', () => ({
+  useAIIndexNotes: (...args: unknown[]) => mockUseAIIndexNotes(...args),
+  useFlattenedAIIndexNotes: (...args: unknown[]) => mockUseFlattenedAIIndexNotes(...args),
+  getAIIndexNotesQueryKey: jest.fn((userId: string | undefined, filter: string, searchQuery = '') => ['ai-index-notes', userId ?? null, filter, searchQuery.trim()]),
+  getAIIndexNotesQueryPrefix: jest.fn((userId: string | undefined) => ['ai-index-notes', userId ?? null]),
+}))
+
+jest.mock('@ui/mobile/components/settings/AIIndexNoteCard', () => ({
+  AIIndexNoteCard: (props: unknown) => {
+    mockNoteCard(props)
+    const typedProps = props as {
+      note: AIIndexNoteRow
+      onMutated: (result: { noteId: string; previousStatus: string; nextStatus: string }) => void
+    }
+
+    return <>{typedProps.note.title}</>
+  },
+}))
+
+const sampleNotes: AIIndexNoteRow[] = [
+  { id: 'n1', title: 'Note One', updatedAt: '2025-06-01', lastIndexedAt: '2025-06-01', status: 'indexed' },
+  { id: 'n2', title: 'Note Two', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+]
+
+function setupMocks(overrides: Record<string, unknown> = {}, notes: AIIndexNoteRow[] = sampleNotes) {
+  mockUseAIIndexNotes.mockReturnValue({
+    data: { pages: [{ notes, totalCount: notes.length, hasMore: false }] },
+    isLoading: false,
+    isError: false,
+    isRefetching: false,
+    isFetchingNextPage: false,
+    hasNextPage: false,
+    fetchNextPage: mockFetchNextPage,
+    refetch: mockRefetch,
+    error: null,
+    ...overrides,
+  })
+  mockUseFlattenedAIIndexNotes.mockReturnValue(notes)
+}
+
+describe('AIIndexPanel', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    jest.useFakeTimers()
+    mockInvoke.mockReset()
+    mockToastShow.mockReset()
+    mockGetQueriesData.mockReturnValue([])
+    setupMocks()
+  })
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers()
+    })
+    jest.useRealTimers()
+  })
+
+  it('renders filter chips and summary text', () => {
+    render(<AIIndexPanel />)
+
+    expect(screen.getAllByText('All notes').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Indexed').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Not indexed').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Outdated')).toBeTruthy()
+    expect(screen.getByText('2 notes')).toBeTruthy()
+    expect(screen.getAllByRole('tab')).toHaveLength(4)
+    expect(mockNoteCard).toHaveBeenCalledTimes(2)
+    expect(
+      mockNoteCard.mock.calls.map((call) => (call[0] as { note: AIIndexNoteRow }).note.title)
+    ).toEqual(['Note One', 'Note Two'])
+  })
+
+  it('renders search input with ASCII placeholder', () => {
+    render(<AIIndexPanel />)
+    expect(screen.getByPlaceholderText('Search notes...')).toBeTruthy()
+  })
+
+  it('passes selected filter into the hook', () => {
+    render(<AIIndexPanel />)
+
+    fireEvent.press(screen.getByText('Outdated'))
+
+    expect(mockUseAIIndexNotes).toHaveBeenLastCalledWith('outdated', '')
+  })
+
+  it('debounces the search query with the shared minimum length rule', async () => {
+    render(<AIIndexPanel />)
+
+    fireEvent.changeText(screen.getByPlaceholderText('Search notes...'), 'he')
+
+    act(() => {
+      jest.advanceTimersByTime(300)
+    })
+
+    expect(mockUseAIIndexNotes).toHaveBeenLastCalledWith('all', '')
+    expect(screen.getByText('Search starts after 3 characters.')).toBeTruthy()
+
+    fireEvent.changeText(screen.getByPlaceholderText('Search notes...'), 'hello')
+
+    act(() => {
+      jest.advanceTimersByTime(300)
+    })
+
+    await waitFor(() => {
+      expect(mockUseAIIndexNotes).toHaveBeenLastCalledWith('all', 'hello')
+    })
+  })
+
+  it('shows loading state', () => {
+    setupMocks({ isLoading: true }, [])
+    render(<AIIndexPanel />)
+    expect(screen.getByText('Loading AI index notes...')).toBeTruthy()
+  })
+
+  it('shows empty state recovery actions', () => {
+    setupMocks({}, [])
+    render(<AIIndexPanel />)
+    expect(screen.getByText('No notes found yet.')).toBeTruthy()
+  })
+
+  it('shows detailed error state with retry', () => {
+    setupMocks({ isError: true, error: new Error('RPC unavailable') }, [])
+    render(<AIIndexPanel />)
+
+    expect(screen.getByText('AI Index is unavailable')).toBeTruthy()
+    expect(screen.getByText('RPC unavailable')).toBeTruthy()
+
+    fireEvent.press(screen.getByText('Retry'))
+    expect(mockRefetch).toHaveBeenCalled()
+  })
+
+  it('loads the next page when the list reaches the threshold', () => {
+    setupMocks({ hasNextPage: true })
+    render(<AIIndexPanel />)
+
+    fireEvent(screen.getByTestId('ai-index-list'), 'onEndReached')
+
+    expect(mockFetchNextPage).toHaveBeenCalled()
+  })
+
+  it('invalidates the AI Index query prefix after a card mutation', () => {
+    render(<AIIndexPanel />)
+
+    const cardProps = mockNoteCard.mock.calls.at(-1)?.[0] as {
+      onMutated: (result: { noteId: string; previousStatus: string; nextStatus: string }) => void
+    }
+
+    act(() => {
+      cardProps.onMutated({
+        noteId: 'n1',
+        previousStatus: 'indexed',
+        nextStatus: 'not_indexed',
+      })
+    })
+
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['ai-index-notes', 'test-user-id'],
+    })
+  })
+
+  it('shows the bulk button only when the loaded list contains actionable notes', () => {
+    const view = render(<AIIndexPanel />)
+
+    expect(screen.getByLabelText('Index loaded notes')).toBeTruthy()
+
+    view.unmount()
+    setupMocks({}, [
+      { id: 'n1', title: 'Indexed One', updatedAt: '2025-06-01', lastIndexedAt: '2025-06-01', status: 'indexed' },
+    ])
+
+    render(<AIIndexPanel />)
+
+    expect(screen.queryByLabelText('Index loaded notes')).toBeNull()
+  })
+
+  it('bulk-indexes only loaded actionable notes and skips indexed cards', async () => {
+    setupMocks({}, [
+      { id: 'n1', title: 'Indexed One', updatedAt: '2025-06-01', lastIndexedAt: '2025-06-01', status: 'indexed' },
+      { id: 'n2', title: 'Need Index', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+      { id: 'n3', title: 'Need Reindex', updatedAt: '2025-06-01', lastIndexedAt: '2025-05-01', status: 'outdated' },
+    ])
+    mockInvoke
+      .mockResolvedValueOnce({ data: { outcome: 'indexed', chunkCount: 1 }, error: null })
+      .mockResolvedValueOnce({ data: { outcome: 'indexed', chunkCount: 1 }, error: null })
+
+    render(<AIIndexPanel />)
+
+    fireEvent.press(screen.getByLabelText('Index loaded notes'))
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledTimes(2)
+    })
+
+    expect(mockInvoke).toHaveBeenNthCalledWith(1, 'rag-index', {
+      body: { noteId: 'n2', action: 'index' },
+    })
+    expect(mockInvoke).toHaveBeenNthCalledWith(2, 'rag-index', {
+      body: { noteId: 'n3', action: 'reindex' },
+    })
+  })
+
+  it('shows an active loading state on the bulk action while indexing runs', async () => {
+    let resolveInvoke: ((value: { data: { outcome: string; chunkCount: number }; error: null }) => void) | null = null
+    setupMocks({}, [
+      { id: 'n2', title: 'Need Index', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+    ])
+    mockInvoke.mockImplementation(() => new Promise((resolve) => {
+      resolveInvoke = resolve
+    }))
+
+    render(<AIIndexPanel />)
+
+    fireEvent.press(screen.getByLabelText('Index loaded notes'))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Indexing loaded notes')).toBeTruthy()
+      expect(screen.getByText('0/1')).toBeTruthy()
+    })
+
+    await act(async () => {
+      resolveInvoke?.({ data: { outcome: 'indexed', chunkCount: 1 }, error: null })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Index loaded notes')).toBeTruthy()
+    })
+  })
+
+  it('updates cached query variants with their own filter after a card mutation', () => {
+    mockGetQueriesData.mockReturnValue([
+      [
+        ['ai-index-notes', 'test-user-id', 'all', ''],
+        {
+          pages: [{
+            notes: [
+              { id: 'n1', title: 'Note One', updatedAt: '2025-06-01', lastIndexedAt: '2025-06-01', status: 'indexed' },
+            ],
+            totalCount: 1,
+            hasMore: false,
+          }],
+        },
+      ],
+      [
+        ['ai-index-notes', 'test-user-id', 'indexed', ''],
+        {
+          pages: [{
+            notes: [
+              { id: 'n1', title: 'Note One', updatedAt: '2025-06-01', lastIndexedAt: '2025-06-01', status: 'indexed' },
+            ],
+            totalCount: 1,
+            hasMore: false,
+          }],
+        },
+      ],
+    ])
+
+    render(<AIIndexPanel />)
+
+    const cardProps = mockNoteCard.mock.calls.at(-1)?.[0] as {
+      onMutated: (result: { noteId: string; previousStatus: string; nextStatus: string }) => void
+    }
+
+    act(() => {
+      cardProps.onMutated({
+        noteId: 'n1',
+        previousStatus: 'indexed',
+        nextStatus: 'not_indexed',
+      })
+    })
+
+    expect(mockSetQueryData).toHaveBeenCalledTimes(2)
+    expect(mockSetQueryData).toHaveBeenNthCalledWith(1, ['ai-index-notes', 'test-user-id', 'all', ''], {
+      pages: [{
+        notes: [
+          expect.objectContaining({ id: 'n1', status: 'not_indexed' }),
+        ],
+        totalCount: 1,
+        hasMore: false,
+      }],
+    })
+    expect(mockSetQueryData).toHaveBeenNthCalledWith(2, ['ai-index-notes', 'test-user-id', 'indexed', ''], {
+      pages: [{
+        notes: [],
+        totalCount: 0,
+        hasMore: false,
+      }],
+    })
+  })
+
+  it('reports skipped and failed outcomes in the bulk summary toast', async () => {
+    setupMocks({}, [
+      { id: 'n1', title: 'OK note', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+      { id: 'n2', title: 'Short note', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+      { id: 'n3', title: 'Broken note', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+    ])
+    mockInvoke
+      .mockResolvedValueOnce({ data: { outcome: 'indexed', chunkCount: 1 }, error: null })
+      .mockResolvedValueOnce({ data: { outcome: 'skipped', reason: 'too_short' }, error: null })
+      .mockResolvedValueOnce({ data: null, error: new Error('edge fn error') })
+
+    render(<AIIndexPanel />)
+
+    fireEvent.press(screen.getByLabelText('Index loaded notes'))
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledTimes(3)
+    })
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'info', text1: '1 indexed • 1 skipped • 1 failed' })
+      )
+    })
+  })
+
+  it('shows success toast when all notes are indexed without errors', async () => {
+    setupMocks({}, [
+      { id: 'n1', title: 'Need Index', updatedAt: '2025-06-01', lastIndexedAt: null, status: 'not_indexed' },
+    ])
+    mockInvoke.mockResolvedValue({ data: { outcome: 'indexed', chunkCount: 1 }, error: null })
+
+    render(<AIIndexPanel />)
+
+    fireEvent.press(screen.getByLabelText('Index loaded notes'))
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'success', text1: '1 indexed' })
+      )
+    })
+  })
+})

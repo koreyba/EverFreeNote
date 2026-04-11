@@ -25,17 +25,16 @@ export default function CallbackScreen() {
   const { client } = useSupabase()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
-  const params = useLocalSearchParams()
+  const params = useLocalSearchParams<{ code?: string; access_token?: string; refresh_token?: string }>()
+  const code = params.code
+  const accessToken = params.access_token
+  const refreshToken = params.refresh_token
 
   const handleCallback = useCallback(async () => {
     try {
       if (__DEV__) {
-        console.warn('[Callback] Received params:', JSON.stringify(params))
+        console.warn('[Callback] Received params:', JSON.stringify({ code, access_token: accessToken, refresh_token: refreshToken }))
       }
-
-      const code = params.code as string | undefined
-      const accessToken = params.access_token as string | undefined
-      const refreshToken = params.refresh_token as string | undefined
 
       // Validate and use auth code flow (preferred)
       if (code) {
@@ -70,7 +69,7 @@ export default function CallbackScreen() {
       }
       router.replace('/(auth)/login')
     }
-  }, [client.auth, params.access_token, params.code, params.refresh_token, router])
+  }, [accessToken, client.auth, code, refreshToken, router])
 
   useEffect(() => {
     void handleCallback()

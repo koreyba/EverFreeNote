@@ -376,7 +376,7 @@ export default function SearchScreen() {
     enabled: Boolean(user?.id),
   })
 
-  const geminiConfigured = apiKeysStatus?.gemini?.configured ?? null
+  const geminiConfigured = apiKeysStatus?.gemini.configured ?? null
   const hasGeminiApiKey = geminiConfigured === true
   const precisionSaveRequestRef = useRef(0)
   const confirmedRagSearchSettingsRef = useRef(resolveRagSearchSettings())
@@ -441,7 +441,7 @@ export default function SearchScreen() {
   const { isActive, selectedIds, activate, toggle, selectAll, clear, deactivate } = useBulkSelection()
   const { bulkDelete, isPending: isBulkDeleting } = useBulkDeleteNotes()
 
-  const regularResults = data?.pages.flatMap((page) => page.results) ?? []
+  const regularResults = useMemo(() => data?.pages.flatMap((page) => page.results) ?? [], [data?.pages])
   const selectionCapable = !aiModeEnabled || viewMode === 'note'
   const selectionLockActive = isActive
   const queryTrimmed = query.trim()

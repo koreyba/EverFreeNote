@@ -10,6 +10,10 @@ import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
 import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical } from 'lucide-react-native'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
+import {
+  reconcileExternalNoteSnapshot,
+  resolveNoteAutosaveSessionChange,
+} from '@core/utils/noteAutosaveSession'
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
 import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
 
@@ -18,6 +22,43 @@ const HEADER_BUTTON_PADDING = 8
 
 type NoteEditorHeaderStyles = ReturnType<typeof createStyles>
 type ThemeColors = ReturnType<typeof useTheme>['colors']
+type DraftSnapshot = {
+  title: string
+  description: string
+  tags: string[]
+}
+
+type NoteDraftSource = {
+  title?: string | null
+  description?: string | null
+  tags?: string[] | null
+}
+
+const areStringArraysEqual = (a: string[], b: string[]) => {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
+
+const areDraftSnapshotsEqual = (a: DraftSnapshot, b: DraftSnapshot) => (
+  a.title === b.title &&
+  a.description === b.description &&
+  areStringArraysEqual(a.tags, b.tags)
+)
+
+const DRAFT_FIELDS = ['title', 'description', 'tags'] as const
+const DRAFT_COMPARATORS = {
+  tags: areStringArraysEqual,
+}
+
+const getIncomingDraftSnapshot = (nextNote: NoteDraftSource): DraftSnapshot => ({
+  title: nextNote.title ?? '',
+  description: nextNote.description ?? '',
+  tags: nextNote.tags ?? [],
+})
 
 type HeaderLeftActionsProps = Readonly<{
   styles: NoteEditorHeaderStyles
@@ -156,13 +197,18 @@ export default function NoteEditorScreen() {
     focusRequestId?: string
   }>()
   const { data: noteState, isLoading, error } = useNote(id)
-  const { mutate: updateNote } = useUpdateNote()
+  const { mutateAsync: updateNote } = useUpdateNote()
   const { mutate: deleteNote, isPending: isDeleting } = useDeleteNote()
   const router = useRouter()
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const insets = useSafeAreaInsets()
   const note = noteState?.note ?? null
+
+  const idRef = useRef(id)
+  useEffect(() => {
+    idRef.current = id
+  }, [id])
 
   const editorRef = useRef<EditorWebViewHandle>(null)
   const deletedMessageShownRef = useRef(false)
@@ -182,28 +228,19 @@ export default function NoteEditorScreen() {
   const [isEditorReady, setIsEditorReady] = useState(false)
   const lastHydratedNoteIdRef = useRef<string | null>(null)
   const lastAppliedChunkFocusRequestIdRef = useRef<string | null>(null)
-  const latestDraftRef = useRef<{ title: string; description: string; tags: string[] }>({
+  const latestDraftRef = useRef<DraftSnapshot>({
     title: '',
     description: '',
     tags: [],
   })
 
-  const lastSavedRef = useRef<{ title: string; description: string; tags: string[] }>({
+  const lastSavedRef = useRef<DraftSnapshot>({
     title: '',
     description: '',
     tags: [],
   })
 
-  const areStringArraysEqual = (a: string[], b: string[]) => {
-    if (a === b) return true
-    if (a.length !== b.length) return false
-    for (let i = 0; i < a.length; i += 1) {
-      if (a[i] !== b[i]) return false
-    }
-    return true
-  }
-
-  const buildPatch = useCallback((next: { title: string; description: string; tags: string[] }) => {
+  const buildPatch = useCallback((next: DraftSnapshot) => {
     const patch: { title?: string; description?: string; tags?: string[] } = {}
     if (next.title !== lastSavedRef.current.title) patch.title = next.title
     if (next.description !== lastSavedRef.current.description) patch.description = next.description
@@ -211,25 +248,67 @@ export default function NoteEditorScreen() {
     return patch
   }, [])
 
-  const saverRef = useRef<ReturnType<typeof createDebouncedLatest<{ title: string; description: string; tags: string[] }>> | null>(null)
+  const saverRef = useRef<ReturnType<typeof createDebouncedLatest<DraftSnapshot>> | null>(null)
   saverRef.current ??= createDebouncedLatest({
     delayMs: 1000,
     isEqual: (a, b) => a.title === b.title && a.description === b.description && areStringArraysEqual(a.tags, b.tags),
     onFlush: (next) => {
       const patch = buildPatch(next)
       if (Object.keys(patch).length === 0) return
-      updateNote({ id, updates: patch })
-      lastSavedRef.current = next
+      return updateNote({ id: idRef.current, updates: patch })
     },
   })
 
-  const flushPendingUpdates = useCallback(() => saverRef.current?.flush(), [])
+  const flushPendingUpdates = useCallback(async () => {
+    const saver = saverRef.current
+    if (!saver) return
+    const debouncerBaseline = saver.getBaseline()
+
+    if (
+      saver.getPending() === null &&
+      !areDraftSnapshotsEqual(latestDraftRef.current, lastSavedRef.current) &&
+      (!debouncerBaseline || !areDraftSnapshotsEqual(latestDraftRef.current, debouncerBaseline))
+    ) {
+      saver.schedule({ ...latestDraftRef.current })
+    }
+
+    await saver.flush()
+  }, [])
 
   useEffect(() => {
     return () => {
       void flushPendingUpdates()
     }
   }, [flushPendingUpdates])
+
+  const applyReplacedDraft = useCallback((nextDraft: DraftSnapshot, nextBaseline: DraftSnapshot) => {
+    setTitle(nextDraft.title)
+    setTags(nextDraft.tags)
+    editorRef.current?.setContent?.(nextDraft.description)
+    saverRef.current?.reset(nextBaseline)
+  }, [])
+
+  const applyAcceptedExternalFields = useCallback((previousDraft: DraftSnapshot, nextDraft: DraftSnapshot) => {
+    if (previousDraft.title !== nextDraft.title) {
+      setTitle(nextDraft.title)
+    }
+
+    if (previousDraft.description !== nextDraft.description) {
+      editorRef.current?.setContent?.(nextDraft.description)
+    }
+
+    if (!areStringArraysEqual(previousDraft.tags, nextDraft.tags)) {
+      setTags(nextDraft.tags)
+    }
+  }, [])
+
+  const rebaseDraftSaver = useCallback((baseline: DraftSnapshot, nextDraft: DraftSnapshot) => {
+    const currentPending = saverRef.current?.getPending() ?? null
+    saverRef.current?.rebase(
+      baseline,
+      currentPending ? { ...nextDraft } : null
+    )
+  }, [])
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -247,24 +326,44 @@ export default function NoteEditorScreen() {
   }, [])
 
   useEffect(() => {
-    if (note) {
-      const hasNoteSwitched = lastHydratedNoteIdRef.current !== note.id
-      if (hasNoteSwitched) {
-        setHistoryState({ canUndo: false, canRedo: false })
-        setIsEditorReady(false)
-        lastHydratedNoteIdRef.current = note.id
-      }
-      setTitle(note.title || '')
-      setTags(note.tags ?? [])
-      lastSavedRef.current = {
-        title: note.title ?? '',
-        description: note.description ?? '',
-        tags: note.tags ?? [],
-      }
-      latestDraftRef.current = lastSavedRef.current
-      saverRef.current?.reset(lastSavedRef.current)
+    if (!note) return
+
+    const previousDraft = latestDraftRef.current
+    const incomingSnapshot = getIncomingDraftSnapshot(note)
+    const sessionChange = resolveNoteAutosaveSessionChange({
+      previousNoteId: lastHydratedNoteIdRef.current,
+      nextNoteId: note.id,
+      // Mobile note routes always target an existing note ID, so there is no local
+      // "create then assign server ID" session transition on this screen.
+      pendingCreateAssignedNoteId: null,
+    })
+
+    if (sessionChange === 'switched') {
+      setHistoryState({ canUndo: false, canRedo: false })
     }
-  }, [note])
+
+    const reconcileResult = reconcileExternalNoteSnapshot({
+      currentNoteId: lastHydratedNoteIdRef.current,
+      incomingNoteId: note.id,
+      currentDraft: latestDraftRef.current,
+      currentBaseline: lastSavedRef.current,
+      incomingSnapshot,
+      fields: DRAFT_FIELDS,
+      comparators: DRAFT_COMPARATORS,
+    })
+
+    lastHydratedNoteIdRef.current = note.id
+    latestDraftRef.current = reconcileResult.draft
+    lastSavedRef.current = reconcileResult.baseline
+
+    if (reconcileResult.mode === 'replace-draft') {
+      applyReplacedDraft(reconcileResult.draft, reconcileResult.baseline)
+      return
+    }
+
+    applyAcceptedExternalFields(previousDraft, reconcileResult.draft)
+    rebaseDraftSaver(reconcileResult.baseline, reconcileResult.draft)
+  }, [applyAcceptedExternalFields, applyReplacedDraft, note, rebaseDraftSaver])
 
   useEffect(() => {
     if (noteState?.status !== 'deleted') return

@@ -141,6 +141,7 @@ const mockToolbarCallbacks: {
   onMenuVisibilityChange?: (visible: boolean) => void
 } = {}
 const mockScrollToChunk = jest.fn()
+const mockSetEditorContent = jest.fn()
 const defaultNote = {
   id: 'test-note-id',
   title: 'Test Note',
@@ -164,6 +165,7 @@ jest.mock('@ui/mobile/components/EditorWebView', () => {
 
     React.useImperativeHandle(ref, () => ({
       runCommand: jest.fn(),
+      setContent: mockSetEditorContent,
       scrollToChunk: mockScrollToChunk,
     }))
 
@@ -245,6 +247,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     mockEditorCallbacks.onReady = undefined
     mockToolbarCallbacks.onMenuVisibilityChange = undefined
     mockScrollToChunk.mockReset()
+    mockSetEditorContent.mockReset()
     mockSetParams.mockReset()
     mockReplace.mockReset()
     alertSpy.mockClear()
@@ -491,7 +494,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       const buttons = alertSpy.mock.calls[0]?.[2]
       const okButton = Array.isArray(buttons)
-        ? buttons.find((button) => button?.text === 'OK')
+        ? buttons.find((button) => (button as { text?: string }).text === 'OK')
         : undefined
 
       act(() => {
@@ -565,6 +568,163 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       await waitFor(() => {
         expect(mockNoteService.prototype.deleteNote).toHaveBeenCalledWith('test-note-id')
       })
+    })
+
+    it('does not let a same-note refresh restore an older title over a newer draft', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      const titleInput = screen.getByDisplayValue('Test Note')
+      fireEvent.changeText(titleInput, 'First title')
+      fireEvent.changeText(titleInput, 'Second title')
+
+      await act(async () => {
+        queryClient.setQueryData(['note', 'test-note-id'], {
+          note: {
+            ...defaultNote,
+            title: 'First title',
+          },
+          status: 'found',
+        })
+      })
+
+      expect(screen.getByDisplayValue('Second title')).toBeTruthy()
+
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      await waitFor(() => {
+        expect(mockNoteService.prototype.updateNote).toHaveBeenCalledWith(
+          'test-note-id',
+          expect.objectContaining({ title: 'Second title' })
+        )
+      })
+    })
+
+    it('adopts clean remote updates without emitting a compensating save on blur', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      mockNoteService.prototype.updateNote.mockClear()
+
+      await act(async () => {
+        queryClient.setQueryData(['note', 'test-note-id'], {
+          note: {
+            ...defaultNote,
+            title: 'Remote title',
+            description: '<p>Remote body</p>',
+            tags: ['remote-tag'],
+          },
+          status: 'found',
+        })
+      })
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Remote title')).toBeTruthy()
+      })
+      await waitFor(() => {
+        expect(screen.getByText('remote-tag')).toBeTruthy()
+      })
+      await waitFor(() => {
+        expect(mockSetEditorContent).toHaveBeenCalledWith('<p>Remote body</p>')
+      })
+
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(mockNoteService.prototype.updateNote).not.toHaveBeenCalled()
+    })
+
+    it('preserves dirty local fields, adopts clean remote fields, and saves only the remaining dirty patch', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      const titleInput = screen.getByDisplayValue('Test Note')
+      fireEvent.changeText(titleInput, 'Local title')
+
+      await act(async () => {
+        queryClient.setQueryData(['note', 'test-note-id'], {
+          note: {
+            ...defaultNote,
+            title: 'Remote title',
+            description: '<p>Remote body</p>',
+            tags: ['remote-tag'],
+          },
+          status: 'found',
+        })
+      })
+
+      expect(screen.getByDisplayValue('Local title')).toBeTruthy()
+      await waitFor(() => {
+        expect(screen.getByText('remote-tag')).toBeTruthy()
+      })
+      await waitFor(() => {
+        expect(mockSetEditorContent).toHaveBeenCalledWith('<p>Remote body</p>')
+      })
+
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      await waitFor(() => {
+        expect(mockNoteService.prototype.updateNote).toHaveBeenCalledWith(
+          'test-note-id',
+          { title: 'Local title' }
+        )
+      })
+    })
+
+    it('treats a matching remote refresh as an acknowledgement and skips duplicate save on blur', async () => {
+      jest.useFakeTimers()
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      const titleInput = screen.getByDisplayValue('Test Note')
+      fireEvent.changeText(titleInput, 'Local title')
+
+      await act(async () => {
+        queryClient.setQueryData(['note', 'test-note-id'], {
+          note: {
+            ...defaultNote,
+            title: 'Local title',
+          },
+          status: 'found',
+        })
+      })
+
+      act(() => {
+        jest.advanceTimersByTime(1)
+      })
+
+      mockNoteService.prototype.updateNote.mockClear()
+
+      act(() => {
+        mockEditorCallbacks.onBlur?.()
+      })
+
+      act(() => {
+        jest.advanceTimersByTime(1000)
+      })
+
+      expect(mockNoteService.prototype.updateNote).not.toHaveBeenCalled()
+
+      jest.useRealTimers()
     })
   })
 
@@ -704,6 +864,65 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       await waitFor(() => {
         expect(mockScrollToChunk).toHaveBeenCalledTimes(1)
         expect(mockScrollToChunk).toHaveBeenCalledWith(14, 5)
+      })
+    })
+
+    it('keeps chunk focus working when switching notes without a second editor ready event', async () => {
+      mockNoteService.prototype.getNoteStatus = jest.fn().mockImplementation(async (noteId: string) => {
+        if (noteId === 'other-note-id') {
+          return {
+            status: 'found',
+            note: {
+              ...defaultNote,
+              id: 'other-note-id',
+              title: 'Other Note',
+            },
+          }
+        }
+
+        return {
+          status: 'found',
+          note: defaultNote,
+        }
+      })
+
+      mockLocalSearchParams = {
+        id: 'test-note-id',
+        focusOffset: '14',
+        focusLength: '5',
+        focusRequestId: 'focus-request-1',
+      }
+
+      const rendered = render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onReady?.()
+      })
+
+      await waitFor(() => {
+        expect(mockScrollToChunk).toHaveBeenCalledWith(14, 5)
+      })
+
+      mockScrollToChunk.mockClear()
+      mockLocalSearchParams = {
+        id: 'other-note-id',
+        focusOffset: '22',
+        focusLength: '4',
+        focusRequestId: 'focus-request-2',
+      }
+
+      rendered.rerender(<NoteEditorScreen />)
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Other Note')).toBeTruthy()
+      })
+
+      await waitFor(() => {
+        expect(mockScrollToChunk).toHaveBeenCalledWith(22, 4)
       })
     })
   })

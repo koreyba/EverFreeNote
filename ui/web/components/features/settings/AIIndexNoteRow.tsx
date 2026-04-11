@@ -6,6 +6,11 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  AI_INDEX_STATUS_LABELS,
+  AI_INDEX_STATUS_DESCRIPTIONS,
+  getAIIndexActionPresentation,
+} from "@core/constants/aiIndex"
 import { parseRagIndexResult } from "@core/rag/indexResult"
 import type { AIIndexMutationResult, AIIndexNoteRow as AIIndexNoteRowData } from "@core/types/aiIndex"
 import { cn } from "@ui/web/lib/utils"
@@ -17,18 +22,6 @@ const STATUS_STYLES: Record<AIIndexNoteRowData["status"], string> = {
   indexed: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   not_indexed: "border-border/70 bg-background/70 text-muted-foreground",
   outdated: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-}
-
-const STATUS_LABELS: Record<AIIndexNoteRowData["status"], string> = {
-  indexed: "Indexed",
-  not_indexed: "Not indexed",
-  outdated: "Outdated",
-}
-
-const STATUS_DESCRIPTIONS: Record<AIIndexNoteRowData["status"], string> = {
-  indexed: "Already available to AI search.",
-  not_indexed: "Not searchable by AI yet.",
-  outdated: "Changed after the last successful index.",
 }
 
 async function extractErrorMessage(err: unknown, fallback: string): Promise<string> {
@@ -69,17 +62,9 @@ export function AIIndexNoteRow({
   const { supabase } = useSupabase()
   const [operation, setOperation] = React.useState<Operation>(null)
 
-  const isIndexed = note.status !== "not_indexed"
+  const indexAction = getAIIndexActionPresentation(note.status)
   const isBusy = operation !== null || isExiting
-  let actionLabel = "Index note"
-  if (note.status === "outdated") {
-    actionLabel = "Update index"
-  } else if (isIndexed) {
-    actionLabel = "Reindex"
-  }
-  const actionVerb = isIndexed ? "reindexed" : "indexed"
-  const statusDescription = STATUS_DESCRIPTIONS[note.status]
-  const showRemoveAction = isIndexed
+  const showRemoveAction = indexAction.action === "reindex"
   let primaryActionClassName = ""
   if (note.status === "outdated") {
     primaryActionClassName = "bg-amber-500 text-amber-950 hover:bg-amber-400"
@@ -93,18 +78,18 @@ export function AIIndexNoteRow({
       const { data, error } = await supabase.functions.invoke("rag-index", {
         body: {
           noteId: note.id,
-          action: isIndexed ? "reindex" : "index",
+          action: indexAction.action,
         },
       })
       if (error) throw error
 
       const result = parseRagIndexResult(data)
       if (result.outcome === "indexed") {
-        toast.success(`Note ${actionVerb}`)
+        toast.success(indexAction.successToast)
         onMutated({
           noteId: note.id,
           previousStatus: note.status,
-          nextStatus: "indexed",
+          nextStatus: indexAction.successStatus,
         })
         return
       }
@@ -123,11 +108,11 @@ export function AIIndexNoteRow({
 
       toast.error(result.message)
     } catch (error) {
-      toast.error(await extractErrorMessage(error, `${actionLabel} failed`))
+      toast.error(await extractErrorMessage(error, `${indexAction.label} failed`))
     } finally {
       setOperation(null)
     }
-  }, [actionLabel, actionVerb, isIndexed, note.id, note.status, onMutated, supabase.functions])
+  }, [indexAction, note.id, note.status, onMutated, supabase.functions])
 
   const handleDelete = React.useCallback(async () => {
     setOperation("deleting")
@@ -203,10 +188,10 @@ export function AIIndexNoteRow({
                     STATUS_STYLES[note.status]
                   )}
                 >
-                  {STATUS_LABELS[note.status]}
+                  {AI_INDEX_STATUS_LABELS[note.status]}
                 </Badge>
                 <p className="min-w-0 flex-1 text-xs text-muted-foreground sm:text-sm">
-                  {statusDescription}
+                  {AI_INDEX_STATUS_DESCRIPTIONS[note.status]}
                 </p>
               </div>
             </div>
@@ -215,7 +200,7 @@ export function AIIndexNoteRow({
 
         <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-[168px] xl:flex-none xl:flex-col">
           <Button
-            variant={note.status === "indexed" ? "outline" : "default"}
+            variant={indexAction.buttonVariant}
             size="sm"
             onClick={handleIndexClick}
             disabled={isBusy}
@@ -223,12 +208,12 @@ export function AIIndexNoteRow({
           >
             {operation === "indexing" ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-            ) : isIndexed ? (
+            ) : indexAction.action === "reindex" ? (
               <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
             ) : (
               <Database className="mr-1.5 h-3.5 w-3.5" />
             )}
-            {actionLabel}
+            {indexAction.label}
           </Button>
 
           {showRemoveAction ? (

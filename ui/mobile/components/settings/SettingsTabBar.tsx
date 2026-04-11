@@ -1,9 +1,9 @@
-import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native'
-import { useMemo } from 'react'
+import { ScrollView, StyleSheet, Text, Pressable, View, type LayoutChangeEvent } from 'react-native'
+import { useCallback, useMemo, useRef } from 'react'
 
 import { useTheme } from '@ui/mobile/providers'
 
-export type SettingsTabKey = 'account' | 'import' | 'export' | 'wordpress' | 'apiKeys'
+export type SettingsTabKey = 'account' | 'import' | 'export' | 'wordpress' | 'apiKeys' | 'aiIndex'
 
 export type SettingsTabDefinition = Readonly<{
   key: SettingsTabKey
@@ -19,10 +19,25 @@ type SettingsTabBarProps = Readonly<{
 export function SettingsTabBar({ tabs, activeTab, onChange }: SettingsTabBarProps) {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
+  const scrollRef = useRef<ScrollView>(null)
+  const layoutsRef = useRef<Partial<Record<string, number>>>({})
+
+  const handleTabLayout = useCallback((key: string, event: LayoutChangeEvent) => {
+    layoutsRef.current[key] = event.nativeEvent.layout.x
+  }, [])
+
+  const handleTabPress = useCallback((key: SettingsTabKey) => {
+    const x = layoutsRef.current[key]
+    if (x != null) {
+      scrollRef.current?.scrollTo({ x: Math.max(0, x - 16), animated: true })
+    }
+    onChange(key)
+  }, [onChange])
 
   return (
     <View style={styles.wrap}>
       <ScrollView
+        ref={scrollRef}
         accessibilityRole="tablist"
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -37,7 +52,8 @@ export function SettingsTabBar({ tabs, activeTab, onChange }: SettingsTabBarProp
               accessibilityRole="tab"
               accessibilityLabel={tab.label}
               accessibilityState={{ selected: isActive }}
-              onPress={() => onChange(tab.key)}
+              onPress={() => handleTabPress(tab.key)}
+              onLayout={(e) => handleTabLayout(tab.key, e)}
               style={({ pressed }) => [
                 styles.tab,
                 isActive && styles.tabActive,

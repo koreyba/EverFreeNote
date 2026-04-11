@@ -165,7 +165,7 @@ describe('Note Deletion Integration Tests', () => {
       let filteredNotes = mockNotes.filter(note => !deletedIds.has(note.id))
       if (options?.tag) {
         const tag = options.tag
-        filteredNotes = filteredNotes.filter(note => note.tags?.includes(tag))
+        filteredNotes = filteredNotes.filter(note => note.tags.includes(tag))
       }
       return Promise.resolve({
         notes: filteredNotes,
@@ -560,7 +560,7 @@ describe('Note Deletion Integration Tests', () => {
           let filteredNotes = mockNotes.filter(note => !deletedIds.has(note.id))
           if (options?.tag) {
             const tag = options.tag
-            filteredNotes = filteredNotes.filter(note => note.tags?.includes(tag))
+            filteredNotes = filteredNotes.filter(note => note.tags.includes(tag))
           }
           return Promise.resolve({
             notes: filteredNotes,

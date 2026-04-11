@@ -1,8 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AccountSettingsPanel } from '@ui/mobile/components/settings/AccountSettingsPanel'
+import { AIIndexPanel } from '@ui/mobile/components/settings/AIIndexPanel'
 import { ApiKeysSettingsPanel } from '@ui/mobile/components/settings/ApiKeysSettingsPanel'
 import { EnexExportPanel } from '@ui/mobile/components/settings/EnexExportPanel'
 import { EnexImportPanel } from '@ui/mobile/components/settings/EnexImportPanel'
@@ -20,9 +21,12 @@ const tabs: SettingsTabDefinition[] = [
   { key: 'export', label: 'Export .enex file' },
   { key: 'wordpress', label: 'WordPress settings' },
   { key: 'apiKeys', label: 'Indexing (RAG)' },
+  { key: 'aiIndex', label: 'AI Index' },
 ]
 
-const initialVisitedTabs: Record<SettingsTabKey, boolean> = {
+type CachedSettingsTabKey = Exclude<SettingsTabKey, 'aiIndex'>
+
+const initialVisitedTabs: Record<CachedSettingsTabKey, boolean> = {
   account: true,
   import: false,
   export: false,
@@ -31,7 +35,7 @@ const initialVisitedTabs: Record<SettingsTabKey, boolean> = {
 }
 
 type PanelConfig = {
-  key: SettingsTabKey
+  key: CachedSettingsTabKey
   isVisited: boolean
   content: ReactNode
 }
@@ -67,12 +71,14 @@ export default function SettingsScreen() {
   const { signOut, deleteAccount } = useAuth()
   const { user } = useSupabase()
   const insets = useSafeAreaInsets()
-  const styles = useMemo(() => createStyles(colors, insets.bottom ?? 0), [colors, insets.bottom])
+  const styles = useMemo(() => createStyles(colors, insets.bottom), [colors, insets.bottom])
   const [activeTab, setActiveTab] = useState<SettingsTabKey>('account')
   const [visitedTabs, setVisitedTabs] = useState(initialVisitedTabs)
+  const isAIIndexTabActive = activeTab === 'aiIndex'
 
   const handleTabChange = (tab: SettingsTabKey) => {
     setActiveTab(tab)
+    if (tab === 'aiIndex') return
     setVisitedTabs((current) => (current[tab] ? current : { ...current, [tab]: true }))
   }
 
@@ -114,42 +120,49 @@ export default function SettingsScreen() {
   ]
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.shell}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>Everything for your account, imports, exports, and integrations.</Text>
-        </View>
-
+    <View style={styles.outerContainer}>
+      <View style={[styles.shell, isAIIndexTabActive && styles.shellFlex]}>
         <SettingsTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
-        <View style={styles.panelWrap}>
-          {panelConfigs.map((panel) =>
-            panel.isVisited ? (
-              <SettingsPanel
-                key={panel.key}
-                isActive={activeTab === panel.key}
-                content={panel.content}
-                styles={styles}
-              />
-            ) : null
-          )}
+        <View
+          {...getPanelAccessibilityProps(isAIIndexTabActive)}
+          style={[styles.aiIndexViewport, !isAIIndexTabActive && styles.panelHidden]}
+        >
+          <AIIndexPanel />
         </View>
+
+        <ScrollView
+          {...getPanelAccessibilityProps(!isAIIndexTabActive)}
+          style={[styles.panelScroll, isAIIndexTabActive && styles.panelHidden]}
+          contentContainerStyle={styles.panelScrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.panelWrap}>
+            {panelConfigs.map((panel) =>
+              panel.isVisited ? (
+                <SettingsPanel
+                  key={panel.key}
+                  isActive={activeTab === panel.key}
+                  content={panel.content}
+                  styles={styles}
+                />
+              ) : null
+            )}
+          </View>
+        </ScrollView>
       </View>
-    </ScrollView>
+    </View>
   )
 }
 
 const createStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset: number) =>
   StyleSheet.create({
-    container: {
+    outerContainer: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    contentContainer: {
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: bottomInset + 24,
+      paddingBottom: bottomInset,
     },
     shell: {
       borderRadius: 28,
@@ -159,22 +172,19 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset
       padding: 14,
       gap: 16,
     },
-    header: {
-      gap: 6,
-      paddingHorizontal: 2,
+    shellFlex: {
+      flex: 1,
     },
-    title: {
-      color: colors.foreground,
-      fontFamily: 'Inter_700Bold',
-      fontSize: 34,
-      lineHeight: 40,
+    aiIndexViewport: {
+      flex: 1,
     },
-    subtitle: {
-      color: colors.mutedForeground,
-      fontFamily: 'Inter_400Regular',
-      fontSize: 14,
-      lineHeight: 20,
-      maxWidth: 320,
+    panelScroll: {
+      marginHorizontal: -14,
+      marginBottom: -14,
+      paddingHorizontal: 14,
+    },
+    panelScrollContent: {
+      paddingBottom: 14,
     },
     panelWrap: {
       gap: 14,

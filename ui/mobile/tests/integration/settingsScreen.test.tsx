@@ -81,6 +81,18 @@ jest.mock('@ui/mobile/providers/SupabaseProvider', () => ({
   SupabaseProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
+jest.mock('@ui/mobile/components/settings/AIIndexPanel', () => ({
+  AIIndexPanel: () => {
+    const { Text, View } = require('react-native')
+    return (
+      <View>
+        <Text>AI Index panel marker</Text>
+        <Text>All notes</Text>
+      </View>
+    )
+  },
+}))
+
 import SettingsScreen from '@ui/mobile/app/(tabs)/settings'
 
 const renderScreen = () =>
@@ -182,7 +194,7 @@ describe('SettingsScreen', () => {
     renderScreen()
 
     await waitFor(() => {
-      expect(screen.getByText('Settings')).toBeTruthy()
+      expect(screen.getAllByText('My Account').length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('test@example.com')).toBeTruthy()
       expect(screen.getByText('Current: light (light)')).toBeTruthy()
     })
@@ -226,6 +238,23 @@ describe('SettingsScreen', () => {
       expect(mockApiKeysUpsert).toHaveBeenCalledWith('AIza-test')
       expect(screen.getByText('Gemini API key saved successfully.')).toBeTruthy()
     })
+  })
+
+  it('opens the AI Index tab inside the dedicated settings viewport', async () => {
+    renderScreen()
+
+    // Both viewports are always mounted; AI Index panel is hidden via display:none.
+    // RNTL v13 excludes display:none elements by default — use includeHiddenElements.
+    expect(screen.getByText('AI Index panel marker', { includeHiddenElements: true })).toBeTruthy()
+
+    fireEvent.press(screen.getByRole('tab', { name: 'AI Index' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('All notes')).toBeTruthy()
+    })
+
+    // Settings panels remain mounted but hidden (display:none)
+    expect(screen.getByText('test@example.com', { includeHiddenElements: true })).toBeTruthy()
   })
 
   it('handles import, export, and WordPress save flows', async () => {

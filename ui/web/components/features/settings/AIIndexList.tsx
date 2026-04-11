@@ -189,7 +189,7 @@ export const AIIndexList = memo(function AIIndexList({
   }
 
   return (
-    <div className="h-full min-h-0">
+    <div className="h-full min-h-0 [&>div>div]:[scrollbar-gutter:stable]">
       <Sizer height={height} width={width}>
         {({ height: listHeight, width: listWidth }) => (
           <VirtualList

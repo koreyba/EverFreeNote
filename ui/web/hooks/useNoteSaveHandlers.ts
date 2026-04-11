@@ -138,17 +138,10 @@ export function useNoteSaveHandlers({
     // For new notes, skip if all fields are empty
     if (isNewNote && !nextTitle.trim() && !nextDescription.trim() && !nextTags.trim()) return
 
-    // Diff check for existing notes: skip if unchanged
-    if (!isNewNote) {
-      const sameTitle = current?.title === nextTitle
-      const sameDesc = (current?.description ?? '') === nextDescription
-      const sameTags = (current?.tags ?? []).join(', ') === nextTags
-      if (sameTitle && sameDesc && sameTags) return
-    }
-
     setAutoSaving(true)
     const guard = setTimeout(() => setAutoSaving(false), 5000)
     try {
+      let assignedNoteId: string | undefined
       const clientUpdatedAt = new Date().toISOString()
       const parsedTags = parseTagString(nextTags)
 
@@ -172,9 +165,11 @@ export function useNoteSaveHandlers({
             updated_at: clientUpdatedAt,
             user_id: user.id,
           } as NoteViewModel)
+          assignedNoteId = tempId
         } else {
           const created = await createNoteMutation.mutateAsync(noteData)
           syncSelectedNote(created as NoteViewModel)
+          assignedNoteId = created.id
         }
         setLastSavedAt(clientUpdatedAt)
       } else {
@@ -207,6 +202,10 @@ export function useNoteSaveHandlers({
       const queue = await offlineQueueRef.current.getQueue()
       setPendingCount(queue.filter((q) => q.status === 'pending').length)
       setFailedCount(queue.filter((q) => q.status === 'failed').length)
+
+      if (assignedNoteId) {
+        return { noteId: assignedNoteId }
+      }
     } finally {
       clearTimeout(guard)
       setAutoSaving(false)

@@ -12,6 +12,8 @@ description: Task breakdown for the Settings AI index management page
 - [x] Milestone 2: `Settings -> AI Index` tab renders filtered, virtualized note rows
 - [x] Milestone 3: Row actions refresh list state correctly and tests cover the new flow
 - [x] Milestone 4: AI Index supports ordinary note search semantics below the status tabs
+- [x] Milestone 5: Mobile AI Index page with filters, search, actions, and tests
+- [x] Milestone 6: AI Index supports a summary-level `Index loaded notes` action on web and mobile that respects the current loaded search/filter scope
 
 ## Task Breakdown
 
@@ -49,6 +51,26 @@ description: Task breakdown for the Settings AI index management page
   - Rows that leave the active filter because of a successful mutation animate out instead of disappearing abruptly.
   - The `rag-index` source of truth now writes a fresh `indexed_at` timestamp during upserts so `Outdated` notes truly become `Indexed`.
 
+### Phase 4: Mobile platform
+
+- [x] Task 4.1: Port `useAIIndexNotes` hook to mobile (`ui/mobile/hooks/useAIIndexNotes.ts`)
+- [x] Task 4.2: Create `AIIndexNoteCard` component (`ui/mobile/components/settings/AIIndexNoteCard.tsx`)
+- [x] Task 4.3: Create `AIIndexPanel` component (`ui/mobile/components/settings/AIIndexPanel.tsx`)
+- [x] Task 4.4: Add `'aiIndex'` to `SettingsTabKey` union in `SettingsTabBar.tsx`
+- [x] Task 4.5: Add AI Index tab, initial state, and panel config to `settings.tsx`
+- [x] Task 4.6: Write unit tests for hook, card, and panel (21 tests)
+- [x] Task 4.7: Pass type-check and lint with zero errors
+
+### Phase 5: Loaded-scope bulk indexing refinement
+
+- [x] Task 5.1: Update feature docs to define the loaded-only bulk indexing semantics
+- [x] Task 5.2: Add a summary-level bulk button to the web AI Index tab in the header area
+- [x] Task 5.3: Reuse existing row mutation semantics so bulk successes update/animate rows correctly on web
+- [x] Task 5.4: Add a matching summary-level bulk button to the mobile AI Index panel
+- [x] Task 5.5: Ensure the bulk action uses only the currently loaded notes after active filter + committed search query
+- [x] Task 5.6: Add web and mobile unit tests for loaded-only bulk indexing behavior
+- [x] Task 5.7: Re-run targeted validation and record outcomes in implementation/testing docs
+
 ## Dependencies
 
 - Existing `rag-index` Edge Function remains the mutation layer.
@@ -73,6 +95,8 @@ Total expected effort: 1 focused implementation cycle with follow-up testing and
   - Mitigation: mirror `NoteList` sizing and scrolling patterns in a dedicated component.
 - Query refresh race after row mutations
   - Mitigation: centralize invalidation in the AI index hook/query key.
+- User confusion about bulk scope when pagination and search are active
+  - Mitigation: label the action as `Index loaded notes`, place it beside the existing loaded-count summary, and keep the implementation scoped to the current loaded list only.
 
 ## Resources Needed
 
