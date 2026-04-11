@@ -53,7 +53,7 @@ graph TD
     RagSearch --> Types
 ```
 
-- Web Settings exposes persisted retrieval configuration, including editable and read-only values.
+- Web and mobile Settings expose persisted retrieval configuration, including editable values and read-only system metadata.
 - Web search consumes persisted defaults plus a search-time precision slider.
 - Shared core owns retrieval settings schema, defaults, validation, and service contracts.
 - `rag-search` keeps Gemini query embedding and vector retrieval responsibilities.
@@ -67,6 +67,7 @@ graph TD
 interface RagSearchEditableSettings {
   top_k: number
   similarity_threshold: number
+  embedding_model: "models/gemini-embedding-001" | "models/gemini-embedding-2-preview"
 }
 
 interface RagSearchReadonlySettings {
@@ -87,6 +88,7 @@ user_rag_search_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
   top_k int not null,
   similarity_threshold numeric not null,
+  embedding_model text not null default 'models/gemini-embedding-001',
   updated_at timestamptz not null default now()
 )
 ```
@@ -117,6 +119,7 @@ Example response fragment:
   ragSearch: {
     top_k: 15,
     similarity_threshold: 0.55,
+    embedding_model: "models/gemini-embedding-001",
     output_dimensionality: 1536,
     task_type_document: "RETRIEVAL_DOCUMENT",
     task_type_query: "RETRIEVAL_QUERY",
@@ -132,11 +135,13 @@ Example response fragment:
 - Validation rules:
   - `top_k` integer, `1..100`
   - `similarity_threshold` number, `0..1`
+  - `embedding_model` must be one of the supported Gemini presets
 - Existing Gemini and indexing update flows remain backward compatible.
 
 ### `rag-search`
 - Continue accepting numeric retrieval parameters directly.
 - Request contract remains numeric, but the caller now derives values from persisted user settings plus committed slider state.
+- Query embedding model is now resolved server-side from `user_rag_search_settings`, independently from indexing settings.
 
 Request:
 ```typescript
@@ -179,6 +184,7 @@ This removes the old UI heuristic that guessed `hasMore` from `returnedCount >= 
 - New or extended settings panel to expose retrieval settings.
 - Editable:
   - `topK`
+  - `embedding_model` via a preset dropdown
 - Read-only:
   - `task_type_document`
   - `task_type_query`
@@ -224,9 +230,9 @@ This removes the old UI heuristic that guessed `hasMore` from `returnedCount >= 
 - Reason: task types are system constraints, not user preferences.
 - Benefit: transparency without introducing unsupported combinations.
 
-### 5. Keep retrieval settings logic in core, web UI in web
-- Reason: this feature is web-only now, but mobile will need the same schema and defaults later.
-- Benefit: avoids re-modeling settings for mobile.
+### 5. Keep retrieval settings logic in core, shared across web and mobile UI
+- Reason: retrieval settings are now edited on both clients and must stay identical.
+- Benefit: avoids re-modeling settings or introducing client-specific preset drift.
 
 ### 6. Use backend `+1` overfetch instead of client-side guesswork
 - Reason: `Load more` should hide predictably when no more backend results exist.

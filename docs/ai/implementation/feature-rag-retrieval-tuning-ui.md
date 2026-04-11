@@ -21,7 +21,7 @@ description: Implementation guide for persisted retrieval settings and the web p
 - Shared retrieval settings schema/defaults/validation belong in `core`
 - Web settings UI and search slider belong in `ui/web`
 - Edge Function persistence and retrieval behavior belong in `supabase/functions`
-- Existing indexing-related modules stay unchanged unless they need read-only display reuse
+- Indexing-related modules now share the same embedding-model preset catalogue so indexing and search stay vector-compatible
 
 ## Implementation Notes
 **Key technical details to remember:**
@@ -35,6 +35,7 @@ description: Implementation guide for persisted retrieval settings and the web p
   - backend-provided `hasMore`
 - Feature 4: Keep the settings screen resilient and operable when local settings services are temporarily unavailable
 - Feature 5: Support explicit Gemini API key removal without overloading the empty-input save flow
+- Feature 6: Persist an independent embedding-model preset for retrieval so AI search can choose a different Gemini embedding model than indexing
 
 ### Patterns & best practices
 - Preserve current neutral defaults to minimize rollout surprise
@@ -52,6 +53,7 @@ description: Implementation guide for persisted retrieval settings and the web p
 - `api-keys-status` and `api-keys-upsert` remain the primary settings transport layer unless implementation reveals a cleaner existing endpoint pattern
 - API key management, indexing settings, and retrieval settings now intentionally share the same settings screen vocabulary and action layout
 - `api-keys-upsert` now handles both key replacement and explicit key removal while continuing to preserve indexing/retrieval settings payloads
+- `rag-search` now reads the active retrieval embedding preset from `user_rag_search_settings` instead of hardcoding `models/gemini-embedding-001`
 
 ## Error Handling
 **How do we handle failures?**
@@ -59,6 +61,7 @@ description: Implementation guide for persisted retrieval settings and the web p
 - Fall back to defaults if persisted retrieval settings are absent
 - Show UI save/load errors similarly to existing settings panels
 - Preserve existing `rag-search` error handling and avoid changing Gemini behavior
+- Keep retrieval defaults on `models/gemini-embedding-001` so existing users do not change behavior until they opt into Gemini Embedding 2
 - Translate local service/network boot failures into a friendly settings-service message instead of surfacing raw resolution/runtime errors
 - Keep read-only indexing/retrieval metadata visible by rendering default system values when live settings fail to load
 
