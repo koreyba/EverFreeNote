@@ -142,6 +142,14 @@ const parseEmbeddingValues = (data: unknown): number[] => {
   return values
 }
 
+const parseEmbedQueryErrorBody = async (response: Response) => {
+  const rawBody = await response.text()
+  return rawBody ? `<redacted:${rawBody.length} chars>` : "<empty>"
+}
+
+const getRetryDirective = (attempt: number, shouldRetry: boolean) =>
+  shouldRetry && attempt < GEMINI_MAX_RETRIES ? "retry" : "fail"
+
 async function embedQuery(query: string, apiKey: string, embeddingModel: string): Promise<number[]> {
   const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
   // Gemini's stable embedding model accepts READONLY_RAG_SETTINGS.task_type_query
@@ -166,12 +174,11 @@ async function embedQuery(query: string, apiKey: string, embeddingModel: string)
       )
 
       if (!response.ok) {
-        const rawBody = await response.text()
-        const bodySummary = rawBody ? `<redacted:${rawBody.length} chars>` : "<empty>"
-        if (shouldRetryHttpStatus(response.status) && attempt < GEMINI_MAX_RETRIES) {
+        if (getRetryDirective(attempt, shouldRetryHttpStatus(response.status)) === "retry") {
           await waitForRetryBackoff(sleep, attempt)
           continue
         }
+        const bodySummary = await parseEmbedQueryErrorBody(response)
         throw new Error(`Gemini embedContent failed: status=${response.status} response=${bodySummary}`)
       }
 

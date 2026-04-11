@@ -128,6 +128,14 @@ const parseBatchEmbedResponse = (data: unknown, expectedCount: number, requestId
   return embeddings.map((embedding: { values: number[] }) => embedding.values)
 }
 
+const parseBatchEmbedErrorBody = async (response: Response) => {
+  const rawBody = await response.text()
+  return rawBody ? `<redacted:${rawBody.length} chars>` : "<empty>"
+}
+
+const getRetryDirective = (attempt: number, shouldRetry: boolean) =>
+  shouldRetry && attempt < GEMINI_MAX_RETRIES ? "retry" : "fail"
+
 async function embedTexts(
   texts: Array<{ text: string; title: string | null }>,
   apiKey: string,
@@ -152,12 +160,11 @@ async function embedTexts(
 
       const requestId = response.headers.get("x-request-id") ?? "n/a"
       if (!response.ok) {
-        const rawBody = await response.text()
-        const bodySummary = rawBody ? `<redacted:${rawBody.length} chars>` : "<empty>"
-        if (shouldRetryHttpStatus(response.status) && attempt < GEMINI_MAX_RETRIES) {
+        if (getRetryDirective(attempt, shouldRetryHttpStatus(response.status)) === "retry") {
           await waitForRetryBackoff(sleep, attempt)
           continue
         }
+        const bodySummary = await parseBatchEmbedErrorBody(response)
         throw new Error(
           `Gemini batchEmbedContents failed: status=${response.status} requestId=${requestId} response=${bodySummary}`
         )
