@@ -22,6 +22,18 @@ type RagMatchedChunk = {
   similarity: number
 }
 
+type RagSearchResultChunk = {
+  noteId: string
+  noteTitle: string
+  noteTags: string[]
+  chunkIndex: number
+  charOffset: number
+  bodyContent: string
+  overlapPrefix: string
+  content: string
+  similarity: number
+}
+
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -31,6 +43,9 @@ const OUTPUT_DIMENSIONS = READONLY_RAG_SETTINGS.output_dimensionality
 const GEMINI_TIMEOUT_MS = 10000
 const GEMINI_MAX_RETRIES = 3
 const GEMINI_RETRY_BASE_MS = 400
+const EMBEDDING_MODEL_MISMATCH_ERROR_CODE = "embedding_model_mismatch"
+const EMBEDDING_MODEL_MISMATCH_ERROR_MESSAGE =
+  "Embedding model changed. Please reindex your notes to enable search."
 
 // ---------------------------------------------------------------------------
 // CORS
@@ -348,71 +363,51 @@ const loadStoredIndexingEmbeddingModel = async (
   return getIndexingEmbeddingModel(ragIndexingSettingsError, ragIndexingSettingsRow ?? null)
 }
 
-const executeMatchNotesSearch = async (
-  supabaseUser: ReturnType<typeof createClient>,
+const buildMatchNotesRpcPayload = (
   queryEmbedding: number[],
-  tagFilter: string | null,
-  requestedMatchCount: number
-): Promise<RagMatchedChunk[]> => {
-  const rpcPayload = tagFilter
+  matchCount: number,
+  tagFilter: string | null
+) =>
+  tagFilter
     ? {
         query_embedding: queryEmbedding,
-        match_count: requestedMatchCount,
+        match_count: matchCount,
         filter_tag: tagFilter,
       }
     : {
         query_embedding: queryEmbedding,
-        match_count: requestedMatchCount,
+        match_count: matchCount,
       }
 
-  let { data: chunks, error: rpcError } = await supabaseUser.rpc("match_notes", rpcPayload)
+const runMatchNotesRpc = async (
+  supabaseUser: ReturnType<typeof createClient>,
+  queryEmbedding: number[],
+  matchCount: number,
+  tagFilter: string | null
+) => {
+  const { data, error } = await supabaseUser.rpc(
+    "match_notes",
+    buildMatchNotesRpcPayload(queryEmbedding, matchCount, tagFilter)
+  )
 
-  if (rpcError && tagFilter && isLegacyMatchNotesSignatureError(rpcError)) {
-    const primaryRpcError = rpcError
-    try {
-      const fallback = await supabaseUser.rpc("match_notes", {
-        query_embedding: queryEmbedding,
-        match_count: READONLY_RAG_SETTINGS.max_top_k,
-      })
-      chunks = fallback.data
-      rpcError = fallback.error
-      if (fallback.error) {
-        console.error("[rag-search] match_notes fallback failed", {
-          primaryRpcError,
-          fallbackRpcError: fallback.error,
-        })
-      } else {
-        console.warn("[rag-search] Using legacy match_notes fallback without filter_tag and expanding candidate window")
-      }
-    } catch (fallbackErr) {
-      console.error("[rag-search] match_notes fallback threw", {
-        primaryRpcError,
-        fallbackErr,
-      })
-      rpcError = primaryRpcError
-    }
+  return {
+    chunks: (data ?? []) as RagMatchedChunk[],
+    rpcError: error,
   }
-
-  if (rpcError) {
-    console.error("[rag-search] match_notes RPC error", rpcError)
-    throw createHttpError(500, "Search error")
-  }
-
-  return (chunks ?? []) as RagMatchedChunk[]
 }
 
-const buildSearchResponse = async (
+const getThresholdFilteredChunks = (chunks: RagMatchedChunk[], threshold: number) =>
+  chunks.filter((chunk) => chunk.similarity >= threshold)
+
+const buildVisibleSearchResults = async (
   supabaseAdmin: ReturnType<typeof createClient>,
   userId: string,
   chunks: RagMatchedChunk[],
   threshold: number,
-  topK: number,
   tagFilter: string | null
-) => {
-  const filteredChunks = chunks.filter((chunk) => chunk.similarity >= threshold)
-  if (filteredChunks.length === 0) {
-    return { chunks: [], availableChunkCount: 0, hasMore: false }
-  }
+): Promise<RagSearchResultChunk[]> => {
+  const filteredChunks = getThresholdFilteredChunks(chunks, threshold)
+  if (filteredChunks.length === 0) return []
 
   const noteIds = [...new Set(filteredChunks.map((chunk) => chunk.note_id))]
   const { data: notes, error: notesError } = await supabaseAdmin
@@ -449,7 +444,96 @@ const buildSearchResponse = async (
     }
   })
 
-  const visibleResult = tagFilter ? result.filter((item) => item.noteTags.includes(tagFilter)) : result
+  return tagFilter ? result.filter((item) => item.noteTags.includes(tagFilter)) : result
+}
+
+const getNextLegacyFallbackMatchCount = (currentMatchCount: number) =>
+  Math.min(
+    READONLY_RAG_SETTINGS.max_top_k,
+    Math.max(currentMatchCount + 1, currentMatchCount * 2)
+  )
+
+const hasExhaustedLegacyFallbackCandidates = (
+  chunks: RagMatchedChunk[],
+  requestedMatchCount: number
+) =>
+  chunks.length < requestedMatchCount || requestedMatchCount >= READONLY_RAG_SETTINGS.max_top_k
+
+const executeMatchNotesSearch = async (
+  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseUser: ReturnType<typeof createClient>,
+  userId: string,
+  queryEmbedding: number[],
+  threshold: number,
+  topK: number,
+  tagFilter: string | null,
+  requestedMatchCount: number
+): Promise<RagMatchedChunk[]> => {
+  const primaryResult = await runMatchNotesRpc(supabaseUser, queryEmbedding, requestedMatchCount, tagFilter)
+  if (!primaryResult.rpcError) {
+    return primaryResult.chunks
+  }
+
+  if (!tagFilter || !isLegacyMatchNotesSignatureError(primaryResult.rpcError)) {
+    console.error("[rag-search] match_notes RPC error", primaryResult.rpcError)
+    throw createHttpError(500, "Search error")
+  }
+
+  console.warn("[rag-search] Using legacy match_notes fallback without filter_tag")
+  let legacyMatchCount = getNextLegacyFallbackMatchCount(requestedMatchCount)
+
+  while (true) {
+    try {
+      const fallbackResult = await runMatchNotesRpc(supabaseUser, queryEmbedding, legacyMatchCount, null)
+      if (fallbackResult.rpcError) {
+        console.error("[rag-search] match_notes fallback failed", {
+          primaryRpcError: primaryResult.rpcError,
+          fallbackRpcError: fallbackResult.rpcError,
+        })
+        throw createHttpError(500, "Search error")
+      }
+
+      const visibleResults = await buildVisibleSearchResults(
+        supabaseAdmin,
+        userId,
+        fallbackResult.chunks,
+        threshold,
+        tagFilter
+      )
+
+      if (
+        visibleResults.length >= topK ||
+        hasExhaustedLegacyFallbackCandidates(fallbackResult.chunks, legacyMatchCount)
+      ) {
+        return fallbackResult.chunks
+      }
+
+      legacyMatchCount = getNextLegacyFallbackMatchCount(legacyMatchCount)
+    } catch (fallbackErr) {
+      console.error("[rag-search] match_notes fallback threw", {
+        primaryRpcError: primaryResult.rpcError,
+        fallbackErr,
+      })
+      throw createHttpError(500, "Search error")
+    }
+  }
+}
+
+const buildSearchResponse = async (
+  supabaseAdmin: ReturnType<typeof createClient>,
+  userId: string,
+  chunks: RagMatchedChunk[],
+  threshold: number,
+  topK: number,
+  tagFilter: string | null
+) => {
+  const visibleResult = await buildVisibleSearchResults(
+    supabaseAdmin,
+    userId,
+    chunks,
+    threshold,
+    tagFilter
+  )
   return {
     chunks: visibleResult.slice(0, topK),
     availableChunkCount: visibleResult.length,
@@ -478,9 +562,17 @@ serve(async (req: Request) => {
     const indexingEmbeddingModel = await loadStoredIndexingEmbeddingModel(supabaseAdmin, userId)
 
     if (indexingEmbeddingModel !== ragSearchSettings.embedding_model) {
+      console.warn("[rag-search] embedding_model_mismatch", {
+        userId,
+        indexingEmbeddingModel,
+        retrievalEmbeddingModel: ragSearchSettings.embedding_model,
+      })
       return jsonResponse(
-        { error: "Embedding model mismatch between indexing and search. Re-index your notes with the current model first." },
-        400
+        {
+          code: EMBEDDING_MODEL_MISMATCH_ERROR_CODE,
+          error: EMBEDDING_MODEL_MISMATCH_ERROR_MESSAGE,
+        },
+        409
       )
     }
 
@@ -488,7 +580,16 @@ serve(async (req: Request) => {
     const supabaseUser = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     })
-    const chunks = await executeMatchNotesSearch(supabaseUser, queryEmbedding, tagFilter, requestedMatchCount)
+    const chunks = await executeMatchNotesSearch(
+      supabaseAdmin,
+      supabaseUser,
+      userId,
+      queryEmbedding,
+      threshold,
+      topK,
+      tagFilter,
+      requestedMatchCount
+    )
     return jsonResponse(await buildSearchResponse(supabaseAdmin, userId, chunks, threshold, topK, tagFilter))
   } catch (err) {
     if (isHttpError(err)) {

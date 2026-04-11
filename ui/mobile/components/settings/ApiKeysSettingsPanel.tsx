@@ -736,7 +736,10 @@ function SelectSettingField({
         onRequestClose={() => setIsOpen(false)}
       >
         <Pressable style={styles.overlay} onPress={() => setIsOpen(false)}>
-          <View style={styles.sheet}>
+          <View
+            onStartShouldSetResponder={() => true}
+            style={styles.sheet}
+          >
             <Text style={styles.sheetTitle}>{label}</Text>
             {options.map((option) => {
               const selected = option.value === value

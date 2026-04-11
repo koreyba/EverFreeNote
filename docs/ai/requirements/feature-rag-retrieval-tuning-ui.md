@@ -1,7 +1,7 @@
 ---
 phase: requirements
 title: RAG Retrieval Tuning UI
-description: User-configurable retrieval controls for indexed-note AI search in the web app
+description: User-configurable retrieval controls for indexed-note AI search, including embedding-model alignment safeguards
 ---
 
 # Requirements & Problem Understanding
@@ -26,19 +26,20 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
 - Move `topK` into persisted user settings with default `15`.
 - Replace the current 3-state preset control in the web search UI with a similarity-threshold slider.
 - Persist the slider's committed threshold value at the user level.
+- Persist a separate retrieval embedding-model preset in `user_rag_search_settings`.
+- Block AI retrieval whenever the retrieval preset differs from the active indexing preset until the user manually reindexes notes into the new embedding space.
 - Trigger a new AI search only when the slider interaction is committed, not on every drag update.
 - Improve `Load more` behavior with a `+1` overfetch pattern so the UI can hide the button when no further results exist.
 
 ### Secondary goals
 - Expose retrieval-related parameters in UI even when some are read-only.
 - Preserve current default retrieval behavior as closely as possible on rollout.
-- Keep the retrieval settings model reusable for a future mobile UI.
+- Keep the retrieval settings model reusable across web and mobile settings UI.
 
 ### Non-goals
 - No changes to indexing or chunking behavior.
-- No changes to the Gemini model selection.
 - No MCP / LLM answer-generation pipeline changes.
-- No mobile UI implementation in this feature.
+- No automatic background reindex job when the retrieval preset changes.
 - No redesign of result grouping, note-level ranking, or offset-based deduplication beyond what is needed to surface settings accurately.
 
 ## User Stories & Use Cases
@@ -49,7 +50,9 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
 - As a user, I want `topK` to be configurable separately from similarity threshold so I can control candidate breadth independently from filtering strictness.
 - As a user, I want the search UI copy to stay in English.
 - As a user, I want `Load more` to stop appearing once there are no more retrievable results.
-- As a future mobile product owner, I want the retrieval settings logic to live in shared core code so mobile can adopt it later without rethinking the data model.
+- As a user, I want a clear warning when I switch the retrieval embedding model and my indexed notes are still on the old embedding space.
+- As a user, I want a direct path to reindex my notes once retrieval is paused by an embedding-model mismatch.
+- As a mobile product owner, I want the retrieval settings logic to live in shared core code so mobile and web use the same data model and warning rules.
 
 ### Key workflows
 - User opens Settings, changes persisted `topK`, and future AI searches use that page size.
@@ -57,6 +60,8 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
 - While dragging the slider, the UI updates locally but does not fire a search request.
 - When the user releases the slider on a new value, that value is persisted and the current AI search reruns once.
 - When the user presses `Load more`, the next page is requested using the persisted `topK` page size and the UI hides the button when no further page exists.
+- User changes the retrieval embedding preset in Settings and immediately sees a warning that AI search is paused until reindex completes.
+- User clicks `Reindex now` from the warning state and is routed into the existing AI Index flow to run a manual reindex.
 
 ### Edge cases
 - User changes the slider before any AI search has been submitted: the new value is persisted, but no request is fired yet.
@@ -64,6 +69,8 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
 - User sets a high threshold and gets zero results even though near matches exist below the threshold.
 - Retrieval returns additional chunks that collapse during grouping/deduplication; the UI should still avoid repeated empty `Load more` clicks caused by backend pagination uncertainty.
 - User has no custom retrieval settings saved yet: defaults are applied.
+- Existing users who never changed the retrieval preset remain on `models/gemini-embedding-001` and should not be forced to reindex on rollout.
+- User saves a retrieval preset that differs from the current indexing preset: `rag-search` returns `409` with `code: "embedding_model_mismatch"` and message `Embedding model changed. Please reindex your notes to enable search.`
 
 ## Success Criteria
 **How will we know when we're done?**
@@ -77,10 +84,14 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
 - [ ] `rag-search` continues using fixed Gemini task types:
   - `RETRIEVAL_DOCUMENT` for note chunks
   - `RETRIEVAL_QUERY` for search queries
+- [ ] `rag-search` resolves the active retrieval embedding preset from `user_rag_search_settings.embedding_model`.
+- [ ] `rag-search` blocks mismatched embedding spaces with `409`, `code: "embedding_model_mismatch"`, and message `Embedding model changed. Please reindex your notes to enable search.`
 - [ ] UI exposes the task types and `output_dimensionality`, even if read-only.
+- [ ] Web and mobile settings surfaces show a warning banner and `Reindex now` path whenever indexing and retrieval presets differ.
 - [ ] `Load more` uses a `+1` overfetch pattern and no longer relies on the old heuristic based only on returned count matching requested count.
 - [ ] Existing indexing behavior and settings remain unchanged.
-- [ ] Shared retrieval settings types/services live in core so mobile can reuse them later.
+- [ ] Existing users stay on the default retrieval preset unless they opt into a new embedding model.
+- [ ] Shared retrieval settings types/services live in core so web and mobile stay aligned.
 
 ## Constraints & Assumptions
 **What limitations do we need to work within?**
@@ -91,8 +102,9 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
   - `rag-index` uses `RETRIEVAL_DOCUMENT`
   - `rag-search` uses `RETRIEVAL_QUERY`
 - `output_dimensionality` is currently fixed at `1536`.
-- Search UI changes are web-only for now.
+- Search results UI changes are web-only for now, but settings persistence and mismatch warnings must stay compatible with mobile settings.
 - Retrieval settings must be persisted at the user level, not just in `localStorage`.
+- Server-side retrieval preset resolution is sourced from `user_rag_search_settings`, while active indexing preset resolution stays in `user_rag_index_settings`.
 
 ### Assumptions
 - A new persisted retrieval-settings record can be introduced without changing note-index schema.
@@ -100,6 +112,8 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
 - The precision slider can use a numeric threshold internally while presenting friendlier copy in the UI.
 - Slider range is `0.00..1.00` with `0.05` commit granularity.
 - Overfetching by one result is acceptable from a latency and payload perspective.
+- Rollout migration uses schema defaults / legacy fallback reads to keep old users on `models/gemini-embedding-001`.
+- Reindexing after a preset switch is user-triggered through the existing AI Index tooling, not automatic.
 
 ## Questions & Open Items
 **What do we still need to clarify?**
@@ -110,3 +124,4 @@ The indexed-note AI search already works, but retrieval behavior is effectively 
   - similarity threshold moves to a web slider
   - slider refetch occurs on commit/release
   - UI copy remains English
+  - retrieval preset changes pause AI search until manual reindex completes

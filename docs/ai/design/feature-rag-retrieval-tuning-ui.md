@@ -146,8 +146,12 @@ Example response fragment:
 ### `rag-search`
 - Continue accepting numeric retrieval parameters directly.
 - Request contract remains numeric, but the caller now derives values from persisted user settings plus committed slider state.
-- Query embedding model is now resolved server-side from `user_rag_search_settings`.
-- Retrieval is blocked when the retrieval preset does not match the active indexing preset, forcing a reindex before switching embedding spaces.
+- Query embedding model is now resolved server-side from `user_rag_search_settings.embedding_model`.
+- `rag-search` compares the retrieval preset against `user_rag_index_settings.embedding_model` before embedding the query.
+- When the presets differ, `rag-search` returns `409 Conflict` with:
+  - `code: "embedding_model_mismatch"`
+  - `error: "Embedding model changed. Please reindex your notes to enable search."`
+- Frontends must treat that response as a blocking warning state, not as a generic transient error.
 
 Request:
 ```typescript
@@ -165,6 +169,14 @@ Response change:
   chunks: RagChunk[]
   hasMore: boolean
   availableChunkCount: number
+}
+```
+
+Mismatch response:
+```typescript
+{
+  code: "embedding_model_mismatch"
+  error: "Embedding model changed. Please reindex your notes to enable search."
 }
 ```
 
@@ -243,6 +255,30 @@ This removes the old UI heuristic that guessed `hasMore` from `returnedCount >= 
 ### 6. Use backend `+1` overfetch instead of client-side guesswork
 - Reason: `Load more` should hide predictably when no more backend results exist.
 - Trade-off: one extra chunk candidate per request, which is small compared to improved UX.
+
+### 7. Block retrieval when indexing and retrieval embedding spaces diverge
+- Reason: query vectors and indexed note vectors must stay in the same embedding space; mixing presets produces misleading similarity scores.
+- User-facing handling:
+  - `rag-search` logs a warning-level event with the mismatch code and both preset ids, but without note content or API secrets.
+  - Web search, web settings, and mobile settings surface the same warning copy with warning severity:
+    - `Embedding model changed. Please reindex your notes to enable search.`
+  - Retrieval UI adds inline helper text below the embedding-model selector:
+    - `Changing the search model pauses AI search until your indexed notes are rebuilt with the same model.`
+  - Web search replaces the results area with a blocking warning banner when it receives `409` plus `code: "embedding_model_mismatch"`.
+  - Settings screens show a proactive warning banner as soon as saved indexing and retrieval presets differ, plus a `Reindex now` action that routes to the existing AI Index workflow.
+- Discovery / reindex flow:
+  - The warning banner remains visible until the active indexing preset matches the retrieval preset again.
+  - `Reindex now` routes to the AI Index page / screen and relies on the existing manual reindex tooling documented in [AI Index requirements](../requirements/feature-ai-index-page.md) and [AI Index implementation](../implementation/feature-ai-index-page.md).
+  - No automatic background reindex is triggered from saving the preset change.
+- Migration strategy:
+  - Existing users are migrated onto the default retrieval preset (`models/gemini-embedding-001`) via schema defaults and legacy fallback resolution, so rollout does not pause search for them.
+  - Switching to another retrieval preset is opt-in and immediately enters the warning state until the user completes a manual reindex.
+  - This feature does not introduce a bulk reindex migration job; teams can rely on the existing AI Index bulk tooling instead of hidden background mutation.
+- Cross-references:
+  - [RAG Retrieval Tuning requirements](../requirements/feature-rag-retrieval-tuning-ui.md)
+  - [RAG Retrieval Tuning implementation](../implementation/feature-rag-retrieval-tuning-ui.md)
+  - [AI Index requirements](../requirements/feature-ai-index-page.md)
+  - [AI Index implementation](../implementation/feature-ai-index-page.md)
 
 ## Non-Functional Requirements
 **How should the system perform?**

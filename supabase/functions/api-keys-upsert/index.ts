@@ -35,7 +35,10 @@ const readAuthToken = (authHeader: string): string =>
     ? authHeader.slice("bearer ".length).trim()
     : ""
 
-const isUnavailableRagSearchSettingsStorageError = (error: unknown): boolean => {
+const isUnavailableSettingsStorageError = (
+  error: unknown,
+  storageIdentifiers: readonly string[]
+): boolean => {
   if (!error || typeof error !== "object") return false
 
   const code = typeof (error as { code?: unknown }).code === "string"
@@ -53,10 +56,7 @@ const isUnavailableRagSearchSettingsStorageError = (error: unknown): boolean => 
   const combined = `${message} ${details}`.toLowerCase()
 
   return (
-    (
-      combined.includes("user_rag_search_settings") ||
-      combined.includes("upsert_user_rag_search_settings_partial")
-    ) &&
+    storageIdentifiers.some((identifier) => combined.includes(identifier)) &&
     (
       combined.includes("relation") ||
       combined.includes("table") ||
@@ -66,6 +66,15 @@ const isUnavailableRagSearchSettingsStorageError = (error: unknown): boolean => 
     )
   )
 }
+
+const isUnavailableRagSearchSettingsStorageError = (error: unknown): boolean =>
+  isUnavailableSettingsStorageError(error, [
+    "user_rag_search_settings",
+    "upsert_user_rag_search_settings_partial",
+  ])
+
+const isUnavailableRagIndexingSettingsStorageError = (error: unknown): boolean =>
+  isUnavailableSettingsStorageError(error, ["user_rag_index_settings"])
 
 // ---------------------------------------------------------------------------
 // AES-GCM encryption (same pattern as wordpress-settings-upsert)
@@ -300,8 +309,12 @@ serve(async (req: Request) => {
           .maybeSingle()
 
         if (legacyRagIndexingError) {
-          console.warn("[api-keys-upsert] Falling back to default RAG indexing settings", legacyRagIndexingError)
-          resolvedRagIndexingSettings = resolveRagIndexingSettings(null)
+          if (isUnavailableRagIndexingSettingsStorageError(legacyRagIndexingError)) {
+            console.warn("[api-keys-upsert] Falling back to default RAG indexing settings", legacyRagIndexingError)
+            resolvedRagIndexingSettings = resolveRagIndexingSettings(null)
+          } else {
+            throw legacyRagIndexingError
+          }
         } else {
           resolvedRagIndexingSettings = resolveRagIndexingSettings(legacyRagIndexingData ?? null)
         }
