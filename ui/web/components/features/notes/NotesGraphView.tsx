@@ -1,14 +1,24 @@
 "use client";
 
 import * as React from "react";
-import { useMemo, useCallback, useEffect, useRef } from "react";
-import ForceGraph2D from "react-force-graph-2d";
+import { useMemo, useCallback, useEffect, useRef, useState } from "react";
 import type {
   ForceGraphMethods,
   NodeObject,
   LinkObject,
 } from "react-force-graph-2d";
 import { Loader2 } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// Dynamic import to avoid SSR issues with canvas-based library
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </div>
+  ),
+});
 
 import type { Note } from "@core/types/domain";
 import { cn } from "@ui/web/lib/utils";
