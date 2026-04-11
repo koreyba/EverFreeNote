@@ -263,21 +263,6 @@ serve(async (req: Request) => {
       }
     }
 
-    if (shouldRemoveGeminiApiKey) {
-      const { error: deleteError } = await supabaseAdmin
-        .from("user_api_keys")
-        .delete()
-        .eq("user_id", userId)
-
-      if (deleteError) throw deleteError
-    } else if (hasGeminiApiKeyField && encryptedKey) {
-      const { error: upsertError } = await supabaseAdmin
-        .from("user_api_keys")
-        .upsert({ user_id: userId, gemini_api_key_encrypted: encryptedKey, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
-
-      if (upsertError) throw upsertError
-    }
-
     let resolvedRagIndexingSettings
     if (hasRagIndexingFields) {
       const { error: ragUpsertError } = await supabaseAdmin
@@ -384,6 +369,21 @@ serve(async (req: Request) => {
       } else {
         resolvedRagSearchSettings = resolveRagSearchSettings(ragSearchData ?? null)
       }
+    }
+
+    if (shouldRemoveGeminiApiKey) {
+      const { error: deleteError } = await supabaseAdmin
+        .from("user_api_keys")
+        .delete()
+        .eq("user_id", userId)
+
+      if (deleteError) throw deleteError
+    } else if (hasGeminiApiKeyField && encryptedKey) {
+      const { error: upsertError } = await supabaseAdmin
+        .from("user_api_keys")
+        .upsert({ user_id: userId, gemini_api_key_encrypted: encryptedKey, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+
+      if (upsertError) throw upsertError
     }
 
     const effectiveGeminiKey = shouldRemoveGeminiApiKey

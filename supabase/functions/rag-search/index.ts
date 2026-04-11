@@ -96,13 +96,24 @@ const isLegacyMatchNotesSignatureError = (error: unknown): boolean => {
 // ---------------------------------------------------------------------------
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
-let cachedCryptoKey: CryptoKey | null = null
+const cachedCryptoKeys = new Map<string, CryptoKey>()
+
+class GeminiResponseParseError extends TypeError {}
+
+const bytesToHex = (bytes: Uint8Array): string =>
+  Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
 
 const getCryptoKey = async (secret: string): Promise<CryptoKey> => {
+  const digest = await crypto.subtle.digest("SHA-256", textEncoder.encode(secret))
+  const secretHash = bytesToHex(new Uint8Array(digest))
+  const cachedCryptoKey = cachedCryptoKeys.get(secretHash)
   if (cachedCryptoKey) return cachedCryptoKey
-  const hash = await crypto.subtle.digest("SHA-256", textEncoder.encode(secret))
-  cachedCryptoKey = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"])
-  return cachedCryptoKey
+
+  const cryptoKey = await crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, ["encrypt", "decrypt"])
+  cachedCryptoKeys.set(secretHash, cryptoKey)
+  return cryptoKey
 }
 
 const base64ToBytes = (b64: string): Uint8Array => {
@@ -129,8 +140,20 @@ const waitForRetryBackoff = (sleep: (ms: number) => Promise<void>, attempt: numb
 
 const shouldRetryHttpStatus = (status: number) => status === 429 || status >= 500
 
+const isRetryableFetchTypeError = (error: unknown) => {
+  if (!(error instanceof TypeError) || error instanceof GeminiResponseParseError) return false
+
+  const message = error.message.toLowerCase()
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("networkerror") ||
+    message.includes("error sending request") ||
+    message.includes("fetch failed")
+  )
+}
+
 const shouldRetryNetworkError = (error: unknown) =>
-  (error instanceof DOMException && error.name === "AbortError") || error instanceof TypeError
+  (error instanceof DOMException && error.name === "AbortError") || isRetryableFetchTypeError(error)
 
 const buildEmbedQueryRequestBody = (query: string, embeddingModel: string) => {
   if (embeddingModel === DEFAULT_RAG_EMBEDDING_MODEL) {
@@ -152,7 +175,7 @@ const buildEmbedQueryRequestBody = (query: string, embeddingModel: string) => {
 const parseEmbeddingValues = (data: unknown): number[] => {
   const values = (data as { embedding?: { values?: unknown } } | null)?.embedding?.values
   if (!Array.isArray(values)) {
-    throw new TypeError("Gemini embedContent response missing embedding.values")
+    throw new GeminiResponseParseError("Gemini embedContent response missing embedding.values")
   }
   return values
 }

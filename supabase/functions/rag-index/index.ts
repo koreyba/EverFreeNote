@@ -57,6 +57,8 @@ const textEncoder = new TextEncoder()
 let cachedCryptoKey: CryptoKey | null = null
 let cachedSecretHash: string | null = null
 
+class GeminiResponseParseError extends TypeError {}
+
 const bytesToHex = (bytes: Uint8Array): string =>
   Array.from(bytes)
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -101,8 +103,20 @@ const waitForRetryBackoff = (sleep: (ms: number) => Promise<void>, attempt: numb
 
 const shouldRetryHttpStatus = (status: number) => status === 429 || status >= 500
 
+const isRetryableFetchTypeError = (error: unknown) => {
+  if (!(error instanceof TypeError) || error instanceof GeminiResponseParseError) return false
+
+  const message = error.message.toLowerCase()
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("networkerror") ||
+    message.includes("error sending request") ||
+    message.includes("fetch failed")
+  )
+}
+
 const shouldRetryNetworkError = (error: unknown) =>
-  (error instanceof DOMException && error.name === "AbortError") || error instanceof TypeError
+  (error instanceof DOMException && error.name === "AbortError") || isRetryableFetchTypeError(error)
 
 const buildBatchEmbedRequests = (
   texts: Array<{ text: string; title: string | null }>,
@@ -118,7 +132,7 @@ const buildBatchEmbedRequests = (
 const parseBatchEmbedResponse = (data: unknown, expectedCount: number, requestId: string): number[][] => {
   const embeddings = (data as { embeddings?: unknown } | null)?.embeddings
   if (!Array.isArray(embeddings)) {
-    throw new TypeError("Gemini batchEmbedContents response missing embeddings array")
+    throw new GeminiResponseParseError("Gemini batchEmbedContents response missing embeddings array")
   }
   if (embeddings.length !== expectedCount) {
     throw new Error(
@@ -202,7 +216,12 @@ const getRagIndexRuntimeConfig = () => {
 
 const readRagIndexPayload = async (req: Request) => {
   let payload: { noteId?: string; action?: string; debugChunks?: boolean } = {}
-  try { payload = await req.json() } catch { /* empty body */ }
+  try {
+    const parsedPayload = await req.json()
+    payload = parsedPayload && typeof parsedPayload === "object" && !Array.isArray(parsedPayload)
+      ? parsedPayload as typeof payload
+      : {}
+  } catch { /* empty body */ }
 
   const { noteId, action, debugChunks } = payload
   if (!noteId || typeof noteId !== "string") {
@@ -396,8 +415,6 @@ const indexNote = async (
   if (upsertError) throw upsertError
 
   console.info("[rag-index] Indexed note with settings", {
-    noteId,
-    userId,
     chunkCount: chunksForIndexing.length,
     embedding_model: settings.embedding_model,
     target_chunk_size: settings.target_chunk_size,
