@@ -6,7 +6,7 @@ const config: StorybookConfig = {
     "../ui/web/components/**/*.stories.@(ts|tsx)",
   ],
   framework: "@storybook/react-vite",
-  addons: ["@storybook/addon-essentials"],
+  addons: [],
   viteFinal: async (config) => {
     // Use the project's TypeScript path aliases
     config.resolve = config.resolve || {}
