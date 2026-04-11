@@ -22,6 +22,7 @@ description: Implementation guide for persisted retrieval settings and the web p
 - Web settings UI and search slider belong in `ui/web`
 - Edge Function persistence and retrieval behavior belong in `supabase/functions`
 - Indexing-related modules now share the same embedding-model preset catalogue so indexing and search stay vector-compatible
+- The cross-platform mismatch contract lives in `docs/ai/design/feature-rag-embedding-model-mismatch.md`
 
 ## Implementation Notes
 **Key technical details to remember:**
@@ -62,6 +63,7 @@ description: Implementation guide for persisted retrieval settings and the web p
 - Frontends should detect the mismatch with `response.status === 409` plus `body.code === "embedding_model_mismatch"`
 - Web settings/search should show a proactive warning banner with the same copy and a `Reindex now` CTA that routes into the existing AI Index flow instead of waiting for a generic failure state
 - Mobile settings should mirror the same warning copy and CTA so preset divergence is visible on both clients
+- The full backend/frontend contract, stability guarantees, and extension rules for future mismatch codes are documented in [feature-rag-embedding-model-mismatch.md](../design/feature-rag-embedding-model-mismatch.md)
 
 ## Error Handling
 **How do we handle failures?**
@@ -83,6 +85,7 @@ description: Implementation guide for persisted retrieval settings and the web p
 - Keep retrieval defaults on `models/gemini-embedding-001` so existing users do not change behavior until they opt into Gemini Embedding 2
 - Translate local service/network boot failures into a friendly settings-service message instead of surfacing raw resolution/runtime errors
 - Keep read-only indexing/retrieval metadata visible by rendering default system values when live settings fail to load
+- Follow the warning banner + `Reindex now` CTA contract from [feature-rag-embedding-model-mismatch.md](../design/feature-rag-embedding-model-mismatch.md) on both web and mobile
 
 ## Performance Considerations
 **How do we keep it fast?**

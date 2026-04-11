@@ -139,7 +139,15 @@ const parseBatchEmbedResponse = (data: unknown, expectedCount: number, requestId
       `Gemini embeddings count mismatch: input=${expectedCount} returned=${embeddings.length} requestId=${requestId}`
     )
   }
-  return embeddings.map((embedding: { values: number[] }) => embedding.values)
+  return embeddings.map((embedding, index) => {
+    const values = (embedding as { values?: unknown } | null)?.values
+    if (!Array.isArray(values) || values.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+      throw new GeminiResponseParseError(
+        `Gemini embedding at index ${index} is malformed: expected numeric values array requestId=${requestId}`
+      )
+    }
+    return values
+  })
 }
 
 const parseBatchEmbedErrorBody = async (response: Response) => {

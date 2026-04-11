@@ -34,6 +34,17 @@ type RagSearchResultChunk = {
   similarity: number
 }
 
+type MatchNotesSearchContext = {
+  supabaseAdmin: ReturnType<typeof createClient>
+  supabaseUser: ReturnType<typeof createClient>
+  userId: string
+  queryEmbedding: number[]
+  threshold: number
+  topK: number
+  tagFilter: string | null
+  requestedMatchCount: number
+}
+
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -482,16 +493,16 @@ const hasExhaustedLegacyFallbackCandidates = (
 ) =>
   chunks.length < requestedMatchCount || requestedMatchCount >= READONLY_RAG_SETTINGS.max_top_k
 
-const executeMatchNotesSearch = async (
-  supabaseAdmin: ReturnType<typeof createClient>,
-  supabaseUser: ReturnType<typeof createClient>,
-  userId: string,
-  queryEmbedding: number[],
-  threshold: number,
-  topK: number,
-  tagFilter: string | null,
-  requestedMatchCount: number
-): Promise<RagMatchedChunk[]> => {
+const executeMatchNotesSearch = async ({
+  supabaseAdmin,
+  supabaseUser,
+  userId,
+  queryEmbedding,
+  threshold,
+  topK,
+  tagFilter,
+  requestedMatchCount,
+}: MatchNotesSearchContext): Promise<RagMatchedChunk[]> => {
   const primaryResult = await runMatchNotesRpc(supabaseUser, queryEmbedding, requestedMatchCount, tagFilter)
   if (!primaryResult.rpcError) {
     return primaryResult.chunks
@@ -603,7 +614,7 @@ serve(async (req: Request) => {
     const supabaseUser = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     })
-    const chunks = await executeMatchNotesSearch(
+    const chunks = await executeMatchNotesSearch({
       supabaseAdmin,
       supabaseUser,
       userId,
@@ -612,7 +623,7 @@ serve(async (req: Request) => {
       topK,
       tagFilter,
       requestedMatchCount
-    )
+    })
     return jsonResponse(await buildSearchResponse(supabaseAdmin, userId, chunks, threshold, topK, tagFilter))
   } catch (err) {
     if (isHttpError(err)) {

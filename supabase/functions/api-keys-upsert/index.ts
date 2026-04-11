@@ -276,9 +276,17 @@ serve(async (req: Request) => {
             503
           )
         }
+        if (isUnavailableRagIndexingSettingsStorageError(ragUpsertError)) {
+          console.error("[api-keys-upsert] RAG indexing settings write is unavailable", ragUpsertError)
+          return jsonResponse(
+            { error: "RAG indexing settings are unavailable until the latest database migration is applied" },
+            503
+          )
+        }
         throw ragUpsertError
+      } else {
+        resolvedRagIndexingSettings = resolveRagIndexingSettings(validatedRagIndexingSettings)
       }
-      resolvedRagIndexingSettings = resolveRagIndexingSettings(validatedRagIndexingSettings)
     } else {
       const { data: ragIndexingData, error: ragIndexingError } = await supabaseAdmin
         .from("user_rag_index_settings")

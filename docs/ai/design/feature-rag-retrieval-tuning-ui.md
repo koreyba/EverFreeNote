@@ -258,6 +258,7 @@ This removes the old UI heuristic that guessed `hasMore` from `returnedCount >= 
 
 ### 7. Block retrieval when indexing and retrieval embedding spaces diverge
 - Reason: query vectors and indexed note vectors must stay in the same embedding space; mixing presets produces misleading similarity scores.
+- Detailed API and UX contract: [feature-rag-embedding-model-mismatch.md](feature-rag-embedding-model-mismatch.md)
 - User-facing handling:
   - `rag-search` logs a warning-level event with the mismatch code and both preset ids, but without note content or API secrets.
   - Web search, web settings, and mobile settings surface the same warning copy with warning severity:

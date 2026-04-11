@@ -15,7 +15,18 @@ AS $$
 DECLARE
   v_rows jsonb := COALESCE(p_rows, '[]'::jsonb);
   v_chunk_count integer := jsonb_array_length(v_rows);
+  v_max_index integer;
 BEGIN
+  IF p_rows IS NULL OR v_chunk_count = 0 THEN
+    DELETE FROM public.note_embeddings
+    WHERE note_id = p_note_id;
+    RETURN;
+  END IF;
+
+  SELECT MAX((row_value->>'chunk_index')::integer)
+  INTO v_max_index
+  FROM jsonb_array_elements(v_rows) AS row_value;
+
   INSERT INTO public.note_embeddings (
     note_id, user_id, chunk_index, char_offset,
     content, body_content, overlap_prefix, embedding
@@ -42,7 +53,6 @@ BEGIN
 
   DELETE FROM public.note_embeddings
   WHERE note_id = p_note_id
-    AND user_id = p_user_id
-    AND chunk_index >= v_chunk_count;
+    AND chunk_index > v_max_index;
 END;
 $$;
