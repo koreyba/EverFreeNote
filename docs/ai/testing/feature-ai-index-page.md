@@ -43,6 +43,9 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - [x] Updates row status/buttons optimistically on `All notes` immediately after a successful AI-index mutation
 - [x] Animates rows out of filtered views when a successful mutation changes them out of the active status bucket
 - [x] Treats semantic `rag-index` skips such as `outcome: "skipped", reason: "too_short"` as honest failures and restores `not_indexed`
+- [x] Exposes a summary-level `Index loaded notes` button only when the current loaded result set contains actionable rows
+- [x] Ensures the web bulk action processes only the currently loaded notes from the active filter and active committed search query
+- [x] Ensures the mobile bulk action uses the same loaded-only scope and skips already indexed rows
 
 ## Integration Tests
 
@@ -77,9 +80,12 @@ description: Test strategy for the Settings AI index page and its dedicated data
   - `npm run test:unit:core -- --runTestsByPath core/tests/unit/core-rag-indexResult.test.ts`
   - `npm run test:component -- --spec "cypress/component/features/settings/AIIndexNoteRow.cy.tsx"`
 - Completed:
+  - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/components/aiIndexTab.test.tsx` (bulk button visibility, loaded-only scope, search-limited scope)
+  - `cd ui/mobile && npx jest tests/component/aiIndexPanel.test.tsx --no-coverage` (mobile bulk button visibility and loaded-only scope)
   - `npm run type-check`
   - `npm run type-check:tests`
   - `npx eslint ui/web/components/features/settings/AIIndexTab.tsx ui/web/components/features/settings/AIIndexList.tsx ui/web/components/features/settings/AIIndexNoteRow.tsx ui/web/tests/unit/components/aiIndexNoteRow.test.tsx ui/web/tests/unit/components/aiIndexTab.test.tsx`
+  - `cd ui/mobile && npm run validate`
   - Browser QA in local Next dev server via Playwright: desktop auth-skip flow, `Settings -> AI Index`, empty-state flow, row open, browser back return, and mobile viewport snapshot review
 
 ## Manual Testing
@@ -89,6 +95,8 @@ description: Test strategy for the Settings AI index page and its dedicated data
 - Verify timestamps and status badges are understandable
 - Verify opening a note from `Settings -> AI Index`, then using browser back and mobile in-note back to return to the same filtered/scrolled AI Index view
 - Verify the page still feels usable when there are only a few notes and when the current filter/search returns nothing
+- Verify the bulk button does not appear for fully indexed loaded results
+- Verify search limits the bulk action scope so notes outside the committed query are not indexed
 
 ## Performance Testing
 

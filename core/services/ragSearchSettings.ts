@@ -9,6 +9,14 @@ import {
 import type { ApiKeysStatus } from "@core/services/apiKeysSettings"
 import { readSettingsErrorMessage } from "@core/services/settingsErrorMessage"
 
+const areSettingsValuesEqual = (expected: unknown, actual: unknown): boolean => {
+  if (Array.isArray(expected) && Array.isArray(actual)) {
+    return expected.length === actual.length && expected.every((value, index) => value === actual[index])
+  }
+
+  return expected === actual
+}
+
 const readRagSearchSettings = (data: unknown): RagSearchSettings | null => {
   if (!data || typeof data !== "object") return null
   const ragSearch = (data as ApiKeysStatus).ragSearch
@@ -17,6 +25,7 @@ const readRagSearchSettings = (data: unknown): RagSearchSettings | null => {
   const editableSettings = {
     top_k: (ragSearch as { top_k?: unknown }).top_k,
     similarity_threshold: (ragSearch as { similarity_threshold?: unknown }).similarity_threshold,
+    embedding_model: (ragSearch as { embedding_model?: unknown }).embedding_model,
   } as Partial<RagSearchEditableSettings>
 
   if (validateRagSearchEditableSettings(editableSettings).length > 0) {
@@ -25,8 +34,10 @@ const readRagSearchSettings = (data: unknown): RagSearchSettings | null => {
 
   const resolvedSettings = resolveRagSearchSettings(editableSettings)
   const rawSettings = ragSearch as Record<string, unknown>
-  const matchesResolvedShape = Object.entries(resolvedSettings).every(
-    ([key, value]) => rawSettings[key] === value
+  const matchesResolvedShape = Object.entries(rawSettings).every(
+    ([key, value]) =>
+      key in resolvedSettings &&
+      areSettingsValuesEqual(resolvedSettings[key as keyof RagSearchSettings], value)
   )
 
   return matchesResolvedShape ? resolvedSettings : null

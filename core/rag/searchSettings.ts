@@ -1,4 +1,10 @@
-import { getRagReadonlySettings } from "@core/rag/indexingSettings.ts"
+import {
+  DEFAULT_RAG_EMBEDDING_MODEL,
+  isRagEmbeddingModelPreset,
+  resolveRagEmbeddingModel,
+  type RagEmbeddingModelPreset,
+} from "./embeddingModels.ts"
+import { getRagReadonlySettings } from "./indexingSettings.ts"
 
 const RAG_READONLY_INDEXING_SETTINGS = getRagReadonlySettings()
 
@@ -11,6 +17,7 @@ export const RAG_SEARCH_THRESHOLD_STEP = 0.05
 export const RAG_SEARCH_EDITABLE_DEFAULTS = {
   top_k: 15,
   similarity_threshold: 0.55,
+  embedding_model: DEFAULT_RAG_EMBEDDING_MODEL,
 } as const
 
 export const RAG_SEARCH_READONLY_SETTINGS = {
@@ -26,6 +33,7 @@ export const RAG_SEARCH_READONLY_SETTINGS = {
 export type RagSearchEditableSettings = {
   top_k: number
   similarity_threshold: number
+  embedding_model: RagEmbeddingModelPreset
 }
 
 export type RagSearchSettings = RagSearchEditableSettings & typeof RAG_SEARCH_READONLY_SETTINGS
@@ -33,9 +41,8 @@ export type RagSearchSettings = RagSearchEditableSettings & typeof RAG_SEARCH_RE
 export const RAG_SEARCH_EDITABLE_KEYS = [
   "top_k",
   "similarity_threshold",
+  "embedding_model",
 ] as const
-
-type RagSearchEditableKey = (typeof RAG_SEARCH_EDITABLE_KEYS)[number]
 
 export function resolveRagSearchEditableSettings(
   input?: Partial<RagSearchEditableSettings> | null
@@ -43,6 +50,7 @@ export function resolveRagSearchEditableSettings(
   return {
     top_k: input?.top_k ?? RAG_SEARCH_EDITABLE_DEFAULTS.top_k,
     similarity_threshold: input?.similarity_threshold ?? RAG_SEARCH_EDITABLE_DEFAULTS.similarity_threshold,
+    embedding_model: resolveRagEmbeddingModel(input?.embedding_model),
   }
 }
 
@@ -84,6 +92,10 @@ export function validateRagSearchEditableSettings(
     }
   }
 
+  if (input?.embedding_model !== undefined && !isRagEmbeddingModelPreset(input.embedding_model)) {
+    errors.push("embedding_model must be one of the supported Gemini embedding presets")
+  }
+
   return errors
 }
 
@@ -91,7 +103,7 @@ export function assertValidRagSearchEditableSettings(
   input: Partial<RagSearchEditableSettings> | null | undefined
 ): RagSearchEditableSettings {
   const resolved = resolveRagSearchEditableSettings(input)
-  const errors = validateRagSearchEditableSettings(resolved)
+  const errors = validateRagSearchEditableSettings(input)
   if (errors.length > 0) {
     throw new Error(errors.join(". "))
   }
@@ -103,9 +115,19 @@ export function coerceRagSearchEditableSettings(
 ): Partial<RagSearchEditableSettings> {
   const settings: Partial<RagSearchEditableSettings> = {}
 
-  for (const key of RAG_SEARCH_EDITABLE_KEYS) {
-    if (input[key] === undefined) continue
-    settings[key] = input[key] as RagSearchEditableSettings[RagSearchEditableKey]
+  const topK = input.top_k
+  if (topK !== undefined) {
+    settings.top_k = topK as RagSearchEditableSettings["top_k"]
+  }
+
+  const similarityThreshold = input.similarity_threshold
+  if (similarityThreshold !== undefined) {
+    settings.similarity_threshold = similarityThreshold as RagSearchEditableSettings["similarity_threshold"]
+  }
+
+  const embeddingModel = input.embedding_model
+  if (embeddingModel !== undefined) {
+    settings.embedding_model = embeddingModel as RagSearchEditableSettings["embedding_model"]
   }
 
   return settings

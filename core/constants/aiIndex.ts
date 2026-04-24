@@ -1,4 +1,4 @@
-import type { AIIndexStatus, AIIndexMutationResult } from "@core/types/aiIndex"
+import type { AIIndexStatus, AIIndexMutationResult, AIIndexNoteRow } from "@core/types/aiIndex"
 
 export const AI_INDEX_STATUS_LABELS: Record<AIIndexStatus, string> = {
   indexed: "Indexed",
@@ -48,4 +48,12 @@ export function getAIIndexActionPresentation(status: AIIndexStatus): AIIndexActi
     action: "index",
     buttonVariant: "default",
   }
+}
+
+export function isAIIndexStatusActionable(status: AIIndexStatus) {
+  return status !== "indexed"
+}
+
+export function getAIIndexActionableNotes(notes: AIIndexNoteRow[]) {
+  return notes.filter((note) => isAIIndexStatusActionable(note.status))
 }

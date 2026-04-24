@@ -2,7 +2,10 @@ import React from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { RagChunk } from '@core/types/ragSearch'
-import { useAIPaginatedSearch } from '@ui/web/hooks/useAIPaginatedSearch'
+import {
+  RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE,
+  useAIPaginatedSearch,
+} from '@ui/web/hooks/useAIPaginatedSearch'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 
 type HookProps = {
@@ -573,6 +576,46 @@ describe('useAIPaginatedSearch', () => {
         }),
       })
     )
+  })
+
+  it('surfaces embedding model mismatch without retrying the request', async () => {
+    const invoke = jest.fn().mockResolvedValue({
+      data: null,
+      error: {
+        message: 'Edge Function returned a non-2xx status code',
+        context: {
+          json: async () => ({
+            code: RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE,
+            error: 'Embedding model changed. Please reindex your notes to enable search.',
+          }),
+        },
+      },
+    })
+
+    const supabase = {
+      functions: { invoke },
+    } as unknown as SupabaseClient
+
+    const { result } = renderHook(
+      () =>
+        useAIPaginatedSearch({
+          query: 'ontology',
+          topK: 5,
+          threshold: 0.75,
+          filterTag: null,
+          isEnabled: true,
+        }),
+      { wrapper: createWrapper(supabase) }
+    )
+
+    await waitFor(() => {
+      expect(result.current.errorCode).toBe(RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE)
+      expect(result.current.error).toContain('Embedding model changed. Please reindex your notes to enable search.')
+    })
+
+    expect(result.current.noteGroups).toEqual([])
+    expect(result.current.aiHasMore).toBe(false)
+    expect(invoke).toHaveBeenCalledTimes(1)
   })
 
   it('falls back to legacy content when bodyContent is missing from rag-search results', async () => {
