@@ -99,6 +99,14 @@ describe('Sidebar Component', () => {
     cy.get('@onOpenSearch').should('have.been.calledOnce')
   })
 
+  it('opens graph view when graph action is provided', () => {
+    const onOpenGraphView = cy.spy().as('onOpenGraphView')
+    cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} onOpenGraphView={onOpenGraphView} />))
+
+    cy.get('button[aria-label="Open notes graph"]').click()
+    cy.get('@onOpenGraphView').should('have.been.calledOnce')
+  })
+
   it('renders search trigger as focusable button for keyboard accessibility', () => {
     const onOpenSearch = cy.stub().as('onOpenSearch')
     cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} onOpenSearch={onOpenSearch} />))
