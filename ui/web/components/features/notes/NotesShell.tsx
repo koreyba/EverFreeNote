@@ -14,7 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 
 import { cn } from "@ui/web/lib/utils";
 import { Sidebar } from "@/components/features/notes/Sidebar";
@@ -162,8 +161,9 @@ export function NotesShell({ controller }: NotesShellProps) {
   const showEditor = !!(selectedNote || isEditing);
 
   const handleOpenGraphView = React.useCallback(() => {
+    setIsSearchPanelOpen(false);
     setShowGraphView(true);
-  }, []);
+  }, [setIsSearchPanelOpen]);
 
   const handleCloseGraphView = React.useCallback(() => {
     setShowGraphView(false);
@@ -183,6 +183,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   );
 
   const handleOpenSearchPanel = React.useCallback(() => {
+    setShowGraphView(false);
     if (isSearchPanelOpen) {
       searchPanelRef.current?.focusInput();
       return;
@@ -281,18 +282,13 @@ export function NotesShell({ controller }: NotesShellProps) {
             showEditor || isSearchPanelOpen ? "hidden md:flex" : "w-full",
           )}
         >
-          <div className="border-b p-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Notes Graph View</h2>
-            <Button variant="ghost" size="sm" onClick={handleCloseGraphView}>
-              Close
-            </Button>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <NotesGraphView
-              notes={controller.notes}
-              onNodeClick={handleGraphNodeClick}
-            />
-          </div>
+          <NotesGraphView
+            notes={controller.notes}
+            activeNoteId={selectedNote?.id}
+            notesTotal={notesTotal}
+            onNodeClick={handleGraphNodeClick}
+            onClose={handleCloseGraphView}
+          />
         </div>
       )}
 

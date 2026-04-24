@@ -147,6 +147,7 @@ export function Sidebar({
             onClick={onOpenGraphView}
             variant="outline"
             className="w-full"
+            aria-label="Open notes graph"
           >
             <Network className="w-4 h-4 mr-2" />
             Graph View
