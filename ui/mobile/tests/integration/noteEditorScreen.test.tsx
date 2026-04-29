@@ -214,13 +214,33 @@ jest.mock('@ui/mobile/components/tags/TagInput', () => ({
 }))
 
 jest.mock('@ui/mobile/components/NoteIndexMenu', () => ({
-  NoteIndexMenu: ({ visible, noteId, onClose }: { visible: boolean; noteId: string; onClose: () => void }) => {
+  NoteIndexMenu: ({ visible, noteId, onClose, onShareNote }: { visible: boolean; noteId: string; onClose: () => void; onShareNote: () => void }) => {
     const { View, Text, Pressable } = require('react-native')
     return (
       <View testID="note-index-menu">
         <Text testID="note-index-menu-visibility">{visible ? 'visible' : 'hidden'}</Text>
         <Text testID="note-index-menu-note-id">{noteId}</Text>
-        <Pressable accessibilityLabel="Close note index menu" onPress={onClose} />
+        {visible ? (
+          <>
+            <Pressable accessibilityLabel="Share note" onPress={onShareNote}>
+              <Text>Share note</Text>
+            </Pressable>
+            <Pressable accessibilityLabel="Close note index menu" onPress={onClose} />
+          </>
+        ) : null}
+      </View>
+    )
+  },
+}))
+
+jest.mock('@ui/mobile/components/ShareNoteDialog', () => ({
+  ShareNoteDialog: ({ visible, noteId, onClose }: { visible: boolean; noteId: string; onClose: () => void }) => {
+    const { View, Text, Pressable } = require('react-native')
+    return (
+      <View testID="share-note-dialog">
+        <Text testID="share-note-dialog-visibility">{visible ? 'visible' : 'hidden'}</Text>
+        <Text testID="share-note-dialog-note-id">{noteId}</Text>
+        {visible ? <Pressable accessibilityLabel="Close share note" onPress={onClose} /> : null}
       </View>
     )
   },
@@ -792,6 +812,31 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('note-index-menu-visibility').props.children).toBe('hidden')
+      })
+    })
+
+    it('opens share note dialog from the note options menu', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      expect(screen.getByTestId('share-note-dialog-visibility').props.children).toBe('hidden')
+      expect(screen.getByTestId('share-note-dialog-note-id').props.children).toBe('test-note-id')
+
+      fireEvent.press(screen.getByLabelText('More options'))
+      fireEvent.press(screen.getByLabelText('Share note'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('note-index-menu-visibility').props.children).toBe('hidden')
+        expect(screen.getByTestId('share-note-dialog-visibility').props.children).toBe('visible')
+      })
+
+      fireEvent.press(screen.getByLabelText('Close share note'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('share-note-dialog-visibility').props.children).toBe('hidden')
       })
     })
   })

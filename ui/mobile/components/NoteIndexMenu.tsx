@@ -7,18 +7,23 @@ import {
     StyleSheet,
     ActivityIndicator,
 } from 'react-native'
-import { Database, Trash2 } from 'lucide-react-native'
+import { Database, Share2, Trash2 } from 'lucide-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '@ui/mobile/providers'
 import { useSupabase } from '@ui/mobile/providers/SupabaseProvider'
 import { useRagStatus } from '@ui/mobile/hooks/useRagStatus'
 import { logRagIndexDebugChunks } from '@core/rag/debugLog'
 import { parseRagIndexResult } from '@core/rag/indexResult'
 
-interface NoteIndexMenuProps {
+type NoteIndexMenuProps = Readonly<{
     noteId: string
     visible: boolean
     onClose: () => void
-}
+    onShareNote?: () => void
+}>
+
+type NoteIndexMenuStyles = ReturnType<typeof createStyles>
+type ThemeColors = ReturnType<typeof useTheme>['colors']
 
 type Operation = 'indexing' | 'deleting' | null
 
@@ -34,8 +39,46 @@ async function extractErrorMessage(err: unknown, fallback: string): Promise<stri
     return err.message || fallback
 }
 
-export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) {
+function ShareNoteAction({
+    colors,
+    disabled,
+    onShareNote,
+    styles,
+}: Readonly<{
+    colors: ThemeColors
+    disabled: boolean
+    onShareNote: () => void
+    styles: NoteIndexMenuStyles
+}>) {
+    return (
+        <Pressable
+            style={({ pressed }) => [
+                styles.actionButton,
+                pressed && !disabled && styles.actionButtonPressed,
+                disabled && styles.actionButtonDisabled,
+            ]}
+            onPress={onShareNote}
+            disabled={disabled}
+            accessibilityRole="button"
+            accessibilityLabel="Share note"
+            accessibilityState={{ disabled }}
+        >
+            <View style={styles.actionButtonContent}>
+                <Share2 size={20} color={disabled ? colors.mutedForeground : colors.foreground} style={styles.actionIcon} />
+                <View style={styles.actionTextContent}>
+                    <Text style={[styles.actionButtonText, disabled && styles.actionButtonTextDisabled]}>
+                        Share note
+                    </Text>
+                    <Text style={styles.actionButtonDescription}>Anyone with the link can view</Text>
+                </View>
+            </View>
+        </Pressable>
+    )
+}
+
+export function NoteIndexMenu({ noteId, visible, onClose, onShareNote }: NoteIndexMenuProps) {
     const { colors } = useTheme()
+    const insets = useSafeAreaInsets()
     const { client } = useSupabase()
     const styles = useMemo(() => createStyles(colors), [colors])
     const { chunkCount, indexedAt, isLoading, refresh } = useRagStatus(noteId)
@@ -65,6 +108,12 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
         if (isBusy) return
         onClose()
     }, [isBusy, onClose])
+
+    const handleShareNote = useCallback(() => {
+        if (isBusy) return
+        onClose()
+        onShareNote?.()
+    }, [isBusy, onClose, onShareNote])
 
     const showToast = useCallback((text: string, isError = false) => {
         if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
@@ -123,6 +172,14 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
         }
     }
 
+    const requestIndex = () => {
+        handleIndex().catch(() => undefined)
+    }
+
+    const requestDelete = () => {
+        handleDelete().catch(() => undefined)
+    }
+
     const statusText = (): string => {
         if (operation === 'indexing') return 'Indexing...'
         if (operation === 'deleting') return 'Removing...'
@@ -143,10 +200,10 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
                 onRequestClose={handleClose}
             >
                 <Pressable style={styles.overlay} onPress={handleClose} />
-                <View style={styles.sheet}>
+                <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) + 16 }]}>
                     {/* Header */}
                     <View style={styles.sheetHeader}>
-                        <Text style={styles.sheetTitle}>AI Index</Text>
+                        <Text style={styles.sheetTitle}>Note options</Text>
                         {isLoading ? (
                             <ActivityIndicator size="small" color={colors.mutedForeground} style={styles.statusSpinner} />
                         ) : (
@@ -160,6 +217,16 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
                             </View>
                         )}
 
+                        {/* Share note button */}
+                        {onShareNote ? (
+                            <ShareNoteAction
+                                colors={colors}
+                                disabled={isBusy}
+                                onShareNote={handleShareNote}
+                                styles={styles}
+                            />
+                        ) : null}
+
                         {/* Index / Re-index button */}
                         <Pressable
                             style={({ pressed }) => [
@@ -167,7 +234,7 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
                                 pressed && !isBusy && styles.actionButtonPressed,
                                 isIndexActionDisabled && styles.actionButtonDisabled,
                             ]}
-                            onPress={() => { void handleIndex() }}
+                            onPress={requestIndex}
                             disabled={isIndexActionDisabled}
                             accessibilityRole="button"
                             accessibilityLabel={isIndexed ? 'Re-index note' : 'Index note'}
@@ -252,7 +319,7 @@ export function NoteIndexMenu({ noteId, visible, onClose }: NoteIndexMenuProps) 
                                     </Pressable>
                                     <Pressable
                                         style={({ pressed }) => [styles.confirmButton, styles.confirmButtonDestructive, pressed && styles.confirmButtonPressed]}
-                                        onPress={() => { void handleDelete() }}
+                                        onPress={requestDelete}
                                         accessibilityRole="button"
                                         accessibilityLabel="Confirm remove from index"
                                     >
@@ -280,7 +347,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
             borderTopRightRadius: 20,
             paddingHorizontal: 16,
             paddingTop: 12,
-            paddingBottom: 32,
             borderTopWidth: 1,
             borderColor: colors.border,
         },
@@ -325,6 +391,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
             textAlign: 'center',
         },
         actionButton: {
+            alignSelf: 'stretch',
             paddingVertical: 14,
             paddingHorizontal: 12,
             borderRadius: 10,
@@ -340,6 +407,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
             flexDirection: 'row',
             alignItems: 'center',
         },
+        actionTextContent: {
+            flex: 1,
+        },
         actionIcon: {
             marginRight: 12,
         },
@@ -347,6 +417,12 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
             fontSize: 16,
             fontFamily: 'Inter_500Medium',
             color: colors.foreground,
+        },
+        actionButtonDescription: {
+            marginTop: 2,
+            fontSize: 12,
+            fontFamily: 'Inter_400Regular',
+            color: colors.mutedForeground,
         },
         actionButtonTextDisabled: {
             color: colors.mutedForeground,
