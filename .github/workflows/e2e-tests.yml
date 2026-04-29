@@ -20,6 +20,8 @@ permissions:
   pull-requests: read
   deployments: read
   checks: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: e2e-${{ github.event.pull_request.number || github.run_id }}
@@ -41,7 +43,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Priority: manual input > matching PR branch name > master
           if [ -n "${INPUT_BRANCH}" ]; then
             echo "Using manually specified branch: ${INPUT_BRANCH}"
             echo "e2e_ref=${INPUT_BRANCH}" >> "$GITHUB_OUTPUT"
@@ -126,7 +127,6 @@ jobs:
               done < <(echo "$deployments_json" | jq -r 'sort_by(.created_at) | reverse | .[].id')
             fi
 
-            # Fallback to Cloudflare check-runs when deployment statuses are unavailable.
             checks_json="$(gh api "repos/$REPO/commits/$SHA/check-runs?per_page=100" 2>/dev/null || echo '{"check_runs":[]}')"
             cf_checks="$(echo "$checks_json" | jq '[.check_runs[] | select((.name | ascii_downcase | contains("cloudflare")) or ((.app.slug // "") | ascii_downcase | contains("cloudflare")))]')"
             cf_count="$(echo "$cf_checks" | jq 'length')"
@@ -169,6 +169,11 @@ jobs:
       (needs.wait-cloudflare-preview.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.wait-cloudflare-preview.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     env:
       BASE_URL: ${{ needs.wait-cloudflare-preview.outputs.preview_url || inputs.preview_url }}
       SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
@@ -300,7 +305,7 @@ jobs:
           fs.appendFileSync(summaryFile, md);
           NODE
 
-      - name: Upload Playwright report
+      - name: Upload Playwright report artifact
         if: always()
         uses: actions/upload-artifact@v6
         with:
@@ -311,6 +316,17 @@ jobs:
             e2e/results.json
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Upload Playwright report to GitHub Pages
+        if: always()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: e2e/playwright-report
+
+      - name: Deploy Playwright report to GitHub Pages
+        if: always()
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Mark job as failed when E2E failed
         if: steps.run-e2e-tests.outcome != 'success'
