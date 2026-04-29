@@ -45,3 +45,37 @@ export function getOAuthRedirectUrl(): string {
 
   return Linking.createURL('auth/callback')
 }
+
+export function getPublicWebOrigin(): string {
+  const explicit =
+    Constants.expoConfig?.extra?.publicWebOrigin ?? process.env.EXPO_PUBLIC_PUBLIC_WEB_ORIGIN
+
+  if (typeof explicit === 'string' && explicit.trim().length > 0) {
+    try {
+      const parsed = new URL(explicit.trim())
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        return parsed.origin
+      }
+    } catch {
+      // Fall through to the editor WebView URL fallback below.
+    }
+  }
+
+  const editorWebViewUrl =
+    Constants.expoConfig?.extra?.editorWebViewUrl ?? process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL
+
+  if (typeof editorWebViewUrl !== 'string' || editorWebViewUrl.trim().length === 0) {
+    return ''
+  }
+
+  try {
+    const parsed = new URL(editorWebViewUrl.trim())
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.origin
+    }
+  } catch {
+    return ''
+  }
+
+  return ''
+}

@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      note_share_links: {
+        Row: {
+          id: string
+          note_id: string
+          user_id: string
+          token: string
+          permission: 'view'
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          note_id: string
+          user_id: string
+          token?: string
+          permission?: 'view'
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          note_id?: string
+          user_id?: string
+          token?: string
+          permission?: 'view'
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           id: string
@@ -110,6 +143,12 @@ export type Database = {
         }
         Returns: FtsSearchResult[]
       }
+      get_public_note_by_token: {
+        Args: {
+          share_token: string
+        }
+        Returns: PublicNoteResult[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -136,4 +175,13 @@ export type FtsSearchResult = Tables<'notes'> & {
   rank: number
   headline: string | null
   content?: string | null
+}
+
+export type PublicNoteResult = {
+  token: string
+  title: string
+  description: string
+  tags: string[]
+  created_at: string
+  updated_at: string
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from 'react'
-import { MoreHorizontal, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Share2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import {
 } from '@/components/features/wordpress/ExportToWordPressButton'
 import { WordPressExportDialog } from '@/components/features/wordpress/WordPressExportDialog'
 import { RagIndexPanel } from '@/components/features/notes/RagIndexPanel'
+import { ShareNoteDialog } from '@/components/features/notes/ShareNoteDialog'
 
 interface MoreActionsMenuProps {
   noteId: string
@@ -31,6 +32,7 @@ export function MoreActionsMenu({
   onDelete,
 }: MoreActionsMenuProps) {
   const [moreMenuOpen, setMoreMenuOpen] = React.useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = React.useState(false)
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
   const [exportDialogNote, setExportDialogNote] = React.useState<ExportableWordPressNote | null>(null)
 
@@ -48,6 +50,17 @@ export function MoreActionsMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[200px]">
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault()
+              setMoreMenuOpen(false)
+              setShareDialogOpen(true)
+            }}
+          >
+            <Share2 />
+            Share note
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <RagIndexPanel noteId={noteId} variant="menu" onMenuClose={() => setMoreMenuOpen(false)} />
           {wordpressConfigured && (
             <>
@@ -73,6 +86,7 @@ export function MoreActionsMenu({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <ShareNoteDialog noteId={noteId} open={shareDialogOpen} onOpenChange={setShareDialogOpen} />
       {exportDialogNote ? (
         <WordPressExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} note={exportDialogNote} />
       ) : null}

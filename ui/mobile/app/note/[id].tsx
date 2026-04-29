@@ -16,6 +16,7 @@ import {
 } from '@core/utils/noteAutosaveSession'
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
 import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
+import { ShareNoteDialog } from '@ui/mobile/components/ShareNoteDialog'
 
 const CONTENT_HORIZONTAL_PADDING = 16
 const HEADER_BUTTON_PADDING = 8
@@ -222,6 +223,7 @@ export default function NoteEditorScreen() {
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
   const [isNoteMenuVisible, setIsNoteMenuVisible] = useState(false)
+  const [isShareDialogVisible, setIsShareDialogVisible] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
@@ -471,6 +473,11 @@ export default function NoteEditorScreen() {
     setIsNoteMenuVisible(true)
   }, [])
 
+  const handleOpenShareDialog = useCallback(() => {
+    setIsNoteMenuVisible(false)
+    setIsShareDialogVisible(true)
+  }, [])
+
   const handleDelete = useCallback(() => {
     deleteNote(id, {
       onSuccess: () => {
@@ -605,6 +612,12 @@ export default function NoteEditorScreen() {
         noteId={id}
         visible={isNoteMenuVisible}
         onClose={() => setIsNoteMenuVisible(false)}
+        onShareNote={handleOpenShareDialog}
+      />
+      <ShareNoteDialog
+        noteId={id}
+        visible={isShareDialogVisible}
+        onClose={() => setIsShareDialogVisible(false)}
       />
     </View>
   )

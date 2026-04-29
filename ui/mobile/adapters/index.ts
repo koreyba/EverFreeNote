@@ -7,4 +7,4 @@ export { storageAdapter, asyncStorageAdapter, secureStorageAdapter } from './sto
 export { oauthAdapter } from './oauth'
 export { navigationAdapter } from './navigation'
 export { supabaseClientFactory } from './supabaseClient'
-export { getOAuthRedirectUrl, getSupabaseConfig } from './config'
+export { getOAuthRedirectUrl, getPublicWebOrigin, getSupabaseConfig } from './config'

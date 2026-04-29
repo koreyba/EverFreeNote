@@ -196,6 +196,13 @@ jest.mock('@ui/mobile/components/NoteIndexMenu', () => ({
   },
 }))
 
+jest.mock('@ui/mobile/components/ShareNoteDialog', () => ({
+  ShareNoteDialog: () => {
+    const { View } = require('react-native')
+    return <View testID="share-note-dialog" />
+  },
+}))
+
 import NoteEditorScreen from '@ui/mobile/app/note/[id]'
 import { NoteService } from '@core/services/notes'
 import { databaseService } from '@ui/mobile/services/database'

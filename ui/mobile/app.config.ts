@@ -14,6 +14,7 @@ type VariantConfig = {
   supabasePublishableKey?: string
   supabaseFunctionsUrl: string
   editorWebViewUrl?: string
+  publicWebOrigin?: string
   requireEditorWebViewUrl?: boolean
 }
 
@@ -30,10 +31,12 @@ if (!devSupabaseAnonKey) {
 const stageSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL_STAGE ?? '').trim()
 const stageSupabasePublishableKey = (process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_STAGE ?? '').trim()
 const stageEditorWebViewUrl = (process.env.EXPO_PUBLIC_STAGE_EDITOR_WEBVIEW_URL ?? '').trim()
+const stagePublicWebOrigin = (process.env.EXPO_PUBLIC_STAGE_PUBLIC_WEB_ORIGIN ?? '').trim()
 
 const prodSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL_PROD ?? '').trim()
 const prodSupabasePublishableKey = (process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_PROD ?? '').trim()
 const prodEditorWebViewUrl = (process.env.EXPO_PUBLIC_PROD_EDITOR_WEBVIEW_URL ?? '').trim()
+const prodPublicWebOrigin = (process.env.EXPO_PUBLIC_PROD_PUBLIC_WEB_ORIGIN ?? '').trim()
 
 const variants: Record<AppVariant, VariantConfig> = {
   dev: {
@@ -58,6 +61,7 @@ const variants: Record<AppVariant, VariantConfig> = {
     supabasePublishableKey: stageSupabasePublishableKey,
     supabaseFunctionsUrl: stageSupabaseUrl ? `${stageSupabaseUrl}/functions/v1` : '',
     editorWebViewUrl: stageEditorWebViewUrl,
+    publicWebOrigin: stagePublicWebOrigin,
   },
   prod: {
     name: 'EverFreeNote',
@@ -70,6 +74,7 @@ const variants: Record<AppVariant, VariantConfig> = {
     supabasePublishableKey: prodSupabasePublishableKey,
     supabaseFunctionsUrl: prodSupabaseUrl ? `${prodSupabaseUrl}/functions/v1` : '',
     editorWebViewUrl: prodEditorWebViewUrl,
+    publicWebOrigin: prodPublicWebOrigin,
   },
 }
 
@@ -109,6 +114,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   // Dev convenience: allow overriding the editor WebView URL from the local .env.
   // Important: do NOT let this override leak into stage/prod release builds.
   const devEditorWebViewUrl = (process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL ?? '').trim()
+  const devPublicWebOrigin = (process.env.EXPO_PUBLIC_PUBLIC_WEB_ORIGIN ?? '').trim()
   if (variant === 'dev' && !devEditorWebViewUrl) {
     console.warn('Warning: EXPO_PUBLIC_EDITOR_WEBVIEW_URL is not set for dev builds (full /editor-webview URL required).')
   }
@@ -168,6 +174,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       supabasePublishableKey: variantConfig.supabasePublishableKey,
       supabaseFunctionsUrl: variantConfig.supabaseFunctionsUrl,
       editorWebViewUrl: resolvedEditorWebViewUrl,
+      publicWebOrigin: variant === 'dev' && devPublicWebOrigin !== '' ? devPublicWebOrigin : variantConfig.publicWebOrigin,
       requireEditorWebViewUrl: variantConfig.requireEditorWebViewUrl ?? false,
       oauthRedirectUrl: oauthRedirectOverride !== '' ? oauthRedirectOverride : `${variantConfig.scheme}://auth/callback`,
     },
