@@ -7,73 +7,502 @@
     <style>
       :root {
         color-scheme: light dark;
-        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        line-height: 1.5;
+        --bg: #f7f8fb;
+        --surface: #ffffff;
+        --surface-2: #eef2f7;
+        --text: #162033;
+        --muted: #647084;
+        --line: #d9e0ea;
+        --accent: #2563eb;
+        --accent-2: #0f766e;
+        --failed: #b42318;
+        --passed: #147d43;
+        --unknown: #8a5b00;
+        --shadow: 0 18px 50px rgba(22, 32, 51, 0.09);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
       }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0d1117;
+          --surface: #161b22;
+          --surface-2: #202834;
+          --text: #edf2f8;
+          --muted: #9aa7b8;
+          --line: #303846;
+          --accent: #6ea8ff;
+          --accent-2: #4ecdc4;
+          --failed: #ff8a7a;
+          --passed: #57d083;
+          --unknown: #e8b84f;
+          --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         margin: 0;
-        padding: 32px;
-        background: Canvas;
-        color: CanvasText;
+        background:
+          linear-gradient(135deg, rgba(37, 99, 235, 0.08), transparent 32rem),
+          linear-gradient(315deg, rgba(15, 118, 110, 0.08), transparent 28rem),
+          var(--bg);
+        color: var(--text);
+        min-height: 100vh;
       }
+
       main {
-        max-width: 1180px;
+        width: min(1180px, calc(100% - 32px));
         margin: 0 auto;
+        padding: 32px 0;
       }
+
+      header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 20px;
+        align-items: end;
+        margin-bottom: 24px;
+      }
+
       h1 {
         margin: 0 0 8px;
-        font-size: 32px;
+        font-size: clamp(28px, 5vw, 46px);
+        line-height: 1;
+        letter-spacing: 0;
       }
-      p {
-        margin: 0 0 24px;
-        color: color-mix(in srgb, CanvasText 72%, Canvas);
+
+      .lede {
+        margin: 0;
+        color: var(--muted);
+        max-width: 760px;
       }
+
+      .meta {
+        color: var(--muted);
+        font-size: 13px;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .stat {
+        background: color-mix(in srgb, var(--surface) 94%, transparent);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: var(--shadow);
+      }
+
+      .stat span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+        text-transform: uppercase;
+      }
+
+      .stat strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 30px;
+        line-height: 1;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) minmax(150px, 190px) minmax(180px, 240px);
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      input,
+      select {
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+        padding: 0 12px;
+      }
+
+      input:focus,
+      select:focus {
+        outline: 2px solid color-mix(in srgb, var(--accent) 36%, transparent);
+        outline-offset: 2px;
+      }
+
+      .table-wrap {
+        overflow: auto;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
-        border: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
+        min-width: 900px;
       }
+
       th,
       td {
-        padding: 10px 12px;
-        border-bottom: 1px solid color-mix(in srgb, CanvasText 14%, Canvas);
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--line);
         text-align: left;
-        vertical-align: top;
-        overflow-wrap: anywhere;
+        vertical-align: middle;
       }
+
       th {
-        background: color-mix(in srgb, CanvasText 8%, Canvas);
-        font-weight: 650;
+        color: var(--muted);
+        background: var(--surface-2);
+        font-size: 12px;
+        font-weight: 750;
+        text-transform: uppercase;
       }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
       a {
-        color: LinkText;
+        color: var(--accent);
+        font-weight: 700;
+        text-decoration: none;
       }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
       code {
         font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        text-transform: capitalize;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--unknown);
+      }
+
+      .status-success .dot {
+        background: var(--passed);
+      }
+
+      .status-failure .dot,
+      .status-cancelled .dot,
+      .status-timed_out .dot {
+        background: var(--failed);
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .empty {
+        padding: 42px 18px;
+        text-align: center;
+        color: var(--muted);
+      }
+
+      .hide {
+        display: none;
+      }
+
+      @media (max-width: 760px) {
+        main {
+          width: min(100% - 20px, 1180px);
+          padding: 20px 0;
+        }
+
+        header,
+        .toolbar {
+          grid-template-columns: 1fr;
+        }
+
+        .meta {
+          text-align: left;
+          white-space: normal;
+        }
+
+        .stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
       }
     </style>
   </head>
   <body>
     <main>
-      <h1>EverFreeNote E2E Reports</h1>
-      <p>Playwright reports published from GitHub Actions. Newest reports are listed first.</p>
-      <table>
-        <thead>
-<tr>
-  <th>Report</th>
-  <th>Outcome</th>
-  <th>Ref</th>
-  <th>Commit</th>
-  <th>E2E Ref</th>
-  <th>Generated</th>
-</tr>
-        </thead>
-        <tbody>
-<tr><td><a href="https://koreyba.github.io/EverFreeNote/reports/pr-108/run-25169072235-attempt-1/">PR #108 / run 25169072235 / attempt 1</a></td><td>success</td><td>stage</td><td><code>c743084</code></td><td>master</td><td>2026-04-30T13:53:30.871Z</td></tr>
-<tr><td><a href="https://koreyba.github.io/EverFreeNote/reports/pr-108/run-25168268164-attempt-1/">PR #108 / run 25168268164 / attempt 1</a></td><td>skipped</td><td>stage</td><td><code>6a23dfc</code></td><td>stage</td><td>2026-04-30T13:46:12.936Z</td></tr>
-<tr><td><a href="https://koreyba.github.io/EverFreeNote/reports/pr-108/run-25167229720-attempt-1/">PR #108 / run 25167229720 / attempt 1</a></td><td>failure</td><td>stage</td><td><code>2b63d76</code></td><td>stage</td><td>2026-04-30T13:44:47.856Z</td></tr>
-        </tbody>
-      </table>
+      <header>
+        <div>
+          <h1>EverFreeNote E2E Reports</h1>
+          <p class="lede">Latest Playwright reports from GitHub Actions. This page keeps the newest 20 runs to stay fast and readable.</p>
+        </div>
+        <div class="meta">Updated <time id="generated-at" datetime="2026-04-30T14:12:40.497Z">2026-04-30T14:12:40.497Z</time></div>
+      </header>
+
+      <section class="stats" aria-label="Report totals">
+        <div class="stat"><span>Total</span><strong id="stat-total">0</strong></div>
+        <div class="stat"><span>Passed</span><strong id="stat-passed">0</strong></div>
+        <div class="stat"><span>Failed</span><strong id="stat-failed">0</strong></div>
+        <div class="stat"><span>Manual</span><strong id="stat-manual">0</strong></div>
+      </section>
+
+      <section class="toolbar" aria-label="Report filters">
+        <label>
+          Search
+          <input id="search" type="search" placeholder="PR, branch, SHA, run id">
+        </label>
+        <label>
+          Outcome
+          <select id="outcome">
+            <option value="all">All outcomes</option>
+            <option value="success">Success</option>
+            <option value="failure">Failure</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </label>
+        <label>
+          Sort
+          <select id="sort">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="outcome">Outcome</option>
+            <option value="pr">PR number</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="table-wrap" aria-label="Published reports">
+        <table>
+          <thead>
+            <tr>
+              <th>Report</th>
+              <th>Outcome</th>
+              <th>Ref</th>
+              <th>Commit</th>
+              <th>Preview</th>
+              <th>E2E Ref</th>
+              <th>Generated</th>
+            </tr>
+          </thead>
+          <tbody id="report-rows"></tbody>
+        </table>
+        <div id="empty" class="empty hide">No reports match the current filters.</div>
+      </section>
     </main>
+
+    <script id="reports-data" type="application/json">[
+  {
+    "url": "https://koreyba.github.io/EverFreeNote/reports/pr-108/run-25170002823-attempt-1/",
+    "path": "reports/pr-108/run-25170002823-attempt-1",
+    "runId": "25170002823",
+    "runAttempt": "1",
+    "prNumber": "108",
+    "ref": "stage",
+    "sha": "05d5b348c8d9380cb5a6c07d0b9c77cfcfd091b9",
+    "outcome": "success",
+    "previewUrl": "https://88d06a5d.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "generatedAt": "2026-04-30T14:12:40.497Z"
+  },
+  {
+    "url": "https://koreyba.github.io/EverFreeNote/reports/pr-108/run-25169072235-attempt-1/",
+    "path": "reports/pr-108/run-25169072235-attempt-1",
+    "runId": "25169072235",
+    "runAttempt": "1",
+    "prNumber": "108",
+    "ref": "stage",
+    "sha": "c74308483710bc88e12341c2474ebacdbb7f4b9e",
+    "outcome": "success",
+    "previewUrl": "https://7b845b16.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "generatedAt": "2026-04-30T13:53:30.871Z"
+  },
+  {
+    "url": "https://koreyba.github.io/EverFreeNote/reports/pr-108/run-25168268164-attempt-1/",
+    "path": "reports/pr-108/run-25168268164-attempt-1",
+    "runId": "25168268164",
+    "runAttempt": "1",
+    "prNumber": "108",
+    "ref": "stage",
+    "sha": "6a23dfcbbd7792787303e0512ea097a70d268a90",
+    "outcome": "skipped",
+    "previewUrl": "https://9632e962.everfreenote.pages.dev",
+    "e2eRef": "stage",
+    "generatedAt": "2026-04-30T13:46:12.936Z"
+  },
+  {
+    "url": "https://koreyba.github.io/EverFreeNote/reports/pr-108/run-25167229720-attempt-1/",
+    "path": "reports/pr-108/run-25167229720-attempt-1",
+    "runId": "25167229720",
+    "runAttempt": "1",
+    "prNumber": "108",
+    "ref": "stage",
+    "sha": "2b63d76c47112b43fd4a292ca2baca0c3c1e5b37",
+    "outcome": "failure",
+    "previewUrl": "https://f1e992be.everfreenote.pages.dev",
+    "e2eRef": "stage",
+    "generatedAt": "2026-04-30T13:44:47.856Z"
+  }
+]</script>
+    <script>
+      const reports = JSON.parse(document.getElementById('reports-data').textContent || '[]');
+      const rows = document.getElementById('report-rows');
+      const empty = document.getElementById('empty');
+      const search = document.getElementById('search');
+      const outcome = document.getElementById('outcome');
+      const sort = document.getElementById('sort');
+      const generatedAt = document.getElementById('generated-at');
+
+      const formatDate = (value) => {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Unknown';
+        return new Intl.DateTimeFormat(undefined, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(date);
+      };
+
+      const text = (value) => String(value ?? '');
+      const shortSha = (value) => text(value).slice(0, 7) || 'unknown';
+      const scope = (item) => item.prNumber ? `PR #${item.prNumber}` : 'Manual';
+      const reportTitle = (item) => `${scope(item)} / run ${item.runId} / attempt ${item.runAttempt}`;
+      const normalizedOutcome = (item) => text(item.outcome || 'unknown').toLowerCase();
+
+      const makeCell = (content) => {
+        const cell = document.createElement('td');
+        if (content instanceof Node) cell.append(content);
+        else cell.textContent = content;
+        return cell;
+      };
+
+      const makeLink = (href, label) => {
+        if (!href) return document.createTextNode('n/a');
+        const link = document.createElement('a');
+        link.href = href;
+        link.textContent = label;
+        return link;
+      };
+
+      const updateStats = () => {
+        document.getElementById('stat-total').textContent = reports.length;
+        document.getElementById('stat-passed').textContent = reports.filter((item) => normalizedOutcome(item) === 'success').length;
+        document.getElementById('stat-failed').textContent = reports.filter((item) => ['failure', 'timed_out', 'cancelled'].includes(normalizedOutcome(item))).length;
+        document.getElementById('stat-manual').textContent = reports.filter((item) => !item.prNumber).length;
+        generatedAt.textContent = formatDate(generatedAt.dateTime);
+      };
+
+      const filteredReports = () => {
+        const query = search.value.trim().toLowerCase();
+        const selectedOutcome = outcome.value;
+
+        const matches = reports.filter((item) => {
+          const itemOutcome = normalizedOutcome(item);
+          const searchable = [
+            reportTitle(item),
+            item.ref,
+            item.sha,
+            item.e2eRef,
+            item.previewUrl,
+            item.path,
+          ].map(text).join(' ').toLowerCase();
+
+          return (!query || searchable.includes(query)) &&
+            (selectedOutcome === 'all' || itemOutcome === selectedOutcome);
+        });
+
+        return matches.sort((a, b) => {
+          if (sort.value === 'oldest') {
+            return (Date.parse(a.generatedAt || '') || 0) - (Date.parse(b.generatedAt || '') || 0);
+          }
+          if (sort.value === 'outcome') {
+            return normalizedOutcome(a).localeCompare(normalizedOutcome(b));
+          }
+          if (sort.value === 'pr') {
+            return Number(a.prNumber || Number.MAX_SAFE_INTEGER) - Number(b.prNumber || Number.MAX_SAFE_INTEGER);
+          }
+          return (Date.parse(b.generatedAt || '') || 0) - (Date.parse(a.generatedAt || '') || 0);
+        });
+      };
+
+      const render = () => {
+        rows.replaceChildren();
+        const visibleReports = filteredReports();
+
+        for (const item of visibleReports) {
+          const tr = document.createElement('tr');
+          const title = document.createElement('div');
+          title.append(makeLink(item.url, reportTitle(item)));
+          const path = document.createElement('div');
+          path.className = 'muted';
+          path.textContent = item.path || '';
+          title.append(path);
+
+          const status = document.createElement('span');
+          const itemOutcome = normalizedOutcome(item);
+          status.className = `status status-${itemOutcome}`;
+          const dot = document.createElement('span');
+          dot.className = 'dot';
+          dot.setAttribute('aria-hidden', 'true');
+          status.append(dot, document.createTextNode(itemOutcome));
+
+          const commit = document.createElement('code');
+          commit.textContent = shortSha(item.sha);
+
+          tr.append(
+            makeCell(title),
+            makeCell(status),
+            makeCell(item.ref || 'unknown'),
+            makeCell(commit),
+            makeCell(makeLink(item.previewUrl, 'Open preview')),
+            makeCell(item.e2eRef || 'master'),
+            makeCell(formatDate(item.generatedAt)),
+          );
+          rows.append(tr);
+        }
+
+        empty.classList.toggle('hide', visibleReports.length > 0);
+      };
+
+      for (const control of [search, outcome, sort]) {
+        control.addEventListener('input', render);
+      }
+
+      updateStats();
+      render();
+    </script>
   </body>
 </html>
