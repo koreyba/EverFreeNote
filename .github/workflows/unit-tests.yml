@@ -144,6 +144,7 @@ jobs:
 
       - name: Generate mobile unit Allure report
         if: always()
+        continue-on-error: true
         run: |
           if [ -d ui/mobile/allure-results/mobile-unit ] && [ "$(find ui/mobile/allure-results/mobile-unit -type f | wc -l)" -gt 0 ]; then
             npm --prefix ui/mobile run allure:generate
@@ -308,6 +309,7 @@ jobs:
 
       - name: Generate core unit Allure report
         if: always()
+        continue-on-error: true
         run: |
           if [ -d allure-results/core-unit ] && [ "$(find allure-results/core-unit -type f | wc -l)" -gt 0 ]; then
             npm run allure:generate:core-unit
@@ -469,6 +471,7 @@ jobs:
 
       - name: Generate web unit Allure report
         if: always()
+        continue-on-error: true
         run: |
           if [ -d allure-results/web-unit ] && [ "$(find allure-results/web-unit -type f | wc -l)" -gt 0 ]; then
             npm run allure:generate:web-unit
