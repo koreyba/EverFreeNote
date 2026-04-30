@@ -1,6 +1,7 @@
 /// <reference types="cypress" />
 
 import './commands'
+import 'allure-cypress'
 import '@testing-library/cypress/add-commands'
 import '@cypress/code-coverage/support'
 import { registerGlobalErrorHandling } from './setup/error-handling'

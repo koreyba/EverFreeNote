@@ -24,6 +24,8 @@ export default defineConfig([
       '.next/**',
       'node_modules/**',
       'coverage/**',
+      'allure-results/**',
+      'allure-report/**',
       'act-artifacts/**',
       'out/**',
       'next-env.d.ts',

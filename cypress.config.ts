@@ -1,4 +1,6 @@
 import { defineConfig } from "cypress"
+import { allureCypress } from "allure-cypress/reporter"
+import * as os from "node:os"
 
 export default defineConfig({
   projectId: '76trp2',
@@ -17,6 +19,17 @@ export default defineConfig({
     specPattern: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
     supportFile: 'cypress/support/component.ts',
     setupNodeEvents(on, config) {
+      allureCypress(on, config, {
+        resultsDir: "allure-results/component",
+        environmentInfo: {
+          os_platform: os.platform(),
+          os_release: os.release(),
+          os_version: os.version(),
+          node_version: process.version,
+          test_type: "web-component",
+        },
+      })
+
       // Add code coverage for component tests
       require('@cypress/code-coverage/task')(on, config)
 
