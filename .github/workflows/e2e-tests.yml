@@ -21,6 +21,9 @@ permissions:
   deployments: read
   checks: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: e2e-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
@@ -169,6 +172,12 @@ jobs:
       (needs.wait-cloudflare-preview.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.wait-cloudflare-preview.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      report_dir: ${{ steps.report-metadata.outputs.report_dir }}
+      report_url: ${{ steps.report-metadata.outputs.report_url }}
+      preview_url: ${{ steps.report-metadata.outputs.preview_url }}
+      e2e_ref: ${{ steps.report-metadata.outputs.e2e_ref }}
+      e2e_outcome: ${{ steps.run-e2e-tests.outcome }}
     env:
       BASE_URL: ${{ needs.wait-cloudflare-preview.outputs.preview_url || inputs.preview_url }}
       SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
@@ -205,10 +214,33 @@ jobs:
         working-directory: e2e
         run: npm run test -- --reporter=html,json
 
+      - name: Compute Playwright report metadata
+        id: report-metadata
+        if: always()
+        env:
+          PAGES_BASE_URL: https://koreyba.github.io/EverFreeNote
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${PR_NUMBER}" ]; then
+            report_dir="reports/pr-${PR_NUMBER}/run-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
+          else
+            report_dir="reports/manual/run-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
+          fi
+
+          report_url="${PAGES_BASE_URL}/${report_dir}/"
+
+          echo "report_dir=${report_dir}" >> "$GITHUB_OUTPUT"
+          echo "report_url=${report_url}" >> "$GITHUB_OUTPUT"
+          echo "preview_url=${BASE_URL}" >> "$GITHUB_OUTPUT"
+          echo "e2e_ref=${E2E_REF}" >> "$GITHUB_OUTPUT"
+
       - name: Add visual summary
         if: always()
         env:
           E2E_STEP_OUTCOME: ${{ steps.run-e2e-tests.outcome }}
+          REPORT_URL: ${{ steps.report-metadata.outputs.report_url }}
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -218,6 +250,7 @@ jobs:
           const previewUrl = process.env.BASE_URL || 'n/a';
           const repoRef = 'koreyba/EverFreeNote-e2e@' + (process.env.E2E_REF || 'master');
           const overallOutcome = process.env.E2E_STEP_OUTCOME || 'unknown';
+          const reportUrl = process.env.REPORT_URL || 'n/a';
 
           const reportPath = path.resolve('e2e', 'results.json');
           const counts = { passed: 0, failed: 0, flaky: 0, skipped: 0 };
@@ -274,6 +307,7 @@ jobs:
           let md = '';
           md += `## ${headline}\n\n`;
           md += `- **Preview URL:** ${previewUrl}\n`;
+          md += `- **Full Playwright report:** ${reportUrl}\n`;
           md += `- **Test repository:** ${repoRef}\n\n`;
           md += '| Metric | Count |\n';
           md += '|---|---:|\n';
@@ -300,7 +334,7 @@ jobs:
           fs.appendFileSync(summaryFile, md);
           NODE
 
-      - name: Upload Playwright report
+      - name: Upload Playwright report artifact
         if: always()
         uses: actions/upload-artifact@v6
         with:
@@ -315,3 +349,148 @@ jobs:
       - name: Mark job as failed when E2E failed
         if: steps.run-e2e-tests.outcome != 'success'
         run: exit 1
+
+  publish-e2e-report:
+    name: Publish Playwright E2E report
+    needs: run-e2e
+    if: |
+      always() &&
+      needs.run-e2e.result != 'skipped' &&
+      needs.run-e2e.outputs.report_dir != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: gh-pages-e2e-report-publish
+      cancel-in-progress: false
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download Playwright report artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: .e2e-artifacts
+
+      - name: Prepare Playwright reports index
+        if: always()
+        env:
+          E2E_STEP_OUTCOME: ${{ needs.run-e2e.outputs.e2e_outcome }}
+          REPORT_DIR: ${{ needs.run-e2e.outputs.report_dir }}
+          REPORT_URL: ${{ needs.run-e2e.outputs.report_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REF_NAME: ${{ github.head_ref || github.ref_name }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_URL: ${{ needs.run-e2e.outputs.preview_url }}
+          E2E_REF: ${{ needs.run-e2e.outputs.e2e_ref }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p .pages-index/reports
+          existing_index="$(mktemp)"
+
+          git init --quiet .pages-existing
+          git -C .pages-existing remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          if git -C .pages-existing fetch --quiet --depth=1 origin gh-pages; then
+            git -C .pages-existing show FETCH_HEAD:reports/index.json > "$existing_index" 2>/dev/null || printf '[]\n' > "$existing_index"
+          else
+            printf '[]\n' > "$existing_index"
+          fi
+
+          node scripts/generate-e2e-report-index.js \
+            --existing "$existing_index" \
+            --output .pages-index \
+            --template .github/pages/e2e-reports-index.html \
+            --limit 20
+
+      - name: Prune stale Playwright report pages
+        if: always()
+        run: |
+          set -euo pipefail
+
+          if ! git -C .pages-existing rev-parse --verify FETCH_HEAD >/dev/null 2>&1; then
+            echo "gh-pages was not fetched; nothing to prune."
+            exit 0
+          fi
+
+          git -C .pages-existing checkout --quiet FETCH_HEAD
+          mkdir -p .pages-existing/reports
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const root = path.resolve('.pages-existing');
+          const reportsRoot = path.join(root, 'reports');
+          const retainedFile = path.resolve('.pages-index', 'reports', 'retained-paths.txt');
+          const retained = new Set(
+            fs.readFileSync(retainedFile, 'utf8')
+              .split('\n')
+              .map((line) => line.trim())
+              .filter(Boolean)
+          );
+
+          const removeIfStale = (entryPath) => {
+            const relativePath = path.relative(root, entryPath).replaceAll(path.sep, '/');
+            if (!retained.has(relativePath)) {
+              fs.rmSync(entryPath, { recursive: true, force: true });
+            }
+          };
+
+          if (!fs.existsSync(reportsRoot)) {
+            process.exit(0);
+          }
+
+          for (const scope of fs.readdirSync(reportsRoot, { withFileTypes: true })) {
+            if (!scope.isDirectory() || !['manual', 'pr-'].some((prefix) => scope.name.startsWith(prefix))) {
+              continue;
+            }
+
+            const scopePath = path.join(reportsRoot, scope.name);
+            if (scope.name === 'manual') {
+              for (const run of fs.readdirSync(scopePath, { withFileTypes: true })) {
+                if (run.isDirectory()) removeIfStale(path.join(scopePath, run.name));
+              }
+              continue;
+            }
+
+            for (const run of fs.readdirSync(scopePath, { withFileTypes: true })) {
+              if (run.isDirectory()) removeIfStale(path.join(scopePath, run.name));
+            }
+            if (fs.existsSync(scopePath) && fs.readdirSync(scopePath).length === 0) {
+              fs.rmSync(scopePath, { recursive: true, force: true });
+            }
+          }
+          NODE
+
+          if [ -n "$(git -C .pages-existing status --porcelain)" ]; then
+            git -C .pages-existing config user.name "github-actions[bot]"
+            git -C .pages-existing config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C .pages-existing add reports
+            git -C .pages-existing commit -m "Prune stale E2E reports"
+            git -C .pages-existing push origin HEAD:gh-pages
+          else
+            echo "No stale Playwright report pages to prune."
+          fi
+
+      - name: Publish Playwright report to gh-pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@47f197a2200bb9de68ba5f48fad1c088eb1c4a32 # v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .e2e-artifacts/playwright-report
+          destination_dir: ${{ needs.run-e2e.outputs.report_dir }}
+          keep_files: true
+
+      - name: Publish Playwright reports index to gh-pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@47f197a2200bb9de68ba5f48fad1c088eb1c4a32 # v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .pages-index
+          keep_files: true
