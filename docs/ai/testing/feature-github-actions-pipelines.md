@@ -156,6 +156,7 @@ description: Define testing approach, test cases, and quality assurance
 - GitHub Actions provides built-in workflow run reports
 - Cypress test results uploaded as artifacts
 - Screenshots/videos uploaded on test failure
+- Playwright E2E HTML reports are published to GitHub Pages under unique run/attempt paths, linked from the E2E job summary, and listed from the root Pages index
 
 ## Manual Testing
 **What requires human validation?**
@@ -165,6 +166,8 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Verify workflow runs show correct status
 - [ ] Verify artifacts appear in workflow run details
 - [ ] Verify artifact download works from UI
+- [ ] Verify the E2E summary links to the full Playwright Pages report for that run
+- [ ] Verify the root GitHub Pages index lists the newest E2E report without removing older report links
 - [ ] Verify re-run functionality works (re-run jobs)
 - [ ] Verify manual workflow dispatch works
 

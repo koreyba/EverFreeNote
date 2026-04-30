@@ -252,6 +252,17 @@ Developer → Act CLI → Docker → Workflow Execution
 - Use `if: failure()` condition for cleanup steps
 - Set appropriate timeout values
 
+### Playwright E2E Report Publishing
+
+The E2E workflow publishes every Playwright HTML report to GitHub Pages under a unique path so repeated runs do not overwrite earlier reports:
+
+```text
+reports/pr-<pr-number>/run-<run-id>-attempt-<run-attempt>/
+reports/manual/run-<run-id>-attempt-<run-attempt>/
+```
+
+The workflow uses `peaceiris/actions-gh-pages@v4.0.0` with `destination_dir` set to the computed report path and `keep_files: true`. A second Pages deploy updates the root report index (`index.html` plus `reports/index.json`) while preserving previously published report directories. The GitHub Actions step summary includes the full Pages URL for the report from the current run.
+
 ## Performance Considerations
 **How do we keep it fast?**
 
