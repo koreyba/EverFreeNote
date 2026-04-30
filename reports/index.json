@@ -1,5 +1,18 @@
 [
   {
+    "url": "https://koreyba.github.io/EverFreeNote/reports/pr-109/run-25179314173-attempt-1/",
+    "path": "reports/pr-109/run-25179314173-attempt-1",
+    "runId": "25179314173",
+    "runAttempt": "1",
+    "prNumber": "109",
+    "ref": "feature-allure-report-v3",
+    "sha": "091336e459a8a7840855e74fee95f58df122b9a8",
+    "outcome": "failure",
+    "previewUrl": "https://2fe138d8.everfreenote.pages.dev",
+    "e2eRef": "feature-allure-report-v3",
+    "generatedAt": "2026-04-30T17:23:06.661Z"
+  },
+  {
     "url": "https://koreyba.github.io/EverFreeNote/reports/pr-108/run-25170664830-attempt-1/",
     "path": "reports/pr-108/run-25170664830-attempt-1",
     "runId": "25170664830",
