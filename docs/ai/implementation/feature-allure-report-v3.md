@@ -16,6 +16,12 @@ description: Implementation notes for Allure reporting
 
 - Cypress component results: `allure-results/component`.
 - Cypress component report: `allure-report/component`.
+- Core unit results: `allure-results/core-unit`.
+- Core unit report: `allure-report/core-unit`.
+- Mobile unit results: `ui/mobile/allure-results/mobile-unit`.
+- Mobile unit report: `ui/mobile/allure-report/mobile-unit`.
+- Web unit results: `allure-results/web-unit`.
+- Web unit report: `allure-report/web-unit`.
 - Aggregate local report: `allure-report`.
 
 ## Implementation Notes
@@ -31,9 +37,20 @@ description: Implementation notes for Allure reporting
 - `npm run test:component` runs Cypress component tests and now emits Allure results.
 - `npm run allure:generate:component` generates the component HTML report from existing results.
 - `npm run test:component:allure` runs component tests, then generates the component report.
+- `npm run test:unit:core` now emits Allure results for the `unit-core` Jest project.
+- `npm run allure:generate:core-unit` generates the core unit HTML report from existing results.
+- `npm run test:unit:core:allure` runs the core unit suite, then generates the report.
+- `npm --prefix ui/mobile test` now emits Allure results for mobile unit tests.
+- `npm --prefix ui/mobile run allure:generate` generates the mobile unit HTML report from existing results.
+- `npm run test:unit:web` now emits Allure results for the `unit-web` Jest project.
+- `npm run allure:generate:web-unit` generates the web unit HTML report from existing results.
+- `npm run test:unit:web:allure` runs the web unit suite, then generates the report.
 - `npm run allure:generate` generates an aggregate report from `allure-results`.
 
 ## Integration Points
 
 - Component CI can upload `allure-results/component` immediately after the test step.
 - CI report generation can run even when tests fail if the step uses `if: always()`.
+- `unit-tests.yml` now generates `allure-report/core-unit` and uploads both raw core unit results and the generated report as CI artifacts.
+- `unit-tests.yml` now generates `ui/mobile/allure-report/mobile-unit` and uploads both raw mobile unit results and the generated report as CI artifacts.
+- `unit-tests.yml` now generates `allure-report/web-unit` and uploads both raw web unit results and the generated report as CI artifacts.

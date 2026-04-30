@@ -36,21 +36,21 @@ description: Incremental rollout plan for Allure reporting
 
 ### Phase 4: Core Unit Tests
 
-- [ ] Task 4.1: Add Allure Jest environment to the root `unit-core` project.
-- [ ] Task 4.2: Use `allure-results/core-unit` and keep JSON summaries unchanged.
-- [ ] Task 4.3: Add report generation and CI artifact upload.
+- [x] Task 4.1: Add Allure Jest environment to the root `unit-core` project.
+- [x] Task 4.2: Use `allure-results/core-unit` and keep JSON summaries unchanged.
+- [x] Task 4.3: Add report generation and CI artifact upload.
 
 ### Phase 5: Mobile Unit Tests
 
-- [ ] Task 5.1: Add Allure Jest dependencies to `ui/mobile`.
-- [ ] Task 5.2: Configure `ui/mobile/jest.config.js` for `allure-results/mobile-unit`.
-- [ ] Task 5.3: Update mobile unit CI artifacts.
+- [x] Task 5.1: Add Allure Jest dependencies to `ui/mobile`.
+- [x] Task 5.2: Configure `ui/mobile/jest.config.js` for `allure-results/mobile-unit`.
+- [x] Task 5.3: Update mobile unit CI artifacts.
 
 ### Phase 6: Web Unit Tests
 
-- [ ] Task 6.1: Add Allure Jest environment to the root `unit-web` project.
-- [ ] Task 6.2: Use `allure-results/web-unit` and keep JSON summaries unchanged.
-- [ ] Task 6.3: Add report generation and CI artifact upload.
+- [x] Task 6.1: Add Allure Jest environment to the root `unit-web` project.
+- [x] Task 6.2: Use `allure-results/web-unit` and keep JSON summaries unchanged.
+- [x] Task 6.3: Add report generation and CI artifact upload.
 
 ## Dependencies
 
