@@ -195,7 +195,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: e2e
-        run: npx playwright install --with-deps
+        run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
         id: run-e2e-tests
@@ -203,7 +203,7 @@ jobs:
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: results.json
         working-directory: e2e
-        run: npm run test -- --reporter=html,json
+        run: npm run test -- --project=chromium --reporter=html,json
 
       - name: Compute Playwright report metadata
         id: report-metadata
