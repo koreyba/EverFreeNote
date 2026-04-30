@@ -1,0 +1,15 @@
+[
+  {
+    "url": "https://koreyba.github.io/EverFreeNote/reports/pr-108/run-25167229720-attempt-1/",
+    "path": "reports/pr-108/run-25167229720-attempt-1",
+    "runId": "25167229720",
+    "runAttempt": "1",
+    "prNumber": "108",
+    "ref": "stage",
+    "sha": "2b63d76c47112b43fd4a292ca2baca0c3c1e5b37",
+    "outcome": "failure",
+    "previewUrl": "https://f1e992be.everfreenote.pages.dev",
+    "e2eRef": "stage",
+    "generatedAt": "2026-04-30T13:44:47.856Z"
+  }
+]
