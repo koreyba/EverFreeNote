@@ -169,6 +169,12 @@ jobs:
       (needs.wait-cloudflare-preview.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.wait-cloudflare-preview.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      report_dir: ${{ steps.report-metadata.outputs.report_dir }}
+      report_url: ${{ steps.report-metadata.outputs.report_url }}
+      preview_url: ${{ steps.report-metadata.outputs.preview_url }}
+      e2e_ref: ${{ steps.report-metadata.outputs.e2e_ref }}
+      e2e_outcome: ${{ steps.run-e2e-tests.outcome }}
     env:
       BASE_URL: ${{ needs.wait-cloudflare-preview.outputs.preview_url || inputs.preview_url }}
       SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
@@ -224,6 +230,8 @@ jobs:
 
           echo "report_dir=${report_dir}" >> "$GITHUB_OUTPUT"
           echo "report_url=${report_url}" >> "$GITHUB_OUTPUT"
+          echo "preview_url=${BASE_URL}" >> "$GITHUB_OUTPUT"
+          echo "e2e_ref=${E2E_REF}" >> "$GITHUB_OUTPUT"
 
       - name: Add visual summary
         if: always()
@@ -335,15 +343,38 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Mark job as failed when E2E failed
+        if: steps.run-e2e-tests.outcome != 'success'
+        run: exit 1
+
+  publish-e2e-report:
+    name: Publish Playwright E2E report
+    needs: run-e2e
+    if: |
+      always() &&
+      needs.run-e2e.result != 'skipped' &&
+      needs.run-e2e.outputs.report_dir != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Download Playwright report artifact
+        uses: actions/download-artifact@v6
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: .e2e-artifacts
+
       - name: Prepare Playwright reports index
         if: always()
         env:
-          E2E_STEP_OUTCOME: ${{ steps.run-e2e-tests.outcome }}
-          REPORT_DIR: ${{ steps.report-metadata.outputs.report_dir }}
-          REPORT_URL: ${{ steps.report-metadata.outputs.report_url }}
+          E2E_STEP_OUTCOME: ${{ needs.run-e2e.outputs.e2e_outcome }}
+          REPORT_DIR: ${{ needs.run-e2e.outputs.report_dir }}
+          REPORT_URL: ${{ needs.run-e2e.outputs.report_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REF_NAME: ${{ github.head_ref || github.ref_name }}
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_URL: ${{ needs.run-e2e.outputs.preview_url }}
+          E2E_REF: ${{ needs.run-e2e.outputs.e2e_ref }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
@@ -522,8 +553,8 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4.0.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: e2e/playwright-report
-          destination_dir: ${{ steps.report-metadata.outputs.report_dir }}
+          publish_dir: .e2e-artifacts/playwright-report
+          destination_dir: ${{ needs.run-e2e.outputs.report_dir }}
           keep_files: true
 
       - name: Publish Playwright reports index to gh-pages
@@ -533,7 +564,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .pages-index
           keep_files: true
-
-      - name: Mark job as failed when E2E failed
-        if: steps.run-e2e-tests.outcome != 'success'
-        run: exit 1

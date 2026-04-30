@@ -166,6 +166,7 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Verify workflow runs show correct status
 - [ ] Verify artifacts appear in workflow run details
 - [ ] Verify artifact download works from UI
+- [ ] Verify the E2E workflow graph shows report publishing as a separate job after `Run Playwright E2E`
 - [ ] Verify the E2E summary links to the full Playwright Pages report for that run
 - [ ] Verify the root GitHub Pages index lists the newest E2E report without removing older report links
 - [ ] Verify re-run functionality works (re-run jobs)
