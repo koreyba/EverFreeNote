@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const DEFAULT_LIMIT = 20;
 
@@ -27,12 +27,6 @@ const readExistingReports = (filePath) => {
     return [];
   }
 };
-
-const jsonForHtml = (value) =>
-  JSON.stringify(value, null, 2)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026');
 
 const requireEnv = (name) => {
   const value = process.env[name];
@@ -98,7 +92,6 @@ const main = () => {
 
   const template = fs.readFileSync(templatePath, 'utf8');
   const html = template
-    .replace('__REPORTS_JSON__', jsonForHtml(reports))
     .replaceAll('__GENERATED_AT__', generatedAt)
     .replaceAll('__REPORT_LIMIT__', `${limit}`);
 

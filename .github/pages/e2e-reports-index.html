@@ -305,7 +305,7 @@
         </label>
       </section>
 
-      <section class="table-wrap" aria-label="Published reports">
+      <section class="table-wrap" aria-label="Published reports" aria-busy="true">
         <table>
           <thead>
             <tr>
@@ -320,13 +320,13 @@
           </thead>
           <tbody id="report-rows"></tbody>
         </table>
-        <div id="empty" class="empty hide">No reports match the current filters.</div>
+        <div id="empty" class="empty">Loading reports...</div>
       </section>
     </main>
 
-    <script id="reports-data" type="application/json">__REPORTS_JSON__</script>
     <script>
-      const reports = JSON.parse(document.getElementById('reports-data').textContent || '[]');
+      let reports = [];
+      const tableWrap = document.querySelector('.table-wrap');
       const rows = document.getElementById('report-rows');
       const empty = document.getElementById('empty');
       const search = document.getElementById('search');
@@ -441,6 +441,7 @@
           rows.append(tr);
         }
 
+        empty.textContent = 'No reports match the current filters.';
         empty.classList.toggle('hide', visibleReports.length > 0);
       };
 
@@ -448,8 +449,24 @@
         control.addEventListener('input', render);
       }
 
-      updateStats();
-      render();
+      const loadReports = async () => {
+        try {
+          const response = await fetch('reports/index.json', { cache: 'no-store' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const payload = await response.json();
+          reports = Array.isArray(payload) ? payload : [];
+          updateStats();
+          render();
+        } catch (error) {
+          empty.textContent = 'Unable to load report index.';
+          empty.classList.remove('hide');
+          console.error(error);
+        } finally {
+          tableWrap.setAttribute('aria-busy', 'false');
+        }
+      };
+
+      loadReports();
     </script>
   </body>
 </html>
