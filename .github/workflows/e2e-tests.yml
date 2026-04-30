@@ -359,6 +359,9 @@ jobs:
       needs.run-e2e.outputs.report_dir != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    concurrency:
+      group: gh-pages-e2e-report-publish
+      cancel-in-progress: false
     permissions:
       contents: write
 
@@ -404,6 +407,76 @@ jobs:
             --output .pages-index \
             --template .github/pages/e2e-reports-index.html \
             --limit 20
+
+      - name: Prune stale Playwright report pages
+        if: always()
+        run: |
+          set -euo pipefail
+
+          if ! git -C .pages-existing rev-parse --verify FETCH_HEAD >/dev/null 2>&1; then
+            echo "gh-pages was not fetched; nothing to prune."
+            exit 0
+          fi
+
+          git -C .pages-existing checkout --quiet FETCH_HEAD
+          mkdir -p .pages-existing/reports
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const root = path.resolve('.pages-existing');
+          const reportsRoot = path.join(root, 'reports');
+          const retainedFile = path.resolve('.pages-index', 'reports', 'retained-paths.txt');
+          const retained = new Set(
+            fs.readFileSync(retainedFile, 'utf8')
+              .split('\n')
+              .map((line) => line.trim())
+              .filter(Boolean)
+          );
+
+          const removeIfStale = (entryPath) => {
+            const relativePath = path.relative(root, entryPath).replaceAll(path.sep, '/');
+            if (!retained.has(relativePath)) {
+              fs.rmSync(entryPath, { recursive: true, force: true });
+            }
+          };
+
+          if (!fs.existsSync(reportsRoot)) {
+            process.exit(0);
+          }
+
+          for (const scope of fs.readdirSync(reportsRoot, { withFileTypes: true })) {
+            if (!scope.isDirectory() || !['manual', 'pr-'].some((prefix) => scope.name.startsWith(prefix))) {
+              continue;
+            }
+
+            const scopePath = path.join(reportsRoot, scope.name);
+            if (scope.name === 'manual') {
+              for (const run of fs.readdirSync(scopePath, { withFileTypes: true })) {
+                if (run.isDirectory()) removeIfStale(path.join(scopePath, run.name));
+              }
+              continue;
+            }
+
+            for (const run of fs.readdirSync(scopePath, { withFileTypes: true })) {
+              if (run.isDirectory()) removeIfStale(path.join(scopePath, run.name));
+            }
+            if (fs.existsSync(scopePath) && fs.readdirSync(scopePath).length === 0) {
+              fs.rmSync(scopePath, { recursive: true, force: true });
+            }
+          }
+          NODE
+
+          if [ -n "$(git -C .pages-existing status --porcelain)" ]; then
+            git -C .pages-existing config user.name "github-actions[bot]"
+            git -C .pages-existing config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C .pages-existing add reports
+            git -C .pages-existing commit -m "Prune stale E2E reports"
+            git -C .pages-existing push origin HEAD:gh-pages
+          else
+            echo "No stale Playwright report pages to prune."
+          fi
 
       - name: Publish Playwright report to gh-pages
         if: always()

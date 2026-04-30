@@ -89,6 +89,7 @@ const main = () => {
   const reportsDir = path.join(outputDir, 'reports');
   fs.mkdirSync(reportsDir, { recursive: true });
   fs.writeFileSync(path.join(reportsDir, 'index.json'), `${JSON.stringify(reports, null, 2)}\n`);
+  fs.writeFileSync(path.join(reportsDir, 'retained-paths.txt'), `${reports.map((item) => item.path).join('\n')}\n`);
 
   const template = fs.readFileSync(templatePath, 'utf8');
   const html = template
