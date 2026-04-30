@@ -21,6 +21,9 @@ permissions:
   deployments: read
   checks: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: e2e-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
@@ -201,7 +204,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: e2e
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps
 
       - name: Run E2E tests
         id: run-e2e-tests
@@ -209,7 +212,7 @@ jobs:
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: results.json
         working-directory: e2e
-        run: npm run test -- --project=chromium --reporter=html,json
+        run: npm run test -- --reporter=html,json
 
       - name: Compute Playwright report metadata
         id: report-metadata
@@ -358,8 +361,11 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Download Playwright report artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: playwright-report-${{ github.run_id }}
           path: .e2e-artifacts
@@ -391,162 +397,11 @@ jobs:
             printf '[]\n' > "$existing_index"
           fi
 
-          node - "$existing_index" <<'NODE'
-          const fs = require('fs');
-          const path = require('path');
-
-          const existingPath = process.argv[2];
-          const outputDir = path.resolve('.pages-index');
-          const reportsDir = path.join(outputDir, 'reports');
-          const indexJsonPath = path.join(reportsDir, 'index.json');
-          const indexHtmlPath = path.join(outputDir, 'index.html');
-
-          const readExistingReports = () => {
-            try {
-              const parsed = JSON.parse(fs.readFileSync(existingPath, 'utf8'));
-              return Array.isArray(parsed) ? parsed : [];
-            } catch {
-              return [];
-            }
-          };
-
-          const escapeHtml = (value) =>
-            String(value ?? '')
-              .replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#39;');
-
-          const report = {
-            url: process.env.REPORT_URL,
-            path: process.env.REPORT_DIR,
-            runId: process.env.GITHUB_RUN_ID,
-            runAttempt: process.env.GITHUB_RUN_ATTEMPT,
-            prNumber: process.env.PR_NUMBER || null,
-            ref: process.env.REF_NAME || process.env.GITHUB_REF_NAME || 'unknown',
-            sha: process.env.COMMIT_SHA || process.env.GITHUB_SHA || 'unknown',
-            outcome: process.env.E2E_STEP_OUTCOME || 'unknown',
-            previewUrl: process.env.BASE_URL || null,
-            e2eRef: process.env.E2E_REF || 'master',
-            generatedAt: new Date().toISOString(),
-          };
-
-          const reportsByPath = new Map();
-          for (const item of readExistingReports()) {
-            if (item && typeof item.path === 'string') {
-              reportsByPath.set(item.path, item);
-            }
-          }
-          reportsByPath.set(report.path, report);
-
-          const reports = [...reportsByPath.values()].sort((a, b) => {
-            const left = Date.parse(a.generatedAt || '') || 0;
-            const right = Date.parse(b.generatedAt || '') || 0;
-            return right - left;
-          });
-
-          fs.mkdirSync(reportsDir, { recursive: true });
-          fs.writeFileSync(indexJsonPath, `${JSON.stringify(reports, null, 2)}\n`);
-
-          const rows = reports.map((item) => {
-            const shortSha = item.sha ? String(item.sha).slice(0, 7) : 'unknown';
-            const scope = item.prNumber ? `PR #${item.prNumber}` : 'Manual';
-            const title = `${scope} / run ${item.runId} / attempt ${item.runAttempt}`;
-
-            return [
-              '<tr>',
-              `<td><a href="${escapeHtml(item.url)}">${escapeHtml(title)}</a></td>`,
-              `<td>${escapeHtml(item.outcome)}</td>`,
-              `<td>${escapeHtml(item.ref)}</td>`,
-              `<td><code>${escapeHtml(shortSha)}</code></td>`,
-              `<td>${escapeHtml(item.e2eRef)}</td>`,
-              `<td>${escapeHtml(item.generatedAt)}</td>`,
-              '</tr>',
-            ].join('');
-          }).join('\n');
-
-          const html = `<!doctype html>
-          <html lang="en">
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">
-              <title>EverFreeNote E2E Reports</title>
-              <style>
-                :root {
-                  color-scheme: light dark;
-                  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-                  line-height: 1.5;
-                }
-                body {
-                  margin: 0;
-                  padding: 32px;
-                  background: Canvas;
-                  color: CanvasText;
-                }
-                main {
-                  max-width: 1180px;
-                  margin: 0 auto;
-                }
-                h1 {
-                  margin: 0 0 8px;
-                  font-size: 32px;
-                }
-                p {
-                  margin: 0 0 24px;
-                  color: color-mix(in srgb, CanvasText 72%, Canvas);
-                }
-                table {
-                  width: 100%;
-                  border-collapse: collapse;
-                  border: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
-                }
-                th,
-                td {
-                  padding: 10px 12px;
-                  border-bottom: 1px solid color-mix(in srgb, CanvasText 14%, Canvas);
-                  text-align: left;
-                  vertical-align: top;
-                  overflow-wrap: anywhere;
-                }
-                th {
-                  background: color-mix(in srgb, CanvasText 8%, Canvas);
-                  font-weight: 650;
-                }
-                a {
-                  color: LinkText;
-                }
-                code {
-                  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-                }
-              </style>
-            </head>
-            <body>
-              <main>
-                <h1>EverFreeNote E2E Reports</h1>
-                <p>Playwright reports published from GitHub Actions. Newest reports are listed first.</p>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Report</th>
-                      <th>Outcome</th>
-                      <th>Ref</th>
-                      <th>Commit</th>
-                      <th>E2E Ref</th>
-                      <th>Generated</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${rows || '<tr><td colspan="6">No reports published yet.</td></tr>'}
-                  </tbody>
-                </table>
-              </main>
-            </body>
-          </html>
-          `;
-
-          fs.writeFileSync(indexHtmlPath, html.replace(/^ {10}/gm, ''));
-          NODE
+          node scripts/generate-e2e-report-index.js \
+            --existing "$existing_index" \
+            --output .pages-index \
+            --template .github/pages/e2e-reports-index.html \
+            --limit 20
 
       - name: Publish Playwright report to gh-pages
         if: always()

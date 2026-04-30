@@ -157,6 +157,7 @@ description: Define testing approach, test cases, and quality assurance
 - Cypress test results uploaded as artifacts
 - Screenshots/videos uploaded on test failure
 - Playwright E2E HTML reports are published to GitHub Pages under unique run/attempt paths, linked from the E2E job summary, and listed from the root Pages index
+- The root Pages index keeps the latest 20 reports and supports search, outcome filtering, and sorting
 
 ## Manual Testing
 **What requires human validation?**
@@ -169,6 +170,7 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Verify the E2E workflow graph shows report publishing as a separate job after `Run Playwright E2E`
 - [ ] Verify the E2E summary links to the full Playwright Pages report for that run
 - [ ] Verify the root GitHub Pages index lists the newest E2E report without removing older report links
+- [ ] Verify the root GitHub Pages index search/filter/sort controls work on desktop and mobile widths
 - [ ] Verify re-run functionality works (re-run jobs)
 - [ ] Verify manual workflow dispatch works
 
