@@ -1,0 +1,1 @@
+{"id":"284c27e296d36a129afd9c13f177fbe2","fullName":"core/tests/unit/core-rag-indexingSettings.test.ts#core/rag/indexingSettings rejects unsupported embedding model presets","name":"rejects unsupported embedding model presets","status":"passed","testResultsByEnv":{"default":"84de1f3d50ba6d878392867fe545ba03"}}

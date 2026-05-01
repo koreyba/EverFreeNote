@@ -1,0 +1,1 @@
+{"id":"6be3d446bded4e69863ffe15a2dd867a","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer stripHtml removes lists but keeps content","name":"removes lists but keeps content","status":"passed","testResultsByEnv":{"default":"66a40f4211192fbcb1d9b2dc95bd0b3f"}}

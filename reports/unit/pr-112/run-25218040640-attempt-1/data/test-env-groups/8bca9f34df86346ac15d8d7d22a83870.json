@@ -1,0 +1,1 @@
+{"id":"8bca9f34df86346ac15d8d7d22a83870","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste detectPasteType forces plain text when content exceeds size threshold","name":"forces plain text when content exceeds size threshold","status":"passed","testResultsByEnv":{"default":"b430f3732f09634854a2b91d44c2a57d"}}

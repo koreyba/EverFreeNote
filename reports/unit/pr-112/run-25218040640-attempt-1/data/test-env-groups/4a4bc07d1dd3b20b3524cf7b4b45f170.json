@@ -1,0 +1,1 @@
+{"id":"4a4bc07d1dd3b20b3524cf7b4b45f170","fullName":"core/tests/unit/core-rag-searchSettings.test.ts#core/rag/searchSettings rejects unsupported embedding model presets","name":"rejects unsupported embedding model presets","status":"passed","testResultsByEnv":{"default":"09c3ad0ddebb0a261baeccba3baf862c"}}

@@ -1,0 +1,1 @@
+{"id":"3b44476254273e0316f91fad5bb67a2e","fullName":"ui/web/tests/unit/lib/settingsNavigationState.test.ts#settingsNavigationState gracefully handles blocked sessionStorage access","name":"gracefully handles blocked sessionStorage access","status":"passed","testResultsByEnv":{"default":"df0c28512acae7a71c5eb09a2d276a1b"}}
