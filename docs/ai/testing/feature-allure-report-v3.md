@@ -12,7 +12,7 @@ description: Verification approach for Allure reporting
 - Verify that adopted suites produce Allure result files.
 - Verify that Allure v3 can generate an HTML report from the result files.
 - Verify that family publication jobs can generate Pages-ready Allure reports from raw uploaded results.
-- Verify that history is preserved within one family and scope, but not leaked across unrelated families or PRs.
+- Verify that history is preserved within one family across PR, branch, and manual runs, but not leaked across unrelated families.
 
 ## Test Reporting & Coverage
 
@@ -28,7 +28,7 @@ description: Verification approach for Allure reporting
 - Pages family report directories:
   `reports/e2e/...`, `reports/component/...`, `reports/unit/...`.
 - Pages history files:
-  `_history/<family>/<scope>.json`.
+  `_history/<family>/history.jsonl`.
 
 ## Verification Commands
 

@@ -63,16 +63,13 @@ reports/
   component/pr-<number>/run-<id>-attempt-<n>/
   unit/pr-<number>/run-<id>-attempt-<n>/
 _history/
-  e2e/pr-<number>.json
-  e2e/branch-main.json
-  e2e/branch-develop.json
-  component/pr-<number>.json
-  unit/pr-<number>.json
-  unit/branch-main.json
+  e2e/history.jsonl
+  component/history.jsonl
+  unit/history.jsonl
 ```
 
 `scripts/generate-allure-report-index.js` writes the landing page to the Pages root as `index.html`; only the report catalog JSON and manifests live under `reports/`.
-The `_history/` tree above is non-exhaustive: every family can have `pr-<number>.json`, `branch-main.json`, and `branch-develop.json` files when those scopes publish results.
+The `_history/` tree stores one rolling Allure 3 JSONL history file per report family. PR, branch, and manual runs for the same family append to the same file.
 
 ## Report Identity Model
 
@@ -84,9 +81,8 @@ The `_history/` tree above is non-exhaustive: every family can have `pr-<number>
 
 ## History Strategy
 
-- `PR` runs append to family-specific history files keyed by PR number.
-- `main` and `develop` append to family-specific branch history files for long-lived trends.
-- Manual runs publish under `manual` paths and may use their own manual history key or stay history-less if no stable scope exists.
+- `PR`, `main`/`develop`, and manual runs append to the same family-specific history file.
+- Each family history file is trimmed to the latest 20 launches after report generation.
 - Every published family report includes `executor.json` metadata pointing to the GitHub Actions run and the final Pages URL.
 
 ## Non-Functional Requirements

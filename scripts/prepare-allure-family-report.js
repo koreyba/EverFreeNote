@@ -14,6 +14,7 @@ const {
 } = require("./allure-pages-utils");
 
 const SKIPPED_FILENAMES = new Set(["executor.json", "environment.properties", "categories.json"]);
+const HISTORY_LIMIT = 20;
 
 const isWithinDirectory = (baseDir, candidatePath) => {
   const relativePath = path.relative(baseDir, candidatePath);
@@ -288,6 +289,21 @@ const generateAllureReport = ({ resultFiles, resultsDir, reportDir, configPath, 
   execFileSync(npxExecutable, ["allure", "generate", resultsDir, "--config", configPath], {
     stdio: "inherit",
   });
+
+  trimHistoryFile(absoluteHistoryPath, HISTORY_LIMIT);
+};
+
+const trimHistoryFile = (historyPath, limit) => {
+  if (!historyPath || !fs.existsSync(historyPath)) {
+    return;
+  }
+
+  const lines = fs
+    .readFileSync(historyPath, "utf8")
+    .split(/\r?\n/)
+    .filter(Boolean);
+  const retainedLines = lines.slice(-limit);
+  fs.writeFileSync(historyPath, `${retainedLines.join("\n")}\n`);
 };
 
 const main = () => {

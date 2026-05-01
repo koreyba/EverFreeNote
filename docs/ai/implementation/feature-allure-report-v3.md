@@ -28,7 +28,7 @@ description: Implementation notes for Allure reporting
 - GitHub Pages family reports:
   `reports/e2e/...`, `reports/component/...`, and `reports/unit/...`.
 - GitHub Pages history store:
-  `_history/<family>/<scope>.json`.
+  `_history/<family>/history.jsonl`.
 
 ## Implementation Notes
 
@@ -63,6 +63,7 @@ description: Implementation notes for Allure reporting
 - CI assembles `component`, `unit`, and `e2e` family reports through `scripts/prepare-allure-family-report.js`.
 - The `unit` family publish flow downloads raw results from `core-unit`, `core-integration`, `web-unit`, and `mobile-unit` before generating the final Pages report.
 - Component CI runs `scripts/backfill-cypress-spec-failures-to-allure.js` before report generation so spec-level Cypress crashes still surface in the published Allure data.
+- All PR, branch, and manual runs for a family share one Allure 3 JSONL history file, trimmed to the latest 20 launches after generation.
 
 ## Integration Points
 

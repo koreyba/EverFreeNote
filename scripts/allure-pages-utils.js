@@ -164,7 +164,6 @@ const computeScope = ({
       scopeType: "pr",
       scopeKey: `pr-${prNumber}`,
       scopeLabel: `PR #${prNumber}`,
-      historyKey: `pr-${prNumber}`,
     };
   }
 
@@ -173,7 +172,6 @@ const computeScope = ({
       scopeType: "manual",
       scopeKey: "manual",
       scopeLabel: "Manual",
-      historyKey: null,
     };
   }
 
@@ -182,7 +180,6 @@ const computeScope = ({
       scopeType: "branch",
       scopeKey: `branch-${slugify(refName)}`,
       scopeLabel: refName,
-      historyKey: `branch-${slugify(refName)}`,
     };
   }
 
@@ -190,7 +187,6 @@ const computeScope = ({
     scopeType: "manual",
     scopeKey: "manual",
     scopeLabel: "Manual",
-    historyKey: null,
   };
 };
 
@@ -206,9 +202,7 @@ const computeReportContext = ({ family, env = process.env }) => {
     path.join("reports", family, scope.scopeKey, `run-${runId}-attempt-${runAttempt}`)
   );
   const reportUrl = pagesBaseUrl ? `${pagesBaseUrl}/${reportDir}/` : "";
-  const historyPath = scope.historyKey
-    ? normalizeSlashes(path.join("_history", family, `${scope.historyKey}.json`))
-    : "";
+  const historyPath = normalizeSlashes(path.join("_history", family, "history.jsonl"));
 
   return {
     family,
