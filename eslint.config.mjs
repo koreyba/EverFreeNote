@@ -26,6 +26,7 @@ export default defineConfig([
       'coverage/**',
       'allure-results/**',
       'allure-report/**',
+      '.worktrees/**',
       'act-artifacts/**',
       'out/**',
       'next-env.d.ts',
