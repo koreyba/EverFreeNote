@@ -5,7 +5,7 @@ const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { parseArgs, ensureDir } = require("./allure-pages-utils");
 
-const ANSI_ESCAPE = String.fromCharCode(27);
+const ANSI_ESCAPE = String.fromCodePoint(27);
 const ERROR_HINT_PATTERN = /(OOM|heap|out of memory|failed the current spec|renderer|crash|mark-compacts)/i;
 
 const stripAnsiCodePrefix = (segment) => {

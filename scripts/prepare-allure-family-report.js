@@ -294,14 +294,21 @@ const generateAllureReport = ({ resultFiles, resultsDir, reportDir, configPath, 
 };
 
 const trimHistoryFile = (historyPath, limit) => {
-  if (!historyPath || !fs.existsSync(historyPath)) {
+  if (!historyPath) {
     return;
   }
 
-  const lines = fs
-    .readFileSync(historyPath, "utf8")
-    .split(/\r?\n/)
-    .filter(Boolean);
+  let historyContents = "";
+  try {
+    historyContents = fs.readFileSync(historyPath, "utf8");
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+
+  const lines = historyContents.split(/\r?\n/).filter(Boolean);
   const retainedLines = lines.slice(-limit);
   fs.writeFileSync(historyPath, `${retainedLines.join("\n")}\n`);
 };
