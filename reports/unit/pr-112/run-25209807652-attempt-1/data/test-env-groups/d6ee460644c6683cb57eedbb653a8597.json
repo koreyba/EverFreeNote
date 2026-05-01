@@ -1,1 +1,0 @@
-{"id":"d6ee460644c6683cb57eedbb653a8597","fullName":"tests/integration/searchScreenAI.test.tsx#SearchScreen - AI search removes deleted notes from visible AI search results without rerunning the search","name":"removes deleted notes from visible AI search results without rerunning the search","status":"passed","testResultsByEnv":{"default":"5b5c648594eee5f68aadf0c0fa0e05db"}}

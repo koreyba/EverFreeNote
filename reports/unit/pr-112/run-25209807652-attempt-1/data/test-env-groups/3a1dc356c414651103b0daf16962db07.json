@@ -1,1 +1,0 @@
-{"id":"3a1dc356c414651103b0daf16962db07","fullName":"core/tests/unit/core-utils-search.test.ts#core/utils/search mapNotesToFtsResult maps empty array to empty array","name":"maps empty array to empty array","status":"passed","testResultsByEnv":{"default":"790d64c8efca86ce1a38743cccd6dd3e"}}

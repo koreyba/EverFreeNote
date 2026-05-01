@@ -1,1 +1,0 @@
-{"id":"6df628834d9198d088cf79fb79ac6a5f","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText empty input returns empty string for empty input","name":"returns empty string for empty input","status":"passed","testResultsByEnv":{"default":"293eda160c251f90ca62f1a5cda3e48f"}}

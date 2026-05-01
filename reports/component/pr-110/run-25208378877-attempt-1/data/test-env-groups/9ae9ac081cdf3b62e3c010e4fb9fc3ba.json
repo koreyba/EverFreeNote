@@ -1,1 +1,0 @@
-{"id":"9ae9ac081cdf3b62e3c010e4fb9fc3ba","fullName":"cypress/component/features/notes/NoteCard.cy.tsx#NoteCard Component falls back to placeholder title when missing in search variant","name":"falls back to placeholder title when missing in search variant","status":"passed","testResultsByEnv":{"default":"ed1d6cc74aa18d8cecde0fe31c7ad563"}}

@@ -1,1 +1,0 @@
-{"id":"f45474b1cedf04f4144041e951718e00","fullName":"tests/unit/localBundle.test.ts#local bundle helpers returns null when running on unsupported platform","name":"returns null when running on unsupported platform","status":"passed","testResultsByEnv":{"default":"04a5fc557c411be8ffbb2d3fbeb0ab16"}}

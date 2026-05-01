@@ -1,1 +1,0 @@
-{"id":"ec96c1d0c8a8ef46b1a407a6b0cffc7b","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste — forced type override returns empty html without error when text is empty string","name":"returns empty html without error when text is empty string","status":"passed","testResultsByEnv":{"default":"f9d72f0fbe46dbaba71db39c318f00f3"}}

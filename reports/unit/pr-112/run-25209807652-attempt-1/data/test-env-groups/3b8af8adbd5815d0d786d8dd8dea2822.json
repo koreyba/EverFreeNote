@@ -1,1 +1,0 @@
-{"id":"3b8af8adbd5815d0d786d8dd8dea2822","fullName":"tests/component/useBulkDeleteNotes.test.tsx#useBulkDeleteNotes continues remaining deletions when one fails (Promise.allSettled)","name":"continues remaining deletions when one fails (Promise.allSettled)","status":"passed","testResultsByEnv":{"default":"7b02b0847576963e8ebf03c5519c3dbc"}}

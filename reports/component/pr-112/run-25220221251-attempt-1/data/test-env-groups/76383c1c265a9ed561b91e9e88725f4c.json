@@ -1,0 +1,1 @@
+{"id":"76383c1c265a9ed561b91e9e88725f4c","fullName":"cypress/component/editor/RichTextEditor.cy.tsx#RichTextEditor Component moves caret to start when clicking above the first block inside editor padding","name":"moves caret to start when clicking above the first block inside editor padding","status":"passed","testResultsByEnv":{"default":"b7c42b8f6f0fafc6d8c5ee40442d306e"}}

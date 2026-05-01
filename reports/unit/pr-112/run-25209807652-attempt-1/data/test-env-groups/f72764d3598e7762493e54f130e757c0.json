@@ -1,1 +1,0 @@
-{"id":"f72764d3598e7762493e54f130e757c0","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText newline handling converts self-closing <br /> to newline","name":"converts self-closing <br /> to newline","status":"passed","testResultsByEnv":{"default":"49f704eda97e5c3a7fb95f2fe34df469"}}
