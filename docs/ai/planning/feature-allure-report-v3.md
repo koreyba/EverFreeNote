@@ -8,9 +8,10 @@ description: Incremental rollout plan for Allure reporting
 
 ## Milestones
 
-- [x] Milestone 1: Foundation and web component test reporting.
-- [ ] Milestone 2: CI artifact publishing for web component reports.
-- [ ] Milestone 3: Add remaining suites in priority order.
+- [x] Milestone 1: Foundation and suite-level Allure generation.
+- [ ] Milestone 2: Family-level GitHub Pages architecture and docs.
+- [ ] Milestone 3: Family-level publication for component and unit workflows.
+- [ ] Milestone 4: Replace the old E2E Pages publication with Allure family publication.
 
 ## Task Breakdown
 
@@ -24,33 +25,29 @@ description: Incremental rollout plan for Allure reporting
 
 ### Phase 2: Web Component CI
 
-- [ ] Task 2.1: Generate Allure component report in `.github/workflows/component-tests.yml`.
-- [ ] Task 2.2: Upload `allure-results/component` and `allure-report/component` artifacts.
-- [ ] Task 2.3: Add CI summary link or artifact names to the workflow summary.
+- [ ] Task 2.1: Add a shared Pages catalog model for Allure family reports.
+- [ ] Task 2.2: Define history-key rules for `PR`, `main`, `develop`, and manual scopes.
+- [ ] Task 2.3: Add scripts/templates for a shared Allure Pages index.
 
-### Phase 3: Web E2E Tests
+### Phase 3: Component and Unit Family Publication
 
-- [ ] Task 3.1: Update `koreyba/EverFreeNote-e2e` Playwright config with an Allure reporter.
-- [ ] Task 3.2: Publish E2E Allure results alongside the existing Playwright HTML report.
-- [ ] Task 3.3: Decide whether this repository should aggregate downloaded E2E Allure artifacts.
+- [ ] Task 3.1: Generate and upload component Allure artifacts in `.github/workflows/component-tests.yml`.
+- [ ] Task 3.2: Merge core, integration, web, and mobile Allure results into a single `unit` family report.
+- [ ] Task 3.3: Publish `component` and `unit` family reports plus the shared Pages index.
+- [ ] Task 3.4: Add summary links to published family reports.
 
-### Phase 4: Core Unit Tests
+### Phase 4: Web E2E Family Publication
 
-- [x] Task 4.1: Add Allure Jest environment to the root `unit-core` project.
-- [x] Task 4.2: Use `allure-results/core-unit` and keep JSON summaries unchanged.
-- [x] Task 4.3: Add report generation and CI artifact upload.
+- [x] Task 4.1: Update `koreyba/EverFreeNote-e2e` Playwright config with an Allure reporter.
+- [ ] Task 4.2: Replace the old Playwright HTML Pages publish with `e2e` Allure family publication.
+- [ ] Task 4.3: Route E2E publication through the same shared Pages catalog and history logic.
 
-### Phase 5: Mobile Unit Tests
+### Phase 5: Existing Suite Enablement
 
-- [x] Task 5.1: Add Allure Jest dependencies to `ui/mobile`.
-- [x] Task 5.2: Configure `ui/mobile/jest.config.js` for `allure-results/mobile-unit`.
-- [x] Task 5.3: Update mobile unit CI artifacts.
-
-### Phase 6: Web Unit Tests
-
-- [x] Task 6.1: Add Allure Jest environment to the root `unit-web` project.
-- [x] Task 6.2: Use `allure-results/web-unit` and keep JSON summaries unchanged.
-- [x] Task 6.3: Add report generation and CI artifact upload.
+- [x] Task 5.1: Add Allure Jest environment to the root `unit-core` project.
+- [x] Task 5.2: Add Allure Jest environment to the root `unit-web` project.
+- [x] Task 5.3: Add Allure Jest environment to the mobile Jest package.
+- [x] Task 5.4: Preserve existing JSON and JUnit outputs across enabled suites.
 
 ## Dependencies
 
@@ -58,15 +55,21 @@ description: Incremental rollout plan for Allure reporting
 - Root unit reporting depends on validating `allure-jest` with Jest multi-project configs.
 - Mobile reporting depends on the separate mobile package lock.
 - E2E reporting depends on changes outside this repository.
+- Family-level Pages publication depends on shared scripts for catalog generation, history-path selection, and report metadata injection.
+- The `unit` family publish step depends on downloading artifacts from multiple jobs before running Allure generation.
 
 ## Risks & Mitigation
 
 - Risk: Allure adapters change test environment behavior.
   Mitigation: adopt one suite at a time and run existing suite commands after each change.
 - Risk: CI reports become too large.
-  Mitigation: upload raw results and generated reports with retention aligned to existing artifacts.
+  Mitigation: publish only family reports to Pages and keep raw artifacts under Actions retention.
 - Risk: E2E ownership spans repositories.
   Mitigation: keep E2E as its own tracked phase and do not block component reporting on it.
+- Risk: merged unit reports lose per-suite clarity.
+  Mitigation: standardize Allure labels and environment metadata before publication.
+- Risk: family publish jobs overwrite each other on `gh-pages`.
+  Mitigation: use family-specific destination directories, family-specific retained-path manifests, and serialized publish concurrency.
 
 ## Resources Needed
 

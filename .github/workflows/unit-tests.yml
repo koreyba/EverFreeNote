@@ -315,6 +315,15 @@ jobs:
             echo "No core unit Allure results found; skipping report generation."
           fi
 
+      - name: Generate core integration Allure report
+        if: always()
+        run: |
+          if [ -d allure-results/core-integration ] && [ "$(find allure-results/core-integration -type f | wc -l)" -gt 0 ]; then
+            npm run allure:generate:core-integration
+          else
+            echo "No core integration Allure results found; skipping report generation."
+          fi
+
       - name: Upload core test reports
         if: always()
         uses: actions/upload-artifact@v6
@@ -334,6 +343,8 @@ jobs:
           path: |
             allure-results/core-unit
             allure-report/core-unit
+            allure-results/core-integration
+            allure-report/core-integration
           if-no-files-found: ignore
           retention-days: 14
 
@@ -499,3 +510,150 @@ jobs:
       - name: Mark job as failed when web unit tests failed
         if: steps.run-web-unit-tests.outcome != 'success'
         run: exit 1
+
+  publish-unit-report:
+    name: Publish Unit Allure report
+    needs: [unit-tests-mobile, unit-tests-core, unit-tests-web]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: gh-pages-allure-publish
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      PAGES_BASE_URL: https://koreyba.github.io/EverFreeNote
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      REF_NAME: ${{ github.head_ref || github.ref_name }}
+      COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      FAMILY_OUTCOME: ${{ needs.unit-tests-mobile.result == 'success' && needs.unit-tests-core.result == 'success' && needs.unit-tests-web.result == 'success' && 'success' || 'failure' }}
+      WORKFLOW_NAME: Unit Tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Download core Allure artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: unit-test-report-core-allure-${{ github.run_id }}
+          path: .artifacts/core
+
+      - name: Download web Allure artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: unit-test-report-web-allure-${{ github.run_id }}
+          path: .artifacts/web
+
+      - name: Download mobile Allure artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: unit-test-report-mobile-allure-${{ github.run_id }}
+          path: .artifacts/mobile
+
+      - name: Prepare gh-pages branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          rm -rf .pages-existing
+          git init --quiet .pages-existing
+          git -C .pages-existing config user.name "github-actions[bot]"
+          git -C .pages-existing config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C .pages-existing remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          if git -C .pages-existing fetch --quiet --depth=1 origin gh-pages; then
+            git -C .pages-existing checkout --quiet -B gh-pages FETCH_HEAD
+          else
+            git -C .pages-existing checkout --quiet --orphan gh-pages
+            find .pages-existing -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          fi
+
+      - name: Restore unit history
+        run: |
+          set -euo pipefail
+
+          rm -rf .allure-history
+          mkdir -p .allure-history/_history
+
+          if [ -d .pages-existing/_history/unit ]; then
+            cp -R .pages-existing/_history/unit .allure-history/_history/unit
+          fi
+
+      - name: Build unit family report
+        id: prepare-unit-report
+        run: |
+          node scripts/prepare-allure-family-report.js \
+            --family unit \
+            --work-dir .allure-publish/unit \
+            --history-root .allure-history \
+            --input core-unit=.artifacts/core/allure-results/core-unit \
+            --input core-integration=.artifacts/core/allure-results/core-integration \
+            --input web-unit=.artifacts/web/allure-results/web-unit \
+            --input mobile-unit=.artifacts/mobile/ui/mobile/allure-results/mobile-unit \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Update gh-pages content
+        if: steps.prepare-unit-report.outputs.has_results == 'true'
+        run: |
+          set -euo pipefail
+
+          report_dir="${{ steps.prepare-unit-report.outputs.report_dir }}"
+          report_output_dir="${{ steps.prepare-unit-report.outputs.report_output_dir }}"
+          history_path="${{ steps.prepare-unit-report.outputs.history_path }}"
+          metadata_path="${{ steps.prepare-unit-report.outputs.metadata_path }}"
+
+          rm -rf ".pages-existing/${report_dir}"
+          parent_dir="$(dirname ".pages-existing/${report_dir}")"
+          mkdir -p "${parent_dir}"
+          cp -R "${report_output_dir}" ".pages-existing/${report_dir}"
+
+          if [ -n "${history_path}" ] && [ -f ".allure-history/${history_path}" ]; then
+            mkdir -p ".pages-existing/$(dirname "${history_path}")"
+            cp ".allure-history/${history_path}" ".pages-existing/${history_path}"
+          fi
+
+          node scripts/generate-allure-report-index.js \
+            --existing .pages-existing/reports/index.json \
+            --current "${metadata_path}" \
+            --output .pages-existing \
+            --template .github/pages/allure-reports-index.html \
+            --limit-per-family 20
+
+          node scripts/prune-allure-pages.js \
+            --root .pages-existing \
+            --reports-list .pages-existing/reports/retained-paths.txt \
+            --history-list .pages-existing/reports/retained-history-paths.txt
+
+      - name: Push gh-pages updates
+        if: steps.prepare-unit-report.outputs.has_results == 'true'
+        env:
+          REPORT_URL: ${{ steps.prepare-unit-report.outputs.report_url }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "$(git -C .pages-existing status --porcelain)" ]; then
+            git -C .pages-existing add .
+            git -C .pages-existing commit -m "Publish unit Allure report for run ${GITHUB_RUN_ID}"
+            git -C .pages-existing push origin HEAD:gh-pages
+          else
+            echo "No gh-pages changes to push."
+          fi
+
+          {
+            echo "## Unit Allure Report"
+            echo
+            echo "- Published report: ${REPORT_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"

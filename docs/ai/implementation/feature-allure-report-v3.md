@@ -18,11 +18,16 @@ description: Implementation notes for Allure reporting
 - Cypress component report: `allure-report/component`.
 - Core unit results: `allure-results/core-unit`.
 - Core unit report: `allure-report/core-unit`.
+- Core integration results should join the published `unit` family through a dedicated suite label, even if they do not generate a separate local report script today.
 - Mobile unit results: `ui/mobile/allure-results/mobile-unit`.
 - Mobile unit report: `ui/mobile/allure-report/mobile-unit`.
 - Web unit results: `allure-results/web-unit`.
 - Web unit report: `allure-report/web-unit`.
 - Aggregate local report: `allure-report`.
+- GitHub Pages family reports:
+  `reports/e2e/...`, `reports/component/...`, and `reports/unit/...`.
+- GitHub Pages history store:
+  `_history/<family>/<scope>.jsonl`.
 
 ## Implementation Notes
 
@@ -47,6 +52,15 @@ description: Implementation notes for Allure reporting
 - `npm run test:unit:web:allure` runs the web unit suite, then generates the report.
 - `npm run allure:generate` generates an aggregate report from `allure-results`.
 
+### Family Publication Model
+
+- `component` stays a single-suite family report built from `allure-results/component`.
+- `unit` is assembled in CI by downloading Allure result artifacts from:
+  `core-unit`, `core-integration`, `web-unit`, and `mobile-unit`.
+- `e2e` is assembled from the external repository's `allure-results/e2e` artifact after the test run completes.
+- Every family report gets injected `executor.json`, environment metadata, and a history path chosen from family plus scope.
+- The shared Pages index reads a generated JSON catalog rather than crawling directories at runtime.
+
 ## Integration Points
 
 - Component CI can upload `allure-results/component` immediately after the test step.
@@ -54,3 +68,5 @@ description: Implementation notes for Allure reporting
 - `unit-tests.yml` now generates `allure-report/core-unit` and uploads both raw core unit results and the generated report as CI artifacts.
 - `unit-tests.yml` now generates `ui/mobile/allure-report/mobile-unit` and uploads both raw mobile unit results and the generated report as CI artifacts.
 - `unit-tests.yml` now generates `allure-report/web-unit` and uploads both raw web unit results and the generated report as CI artifacts.
+- Future Pages publication should consume raw Allure results rather than republishing the prebuilt per-suite HTML reports.
+- The old `e2e-tests.yml` Playwright HTML Pages publication path should be removed once the `e2e` Allure family publish job is live.

@@ -201,6 +201,158 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+      - name: Generate component Allure report
+        if: always()
+        run: |
+          if [ -d allure-results/component ] && [ "$(find allure-results/component -type f | wc -l)" -gt 0 ]; then
+            npm run allure:generate:component
+          else
+            echo "No component Allure results found; skipping report generation."
+          fi
+
+      - name: Upload component Allure artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: component-test-allure-${{ github.run_id }}
+          path: |
+            allure-results/component
+            allure-report/component
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Mark job as failed when component tests failed
         if: steps.run-component-tests.outcome != 'success'
         run: exit 1
+
+  publish-component-report:
+    name: Publish Component Allure report
+    needs: component-tests
+    if: always() && needs.component-tests.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: gh-pages-allure-publish
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      PAGES_BASE_URL: https://koreyba.github.io/EverFreeNote
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      REF_NAME: ${{ github.head_ref || github.ref_name }}
+      COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      FAMILY_OUTCOME: ${{ needs.component-tests.result == 'success' && 'success' || 'failure' }}
+      WORKFLOW_NAME: Component Tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Download component Allure artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: component-test-allure-${{ github.run_id }}
+          path: .artifacts/component
+
+      - name: Prepare gh-pages branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          rm -rf .pages-existing
+          git init --quiet .pages-existing
+          git -C .pages-existing config user.name "github-actions[bot]"
+          git -C .pages-existing config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C .pages-existing remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          if git -C .pages-existing fetch --quiet --depth=1 origin gh-pages; then
+            git -C .pages-existing checkout --quiet -B gh-pages FETCH_HEAD
+          else
+            git -C .pages-existing checkout --quiet --orphan gh-pages
+            find .pages-existing -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          fi
+
+      - name: Restore component history
+        run: |
+          set -euo pipefail
+
+          rm -rf .allure-history
+          mkdir -p .allure-history/_history
+
+          if [ -d .pages-existing/_history/component ]; then
+            cp -R .pages-existing/_history/component .allure-history/_history/component
+          fi
+
+      - name: Build component family report
+        id: prepare-component-report
+        run: |
+          node scripts/prepare-allure-family-report.js \
+            --family component \
+            --work-dir .allure-publish/component \
+            --history-root .allure-history \
+            --input component=.artifacts/component/allure-results/component \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Update gh-pages content
+        if: steps.prepare-component-report.outputs.has_results == 'true'
+        run: |
+          set -euo pipefail
+
+          report_dir="${{ steps.prepare-component-report.outputs.report_dir }}"
+          report_output_dir="${{ steps.prepare-component-report.outputs.report_output_dir }}"
+          history_path="${{ steps.prepare-component-report.outputs.history_path }}"
+          metadata_path="${{ steps.prepare-component-report.outputs.metadata_path }}"
+
+          rm -rf ".pages-existing/${report_dir}"
+          parent_dir="$(dirname ".pages-existing/${report_dir}")"
+          mkdir -p "${parent_dir}"
+          cp -R "${report_output_dir}" ".pages-existing/${report_dir}"
+
+          if [ -n "${history_path}" ] && [ -f ".allure-history/${history_path}" ]; then
+            mkdir -p ".pages-existing/$(dirname "${history_path}")"
+            cp ".allure-history/${history_path}" ".pages-existing/${history_path}"
+          fi
+
+          node scripts/generate-allure-report-index.js \
+            --existing .pages-existing/reports/index.json \
+            --current "${metadata_path}" \
+            --output .pages-existing \
+            --template .github/pages/allure-reports-index.html \
+            --limit-per-family 20
+
+          node scripts/prune-allure-pages.js \
+            --root .pages-existing \
+            --reports-list .pages-existing/reports/retained-paths.txt \
+            --history-list .pages-existing/reports/retained-history-paths.txt
+
+      - name: Push gh-pages updates
+        if: steps.prepare-component-report.outputs.has_results == 'true'
+        env:
+          REPORT_URL: ${{ steps.prepare-component-report.outputs.report_url }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "$(git -C .pages-existing status --porcelain)" ]; then
+            git -C .pages-existing add .
+            git -C .pages-existing commit -m "Publish component Allure report for run ${GITHUB_RUN_ID}"
+            git -C .pages-existing push origin HEAD:gh-pages
+          else
+            echo "No gh-pages changes to push."
+          fi
+
+          {
+            echo "## Component Allure Report"
+            echo
+            echo "- Published report: ${REPORT_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"

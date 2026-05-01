@@ -11,6 +11,8 @@ description: Verification approach for Allure reporting
 - Verify that adopted suites still execute through their existing commands.
 - Verify that adopted suites produce Allure result files.
 - Verify that Allure v3 can generate an HTML report from the result files.
+- Verify that family publication jobs can generate Pages-ready Allure reports from raw uploaded results.
+- Verify that history is preserved within one family and scope, but not leaked across unrelated families or PRs.
 
 ## Test Reporting & Coverage
 
@@ -23,6 +25,10 @@ description: Verification approach for Allure reporting
 - Web unit results directory: `allure-results/web-unit`.
 - Web unit report directory: `allure-report/web-unit`.
 - Existing Cypress coverage and JUnit outputs remain separate from Allure outputs.
+- Pages family report directories:
+  `reports/e2e/...`, `reports/component/...`, `reports/unit/...`.
+- Pages history files:
+  `_history/<family>/<scope>.jsonl`.
 
 ## Verification Commands
 
@@ -35,6 +41,9 @@ description: Verification approach for Allure reporting
 - `npm --prefix ui/mobile run allure:generate`
 - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/lib/aiIndexNavigationState.test.ts`
 - `npm run allure:generate:web-unit`
+- `act -W .github/workflows/component-tests.yml`
+- `act -W .github/workflows/unit-tests.yml`
+- `act -W .github/workflows/e2e-tests.yml`
 
 ## Current Status
 
@@ -53,8 +62,12 @@ description: Verification approach for Allure reporting
 - [x] Web unit Allure Jest environment configured.
 - [x] Smoke web unit test with Allure result generation.
 - [x] Web unit Allure report generation from smoke results.
+- [x] Family-report architecture selected:
+  separate `e2e`, `component`, and merged `unit`.
 
 ## Outstanding Gaps
 
-- Web E2E Allure requires changes in the external E2E repository.
-- Component test CI and any optional cross-repository E2E aggregation remain planned follow-up work.
+- Shared GitHub Pages catalog for family reports is not implemented yet.
+- Component and unit workflows do not publish family reports to Pages yet.
+- E2E Allure Pages publication has not replaced the old Playwright HTML Pages flow yet.
+- History retention logic per family and scope is still pending implementation.
