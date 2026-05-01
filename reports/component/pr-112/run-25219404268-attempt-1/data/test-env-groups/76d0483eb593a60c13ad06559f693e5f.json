@@ -1,0 +1,1 @@
+{"id":"76d0483eb593a60c13ad06559f693e5f","fullName":"cypress/component/features/notes/NoteEditor.cy.tsx#NoteEditor Component shows delete note option in the more actions menu when onDelete is provided","name":"shows delete note option in the more actions menu when onDelete is provided","status":"passed","testResultsByEnv":{"default":"12f3c2f48c41fc00a756f911623a9c10"}}

@@ -1,0 +1,1 @@
+{"id":"724faa7c8f8efcfe2d6ca56d3eac32e4","fullName":"cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager should unsubscribe from network status on dispose","name":"should unsubscribe from network status on dispose","status":"passed","testResultsByEnv":{"default":"c5030f38d9a7064bee9c5aca05e1d8ee"}}
