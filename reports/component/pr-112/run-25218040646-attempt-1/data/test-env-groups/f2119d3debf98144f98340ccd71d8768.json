@@ -1,0 +1,1 @@
+{"id":"f2119d3debf98144f98340ccd71d8768","fullName":"cypress/component/core/ErrorBoundary.cy.tsx#ErrorBoundary Component catches render errors and displays fallback UI","name":"catches render errors and displays fallback UI","status":"passed","testResultsByEnv":{"default":"4955aec6f789f753305050bb0d406ac3"}}

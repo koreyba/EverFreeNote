@@ -1,3 +1,4 @@
+_history/component/pr-112.json
 _history/e2e/pr-112.json
 _history/unit/pr-112.json
 _history/component/pr-112.json
