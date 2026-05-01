@@ -131,3 +131,4 @@ ui/mobile/ios/EverFreeNote/WebEditor/
 /.playwright-mcp/editor-webview-with-content.png
 /.playwright-mcp/editor-webview-working.png
 /.mcp.json
+/.tmp-artifacts/
