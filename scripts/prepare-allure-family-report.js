@@ -199,7 +199,7 @@ module.exports = defineConfig({
         reportName: ${JSON.stringify(`${context.familyLabel} Allure Report`)},
         singleFile: false,
         reportLanguage: "en",
-        groupBy: ["layer", "surface", "suite"]
+        groupBy: ["surface", "suite"]
       }
     }
   }
