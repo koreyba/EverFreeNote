@@ -1,0 +1,1 @@
+{"id":"26ce676294e8fd3e4bdacfc4b816d650","fullName":"cypress/component/core/services/wordpressSettings.cy.ts#core/services/WordPressSettingsService getStatus returns unconfigured state for invalid response payload","name":"getStatus returns unconfigured state for invalid response payload","status":"passed","testResultsByEnv":{"default":"a315405ad31f7c3f4f8cf24877b4b794"}}

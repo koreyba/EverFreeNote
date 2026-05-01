@@ -1,0 +1,1 @@
+{"id":"dec004c359a7c1b9f634c3744188bd5b","fullName":"cypress/component/ui/web/hooks/useNoteSaveHandlers.cy.tsx#useNoteSaveHandlers handleAutoSave does nothing when user is not logged in","name":"handleAutoSave does nothing when user is not logged in","status":"passed","testResultsByEnv":{"default":"f06e062d0fc64d1b8f1d6a5d132a265d"}}

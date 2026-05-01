@@ -1,0 +1,1 @@
+[{"name":"os_platform","values":["linux"]},{"name":"os_release","values":["6.17.0-1010-azure"]},{"name":"os_version","values":["#10~24.04.1-Ubuntu SMP Fri Mar  6 22:00:57 UTC 2026"]},{"name":"node_version","values":["v24.14.1"]},{"name":"test_type","values":["web-component"]}]
