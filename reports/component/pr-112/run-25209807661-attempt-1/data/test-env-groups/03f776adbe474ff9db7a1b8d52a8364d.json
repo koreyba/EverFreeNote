@@ -1,0 +1,1 @@
+{"id":"03f776adbe474ff9db7a1b8d52a8364d","fullName":"cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager drainQueue should stop draining if network goes offline during process","name":"should stop draining if network goes offline during process","status":"passed","testResultsByEnv":{"default":"efaca7943b942c5644e27888ffd2bb69"}}

@@ -1,0 +1,1 @@
+{"id":"bbc4b5cb482e08744a92dd8928d9847f","fullName":"cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager enqueue should enqueue item but NOT trigger drain if offline","name":"should enqueue item but NOT trigger drain if offline","status":"passed","testResultsByEnv":{"default":"cf05dd80d1b9c0c3a888c5a0d40a5440"}}

@@ -1,0 +1,1 @@
+{"id":"3bef38b4a0cdde23f9ce8d0fe75b2b31","fullName":"cypress/component/editor/EditorWebViewPageBridge.cy.tsx#EditorWebViewPage bridge deduplicates HISTORY_STATE messages sent to React Native","name":"deduplicates HISTORY_STATE messages sent to React Native","status":"passed","testResultsByEnv":{"default":"8e71539bca6dad00ef9fc9e9231c8557"}}
