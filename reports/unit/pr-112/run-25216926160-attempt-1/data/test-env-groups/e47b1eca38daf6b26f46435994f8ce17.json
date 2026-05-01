@@ -1,0 +1,1 @@
+{"id":"e47b1eca38daf6b26f46435994f8ce17","fullName":"tests/component/shareNoteDialog.test.tsx#ShareNoteDialog generates a public link when opened and invokes the native share sheet","name":"generates a public link when opened and invokes the native share sheet","status":"passed","testResultsByEnv":{"default":"d2db4ffd95127c45d66e5938ff15f0e4"}}

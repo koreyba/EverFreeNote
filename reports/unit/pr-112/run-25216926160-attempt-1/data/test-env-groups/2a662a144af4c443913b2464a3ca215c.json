@@ -1,0 +1,1 @@
+{"id":"2a662a144af4c443913b2464a3ca215c","fullName":"ui/web/tests/unit/components/chunkFocusUtils.test.ts#chunkFocusUtils falls back to native scrollIntoView when there is no scroll parent","name":"falls back to native scrollIntoView when there is no scroll parent","status":"passed","testResultsByEnv":{"default":"6a12b6c20fe99557e27b85769fa9bbad"}}

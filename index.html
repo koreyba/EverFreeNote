@@ -287,7 +287,7 @@
           <h1>EverFreeNote Allure Reports</h1>
           <p class="lede">Unified GitHub Pages catalog for the latest Allure family reports. The page keeps the newest 20 runs per family.</p>
         </div>
-        <div class="meta">Updated <time id="generated-at" datetime="2026-05-01T10:49:07.362Z">2026-05-01T10:49:07.362Z</time></div>
+        <div class="meta">Updated <time id="generated-at" datetime="2026-05-01T13:57:11.729Z">2026-05-01T13:57:11.729Z</time></div>
       </header>
 
       <section class="stats" aria-label="Report totals">
@@ -382,6 +382,12 @@
       const text = (value) => String(value ?? '');
       const shortSha = (value) => text(value).slice(0, 7) || 'unknown';
       const normalizedOutcome = (item) => text(item.outcome || 'unknown').toLowerCase();
+      const groupedOutcome = (value) => {
+        const normalized = text(value || 'unknown').toLowerCase();
+        if (normalized === 'success') return 'success';
+        if (['failure', 'timed_out', 'cancelled'].includes(normalized)) return 'failure';
+        return 'unknown';
+      };
       const suitesText = (item) => (Array.isArray(item.suiteLabels) ? item.suiteLabels.join(', ') : '');
       const reportTitle = (item) => `${item.scopeLabel || item.familyLabel} / run ${item.runId} / attempt ${item.runAttempt}`;
 
@@ -403,7 +409,7 @@
       const updateStats = () => {
         document.getElementById('stat-total').textContent = reports.length;
         document.getElementById('stat-passed').textContent = reports.filter((item) => normalizedOutcome(item) === 'success').length;
-        document.getElementById('stat-failed').textContent = reports.filter((item) => ['failure', 'timed_out', 'cancelled'].includes(normalizedOutcome(item))).length;
+        document.getElementById('stat-failed').textContent = reports.filter((item) => groupedOutcome(item.outcome) === 'failure').length;
         document.getElementById('stat-pr').textContent = reports.filter((item) => item.prNumber).length;
         document.getElementById('stat-families').textContent = new Set(reports.map((item) => item.family)).size;
         generatedAt.textContent = formatDate(generatedAt.dateTime);
@@ -416,6 +422,7 @@
 
         const matches = reports.filter((item) => {
           const itemOutcome = normalizedOutcome(item);
+          const itemOutcomeGroup = groupedOutcome(itemOutcome);
           const searchable = [
             item.family,
             item.familyLabel,
@@ -429,7 +436,7 @@
           ].map(text).join(' ').toLowerCase();
 
           return (!query || searchable.includes(query)) &&
-            (selectedOutcome === 'all' || itemOutcome === selectedOutcome) &&
+            (selectedOutcome === 'all' || itemOutcome === selectedOutcome || itemOutcomeGroup === selectedOutcome) &&
             (selectedFamily === 'all' || item.family === selectedFamily);
         });
 

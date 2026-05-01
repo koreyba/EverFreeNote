@@ -1,0 +1,1 @@
+{"id":"4213c50e816c9328bfd2e05b2c4706de","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste — forced type override does not call detectPasteType when forcedType is provided","name":"does not call detectPasteType when forcedType is provided","status":"passed","testResultsByEnv":{"default":"227acab9709cee762222c3dc85679ad6"}}

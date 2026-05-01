@@ -1,0 +1,1 @@
+{"id":"b5947121cf65e3a8960f35c9c2c9e5c6","fullName":"tests/component/editorWebViewMessages.test.tsx#EditorWebView message handling imperative bridge methods posts COMMAND messages immediately through runCommand","name":"posts COMMAND messages immediately through runCommand","status":"passed","testResultsByEnv":{"default":"0c9e65fb643ea8d66a137e6e5d9d08c1"}}
