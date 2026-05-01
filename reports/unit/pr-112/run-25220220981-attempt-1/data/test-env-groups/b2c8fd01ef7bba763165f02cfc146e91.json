@@ -1,0 +1,1 @@
+{"id":"b2c8fd01ef7bba763165f02cfc146e91","fullName":"ui/web/tests/unit/hooks/useAIIndexNotes.test.tsx#useAIIndexNotes surfaces actionable migration guidance when PostgREST schema cache is stale","name":"surfaces actionable migration guidance when PostgREST schema cache is stale","status":"passed","testResultsByEnv":{"default":"a8eaa5795c00da7defed0697398c489a"}}

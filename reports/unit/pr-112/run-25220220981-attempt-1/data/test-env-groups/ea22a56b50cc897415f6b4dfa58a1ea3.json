@@ -1,0 +1,1 @@
+{"id":"ea22a56b50cc897415f6b4dfa58a1ea3","fullName":"tests/component/searchResultsList.test.tsx#SearchResultsList renders an empty state when there are no rows and no loading footer","name":"renders an empty state when there are no rows and no loading footer","status":"passed","testResultsByEnv":{"default":"df83f87135ecdc00feab11f3400109b6"}}

@@ -1,0 +1,1 @@
+{"id":"788b9f670761b7903d48c81d2569d058","fullName":"ui/web/tests/unit/components/settingsPanels.test.tsx#settings panels shows retrieval defaults even when live retrieval settings fail to load","name":"shows retrieval defaults even when live retrieval settings fail to load","status":"passed","testResultsByEnv":{"default":"6fbbbb69b6c71b632515d8f26c97cb59"}}
