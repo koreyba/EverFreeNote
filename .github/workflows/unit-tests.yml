@@ -142,12 +142,33 @@ jobs:
           fs.appendFileSync(summaryFile, md);
           NODE
 
+      - name: Generate mobile unit Allure report
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -d ui/mobile/allure-results/mobile-unit ] && [ "$(find ui/mobile/allure-results/mobile-unit -type f | wc -l)" -gt 0 ]; then
+            npm --prefix ui/mobile run allure:generate
+          else
+            echo "No mobile unit Allure results found; skipping report generation."
+          fi
+
       - name: Upload mobile unit test report
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: unit-test-report-mobile-${{ github.run_id }}
           path: ui/mobile/results.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload mobile unit Allure artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: unit-test-report-mobile-allure-${{ github.run_id }}
+          path: |
+            ui/mobile/allure-results/mobile-unit
+            ui/mobile/allure-report/mobile-unit
           if-no-files-found: ignore
           retention-days: 14
 
@@ -286,6 +307,16 @@ jobs:
           fs.appendFileSync(summaryFile, md);
           NODE
 
+      - name: Generate core unit Allure report
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -d allure-results/core-unit ] && [ "$(find allure-results/core-unit -type f | wc -l)" -gt 0 ]; then
+            npm run allure:generate:core-unit
+          else
+            echo "No core unit Allure results found; skipping report generation."
+          fi
+
       - name: Upload core test reports
         if: always()
         uses: actions/upload-artifact@v6
@@ -294,6 +325,17 @@ jobs:
           path: |
             core-unit-results.json
             core-integration-results.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload core unit Allure artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: unit-test-report-core-allure-${{ github.run_id }}
+          path: |
+            allure-results/core-unit
+            allure-report/core-unit
           if-no-files-found: ignore
           retention-days: 14
 
@@ -427,12 +469,33 @@ jobs:
           fs.appendFileSync(summaryFile, md);
           NODE
 
+      - name: Generate web unit Allure report
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -d allure-results/web-unit ] && [ "$(find allure-results/web-unit -type f | wc -l)" -gt 0 ]; then
+            npm run allure:generate:web-unit
+          else
+            echo "No web unit Allure results found; skipping report generation."
+          fi
+
       - name: Upload web unit test report
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: unit-test-report-web-${{ github.run_id }}
           path: web-unit-results.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload web unit Allure artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: unit-test-report-web-allure-${{ github.run_id }}
+          path: |
+            allure-results/web-unit
+            allure-report/web-unit
           if-no-files-found: ignore
           retention-days: 14
 

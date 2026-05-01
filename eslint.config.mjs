@@ -24,6 +24,9 @@ export default defineConfig([
       '.next/**',
       'node_modules/**',
       'coverage/**',
+      'allure-results/**',
+      'allure-report/**',
+      '.worktrees/**',
       'act-artifacts/**',
       'out/**',
       'next-env.d.ts',
@@ -95,6 +98,10 @@ export default defineConfig([
         ...globals.node,
         ...globals.jest,
       },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-var-requires': 'off',
     },
   },
 ]);

@@ -28,6 +28,9 @@ yarn-error.*
 
 # coverage
 coverage/
+allure-results/
+allure-report/
+results.json
 
 # macOS
 .DS_Store

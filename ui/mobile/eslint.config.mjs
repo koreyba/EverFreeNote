@@ -83,6 +83,8 @@ export default [
     ignores: [
       'node_modules/**',
       '.expo/**',
+      'allure-results/**',
+      'allure-report/**',
       'android/app/build/**',
       'android/app/src/main/assets/web-editor/**',
       'ios/**/WebEditor/**',

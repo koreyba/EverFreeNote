@@ -25,6 +25,8 @@ node_modules/
 
 # Testing
 /coverage
+/allure-results
+/allure-report
 
 # Test artifacts (keep test runners in build/, exclude temp results)
 TEST_SUMMARY.md
