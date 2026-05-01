@@ -1,0 +1,1 @@
+{"id":"7a0ba6925f448a5aa450796a516d916d","fullName":"cypress/component/lib/adapters/browser.cy.ts#WebBrowserAdapter location calls window.location.reload","name":"calls window.location.reload","status":"passed","testResultsByEnv":{"default":"61072a077581d6d9fd7a71b51251b92c"}}
