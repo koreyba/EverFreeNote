@@ -77,6 +77,10 @@
         "npm:@types/jest@^29.5.14",
         "npm:@types/react-virtualized-auto-sizer@^1.0.4",
         "npm:ai-devkit@0.15",
+        "npm:allure-cypress@^3.7.1",
+        "npm:allure-jest@^3.7.1",
+        "npm:allure-js-commons@^3.7.1",
+        "npm:allure@^3.6.2",
         "npm:autoprefixer@^10.4.21",
         "npm:babel-jest@^29.7.0",
         "npm:babel-plugin-istanbul@^7.0.1",
@@ -125,7 +129,6 @@
       ],
       "overrides": {
         "picomatch": ">=2.3.2",
-        "brace-expansion": "1.1.13",
         "tar": ">=7.5.11",
         "flatted": ">=3.4.2",
         "serialize-javascript": ">=7.0.5",

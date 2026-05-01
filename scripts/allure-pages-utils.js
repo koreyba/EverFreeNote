@@ -97,8 +97,8 @@ const slugify = (value) =>
   String(value || "")
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "unknown";
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/^-+|-+$/g, "") || "unknown";
 
 const ensureDir = (dirPath) => {
   fs.mkdirSync(dirPath, { recursive: true });
@@ -117,21 +117,30 @@ const listify = (value) => {
   return Array.isArray(value) ? value : [value];
 };
 
+const createGithubOutputDelimiter = (key, value) => {
+  const safeKey = slugify(key).replaceAll("-", "_").toUpperCase();
+  let counter = 0;
+  let delimiter = "";
+  do {
+    delimiter = `EOF_${safeKey}_${counter}`;
+    counter += 1;
+  } while (value.includes(delimiter));
+  return delimiter;
+};
+
 const appendGithubOutput = (githubOutputPath, values) => {
   if (!githubOutputPath) return;
-  const lines = Object.entries(values).flatMap(([key, value]) => {
+  const lines = [];
+  for (const [key, value] of Object.entries(values)) {
     const normalizedValue = `${value ?? ""}`;
     if (!normalizedValue.includes("\n")) {
-      return `${key}=${normalizedValue}`;
+      lines.push(`${key}=${normalizedValue}`);
+      continue;
     }
 
-    const delimiter = `EOF_${key.toUpperCase()}_${Math.random().toString(16).slice(2)}`;
-    return [
-      `${key}<<${delimiter}`,
-      normalizedValue,
-      delimiter,
-    ];
-  });
+    const delimiter = createGithubOutputDelimiter(key, normalizedValue);
+    lines.push(`${key}<<${delimiter}`, normalizedValue, delimiter);
+  }
   fs.appendFileSync(githubOutputPath, `${lines.join("\n")}\n`);
 };
 

@@ -30,7 +30,7 @@ const readCurrentReports = (currentArgs) => {
   return files
     .filter(Boolean)
     .map((filePath) => readJson(path.resolve(filePath), null))
-    .filter((payload) => payload && payload.path);
+    .filter((payload) => payload?.path);
 };
 
 const main = () => {

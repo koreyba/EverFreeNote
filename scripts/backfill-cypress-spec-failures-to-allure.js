@@ -5,14 +5,70 @@ const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { parseArgs, ensureDir } = require("./allure-pages-utils");
 
-const ANSI_PATTERN = /\u001b\[[0-9;]*m/g;
-const SUMMARY_SPEC_PATTERN =
-  /([^\s]+\.cy\.(?:js|jsx|ts|tsx))\s+(?:\d{2}:\d{2}|\d+(?:ms|s))\s+(\d+)\s+(\d+)\s+(\d+)\s+(-|\d+)\s+(-|\d+)/;
+const ANSI_ESCAPE = String.fromCharCode(27);
 const ERROR_HINT_PATTERN = /(OOM|heap|out of memory|failed the current spec|renderer|crash|mark-compacts)/i;
 
-const stripAnsi = (value) => value.replace(ANSI_PATTERN, "");
+const stripAnsiCodePrefix = (segment) => {
+  if (!segment.startsWith("[")) {
+    return segment;
+  }
 
-const normalizeSpecPath = (value) => value.replaceAll("\\", "/").replace(/^\/+/, "");
+  let index = 1;
+  while (index < segment.length && (segment[index] === ";" || /\d/.test(segment[index]))) {
+    index += 1;
+  }
+
+  return segment[index] === "m" ? segment.slice(index + 1) : segment;
+};
+
+const stripAnsi = (value) =>
+  value
+    .split(ANSI_ESCAPE)
+    .map((segment, index) => (index === 0 ? segment : stripAnsiCodePrefix(segment)))
+    .join("");
+
+const normalizeSpecPath = (value) => {
+  const normalized = value.replaceAll("\\", "/");
+  let firstNonSlashIndex = 0;
+  while (normalized[firstNonSlashIndex] === "/") {
+    firstNonSlashIndex += 1;
+  }
+  return normalized.slice(firstNonSlashIndex);
+};
+
+const isSpecToken = (value) => /\.cy\.(?:js|jsx|ts|tsx)$/.test(value);
+
+const parseSummarySpecLine = (line) => {
+  const tokens = line.trim().split(/\s+/);
+  const specIndex = tokens.findIndex(isSpecToken);
+  if (specIndex === -1 || tokens.length < specIndex + 7) {
+    return null;
+  }
+
+  const [, total, passed, failed, pending, skipped] = tokens.slice(specIndex + 1, specIndex + 7);
+  if (!/^\d+$/.test(total) || !/^\d+$/.test(passed) || !/^\d+$/.test(failed)) {
+    return null;
+  }
+
+  return {
+    spec: normalizeSpecPath(tokens[specIndex]),
+    total,
+    passed,
+    failed,
+    pending,
+    skipped,
+  };
+};
+
+const parseRunningSpecLine = (line) => {
+  const markerIndex = line.indexOf("Running:");
+  if (markerIndex === -1) {
+    return "";
+  }
+
+  const candidate = line.slice(markerIndex + "Running:".length).trim().split(/\s+/)[0] || "";
+  return isSpecToken(candidate) ? normalizeSpecPath(candidate) : "";
+};
 
 const readTextFile = (filePath) => {
   const buffer = fs.readFileSync(filePath);
@@ -73,13 +129,13 @@ const extractFailingSpecs = (logLines) => {
   const foundSpecs = new Map();
 
   for (const line of logLines) {
-    const match = line.match(SUMMARY_SPEC_PATTERN);
-    if (!match) {
+    const summary = parseSummarySpecLine(line);
+    if (!summary) {
       continue;
     }
 
-    const spec = normalizeSpecPath(match[1]);
-    const failedCount = Number(match[4]);
+    const failedCount = Number(summary.failed);
+    const spec = summary.spec;
     if (!spec || failedCount <= 0) {
       continue;
     }
@@ -93,15 +149,14 @@ const extractFailingSpecs = (logLines) => {
 };
 
 const collectSegment = (logLines, spec) => {
-  const runningPattern = new RegExp(`Running:\\s+${spec.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
-  let startIndex = logLines.findIndex((line) => runningPattern.test(line));
+  let startIndex = logLines.findIndex((line) => parseRunningSpecLine(line) === spec);
   if (startIndex === -1) {
     startIndex = 0;
   }
 
   let endIndex = logLines.length;
   for (let index = startIndex + 1; index < logLines.length; index += 1) {
-    if (/Running:\s+[^\s]+\.cy\.(?:js|jsx|ts|tsx)\b/.test(logLines[index])) {
+    if (parseRunningSpecLine(logLines[index])) {
       endIndex = index;
       break;
     }
@@ -121,12 +176,12 @@ const buildMessage = (segmentLines, summaryLine) => {
 };
 
 const extractCounts = (summaryLine) => {
-  const match = summaryLine.match(SUMMARY_SPEC_PATTERN);
-  if (!match) {
+  const summary = parseSummarySpecLine(summaryLine);
+  if (!summary) {
     return null;
   }
 
-  const [, , total, passed, failed, pending, skipped] = match;
+  const { total, passed, failed, pending, skipped } = summary;
   return { total, passed, failed, pending, skipped };
 };
 

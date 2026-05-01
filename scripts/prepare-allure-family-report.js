@@ -35,23 +35,82 @@ const addLabel = (labels, name, value) => {
   labels.push({ name, value });
 };
 
+const readDirectoryEntries = (dirPath) => {
+  try {
+    return fs.readdirSync(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT" || error?.code === "ENOTDIR") {
+      return [];
+    }
+    throw error;
+  }
+};
+
+const writeFileExclusive = (targetPath, writeOperation) => {
+  try {
+    writeOperation();
+  } catch (error) {
+    if (error?.code === "EEXIST") {
+      throw new Error(`File collision while merging Allure results: ${targetPath}`);
+    }
+    throw error;
+  }
+};
+
+const readAllureResultPayload = (sourcePath) => {
+  try {
+    return JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+  } catch (error) {
+    console.warn(`Skipping malformed Allure result file ${sourcePath}: ${error instanceof Error ? error.message : error}`);
+    return null;
+  }
+};
+
+const writeMergedResultFile = (sourcePath, targetPath, suiteName, family) => {
+  const payload = readAllureResultPayload(sourcePath);
+  if (!payload) {
+    return false;
+  }
+
+  const labels = Array.isArray(payload.labels) ? payload.labels : [];
+  const suiteMetadata = getSuiteMetadata(suiteName);
+  addLabel(labels, "family", family);
+  addLabel(labels, "suite", suiteMetadata.suite);
+  addLabel(labels, "surface", suiteMetadata.surface);
+  addLabel(labels, "layer", suiteMetadata.layer);
+  addLabel(labels, "workflow", suiteMetadata.workflow);
+  payload.labels = labels;
+
+  writeFileExclusive(targetPath, () => {
+    fs.writeFileSync(targetPath, `${JSON.stringify(payload, null, 2)}\n`, {
+      flag: "wx",
+    });
+  });
+  return true;
+};
+
+const copyAllureAsset = (sourcePath, targetPath) => {
+  try {
+    fs.copyFileSync(sourcePath, targetPath, fs.constants.COPYFILE_EXCL);
+    return true;
+  } catch (error) {
+    if (error?.code === "EEXIST") {
+      throw new Error(`File collision while merging Allure results: ${targetPath}`);
+    }
+    if (error?.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+};
+
 const copyDirectory = (sourceDir, targetDir, suiteName, family) => {
   let copiedFiles = 0;
   let resultFiles = 0;
 
   const visit = (currentSource, currentTarget) => {
     ensureDir(currentTarget);
-    let entries = [];
-    try {
-      entries = fs.readdirSync(currentSource, { withFileTypes: true });
-    } catch (error) {
-      if (error && (error.code === "ENOENT" || error.code === "ENOTDIR")) {
-        return;
-      }
-      throw error;
-    }
-
-    for (const entry of entries) {
+    for (const entry of readDirectoryEntries(currentSource)) {
       const sourcePath = path.join(currentSource, entry.name);
       const targetPath = path.join(currentTarget, entry.name);
 
@@ -65,48 +124,16 @@ const copyDirectory = (sourceDir, targetDir, suiteName, family) => {
       }
 
       if (entry.name.endsWith("-result.json")) {
-        let payload;
-        try {
-          payload = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
-        } catch (error) {
-          console.warn(`Skipping malformed Allure result file ${sourcePath}: ${error instanceof Error ? error.message : error}`);
-          continue;
+        if (writeMergedResultFile(sourcePath, targetPath, suiteName, family)) {
+          copiedFiles += 1;
+          resultFiles += 1;
         }
-        const labels = Array.isArray(payload.labels) ? payload.labels : [];
-        const suiteMetadata = getSuiteMetadata(suiteName);
-        addLabel(labels, "family", family);
-        addLabel(labels, "suite", suiteMetadata.suite);
-        addLabel(labels, "surface", suiteMetadata.surface);
-        addLabel(labels, "layer", suiteMetadata.layer);
-        addLabel(labels, "workflow", suiteMetadata.workflow);
-        payload.labels = labels;
-        try {
-          fs.writeFileSync(targetPath, `${JSON.stringify(payload, null, 2)}\n`, {
-            flag: "wx",
-          });
-        } catch (error) {
-          if (error && error.code === "EEXIST") {
-            throw new Error(`File collision while merging Allure results: ${targetPath}`);
-          }
-          throw error;
-        }
-        copiedFiles += 1;
-        resultFiles += 1;
         continue;
       }
 
-      try {
-        fs.copyFileSync(sourcePath, targetPath, fs.constants.COPYFILE_EXCL);
-      } catch (error) {
-        if (error && error.code === "EEXIST") {
-          throw new Error(`File collision while merging Allure results: ${targetPath}`);
-        }
-        if (error && error.code === "ENOENT") {
-          continue;
-        }
-        throw error;
+      if (copyAllureAsset(sourcePath, targetPath)) {
+        copiedFiles += 1;
       }
-      copiedFiles += 1;
     }
   };
 
@@ -174,6 +201,95 @@ module.exports = defineConfig({
   fs.writeFileSync(configPath, config);
 };
 
+const parseInput = (item) => {
+  const separatorIndex = item.indexOf("=");
+  if (separatorIndex === -1) {
+    throw new Error(`Invalid --input value '${item}', expected suite=path`);
+  }
+
+  const suite = item.slice(0, separatorIndex);
+  const sourceDir = path.resolve(item.slice(separatorIndex + 1));
+  if (!isWithinDirectory(process.cwd(), sourceDir)) {
+    throw new Error(`Input path must be inside repository workspace: ${sourceDir}`);
+  }
+
+  return { suite, sourceDir };
+};
+
+const copyInputResults = (inputArgs, resultsDir, family) => {
+  const suites = [];
+  let copiedFiles = 0;
+  let resultFiles = 0;
+
+  for (const item of inputArgs) {
+    const { suite, sourceDir } = parseInput(item);
+    if (!fs.existsSync(sourceDir)) {
+      continue;
+    }
+
+    const copyStats = copyDirectory(sourceDir, resultsDir, suite, family);
+    if (copyStats.copiedFiles === 0) {
+      continue;
+    }
+
+    suites.push(suite);
+    copiedFiles += copyStats.copiedFiles;
+    resultFiles += copyStats.resultFiles;
+  }
+
+  return { suites, copiedFiles, resultFiles };
+};
+
+const buildMetadata = ({
+  family,
+  context,
+  suites,
+  resultFiles,
+  reportDir,
+  resultsDir,
+}) => ({
+  family,
+  familyLabel: context.familyLabel,
+  suites,
+  suiteLabels: suites.map((suite) => getSuiteMetadata(suite).label),
+  path: context.reportDir,
+  url: context.reportUrl,
+  runId: context.runId,
+  runAttempt: context.runAttempt,
+  prNumber: context.prNumber,
+  ref: context.refName,
+  sha: context.sha,
+  outcome: context.outcome,
+  previewUrl: context.previewUrl || null,
+  e2eRef: context.e2eRef || null,
+  workflow: context.workflow || null,
+  scopeType: context.scopeType,
+  scopeLabel: context.scopeLabel,
+  historyPath: context.historyPath || null,
+  generatedAt: context.generatedAt,
+  hasResults: resultFiles > 0,
+  reportOutputDir: normalizeSlashes(path.relative(process.cwd(), reportDir)),
+  combinedResultsDir: normalizeSlashes(path.relative(process.cwd(), resultsDir)),
+});
+
+const generateAllureReport = ({ resultFiles, resultsDir, reportDir, configPath, historyRoot, context, suiteLabels }) => {
+  if (resultFiles === 0) {
+    return;
+  }
+
+  writeExecutorFile(resultsDir, context, suiteLabels);
+  const absoluteHistoryPath = context.historyPath ? path.join(historyRoot, context.historyPath) : "";
+  if (absoluteHistoryPath) {
+    ensureDir(path.dirname(absoluteHistoryPath));
+  }
+  writeConfigFile(configPath, reportDir, absoluteHistoryPath, context, suiteLabels);
+
+  const npxExecutable = process.platform === "win32" ? "npx.cmd" : "npx";
+  execFileSync(npxExecutable, ["allure", "generate", resultsDir, "--config", configPath], {
+    stdio: "inherit",
+  });
+};
+
 const main = () => {
   const args = parseArgs(process.argv);
   const family = args.family;
@@ -203,71 +319,17 @@ const main = () => {
   ensureDir(resultsDir);
 
   const context = computeReportContext({ family });
-  const suites = [];
-  let copiedFiles = 0;
-  let resultFiles = 0;
-
-  for (const item of inputArgs) {
-    const separatorIndex = item.indexOf("=");
-    if (separatorIndex === -1) {
-      throw new Error(`Invalid --input value '${item}', expected suite=path`);
-    }
-    const suite = item.slice(0, separatorIndex);
-    const sourceDir = path.resolve(item.slice(separatorIndex + 1));
-    if (!isWithinDirectory(process.cwd(), sourceDir)) {
-      throw new Error(`Input path must be inside repository workspace: ${sourceDir}`);
-    }
-    if (!fs.existsSync(sourceDir)) {
-      continue;
-    }
-    const copyStats = copyDirectory(sourceDir, resultsDir, suite, family);
-    if (copyStats.copiedFiles > 0) {
-      suites.push(suite);
-      copiedFiles += copyStats.copiedFiles;
-      resultFiles += copyStats.resultFiles;
-    }
-  }
-
-  const metadata = {
+  const { suites, copiedFiles, resultFiles } = copyInputResults(inputArgs, resultsDir, family);
+  const metadata = buildMetadata({
     family,
-    familyLabel: context.familyLabel,
+    context,
     suites,
-    suiteLabels: suites.map((suite) => getSuiteMetadata(suite).label),
-    path: context.reportDir,
-    url: context.reportUrl,
-    runId: context.runId,
-    runAttempt: context.runAttempt,
-    prNumber: context.prNumber,
-    ref: context.refName,
-    sha: context.sha,
-    outcome: context.outcome,
-    previewUrl: context.previewUrl || null,
-    e2eRef: context.e2eRef || null,
-    workflow: context.workflow || null,
-    scopeType: context.scopeType,
-    scopeLabel: context.scopeLabel,
-    historyPath: context.historyPath || null,
-    generatedAt: context.generatedAt,
-    hasResults: resultFiles > 0,
-    reportOutputDir: normalizeSlashes(path.relative(process.cwd(), reportDir)),
-    combinedResultsDir: normalizeSlashes(path.relative(process.cwd(), resultsDir)),
-  };
+    resultFiles,
+    reportDir,
+    resultsDir,
+  });
 
-  if (resultFiles > 0) {
-    writeExecutorFile(resultsDir, context, metadata.suiteLabels);
-    const absoluteHistoryPath = context.historyPath
-      ? path.join(historyRoot, context.historyPath)
-      : "";
-    if (absoluteHistoryPath) {
-      ensureDir(path.dirname(absoluteHistoryPath));
-    }
-    writeConfigFile(configPath, reportDir, absoluteHistoryPath, context, metadata.suiteLabels);
-
-    const npxExecutable = process.platform === "win32" ? "npx.cmd" : "npx";
-    execFileSync(npxExecutable, ["allure", "generate", resultsDir, "--config", configPath], {
-      stdio: "inherit",
-    });
-  }
+  generateAllureReport({ resultFiles, resultsDir, reportDir, configPath, historyRoot, context, suiteLabels: metadata.suiteLabels });
 
   fs.writeFileSync(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`);
 

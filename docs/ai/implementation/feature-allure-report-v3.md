@@ -59,7 +59,7 @@ description: Implementation notes for Allure reporting
 ### Family Publication Model
 
 - Architecture and rationale for family-based publication live in
-  [allure-reporting-architecture.md](/C:/Projects/EverFreeNote/docs/ai/design/allure-reporting-architecture.md).
+  [allure-reporting-architecture.md](../design/allure-reporting-architecture.md).
 - CI assembles `component`, `unit`, and `e2e` family reports through `scripts/prepare-allure-family-report.js`.
 - The `unit` family publish flow downloads raw results from `core-unit`, `core-integration`, `web-unit`, and `mobile-unit` before generating the final Pages report.
 - Component CI runs `scripts/backfill-cypress-spec-failures-to-allure.js` before report generation so spec-level Cypress crashes still surface in the published Allure data.

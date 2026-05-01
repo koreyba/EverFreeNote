@@ -26,6 +26,7 @@ export default defineConfig([
       'coverage/**',
       'allure-results/**',
       'allure-report/**',
+      '.tmp-artifacts/**',
       '.worktrees/**',
       'act-artifacts/**',
       'out/**',

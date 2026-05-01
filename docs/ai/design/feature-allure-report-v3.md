@@ -72,6 +72,7 @@ _history/
 ```
 
 `scripts/generate-allure-report-index.js` writes the landing page to the Pages root as `index.html`; only the report catalog JSON and manifests live under `reports/`.
+The `_history/` tree above is non-exhaustive: every family can have `pr-<number>.json`, `branch-main.json`, and `branch-develop.json` files when those scopes publish results.
 
 ## Report Identity Model
 

@@ -17,12 +17,28 @@ const readRetained = (filePath) => {
   );
 };
 
+const listDirectories = (dirPath) =>
+  fs
+    .readdirSync(dirPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory());
+
+const listEntries = (dirPath) => fs.readdirSync(dirPath, { withFileTypes: true });
+
+const isDescendant = (root, candidatePath) => {
+  const relativePath = path.relative(path.resolve(root), path.resolve(candidatePath));
+  return relativePath !== "" && !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
+};
+
+const removeReportDirectory = (root, reportPath) => {
+  fs.rmSync(reportPath, { recursive: true, force: true });
+  removeEmptyParents(root, reportPath);
+};
+
 const removeEmptyParents = (root, currentPath) => {
   const resolvedRoot = path.resolve(root);
   let cursor = path.resolve(path.dirname(currentPath));
   while (cursor !== resolvedRoot) {
-    const relativePath = path.relative(resolvedRoot, cursor);
-    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    if (!isDescendant(resolvedRoot, cursor)) {
       break;
     }
 
@@ -43,20 +59,15 @@ const pruneReportDirectories = (root, retainedPaths) => {
     return;
   }
 
-  const families = fs.readdirSync(reportsRoot, { withFileTypes: true });
-  for (const family of families) {
-    if (!family.isDirectory()) continue;
+  for (const family of listDirectories(reportsRoot)) {
     const familyPath = path.join(reportsRoot, family.name);
-    for (const scope of fs.readdirSync(familyPath, { withFileTypes: true })) {
-      if (!scope.isDirectory()) continue;
+    for (const scope of listDirectories(familyPath)) {
       const scopePath = path.join(familyPath, scope.name);
-      for (const run of fs.readdirSync(scopePath, { withFileTypes: true })) {
-        if (!run.isDirectory()) continue;
+      for (const run of listDirectories(scopePath)) {
         const runPath = path.join(scopePath, run.name);
         const relativePath = path.relative(root, runPath).replaceAll(path.sep, "/");
         if (!retainedPaths.has(relativePath)) {
-          fs.rmSync(runPath, { recursive: true, force: true });
-          removeEmptyParents(root, runPath);
+          removeReportDirectory(root, runPath);
         }
       }
     }
@@ -70,7 +81,7 @@ const pruneHistoryFiles = (root, retainedHistoryPaths) => {
   }
 
   const visit = (currentDir) => {
-    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+    for (const entry of listEntries(currentDir)) {
       const entryPath = path.join(currentDir, entry.name);
       if (entry.isDirectory()) {
         visit(entryPath);
