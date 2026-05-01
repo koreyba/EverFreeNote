@@ -1,0 +1,1 @@
+{"id":"fd8a33f6a0a9b1ec169d13555a6baba0","fullName":"tests/integration/notesScreen.test.tsx#NotesScreen - Delete Functionality Bulk delete calls refetch after bulk delete completes","name":"calls refetch after bulk delete completes","status":"passed","testResultsByEnv":{"default":"fe5524b3c69c2fed93b97f174d8469cd"}}

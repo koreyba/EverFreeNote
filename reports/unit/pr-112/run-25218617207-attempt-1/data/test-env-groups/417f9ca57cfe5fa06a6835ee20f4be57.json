@@ -1,0 +1,1 @@
+{"id":"417f9ca57cfe5fa06a6835ee20f4be57","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste detectPasteType ignores non-structural HTML when markdown text is present","name":"ignores non-structural HTML when markdown text is present","status":"passed","testResultsByEnv":{"default":"ba3d5729c8929ef1ed7cf17f0aa9344b"}}

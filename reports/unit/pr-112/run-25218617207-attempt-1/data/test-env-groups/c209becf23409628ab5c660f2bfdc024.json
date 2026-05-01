@@ -1,0 +1,1 @@
+{"id":"c209becf23409628ab5c660f2bfdc024","fullName":"ui/web/tests/unit/components/aiIndexTab.test.tsx#AIIndexTab stops subtracting optimistic totals after the server refetch catches up","name":"stops subtracting optimistic totals after the server refetch catches up","status":"passed","testResultsByEnv":{"default":"4186cf625bc0938b0947ac42a997e8f6"}}
