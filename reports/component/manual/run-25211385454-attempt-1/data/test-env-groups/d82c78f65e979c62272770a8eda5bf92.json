@@ -1,0 +1,1 @@
+{"id":"d82c78f65e979c62272770a8eda5bf92","fullName":"cypress/component/ui/web/hooks/useBulkDeleteConfirm.cy.tsx#useBulkDeleteConfirm resets in-flight guard after rejected confirm and allows retry","name":"resets in-flight guard after rejected confirm and allows retry","status":"passed","testResultsByEnv":{"default":"ebd0fb5d22cf4883a4c04d76e20d3e60"}}

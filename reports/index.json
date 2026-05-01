@@ -8,6 +8,34 @@
     "suiteLabels": [
       "Web Component"
     ],
+    "path": "reports/component/manual/run-25211385454-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/component/manual/run-25211385454-attempt-1/",
+    "runId": "25211385454",
+    "runAttempt": "1",
+    "prNumber": null,
+    "ref": "codex/allure-pages-reporting-main",
+    "sha": "10f7926cf16e14b7fb84c616cb8dda6e4d25fd07",
+    "outcome": "failure",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "manual",
+    "scopeLabel": "Manual",
+    "historyPath": null,
+    "generatedAt": "2026-05-01T10:49:04.132Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/component/report",
+    "combinedResultsDir": ".allure-publish/component/results"
+  },
+  {
+    "family": "component",
+    "familyLabel": "Component",
+    "suites": [
+      "component"
+    ],
+    "suiteLabels": [
+      "Web Component"
+    ],
     "path": "reports/component/pr-112/run-25209807661-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/component/pr-112/run-25209807661-attempt-1/",
     "runId": "25209807661",

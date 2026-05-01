@@ -1,0 +1,1 @@
+{"id":"64ffb26060e427d5568f907230e05a40","fullName":"cypress/component/ui/web/hooks/useLongPress.cy.tsx#useLongPress cancels long press when pointer moves beyond threshold","name":"cancels long press when pointer moves beyond threshold","status":"passed","testResultsByEnv":{"default":"23c68eabf3ae82dd94e49c4e1b44d7ac"}}

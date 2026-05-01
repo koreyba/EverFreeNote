@@ -1,0 +1,1 @@
+{"id":"fad9e7892f438568d84609da5b620199","fullName":"cypress/component/features/notes/Sidebar.cy.tsx#Sidebar Component Sync Status Indicator shows syncing status with count when pendingCount > 0","name":"shows syncing status with count when pendingCount > 0","status":"passed","testResultsByEnv":{"default":"811447816f4797089ec1efc9d5757bcf"}}
