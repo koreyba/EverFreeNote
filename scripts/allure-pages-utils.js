@@ -147,21 +147,21 @@ const computeScope = ({
     };
   }
 
-  if (refName === "main" || refName === "develop") {
-    return {
-      scopeType: "branch",
-      scopeKey: `branch-${slugify(refName)}`,
-      scopeLabel: refName,
-      historyKey: `branch-${slugify(refName)}`,
-    };
-  }
-
   if (eventName === "workflow_dispatch") {
     return {
       scopeType: "manual",
       scopeKey: "manual",
       scopeLabel: "Manual",
       historyKey: null,
+    };
+  }
+
+  if (refName === "main" || refName === "develop") {
+    return {
+      scopeType: "branch",
+      scopeKey: `branch-${slugify(refName)}`,
+      scopeLabel: refName,
+      historyKey: `branch-${slugify(refName)}`,
     };
   }
 
@@ -186,7 +186,7 @@ const computeReportContext = ({ family, env = process.env }) => {
   );
   const reportUrl = pagesBaseUrl ? `${pagesBaseUrl}/${reportDir}/` : "";
   const historyPath = scope.historyKey
-    ? normalizeSlashes(path.join("_history", family, `${scope.historyKey}.jsonl`))
+    ? normalizeSlashes(path.join("_history", family, `${scope.historyKey}.json`))
     : "";
 
   return {

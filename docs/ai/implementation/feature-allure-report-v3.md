@@ -18,7 +18,8 @@ description: Implementation notes for Allure reporting
 - Cypress component report: `allure-report/component`.
 - Core unit results: `allure-results/core-unit`.
 - Core unit report: `allure-report/core-unit`.
-- Core integration results should join the published `unit` family through a dedicated suite label, even if they do not generate a separate local report script today.
+- Core integration results: `allure-results/core-integration`.
+- Core integration report: `allure-report/core-integration`.
 - Mobile unit results: `ui/mobile/allure-results/mobile-unit`.
 - Mobile unit report: `ui/mobile/allure-report/mobile-unit`.
 - Web unit results: `allure-results/web-unit`.
@@ -27,7 +28,7 @@ description: Implementation notes for Allure reporting
 - GitHub Pages family reports:
   `reports/e2e/...`, `reports/component/...`, and `reports/unit/...`.
 - GitHub Pages history store:
-  `_history/<family>/<scope>.jsonl`.
+  `_history/<family>/<scope>.json`.
 
 ## Implementation Notes
 
@@ -45,6 +46,9 @@ description: Implementation notes for Allure reporting
 - `npm run test:unit:core` now emits Allure results for the `unit-core` Jest project.
 - `npm run allure:generate:core-unit` generates the core unit HTML report from existing results.
 - `npm run test:unit:core:allure` runs the core unit suite, then generates the report.
+- `npm run test:integration:core` now emits Allure results for the `integration-core` Jest project.
+- `npm run allure:generate:core-integration` generates the core integration HTML report from existing results.
+- `npm run test:integration:core:allure` preserves the original test exit code while still generating the report.
 - `npm --prefix ui/mobile test` now emits Allure results for mobile unit tests.
 - `npm --prefix ui/mobile run allure:generate` generates the mobile unit HTML report from existing results.
 - `npm run test:unit:web` now emits Allure results for the `unit-web` Jest project.
@@ -55,9 +59,10 @@ description: Implementation notes for Allure reporting
 ### Family Publication Model
 
 - `component` stays a single-suite family report built from `allure-results/component`.
+- Component CI backfills a synthetic Allure failure when Cypress crashes a spec before `allure-cypress` can persist the failure result.
 - `unit` is assembled in CI by downloading Allure result artifacts from:
   `core-unit`, `core-integration`, `web-unit`, and `mobile-unit`.
-- `e2e` is assembled from the external repository's `allure-results/e2e` artifact after the test run completes.
+- `e2e` is assembled from the downloaded `EverFreeNote-e2e` workflow artifact inside `.github/workflows/e2e-tests.yml`.
 - Every family report gets injected `executor.json`, environment metadata, and a history path chosen from family plus scope.
 - The shared Pages index reads a generated JSON catalog rather than crawling directories at runtime.
 
@@ -66,7 +71,8 @@ description: Implementation notes for Allure reporting
 - Component CI can upload `allure-results/component` immediately after the test step.
 - CI report generation can run even when tests fail if the step uses `if: always()`.
 - `unit-tests.yml` now generates `allure-report/core-unit` and uploads both raw core unit results and the generated report as CI artifacts.
+- `unit-tests.yml` now generates `allure-report/core-integration` and uploads both raw core integration results and the generated report as CI artifacts.
 - `unit-tests.yml` now generates `ui/mobile/allure-report/mobile-unit` and uploads both raw mobile unit results and the generated report as CI artifacts.
 - `unit-tests.yml` now generates `allure-report/web-unit` and uploads both raw web unit results and the generated report as CI artifacts.
-- Future Pages publication should consume raw Allure results rather than republishing the prebuilt per-suite HTML reports.
-- The old `e2e-tests.yml` Playwright HTML Pages publication path should be removed once the `e2e` Allure family publish job is live.
+- Component, unit, and E2E Pages publication consume raw Allure results rather than republishing the prebuilt per-suite HTML reports.
+- The old `e2e-tests.yml` Playwright HTML Pages publication path has been replaced by the `e2e` Allure family publish job.

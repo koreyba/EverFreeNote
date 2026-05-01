@@ -9,9 +9,9 @@ description: Incremental rollout plan for Allure reporting
 ## Milestones
 
 - [x] Milestone 1: Foundation and suite-level Allure generation.
-- [ ] Milestone 2: Family-level GitHub Pages architecture and docs.
-- [ ] Milestone 3: Family-level publication for component and unit workflows.
-- [ ] Milestone 4: Replace the old E2E Pages publication with Allure family publication.
+- [x] Milestone 2: Family-level GitHub Pages architecture and docs.
+- [x] Milestone 3: Family-level publication for component and unit workflows.
+- [x] Milestone 4: Replace the old E2E Pages publication with Allure family publication.
 
 ## Task Breakdown
 
@@ -25,22 +25,22 @@ description: Incremental rollout plan for Allure reporting
 
 ### Phase 2: Web Component CI
 
-- [ ] Task 2.1: Add a shared Pages catalog model for Allure family reports.
-- [ ] Task 2.2: Define history-key rules for `PR`, `main`, `develop`, and manual scopes.
-- [ ] Task 2.3: Add scripts/templates for a shared Allure Pages index.
+- [x] Task 2.1: Add a shared Pages catalog model for Allure family reports.
+- [x] Task 2.2: Define history-key rules for `PR`, `main`, `develop`, and manual scopes.
+- [x] Task 2.3: Add scripts/templates for a shared Allure Pages index.
 
 ### Phase 3: Component and Unit Family Publication
 
-- [ ] Task 3.1: Generate and upload component Allure artifacts in `.github/workflows/component-tests.yml`.
-- [ ] Task 3.2: Merge core, integration, web, and mobile Allure results into a single `unit` family report.
-- [ ] Task 3.3: Publish `component` and `unit` family reports plus the shared Pages index.
-- [ ] Task 3.4: Add summary links to published family reports.
+- [x] Task 3.1: Generate and upload component Allure artifacts in `.github/workflows/component-tests.yml`.
+- [x] Task 3.2: Merge core, integration, web, and mobile Allure results into a single `unit` family report.
+- [x] Task 3.3: Publish `component` and `unit` family reports plus the shared Pages index.
+- [x] Task 3.4: Add summary links to published family reports.
 
 ### Phase 4: Web E2E Family Publication
 
 - [x] Task 4.1: Update `koreyba/EverFreeNote-e2e` Playwright config with an Allure reporter.
-- [ ] Task 4.2: Replace the old Playwright HTML Pages publish with `e2e` Allure family publication.
-- [ ] Task 4.3: Route E2E publication through the same shared Pages catalog and history logic.
+- [x] Task 4.2: Replace the old Playwright HTML Pages publish with `e2e` Allure family publication.
+- [x] Task 4.3: Route E2E publication through the same shared Pages catalog and history logic.
 
 ### Phase 5: Existing Suite Enablement
 

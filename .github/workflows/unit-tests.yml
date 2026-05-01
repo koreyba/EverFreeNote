@@ -13,6 +13,8 @@ permissions:
 jobs:
   unit-tests-mobile:
     runs-on: ubuntu-latest
+    outputs:
+      has_allure_results: ${{ steps.mobile-allure-check.outputs.has_allure_results }}
 
     steps:
       - name: Checkout code
@@ -152,6 +154,18 @@ jobs:
             echo "No mobile unit Allure results found; skipping report generation."
           fi
 
+      - name: Check mobile unit Allure artifacts
+        id: mobile-allure-check
+        if: always()
+        run: |
+          set -euo pipefail
+
+          if [ -d ui/mobile/allure-results/mobile-unit ] && [ "$(find ui/mobile/allure-results/mobile-unit -type f | wc -l)" -gt 0 ]; then
+            echo "has_allure_results=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_allure_results=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload mobile unit test report
         if: always()
         uses: actions/upload-artifact@v6
@@ -178,6 +192,8 @@ jobs:
 
   unit-tests-core:
     runs-on: ubuntu-latest
+    outputs:
+      has_allure_results: ${{ steps.core-allure-check.outputs.has_allure_results }}
 
     steps:
       - name: Checkout code
@@ -319,11 +335,29 @@ jobs:
 
       - name: Generate core integration Allure report
         if: always()
+        continue-on-error: true
         run: |
           if [ -d allure-results/core-integration ] && [ "$(find allure-results/core-integration -type f | wc -l)" -gt 0 ]; then
             npm run allure:generate:core-integration
           else
             echo "No core integration Allure results found; skipping report generation."
+          fi
+
+      - name: Check core Allure artifacts
+        id: core-allure-check
+        if: always()
+        run: |
+          set -euo pipefail
+
+          if [ -d allure-results/core-unit ] && [ "$(find allure-results/core-unit -type f | wc -l)" -gt 0 ]; then
+            echo "has_allure_results=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ -d allure-results/core-integration ] && [ "$(find allure-results/core-integration -type f | wc -l)" -gt 0 ]; then
+            echo "has_allure_results=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_allure_results=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload core test reports
@@ -356,6 +390,8 @@ jobs:
 
   unit-tests-web:
     runs-on: ubuntu-latest
+    outputs:
+      has_allure_results: ${{ steps.web-allure-check.outputs.has_allure_results }}
 
     steps:
       - name: Checkout code
@@ -490,6 +526,18 @@ jobs:
             echo "No web unit Allure results found; skipping report generation."
           fi
 
+      - name: Check web unit Allure artifacts
+        id: web-allure-check
+        if: always()
+        run: |
+          set -euo pipefail
+
+          if [ -d allure-results/web-unit ] && [ "$(find allure-results/web-unit -type f | wc -l)" -gt 0 ]; then
+            echo "has_allure_results=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_allure_results=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload web unit test report
         if: always()
         uses: actions/upload-artifact@v6
@@ -517,7 +565,20 @@ jobs:
   publish-unit-report:
     name: Publish Unit Allure report
     needs: [unit-tests-mobile, unit-tests-core, unit-tests-web]
-    if: always()
+    if: |
+      always() &&
+      (
+        needs.unit-tests-mobile.outputs.has_allure_results == 'true' ||
+        needs.unit-tests-core.outputs.has_allure_results == 'true' ||
+        needs.unit-tests-web.outputs.has_allure_results == 'true'
+      ) &&
+      (
+        github.event_name != 'pull_request' ||
+        (
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]'
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 25
     concurrency:
@@ -548,18 +609,21 @@ jobs:
         run: npm ci
 
       - name: Download core Allure artifact
+        continue-on-error: true
         uses: actions/download-artifact@v7
         with:
           name: unit-test-report-core-allure-${{ github.run_id }}
           path: .artifacts/core
 
       - name: Download web Allure artifact
+        continue-on-error: true
         uses: actions/download-artifact@v7
         with:
           name: unit-test-report-web-allure-${{ github.run_id }}
           path: .artifacts/web
 
       - name: Download mobile Allure artifact
+        continue-on-error: true
         uses: actions/download-artifact@v7
         with:
           name: unit-test-report-mobile-allure-${{ github.run_id }}

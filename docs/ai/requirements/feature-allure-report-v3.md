@@ -52,5 +52,6 @@ The project has several independent test surfaces, but reporting is split betwee
 
 ## Questions & Open Items
 
-- E2E Allure artifacts should be generated in the external E2E repo, then downloaded and republished by this repository's workflow so the Pages catalog stays centralized.
+- E2E Allure artifacts are generated during `.github/workflows/e2e-tests.yml` in the `run-e2e` job, uploaded as a workflow artifact, then downloaded and republished by `publish-e2e-report` so the Pages catalog stays centralized in this repository.
+- No cross-repository publish handoff is required beyond checking out the `koreyba/EverFreeNote-e2e` test repository for execution.
 - Mobile component or future mobile integration suites are out of scope unless they join the `unit` family under the same labeling strategy.

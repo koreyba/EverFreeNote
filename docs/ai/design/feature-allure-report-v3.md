@@ -32,7 +32,7 @@ flowchart TD
 ## Component Breakdown
 
 - `allure-cypress`: records Cypress component test execution into `allure-results/component`.
-- `allure-jest`: planned adapter for root Jest projects and mobile Jest.
+- `allure-jest`: adapter for root Jest projects and mobile Jest.
 - `allure`: Allure Report v3 CLI used by npm scripts to generate HTML reports.
 - `.github/workflows/*`: CI upload points for Allure artifacts and family-level Pages publication.
 - `.github/pages/*`: static landing page template and report catalog assets for GitHub Pages.
@@ -55,21 +55,23 @@ flowchart TD
 ## Pages Structure
 
 ```text
+index.html
 reports/
   index.json
-  index.html
   e2e/pr-<number>/run-<id>-attempt-<n>/
   e2e/manual/run-<id>-attempt-<n>/
   component/pr-<number>/run-<id>-attempt-<n>/
   unit/pr-<number>/run-<id>-attempt-<n>/
 _history/
-  e2e/pr-<number>.jsonl
-  e2e/branch-main.jsonl
-  e2e/branch-develop.jsonl
-  component/pr-<number>.jsonl
-  unit/pr-<number>.jsonl
-  unit/branch-main.jsonl
+  e2e/pr-<number>.json
+  e2e/branch-main.json
+  e2e/branch-develop.json
+  component/pr-<number>.json
+  unit/pr-<number>.json
+  unit/branch-main.json
 ```
+
+`scripts/generate-allure-report-index.js` writes the landing page to the Pages root as `index.html`; only the report catalog JSON and manifests live under `reports/`.
 
 ## Report Identity Model
 

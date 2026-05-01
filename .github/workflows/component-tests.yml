@@ -14,6 +14,8 @@ jobs:
   component-tests:
     runs-on: ubuntu-latest
     environment: Stage
+    outputs:
+      has_allure_results: ${{ steps.component-allure-check.outputs.has_allure_results }}
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
@@ -43,7 +45,9 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
           mkdir -p cypress/results
-          npm run test:component -- --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false"
+          set -o pipefail
+          npm run test:component -- --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | tee cypress/results/component-tests.log
+          exit ${PIPESTATUS[0]}
 
       - name: Generate test summary
         if: always()
@@ -191,6 +195,13 @@ jobs:
           fs.appendFileSync(summaryFile, md);
           NODE
 
+      - name: Backfill crashed spec failures into Allure results
+        if: always()
+        run: |
+          node scripts/backfill-cypress-spec-failures-to-allure.js \
+            --results-dir allure-results/component \
+            --log-file cypress/results/component-tests.log
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v6
@@ -205,11 +216,24 @@ jobs:
 
       - name: Generate component Allure report
         if: always()
+        continue-on-error: true
         run: |
           if [ -d allure-results/component ] && [ "$(find allure-results/component -type f | wc -l)" -gt 0 ]; then
             npm run allure:generate:component
           else
             echo "No component Allure results found; skipping report generation."
+          fi
+
+      - name: Check component Allure artifacts
+        id: component-allure-check
+        if: always()
+        run: |
+          set -euo pipefail
+
+          if [ -d allure-results/component ] && [ "$(find allure-results/component -type f | wc -l)" -gt 0 ]; then
+            echo "has_allure_results=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_allure_results=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload component Allure artifacts
@@ -230,7 +254,17 @@ jobs:
   publish-component-report:
     name: Publish Component Allure report
     needs: component-tests
-    if: always() && needs.component-tests.result != 'skipped'
+    if: |
+      always() &&
+      needs.component-tests.result != 'skipped' &&
+      needs.component-tests.outputs.has_allure_results == 'true' &&
+      (
+        github.event_name != 'pull_request' ||
+        (
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]'
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:

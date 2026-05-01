@@ -28,7 +28,7 @@ description: Verification approach for Allure reporting
 - Pages family report directories:
   `reports/e2e/...`, `reports/component/...`, `reports/unit/...`.
 - Pages history files:
-  `_history/<family>/<scope>.jsonl`.
+  `_history/<family>/<scope>.json`.
 
 ## Verification Commands
 
@@ -67,7 +67,5 @@ description: Verification approach for Allure reporting
 
 ## Outstanding Gaps
 
-- Shared GitHub Pages catalog for family reports is not implemented yet.
-- Component and unit workflows do not publish family reports to Pages yet.
-- E2E Allure Pages publication has not replaced the old Playwright HTML Pages flow yet.
-- History retention logic per family and scope is still pending implementation.
+- Component spec-level crashes can bypass `allure-cypress`, so CI now backfills a synthetic Allure failure from the captured Cypress log; this path still deserves a focused regression check on future Cypress upgrades.
+- Trusted-event guards intentionally skip `gh-pages` publication for fork PRs and read-only bot PRs, so those runs keep artifacts in Actions without publishing Pages output.
