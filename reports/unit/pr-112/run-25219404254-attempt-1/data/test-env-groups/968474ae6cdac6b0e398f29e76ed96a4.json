@@ -1,0 +1,1 @@
+{"id":"968474ae6cdac6b0e398f29e76ed96a4","fullName":"ui/web/tests/unit/components/settingsPanels.test.tsx#settings panels shows indexing defaults even when live indexing settings fail to load","name":"shows indexing defaults even when live indexing settings fail to load","status":"passed","testResultsByEnv":{"default":"35c4fd2be0bb3a2c8ce78e031f4b96fe"}}

@@ -1,0 +1,1 @@
+{"id":"7c6a77a3e92fb9fd84bde1e2f77b67fd","fullName":"core/tests/unit/core-services-offlineCache.test.ts#core/services/offlineCache getCacheLimitBytes returns a positive number","name":"returns a positive number","status":"passed","testResultsByEnv":{"default":"07d495aeb54d4fd19dd78c8ce1930e40"}}

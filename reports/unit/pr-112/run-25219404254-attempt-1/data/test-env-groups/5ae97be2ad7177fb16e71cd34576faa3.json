@@ -1,0 +1,1 @@
+{"id":"5ae97be2ad7177fb16e71cd34576faa3","fullName":"tests/unit/settingsPanels.test.tsx#settings panels falls back to default retrieval values when live settings cannot be loaded","name":"falls back to default retrieval values when live settings cannot be loaded","status":"passed","testResultsByEnv":{"default":"f9ad269b814844ccc9566eaa2871f19d"}}
