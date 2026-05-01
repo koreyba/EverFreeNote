@@ -28,9 +28,16 @@ const ensureWithinWorkspace = (targetPath, optionName) => {
   }
 };
 
+const GROUPING_LABELS = new Set(["suite", "surface", "layer", "workflow"]);
+
 const addLabel = (labels, name, value) => {
   if (!value) return;
-  if (labels.some((label) => label && label.name === name && label.value === value)) {
+  const existingLabel = labels.find((label) => label && label.name === name);
+  if (existingLabel && GROUPING_LABELS.has(name)) {
+    existingLabel.value = value;
+    return;
+  }
+  if (existingLabel?.value === value) {
     return;
   }
   labels.push({ name, value });
@@ -40,7 +47,7 @@ const readDirectoryEntries = (dirPath) => {
   try {
     return fs.readdirSync(dirPath, { withFileTypes: true });
   } catch (error) {
-    if (error?.code === "ENOENT" || error?.code === "ENOTDIR") {
+    if (error?.code === "ENOENT") {
       return [];
     }
     throw error;

@@ -93,12 +93,53 @@ const parseArgs = (argv) => {
 
 const normalizeSlashes = (value) => value.replaceAll(path.sep, "/");
 
+const trimTrailingSlashes = (value) => {
+  let endIndex = value.length;
+  while (endIndex > 0 && value[endIndex - 1] === "/") {
+    endIndex -= 1;
+  }
+  return value.slice(0, endIndex);
+};
+
+const trimBoundaryCharacter = (value, boundaryCharacter) => {
+  let startIndex = 0;
+  let endIndex = value.length;
+
+  while (startIndex < endIndex && value[startIndex] === boundaryCharacter) {
+    startIndex += 1;
+  }
+
+  while (endIndex > startIndex && value[endIndex - 1] === boundaryCharacter) {
+    endIndex -= 1;
+  }
+
+  return value.slice(startIndex, endIndex);
+};
+
 const slugify = (value) =>
-  String(value || "")
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, "-")
-    .replaceAll(/^-+|-+$/g, "") || "unknown";
+  {
+    const normalizedValue = String(value || "").trim().toLowerCase();
+    let slug = "";
+    let previousWasDash = false;
+
+    for (const character of normalizedValue) {
+      const isAlphaNumeric =
+        (character >= "a" && character <= "z") ||
+        (character >= "0" && character <= "9");
+      if (isAlphaNumeric) {
+        slug += character;
+        previousWasDash = false;
+        continue;
+      }
+
+      if (!previousWasDash) {
+        slug += "-";
+        previousWasDash = true;
+      }
+    }
+
+    return trimBoundaryCharacter(slug, "-") || "unknown";
+  };
 
 const ensureDir = (dirPath) => {
   fs.mkdirSync(dirPath, { recursive: true });
@@ -196,7 +237,7 @@ const computeReportContext = ({ family, env = process.env }) => {
   const prNumber = env.PR_NUMBER || "";
   const refName = env.REF_NAME || env.GITHUB_REF_NAME || "unknown";
   const eventName = env.GITHUB_EVENT_NAME || "";
-  const pagesBaseUrl = (env.PAGES_BASE_URL || "").replace(/\/+$/, "");
+  const pagesBaseUrl = trimTrailingSlashes(env.PAGES_BASE_URL || "");
   const scope = computeScope({ prNumber, refName, eventName });
   const reportDir = normalizeSlashes(
     path.join("reports", family, scope.scopeKey, `run-${runId}-attempt-${runAttempt}`)
