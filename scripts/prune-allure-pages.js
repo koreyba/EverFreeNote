@@ -18,9 +18,19 @@ const readRetained = (filePath) => {
 };
 
 const removeEmptyParents = (root, currentPath) => {
-  let cursor = path.dirname(currentPath);
-  while (cursor.startsWith(root) && cursor !== root) {
-    if (fs.existsSync(cursor) && fs.readdirSync(cursor).length === 0) {
+  const resolvedRoot = path.resolve(root);
+  let cursor = path.resolve(path.dirname(currentPath));
+  while (cursor !== resolvedRoot) {
+    const relativePath = path.relative(resolvedRoot, cursor);
+    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+      break;
+    }
+
+    if (fs.existsSync(cursor) && fs.readdirSync(cursor).length !== 0) {
+      break;
+    }
+
+    if (fs.existsSync(cursor)) {
       fs.rmSync(cursor, { recursive: true, force: true });
     }
     cursor = path.dirname(cursor);

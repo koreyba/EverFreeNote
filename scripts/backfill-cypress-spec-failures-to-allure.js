@@ -49,7 +49,13 @@ const collectExistingFailures = (resultsDir) => {
     }
 
     const filePath = path.join(resultsDir, entry);
-    const payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    let payload;
+    try {
+      payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    } catch (error) {
+      console.warn(`Skipping malformed Allure result file ${filePath}: ${error instanceof Error ? error.message : error}`);
+      continue;
+    }
     if (payload.status === "passed" || payload.status === "skipped") {
       continue;
     }
@@ -179,16 +185,16 @@ const writeSyntheticFailure = (resultsDir, spec, message, summaryLine) => {
 
 const main = () => {
   const args = parseArgs(process.argv);
-  const resultsDir = path.resolve(args["results-dir"] || "");
-  const logFile = path.resolve(args["log-file"] || "");
-
-  if (!resultsDir) {
+  if (typeof args["results-dir"] !== "string" || args["results-dir"].trim() === "") {
     throw new Error("--results-dir is required");
   }
 
-  if (!logFile) {
+  if (typeof args["log-file"] !== "string" || args["log-file"].trim() === "") {
     throw new Error("--log-file is required");
   }
+
+  const resultsDir = path.resolve(args["results-dir"]);
+  const logFile = path.resolve(args["log-file"]);
 
   if (!fs.existsSync(logFile)) {
     console.log(`No Cypress log file found at ${logFile}; skipping Allure backfill.`);

@@ -65,7 +65,13 @@ const copyDirectory = (sourceDir, targetDir, suiteName, family) => {
       }
 
       if (entry.name.endsWith("-result.json")) {
-        const payload = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+        let payload;
+        try {
+          payload = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+        } catch (error) {
+          console.warn(`Skipping malformed Allure result file ${sourcePath}: ${error instanceof Error ? error.message : error}`);
+          continue;
+        }
         const labels = Array.isArray(payload.labels) ? payload.labels : [];
         const suiteMetadata = getSuiteMetadata(suiteName);
         addLabel(labels, "family", family);

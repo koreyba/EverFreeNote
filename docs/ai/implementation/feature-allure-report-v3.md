@@ -58,13 +58,11 @@ description: Implementation notes for Allure reporting
 
 ### Family Publication Model
 
-- `component` stays a single-suite family report built from `allure-results/component`.
-- Component CI backfills a synthetic Allure failure when Cypress crashes a spec before `allure-cypress` can persist the failure result.
-- `unit` is assembled in CI by downloading Allure result artifacts from:
-  `core-unit`, `core-integration`, `web-unit`, and `mobile-unit`.
-- `e2e` is assembled from the downloaded `EverFreeNote-e2e` workflow artifact inside `.github/workflows/e2e-tests.yml`.
-- Every family report gets injected `executor.json`, environment metadata, and a history path chosen from family plus scope.
-- The shared Pages index reads a generated JSON catalog rather than crawling directories at runtime.
+- Architecture and rationale for family-based publication live in
+  [allure-reporting-architecture.md](/C:/Projects/EverFreeNote/docs/ai/design/allure-reporting-architecture.md).
+- CI assembles `component`, `unit`, and `e2e` family reports through `scripts/prepare-allure-family-report.js`.
+- The `unit` family publish flow downloads raw results from `core-unit`, `core-integration`, `web-unit`, and `mobile-unit` before generating the final Pages report.
+- Component CI runs `scripts/backfill-cypress-spec-failures-to-allure.js` before report generation so spec-level Cypress crashes still surface in the published Allure data.
 
 ## Integration Points
 

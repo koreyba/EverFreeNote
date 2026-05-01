@@ -119,7 +119,19 @@ const listify = (value) => {
 
 const appendGithubOutput = (githubOutputPath, values) => {
   if (!githubOutputPath) return;
-  const lines = Object.entries(values).map(([key, value]) => `${key}=${value ?? ""}`);
+  const lines = Object.entries(values).flatMap(([key, value]) => {
+    const normalizedValue = `${value ?? ""}`;
+    if (!normalizedValue.includes("\n")) {
+      return `${key}=${normalizedValue}`;
+    }
+
+    const delimiter = `EOF_${key.toUpperCase()}_${Math.random().toString(16).slice(2)}`;
+    return [
+      `${key}<<${delimiter}`,
+      normalizedValue,
+      delimiter,
+    ];
+  });
   fs.appendFileSync(githubOutputPath, `${lines.join("\n")}\n`);
 };
 
