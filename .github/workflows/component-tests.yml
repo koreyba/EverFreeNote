@@ -39,6 +39,8 @@ jobs:
       - name: Run component tests
         id: run-component-tests
         continue-on-error: true
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           mkdir -p cypress/results
           npm run test:component -- --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false"

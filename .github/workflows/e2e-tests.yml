@@ -422,7 +422,7 @@ jobs:
             --family e2e \
             --work-dir .allure-publish/e2e \
             --history-root .allure-history \
-            --input e2e=.artifacts/e2e/e2e/allure-results/e2e \
+            --input e2e=.artifacts/e2e/allure-results/e2e \
             --github-output "$GITHUB_OUTPUT"
 
       - name: Update gh-pages content

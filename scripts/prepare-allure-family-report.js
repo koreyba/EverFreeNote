@@ -13,7 +13,19 @@ const {
   parseArgs,
 } = require("./allure-pages-utils");
 
-const SKIPPED_FILENAMES = new Set(["executor.json"]);
+const SKIPPED_FILENAMES = new Set(["executor.json", "environment.properties", "categories.json"]);
+
+const isWithinDirectory = (baseDir, candidatePath) => {
+  const relativePath = path.relative(baseDir, candidatePath);
+  return relativePath !== ".." && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath);
+};
+
+const ensureWithinWorkspace = (targetPath, optionName) => {
+  const workspaceRoot = process.cwd();
+  if (!isWithinDirectory(workspaceRoot, targetPath)) {
+    throw new Error(`${optionName} must be inside repository workspace: ${targetPath}`);
+  }
+};
 
 const addLabel = (labels, name, value) => {
   if (!value) return;
@@ -24,16 +36,22 @@ const addLabel = (labels, name, value) => {
 };
 
 const copyDirectory = (sourceDir, targetDir, suiteName, family) => {
-  if (!fs.existsSync(sourceDir)) {
-    return { copiedFiles: 0, resultFiles: 0 };
-  }
-
   let copiedFiles = 0;
   let resultFiles = 0;
 
   const visit = (currentSource, currentTarget) => {
     ensureDir(currentTarget);
-    for (const entry of fs.readdirSync(currentSource, { withFileTypes: true })) {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(currentSource, { withFileTypes: true });
+    } catch (error) {
+      if (error && (error.code === "ENOENT" || error.code === "ENOTDIR")) {
+        return;
+      }
+      throw error;
+    }
+
+    for (const entry of entries) {
       const sourcePath = path.join(currentSource, entry.name);
       const targetPath = path.join(currentTarget, entry.name);
 
@@ -46,10 +64,6 @@ const copyDirectory = (sourceDir, targetDir, suiteName, family) => {
         continue;
       }
 
-      if (fs.existsSync(targetPath)) {
-        throw new Error(`File collision while merging Allure results: ${targetPath}`);
-      }
-
       if (entry.name.endsWith("-result.json")) {
         const payload = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
         const labels = Array.isArray(payload.labels) ? payload.labels : [];
@@ -60,13 +74,32 @@ const copyDirectory = (sourceDir, targetDir, suiteName, family) => {
         addLabel(labels, "layer", suiteMetadata.layer);
         addLabel(labels, "workflow", suiteMetadata.workflow);
         payload.labels = labels;
-        fs.writeFileSync(targetPath, `${JSON.stringify(payload, null, 2)}\n`);
+        try {
+          fs.writeFileSync(targetPath, `${JSON.stringify(payload, null, 2)}\n`, {
+            flag: "wx",
+          });
+        } catch (error) {
+          if (error && error.code === "EEXIST") {
+            throw new Error(`File collision while merging Allure results: ${targetPath}`);
+          }
+          throw error;
+        }
         copiedFiles += 1;
         resultFiles += 1;
         continue;
       }
 
-      fs.copyFileSync(sourcePath, targetPath);
+      try {
+        fs.copyFileSync(sourcePath, targetPath, fs.constants.COPYFILE_EXCL);
+      } catch (error) {
+        if (error && error.code === "EEXIST") {
+          throw new Error(`File collision while merging Allure results: ${targetPath}`);
+        }
+        if (error && error.code === "ENOENT") {
+          continue;
+        }
+        throw error;
+      }
       copiedFiles += 1;
     }
   };
@@ -141,6 +174,8 @@ const main = () => {
   const inputArgs = listify(args.input);
   const workDir = path.resolve(args["work-dir"] || path.join(".allure-publish", family || "report"));
   const historyRoot = path.resolve(args["history-root"] || workDir);
+  ensureWithinWorkspace(workDir, "--work-dir");
+  ensureWithinWorkspace(historyRoot, "--history-root");
 
   if (!family) {
     throw new Error("--family is required");
@@ -173,6 +208,9 @@ const main = () => {
     }
     const suite = item.slice(0, separatorIndex);
     const sourceDir = path.resolve(item.slice(separatorIndex + 1));
+    if (!isWithinDirectory(process.cwd(), sourceDir)) {
+      throw new Error(`Input path must be inside repository workspace: ${sourceDir}`);
+    }
     if (!fs.existsSync(sourceDir)) {
       continue;
     }

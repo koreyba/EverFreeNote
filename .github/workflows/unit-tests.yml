@@ -605,7 +605,7 @@ jobs:
             --input core-unit=.artifacts/core/allure-results/core-unit \
             --input core-integration=.artifacts/core/allure-results/core-integration \
             --input web-unit=.artifacts/web/allure-results/web-unit \
-            --input mobile-unit=.artifacts/mobile/ui/mobile/allure-results/mobile-unit \
+            --input mobile-unit=.artifacts/mobile/allure-results/mobile-unit \
             --github-output "$GITHUB_OUTPUT"
 
       - name: Update gh-pages content
