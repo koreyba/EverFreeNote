@@ -1,0 +1,1 @@
+{"id":"cf5f9ff118949b548d2e03ded6bf36d4","fullName":"cypress/component/features/notes/SearchResultsPanel.cy.tsx#SearchResultsPanel refetches matching short FTS queries when AI mode is turned off","name":"refetches matching short FTS queries when AI mode is turned off","status":"passed","testResultsByEnv":{"default":"67687638d4181efd45160341628ec20f"}}
