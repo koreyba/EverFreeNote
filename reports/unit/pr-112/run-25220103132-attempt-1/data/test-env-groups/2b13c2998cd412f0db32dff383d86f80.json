@@ -1,0 +1,1 @@
+{"id":"2b13c2998cd412f0db32dff383d86f80","fullName":"core/tests/unit/core-utils-search.test.ts#core/utils/search detectLanguage returns \"en\" for special characters only","name":"returns \"en\" for special characters only","status":"passed","testResultsByEnv":{"default":"03eae2913dd0bd425ac9f72a32c1dad7"}}

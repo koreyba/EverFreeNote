@@ -1,0 +1,1 @@
+{"id":"0369b5123ddae8eaa47c69f9d5bd40ca","fullName":"core/tests/unit/core-utils-prosemirrorCaret.test.ts#core/utils/prosemirrorCaret.placeCaretFromCoords is defensive and returns noop on exceptions","name":"is defensive and returns noop on exceptions","status":"passed","testResultsByEnv":{"default":"df143b605ea8d88bd284cbc05ae6501e"}}

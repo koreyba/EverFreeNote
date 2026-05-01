@@ -1,0 +1,1 @@
+{"id":"f96f15740743562f72f3227d9e39bbb2","fullName":"core/tests/unit/core-rag-chunking.test.ts#core/rag/chunking — pairwise test suite G — Overlap G2: overlap=100 → предпочитает границу предложения","name":"G2: overlap=100 → предпочитает границу предложения","status":"passed","testResultsByEnv":{"default":"6390528ff8b10e3b0f49bce45004101d"}}
