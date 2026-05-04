@@ -1,0 +1,1 @@
+{"id":"71ac4d10969e9eb4888de0e9ed248e42","fullName":"cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager drainQueue should not drain if offline","name":"should not drain if offline","status":"passed","testResultsByEnv":{"default":"2c92d8ff24c011dc2fe63f9108cf2ec3"}}

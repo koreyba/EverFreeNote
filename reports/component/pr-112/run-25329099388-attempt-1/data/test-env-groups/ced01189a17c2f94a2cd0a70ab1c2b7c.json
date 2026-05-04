@@ -1,0 +1,1 @@
+{"id":"ced01189a17c2f94a2cd0a70ab1c2b7c","fullName":"cypress/component/lib/adapters/browser.cy.ts#WebBrowserAdapter calls window.confirm and returns result","name":"calls window.confirm and returns result","status":"passed","testResultsByEnv":{"default":"7c5f3cce9397805f2a9c39d6520c3d01"}}

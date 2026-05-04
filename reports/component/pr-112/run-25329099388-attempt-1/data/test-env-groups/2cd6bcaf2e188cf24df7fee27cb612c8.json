@@ -1,0 +1,1 @@
+{"id":"2cd6bcaf2e188cf24df7fee27cb612c8","fullName":"cypress/component/core/services/wordpressSettings.cy.ts#core/services/WordPressSettingsService upsert throws explicit error for invalid success payload","name":"upsert throws explicit error for invalid success payload","status":"passed","testResultsByEnv":{"default":"4b18403271d7d8fe18e036b12a01b819"}}
