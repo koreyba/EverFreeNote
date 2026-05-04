@@ -1,1 +1,0 @@
-{"id":"d6f5a53f47949902e75324c20168678c","fullName":"cypress/component/ui/web/lib/wordpress.cy.ts#ui/web/lib/wordpress slugifyLatin returns fallback for empty/special input","name":"slugifyLatin returns fallback for empty/special input","status":"passed","testResultsByEnv":{"default":"978c9ebfa312e44a961103b41cf1540b"}}

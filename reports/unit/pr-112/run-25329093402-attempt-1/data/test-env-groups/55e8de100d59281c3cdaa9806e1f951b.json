@@ -1,0 +1,1 @@
+{"id":"55e8de100d59281c3cdaa9806e1f951b","fullName":"tests/component/useOpenNote.test.tsx#useOpenNote opens a plain note route and seeds the detail cache when chunk focus is not provided","name":"opens a plain note route and seeds the detail cache when chunk focus is not provided","status":"passed","testResultsByEnv":{"default":"54f9ea9af4ba98132b1dcddf33d1f79a"}}

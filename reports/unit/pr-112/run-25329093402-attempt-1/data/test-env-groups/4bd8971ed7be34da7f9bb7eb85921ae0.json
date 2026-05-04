@@ -1,0 +1,1 @@
+{"id":"4bd8971ed7be34da7f9bb7eb85921ae0","fullName":"core/tests/unit/core-rag-chunking.test.ts#core/rag/chunking — pairwise test suite J — HTML parsing J3: <br> внутри <p> → один блок (не разделяет на параграфы)","name":"J3: <br> внутри <p> → один блок (не разделяет на параграфы)","status":"passed","testResultsByEnv":{"default":"2394590be3e1c4f979e306d68fd7fec2"}}

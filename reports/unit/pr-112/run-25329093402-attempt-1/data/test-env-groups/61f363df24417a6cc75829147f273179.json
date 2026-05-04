@@ -1,0 +1,1 @@
+{"id":"61f363df24417a6cc75829147f273179","fullName":"ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx#useAIPaginatedSearch surfaces embedding model mismatch without retrying the request","name":"surfaces embedding model mismatch without retrying the request","status":"passed","testResultsByEnv":{"default":"0ec9b24938cc79e8aee228092e32d43f"}}

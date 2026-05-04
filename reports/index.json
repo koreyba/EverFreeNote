@@ -1,5 +1,39 @@
 [
   {
+    "family": "unit",
+    "familyLabel": "Unit",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
+    "path": "reports/unit/pr-112/run-25329093402-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/unit/pr-112/run-25329093402-attempt-1/",
+    "runId": "25329093402",
+    "runAttempt": "1",
+    "prNumber": "112",
+    "ref": "codex/allure-pages-reporting-main",
+    "sha": "b05b1de05700c214e3676ec48fd302bc43c176fe",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #112",
+    "historyPath": "_history/unit/history.jsonl",
+    "generatedAt": "2026-05-04T16:00:46.796Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/unit/report",
+    "combinedResultsDir": ".allure-publish/unit/results"
+  },
+  {
     "url": "https://koreyba.github.io/EverFreeNote/reports/pr-114/run-25221182815-attempt-1/",
     "path": "reports/pr-114/run-25221182815-attempt-1",
     "runId": "25221182815",

@@ -1,1 +1,0 @@
-{"id":"748260ddaf8cfd0239ad553291b8ff17","fullName":"cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager should drain queue on initialization if already online","name":"should drain queue on initialization if already online","status":"passed","testResultsByEnv":{"default":"e5ed6217b22815a15371fc90dbda87f9"}}
