@@ -15,15 +15,37 @@ const {
 
 const SKIPPED_FILENAMES = new Set(["executor.json", "environment.properties", "categories.json"]);
 const HISTORY_LIMIT = 20;
+const realpathSyncNative = fs.realpathSync.native || fs.realpathSync;
 
 const isWithinDirectory = (baseDir, candidatePath) => {
   const relativePath = path.relative(baseDir, candidatePath);
   return relativePath !== ".." && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath);
 };
 
+const resolvePathForWorkspaceCheck = (targetPath) => {
+  let currentPath = path.resolve(targetPath);
+  const trailingSegments = [];
+
+  while (!fs.existsSync(currentPath)) {
+    const parentPath = path.dirname(currentPath);
+    if (parentPath === currentPath) {
+      throw new Error(`Unable to resolve workspace ancestor for path: ${targetPath}`);
+    }
+    trailingSegments.unshift(path.basename(currentPath));
+    currentPath = parentPath;
+  }
+
+  let resolvedPath = realpathSyncNative(currentPath);
+  for (const segment of trailingSegments) {
+    resolvedPath = path.join(resolvedPath, segment);
+  }
+  return resolvedPath;
+};
+
 const ensureWithinWorkspace = (targetPath, optionName) => {
-  const workspaceRoot = process.cwd();
-  if (!isWithinDirectory(workspaceRoot, targetPath)) {
+  const workspaceRoot = realpathSyncNative(process.cwd());
+  const resolvedTargetPath = resolvePathForWorkspaceCheck(targetPath);
+  if (!isWithinDirectory(workspaceRoot, resolvedTargetPath)) {
     throw new Error(`${optionName} must be inside repository workspace: ${targetPath}`);
   }
 };
@@ -122,6 +144,10 @@ const copyDirectory = (sourceDir, targetDir, suiteName, family) => {
       const sourcePath = path.join(currentSource, entry.name);
       const targetPath = path.join(currentTarget, entry.name);
 
+      if (entry.isSymbolicLink()) {
+        throw new Error(`Symlinks are not allowed in Allure inputs: ${sourcePath}`);
+      }
+
       if (entry.isDirectory()) {
         visit(sourcePath, targetPath);
         continue;
@@ -216,10 +242,9 @@ const parseInput = (item) => {
   }
 
   const suite = item.slice(0, separatorIndex);
+  getSuiteMetadata(suite);
   const sourceDir = path.resolve(item.slice(separatorIndex + 1));
-  if (!isWithinDirectory(process.cwd(), sourceDir)) {
-    throw new Error(`Input path must be inside repository workspace: ${sourceDir}`);
-  }
+  ensureWithinWorkspace(sourceDir, "--input");
 
   return { suite, sourceDir };
 };
