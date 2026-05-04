@@ -1,0 +1,1 @@
+{"id":"2f7c6afbf0c6ece2c8afc063fcbe8b8b","fullName":"core/tests/unit/core-utils-search.test.ts#core/utils/search detectLanguage returns \"ru\" for cyrillic text","name":"returns \"ru\" for cyrillic text","status":"passed","testResultsByEnv":{"default":"f588b5648f5bd4b0a274df322d9ddf51"}}

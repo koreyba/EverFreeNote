@@ -1,0 +1,1 @@
+{"id":"886cf81fc496ce31e8c9715f0cf632fc","fullName":"tests/integration/noteEditorUndoRedo.test.tsx#NoteEditorScreen — Undo/Redo header buttons keeps undo enabled when the same note is refreshed after autosave","name":"keeps undo enabled when the same note is refreshed after autosave","status":"passed","testResultsByEnv":{"default":"574b5945da9dc81cde7a2c516399a9ca"}}
