@@ -5,7 +5,7 @@ const {
   COMMENT_MARKER,
   renderComment,
   selectLatestReports,
-} = require("./render-allure-pr-comment");
+} = require("./update-pr-status-comment");
 
 test("selectLatestReports keeps the newest report per family for the active PR head sha", () => {
   const reports = [
@@ -45,41 +45,33 @@ test("selectLatestReports keeps the newest report per family for the active PR h
   assert.equal(reportsByFamily.get("e2e"), null);
 });
 
-test("renderComment includes fallback states for families without published reports", () => {
+test("renderComment uses a generic PR status marker and report section", () => {
   const reportsByFamily = new Map([
-    ["unit", { url: "https://example.test/unit" }],
+    [
+      "unit",
+      {
+        runId: "1",
+        url: "https://example.test/unit",
+        workflow: "Unit Tests",
+      },
+    ],
     ["component", null],
     ["e2e", null],
   ]);
-  const workflowRuns = [
-    {
-      family: "unit",
-      conclusion: "success",
-      html_url: "https://github.com/example/actions/runs/1",
-    },
-    {
-      family: "component",
-      conclusion: "failure",
-      html_url: "https://github.com/example/actions/runs/2",
-    },
-    {
-      family: "e2e",
-      conclusion: "success",
-      html_url: "https://github.com/example/actions/runs/3",
-    },
-  ];
 
   const body = renderComment({
     catalogUrl: "https://example.test/reports",
     headSha: "abcdef123456",
     prNumber: "112",
     reportsByFamily,
-    workflowRuns,
+    repository: "koreyba/EverFreeNote",
     updatedAt: "2026-05-04T11:00:00Z",
   });
 
   assert.match(body, new RegExp(COMMENT_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(body, /\| Unit \| \[Passed\]\(https:\/\/github\.com\/example\/actions\/runs\/1\) \| \[Open report\]\(https:\/\/example\.test\/unit\) \|/);
-  assert.match(body, /\| Component \| \[Failed\]\(https:\/\/github\.com\/example\/actions\/runs\/2\) \| Not published \|/);
+  assert.match(body, /## PR Status/);
+  assert.match(body, /### Test Reports/);
+  assert.match(body, /\| Unit \| \[Unit Tests\]\(https:\/\/github\.com\/koreyba\/EverFreeNote\/actions\/runs\/1\) \| \[Open report\]\(https:\/\/example\.test\/unit\) \|/);
+  assert.match(body, /\| Component \| Waiting for publish \| Not published yet \|/);
   assert.match(body, /Catalog: \[All reports\]\(https:\/\/example\.test\/reports\)/);
 });

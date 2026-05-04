@@ -586,6 +586,7 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
+      issues: write
     env:
       PAGES_BASE_URL: https://koreyba.github.io/EverFreeNote
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -724,3 +725,14 @@ jobs:
             echo
             echo "- Published report: ${REPORT_URL}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update PR status comment
+        if: github.event_name == 'pull_request' && steps.prepare-unit-report.outputs.has_results == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/update-pr-status-comment.js \
+            --reports-index .pages-existing/reports/index.json \
+            --pr-number "${PR_NUMBER}" \
+            --head-sha "${COMMIT_SHA}" \
+            --catalog-url "${PAGES_BASE_URL}/"
