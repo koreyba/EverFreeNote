@@ -1,0 +1,277 @@
+name: Allure PR Comment
+
+on:
+  workflow_run:
+    workflows:
+      - Component Tests
+      - Unit Tests
+      - E2E Tests (PR Preview)
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number to refresh"
+        required: true
+        type: string
+      head_sha:
+        description: "Optional PR head SHA guard"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+  pull-requests: read
+
+env:
+  PAGES_BASE_URL: https://koreyba.github.io/EverFreeNote
+
+jobs:
+  update-pr-comment:
+    name: Update Allure PR Comment
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Resolve PR comment context
+        id: context
+        uses: actions/github-script@v8
+        env:
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_HEAD_SHA: ${{ inputs.head_sha }}
+        with:
+          script: |
+            const workflowNames = [
+              "Component Tests",
+              "Unit Tests",
+              "E2E Tests (PR Preview)",
+            ];
+            const familyByWorkflow = {
+              "Component Tests": "component",
+              "Unit Tests": "unit",
+              "E2E Tests (PR Preview)": "e2e",
+            };
+
+            const parsePositiveInteger = (value) => {
+              const parsed = Number.parseInt(`${value || ""}`.trim(), 10);
+              return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+            };
+
+            const matchesPullRequest = (run, pullNumber) =>
+              Array.isArray(run.pull_requests) &&
+              run.pull_requests.some((pullRequest) => pullRequest.number === pullNumber);
+
+            const compareRuns = (left, right) => {
+              if ((right.run_number || 0) !== (left.run_number || 0)) {
+                return (right.run_number || 0) - (left.run_number || 0);
+              }
+              return (right.run_attempt || 0) - (left.run_attempt || 0);
+            };
+
+            let pullNumber = null;
+            let requestedHeadSha = "";
+
+            if (context.eventName === "workflow_run") {
+              const workflowRun = context.payload.workflow_run;
+              pullNumber = workflowRun.pull_requests?.[0]?.number || null;
+              requestedHeadSha = `${workflowRun.head_sha || ""}`.trim();
+            } else {
+              pullNumber = parsePositiveInteger(process.env.INPUT_PR_NUMBER);
+              requestedHeadSha = `${process.env.INPUT_HEAD_SHA || ""}`.trim();
+            }
+
+            if (!pullNumber) {
+              core.setOutput("should_update", "false");
+              core.setOutput("reason", "No pull request number was available for comment update.");
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: pullNumber,
+            });
+
+            const currentHeadSha = `${pullRequest.head.sha || ""}`.trim();
+
+            if (requestedHeadSha && requestedHeadSha !== currentHeadSha) {
+              core.setOutput("should_update", "false");
+              core.setOutput("reason", `Skipping stale workflow completion for ${requestedHeadSha.slice(0, 7)}; PR head is ${currentHeadSha.slice(0, 7)}.`);
+              return;
+            }
+
+            const workflowRuns = await github.paginate(
+              github.rest.actions.listWorkflowRunsForRepo,
+              {
+                owner,
+                repo,
+                event: "pull_request",
+                head_sha: currentHeadSha,
+                per_page: 100,
+              },
+              (response) => response.data.workflow_runs
+            );
+
+            const selectedRuns = [];
+            const missingWorkflowNames = [];
+            const incompleteWorkflowNames = [];
+
+            for (const workflowName of workflowNames) {
+              const matches = workflowRuns
+                .filter((run) => run.name === workflowName && matchesPullRequest(run, pullNumber))
+                .sort(compareRuns);
+
+              if (matches.length === 0) {
+                missingWorkflowNames.push(workflowName);
+                continue;
+              }
+
+              const latestRun = matches[0];
+              if (latestRun.status !== "completed") {
+                incompleteWorkflowNames.push(workflowName);
+              }
+
+              selectedRuns.push({
+                family: familyByWorkflow[workflowName],
+                workflow_name: workflowName,
+                status: latestRun.status,
+                conclusion: latestRun.conclusion,
+                html_url: latestRun.html_url,
+                run_id: latestRun.id,
+                run_number: latestRun.run_number,
+                run_attempt: latestRun.run_attempt,
+              });
+            }
+
+            if (missingWorkflowNames.length > 0 || incompleteWorkflowNames.length > 0) {
+              core.setOutput("should_update", "false");
+              core.setOutput(
+                "reason",
+                JSON.stringify({
+                  missingWorkflowNames,
+                  incompleteWorkflowNames,
+                })
+              );
+              return;
+            }
+
+            core.setOutput("should_update", "true");
+            core.setOutput("reason", "All relevant workflows completed for the current PR head SHA.");
+            core.setOutput("pr_number", `${pullNumber}`);
+            core.setOutput("head_sha", currentHeadSha);
+            core.setOutput("workflow_runs_json", JSON.stringify(selectedRuns));
+
+      - name: Record skip reason
+        if: steps.context.outputs.should_update != 'true'
+        run: |
+          {
+            echo "## Allure PR Comment"
+            echo
+            echo "${{ steps.context.outputs.reason }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout code
+        if: steps.context.outputs.should_update == 'true'
+        uses: actions/checkout@v6
+
+      - name: Write workflow context file
+        if: steps.context.outputs.should_update == 'true'
+        env:
+          WORKFLOW_RUNS_JSON: ${{ steps.context.outputs.workflow_runs_json }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp-artifacts/allure-comment
+          node <<'NODE'
+          const fs = require("node:fs");
+          fs.writeFileSync(".tmp-artifacts/allure-comment/workflow-runs.json", process.env.WORKFLOW_RUNS_JSON || "[]");
+          NODE
+
+      - name: Prepare gh-pages branch
+        if: steps.context.outputs.should_update == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          rm -rf .pages-existing
+          git init --quiet .pages-existing
+          git -C .pages-existing config user.name "github-actions[bot]"
+          git -C .pages-existing config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C .pages-existing remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          if git -C .pages-existing fetch --quiet --depth=1 origin gh-pages; then
+            git -C .pages-existing checkout --quiet -B gh-pages FETCH_HEAD
+          else
+            mkdir -p .pages-existing/reports
+          fi
+
+      - name: Render PR comment body
+        if: steps.context.outputs.should_update == 'true'
+        run: |
+          set -euo pipefail
+
+          node scripts/render-allure-pr-comment.js \
+            --reports-index .pages-existing/reports/index.json \
+            --workflow-runs-file .tmp-artifacts/allure-comment/workflow-runs.json \
+            --pr-number "${{ steps.context.outputs.pr_number }}" \
+            --head-sha "${{ steps.context.outputs.head_sha }}" \
+            --catalog-url "${PAGES_BASE_URL}/" \
+            --output .tmp-artifacts/allure-comment/comment.md
+
+      - name: Update PR comment
+        if: steps.context.outputs.should_update == 'true'
+        uses: actions/github-script@v8
+        env:
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+        with:
+          script: |
+            const fs = require("node:fs");
+            const marker = "<!-- allure-reports-comment -->";
+            const body = fs.readFileSync(".tmp-artifacts/allure-comment/comment.md", "utf8");
+            const issueNumber = Number.parseInt(process.env.PR_NUMBER, 10);
+            const { owner, repo } = context.repo;
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner,
+                repo,
+                issue_number: issueNumber,
+                per_page: 100,
+              },
+              (response) => response.data
+            );
+
+            const existingComment = comments.find((comment) =>
+              typeof comment.body === "string" && comment.body.includes(marker)
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body,
+              });
+              await core.summary
+                .addHeading("Allure PR Comment")
+                .addRaw(`Updated existing comment ${existingComment.id}.`)
+                .write();
+              return;
+            }
+
+            const createdComment = await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              body,
+            });
+
+            await core.summary
+              .addHeading("Allure PR Comment")
+              .addRaw(`Created comment ${createdComment.data.id}.`)
+              .write();
