@@ -1,0 +1,1 @@
+{"id":"525241060b6b7a640b48926f1b93e082","fullName":"tests/component/aiIndexNoteCard.test.tsx#AIIndexNoteCard shows a fallback toast when the backend skips indexing without a message","name":"shows a fallback toast when the backend skips indexing without a message","status":"passed","testResultsByEnv":{"default":"87fb2d8f25e9071fef1176cecbb00c7c"}}

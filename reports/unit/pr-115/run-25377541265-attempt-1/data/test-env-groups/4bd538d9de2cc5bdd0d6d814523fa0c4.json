@@ -1,0 +1,1 @@
+{"id":"4bd538d9de2cc5bdd0d6d814523fa0c4","fullName":"tests/component/editorToolbar.test.tsx#EditorToolbar closes link menu on cancel without calling onCommand","name":"closes link menu on cancel without calling onCommand","status":"passed","testResultsByEnv":{"default":"75c70abe69f545f9aae320151a9c982a"}}

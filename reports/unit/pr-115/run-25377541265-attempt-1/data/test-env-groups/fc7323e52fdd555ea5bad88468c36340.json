@@ -1,0 +1,1 @@
+{"id":"fc7323e52fdd555ea5bad88468c36340","fullName":"core/tests/unit/search.test.ts#buildTsQuery returns null for empty or short input","name":"returns null for empty or short input","status":"passed","testResultsByEnv":{"default":"f7e2b6bca338cb05a0d4d698671a28b2"}}

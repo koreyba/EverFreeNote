@@ -1,0 +1,1 @@
+{"id":"e33dad31039df20fd32d3699b8afde92","fullName":"core/tests/unit/core-services-ragSettings.test.ts#core/services/rag settings accepts search settings payloads that omit embedding_model","name":"accepts search settings payloads that omit embedding_model","status":"passed","testResultsByEnv":{"default":"8bc55a7f2ba8345771b5dc7dc6958b2f"}}

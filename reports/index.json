@@ -1,5 +1,39 @@
 [
   {
+    "family": "unit",
+    "familyLabel": "Unit",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
+    "path": "reports/unit/pr-115/run-25377541265-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/unit/pr-115/run-25377541265-attempt-1/",
+    "runId": "25377541265",
+    "runAttempt": "1",
+    "prNumber": "115",
+    "ref": "codex/fix-richtexteditor-cypress-crash",
+    "sha": "296ca55dc5eda4633217d8b6b70e6c5854d95fad",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #115",
+    "historyPath": "_history/unit/history.jsonl",
+    "generatedAt": "2026-05-05T12:56:18.357Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/unit/report",
+    "combinedResultsDir": ".allure-publish/unit/results"
+  },
+  {
     "family": "component",
     "familyLabel": "Component",
     "suites": [

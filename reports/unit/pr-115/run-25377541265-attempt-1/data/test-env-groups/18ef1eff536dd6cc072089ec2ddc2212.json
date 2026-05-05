@@ -1,0 +1,1 @@
+{"id":"18ef1eff536dd6cc072089ec2ddc2212","fullName":"tests/integration/noteEditorScreen.test.tsx#NoteEditorScreen - Delete Functionality Delete error handling navigates back when API fails but fallback succeeds","name":"navigates back when API fails but fallback succeeds","status":"passed","testResultsByEnv":{"default":"b17d12de91917a2ea203486e32e606a7"}}

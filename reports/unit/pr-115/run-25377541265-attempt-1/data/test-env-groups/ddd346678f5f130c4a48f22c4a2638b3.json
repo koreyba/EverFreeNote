@@ -1,0 +1,1 @@
+{"id":"ddd346678f5f130c4a48f22c4a2638b3","fullName":"tests/component/useDeleteNote.test.tsx#useDeleteNote Optimistic updates succeeds even when no cache data exists","name":"succeeds even when no cache data exists","status":"passed","testResultsByEnv":{"default":"cd5f59e52f79650bc54f0c15fbe0dc13"}}

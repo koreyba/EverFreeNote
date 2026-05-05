@@ -1,0 +1,1 @@
+{"id":"fbe99016b8ab970fdcfab846f0fd7a9d","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText newline handling trims leading and trailing whitespace","name":"trims leading and trailing whitespace","status":"passed","testResultsByEnv":{"default":"8e7b40aa8fdf4f2bdc3e10f36f525bae"}}

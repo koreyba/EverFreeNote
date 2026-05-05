@@ -1,0 +1,1 @@
+{"id":"24adb406fca2f3fd9beec3ab773d1efe","fullName":"tests/component/aiIndexNoteCard.test.tsx#AIIndexNoteCard restores not_indexed when skip reason is too_short","name":"restores not_indexed when skip reason is too_short","status":"passed","testResultsByEnv":{"default":"1bce37b08f1f9bda9da2f72ee3a5487b"}}
