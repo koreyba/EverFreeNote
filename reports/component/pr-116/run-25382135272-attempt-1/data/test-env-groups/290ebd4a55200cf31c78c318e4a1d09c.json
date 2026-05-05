@@ -1,0 +1,1 @@
+{"id":"290ebd4a55200cf31c78c318e4a1d09c","fullName":"cypress/component/editor/RichTextEditor.history.cy.tsx#RichTextEditor Component Undo/Redo buttons undo and redo buttons are disabled on empty editor (no history)","name":"undo and redo buttons are disabled on empty editor (no history)","status":"passed","testResultsByEnv":{"default":"490616ac3e83a6b65c66331ad0c8b93c"}}

@@ -1,0 +1,1 @@
+{"id":"ac4cb8dc1f6c45ada1de2f146bfe1523","fullName":"cypress/component/unit/searchUtils.cy.ts#Search Utils buildTsQuery should return null on empty query after sanitization","name":"should return null on empty query after sanitization","status":"passed","testResultsByEnv":{"default":"5f854523be8f4caded46daa9c1bf826b"}}

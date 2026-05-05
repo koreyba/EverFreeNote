@@ -1,0 +1,1 @@
+{"id":"3752213f97078f4b64760dd9b86c5f4f","fullName":"cypress/component/core/services/wordpressExport.cy.ts#core/services/WordPressExportService getCategories throws invalid_response for malformed category payload","name":"getCategories throws invalid_response for malformed category payload","status":"passed","testResultsByEnv":{"default":"9ab1d8786677b5c8e834dc724cd994f7"}}
