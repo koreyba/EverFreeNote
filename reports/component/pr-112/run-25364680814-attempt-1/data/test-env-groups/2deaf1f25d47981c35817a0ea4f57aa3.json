@@ -1,0 +1,1 @@
+{"id":"2deaf1f25d47981c35817a0ea4f57aa3","fullName":"cypress/component/features/notes/NoteEditorSaveExit.cy.tsx#NoteEditor save on exit (web) saves an existing note after typing when creating a new note","name":"saves an existing note after typing when creating a new note","status":"passed","testResultsByEnv":{"default":"4d80aeff864549690c4e9a1ecc3f421a"}}
