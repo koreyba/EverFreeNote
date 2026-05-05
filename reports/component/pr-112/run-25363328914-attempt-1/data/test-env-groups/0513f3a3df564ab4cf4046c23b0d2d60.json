@@ -1,0 +1,1 @@
+{"id":"0513f3a3df564ab4cf4046c23b0d2d60","fullName":"cypress/component/ui/web/hooks/useNoteBulkActionsDirect.cy.tsx#useNoteBulkActions direct returns zeroed result and performs no mutation for empty delete ids","name":"returns zeroed result and performs no mutation for empty delete ids","status":"passed","testResultsByEnv":{"default":"be08bf92ed73924dd233275e82a51bf0"}}

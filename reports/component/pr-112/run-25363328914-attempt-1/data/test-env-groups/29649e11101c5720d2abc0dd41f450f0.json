@@ -1,0 +1,1 @@
+{"id":"29649e11101c5720d2abc0dd41f450f0","fullName":"cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager drainQueue should process pending batch and remove successful items","name":"should process pending batch and remove successful items","status":"passed","testResultsByEnv":{"default":"f8b34baefa7d5e56ccade77063330745"}}
