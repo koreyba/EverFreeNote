@@ -1,0 +1,1 @@
+{"id":"7740cdace6df7b8febee30b98d913a02","fullName":"cypress/component/features/notes/Sidebar.cy.tsx#Sidebar Component Sync Status Indicator shows sync failed status with count when failedCount > 0","name":"shows sync failed status with count when failedCount > 0","status":"passed","testResultsByEnv":{"default":"8ffb6b2ddc317ad0dd7a9979586557f9"}}

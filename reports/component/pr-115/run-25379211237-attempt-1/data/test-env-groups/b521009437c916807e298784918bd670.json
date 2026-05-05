@@ -1,0 +1,1 @@
+{"id":"b521009437c916807e298784918bd670","fullName":"cypress/component/ui/web/hooks/useNoteBulkActions.cy.tsx#useNoteBulkActions deleteSelectedNotes calls delete for each selected note (online)","name":"deleteSelectedNotes calls delete for each selected note (online)","status":"passed","testResultsByEnv":{"default":"4eed1a23c095365e447fb177eeb0e44b"}}

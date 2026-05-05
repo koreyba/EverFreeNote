@@ -1,0 +1,1 @@
+{"id":"0b61b2c0686617d13d34fce47555798d","fullName":"cypress/component/editor/RichTextEditor.rendering.cy.tsx#RichTextEditor Component does not jump to document end when clicking an internal vertical gap","name":"does not jump to document end when clicking an internal vertical gap","status":"passed","testResultsByEnv":{"default":"4779055994f1612a49659ba58a706f33"}}

@@ -1,0 +1,1 @@
+{"id":"6194575005d60b625ca445373f224c66","fullName":"cypress/component/features/notes/SearchResultsPanel.cy.tsx#SearchResultsPanel deletes tag-only results and resets FTS path","name":"deletes tag-only results and resets FTS path","status":"passed","testResultsByEnv":{"default":"b4e2c17317c235aa382a595fb408114f"}}
