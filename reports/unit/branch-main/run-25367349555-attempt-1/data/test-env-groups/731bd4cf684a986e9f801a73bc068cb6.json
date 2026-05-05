@@ -1,0 +1,1 @@
+{"id":"731bd4cf684a986e9f801a73bc068cb6","fullName":"tests/component/shareNoteDialog.test.tsx#ShareNoteDialog does not mark the link as shared when the native sheet is dismissed","name":"does not mark the link as shared when the native sheet is dismissed","status":"passed","testResultsByEnv":{"default":"d22d46bf5736783f5ff8780944bd30c3"}}

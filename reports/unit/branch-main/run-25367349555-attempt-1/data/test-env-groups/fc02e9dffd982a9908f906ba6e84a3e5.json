@@ -1,0 +1,1 @@
+{"id":"fc02e9dffd982a9908f906ba6e84a3e5","fullName":"core/tests/unit/core-utils-search.test.ts#core/utils/search buildTsQuery returns null for empty string","name":"returns null for empty string","status":"passed","testResultsByEnv":{"default":"9d3c481fe6f5cf5ed2a74aac7d0fda29"}}

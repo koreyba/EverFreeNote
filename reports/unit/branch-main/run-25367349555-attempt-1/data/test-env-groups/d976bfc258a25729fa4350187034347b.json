@@ -1,0 +1,1 @@
+{"id":"d976bfc258a25729fa4350187034347b","fullName":"tests/component/useDeleteNote.test.tsx#useDeleteNote Optimistic updates removes deleted note from AI search cache without refetching","name":"removes deleted note from AI search cache without refetching","status":"passed","testResultsByEnv":{"default":"d2c711562f7f5543d52fd7f5ab2160e4"}}

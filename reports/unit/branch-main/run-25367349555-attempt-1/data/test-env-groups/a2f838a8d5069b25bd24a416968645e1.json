@@ -1,0 +1,1 @@
+{"id":"a2f838a8d5069b25bd24a416968645e1","fullName":"ui/web/tests/unit/hooks/useSearchMode.test.tsx#useSearchMode restores state from localStorage and ignores the legacy preset field","name":"restores state from localStorage and ignores the legacy preset field","status":"passed","testResultsByEnv":{"default":"c0797f70111cf8cd9bfe1a444bf7e01b"}}
