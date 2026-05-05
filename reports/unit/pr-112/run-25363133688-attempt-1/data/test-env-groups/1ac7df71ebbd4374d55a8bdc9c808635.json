@@ -1,0 +1,1 @@
+{"id":"1ac7df71ebbd4374d55a8bdc9c808635","fullName":"tests/component/useMobileAIPaginatedSearch.test.tsx#useMobileAIPaginatedSearch clears accumulated results immediately when the authenticated user changes","name":"clears accumulated results immediately when the authenticated user changes","status":"passed","testResultsByEnv":{"default":"ce838d310fa674fa4a0b9a76c3815a3b"}}

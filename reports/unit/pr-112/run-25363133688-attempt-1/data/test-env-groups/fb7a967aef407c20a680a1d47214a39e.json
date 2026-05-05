@@ -1,0 +1,1 @@
+{"id":"fb7a967aef407c20a680a1d47214a39e","fullName":"core/tests/unit/search.test.ts#buildTsQuery returns null for overly long input","name":"returns null for overly long input","status":"passed","testResultsByEnv":{"default":"ddd07191e358d38a89ddc9f20a4abab8"}}

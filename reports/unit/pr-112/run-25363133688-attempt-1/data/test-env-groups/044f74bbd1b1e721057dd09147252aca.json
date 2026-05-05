@@ -1,0 +1,1 @@
+{"id":"044f74bbd1b1e721057dd09147252aca","fullName":"core/tests/unit/core-rag-chunking.test.ts#core/rag/chunking — pairwise test suite Regression — реальная заметка (4 абзаца, русский текст) не пересекает границы абзацев когда чанк ≥ min","name":"не пересекает границы абзацев когда чанк ≥ min","status":"passed","testResultsByEnv":{"default":"0c0c784b1c4559737ba6ccda336dc451"}}

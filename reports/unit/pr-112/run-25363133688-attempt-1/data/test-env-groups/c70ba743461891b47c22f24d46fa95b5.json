@@ -1,0 +1,1 @@
+{"id":"c70ba743461891b47c22f24d46fa95b5","fullName":"core/tests/unit/core-utils-search.test.ts#core/utils/search ftsLanguage falls back to \"russian\" for unknown language","name":"falls back to \"russian\" for unknown language","status":"passed","testResultsByEnv":{"default":"f46af7fe8bfd638fbfdc71d27cb058c4"}}

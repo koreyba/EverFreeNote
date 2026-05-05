@@ -1,0 +1,1 @@
+{"id":"0d594d0ecc782b5417dcae65c5671feb","fullName":"core/tests/integration/smartPaste.integration.test.ts#smartPaste integration forced markdown - force-markdown.txt fixture renders fixture as markdown when forcedType is provided","name":"renders fixture as markdown when forcedType is provided","status":"passed","testResultsByEnv":{"default":"ee814dbd0f13d1dc444318ad8d8e9e81"}}

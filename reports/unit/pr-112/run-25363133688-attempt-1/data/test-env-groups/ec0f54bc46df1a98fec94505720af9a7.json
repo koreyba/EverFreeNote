@@ -1,0 +1,1 @@
+{"id":"ec0f54bc46df1a98fec94505720af9a7","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste keeps allowed link protocols and strips unsafe ones","name":"keeps allowed link protocols and strips unsafe ones","status":"passed","testResultsByEnv":{"default":"6687bb61ebd5ac0596635f93e3999a83"}}
