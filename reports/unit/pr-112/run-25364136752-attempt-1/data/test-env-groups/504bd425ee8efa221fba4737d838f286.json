@@ -1,0 +1,1 @@
+{"id":"504bd425ee8efa221fba4737d838f286","fullName":"tests/component/editorWebViewMessages.test.tsx#EditorWebView message handling SELECTION_CHANGE handling calls onSelectionChange(true) when payload is true","name":"calls onSelectionChange(true) when payload is true","status":"passed","testResultsByEnv":{"default":"9c91bdcd56430d85d132ac9b301ababd"}}

@@ -1,0 +1,1 @@
+{"id":"987c51695bbcbdbaad9f8c5d9d4d53f0","fullName":"core/tests/unit/core-utils-prosemirrorCaret.test.ts#core/utils/prosemirrorCaret.placeCaretFromCoords returns noop when posAtCoords is null and click is within bounds","name":"returns noop when posAtCoords is null and click is within bounds","status":"passed","testResultsByEnv":{"default":"b960c8bfc234e051d6fcc6933e4316ae"}}

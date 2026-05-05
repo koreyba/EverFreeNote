@@ -1,0 +1,1 @@
+{"id":"398dd75b2bdd98337d4f0bb170194ccf","fullName":"tests/component/useMobileAIPaginatedSearch.test.tsx#useMobileAIPaginatedSearch hides stale results and errors while the search identity is switching","name":"hides stale results and errors while the search identity is switching","status":"passed","testResultsByEnv":{"default":"a0147ed7737f351d964ac85399d3edb8"}}

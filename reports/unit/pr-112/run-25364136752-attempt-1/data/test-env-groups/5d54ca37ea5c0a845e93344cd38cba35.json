@@ -1,0 +1,1 @@
+{"id":"5d54ca37ea5c0a845e93344cd38cba35","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText HTML entity decoding decodes decimal numeric entities","name":"decodes decimal numeric entities","status":"passed","testResultsByEnv":{"default":"a822e9dc15f726a81a9598ff2311a23a"}}

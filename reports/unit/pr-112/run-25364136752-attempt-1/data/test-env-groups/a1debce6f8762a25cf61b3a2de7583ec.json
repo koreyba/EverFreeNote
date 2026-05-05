@@ -1,0 +1,1 @@
+{"id":"a1debce6f8762a25cf61b3a2de7583ec","fullName":"ui/web/tests/unit/adapters/supabaseClient.test.ts#buildBrowserSupabaseStorageKey includes host and port so local Supabase stacks do not share auth state","name":"includes host and port so local Supabase stacks do not share auth state","status":"passed","testResultsByEnv":{"default":"1d2420cbfb1c8ca155c19b7bd72e3a5e"}}

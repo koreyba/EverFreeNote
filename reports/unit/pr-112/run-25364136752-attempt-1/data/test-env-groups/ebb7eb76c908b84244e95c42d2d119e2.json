@@ -1,0 +1,1 @@
+{"id":"ebb7eb76c908b84244e95c42d2d119e2","fullName":"core/tests/unit/noteAutosaveSession.test.ts#noteAutosaveSession resolveNoteAutosaveSessionChange returns unchanged when the note id stays the same","name":"returns unchanged when the note id stays the same","status":"passed","testResultsByEnv":{"default":"95cb700f6bd53ab51c85924703b73f07"}}

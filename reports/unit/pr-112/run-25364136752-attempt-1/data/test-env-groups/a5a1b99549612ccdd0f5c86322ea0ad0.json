@@ -1,0 +1,1 @@
+{"id":"a5a1b99549612ccdd0f5c86322ea0ad0","fullName":"ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx#useAIPaginatedSearch keeps results empty when the AI search endpoint returns an error","name":"keeps results empty when the AI search endpoint returns an error","status":"passed","testResultsByEnv":{"default":"ccb0c70cd0894e448313284cce0c472b"}}
