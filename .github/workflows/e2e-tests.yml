@@ -379,6 +379,7 @@ jobs:
     permissions:
       contents: write
       issues: write
+      pull-requests: write
     env:
       PAGES_BASE_URL: https://koreyba.github.io/EverFreeNote
       PR_NUMBER: ${{ github.event.pull_request.number }}

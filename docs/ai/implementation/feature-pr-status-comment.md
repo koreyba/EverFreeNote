@@ -16,7 +16,7 @@ description: Implementation notes for the reusable PR status comment
 
 - The renderer filters report metadata by PR number and current head SHA so stale reports do not appear in the comment.
 - The comment uses `Not published yet` for missing report families.
-- Existing publish jobs now request `issues: write` in addition to `contents: write`.
+- Existing publish jobs now request `issues: write` and `pull-requests: write` in addition to `contents: write`.
 - The removed `workflow_run` workflow is intentionally not used because it cannot run from this PR until merged to the default branch.
 - Update steps select an existing marker comment only when it is authored by `github-actions[bot]`; otherwise they create a new bot-owned comment.
 
