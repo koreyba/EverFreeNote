@@ -1,0 +1,1 @@
+{"id":"b8c2a5211eb0a7be2e439c001d86abe4","fullName":"tests/component/editorWebViewMessages.test.tsx#EditorWebView message handling HISTORY_STATE handling calls onHistoryStateChange with canUndo/canRedo from payload","name":"calls onHistoryStateChange with canUndo/canRedo from payload","status":"passed","testResultsByEnv":{"default":"024abda56dce7bf475621229733b8a44"}}

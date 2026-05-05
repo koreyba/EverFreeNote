@@ -1,0 +1,1 @@
+{"id":"6431bdc7d618a0b0fc9e613ff9aacfaf","fullName":"tests/integration/searchScreen.test.tsx#SearchScreen - Delete Functionality Delete error handling in search falls back to queue when API deletion fails (no alert shown)","name":"falls back to queue when API deletion fails (no alert shown)","status":"passed","testResultsByEnv":{"default":"045e1c8cb640884925e794b57ea0452c"}}

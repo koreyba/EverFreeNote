@@ -1,0 +1,1 @@
+{"id":"5871e1c72dd29a2b045331650ef9b40e","fullName":"tests/component/useDeleteNote.test.tsx#useDeleteNote Error recovery does not invalidate queries on success","name":"does not invalidate queries on success","status":"passed","testResultsByEnv":{"default":"09f986c04a41a878fe57a7345fa9d594"}}

@@ -1,0 +1,1 @@
+{"id":"404e5ee197bc6f39df568bac5df04de9","fullName":"core/tests/integration/smartPaste.integration.test.ts#smartPaste integration falls back to plain text and strips scripts from non-structural HTML","name":"falls back to plain text and strips scripts from non-structural HTML","status":"passed","testResultsByEnv":{"default":"7f7d3f2c357929cabe9b805f36b41945"}}
