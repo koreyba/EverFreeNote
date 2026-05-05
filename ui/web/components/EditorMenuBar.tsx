@@ -118,7 +118,7 @@ export const EditorMenuBar = ({ editor, historyState, onUndo, onRedo, hasSelecti
         <Select onValueChange={(value) => editor.chain().focus().setFontFamily(value).run()} defaultValue={fontFamilies[0]}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <SelectTrigger data-cy="font-family-select" className="w-[120px] text-xs h-8">
+              <SelectTrigger data-cy="font-family-button" className="w-[120px] text-xs h-8">
                 <SelectValue placeholder="Font Family" />
               </SelectTrigger>
             </TooltipTrigger>
@@ -135,7 +135,7 @@ export const EditorMenuBar = ({ editor, historyState, onUndo, onRedo, hasSelecti
         <Select onValueChange={(value) => editor.chain().focus().setFontSize(`${value}pt`).run()} defaultValue={fontSizes[2]}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <SelectTrigger data-cy="font-size-select" className="w-[70px] text-xs h-8">
+              <SelectTrigger data-cy="font-size-button" className="w-[70px] text-xs h-8">
                 <SelectValue placeholder="Font Size" />
               </SelectTrigger>
             </TooltipTrigger>

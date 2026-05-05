@@ -40,7 +40,7 @@ Implementation: `ui/mobile/tests/unit/core-utils-prosemirrorCaret.test.ts`
 - [x] Mobile/WebView: parity checks for internal gap + bottom tail + above-first-block + right-of-line
 
 Specs:
-- `cypress/component/editor/RichTextEditor.cy.tsx`
+- `cypress/component/editor/RichTextEditor.rendering.cy.tsx`
 - `cypress/component/RichTextEditorWebView.cy.tsx`
 
 ## End-to-End Tests
@@ -65,7 +65,7 @@ Specs:
 
 Commands:
 - `cd ui/mobile && npm test -- core-utils-prosemirrorCaret.test.ts`
-- `npx cypress run --component --spec cypress/component/editor/RichTextEditor.cy.tsx`
+- `npx cypress run --component --spec cypress/component/editor/RichTextEditor.rendering.cy.tsx`
 - `npx cypress run --component --spec cypress/component/RichTextEditorWebView.cy.tsx`
 
 ## Manual Testing
