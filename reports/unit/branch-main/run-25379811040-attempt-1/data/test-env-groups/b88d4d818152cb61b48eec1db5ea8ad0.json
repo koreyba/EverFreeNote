@@ -1,0 +1,1 @@
+{"id":"b88d4d818152cb61b48eec1db5ea8ad0","fullName":"core/tests/unit/core-utils-prosemirrorCaret.test.ts#core/utils/prosemirrorCaret.placeCaretFromCoords uses posAtCoords + Selection.near when a position is returned","name":"uses posAtCoords + Selection.near when a position is returned","status":"passed","testResultsByEnv":{"default":"523ff04f8f592f90054d2f24c9a3bdf1"}}

@@ -1,0 +1,1 @@
+{"id":"7d3277fa4208133a003bd3145b613fad","fullName":"ui/web/tests/unit/components/aiIndexTab.test.tsx#AIIndexTab shows the bulk button only when the loaded list contains actionable notes","name":"shows the bulk button only when the loaded list contains actionable notes","status":"passed","testResultsByEnv":{"default":"b88702f6cbba3493a62243be183f5f17"}}

@@ -1,0 +1,1 @@
+{"id":"93d0f1adff23c4a8fbd358d20ff7e762","fullName":"tests/component/useBulkDeleteNotes.test.tsx#useBulkDeleteNotes does not call deleteNote when ids array is empty","name":"does not call deleteNote when ids array is empty","status":"passed","testResultsByEnv":{"default":"af099b697bde9094c36e9454d45a74b8"}}

@@ -1,0 +1,1 @@
+{"id":"d3d243746a3a28520097c188d24d7275","fullName":"tests/component/useBulkSelection.test.ts#useBulkSelection deactivate() resets isActive and clears selectedIds","name":"deactivate() resets isActive and clears selectedIds","status":"passed","testResultsByEnv":{"default":"486d83228eb491fad0012c7c61cc7d79"}}

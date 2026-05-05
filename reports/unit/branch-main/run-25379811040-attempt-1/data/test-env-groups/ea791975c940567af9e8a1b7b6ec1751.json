@@ -1,0 +1,1 @@
+{"id":"ea791975c940567af9e8a1b7b6ec1751","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste treats non-structural HTML as plain text when no markdown is present","name":"treats non-structural HTML as plain text when no markdown is present","status":"passed","testResultsByEnv":{"default":"db69d5a8eb2edc0b1bc2fd34ef85e658"}}

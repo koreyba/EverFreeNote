@@ -1,0 +1,1 @@
+{"id":"fb41f69f1e446d45bf63aeecd5ffbb54","fullName":"tests/component/useBulkDeleteNotes.test.tsx#useBulkDeleteNotes calls deleteNote for each provided id","name":"calls deleteNote for each provided id","status":"passed","testResultsByEnv":{"default":"de46643801427a4814c3c0f37f2227c2"}}

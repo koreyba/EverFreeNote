@@ -1,0 +1,1 @@
+{"id":"40ba8e2ac3ed53ed72ee4aa9153409b9","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText newline handling collapses 3+ consecutive newlines to 2","name":"collapses 3+ consecutive newlines to 2","status":"passed","testResultsByEnv":{"default":"7da7fe3a548fd79b5cf15734e18f1c68"}}

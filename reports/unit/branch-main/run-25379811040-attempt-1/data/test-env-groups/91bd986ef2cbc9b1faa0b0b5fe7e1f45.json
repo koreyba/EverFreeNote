@@ -1,0 +1,1 @@
+{"id":"91bd986ef2cbc9b1faa0b0b5fe7e1f45","fullName":"core/tests/integration/smartPaste.integration.test.ts#smartPaste integration escapes raw HTML when content is treated as plain text","name":"escapes raw HTML when content is treated as plain text","status":"passed","testResultsByEnv":{"default":"ce0516726fef8b3b4842dc0969d78c8b"}}
