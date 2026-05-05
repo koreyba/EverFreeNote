@@ -1,5 +1,33 @@
 [
   {
+    "family": "e2e",
+    "familyLabel": "E2E",
+    "suites": [
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web E2E"
+    ],
+    "path": "reports/e2e/pr-115/run-25377541247-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/e2e/pr-115/run-25377541247-attempt-1/",
+    "runId": "25377541247",
+    "runAttempt": "1",
+    "prNumber": "115",
+    "ref": "codex/fix-richtexteditor-cypress-crash",
+    "sha": "296ca55dc5eda4633217d8b6b70e6c5854d95fad",
+    "outcome": "success",
+    "previewUrl": "https://324dc3bc.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #115",
+    "historyPath": "_history/e2e/history.jsonl",
+    "generatedAt": "2026-05-05T12:59:19.397Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/e2e/report",
+    "combinedResultsDir": ".allure-publish/e2e/results"
+  },
+  {
     "family": "unit",
     "familyLabel": "Unit",
     "suites": [
