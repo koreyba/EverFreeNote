@@ -1,0 +1,1 @@
+{"id":"dae1b4674c8bee89be852156b1bfb0ac","fullName":"cypress/component/ui/web/hooks/useNoteAppController.cy.tsx#useNoteAppController flushes pending editor save when clicking a tag while editing","name":"flushes pending editor save when clicking a tag while editing","status":"passed","testResultsByEnv":{"default":"b6fa6f52c42aceecaf3c191e1ed4a83f"}}

@@ -1,0 +1,1 @@
+{"id":"5d54740ef3623b7d07b52eaf6fc7732d","fullName":"cypress/component/features/notes/NoteEditor.cy.tsx#NoteEditor Component resets editor undo/redo history when switching between different notes","name":"resets editor undo/redo history when switching between different notes","status":"passed","testResultsByEnv":{"default":"4e4b94ed2131b00baee5491bdcffdc07"}}
