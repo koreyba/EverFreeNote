@@ -1,0 +1,1 @@
+{"id":"00af70b8dd2fe6850272a95222c0bf86","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText newline handling converts </div> to newline","name":"converts </div> to newline","status":"passed","testResultsByEnv":{"default":"0a53f46b87996241f15c2f576cb85141"}}

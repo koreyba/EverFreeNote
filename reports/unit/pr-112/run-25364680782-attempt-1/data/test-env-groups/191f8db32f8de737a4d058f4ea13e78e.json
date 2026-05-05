@@ -1,0 +1,1 @@
+{"id":"191f8db32f8de737a4d058f4ea13e78e","fullName":"tests/component/useBulkSelection.test.ts#useBulkSelection activate(id) sets isActive=true and adds id to selectedIds","name":"activate(id) sets isActive=true and adds id to selectedIds","status":"passed","testResultsByEnv":{"default":"a60e837a4c09a39472a3b43afc5007cb"}}

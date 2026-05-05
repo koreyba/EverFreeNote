@@ -1,0 +1,1 @@
+{"id":"738a7fa93ebbcdeb44f3eed2e5de2dfb","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText HTML entity decoding decodes &#39; (apostrophe)","name":"decodes &#39; (apostrophe)","status":"passed","testResultsByEnv":{"default":"62d6288f72b09e3c2c91cf283f879a4f"}}

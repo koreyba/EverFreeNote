@@ -1,0 +1,1 @@
+{"id":"37719a0385e6d350924ef78f79671a18","fullName":"tests/integration/noteEditorScreen.test.tsx#NoteEditorScreen - Delete Functionality Integration with editor preserves unsaved changes when delete button is pressed","name":"preserves unsaved changes when delete button is pressed","status":"passed","testResultsByEnv":{"default":"51baa318611c5895cd5a7ce4b79a1e43"}}

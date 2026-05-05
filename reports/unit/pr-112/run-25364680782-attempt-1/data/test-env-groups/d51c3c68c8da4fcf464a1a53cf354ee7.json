@@ -1,0 +1,1 @@
+{"id":"d51c3c68c8da4fcf464a1a53cf354ee7","fullName":"tests/integration/noteSaveExit.test.tsx#NoteEditorScreen - save on exit recreates the note after a remote deletion when mobile saves last","name":"recreates the note after a remote deletion when mobile saves last","status":"passed","testResultsByEnv":{"default":"dfddd736ee5cc4a7c59c0c9df4581d3e"}}
