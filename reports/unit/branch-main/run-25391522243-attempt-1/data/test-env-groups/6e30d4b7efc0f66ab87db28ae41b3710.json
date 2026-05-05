@@ -1,0 +1,1 @@
+{"id":"6e30d4b7efc0f66ab87db28ae41b3710","fullName":"tests/component/useMobileAIPaginatedSearch.test.tsx#useMobileAIPaginatedSearch does not invoke rag-search for queries shorter than the minimum length","name":"does not invoke rag-search for queries shorter than the minimum length","status":"passed","testResultsByEnv":{"default":"24d885784d957110cdf0d11908e1d660"}}

@@ -1,0 +1,1 @@
+{"id":"56f37126c9f5209dc8be3e77f9c7a333","fullName":"core/tests/integration/offlineSync.test.ts#Offline Sync Integration Delete note offline workflow removes from cache and enqueues delete mutation","name":"removes from cache and enqueues delete mutation","status":"passed","testResultsByEnv":{"default":"5ad8c468fa02c30d42d268c92b0dce5f"}}

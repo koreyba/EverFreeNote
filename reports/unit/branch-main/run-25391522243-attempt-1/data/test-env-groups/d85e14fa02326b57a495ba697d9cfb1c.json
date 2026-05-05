@@ -1,0 +1,1 @@
+{"id":"d85e14fa02326b57a495ba697d9cfb1c","fullName":"tests/component/useMobileSearchMode.test.tsx#useMobileSearchMode sanitizes malformed persisted state and writes back a valid default payload","name":"sanitizes malformed persisted state and writes back a valid default payload","status":"passed","testResultsByEnv":{"default":"57acea649e0f0f751cad839dd317ccac"}}
