@@ -1,0 +1,1 @@
+{"id":"936b85c730c37cae9b97dc1290730e4b","fullName":"core/tests/unit/core-rag-chunking.test.ts#core/rag/chunking — pairwise test suite B — Paragraph-first аккумуляция B2: 3 мелких абзаца, сумма ≤ target → 1 чанк","name":"B2: 3 мелких абзаца, сумма ≤ target → 1 чанк","status":"passed","testResultsByEnv":{"default":"24ed3ebc59ecdf0dec721547ac1c3b99"}}

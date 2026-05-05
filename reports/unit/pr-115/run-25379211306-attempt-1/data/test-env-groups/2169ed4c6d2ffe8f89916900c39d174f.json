@@ -1,0 +1,1 @@
+{"id":"2169ed4c6d2ffe8f89916900c39d174f","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer sanitize removes javascript: protocol from links","name":"removes javascript: protocol from links","status":"passed","testResultsByEnv":{"default":"1878b26ab097213ffddfdde9c1900c00"}}

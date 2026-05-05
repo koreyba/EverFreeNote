@@ -1,0 +1,1 @@
+{"id":"8c8c8cf93f0a3bdd7fa6108f29408f56","fullName":"tests/component/useBulkSelection.test.ts#useBulkSelection toggle(id) removes id when already selected","name":"toggle(id) removes id when already selected","status":"passed","testResultsByEnv":{"default":"08a503e5fbfa5cac6461210d1568afb5"}}

@@ -1,0 +1,1 @@
+{"id":"008d4eb12a427b8307f6899fe46ce34a","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText HTML entity decoding decodes &lt; and &gt;","name":"decodes &lt; and &gt;","status":"passed","testResultsByEnv":{"default":"8ff67ea9f5f35f2481375d5a2f496648"}}

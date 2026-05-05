@@ -1,0 +1,1 @@
+{"id":"9b9e685ccb75fb719cc16267f63b2891","fullName":"core/tests/unit/core-utils-normalize-html.test.ts#core/utils/normalize-html plainTextToHtml handles multiple newlines as paragraph breaks","name":"handles multiple newlines as paragraph breaks","status":"passed","testResultsByEnv":{"default":"0ad9441a785c7e5ce366ff598beade6e"}}
