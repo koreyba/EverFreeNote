@@ -1,5 +1,33 @@
 [
   {
+    "family": "component",
+    "familyLabel": "Component",
+    "suites": [
+      "component"
+    ],
+    "suiteLabels": [
+      "Web Component"
+    ],
+    "path": "reports/component/branch-main/run-25391522219-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/component/branch-main/run-25391522219-attempt-1/",
+    "runId": "25391522219",
+    "runAttempt": "1",
+    "prNumber": null,
+    "ref": "main",
+    "sha": "ca9968d33d4b0c1cf3916361edc8d0dfd4eb2566",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "branch",
+    "scopeLabel": "main",
+    "historyPath": "_history/component/history.jsonl",
+    "generatedAt": "2026-05-05T17:32:12.109Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/component/report",
+    "combinedResultsDir": ".allure-publish/component/results"
+  },
+  {
     "family": "unit",
     "familyLabel": "Unit",
     "suites": [

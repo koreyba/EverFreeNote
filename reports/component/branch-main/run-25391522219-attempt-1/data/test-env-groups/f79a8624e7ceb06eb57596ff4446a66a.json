@@ -1,0 +1,1 @@
+{"id":"f79a8624e7ceb06eb57596ff4446a66a","fullName":"cypress/component/features/notes/SearchResultsPanel.cy.tsx#SearchResultsPanel opens confirmation before delete and resets FTS results on confirmed delete","name":"opens confirmation before delete and resets FTS results on confirmed delete","status":"passed","testResultsByEnv":{"default":"5dd725e698cdeeef724653e3514b4960"}}

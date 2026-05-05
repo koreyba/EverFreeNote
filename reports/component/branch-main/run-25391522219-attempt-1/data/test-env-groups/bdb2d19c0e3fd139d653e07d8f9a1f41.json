@@ -1,0 +1,1 @@
+{"id":"bdb2d19c0e3fd139d653e07d8f9a1f41","fullName":"cypress/component/features/notes/SelectionModeActions.cy.tsx#SelectionModeActions respects disabled states and shows spinner while deleting","name":"respects disabled states and shows spinner while deleting","status":"passed","testResultsByEnv":{"default":"f52f61d51a36aa37b76d99b4cc5eda28"}}
