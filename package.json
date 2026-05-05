@@ -124,7 +124,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "^13.0.1",
+    "uuid": "^14.0.0",
     "vaul": "^1.1.2",
     "zod": "^4.1.12"
   },
@@ -171,7 +171,7 @@
     "globals": "^16.4.0",
     "istanbul-lib-coverage": "^3.2.2",
     "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
+    "jest-environment-jsdom": "^30.3.0",
     "nyc": "^17.1.0",
     "picocolors": "^1.0.1",
     "postcss": "^8",
