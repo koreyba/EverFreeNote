@@ -1,0 +1,1 @@
+{"id":"2121a6743e07b8576317f4ab06d01529","fullName":"ui/web/tests/unit/components/chunkFocusUtils.test.ts#chunkFocusUtils dispatches chunk focus metadata and scrolls via the nearest scroll parent","name":"dispatches chunk focus metadata and scrolls via the nearest scroll parent","status":"passed","testResultsByEnv":{"default":"8ccb5c8ddaf641ea840765b645b87a9b"}}

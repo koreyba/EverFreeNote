@@ -1,0 +1,1 @@
+{"id":"1814f0f7104231523014be7b47daad6b","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste falls back to plain text when sanitization throws","name":"falls back to plain text when sanitization throws","status":"passed","testResultsByEnv":{"default":"e0a9ece3fb598f817cef76be6b859ddd"}}

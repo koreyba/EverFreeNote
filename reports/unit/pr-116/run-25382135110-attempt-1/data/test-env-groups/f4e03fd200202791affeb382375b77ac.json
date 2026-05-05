@@ -1,0 +1,1 @@
+{"id":"f4e03fd200202791affeb382375b77ac","fullName":"core/tests/unit/core-rag-chunking.test.ts#core/rag/chunking — pairwise test suite G — Overlap G3: overlap > длины предыдущего чанка → берёт весь текст","name":"G3: overlap > длины предыдущего чанка → берёт весь текст","status":"passed","testResultsByEnv":{"default":"02ebe23746302b9bc3112abc45a441cd"}}

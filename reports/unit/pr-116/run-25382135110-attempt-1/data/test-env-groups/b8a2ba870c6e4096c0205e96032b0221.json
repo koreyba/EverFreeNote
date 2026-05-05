@@ -1,0 +1,1 @@
+{"id":"b8a2ba870c6e4096c0205e96032b0221","fullName":"core/tests/unit/core-utils-prosemirrorCaret.test.ts#core/utils/prosemirrorCaret.placeCaretFromCoords falls back to Selection.atEnd when click is below editor bounds","name":"falls back to Selection.atEnd when click is below editor bounds","status":"passed","testResultsByEnv":{"default":"4ed4c7b6cbf7aa48fbbe7e09eb32c90a"}}
