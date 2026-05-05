@@ -21,6 +21,14 @@ export default defineConfig({
     specPattern: 'cypress/component/**/*.cy.{js,jsx,ts,tsx}',
     supportFile: 'cypress/support/component.ts',
     setupNodeEvents(on, config) {
+      on('before:browser:launch', (browser, launchOptions) => {
+        if (browser.family === 'chromium') {
+          launchOptions.args.push('--disable-dev-shm-usage')
+          launchOptions.args.push('--js-flags=--max-old-space-size=8192')
+        }
+        return launchOptions
+      })
+
       allureCypress(on, config, {
         resultsDir: "allure-results/component",
         environmentInfo: {
