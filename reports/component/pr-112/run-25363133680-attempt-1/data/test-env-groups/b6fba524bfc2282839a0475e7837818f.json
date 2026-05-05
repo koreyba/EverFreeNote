@@ -1,0 +1,1 @@
+{"id":"b6fba524bfc2282839a0475e7837818f","fullName":"cypress/component/ui/web/hooks/useBulkDeleteConfirm.cy.tsx#useBulkDeleteConfirm prevents duplicate confirm calls while delete is in progress","name":"prevents duplicate confirm calls while delete is in progress","status":"passed","testResultsByEnv":{"default":"55a4bdc95272e60b1f4a16f62d2e241e"}}

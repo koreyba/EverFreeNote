@@ -1,0 +1,1 @@
+{"id":"ccb06277d51b2395adf2f530f8450fb6","fullName":"cypress/component/core/ErrorBoundary.cy.tsx#ErrorBoundary Component does not affect sibling components outside error boundary","name":"does not affect sibling components outside error boundary","status":"passed","testResultsByEnv":{"default":"85220f1ce9570634299ed9c379735e5f"}}

@@ -1,0 +1,1 @@
+{"id":"f71cb1d11554206a45b557457428fa47","fullName":"cypress/component/features/notes/RagIndexPanel.cy.tsx#RagIndexPanel (variant=menu) calls onMenuClose when confirmation dialog is cancelled","name":"calls onMenuClose when confirmation dialog is cancelled","status":"passed","testResultsByEnv":{"default":"ec7ef2c4ec92eb43ebdd381d8fbaa0e8"}}

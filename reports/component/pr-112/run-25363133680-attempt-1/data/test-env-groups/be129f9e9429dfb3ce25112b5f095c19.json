@@ -1,0 +1,1 @@
+{"id":"be129f9e9429dfb3ce25112b5f095c19","fullName":"cypress/component/editor/InteractiveTag.cy.tsx#InteractiveTag Component prevents event bubbling when clicking remove button","name":"prevents event bubbling when clicking remove button","status":"passed","testResultsByEnv":{"default":"1c9876e717c679c3ab09c2a884488bd1"}}

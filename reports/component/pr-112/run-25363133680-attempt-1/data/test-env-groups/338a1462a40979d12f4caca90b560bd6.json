@@ -1,0 +1,1 @@
+{"id":"338a1462a40979d12f4caca90b560bd6","fullName":"cypress/component/ui/web/adapters/storage.cy.ts#webStorageAdapter should return null for non-existent item","name":"should return null for non-existent item","status":"passed","testResultsByEnv":{"default":"ecbd1560d9915ab3cbada446a5bf94b1"}}
