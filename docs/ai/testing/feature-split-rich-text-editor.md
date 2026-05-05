@@ -25,10 +25,13 @@ description: Test plan for the structural refactor
 ## Test Reporting & Coverage
 
 - Run:
-  - `npx cypress run --component --spec "cypress/component/editor/RichTextEditor.rendering.cy.tsx"`
-  - `npx cypress run --component --spec "cypress/component/editor/RichTextEditor.formatting.cy.tsx"`
-  - `npx cypress run --component --spec "cypress/component/editor/RichTextEditor.advanced.cy.tsx"`
-  - `npx cypress run --component --spec "cypress/component/editor/RichTextEditor.history.cy.tsx"`
+  - `npx cypress run --component --browser electron --spec "cypress/component/editor/RichTextEditor.rendering.cy.tsx"`
+  - `npx cypress run --component --browser electron --spec "cypress/component/editor/RichTextEditor.formatting.cy.tsx"`
+  - `npx cypress run --component --browser electron --spec "cypress/component/editor/RichTextEditor.advanced.cy.tsx"`
+  - `npx cypress run --component --browser electron --spec "cypress/component/editor/RichTextEditor.history.cy.tsx"`
+  - `npx cypress run --component --browser electron --spec "cypress/component/editor/RichTextEditorPaste.cy.tsx"`
+  - `npx cypress run --component --browser electron --spec "cypress/component/editor/RichTextEditorApplyMarkdown.cy.tsx"`
+  - `npx cypress run --component --browser electron --spec "cypress/component/RichTextEditorWebView.cy.tsx"`
 - All tests must pass.
 
 ## Status

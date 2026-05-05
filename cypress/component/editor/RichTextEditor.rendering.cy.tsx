@@ -87,8 +87,8 @@ describe('RichTextEditor Component', () => {
       const rootRect = root.getBoundingClientRect()
       const pRect = (p as HTMLElement).getBoundingClientRect()
 
-      const x = Math.floor(rootRect.width / 2)
-      const y = Math.min(Math.floor(rootRect.height - 5), Math.floor(pRect.bottom - rootRect.top + 40))
+      const x = Math.floor(rootRect.width / 2) // Click near the horizontal center to avoid side padding edge cases.
+      const y = Math.min(Math.floor(rootRect.height - 5), Math.floor(pRect.bottom - rootRect.top + 40)) // Aim below the last paragraph, but stay inside the editor bounds.
 
       cy.wrap($root).click(x, y, { force: true })
     })
@@ -120,12 +120,12 @@ describe('RichTextEditor Component', () => {
       const h1Rect = (h1 as HTMLElement).getBoundingClientRect()
       const pRect = (p as HTMLElement).getBoundingClientRect()
 
-      const gapTop = h1Rect.bottom
-      const gapBottom = pRect.top
-      const yClient = gapBottom > gapTop ? (gapTop + gapBottom) / 2 : pRect.top + 2
+      const gapTop = h1Rect.bottom // Lower edge of the heading block.
+      const gapBottom = pRect.top // Upper edge of the paragraph block.
+      const yClient = gapBottom > gapTop ? (gapTop + gapBottom) / 2 : pRect.top + 2 // Prefer the middle of the internal gap; otherwise fall back just inside the paragraph.
 
-      const x = Math.floor(rootRect.width / 2)
-      const y = Math.max(2, Math.floor(yClient - rootRect.top))
+      const x = Math.floor(rootRect.width / 2) // Center click keeps the probe away from left/right padding artifacts.
+      const y = Math.max(2, Math.floor(yClient - rootRect.top)) // Convert viewport coords to editor-local coords and keep the click inside the box.
 
       cy.wrap($root).click(x, y, { force: true })
     })

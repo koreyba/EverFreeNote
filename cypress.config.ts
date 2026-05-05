@@ -35,7 +35,7 @@ export default defineConfig({
     supportFile: 'cypress/support/component.ts',
     setupNodeEvents(on, config) {
       on('before:browser:launch', (browser, launchOptions) => {
-        if (browser.family === 'chromium') {
+        if (browser.family === 'chromium' && browser.name !== 'electron') {
           launchOptions.args.push('--disable-dev-shm-usage')
           launchOptions.args.push('--js-flags=--max-old-space-size=8192')
         }

@@ -29,10 +29,12 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="editor-content"]').click()
     cy.get('[data-cy="editor-content"]').type('Colored text')
     cy.get('[data-cy="editor-content"]').type('{selectall}')
+    cy.wrap(onContentChangeSpy).invoke('resetHistory')
     cy.get('[data-cy="color-button"]').click()
     cy.get('.twitter-picker').should('be.visible')
     cy.get('.twitter-picker div[title]').first().click()
 
+    cy.get('[data-cy="editor-content"]').find('[style*="color:"]').should('exist')
     cy.get('@onContentChangeSpy').should('have.been.called')
   })
 
@@ -46,8 +48,8 @@ describe('RichTextEditor Component', () => {
       />
     )
 
-    cy.get('button.w-\\[120px\\]').should('exist')
-    cy.get('button.w-\\[70px\\]').should('exist')
+    cy.get('[data-cy="font-family-button"]').should('exist')
+    cy.get('[data-cy="font-size-button"]').should('exist')
   })
 
   it('opens image URL prompt when clicking image button', () => {
@@ -181,7 +183,9 @@ describe('RichTextEditor Component', () => {
     )
 
     cy.get('[data-cy="editor-content"]').should('be.visible')
-    cy.get('[data-cy="editor-content"]').should('contain', '')
+    cy.get('[data-cy="editor-content"]').invoke('text').then((text) => {
+      expect(text.replace(/[\u200B-\u200D\uFEFF\s]/g, '')).to.eq('')
+    })
   })
 
   it('handles very long content', () => {
