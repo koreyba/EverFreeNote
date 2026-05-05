@@ -45,8 +45,13 @@ const readReportsIndex = (filePath) => {
   if (!filePath || !fs.existsSync(filePath)) {
     return [];
   }
-  const rawContents = fs.readFileSync(path.resolve(filePath), "utf8");
-  const payload = JSON.parse(rawContents.replace(/^\uFEFF/, ""));
+
+  let rawContents = fs.readFileSync(path.resolve(filePath), "utf8");
+  if (rawContents.charCodeAt(0) === 0xfeff) {
+    rawContents = rawContents.slice(1);
+  }
+
+  const payload = JSON.parse(rawContents);
   return Array.isArray(payload) ? payload : [];
 };
 
@@ -69,6 +74,27 @@ const selectLatestReports = (reports, prNumber, headSha) => {
   return reportsByFamily;
 };
 
+const isSafeHttpUrl = (value) => {
+  try {
+    const url = new URL(`${value ?? ""}`);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+};
+
+const escapeMarkdownCell = (value) =>
+  `${value ?? ""}`
+    .replaceAll("\r", " ")
+    .replaceAll("\n", " ")
+    .replaceAll("|", "\\|")
+    .trim();
+
+const buildMarkdownLink = (label, url) => {
+  const safeLabel = escapeMarkdownCell(label);
+  return isSafeHttpUrl(url) ? `[${safeLabel}](${url})` : safeLabel;
+};
+
 const buildRunUrl = (repository, report) => {
   if (!repository || !report?.runId) {
     return "";
@@ -80,7 +106,7 @@ const buildReportCell = (report) => {
   if (!report?.url) {
     return "Not published yet";
   }
-  return `[Open report](${report.url})`;
+  return buildMarkdownLink("Open report", report.url);
 };
 
 const buildWorkflowCell = (repository, report) => {
@@ -90,7 +116,7 @@ const buildWorkflowCell = (repository, report) => {
 
   const label = report.workflow || "Workflow run";
   const runUrl = buildRunUrl(repository, report);
-  return runUrl ? `[${label}](${runUrl})` : label;
+  return runUrl ? buildMarkdownLink(label, runUrl) : escapeMarkdownCell(label);
 };
 
 const renderComment = ({
@@ -105,7 +131,7 @@ const renderComment = ({
     COMMENT_MARKER,
     "## PR Status",
     "",
-    `Updated for PR #${prNumber} at \`${normalizeSha(headSha).slice(0, 7) || "unknown"}\` on ${formatDateTime(updatedAt)}.`,
+    `Updated for PR #${escapeMarkdownCell(prNumber)} at \`${normalizeSha(headSha).slice(0, 7) || "unknown"}\` on ${formatDateTime(updatedAt)}.`,
     "",
     "### Test Reports",
     "",
@@ -121,93 +147,20 @@ const renderComment = ({
   }
 
   if (catalogUrl) {
-    lines.push("", `Catalog: [All reports](${catalogUrl})`);
+    lines.push("", `Catalog: ${buildMarkdownLink("All reports", catalogUrl)}`);
   }
 
   return `${lines.join("\n")}\n`;
 };
 
-const requestJson = async ({ body, method = "GET", path: requestPath, token, repository }) => {
-  const response = await fetch(`https://api.github.com/repos/${repository}${requestPath}`, {
-    method,
-    headers: {
-      accept: "application/vnd.github+json",
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-      "x-github-api-version": "2022-11-28",
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`GitHub API ${method} ${requestPath} failed with ${response.status}: ${text}`);
-  }
-
-  if (response.status === 204) {
-    return null;
-  }
-  return response.json();
-};
-
-const listIssueComments = async ({ issueNumber, repository, token }) => {
-  const comments = [];
-  let page = 1;
-
-  while (true) {
-    const pageComments = await requestJson({
-      path: `/issues/${issueNumber}/comments?per_page=100&page=${page}`,
-      repository,
-      token,
-    });
-    comments.push(...pageComments);
-
-    if (pageComments.length < 100) {
-      return comments;
-    }
-    page += 1;
-  }
-};
-
-const upsertPrStatusComment = async ({ body, prNumber, repository, token }) => {
-  const comments = await listIssueComments({ issueNumber: prNumber, repository, token });
-  const existingComment = comments.find((comment) =>
-    typeof comment.body === "string" && comment.body.includes(COMMENT_MARKER)
-  );
-
-  if (existingComment) {
-    await requestJson({
-      body: { body },
-      method: "PATCH",
-      path: `/issues/comments/${existingComment.id}`,
-      repository,
-      token,
-    });
-    return { action: "updated", commentId: existingComment.id };
-  }
-
-  const createdComment = await requestJson({
-    body: { body },
-    method: "POST",
-    path: `/issues/${prNumber}/comments`,
-    repository,
-    token,
-  });
-  return { action: "created", commentId: createdComment.id };
-};
-
-const main = async () => {
+const main = () => {
   const args = parseArgs(process.argv);
   const repository = args.repository || process.env.GITHUB_REPOSITORY || "";
-  const token = args.token || process.env.GITHUB_TOKEN || "";
   const prNumber = normalizePrNumber(args["pr-number"] || process.env.PR_NUMBER);
   const headSha = normalizeSha(args["head-sha"] || process.env.COMMIT_SHA || process.env.GITHUB_SHA);
 
   if (!repository) {
     throw new Error("--repository or GITHUB_REPOSITORY is required");
-  }
-  if (!token) {
-    throw new Error("--token or GITHUB_TOKEN is required");
   }
   if (!prNumber) {
     throw new Error("--pr-number or PR_NUMBER is required");
@@ -228,17 +181,19 @@ const main = async () => {
 
   if (args.output) {
     fs.writeFileSync(path.resolve(args.output), body);
+    return;
   }
 
-  const result = await upsertPrStatusComment({ body, prNumber, repository, token });
-  console.log(`PR status comment ${result.action}: ${result.commentId}`);
+  process.stdout.write(body);
 };
 
 if (require.main === module) {
-  main().catch((error) => {
+  try {
+    main();
+  } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);
-  });
+  }
 }
 
 module.exports = {

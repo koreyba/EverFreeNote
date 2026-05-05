@@ -330,9 +330,9 @@ const trimHistoryFile = (historyPath, limit) => {
     return;
   }
 
-  let historyContents = "";
+  let fileDescriptor;
   try {
-    historyContents = fs.readFileSync(historyPath, "utf8");
+    fileDescriptor = fs.openSync(historyPath, "r+");
   } catch (error) {
     if (error?.code === "ENOENT") {
       return;
@@ -340,9 +340,15 @@ const trimHistoryFile = (historyPath, limit) => {
     throw error;
   }
 
-  const lines = historyContents.split(/\r?\n/).filter(Boolean);
-  const retainedLines = lines.slice(-limit);
-  fs.writeFileSync(historyPath, `${retainedLines.join("\n")}\n`);
+  try {
+    const historyContents = fs.readFileSync(fileDescriptor, "utf8");
+    const lines = historyContents.split(/\r?\n/).filter(Boolean);
+    const retainedLines = lines.slice(-limit);
+    fs.ftruncateSync(fileDescriptor, 0);
+    fs.writeSync(fileDescriptor, `${retainedLines.join("\n")}\n`, 0, "utf8");
+  } finally {
+    fs.closeSync(fileDescriptor);
+  }
 };
 
 const main = () => {

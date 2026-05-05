@@ -4,6 +4,8 @@ import * as os from "node:os"
 
 export default defineConfig({
   projectId: '76trp2',
+  experimentalMemoryManagement: true,
+  numTestsKeptInMemory: 0,
   component: {
     // Required for CI stability.
     // With JIT enabled, Cypress CT can intermittently finish spec evaluation with an empty Mocha suite

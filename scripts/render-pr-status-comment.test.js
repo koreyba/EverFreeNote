@@ -5,7 +5,7 @@ const {
   COMMENT_MARKER,
   renderComment,
   selectLatestReports,
-} = require("./update-pr-status-comment");
+} = require("./render-pr-status-comment");
 
 test("selectLatestReports keeps the newest report per family for the active PR head sha", () => {
   const reports = [
@@ -74,4 +74,32 @@ test("renderComment uses a generic PR status marker and report section", () => {
   assert.match(body, /\| Unit \| \[Unit Tests\]\(https:\/\/github\.com\/koreyba\/EverFreeNote\/actions\/runs\/1\) \| \[Open report\]\(https:\/\/example\.test\/unit\) \|/);
   assert.match(body, /\| Component \| Waiting for publish \| Not published yet \|/);
   assert.match(body, /Catalog: \[All reports\]\(https:\/\/example\.test\/reports\)/);
+});
+
+test("renderComment escapes table cells and refuses unsafe URLs", () => {
+  const reportsByFamily = new Map([
+    [
+      "unit",
+      {
+        runId: "1",
+        url: "javascript:alert(1)",
+        workflow: "Unit | Tests\nInjected",
+      },
+    ],
+    ["component", null],
+    ["e2e", null],
+  ]);
+
+  const body = renderComment({
+    catalogUrl: "javascript:alert(2)",
+    headSha: "abcdef123456",
+    prNumber: "112",
+    reportsByFamily,
+    repository: "koreyba/EverFreeNote",
+    updatedAt: "2026-05-04T11:00:00Z",
+  });
+
+  assert.match(body, /Unit \\\| Tests Injected/);
+  assert.doesNotMatch(body, /\]\(javascript:/);
+  assert.match(body, /Catalog: All reports/);
 });

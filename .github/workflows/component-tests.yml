@@ -46,7 +46,7 @@ jobs:
         run: |
           mkdir -p cypress/results
           set -o pipefail
-          npm run test:component -- --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | tee cypress/results/component-tests.log
+          npm run test:component:ci -- --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | tee cypress/results/component-tests.log
           exit ${PIPESTATUS[0]}
 
       - name: Generate test summary
@@ -397,10 +397,31 @@ jobs:
       - name: Update PR status comment
         if: github.event_name == 'pull_request' && steps.prepare-component-report.outputs.has_results == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          node scripts/update-pr-status-comment.js \
+          set -euo pipefail
+
+          mkdir -p .tmp-artifacts/pr-status-comment
+          comment_file=".tmp-artifacts/pr-status-comment/body.md"
+          payload_file=".tmp-artifacts/pr-status-comment/payload.json"
+
+          node scripts/render-pr-status-comment.js \
             --reports-index .pages-existing/reports/index.json \
             --pr-number "${PR_NUMBER}" \
             --head-sha "${COMMIT_SHA}" \
-            --catalog-url "${PAGES_BASE_URL}/"
+            --catalog-url "${PAGES_BASE_URL}/" \
+            --output "${comment_file}"
+
+          jq -n --rawfile body "${comment_file}" '{ body: $body }' > "${payload_file}"
+
+          comment_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
+              --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("everfreenote-pr-status-comment"))) | .id' \
+              | head -n 1
+          )"
+
+          if [ -n "${comment_id}" ]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" --input "${payload_file}"
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --input "${payload_file}"
+          fi

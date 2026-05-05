@@ -53,23 +53,34 @@ const removeEmptyParents = (root, currentPath) => {
   }
 };
 
-const pruneReportDirectories = (root, retainedPaths) => {
+const collectReportRunPaths = (root) => {
   const reportsRoot = path.join(root, "reports");
   if (!fs.existsSync(reportsRoot)) {
-    return;
+    return [];
   }
 
+  const runPaths = [];
   for (const family of listDirectories(reportsRoot)) {
     const familyPath = path.join(reportsRoot, family.name);
     for (const scope of listDirectories(familyPath)) {
       const scopePath = path.join(familyPath, scope.name);
       for (const run of listDirectories(scopePath)) {
-        const runPath = path.join(scopePath, run.name);
-        const relativePath = path.relative(root, runPath).replaceAll(path.sep, "/");
-        if (!retainedPaths.has(relativePath)) {
-          removeReportDirectory(root, runPath);
-        }
+        runPaths.push(path.join(scopePath, run.name));
       }
+    }
+  }
+  return runPaths;
+};
+
+const isRetainedReportPath = (root, runPath, retainedPaths) => {
+  const relativePath = path.relative(root, runPath).replaceAll(path.sep, "/");
+  return retainedPaths.has(relativePath);
+};
+
+const pruneReportDirectories = (root, retainedPaths) => {
+  for (const runPath of collectReportRunPaths(root)) {
+    if (!isRetainedReportPath(root, runPath, retainedPaths)) {
+      removeReportDirectory(root, runPath);
     }
   }
 };
