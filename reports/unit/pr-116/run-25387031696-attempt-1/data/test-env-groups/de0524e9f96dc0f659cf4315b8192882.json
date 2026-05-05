@@ -1,0 +1,1 @@
+{"id":"de0524e9f96dc0f659cf4315b8192882","fullName":"tests/component/useMobileSearchMode.test.tsx#useMobileSearchMode preserves a local edit that happens before hydration finishes","name":"preserves a local edit that happens before hydration finishes","status":"passed","testResultsByEnv":{"default":"4ce044975cdb2832cc429831e3b7150d"}}

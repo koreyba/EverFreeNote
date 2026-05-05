@@ -1,0 +1,1 @@
+{"id":"85821f008d5e43a330b9325bb0cb1a55","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText newline handling converts </p> to double newline (paragraph break)","name":"converts </p> to double newline (paragraph break)","status":"passed","testResultsByEnv":{"default":"59bda318fbbf9de4a232e23fb9472b4b"}}

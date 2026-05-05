@@ -1,0 +1,1 @@
+{"id":"98f8d0324f1213ce39a0f414dbf81925","fullName":"tests/unit/settingsPanels.test.tsx#settings panels does not clobber unsaved indexing and retrieval edits when saving the Gemini key","name":"does not clobber unsaved indexing and retrieval edits when saving the Gemini key","status":"passed","testResultsByEnv":{"default":"de020e6ac75b5167e8673d43f5b10e9e"}}

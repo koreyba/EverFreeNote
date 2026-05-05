@@ -1,0 +1,1 @@
+{"id":"f6774656bda7260f74894a5c73085ca6","fullName":"tests/component/useBulkSelection.test.ts#useBulkSelection selectAll(ids) replaces selectedIds with provided ids","name":"selectAll(ids) replaces selectedIds with provided ids","status":"passed","testResultsByEnv":{"default":"921be4b0c2b5678e751c8dd32b0959ad"}}

@@ -1,0 +1,1 @@
+{"id":"0d1afd67387e9d42de2bf171e2fc0ba3","fullName":"tests/component/useDeleteNote.test.tsx#useDeleteNote Online deletion calls database service before API call","name":"calls database service before API call","status":"passed","testResultsByEnv":{"default":"1800e7a299c967195ed9b42f0289820c"}}

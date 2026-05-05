@@ -1,0 +1,1 @@
+{"id":"29803373b944c5254d05ac01ad15de29","fullName":"tests/integration/noteEditorScreen.test.tsx#NoteEditorScreen - Delete Functionality Content save on blur flushes pending content save when editor loses focus","name":"flushes pending content save when editor loses focus","status":"passed","testResultsByEnv":{"default":"8915687fde0d7827dcc23f35cb0f5453"}}
