@@ -1,51 +1,44 @@
 # Editor Component Tests
 
-Тесты для компонентов редактирования текста и контента.
+Component specs for the editor-related web UI.
 
-## Компоненты в этой области:
+## Scope
 
-### Core Editor Components
-- **RichTextEditor** - полнофункциональный WYSIWYG редактор с поддержкой:
-  - Форматирования текста (bold, italic, underline, strikethrough)
-  - Заголовков (H1, H2, H3)
-  - Списков (bullet, numbered, task lists)
-  - Выравнивания текста
-  - Цветов и выделения
-  - Ссылок и изображений
-  - Superscript/Subscript
+### Core editor
+- `RichTextEditor` covers rich-text formatting, lists, alignment, colors, links, images, and history controls.
 
-### Supporting Components
-- **Textarea** - многострочный текстовый ввод
-- **Input** - однострочный текстовый ввод
-- **Form** - компоненты форм для создания/редактирования заметок
-- **InteractiveTag** - интерактивные теги для категоризации заметок
+### Supporting components
+- `Textarea`
+- `Input`
+- `Form`
+- `InteractiveTag`
 
-### Related Hooks
-- **useNotesMutations** - хуки для создания, обновления, удаления заметок
-- **useNotesQuery** - хуки для получения и поиска заметок
+## Test priorities
 
-## Тестовое покрытие
+1. `RichTextEditor`
+2. `Textarea` and `Input`
+3. `Form`
+4. `InteractiveTag`
 
-**Целевое покрытие: 100%** для всех компонентов редактирования
+## Running the specs
 
-### Приоритеты тестирования:
-1. **RichTextEditor** - основной компонент (высокий приоритет)
-2. **Textarea/Input** - базовые контроллы ввода
-3. **Form components** - формы создания/редактирования
-4. **InteractiveTag** - работа с тегами
-
-## Запуск тестов:
 ```bash
-npm run test:component -- --spec 'cypress/component/editor/**/*.cy.tsx'
+npm run test:component -- --spec "cypress/component/editor/**/*.cy.tsx"
 ```
 
-## Структура тестов:
-```
+## Spec layout
+
+```text
 cypress/component/editor/
-├── RichTextEditor.cy.tsx     # Основной редактор
-├── Textarea.cy.tsx          # Текстовые поля
-├── Input.cy.tsx             # Поля ввода
-├── Form.cy.tsx              # Формы
-├── InteractiveTag.cy.tsx    # Теги
-└── README.md
+|-- RichTextEditor.rendering.cy.tsx   # render and caret placement coverage
+|-- RichTextEditor.formatting.cy.tsx  # formatting, lists, alignment
+|-- RichTextEditor.advanced.cy.tsx    # color, embeds, edge cases, clear formatting
+|-- RichTextEditor.history.cy.tsx     # undo/redo toolbar behavior
+|-- RichTextEditorApplyMarkdown.cy.tsx
+|-- RichTextEditorPaste.cy.tsx
+|-- Textarea.cy.tsx
+|-- Input.cy.tsx
+|-- Form.cy.tsx
+|-- InteractiveTag.cy.tsx
+`-- README.md
 ```
