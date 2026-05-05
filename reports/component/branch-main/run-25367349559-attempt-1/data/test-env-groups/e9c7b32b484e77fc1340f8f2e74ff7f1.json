@@ -1,0 +1,1 @@
+{"id":"e9c7b32b484e77fc1340f8f2e74ff7f1","fullName":"cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager enqueue should enqueue item and trigger drain if online","name":"should enqueue item and trigger drain if online","status":"passed","testResultsByEnv":{"default":"9696fa95213823ca6ccad90c3e1934ec"}}

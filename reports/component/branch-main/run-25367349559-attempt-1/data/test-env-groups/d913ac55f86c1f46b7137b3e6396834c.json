@@ -1,0 +1,1 @@
+{"id":"d913ac55f86c1f46b7137b3e6396834c","fullName":"cypress/component/ui/web/hooks/useNoteAppController.cy.tsx#useNoteAppController flushes pending editor save when selecting null (back) while editing","name":"flushes pending editor save when selecting null (back) while editing","status":"passed","testResultsByEnv":{"default":"f9df5a66bfe6db79c9cf57b848f6c7f3"}}
