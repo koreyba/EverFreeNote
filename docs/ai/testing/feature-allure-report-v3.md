@@ -11,6 +11,8 @@ description: Verification approach for Allure reporting
 - Verify that adopted suites still execute through their existing commands.
 - Verify that adopted suites produce Allure result files.
 - Verify that Allure v3 can generate an HTML report from the result files.
+- Verify that family publication jobs can generate Pages-ready Allure reports from raw uploaded results.
+- Verify that history is preserved within one family across PR, branch, and manual runs, but not leaked across unrelated families.
 
 ## Test Reporting & Coverage
 
@@ -23,6 +25,10 @@ description: Verification approach for Allure reporting
 - Web unit results directory: `allure-results/web-unit`.
 - Web unit report directory: `allure-report/web-unit`.
 - Existing Cypress coverage and JUnit outputs remain separate from Allure outputs.
+- Pages family report directories:
+  `reports/e2e/...`, `reports/component/...`, `reports/unit/...`.
+- Pages history files:
+  `_history/<family>/history.jsonl`.
 
 ## Verification Commands
 
@@ -35,6 +41,9 @@ description: Verification approach for Allure reporting
 - `npm --prefix ui/mobile run allure:generate`
 - `npm run test:unit:web -- --runTestsByPath ui/web/tests/unit/lib/aiIndexNavigationState.test.ts`
 - `npm run allure:generate:web-unit`
+- `act -W .github/workflows/component-tests.yml`
+- `act -W .github/workflows/unit-tests.yml`
+- `act -W .github/workflows/e2e-tests.yml`
 
 ## Current Status
 
@@ -53,8 +62,10 @@ description: Verification approach for Allure reporting
 - [x] Web unit Allure Jest environment configured.
 - [x] Smoke web unit test with Allure result generation.
 - [x] Web unit Allure report generation from smoke results.
+- [x] Family-report architecture selected:
+  separate `e2e`, `component`, and merged `unit`.
 
 ## Outstanding Gaps
 
-- Web E2E Allure requires changes in the external E2E repository.
-- Component test CI and any optional cross-repository E2E aggregation remain planned follow-up work.
+- Component spec-level crashes can bypass `allure-cypress`, so CI now backfills a synthetic Allure failure from the captured Cypress log; this path still deserves a focused regression check on future Cypress upgrades.
+- Trusted-event guards intentionally skip `gh-pages` publication for fork PRs and read-only bot PRs, so those runs keep artifacts in Actions without publishing Pages output.

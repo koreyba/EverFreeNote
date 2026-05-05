@@ -36,6 +36,17 @@ const webUnitAllureOptions = {
   },
 }
 
+const coreIntegrationAllureOptions = {
+  resultsDir: 'allure-results/core-integration',
+  environmentInfo: {
+    os_platform: os.platform(),
+    os_release: os.release(),
+    os_version: os.version(),
+    node_version: process.version,
+    test_type: 'core-integration',
+  },
+}
+
 module.exports = {
   projects: [
     {
@@ -52,7 +63,8 @@ module.exports = {
     {
       displayName: 'integration-core',
       rootDir: __dirname,
-      testEnvironment: 'node',
+      testEnvironment: 'allure-jest/node',
+      testEnvironmentOptions: coreIntegrationAllureOptions,
       testRegex: ['core/tests/integration/.*\\.test\\.(ts|tsx)$'],
       setupFilesAfterEnv: ['<rootDir>/tests/jest/core.setup.cjs'],
       transform,

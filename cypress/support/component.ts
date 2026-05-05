@@ -3,8 +3,11 @@
 import './commands'
 import 'allure-cypress'
 import '@testing-library/cypress/add-commands'
-import '@cypress/code-coverage/support'
 import { registerGlobalErrorHandling } from './setup/error-handling'
+
+if (Cypress.env('codeCoverage')) {
+  require('@cypress/code-coverage/support')
+}
 
 // Define a minimal Stub type based on usage to avoid 'any'
 type SinonStub = {

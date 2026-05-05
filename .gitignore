@@ -27,6 +27,8 @@ node_modules/
 /coverage
 /allure-results
 /allure-report
+ui/mobile/allure-results/
+ui/mobile/allure-report/
 
 # Test artifacts (keep test runners in build/, exclude temp results)
 TEST_SUMMARY.md
@@ -129,3 +131,4 @@ ui/mobile/ios/EverFreeNote/WebEditor/
 /.playwright-mcp/editor-webview-with-content.png
 /.playwright-mcp/editor-webview-working.png
 /.mcp.json
+/.tmp-artifacts/

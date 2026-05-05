@@ -10,7 +10,7 @@ This project uses ai-devkit for structured AI-assisted development. Phase docume
 - `docs/ai/implementation/` - Implementation guides and notes
 - `docs/ai/testing/` - Testing strategy and test cases
 - `docs/ai/deployment/` - Deployment and infrastructure docs
-- `docs/ai/monitoring/` - Monitoring and observability setup
+- `docs/ai/monitoring/` - Monitoring and observability setup 
 
 ## Code Style & Standards
 - Follow the project's established code style and conventions
