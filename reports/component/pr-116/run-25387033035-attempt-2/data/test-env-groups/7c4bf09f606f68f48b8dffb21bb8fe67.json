@@ -1,0 +1,1 @@
+{"id":"7c4bf09f606f68f48b8dffb21bb8fe67","fullName":"cypress/component/editor/RichTextEditor.history.cy.tsx#RichTextEditor Component Undo/Redo buttons undo button becomes enabled after formatting; redo stays disabled","name":"undo button becomes enabled after formatting; redo stays disabled","status":"passed","testResultsByEnv":{"default":"6182759e4289bbe6473ad4cdbd3798eb"}}

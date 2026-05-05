@@ -1,0 +1,1 @@
+{"id":"54fd21ee322d450b5fd27f649f01c224","fullName":"cypress/component/ui/web/adapters/supabaseClient.cy.ts#webSupabaseClientFactory should create a Supabase client with correct config","name":"should create a Supabase client with correct config","status":"passed","testResultsByEnv":{"default":"a9d0d5c22aa39f4e536bce6a9b32b0c4"}}

@@ -1,0 +1,1 @@
+{"id":"fb244af5ff1e9ded404ebcba46ba39ca","fullName":"cypress/component/core/services/SearchService.cy.ts#core/services/SearchService searchNotes falls back to ILIKE when FTS fails","name":"falls back to ILIKE when FTS fails","status":"passed","testResultsByEnv":{"default":"e8aa5101f14d85c361e648c9236ebc65"}}

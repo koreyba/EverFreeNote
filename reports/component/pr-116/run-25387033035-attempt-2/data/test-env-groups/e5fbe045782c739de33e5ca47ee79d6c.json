@@ -1,0 +1,1 @@
+{"id":"e5fbe045782c739de33e5ca47ee79d6c","fullName":"cypress/component/core/services/wordpressExport.cy.ts#core/services/WordPressExportService getCategories uses msg field when message is absent","name":"getCategories uses msg field when message is absent","status":"passed","testResultsByEnv":{"default":"b92ec11e75ce7a3147f5d7d816fc61b2"}}

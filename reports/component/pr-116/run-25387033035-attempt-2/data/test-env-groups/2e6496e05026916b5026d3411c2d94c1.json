@@ -1,0 +1,1 @@
+{"id":"2e6496e05026916b5026d3411c2d94c1","fullName":"cypress/component/features/notes/SearchResultsPanel.cy.tsx#SearchResultsPanel syncs the current query to FTS when AI mode is turned off","name":"syncs the current query to FTS when AI mode is turned off","status":"passed","testResultsByEnv":{"default":"c73650f0c9df2bb3d2f5069da3223dd5"}}

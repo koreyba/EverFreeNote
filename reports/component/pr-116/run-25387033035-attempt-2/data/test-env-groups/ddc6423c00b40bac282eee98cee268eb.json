@@ -1,0 +1,1 @@
+{"id":"ddc6423c00b40bac282eee98cee268eb","fullName":"cypress/component/features/notes/NoteEditor.cy.tsx#NoteEditor Component calls onDelete when delete note is clicked from the more actions menu","name":"calls onDelete when delete note is clicked from the more actions menu","status":"passed","testResultsByEnv":{"default":"55a5fa1d8eaa5ecf4526e5256300afdf"}}
