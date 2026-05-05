@@ -1,0 +1,1 @@
+{"id":"0aee752a3386fd60058c71edf876b73a","fullName":"cypress/component/ui/web/hooks/useNoteSaveHandlers.cy.tsx#useNoteSaveHandlers handleAutoSave skips new note creation when all fields are empty","name":"handleAutoSave skips new note creation when all fields are empty","status":"passed","testResultsByEnv":{"default":"67e7ebfb123b828b9587273cc5ebe6a0"}}
