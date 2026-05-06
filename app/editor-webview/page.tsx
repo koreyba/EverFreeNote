@@ -21,7 +21,7 @@ export default function EditorWebViewPage() {
   const lastHistoryStateRef = React.useRef<{ canUndo: boolean; canRedo: boolean } | null>(null)
   const pendingBaselineRef = React.useRef(false)
   const pendingChunkFocusRef = React.useRef<{ charOffset: number; chunkLength: number } | null>(null)
-  const chunkBuffers = React.useRef<ChunkBufferStore>({})
+  const chunkBuffers = React.useRef<ChunkBufferStore>(new Map())
 
   const handleHistoryStateChange = React.useCallback((state: { canUndo: boolean; canRedo: boolean }) => {
     const prev = lastHistoryStateRef.current

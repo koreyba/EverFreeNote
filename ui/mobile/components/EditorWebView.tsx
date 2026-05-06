@@ -77,7 +77,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         const [isDebugOpen, setIsDebugOpen] = useState(false)
         const pendingContent = useRef<string | null>(initialContent)
         const contentResolver = useRef<((html: string) => void) | null>(null)
-        const pendingChunks = useRef<ChunkBufferStore>({})
+        const pendingChunks = useRef<ChunkBufferStore>(new Map())
         const pendingTheme = useRef(colorScheme)
         const pendingChunkFocus = useRef<{ charOffset: number; chunkLength: number } | null>(null)
         const hasFallback = useRef(false)

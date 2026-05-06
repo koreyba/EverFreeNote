@@ -6,11 +6,13 @@ export type ChunkEndPayload = { transferId: string }
 
 export type ChunkedMessage = { type: string; payload?: unknown }
 
-export type ChunkBufferStore = Record<string, { total: number; chunks: string[] }>
+export type ChunkBufferEntry = { total: number; chunks: string[] }
+export type ChunkBufferStore = Map<string, ChunkBufferEntry>
 
 const CHUNK_START_SUFFIX = '_CHUNK_START'
 const CHUNK_SUFFIX = '_CHUNK'
 const CHUNK_END_SUFFIX = '_CHUNK_END'
+const RESERVED_TRANSFER_IDS = new Set(['__proto__', 'prototype', 'constructor'])
 
 export const sendChunkedText = (
   send: (message: ChunkedMessage) => void,
@@ -52,20 +54,24 @@ export const consumeChunkedMessage = (
   }
 
   const isValidTransferId = (id: unknown): id is string =>
-    typeof id === 'string' && id.length > 0 && id.length <= 200 && !/[^a-zA-Z0-9_\-.]/.test(id)
+    typeof id === 'string' &&
+    id.length > 0 &&
+    id.length <= 200 &&
+    !RESERVED_TRANSFER_IDS.has(id) &&
+    !/[^a-zA-Z0-9_\-.]/.test(id)
 
   if (type.endsWith(CHUNK_START_SUFFIX)) {
     const p = payload as Partial<ChunkStartPayload>
     if (!isValidTransferId(p.transferId) || typeof p.total !== 'number') return null
     if (p.total < 1 || p.total > 10_000 || !Number.isInteger(p.total)) return null
-    store[p.transferId] = { total: p.total, chunks: [] }
+    store.set(p.transferId, { total: p.total, chunks: [] })
     return null
   }
 
   if (type.endsWith(CHUNK_SUFFIX)) {
     const p = payload as Partial<ChunkPayload>
     if (!isValidTransferId(p.transferId) || typeof p.index !== 'number' || typeof p.chunk !== 'string') return null
-    const entry = store[p.transferId]
+    const entry = store.get(p.transferId)
     if (!entry) return null
     if (!Number.isInteger(p.index) || p.index < 0 || p.index >= entry.total) return null
     entry.chunks[p.index] = p.chunk
@@ -75,10 +81,10 @@ export const consumeChunkedMessage = (
   if (type.endsWith(CHUNK_END_SUFFIX)) {
     const p = payload as Partial<ChunkEndPayload>
     if (!isValidTransferId(p.transferId)) return null
-    const entry = store[p.transferId]
+    const entry = store.get(p.transferId)
     if (!entry) return null
     const text = entry.chunks.join('')
-    delete store[p.transferId]
+    store.delete(p.transferId)
     return { baseType, text }
   }
 
