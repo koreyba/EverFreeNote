@@ -1,3 +1,4 @@
+reports/component/pr-118/run-25427306990-attempt-1
 reports/e2e/pr-118/run-25427306994-attempt-1
 reports/unit/pr-118/run-25427307083-attempt-1
 reports/component/branch-main/run-25391522219-attempt-1

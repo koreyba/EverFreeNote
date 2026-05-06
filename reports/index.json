@@ -1,5 +1,33 @@
 [
   {
+    "family": "component",
+    "familyLabel": "Component",
+    "suites": [
+      "component"
+    ],
+    "suiteLabels": [
+      "Web Component"
+    ],
+    "path": "reports/component/pr-118/run-25427306990-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/component/pr-118/run-25427306990-attempt-1/",
+    "runId": "25427306990",
+    "runAttempt": "1",
+    "prNumber": "118",
+    "ref": "codex/security-safe-package-updates",
+    "sha": "e570249aa3f947fac55833b26802cc27da41e8eb",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #118",
+    "historyPath": "_history/component/history.jsonl",
+    "generatedAt": "2026-05-06T09:38:21.929Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/component/report",
+    "combinedResultsDir": ".allure-publish/component/results"
+  },
+  {
     "family": "e2e",
     "familyLabel": "E2E",
     "suites": [
