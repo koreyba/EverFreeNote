@@ -1,0 +1,1 @@
+{"id":"5e8e82f1d56d9dca56cde909be487dd5","fullName":"core/tests/unit/core-utils-search.test.ts#core/utils/search buildTsQuery returns null for query exceeding maximum length","name":"returns null for query exceeding maximum length","status":"passed","testResultsByEnv":{"default":"e2daab250ffb7992ed1c92df2d2c4795"}}
