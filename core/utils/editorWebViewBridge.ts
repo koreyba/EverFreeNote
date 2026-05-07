@@ -83,6 +83,10 @@ export const consumeChunkedMessage = (
     if (!isValidTransferId(p.transferId)) return null
     const entry = store.get(p.transferId)
     if (!entry) return null
+    if (entry.chunks.length !== entry.total) return null
+    for (let index = 0; index < entry.total; index++) {
+      if (typeof entry.chunks[index] !== 'string') return null
+    }
     const text = entry.chunks.join('')
     store.delete(p.transferId)
     return { baseType, text }

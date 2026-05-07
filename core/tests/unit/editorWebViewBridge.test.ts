@@ -37,11 +37,26 @@ describe('editorWebViewBridge', () => {
   })
 
   it('ignores prototype-like transfer ids', () => {
-    const store = new Map<string, { total: number; chunks: string[] }>()
+    for (const transferId of ['constructor', '__proto__', 'prototype', 'invalid id']) {
+      const store = new Map<string, { total: number; chunks: string[] }>()
 
-    const result = consumeChunkedMessage('CONTENT_RESPONSE_CHUNK_START', { transferId: 'constructor', total: 1 }, store)
+      const result = consumeChunkedMessage('CONTENT_RESPONSE_CHUNK_START', { transferId, total: 1 }, store)
+
+      expect(result).toBeNull()
+      expect(store.size).toBe(0)
+    }
+  })
+
+  it('does not finish incomplete chunked messages', () => {
+    const store = new Map<string, { total: number; chunks: string[] }>()
+    const transferId = 'test-transfer'
+
+    consumeChunkedMessage('CONTENT_RESPONSE_CHUNK_START', { transferId, total: 2 }, store)
+    consumeChunkedMessage('CONTENT_RESPONSE_CHUNK', { transferId, index: 1, chunk: 'second' }, store)
+
+    const result = consumeChunkedMessage('CONTENT_RESPONSE_CHUNK_END', { transferId }, store)
 
     expect(result).toBeNull()
-    expect(store.size).toBe(0)
+    expect(store.has(transferId)).toBe(true)
   })
 })
