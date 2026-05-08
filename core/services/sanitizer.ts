@@ -1,20 +1,51 @@
 import DOMPurify from 'isomorphic-dompurify'
 
+type SanitizationProfile = 'default' | 'editor-self-copy'
+
+type SanitizeOptions = {
+  profile?: SanitizationProfile
+}
+
+const DEFAULT_ALLOWED_TAGS = [
+  'b', 'i', 'em', 'strong', 'a', 'p', 'br', 'hr', 'ul', 'ol', 'li',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre',
+  'span', 'div', 'img', 'mark', 'u', 's', 'strike',
+]
+
+const SELF_COPY_ALLOWED_TAGS = [
+  ...DEFAULT_ALLOWED_TAGS,
+  'label',
+  'input',
+]
+
+const DEFAULT_ALLOWED_ATTR = ['href', 'target', 'src', 'alt', 'class', 'style', 'title']
+
+const SELF_COPY_ALLOWED_ATTR = [
+  ...DEFAULT_ALLOWED_ATTR,
+  'type',
+  'checked',
+  'disabled',
+  'data-checked',
+  'data-type',
+]
+
 export class SanitizationService {
   /**
    * Sanitizes HTML content to prevent XSS attacks.
    * Allows safe tags like <b>, <i>, <p>, lists, etc.
    * Removes <script>, <iframe>, and other dangerous tags.
    */
-  static sanitize(html: string): string {
+  static sanitize(html: string, options: SanitizeOptions = {}): string {
+    const profile = options.profile ?? 'default'
+    const isEditorSelfCopy = profile === 'editor-self-copy'
+
     return DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: [
-        'b', 'i', 'em', 'strong', 'a', 'p', 'br', 'hr', 'ul', 'ol', 'li',
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre',
-        'span', 'div', 'img', 'mark', 'u', 's', 'strike',
-      ],
-      ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'class', 'style', 'title'],
-      FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
+      ALLOWED_TAGS: isEditorSelfCopy ? SELF_COPY_ALLOWED_TAGS : DEFAULT_ALLOWED_TAGS,
+      ALLOWED_ATTR: isEditorSelfCopy ? SELF_COPY_ALLOWED_ATTR : DEFAULT_ALLOWED_ATTR,
+      ALLOW_DATA_ATTR: isEditorSelfCopy,
+      FORBID_TAGS: isEditorSelfCopy
+        ? ['script', 'iframe', 'object', 'embed', 'form', 'button']
+        : ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
       FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
     })
   }

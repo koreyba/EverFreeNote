@@ -5,6 +5,8 @@
 import type { ReactNode } from 'react'
 import { Alert } from 'react-native'
 import type { QueryClient } from '@tanstack/react-query'
+import * as Clipboard from 'expo-clipboard'
+import Toast from 'react-native-toast-message'
 import {
   act,
   createQueryWrapper,
@@ -142,6 +144,7 @@ const mockToolbarCallbacks: {
 } = {}
 const mockScrollToChunk = jest.fn()
 const mockSetEditorContent = jest.fn()
+const mockGetEditorContent = jest.fn().mockResolvedValue('<p>Test content</p>')
 const defaultNote = {
   id: 'test-note-id',
   title: 'Test Note',
@@ -167,6 +170,7 @@ jest.mock('@ui/mobile/components/EditorWebView', () => {
       runCommand: jest.fn(),
       setContent: mockSetEditorContent,
       scrollToChunk: mockScrollToChunk,
+      getContent: mockGetEditorContent,
     }))
 
     return (
@@ -176,6 +180,20 @@ jest.mock('@ui/mobile/components/EditorWebView', () => {
     )
   })
 })
+
+jest.mock('expo-clipboard', () => ({
+  setStringAsync: jest.fn().mockResolvedValue(true),
+  StringFormat: {
+    HTML: 'html',
+  },
+}))
+
+jest.mock('react-native-toast-message', () => ({
+  __esModule: true,
+  default: {
+    show: jest.fn(),
+  },
+}))
 
 jest.mock('@ui/mobile/components/EditorToolbar', () => ({
   EditorToolbar: ({ onMenuVisibilityChange }: { onMenuVisibilityChange?: (visible: boolean) => void }) => {
@@ -268,9 +286,13 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     mockToolbarCallbacks.onMenuVisibilityChange = undefined
     mockScrollToChunk.mockReset()
     mockSetEditorContent.mockReset()
+    mockGetEditorContent.mockReset()
+    mockGetEditorContent.mockResolvedValue('<p>Test content</p>')
     mockSetParams.mockReset()
     mockReplace.mockReset()
     alertSpy.mockClear()
+    ;(Clipboard.setStringAsync as jest.Mock).mockClear()
+    ;(Toast.show as jest.Mock).mockClear()
     ;(mockNoteService.prototype as typeof mockNoteService.prototype & {
       getNoteStatus: jest.Mock
     }).getNoteStatus = jest.fn().mockResolvedValue({
@@ -789,7 +811,27 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       })
 
       expect(screen.getByLabelText('Delete note')).toBeTruthy()
+      expect(screen.getByLabelText('Copy note')).toBeTruthy()
       expect(screen.getByTestId('theme-toggle')).toBeTruthy()
+    })
+
+    it('copies the live editor HTML from the header copy button', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      fireEvent.press(screen.getByLabelText('Copy note'))
+
+      await waitFor(() => {
+        expect(mockGetEditorContent).toHaveBeenCalled()
+      })
+      expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+        expect.stringContaining('<p>Test content</p>'),
+        { inputFormat: 'html' },
+      )
+      expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
     })
 
     it('opens note index menu from more options and forwards note id', async () => {
