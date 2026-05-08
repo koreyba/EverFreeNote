@@ -1,0 +1,1 @@
+{"id":"60234157c25a85a62ba4805723ae533c","fullName":"cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager drainQueue should handle sync failure","name":"should handle sync failure","status":"passed","testResultsByEnv":{"default":"22b9c50c872641eb4c77f7688529a4b7"}}
