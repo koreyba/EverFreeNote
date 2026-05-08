@@ -1,0 +1,1 @@
+{"id":"59bf5ced5fdbb4255d5eb12eccf55006","fullName":"tests/component/useDeleteNote.test.tsx#useDeleteNote Offline deletion marks note as deleted in local database when offline","name":"marks note as deleted in local database when offline","status":"passed","testResultsByEnv":{"default":"5564ff952f7c02455ee1802342a36e9e"}}
