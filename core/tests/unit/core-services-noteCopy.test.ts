@@ -29,4 +29,20 @@ describe('core/services/noteCopy', () => {
     expect(payload.html).toContain('type="checkbox"')
     expect(payload.text).toContain('[x] Done')
   })
+
+  it('does not over-capture trailing markup in the regex fallback path', () => {
+    const previous = globalThis.DOMParser
+    globalThis.DOMParser = undefined as unknown as typeof DOMParser
+
+    try {
+      const payload = NoteCopyService.buildPayload('<p>Inner</p>')
+      const htmlWithTrailingMarkup = `${payload.html}<div>extra</div>`
+
+      expect(NoteCopyService.isSelfCopyHtml(htmlWithTrailingMarkup)).toBe(false)
+      expect(NoteCopyService.unwrapSelfCopyHtml(htmlWithTrailingMarkup)).toBe(htmlWithTrailingMarkup)
+      expect(NoteCopyService.unwrapSelfCopyHtml(payload.html)).toBe('<p>Inner</p>')
+    } finally {
+      globalThis.DOMParser = previous
+    }
+  })
 })

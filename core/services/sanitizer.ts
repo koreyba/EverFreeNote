@@ -19,14 +19,14 @@ const SELF_COPY_ALLOWED_TAGS = [
 ]
 
 const DEFAULT_ALLOWED_ATTR = ['href', 'target', 'src', 'alt', 'class', 'style', 'title']
+const DEFAULT_ALLOWED_DATA_ATTR = ['data-checked', 'data-type']
 
 const SELF_COPY_ALLOWED_ATTR = [
   ...DEFAULT_ALLOWED_ATTR,
+  ...DEFAULT_ALLOWED_DATA_ATTR,
   'type',
   'checked',
   'disabled',
-  'data-checked',
-  'data-type',
 ]
 
 export class SanitizationService {
@@ -41,8 +41,10 @@ export class SanitizationService {
 
     return DOMPurify.sanitize(html, {
       ALLOWED_TAGS: isEditorSelfCopy ? SELF_COPY_ALLOWED_TAGS : DEFAULT_ALLOWED_TAGS,
-      ALLOWED_ATTR: isEditorSelfCopy ? SELF_COPY_ALLOWED_ATTR : DEFAULT_ALLOWED_ATTR,
-      ALLOW_DATA_ATTR: isEditorSelfCopy,
+      ALLOWED_ATTR: isEditorSelfCopy
+        ? SELF_COPY_ALLOWED_ATTR
+        : [...DEFAULT_ALLOWED_ATTR, ...DEFAULT_ALLOWED_DATA_ATTR],
+      ALLOW_DATA_ATTR: true,
       FORBID_TAGS: isEditorSelfCopy
         ? ['script', 'iframe', 'object', 'embed', 'form', 'button']
         : ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],

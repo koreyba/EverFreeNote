@@ -431,6 +431,20 @@ describe('core/services/smartPaste', () => {
       expect(result.html).toContain('<input')
       expect(result.html).toContain('type="checkbox"')
     })
+
+    it('preserves task-list metadata for normal editor HTML without the self-copy wrapper', () => {
+      const payload = {
+        html: '<ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>Todo</p></li></ul>',
+        text: 'Todo',
+        types: ['text/html', 'text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+
+      expect(result.type).toBe('html')
+      expect(result.html).toContain('data-type="taskList"')
+      expect(result.html).toContain('data-checked="false"')
+    })
   })
 
   describe('ProseMirror clipboard HTML (editor copy-paste)', () => {

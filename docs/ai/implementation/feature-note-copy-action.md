@@ -26,7 +26,6 @@ description: Implementation notes for note-level copy actions with EverFreeNote 
 - Mobile UI wiring stays in:
   - `ui/mobile/app/note/[id].tsx`
   - `ui/mobile/components/EditorWebView.tsx`
-  - `app/editor-webview/page.tsx`
 - Smart-paste round-trip preservation extends:
   - `core/services/smartPaste.ts`
   - possibly `core/services/sanitizer.ts`
@@ -41,7 +40,7 @@ description: Implementation notes for note-level copy actions with EverFreeNote 
 - Web reading mode should use current note HTML.
 - Web editing mode should use current editor draft HTML, not initial props.
 - Mobile editing mode should read current HTML from `EditorWebViewHandle.getContent()`.
-- Mobile clipboard write should be attempted from the editor page/browser context through a new bridge message.
+- Mobile clipboard write should use `expo-clipboard` with `StringFormat.HTML` first and fall back to `StringFormat.PLAIN_TEXT` if the HTML write fails.
 
 ### Patterns & Best Practices
 - Keep copy payload building deterministic and pure.
@@ -58,8 +57,7 @@ description: Implementation notes for note-level copy actions with EverFreeNote 
   - prefer `navigator.clipboard.write()` with `text/html` + `text/plain`
   - fallback to `writeText()` if richer write path is unavailable
 - Mobile bridge:
-  - add a command message for copy payload delivery
-  - add a result message back to native for success/error feedback
+  - reuse the existing `getContent()` request/response path to capture the latest unsaved editor HTML
 - Paste:
   - self-copy detection should happen before the generic style filtering path strips supported editor formatting
 
@@ -69,12 +67,12 @@ description: Implementation notes for note-level copy actions with EverFreeNote 
 - Clipboard write failures must not crash note screens or the editor.
 - Web should show a clear error toast when clipboard write fails.
 - Mobile should show a clear toast/message when the WebView copy command fails or is unsupported.
+- Mobile should prefer a plain-text fallback before showing failure when HTML clipboard format is unsupported.
 - Smart-paste self-copy detection failures should fall back to the existing generic paste behavior rather than block paste entirely.
 
 ## Performance Considerations
 **How do we keep it fast?**
 
-- Reuse existing chunked bridge helpers for large mobile payloads instead of inventing another transport.
 - Avoid repeated editor `getHTML()` calls inside one action path; resolve once per button press.
 - Keep payload construction synchronous and linear in note size.
 

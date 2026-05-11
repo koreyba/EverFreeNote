@@ -95,7 +95,7 @@ export const NoteView = React.memo(function NoteView({
             <Edit2 className="w-4 h-4 mr-2" />
             Edit
           </Button>
-          <Button onClick={() => void handleCopy()} variant="outline" size="sm" aria-label="Copy note">
+          <Button onClick={handleCopy} variant="outline" size="sm" aria-label="Copy note">
             <Copy className="w-4 h-4 md:mr-2" />
             <span className="hidden md:inline">Copy</span>
           </Button>

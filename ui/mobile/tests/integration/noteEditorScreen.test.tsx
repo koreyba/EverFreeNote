@@ -185,6 +185,7 @@ jest.mock('expo-clipboard', () => ({
   setStringAsync: jest.fn().mockResolvedValue(true),
   StringFormat: {
     HTML: 'html',
+    PLAIN_TEXT: 'plainText',
   },
 }))
 
@@ -826,12 +827,40 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       await waitFor(() => {
         expect(mockGetEditorContent).toHaveBeenCalled()
+        expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+          expect.stringContaining('<p>Test content</p>'),
+          { inputFormat: 'html' },
+        )
+        expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
       })
-      expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
-        expect.stringContaining('<p>Test content</p>'),
-        { inputFormat: 'html' },
-      )
-      expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
+    })
+
+    it('falls back to plain-text copy when HTML clipboard write fails', async () => {
+      ;(Clipboard.setStringAsync as jest.Mock)
+        .mockRejectedValueOnce(new Error('html unsupported'))
+        .mockResolvedValueOnce(true)
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      fireEvent.press(screen.getByLabelText('Copy note'))
+
+      await waitFor(() => {
+        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
+          1,
+          expect.stringContaining('<p>Test content</p>'),
+          { inputFormat: 'html' },
+        )
+        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
+          2,
+          'Test content',
+          { inputFormat: 'plainText' },
+        )
+        expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
+      })
     })
 
     it('opens note index menu from more options and forwards note id', async () => {

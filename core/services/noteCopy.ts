@@ -9,10 +9,8 @@ export type NoteCopyPayload = {
   text: string
 }
 
-const WRAPPER_PATTERN = new RegExp(
-  `<div[^>]*${EVERFREENOTE_COPY_ATTRIBUTE}=["']${EVERFREENOTE_COPY_KIND}["'][^>]*>([\\s\\S]*)<\\/div>`,
-  'i',
-)
+const SELF_COPY_WRAPPER_PREFIX = `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">`
+const DIV_TAG_PATTERN = /<\/?div\b[^>]*>/gi
 
 export const NoteCopyService = {
   buildPayload(rawHtml: string): NoteCopyPayload {
@@ -28,10 +26,14 @@ export const NoteCopyService = {
 
   isSelfCopyHtml(html: string): boolean {
     if (!html) return false
+    const normalizedHtml = html.trim()
 
     if (typeof DOMParser !== 'undefined') {
       try {
-        const doc = new DOMParser().parseFromString(html, 'text/html')
+        const doc = new DOMParser().parseFromString(
+          SanitizationService.sanitize(normalizedHtml, { profile: 'editor-self-copy' }),
+          'text/html',
+        )
         if (typeof doc.body.querySelector === 'function') {
           return Boolean(doc.body.querySelector(`[${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}"]`))
         }
@@ -40,15 +42,19 @@ export const NoteCopyService = {
       }
     }
 
-    return WRAPPER_PATTERN.test(html)
+    return unwrapSelfCopyHtmlFallback(normalizedHtml) !== null
   },
 
   unwrapSelfCopyHtml(html: string): string {
     if (!html) return ''
+    const normalizedHtml = html.trim()
 
     if (typeof DOMParser !== 'undefined') {
       try {
-        const doc = new DOMParser().parseFromString(html, 'text/html')
+        const doc = new DOMParser().parseFromString(
+          SanitizationService.sanitize(normalizedHtml, { profile: 'editor-self-copy' }),
+          'text/html',
+        )
         const queryResult =
           typeof doc.body.querySelector === 'function'
             ? doc.body.querySelector(`[${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}"]`)
@@ -61,13 +67,12 @@ export const NoteCopyService = {
       }
     }
 
-    const match = html.match(WRAPPER_PATTERN)
-    return match?.[1] ?? html
+    return unwrapSelfCopyHtmlFallback(normalizedHtml) ?? normalizedHtml
   },
 }
 
 function wrapSelfCopyHtml(html: string): string {
-  return `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">${html}</div>`
+  return `${SELF_COPY_WRAPPER_PREFIX}${html}</div>`
 }
 
 function htmlToPlainText(html: string): string {
@@ -97,4 +102,42 @@ function decodeHtmlEntities(value: string): string {
   const textarea = document.createElement('textarea')
   textarea.innerHTML = value
   return textarea.value
+}
+
+function unwrapSelfCopyHtmlFallback(html: string): string | null {
+  if (!html.startsWith(SELF_COPY_WRAPPER_PREFIX)) {
+    return null
+  }
+
+  let depth = 0
+  let closingTagStart = -1
+  let closingTagEnd = -1
+
+  for (const match of html.matchAll(DIV_TAG_PATTERN)) {
+    const fullTag = match[0]
+    const index = match.index ?? -1
+    if (index < 0) continue
+
+    if (fullTag.startsWith('</')) {
+      depth -= 1
+      if (depth === 0) {
+        closingTagStart = index
+        closingTagEnd = index + fullTag.length
+        break
+      }
+      continue
+    }
+
+    depth += 1
+  }
+
+  if (closingTagStart < 0 || closingTagEnd < 0) {
+    return null
+  }
+
+  if (html.slice(closingTagEnd).trim().length > 0) {
+    return null
+  }
+
+  return html.slice(SELF_COPY_WRAPPER_PREFIX.length, closingTagStart)
 }

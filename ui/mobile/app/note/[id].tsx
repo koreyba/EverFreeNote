@@ -498,12 +498,23 @@ export default function NoteEditorScreen() {
         ? liveHtml
         : latestDraftRef.current.description
       const payload = NoteCopyService.buildPayload(html)
-      await Clipboard.setStringAsync(payload.html, { inputFormat: Clipboard.StringFormat.HTML })
+      // Expo clipboard accepts one string format per write, so mobile prioritizes
+      // rich HTML for EverFreeNote round-trip fidelity and falls back to plain text
+      // only when HTML write is unavailable on the current platform/runtime.
+      try {
+        await Clipboard.setStringAsync(payload.html, { inputFormat: Clipboard.StringFormat.HTML })
+      } catch {
+        await Clipboard.setStringAsync(payload.text, { inputFormat: Clipboard.StringFormat.PLAIN_TEXT })
+      }
       Toast.show({ type: 'success', text1: 'Note copied' })
     } catch {
       Toast.show({ type: 'error', text1: 'Failed to copy note' })
     }
   }, [])
+
+  const handleCopyPress = useCallback(() => {
+    handleCopy().catch(() => undefined)
+  }, [handleCopy])
 
   const handleDelete = useCallback(() => {
     deleteNote(id, {
@@ -545,13 +556,11 @@ export default function NoteEditorScreen() {
       <HeaderRightActions
         styles={styles}
         colors={colors}
-        onCopy={() => {
-          void handleCopy()
-        }}
+        onCopy={handleCopyPress}
         onOpenMenu={handleOpenNoteMenu}
       />
     ),
-    [colors, handleCopy, handleOpenNoteMenu, styles]
+    [colors, handleCopyPress, handleOpenNoteMenu, styles]
   )
 
   const isToolbarVisible = isEditorFocused || isToolbarMenuOpen

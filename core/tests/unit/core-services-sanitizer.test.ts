@@ -176,6 +176,14 @@ describe('core/services/sanitizer', () => {
       expect(result).toContain('<input')
       expect(result).toContain('type="checkbox"')
     })
+
+    it('preserves task-list data attributes in the default sanitizer profile', () => {
+      const html = '<ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>Task</p></li></ul>'
+      const result = SanitizationService.sanitize(html)
+
+      expect(result).toContain('data-type="taskList"')
+      expect(result).toContain('data-checked="false"')
+    })
   })
 
   describe('stripHtml', () => {

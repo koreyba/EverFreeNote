@@ -260,7 +260,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             <Button onClick={handleRead} variant="outline" disabled={isSaving}>
               Read
             </Button>
-            <Button onClick={() => void handleCopy()} variant="outline" disabled={isSaving} aria-label="Copy note">
+            <Button onClick={handleCopy} variant="outline" disabled={isSaving} aria-label="Copy note">
               <Copy className="w-4 h-4 md:mr-2" />
               <span className="hidden md:inline">Copy</span>
             </Button>

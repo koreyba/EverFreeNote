@@ -12,7 +12,7 @@ description: Testing plan for web/mobile note copy actions and EverFreeNote self
 - Target 100% coverage for new copy payload and self-copy detection logic.
 - Integration coverage for:
   - web note action copy
-  - mobile bridge copy
+  - mobile clipboard copy
   - self-copy paste round-trip
 - Manual verification for clipboard behavior on real web/mobile environments.
 
@@ -36,10 +36,10 @@ description: Testing plan for web/mobile note copy actions and EverFreeNote self
 - [ ] Editing mode copy uses current unsaved editor draft HTML
 - [ ] Success and failure feedback are emitted correctly
 
-### Mobile WebView bridge
-- [ ] `COPY_NOTE` payload is posted to the WebView page
-- [ ] Large copy payloads can be chunked and reassembled
-- [ ] `COPY_NOTE_RESULT` success/failure is propagated back to React Native UI
+### Mobile copy path
+- [x] Header copy resolves the latest unsaved editor HTML through `EditorWebViewHandle.getContent()`
+- [x] Native clipboard write prefers `StringFormat.HTML`
+- [x] Native clipboard write falls back to `StringFormat.PLAIN_TEXT` if HTML write fails
 
 ## Integration Tests
 **How do we test component interactions?**
@@ -48,7 +48,8 @@ description: Testing plan for web/mobile note copy actions and EverFreeNote self
 - [ ] Web editing mode: dirty draft copy uses current editor content rather than initial persisted HTML
 - [ ] Smart-paste round-trip: copy EverFreeNote payload -> paste into editor -> headings/lists/task lists/alignment survive where supported
 - [ ] External-source regression: non-EverFreeNote HTML still follows generic sanitization rules
-- [ ] Mobile note screen: press header copy -> bridge command reaches page -> success result returns
+- [x] Mobile note screen: press header copy -> native clipboard writer receives HTML payload and success feedback returns
+- [x] Mobile note screen: if HTML clipboard write fails, plain-text fallback is attempted
 - [ ] Mobile fallback: copy failure produces feedback without breaking the editor session
 
 ## End-to-End Tests
@@ -69,7 +70,7 @@ description: Testing plan for web/mobile note copy actions and EverFreeNote self
   - links
   - alignment/font metadata
 - Mock clipboard APIs on web
-- Mock WebView message bridge on mobile
+- Mock Expo Clipboard and editor WebView `getContent()` on mobile
 
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
@@ -80,6 +81,12 @@ description: Testing plan for web/mobile note copy actions and EverFreeNote self
   - `npm run test:unit:core -- --runTestsByPath ...`
 - Mobile validation:
   - `npm --prefix ui/mobile test -- ...`
+- Completed focused validation:
+  - `npx jest --config jest.config.cjs --selectProjects unit-core --runTestsByPath core/tests/unit/core-services-noteCopy.test.ts core/tests/unit/core-services-sanitizer.test.ts core/tests/unit/core-services-smartPaste.test.ts`
+  - `npx jest --config jest.config.cjs --selectProjects unit-web --runTestsByPath ui/web/tests/unit/components/noteEditor.test.tsx ui/web/tests/unit/components/noteView.test.tsx`
+  - `npx jest --runTestsByPath tests/integration/noteEditorScreen.test.tsx`
+  - `npm run type-check`
+  - `npm --prefix ui/mobile run type-check`
 - Full static checks before completion:
   - `npm run validate`
   - `npm --prefix ui/mobile run validate`
@@ -88,18 +95,20 @@ description: Testing plan for web/mobile note copy actions and EverFreeNote self
 **What requires human validation?**
 
 - Web clipboard behavior in a real browser for `text/html` + `text/plain`
-- Mobile clipboard behavior from the WebView page on at least one target device/emulator
+- Mobile clipboard behavior on at least one target device/emulator, especially HTML-first writes into non-EverFreeNote destinations
 - Round-trip paste quality back into EverFreeNote for:
   - heading blocks
   - lists
   - task lists
   - alignment/font styling
 - Feedback visibility and accessibility for success/error states
+- Residual gap: no manual smoke verification was completed in this implementation pass.
 
 ## Performance Testing
 **How do we validate performance?**
 
 - Verify large note copy remains responsive on mobile bridge and web
+- Verify large note copy remains responsive on mobile native clipboard path and web
 - Confirm no noticeable lag when copying typical note bodies
 
 ## Bug Tracking

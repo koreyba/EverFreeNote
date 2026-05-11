@@ -11,7 +11,7 @@ description: Add cross-platform note copy actions with a dedicated EverFreeNote 
 
 - The feature adds note-level copy actions on web and mobile and routes them through a shared copy payload builder plus a smart-paste self-copy branch.
 - Web writes rich clipboard data directly from the browser context.
-- Mobile triggers copy from the native header but delegates rich clipboard write to the editor WebView page so HTML-capable clipboard APIs remain available in the browser context.
+- Mobile triggers copy from the native header, resolves the latest editor HTML through the existing `EditorWebViewHandle`, and writes to the clipboard through Expo's native clipboard API.
 - Paste detection is extended to recognize EverFreeNote-origin clipboard payloads and preserve supported internal formatting with a more permissive but still safe sanitization profile.
 
 ```mermaid
@@ -35,8 +35,9 @@ flowchart TD
 
   subgraph Writers["Clipboard writers"]
     WebWriter["navigator.clipboard.write()"]
-    MobileBridge["EditorWebView message bridge"]
-    MobileWriter["editor-webview page clipboard writer"]
+    MobileSnapshot["EditorWebViewHandle.getContent()"]
+    MobileWriter["expo-clipboard HTML-first writer"]
+    MobileFallback["plain-text fallback if HTML write fails"]
   end
 
   subgraph Paste["Existing paste entrypoints"]
@@ -56,10 +57,12 @@ flowchart TD
   Builder --> Plain
   Builder --> Rich
   Rich --> WebWriter
-  Rich --> MobileBridge
-  MobileBridge --> MobileWriter
   Plain --> WebWriter
-  Plain --> MobileBridge
+  MHeader --> MobileSnapshot
+  MobileSnapshot --> Builder
+  Rich --> MobileWriter
+  MobileWriter --> MobileFallback
+  Plain --> MobileFallback
   WebPaste --> SmartPaste
   SmartPaste -->|EverFreeNote marker detected| SelfCopy
   SmartPaste -->|No marker| Generic
@@ -70,8 +73,7 @@ flowchart TD
 - Key components and responsibilities
   - `NoteCopyService`: builds note-body clipboard payloads from HTML input.
   - Web note headers: trigger copy for reading/editing modes.
-  - Mobile note screen: resolves current body HTML and sends a new copy command through the existing WebView bridge.
-  - `EditorWebViewPage`: writes rich clipboard data on mobile and returns success/failure state.
+  - Mobile note screen: resolves current body HTML and writes an HTML-first clipboard payload via Expo Clipboard.
   - `SmartPasteService`: detects EverFreeNote self-copy payloads and preserves editor-supported formatting.
 
 ## Data Models
@@ -96,17 +98,6 @@ type NoteCopyPayload = {
 <div data-everfreenote-copy="note-body" data-everfreenote-version="1">
   ...editor html...
 </div>
-```
-
-- Message bridge payload for mobile:
-
-```ts
-type CopyNoteBridgePayload = {
-  plainText: string
-  html: string
-  source: 'everfreenote-note-body'
-  version: 1
-}
 ```
 
 - Paste detection extension:
@@ -151,10 +142,10 @@ function resolvePaste(
 
 - Mobile integration:
   - `note/[id].tsx` resolves body HTML:
-    - reading mode: current note description
-    - editing mode: `EditorWebViewHandle.getContent()`
-  - React Native sends a new `COPY_NOTE` message to `app/editor-webview/page.tsx`.
-  - The page performs clipboard write and posts `COPY_NOTE_RESULT` back to native.
+    - fallback body: current draft description in screen state
+    - preferred body: `EditorWebViewHandle.getContent()` for unsaved editor content
+  - React Native writes the payload through `expo-clipboard`.
+  - Because Expo accepts one string format per write, mobile prioritizes HTML and falls back to plain text if HTML write is unavailable.
 
 - Paste path:
   - existing `handlePaste` entrypoints stay the same.
@@ -171,7 +162,6 @@ function resolvePaste(
   - `ui/web/components/features/notes/NoteView.tsx`
   - `ui/web/components/features/notes/NoteEditor.tsx`
   - `ui/mobile/app/note/[id].tsx`
-  - `app/editor-webview/page.tsx`
   - `ui/mobile/components/EditorWebView.tsx`
 
 - Shared/core modules
@@ -181,7 +171,7 @@ function resolvePaste(
 
 - Tests
   - web unit tests for copy action handlers
-  - mobile bridge tests for `COPY_NOTE` / `COPY_NOTE_RESULT`
+  - mobile integration tests for HTML-first clipboard writes and plain-text fallback
   - smart paste unit/integration coverage for self-copy detection and round-trip preservation
 
 ## Design Decisions
@@ -199,10 +189,10 @@ function resolvePaste(
   - External paste behavior should stay stable.
   - Self-copy fidelity should not weaken protections or formatting policies for outside sources like Google Docs or ChatGPT.
 
-- Mobile rich clipboard write happens in the WebView page
-  - React Native header UI is the right trigger location.
-  - Browser-context clipboard APIs are the best place to attempt HTML clipboard writes.
-  - This avoids introducing a second HTML serialization path in native code.
+- Mobile clipboard write happens in native code after reading editor HTML from the WebView
+  - React Native header UI is still the right trigger location.
+  - Expo Clipboard is the supported mobile clipboard API already used in this app stack.
+  - The tradeoff is that mobile cannot write `text/html` and `text/plain` simultaneously in one operation, so HTML is prioritized for EverFreeNote round-trip fidelity and plain text remains the fallback path.
 
 - Self-copy formatting allowances are selective, not unrestricted
   - Preserve editor-owned structures/styles that EverFreeNote itself emits and understands.
@@ -211,14 +201,15 @@ function resolvePaste(
 - Alternatives considered
   - Plain-text-only copy: rejected because it cannot satisfy EverFreeNote round-trip fidelity.
   - Reusing the generic external paste sanitizer unchanged: rejected because it strips editor-supported formatting such as alignment, font settings, and task-list semantics.
-  - Moving mobile copy entirely into native clipboard APIs: rejected for the first version because plain-text native clipboard is not enough for rich round-trip fidelity.
+- Moving mobile copy entirely into native clipboard APIs without HTML support: rejected.
+- Using Expo Clipboard with `StringFormat.HTML`: accepted as the pragmatic mobile path because it preserves EverFreeNote round-trip fidelity better than plain text, while still allowing a plain-text fallback if HTML write is unsupported at runtime.
 
 ## Non-Functional Requirements
 **How should the system perform?**
 
 - Performance targets
   - Copy action should complete quickly enough to feel immediate on web and mobile.
-  - Mobile bridge should support large note bodies through chunked transport without freezing the UI.
+- Mobile copy should not require additional large-payload bridge messages beyond the existing `getContent()` request/response path.
 
 - Security requirements
   - HTML remains sanitized before insertion.
@@ -227,7 +218,7 @@ function resolvePaste(
 
 - Reliability/availability needs
   - Web copy should fall back to plain-text clipboard when rich clipboard write is unavailable.
-  - Mobile copy should surface a clear failure message if the WebView clipboard write fails.
+- Mobile copy should surface a clear failure message if both HTML and plain-text clipboard writes fail.
   - Existing offline/local-bundle editor behavior must remain compatible with the copy bridge.
 
 - Fidelity requirements for self-copy path
