@@ -1,0 +1,1 @@
+{"id":"baab4307ed92ba79955126396d955235","fullName":"cypress/component/ui/web/hooks/useSearchMode.cy.tsx#useSearchMode restores state from localStorage and ignores a legacy preset field","name":"restores state from localStorage and ignores a legacy preset field","status":"passed","testResultsByEnv":{"default":"a367781f68fc1bc1cb5b79b7c18b913b"}}

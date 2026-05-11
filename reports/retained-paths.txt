@@ -1,3 +1,4 @@
+reports/component/pr-121/run-25684599294-attempt-1
 reports/e2e/pr-121/run-25684599260-attempt-1
 reports/unit/pr-121/run-25684599314-attempt-1
 reports/component/pr-121/run-25574273422-attempt-1
@@ -55,7 +56,6 @@ reports/e2e/pr-112/run-25220220984-attempt-1
 reports/e2e/pr-112/run-25220103141-attempt-1
 reports/unit/pr-112/run-25220220981-attempt-1
 reports/unit/pr-112/run-25220103132-attempt-1
-reports/component/pr-112/run-25219404268-attempt-1
 reports/e2e/pr-112/run-25219404350-attempt-1
 reports/e2e/pr-112/run-25218617201-attempt-1
 reports/e2e/pr-112/run-25218040625-attempt-1
