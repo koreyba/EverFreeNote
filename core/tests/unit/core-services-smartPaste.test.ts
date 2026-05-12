@@ -1,4 +1,5 @@
 import { SmartPasteService } from '@core/services/smartPaste'
+import { NoteCopyService } from '@core/services/noteCopy'
 import { SanitizationService } from '@core/services/sanitizer'
 
 type AttributeMap = Record<string, string>
@@ -392,6 +393,57 @@ describe('core/services/smartPaste', () => {
       const result = SmartPasteService.resolvePaste(payload)
       expect(result.type).toBe('plain')
       expect(result.html).toContain('<p>Just text</p>')
+    })
+
+    it('preserves self-copy rich text styles for EverFreeNote round-trip', () => {
+      const payload = NoteCopyService.buildPayload(
+        '<p style="text-align: center"><span style="font-family: Georgia; font-size: 18px; color: rgb(255, 0, 0); background-color: rgb(255, 255, 0)">Styled</span></p>',
+      )
+
+      const result = SmartPasteService.resolvePaste({
+        html: payload.html,
+        text: payload.text,
+        types: ['text/html', 'text/plain'],
+      })
+
+      expect(result.type).toBe('html')
+      expect(result.html).toContain('text-align: center')
+      expect(result.html).toContain('font-family: Georgia')
+      expect(result.html).toContain('font-size: 18px')
+      expect(result.html).toContain('color: rgb(255, 0, 0)')
+      expect(result.html).toContain('background-color: rgb(255, 255, 0)')
+      expect(result.html).not.toContain('data-everfreenote-copy')
+    })
+
+    it('preserves task-list markup when pasting EverFreeNote self-copy HTML', () => {
+      const payload = NoteCopyService.buildPayload(
+        '<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><label><input checked="checked" disabled="disabled" type="checkbox"><span></span></label><div><p>Done</p></div></li></ul>',
+      )
+
+      const result = SmartPasteService.resolvePaste({
+        html: payload.html,
+        text: payload.text,
+        types: ['text/html', 'text/plain'],
+      })
+
+      expect(result.html).toContain('data-type="taskList"')
+      expect(result.html).toContain('data-checked="true"')
+      expect(result.html).toContain('<input')
+      expect(result.html).toContain('type="checkbox"')
+    })
+
+    it('preserves task-list metadata for normal editor HTML without the self-copy wrapper', () => {
+      const payload = {
+        html: '<ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>Todo</p></li></ul>',
+        text: 'Todo',
+        types: ['text/html', 'text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+
+      expect(result.type).toBe('html')
+      expect(result.html).toContain('data-type="taskList"')
+      expect(result.html).toContain('data-checked="false"')
     })
   })
 

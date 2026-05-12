@@ -23,7 +23,7 @@ describe('smartPaste integration', () => {
     const result = SmartPasteService.resolvePaste({ html, text: null, types: ['text/html'] })
 
     expect(result.type).toBe('html')
-    expect(result.html).toContain('<h1>')
+    expect(result.html).toContain('<h1')
     expect(result.html).toContain('Project Update')
     expect(result.html).toContain('<a href=')
     expect(result.html).toContain('Dark text')

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Alert, Pressable, View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
+import * as Clipboard from 'expo-clipboard'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
@@ -8,7 +9,9 @@ import { EditorToolbar, TOOLBAR_CONTENT_HEIGHT } from '@ui/mobile/components/Edi
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
-import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical } from 'lucide-react-native'
+import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical, Copy } from 'lucide-react-native'
+import Toast from 'react-native-toast-message'
+import { NoteCopyService } from '@core/services/noteCopy'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
 import {
   reconcileExternalNoteSnapshot,
@@ -160,17 +163,27 @@ function HeaderDeleteButton({
 type HeaderRightActionsProps = Readonly<{
   styles: NoteEditorHeaderStyles
   colors: ThemeColors
+  onCopy: () => void
   onOpenMenu: () => void
 }>
 
 function HeaderRightActions({
   styles,
   colors,
+  onCopy,
   onOpenMenu,
 }: HeaderRightActionsProps) {
   return (
     <View style={styles.headerActions}>
       <View style={styles.headerRightGroup}>
+        <Pressable
+          onPress={onCopy}
+          accessibilityLabel="Copy note"
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
+        >
+          <Copy color={colors.foreground} size={20} />
+        </Pressable>
         <ThemeToggle style={styles.headerToggle} />
         <Pressable
           onPress={onOpenMenu}
@@ -478,6 +491,31 @@ export default function NoteEditorScreen() {
     setIsShareDialogVisible(true)
   }, [])
 
+  const handleCopy = useCallback(async () => {
+    try {
+      const liveHtml = await editorRef.current?.getContent()
+      const html = liveHtml && liveHtml.trim().length > 0
+        ? liveHtml
+        : latestDraftRef.current.description
+      const payload = NoteCopyService.buildPayload(html)
+      // Expo clipboard accepts one string format per write, so mobile prioritizes
+      // rich HTML for EverFreeNote round-trip fidelity and falls back to plain text
+      // only when HTML write is unavailable on the current platform/runtime.
+      try {
+        await Clipboard.setStringAsync(payload.html, { inputFormat: Clipboard.StringFormat.HTML })
+      } catch {
+        await Clipboard.setStringAsync(payload.text, { inputFormat: Clipboard.StringFormat.PLAIN_TEXT })
+      }
+      Toast.show({ type: 'success', text1: 'Note copied' })
+    } catch {
+      Toast.show({ type: 'error', text1: 'Failed to copy note' })
+    }
+  }, [])
+
+  const handleCopyPress = useCallback(() => {
+    handleCopy().catch(() => undefined)
+  }, [handleCopy])
+
   const handleDelete = useCallback(() => {
     deleteNote(id, {
       onSuccess: () => {
@@ -518,10 +556,11 @@ export default function NoteEditorScreen() {
       <HeaderRightActions
         styles={styles}
         colors={colors}
+        onCopy={handleCopyPress}
         onOpenMenu={handleOpenNoteMenu}
       />
     ),
-    [colors, handleOpenNoteMenu, styles]
+    [colors, handleCopyPress, handleOpenNoteMenu, styles]
   )
 
   const isToolbarVisible = isEditorFocused || isToolbarMenuOpen
