@@ -1,5 +1,39 @@
 [
   {
+    "family": "unit",
+    "familyLabel": "Unit",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
+    "path": "reports/unit/pr-121/run-25746855939-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/unit/pr-121/run-25746855939-attempt-1/",
+    "runId": "25746855939",
+    "runAttempt": "1",
+    "prNumber": "121",
+    "ref": "feature-note-copy-action",
+    "sha": "eab735b549de821b55a98946c8151f0498535381",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #121",
+    "historyPath": "_history/unit/history.jsonl",
+    "generatedAt": "2026-05-12T16:13:06.337Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/unit/report",
+    "combinedResultsDir": ".allure-publish/unit/results"
+  },
+  {
     "family": "component",
     "familyLabel": "Component",
     "suites": [
@@ -1568,40 +1602,6 @@
     "hasResults": true,
     "reportOutputDir": ".allure-publish/e2e/report",
     "combinedResultsDir": ".allure-publish/e2e/results"
-  },
-  {
-    "family": "unit",
-    "familyLabel": "Unit",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/unit/pr-112/run-25329093402-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/unit/pr-112/run-25329093402-attempt-1/",
-    "runId": "25329093402",
-    "runAttempt": "1",
-    "prNumber": "112",
-    "ref": "codex/allure-pages-reporting-main",
-    "sha": "b05b1de05700c214e3676ec48fd302bc43c176fe",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #112",
-    "historyPath": "_history/unit/history.jsonl",
-    "generatedAt": "2026-05-04T16:00:46.796Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/unit/report",
-    "combinedResultsDir": ".allure-publish/unit/results"
   },
   {
     "url": "https://koreyba.github.io/EverFreeNote/reports/pr-114/run-25221182815-attempt-1/",
