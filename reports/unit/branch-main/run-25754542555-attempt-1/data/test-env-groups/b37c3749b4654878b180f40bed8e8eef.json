@@ -1,0 +1,1 @@
+{"id":"b37c3749b4654878b180f40bed8e8eef","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste detectPasteType falls back to plain text when markdown score is low","name":"falls back to plain text when markdown score is low","status":"passed","testResultsByEnv":{"default":"8cc5fc5289e3a0d363494d37e7724aa7"}}
