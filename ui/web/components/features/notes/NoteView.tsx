@@ -1,17 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Edit2, Trash2, ChevronLeft, Copy } from "lucide-react"
+import { Edit2, Trash2, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
-import { toast } from "sonner"
-import { NoteCopyService } from "@core/services/noteCopy"
 import { SanitizationService } from "@core/services/sanitizer"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import type { Note } from "@core/types/domain"
-import { copyNotePayloadToClipboard } from "@ui/web/lib/noteClipboard"
 
 // Define NoteRecord locally to match what's used in page.tsx
 type NoteRecord = Note & {
@@ -58,16 +55,6 @@ export const NoteView = React.memo(function NoteView({
     tags: note.tags ?? [],
   }), [note.content, note.description, note.id, note.tags, note.title])
 
-  const handleCopy = React.useCallback(async () => {
-    try {
-      const payload = NoteCopyService.buildPayload(note.description || note.content || '')
-      await copyNotePayloadToClipboard(payload)
-      toast.success('Note copied')
-    } catch {
-      toast.error('Failed to copy note')
-    }
-  }, [note.content, note.description])
-
 
   return (
     <div className="flex-1 flex min-h-0 flex-col">
@@ -94,10 +81,6 @@ export const NoteView = React.memo(function NoteView({
           >
             <Edit2 className="w-4 h-4 mr-2" />
             Edit
-          </Button>
-          <Button onClick={handleCopy} variant="outline" size="sm" aria-label="Copy note">
-            <Copy className="w-4 h-4 md:mr-2" />
-            <span className="hidden md:inline">Copy</span>
           </Button>
           <Button
             onClick={onDelete}
