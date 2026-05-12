@@ -44,7 +44,7 @@ export class SanitizationService {
       ALLOWED_ATTR: isEditorSelfCopy
         ? SELF_COPY_ALLOWED_ATTR
         : [...DEFAULT_ALLOWED_ATTR, ...DEFAULT_ALLOWED_DATA_ATTR],
-      ALLOW_DATA_ATTR: true,
+      ALLOW_DATA_ATTR: false,
       FORBID_TAGS: isEditorSelfCopy
         ? ['script', 'iframe', 'object', 'embed', 'form', 'button']
         : ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],

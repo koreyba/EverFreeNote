@@ -178,11 +178,12 @@ describe('core/services/sanitizer', () => {
     })
 
     it('preserves task-list data attributes in the default sanitizer profile', () => {
-      const html = '<ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>Task</p></li></ul>'
+      const html = '<ul data-type="taskList" data-evil="1"><li data-type="taskItem" data-checked="false"><p>Task</p></li></ul>'
       const result = SanitizationService.sanitize(html)
 
       expect(result).toContain('data-type="taskList"')
       expect(result).toContain('data-checked="false"')
+      expect(result).not.toContain('data-evil')
     })
   })
 

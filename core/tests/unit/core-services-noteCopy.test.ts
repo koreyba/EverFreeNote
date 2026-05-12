@@ -39,10 +39,32 @@ describe('core/services/noteCopy', () => {
       const htmlWithTrailingMarkup = `${payload.html}<div>extra</div>`
 
       expect(NoteCopyService.isSelfCopyHtml(htmlWithTrailingMarkup)).toBe(false)
-      expect(NoteCopyService.unwrapSelfCopyHtml(htmlWithTrailingMarkup)).toBe(htmlWithTrailingMarkup)
+      expect(NoteCopyService.unwrapSelfCopyHtml(htmlWithTrailingMarkup)).toContain('<p>Inner</p>')
+      expect(NoteCopyService.unwrapSelfCopyHtml(htmlWithTrailingMarkup)).toContain('<div>extra</div>')
       expect(NoteCopyService.unwrapSelfCopyHtml(payload.html)).toBe('<p>Inner</p>')
     } finally {
       globalThis.DOMParser = previous
+    }
+  })
+
+  it('returns sanitized HTML when parser unwrap fails and fallback cannot match', () => {
+    const originalDOMParser = globalThis.DOMParser
+    class ThrowingDOMParser {
+      parseFromString() {
+        throw new Error('parse failed')
+      }
+    }
+    globalThis.DOMParser = ThrowingDOMParser as unknown as typeof DOMParser
+
+    try {
+      const malformedSelfCopy = `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}" onclick="alert(1)"><script>alert(1)</script><p>Safe</p>`
+      const result = NoteCopyService.unwrapSelfCopyHtml(malformedSelfCopy)
+
+      expect(result).toContain('<p>Safe</p>')
+      expect(result).not.toContain('<script')
+      expect(result).not.toContain('onclick')
+    } finally {
+      globalThis.DOMParser = originalDOMParser
     }
   })
 })

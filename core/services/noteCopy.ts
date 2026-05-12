@@ -48,13 +48,11 @@ export const NoteCopyService = {
   unwrapSelfCopyHtml(html: string): string {
     if (!html) return ''
     const normalizedHtml = html.trim()
+    const sanitizedHtml = SanitizationService.sanitize(normalizedHtml, { profile: 'editor-self-copy' })
 
     if (typeof DOMParser !== 'undefined') {
       try {
-        const doc = new DOMParser().parseFromString(
-          SanitizationService.sanitize(normalizedHtml, { profile: 'editor-self-copy' }),
-          'text/html',
-        )
+        const doc = new DOMParser().parseFromString(sanitizedHtml, 'text/html')
         const queryResult =
           typeof doc.body.querySelector === 'function'
             ? doc.body.querySelector(`[${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}"]`)
@@ -67,7 +65,7 @@ export const NoteCopyService = {
       }
     }
 
-    return unwrapSelfCopyHtmlFallback(normalizedHtml) ?? normalizedHtml
+    return unwrapSelfCopyHtmlFallback(normalizedHtml) ?? sanitizedHtml
   },
 }
 

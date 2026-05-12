@@ -83,19 +83,18 @@ flowchart TD
 
 ```ts
 type NoteCopyPayload = {
-  plainText: string
   html: string
-  source: 'everfreenote-note-body'
-  version: 1
+  text: string
 }
 ```
 
 - HTML payload contract:
   - wraps note body HTML in a lightweight EverFreeNote marker that can be detected before sanitization.
+  - version/source metadata was intentionally deferred until there is a concrete migration need; the marker is currently the source signal.
   - example marker shape:
 
 ```html
-<div data-everfreenote-copy="note-body" data-everfreenote-version="1">
+<div data-everfreenote-copy="note-body">
   ...editor html...
 </div>
 ```
@@ -103,13 +102,8 @@ type NoteCopyPayload = {
 - Paste detection extension:
 
 ```ts
-type PasteSource =
-  | 'everfreenote-self-copy'
-  | 'external'
-
-type PasteResolutionContext = {
-  source: PasteSource
-}
+NoteCopyService.isSelfCopyHtml(html: string): boolean
+NoteCopyService.unwrapSelfCopyHtml(html: string): string
 ```
 
 - Data flow notes:
@@ -127,8 +121,9 @@ type ClipboardWriteResult = {
   reason?: 'unsupported' | 'permission-denied' | 'unknown'
 }
 
-function buildNoteCopyPayload(html: string): NoteCopyPayload
-function detectEverFreeNoteSelfCopy(payload: PastePayload): boolean
+NoteCopyService.buildPayload(html: string): NoteCopyPayload
+NoteCopyService.isSelfCopyHtml(html: string): boolean
+NoteCopyService.unwrapSelfCopyHtml(html: string): string
 function resolvePaste(
   payload: PastePayload,
   options?: SmartPasteOptions,
