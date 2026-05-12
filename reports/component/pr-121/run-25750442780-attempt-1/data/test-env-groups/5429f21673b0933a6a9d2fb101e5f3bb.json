@@ -1,0 +1,1 @@
+{"id":"5429f21673b0933a6a9d2fb101e5f3bb","fullName":"cypress/component/features/notes/NoteEditor.cy.tsx#NoteEditor Component does not show delete note option when onDelete is not provided","name":"does not show delete note option when onDelete is not provided","status":"passed","testResultsByEnv":{"default":"45f5c7d8fcc05d106e39a1ce74826c8d"}}
