@@ -9,13 +9,17 @@ export async function copyNotePayloadToClipboard(payload: NoteCopyPayload): Prom
     globalThis.ClipboardItem !== undefined &&
     typeof globalThis.navigator.clipboard.write === 'function'
   ) {
-    await globalThis.navigator.clipboard.write([
-      new globalThis.ClipboardItem({
-        'text/html': new Blob([payload.html], { type: 'text/html' }),
-        'text/plain': new Blob([payload.text], { type: 'text/plain' }),
-      }),
-    ])
-    return
+    try {
+      await globalThis.navigator.clipboard.write([
+        new globalThis.ClipboardItem({
+          'text/html': new Blob([payload.html], { type: 'text/html' }),
+          'text/plain': new Blob([payload.text], { type: 'text/plain' }),
+        }),
+      ])
+      return
+    } catch {
+      // Some browsers expose rich clipboard APIs but reject HTML writes at runtime.
+    }
   }
 
   await globalThis.navigator.clipboard.writeText(payload.text)

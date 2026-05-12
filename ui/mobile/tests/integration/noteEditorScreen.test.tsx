@@ -863,6 +863,34 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       })
     })
 
+    it('shows an error toast when both HTML and plain-text clipboard writes fail', async () => {
+      ;(Clipboard.setStringAsync as jest.Mock)
+        .mockRejectedValueOnce(new Error('html unsupported'))
+        .mockRejectedValueOnce(new Error('plain unsupported'))
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      fireEvent.press(screen.getByLabelText('Copy note'))
+
+      await waitFor(() => {
+        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
+          1,
+          expect.stringContaining('<p>Test content</p>'),
+          { inputFormat: 'html' },
+        )
+        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
+          2,
+          'Test content',
+          { inputFormat: 'plainText' },
+        )
+        expect(Toast.show).toHaveBeenCalledWith({ type: 'error', text1: 'Failed to copy note' })
+      })
+    })
+
     it('opens note index menu from more options and forwards note id', async () => {
       render(<NoteEditorScreen />, { wrapper })
 
