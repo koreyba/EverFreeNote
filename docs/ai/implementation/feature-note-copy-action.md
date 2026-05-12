@@ -1,84 +1,72 @@
 ---
 phase: implementation
-title: Implementation Guide - Note Copy Action
-description: Implementation notes for note-level copy actions with EverFreeNote self-copy round-trip preservation.
+title: Implementation Notes - Web Note Copy Action
+description: Implementation notes for the web-only note copy action and self-copy smart-paste support.
 ---
 
-# Implementation Guide
+# Implementation Notes
 
-## Development Setup
-**How do we get started?**
+## Scope
 
-- Branch-only feature start: `feature-note-copy-action`
-- Dependencies were bootstrapped in:
-  - repo root: `npm ci`
-  - mobile app: `ui/mobile -> npm ci`
-- No new environment variables are expected for the first implementation pass.
+This PR keeps the note copy feature web-only. Mobile UI, mobile dependencies, and mobile tests are intentionally excluded.
 
-## Code Structure
-**How is the code organized?**
+Implemented areas:
 
-- Shared clipboard payload logic should live in a core service, for example:
-  - `core/services/noteCopy.ts`
-- Web UI wiring should stay inside existing note presentation components:
-  - `ui/web/components/features/notes/NoteView.tsx`
-  - `ui/web/components/features/notes/NoteEditor.tsx`
-- Mobile UI wiring stays in:
-  - `ui/mobile/app/note/[id].tsx`
-  - `ui/mobile/components/EditorWebView.tsx`
-- Smart-paste round-trip preservation extends:
-  - `core/services/smartPaste.ts`
-  - possibly `core/services/sanitizer.ts`
+- `core/services/noteCopy.ts`
+- `core/services/smartPaste.ts`
+- `core/services/sanitizer.ts`
+- `ui/web/lib/noteClipboard.ts`
+- `ui/web/components/features/notes/NoteView.tsx`
+- `ui/web/components/features/notes/NoteEditor.tsx`
+- Core and web tests for copy payloads, smart paste, and web actions
 
-## Implementation Notes
-**Key technical details to remember:**
+## Copy Pipeline
 
-### Core Features
-- Build a single note-body copy payload from HTML:
-  - rich HTML with EverFreeNote self-copy marker
-  - plain-text fallback derived from the same body
-- Web reading mode should use current note HTML.
-- Web editing mode should use current editor draft HTML, not initial props.
-- Mobile editing mode should read current HTML from `EditorWebViewHandle.getContent()`.
-- Mobile clipboard write should use `expo-clipboard` with `StringFormat.HTML` first and fall back to `StringFormat.PLAIN_TEXT` if the HTML write fails.
+`NoteCopyService.buildPayload(html)` returns:
 
-### Patterns & Best Practices
-- Keep copy payload building deterministic and pure.
-- Do not mix copy logic into `SmartPasteService`; detection/paste resolution and copy construction should stay separate concerns.
-- Preserve the existing architecture rule:
-  - note shell / screen owns orchestration
-  - editor component owns editor state
-  - core services own serialization/transformation logic
+- `html`: a wrapped EverFreeNote self-copy payload
+- `text`: a plain-text fallback
 
-## Integration Points
-**How do pieces connect?**
+The wrapper marker is:
 
-- Web clipboard:
-  - prefer `navigator.clipboard.write()` with `text/html` + `text/plain`
-  - fallback to `writeText()` if richer write path is unavailable
-- Mobile bridge:
-  - reuse the existing `getContent()` request/response path to capture the latest unsaved editor HTML
-- Paste:
-  - self-copy detection should happen before the generic style filtering path strips supported editor formatting
+```html
+data-everfreenote-copy="note-body"
+```
 
-## Error Handling
-**How do we handle failures?**
+Smart paste checks for this marker before running the generic sanitizer. If present, it extracts the wrapped content and sanitizes it with the self-copy profile.
 
-- Clipboard write failures must not crash note screens or the editor.
-- Web should show a clear error toast when clipboard write fails.
-- Mobile should show a clear toast/message when the WebView copy command fails or is unsupported.
-- Mobile should prefer a plain-text fallback before showing failure when HTML clipboard format is unsupported.
-- Smart-paste self-copy detection failures should fall back to the existing generic paste behavior rather than block paste entirely.
+## Web Clipboard
 
-## Performance Considerations
-**How do we keep it fast?**
+`copyNotePayloadToClipboard` attempts the best browser-supported path:
 
-- Avoid repeated editor `getHTML()` calls inside one action path; resolve once per button press.
-- Keep payload construction synchronous and linear in note size.
+1. Use `navigator.clipboard.write` with `ClipboardItem` containing `text/html` and `text/plain`.
+2. If rich write is unavailable or throws at runtime, fall back to `navigator.clipboard.writeText(payload.text)`.
+3. Let the caller show failure feedback if the fallback also fails.
 
-## Security Notes
-**What security measures are in place?**
+## Web UI
 
-- Continue treating clipboard HTML as untrusted on paste.
-- Restrict expanded preservation rules to EverFreeNote-marked self-copy payloads only.
-- Keep unsafe protocol filtering and dangerous attribute stripping in place even for self-copy.
+- Reading mode adds `Copy` between `Edit` and `Delete`.
+- Editing mode adds `Copy` between `Read` and `Save`.
+- Both headers use the same visual button treatment.
+- Editing mode copies the current draft body HTML from editor state, not only the last persisted note description.
+
+## Validation
+
+Primary validation commands:
+
+```powershell
+npm run type-check
+npx jest --config jest.config.cjs --selectProjects unit-web --runTestsByPath ui/web/tests/unit/lib/noteClipboard.test.ts ui/web/tests/unit/components/noteEditor.test.tsx ui/web/tests/unit/components/noteView.test.tsx
+npx jest --config jest.config.cjs --runTestsByPath core/tests/unit/core-services-noteCopy.test.ts core/tests/unit/core-services-sanitizer.test.ts core/tests/unit/core-services-smartPaste.test.ts core/tests/integration/smartPaste.integration.test.ts
+```
+
+Manual validation should focus on:
+
+- reading-mode copy and paste back into EverFreeNote
+- editing-mode unsaved draft copy
+- plain-text paste into a text-only target
+- rich clipboard fallback behavior where browser support can be simulated
+
+## Deferred Mobile Work
+
+Mobile copy was removed from this PR. Reintroducing it should happen in a dedicated mobile PR after confirming native clipboard behavior, WebView content retrieval, and device-level copy/paste expectations.
