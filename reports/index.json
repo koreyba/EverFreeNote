@@ -8,6 +8,34 @@
     "suiteLabels": [
       "Web Component"
     ],
+    "path": "reports/component/pr-126/run-25755514735-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/component/pr-126/run-25755514735-attempt-1/",
+    "runId": "25755514735",
+    "runAttempt": "1",
+    "prNumber": "126",
+    "ref": "revert-121-feature-note-copy-action",
+    "sha": "4561695bc5ea90deca51d5401011363f6f21fa9f",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #126",
+    "historyPath": "_history/component/history.jsonl",
+    "generatedAt": "2026-05-12T19:03:46.402Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/component/report",
+    "combinedResultsDir": ".allure-publish/component/results"
+  },
+  {
+    "family": "component",
+    "familyLabel": "Component",
+    "suites": [
+      "component"
+    ],
+    "suiteLabels": [
+      "Web Component"
+    ],
     "path": "reports/component/branch-main/run-25755536437-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/component/branch-main/run-25755536437-attempt-1/",
     "runId": "25755536437",
@@ -1602,34 +1630,6 @@
     "hasResults": true,
     "reportOutputDir": ".allure-publish/unit/report",
     "combinedResultsDir": ".allure-publish/unit/results"
-  },
-  {
-    "family": "component",
-    "familyLabel": "Component",
-    "suites": [
-      "component"
-    ],
-    "suiteLabels": [
-      "Web Component"
-    ],
-    "path": "reports/component/branch-main/run-25367349559-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/component/branch-main/run-25367349559-attempt-1/",
-    "runId": "25367349559",
-    "runAttempt": "1",
-    "prNumber": null,
-    "ref": "main",
-    "sha": "4866250f0a79dd7309d3e0d3ece9231c28087255",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "branch",
-    "scopeLabel": "main",
-    "historyPath": "_history/component/history.jsonl",
-    "generatedAt": "2026-05-05T09:15:08.076Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/component/report",
-    "combinedResultsDir": ".allure-publish/component/results"
   },
   {
     "family": "e2e",
