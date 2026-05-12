@@ -1,0 +1,1 @@
+{"id":"bb53ef2ce0776fe890c37366a3ffa106","fullName":"ui/web/tests/unit/lib/noteClipboard.test.ts#copyNotePayloadToClipboard falls back to plain text when rich clipboard write fails","name":"falls back to plain text when rich clipboard write fails","status":"passed","testResultsByEnv":{"default":"8b27fcc8227207c2e5d70a9bc4d9a7a4"}}

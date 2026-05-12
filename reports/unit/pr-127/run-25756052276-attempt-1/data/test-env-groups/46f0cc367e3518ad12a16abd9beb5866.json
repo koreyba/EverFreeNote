@@ -1,0 +1,1 @@
+{"id":"46f0cc367e3518ad12a16abd9beb5866","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer stripHtml removes links but keeps text","name":"removes links but keeps text","status":"passed","testResultsByEnv":{"default":"803d0d4d47892853f1baf3e2c7e291dc"}}

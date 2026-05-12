@@ -1,0 +1,1 @@
+{"id":"9d5e31179431f4a4a7f125e64821c28e","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste filters unsafe URLs using regex when DOMParser is unavailable","name":"filters unsafe URLs using regex when DOMParser is unavailable","status":"passed","testResultsByEnv":{"default":"6b0c568cc2aa62c9208c3cc69a1ddc4e"}}
