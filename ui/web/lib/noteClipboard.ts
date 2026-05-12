@@ -6,7 +6,7 @@ export async function copyNotePayloadToClipboard(payload: NoteCopyPayload): Prom
   }
 
   if (
-    typeof globalThis.ClipboardItem !== 'undefined' &&
+    globalThis.ClipboardItem !== undefined &&
     typeof globalThis.navigator.clipboard.write === 'function'
   ) {
     await globalThis.navigator.clipboard.write([

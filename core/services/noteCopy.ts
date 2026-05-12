@@ -86,7 +86,7 @@ function htmlToPlainText(html: string): string {
 
   const stripped = SanitizationService.stripHtml(withBreaks)
   return decodeHtmlEntities(stripped)
-    .replace(/\u00a0/g, ' ')
+    .replaceAll('\u00a0', ' ')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
