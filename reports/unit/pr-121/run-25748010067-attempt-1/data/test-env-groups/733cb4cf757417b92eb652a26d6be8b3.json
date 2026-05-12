@@ -1,0 +1,1 @@
+{"id":"733cb4cf757417b92eb652a26d6be8b3","fullName":"tests/integration/noteEditorScreen.test.tsx#NoteEditorScreen - Delete Functionality Header configuration falls back to plain-text copy when HTML clipboard write fails","name":"falls back to plain-text copy when HTML clipboard write fails","status":"passed","testResultsByEnv":{"default":"c7d8773c439a1c3d69f1a6edf5872c61"}}
