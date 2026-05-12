@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft } from "lucide-react"
+import { ChevronLeft, Copy, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
@@ -11,6 +11,9 @@ import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
+import { toast } from "sonner"
+import { NoteCopyService } from "@core/services/noteCopy"
+import { copyNotePayloadToClipboard } from "@ui/web/lib/noteClipboard"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
@@ -148,6 +151,16 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     onRead(getFormData())
   }
 
+  const handleCopy = React.useCallback(async () => {
+    try {
+      const payload = NoteCopyService.buildPayload(getFormData().description)
+      await copyNotePayloadToClipboard(payload)
+      toast.success('Note copied')
+    } catch {
+      toast.error('Failed to copy note')
+    }
+  }, [getFormData])
+
   const getExportNote = React.useCallback(() => {
     if (!noteId) return null
     const formData = getFormData()
@@ -244,10 +257,15 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         </div>
         <div className="flex flex-col items-end gap-1">
           <div className="flex gap-2 items-center">
-            <Button onClick={handleRead} variant="outline" disabled={isSaving}>
+            <Button onClick={handleRead} variant="outline" size="sm" disabled={isSaving}>
+              <Eye className="w-4 h-4 mr-2" />
               Read
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
+            <Button onClick={handleCopy} variant="outline" size="sm" disabled={isSaving} aria-label="Copy note">
+              <Copy className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">Copy</span>
+            </Button>
+            <Button onClick={handleSave} size="sm" disabled={isSaving}>
               Save
             </Button>
             {/* More actions menu — RAG controls, delete note, WordPress export */}
