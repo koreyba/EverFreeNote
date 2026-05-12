@@ -1,4 +1,5 @@
 import MarkdownIt from 'markdown-it'
+import { NoteCopyService } from '@core/services/noteCopy'
 import { SanitizationService } from '@core/services/sanitizer'
 import { normalizeHtml, plainTextToHtml } from '@core/utils/normalize-html'
 
@@ -39,7 +40,15 @@ const STRUCTURAL_TAG_PATTERN = /<(p|br|hr|ul|ol|li|h1|h2|h3|h4|h5|h6|blockquote|
 const ALLOWED_LINK_PROTOCOLS = ['http:', 'https:', 'mailto:']
 const ALLOWED_IMAGE_PROTOCOLS = ['http:', 'https:']
 // Exclude colors to avoid theme clashes from sources like Google Docs.
-const STYLE_ALLOWLIST = new Set(['font-weight', 'font-style', 'text-decoration'])
+const GENERIC_STYLE_ALLOWLIST = new Set(['font-weight', 'font-style', 'text-decoration'])
+const SELF_COPY_STYLE_ALLOWLIST = new Set([
+  ...GENERIC_STYLE_ALLOWLIST,
+  'background-color',
+  'color',
+  'font-family',
+  'font-size',
+  'text-align',
+])
 // Matches HTML that is exactly one <p>...</p> element (used to unwrap ProseMirror clipboard wrappers).
 const SINGLE_PARAGRAPH_PATTERN = /^<p[^>]*>([\s\S]*)<\/p>$/i
 const BLOCK_ELEMENT_PATTERN = /<(p|div|ul|ol|li|h[1-6]|blockquote|pre|table|hr)[\s>/]/i
@@ -117,8 +126,14 @@ function resolvePasteInternal(
 
   try {
     if (detection.type === 'html' && payload.html) {
-      const sanitized = sanitizePasteHtml(payload.html)
-      const html = unwrapSingleParagraph(sanitized)
+      const isSelfCopy = NoteCopyService.isSelfCopyHtml(payload.html)
+      const sanitized = isSelfCopy
+        ? sanitizePasteHtml(NoteCopyService.unwrapSelfCopyHtml(payload.html), {
+            profile: 'editor-self-copy',
+            styleAllowlist: SELF_COPY_STYLE_ALLOWLIST,
+          })
+        : sanitizePasteHtml(payload.html)
+      const html = isSelfCopy ? sanitized : unwrapSingleParagraph(sanitized)
       return { html, type: 'html', warnings, detection }
     }
 
@@ -236,16 +251,39 @@ function unwrapSingleParagraph(html: string): string {
   return inner
 }
 
-function sanitizePasteHtml(html: string): string {
-  const sanitized = SanitizationService.sanitize(html)
-  const withoutStyles = filterInlineStyles(sanitized)
+function sanitizePasteHtml(
+  html: string,
+  options: {
+    profile?: 'default' | 'editor-self-copy'
+    styleAllowlist?: Set<string>
+  } = {},
+): string {
+  const sanitized = SanitizationService.sanitize(html, { profile: options.profile ?? 'default' })
+  const withoutStyles = filterInlineStyles(sanitized, options.styleAllowlist ?? GENERIC_STYLE_ALLOWLIST)
   const withoutBadLinks = filterUnsafeUrls(withoutStyles)
   return normalizeHtml(withoutBadLinks)
 }
 
-function filterInlineStyles(html: string): string {
+function filterInlineStyles(html: string, styleAllowlist: Set<string>): string {
   if (typeof DOMParser === 'undefined') {
-    return html.replace(/\sstyle="[^"]*"/gi, '')
+    return html.replace(/\sstyle=(?:"([^"]*)"|'([^']*)')/gi, (_match, doubleQuoted, singleQuoted) => {
+      const styleValue = doubleQuoted ?? singleQuoted ?? ''
+      const allowed = styleValue
+        .split(';')
+        .map((entry: string) => entry.trim())
+        .filter(Boolean)
+        .map((entry: string) => {
+          const [property, ...rest] = entry.split(':')
+          if (!property) return null
+          const name = property.trim().toLowerCase()
+          if (!styleAllowlist.has(name)) return null
+          const value = rest.join(':').trim()
+          return value ? `${name}: ${value}` : null
+        })
+        .filter((entry: string | null): entry is string => Boolean(entry))
+
+      return allowed.length > 0 ? ` style="${allowed.join('; ')}"` : ''
+    })
   }
 
   const doc = new DOMParser().parseFromString(html, 'text/html')
@@ -260,7 +298,7 @@ function filterInlineStyles(html: string): string {
         const [property, ...rest] = entry.split(':')
         if (!property) return null
         const name = property.trim().toLowerCase()
-        if (!STYLE_ALLOWLIST.has(name)) return null
+        if (!styleAllowlist.has(name)) return null
         const value = rest.join(':').trim()
         return value ? `${name}: ${value}` : null
       })
