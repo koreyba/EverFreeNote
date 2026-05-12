@@ -1,0 +1,1 @@
+{"id":"d00ba9b1e144da7d87846f081f56e277","fullName":"cypress/component/auth/AuthForm.cy.tsx#AuthForm Component calls onSkipAuth when skip auth button is clicked","name":"calls onSkipAuth when skip auth button is clicked","status":"passed","testResultsByEnv":{"default":"24249765642db7b0be6b1a1f059e45d5"}}

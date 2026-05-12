@@ -1,0 +1,1 @@
+{"id":"dbacf3eb48a5ac87048056e01fb0e0ef","fullName":"cypress/component/unit/searchUtils.cy.ts#Search Utils buildTsQuery should handle special characters by stripping them","name":"should handle special characters by stripping them","status":"passed","testResultsByEnv":{"default":"96e69bc614d1e120370bd0f2a66cf1e4"}}
