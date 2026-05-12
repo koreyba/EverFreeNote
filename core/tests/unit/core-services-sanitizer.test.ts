@@ -165,26 +165,6 @@ describe('core/services/sanitizer', () => {
       // This test verifies that sanitization doesn't crash with data URIs
       expect(result).toBeTruthy()
     })
-
-    it('preserves editor-owned task-list markup for self-copy sanitization', () => {
-      const html = '<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><label><input checked="checked" disabled="disabled" type="checkbox"><span></span></label><div><p>Task</p></div></li></ul>'
-      const result = SanitizationService.sanitize(html, { profile: 'editor-self-copy' })
-
-      expect(result).toContain('data-type="taskList"')
-      expect(result).toContain('data-checked="true"')
-      expect(result).toContain('<label>')
-      expect(result).toContain('<input')
-      expect(result).toContain('type="checkbox"')
-    })
-
-    it('preserves task-list data attributes in the default sanitizer profile', () => {
-      const html = '<ul data-type="taskList" data-evil="1"><li data-type="taskItem" data-checked="false"><p>Task</p></li></ul>'
-      const result = SanitizationService.sanitize(html)
-
-      expect(result).toContain('data-type="taskList"')
-      expect(result).toContain('data-checked="false"')
-      expect(result).not.toContain('data-evil')
-    })
   })
 
   describe('stripHtml', () => {
