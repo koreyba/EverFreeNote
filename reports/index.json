@@ -1,5 +1,39 @@
 [
   {
+    "family": "unit",
+    "familyLabel": "Unit",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
+    "path": "reports/unit/pr-121/run-25746489406-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/unit/pr-121/run-25746489406-attempt-1/",
+    "runId": "25746489406",
+    "runAttempt": "1",
+    "prNumber": "121",
+    "ref": "feature-note-copy-action",
+    "sha": "f6fe049540aef4c9ba0fc62ab82198a1af6d5685",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #121",
+    "historyPath": "_history/unit/history.jsonl",
+    "generatedAt": "2026-05-12T16:05:44.452Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/unit/report",
+    "combinedResultsDir": ".allure-publish/unit/results"
+  },
+  {
     "family": "component",
     "familyLabel": "Component",
     "suites": [
@@ -1675,40 +1709,6 @@
     "scopeLabel": "PR #112",
     "historyPath": "_history/unit/history.jsonl",
     "generatedAt": "2026-05-01T15:27:31.051Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/unit/report",
-    "combinedResultsDir": ".allure-publish/unit/results"
-  },
-  {
-    "family": "unit",
-    "familyLabel": "Unit",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/unit/pr-112/run-25220103132-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/unit/pr-112/run-25220103132-attempt-1/",
-    "runId": "25220103132",
-    "runAttempt": "1",
-    "prNumber": "112",
-    "ref": "codex/allure-pages-reporting-main",
-    "sha": "72c00bfb107954fb19fec8eac1c177291c3d6b58",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #112",
-    "historyPath": "_history/unit/history.jsonl",
-    "generatedAt": "2026-05-01T15:24:26.156Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/unit/report",
     "combinedResultsDir": ".allure-publish/unit/results"

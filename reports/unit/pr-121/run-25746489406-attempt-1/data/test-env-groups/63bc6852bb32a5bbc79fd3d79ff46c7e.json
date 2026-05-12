@@ -1,0 +1,1 @@
+{"id":"63bc6852bb32a5bbc79fd3d79ff46c7e","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText newline handling converts <br> to newline","name":"converts <br> to newline","status":"passed","testResultsByEnv":{"default":"3de1d7d5552042ee830c5e9ff2c4c35d"}}
