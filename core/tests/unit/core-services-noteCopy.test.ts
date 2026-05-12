@@ -47,6 +47,16 @@ describe('core/services/noteCopy', () => {
     }
   })
 
+  it('requires the self-copy marker on the only top-level wrapper in the DOMParser path', () => {
+    const payload = NoteCopyService.buildPayload('<p>Inner</p>')
+    const htmlWithTrailingMarkup = `${payload.html}<div>extra</div>`
+    const nestedMarker = `<section>${payload.html}</section>`
+
+    expect(NoteCopyService.isSelfCopyHtml(payload.html)).toBe(true)
+    expect(NoteCopyService.isSelfCopyHtml(htmlWithTrailingMarkup)).toBe(false)
+    expect(NoteCopyService.isSelfCopyHtml(nestedMarker)).toBe(false)
+  })
+
   it('returns sanitized HTML when parser unwrap fails and fallback cannot match', () => {
     const originalDOMParser = globalThis.DOMParser
     class ThrowingDOMParser {
@@ -65,6 +75,22 @@ describe('core/services/noteCopy', () => {
       expect(result).not.toContain('onclick')
     } finally {
       globalThis.DOMParser = originalDOMParser
+    }
+  })
+
+  it('sanitizes fallback-unwrapped HTML before returning it', () => {
+    const previous = globalThis.DOMParser
+    globalThis.DOMParser = undefined as unknown as typeof DOMParser
+
+    try {
+      const unsafePayload = `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}"><p onclick="alert(1)">Safe</p><script>alert(1)</script></div>`
+      const result = NoteCopyService.unwrapSelfCopyHtml(unsafePayload)
+
+      expect(result).toContain('<p>Safe</p>')
+      expect(result).not.toContain('onclick')
+      expect(result).not.toContain('<script')
+    } finally {
+      globalThis.DOMParser = previous
     }
   })
 })

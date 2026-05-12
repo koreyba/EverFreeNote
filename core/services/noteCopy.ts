@@ -34,9 +34,7 @@ export const NoteCopyService = {
           SanitizationService.sanitize(normalizedHtml, { profile: 'editor-self-copy' }),
           'text/html',
         )
-        if (typeof doc.body.querySelector === 'function') {
-          return Boolean(doc.body.querySelector(`[${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}"]`))
-        }
+        return isTopLevelSelfCopyWrapper(doc.body)
       } catch {
         // Fall back to regex matching below.
       }
@@ -53,19 +51,20 @@ export const NoteCopyService = {
     if (typeof DOMParser !== 'undefined') {
       try {
         const doc = new DOMParser().parseFromString(sanitizedHtml, 'text/html')
-        const queryResult =
-          typeof doc.body.querySelector === 'function'
-            ? doc.body.querySelector(`[${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}"]`)
-            : null
-        if (queryResult && 'innerHTML' in queryResult && typeof queryResult.innerHTML === 'string') {
-          return queryResult.innerHTML
+        const wrapper = getTopLevelSelfCopyWrapper(doc.body)
+        if (wrapper) {
+          return wrapper.innerHTML
         }
       } catch {
         // Fall back to regex matching below.
       }
     }
 
-    return unwrapSelfCopyHtmlFallback(normalizedHtml) ?? sanitizedHtml
+    const unwrappedFallback = unwrapSelfCopyHtmlFallback(normalizedHtml)
+    if (unwrappedFallback !== null) {
+      return SanitizationService.sanitize(unwrappedFallback, { profile: 'editor-self-copy' })
+    }
+    return sanitizedHtml
   },
 }
 
@@ -125,6 +124,23 @@ function collapseExtraBlankLines(value: string): string {
   }
 
   return collapsed.join('\n')
+}
+
+function isTopLevelSelfCopyWrapper(body: HTMLElement): boolean {
+  return getTopLevelSelfCopyWrapper(body) !== null
+}
+
+function getTopLevelSelfCopyWrapper(body: HTMLElement): Element | null {
+  const wrapper = body.firstElementChild
+  if (!wrapper || body.children.length !== 1) {
+    return null
+  }
+
+  if (wrapper.tagName.toLowerCase() !== 'div') {
+    return null
+  }
+
+  return wrapper.getAttribute(EVERFREENOTE_COPY_ATTRIBUTE) === EVERFREENOTE_COPY_KIND ? wrapper : null
 }
 
 function unwrapSelfCopyHtmlFallback(html: string): string | null {
