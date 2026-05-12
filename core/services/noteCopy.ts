@@ -85,11 +85,8 @@ function htmlToPlainText(html: string): string {
     .replace(/<\/(ul|ol)>/gi, '\n')
 
   const stripped = SanitizationService.stripHtml(withBreaks)
-  return decodeHtmlEntities(stripped)
-    .replaceAll('\u00a0', ' ')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+  const normalizedText = decodeHtmlEntities(stripped).replaceAll('\u00a0', ' ')
+  return collapseExtraBlankLines(trimLineEndings(normalizedText)).trim()
 }
 
 function decodeHtmlEntities(value: string): string {
@@ -100,6 +97,34 @@ function decodeHtmlEntities(value: string): string {
   const textarea = document.createElement('textarea')
   textarea.innerHTML = value
   return textarea.value
+}
+
+function trimLineEndings(value: string): string {
+  return value
+    .split('\n')
+    .map(line => line.trimEnd())
+    .join('\n')
+}
+
+function collapseExtraBlankLines(value: string): string {
+  const lines = value.split('\n')
+  const collapsed: string[] = []
+  let blankLineCount = 0
+
+  for (const line of lines) {
+    if (line.length === 0) {
+      blankLineCount += 1
+      if (blankLineCount <= 2) {
+        collapsed.push(line)
+      }
+      continue
+    }
+
+    blankLineCount = 0
+    collapsed.push(line)
+  }
+
+  return collapsed.join('\n')
 }
 
 function unwrapSelfCopyHtmlFallback(html: string): string | null {
