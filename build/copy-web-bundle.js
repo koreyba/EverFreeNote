@@ -72,7 +72,18 @@ function extractUsedChunks(html) {
   let match;
 
   while ((match = regex.exec(html)) !== null) {
-    chunks.add(match[1]); // Extract filename only
+    const filename = match[1];
+
+    // Safety: reject path traversal or embedded path separators.
+    // The regex is permissive to allow dots and tildes in chunk names,
+    // but explicitly skip any filename that contains `..` or path
+    // separator characters which could indicate a traversal attempt.
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      console.warn(`  ⚠️ Skipping suspicious chunk filename: ${filename}`);
+      continue;
+    }
+
+    chunks.add(filename); // Extract filename only
   }
 
   // Also extract build ID for manifest files
