@@ -51,6 +51,11 @@ async function testEdgeCases() {
 
   // Test 4: Verify chunks referenced in HTML exist
   logTest('Test 4: All referenced chunks exist', 'pass');
+  // Match chunk asset URLs under /_next/static/chunks/ and capture the
+  // referenced JS/CSS path. The negated class allows arbitrary filename
+  // characters, including subdirectories such as app/page.js, while stopping
+  // before HTML attribute breaks, query/fragment delimiters, tag endings, or
+  // whitespace; it intentionally must not match embedded quotes or query strings.
   const chunkMatches = androidHtml.matchAll(/\/_next\/static\/chunks\/([^"'?#>\s]+\.(?:js|css))/gi);
   let allExist = true;
   let missingChunks = [];
