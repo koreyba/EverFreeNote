@@ -51,7 +51,7 @@ async function testEdgeCases() {
 
   // Test 4: Verify chunks referenced in HTML exist
   logTest('Test 4: All referenced chunks exist', 'pass');
-  const chunkMatches = androidHtml.matchAll(/\/_next\/static\/chunks\/([a-f0-9]+\.(?:js|css))/gi);
+  const chunkMatches = androidHtml.matchAll(/\/_next\/static\/chunks\/([^"'?#>\s]+\.(?:js|css))/gi);
   let allExist = true;
   let missingChunks = [];
 
