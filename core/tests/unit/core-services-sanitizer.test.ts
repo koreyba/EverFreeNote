@@ -1,7 +1,26 @@
 import { SanitizationService } from '@core/services/sanitizer'
+import DOMPurify from 'isomorphic-dompurify'
 
 describe('core/services/sanitizer', () => {
   describe('sanitize', () => {
+    it('falls back to DOM-free sanitization when DOMPurify throws', () => {
+      const originalImplementation = (DOMPurify.sanitize as jest.Mock).getMockImplementation()
+      ;(DOMPurify.sanitize as jest.Mock).mockImplementation(() => {
+        throw new Error('DOM unavailable')
+      })
+
+      try {
+        const html = '<p onclick="alert(1)">Hello <strong>world</strong></p><script>alert(1)</script>'
+        const result = SanitizationService.sanitize(html)
+
+        expect(result).toContain('<p>Hello <strong>world</strong></p>')
+        expect(result).not.toContain('onclick')
+        expect(result).not.toContain('<script')
+      } finally {
+        ;(DOMPurify.sanitize as jest.Mock).mockImplementation(originalImplementation as typeof DOMPurify.sanitize)
+      }
+    })
+
     it('allows safe HTML tags', () => {
       const html = '<p>Hello <b>world</b></p>'
       const result = SanitizationService.sanitize(html)
@@ -188,6 +207,22 @@ describe('core/services/sanitizer', () => {
   })
 
   describe('stripHtml', () => {
+    it('falls back to DOM-free tag stripping when DOMPurify throws', () => {
+      const originalImplementation = (DOMPurify.sanitize as jest.Mock).getMockImplementation()
+      ;(DOMPurify.sanitize as jest.Mock).mockImplementation(() => {
+        throw new Error('DOM unavailable')
+      })
+
+      try {
+        const html = '<p>Hello <b>world</b></p><script>alert(1)</script><style>body{color:red}</style>'
+        const result = SanitizationService.stripHtml(html)
+
+        expect(result).toBe('Hello world')
+      } finally {
+        ;(DOMPurify.sanitize as jest.Mock).mockImplementation(originalImplementation as typeof DOMPurify.sanitize)
+      }
+    })
+
     it('removes all HTML tags', () => {
       const html = '<p>Hello <b>world</b></p>'
       const result = SanitizationService.stripHtml(html)
