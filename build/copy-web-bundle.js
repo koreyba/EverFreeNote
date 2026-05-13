@@ -27,6 +27,15 @@ async function copyBundle() {
   // Parse index.html to extract referenced files
   const html = await fs.readFile(SOURCE_HTML, 'utf-8');
   const usedChunks = extractUsedChunks(html);
+  const missingChunks = usedChunks.filter(
+    chunk => !chunk.startsWith('_buildId:') && !fs.existsSync(path.join(SOURCE_NEXT, 'static', 'chunks', chunk))
+  );
+
+  if (missingChunks.length > 0) {
+    throw new Error(
+      `Referenced chunk files are missing from out/_next/static/chunks: ${missingChunks.join(', ')}`
+    );
+  }
 
   console.log(`  Found ${usedChunks.length} referenced chunks`);
 
@@ -54,14 +63,27 @@ async function copyBundle() {
  */
 function extractUsedChunks(html) {
   // Match: ./_next/static/chunks/abc123.js or /_next/static/chunks/abc123.css
-  // Supports both relative (./) and absolute (/) paths
-  // Captures any valid filename (letters, numbers, hyphens, underscores)
-  const regex = /\.?\/_next\/static\/chunks\/([a-zA-Z0-9_-]+\.(?:js|css))/gi;
+  // Supports both relative (./) and absolute (/) paths.
+  // Next.js chunk names may include dots and tildes, so capture everything
+  // up to the next quote/question-mark/hash separator instead of assuming
+  // a narrower filename character set.
+  const regex = /\.?\/_next\/static\/chunks\/([^"'?#>\s]+\.(?:js|css))/gi;
   const chunks = new Set();
   let match;
 
   while ((match = regex.exec(html)) !== null) {
-    chunks.add(match[1]); // Extract filename only
+    const filename = match[1];
+
+    // Safety: reject path traversal or embedded path separators.
+    // The regex is permissive to allow dots and tildes in chunk names,
+    // but explicitly skip any filename that contains `..` or path
+    // separator characters which could indicate a traversal attempt.
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      console.warn(`  ⚠️ Skipping suspicious chunk filename: ${filename}`);
+      continue;
+    }
+
+    chunks.add(filename); // Extract filename only
   }
 
   // Also extract build ID for manifest files

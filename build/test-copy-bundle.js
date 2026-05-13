@@ -6,19 +6,18 @@
 const fs = require('fs-extra');
 const path = require('path');
 
-// Import the function to test
 const { extractUsedChunks } = require('./copy-web-bundle');
 
 let passed = 0;
 let failed = 0;
 
-function test(name, fn) {
+async function test(name, fn) {
   try {
-    fn();
-    console.log(`✅ ${name}`);
+    await fn();
+    console.log(`[PASS] ${name}`);
     passed++;
   } catch (error) {
-    console.log(`❌ ${name}`);
+    console.log(`[FAIL] ${name}`);
     console.log(`   Error: ${error.message}`);
     failed++;
   }
@@ -36,79 +35,87 @@ function expect(actual) {
         throw new Error(`Expected array to contain ${JSON.stringify(item)}, got ${JSON.stringify(actual)}`);
       }
     },
-    toBeGreaterThan(n) {
-      if (actual <= n) {
-        throw new Error(`Expected ${actual} to be greater than ${n}`);
-      }
-    },
-    toHaveLength(n) {
-      if (actual.length !== n) {
-        throw new Error(`Expected length ${n}, got ${actual.length}`);
-      }
-    }
   };
 }
 
-console.log('\n🧪 Testing copy-web-bundle.js\n');
+async function run() {
+  console.log('\nTesting copy-web-bundle.js\n');
 
-// Test 1: Extract JS chunks
-test('should extract JS chunk filenames', () => {
-  const html = `<script src="/_next/static/chunks/abc123.js"></script>
-                <script src="/_next/static/chunks/def456.js"></script>`;
-  const chunks = extractUsedChunks(html);
-  expect(chunks).toContain('abc123.js');
-  expect(chunks).toContain('def456.js');
-});
+  await test('should extract JS chunk filenames', () => {
+    const html = `<script src="/_next/static/chunks/chunk-alpha.js"></script>
+                  <script src="/_next/static/chunks/chunk-beta.js"></script>`;
+    const chunks = extractUsedChunks(html);
+    expect(chunks).toContain('chunk-alpha.js');
+    expect(chunks).toContain('chunk-beta.js');
+  });
 
-// Test 2: Extract CSS chunks
-test('should extract CSS chunk filenames', () => {
-  const html = `<link href="/_next/static/chunks/db450b44a662c813.css" />`;
-  const chunks = extractUsedChunks(html);
-  expect(chunks).toContain('db450b44a662c813.css');
-});
+  await test('should extract CSS chunk filenames', () => {
+    const html = `<link href="/_next/static/chunks/chunk-style.css" />`;
+    const chunks = extractUsedChunks(html);
+    expect(chunks).toContain('chunk-style.css');
+  });
 
-// Test 3: Extract build ID
-test('should extract build ID from comment', () => {
-  const html = `<!--buildXYZ123--><html></html>`;
-  const chunks = extractUsedChunks(html);
-  expect(chunks).toContain('_buildId:buildXYZ123');
-});
+  await test('should extract chunk filenames containing dots and tildes', () => {
+    const html = `
+      <script src="/_next/static/chunks/chunk.with.dot.js"></script>
+      <script src="/_next/static/chunks/chunk~with-tilde.js"></script>
+      <script src="/_next/static/chunks/chunk.mix~with.dot.js"></script>
+    `;
+    const chunks = extractUsedChunks(html);
+    expect(chunks).toContain('chunk.with.dot.js');
+    expect(chunks).toContain('chunk~with-tilde.js');
+    expect(chunks).toContain('chunk.mix~with.dot.js');
+  });
 
-// Test 4: Handle empty HTML
-test('should handle HTML with no chunks', () => {
-  const html = `<html><body>Hello</body></html>`;
-  const chunks = extractUsedChunks(html);
-  expect(Array.isArray(chunks)).toBe(true);
-});
+  await test('should extract build ID from comment', () => {
+    const html = `<!--buildXYZ123--><html></html>`;
+    const chunks = extractUsedChunks(html);
+    expect(chunks).toContain('_buildId:buildXYZ123');
+  });
 
-// Test 5: Real HTML from build
-test('should extract chunks from real build HTML', async () => {
-  const htmlPath = path.join(__dirname, '../out/editor-webview/index.html');
-  if (fs.existsSync(htmlPath)) {
+  await test('should handle HTML with no chunks', () => {
+    const html = `<html><body>Hello</body></html>`;
+    const chunks = extractUsedChunks(html);
+    expect(Array.isArray(chunks)).toBe(true);
+  });
+
+  await test('should extract every chunk referenced in real build HTML', async () => {
+    const htmlPath = path.join(__dirname, '../out/editor-webview/index.html');
+    if (!fs.existsSync(htmlPath)) {
+      console.log('   [SKIP] out/editor-webview/index.html not found');
+      return;
+    }
+
     const html = await fs.readFile(htmlPath, 'utf-8');
     const chunks = extractUsedChunks(html);
-    expect(chunks.length).toBeGreaterThan(5); // Should have multiple chunks
-    
-    // Verify at least one JS and one CSS
-    const hasJS = chunks.some(c => c.endsWith('.js'));
-    const hasCSS = chunks.some(c => c.endsWith('.css'));
-    expect(hasJS).toBe(true);
-    expect(hasCSS).toBe(true);
-  } else {
-    console.log('   ⚠️  Skipped: out/editor-webview/index.html not found');
-  }
-});
+    // Exclude build ID entries from actual chunk list when comparing counts
+    const actualChunks = chunks.filter(c => !c.startsWith('_buildId:'));
+    const expectedChunks = [...new Set(
+      [...html.matchAll(/\.?\/_next\/static\/chunks\/([^"'?#>\s]+\.(?:js|css))/gi)]
+        .map(match => match[1])
+    )];
 
-// Test 6: Deduplication
-test('should deduplicate chunks', () => {
-  const html = `
-    <script src="/_next/static/chunks/1171f1d1e347dca2.js"></script>
-    <script src="/_next/static/chunks/1171f1d1e347dca2.js"></script>
-  `;
-  const chunks = extractUsedChunks(html);
-  const sameChunks = chunks.filter(c => c === '1171f1d1e347dca2.js');
-  expect(sameChunks.length).toBe(1);
-});
+    expect(actualChunks.length).toBe(expectedChunks.length);
+    expect(actualChunks.some(chunk => chunk.endsWith('.js'))).toBe(true);
+    expect(actualChunks.some(chunk => chunk.endsWith('.css'))).toBe(true);
+  });
 
-console.log(`\n📊 Results: ${passed} passed, ${failed} failed\n`);
-process.exit(failed > 0 ? 1 : 0);
+  await test('should deduplicate chunks', () => {
+    const html = `
+      <script src="/_next/static/chunks/chunk-dedup.js"></script>
+      <script src="/_next/static/chunks/chunk-dedup.js"></script>
+    `;
+    const chunks = extractUsedChunks(html);
+    const sameChunks = chunks.filter(chunk => chunk === 'chunk-dedup.js');
+    expect(sameChunks.length).toBe(1);
+  });
+
+  console.log(`\nResults: ${passed} passed, ${failed} failed\n`);
+  process.exit(failed > 0 ? 1 : 0);
+}
+
+run().catch(error => {
+  console.log('[FAIL] Test runner error');
+  console.log(`   Error: ${error.message}`);
+  process.exit(1);
+});
