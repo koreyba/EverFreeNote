@@ -88,14 +88,16 @@ async function run() {
 
     const html = await fs.readFile(htmlPath, 'utf-8');
     const chunks = extractUsedChunks(html);
+    // Exclude build ID entries from actual chunk list when comparing counts
+    const actualChunks = chunks.filter(c => !c.startsWith('_buildId:'));
     const expectedChunks = [...new Set(
       [...html.matchAll(/\.?\/_next\/static\/chunks\/([^"'?#>\s]+\.(?:js|css))/gi)]
         .map(match => match[1])
     )];
 
-    expect(chunks.length).toBe(expectedChunks.length);
-    expect(chunks.some(chunk => chunk.endsWith('.js'))).toBe(true);
-    expect(chunks.some(chunk => chunk.endsWith('.css'))).toBe(true);
+    expect(actualChunks.length).toBe(expectedChunks.length);
+    expect(actualChunks.some(chunk => chunk.endsWith('.js'))).toBe(true);
+    expect(actualChunks.some(chunk => chunk.endsWith('.css'))).toBe(true);
   });
 
   await test('should deduplicate chunks', () => {
