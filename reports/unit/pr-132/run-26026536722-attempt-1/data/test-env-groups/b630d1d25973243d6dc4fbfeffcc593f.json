@@ -1,0 +1,1 @@
+{"id":"b630d1d25973243d6dc4fbfeffcc593f","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer sanitize removes onerror attribute from img","name":"removes onerror attribute from img","status":"passed","testResultsByEnv":{"default":"275059a264f8471c1d5bf9a6e20abe9e"}}

@@ -1,1 +1,0 @@
-{"id":"81509d9960f50d5ad366d15adafa1962","fullName":"ui/web/tests/unit/lib/settingsNavigationState.test.ts#settingsNavigationState drops malformed stored payloads instead of returning them","name":"drops malformed stored payloads instead of returning them","status":"passed","testResultsByEnv":{"default":"1afa7a9071704accfd02e19cdf10ca70"}}
