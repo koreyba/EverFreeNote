@@ -1,0 +1,1 @@
+{"id":"ed29be15f4498c7a3155bb391212c58d","fullName":"cypress/component/core/utils/search.cy.ts#core/utils/search buildTsQuery returns null if query becomes empty after sanitization","name":"returns null if query becomes empty after sanitization","status":"passed","testResultsByEnv":{"default":"23b7ede7690a2a1260ac93c93ae39e11"}}
