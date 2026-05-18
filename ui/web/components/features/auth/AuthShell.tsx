@@ -1,9 +1,9 @@
 "use client"
 
-import { BookOpen } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import AuthForm from "@/components/AuthForm"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { BrandLogo } from "@/components/BrandLogo"
 
 interface AuthShellProps {
   enableTestAuth?: boolean
@@ -22,8 +22,8 @@ export function AuthShell({ enableTestAuth = false, onTestLogin, onSkipAuth, onG
         <Card className="w-full shadow-lg">
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-accent rounded-full">
-              <BookOpen className="w-10 h-10 text-primary" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-accent">
+              <BrandLogo className="h-16 w-16" />
             </div>
           </div>
           <CardTitle className="text-3xl font-bold">EverFreeNote</CardTitle>

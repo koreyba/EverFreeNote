@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native'
+import { Image, View, Text, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSupabase, useTheme } from '@ui/mobile/providers'
 import { useMemo, useState } from 'react'
@@ -8,11 +8,11 @@ import { getOAuthRedirectUrl, oauthAdapter } from '@ui/mobile/adapters'
 import { Button } from '@ui/mobile/components/ui'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { BookOpen } from 'lucide-react-native'
 import Svg, { Path } from 'react-native-svg'
 
 const testAuthEmail = process.env.EXPO_PUBLIC_TEST_AUTH_EMAIL ?? ''
 const testAuthPassword = process.env.EXPO_PUBLIC_TEST_AUTH_PASSWORD ?? ''
+const brandLogo = require('../../assets/adaptive-icon.png')
 
 const GoogleIcon = ({ size = 20 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -102,7 +102,7 @@ export default function LoginScreen() {
 
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <BookOpen color={colors.primary} size={40} />
+          <Image source={brandLogo} style={styles.logoImage} resizeMode="contain" />
         </View>
 
         <Text style={styles.title}>EverFreeNote</Text>
@@ -174,10 +174,15 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors'], insets: { t
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.accent,
+    backgroundColor: '#061321',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: 72,
+    height: 72,
   },
   title: {
     fontSize: 32,

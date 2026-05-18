@@ -137,7 +137,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#061321',
     },
     ios: {
       supportsTablet: true,
@@ -146,7 +146,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       adaptiveIcon: {
         foregroundImage: variantConfig.adaptiveIcon,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#061321',
       },
       package: variantConfig.androidPackage,
       permissions: ['CAMERA', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE'],
