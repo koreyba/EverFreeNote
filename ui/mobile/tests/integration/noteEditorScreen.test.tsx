@@ -270,6 +270,7 @@ import { NoteService } from '@core/services/notes'
 
 const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
 const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
 
 describe('NoteEditorScreen - Delete Functionality', () => {
   let queryClient: QueryClient
@@ -292,6 +293,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     mockSetParams.mockReset()
     mockReplace.mockReset()
     alertSpy.mockClear()
+    consoleErrorSpy.mockClear()
     ;(Clipboard.setStringAsync as jest.Mock).mockClear()
     ;(Toast.show as jest.Mock).mockClear()
     ;(mockNoteService.prototype as typeof mockNoteService.prototype & {
@@ -316,6 +318,10 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
   afterEach(() => {
     queryClient.clear()
+  })
+
+  afterAll(() => {
+    consoleErrorSpy.mockRestore()
   })
 
 
@@ -859,14 +865,19 @@ describe('NoteEditorScreen - Delete Functionality', () => {
           'Test content',
           { inputFormat: 'plainText' },
         )
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] html copy failed', {
+          name: 'Error',
+          message: 'html unsupported',
+        })
         expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
       })
     })
 
-    it('shows an error toast when both HTML and plain-text clipboard writes fail', async () => {
+    it('falls back to legacy plain-text copy when formatted clipboard writes fail', async () => {
       ;(Clipboard.setStringAsync as jest.Mock)
         .mockRejectedValueOnce(new Error('html unsupported'))
-        .mockRejectedValueOnce(new Error('plain unsupported'))
+        .mockRejectedValueOnce(new Error('formatted plain unsupported'))
+        .mockResolvedValueOnce(true)
 
       render(<NoteEditorScreen />, { wrapper })
 
@@ -887,6 +898,61 @@ describe('NoteEditorScreen - Delete Functionality', () => {
           'Test content',
           { inputFormat: 'plainText' },
         )
+        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(3, 'Test content')
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] html copy failed', {
+          name: 'Error',
+          message: 'html unsupported',
+        })
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] plainTextFormatted copy failed', {
+          name: 'Error',
+          message: 'formatted plain unsupported',
+        })
+        expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
+      })
+    })
+
+    it('shows an error toast when both HTML and plain-text clipboard writes fail', async () => {
+      ;(Clipboard.setStringAsync as jest.Mock)
+        .mockRejectedValueOnce(new Error('html unsupported'))
+        .mockRejectedValueOnce(new Error('plain unsupported'))
+        .mockRejectedValueOnce(new Error('legacy plain unsupported'))
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      fireEvent.press(screen.getByLabelText('Copy note'))
+
+      await waitFor(() => {
+        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
+          1,
+          expect.stringContaining('<p>Test content</p>'),
+          { inputFormat: 'html' },
+        )
+        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
+          2,
+          'Test content',
+          { inputFormat: 'plainText' },
+        )
+        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(3, 'Test content')
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] html copy failed', {
+          name: 'Error',
+          message: 'html unsupported',
+        })
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] plainTextFormatted copy failed', {
+          name: 'Error',
+          message: 'plain unsupported',
+        })
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] plainTextLegacy copy failed', {
+          name: 'Error',
+          message: 'legacy plain unsupported',
+        })
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] fatal copy failed', {
+          name: 'Error',
+          message: 'legacy plain unsupported',
+        })
         expect(Toast.show).toHaveBeenCalledWith({ type: 'error', text1: 'Failed to copy note' })
       })
     })

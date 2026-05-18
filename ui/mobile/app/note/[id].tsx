@@ -64,6 +64,15 @@ const getIncomingDraftSnapshot = (nextNote: NoteDraftSource): DraftSnapshot => (
   tags: nextNote.tags ?? [],
 })
 
+const logCopyFailure = (
+  stage: 'html' | 'plainTextFormatted' | 'plainTextLegacy' | 'fatal',
+  error: unknown,
+) => {
+  const name = error instanceof Error ? error.name : typeof error
+  const message = error instanceof Error ? error.message : String(error)
+  console.error(`[NoteCopy] ${stage} copy failed`, { name, message })
+}
+
 type HeaderLeftActionsProps = Readonly<{
   styles: NoteEditorHeaderStyles
   colors: ThemeColors
@@ -503,11 +512,23 @@ export default function NoteEditorScreen() {
       // only when HTML write is unavailable on the current platform/runtime.
       try {
         await Clipboard.setStringAsync(payload.html, { inputFormat: Clipboard.StringFormat.HTML })
-      } catch {
-        await Clipboard.setStringAsync(payload.text, { inputFormat: Clipboard.StringFormat.PLAIN_TEXT })
+      } catch (htmlError) {
+        logCopyFailure('html', htmlError)
+        try {
+          await Clipboard.setStringAsync(payload.text, { inputFormat: Clipboard.StringFormat.PLAIN_TEXT })
+        } catch (formattedPlainTextError) {
+          logCopyFailure('plainTextFormatted', formattedPlainTextError)
+          try {
+            await Clipboard.setStringAsync(payload.text)
+          } catch (legacyPlainTextError) {
+            logCopyFailure('plainTextLegacy', legacyPlainTextError)
+            throw legacyPlainTextError
+          }
+        }
       }
       Toast.show({ type: 'success', text1: 'Note copied' })
-    } catch {
+    } catch (copyError) {
+      logCopyFailure('fatal', copyError)
       Toast.show({ type: 'error', text1: 'Failed to copy note' })
     }
   }, [])
