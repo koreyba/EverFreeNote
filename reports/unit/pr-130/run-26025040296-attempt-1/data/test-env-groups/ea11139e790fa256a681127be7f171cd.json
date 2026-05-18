@@ -1,0 +1,1 @@
+{"id":"ea11139e790fa256a681127be7f171cd","fullName":"core/tests/integration/offlineSync.test.ts#Offline Sync Integration Create note offline workflow saves note to cache and queues mutation","name":"saves note to cache and queues mutation","status":"passed","testResultsByEnv":{"default":"6d97f7dbb702b46e72c1ee58872b6645"}}
