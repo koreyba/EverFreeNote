@@ -9,10 +9,10 @@ import { Button } from '@ui/mobile/components/ui'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
+import brandLogo from '../../assets/adaptive-icon.png'
 
 const testAuthEmail = process.env.EXPO_PUBLIC_TEST_AUTH_EMAIL ?? ''
 const testAuthPassword = process.env.EXPO_PUBLIC_TEST_AUTH_PASSWORD ?? ''
-const brandLogo = require('../../assets/adaptive-icon.png')
 
 const GoogleIcon = ({ size = 20 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
