@@ -1,0 +1,1 @@
+{"id":"3644062080a30827afed8618113700db","fullName":"cypress/component/features/search/NoteSearchItem.cy.tsx#NoteSearchItem opens context when text selection exists outside this item","name":"opens context when text selection exists outside this item","status":"passed","testResultsByEnv":{"default":"f31f8256f05b1f585d87571dbd9480f3"}}
