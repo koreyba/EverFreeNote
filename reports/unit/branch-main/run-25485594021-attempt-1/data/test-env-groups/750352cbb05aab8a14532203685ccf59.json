@@ -1,1 +1,0 @@
-{"id":"750352cbb05aab8a14532203685ccf59","fullName":"tests/integration/noteEditorUndoRedo.test.tsx#NoteEditorScreen — Undo/Redo header buttons resets undo/redo state when route switches to a different note","name":"resets undo/redo state when route switches to a different note","status":"passed","testResultsByEnv":{"default":"abf9a13aa58dc9d132a9230d3a10339a"}}
