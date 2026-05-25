@@ -1,0 +1,1 @@
+{"id":"0cf9e8ec0c7343a448335eeb2b4a8e94","fullName":"ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx#useAIPaginatedSearch refreshes accumulated snippets when only bodyContent changes after refetch","name":"refreshes accumulated snippets when only bodyContent changes after refetch","status":"passed","testResultsByEnv":{"default":"a4b1d292c77005d16a9083158ae50e8b"}}

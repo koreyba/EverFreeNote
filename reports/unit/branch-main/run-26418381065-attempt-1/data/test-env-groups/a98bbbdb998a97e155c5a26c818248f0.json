@@ -1,0 +1,1 @@
+{"id":"a98bbbdb998a97e155c5a26c818248f0","fullName":"core/tests/unit/core-services-noteCopy.test.ts#core/services/noteCopy sanitizes fallback-unwrapped HTML before returning it","name":"sanitizes fallback-unwrapped HTML before returning it","status":"passed","testResultsByEnv":{"default":"03d711687a539d2d1026f59884ff8dfc"}}
