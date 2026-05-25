@@ -1,5 +1,33 @@
 [
   {
+    "family": "component",
+    "familyLabel": "Component",
+    "suites": [
+      "component"
+    ],
+    "suiteLabels": [
+      "Web Component"
+    ],
+    "path": "reports/component/pr-132/run-26409488764-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/component/pr-132/run-26409488764-attempt-1/",
+    "runId": "26409488764",
+    "runAttempt": "1",
+    "prNumber": "132",
+    "ref": "features/add-logo",
+    "sha": "aae13a50bedb8da28d3c82096402b585a3dfe0ce",
+    "outcome": "failure",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #132",
+    "historyPath": "_history/component/history.jsonl",
+    "generatedAt": "2026-05-25T16:16:23.502Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/component/report",
+    "combinedResultsDir": ".allure-publish/component/results"
+  },
+  {
     "family": "unit",
     "familyLabel": "Unit",
     "suites": [
@@ -1621,34 +1649,6 @@
     "scopeLabel": "PR #121",
     "historyPath": "_history/component/history.jsonl",
     "generatedAt": "2026-05-12T16:18:16.405Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/component/report",
-    "combinedResultsDir": ".allure-publish/component/results"
-  },
-  {
-    "family": "component",
-    "familyLabel": "Component",
-    "suites": [
-      "component"
-    ],
-    "suiteLabels": [
-      "Web Component"
-    ],
-    "path": "reports/component/pr-121/run-25746683089-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/component/pr-121/run-25746683089-attempt-1/",
-    "runId": "25746683089",
-    "runAttempt": "1",
-    "prNumber": "121",
-    "ref": "feature-note-copy-action",
-    "sha": "92f3ba697c30c1598d87545b87d5c0af981c9355",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #121",
-    "historyPath": "_history/component/history.jsonl",
-    "generatedAt": "2026-05-12T16:15:44.483Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/component/report",
     "combinedResultsDir": ".allure-publish/component/results"
