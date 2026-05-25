@@ -1,8 +1,9 @@
 "use client"
 
-import { BookOpen, LogOut, Plus, Search, Settings } from "lucide-react"
+import { LogOut, Plus, Search, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { BrandLogo } from "@/components/BrandLogo"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
 import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
 import { User } from "@supabase/supabase-js"
@@ -80,7 +81,7 @@ export function Sidebar({
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-primary" />
+            <BrandLogo className="h-7 w-7 shrink-0" />
             <h1 className="text-xl font-bold">EverFreeNote</h1>
           </div>
           <ThemeToggle />
