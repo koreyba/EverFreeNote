@@ -1,0 +1,1 @@
+{"id":"0c6d586336216fb94f490533e489ec14","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer sanitize allows data URIs in images (if DOMPurify config permits)","name":"allows data URIs in images (if DOMPurify config permits)","status":"passed","testResultsByEnv":{"default":"d35d5450cc6a17d3c0d8339417fd0050"}}

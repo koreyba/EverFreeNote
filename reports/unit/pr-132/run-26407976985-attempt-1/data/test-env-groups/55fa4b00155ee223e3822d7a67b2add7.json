@@ -1,0 +1,1 @@
+{"id":"55fa4b00155ee223e3822d7a67b2add7","fullName":"core/tests/unit/noteAutosaveSession.test.ts#noteAutosaveSession resolveNoteAutosaveSessionChange returns switched when moving to another note","name":"returns switched when moving to another note","status":"passed","testResultsByEnv":{"default":"bce1ee43d9a89e9a275ce39ac4dd70ec"}}

@@ -1,1 +1,0 @@
-{"id":"f506ff33797e9ff8d4eb470f4a2676df","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste downgrades unsupported markdown to plain text with line breaks","name":"downgrades unsupported markdown to plain text with line breaks","status":"passed","testResultsByEnv":{"default":"5f4f38b9ac3f7c2e5777479ee278eacb"}}
