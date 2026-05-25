@@ -6,7 +6,9 @@ describe('EmptyState Component', () => {
     cy.mount(<EmptyState />)
 
     cy.contains('Select a note or create a new one').should('be.visible')
-    // Check for the icon (BookOpen)
-    cy.get('svg.lucide-book-open').should('exist')
+    cy.findByRole('img', { name: 'EverFreeNote' })
+      .should('be.visible')
+      .and('have.attr', 'src')
+      .and('include', 'everfreenote-logo-mark.png')
   })
 })
