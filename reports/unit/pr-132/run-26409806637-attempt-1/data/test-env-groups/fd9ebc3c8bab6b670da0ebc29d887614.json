@@ -1,0 +1,1 @@
+{"id":"fd9ebc3c8bab6b670da0ebc29d887614","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste filters inline styles using allowlist when DOMParser is present","name":"filters inline styles using allowlist when DOMParser is present","status":"passed","testResultsByEnv":{"default":"e4ec5264f05383f93b1007888ea2fd2d"}}

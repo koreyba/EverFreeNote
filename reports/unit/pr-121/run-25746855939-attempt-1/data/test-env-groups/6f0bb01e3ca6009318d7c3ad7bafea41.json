@@ -1,1 +1,0 @@
-{"id":"6f0bb01e3ca6009318d7c3ad7bafea41","fullName":"tests/component/useDeleteNote.test.tsx#useDeleteNote Callback handlers does not call onError when API fails but fallback succeeds","name":"does not call onError when API fails but fallback succeeds","status":"passed","testResultsByEnv":{"default":"6e69504e597b8a83cf042114026506f2"}}
