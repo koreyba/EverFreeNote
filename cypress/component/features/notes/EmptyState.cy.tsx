@@ -6,7 +6,7 @@ describe('EmptyState Component', () => {
     cy.mount(<EmptyState />)
 
     cy.contains('Select a note or create a new one').should('be.visible')
-    cy.findByRole('img', { name: 'EverFreeNote' })
+    cy.get('img[alt="EverFreeNote"]')
       .should('be.visible')
       .and('have.attr', 'src')
       .and('include', 'everfreenote-logo-mark.png')
