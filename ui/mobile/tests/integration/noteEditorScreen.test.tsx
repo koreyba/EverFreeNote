@@ -841,6 +841,56 @@ describe('NoteEditorScreen - Delete Functionality', () => {
       })
     })
 
+    it('falls back to the latest draft HTML when getContent returns only whitespace', async () => {
+      mockGetEditorContent.mockResolvedValueOnce('   ')
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onContentChange?.('<p>Draft fallback</p>')
+      })
+
+      fireEvent.press(screen.getByLabelText('Copy note'))
+
+      await waitFor(() => {
+        expect(mockGetEditorContent).toHaveBeenCalled()
+        expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+          expect.stringContaining('<p>Draft fallback</p>'),
+          { inputFormat: 'html' },
+        )
+        expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
+      })
+    })
+
+    it('falls back to the latest draft HTML when getContent rejects', async () => {
+      mockGetEditorContent.mockRejectedValueOnce(new Error('editor unavailable'))
+
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      act(() => {
+        mockEditorCallbacks.onContentChange?.('<p>Rejected fallback</p>')
+      })
+
+      fireEvent.press(screen.getByLabelText('Copy note'))
+
+      await waitFor(() => {
+        expect(mockGetEditorContent).toHaveBeenCalled()
+        expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+          expect.stringContaining('<p>Rejected fallback</p>'),
+          { inputFormat: 'html' },
+        )
+        expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
+      })
+    })
+
     it('falls back to plain-text copy when HTML clipboard write fails', async () => {
       ;(Clipboard.setStringAsync as jest.Mock)
         .mockRejectedValueOnce(new Error('html unsupported'))

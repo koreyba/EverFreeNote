@@ -61,7 +61,7 @@ flowchart TD
   MHeader --> MobileSnapshot
   MobileSnapshot --> Builder
   Rich --> MobileWriter
-  MobileWriter --> MobileFallback
+  MobileWriter -->|HTML write fails| MobileFallback
   Plain --> MobileFallback
   WebPaste --> SmartPaste
   SmartPaste -->|EverFreeNote marker detected| SelfCopy

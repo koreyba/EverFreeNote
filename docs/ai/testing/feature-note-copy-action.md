@@ -84,7 +84,7 @@ description: Testing plan for web/mobile note copy actions and EverFreeNote self
 - Completed focused validation:
   - `npx jest --config jest.config.cjs --selectProjects unit-core --runTestsByPath core/tests/unit/core-services-noteCopy.test.ts core/tests/unit/core-services-sanitizer.test.ts core/tests/unit/core-services-smartPaste.test.ts`
   - `npx jest --config jest.config.cjs --selectProjects unit-web --runTestsByPath ui/web/tests/unit/components/noteEditor.test.tsx ui/web/tests/unit/components/noteView.test.tsx`
-  - `npx jest --runTestsByPath tests/integration/noteEditorScreen.test.tsx`
+  - `npx jest --runTestsByPath ui/mobile/tests/integration/noteEditorScreen.test.tsx`
   - `npm run type-check`
   - `npm --prefix ui/mobile run type-check`
 - Full static checks before completion:

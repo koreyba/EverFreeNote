@@ -502,7 +502,12 @@ export default function NoteEditorScreen() {
 
   const handleCopy = useCallback(async () => {
     try {
-      const liveHtml = await editorRef.current?.getContent()
+      let liveHtml: string | undefined
+      try {
+        liveHtml = await editorRef.current?.getContent()
+      } catch {
+        liveHtml = undefined
+      }
       const html = liveHtml && liveHtml.trim().length > 0
         ? liveHtml
         : latestDraftRef.current.description

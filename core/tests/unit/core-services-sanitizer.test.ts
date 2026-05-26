@@ -3,7 +3,7 @@ import DOMPurify from 'isomorphic-dompurify'
 
 describe('core/services/sanitizer', () => {
   describe('sanitize', () => {
-    it('falls back to DOM-free sanitization when DOMPurify throws', () => {
+    it('falls back to escaped plain text when DOMPurify throws', () => {
       const originalImplementation = (DOMPurify.sanitize as jest.Mock).getMockImplementation()
       ;(DOMPurify.sanitize as jest.Mock).mockImplementation(() => {
         throw new Error('DOM unavailable')
@@ -13,8 +13,7 @@ describe('core/services/sanitizer', () => {
         const html = '<p onclick="alert(1)">Hello <strong>world</strong></p><script>alert(1)</script>'
         const result = SanitizationService.sanitize(html)
 
-        expect(result).toContain('<p>Hello <strong>world</strong></p>')
-        expect(result).not.toContain('onclick')
+        expect(result).toBe('Hello world')
         expect(result).not.toContain('<script')
       } finally {
         ;(DOMPurify.sanitize as jest.Mock).mockImplementation(originalImplementation as typeof DOMPurify.sanitize)
