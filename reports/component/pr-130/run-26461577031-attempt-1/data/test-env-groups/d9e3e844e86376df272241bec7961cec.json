@@ -1,0 +1,1 @@
+{"id":"d9e3e844e86376df272241bec7961cec","fullName":"cypress/component/features/notes/NoteCard.cy.tsx#NoteCard Component keeps checkbox unchecked when note is active but selection mode is off","name":"keeps checkbox unchecked when note is active but selection mode is off","status":"passed","testResultsByEnv":{"default":"f5269c1ebbe004cfb89be5e1d5574727"}}
