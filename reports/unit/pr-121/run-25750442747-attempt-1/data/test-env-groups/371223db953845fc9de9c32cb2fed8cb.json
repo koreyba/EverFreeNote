@@ -1,1 +1,0 @@
-{"id":"371223db953845fc9de9c32cb2fed8cb","fullName":"tests/integration/noteEditorUndoRedo.test.tsx#NoteEditorScreen — Undo/Redo header buttons disabled undo and redo buttons do not dispatch commands","name":"disabled undo and redo buttons do not dispatch commands","status":"passed","testResultsByEnv":{"default":"ced1a85d96d7b1a217d683b46a53dca9"}}

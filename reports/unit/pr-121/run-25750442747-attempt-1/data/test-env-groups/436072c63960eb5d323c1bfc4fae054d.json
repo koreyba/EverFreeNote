@@ -1,1 +1,0 @@
-{"id":"436072c63960eb5d323c1bfc4fae054d","fullName":"tests/integration/notesScreen.test.tsx#NotesScreen - Delete Functionality Bulk delete shows empty state after bulk delete when server has no more notes","name":"shows empty state after bulk delete when server has no more notes","status":"passed","testResultsByEnv":{"default":"a76e565b07feb0c6fcca6dbb668bd50b"}}

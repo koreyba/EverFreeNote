@@ -1,1 +1,0 @@
-{"id":"21a2ebe935ae468fbc7ddef0319f162a","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText HTML entity decoding decodes &nbsp; to space","name":"decodes &nbsp; to space","status":"passed","testResultsByEnv":{"default":"ceee7a52e8b19b11b5fe5836595dff77"}}
