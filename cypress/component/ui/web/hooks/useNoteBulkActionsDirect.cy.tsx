@@ -136,6 +136,28 @@ describe('useNoteBulkActions direct', () => {
     cy.get('@mutateAsync').should('not.have.been.called')
   })
 
+  it('deleteSelectedNotes exits without mutation when no notes are selected', () => {
+    cy.mount(<Harness selectedIds={[]} />)
+
+    cy.get('[data-cy="delete-selected"]').click()
+
+    cy.get('@mutateAsync').should('not.have.been.called')
+    cy.get('@setBulkDeleting').should('not.have.been.called')
+    cy.get('@exitSelectionMode').should('not.have.been.called')
+  })
+
+  it('deleteSelectedNotes clears state after successful selected-note deletes', () => {
+    cy.mount(<Harness selectedIds={['note-1', 'note-2']} />)
+
+    cy.get('[data-cy="delete-selected"]').click()
+
+    cy.get('@mutateAsync').should('have.callCount', 2)
+    cy.get('@setBulkDeleting').should('have.been.calledWith', true)
+    cy.get('@setSelectedNote').should('have.been.calledWith', null)
+    cy.get('@exitSelectionMode').should('have.been.calledOnce')
+    cy.get('@setBulkDeleting').should('have.been.calledWith', false)
+  })
+
   it('reports partial failures and still invalidates notes and aiSearch', () => {
     cy.mount(<Harness selectedIds={['note-1', 'note-2']} deleteShouldRejectIds={['note-2']} />)
 
