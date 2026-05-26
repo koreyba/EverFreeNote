@@ -302,6 +302,31 @@ async function expectCopyNoteUsesHtml(expectedHtml: string) {
   })
 }
 
+async function renderAndCopyNote(wrapper: ReturnType<typeof createQueryWrapper>) {
+  await renderNoteEditorScreen(wrapper)
+
+  fireEvent.press(screen.getByLabelText('Copy note'))
+}
+
+function expectClipboardWrite(
+  callNumber: number,
+  text: string | ReturnType<typeof expect.stringContaining>,
+  inputFormat?: 'html' | 'plainText',
+) {
+  if (inputFormat) {
+    expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(callNumber, text, { inputFormat })
+  } else {
+    expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(callNumber, text)
+  }
+}
+
+function expectCopyFailureLog(stage: string, message: string) {
+  expect(consoleErrorSpy).toHaveBeenCalledWith(`[NoteCopy] ${stage} copy failed`, {
+    name: 'Error',
+    message,
+  })
+}
+
 describe('NoteEditorScreen - Delete Functionality', () => {
   let queryClient: QueryClient
   let wrapper: ReturnType<typeof createQueryWrapper>
@@ -879,29 +904,12 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         .mockRejectedValueOnce(new Error('html unsupported'))
         .mockResolvedValueOnce(true)
 
-      render(<NoteEditorScreen />, { wrapper })
+      await renderAndCopyNote(wrapper)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
-      })
-
-      fireEvent.press(screen.getByLabelText('Copy note'))
-
-      await waitFor(() => {
-        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
-          1,
-          expect.stringContaining('<p>Test content</p>'),
-          { inputFormat: 'html' },
-        )
-        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
-          2,
-          'Test content',
-          { inputFormat: 'plainText' },
-        )
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] html copy failed', {
-          name: 'Error',
-          message: 'html unsupported',
-        })
+        expectClipboardWrite(1, expect.stringContaining('<p>Test content</p>'), 'html')
+        expectClipboardWrite(2, 'Test content', 'plainText')
+        expectCopyFailureLog('html', 'html unsupported')
         expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
       })
     })
@@ -912,34 +920,14 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         .mockRejectedValueOnce(new Error('formatted plain unsupported'))
         .mockResolvedValueOnce(true)
 
-      render(<NoteEditorScreen />, { wrapper })
+      await renderAndCopyNote(wrapper)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
-      })
-
-      fireEvent.press(screen.getByLabelText('Copy note'))
-
-      await waitFor(() => {
-        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
-          1,
-          expect.stringContaining('<p>Test content</p>'),
-          { inputFormat: 'html' },
-        )
-        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
-          2,
-          'Test content',
-          { inputFormat: 'plainText' },
-        )
-        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(3, 'Test content')
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] html copy failed', {
-          name: 'Error',
-          message: 'html unsupported',
-        })
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] plainTextFormatted copy failed', {
-          name: 'Error',
-          message: 'formatted plain unsupported',
-        })
+        expectClipboardWrite(1, expect.stringContaining('<p>Test content</p>'), 'html')
+        expectClipboardWrite(2, 'Test content', 'plainText')
+        expectClipboardWrite(3, 'Test content')
+        expectCopyFailureLog('html', 'html unsupported')
+        expectCopyFailureLog('plainTextFormatted', 'formatted plain unsupported')
         expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
       })
     })
@@ -950,38 +938,15 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         .mockRejectedValueOnce(new Error('plain unsupported'))
         .mockRejectedValueOnce(new Error('legacy plain unsupported'))
 
-      render(<NoteEditorScreen />, { wrapper })
+      await renderAndCopyNote(wrapper)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
-      })
-
-      fireEvent.press(screen.getByLabelText('Copy note'))
-
-      await waitFor(() => {
-        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
-          1,
-          expect.stringContaining('<p>Test content</p>'),
-          { inputFormat: 'html' },
-        )
-        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(
-          2,
-          'Test content',
-          { inputFormat: 'plainText' },
-        )
-        expect(Clipboard.setStringAsync).toHaveBeenNthCalledWith(3, 'Test content')
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] html copy failed', {
-          name: 'Error',
-          message: 'html unsupported',
-        })
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] plainTextFormatted copy failed', {
-          name: 'Error',
-          message: 'plain unsupported',
-        })
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] plainTextLegacy copy failed', {
-          name: 'Error',
-          message: 'legacy plain unsupported',
-        })
+        expectClipboardWrite(1, expect.stringContaining('<p>Test content</p>'), 'html')
+        expectClipboardWrite(2, 'Test content', 'plainText')
+        expectClipboardWrite(3, 'Test content')
+        expectCopyFailureLog('html', 'html unsupported')
+        expectCopyFailureLog('plainTextFormatted', 'plain unsupported')
+        expectCopyFailureLog('plainTextLegacy', 'legacy plain unsupported')
         expect(consoleErrorSpy).toHaveBeenCalledWith('[NoteCopy] fatal copy failed', {
           name: 'Error',
           message: 'legacy plain unsupported',
