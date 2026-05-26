@@ -1,0 +1,1 @@
+{"id":"933672bf18f0bb12f597201de3304cce","fullName":"core/tests/unit/core-services-noteCopy.test.ts#core/services/noteCopy requires the self-copy marker on the only top-level wrapper in the DOMParser path","name":"requires the self-copy marker on the only top-level wrapper in the DOMParser path","status":"passed","testResultsByEnv":{"default":"99ce4d54f8de3deb3389f306d9a65ccb"}}
