@@ -102,7 +102,26 @@ function removeTagBlocks(html: string, tagNames: string[]): string {
 }
 
 function stripHtmlTags(html: string): string {
-  return html.replace(/<[^>]*>/g, '')
+  let stripped = ''
+  let insideTag = false
+
+  for (const character of html) {
+    if (character === '<') {
+      insideTag = true
+      continue
+    }
+
+    if (character === '>') {
+      insideTag = false
+      continue
+    }
+
+    if (!insideTag) {
+      stripped += character
+    }
+  }
+
+  return stripped
 }
 
 function escapeHtml(value: string): string {

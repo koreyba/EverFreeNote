@@ -272,6 +272,36 @@ const mockNoteService = NoteService as jest.MockedClass<typeof NoteService>
 const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
 
+async function renderNoteEditorScreen(
+  wrapper: ReturnType<typeof createQueryWrapper>,
+  draftHtml?: string,
+) {
+  render(<NoteEditorScreen />, { wrapper })
+
+  await waitFor(() => {
+    expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+  })
+
+  if (draftHtml) {
+    act(() => {
+      mockEditorCallbacks.onContentChange?.(draftHtml)
+    })
+  }
+}
+
+async function expectCopyNoteUsesHtml(expectedHtml: string) {
+  fireEvent.press(screen.getByLabelText('Copy note'))
+
+  await waitFor(() => {
+    expect(mockGetEditorContent).toHaveBeenCalled()
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
+      expect.stringContaining(expectedHtml),
+      { inputFormat: 'html' },
+    )
+    expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
+  })
+}
+
 describe('NoteEditorScreen - Delete Functionality', () => {
   let queryClient: QueryClient
   let wrapper: ReturnType<typeof createQueryWrapper>
@@ -823,72 +853,25 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     })
 
     it('copies the live editor HTML from the header copy button', async () => {
-      render(<NoteEditorScreen />, { wrapper })
+      await renderNoteEditorScreen(wrapper)
 
-      await waitFor(() => {
-        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
-      })
-
-      fireEvent.press(screen.getByLabelText('Copy note'))
-
-      await waitFor(() => {
-        expect(mockGetEditorContent).toHaveBeenCalled()
-        expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
-          expect.stringContaining('<p>Test content</p>'),
-          { inputFormat: 'html' },
-        )
-        expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
-      })
+      await expectCopyNoteUsesHtml('<p>Test content</p>')
     })
 
     it('falls back to the latest draft HTML when getContent returns only whitespace', async () => {
       mockGetEditorContent.mockResolvedValueOnce('   ')
 
-      render(<NoteEditorScreen />, { wrapper })
+      await renderNoteEditorScreen(wrapper, '<p>Draft fallback</p>')
 
-      await waitFor(() => {
-        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
-      })
-
-      act(() => {
-        mockEditorCallbacks.onContentChange?.('<p>Draft fallback</p>')
-      })
-
-      fireEvent.press(screen.getByLabelText('Copy note'))
-
-      await waitFor(() => {
-        expect(mockGetEditorContent).toHaveBeenCalled()
-        expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
-          expect.stringContaining('<p>Draft fallback</p>'),
-          { inputFormat: 'html' },
-        )
-        expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
-      })
+      await expectCopyNoteUsesHtml('<p>Draft fallback</p>')
     })
 
     it('falls back to the latest draft HTML when getContent rejects', async () => {
       mockGetEditorContent.mockRejectedValueOnce(new Error('editor unavailable'))
 
-      render(<NoteEditorScreen />, { wrapper })
+      await renderNoteEditorScreen(wrapper, '<p>Rejected fallback</p>')
 
-      await waitFor(() => {
-        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
-      })
-
-      act(() => {
-        mockEditorCallbacks.onContentChange?.('<p>Rejected fallback</p>')
-      })
-
-      fireEvent.press(screen.getByLabelText('Copy note'))
-
-      await waitFor(() => {
-        expect(mockGetEditorContent).toHaveBeenCalled()
-        expect(Clipboard.setStringAsync).toHaveBeenCalledWith(
-          expect.stringContaining('<p>Rejected fallback</p>'),
-          { inputFormat: 'html' },
-        )
-        expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
-      })
+      await expectCopyNoteUsesHtml('<p>Rejected fallback</p>')
     })
 
     it('falls back to plain-text copy when HTML clipboard write fails', async () => {
