@@ -1,0 +1,1 @@
+{"id":"081b3c8b4272fb7c36197df05cd37dff","fullName":"cypress/component/features/search/NoteSearchItem.cy.tsx#NoteSearchItem does not open context when text selection is inside this item","name":"does not open context when text selection is inside this item","status":"passed","testResultsByEnv":{"default":"f6eb4d3c514b19774a937470b2c82e7a"}}

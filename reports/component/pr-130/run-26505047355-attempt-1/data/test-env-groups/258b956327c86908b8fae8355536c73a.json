@@ -1,0 +1,1 @@
+{"id":"258b956327c86908b8fae8355536c73a","fullName":"cypress/component/lib/adapters/browser.cy.ts#WebBrowserAdapter calls window.prompt and returns result","name":"calls window.prompt and returns result","status":"passed","testResultsByEnv":{"default":"eb1052a9fd3f48e3b3f107f18543d8fd"}}
