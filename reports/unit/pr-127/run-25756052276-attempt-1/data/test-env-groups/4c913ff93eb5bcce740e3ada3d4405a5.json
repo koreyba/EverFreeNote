@@ -1,1 +1,0 @@
-{"id":"4c913ff93eb5bcce740e3ada3d4405a5","fullName":"core/tests/integration/smartPaste.integration.test.ts#smartPaste integration handles unclosed fenced code blocks without crashing","name":"handles unclosed fenced code blocks without crashing","status":"passed","testResultsByEnv":{"default":"04ffbd3aed56939c9b530212258a30c4"}}
