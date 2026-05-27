@@ -47,7 +47,9 @@ description: Baseline unit/component/integration testing setup for the React Nat
 - [x] Search → fetch flow, tag filtering cache entries, offline fallback, and sync queueing.
 
 ## End-to-End Tests
-- [ ] Deferred (Detox/Appium planned after unit/integration baseline).
+- [x] Minimal Maestro foundation added for Android/dev-build smoke coverage.
+- [x] Clipboard smoke flow added via `.maestro/flows/note-copy-smoke.yaml`.
+- [ ] Expand from the clipboard harness into full note-creation and note-paste end-to-end flows.
 
 ## Test Data
 - AsyncStorage mocked via jest async-storage mock.
@@ -63,7 +65,8 @@ description: Baseline unit/component/integration testing setup for the React Nat
 - Jest uses force-exit due to React Native/Expo open handles; use `npx jest --runInBand --detectOpenHandles` for investigation.
 
 ## Manual Testing
-- N/A for testing foundation changes.
+- Maestro clipboard harness route: `everfreenote-dev://dev/maestro/clipboard`
+- Local run command: `npm run test:e2e:mobile:copy`
 
 ## Performance Testing
 - N/A.

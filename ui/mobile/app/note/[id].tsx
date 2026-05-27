@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Alert, Pressable, View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
-import * as Clipboard from 'expo-clipboard'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
@@ -21,6 +20,7 @@ import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
 import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
 import { ShareNoteDialog } from '@ui/mobile/components/ShareNoteDialog'
 import { rememberMobileNoteCopyPayload } from '@ui/mobile/utils/noteClipboardCache'
+import { writeNoteCopyPayloadToClipboard } from '@ui/mobile/utils/writeNoteCopyPayloadToClipboard'
 
 const CONTENT_HORIZONTAL_PADDING = 16
 const HEADER_BUTTON_PADDING = 8
@@ -66,7 +66,7 @@ const getIncomingDraftSnapshot = (nextNote: NoteDraftSource): DraftSnapshot => (
 })
 
 const logCopyFailure = (
-  stage: 'html' | 'plainTextFormatted' | 'plainTextLegacy' | 'fatal',
+  stage: 'fatal',
   error: unknown,
 ) => {
   const name = error instanceof Error ? error.name : typeof error
@@ -513,25 +513,7 @@ export default function NoteEditorScreen() {
         ? liveHtml
         : latestDraftRef.current.description
       const payload = NoteCopyService.buildPayload(html)
-      // Expo clipboard accepts one string format per write, so mobile prioritizes
-      // rich HTML for EverFreeNote round-trip fidelity and falls back to plain text
-      // only when HTML write is unavailable on the current platform/runtime.
-      try {
-        await Clipboard.setStringAsync(payload.html, { inputFormat: Clipboard.StringFormat.HTML })
-      } catch (htmlError) {
-        logCopyFailure('html', htmlError)
-        try {
-          await Clipboard.setStringAsync(payload.text, { inputFormat: Clipboard.StringFormat.PLAIN_TEXT })
-        } catch (formattedPlainTextError) {
-          logCopyFailure('plainTextFormatted', formattedPlainTextError)
-          try {
-            await Clipboard.setStringAsync(payload.text)
-          } catch (legacyPlainTextError) {
-            logCopyFailure('plainTextLegacy', legacyPlainTextError)
-            throw legacyPlainTextError
-          }
-        }
-      }
+      await writeNoteCopyPayloadToClipboard(payload)
       rememberMobileNoteCopyPayload(payload)
       Toast.show({ type: 'success', text1: 'Note copied' })
     } catch (copyError) {

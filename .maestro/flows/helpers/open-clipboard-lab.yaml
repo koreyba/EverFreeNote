@@ -1,0 +1,7 @@
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: false
+- openLink:
+    link: ${DEEPLINK_URL}
+- assertVisible: "Clipboard Copy Smoke Test"

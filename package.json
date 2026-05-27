@@ -48,7 +48,8 @@
     "act:list": "act -l",
     "act:build": "act -W .github/workflows/build.yml",
     "act:e2e": "act -W .github/workflows/e2e-tests.yml",
-    "act:component": "act -W .github/workflows/component-tests.yml"
+    "act:component": "act -W .github/workflows/component-tests.yml",
+    "test:e2e:mobile:copy": "powershell -ExecutionPolicy Bypass -File ./scripts/maestro/run-copy-smoke.ps1"
   },
   "dependencies": {
     "@babel/runtime": "^7.29.2",
