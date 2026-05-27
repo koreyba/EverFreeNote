@@ -3,8 +3,10 @@
 import * as React from "react"
 import { EditorContent, useEditor, type Editor } from "@tiptap/react"
 import { createDocument } from "@tiptap/core"
+import { DOMSerializer } from "@tiptap/pm/model"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { editorExtensions } from "./editorExtensions"
+import { NoteCopyService } from "@core/services/noteCopy"
 import { SmartPasteService } from "@core/services/smartPaste"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
 import { applySelectionAsMarkdown } from "@ui/web/lib/editor"
@@ -48,6 +50,43 @@ const RichTextEditorWebView = React.forwardRef<
     applySelectionAsMarkdown(editor, onContentChange)
   }, [onContentChange])
 
+  const sendNativeMessage = React.useCallback((message: { type: string; payload?: unknown }) => {
+    const reactNativeWebView = (globalThis as unknown as {
+      ReactNativeWebView?: { postMessage: (message: string) => void }
+    }).ReactNativeWebView
+
+    reactNativeWebView?.postMessage(JSON.stringify(message))
+    return Boolean(reactNativeWebView)
+  }, [])
+
+  const getSelectedHtml = React.useCallback((editor: Editor) => {
+    const { selection } = editor.state
+    if (selection.empty) return ''
+
+    const container = document.createElement('div')
+    const serializer = DOMSerializer.fromSchema(editor.schema)
+    container.appendChild(serializer.serializeFragment(selection.content().content))
+    return container.innerHTML
+  }, [])
+
+  const handleCopy = React.useCallback((_: unknown, event: ClipboardEvent) => {
+    const editor = editorRef.current
+    if (!editor) return false
+
+    const selectedHtml = getSelectedHtml(editor)
+    if (!selectedHtml.trim()) return false
+
+    const payload = NoteCopyService.buildPayload(selectedHtml)
+    sendNativeMessage({ type: 'MOBILE_NOTE_COPY_PAYLOAD', payload })
+
+    if (!event.clipboardData) return false
+
+    event.clipboardData.setData('text/html', payload.html)
+    event.clipboardData.setData('text/plain', payload.text)
+    event.preventDefault()
+    return true
+  }, [getSelectedHtml, sendNativeMessage])
+
   const applyPastePayload = React.useCallback((payload: MobileClipboardPastePayload) => {
     const editor = editorRef.current
     if (!editor) return false
@@ -72,14 +111,9 @@ const RichTextEditorWebView = React.forwardRef<
 
   const handlePaste = React.useCallback((_: unknown, event: ClipboardEvent) => {
     if (!event.clipboardData) {
-      const reactNativeWebView = (globalThis as unknown as {
-        ReactNativeWebView?: { postMessage: (message: string) => void }
-      }).ReactNativeWebView
-
-      if (!reactNativeWebView) return false
+      if (!sendNativeMessage({ type: 'CLIPBOARD_PASTE_REQUEST' })) return false
 
       event.preventDefault()
-      reactNativeWebView.postMessage(JSON.stringify({ type: 'CLIPBOARD_PASTE_REQUEST' }))
       return true
     }
 
@@ -88,7 +122,7 @@ const RichTextEditorWebView = React.forwardRef<
 
     event.preventDefault()
     return applyPastePayload(payload)
-  }, [applyPastePayload])
+  }, [applyPastePayload, sendNativeMessage])
 
   // Handle background clicks (padding/gaps) in a ProseMirror-native way.
   // This prevents "jump to end" when clicking internal vertical gaps (e.g. after headings),
@@ -119,9 +153,12 @@ const RichTextEditorWebView = React.forwardRef<
         class: "focus:outline-none",
       },
       handlePaste,
+      handleDOMEvents: {
+        copy: handleCopy,
+      },
       handleClick,
     }),
-    [handlePaste, handleClick]
+    [handleCopy, handlePaste, handleClick]
   )
 
   const editor = useEditor({

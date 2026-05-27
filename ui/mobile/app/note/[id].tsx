@@ -20,6 +20,7 @@ import {
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
 import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
 import { ShareNoteDialog } from '@ui/mobile/components/ShareNoteDialog'
+import { rememberMobileNoteCopyPayload } from '@ui/mobile/utils/noteClipboardCache'
 
 const CONTENT_HORIZONTAL_PADDING = 16
 const HEADER_BUTTON_PADDING = 8
@@ -531,6 +532,7 @@ export default function NoteEditorScreen() {
           }
         }
       }
+      rememberMobileNoteCopyPayload(payload)
       Toast.show({ type: 'success', text1: 'Note copied' })
     } catch (copyError) {
       logCopyFailure('fatal', copyError)

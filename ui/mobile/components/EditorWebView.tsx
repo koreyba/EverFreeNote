@@ -8,6 +8,10 @@ import { getSupabaseConfig } from '@ui/mobile/adapters'
 import { useTheme } from '@ui/mobile/providers'
 import { consumeChunkedMessage, sendChunkedText, type ChunkBufferStore } from '@core/utils/editorWebViewBridge'
 import { getLocalBundleUrl } from '@ui/mobile/utils/localBundle'
+import {
+    getMatchingMobileNoteCopyPayload,
+    rememberMobileNoteCopyPayload,
+} from '@ui/mobile/utils/noteClipboardCache'
 
 export type EditorWebViewHandle = {
     setContent: (html: string) => void
@@ -137,16 +141,18 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     Clipboard.getStringAsync({ preferredFormat: Clipboard.StringFormat.HTML }),
                     Clipboard.getStringAsync({ preferredFormat: Clipboard.StringFormat.PLAIN_TEXT }),
                 ])
-                const hasHtml = html.trim().length > 0
+                const matchingSelfCopy = getMatchingMobileNoteCopyPayload(text)
+                const bridgedHtml = matchingSelfCopy?.html ?? html
+                const hasHtml = bridgedHtml.trim().length > 0
                 const hasText = text.length > 0
                 post({
                     type: 'APPLY_CLIPBOARD_PASTE',
                     payload: {
-                        html: hasHtml ? html : null,
-                        text: hasText ? text : null,
+                        html: hasHtml ? bridgedHtml : null,
+                        text: hasText ? text : matchingSelfCopy?.text ?? null,
                         types: [
                             ...(hasHtml ? ['text/html'] : []),
-                            ...(hasText ? ['text/plain'] : []),
+                            ...(hasText || matchingSelfCopy ? ['text/plain'] : []),
                         ],
                     },
                 })
@@ -312,6 +318,16 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     case 'CLIPBOARD_PASTE_REQUEST':
                         void handleClipboardPasteRequest()
                         break
+                    case 'MOBILE_NOTE_COPY_PAYLOAD': {
+                        const noteCopyPayload = payload as { html?: unknown; text?: unknown } | null
+                        if (typeof noteCopyPayload?.html === 'string' && typeof noteCopyPayload.text === 'string') {
+                            rememberMobileNoteCopyPayload({
+                                html: noteCopyPayload.html,
+                                text: noteCopyPayload.text,
+                            })
+                        }
+                        break
+                    }
                     case 'IMAGE_ERROR': {
                         const p = (payload ?? {}) as { src?: unknown; message?: unknown }
                         console.error('[EditorWebView] Image failed to load:', p.src, p.message)

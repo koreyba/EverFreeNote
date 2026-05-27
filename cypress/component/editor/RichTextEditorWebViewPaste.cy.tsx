@@ -40,6 +40,21 @@ function simulatePasteNoClipboard() {
   })
 }
 
+function simulateCopyNoClipboard() {
+  cy.window().then((win) => {
+    cy.get('.ProseMirror').then(($el) => {
+      const range = win.document.createRange()
+      range.selectNodeContents($el[0])
+      const selection = win.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+
+      const event = new Event('copy', { bubbles: true, cancelable: true })
+      $el[0].dispatchEvent(event)
+    })
+  })
+}
+
 function mountEditor(content = '') {
   cy.mount(<RichTextEditorWebView initialContent={content} />)
 }
@@ -115,6 +130,31 @@ describe('RichTextEditorWebView – Smart Paste', () => {
 
       cy.get('.ProseMirror h1').should('contain.text', 'Mobile Title')
       cy.get('.ProseMirror h2').should('contain.text', 'Mobile Subtitle')
+    })
+
+    it('sends selected heading HTML to React Native cache during mobile copy', () => {
+      mountEditor('<h1>Copied Title</h1><h2>Copied Subtitle</h2>')
+      cy.window().then((win) => {
+        ;(win as unknown as { ReactNativeWebView: { postMessage: (message: string) => void } }).ReactNativeWebView = {
+          postMessage: cy.stub().as('postNativeMessage'),
+        }
+      })
+      cy.get('.ProseMirror').click().type('{ctrl+a}')
+
+      simulateCopyNoClipboard()
+
+      cy.get('@postNativeMessage').should('have.been.calledOnce')
+      cy.get('@postNativeMessage').then((stub) => {
+        const postMessage = stub as unknown as { getCall: (index: number) => { args: unknown[] } }
+        const message = JSON.parse(String(postMessage.getCall(0).args[0])) as {
+          type: string
+          payload: { html: string; text: string }
+        }
+        expect(message.type).to.equal('MOBILE_NOTE_COPY_PAYLOAD')
+        expect(message.payload.html).to.include('<h1>Copied Title</h1>')
+        expect(message.payload.html).to.include('<h2>Copied Subtitle</h2>')
+        expect(message.payload.text).to.equal('Copied Title\n\nCopied Subtitle')
+      })
     })
   })
 

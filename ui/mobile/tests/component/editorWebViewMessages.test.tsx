@@ -5,6 +5,10 @@
 import React from 'react'
 import { act, render, waitFor } from '@testing-library/react-native'
 import * as Clipboard from 'expo-clipboard'
+import {
+  clearMobileNoteCopyPayload,
+  rememberMobileNoteCopyPayload,
+} from '@ui/mobile/utils/noteClipboardCache'
 
 // Mock WebView
 const mockPostMessage = jest.fn()
@@ -75,6 +79,12 @@ describe('EditorWebView message handling', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     capturedOnMessage = null
+    ;(Clipboard.getStringAsync as jest.Mock).mockImplementation(
+      async ({ preferredFormat }: { preferredFormat?: string } = {}) =>
+        preferredFormat === 'html'
+          ? '<h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2>'
+          : 'Clipboard Heading\nClipboard Subheading'
+    )
     warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
     errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -82,6 +92,7 @@ describe('EditorWebView message handling', () => {
   afterEach(() => {
     warnSpy.mockRestore()
     errorSpy.mockRestore()
+    clearMobileNoteCopyPayload()
   })
 
   const sendMessage = (type: string, payload?: unknown) => {
@@ -172,6 +183,72 @@ describe('EditorWebView message handling', () => {
             payload: {
               html: '<h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2>',
               text: 'Clipboard Heading\nClipboard Subheading',
+              types: ['text/html', 'text/plain'],
+            },
+          })
+        )
+      })
+    })
+
+    it('uses the cached EverFreeNote HTML when native clipboard only returns matching plain text', async () => {
+      ;(Clipboard.getStringAsync as jest.Mock).mockImplementation(
+        async ({ preferredFormat }: { preferredFormat?: string } = {}) =>
+          preferredFormat === 'html' ? '' : 'Clipboard Heading Clipboard Subheading'
+      )
+      rememberMobileNoteCopyPayload({
+        html: '<div data-everfreenote-copy="note-body"><h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2></div>',
+        text: 'Clipboard Heading\n\nClipboard Subheading',
+      })
+
+      render(<EditorWebView initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('CLIPBOARD_PASTE_REQUEST')
+
+      await waitFor(() => {
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'APPLY_CLIPBOARD_PASTE',
+            payload: {
+              html: '<div data-everfreenote-copy="note-body"><h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2></div>',
+              text: 'Clipboard Heading Clipboard Subheading',
+              types: ['text/html', 'text/plain'],
+            },
+          })
+        )
+      })
+    })
+  })
+
+  describe('MOBILE_NOTE_COPY_PAYLOAD handling', () => {
+    it('caches selected editor HTML from the WebView and reuses it when paste only has matching plain text', async () => {
+      ;(Clipboard.getStringAsync as jest.Mock).mockImplementation(
+        async ({ preferredFormat }: { preferredFormat?: string } = {}) =>
+          preferredFormat === 'html' ? '' : 'Selected Heading Selected Subheading'
+      )
+
+      render(<EditorWebView initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('MOBILE_NOTE_COPY_PAYLOAD', {
+        html: '<div data-everfreenote-copy="note-body"><h1>Selected Heading</h1><h2>Selected Subheading</h2></div>',
+        text: 'Selected Heading\n\nSelected Subheading',
+      })
+      sendMessage('CLIPBOARD_PASTE_REQUEST')
+
+      await waitFor(() => {
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'APPLY_CLIPBOARD_PASTE',
+            payload: {
+              html: '<div data-everfreenote-copy="note-body"><h1>Selected Heading</h1><h2>Selected Subheading</h2></div>',
+              text: 'Selected Heading Selected Subheading',
               types: ['text/html', 'text/plain'],
             },
           })
