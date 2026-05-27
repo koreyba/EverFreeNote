@@ -1,0 +1,1 @@
+{"id":"23c9df1d966688ec8e554adb04f52725","fullName":"tests/component/swipeableNoteCard.test.tsx#SwipeableNoteCard does not call onDelete multiple times on rapid presses","name":"does not call onDelete multiple times on rapid presses","status":"passed","testResultsByEnv":{"default":"a9956d02f8a0ac8087e4a48c5347c40f"}}
