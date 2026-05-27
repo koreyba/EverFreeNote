@@ -4,6 +4,7 @@
  */
 import React from 'react'
 import { act, render, waitFor } from '@testing-library/react-native'
+import * as Clipboard from 'expo-clipboard'
 
 // Mock WebView
 const mockPostMessage = jest.fn()
@@ -34,6 +35,18 @@ jest.mock('expo-constants', () => ({
   expoConfig: {
     extra: {},
     hostUri: 'localhost:8081',
+  },
+}))
+
+jest.mock('expo-clipboard', () => ({
+  getStringAsync: jest.fn(async ({ preferredFormat }: { preferredFormat?: string } = {}) =>
+    preferredFormat === 'html'
+      ? '<h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2>'
+      : 'Clipboard Heading\nClipboard Subheading'
+  ),
+  StringFormat: {
+    HTML: 'html',
+    PLAIN_TEXT: 'plainText',
   },
 }))
 
@@ -137,6 +150,33 @@ describe('EditorWebView message handling', () => {
       sendMessage('CONTENT_ON_BLUR', null)
 
       expect(onContentChange).toHaveBeenCalledWith('')
+    })
+  })
+
+  describe('CLIPBOARD_PASTE_REQUEST handling', () => {
+    it('reads native HTML and plain text clipboard values and posts them to the WebView editor', async () => {
+      render(<EditorWebView initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('CLIPBOARD_PASTE_REQUEST')
+
+      await waitFor(() => {
+        expect(Clipboard.getStringAsync).toHaveBeenCalledWith({ preferredFormat: 'html' })
+        expect(Clipboard.getStringAsync).toHaveBeenCalledWith({ preferredFormat: 'plainText' })
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'APPLY_CLIPBOARD_PASTE',
+            payload: {
+              html: '<h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2>',
+              text: 'Clipboard Heading\nClipboard Subheading',
+              types: ['text/html', 'text/plain'],
+            },
+          })
+        )
+      })
     })
   })
 

@@ -2,6 +2,7 @@
 import { StyleSheet, View, ActivityIndicator, Text, Pressable } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import Constants from 'expo-constants'
+import * as Clipboard from 'expo-clipboard'
 import NetInfo from '@react-native-community/netinfo'
 import { getSupabaseConfig } from '@ui/mobile/adapters'
 import { useTheme } from '@ui/mobile/providers'
@@ -128,6 +129,30 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
 
         const sendText = useCallback((type: string, text: string) => {
             sendChunkedText(post, type, text)
+        }, [post])
+
+        const handleClipboardPasteRequest = useCallback(async () => {
+            try {
+                const [html, text] = await Promise.all([
+                    Clipboard.getStringAsync({ preferredFormat: Clipboard.StringFormat.HTML }),
+                    Clipboard.getStringAsync({ preferredFormat: Clipboard.StringFormat.PLAIN_TEXT }),
+                ])
+                const hasHtml = html.trim().length > 0
+                const hasText = text.length > 0
+                post({
+                    type: 'APPLY_CLIPBOARD_PASTE',
+                    payload: {
+                        html: hasHtml ? html : null,
+                        text: hasText ? text : null,
+                        types: [
+                            ...(hasHtml ? ['text/html'] : []),
+                            ...(hasText ? ['text/plain'] : []),
+                        ],
+                    },
+                })
+            } catch (error) {
+                console.error('[EditorWebView] Failed to read clipboard for paste:', error)
+            }
         }, [post])
 
         const fallbackToLocal = useCallback((reason: EditorWebViewSource['reason'], errorMessage?: string) => {
@@ -283,6 +308,9 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                             contentResolver.current(String(payload ?? ''))
                             contentResolver.current = null
                         }
+                        break
+                    case 'CLIPBOARD_PASTE_REQUEST':
+                        void handleClipboardPasteRequest()
                         break
                     case 'IMAGE_ERROR': {
                         const p = (payload ?? {}) as { src?: unknown; message?: unknown }

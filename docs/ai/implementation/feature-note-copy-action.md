@@ -9,7 +9,7 @@ description: Implementation notes for note-level copy actions with EverFreeNote 
 ## Development Setup
 **How do we get started?**
 
-- Branch-only feature start: `feature-note-copy-action`
+- Work on the active feature branch for this workstream.
 - Dependencies were bootstrapped in:
   - repo root: `npm ci`
   - mobile app: `ui/mobile -> npm ci`
@@ -58,6 +58,10 @@ description: Implementation notes for note-level copy actions with EverFreeNote 
   - fallback to `writeText()` if richer write path is unavailable
 - Mobile bridge:
   - reuse the existing `getContent()` request/response path to capture the latest unsaved editor HTML
+- Mobile paste bridge:
+  - Android/iOS WebView paste events can arrive without `clipboardData`; do not let that path fall through to native plain-text paste when React Native is available.
+  - `RichTextEditorWebView` sends `CLIPBOARD_PASTE_REQUEST` to React Native, `EditorWebView` reads `expo-clipboard` as `StringFormat.HTML` plus `StringFormat.PLAIN_TEXT`, then posts `APPLY_CLIPBOARD_PASTE` back into the web editor.
+  - The web editor applies the bridged payload through `SmartPasteService`, so EverFreeNote self-copy HTML preserves headings, lists, and other supported structure.
 - Paste:
   - self-copy detection should happen before the generic style filtering path strips supported editor formatting
 

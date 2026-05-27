@@ -44,28 +44,77 @@ function mountEditor(content = '') {
   cy.mount(<RichTextEditorWebView initialContent={content} />)
 }
 
+function mountEditorWithBridge(content = '') {
+  const Harness = () => {
+    const editorRef = React.useRef<React.ElementRef<typeof RichTextEditorWebView>>(null)
+
+    return (
+      <>
+        <button
+          type="button"
+          data-cy="apply-mobile-paste"
+          onClick={() => {
+            editorRef.current?.applyClipboardPaste({
+              html: '<h1>Mobile Title</h1><h2>Mobile Subtitle</h2>',
+              text: 'Mobile Title\nMobile Subtitle',
+              types: ['text/html', 'text/plain'],
+            })
+          }}
+        >
+          Apply Mobile Paste
+        </button>
+        <RichTextEditorWebView ref={editorRef} initialContent={content} />
+      </>
+    )
+  }
+
+  cy.mount(<Harness />)
+}
+
 describe('RichTextEditorWebView – Smart Paste', () => {
   /**
-   * Mobile WebView guard: when event.clipboardData is null (common on Android/iOS),
-   * handlePaste must return false and let the platform handle the paste natively.
-   * SmartPasteService must NOT be called.
+   * Mobile WebView bridge: Android/iOS paste events commonly omit clipboardData.
+   * The editor must stop native plain-text paste and ask React Native for HTML.
    */
-  describe('null clipboardData guard – Android/iOS WebView fallback', () => {
-    it('does not call SmartPasteService.resolvePaste when clipboardData is missing', () => {
+  describe('null clipboardData bridge - Android/iOS WebView', () => {
+    it('requests native clipboard data when clipboardData is missing', () => {
       cy.spy(SmartPasteService, 'resolvePaste').as('resolvePaste')
       mountEditor('<p>Existing content</p>')
+      cy.window().then((win) => {
+        ;(win as unknown as { ReactNativeWebView: { postMessage: (message: string) => void } }).ReactNativeWebView = {
+          postMessage: cy.stub().as('postNativeMessage'),
+        }
+      })
 
       simulatePasteNoClipboard()
 
       cy.get('@resolvePaste').should('not.have.been.called')
+      cy.get('@postNativeMessage').should('have.been.calledOnce')
+      cy.get('@postNativeMessage').then((stub) => {
+        const postMessage = stub as unknown as { getCall: (index: number) => { args: unknown[] } }
+        const message = JSON.parse(String(postMessage.getCall(0).args[0])) as { type: string }
+        expect(message.type).to.equal('CLIPBOARD_PASTE_REQUEST')
+      })
     })
 
-    it('preserves existing editor content when clipboardData is null', () => {
+    it('preserves existing editor content when clipboardData is null outside React Native', () => {
       mountEditor('<p>Should not change</p>')
+      cy.window().then((win) => {
+        ;(win as unknown as { ReactNativeWebView?: unknown }).ReactNativeWebView = undefined
+      })
 
       simulatePasteNoClipboard()
 
       cy.get('.ProseMirror p').should('contain.text', 'Should not change')
+    })
+
+    it('preserves headings from native HTML clipboard payloads', () => {
+      mountEditorWithBridge('')
+
+      cy.get('[data-cy="apply-mobile-paste"]').click()
+
+      cy.get('.ProseMirror h1').should('contain.text', 'Mobile Title')
+      cy.get('.ProseMirror h2').should('contain.text', 'Mobile Subtitle')
     })
   })
 

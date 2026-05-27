@@ -14,8 +14,15 @@ import { scrollEditorToChunk } from "./chunkFocusUtils"
 export type RichTextEditorWebViewHandle = {
   getHTML: () => string
   setContent: (html: string) => void
+  applyClipboardPaste: (payload: MobileClipboardPastePayload) => void
   runCommand: (command: string, ...args: unknown[]) => void
   scrollToChunk: (charOffset: number, chunkLength: number) => void
+}
+
+export type MobileClipboardPastePayload = {
+  html?: string | null
+  text?: string | null
+  types?: string[]
 }
 
 type RichTextEditorWebViewProps = {
@@ -41,16 +48,18 @@ const RichTextEditorWebView = React.forwardRef<
     applySelectionAsMarkdown(editor, onContentChange)
   }, [onContentChange])
 
-  const handlePaste = React.useCallback((_: unknown, event: ClipboardEvent) => {
-    if (!event.clipboardData) return false
+  const applyPastePayload = React.useCallback((payload: MobileClipboardPastePayload) => {
     const editor = editorRef.current
     if (!editor) return false
 
-    const payload = SmartPasteService.buildPayload(event)
-    if (!payload.html && !payload.text) return false
+    const pastePayload = {
+      html: payload.html?.trim().length ? payload.html : null,
+      text: payload.text?.length ? payload.text : null,
+      types: payload.types ?? [],
+    }
+    if (!pastePayload.html && !pastePayload.text) return false
 
-    const result = SmartPasteService.resolvePaste(payload)
-    event.preventDefault()
+    const result = SmartPasteService.resolvePaste(pastePayload)
     suppressNextUpdateRef.current = true
     editor.chain().focus().insertContent(result.html).run()
 
@@ -60,6 +69,26 @@ const RichTextEditorWebView = React.forwardRef<
 
     return true
   }, [onContentChange])
+
+  const handlePaste = React.useCallback((_: unknown, event: ClipboardEvent) => {
+    if (!event.clipboardData) {
+      const reactNativeWebView = (globalThis as unknown as {
+        ReactNativeWebView?: { postMessage: (message: string) => void }
+      }).ReactNativeWebView
+
+      if (!reactNativeWebView) return false
+
+      event.preventDefault()
+      reactNativeWebView.postMessage(JSON.stringify({ type: 'CLIPBOARD_PASTE_REQUEST' }))
+      return true
+    }
+
+    const payload = SmartPasteService.buildPayload(event)
+    if (!payload.html && !payload.text) return false
+
+    event.preventDefault()
+    return applyPastePayload(payload)
+  }, [applyPastePayload])
 
   // Handle background clicks (padding/gaps) in a ProseMirror-native way.
   // This prevents "jump to end" when clicking internal vertical gaps (e.g. after headings),
@@ -160,6 +189,9 @@ const RichTextEditorWebView = React.forwardRef<
           .setMeta("addToHistory", false)
         editor.view.dispatch(tr)
       },
+      applyClipboardPaste: (payload: MobileClipboardPastePayload) => {
+        applyPastePayload(payload)
+      },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return
         executeEditorCommand({
@@ -177,7 +209,7 @@ const RichTextEditorWebView = React.forwardRef<
         scrollEditorToChunk(editor, charOffset, chunkLength)
       },
     }),
-    [editor, handleApplySelectionAsMarkdown]
+    [applyPastePayload, editor, handleApplySelectionAsMarkdown]
   )
 
   return (

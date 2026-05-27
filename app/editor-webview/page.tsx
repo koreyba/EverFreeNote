@@ -3,7 +3,10 @@
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import DOMPurify from 'isomorphic-dompurify'
-import RichTextEditorWebView, { type RichTextEditorWebViewHandle } from '@/ui/web/components/RichTextEditorWebView'
+import RichTextEditorWebView, {
+  type MobileClipboardPastePayload,
+  type RichTextEditorWebViewHandle,
+} from '@/ui/web/components/RichTextEditorWebView'
 import { consumeChunkedMessage, sendChunkedText, type ChunkBufferStore } from '@core/utils/editorWebViewBridge'
 
 declare global {
@@ -175,6 +178,8 @@ export default function EditorWebViewPage() {
               editorRef.current.runCommand(method, ...(Array.isArray(args) ? args : []))
             }
           }
+        } else if (type === 'APPLY_CLIPBOARD_PASTE') {
+          editorRef.current?.applyClipboardPaste((payload ?? {}) as MobileClipboardPastePayload)
         } else if (type === 'SCROLL_TO_CHUNK') {
           const { charOffset, chunkLength } = (payload ?? {}) as {
             charOffset?: unknown
