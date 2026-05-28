@@ -7,19 +7,21 @@ import {
     StyleSheet,
     ActivityIndicator,
 } from 'react-native'
-import { Database, Share2, Trash2 } from 'lucide-react-native'
+import { Database, Globe, Share2, Trash2 } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '@ui/mobile/providers'
 import { useSupabase } from '@ui/mobile/providers/SupabaseProvider'
 import { useRagStatus } from '@ui/mobile/hooks/useRagStatus'
 import { logRagIndexDebugChunks } from '@core/rag/debugLog'
 import { parseRagIndexResult } from '@core/rag/indexResult'
+import { WordPressSettingsService } from '@core/services/wordpressSettings'
 
 type NoteIndexMenuProps = Readonly<{
     noteId: string
     visible: boolean
     onClose: () => void
     onShareNote?: () => void
+    onExportToWordPress?: () => void
 }>
 
 type NoteIndexMenuStyles = ReturnType<typeof createStyles>
@@ -76,16 +78,24 @@ function ShareNoteAction({
     )
 }
 
-export function NoteIndexMenu({ noteId, visible, onClose, onShareNote }: NoteIndexMenuProps) {
+export function NoteIndexMenu({
+    noteId,
+    visible,
+    onClose,
+    onShareNote,
+    onExportToWordPress,
+}: NoteIndexMenuProps) {
     const { colors } = useTheme()
     const insets = useSafeAreaInsets()
     const { client } = useSupabase()
     const styles = useMemo(() => createStyles(colors), [colors])
     const { chunkCount, indexedAt, isLoading, refresh } = useRagStatus(noteId)
+    const wordpressSettingsService = useMemo(() => new WordPressSettingsService(client), [client])
 
     const [operation, setOperation] = useState<Operation>(null)
     const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false)
     const [toastMessage, setToastMessage] = useState<{ text: string; isError: boolean } | null>(null)
+    const [wordpressConfigured, setWordpressConfigured] = useState(false)
     const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const isIndexed = chunkCount > 0
@@ -103,6 +113,32 @@ export function NoteIndexMenu({ noteId, visible, onClose, onShareNote }: NoteInd
         }
     }, [])
 
+    useEffect(() => {
+        let isMounted = true
+
+        if (!visible || !onExportToWordPress) {
+            setWordpressConfigured(false)
+            return () => {
+                isMounted = false
+            }
+        }
+
+        void (async () => {
+            try {
+                const status = await wordpressSettingsService.getStatus()
+                if (!isMounted) return
+                setWordpressConfigured(Boolean(status.configured && status.integration?.enabled))
+            } catch {
+                if (!isMounted) return
+                setWordpressConfigured(false)
+            }
+        })()
+
+        return () => {
+            isMounted = false
+        }
+    }, [onExportToWordPress, visible, wordpressSettingsService])
+
     const handleClose = useCallback(() => {
         // Prevent closing while an operation is in progress
         if (isBusy) return
@@ -114,6 +150,12 @@ export function NoteIndexMenu({ noteId, visible, onClose, onShareNote }: NoteInd
         onClose()
         onShareNote?.()
     }, [isBusy, onClose, onShareNote])
+
+    const handleExportToWordPress = useCallback(() => {
+        if (isBusy) return
+        onClose()
+        onExportToWordPress?.()
+    }, [isBusy, onClose, onExportToWordPress])
 
     const showToast = useCallback((text: string, isError = false) => {
         if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
@@ -225,6 +267,31 @@ export function NoteIndexMenu({ noteId, visible, onClose, onShareNote }: NoteInd
                                 onShareNote={handleShareNote}
                                 styles={styles}
                             />
+                        ) : null}
+
+                        {wordpressConfigured && onExportToWordPress ? (
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.actionButton,
+                                    pressed && !isBusy && styles.actionButtonPressed,
+                                    isBusy && styles.actionButtonDisabled,
+                                ]}
+                                onPress={handleExportToWordPress}
+                                disabled={isBusy}
+                                accessibilityRole="button"
+                                accessibilityLabel="Export to WordPress"
+                                accessibilityState={{ disabled: isBusy }}
+                            >
+                                <View style={styles.actionButtonContent}>
+                                    <Globe size={20} color={isBusy ? colors.mutedForeground : colors.foreground} style={styles.actionIcon} />
+                                    <View style={styles.actionTextContent}>
+                                        <Text style={[styles.actionButtonText, isBusy && styles.actionButtonTextDisabled]}>
+                                            Export to WordPress
+                                        </Text>
+                                        <Text style={styles.actionButtonDescription}>Publish this note using your saved blog settings</Text>
+                                    </View>
+                                </View>
+                            </Pressable>
                         ) : null}
 
                         {/* Index / Re-index button */}
