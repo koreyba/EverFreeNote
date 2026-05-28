@@ -1,1 +1,0 @@
-{"id":"60680df74ecec59eff02dade345548bf","fullName":"tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText HTML entity decoding decodes hex numeric entities","name":"decodes hex numeric entities","status":"passed","testResultsByEnv":{"default":"f877fd9e9dea04d1909c5234e631b835"}}
