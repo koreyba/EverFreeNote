@@ -1,1 +1,0 @@
-{"id":"ec0ebc011c7c754a2aa5879a8e9bb559","fullName":"core/tests/unit/editorWebViewBridge.test.ts#editorWebViewBridge sends chunked messages for long text","name":"sends chunked messages for long text","status":"passed","testResultsByEnv":{"default":"5ff80cb547a1b80df3af485cd2393763"}}
