@@ -29,6 +29,45 @@ type ThemeColors = ReturnType<typeof useTheme>['colors']
 
 type Operation = 'indexing' | 'deleting' | null
 
+function useWordPressExportAvailability(
+    visible: boolean,
+    onExportToWordPress: (() => void) | undefined,
+    wordpressSettingsService: WordPressSettingsService
+) {
+    const [wordpressConfigured, setWordpressConfigured] = useState(false)
+
+    useEffect(() => {
+        let isMounted = true
+
+        if (!visible || !onExportToWordPress) {
+            setWordpressConfigured(false)
+            return () => {
+                isMounted = false
+            }
+        }
+
+        ;(async () => {
+            try {
+                const status = await wordpressSettingsService.getStatus()
+                if (!isMounted) return
+                setWordpressConfigured(Boolean(status.configured && status.integration?.enabled))
+            } catch {
+                if (!isMounted) return
+                setWordpressConfigured(false)
+            }
+        })().catch(() => {
+            if (!isMounted) return
+            setWordpressConfigured(false)
+        })
+
+        return () => {
+            isMounted = false
+        }
+    }, [onExportToWordPress, visible, wordpressSettingsService])
+
+    return wordpressConfigured
+}
+
 async function extractErrorMessage(err: unknown, fallback: string): Promise<string> {
     if (!(err instanceof Error)) return fallback
     const ctx = (err as Error & { context?: unknown }).context
@@ -78,6 +117,43 @@ function ShareNoteAction({
     )
 }
 
+function WordPressExportAction({
+    colors,
+    disabled,
+    onPress,
+    styles,
+}: Readonly<{
+    colors: ThemeColors
+    disabled: boolean
+    onPress: () => void
+    styles: NoteIndexMenuStyles
+}>) {
+    return (
+        <Pressable
+            style={({ pressed }) => [
+                styles.actionButton,
+                pressed && !disabled && styles.actionButtonPressed,
+                disabled && styles.actionButtonDisabled,
+            ]}
+            onPress={onPress}
+            disabled={disabled}
+            accessibilityRole="button"
+            accessibilityLabel="Export to WordPress"
+            accessibilityState={{ disabled }}
+        >
+            <View style={styles.actionButtonContent}>
+                <Globe size={20} color={disabled ? colors.mutedForeground : colors.foreground} style={styles.actionIcon} />
+                <View style={styles.actionTextContent}>
+                    <Text style={[styles.actionButtonText, disabled && styles.actionButtonTextDisabled]}>
+                        Export to WordPress
+                    </Text>
+                    <Text style={styles.actionButtonDescription}>Publish this note using your saved blog settings</Text>
+                </View>
+            </View>
+        </Pressable>
+    )
+}
+
 export function NoteIndexMenu({
     noteId,
     visible,
@@ -95,7 +171,6 @@ export function NoteIndexMenu({
     const [operation, setOperation] = useState<Operation>(null)
     const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false)
     const [toastMessage, setToastMessage] = useState<{ text: string; isError: boolean } | null>(null)
-    const [wordpressConfigured, setWordpressConfigured] = useState(false)
     const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const isIndexed = chunkCount > 0
@@ -103,6 +178,7 @@ export function NoteIndexMenu({
     const isStatusPending = isLoading && !isBusy
     const isIndexActionDisabled = isBusy || isStatusPending
     const isDeleteActionDisabled = isBusy || isStatusPending || !isIndexed
+    const wordpressConfigured = useWordPressExportAvailability(visible, onExportToWordPress, wordpressSettingsService)
 
     useEffect(() => {
         return () => {
@@ -112,32 +188,6 @@ export function NoteIndexMenu({
             }
         }
     }, [])
-
-    useEffect(() => {
-        let isMounted = true
-
-        if (!visible || !onExportToWordPress) {
-            setWordpressConfigured(false)
-            return () => {
-                isMounted = false
-            }
-        }
-
-        void (async () => {
-            try {
-                const status = await wordpressSettingsService.getStatus()
-                if (!isMounted) return
-                setWordpressConfigured(Boolean(status.configured && status.integration?.enabled))
-            } catch {
-                if (!isMounted) return
-                setWordpressConfigured(false)
-            }
-        })()
-
-        return () => {
-            isMounted = false
-        }
-    }, [onExportToWordPress, visible, wordpressSettingsService])
 
     const handleClose = useCallback(() => {
         // Prevent closing while an operation is in progress
@@ -270,28 +320,12 @@ export function NoteIndexMenu({
                         ) : null}
 
                         {wordpressConfigured && onExportToWordPress ? (
-                            <Pressable
-                                style={({ pressed }) => [
-                                    styles.actionButton,
-                                    pressed && !isBusy && styles.actionButtonPressed,
-                                    isBusy && styles.actionButtonDisabled,
-                                ]}
-                                onPress={handleExportToWordPress}
+                            <WordPressExportAction
+                                colors={colors}
                                 disabled={isBusy}
-                                accessibilityRole="button"
-                                accessibilityLabel="Export to WordPress"
-                                accessibilityState={{ disabled: isBusy }}
-                            >
-                                <View style={styles.actionButtonContent}>
-                                    <Globe size={20} color={isBusy ? colors.mutedForeground : colors.foreground} style={styles.actionIcon} />
-                                    <View style={styles.actionTextContent}>
-                                        <Text style={[styles.actionButtonText, isBusy && styles.actionButtonTextDisabled]}>
-                                            Export to WordPress
-                                        </Text>
-                                        <Text style={styles.actionButtonDescription}>Publish this note using your saved blog settings</Text>
-                                    </View>
-                                </View>
-                            </Pressable>
+                                onPress={handleExportToWordPress}
+                                styles={styles}
+                            />
                         ) : null}
 
                         {/* Index / Re-index button */}

@@ -46,6 +46,51 @@ const normalizeLatin = (value: string) =>
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
 
+const collapseRepeatedHyphens = (value: string): string => {
+  let result = ''
+  let previousWasHyphen = false
+
+  for (const ch of value) {
+    if (ch === '-') {
+      if (!previousWasHyphen) {
+        result += ch
+      }
+      previousWasHyphen = true
+      continue
+    }
+
+    result += ch
+    previousWasHyphen = false
+  }
+
+  return result
+}
+
+const trimEdgeHyphens = (value: string): string => {
+  let start = 0
+  let end = value.length
+
+  while (start < end && value[start] === '-') {
+    start += 1
+  }
+
+  while (end > start && value[end - 1] === '-') {
+    end -= 1
+  }
+
+  return value.slice(start, end)
+}
+
+const trimTrailingDots = (value: string): string => {
+  let end = value.length
+
+  while (end > 0 && value[end - 1] === '.') {
+    end -= 1
+  }
+
+  return value.slice(0, end)
+}
+
 export const slugifyLatin = (value: string): string => {
   const input = normalizeLatin(value.trim().toLowerCase())
   let result = ''
@@ -66,10 +111,7 @@ export const slugifyLatin = (value: string): string => {
     }
   }
 
-  result = result
-    .replace(/-+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '')
+  result = trimEdgeHyphens(collapseRepeatedHyphens(result))
 
   if (!result) return FALLBACK_SLUG
   if (result.length <= MAX_SLUG_LENGTH) return result
@@ -111,10 +153,12 @@ export const getPublishedTagForSite = (siteUrl: string): string | null => {
   const raw = siteUrl.trim().toLowerCase()
   if (!raw) return null
 
-  const withScheme = /^https?:\/\//.test(raw) ? raw : `https://${raw}`
+  const withScheme = raw.startsWith('http://') || raw.startsWith('https://')
+    ? raw
+    : `https://${raw}`
 
   try {
-    const hostname = new URL(withScheme).hostname.replace(/\.+$/, '')
+    const hostname = trimTrailingDots(new URL(withScheme).hostname)
     if (!hostname) return null
     return `${hostname}_published`
   } catch {

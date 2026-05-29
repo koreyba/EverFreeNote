@@ -36,6 +36,9 @@ type FeedbackState =
   | { variant: 'success'; message: string; postUrl: string }
   | null
 
+const readErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback
+
 export function WordPressPublishDialog({ note, visible, onClose }: WordPressPublishDialogProps) {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
@@ -119,8 +122,12 @@ export function WordPressPublishDialog({ note, visible, onClose }: WordPressPubl
   useEffect(() => {
     if (!visible) return
     resetForm()
-    void loadCategories()
-    void loadPublishedTag()
+    loadCategories().catch((error) => {
+      setCategoryError(readErrorMessage(error, 'Failed to load categories'))
+    })
+    loadPublishedTag().catch(() => {
+      setPublishedTag(null)
+    })
   }, [loadCategories, loadPublishedTag, resetForm, visible])
 
   useEffect(() => {
@@ -155,8 +162,8 @@ export function WordPressPublishDialog({ note, visible, onClose }: WordPressPubl
         next.add(id)
       }
 
-      void persistCategoryPreference(Array.from(next)).catch((error) => {
-        setCategoryError(error instanceof Error ? error.message : 'Failed to save category preference')
+      persistCategoryPreference(Array.from(next)).catch((error) => {
+        setCategoryError(readErrorMessage(error, 'Failed to save category preference'))
       })
 
       return next
@@ -223,6 +230,58 @@ export function WordPressPublishDialog({ note, visible, onClose }: WordPressPubl
     }
   }, [client, exportService, note.id, note.tags, publishedTag, selectedCategoryIds, shouldAddPublishedTag, slug, tags, title])
 
+  let categoriesContent: React.ReactNode
+
+  if (isLoadingCategories) {
+    categoriesContent = (
+      <View style={styles.placeholderCard}>
+        <Text style={styles.placeholderText}>Loading categories...</Text>
+      </View>
+    )
+  } else if (categoryError) {
+    categoriesContent = (
+      <View style={styles.errorCard}>
+        <Text style={styles.errorText}>{categoryError}</Text>
+      </View>
+    )
+  } else if (categories.length === 0) {
+    categoriesContent = (
+      <View style={styles.placeholderCard}>
+        <Text style={styles.placeholderText}>No categories returned by WordPress.</Text>
+      </View>
+    )
+  } else {
+    categoriesContent = (
+      <View style={styles.categoryList}>
+        {categories.map((category) => {
+          const selected = selectedCategoryIds.has(category.id)
+          return (
+            <Pressable
+              key={category.id}
+              accessibilityRole="checkbox"
+              accessibilityLabel={`Category ${category.name}`}
+              accessibilityState={{ checked: selected, disabled: isSubmitting }}
+              disabled={isSubmitting}
+              onPress={() => toggleCategory(category.id)}
+              style={({ pressed }) => [
+                styles.categoryRow,
+                selected && styles.categoryRowSelected,
+                pressed && !isSubmitting ? styles.categoryRowPressed : null,
+              ]}
+            >
+              {selected ? (
+                <CheckSquare size={18} color={colors.primary} />
+              ) : (
+                <Square size={18} color={colors.mutedForeground} />
+              )}
+              <Text style={styles.categoryText}>{category.name}</Text>
+            </Pressable>
+          )
+        })}
+      </View>
+    )
+  }
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <Pressable style={styles.overlay} onPress={handleClose} />
@@ -264,7 +323,11 @@ export function WordPressPublishDialog({ note, visible, onClose }: WordPressPubl
               <Button
                 variant="ghost"
                 size="sm"
-                onPress={() => void loadCategories()}
+                onPress={() => {
+                  loadCategories().catch((error) => {
+                    setCategoryError(readErrorMessage(error, 'Failed to load categories'))
+                  })
+                }}
                 disabled={isLoadingCategories || isSubmitting}
               >
                 <View style={styles.reloadButtonContent}>
@@ -278,47 +341,7 @@ export function WordPressPublishDialog({ note, visible, onClose }: WordPressPubl
               </Button>
             </View>
 
-            {isLoadingCategories ? (
-              <View style={styles.placeholderCard}>
-                <Text style={styles.placeholderText}>Loading categories...</Text>
-              </View>
-            ) : categoryError ? (
-              <View style={styles.errorCard}>
-                <Text style={styles.errorText}>{categoryError}</Text>
-              </View>
-            ) : categories.length === 0 ? (
-              <View style={styles.placeholderCard}>
-                <Text style={styles.placeholderText}>No categories returned by WordPress.</Text>
-              </View>
-            ) : (
-              <View style={styles.categoryList}>
-                {categories.map((category) => {
-                  const selected = selectedCategoryIds.has(category.id)
-                  return (
-                    <Pressable
-                      key={category.id}
-                      accessibilityRole="checkbox"
-                      accessibilityLabel={`Category ${category.name}`}
-                      accessibilityState={{ checked: selected, disabled: isSubmitting }}
-                      disabled={isSubmitting}
-                      onPress={() => toggleCategory(category.id)}
-                      style={({ pressed }) => [
-                        styles.categoryRow,
-                        selected && styles.categoryRowSelected,
-                        pressed && !isSubmitting ? styles.categoryRowPressed : null,
-                      ]}
-                    >
-                      {selected ? (
-                        <CheckSquare size={18} color={colors.primary} />
-                      ) : (
-                        <Square size={18} color={colors.mutedForeground} />
-                      )}
-                      <Text style={styles.categoryText}>{category.name}</Text>
-                    </Pressable>
-                  )
-                })}
-              </View>
-            )}
+            {categoriesContent}
           </View>
 
           <View style={styles.section}>
@@ -396,7 +419,17 @@ export function WordPressPublishDialog({ note, visible, onClose }: WordPressPubl
                 <CheckCircle2 size={18} color={colors.primary} />
                 <Text style={styles.successText}>{feedback.message}</Text>
               </View>
-              <Button variant="ghost" onPress={() => void handleOpenPost()}>
+              <Button
+                variant="ghost"
+                onPress={() => {
+                  handleOpenPost().catch((error) => {
+                    setFeedback({
+                      variant: 'error',
+                      message: readErrorMessage(error, 'Failed to open the published post'),
+                    })
+                  })
+                }}
+              >
                 <View style={styles.openPostButtonContent}>
                   <ExternalLink size={16} color={colors.foreground} style={styles.inlineIcon} />
                   <Text style={styles.openPostButtonText}>Open post</Text>
@@ -410,7 +443,17 @@ export function WordPressPublishDialog({ note, visible, onClose }: WordPressPubl
           <Button variant="outline" onPress={handleClose} disabled={isSubmitting}>
             Close
           </Button>
-          <Button onPress={() => void handleSubmit()} disabled={isSubmitting || isLoadingCategories}>
+          <Button
+            onPress={() => {
+              handleSubmit().catch((error) => {
+                setFeedback({
+                  variant: 'error',
+                  message: readErrorMessage(error, 'Export failed'),
+                })
+              })
+            }}
+            disabled={isSubmitting || isLoadingCategories}
+          >
             {isSubmitting ? 'Exporting...' : 'Export'}
           </Button>
         </View>
