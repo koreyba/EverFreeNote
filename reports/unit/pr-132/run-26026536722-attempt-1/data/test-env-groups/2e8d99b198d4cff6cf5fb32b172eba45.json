@@ -1,1 +1,0 @@
-{"id":"2e8d99b198d4cff6cf5fb32b172eba45","fullName":"tests/component/useDeleteNote.test.tsx#useDeleteNote Offline deletion handles queue enqueue error when offline","name":"handles queue enqueue error when offline","status":"passed","testResultsByEnv":{"default":"d42664c5df3c7d3edf5b381fece0cdc0"}}

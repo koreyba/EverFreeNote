@@ -1,0 +1,1 @@
+{"id":"c4a71dadcec5b2c63801b6d4efd603c9","fullName":"tests/component/useDeleteNote.test.tsx#useDeleteNote Optimistic updates returns previous notes snapshot in onMutate context","name":"returns previous notes snapshot in onMutate context","status":"passed","testResultsByEnv":{"default":"733e50b1b79aa96ca155e67f5d5b00ee"}}
