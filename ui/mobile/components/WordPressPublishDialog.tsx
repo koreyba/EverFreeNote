@@ -16,6 +16,7 @@ import { WordPressExportService, WordPressBridgeError } from '@core/services/wor
 import { WordPressSettingsService } from '@core/services/wordpressSettings'
 import { getPublishedTagForSite, normalizeExportTags, slugifyLatin, validateWordPressSlug } from '@core/utils/wordpress'
 import { Button, Input } from '@ui/mobile/components/ui'
+import { useUpdateNote } from '@ui/mobile/hooks'
 import { useSupabase, useTheme } from '@ui/mobile/providers'
 
 type WordPressPublishNote = Readonly<{
@@ -46,6 +47,7 @@ export function WordPressPublishDialog({ note, visible, onClose }: WordPressPubl
   const { client, user } = useSupabase()
   const exportService = useMemo(() => new WordPressExportService(client), [client])
   const settingsService = useMemo(() => new WordPressSettingsService(client), [client])
+  const updateNote = useUpdateNote()
 
   const [title, setTitle] = useState(note.title ?? '')
   const [slug, setSlug] = useState(slugifyLatin(note.title ?? ''))
@@ -196,18 +198,17 @@ export function WordPressPublishDialog({ note, visible, onClose }: WordPressPubl
       })
 
       if (publishedTag && shouldAddPublishedTag) {
-        const nextTags = normalizeExportTags([...(note.tags ?? []), publishedTag])
         const hasTag = (note.tags ?? []).some((tag) => tag.toLocaleLowerCase() === publishedTag.toLocaleLowerCase())
         if (!hasTag) {
-          const { error } = await client
-            .from('notes')
-            .update({ tags: nextTags })
-            .eq('id', note.id)
-
-          if (error) {
+          const nextTags = normalizeExportTags([...(note.tags ?? []), publishedTag])
+          try {
+            // Route through the shared mutation so updated_at advances and the
+            // editor/list caches (and offline queue) stay in sync with the new tag.
+            await updateNote.mutateAsync({ id: note.id, updates: { tags: nextTags } })
+          } catch (error) {
             setFeedback({
               variant: 'error',
-              message: `Post published, but failed to update note tag: ${error.message}`,
+              message: `Post published, but failed to update note tag: ${readErrorMessage(error, 'unknown error')}`,
             })
             setIsSubmitting(false)
             return
@@ -228,7 +229,7 @@ export function WordPressPublishDialog({ note, visible, onClose }: WordPressPubl
     } finally {
       setIsSubmitting(false)
     }
-  }, [client, exportService, note.id, note.tags, publishedTag, selectedCategoryIds, shouldAddPublishedTag, slug, tags, title])
+  }, [exportService, note.id, note.tags, publishedTag, selectedCategoryIds, shouldAddPublishedTag, slug, tags, title, updateNote])
 
   let categoriesContent: React.ReactNode
 
