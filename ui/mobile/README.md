@@ -32,7 +32,7 @@ Example:
 # Your computer's local IP (not 127.0.0.1!)
 # Find it with: ipconfig | grep IPv4
 EXPO_PUBLIC_SUPABASE_URL=http://192.168.x.x:54321
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-local-supabase-anon-key
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-local-supabase-publishable-key
 ```
 
 ### 4. Connect your phone
