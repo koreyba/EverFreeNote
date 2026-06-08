@@ -1,1 +1,0 @@
-{"id":"97fca3a4f00a9e2a57e91358fb1ca9c9","fullName":"core/tests/unit/noteAutosaveSession.test.ts#noteAutosaveSession resolveNoteAutosaveSessionChange treats a different assigned note id as a real switch","name":"treats a different assigned note id as a real switch","status":"passed","testResultsByEnv":{"default":"ed2c7bc597500e51789ac0d412788730"}}

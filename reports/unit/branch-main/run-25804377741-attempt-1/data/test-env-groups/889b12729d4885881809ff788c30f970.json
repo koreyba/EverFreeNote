@@ -1,1 +1,0 @@
-{"id":"889b12729d4885881809ff788c30f970","fullName":"tests/component/editorWebViewMessages.test.tsx#EditorWebView message handling SELECTION_CHANGE handling does not throw when onSelectionChange is not provided","name":"does not throw when onSelectionChange is not provided","status":"passed","testResultsByEnv":{"default":"0144690fbe1d12fe3b124fb3b0f9c15a"}}
