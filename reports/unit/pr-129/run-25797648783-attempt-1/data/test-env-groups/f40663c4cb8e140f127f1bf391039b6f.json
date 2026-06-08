@@ -1,1 +1,0 @@
-{"id":"f40663c4cb8e140f127f1bf391039b6f","fullName":"tests/component/useBulkSelection.test.ts#useBulkSelection clear() empties selectedIds without changing isActive","name":"clear() empties selectedIds without changing isActive","status":"passed","testResultsByEnv":{"default":"a9e21b859bbe59fa1fc95d801263ee73"}}
