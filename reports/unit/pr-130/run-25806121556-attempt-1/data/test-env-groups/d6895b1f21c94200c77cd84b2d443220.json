@@ -1,1 +1,0 @@
-{"id":"d6895b1f21c94200c77cd84b2d443220","fullName":"tests/integration/notesScreen.test.tsx#NotesScreen - Delete Functionality Delete error handling falls back to queue when API deletion fails (no alert shown)","name":"falls back to queue when API deletion fails (no alert shown)","status":"passed","testResultsByEnv":{"default":"d50c2df9362dd5e00e5c7669b4e56b26"}}

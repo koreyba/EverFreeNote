@@ -1,1 +1,0 @@
-{"id":"6ea34ca47593cbfd5d7b694d99ecb245","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer sanitize falls back to DOM-free sanitization when DOMPurify throws","name":"falls back to DOM-free sanitization when DOMPurify throws","status":"passed","testResultsByEnv":{"default":"d66d795b31bfdb43852672d2733c0fee"}}
