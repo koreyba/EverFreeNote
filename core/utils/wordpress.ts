@@ -116,9 +116,8 @@ export const slugifyLatin = (value: string): string => {
   if (!result) return FALLBACK_SLUG
   if (result.length <= MAX_SLUG_LENGTH) return result
 
-  return result
-    .slice(0, MAX_SLUG_LENGTH)
-    .replace(/-+$/, '') || FALLBACK_SLUG
+  const truncated = trimEdgeHyphens(result.slice(0, MAX_SLUG_LENGTH))
+  return truncated || FALLBACK_SLUG
 }
 
 export const validateWordPressSlug = (slug: string): string | null => {
