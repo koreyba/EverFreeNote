@@ -18,19 +18,20 @@ description: Define testing approach, test cases, and quality assurance
 **What individual components need testing?**
 
 ### Component/Module 1
-- [ ] Test case 1: `slugifyLatin` builds deterministic latin slug from note title (covers transliteration + normalization)
-- [ ] Test case 2: `slugifyLatin` handles empty/special-only input (covers fallback branch)
+- [x] Test case 1: `slugifyLatin` builds deterministic latin slug from note title (covers transliteration + normalization)
+- [x] Test case 2: `slugifyLatin` handles empty/special-only input (covers fallback branch)
 - [ ] Additional coverage: slug validation rules (length/charset/conflict handling branch mapping)
 
 ### Component/Module 2
 - [ ] Test case 1: `wordpressSettings` service creates/updates integration config with valid inputs
 - [ ] Test case 2: `wordpressSettings` service rejects invalid URL / missing required fields
-- [ ] Additional coverage: visibility flag logic for showing/hiding export button
+- [x] Additional coverage: visibility flag logic for showing/hiding export action on web/mobile note menus
 
 ### Component/Module 3
 - [ ] Test case 1: `WordPressExportDialog` initializes with note tags and remembered categories
 - [ ] Test case 2: editing tags in dialog does not mutate original note tags
-- [ ] Additional coverage: inline error rendering and state preservation on failed submit
+- [x] Additional coverage: inline error rendering and state preservation on failed submit
+- [x] Additional coverage: mobile note screen opens the publish dialog only when WordPress publishing is configured
 
 ### Component/Module 4
 - [ ] Test case 1: bridge `get_categories` maps WordPress category response correctly
@@ -43,6 +44,7 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Integration scenario 1: configured user sees per-note export button in web and can open modal
 - [ ] Integration scenario 1.1: button appears in `NoteView` header near `Edit/Delete`
 - [ ] Integration scenario 1.2: button appears in `NoteEditor` header near `Read`
+- [x] Integration scenario 1.3: action appears in the mobile note options menu and opens the mobile publish dialog
 - [ ] Integration scenario 2: unconfigured user does not see export button
 - [ ] API endpoint tests for `wordpress-bridge` actions (`get_categories`, `export_note`)
 - [ ] Integration scenario 3 (failure mode / rollback): WordPress returns slug conflict and UI shows specific recoverable error
@@ -130,6 +132,8 @@ description: Define testing approach, test cases, and quality assurance
 
 ## Current Verification Status (2026-02-16)
 - Automated checks completed
+  - `npx jest --config jest.config.cjs --selectProjects unit-core --runInBand --runTestsByPath core/tests/unit/core-utils-wordpress.test.ts`
+  - `npx jest --runInBand tests/integration/noteEditorScreen.test.tsx` in `ui/mobile/`
   - `npm run type-check` : passed.
   - Targeted ESLint on changed/new files: passed.
 - Added component/unit coverage

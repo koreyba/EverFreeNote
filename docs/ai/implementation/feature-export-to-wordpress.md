@@ -20,7 +20,7 @@ description: Technical implementation notes, patterns, and code guidelines
   - Add encryption secret for password-at-rest handling in function env.
 - Configuration needed
   - WordPress REST endpoint reachable from edge runtime.
-  - Feature is web-only; do not add mobile routes/components for this phase.
+  - Mobile app must share the same bridge/settings contracts and slug rules as the web flow.
 
 ## Code Structure
 **How is the code organized?**
@@ -28,9 +28,11 @@ description: Technical implementation notes, patterns, and code guidelines
 - Directory structure
   - `core/services/wordpressSettings.ts` (new)
   - `core/services/wordpressExport.ts` (new)
+  - `core/utils/wordpress.ts` (shared slug/tag helpers)
   - `ui/web/components/WordPressSettingsSection.tsx` (new)
   - `ui/web/components/WordPressExportDialog.tsx` (new)
   - `ui/web/components/ExportToWordPressButton.tsx` (new)
+  - `ui/mobile/components/WordPressPublishDialog.tsx` (new)
   - `supabase/functions/wordpress-bridge/index.ts` (new)
   - `supabase/migrations/*_wordpress_integration.sql` (new)
 - Module organization
@@ -51,11 +53,12 @@ description: Technical implementation notes, patterns, and code guidelines
   - Support edit/update and enabled state.
 
 - Feature 2: Conditional per-note export entry point
-  - Render button only in web and only when integration exists/enabled.
+  - Render action only when integration exists/enabled.
   - Ensure entry point maps to exactly one note id.
   - Place trigger in:
     - `NoteView` header near `Edit/Delete`.
     - `NoteEditor` header near `Read`.
+    - Mobile `NoteIndexMenu`.
 
 - Feature 3: Lightweight export modal
   - On open: request categories + remembered selection.
@@ -165,6 +168,8 @@ description: Technical implementation notes, patterns, and code guidelines
 - Core services
   - Added `core/services/wordpressSettings.ts`.
   - Added `core/services/wordpressExport.ts` with normalized bridge error handling.
+- Shared helpers
+  - Added `core/utils/wordpress.ts` and re-exported it from `ui/web/lib/wordpress.ts` so web and mobile share slug generation, slug validation, tag normalization, and site-published-tag derivation.
 - Web UI
   - Added `ui/web/components/features/wordpress/WordPressSettingsDialog.tsx`.
   - Added `ui/web/components/features/wordpress/WordPressExportDialog.tsx`.
@@ -180,5 +185,9 @@ description: Technical implementation notes, patterns, and code guidelines
     - Site domain is derived from configured WordPress `siteUrl` (via `wordpress-settings-status`).
     - UI checkbox `Add published tag to the note` controls this behavior and is enabled by default.
     - Export failure path does not mutate note tags.
-- Scope guard
-  - No mobile UI/components were modified for this feature.
+- Mobile UI
+  - Added `ui/mobile/components/WordPressPublishDialog.tsx` with native modal UX for title, slug, categories, and export-only tags.
+  - Added `Export to WordPress` action to `ui/mobile/components/NoteIndexMenu.tsx`.
+  - Added WordPress settings status gating and dialog wiring to `ui/mobile/app/note/[id].tsx`.
+  - Reused existing `WordPressExportService` and `WordPressSettingsService`.
+  - Kept post-success local note tagging behavior aligned with the web flow.
