@@ -1,5 +1,33 @@
 [
   {
+    "family": "component",
+    "familyLabel": "Component",
+    "suites": [
+      "component"
+    ],
+    "suiteLabels": [
+      "Web Component"
+    ],
+    "path": "reports/component/branch-main/run-27207294687-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/component/branch-main/run-27207294687-attempt-1/",
+    "runId": "27207294687",
+    "runAttempt": "1",
+    "prNumber": null,
+    "ref": "main",
+    "sha": "a7008fa70c791a55af3eb92f3fa66c81593141a7",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "branch",
+    "scopeLabel": "main",
+    "historyPath": "_history/component/history.jsonl",
+    "generatedAt": "2026-06-09T12:58:48.038Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/component/report",
+    "combinedResultsDir": ".allure-publish/component/results"
+  },
+  {
     "family": "unit",
     "familyLabel": "Unit",
     "suites": [
@@ -1490,34 +1518,6 @@
     "hasResults": true,
     "reportOutputDir": ".allure-publish/unit/report",
     "combinedResultsDir": ".allure-publish/unit/results"
-  },
-  {
-    "family": "component",
-    "familyLabel": "Component",
-    "suites": [
-      "component"
-    ],
-    "suiteLabels": [
-      "Web Component"
-    ],
-    "path": "reports/component/pr-132/run-26026995609-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/component/pr-132/run-26026995609-attempt-1/",
-    "runId": "26026995609",
-    "runAttempt": "1",
-    "prNumber": "132",
-    "ref": "features/add-logo",
-    "sha": "e4673a6c10d8cea22b733abff2ba986fe4a8a46c",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #132",
-    "historyPath": "_history/component/history.jsonl",
-    "generatedAt": "2026-05-18T10:17:23.374Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/component/report",
-    "combinedResultsDir": ".allure-publish/component/results"
   },
   {
     "family": "e2e",
