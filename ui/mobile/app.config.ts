@@ -10,7 +10,6 @@ type VariantConfig = {
   icon: string
   adaptiveIcon: string
   supabaseUrl: string
-  supabaseAnonKey?: string
   supabasePublishableKey?: string
   supabaseFunctionsUrl: string
   editorWebViewUrl?: string
@@ -20,22 +19,23 @@ type VariantConfig = {
 
 // For dev: MUST set EXPO_PUBLIC_SUPABASE_URL in .env (use your computer's local IP, not 127.0.0.1)
 const devSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').trim()
-const devSupabaseAnonKey = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '').trim()
+const devSupabasePublishableKey = (process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '').trim()
 if (!devSupabaseUrl) {
   console.warn('⚠️  EXPO_PUBLIC_SUPABASE_URL is not set in .env - dev build will not connect to Supabase')
 }
-if (!devSupabaseAnonKey) {
-  console.warn('⚠️  EXPO_PUBLIC_SUPABASE_ANON_KEY is not set in .env - dev build may not authenticate')
+if (!devSupabasePublishableKey) {
+  console.warn('⚠️  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set in .env - dev build may not authenticate')
 }
 
 const stageSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL_STAGE ?? '').trim()
 const stageSupabasePublishableKey = (process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_STAGE ?? '').trim()
 const stageEditorWebViewUrl = (process.env.EXPO_PUBLIC_STAGE_EDITOR_WEBVIEW_URL ?? '').trim()
-const stagePublicWebOrigin = (process.env.EXPO_PUBLIC_STAGE_PUBLIC_WEB_ORIGIN ?? '').trim()
 
 const prodSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL_PROD ?? '').trim()
 const prodSupabasePublishableKey = (process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_PROD ?? '').trim()
+// Prod ships a bundled editor WebView; this optional override points it at a remote editor instead.
 const prodEditorWebViewUrl = (process.env.EXPO_PUBLIC_PROD_EDITOR_WEBVIEW_URL ?? '').trim()
+// Prod's editor is bundled (file://), so the public share-link origin cannot be derived and must be set explicitly.
 const prodPublicWebOrigin = (process.env.EXPO_PUBLIC_PROD_PUBLIC_WEB_ORIGIN ?? '').trim()
 
 const variants: Record<AppVariant, VariantConfig> = {
@@ -47,7 +47,7 @@ const variants: Record<AppVariant, VariantConfig> = {
     icon: './assets/icon-dev.png',
     adaptiveIcon: './assets/adaptive-icon-dev.png',
     supabaseUrl: devSupabaseUrl,
-    supabaseAnonKey: devSupabaseAnonKey,
+    supabasePublishableKey: devSupabasePublishableKey,
     supabaseFunctionsUrl: devSupabaseUrl ? `${devSupabaseUrl}/functions/v1` : '',
   },
   stage: {
@@ -61,7 +61,6 @@ const variants: Record<AppVariant, VariantConfig> = {
     supabasePublishableKey: stageSupabasePublishableKey,
     supabaseFunctionsUrl: stageSupabaseUrl ? `${stageSupabaseUrl}/functions/v1` : '',
     editorWebViewUrl: stageEditorWebViewUrl,
-    publicWebOrigin: stagePublicWebOrigin,
   },
   prod: {
     name: 'EverFreeNote',
@@ -97,33 +96,20 @@ const resolveVariant = (): AppVariant => {
   return process.env.NODE_ENV === 'production' ? 'prod' : 'dev'
 }
 
-const resolveStageWebViewUrl = (): string => {
-  const rawBranch = (process.env.EXPO_PUBLIC_STAGE_BRANCH ?? '').trim()
-  const rawDomain = (process.env.EXPO_PUBLIC_STAGE_DOMAIN ?? '').trim()
-  if (!rawBranch || !rawDomain) return ''
-
-  const domain = rawDomain.replace(/^https?:\/\//i, '')
-  if (!domain) return ''
-
-  return `https://${rawBranch}.${domain}/editor-webview`
-}
-
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = resolveVariant()
   const variantConfig = variants[variant]
   // Dev convenience: allow overriding the editor WebView URL from the local .env.
   // Important: do NOT let this override leak into stage/prod release builds.
   const devEditorWebViewUrl = (process.env.EXPO_PUBLIC_EDITOR_WEBVIEW_URL ?? '').trim()
-  const devPublicWebOrigin = (process.env.EXPO_PUBLIC_PUBLIC_WEB_ORIGIN ?? '').trim()
   if (variant === 'dev' && !devEditorWebViewUrl) {
     console.warn('Warning: EXPO_PUBLIC_EDITOR_WEBVIEW_URL is not set for dev builds (full /editor-webview URL required).')
   }
   const editorWebViewOverride = variant === 'dev' ? devEditorWebViewUrl : ''
-  const stageWebViewUrl = resolveStageWebViewUrl()
   const oauthRedirectOverride = (process.env.EXPO_PUBLIC_OAUTH_REDIRECT_URL ?? '').trim()
   const resolvedEditorWebViewUrl = editorWebViewOverride !== ''
     ? editorWebViewOverride
-    : (variant === 'stage' && stageWebViewUrl ? stageWebViewUrl : variantConfig.editorWebViewUrl)
+    : variantConfig.editorWebViewUrl
 
   return {
     ...config,
@@ -170,11 +156,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       appVariant: variant,
       supabaseUrl: variantConfig.supabaseUrl,
-      supabaseAnonKey: variantConfig.supabaseAnonKey,
       supabasePublishableKey: variantConfig.supabasePublishableKey,
       supabaseFunctionsUrl: variantConfig.supabaseFunctionsUrl,
       editorWebViewUrl: resolvedEditorWebViewUrl,
-      publicWebOrigin: variant === 'dev' && devPublicWebOrigin !== '' ? devPublicWebOrigin : variantConfig.publicWebOrigin,
+      // Dev/stage derive the share-link origin from editorWebViewUrl at runtime; only prod sets it explicitly.
+      publicWebOrigin: variantConfig.publicWebOrigin,
       requireEditorWebViewUrl: variantConfig.requireEditorWebViewUrl ?? false,
       oauthRedirectUrl: oauthRedirectOverride !== '' ? oauthRedirectOverride : `${variantConfig.scheme}://auth/callback`,
     },

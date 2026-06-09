@@ -8,19 +8,16 @@ import type { SupabaseConfig } from '@core/adapters/config'
  */
 export function getSupabaseConfig(): SupabaseConfig {
   const url = Constants.expoConfig?.extra?.supabaseUrl ?? process.env.EXPO_PUBLIC_SUPABASE_URL
-  const publishableKey =
+  const key =
     Constants.expoConfig?.extra?.supabasePublishableKey ??
     process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  const anonKey =
-    Constants.expoConfig?.extra?.supabaseAnonKey ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
-  const key = publishableKey ?? anonKey
   const functionsUrl =
     Constants.expoConfig?.extra?.supabaseFunctionsUrl ??
     process.env.EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL
 
   if (!url || !key) {
     throw new Error(
-      'Missing Supabase configuration. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or legacy EXPO_PUBLIC_SUPABASE_ANON_KEY).'
+      'Missing Supabase configuration. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.'
     )
   }
 
