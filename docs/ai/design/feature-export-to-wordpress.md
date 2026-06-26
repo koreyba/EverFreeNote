@@ -13,8 +13,10 @@ description: Define the technical architecture, components, and data models
 graph TD
   User[Web User] -->|Open read mode| NoteView[NoteView]
   User -->|Open edit mode| NoteEditor[NoteEditor]
+  MobileUser[Mobile User] -->|Open note menu| MobileNoteMenu[NoteIndexMenu]
   NoteView -->|Click Export to WordPress| ExportModal[WP Export Modal]
   NoteEditor -->|Click Export to WordPress| ExportModal
+  MobileNoteMenu -->|Tap Export to WordPress| ExportModal
 
   ExportModal -->|Load categories| WPBridge[Supabase Edge Function: wordpress-bridge]
   ExportModal -->|Submit export| WPBridge
@@ -31,16 +33,18 @@ graph TD
   - `WordPress Settings UI`:
     - Manage site URL and API auth credentials.
     - Enable/disable integration state.
-  - `Per-note Export Trigger` (web only):
+  - `Per-note Export Trigger`:
     - Renders export button only when integration is configured.
-    - Opens lightweight modal.
+    - Opens lightweight export dialog.
     - Placement:
       - `NoteView` header near `Edit/Delete`.
       - `NoteEditor` header near `Read`.
+      - Mobile `NoteIndexMenu` sheet.
   - `WP Export Modal`:
     - Fetches categories from backend bridge.
     - Allows export-only title edit, category selection, tag edits, slug edit.
     - Shows inline progress/errors.
+    - Reused by both web and mobile with platform-native UI wrappers around the same service contracts and slug/tag rules.
   - `wordpress-bridge` Edge Function:
     - Protects credentials from client exposure.
     - Calls WordPress REST API for categories and post creation.
@@ -85,10 +89,10 @@ graph TD
     - `status: "publish"` (fixed default for this phase)
 
 - Data flow between components
-  - Settings save path: Web UI -> Supabase table (RLS-protected).
-  - Modal init path: Web UI -> bridge (`get-categories`) + preferences query.
-  - Export path: Web UI -> bridge (`export-note`) -> WordPress posts endpoint.
-  - Preferences update path: Web UI -> Supabase preferences table after successful export or category selection change.
+  - Settings save path: Web/Mobile UI -> Supabase table (RLS-protected).
+  - Modal init path: Web/Mobile UI -> bridge (`get_categories`) + preferences query.
+  - Export path: Web/Mobile UI -> bridge (`export_note`) -> WordPress posts endpoint.
+  - Preferences update path: Web/Mobile UI -> Supabase preferences table after successful export or category selection change.
 
 ## API Design
 **How do components communicate?**
@@ -155,6 +159,9 @@ graph TD
     - `ui/web/components/features/notes/NoteEditor.tsx` (button near `Read`)
     - `ui/web/components/features/notes/NoteView.tsx`
     - `ui/web/components/features/notes/SettingsPanel.tsx` or settings dropdown composition.
+    - `ui/mobile/app/note/[id].tsx` (dialog visibility + settings status gate)
+    - `ui/mobile/components/NoteIndexMenu.tsx` (menu action)
+    - `ui/mobile/components/WordPressPublishDialog.tsx` (native dialog)
 
 - Backend services/modules
   - `core/services/wordpressSettings.ts` (new)
@@ -181,9 +188,9 @@ graph TD
   - Decision: Keep tag edits export-scoped in modal state only.
     - Pros: avoids accidental mutation of notebook data.
     - Cons: no long-term per-note tag override history.
-  - Decision: Web-only UI integration in this phase.
-    - Pros: aligns with scope, limits delivery risk.
-    - Cons: no mobile parity yet.
+  - Decision: Reuse the same bridge/service contracts and slug/tag helpers on mobile instead of introducing a mobile-only WordPress API path.
+    - Pros: keeps publish semantics, error mapping, and remembered categories aligned across clients.
+    - Cons: requires a small shared utility extraction from the web layer into `core`.
 
 - Alternatives considered
   - Direct client requests to WordPress REST API.

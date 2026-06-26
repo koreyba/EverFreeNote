@@ -65,30 +65,53 @@ jest.mock('expo-router', () => ({
 }))
 
 // Mock providers
-jest.mock('@ui/mobile/providers', () => ({
-  useSupabase: jest.fn(() => ({
-    client: {
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        delete: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockResolvedValue({ error: null }),
-        update: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: {
-            id: 'test-note-id',
-            title: 'Test Note',
-            description: '<p>Test content</p>',
-            tags: ['tag1'],
-            created_at: '2025-01-01T10:00:00.000Z',
-            updated_at: '2025-01-01T10:00:00.000Z',
-            user_id: 'test-user-id',
-          },
-          error: null,
-        }),
-      })),
+const mockInvoke = jest.fn().mockImplementation((name: string) => {
+  if (name === 'wordpress-settings-status') {
+    return Promise.resolve({
+      data: {
+        configured: true,
+        integration: {
+          siteUrl: 'https://stage.example.com',
+          wpUsername: 'editor',
+          enabled: true,
+          hasPassword: true,
+        },
+      },
+      error: null,
+    })
+  }
+
+  return Promise.resolve({ data: null, error: null })
+})
+const mockSupabaseContext = {
+  client: {
+    functions: {
+      invoke: mockInvoke,
     },
-    user: { id: 'test-user-id' },
-  })),
+    from: jest.fn(() => ({
+      select: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ error: null }),
+      update: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: 'test-note-id',
+          title: 'Test Note',
+          description: '<p>Test content</p>',
+          tags: ['tag1'],
+          created_at: '2025-01-01T10:00:00.000Z',
+          updated_at: '2025-01-01T10:00:00.000Z',
+          user_id: 'test-user-id',
+        },
+        error: null,
+      }),
+    })),
+  },
+  user: { id: 'test-user-id' },
+}
+
+jest.mock('@ui/mobile/providers', () => ({
+  useSupabase: jest.fn(() => mockSupabaseContext),
   useTheme: () => ({
     colors: {
       background: '#ffffff',
@@ -233,7 +256,19 @@ jest.mock('@ui/mobile/components/tags/TagInput', () => ({
 }))
 
 jest.mock('@ui/mobile/components/NoteIndexMenu', () => ({
-  NoteIndexMenu: ({ visible, noteId, onClose, onShareNote }: { visible: boolean; noteId: string; onClose: () => void; onShareNote: () => void }) => {
+  NoteIndexMenu: ({
+    visible,
+    noteId,
+    onClose,
+    onShareNote,
+    onExportToWordPress,
+  }: {
+    visible: boolean
+    noteId: string
+    onClose: () => void
+    onShareNote: () => void
+    onExportToWordPress?: () => void
+  }) => {
     const { View, Text, Pressable } = require('react-native')
     return (
       <View testID="note-index-menu">
@@ -244,6 +279,11 @@ jest.mock('@ui/mobile/components/NoteIndexMenu', () => ({
             <Pressable accessibilityLabel="Share note" onPress={onShareNote}>
               <Text>Share note</Text>
             </Pressable>
+            {onExportToWordPress ? (
+              <Pressable accessibilityLabel="Export to WordPress" onPress={onExportToWordPress}>
+                <Text>Export to WordPress</Text>
+              </Pressable>
+            ) : null}
             <Pressable accessibilityLabel="Close note index menu" onPress={onClose} />
           </>
         ) : null}
@@ -260,6 +300,29 @@ jest.mock('@ui/mobile/components/ShareNoteDialog', () => ({
         <Text testID="share-note-dialog-visibility">{visible ? 'visible' : 'hidden'}</Text>
         <Text testID="share-note-dialog-note-id">{noteId}</Text>
         {visible ? <Pressable accessibilityLabel="Close share note" onPress={onClose} /> : null}
+      </View>
+    )
+  },
+}))
+
+jest.mock('@ui/mobile/components/WordPressPublishDialog', () => ({
+  WordPressPublishDialog: ({
+    visible,
+    note,
+    onClose,
+  }: {
+    visible: boolean
+    note: { id: string; title: string; tags: string[] }
+    onClose: () => void
+  }) => {
+    const { View, Text, Pressable } = require('react-native')
+    return (
+      <View testID="wordpress-publish-dialog">
+        <Text testID="wordpress-publish-dialog-visibility">{visible ? 'visible' : 'hidden'}</Text>
+        <Text testID="wordpress-publish-dialog-note-id">{note.id}</Text>
+        <Text testID="wordpress-publish-dialog-title">{`wp-title:${note.title}`}</Text>
+        <Text testID="wordpress-publish-dialog-tags">{`wp-tags:${note.tags.join(',')}`}</Text>
+        {visible ? <Pressable accessibilityLabel="Close WordPress publish" onPress={onClose} /> : null}
       </View>
     )
   },
@@ -347,6 +410,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
     mockGetEditorContent.mockResolvedValue('<p>Test content</p>')
     mockSetParams.mockReset()
     mockReplace.mockReset()
+    mockInvoke.mockClear()
     alertSpy.mockClear()
     consoleErrorSpy.mockClear()
     ;(Clipboard.setStringAsync as jest.Mock).mockClear()
@@ -1000,6 +1064,32 @@ describe('NoteEditorScreen - Delete Functionality', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('share-note-dialog-visibility').props.children).toBe('hidden')
+      })
+    })
+
+    it('opens WordPress publish dialog from the note options menu', async () => {
+      render(<NoteEditorScreen />, { wrapper })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('editor-webview')).toBeTruthy()
+      })
+
+      expect(screen.getByTestId('wordpress-publish-dialog-visibility').props.children).toBe('hidden')
+
+      fireEvent.press(screen.getByLabelText('More options'))
+      fireEvent.press(screen.getByLabelText('Export to WordPress'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('note-index-menu-visibility').props.children).toBe('hidden')
+        expect(screen.getByTestId('wordpress-publish-dialog-visibility').props.children).toBe('visible')
+        expect(screen.getByTestId('wordpress-publish-dialog-note-id').props.children).toBe('test-note-id')
+        expect(screen.getByTestId('wordpress-publish-dialog-title').props.children).toBe('wp-title:Test Note')
+      })
+
+      fireEvent.press(screen.getByLabelText('Close WordPress publish'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('wordpress-publish-dialog-visibility').props.children).toBe('hidden')
       })
     })
   })

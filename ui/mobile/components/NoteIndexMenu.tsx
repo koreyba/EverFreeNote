@@ -7,25 +7,66 @@ import {
     StyleSheet,
     ActivityIndicator,
 } from 'react-native'
-import { Database, Share2, Trash2 } from 'lucide-react-native'
+import { Database, Globe, Share2, Trash2 } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '@ui/mobile/providers'
 import { useSupabase } from '@ui/mobile/providers/SupabaseProvider'
 import { useRagStatus } from '@ui/mobile/hooks/useRagStatus'
 import { logRagIndexDebugChunks } from '@core/rag/debugLog'
 import { parseRagIndexResult } from '@core/rag/indexResult'
+import { WordPressSettingsService } from '@core/services/wordpressSettings'
 
 type NoteIndexMenuProps = Readonly<{
     noteId: string
     visible: boolean
     onClose: () => void
     onShareNote?: () => void
+    onExportToWordPress?: () => void
 }>
 
 type NoteIndexMenuStyles = ReturnType<typeof createStyles>
 type ThemeColors = ReturnType<typeof useTheme>['colors']
 
 type Operation = 'indexing' | 'deleting' | null
+
+function useWordPressExportAvailability(
+    visible: boolean,
+    onExportToWordPress: (() => void) | undefined,
+    wordpressSettingsService: WordPressSettingsService
+) {
+    const [wordpressConfigured, setWordpressConfigured] = useState(false)
+
+    useEffect(() => {
+        let isMounted = true
+
+        if (!visible || !onExportToWordPress) {
+            setWordpressConfigured(false)
+            return () => {
+                isMounted = false
+            }
+        }
+
+        ;(async () => {
+            try {
+                const status = await wordpressSettingsService.getStatus()
+                if (!isMounted) return
+                setWordpressConfigured(Boolean(status.configured && status.integration?.enabled))
+            } catch {
+                if (!isMounted) return
+                setWordpressConfigured(false)
+            }
+        })().catch(() => {
+            if (!isMounted) return
+            setWordpressConfigured(false)
+        })
+
+        return () => {
+            isMounted = false
+        }
+    }, [onExportToWordPress, visible, wordpressSettingsService])
+
+    return wordpressConfigured
+}
 
 async function extractErrorMessage(err: unknown, fallback: string): Promise<string> {
     if (!(err instanceof Error)) return fallback
@@ -76,12 +117,56 @@ function ShareNoteAction({
     )
 }
 
-export function NoteIndexMenu({ noteId, visible, onClose, onShareNote }: NoteIndexMenuProps) {
+function WordPressExportAction({
+    colors,
+    disabled,
+    onPress,
+    styles,
+}: Readonly<{
+    colors: ThemeColors
+    disabled: boolean
+    onPress: () => void
+    styles: NoteIndexMenuStyles
+}>) {
+    return (
+        <Pressable
+            style={({ pressed }) => [
+                styles.actionButton,
+                pressed && !disabled && styles.actionButtonPressed,
+                disabled && styles.actionButtonDisabled,
+            ]}
+            onPress={onPress}
+            disabled={disabled}
+            accessibilityRole="button"
+            accessibilityLabel="Export to WordPress"
+            accessibilityState={{ disabled }}
+        >
+            <View style={styles.actionButtonContent}>
+                <Globe size={20} color={disabled ? colors.mutedForeground : colors.foreground} style={styles.actionIcon} />
+                <View style={styles.actionTextContent}>
+                    <Text style={[styles.actionButtonText, disabled && styles.actionButtonTextDisabled]}>
+                        Export to WordPress
+                    </Text>
+                    <Text style={styles.actionButtonDescription}>Publish this note using your saved blog settings</Text>
+                </View>
+            </View>
+        </Pressable>
+    )
+}
+
+export function NoteIndexMenu({
+    noteId,
+    visible,
+    onClose,
+    onShareNote,
+    onExportToWordPress,
+}: NoteIndexMenuProps) {
     const { colors } = useTheme()
     const insets = useSafeAreaInsets()
     const { client } = useSupabase()
     const styles = useMemo(() => createStyles(colors), [colors])
     const { chunkCount, indexedAt, isLoading, refresh } = useRagStatus(noteId)
+    const wordpressSettingsService = useMemo(() => new WordPressSettingsService(client), [client])
 
     const [operation, setOperation] = useState<Operation>(null)
     const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false)
@@ -93,6 +178,7 @@ export function NoteIndexMenu({ noteId, visible, onClose, onShareNote }: NoteInd
     const isStatusPending = isLoading && !isBusy
     const isIndexActionDisabled = isBusy || isStatusPending
     const isDeleteActionDisabled = isBusy || isStatusPending || !isIndexed
+    const wordpressConfigured = useWordPressExportAvailability(visible, onExportToWordPress, wordpressSettingsService)
 
     useEffect(() => {
         return () => {
@@ -114,6 +200,12 @@ export function NoteIndexMenu({ noteId, visible, onClose, onShareNote }: NoteInd
         onClose()
         onShareNote?.()
     }, [isBusy, onClose, onShareNote])
+
+    const handleExportToWordPress = useCallback(() => {
+        if (isBusy) return
+        onClose()
+        onExportToWordPress?.()
+    }, [isBusy, onClose, onExportToWordPress])
 
     const showToast = useCallback((text: string, isError = false) => {
         if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
@@ -223,6 +315,15 @@ export function NoteIndexMenu({ noteId, visible, onClose, onShareNote }: NoteInd
                                 colors={colors}
                                 disabled={isBusy}
                                 onShareNote={handleShareNote}
+                                styles={styles}
+                            />
+                        ) : null}
+
+                        {wordpressConfigured && onExportToWordPress ? (
+                            <WordPressExportAction
+                                colors={colors}
+                                disabled={isBusy}
+                                onPress={handleExportToWordPress}
                                 styles={styles}
                             />
                         ) : null}

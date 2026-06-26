@@ -380,7 +380,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         <Text style={styles.errorTitle}>Editor URL missing</Text>
                         <Text style={styles.errorSubtitle}>
                             For dev builds, set EXPO_PUBLIC_EDITOR_WEBVIEW_URL. For stage builds, set
-                            EXPO_PUBLIC_STAGE_BRANCH + EXPO_PUBLIC_STAGE_DOMAIN.
+                            EXPO_PUBLIC_STAGE_EDITOR_WEBVIEW_URL.
                         </Text>
                     </View>
                 </View>

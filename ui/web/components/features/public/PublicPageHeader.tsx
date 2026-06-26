@@ -1,7 +1,6 @@
 "use client"
 
-import { BookOpen } from "lucide-react"
-
+import { BrandLogo } from "@/components/BrandLogo"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export function PublicPageHeader() {
@@ -12,7 +11,7 @@ export function PublicPageHeader() {
     >
       <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-5 sm:px-8">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <BookOpen className="h-5 w-5 text-primary" aria-hidden="true" />
+          <BrandLogo className="h-6 w-6 shrink-0" alt="" />
           <span>EverFreeNote</span>
         </div>
         <ThemeToggle />

@@ -24,10 +24,11 @@ description: Clarify the problem space, gather requirements, and define success 
 
 - Primary goals
   - Add user-level WordPress integration settings (credentials and site connection fields required for API publishing).
-  - Show `Export to WordPress` button for notes in web UI only when integration is configured.
-  - Show export entry point on both web note screens:
+  - Show `Export to WordPress` action for notes only when integration is configured.
+  - Show export entry point on supported note surfaces:
     - `NoteView` header next to `Edit/Delete`.
     - `NoteEditor` header next to `Read`.
+    - Mobile note options menu in `ui/mobile/app/note/[id].tsx`.
   - Export exactly one selected note per action.
   - Export payload includes note title, note content, and export-time tag set.
   - Export default post status is `publish`.
@@ -47,7 +48,6 @@ description: Clarify the problem space, gather requirements, and define success 
   - Ensure behavior is deterministic and easy to test.
 
 - Non-goals (what's explicitly out of scope)
-  - Mobile app support (explicitly web-only for this feature).
   - Bulk export of multiple notes in one operation.
   - Bidirectional sync with WordPress.
   - Editing already exported WordPress posts from EverFreeNote.
@@ -63,12 +63,14 @@ description: Clarify the problem space, gather requirements, and define success 
 - As a user, I want to adjust export title in popup so WordPress post title can differ from notebook title.
 - As a user, I want to edit a suggested slug so URL is clean and under my control.
 - As a user, I want clear error messages (including slug conflict) so I can fix issues without guessing.
+- As a mobile user with configured WordPress integration, I want to publish the current note from the note options menu so mobile publishing matches web capabilities.
 
 - Key workflows and scenarios
   - User fills WordPress settings in user settings panel.
-  - UI detects valid setup and shows `Export to WordPress` on both web note screens:
+  - UI detects valid setup and shows `Export to WordPress` on supported note screens:
     - in read mode near `Edit/Delete`;
     - in edit mode near `Read`.
+    - in the mobile note options menu.
   - User opens popup from note export button.
   - App fetches categories and renders preselected remembered categories.
   - User adjusts title/categories/tags/slug and confirms export.
@@ -89,7 +91,7 @@ description: Clarify the problem space, gather requirements, and define success 
 
 - Measurable outcomes
   - Users can configure WordPress integration fields in settings.
-  - Export button is visible only on web and only when integration is configured.
+  - Export action is visible only when integration is configured.
   - One-click export entry point exists per note.
   - Popup loads categories and preselects remembered categories.
   - Export sends title/content/tags and selected categories with chosen slug.
@@ -98,12 +100,12 @@ description: Clarify the problem space, gather requirements, and define success 
 
 - Acceptance criteria
   - With valid setup, exporting a note creates a new WordPress post.
-  - Without setup, export button is not rendered.
+  - Without setup, export action is not rendered.
   - With setup, export button is rendered in both `NoteView` and `NoteEditor` headers.
+  - With setup, export action is rendered in the mobile note options menu.
   - Category selection persists and is restored on next popup open.
   - Slug suggestion is latinized from title and user-editable.
   - Duplicate slug returns clear validation error in popup and export is not auto-corrected.
-  - Feature is unavailable in mobile UI.
 
 - Performance benchmarks (if applicable)
   - Popup opens in <200ms on local state render.
@@ -115,13 +117,12 @@ description: Clarify the problem space, gather requirements, and define success 
 **What limitations do we need to work within?**
 
 - Technical constraints
-  - Existing stack: Next.js web UI + Supabase backend/services.
+  - Existing stack: Next.js web UI + React Native mobile UI + Supabase backend/services.
   - Must preserve existing note model and ENEX export behavior.
   - WordPress REST API authentication depends on site configuration and permissions.
 
 - Business constraints
-  - No mobile implementation in this iteration.
-  - Keep UX lightweight and fast for frequent use.
+  - Keep UX lightweight and fast for frequent use on both web and mobile.
 
 - Time/budget constraints
   - Implement with minimal architecture disruption.

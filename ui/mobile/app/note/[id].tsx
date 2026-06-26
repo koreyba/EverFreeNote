@@ -21,6 +21,7 @@ import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
 import { ShareNoteDialog } from '@ui/mobile/components/ShareNoteDialog'
 import { rememberMobileNoteCopyPayload } from '@ui/mobile/utils/noteClipboardCache'
 import { writeNoteCopyPayloadToClipboard } from '@ui/mobile/utils/writeNoteCopyPayloadToClipboard'
+import { WordPressPublishDialog } from '@ui/mobile/components/WordPressPublishDialog'
 
 const CONTENT_HORIZONTAL_PADDING = 16
 const HEADER_BUTTON_PADDING = 8
@@ -247,6 +248,7 @@ export default function NoteEditorScreen() {
   const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
   const [isNoteMenuVisible, setIsNoteMenuVisible] = useState(false)
   const [isShareDialogVisible, setIsShareDialogVisible] = useState(false)
+  const [isWordPressDialogVisible, setIsWordPressDialogVisible] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
@@ -526,6 +528,11 @@ export default function NoteEditorScreen() {
     handleCopy().catch(() => undefined)
   }, [handleCopy])
 
+  const handleOpenWordPressDialog = useCallback(() => {
+    setIsNoteMenuVisible(false)
+    setIsWordPressDialogVisible(true)
+  }, [])
+
   const handleDelete = useCallback(() => {
     deleteNote(id, {
       onSuccess: () => {
@@ -662,11 +669,22 @@ export default function NoteEditorScreen() {
         visible={isNoteMenuVisible}
         onClose={() => setIsNoteMenuVisible(false)}
         onShareNote={handleOpenShareDialog}
+        onExportToWordPress={handleOpenWordPressDialog}
       />
       <ShareNoteDialog
         noteId={id}
         visible={isShareDialogVisible}
         onClose={() => setIsShareDialogVisible(false)}
+      />
+      <WordPressPublishDialog
+        note={{
+          id: note.id,
+          title: title || note.title || '',
+          description: latestDraftRef.current.description || note.description || '',
+          tags,
+        }}
+        visible={isWordPressDialogVisible}
+        onClose={() => setIsWordPressDialogVisible(false)}
       />
     </View>
   )
