@@ -1,0 +1,1 @@
+{"id":"4e8c377560c16bd1784d2ab34697550b","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste preserves self-copy rich text styles for EverFreeNote round-trip","name":"preserves self-copy rich text styles for EverFreeNote round-trip","status":"passed","testResultsByEnv":{"default":"43d4a9222ab5d0b0904859b4a1cfeaec"}}
