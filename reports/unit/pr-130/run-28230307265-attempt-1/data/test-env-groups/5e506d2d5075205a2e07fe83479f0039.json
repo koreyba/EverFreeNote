@@ -1,0 +1,1 @@
+{"id":"5e506d2d5075205a2e07fe83479f0039","fullName":"ui/web/tests/unit/hooks/useNoteSync.test.tsx#useNoteSync — performSync upsert throws when user is not authenticated","name":"throws when user is not authenticated","status":"passed","testResultsByEnv":{"default":"a2376b9bd0f43f3a6a33cb5ec9af0d4b"}}

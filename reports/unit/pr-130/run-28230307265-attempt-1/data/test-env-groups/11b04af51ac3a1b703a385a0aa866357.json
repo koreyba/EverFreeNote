@@ -1,0 +1,1 @@
+{"id":"11b04af51ac3a1b703a385a0aa866357","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer stripHtml falls back to DOM-free tag stripping when DOMPurify throws","name":"falls back to DOM-free tag stripping when DOMPurify throws","status":"passed","testResultsByEnv":{"default":"fc7d9389d78445984c5031caded64b0a"}}

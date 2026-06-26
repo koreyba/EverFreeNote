@@ -1,1 +1,0 @@
-{"id":"c25559c2c8aa12312ecc6b922a7070b6","fullName":"ui/web/tests/unit/components/shareNoteDialog.test.tsx#ShareNoteDialog resets the generated URL when switching to another note","name":"resets the generated URL when switching to another note","status":"passed","testResultsByEnv":{"default":"6ee541fd73be0831059912f99c02ec7a"}}
