@@ -1,0 +1,1 @@
+{"id":"ddb936952aef3c7ef7dc5b1aea04c558","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer sanitize preserves editor-owned task-list markup for self-copy sanitization","name":"preserves editor-owned task-list markup for self-copy sanitization","status":"passed","testResultsByEnv":{"default":"aea65ede3bac2e91f22857adc5fb1e01"}}
