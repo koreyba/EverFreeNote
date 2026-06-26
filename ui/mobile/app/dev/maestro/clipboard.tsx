@@ -4,7 +4,9 @@ import { Stack } from 'expo-router'
 import * as Clipboard from 'expo-clipboard'
 import Toast from 'react-native-toast-message'
 import { NoteCopyService } from '@core/services/noteCopy'
-import { rememberMobileNoteCopyPayload } from '@ui/mobile/utils/noteClipboardCache'
+// [note-copy Option A] In-memory copy cache removed (read-side crutch).
+// See docs/ai/design/feature-note-copy.md.
+// import { rememberMobileNoteCopyPayload } from '@ui/mobile/utils/noteClipboardCache'
 import { useTheme } from '@ui/mobile/providers'
 import { writeNoteCopyPayloadToClipboard } from '@ui/mobile/utils/writeNoteCopyPayloadToClipboard'
 
@@ -29,7 +31,8 @@ export default function MaestroClipboardScreen() {
   const handleCopyFixture = async () => {
     try {
       await writeNoteCopyPayloadToClipboard(FIXTURE_COPY_PAYLOAD)
-      rememberMobileNoteCopyPayload(FIXTURE_COPY_PAYLOAD)
+      // [note-copy Option A] In-memory cache removed; the Maestro flow reads the
+      // real system clipboard back, not the cache. See docs/ai/design/feature-note-copy.md.
       Toast.show({ type: 'success', text1: 'Fixture copied' })
     } catch {
       Toast.show({ type: 'error', text1: 'Failed to copy fixture' })

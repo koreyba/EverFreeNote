@@ -43,6 +43,23 @@ description: Technical implementation notes, patterns, and code guidelines
 - **Fallback removal:** comment out the native write, the in-memory cache, and
   the `CLIPBOARD_PASTE_REQUEST` native read so the WebView path is the only path.
 
+### Implemented (this phase)
+- **Zero-loss audit result:** the `editor-self-copy` sanitizer profile was missing
+  `sub`/`sup` tags — the subscript/superscript extensions would be stripped on the
+  self-copy round-trip. Added them to `DEFAULT_ALLOWED_TAGS`
+  (`core/services/sanitizer.ts`). `SELF_COPY_STYLE_ALLOWLIST` (8 style props) was
+  found adequate for the current TipTap extension set, so it was left unchanged.
+- **Copy feedback:** the header Copy button bounces (Animated scale) and swaps the
+  Copy icon for a Check icon for ~1s on success; the success toast was removed (the
+  error toast stays). The check indicator carries `testID="note-copy-feedback"` for
+  tests.
+- **Instrumentation:** when a paste event has no `clipboardData` (the Option A gap),
+  both the web editor (`handlePaste`) and the native `CLIPBOARD_PASTE_REQUEST`
+  handler log a `[note-copy]` warning, so the gap is observable during verification.
+- **Removed (commented, reversible):** native paste read + in-memory cache feed in
+  `EditorWebView`, `rememberMobileNoteCopyPayload` calls in `note/[id].tsx` and the
+  maestro harness, and `sendNativeMessage` / its two sends in the web editor.
+
 ### Patterns & Best Practices
 - Single source of truth for the clipboard format: `NoteCopyService.buildPayload`
   (used by web and mobile alike → parity).

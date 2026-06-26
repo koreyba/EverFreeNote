@@ -10,6 +10,9 @@ const DEFAULT_ALLOWED_TAGS = [
   'b', 'i', 'em', 'strong', 'a', 'p', 'br', 'hr', 'ul', 'ol', 'li',
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre',
   'span', 'div', 'img', 'mark', 'u', 's', 'strike',
+  // sub/sup are produced by the editor's subscript/superscript extensions and
+  // must survive sanitization so the self-copy round-trip is zero-loss.
+  'sub', 'sup',
 ]
 
 const SELF_COPY_ALLOWED_TAGS = [

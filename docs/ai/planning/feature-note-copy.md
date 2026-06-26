@@ -9,10 +9,11 @@ description: Break down work into actionable tasks and estimate timeline
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] Milestone 1: Fallback removed; pure Option A wired on mobile (copy via
-      `COPY_NOTE` message, paste via WebView `clipboardData`).
+- [x] Milestone 1: Read-side crutch removed (in-memory cache + native read);
+      copy stays a native write; paste is pure Option A via WebView `clipboardData`.
+      Zero-loss audit done; feedback animation added; tests green.
 - [ ] Milestone 2: Round-trip 1:1 verified on web + mobile; plain-text correct in
-      messengers.
+      messengers. (Pending device/Maestro verification.)
 - [ ] Milestone 3: Real-device verification of the two Option A assumptions;
       decision recorded (keep clean A, or reinstate a robust fallback).
 
@@ -20,34 +21,39 @@ description: Break down work into actionable tasks and estimate timeline
 **What specific work needs to be done?**
 
 ### Phase 1: Foundation (remove the read-side crutch only)
-- [ ] Task 1.1: Comment out the native paste fallback in
+- [x] Task 1.1: Commented out the native paste fallback in
       `ui/mobile/components/EditorWebView.tsx` (`handleClipboardPasteRequest`,
-      `CLIPBOARD_PASTE_REQUEST` handling, `getMatchingMobileNoteCopyPayload`).
-- [ ] Task 1.2: Comment out `ui/mobile/utils/noteClipboardCache.ts` usage and the
-      `MOBILE_NOTE_COPY_PAYLOAD` cache feed.
-- [ ] Task 1.3: **Keep** the native copy write (`writeNoteCopyPayloadToClipboard`
+      `CLIPBOARD_PASTE_REQUEST` now logs the Option A gap instead). Cache imports
+      and `expo-clipboard` import commented out.
+- [x] Task 1.2: Commented out `noteClipboardCache` usage and the
+      `MOBILE_NOTE_COPY_PAYLOAD` cache feed (EditorWebView, note/[id].tsx,
+      maestro harness, and the web editor's handleCopy send).
+- [x] Task 1.3: Kept the native copy write (`writeNoteCopyPayloadToClipboard`
       via `buildPayload`) — copy stays native; only the read cache is removed.
 
 ### Phase 2: Core (pure Option A on the paste side)
-- [ ] Task 2.1: Confirm mobile copy stays native: header button →
+- [x] Task 2.1: Confirmed mobile copy stays native: header button →
       `buildPayload(body)` → `writeNoteCopyPayloadToClipboard` (entire body).
-- [ ] Task 2.2: Confirm `handlePaste` uses `event.clipboardData` directly (no
-      native bridge); self-copy marker handled inside `SmartPasteService.resolvePaste`.
-- [ ] Task 2.3: Copy feedback — brief (~1s) Copy-button animation (preferred) or
-      a notification/toast on success.
-- [ ] Task 2.4: Zero-loss audit — check the `editor-self-copy` profile **and**
-      `SELF_COPY_STYLE_ALLOWLIST` (in `smartPaste.ts`) against the full TipTap
-      extension set; expand both to cover every stored formatting feature.
+- [x] Task 2.2: `handlePaste` uses `event.clipboardData` directly; the dead
+      native bridge branch now logs + falls through; marker handled inside
+      `SmartPasteService.resolvePaste`. `sendNativeMessage` commented out.
+- [x] Task 2.3: Copy feedback — Copy-button bounces and swaps to a check icon
+      for ~1s (`note-copy-feedback` testID); success toast removed (error stays).
+- [x] Task 2.4: Zero-loss audit done. Found+fixed: `sub`/`sup` tags were missing
+      from the sanitizer allowlist (subscript/superscript would be stripped).
+      `SELF_COPY_STYLE_ALLOWLIST` (8 props) covers the current extension set.
 
 ### Phase 3: Verification & Polish
-- [ ] Task 3.1: Add instrumentation/logging for which clipboard path fires
-      (copy/paste, with/without `clipboardData`).
+- [x] Task 3.1: Instrumentation added — both the WebView (`handlePaste`) and the
+      native `CLIPBOARD_PASTE_REQUEST` handler log when a paste event had no
+      `clipboardData` (the Option A gap), so it is observable.
 - [ ] Task 3.2: Extend the Maestro flow to cover the real editor copy → paste
-      round-trip (beyond the isolated transport harness).
+      round-trip (beyond the isolated transport harness). **[verification phase]**
 - [ ] Task 3.3: Run on a real Android device; record whether the two Option A
-      assumptions hold; decide on clean-A vs robust fallback.
-- [ ] Task 3.4: Update tests (unit/integration/component) for the removed
-      fallback and the Option A path.
+      assumptions hold; decide on clean-A vs robust fallback. **[verification phase]**
+- [x] Task 3.4: Updated tests for the removed fallback / Option A path
+      (mobile `editorWebViewMessages`, `noteEditorScreen`; cypress
+      `RichTextEditorWebViewPaste`). All unit/integration suites green.
 
 ## Dependencies
 **What needs to happen in what order?**

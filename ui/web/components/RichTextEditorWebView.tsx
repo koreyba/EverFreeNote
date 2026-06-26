@@ -50,14 +50,17 @@ const RichTextEditorWebView = React.forwardRef<
     applySelectionAsMarkdown(editor, onContentChange)
   }, [onContentChange])
 
-  const sendNativeMessage = React.useCallback((message: { type: string; payload?: unknown }) => {
-    const reactNativeWebView = (globalThis as unknown as {
-      ReactNativeWebView?: { postMessage: (message: string) => void }
-    }).ReactNativeWebView
-
-    reactNativeWebView?.postMessage(JSON.stringify(message))
-    return Boolean(reactNativeWebView)
-  }, [])
+  // [note-copy Option A] Native bridge messaging removed: copy writes clipboardData
+  // (selection) / native write (whole note), and paste reads clipboardData directly.
+  // See docs/ai/design/feature-note-copy.md.
+  // const sendNativeMessage = React.useCallback((message: { type: string; payload?: unknown }) => {
+  //   const reactNativeWebView = (globalThis as unknown as {
+  //     ReactNativeWebView?: { postMessage: (message: string) => void }
+  //   }).ReactNativeWebView
+  //
+  //   reactNativeWebView?.postMessage(JSON.stringify(message))
+  //   return Boolean(reactNativeWebView)
+  // }, [])
 
   const getSelectedHtml = React.useCallback((editor: Editor) => {
     const { selection } = editor.state
@@ -77,15 +80,15 @@ const RichTextEditorWebView = React.forwardRef<
     if (!selectedHtml.trim()) return false
 
     const payload = NoteCopyService.buildPayload(selectedHtml)
-    sendNativeMessage({ type: 'MOBILE_NOTE_COPY_PAYLOAD', payload })
-
+    // [note-copy Option A] Cache feed removed; the in-editor selection copy writes
+    // clipboardData directly (real copy event has user activation).
     if (!event.clipboardData) return false
 
     event.clipboardData.setData('text/html', payload.html)
     event.clipboardData.setData('text/plain', payload.text)
     event.preventDefault()
     return true
-  }, [getSelectedHtml, sendNativeMessage])
+  }, [getSelectedHtml])
 
   const applyPastePayload = React.useCallback((payload: MobileClipboardPastePayload) => {
     const editor = editorRef.current
@@ -111,10 +114,12 @@ const RichTextEditorWebView = React.forwardRef<
 
   const handlePaste = React.useCallback((_: unknown, event: ClipboardEvent) => {
     if (!event.clipboardData) {
-      if (!sendNativeMessage({ type: 'CLIPBOARD_PASTE_REQUEST' })) return false
-
-      event.preventDefault()
-      return true
+      // [note-copy Option A] Paste stays inside the WebView via clipboardData.
+      // The native read bridge was removed. If clipboardData is missing (Android
+      // WebView gap), let the default paste proceed and log so the gap is
+      // observable during verification. See docs/ai/design/feature-note-copy.md.
+      console.warn('[note-copy] paste event had no clipboardData (Option A gap)')
+      return false
     }
 
     const payload = SmartPasteService.buildPayload(event)
@@ -122,7 +127,7 @@ const RichTextEditorWebView = React.forwardRef<
 
     event.preventDefault()
     return applyPastePayload(payload)
-  }, [applyPastePayload, sendNativeMessage])
+  }, [applyPastePayload])
 
   // Handle background clicks (padding/gaps) in a ProseMirror-native way.
   // This prevents "jump to end" when clicking internal vertical gaps (e.g. after headings),

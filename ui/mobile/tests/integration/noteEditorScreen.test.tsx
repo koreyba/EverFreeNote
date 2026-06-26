@@ -361,7 +361,7 @@ async function expectCopyNoteUsesHtml(expectedHtml: string) {
       expect.stringContaining(expectedHtml),
       { inputFormat: 'html' },
     )
-    expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
+    expect(screen.queryByTestId('note-copy-feedback')).toBeTruthy()
   })
 }
 
@@ -974,7 +974,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         expectClipboardWrite(1, expect.stringContaining('<p>Test content</p>'), 'html')
         expectClipboardWrite(2, 'Test content', 'plainText')
         expectCopyFailureLog('html', 'html unsupported')
-        expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
+        expect(screen.queryByTestId('note-copy-feedback')).toBeTruthy()
       })
     })
 
@@ -992,7 +992,7 @@ describe('NoteEditorScreen - Delete Functionality', () => {
         expectClipboardWrite(3, 'Test content')
         expectCopyFailureLog('html', 'html unsupported')
         expectCopyFailureLog('plainTextFormatted', 'formatted plain unsupported')
-        expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Note copied' })
+        expect(screen.queryByTestId('note-copy-feedback')).toBeTruthy()
       })
     })
 

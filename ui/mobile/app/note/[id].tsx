@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { Alert, Pressable, View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard } from 'react-native'
+import { Alert, Pressable, View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard, Animated } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
@@ -8,7 +8,7 @@ import { EditorToolbar, TOOLBAR_CONTENT_HEIGHT } from '@ui/mobile/components/Edi
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
-import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical, Copy } from 'lucide-react-native'
+import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical, Copy, Check } from 'lucide-react-native'
 import Toast from 'react-native-toast-message'
 import { NoteCopyService } from '@core/services/noteCopy'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
@@ -19,7 +19,9 @@ import {
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
 import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
 import { ShareNoteDialog } from '@ui/mobile/components/ShareNoteDialog'
-import { rememberMobileNoteCopyPayload } from '@ui/mobile/utils/noteClipboardCache'
+// [note-copy Option A] In-memory copy cache removed (read-side crutch).
+// See docs/ai/design/feature-note-copy.md.
+// import { rememberMobileNoteCopyPayload } from '@ui/mobile/utils/noteClipboardCache'
 import { writeNoteCopyPayloadToClipboard } from '@ui/mobile/utils/writeNoteCopyPayloadToClipboard'
 import { WordPressPublishDialog } from '@ui/mobile/components/WordPressPublishDialog'
 
@@ -174,6 +176,7 @@ function HeaderDeleteButton({
 type HeaderRightActionsProps = Readonly<{
   styles: NoteEditorHeaderStyles
   colors: ThemeColors
+  justCopied: boolean
   onCopy: () => void
   onOpenMenu: () => void
 }>
@@ -181,9 +184,20 @@ type HeaderRightActionsProps = Readonly<{
 function HeaderRightActions({
   styles,
   colors,
+  justCopied,
   onCopy,
   onOpenMenu,
 }: HeaderRightActionsProps) {
+  // Copy feedback: briefly bounce the button and swap the icon to a check.
+  const copyScale = useRef(new Animated.Value(1)).current
+  useEffect(() => {
+    if (!justCopied) return
+    Animated.sequence([
+      Animated.timing(copyScale, { toValue: 1.25, duration: 120, useNativeDriver: true }),
+      Animated.spring(copyScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+    ]).start()
+  }, [justCopied, copyScale])
+
   return (
     <View style={styles.headerActions}>
       <View style={styles.headerRightGroup}>
@@ -193,7 +207,14 @@ function HeaderRightActions({
           accessibilityRole="button"
           style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.5 }]}
         >
-          <Copy color={colors.foreground} size={20} />
+          <Animated.View
+            testID={justCopied ? 'note-copy-feedback' : 'note-copy-icon'}
+            style={{ transform: [{ scale: copyScale }] }}
+          >
+            {justCopied
+              ? <Check color={colors.primary} size={20} />
+              : <Copy color={colors.foreground} size={20} />}
+          </Animated.View>
         </Pressable>
         <ThemeToggle style={styles.headerToggle} />
         <Pressable
@@ -250,6 +271,11 @@ export default function NoteEditorScreen() {
   const [isShareDialogVisible, setIsShareDialogVisible] = useState(false)
   const [isWordPressDialogVisible, setIsWordPressDialogVisible] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
+  const [justCopied, setJustCopied] = useState(false)
+  const justCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (justCopiedTimerRef.current) clearTimeout(justCopiedTimerRef.current)
+  }, [])
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [isEditorReady, setIsEditorReady] = useState(false)
@@ -516,8 +542,11 @@ export default function NoteEditorScreen() {
         : latestDraftRef.current.description
       const payload = NoteCopyService.buildPayload(html)
       await writeNoteCopyPayloadToClipboard(payload)
-      rememberMobileNoteCopyPayload(payload)
-      Toast.show({ type: 'success', text1: 'Note copied' })
+      // [note-copy Option A] Cache feed removed; copy stays a native write.
+      // Feedback: animate the Copy button for ~1s instead of a toast.
+      setJustCopied(true)
+      if (justCopiedTimerRef.current) clearTimeout(justCopiedTimerRef.current)
+      justCopiedTimerRef.current = setTimeout(() => setJustCopied(false), 1000)
     } catch (copyError) {
       logCopyFailure('fatal', copyError)
       Toast.show({ type: 'error', text1: 'Failed to copy note' })
@@ -573,11 +602,12 @@ export default function NoteEditorScreen() {
       <HeaderRightActions
         styles={styles}
         colors={colors}
+        justCopied={justCopied}
         onCopy={handleCopyPress}
         onOpenMenu={handleOpenNoteMenu}
       />
     ),
-    [colors, handleCopyPress, handleOpenNoteMenu, styles]
+    [colors, handleCopyPress, handleOpenNoteMenu, justCopied, styles]
   )
 
   const isToolbarVisible = isEditorFocused || isToolbarMenuOpen
