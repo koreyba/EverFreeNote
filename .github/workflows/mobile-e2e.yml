@@ -132,12 +132,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
             adb install -r "$APK_PATH"
-            maestro test \
-              --format junit \
-              --output maestro-report/junit.xml \
-              .maestro/flows/note-copy-smoke.yaml \
-              -e APP_ID="$APP_ID" \
-              -e DEEPLINK_URL="$DEEPLINK_URL"
+            maestro test --format junit --output maestro-report/junit.xml .maestro/flows/note-copy-smoke.yaml -e APP_ID="$APP_ID" -e DEEPLINK_URL="$DEEPLINK_URL"
 
       - name: Upload Maestro artifacts
         if: always()
