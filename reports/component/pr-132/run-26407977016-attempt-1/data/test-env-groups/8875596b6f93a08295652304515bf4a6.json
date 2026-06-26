@@ -1,1 +1,0 @@
-{"id":"8875596b6f93a08295652304515bf4a6","fullName":"cypress/component/ui/web/hooks/useBulkDeleteConfirm.cy.tsx#useBulkDeleteConfirm always closes dialog after confirm callback resolves","name":"always closes dialog after confirm callback resolves","status":"passed","testResultsByEnv":{"default":"a94cfd11d762f605b8bd52b2afd52ba7"}}
