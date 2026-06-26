@@ -1,0 +1,1 @@
+{"id":"8d4efbee6777c5539311f605f4ed6fac","fullName":"cypress/component/ui/web/hooks/useNoteAppController.cy.tsx#useNoteAppController flushes pending editor save when selecting a note while editing","name":"flushes pending editor save when selecting a note while editing","status":"passed","testResultsByEnv":{"default":"9e89dd1e0040f6b0ca74e1b4045e55a7"}}
