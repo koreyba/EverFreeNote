@@ -40,3 +40,24 @@ Override defaults when needed:
 ```powershell
 ./scripts/maestro/run-copy-smoke.ps1 -AppId "com.everfreenote.app.stage" -DeepLinkUrl "everfreenote-stage://dev/maestro/clipboard"
 ```
+
+## CI Run
+
+The flow also runs on GitHub Actions via
+[`.github/workflows/mobile-e2e.yml`](../.github/workflows/mobile-e2e.yml) on pull
+requests that touch `ui/mobile/**` or `.maestro/**` (and on `main`). The workflow:
+
+1. Builds a self-contained `devRelease` APK with gradle (`assembleDevRelease`,
+   `x86_64` only). `devRelease` embeds the JS bundle, so the app runs without a
+   Metro dev server. No Next.js / WebView-editor build is needed because the
+   clipboard harness never opens the editor.
+2. Boots an Android emulator (API 34, hardware-accelerated via KVM).
+3. Installs the APK and runs this flow with Maestro.
+
+Notes:
+
+- **Android only.** iOS e2e needs macOS runners and stays a local-only workflow.
+- Supabase config is baked at build time with placeholder values (the app boots
+  but makes no network calls). Override with the `EXPO_PUBLIC_SUPABASE_URL`
+  repo Variable and `EXPO_PUBLIC_SUPABASE_ANON_KEY` Secret if a real backend is
+  ever needed.

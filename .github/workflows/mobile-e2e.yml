@@ -1,0 +1,160 @@
+name: Mobile E2E (Android · Maestro)
+
+# Builds a self-contained Android dev APK and runs the Maestro clipboard-copy
+# smoke flow against it on an emulator. Public repo => unlimited Linux minutes,
+# so we can afford the gradle build + emulator boot on every relevant change.
+#
+# Scope (intentionally small for the first iteration):
+#   - Android only. iOS e2e needs macOS runners (10x minutes) and stays local.
+#   - Exercises the mobile clipboard transport via the dev harness screen
+#     (`app/dev/maestro/clipboard.tsx`), the same writer used by the real
+#     note "Copy" button. It does NOT yet drive the real note UI.
+
+on:
+  pull_request:
+    paths:
+      - 'ui/mobile/**'
+      - '.maestro/**'
+      - '.github/workflows/mobile-e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ui/mobile/**'
+      - '.maestro/**'
+      - '.github/workflows/mobile-e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The Maestro clipboard harness makes no network calls, but SupabaseProvider
+  # constructs the client eagerly at startup and throws on empty config
+  # (ui/mobile/adapters/config.ts). So we bake non-empty values at build time.
+  # Real values can be provided via repo Variables/Secrets; otherwise a valid
+  # placeholder URL + dummy key is enough for the app to boot.
+  APP_VARIANT: dev
+  EXPO_PUBLIC_APP_VARIANT: dev
+  EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+  EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'ci-placeholder-anon-key' }}
+  # App identity the Maestro flow targets (dev flavor).
+  APP_ID: com.everfreenote.app.dev
+  DEEPLINK_URL: everfreenote-dev://dev/maestro/clipboard
+  APK_PATH: ui/mobile/android/app/build/outputs/apk/dev/release/app-dev-release.apk
+
+jobs:
+  build-and-test:
+    name: Build dev APK & run Maestro clipboard flow
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # KVM gives the Android emulator hardware acceleration on GitHub's Linux
+      # runners. Without it the emulator falls back to slow software rendering.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Node 20 LTS is Expo SDK 54's best-tested runtime for native bundling
+      # (`export:embed`). Cache both lockfiles since metro resolves shared
+      # `@core` code from the repo-root node_modules too.
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            ui/mobile/package-lock.json
+
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install mobile dependencies
+        run: npm --prefix ui/mobile ci
+
+      # The committed gradle.properties pins org.gradle.java.home to a Windows
+      # Android Studio path (developer convenience) and a small heap. Neither is
+      # valid on CI, so strip the JDK pin (use JAVA_HOME from setup-java) and
+      # raise the heap via the higher-precedence GRADLE_USER_HOME properties.
+      - name: Prepare Gradle for CI
+        run: |
+          sed -i '/org.gradle.java.home/d' ui/mobile/android/gradle.properties
+          mkdir -p ~/.gradle
+          {
+            echo 'org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g'
+            echo 'org.gradle.daemon=false'
+          } >> ~/.gradle/gradle.properties
+
+      - name: Setup Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          build-root-directory: ui/mobile/android
+
+      # devRelease (not devDebug) embeds the JS bundle, so the APK runs without a
+      # Metro server. We keep the dev flavor to match the Maestro APP_ID/scheme.
+      # Restrict ABIs to x86_64 to match the emulator and speed up the build.
+      # The WebView editor bundle is intentionally absent here — the clipboard
+      # harness does not open the editor, so no Next.js build is required.
+      - name: Build dev-release APK
+        working-directory: ui/mobile/android
+        run: ./gradlew :app:assembleDevRelease -PreactNativeArchitectures=x86_64 --no-daemon --stacktrace
+
+      - name: Install Maestro CLI
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Run Maestro clipboard flow on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb install -r "$APK_PATH"
+            maestro test \
+              --format junit \
+              --output maestro-report/junit.xml \
+              .maestro/flows/note-copy-smoke.yaml \
+              -e APP_ID="$APP_ID" \
+              -e DEEPLINK_URL="$DEEPLINK_URL"
+
+      - name: Upload Maestro artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-clipboard-${{ github.run_id }}
+          path: |
+            maestro-report
+            ~/.maestro/tests
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload dev APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-dev-release-${{ github.run_id }}
+          path: ${{ env.APK_PATH }}
+          if-no-files-found: ignore
+          retention-days: 7
