@@ -1,0 +1,1 @@
+{"id":"1f4ccbea798020de66b2c0d4436ab30d","fullName":"cypress/component/ui/web/hooks/useNoteBulkActionsDirect.cy.tsx#useNoteBulkActions direct deleteSelectedNotes clears state after successful selected-note deletes","name":"deleteSelectedNotes clears state after successful selected-note deletes","status":"passed","testResultsByEnv":{"default":"fb72065291a89cd55abf0d8dc9d1d749"}}
