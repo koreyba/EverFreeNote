@@ -1,0 +1,1 @@
+{"id":"61f4e824a1eb1cfc2722095d5368e378","fullName":"cypress/component/ui/web/hooks/useNoteData.cy.tsx#useNoteData returns undefined mergedFtsData when aggregatedFtsData is undefined","name":"returns undefined mergedFtsData when aggregatedFtsData is undefined","status":"passed","testResultsByEnv":{"default":"fea41d5357f854c30c020af0911a7a23"}}
