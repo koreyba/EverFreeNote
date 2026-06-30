@@ -1,1 +1,0 @@
-{"id":"034bd5e7625b8e1b83ac6ac2c36e0af6","fullName":"ui/web/tests/unit/components/noteEditor.test.tsx#NoteEditor same-note autosave reconciliation copies the current unsaved draft body from editing mode","name":"copies the current unsaved draft body from editing mode","status":"passed","testResultsByEnv":{"default":"01f946df060c75b177a17c57cb329c4b"}}
