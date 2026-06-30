@@ -92,10 +92,7 @@ describe('RichTextEditorWebView – Smart Paste', () => {
    * The editor must stop native plain-text paste and ask React Native for HTML.
    */
   describe('null clipboardData bridge - Android/iOS WebView', () => {
-    // [note-copy Option A] The native read bridge was removed. When clipboardData is
-    // missing the editor no longer asks React Native; it lets the default paste proceed
-    // and logs the gap. See docs/ai/design/feature-note-copy.md.
-    it('does not request native clipboard data when clipboardData is missing (Option A)', () => {
+    it('requests native clipboard data when clipboardData is missing', () => {
       cy.spy(SmartPasteService, 'resolvePaste').as('resolvePaste')
       mountEditor('<p>Existing content</p>')
       cy.window().then((win) => {
@@ -107,8 +104,12 @@ describe('RichTextEditorWebView – Smart Paste', () => {
       simulatePasteNoClipboard()
 
       cy.get('@resolvePaste').should('not.have.been.called')
-      cy.get('@postNativeMessage').should('not.have.been.called')
-      cy.get('.ProseMirror p').should('contain.text', 'Existing content')
+      cy.get('@postNativeMessage').should('have.been.calledOnce')
+      cy.get('@postNativeMessage').then((stub) => {
+        const postMessage = stub as unknown as { getCall: (index: number) => { args: unknown[] } }
+        const message = JSON.parse(String(postMessage.getCall(0).args[0])) as { type: string }
+        expect(message.type).to.equal('CLIPBOARD_PASTE_REQUEST')
+      })
     })
 
     it('preserves existing editor content when clipboardData is null outside React Native', () => {
@@ -131,10 +132,7 @@ describe('RichTextEditorWebView – Smart Paste', () => {
       cy.get('.ProseMirror h2').should('contain.text', 'Mobile Subtitle')
     })
 
-    // [note-copy Option A] The in-memory cache feed was removed. Mobile copy no longer
-    // sends a native MOBILE_NOTE_COPY_PAYLOAD message; the in-editor selection copy writes
-    // clipboardData directly. See docs/ai/design/feature-note-copy.md.
-    it('no longer sends a native cache message during mobile copy (Option A)', () => {
+    it('sends selected heading HTML to React Native cache during mobile copy', () => {
       mountEditor('<h1>Copied Title</h1><h2>Copied Subtitle</h2>')
       cy.window().then((win) => {
         ;(win as unknown as { ReactNativeWebView: { postMessage: (message: string) => void } }).ReactNativeWebView = {
@@ -145,7 +143,18 @@ describe('RichTextEditorWebView – Smart Paste', () => {
 
       simulateCopyNoClipboard()
 
-      cy.get('@postNativeMessage').should('not.have.been.called')
+      cy.get('@postNativeMessage').should('have.been.calledOnce')
+      cy.get('@postNativeMessage').then((stub) => {
+        const postMessage = stub as unknown as { getCall: (index: number) => { args: unknown[] } }
+        const message = JSON.parse(String(postMessage.getCall(0).args[0])) as {
+          type: string
+          payload: { html: string; text: string }
+        }
+        expect(message.type).to.equal('MOBILE_NOTE_COPY_PAYLOAD')
+        expect(message.payload.html).to.include('<h1>Copied Title</h1>')
+        expect(message.payload.html).to.include('<h2>Copied Subtitle</h2>')
+        expect(message.payload.text).to.equal('Copied Title\n\nCopied Subtitle')
+      })
     })
   })
 

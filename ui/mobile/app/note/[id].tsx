@@ -19,9 +19,7 @@ import {
 import { NoteBodyPreview } from '@ui/mobile/components/NoteBodyPreview'
 import { NoteIndexMenu } from '@ui/mobile/components/NoteIndexMenu'
 import { ShareNoteDialog } from '@ui/mobile/components/ShareNoteDialog'
-// [note-copy Option A] In-memory copy cache removed (read-side crutch).
-// See docs/ai/design/feature-note-copy.md.
-// import { rememberMobileNoteCopyPayload } from '@ui/mobile/utils/noteClipboardCache'
+import { rememberMobileNoteCopyPayload } from '@ui/mobile/utils/noteClipboardCache'
 import { writeNoteCopyPayloadToClipboard } from '@ui/mobile/utils/writeNoteCopyPayloadToClipboard'
 import { WordPressPublishDialog } from '@ui/mobile/components/WordPressPublishDialog'
 
@@ -542,8 +540,8 @@ export default function NoteEditorScreen() {
         : latestDraftRef.current.description
       const payload = NoteCopyService.buildPayload(html)
       await writeNoteCopyPayloadToClipboard(payload)
-      // [note-copy Option A] Cache feed removed; copy stays a native write.
-      // Feedback: animate the Copy button for ~1s instead of a toast.
+      rememberMobileNoteCopyPayload(payload)
+      // Feedback: animate the Copy button for ~1s on success (replaces the toast).
       setJustCopied(true)
       if (justCopiedTimerRef.current) clearTimeout(justCopiedTimerRef.current)
       justCopiedTimerRef.current = setTimeout(() => setJustCopied(false), 1000)

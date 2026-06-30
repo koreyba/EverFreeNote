@@ -4,9 +4,11 @@
  */
 import React from 'react'
 import { act, render, waitFor } from '@testing-library/react-native'
-
-// [note-copy Option A] Native clipboard read + in-memory cache removed; the related
-// CLIPBOARD_PASTE_REQUEST / MOBILE_NOTE_COPY_PAYLOAD tests below were updated.
+import * as Clipboard from 'expo-clipboard'
+import {
+  clearMobileNoteCopyPayload,
+  rememberMobileNoteCopyPayload,
+} from '@ui/mobile/utils/noteClipboardCache'
 
 // Mock WebView
 const mockPostMessage = jest.fn()
@@ -40,6 +42,18 @@ jest.mock('expo-constants', () => ({
   },
 }))
 
+jest.mock('expo-clipboard', () => ({
+  getStringAsync: jest.fn(async ({ preferredFormat }: { preferredFormat?: string } = {}) =>
+    preferredFormat === 'html'
+      ? '<h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2>'
+      : 'Clipboard Heading\nClipboard Subheading'
+  ),
+  StringFormat: {
+    HTML: 'html',
+    PLAIN_TEXT: 'plainText',
+  },
+}))
+
 jest.mock('@ui/mobile/adapters', () => ({
   getSupabaseConfig: () => ({ url: 'https://test.supabase.co' }),
 }))
@@ -65,6 +79,12 @@ describe('EditorWebView message handling', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     capturedOnMessage = null
+    ;(Clipboard.getStringAsync as jest.Mock).mockImplementation(
+      async ({ preferredFormat }: { preferredFormat?: string } = {}) =>
+        preferredFormat === 'html'
+          ? '<h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2>'
+          : 'Clipboard Heading\nClipboard Subheading'
+    )
     warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
     errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -72,6 +92,7 @@ describe('EditorWebView message handling', () => {
   afterEach(() => {
     warnSpy.mockRestore()
     errorSpy.mockRestore()
+    clearMobileNoteCopyPayload()
   })
 
   const sendMessage = (type: string, payload?: unknown) => {
@@ -143,8 +164,8 @@ describe('EditorWebView message handling', () => {
     })
   })
 
-  describe('CLIPBOARD_PASTE_REQUEST handling (Option A)', () => {
-    it('no longer reads the native clipboard; logs the Option A gap and posts nothing', async () => {
+  describe('CLIPBOARD_PASTE_REQUEST handling', () => {
+    it('reads native HTML and plain text clipboard values and posts them to the WebView editor', async () => {
       render(<EditorWebView initialContent="" />)
 
       await waitFor(() => {
@@ -153,11 +174,86 @@ describe('EditorWebView message handling', () => {
 
       sendMessage('CLIPBOARD_PASTE_REQUEST')
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        '[EditorWebView][note-copy] paste event had no clipboardData (Option A gap)',
+      await waitFor(() => {
+        expect(Clipboard.getStringAsync).toHaveBeenCalledWith({ preferredFormat: 'html' })
+        expect(Clipboard.getStringAsync).toHaveBeenCalledWith({ preferredFormat: 'plainText' })
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'APPLY_CLIPBOARD_PASTE',
+            payload: {
+              html: '<h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2>',
+              text: 'Clipboard Heading\nClipboard Subheading',
+              types: ['text/html', 'text/plain'],
+            },
+          })
+        )
+      })
+    })
+
+    it('uses the cached EverFreeNote HTML when native clipboard only returns matching plain text', async () => {
+      ;(Clipboard.getStringAsync as jest.Mock).mockImplementation(
+        async ({ preferredFormat }: { preferredFormat?: string } = {}) =>
+          preferredFormat === 'html' ? '' : 'Clipboard Heading Clipboard Subheading'
       )
-      const postedTypes = mockPostMessage.mock.calls.map(([value]) => JSON.parse(String(value)).type)
-      expect(postedTypes).not.toContain('APPLY_CLIPBOARD_PASTE')
+      rememberMobileNoteCopyPayload({
+        html: '<div data-everfreenote-copy="note-body"><h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2></div>',
+        text: 'Clipboard Heading\n\nClipboard Subheading',
+      })
+
+      render(<EditorWebView initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('CLIPBOARD_PASTE_REQUEST')
+
+      await waitFor(() => {
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'APPLY_CLIPBOARD_PASTE',
+            payload: {
+              html: '<div data-everfreenote-copy="note-body"><h1>Clipboard Heading</h1><h2>Clipboard Subheading</h2></div>',
+              text: 'Clipboard Heading Clipboard Subheading',
+              types: ['text/html', 'text/plain'],
+            },
+          })
+        )
+      })
+    })
+  })
+
+  describe('MOBILE_NOTE_COPY_PAYLOAD handling', () => {
+    it('caches selected editor HTML from the WebView and reuses it when paste only has matching plain text', async () => {
+      ;(Clipboard.getStringAsync as jest.Mock).mockImplementation(
+        async ({ preferredFormat }: { preferredFormat?: string } = {}) =>
+          preferredFormat === 'html' ? '' : 'Selected Heading Selected Subheading'
+      )
+
+      render(<EditorWebView initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('MOBILE_NOTE_COPY_PAYLOAD', {
+        html: '<div data-everfreenote-copy="note-body"><h1>Selected Heading</h1><h2>Selected Subheading</h2></div>',
+        text: 'Selected Heading\n\nSelected Subheading',
+      })
+      sendMessage('CLIPBOARD_PASTE_REQUEST')
+
+      await waitFor(() => {
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'APPLY_CLIPBOARD_PASTE',
+            payload: {
+              html: '<div data-everfreenote-copy="note-body"><h1>Selected Heading</h1><h2>Selected Subheading</h2></div>',
+              text: 'Selected Heading Selected Subheading',
+              types: ['text/html', 'text/plain'],
+            },
+          })
+        )
+      })
     })
   })
 

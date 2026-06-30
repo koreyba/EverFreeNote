@@ -2,19 +2,16 @@
 import { StyleSheet, View, ActivityIndicator, Text, Pressable } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import Constants from 'expo-constants'
-// [note-copy Option A] Native clipboard read + in-memory cache removed; paste is
-// now pure Option A (the WebView reads event.clipboardData directly).
-// See docs/ai/design/feature-note-copy.md. Restore if Option A paste fails on device.
-// import * as Clipboard from 'expo-clipboard'
+import * as Clipboard from 'expo-clipboard'
 import NetInfo from '@react-native-community/netinfo'
 import { getSupabaseConfig } from '@ui/mobile/adapters'
 import { useTheme } from '@ui/mobile/providers'
 import { consumeChunkedMessage, sendChunkedText, type ChunkBufferStore } from '@core/utils/editorWebViewBridge'
 import { getLocalBundleUrl } from '@ui/mobile/utils/localBundle'
-// import {
-//     getMatchingMobileNoteCopyPayload,
-//     rememberMobileNoteCopyPayload,
-// } from '@ui/mobile/utils/noteClipboardCache'
+import {
+    getMatchingMobileNoteCopyPayload,
+    rememberMobileNoteCopyPayload,
+} from '@ui/mobile/utils/noteClipboardCache'
 
 export type EditorWebViewHandle = {
     setContent: (html: string) => void
@@ -138,35 +135,31 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             sendChunkedText(post, type, text)
         }, [post])
 
-        // [note-copy Option A] Native clipboard-read paste bridge removed.
-        // Paste now stays inside the WebView via event.clipboardData (Option A).
-        // See docs/ai/design/feature-note-copy.md. Restore (with a robust, token-keyed,
-        // persistent cache — NOT the fuzzy in-memory one) if Option A paste fails on device.
-        // const handleClipboardPasteRequest = useCallback(async () => {
-        //     try {
-        //         const [html, text] = await Promise.all([
-        //             Clipboard.getStringAsync({ preferredFormat: Clipboard.StringFormat.HTML }),
-        //             Clipboard.getStringAsync({ preferredFormat: Clipboard.StringFormat.PLAIN_TEXT }),
-        //         ])
-        //         const matchingSelfCopy = getMatchingMobileNoteCopyPayload(text)
-        //         const bridgedHtml = matchingSelfCopy?.html ?? html
-        //         const hasHtml = bridgedHtml.trim().length > 0
-        //         const hasText = text.length > 0
-        //         post({
-        //             type: 'APPLY_CLIPBOARD_PASTE',
-        //             payload: {
-        //                 html: hasHtml ? bridgedHtml : null,
-        //                 text: hasText ? text : matchingSelfCopy?.text ?? null,
-        //                 types: [
-        //                     ...(hasHtml ? ['text/html'] : []),
-        //                     ...(hasText || matchingSelfCopy ? ['text/plain'] : []),
-        //                 ],
-        //             },
-        //         })
-        //     } catch (error) {
-        //         console.error('[EditorWebView] Failed to read clipboard for paste:', error)
-        //     }
-        // }, [post])
+        const handleClipboardPasteRequest = useCallback(async () => {
+            try {
+                const [html, text] = await Promise.all([
+                    Clipboard.getStringAsync({ preferredFormat: Clipboard.StringFormat.HTML }),
+                    Clipboard.getStringAsync({ preferredFormat: Clipboard.StringFormat.PLAIN_TEXT }),
+                ])
+                const matchingSelfCopy = getMatchingMobileNoteCopyPayload(text)
+                const bridgedHtml = matchingSelfCopy?.html ?? html
+                const hasHtml = bridgedHtml.trim().length > 0
+                const hasText = text.length > 0
+                post({
+                    type: 'APPLY_CLIPBOARD_PASTE',
+                    payload: {
+                        html: hasHtml ? bridgedHtml : null,
+                        text: hasText ? text : matchingSelfCopy?.text ?? null,
+                        types: [
+                            ...(hasHtml ? ['text/html'] : []),
+                            ...(hasText || matchingSelfCopy ? ['text/plain'] : []),
+                        ],
+                    },
+                })
+            } catch (error) {
+                console.error('[EditorWebView] Failed to read clipboard for paste:', error)
+            }
+        }, [post])
 
         const fallbackToLocal = useCallback((reason: EditorWebViewSource['reason'], errorMessage?: string) => {
             if (hasFallback.current) {
@@ -323,23 +316,18 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         }
                         break
                     case 'CLIPBOARD_PASTE_REQUEST':
-                        // [note-copy Option A] Instrumentation: the WebView only sends this
-                        // when its paste event had no clipboardData — i.e. the Option A
-                        // assumption did not hold on this device. We no longer read the
-                        // clipboard natively; log so the gap is observable during verification.
-                        console.warn('[EditorWebView][note-copy] paste event had no clipboardData (Option A gap)')
+                        void handleClipboardPasteRequest()
                         break
-                    // [note-copy Option A] Cache feed removed (in-memory noteClipboardCache).
-                    // case 'MOBILE_NOTE_COPY_PAYLOAD': {
-                    //     const noteCopyPayload = payload as { html?: unknown; text?: unknown } | null
-                    //     if (typeof noteCopyPayload?.html === 'string' && typeof noteCopyPayload.text === 'string') {
-                    //         rememberMobileNoteCopyPayload({
-                    //             html: noteCopyPayload.html,
-                    //             text: noteCopyPayload.text,
-                    //         })
-                    //     }
-                    //     break
-                    // }
+                    case 'MOBILE_NOTE_COPY_PAYLOAD': {
+                        const noteCopyPayload = payload as { html?: unknown; text?: unknown } | null
+                        if (typeof noteCopyPayload?.html === 'string' && typeof noteCopyPayload.text === 'string') {
+                            rememberMobileNoteCopyPayload({
+                                html: noteCopyPayload.html,
+                                text: noteCopyPayload.text,
+                            })
+                        }
+                        break
+                    }
                     case 'IMAGE_ERROR': {
                         const p = (payload ?? {}) as { src?: unknown; message?: unknown }
                         console.error('[EditorWebView] Image failed to load:', p.src, p.message)
