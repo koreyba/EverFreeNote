@@ -57,10 +57,10 @@ Technology stack: TipTap/ProseMirror (editor model + clipboard serialization), a
 
 Clipboard payload (new core type):
 
-```
-NoteClipboardPayload = {
-  html: string  // self-copy-marked rich HTML: <div data-everfreenote-copy="note-body">…</div>
-  text: string  // clean plain text, line breaks only, never markdown
+```ts
+type NoteClipboardPayload = {
+  html: string // self-copy-marked rich HTML: <div data-everfreenote-copy="note-body">…</div>
+  text: string // clean plain text, line breaks only, never markdown
 }
 ```
 

@@ -477,6 +477,9 @@ export default function NoteEditorScreen() {
   }, [])
 
   const handleCopy = useCallback(async () => {
+    // The WebView bridge only answers REQUEST_COPY_PAYLOAD once the editor is ready;
+    // copying earlier would spuriously fail after the 2s timeout.
+    if (!isEditorReady) return
     const payload = await editorRef.current?.getCopyPayload()
     if (!payload?.html) {
       Toast.show({ type: 'error', text1: 'Failed to copy note' })
@@ -495,7 +498,7 @@ export default function NoteEditorScreen() {
         Toast.show({ type: 'error', text1: 'Failed to copy note' })
       }
     }
-  }, [confirmCopied])
+  }, [confirmCopied, isEditorReady])
 
   useEffect(() => () => {
     if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
@@ -591,10 +594,10 @@ export default function NoteEditorScreen() {
         onOpenMenu={handleOpenNoteMenu}
         onCopy={() => { void handleCopy() }}
         copied={isCopied}
-        copyDisabled={isBodyEmpty}
+        copyDisabled={isBodyEmpty || !isEditorReady}
       />
     ),
-    [colors, handleOpenNoteMenu, handleCopy, isCopied, isBodyEmpty, styles]
+    [colors, handleOpenNoteMenu, handleCopy, isCopied, isBodyEmpty, isEditorReady, styles]
   )
 
   const isToolbarVisible = isEditorFocused || isToolbarMenuOpen

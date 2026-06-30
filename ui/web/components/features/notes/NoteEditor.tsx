@@ -71,6 +71,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
   const [readyChunkFocus, setReadyChunkFocus] = React.useState<PendingChunkFocus | null>(null)
+  const [isBodyEmpty, setIsBodyEmpty] = React.useState(() => NoteClipboardService.isBodyEmpty(initialDescription))
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
   const previousNoteIdRef = React.useRef(noteId)
@@ -100,6 +101,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
     if (fieldDecisions.description === 'accept-external' && editorRef.current?.getHTML() !== snapshot.description) {
       editorRef.current?.setContent(snapshot.description)
+      setIsBodyEmpty(NoteClipboardService.isBodyEmpty(snapshot.description))
     }
 
     if (fieldDecisions.tags === 'accept-external' && buildTagString(selectedTagsRef.current) !== snapshot.tags) {
@@ -141,7 +143,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   }, [isAutoSaving])
 
   const { copied, copyNote } = useCopyNote()
-  const [isBodyEmpty, setIsBodyEmpty] = React.useState(() => NoteClipboardService.isBodyEmpty(initialDescription))
 
   React.useEffect(() => {
     setIsBodyEmpty(NoteClipboardService.isBodyEmpty(initialDescription))

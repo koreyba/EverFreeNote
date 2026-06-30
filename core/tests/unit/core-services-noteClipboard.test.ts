@@ -64,6 +64,17 @@ describe('core/services/noteClipboard', () => {
       expect(text).toBe('Title\na\nb')
     })
 
+    it('degrades images to alt text, or a placeholder when alt is missing', () => {
+      expect(NoteClipboardService.htmlToPlainText('<p><img src="x.png" alt="A diagram"></p>')).toBe('A diagram')
+      expect(NoteClipboardService.htmlToPlainText('<p><img src="x.png"></p>')).toBe('[image]')
+    })
+
+    it('produces non-empty plain text for an image-only note', () => {
+      const payload = NoteClipboardService.buildPayload('<p><img src="data:image/png;base64,abc" alt="Chart"></p>')
+      expect(payload.text).toBe('Chart')
+      expect(payload.text.length).toBeGreaterThan(0)
+    })
+
     it('never emits bold/emphasis markdown markers', () => {
       const text = NoteClipboardService.htmlToPlainText('<p><strong>Bold</strong> and <em>italic</em></p>')
 

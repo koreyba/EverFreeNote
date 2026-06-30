@@ -34,6 +34,12 @@ describe('ui/web/lib/noteClipboard', () => {
 
     expect(write).toHaveBeenCalledTimes(1)
     expect(writeText).not.toHaveBeenCalled()
+
+    // The single ClipboardItem must carry BOTH representations.
+    const item = write.mock.calls[0][0][0] as { items: Record<string, Blob> }
+    expect(Object.keys(item.items).sort()).toEqual(['text/html', 'text/plain'])
+    expect(item.items['text/html'].type).toBe('text/html')
+    expect(item.items['text/plain'].type).toBe('text/plain')
   })
 
   it('falls back to writeText when the rich write is rejected', async () => {

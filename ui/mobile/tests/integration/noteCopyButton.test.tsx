@@ -69,10 +69,14 @@ jest.mock('react-native-toast-message', () => ({ __esModule: true, default: { sh
 
 // EditorWebView mock exposes getCopyPayload (configurable per test)
 let mockCopyPayload: { html: string; text: string } | null = { html: '<div>rich</div>', text: 'rich' }
+let mockEditorReady = true
 jest.mock('@ui/mobile/components/EditorWebView', () => {
   const React = require('react')
   const { View } = require('react-native')
-  return React.forwardRef((_props: unknown, ref: unknown) => {
+  return React.forwardRef((props: { onReady?: () => void }, ref: unknown) => {
+    React.useEffect(() => {
+      if (mockEditorReady) props.onReady?.()
+    }, [props])
     React.useImperativeHandle(ref, () => ({
       runCommand: jest.fn(),
       setContent: jest.fn(),
@@ -118,6 +122,7 @@ describe('NoteEditorScreen - Copy button', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockCopyPayload = { html: '<div>rich</div>', text: 'rich' }
+    mockEditorReady = true
     mockSetStringAsync.mockResolvedValue(true)
     queryClient = createTestQueryClient()
     wrapper = createQueryWrapper(queryClient)
@@ -177,5 +182,12 @@ describe('NoteEditorScreen - Copy button', () => {
     await waitFor(() => {
       expect(button.props.accessibilityState?.disabled).toBe(true)
     })
+  })
+
+  it('keeps the copy button disabled until the editor WebView is ready', async () => {
+    mockEditorReady = false
+    render(<NoteEditorScreen />, { wrapper })
+    const button = await screen.findByLabelText('Copy note')
+    expect(button.props.accessibilityState?.disabled).toBe(true)
   })
 })

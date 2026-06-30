@@ -9,11 +9,15 @@ export function isNoteBodyEmpty(html: string): boolean {
   if (!normalized) return true
   if (/<img\b/i.test(normalized)) return false
 
-  const text = normalized
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&#160;/g, ' ')
-    .trim()
+  // Strip tags repeatedly until stable so overlapping/nested constructs
+  // (e.g. `<<x>script>`) cannot leave a residual tag behind.
+  let text = normalized
+  let previous: string
+  do {
+    previous = text
+    text = text.replace(/<[^>]*>/g, '')
+  } while (text !== previous)
 
+  text = text.replace(/&nbsp;/gi, ' ').replace(/&#160;/g, ' ').trim()
   return text.length === 0
 }
