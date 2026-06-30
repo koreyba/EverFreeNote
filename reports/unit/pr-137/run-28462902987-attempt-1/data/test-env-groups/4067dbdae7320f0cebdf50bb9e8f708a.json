@@ -1,0 +1,1 @@
+{"id":"4067dbdae7320f0cebdf50bb9e8f708a","fullName":"tests/integration/noteCopyButton.test.tsx#NoteEditorScreen - Copy button falls back to plain text when the HTML clipboard write is rejected","name":"falls back to plain text when the HTML clipboard write is rejected","status":"passed","testResultsByEnv":{"default":"41ef94767e84df6e8e670c2aeea1818d"}}

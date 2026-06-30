@@ -1,0 +1,1 @@
+{"id":"5ba9a81874562c8b1e90b557b09ad475","fullName":"tests/component/useBulkDeleteNotes.test.tsx#useBulkDeleteNotes sets isPending=true during execution and false after","name":"sets isPending=true during execution and false after","status":"passed","testResultsByEnv":{"default":"a4a5c743882f7b973588fe0d6002c5c4"}}

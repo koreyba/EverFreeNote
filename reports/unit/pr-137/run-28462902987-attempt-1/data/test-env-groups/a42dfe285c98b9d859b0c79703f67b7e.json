@@ -1,0 +1,1 @@
+{"id":"a42dfe285c98b9d859b0c79703f67b7e","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard htmlToPlainText separates blocks and <br> with newlines","name":"separates blocks and <br> with newlines","status":"passed","testResultsByEnv":{"default":"de8c2574c3da0654154ac988945241bf"}}

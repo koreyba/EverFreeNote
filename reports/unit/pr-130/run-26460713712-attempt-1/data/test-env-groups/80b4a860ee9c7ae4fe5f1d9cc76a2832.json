@@ -1,1 +1,0 @@
-{"id":"80b4a860ee9c7ae4fe5f1d9cc76a2832","fullName":"tests/integration/noteEditorUndoRedo.test.tsx#NoteEditorScreen — Undo/Redo header buttons undo and redo buttons are disabled by default when history is empty","name":"undo and redo buttons are disabled by default when history is empty","status":"passed","testResultsByEnv":{"default":"7a78c8bdd2a7b6f9df3b1a0165bd42cc"}}
