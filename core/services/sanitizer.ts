@@ -30,6 +30,9 @@ const SELF_COPY_ALLOWED_ATTR = [
   'type',
   'checked',
   'disabled',
+  // EverFreeNote self-copy marker — must survive sanitization so the paste
+  // pipeline can detect/unwrap it and take the high-fidelity self-copy path.
+  'data-everfreenote-copy',
 ]
 
 export class SanitizationService {
