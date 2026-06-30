@@ -1,0 +1,1 @@
+{"id":"7f693fae1c026246370db2d13bab9c6a","fullName":"cypress/component/lib/adapters/browser.cy.ts#WebBrowserAdapter localStorage calls localStorage.removeItem","name":"calls localStorage.removeItem","status":"passed","testResultsByEnv":{"default":"b8995dcb461e02c5382f1ced9b85d8a9"}}
