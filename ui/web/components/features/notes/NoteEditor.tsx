@@ -11,9 +11,6 @@ import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
-import { toast } from "sonner"
-import { NoteCopyService } from "@core/services/noteCopy"
-import { copyNotePayloadToClipboard } from "@ui/web/lib/noteClipboard"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
@@ -151,16 +148,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     onRead(getFormData())
   }
 
-  const handleCopy = React.useCallback(async () => {
-    try {
-      const payload = NoteCopyService.buildPayload(getFormData().description)
-      await copyNotePayloadToClipboard(payload)
-      toast.success('Note copied')
-    } catch {
-      toast.error('Failed to copy note')
-    }
-  }, [getFormData])
-
   const getExportNote = React.useCallback(() => {
     if (!noteId) return null
     const formData = getFormData()
@@ -261,7 +248,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               <Eye className="w-4 h-4 mr-2" />
               Read
             </Button>
-            <Button onClick={handleCopy} variant="outline" size="sm" disabled={isSaving} aria-label="Copy note">
+            <Button variant="outline" size="sm" disabled={isSaving} aria-label="Copy note">
               <Copy className="w-4 h-4 md:mr-2" />
               <span className="hidden md:inline">Copy</span>
             </Button>

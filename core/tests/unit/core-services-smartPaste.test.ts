@@ -1,5 +1,9 @@
 import { SmartPasteService } from '@core/services/smartPaste'
-import { NoteCopyService } from '@core/services/noteCopy'
+import { EVERFREENOTE_COPY_ATTRIBUTE, EVERFREENOTE_COPY_KIND } from '@core/services/noteCopy'
+
+function wrapSelfCopy(innerHtml: string): string {
+  return `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">${innerHtml}</div>`
+}
 import { SanitizationService } from '@core/services/sanitizer'
 
 type AttributeMap = Record<string, string>
@@ -396,13 +400,13 @@ describe('core/services/smartPaste', () => {
     })
 
     it('preserves self-copy rich text styles for EverFreeNote round-trip', () => {
-      const payload = NoteCopyService.buildPayload(
+      const html = wrapSelfCopy(
         '<p style="text-align: center"><span style="font-family: Georgia; font-size: 18px; color: rgb(255, 0, 0); background-color: rgb(255, 255, 0)">Styled</span></p>',
       )
 
       const result = SmartPasteService.resolvePaste({
-        html: payload.html,
-        text: payload.text,
+        html,
+        text: 'Styled',
         types: ['text/html', 'text/plain'],
       })
 
@@ -416,13 +420,13 @@ describe('core/services/smartPaste', () => {
     })
 
     it('preserves task-list markup when pasting EverFreeNote self-copy HTML', () => {
-      const payload = NoteCopyService.buildPayload(
+      const html = wrapSelfCopy(
         '<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><label><input checked="checked" disabled="disabled" type="checkbox"><span></span></label><div><p>Done</p></div></li></ul>',
       )
 
       const result = SmartPasteService.resolvePaste({
-        html: payload.html,
-        text: payload.text,
+        html,
+        text: '[x] Done',
         types: ['text/html', 'text/plain'],
       })
 

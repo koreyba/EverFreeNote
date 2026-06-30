@@ -1,8 +1,6 @@
 import React from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { NoteEditor, type NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
-import { toast } from 'sonner'
-import { copyNotePayloadToClipboard } from '@ui/web/lib/noteClipboard'
 
 const mockSetEditorContent = jest.fn()
 let mockEditorHtml = '<p>Body A</p>'
@@ -94,10 +92,6 @@ jest.mock('sonner', () => ({
     error: jest.fn(),
     dismiss: jest.fn(),
   },
-}))
-
-jest.mock('@ui/web/lib/noteClipboard', () => ({
-  copyNotePayloadToClipboard: jest.fn().mockResolvedValue(undefined),
 }))
 
 jest.mock('@ui/web/hooks/useTagSuggestions', () => ({
@@ -409,22 +403,5 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     expect((screen.getByPlaceholderText('Note title') as HTMLInputElement).value).toBe('Existing note')
     expect(screen.getByText('<p>Remote body</p>')).toBeTruthy()
     expect(screen.getByTestId('selected-tags').textContent).toBe('remote-tag')
-  })
-
-  it('copies the current unsaved draft body from editing mode', async () => {
-    renderEditor()
-
-    fireEvent.click(screen.getByText('Change body'))
-    fireEvent.click(screen.getByLabelText('Copy note'))
-
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    expect(copyNotePayloadToClipboard).toHaveBeenCalledWith(expect.objectContaining({
-      html: expect.stringContaining('<p>Local body</p>'),
-      text: 'Local body',
-    }))
-    expect(toast.success).toHaveBeenCalledWith('Note copied')
   })
 })
