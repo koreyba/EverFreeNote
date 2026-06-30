@@ -1,0 +1,1 @@
+{"id":"3e2aedbb7b99ee9e383054d06388c45f","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer sanitize preserves task-list data attributes in the default sanitizer profile","name":"preserves task-list data attributes in the default sanitizer profile","status":"passed","testResultsByEnv":{"default":"3e961be9517e79054b0dfb3457a4e329"}}

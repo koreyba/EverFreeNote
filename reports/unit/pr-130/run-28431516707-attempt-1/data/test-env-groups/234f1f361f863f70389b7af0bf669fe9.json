@@ -1,0 +1,1 @@
+{"id":"234f1f361f863f70389b7af0bf669fe9","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer stripHtml removes scripts and their content","name":"removes scripts and their content","status":"passed","testResultsByEnv":{"default":"c32cf725ca83aa12310215494a349d1b"}}
