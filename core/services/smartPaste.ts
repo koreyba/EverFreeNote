@@ -39,6 +39,9 @@ const DEFAULT_OPTIONS: Required<SmartPasteOptions> = {
 const STRUCTURAL_TAG_PATTERN = /<(p|br|hr|ul|ol|li|h1|h2|h3|h4|h5|h6|blockquote|pre|code|img|a)(\s|>|\/)/i
 const ALLOWED_LINK_PROTOCOLS = ['http:', 'https:', 'mailto:']
 const ALLOWED_IMAGE_PROTOCOLS = ['http:', 'https:']
+// Editor stores inline base64 images (Image extension allowBase64). Permit them on the
+// self-copy path only, so internal round-trip keeps images without weakening external paste.
+const SELF_COPY_IMAGE_PROTOCOLS = [...ALLOWED_IMAGE_PROTOCOLS, 'data:']
 // Exclude colors to avoid theme clashes from sources like Google Docs.
 const GENERIC_STYLE_ALLOWLIST = new Set(['font-weight', 'font-style', 'text-decoration'])
 const SELF_COPY_STYLE_ALLOWLIST = new Set([
@@ -131,6 +134,7 @@ function resolvePasteInternal(
         ? sanitizePasteHtml(NoteCopyService.unwrapSelfCopyHtml(payload.html), {
             profile: 'editor-self-copy',
             styleAllowlist: SELF_COPY_STYLE_ALLOWLIST,
+            imageProtocolAllowlist: SELF_COPY_IMAGE_PROTOCOLS,
           })
         : sanitizePasteHtml(payload.html)
       const html = isSelfCopy ? sanitized : unwrapSingleParagraph(sanitized)
@@ -256,11 +260,12 @@ function sanitizePasteHtml(
   options: {
     profile?: 'default' | 'editor-self-copy'
     styleAllowlist?: Set<string>
+    imageProtocolAllowlist?: string[]
   } = {},
 ): string {
   const sanitized = SanitizationService.sanitize(html, { profile: options.profile ?? 'default' })
   const withoutStyles = filterInlineStyles(sanitized, options.styleAllowlist ?? GENERIC_STYLE_ALLOWLIST)
-  const withoutBadLinks = filterUnsafeUrls(withoutStyles)
+  const withoutBadLinks = filterUnsafeUrls(withoutStyles, options.imageProtocolAllowlist ?? ALLOWED_IMAGE_PROTOCOLS)
   return normalizeHtml(withoutBadLinks)
 }
 
@@ -314,7 +319,7 @@ function filterInlineStyles(html: string, styleAllowlist: Set<string>): string {
   return doc.body.innerHTML
 }
 
-function filterUnsafeUrls(html: string): string {
+function filterUnsafeUrls(html: string, imageProtocols: string[] = ALLOWED_IMAGE_PROTOCOLS): string {
   if (typeof DOMParser === 'undefined') {
     // Regex fallback for environments without DOMParser (e.g. React Native)
     return html.replace(/\s(href|src)=(?:"([^"]*)"|'([^']*)')/gi, (match, attr, val1, val2) => {
@@ -322,7 +327,7 @@ function filterUnsafeUrls(html: string): string {
       const isAllowed =
         attr.toLowerCase() === 'href'
           ? isAllowedLinkProtocol(val, ALLOWED_LINK_PROTOCOLS)
-          : isAllowedImageProtocol(val, ALLOWED_IMAGE_PROTOCOLS)
+          : isAllowedImageProtocol(val, imageProtocols)
       return isAllowed ? match : ''
     })
   }
@@ -339,7 +344,7 @@ function filterUnsafeUrls(html: string): string {
   const images = Array.from(doc.querySelectorAll('img[src]'))
   for (const img of images) {
     const src = img.getAttribute('src') ?? ''
-    if (!isAllowedImageProtocol(src, ALLOWED_IMAGE_PROTOCOLS)) {
+    if (!isAllowedImageProtocol(src, imageProtocols)) {
       img.remove()
     }
   }

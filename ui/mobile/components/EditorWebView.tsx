@@ -7,10 +7,12 @@ import { getSupabaseConfig } from '@ui/mobile/adapters'
 import { useTheme } from '@ui/mobile/providers'
 import { consumeChunkedMessage, sendChunkedText, type ChunkBufferStore } from '@core/utils/editorWebViewBridge'
 import { getLocalBundleUrl } from '@ui/mobile/utils/localBundle'
+import type { NoteClipboardPayload } from '@core/services/noteClipboard'
 
 export type EditorWebViewHandle = {
     setContent: (html: string) => void
     getContent: () => Promise<string>
+    getCopyPayload: () => Promise<NoteClipboardPayload | null>
     runCommand: (method: string, args?: unknown[]) => void
     scrollToChunk: (charOffset: number, chunkLength: number) => void
 }
@@ -77,6 +79,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         const [isDebugOpen, setIsDebugOpen] = useState(false)
         const pendingContent = useRef<string | null>(initialContent)
         const contentResolver = useRef<((html: string) => void) | null>(null)
+        const copyPayloadResolver = useRef<((payload: NoteClipboardPayload | null) => void) | null>(null)
         const pendingChunks = useRef<ChunkBufferStore>(new Map())
         const pendingTheme = useRef(colorScheme)
         const pendingChunkFocus = useRef<{ charOffset: number; chunkLength: number } | null>(null)
@@ -201,6 +204,18 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     }, 2000)
                 })
             },
+            async getCopyPayload() {
+                return new Promise<NoteClipboardPayload | null>((resolve) => {
+                    copyPayloadResolver.current = resolve
+                    post({ type: 'REQUEST_COPY_PAYLOAD' })
+                    setTimeout(() => {
+                        if (copyPayloadResolver.current === resolve) {
+                            resolve(null)
+                            copyPayloadResolver.current = null
+                        }
+                    }, 2000)
+                })
+            },
         }), [isReady, sendText, post])
 
         const editorUrl = editorSource?.uri ?? ''
@@ -235,6 +250,18 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             `
         })()
 
+        const resolveCopyPayload = (text: string) => {
+            if (!copyPayloadResolver.current) return
+            const resolve = copyPayloadResolver.current
+            copyPayloadResolver.current = null
+            try {
+                const parsed = JSON.parse(text) as NoteClipboardPayload
+                resolve(parsed && typeof parsed.html === 'string' ? parsed : null)
+            } catch {
+                resolve(null)
+            }
+        }
+
         const handleMessage = (event: WebViewMessageEvent) => {
             try {
                 const { type, payload } = JSON.parse(event.nativeEvent.data) as { type?: string; payload?: unknown }
@@ -251,6 +278,10 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                             contentResolver.current(chunked.text)
                             contentResolver.current = null
                         }
+                        return
+                    }
+                    if (chunked.baseType === 'COPY_PAYLOAD') {
+                        resolveCopyPayload(chunked.text)
                         return
                     }
                 }
@@ -283,6 +314,9 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                             contentResolver.current(String(payload ?? ''))
                             contentResolver.current = null
                         }
+                        break
+                    case 'COPY_PAYLOAD':
+                        resolveCopyPayload(String(payload ?? ''))
                         break
                     case 'IMAGE_ERROR': {
                         const p = (payload ?? {}) as { src?: unknown; message?: unknown }

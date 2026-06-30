@@ -16,6 +16,9 @@ const SELF_COPY_ALLOWED_TAGS = [
   ...DEFAULT_ALLOWED_TAGS,
   'label',
   'input',
+  // Superscript/Subscript marks are stored by the editor; preserve on self-copy round-trip.
+  'sup',
+  'sub',
 ]
 
 const DEFAULT_ALLOWED_ATTR = ['href', 'target', 'src', 'alt', 'class', 'style', 'title']

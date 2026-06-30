@@ -470,6 +470,75 @@ describe('EditorWebView message handling', () => {
         jest.useRealTimers()
       }
     })
+
+    it('requests the copy payload and resolves from COPY_PAYLOAD', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      const payloadPromise = ref.current?.getCopyPayload()
+
+      expect(mockPostMessage).toHaveBeenCalledWith(
+        JSON.stringify({
+          type: 'REQUEST_COPY_PAYLOAD',
+        })
+      )
+
+      const payload = { html: '<div>rich</div>', text: 'rich' }
+      sendMessage('COPY_PAYLOAD', JSON.stringify(payload))
+
+      await expect(payloadPromise).resolves.toEqual(payload)
+    })
+
+    it('reassembles a chunked COPY_PAYLOAD response', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      const payload = { html: '<div>chunked rich</div>', text: 'chunked rich' }
+      const json = JSON.stringify(payload)
+      const transferId = 'copy-transfer-1'
+
+      const payloadPromise = ref.current?.getCopyPayload()
+
+      sendMessage('COPY_PAYLOAD_CHUNK_START', { transferId, total: 2 })
+      sendMessage('COPY_PAYLOAD_CHUNK', { transferId, index: 0, chunk: json.slice(0, 5) })
+      sendMessage('COPY_PAYLOAD_CHUNK', { transferId, index: 1, chunk: json.slice(5) })
+      sendMessage('COPY_PAYLOAD_CHUNK_END', { transferId })
+
+      await expect(payloadPromise).resolves.toEqual(payload)
+    })
+
+    it('resolves getCopyPayload with null when the editor never responds', async () => {
+      jest.useFakeTimers()
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      try {
+        const payloadPromise = ref.current?.getCopyPayload()
+
+        await act(async () => {
+          jest.advanceTimersByTime(2000)
+        })
+
+        await expect(payloadPromise).resolves.toBeNull()
+      } finally {
+        jest.useRealTimers()
+      }
+    })
   })
 
   describe('HISTORY_STATE handling', () => {

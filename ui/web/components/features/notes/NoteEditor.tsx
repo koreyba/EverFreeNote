@@ -1,10 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, Copy, Eye } from "lucide-react"
+import { ChevronLeft, Copy, Check, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
+import { NoteClipboardService } from "@core/services/noteClipboard"
+import { useCopyNote } from "@ui/web/hooks/useCopyNote"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { TagInput } from "@/components/TagInput"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
@@ -138,6 +140,22 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     }
   }, [isAutoSaving])
 
+  const { copied, copyNote } = useCopyNote()
+  const [isBodyEmpty, setIsBodyEmpty] = React.useState(() => NoteClipboardService.isBodyEmpty(initialDescription))
+
+  React.useEffect(() => {
+    setIsBodyEmpty(NoteClipboardService.isBodyEmpty(initialDescription))
+  }, [initialDescription])
+
+  const handleEditorContentChange = React.useCallback(() => {
+    handleContentChange()
+    setIsBodyEmpty(NoteClipboardService.isBodyEmpty(editorRef.current?.getHTML() ?? ""))
+  }, [handleContentChange])
+
+  const handleCopy = React.useCallback(() => {
+    void copyNote(editorRef.current?.getHTML() ?? "")
+  }, [copyNote])
+
   const handleSave = () => {
     cancelAutoSave()
     onSave(getFormData())
@@ -248,9 +266,19 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               <Eye className="w-4 h-4 mr-2" />
               Read
             </Button>
-            <Button variant="outline" size="sm" disabled={isSaving} aria-label="Copy note">
-              <Copy className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">Copy</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isSaving || isBodyEmpty}
+              aria-label="Copy note"
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <Check className="w-4 h-4 md:mr-2 text-green-600" />
+              ) : (
+                <Copy className="w-4 h-4 md:mr-2" />
+              )}
+              <span className="hidden md:inline">{copied ? "Copied" : "Copy"}</span>
             </Button>
             <Button onClick={handleSave} size="sm" disabled={isSaving}>
               Save
@@ -303,7 +331,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             key={`editor-${editorSessionKey}`}
             ref={editorRef}
             initialContent={initialDescription}
-            onContentChange={handleContentChange}
+            onContentChange={handleEditorContentChange}
             chunkFocusRequest={
               readyChunkFocus
                 ? {

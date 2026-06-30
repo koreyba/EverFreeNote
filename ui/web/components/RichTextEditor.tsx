@@ -7,8 +7,11 @@ import {
   type Editor,
 } from "@tiptap/react"
 import { createDocument } from "@tiptap/core"
+import { DOMSerializer } from "@tiptap/pm/model"
+import type { EditorView } from "@tiptap/pm/view"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { SmartPasteService } from "@core/services/smartPaste"
+import { NoteClipboardService } from "@core/services/noteClipboard"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
 import { applySelectionAsMarkdown } from "@ui/web/lib/editor"
 import { EditorMenuBar, type HistoryState } from "./EditorMenuBar"
@@ -105,12 +108,38 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       return true
     }, [onContentChange])
 
+    // Apply the EverFreeNote clipboard contract to native Ctrl+C / Cmd+C of a
+    // selection: emit dual text/html (self-copy-marked) + clean text/plain so a
+    // copied selection round-trips losslessly back into EverFreeNote and degrades
+    // cleanly in external apps — the same contract as the Copy button.
+    const handleCopy = React.useCallback((view: EditorView, event: ClipboardEvent) => {
+      const { state } = view
+      if (state.selection.empty || !event.clipboardData) return false
+
+      const fragment = DOMSerializer.fromSchema(state.schema).serializeFragment(
+        state.selection.content().content,
+      )
+      const container = document.createElement("div")
+      container.appendChild(fragment)
+
+      const payload = NoteClipboardService.buildPayload(container.innerHTML)
+      if (!payload.html) return false
+
+      event.clipboardData.setData("text/html", payload.html)
+      event.clipboardData.setData("text/plain", payload.text)
+      event.preventDefault()
+      return true
+    }, [])
+
     const editorProps = React.useMemo(() => ({
       attributes: {
         class: "focus:outline-none",
       },
       handlePaste,
-    }), [handlePaste])
+      handleDOMEvents: {
+        copy: handleCopy,
+      },
+    }), [handlePaste, handleCopy])
 
     const applyChunkFocusRequest = React.useCallback((targetEditor: Editor, request: ChunkScrollTarget) => {
       if (lastAppliedChunkFocusRequestIdRef.current === request.requestId) {

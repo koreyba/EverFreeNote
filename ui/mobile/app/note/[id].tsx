@@ -8,8 +8,11 @@ import { EditorToolbar, TOOLBAR_CONTENT_HEIGHT } from '@ui/mobile/components/Edi
 import { useTheme } from '@ui/mobile/providers'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
-import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical } from 'lucide-react-native'
+import { Trash2, ChevronLeft, Undo2, Redo2, MoreVertical, Copy, Check } from 'lucide-react-native'
+import * as Clipboard from 'expo-clipboard'
+import Toast from 'react-native-toast-message'
 import { createDebouncedLatest } from '@core/utils/debouncedLatest'
+import { isNoteBodyEmpty } from '@core/utils/noteBody'
 import {
   reconcileExternalNoteSnapshot,
   resolveNoteAutosaveSessionChange,
@@ -162,17 +165,41 @@ type HeaderRightActionsProps = Readonly<{
   styles: NoteEditorHeaderStyles
   colors: ThemeColors
   onOpenMenu: () => void
+  onCopy: () => void
+  copied: boolean
+  copyDisabled: boolean
 }>
 
 function HeaderRightActions({
   styles,
   colors,
   onOpenMenu,
+  onCopy,
+  copied,
+  copyDisabled,
 }: HeaderRightActionsProps) {
   return (
     <View style={styles.headerActions}>
       <View style={styles.headerRightGroup}>
         <ThemeToggle style={styles.headerToggle} />
+        <Pressable
+          onPress={() => { void onCopy() }}
+          disabled={copyDisabled}
+          accessibilityLabel="Copy note"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: copyDisabled }}
+          style={({ pressed }) => [
+            styles.headerButton,
+            copyDisabled && styles.headerButtonDisabled,
+            pressed && !copyDisabled && { opacity: 0.5 },
+          ]}
+        >
+          {copied ? (
+            <Check color={colors.primary} size={20} />
+          ) : (
+            <Copy color={copyDisabled ? colors.mutedForeground : colors.foreground} size={20} />
+          )}
+        </Pressable>
         <Pressable
           onPress={onOpenMenu}
           accessibilityLabel="More options"
@@ -230,6 +257,9 @@ export default function NoteEditorScreen() {
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [isEditorReady, setIsEditorReady] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
+  const [isBodyEmpty, setIsBodyEmpty] = useState(true)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastHydratedNoteIdRef = useRef<string | null>(null)
   const lastAppliedChunkFocusRequestIdRef = useRef<string | null>(null)
   const latestDraftRef = useRef<DraftSnapshot>({
@@ -359,6 +389,7 @@ export default function NoteEditorScreen() {
     lastHydratedNoteIdRef.current = note.id
     latestDraftRef.current = reconcileResult.draft
     lastSavedRef.current = reconcileResult.baseline
+    setIsBodyEmpty(isNoteBodyEmpty(reconcileResult.draft.description))
 
     if (reconcileResult.mode === 'replace-draft') {
       applyReplacedDraft(reconcileResult.draft, reconcileResult.baseline)
@@ -435,8 +466,40 @@ export default function NoteEditorScreen() {
 
   const handleContentChange = (html: string) => {
     latestDraftRef.current = { ...latestDraftRef.current, description: html }
+    setIsBodyEmpty(isNoteBodyEmpty(html))
     scheduleSave()
   }
+
+  const confirmCopied = useCallback(() => {
+    setIsCopied(true)
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+    copyTimerRef.current = setTimeout(() => setIsCopied(false), 1000)
+  }, [])
+
+  const handleCopy = useCallback(async () => {
+    const payload = await editorRef.current?.getCopyPayload()
+    if (!payload?.html) {
+      Toast.show({ type: 'error', text1: 'Failed to copy note' })
+      return
+    }
+
+    try {
+      await Clipboard.setStringAsync(payload.html, { inputFormat: Clipboard.StringFormat.HTML })
+      confirmCopied()
+    } catch {
+      // Fall back to plain text if the OS rejects HTML clipboard writes.
+      try {
+        await Clipboard.setStringAsync(payload.text)
+        confirmCopied()
+      } catch {
+        Toast.show({ type: 'error', text1: 'Failed to copy note' })
+      }
+    }
+  }, [confirmCopied])
+
+  useEffect(() => () => {
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+  }, [])
 
   const handleTagsChange = (nextTags: string[]) => {
     setTags(nextTags)
@@ -526,9 +589,12 @@ export default function NoteEditorScreen() {
         styles={styles}
         colors={colors}
         onOpenMenu={handleOpenNoteMenu}
+        onCopy={() => { void handleCopy() }}
+        copied={isCopied}
+        copyDisabled={isBodyEmpty}
       />
     ),
-    [colors, handleOpenNoteMenu, styles]
+    [colors, handleOpenNoteMenu, handleCopy, isCopied, isBodyEmpty, styles]
   )
 
   const isToolbarVisible = isEditorFocused || isToolbarMenuOpen
