@@ -1,0 +1,1 @@
+{"id":"70533936bd9bfd94bc97afb322f0ee21","fullName":"cypress/component/features/notes/Sidebar.cy.tsx#Sidebar Component renders selection actions only in selection mode and confirms before bulk delete","name":"renders selection actions only in selection mode and confirms before bulk delete","status":"passed","testResultsByEnv":{"default":"d306b2d5cf0749c3e3981636fd6a8d44"}}
