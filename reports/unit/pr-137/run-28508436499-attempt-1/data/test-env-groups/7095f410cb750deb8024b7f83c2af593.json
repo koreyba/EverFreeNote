@@ -1,0 +1,1 @@
+{"id":"7095f410cb750deb8024b7f83c2af593","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard htmlToPlainText never emits bold/emphasis markdown markers","name":"never emits bold/emphasis markdown markers","status":"passed","testResultsByEnv":{"default":"9e499f9a2245bb0b7d23871e25f04fca"}}

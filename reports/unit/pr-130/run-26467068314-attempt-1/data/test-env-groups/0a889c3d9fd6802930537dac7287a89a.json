@@ -1,1 +1,0 @@
-{"id":"0a889c3d9fd6802930537dac7287a89a","fullName":"core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer sanitize falls back to escaped plain text when DOMPurify throws","name":"falls back to escaped plain text when DOMPurify throws","status":"passed","testResultsByEnv":{"default":"b5495f78101b999a99c0d08d5142e64e"}}
