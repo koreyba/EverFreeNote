@@ -1,0 +1,1 @@
+{"id":"cab12caf57f9d38d4c6e9d7643e89490","fullName":"core/tests/unit/core-services-notes-delete.test.ts#core/services/notes - deleteNote deleteNote calls Supabase methods in correct order","name":"calls Supabase methods in correct order","status":"passed","testResultsByEnv":{"default":"0f1e4f181c90111382aa0ff492b2fd12"}}
