@@ -1,0 +1,1 @@
+{"id":"b6ce3c5eece1ea9738d4ffbe2e4460fb","fullName":"cypress/component/ui/web/hooks/useInfiniteScroll.cy.tsx#useInfiniteScroll does not fetch if hasNextPage is false","name":"does not fetch if hasNextPage is false","status":"passed","testResultsByEnv":{"default":"17f0c8cbc2bce93e9c8c226ae4b0f8a7"}}
