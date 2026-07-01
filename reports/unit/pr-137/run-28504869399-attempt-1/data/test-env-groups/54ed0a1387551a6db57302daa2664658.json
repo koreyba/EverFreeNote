@@ -1,0 +1,1 @@
+{"id":"54ed0a1387551a6db57302daa2664658","fullName":"tests/integration/searchScreenAI.test.tsx#SearchScreen - AI search uses persisted retrieval settings for topK and precision","name":"uses persisted retrieval settings for topK and precision","status":"passed","testResultsByEnv":{"default":"4481f013933083de484017cfa94d3f7d"}}

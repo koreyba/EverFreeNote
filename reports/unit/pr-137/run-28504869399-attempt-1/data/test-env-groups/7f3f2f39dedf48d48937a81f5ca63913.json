@@ -1,0 +1,1 @@
+{"id":"7f3f2f39dedf48d48937a81f5ca63913","fullName":"tests/integration/noteCopyButton.test.tsx#NoteEditorScreen - Copy button renders the copy button enabled for a non-empty note","name":"renders the copy button enabled for a non-empty note","status":"passed","testResultsByEnv":{"default":"592f0a85778af6f7b56c27f9ce1b04f9"}}
