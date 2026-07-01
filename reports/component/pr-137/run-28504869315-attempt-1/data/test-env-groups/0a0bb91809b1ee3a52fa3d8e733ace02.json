@@ -1,0 +1,1 @@
+{"id":"0a0bb91809b1ee3a52fa3d8e733ace02","fullName":"cypress/component/ui/web/hooks/useNoteBulkActions.cy.tsx#useNoteBulkActions deleteSelectedNotes clears selectedNote after bulk delete","name":"deleteSelectedNotes clears selectedNote after bulk delete","status":"passed","testResultsByEnv":{"default":"496c55580c526d4c5aa1f38340b77d67"}}
