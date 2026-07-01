@@ -1,1 +1,0 @@
-{"id":"d825bc0cf566d23b00c9a3daa26f68d6","fullName":"tests/integration/noteEditorScreen.test.tsx#NoteEditorScreen - Delete Functionality Header configuration falls back to the latest draft HTML when getContent rejects","name":"falls back to the latest draft HTML when getContent rejects","status":"passed","testResultsByEnv":{"default":"c15c758472712b35bf020030d914f6a5"}}
