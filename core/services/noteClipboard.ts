@@ -23,6 +23,15 @@ const IMAGE_TAG_PATTERN = /<img\b[^>]*>/gi
 // and whitespace-equivalent everywhere else (isNoteBodyEmpty already treats it
 // as empty, and it round-trips back into EverFreeNote as a blank line too).
 const EMPTY_PARAGRAPH_PATTERN = /<p((?:\s+[^<>]*)?)>(?:\s|<br\s*\/?>)*<\/p>/gi
+// SanitizationService.stripHtml() only removes tags — entities in the remaining
+// text (e.g. the &nbsp; markers above, or ones already present in pasted-from-
+// elsewhere note content) are left encoded. Decode the common ones so plain text
+// never shows a literal "&nbsp;"/"&amp;" instead of the character it represents.
+const HTML_ENTITY_PATTERN = /&(nbsp|#160|#xA0|amp|lt|gt|quot|apos|#39);/gi
+const HTML_ENTITY_DECODE_MAP: Record<string, string> = {
+  nbsp: ' ', '#160': ' ', '#xa0': ' ',
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'', '#39': '\'',
+}
 
 /**
  * Builds the EverFreeNote clipboard payload from note body (or selection) HTML.
@@ -69,6 +78,7 @@ export const NoteClipboardService = {
       .replace(BLOCK_CLOSE_PATTERN, '$&\n')
 
     const text = SanitizationService.stripHtml(withBreaks)
+      .replace(HTML_ENTITY_PATTERN, (match, name: string) => HTML_ENTITY_DECODE_MAP[name.toLowerCase()] ?? match)
 
     return text
       .replace(/\r\n?/g, '\n')

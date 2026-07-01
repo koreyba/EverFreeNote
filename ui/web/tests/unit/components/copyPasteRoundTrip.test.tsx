@@ -63,6 +63,30 @@ describe('self-copy round-trip (jsdom / DOMParser path)', () => {
     expect(result.html).not.toContain('data-everfreenote-copy')
   })
 
+  it('preserves a blank line typed via Enter+Enter through the clipboard payload', () => {
+    // Regression guard for the Telegram/Facebook bug: TipTap serializes a blank
+    // line as a genuinely empty <p></p> (verified here against the real editor,
+    // not a hand-written HTML fixture). Many paste destinations strip fully-empty
+    // elements before turning paragraph boundaries into line breaks, which silently
+    // ate the blank line — buildPayload() must mark it non-empty before that happens.
+    const editor = new Editor({ extensions: editorExtensions, content: '<p>Line one</p>' })
+    try {
+      editor.commands.focus('end')
+      editor.commands.enter()
+      editor.commands.enter()
+      editor.commands.insertContent('Line two')
+
+      const html = editor.getHTML()
+      expect(html).toBe('<p>Line one</p><p></p><p>Line two</p>')
+
+      const payload = NoteClipboardService.buildPayload(html)
+      expect(payload.html).toContain('<p>Line one</p><p>&nbsp;</p><p>Line two</p>')
+      expect(payload.text).toBe('Line one\n\nLine two')
+    } finally {
+      editor.destroy()
+    }
+  })
+
   it('round-trips alignment and font-size into the editor via insertContent', () => {
     const source =
       '<h1 style="text-align: center">Centered Title</h1>' +

@@ -43,6 +43,19 @@ describe('core/services/noteClipboard', () => {
       const withImage = NoteClipboardService.buildPayload('<p><img src="x.png" alt="pic"></p>')
       expect(withImage.html).not.toContain('&nbsp;')
     })
+
+    it('marks each blank line independently across multiple consecutive gaps', () => {
+      const payload = NoteClipboardService.buildPayload('<p>A</p><p></p><p></p><p>B</p>')
+
+      expect(payload.html).toContain('<p>A</p><p>&nbsp;</p><p>&nbsp;</p><p>B</p>')
+      expect(payload.text).toBe('A\n\nB')
+    })
+
+    it('preserves a blank paragraph\'s own attributes (e.g. alignment) when marking it', () => {
+      const payload = NoteClipboardService.buildPayload('<p>A</p><p style="text-align: center"></p><p>B</p>')
+
+      expect(payload.html).toContain('<p style="text-align: center">&nbsp;</p>')
+    })
   })
 
   describe('htmlToPlainText', () => {
@@ -95,6 +108,17 @@ describe('core/services/noteClipboard', () => {
       expect(text).not.toContain('**')
       expect(text).not.toContain('_')
     })
+
+    it('decodes a blank-line &nbsp; marker back into a blank line instead of literal text', () => {
+      expect(NoteClipboardService.htmlToPlainText('<p>Line one</p><p>&nbsp;</p><p>Line two</p>'))
+        .toBe('Line one\n\nLine two')
+    })
+
+    it('decodes common HTML entities instead of leaving them literal', () => {
+      const text = NoteClipboardService.htmlToPlainText('<p>AT&amp;T &lt;div&gt; &quot;quoted&quot; &#39;single&#39;</p>')
+
+      expect(text).toBe('AT&T <div> "quoted" \'single\'')
+    })
   })
 
   describe('isBodyEmpty', () => {
@@ -140,6 +164,19 @@ describe('core/services/noteClipboard', () => {
 
       expect(result.type).toBe('html')
       expect(result.html).toContain('data:image/png;base64,iVBORw0KGgo=')
+    })
+
+    it('preserves the blank line between paragraphs when pasted back into EverFreeNote', () => {
+      const payload = NoteClipboardService.buildPayload('<p>Line one</p><p></p><p>Line two</p>')
+
+      const result = SmartPasteService.resolvePaste({
+        html: payload.html,
+        text: payload.text,
+        types: ['text/html', 'text/plain'],
+      })
+
+      expect(result.type).toBe('html')
+      expect(NoteClipboardService.htmlToPlainText(result.html)).toBe('Line one\n\nLine two')
     })
   })
 })
