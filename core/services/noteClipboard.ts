@@ -16,6 +16,13 @@ export type NoteClipboardPayload = {
 const BLOCK_CLOSE_PATTERN = /<\/(p|div|li|h[1-6]|blockquote|pre|tr)\s*>/gi
 const LINE_BREAK_PATTERN = /<\s*br\s*\/?>/gi
 const IMAGE_TAG_PATTERN = /<img\b[^>]*>/gi
+// Many paste destinations (Telegram/Facebook web compose, among others) strip
+// fully-empty block elements before turning paragraph boundaries into line
+// breaks, silently eating a blank line between paragraphs. A non-breaking
+// space keeps the paragraph non-empty for that pass while staying invisible
+// and whitespace-equivalent everywhere else (isNoteBodyEmpty already treats it
+// as empty, and it round-trips back into EverFreeNote as a blank line too).
+const EMPTY_PARAGRAPH_PATTERN = /<p((?:\s+[^<>]*)?)>(?:\s|<br\s*\/?>)*<\/p>/gi
 
 /**
  * Builds the EverFreeNote clipboard payload from note body (or selection) HTML.
@@ -33,7 +40,8 @@ export const NoteClipboardService = {
     }
 
     const sanitized = SanitizationService.sanitize(bodyHtml.trim(), { profile: 'editor-self-copy' })
-    const html = `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">${sanitized}</div>`
+    const withBlankLinesPreserved = sanitized.replace(EMPTY_PARAGRAPH_PATTERN, '<p$1>&nbsp;</p>')
+    const html = `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">${withBlankLinesPreserved}</div>`
     const text = NoteClipboardService.htmlToPlainText(sanitized)
     return { html, text }
   },

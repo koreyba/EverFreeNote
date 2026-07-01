@@ -30,6 +30,19 @@ describe('core/services/noteClipboard', () => {
 
       expect(payload.html).toContain('data:image/png;base64,iVBORw0KGgo=')
     })
+
+    it('marks blank-line paragraphs with a non-breaking space so paste targets that strip empty tags keep the gap', () => {
+      const emptyParagraph = NoteClipboardService.buildPayload('<p>Line one</p><p></p><p>Line two</p>')
+      expect(emptyParagraph.html).toContain('<p>Line one</p><p>&nbsp;</p><p>Line two</p>')
+      expect(emptyParagraph.text).toBe('Line one\n\nLine two')
+
+      const brOnlyParagraph = NoteClipboardService.buildPayload('<p>Line one</p><p><br></p><p>Line two</p>')
+      expect(brOnlyParagraph.html).toContain('<p>Line one</p><p>&nbsp;</p><p>Line two</p>')
+
+      // Non-empty paragraphs (including ones with only an image) are left untouched.
+      const withImage = NoteClipboardService.buildPayload('<p><img src="x.png" alt="pic"></p>')
+      expect(withImage.html).not.toContain('&nbsp;')
+    })
   })
 
   describe('htmlToPlainText', () => {
