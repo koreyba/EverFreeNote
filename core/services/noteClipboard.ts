@@ -22,6 +22,11 @@ const IMAGE_TAG_PATTERN = /<img\b[^>]*>/gi
 // space keeps the paragraph non-empty for that pass while staying invisible
 // and whitespace-equivalent everywhere else (isNoteBodyEmpty already treats it
 // as empty, and it round-trips back into EverFreeNote as a blank line too).
+//
+// Only paragraphs with real content on both sides get marked — a leading or
+// trailing empty paragraph (e.g. the cursor's resting spot after the user's
+// last Enter) isn't separating anything, so it's left as-is to avoid
+// perturbing notes that don't have a genuine mid-document blank line.
 const EMPTY_PARAGRAPH_PATTERN = /<p((?:\s+[^<>]*)?)>(?:\s|<br\s*\/?>)*<\/p>/gi
 // SanitizationService.stripHtml() only removes tags — entities in the remaining
 // text (e.g. the &nbsp; markers above, or ones already present in pasted-from-
@@ -31,6 +36,15 @@ const HTML_ENTITY_PATTERN = /&(nbsp|#160|#xA0|amp|lt|gt|quot|apos|#39);/gi
 const HTML_ENTITY_DECODE_MAP: Record<string, string> = {
   nbsp: ' ', '#160': ' ', '#xa0': ' ',
   amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'', '#39': '\'',
+}
+
+function preserveInteriorBlankLines(html: string): string {
+  return html.replace(EMPTY_PARAGRAPH_PATTERN, (match, attrs: string, offset: number, full: string) => {
+    const hasContentBefore = full.slice(0, offset).trim().length > 0
+    const hasContentAfter = full.slice(offset + match.length).trim().length > 0
+    if (!hasContentBefore || !hasContentAfter) return match
+    return `<p${attrs}>&nbsp;</p>`
+  })
 }
 
 /**
@@ -49,7 +63,7 @@ export const NoteClipboardService = {
     }
 
     const sanitized = SanitizationService.sanitize(bodyHtml.trim(), { profile: 'editor-self-copy' })
-    const withBlankLinesPreserved = sanitized.replace(EMPTY_PARAGRAPH_PATTERN, '<p$1>&nbsp;</p>')
+    const withBlankLinesPreserved = preserveInteriorBlankLines(sanitized)
     const html = `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">${withBlankLinesPreserved}</div>`
     const text = NoteClipboardService.htmlToPlainText(sanitized)
     return { html, text }

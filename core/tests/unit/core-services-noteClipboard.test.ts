@@ -56,6 +56,20 @@ describe('core/services/noteClipboard', () => {
 
       expect(payload.html).toContain('<p style="text-align: center">&nbsp;</p>')
     })
+
+    it('leaves a leading or trailing empty paragraph untouched (nothing to separate)', () => {
+      // Regression guard: a trailing empty paragraph — e.g. the cursor's resting spot
+      // after the user's last Enter — isn't a blank line "between" two things, so
+      // marking it would needlessly change notes that round-trip through copy/paste
+      // without a genuine mid-document gap (see notes.copy.spec.ts in EverFreeNote-e2e).
+      const trailing = NoteClipboardService.buildPayload(
+        '<h1>Title</h1><ol><li>One</li><li>Two</li></ol><p></p>',
+      )
+      expect(trailing.html).toContain('</ol><p></p></div>')
+
+      const leading = NoteClipboardService.buildPayload('<p></p><p>A</p>')
+      expect(leading.html).toContain('<div data-everfreenote-copy="note-body"><p></p><p>A</p>')
+    })
   })
 
   describe('htmlToPlainText', () => {
@@ -177,6 +191,39 @@ describe('core/services/noteClipboard', () => {
 
       expect(result.type).toBe('html')
       expect(NoteClipboardService.htmlToPlainText(result.html)).toBe('Line one\n\nLine two')
+    })
+
+    it('leaves a trailing empty paragraph in a mixed-formatting note untouched through copy and paste-back (EverFreeNote-e2e notes.copy.spec.ts)', () => {
+      const richHtmlDescription =
+        '<h1>Header formatting</h1>' +
+        '<p style="text-align: center;"><span style="font-size: 18px;"><span style="font-family: serif;">Serif text, size 18px, centered alignment</span></span></p>' +
+        '<p style="text-align: right;"><span style="font-family: monospace;">Monospace text, standard size, right alignment</span></p>' +
+        '<ol><li>First element of numbered list</li><li>Second element of numbered list</li></ol>' +
+        '<p></p>'
+
+      const payload = NoteClipboardService.buildPayload(richHtmlDescription)
+      // The trailing empty paragraph must stay untouched — it isn't separating anything.
+      expect(payload.html).toContain('</ol><p></p></div>')
+      expect(payload.html).not.toContain('&nbsp;')
+
+      const result = SmartPasteService.resolvePaste({
+        html: payload.html,
+        text: payload.text,
+        types: ['text/html', 'text/plain'],
+      })
+
+      // Content, formatting and structure all survive; the trailing empty
+      // paragraph is still a plain <p></p>, not <p>&nbsp;</p>.
+      expect(result.type).toBe('html')
+      expect(result.html).toContain('Header formatting')
+      expect(result.html).toContain('text-align: center')
+      expect(result.html).toContain('font-family: serif')
+      expect(result.html).toContain('text-align: right')
+      expect(result.html).toContain('font-family: monospace')
+      expect(result.html).toContain('First element of numbered list')
+      expect(result.html).toContain('Second element of numbered list')
+      expect(result.html.endsWith('<p></p>')).toBe(true)
+      expect(result.html).not.toContain('&nbsp;')
     })
   })
 })
