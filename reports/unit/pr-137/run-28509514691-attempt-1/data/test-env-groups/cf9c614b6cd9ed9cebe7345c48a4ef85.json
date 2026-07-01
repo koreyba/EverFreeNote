@@ -1,0 +1,1 @@
+{"id":"cf9c614b6cd9ed9cebe7345c48a4ef85","fullName":"ui/web/tests/unit/hooks/useCopyNote.test.ts#ui/web/hooks/useCopyNote does nothing for an empty body (no clipboard write, no confirmation)","name":"does nothing for an empty body (no clipboard write, no confirmation)","status":"passed","testResultsByEnv":{"default":"948788449215bbb6c66487328639e3e8"}}

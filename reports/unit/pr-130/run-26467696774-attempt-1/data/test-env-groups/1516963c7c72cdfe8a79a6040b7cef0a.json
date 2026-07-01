@@ -1,1 +1,0 @@
-{"id":"1516963c7c72cdfe8a79a6040b7cef0a","fullName":"core/tests/unit/core-services-offlineCache.test.ts#core/services/offlineCache loadNotes returns empty array when storage returns empty","name":"returns empty array when storage returns empty","status":"passed","testResultsByEnv":{"default":"a9a6874eeb8a94d84224b2e1c5ba7063"}}
