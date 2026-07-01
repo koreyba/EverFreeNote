@@ -140,6 +140,9 @@ describe('NoteEditorScreen - Copy button', () => {
   it('writes HTML to the native clipboard with the HTML input format', async () => {
     render(<NoteEditorScreen />, { wrapper })
     const button = await screen.findByLabelText('Copy note')
+    await waitFor(() => {
+      expect(button.props.accessibilityState?.disabled).toBe(false)
+    })
     fireEvent.press(button)
 
     await waitFor(() => {
@@ -155,6 +158,9 @@ describe('NoteEditorScreen - Copy button', () => {
 
     render(<NoteEditorScreen />, { wrapper })
     const button = await screen.findByLabelText('Copy note')
+    await waitFor(() => {
+      expect(button.props.accessibilityState?.disabled).toBe(false)
+    })
     fireEvent.press(button)
 
     await waitFor(() => {
@@ -167,6 +173,9 @@ describe('NoteEditorScreen - Copy button', () => {
     mockCopyPayload = null
     render(<NoteEditorScreen />, { wrapper })
     const button = await screen.findByLabelText('Copy note')
+    await waitFor(() => {
+      expect(button.props.accessibilityState?.disabled).toBe(false)
+    })
     fireEvent.press(button)
 
     await waitFor(() => {

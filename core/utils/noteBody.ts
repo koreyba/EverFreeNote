@@ -15,7 +15,7 @@ export function isNoteBodyEmpty(html: string): boolean {
   let previous: string
   do {
     previous = text
-    text = text.replace(/<[^>]*>/g, '')
+    text = text.replace(/<[^<>]*>/g, '')
   } while (text !== previous)
 
   text = text.replace(/&nbsp;/gi, ' ').replace(/&#160;/g, ' ').trim()

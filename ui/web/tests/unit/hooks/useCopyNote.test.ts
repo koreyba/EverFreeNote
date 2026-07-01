@@ -18,6 +18,10 @@ describe('ui/web/hooks/useCopyNote', () => {
     jest.clearAllMocks()
   })
 
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
   it('writes the payload and toggles the on-button confirmation for ~1s', async () => {
     jest.useFakeTimers()
     mockCopy.mockResolvedValue(undefined)
@@ -38,8 +42,6 @@ describe('ui/web/hooks/useCopyNote', () => {
       jest.advanceTimersByTime(1000)
     })
     expect(result.current.copied).toBe(false)
-
-    jest.useRealTimers()
   })
 
   it('does nothing for an empty body (no clipboard write, no confirmation)', async () => {
