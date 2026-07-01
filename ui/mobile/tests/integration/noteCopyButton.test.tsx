@@ -169,6 +169,26 @@ describe('NoteEditorScreen - Copy button', () => {
     expect(mockToastShow).not.toHaveBeenCalled()
   })
 
+  it('shows an error toast when both the HTML write and the plain-text fallback fail', async () => {
+    mockSetStringAsync
+      .mockRejectedValueOnce(new Error('html unsupported'))
+      .mockRejectedValueOnce(new Error('plain text also unsupported'))
+
+    render(<NoteEditorScreen />, { wrapper })
+    const button = await screen.findByLabelText('Copy note')
+    await waitFor(() => {
+      expect(button.props.accessibilityState?.disabled).toBe(false)
+    })
+    fireEvent.press(button)
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+    })
+    expect(mockSetStringAsync).toHaveBeenCalledTimes(2)
+    expect(mockSetStringAsync).toHaveBeenNthCalledWith(1, '<div>rich</div>', { inputFormat: 'html' })
+    expect(mockSetStringAsync).toHaveBeenNthCalledWith(2, 'rich')
+  })
+
   it('shows an error toast when no payload is returned', async () => {
     mockCopyPayload = null
     render(<NoteEditorScreen />, { wrapper })

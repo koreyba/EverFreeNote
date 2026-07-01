@@ -33,6 +33,10 @@ const SELF_COPY_ALLOWED_ATTR = [
   // EverFreeNote self-copy marker — must survive sanitization so the paste
   // pipeline can detect/unwrap it and take the high-fidelity self-copy path.
   'data-everfreenote-copy',
+  // ProseMirror's own clipboard slice marker — preserved so pasting back into
+  // any EverFreeNote editor can use PM's native slice reconstruction (exact
+  // open/close boundaries) instead of re-parsing HTML.
+  'data-pm-slice',
 ]
 
 export class SanitizationService {

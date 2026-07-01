@@ -42,6 +42,13 @@ const ALLOWED_IMAGE_PROTOCOLS = ['http:', 'https:']
 // Editor stores inline base64 images (Image extension allowBase64). Permit them on the
 // self-copy path only, so internal round-trip keeps images without weakening external paste.
 const SELF_COPY_IMAGE_PROTOCOLS = [...ALLOWED_IMAGE_PROTOCOLS, 'data:']
+// The self-copy marker is a plain HTML attribute, so any external page can forge it.
+// Bound what `data:` is allowed to carry on that path to raster image types the editor
+// itself produces (no svg+xml, which can embed scripts) and to the per-image size cap
+// already used for uploads (core/enex/image-processor.ts MAX_IMAGE_SIZE), so a forged
+// marker can smuggle at most an oversized image, never an arbitrary payload.
+const SELF_COPY_DATA_IMAGE_PATTERN = /^data:image\/(?:png|jpe?g|gif|webp);base64,/i
+const MAX_SELF_COPY_DATA_URI_LENGTH = 14_000_000 // ~10MB decoded, base64 overhead included
 // Exclude colors to avoid theme clashes from sources like Google Docs.
 const GENERIC_STYLE_ALLOWLIST = new Set(['font-weight', 'font-style', 'text-decoration'])
 const SELF_COPY_STYLE_ALLOWLIST = new Set([
@@ -216,7 +223,7 @@ function scoreMarkdown(text: string): { score: number; reasons: string[] } {
     reasons.push('markdown:inline-code')
   }
 
-  if (/\[[^\]]+\]\([^)]+\)/.test(text)) {
+  if (/\[[^[\]]+\]\([^()]+\)/.test(text)) {
     score += 1
     reasons.push('markdown:link')
   }
@@ -229,13 +236,18 @@ function scoreMarkdown(text: string): { score: number; reasons: string[] } {
   return { score, reasons }
 }
 
+const TABLE_SEPARATOR_ROW_PATTERN = /^\s*\|?\s*[-:]+(?:\s*\|\s*[-:]+)*\s*\|?\s*$/
+
 function containsUnsupportedMarkdown(text: string): boolean {
   if (/^\s*[-*+]\s+\[[ xX]\]\s+/m.test(text)) {
     return true
   }
 
-  if (/^\s*\|?.+\|.+\n\s*\|?\s*[-:]+\s*\|/m.test(text)) {
-    return true
+  const lines = text.split('\n')
+  for (let i = 0; i < lines.length - 1; i++) {
+    if (lines[i].includes('|') && TABLE_SEPARATOR_ROW_PATTERN.test(lines[i + 1])) {
+      return true
+    }
   }
 
   return false
@@ -380,6 +392,13 @@ function isAllowedImageProtocol(value: string, allowed: string[]): boolean {
   if (!trimmed) return false
   if (trimmed.startsWith('//')) {
     return false
+  }
+  if (/^data:/i.test(trimmed)) {
+    return (
+      allowed.includes('data:') &&
+      trimmed.length <= MAX_SELF_COPY_DATA_URI_LENGTH &&
+      SELF_COPY_DATA_IMAGE_PATTERN.test(trimmed)
+    )
   }
   try {
     const parsed = new URL(trimmed)

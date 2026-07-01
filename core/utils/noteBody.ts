@@ -18,6 +18,6 @@ export function isNoteBodyEmpty(html: string): boolean {
     text = text.replace(/<[^<>]*>/g, '')
   } while (text !== previous)
 
-  text = text.replace(/&nbsp;/gi, ' ').replace(/&#160;/g, ' ').trim()
+  text = text.replaceAll(/&nbsp;/gi, ' ').replaceAll(/&#160;/g, ' ').trim()
   return text.length === 0
 }

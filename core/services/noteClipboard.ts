@@ -28,12 +28,11 @@ const IMAGE_TAG_PATTERN = /<img\b[^>]*>/gi
  */
 export const NoteClipboardService = {
   buildPayload(bodyHtml: string): NoteClipboardPayload {
-    const normalized = (bodyHtml ?? '').trim()
-    if (!normalized) {
+    if (isNoteBodyEmpty(bodyHtml)) {
       return { html: '', text: '' }
     }
 
-    const sanitized = SanitizationService.sanitize(normalized, { profile: 'editor-self-copy' })
+    const sanitized = SanitizationService.sanitize(bodyHtml.trim(), { profile: 'editor-self-copy' })
     const html = `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">${sanitized}</div>`
     const text = NoteClipboardService.htmlToPlainText(sanitized)
     return { html, text }
@@ -50,7 +49,7 @@ export const NoteClipboardService = {
     // Degrade images to their alt text (or a placeholder) so image-only notes
     // produce a non-empty plain-text payload instead of an empty clipboard.
     const withImages = html.replace(IMAGE_TAG_PATTERN, (tag) => {
-      const altMatch = tag.match(/\balt\s*=\s*(?:"([^"]*)"|'([^']*)')/i)
+      const altMatch = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(tag)
       const alt = (altMatch?.[1] ?? altMatch?.[2] ?? '').trim()
       return alt || '[image]'
     })
@@ -65,7 +64,9 @@ export const NoteClipboardService = {
 
     return text
       .replace(/\r\n?/g, '\n')
-      .replace(/[ \t]+\n/g, '\n')
+      .split('\n')
+      .map((line) => line.trimEnd())
+      .join('\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim()
   },

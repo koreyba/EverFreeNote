@@ -539,6 +539,63 @@ describe('EditorWebView message handling', () => {
         jest.useRealTimers()
       }
     })
+
+    it('resolves getCopyPayload with null when the COPY_PAYLOAD response is malformed JSON', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      const payloadPromise = ref.current?.getCopyPayload()
+
+      sendMessage('COPY_PAYLOAD', '{not valid json')
+
+      await expect(payloadPromise).resolves.toBeNull()
+    })
+
+    it('resolves getCopyPayload with null when the response is missing the text field', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      const payloadPromise = ref.current?.getCopyPayload()
+
+      sendMessage('COPY_PAYLOAD', JSON.stringify({ html: '<div>rich</div>' }))
+
+      await expect(payloadPromise).resolves.toBeNull()
+    })
+
+    it('reuses the in-flight request when getCopyPayload is called again before it resolves', async () => {
+      const ref = React.createRef<React.ElementRef<typeof EditorWebView>>()
+
+      render(<EditorWebView ref={ref} initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      mockPostMessage.mockClear()
+      const firstPromise = ref.current?.getCopyPayload()
+      const secondPromise = ref.current?.getCopyPayload()
+
+      const requestCount = mockPostMessage.mock.calls.filter(
+        ([value]) => JSON.parse(String(value)).type === 'REQUEST_COPY_PAYLOAD'
+      ).length
+      expect(requestCount).toBe(1)
+
+      const payload = { html: '<div>rich</div>', text: 'rich' }
+      sendMessage('COPY_PAYLOAD', JSON.stringify(payload))
+
+      await expect(firstPromise).resolves.toEqual(payload)
+      await expect(secondPromise).resolves.toEqual(payload)
+    })
   })
 
   describe('HISTORY_STATE handling', () => {

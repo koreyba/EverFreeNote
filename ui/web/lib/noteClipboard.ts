@@ -15,7 +15,7 @@ export async function copyNotePayloadToClipboard(payload: NoteClipboardPayload):
     throw new Error('Clipboard API unavailable')
   }
 
-  if (typeof globalThis.ClipboardItem !== 'undefined' && typeof clipboard.write === 'function') {
+  if (globalThis.ClipboardItem !== undefined && typeof clipboard.write === 'function') {
     try {
       await clipboard.write([
         new ClipboardItem({

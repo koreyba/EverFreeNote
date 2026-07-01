@@ -7,7 +7,6 @@ import {
   type Editor,
 } from "@tiptap/react"
 import { createDocument } from "@tiptap/core"
-import { DOMSerializer } from "@tiptap/pm/model"
 import type { EditorView } from "@tiptap/pm/view"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { SmartPasteService } from "@core/services/smartPaste"
@@ -112,17 +111,18 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     // selection: emit dual text/html (self-copy-marked) + clean text/plain so a
     // copied selection round-trips losslessly back into EverFreeNote and degrades
     // cleanly in external apps — the same contract as the Copy button.
+    //
+    // Serializing via view.serializeForClipboard (rather than a plain DOMSerializer
+    // fragment dump) keeps ProseMirror's own `data-pm-slice` marker on the output,
+    // so handlePaste's data-pm-slice check still recognizes editor-to-editor pastes
+    // and reconstructs the exact slice instead of re-parsing sanitized HTML.
     const handleCopy = React.useCallback((view: EditorView, event: ClipboardEvent) => {
       const { state } = view
       if (state.selection.empty || !event.clipboardData) return false
 
-      const fragment = DOMSerializer.fromSchema(state.schema).serializeFragment(
-        state.selection.content().content,
-      )
-      const container = document.createElement("div")
-      container.appendChild(fragment)
+      const { dom } = view.serializeForClipboard(state.selection.content())
 
-      const payload = NoteClipboardService.buildPayload(container.innerHTML)
+      const payload = NoteClipboardService.buildPayload(dom.innerHTML)
       if (!payload.html) return false
 
       event.clipboardData.setData("text/html", payload.html)

@@ -80,6 +80,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
         const pendingContent = useRef<string | null>(initialContent)
         const contentResolver = useRef<((html: string) => void) | null>(null)
         const copyPayloadResolver = useRef<((payload: NoteClipboardPayload | null) => void) | null>(null)
+        const copyPayloadRequest = useRef<Promise<NoteClipboardPayload | null> | null>(null)
         const pendingChunks = useRef<ChunkBufferStore>(new Map())
         const pendingTheme = useRef(colorScheme)
         const pendingChunkFocus = useRef<{ charOffset: number; chunkLength: number } | null>(null)
@@ -131,6 +132,29 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
 
         const sendText = useCallback((type: string, text: string) => {
             sendChunkedText(post, type, text)
+        }, [post])
+
+        // Serializes REQUEST_COPY_PAYLOAD round-trips: a second call while one is
+        // in flight reuses the same promise instead of overwriting copyPayloadResolver,
+        // which would otherwise leave the first caller's promise pending forever.
+        const requestCopyPayload = useCallback(() => {
+            const request = new Promise<NoteClipboardPayload | null>((resolve) => {
+                copyPayloadResolver.current = resolve
+                post({ type: 'REQUEST_COPY_PAYLOAD' })
+                setTimeout(() => {
+                    if (copyPayloadResolver.current === resolve) {
+                        resolve(null)
+                        copyPayloadResolver.current = null
+                    }
+                }, 2000)
+            })
+            copyPayloadRequest.current = request
+            void request.finally(() => {
+                if (copyPayloadRequest.current === request) {
+                    copyPayloadRequest.current = null
+                }
+            })
+            return request
         }, [post])
 
         const fallbackToLocal = useCallback((reason: EditorWebViewSource['reason'], errorMessage?: string) => {
@@ -205,18 +229,9 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                 })
             },
             async getCopyPayload() {
-                return new Promise<NoteClipboardPayload | null>((resolve) => {
-                    copyPayloadResolver.current = resolve
-                    post({ type: 'REQUEST_COPY_PAYLOAD' })
-                    setTimeout(() => {
-                        if (copyPayloadResolver.current === resolve) {
-                            resolve(null)
-                            copyPayloadResolver.current = null
-                        }
-                    }, 2000)
-                })
+                return copyPayloadRequest.current ?? requestCopyPayload()
             },
-        }), [isReady, sendText, post])
+        }), [isReady, sendText, post, requestCopyPayload])
 
         const editorUrl = editorSource?.uri ?? ''
 
@@ -256,7 +271,10 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             copyPayloadResolver.current = null
             try {
                 const parsed = JSON.parse(text) as NoteClipboardPayload
-                resolve(parsed && typeof parsed.html === 'string' ? parsed : null)
+                const isValidPayload = parsed != null
+                    && typeof parsed.html === 'string'
+                    && typeof parsed.text === 'string'
+                resolve(isValidPayload ? parsed : null)
             } catch {
                 resolve(null)
             }
@@ -316,7 +334,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                         }
                         break
                     case 'COPY_PAYLOAD':
-                        resolveCopyPayload(String(payload ?? ''))
+                        resolveCopyPayload(typeof payload === 'string' ? payload : '')
                         break
                     case 'IMAGE_ERROR': {
                         const p = (payload ?? {}) as { src?: unknown; message?: unknown }

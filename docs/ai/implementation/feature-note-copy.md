@@ -6,7 +6,7 @@ description: Technical implementation notes for the shared-core note copy action
 
 # Implementation Guide
 
-> Status: to be filled during implementation (`/execute-plan`).
+> Status: completed.
 
 ## Development Setup
 - Add `expo-clipboard` to `ui/mobile`.

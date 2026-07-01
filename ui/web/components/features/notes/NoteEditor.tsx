@@ -154,8 +154,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   }, [handleContentChange])
 
   const handleCopy = React.useCallback(() => {
-    void copyNote(editorRef.current?.getHTML() ?? "")
-  }, [copyNote])
+    void copyNote(editorRef.current?.getHTML() ?? initialDescription)
+  }, [copyNote, initialDescription])
 
   const handleSave = () => {
     cancelAutoSave()
