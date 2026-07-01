@@ -5,6 +5,10 @@ import { NoteCopyService } from '@core/services/noteCopy'
 import { NoteClipboardService } from '@core/services/noteClipboard'
 import { SanitizationService } from '@core/services/sanitizer'
 
+// Blank-line marker buildPayload() writes into the clipboard HTML (not &nbsp; —
+// see core/services/noteClipboard.ts for why).
+const ZWSP = '​'
+
 /**
  * Regression guard for the self-copy round-trip in a real DOM environment.
  *
@@ -80,7 +84,7 @@ describe('self-copy round-trip (jsdom / DOMParser path)', () => {
       expect(html).toBe('<p>Line one</p><p></p><p>Line two</p>')
 
       const payload = NoteClipboardService.buildPayload(html)
-      expect(payload.html).toContain('<p>Line one</p><p>&nbsp;</p><p>Line two</p>')
+      expect(payload.html).toContain(`<p>Line one</p><p>${ZWSP}</p><p>Line two</p>`)
       expect(payload.text).toBe('Line one\n\nLine two')
     } finally {
       editor.destroy()

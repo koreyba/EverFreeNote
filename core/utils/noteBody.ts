@@ -18,6 +18,11 @@ export function isNoteBodyEmpty(html: string): boolean {
     text = text.replace(/<[^<>]*>/g, '')
   } while (text !== previous)
 
-  text = text.replaceAll(/&(nbsp|#160|#xA0);/gi, ' ').trim()
+  text = text
+    .replaceAll(/&(nbsp|#160|#xA0);/gi, ' ')
+    // Zero-width space: the invisible blank-line marker NoteClipboardService
+    // writes into the clipboard payload (see core/services/noteClipboard.ts).
+    .replaceAll('​', '')
+    .trim()
   return text.length === 0
 }

@@ -18,20 +18,28 @@ const LINE_BREAK_PATTERN = /<\s*br\s*\/?>/gi
 const IMAGE_TAG_PATTERN = /<img\b[^>]*>/gi
 // Many paste destinations (Telegram/Facebook web compose, among others) strip
 // fully-empty block elements before turning paragraph boundaries into line
-// breaks, silently eating a blank line between paragraphs. A non-breaking
-// space keeps the paragraph non-empty for that pass while staying invisible
-// and whitespace-equivalent everywhere else (isNoteBodyEmpty already treats it
-// as empty, and it round-trips back into EverFreeNote as a blank line too).
+// breaks, silently eating a blank line between paragraphs. A zero-width space
+// keeps the paragraph non-empty for that pass while staying invisible.
+//
+// This is NOT `&nbsp;` on purpose: JS/DOM whitespace trimming (`.trim()`,
+// `textContent.trim()`) treats U+00A0 (non-breaking space) as whitespace, so
+// an emptiness check shaped like `text.trim().length === 0` — which is
+// exactly what strips a bare `<p></p>` — strips a nbsp-only paragraph too.
+// U+200B (zero-width space) is outside that whitespace set, so it survives
+// the same check nbsp silently failed against.
 //
 // Only paragraphs with real content on both sides get marked — a leading or
 // trailing empty paragraph (e.g. the cursor's resting spot after the user's
 // last Enter) isn't separating anything, so it's left as-is to avoid
 // perturbing notes that don't have a genuine mid-document blank line.
+const ZERO_WIDTH_SPACE = '​'
 const EMPTY_PARAGRAPH_PATTERN = /<p((?:\s+[^<>]*)?)>(?:\s|<br\s*\/?>)*<\/p>/gi
 // SanitizationService.stripHtml() only removes tags — entities in the remaining
-// text (e.g. the &nbsp; markers above, or ones already present in pasted-from-
-// elsewhere note content) are left encoded. Decode the common ones so plain text
-// never shows a literal "&nbsp;"/"&amp;" instead of the character it represents.
+// text (e.g. ones already present in pasted-from-elsewhere note content) are
+// left encoded. Decode the common ones so plain text never shows a literal
+// "&nbsp;"/"&amp;" instead of the character it represents. The zero-width-space
+// marker above is handled separately below (it's a raw character, not an
+// entity, by the time it reaches this point).
 const HTML_ENTITY_PATTERN = /&(nbsp|#160|#xA0|amp|lt|gt|quot|apos|#39);/gi
 const HTML_ENTITY_DECODE_MAP: Record<string, string> = {
   nbsp: ' ', '#160': ' ', '#xa0': ' ',
@@ -43,7 +51,7 @@ function preserveInteriorBlankLines(html: string): string {
     const hasContentBefore = full.slice(0, offset).trim().length > 0
     const hasContentAfter = full.slice(offset + match.length).trim().length > 0
     if (!hasContentBefore || !hasContentAfter) return match
-    return `<p${attrs}>&nbsp;</p>`
+    return `<p${attrs}>${ZERO_WIDTH_SPACE}</p>`
   })
 }
 
@@ -93,6 +101,7 @@ export const NoteClipboardService = {
 
     const text = SanitizationService.stripHtml(withBreaks)
       .replace(HTML_ENTITY_PATTERN, (match, name: string) => HTML_ENTITY_DECODE_MAP[name.toLowerCase()] ?? match)
+      .replaceAll(ZERO_WIDTH_SPACE, '')
 
     return text
       .replace(/\r\n?/g, '\n')
