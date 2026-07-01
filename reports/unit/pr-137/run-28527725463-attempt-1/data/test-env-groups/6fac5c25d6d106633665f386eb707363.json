@@ -1,0 +1,1 @@
+{"id":"6fac5c25d6d106633665f386eb707363","fullName":"ui/web/tests/unit/adapters/supabaseClient.test.ts#buildBrowserSupabaseStorageKey falls back to a sanitized raw URL when parsing fails","name":"falls back to a sanitized raw URL when parsing fails","status":"passed","testResultsByEnv":{"default":"9c3f236b99955f222f54d1192a2f6f4c"}}

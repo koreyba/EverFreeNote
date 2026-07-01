@@ -1,0 +1,1 @@
+{"id":"ee727e3676287dec099022ea70a396f5","fullName":"tests/integration/noteCopyButton.test.tsx#NoteEditorScreen - Copy button writes HTML to the native clipboard with the HTML input format","name":"writes HTML to the native clipboard with the HTML input format","status":"passed","testResultsByEnv":{"default":"3ef5a2c5f268ee76a83c97a821a35a52"}}

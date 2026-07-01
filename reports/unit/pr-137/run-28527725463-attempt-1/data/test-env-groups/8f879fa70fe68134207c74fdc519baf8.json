@@ -1,0 +1,1 @@
+{"id":"8f879fa70fe68134207c74fdc519baf8","fullName":"core/tests/unit/core-utils-search.test.ts#core/utils/search buildTsQuery returns null for query shorter than minimum length","name":"returns null for query shorter than minimum length","status":"passed","testResultsByEnv":{"default":"23d15177db30bc93132d2fc2328afec6"}}

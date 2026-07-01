@@ -1,0 +1,1 @@
+{"id":"440771b2b92e15a31ebec00d45c332e7","fullName":"tests/component/useDeleteNote.test.tsx#useDeleteNote Optimistic updates cancels in-flight queries on mutate","name":"cancels in-flight queries on mutate","status":"passed","testResultsByEnv":{"default":"6af59d061b4e91064a80a9e383bcd6b3"}}
