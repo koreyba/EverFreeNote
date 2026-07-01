@@ -7,6 +7,8 @@ describe('core/utils/noteBody.isNoteBodyEmpty', () => {
     expect(isNoteBodyEmpty('<p></p>')).toBe(true)
     expect(isNoteBodyEmpty('<p><br></p>')).toBe(true)
     expect(isNoteBodyEmpty('<p>&nbsp;</p>')).toBe(true)
+    expect(isNoteBodyEmpty('<p>&#160;</p>')).toBe(true)
+    expect(isNoteBodyEmpty('<p>&#xA0;</p>')).toBe(true)
   })
 
   it('treats text or image content as non-empty', () => {
