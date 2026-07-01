@@ -1,0 +1,1 @@
+{"id":"473987468d6213c622a5c6d4b3b785a2","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard buildPayload marks each blank line independently across multiple consecutive gaps","name":"marks each blank line independently across multiple consecutive gaps","status":"passed","testResultsByEnv":{"default":"038248d4b059595a0b84d081d781370e"}}

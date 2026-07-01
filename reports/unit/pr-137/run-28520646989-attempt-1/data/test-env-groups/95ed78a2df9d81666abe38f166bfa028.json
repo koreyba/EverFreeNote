@@ -1,0 +1,1 @@
+{"id":"95ed78a2df9d81666abe38f166bfa028","fullName":"ui/web/tests/unit/components/noteEditor.test.tsx#NoteEditor copy action disables the copy button for an empty draft body","name":"disables the copy button for an empty draft body","status":"passed","testResultsByEnv":{"default":"9c67bf98d959e40ee19cfc7a318a5ba6"}}

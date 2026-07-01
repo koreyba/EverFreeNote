@@ -1,0 +1,1 @@
+{"id":"72be573f26f7703f1e4d4529fd4df9ed","fullName":"tests/component/editorWebViewMessages.test.tsx#EditorWebView message handling imperative bridge methods requests the copy payload and resolves from COPY_PAYLOAD","name":"requests the copy payload and resolves from COPY_PAYLOAD","status":"passed","testResultsByEnv":{"default":"2e9f746fce971a01e6bf0a8e137e9884"}}
