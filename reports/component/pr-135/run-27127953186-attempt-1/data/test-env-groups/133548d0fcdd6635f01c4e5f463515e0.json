@@ -1,1 +1,0 @@
-{"id":"133548d0fcdd6635f01c4e5f463515e0","fullName":"cypress/component/editor/RichTextEditor.history.cy.tsx#RichTextEditor Component Undo/Redo buttons redo button becomes disabled after redoing the latest undone step","name":"redo button becomes disabled after redoing the latest undone step","status":"passed","testResultsByEnv":{"default":"e4be4a0380f53e5c9e3e8b35987762b8"}}
