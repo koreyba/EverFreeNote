@@ -1,0 +1,1 @@
+{"id":"0b2aa3bdf63a414336ce74dae2aea1db","fullName":"cypress/component/ui/web/hooks/useNoteSaveHandlers.cy.tsx#useNoteSaveHandlers confirmDeleteNote clears selectedNote when deleted note was selected","name":"confirmDeleteNote clears selectedNote when deleted note was selected","status":"passed","testResultsByEnv":{"default":"fe3a4bc219b8eb31274fb2b8b4f38191"}}

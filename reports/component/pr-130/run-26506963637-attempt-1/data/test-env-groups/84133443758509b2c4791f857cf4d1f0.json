@@ -1,1 +1,0 @@
-{"id":"84133443758509b2c4791f857cf4d1f0","fullName":"cypress/component/ui/web/hooks/useNoteAppController.cy.tsx#useNoteAppController flushes pending editor save when clicking a search result while editing","name":"flushes pending editor save when clicking a search result while editing","status":"passed","testResultsByEnv":{"default":"daea4e38221a0b63559eb454b9f98b0c"}}
