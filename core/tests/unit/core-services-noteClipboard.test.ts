@@ -121,6 +121,16 @@ describe('core/services/noteClipboard', () => {
       const real = NoteClipboardService.buildPayload('<p>A</p><p></p><p>B</p>')
       expect(real.html).not.toContain('data-everfreenote-gap')
     })
+
+    it('treats an nbsp-only paragraph as an existing blank line, not content needing a gap', () => {
+      // isNoteBodyEmpty (core/utils/noteBody.ts) already treats &nbsp;/&#160;/&#xA0;
+      // as whitespace — a paragraph made of only a non-breaking space (common from
+      // pasted-in content) must be recognized the same way here, or it gets
+      // mistaken for content and a redundant gap gets fabricated next to it.
+      const payload = NoteClipboardService.buildPayload('<p>A</p><p>&nbsp;</p><p>B</p>')
+      expect(payload.html).not.toContain('data-everfreenote-gap')
+      expect(payload.html).toContain('<p>A</p><p><br></p><p>B</p>')
+    })
   })
 
   describe('htmlToPlainText', () => {

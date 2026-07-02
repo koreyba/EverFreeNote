@@ -60,7 +60,10 @@ const GAP_MARKER_PARAGRAPH_PATTERN = new RegExp(
 // Scoped to <p> only (not headings/lists/etc.) — that covers what's been
 // verified; other block types can be added if they turn out to need it too.
 const P_BLOCK_PATTERN = /<p(?:\s+[^<>]*)?>[\s\S]*?<\/p>/gi
-const EMPTY_P_BLOCK_PATTERN = /^<p(?:\s+[^<>]*)?>(?:\s|<br\s*\/?>)*<\/p>$/i
+// &nbsp;/&#160;/&#xA0; must count as empty too — isNoteBodyEmpty (core/utils/noteBody.ts)
+// already treats them as whitespace, and a paragraph made of only a non-breaking
+// space (common from pasted-in content) is visually a blank line, not content.
+const EMPTY_P_BLOCK_PATTERN = /^<p(?:\s+[^<>]*)?>(?:\s|<br\s*\/?>|&(?:nbsp|#160|#xA0);)*<\/p>$/i
 
 function isEmptyParagraphBlock(block: string): boolean {
   return EMPTY_P_BLOCK_PATTERN.test(block)

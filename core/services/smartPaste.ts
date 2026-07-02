@@ -50,6 +50,9 @@ const SELF_COPY_IMAGE_PROTOCOLS = [...ALLOWED_IMAGE_PROTOCOLS, 'data:']
 // marker can smuggle at most an oversized image, never an arbitrary payload.
 const SELF_COPY_DATA_IMAGE_PATTERN = /^data:image\/(?:png|jpe?g|gif|webp);base64,/i
 const MAX_SELF_COPY_DATA_URI_LENGTH = 14_000_000 // ~10MB decoded, base64 overhead included
+// Per-image cap alone doesn't bound total payload size — a forged marker could still
+// carry many just-under-the-cap images. Cap the sum accepted from one paste too.
+const MAX_SELF_COPY_TOTAL_DATA_URI_LENGTH = 60_000_000
 // Exclude colors to avoid theme clashes from sources like Google Docs.
 const GENERIC_STYLE_ALLOWLIST = new Set(['font-weight', 'font-style', 'text-decoration'])
 const SELF_COPY_STYLE_ALLOWLIST = new Set([
@@ -253,7 +256,9 @@ function containsUnsupportedMarkdown(text: string): boolean {
 
   const lines = text.split('\n')
   for (let i = 0; i < lines.length - 1; i++) {
-    if (lines[i].includes('|') && TABLE_SEPARATOR_ROW_PATTERN.test(lines[i + 1])) {
+    // The separator row itself must contain a pipe too — otherwise a header-ish
+    // line followed by an unrelated horizontal rule ("---") false-positives as a table.
+    if (lines[i].includes('|') && lines[i + 1].includes('|') && TABLE_SEPARATOR_ROW_PATTERN.test(lines[i + 1])) {
       return true
     }
   }
@@ -340,6 +345,10 @@ function filterInlineStyles(html: string, styleAllowlist: Set<string>): string {
 }
 
 function filterUnsafeUrls(html: string, imageProtocols: string[] = ALLOWED_IMAGE_PROTOCOLS): string {
+  // Shared across every image in this one paste, so accepted data: URIs are
+  // bounded in aggregate, not just individually.
+  const dataUriBudget = { remaining: MAX_SELF_COPY_TOTAL_DATA_URI_LENGTH }
+
   if (typeof DOMParser === 'undefined') {
     // Regex fallback for environments without DOMParser (e.g. React Native)
     return html.replace(/\s(href|src)=(?:"([^"]*)"|'([^']*)')/gi, (match, attr, val1, val2) => {
@@ -347,7 +356,7 @@ function filterUnsafeUrls(html: string, imageProtocols: string[] = ALLOWED_IMAGE
       const isAllowed =
         attr.toLowerCase() === 'href'
           ? isAllowedLinkProtocol(val, ALLOWED_LINK_PROTOCOLS)
-          : isAllowedImageProtocol(val, imageProtocols)
+          : isAllowedImageProtocol(val, imageProtocols, dataUriBudget)
       return isAllowed ? match : ''
     })
   }
@@ -364,7 +373,7 @@ function filterUnsafeUrls(html: string, imageProtocols: string[] = ALLOWED_IMAGE
   const images = Array.from(doc.querySelectorAll('img[src]'))
   for (const img of images) {
     const src = img.getAttribute('src') ?? ''
-    if (!isAllowedImageProtocol(src, imageProtocols)) {
+    if (!isAllowedImageProtocol(src, imageProtocols, dataUriBudget)) {
       img.remove()
     }
   }
@@ -395,18 +404,23 @@ function isAllowedLinkProtocol(value: string, allowed: string[]): boolean {
   }
 }
 
-function isAllowedImageProtocol(value: string, allowed: string[]): boolean {
+function isAllowedImageProtocol(value: string, allowed: string[], dataUriBudget?: { remaining: number }): boolean {
   const trimmed = value.trim()
   if (!trimmed) return false
   if (trimmed.startsWith('//')) {
     return false
   }
   if (/^data:/i.test(trimmed)) {
-    return (
+    const isAllowedDataUri =
       allowed.includes('data:') &&
       trimmed.length <= MAX_SELF_COPY_DATA_URI_LENGTH &&
       SELF_COPY_DATA_IMAGE_PATTERN.test(trimmed)
-    )
+    if (!isAllowedDataUri) return false
+    if (dataUriBudget) {
+      if (trimmed.length > dataUriBudget.remaining) return false
+      dataUriBudget.remaining -= trimmed.length
+    }
+    return true
   }
   try {
     const parsed = new URL(trimmed)
