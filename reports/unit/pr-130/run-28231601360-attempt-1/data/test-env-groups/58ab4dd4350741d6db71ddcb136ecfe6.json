@@ -1,1 +1,0 @@
-{"id":"58ab4dd4350741d6db71ddcb136ecfe6","fullName":"core/tests/unit/core-utils-wordpress.test.ts#core/utils/wordpress returns the fallback slug for empty or unsupported input","name":"returns the fallback slug for empty or unsupported input","status":"passed","testResultsByEnv":{"default":"1f8e76a3b35efbdf5bb240d0c8cd4af8"}}

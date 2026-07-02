@@ -1,1 +1,0 @@
-{"id":"e3ba3ad2f6056bc323dfce73d7396db5","fullName":"core/tests/unit/core-services-noteCopy.test.ts#core/services/noteCopy does not over-capture trailing markup in the regex fallback path","name":"does not over-capture trailing markup in the regex fallback path","status":"passed","testResultsByEnv":{"default":"8a9a6fe46df04a8e95292a8f3b03e771"}}
