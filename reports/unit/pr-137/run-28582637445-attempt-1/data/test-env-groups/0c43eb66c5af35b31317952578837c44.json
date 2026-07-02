@@ -1,0 +1,1 @@
+{"id":"0c43eb66c5af35b31317952578837c44","fullName":"ui/web/tests/unit/components/settingsPanels.test.tsx#settings panels keeps the remove key action disabled until a Gemini key is configured","name":"keeps the remove key action disabled until a Gemini key is configured","status":"passed","testResultsByEnv":{"default":"5522ae3c63a0db0e2818c2250fb97a67"}}
