@@ -173,16 +173,26 @@ export const NoteClipboardService = {
   },
 
   /**
-   * Removes paragraphs buildPayload() fabricated to widen a single-Enter
-   * boundary into a blank line for external paste targets. Used on the
-   * self-copy paste path so pasting back into EverFreeNote restores the
-   * original single-Enter adjacency instead of permanently turning it into
-   * a real empty paragraph. Pre-existing blank lines (no marker) are
-   * untouched and still round-trip as real blank lines.
+   * Reverses buildPayload()'s blank-line handling for the self-copy paste
+   * path, restoring the exact pre-copy editor representation instead of the
+   * clipboard-facing one:
+   * - Paragraphs fabricated to widen a single-Enter boundary into a blank
+   *   line for external paste targets (data-everfreenote-gap) are removed
+   *   entirely, restoring the original single-Enter adjacency.
+   * - Paragraphs marked with a literal <br> so a real blank line survives
+   *   external paste targets' newline-deduplication (see
+   *   markInteriorEmptyParagraphs) are un-marked back to a bare empty
+   *   paragraph — TipTap's own representation of a blank line. Left as
+   *   <p><br></p>, the note-view CSS `:empty` rule that gives blank lines
+   *   their visible height in the read-only view no longer matches (a
+   *   paragraph containing a <br> child isn't :empty), so the blank line
+   *   would silently disappear there even though the editor still looks
+   *   right — this restores the exact editor representation instead.
    */
-  stripFabricatedGaps(html: string): string {
+  restoreEditorHtml(html: string): string {
     if (!html) return html
-    return html.replace(GAP_MARKER_PARAGRAPH_PATTERN, '')
+    const withoutFabricatedGaps = html.replace(GAP_MARKER_PARAGRAPH_PATTERN, '')
+    return withoutFabricatedGaps.replace(BR_ONLY_PARAGRAPH_PATTERN, '<p$1></p>')
   },
 
   htmlToPlainText(html: string): string {

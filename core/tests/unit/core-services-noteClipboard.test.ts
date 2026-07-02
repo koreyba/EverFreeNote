@@ -239,6 +239,25 @@ describe('core/services/noteClipboard', () => {
       expect(NoteClipboardService.htmlToPlainText(result.html)).toBe('Line one\n\nLine two')
     })
 
+    it('restores a genuine blank line to a bare empty paragraph, not a <br>-marked one', () => {
+      // Regression guard: the note-view read-only mode renders the stored HTML
+      // as-is (dangerouslySetInnerHTML, no ProseMirror decoration). A <br>-marked
+      // blank line still renders fine there too (verified live), but leaving it
+      // as <br> after a self-copy paste would store a representation that
+      // never occurs from normal typing (Enter+Enter always produces a bare
+      // <p></p>) — restoreEditorHtml() un-marks it back to match exactly.
+      const payload = NoteClipboardService.buildPayload('<p>Line one</p><p></p><p>Line two</p>')
+
+      const result = SmartPasteService.resolvePaste({
+        html: payload.html,
+        text: payload.text,
+        types: ['text/html', 'text/plain'],
+      })
+
+      expect(result.html).not.toContain('<br>')
+      expect(result.html).toContain('<p>Line one</p><p></p><p>Line two</p>')
+    })
+
     it('restores single-Enter adjacency (not a permanent blank line) when a self-copied note is pasted back', () => {
       // Regression guard: buildPayload() fabricates a <p><br></p> between
       // directly-adjacent paragraphs so external apps like Telegram/Facebook

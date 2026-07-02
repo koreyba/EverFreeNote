@@ -140,12 +140,11 @@ function resolvePasteInternal(
       const isSelfCopy = NoteCopyService.isSelfCopyHtml(payload.html)
       const sanitized = isSelfCopy
         ? sanitizePasteHtml(
-            // Strip paragraphs NoteClipboardService fabricated to widen a
-            // single-Enter boundary into a blank line for external paste
-            // targets — pasting back into EverFreeNote itself must restore
-            // the original single-Enter adjacency, not permanently turn it
-            // into a real empty paragraph.
-            NoteClipboardService.stripFabricatedGaps(NoteCopyService.unwrapSelfCopyHtml(payload.html)),
+            // Reverse buildPayload()'s clipboard-facing blank-line handling —
+            // pasting back into EverFreeNote itself must restore the exact
+            // pre-copy editor representation, not the one built for external
+            // paste targets like Telegram/Facebook.
+            NoteClipboardService.restoreEditorHtml(NoteCopyService.unwrapSelfCopyHtml(payload.html)),
             {
               profile: 'editor-self-copy',
               styleAllowlist: SELF_COPY_STYLE_ALLOWLIST,
