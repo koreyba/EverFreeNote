@@ -1,0 +1,1 @@
+{"id":"05b7d1673189696fa29fa50801ac7747","fullName":"cypress/component/features/notes/RagIndexPanel.cy.tsx#RagIndexPanel (variant=menu) calls onMenuClose after confirmed delete","name":"calls onMenuClose after confirmed delete","status":"passed","testResultsByEnv":{"default":"76ff4403fc2d74a20ab0ba6386c5d9fc"}}

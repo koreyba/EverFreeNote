@@ -1,5 +1,33 @@
 [
   {
+    "family": "component",
+    "familyLabel": "Component",
+    "suites": [
+      "component"
+    ],
+    "suiteLabels": [
+      "Web Component"
+    ],
+    "path": "reports/component/branch-main/run-28597039870-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/component/branch-main/run-28597039870-attempt-1/",
+    "runId": "28597039870",
+    "runAttempt": "1",
+    "prNumber": null,
+    "ref": "main",
+    "sha": "c94c2dd2f3e09f90fb76aca7f5cdea32adb3af1b",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "branch",
+    "scopeLabel": "main",
+    "historyPath": "_history/component/history.jsonl",
+    "generatedAt": "2026-07-02T14:24:07.301Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/component/report",
+    "combinedResultsDir": ".allure-publish/component/results"
+  },
+  {
     "family": "e2e",
     "familyLabel": "E2E",
     "suites": [
@@ -1627,34 +1655,6 @@
     "scopeLabel": "PR #130",
     "historyPath": "_history/component/history.jsonl",
     "generatedAt": "2026-06-26T10:20:03.300Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/component/report",
-    "combinedResultsDir": ".allure-publish/component/results"
-  },
-  {
-    "family": "component",
-    "familyLabel": "Component",
-    "suites": [
-      "component"
-    ],
-    "suiteLabels": [
-      "Web Component"
-    ],
-    "path": "reports/component/pr-130/run-28230307323-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/component/pr-130/run-28230307323-attempt-1/",
-    "runId": "28230307323",
-    "runAttempt": "1",
-    "prNumber": "130",
-    "ref": "restore/mobile-copy-note-20260513",
-    "sha": "60d795ff8fc7ca371db57b94f79a6acccfb91cff",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #130",
-    "historyPath": "_history/component/history.jsonl",
-    "generatedAt": "2026-06-26T09:53:55.449Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/component/report",
     "combinedResultsDir": ".allure-publish/component/results"
