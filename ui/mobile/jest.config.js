@@ -24,4 +24,10 @@ module.exports = {
   clearMocks: true,
   // React Native/Expo tests can leave native listeners open; force exit prevents hangs.
   forceExit: true,
+  // Default 5000ms is too tight for the longest multi-step integration tests
+  // (several sequential waitFor rounds) once the full suite saturates every
+  // CPU core across parallel workers — that starves individual async waits
+  // without any actual logic bug. 15s gives enough headroom under load while
+  // still failing fast on a genuine hang.
+  testTimeout: 15000,
 }

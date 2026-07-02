@@ -1,54 +1,73 @@
 import { copyNotePayloadToClipboard } from '@ui/web/lib/noteClipboard'
 
-const payload = {
-  html: '<p>Hello</p>',
-  text: 'Hello',
-}
+const payload = { html: '<div>rich</div>', text: 'rich' }
 
-describe('copyNotePayloadToClipboard', () => {
-  const originalNavigator = globalThis.navigator
+describe('ui/web/lib/noteClipboard', () => {
+  const originalClipboard = globalThis.navigator?.clipboard
   const originalClipboardItem = globalThis.ClipboardItem
 
   afterEach(() => {
-    Object.defineProperty(globalThis, 'navigator', {
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      value: originalClipboard,
       configurable: true,
-      value: originalNavigator,
     })
-    Object.defineProperty(globalThis, 'ClipboardItem', {
-      configurable: true,
-      value: originalClipboardItem,
-    })
-    jest.clearAllMocks()
+    globalThis.ClipboardItem = originalClipboardItem
+    jest.restoreAllMocks()
   })
 
-  it('falls back to plain text when rich clipboard write fails', async () => {
-    const write = jest.fn().mockRejectedValue(new Error('rich write unavailable'))
-    const writeText = jest.fn().mockResolvedValue(undefined)
-    const ClipboardItemMock = jest.fn(function ClipboardItem(data: Record<string, Blob>) {
-      return { data }
+  function setClipboard(value: unknown) {
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      value,
+      configurable: true,
     })
+  }
 
-    Object.defineProperty(globalThis, 'navigator', {
-      configurable: true,
-      value: {
-        clipboard: {
-          write,
-          writeText,
-        },
-      },
-    })
-    Object.defineProperty(globalThis, 'ClipboardItem', {
-      configurable: true,
-      value: ClipboardItemMock,
-    })
+  it('writes a dual-format ClipboardItem when rich writes are available', async () => {
+    const write = jest.fn().mockResolvedValue(undefined)
+    const writeText = jest.fn().mockResolvedValue(undefined)
+    setClipboard({ write, writeText })
+    globalThis.ClipboardItem = class {
+      constructor(public items: Record<string, Blob>) {}
+    } as unknown as typeof ClipboardItem
 
     await copyNotePayloadToClipboard(payload)
 
     expect(write).toHaveBeenCalledTimes(1)
-    expect(ClipboardItemMock).toHaveBeenCalledWith(expect.objectContaining({
-      'text/html': expect.any(Blob),
-      'text/plain': expect.any(Blob),
-    }))
-    expect(writeText).toHaveBeenCalledWith('Hello')
+    expect(writeText).not.toHaveBeenCalled()
+
+    // The single ClipboardItem must carry BOTH representations.
+    const item = write.mock.calls[0][0][0] as { items: Record<string, Blob> }
+    expect(Object.keys(item.items).sort()).toEqual(['text/html', 'text/plain'])
+    expect(item.items['text/html'].type).toBe('text/html')
+    expect(item.items['text/plain'].type).toBe('text/plain')
+  })
+
+  it('falls back to writeText when the rich write is rejected', async () => {
+    const write = jest.fn().mockRejectedValue(new Error('no html'))
+    const writeText = jest.fn().mockResolvedValue(undefined)
+    setClipboard({ write, writeText })
+    globalThis.ClipboardItem = class {
+      constructor(public items: Record<string, Blob>) {}
+    } as unknown as typeof ClipboardItem
+
+    await copyNotePayloadToClipboard(payload)
+
+    expect(writeText).toHaveBeenCalledWith('rich')
+  })
+
+  it('falls back to writeText when ClipboardItem is unavailable', async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined)
+    setClipboard({ writeText })
+    globalThis.ClipboardItem = undefined as unknown as typeof ClipboardItem
+
+    await copyNotePayloadToClipboard(payload)
+
+    expect(writeText).toHaveBeenCalledWith('rich')
+  })
+
+  it('throws when the clipboard API is unavailable', async () => {
+    setClipboard(undefined)
+
+    await expect(copyNotePayloadToClipboard(payload)).rejects.toThrow('Clipboard API unavailable')
   })
 })

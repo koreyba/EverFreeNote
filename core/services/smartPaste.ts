@@ -1,4 +1,5 @@
 import MarkdownIt from 'markdown-it'
+import { NoteClipboardService } from '@core/services/noteClipboard'
 import { NoteCopyService } from '@core/services/noteCopy'
 import { SanitizationService } from '@core/services/sanitizer'
 import { normalizeHtml, plainTextToHtml } from '@core/utils/normalize-html'
@@ -39,6 +40,19 @@ const DEFAULT_OPTIONS: Required<SmartPasteOptions> = {
 const STRUCTURAL_TAG_PATTERN = /<(p|br|hr|ul|ol|li|h1|h2|h3|h4|h5|h6|blockquote|pre|code|img|a)(\s|>|\/)/i
 const ALLOWED_LINK_PROTOCOLS = ['http:', 'https:', 'mailto:']
 const ALLOWED_IMAGE_PROTOCOLS = ['http:', 'https:']
+// Editor stores inline base64 images (Image extension allowBase64). Permit them on the
+// self-copy path only, so internal round-trip keeps images without weakening external paste.
+const SELF_COPY_IMAGE_PROTOCOLS = [...ALLOWED_IMAGE_PROTOCOLS, 'data:']
+// The self-copy marker is a plain HTML attribute, so any external page can forge it.
+// Bound what `data:` is allowed to carry on that path to raster image types the editor
+// itself produces (no svg+xml, which can embed scripts) and to the per-image size cap
+// already used for uploads (core/enex/image-processor.ts MAX_IMAGE_SIZE), so a forged
+// marker can smuggle at most an oversized image, never an arbitrary payload.
+const SELF_COPY_DATA_IMAGE_PATTERN = /^data:image\/(?:png|jpe?g|gif|webp);base64,/i
+const MAX_SELF_COPY_DATA_URI_LENGTH = 14_000_000 // ~10MB decoded, base64 overhead included
+// Per-image cap alone doesn't bound total payload size — a forged marker could still
+// carry many just-under-the-cap images. Cap the sum accepted from one paste too.
+const MAX_SELF_COPY_TOTAL_DATA_URI_LENGTH = 60_000_000
 // Exclude colors to avoid theme clashes from sources like Google Docs.
 const GENERIC_STYLE_ALLOWLIST = new Set(['font-weight', 'font-style', 'text-decoration'])
 const SELF_COPY_STYLE_ALLOWLIST = new Set([
@@ -128,10 +142,18 @@ function resolvePasteInternal(
     if (detection.type === 'html' && payload.html) {
       const isSelfCopy = NoteCopyService.isSelfCopyHtml(payload.html)
       const sanitized = isSelfCopy
-        ? sanitizePasteHtml(NoteCopyService.unwrapSelfCopyHtml(payload.html), {
-            profile: 'editor-self-copy',
-            styleAllowlist: SELF_COPY_STYLE_ALLOWLIST,
-          })
+        ? sanitizePasteHtml(
+            // Reverse buildPayload()'s clipboard-facing blank-line handling —
+            // pasting back into EverFreeNote itself must restore the exact
+            // pre-copy editor representation, not the one built for external
+            // paste targets like Telegram/Facebook.
+            NoteClipboardService.restoreEditorHtml(NoteCopyService.unwrapSelfCopyHtml(payload.html)),
+            {
+              profile: 'editor-self-copy',
+              styleAllowlist: SELF_COPY_STYLE_ALLOWLIST,
+              imageProtocolAllowlist: SELF_COPY_IMAGE_PROTOCOLS,
+            },
+          )
         : sanitizePasteHtml(payload.html)
       const html = isSelfCopy ? sanitized : unwrapSingleParagraph(sanitized)
       return { html, type: 'html', warnings, detection }
@@ -212,7 +234,7 @@ function scoreMarkdown(text: string): { score: number; reasons: string[] } {
     reasons.push('markdown:inline-code')
   }
 
-  if (/\[[^\]]+\]\([^)]+\)/.test(text)) {
+  if (/\[[^[\]]+\]\([^()]+\)/.test(text)) {
     score += 1
     reasons.push('markdown:link')
   }
@@ -225,13 +247,20 @@ function scoreMarkdown(text: string): { score: number; reasons: string[] } {
   return { score, reasons }
 }
 
+const TABLE_SEPARATOR_ROW_PATTERN = /^\s*\|?\s*[-:]+(?:\s*\|\s*[-:]+)*\s*\|?\s*$/
+
 function containsUnsupportedMarkdown(text: string): boolean {
   if (/^\s*[-*+]\s+\[[ xX]\]\s+/m.test(text)) {
     return true
   }
 
-  if (/^\s*\|?.+\|.+\n\s*\|?\s*[-:]+\s*\|/m.test(text)) {
-    return true
+  const lines = text.split('\n')
+  for (let i = 0; i < lines.length - 1; i++) {
+    // The separator row itself must contain a pipe too — otherwise a header-ish
+    // line followed by an unrelated horizontal rule ("---") false-positives as a table.
+    if (lines[i].includes('|') && lines[i + 1].includes('|') && TABLE_SEPARATOR_ROW_PATTERN.test(lines[i + 1])) {
+      return true
+    }
   }
 
   return false
@@ -256,11 +285,12 @@ function sanitizePasteHtml(
   options: {
     profile?: 'default' | 'editor-self-copy'
     styleAllowlist?: Set<string>
+    imageProtocolAllowlist?: string[]
   } = {},
 ): string {
   const sanitized = SanitizationService.sanitize(html, { profile: options.profile ?? 'default' })
   const withoutStyles = filterInlineStyles(sanitized, options.styleAllowlist ?? GENERIC_STYLE_ALLOWLIST)
-  const withoutBadLinks = filterUnsafeUrls(withoutStyles)
+  const withoutBadLinks = filterUnsafeUrls(withoutStyles, options.imageProtocolAllowlist ?? ALLOWED_IMAGE_PROTOCOLS)
   return normalizeHtml(withoutBadLinks)
 }
 
@@ -314,7 +344,11 @@ function filterInlineStyles(html: string, styleAllowlist: Set<string>): string {
   return doc.body.innerHTML
 }
 
-function filterUnsafeUrls(html: string): string {
+function filterUnsafeUrls(html: string, imageProtocols: string[] = ALLOWED_IMAGE_PROTOCOLS): string {
+  // Shared across every image in this one paste, so accepted data: URIs are
+  // bounded in aggregate, not just individually.
+  const dataUriBudget = { remaining: MAX_SELF_COPY_TOTAL_DATA_URI_LENGTH }
+
   if (typeof DOMParser === 'undefined') {
     // Regex fallback for environments without DOMParser (e.g. React Native)
     return html.replace(/\s(href|src)=(?:"([^"]*)"|'([^']*)')/gi, (match, attr, val1, val2) => {
@@ -322,7 +356,7 @@ function filterUnsafeUrls(html: string): string {
       const isAllowed =
         attr.toLowerCase() === 'href'
           ? isAllowedLinkProtocol(val, ALLOWED_LINK_PROTOCOLS)
-          : isAllowedImageProtocol(val, ALLOWED_IMAGE_PROTOCOLS)
+          : isAllowedImageProtocol(val, imageProtocols, dataUriBudget)
       return isAllowed ? match : ''
     })
   }
@@ -339,7 +373,7 @@ function filterUnsafeUrls(html: string): string {
   const images = Array.from(doc.querySelectorAll('img[src]'))
   for (const img of images) {
     const src = img.getAttribute('src') ?? ''
-    if (!isAllowedImageProtocol(src, ALLOWED_IMAGE_PROTOCOLS)) {
+    if (!isAllowedImageProtocol(src, imageProtocols, dataUriBudget)) {
       img.remove()
     }
   }
@@ -370,11 +404,23 @@ function isAllowedLinkProtocol(value: string, allowed: string[]): boolean {
   }
 }
 
-function isAllowedImageProtocol(value: string, allowed: string[]): boolean {
+function isAllowedImageProtocol(value: string, allowed: string[], dataUriBudget?: { remaining: number }): boolean {
   const trimmed = value.trim()
   if (!trimmed) return false
   if (trimmed.startsWith('//')) {
     return false
+  }
+  if (/^data:/i.test(trimmed)) {
+    const isAllowedDataUri =
+      allowed.includes('data:') &&
+      trimmed.length <= MAX_SELF_COPY_DATA_URI_LENGTH &&
+      SELF_COPY_DATA_IMAGE_PATTERN.test(trimmed)
+    if (!isAllowedDataUri) return false
+    if (dataUriBudget) {
+      if (trimmed.length > dataUriBudget.remaining) return false
+      dataUriBudget.remaining -= trimmed.length
+    }
+    return true
   }
   try {
     const parsed = new URL(trimmed)

@@ -1,5 +1,9 @@
 import { SmartPasteService } from '@core/services/smartPaste'
-import { NoteCopyService } from '@core/services/noteCopy'
+import { EVERFREENOTE_COPY_ATTRIBUTE, EVERFREENOTE_COPY_KIND } from '@core/services/noteCopy'
+
+function wrapSelfCopy(innerHtml: string): string {
+  return `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">${innerHtml}</div>`
+}
 import { SanitizationService } from '@core/services/sanitizer'
 
 type AttributeMap = Record<string, string>
@@ -213,6 +217,25 @@ describe('core/services/smartPaste', () => {
       expect(result.warnings).toContain('plain:unsupported-markdown')
     })
 
+    it('does not mistake a pipe-containing line followed by an unrelated dashed line for a table', () => {
+      // Regression guard: TABLE_SEPARATOR_ROW_PATTERN alone matches a bare "---"
+      // (its leading/trailing "|" are optional), so a line with a pipe immediately
+      // followed by an unrelated dashed line used to false-positive as a table.
+      // (Text directly followed by "---" is itself a CommonMark Setext H2 heading —
+      // unrelated to this fix, just what markdown-it renders it as once it's no
+      // longer downgraded to plain text.)
+      const payload = {
+        html: null,
+        text: 'Value: 5 | Note: done\n---\nMore text',
+        types: ['text/plain'],
+      }
+
+      const result = SmartPasteService.resolvePaste(payload)
+      expect(result.warnings).not.toContain('plain:unsupported-markdown')
+      expect(result.type).toBe('markdown')
+      expect(result.html).toContain('<h2>Value: 5 | Note: done</h2>')
+    })
+
     it('downgrades task lists to plain text', () => {
       const payload = {
         html: null,
@@ -396,13 +419,13 @@ describe('core/services/smartPaste', () => {
     })
 
     it('preserves self-copy rich text styles for EverFreeNote round-trip', () => {
-      const payload = NoteCopyService.buildPayload(
+      const html = wrapSelfCopy(
         '<p style="text-align: center"><span style="font-family: Georgia; font-size: 18px; color: rgb(255, 0, 0); background-color: rgb(255, 255, 0)">Styled</span></p>',
       )
 
       const result = SmartPasteService.resolvePaste({
-        html: payload.html,
-        text: payload.text,
+        html,
+        text: 'Styled',
         types: ['text/html', 'text/plain'],
       })
 
@@ -415,14 +438,35 @@ describe('core/services/smartPaste', () => {
       expect(result.html).not.toContain('data-everfreenote-copy')
     })
 
+    it('caps the aggregate data: URI budget across one paste, even though each image stays under the per-image cap', () => {
+      // Regression guard: a forged self-copy marker (the marker is a plain HTML
+      // attribute — any external page can add it) could previously smuggle an
+      // unbounded number of images each just under the per-image cap. 5 images at
+      // ~14MB (the per-image cap) sum to ~70MB, well past the ~60MB aggregate
+      // budget, so only the first 4 should be accepted.
+      const prefix = 'data:image/png;base64,'
+      const nearCapUri = prefix + 'A'.repeat(14_000_000 - prefix.length)
+      const images = Array.from({ length: 5 }, (_, i) => `<img src="${nearCapUri}" alt="img${i}">`).join('')
+      const html = wrapSelfCopy(`<p>${images}</p>`)
+
+      const result = SmartPasteService.resolvePaste({
+        html,
+        text: 'images',
+        types: ['text/html', 'text/plain'],
+      })
+
+      const acceptedCount = (result.html.match(/data:image\/png;base64,/g) ?? []).length
+      expect(acceptedCount).toBe(4)
+    }, 20000)
+
     it('preserves task-list markup when pasting EverFreeNote self-copy HTML', () => {
-      const payload = NoteCopyService.buildPayload(
+      const html = wrapSelfCopy(
         '<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><label><input checked="checked" disabled="disabled" type="checkbox"><span></span></label><div><p>Done</p></div></li></ul>',
       )
 
       const result = SmartPasteService.resolvePaste({
-        html: payload.html,
-        text: payload.text,
+        html,
+        text: '[x] Done',
         types: ['text/html', 'text/plain'],
       })
 

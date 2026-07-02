@@ -1,29 +1,12 @@
 import { SanitizationService } from '@core/services/sanitizer'
-import { normalizeHtml } from '@core/utils/normalize-html'
 
 export const EVERFREENOTE_COPY_ATTRIBUTE = 'data-everfreenote-copy'
 export const EVERFREENOTE_COPY_KIND = 'note-body'
-
-export type NoteCopyPayload = {
-  html: string
-  text: string
-}
 
 const SELF_COPY_WRAPPER_PREFIX = `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">`
 const DIV_TAG_PATTERN = /<\/?div\b[^>]*>/gi
 
 export const NoteCopyService = {
-  buildPayload(rawHtml: string): NoteCopyPayload {
-    const sanitizedHtml = SanitizationService.sanitize(normalizeHtml(rawHtml), {
-      profile: 'editor-self-copy',
-    })
-
-    return {
-      html: wrapSelfCopyHtml(sanitizedHtml),
-      text: htmlToPlainText(sanitizedHtml),
-    }
-  },
-
   isSelfCopyHtml(html: string): boolean {
     if (!html) return false
     const normalizedHtml = html.trim()
@@ -66,64 +49,6 @@ export const NoteCopyService = {
     }
     return sanitizedHtml
   },
-}
-
-function wrapSelfCopyHtml(html: string): string {
-  return `${SELF_COPY_WRAPPER_PREFIX}${html}</div>`
-}
-
-function htmlToPlainText(html: string): string {
-  const withBreaks = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<hr\s*\/?>/gi, '\n---\n')
-    .replace(/<li([^>]*)data-checked=["']true["'][^>]*>/gi, '- [x] ')
-    .replace(/<li([^>]*)data-checked=["']false["'][^>]*>/gi, '- [ ] ')
-    .replace(/<li[^>]*>/gi, '- ')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<\/(p|div|blockquote|pre|h[1-6])>/gi, '\n\n')
-    .replace(/<\/(ul|ol)>/gi, '\n')
-
-  const stripped = SanitizationService.stripHtml(withBreaks)
-  const normalizedText = decodeHtmlEntities(stripped).replaceAll('\u00a0', ' ')
-  return collapseExtraBlankLines(trimLineEndings(normalizedText)).trim()
-}
-
-function decodeHtmlEntities(value: string): string {
-  if (typeof document === 'undefined') {
-    return value
-  }
-
-  const textarea = document.createElement('textarea')
-  textarea.innerHTML = value
-  return textarea.value
-}
-
-function trimLineEndings(value: string): string {
-  return value
-    .split('\n')
-    .map(line => line.trimEnd())
-    .join('\n')
-}
-
-function collapseExtraBlankLines(value: string): string {
-  const lines = value.split('\n')
-  const collapsed: string[] = []
-  let blankLineCount = 0
-
-  for (const line of lines) {
-    if (line.length === 0) {
-      blankLineCount += 1
-      if (blankLineCount <= 2) {
-        collapsed.push(line)
-      }
-      continue
-    }
-
-    blankLineCount = 0
-    collapsed.push(line)
-  }
-
-  return collapsed.join('\n')
 }
 
 function isTopLevelSelfCopyWrapper(body: HTMLElement): boolean {

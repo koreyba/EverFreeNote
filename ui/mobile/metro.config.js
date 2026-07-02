@@ -9,8 +9,13 @@ const workspaceRoot = path.resolve(projectRoot, "../..");
 
 const config = getDefaultConfig(projectRoot);
 
-// 1. Watch all files within the monorepo
-config.watchFolders = [workspaceRoot];
+// 1. Watch only the mobile project and the shared core directory
+// Avoid watching the entire workspaceRoot as it contains large folders like node_modules, .next, and .git,
+// which cause the Metro file watcher to timeout and fail on Windows.
+config.watchFolders = [
+  projectRoot,
+  path.resolve(workspaceRoot, "core"),
+];
 
 // 2. Let Metro know where to resolve packages and aliases
 config.resolver.nodeModulesPaths = [

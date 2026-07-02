@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import DOMPurify from 'isomorphic-dompurify'
 import RichTextEditorWebView, { type RichTextEditorWebViewHandle } from '@/ui/web/components/RichTextEditorWebView'
 import { consumeChunkedMessage, sendChunkedText, type ChunkBufferStore } from '@core/utils/editorWebViewBridge'
+import { NoteClipboardService } from '@core/services/noteClipboard'
 
 declare global {
   interface Window {
@@ -167,6 +168,11 @@ export default function EditorWebViewPage() {
         } else if (type === 'GET_CONTENT') {
           if (editorRef.current) {
             sendTextToNative('CONTENT_RESPONSE', editorRef.current.getHTML())
+          }
+        } else if (type === 'REQUEST_COPY_PAYLOAD') {
+          if (editorRef.current) {
+            const payload = NoteClipboardService.buildPayload(editorRef.current.getHTML())
+            sendTextToNative('COPY_PAYLOAD', JSON.stringify(payload))
           }
         } else if (type === 'COMMAND') {
           if (editorRef.current) {

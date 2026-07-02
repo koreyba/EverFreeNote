@@ -1,19 +1,18 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, Copy, Eye } from "lucide-react"
+import { ChevronLeft, Copy, Check, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
+import { NoteClipboardService } from "@core/services/noteClipboard"
+import { useCopyNote } from "@ui/web/hooks/useCopyNote"
 import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { TagInput } from "@/components/TagInput"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
-import { toast } from "sonner"
-import { NoteCopyService } from "@core/services/noteCopy"
-import { copyNotePayloadToClipboard } from "@ui/web/lib/noteClipboard"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
@@ -72,6 +71,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
   const [readyChunkFocus, setReadyChunkFocus] = React.useState<PendingChunkFocus | null>(null)
+  const [isBodyEmpty, setIsBodyEmpty] = React.useState(() => NoteClipboardService.isBodyEmpty(initialDescription))
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
   const previousNoteIdRef = React.useRef(noteId)
@@ -101,6 +101,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
     if (fieldDecisions.description === 'accept-external' && editorRef.current?.getHTML() !== snapshot.description) {
       editorRef.current?.setContent(snapshot.description)
+      setIsBodyEmpty(NoteClipboardService.isBodyEmpty(snapshot.description))
     }
 
     if (fieldDecisions.tags === 'accept-external' && buildTagString(selectedTagsRef.current) !== snapshot.tags) {
@@ -141,6 +142,21 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     }
   }, [isAutoSaving])
 
+  const { copied, copyNote } = useCopyNote()
+
+  React.useEffect(() => {
+    setIsBodyEmpty(NoteClipboardService.isBodyEmpty(initialDescription))
+  }, [initialDescription])
+
+  const handleEditorContentChange = React.useCallback(() => {
+    handleContentChange()
+    setIsBodyEmpty(NoteClipboardService.isBodyEmpty(editorRef.current?.getHTML() ?? ""))
+  }, [handleContentChange])
+
+  const handleCopy = React.useCallback(() => {
+    void copyNote(editorRef.current?.getHTML() ?? initialDescription)
+  }, [copyNote, initialDescription])
+
   const handleSave = () => {
     cancelAutoSave()
     onSave(getFormData())
@@ -150,16 +166,6 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     cancelAutoSave()
     onRead(getFormData())
   }
-
-  const handleCopy = React.useCallback(async () => {
-    try {
-      const payload = NoteCopyService.buildPayload(getFormData().description)
-      await copyNotePayloadToClipboard(payload)
-      toast.success('Note copied')
-    } catch {
-      toast.error('Failed to copy note')
-    }
-  }, [getFormData])
 
   const getExportNote = React.useCallback(() => {
     if (!noteId) return null
@@ -261,9 +267,19 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               <Eye className="w-4 h-4 mr-2" />
               Read
             </Button>
-            <Button onClick={handleCopy} variant="outline" size="sm" disabled={isSaving} aria-label="Copy note">
-              <Copy className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">Copy</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isSaving || isBodyEmpty}
+              aria-label="Copy note"
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <Check className="w-4 h-4 md:mr-2 text-green-600" />
+              ) : (
+                <Copy className="w-4 h-4 md:mr-2" />
+              )}
+              <span className="hidden md:inline">{copied ? "Copied" : "Copy"}</span>
             </Button>
             <Button onClick={handleSave} size="sm" disabled={isSaving}>
               Save
@@ -316,7 +332,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             key={`editor-${editorSessionKey}`}
             ref={editorRef}
             initialContent={initialDescription}
-            onContentChange={handleContentChange}
+            onContentChange={handleEditorContentChange}
             chunkFocusRequest={
               readyChunkFocus
                 ? {

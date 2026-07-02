@@ -24,48 +24,79 @@ jest.mock('@/components/features/notes/MoreActionsMenu', () => ({
 }))
 
 jest.mock('sonner', () => ({
-  toast: {
-    success: jest.fn(),
-    error: jest.fn(),
-  },
+  toast: { success: jest.fn(), error: jest.fn() },
 }))
 
 jest.mock('@ui/web/lib/noteClipboard', () => ({
   copyNotePayloadToClipboard: jest.fn().mockResolvedValue(undefined),
 }))
 
+const mockCopy = copyNotePayloadToClipboard as jest.MockedFunction<typeof copyNotePayloadToClipboard>
+
+function renderNoteView(overrides: Partial<{ description: string; content: string }> = {}) {
+  return render(
+    <NoteView
+      note={{
+        id: 'note-1',
+        title: 'Test note',
+        description: overrides.description ?? '<p>Copied body</p>',
+        content: overrides.content ?? '<p>Copied body</p>',
+        tags: ['tag-a'],
+        created_at: '2025-01-01T10:00:00.000Z',
+        updated_at: '2025-01-01T10:00:00.000Z',
+      } as never}
+      onEdit={jest.fn()}
+      onDelete={jest.fn()}
+      onTagClick={jest.fn()}
+      onRemoveTag={jest.fn()}
+    />,
+  )
+}
+
 describe('NoteView copy action', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockCopy.mockResolvedValue(undefined)
   })
 
-  it('copies the note body from reading mode', async () => {
-    render(
-      <NoteView
-        note={{
-          id: 'note-1',
-          title: 'Test note',
-          description: '<p>Copied body</p>',
-          content: '<p>Copied body</p>',
-          tags: ['tag-a'],
-          created_at: '2025-01-01T10:00:00.000Z',
-          updated_at: '2025-01-01T10:00:00.000Z',
-        } as never}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-        onTagClick={jest.fn()}
-        onRemoveTag={jest.fn()}
-      />,
-    )
+  it('copies the note body with the self-copy marker and clean plain text', async () => {
+    renderNoteView()
 
     fireEvent.click(screen.getByLabelText('Copy note'))
 
     await waitFor(() => {
-      expect(copyNotePayloadToClipboard).toHaveBeenCalledWith(expect.objectContaining({
-        html: expect.stringContaining('<p>Copied body</p>'),
-        text: 'Copied body',
-      }))
+      expect(mockCopy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          html: expect.stringContaining('data-everfreenote-copy'),
+          text: 'Copied body',
+        }),
+      )
     })
-    expect(toast.success).toHaveBeenCalledWith('Note copied')
+    expect(mockCopy.mock.calls[0][0].html).toContain('<p>Copied body</p>')
+  })
+
+  it('shows the on-button confirmation after a successful copy', async () => {
+    renderNoteView()
+
+    fireEvent.click(screen.getByLabelText('Copy note'))
+
+    expect(await screen.findByText('Copied')).toBeTruthy()
+  })
+
+  it('disables the copy button for an empty note body', () => {
+    renderNoteView({ description: '<p></p>', content: '' })
+
+    expect((screen.getByLabelText('Copy note') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('surfaces an error toast when the clipboard write fails', async () => {
+    mockCopy.mockRejectedValue(new Error('blocked'))
+    renderNoteView()
+
+    fireEvent.click(screen.getByLabelText('Copy note'))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to copy note')
+    })
   })
 })

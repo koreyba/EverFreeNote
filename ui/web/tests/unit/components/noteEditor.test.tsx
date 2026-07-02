@@ -1,7 +1,6 @@
 import React from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NoteEditor, type NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
-import { toast } from 'sonner'
 import { copyNotePayloadToClipboard } from '@ui/web/lib/noteClipboard'
 
 const mockSetEditorContent = jest.fn()
@@ -96,12 +95,12 @@ jest.mock('sonner', () => ({
   },
 }))
 
-jest.mock('@ui/web/lib/noteClipboard', () => ({
-  copyNotePayloadToClipboard: jest.fn().mockResolvedValue(undefined),
-}))
-
 jest.mock('@ui/web/hooks/useTagSuggestions', () => ({
   useTagSuggestions: () => [],
+}))
+
+jest.mock('@ui/web/lib/noteClipboard', () => ({
+  copyNotePayloadToClipboard: jest.fn().mockResolvedValue(undefined),
 }))
 
 describe('NoteEditor same-note autosave reconciliation', () => {
@@ -410,21 +409,54 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     expect(screen.getByText('<p>Remote body</p>')).toBeTruthy()
     expect(screen.getByTestId('selected-tags').textContent).toBe('remote-tag')
   })
+})
 
-  it('copies the current unsaved draft body from editing mode', async () => {
+describe('NoteEditor copy action', () => {
+  const mockCopy = copyNotePayloadToClipboard as jest.MockedFunction<typeof copyNotePayloadToClipboard>
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockEditorHtml = '<p>Body A</p>'
+    mockCopy.mockResolvedValue(undefined)
+  })
+
+  const renderEditor = (props: Partial<React.ComponentProps<typeof NoteEditor>> = {}) =>
+    render(
+      <NoteEditor
+        noteId="note-1"
+        initialTitle="First"
+        initialDescription="<p>Body A</p>"
+        initialTags="tag-a"
+        isSaving={false}
+        onSave={jest.fn()}
+        onRead={jest.fn()}
+        onAutoSave={jest.fn()}
+        {...props}
+      />,
+    )
+
+  it('copies the current draft body with the self-copy marker', async () => {
     renderEditor()
 
-    fireEvent.click(screen.getByText('Change body'))
     fireEvent.click(screen.getByLabelText('Copy note'))
 
-    await act(async () => {
-      await Promise.resolve()
+    await waitFor(() => {
+      expect(mockCopy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          html: expect.stringContaining('data-everfreenote-copy'),
+          text: 'Body A',
+        }),
+      )
     })
+  })
 
-    expect(copyNotePayloadToClipboard).toHaveBeenCalledWith(expect.objectContaining({
-      html: expect.stringContaining('<p>Local body</p>'),
-      text: 'Local body',
-    }))
-    expect(toast.success).toHaveBeenCalledWith('Note copied')
+  it('disables the copy button for an empty draft body', () => {
+    renderEditor({ initialDescription: '' })
+    expect((screen.getByLabelText('Copy note') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('disables the copy button while the note is saving', () => {
+    renderEditor({ isSaving: true })
+    expect((screen.getByLabelText('Copy note') as HTMLButtonElement).disabled).toBe(true)
   })
 })

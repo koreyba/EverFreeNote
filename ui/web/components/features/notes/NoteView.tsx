@@ -1,17 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { Edit2, Trash2, ChevronLeft, Copy } from "lucide-react"
+import { Edit2, Trash2, ChevronLeft, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
-import { toast } from "sonner"
-import { NoteCopyService } from "@core/services/noteCopy"
 import { SanitizationService } from "@core/services/sanitizer"
+import { NoteClipboardService } from "@core/services/noteClipboard"
+import { useCopyNote } from "@ui/web/hooks/useCopyNote"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import type { Note } from "@core/types/domain"
-import { copyNotePayloadToClipboard } from "@ui/web/lib/noteClipboard"
 
 // Define NoteRecord locally to match what's used in page.tsx
 type NoteRecord = Note & {
@@ -39,11 +38,16 @@ export const NoteView = React.memo(function NoteView({
   onBack,
   wordpressConfigured = false,
 }: NoteViewProps) {
+  const bodyHtml = note.description || note.content || ''
+
   // Мемоизация санитизированного контента для предотвращения повторной обработки
   const sanitizedContent = React.useMemo(
-    () => SanitizationService.sanitize(note.description || note.content || ''),
-    [note.description, note.content]
+    () => SanitizationService.sanitize(bodyHtml),
+    [bodyHtml]
   )
+
+  const { copied, copyNote } = useCopyNote()
+  const isBodyEmpty = React.useMemo(() => NoteClipboardService.isBodyEmpty(bodyHtml), [bodyHtml])
 
   // Форматирование дат для предотвращения повторных вычислений
   const formattedDates = React.useMemo(() => ({
@@ -57,17 +61,6 @@ export const NoteView = React.memo(function NoteView({
     description: note.description || note.content || '',
     tags: note.tags ?? [],
   }), [note.content, note.description, note.id, note.tags, note.title])
-
-  const handleCopy = React.useCallback(async () => {
-    try {
-      const payload = NoteCopyService.buildPayload(note.description || note.content || '')
-      await copyNotePayloadToClipboard(payload)
-      toast.success('Note copied')
-    } catch {
-      toast.error('Failed to copy note')
-    }
-  }, [note.content, note.description])
-
 
   return (
     <div className="flex-1 flex min-h-0 flex-col">
@@ -95,9 +88,19 @@ export const NoteView = React.memo(function NoteView({
             <Edit2 className="w-4 h-4 mr-2" />
             Edit
           </Button>
-          <Button onClick={handleCopy} variant="outline" size="sm" aria-label="Copy note">
-            <Copy className="w-4 h-4 md:mr-2" />
-            <span className="hidden md:inline">Copy</span>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Copy note"
+            disabled={isBodyEmpty}
+            onClick={() => copyNote(bodyHtml)}
+          >
+            {copied ? (
+              <Check className="w-4 h-4 md:mr-2 text-green-600" />
+            ) : (
+              <Copy className="w-4 h-4 md:mr-2" />
+            )}
+            <span className="hidden md:inline">{copied ? "Copied" : "Copy"}</span>
           </Button>
           <Button
             onClick={onDelete}

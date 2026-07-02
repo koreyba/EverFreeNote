@@ -16,6 +16,9 @@ const SELF_COPY_ALLOWED_TAGS = [
   ...DEFAULT_ALLOWED_TAGS,
   'label',
   'input',
+  // Superscript/Subscript marks are stored by the editor; preserve on self-copy round-trip.
+  'sup',
+  'sub',
 ]
 
 const DEFAULT_ALLOWED_ATTR = ['href', 'target', 'src', 'alt', 'class', 'style', 'title']
@@ -27,6 +30,18 @@ const SELF_COPY_ALLOWED_ATTR = [
   'type',
   'checked',
   'disabled',
+  // EverFreeNote self-copy marker — must survive sanitization so the paste
+  // pipeline can detect/unwrap it and take the high-fidelity self-copy path.
+  'data-everfreenote-copy',
+  // Marks a paragraph NoteClipboardService fabricated to represent a
+  // single-Enter boundary as a blank line for external paste targets — must
+  // survive sanitization so the self-copy paste path can strip it back out
+  // before re-inserting into the editor (core/services/noteClipboard.ts).
+  'data-everfreenote-gap',
+  // ProseMirror's own clipboard slice marker — preserved so pasting back into
+  // any EverFreeNote editor can use PM's native slice reconstruction (exact
+  // open/close boundaries) instead of re-parsing HTML.
+  'data-pm-slice',
 ]
 
 export class SanitizationService {
