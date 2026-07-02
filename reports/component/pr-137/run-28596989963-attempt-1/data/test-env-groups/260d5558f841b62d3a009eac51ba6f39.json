@@ -1,0 +1,1 @@
+{"id":"260d5558f841b62d3a009eac51ba6f39","fullName":"cypress/component/core/ErrorBoundary.cy.tsx#ErrorBoundary Component catches async errors from useEffect","name":"catches async errors from useEffect","status":"passed","testResultsByEnv":{"default":"40c9c0ab8a9c083db0d0b5ad5c1b0ac5"}}

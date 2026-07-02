@@ -1,1 +1,0 @@
-{"id":"672e5018d42f98b4c7a18a5ad3c5a4f1","fullName":"cypress/component/ui/web/hooks/useNoteBulkActionsDirect.cy.tsx#useNoteBulkActions direct deleteSelectedNotes exits without mutation when no notes are selected","name":"deleteSelectedNotes exits without mutation when no notes are selected","status":"passed","testResultsByEnv":{"default":"1af2221bda4bdc5b6f70a650602a1bd8"}}
