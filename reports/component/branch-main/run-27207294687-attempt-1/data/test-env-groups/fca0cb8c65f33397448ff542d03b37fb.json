@@ -1,1 +1,0 @@
-{"id":"fca0cb8c65f33397448ff542d03b37fb","fullName":"cypress/component/features/notes/BulkDeleteDialog.cy.tsx#BulkDeleteDialog resets confirmation input when the parent closes the dialog programmatically","name":"resets confirmation input when the parent closes the dialog programmatically","status":"passed","testResultsByEnv":{"default":"5bfc3670e7b09ca6239a2114bec8fc3e"}}

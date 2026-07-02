@@ -1,1 +1,0 @@
-{"id":"10f6d6e8eb5f9e368ba777e60527650a","fullName":"cypress/component/features/notes/BulkDeleteDialog.cy.tsx#BulkDeleteDialog keeps the dialog open when confirm reports an error","name":"keeps the dialog open when confirm reports an error","status":"passed","testResultsByEnv":{"default":"bac6e45c00bd8c7fece3b7d48d65bcc1"}}
