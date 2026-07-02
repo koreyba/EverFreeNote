@@ -1,1 +1,0 @@
-{"id":"3ea6718f6fa2c7df057e81599db1d0bf","fullName":"tests/component/editorToolbar.test.tsx#EditorToolbar closes image menu on cancel without calling onCommand","name":"closes image menu on cancel without calling onCommand","status":"passed","testResultsByEnv":{"default":"4577b17efa0b98e3bd9a0ad77d4a9067"}}

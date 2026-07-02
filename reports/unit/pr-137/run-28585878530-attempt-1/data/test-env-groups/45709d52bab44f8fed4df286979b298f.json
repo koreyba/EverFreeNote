@@ -1,0 +1,1 @@
+{"id":"45709d52bab44f8fed4df286979b298f","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard isBodyEmpty treats empty and whitespace-only bodies as empty","name":"treats empty and whitespace-only bodies as empty","status":"passed","testResultsByEnv":{"default":"14e84a19f0d7385caaf00e27094ae3ca"}}
