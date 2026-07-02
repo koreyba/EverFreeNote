@@ -1,1 +1,0 @@
-{"id":"aa793239a193ffd61de0b259d49b81ab","fullName":"core/tests/unit/core-utils-search.test.ts#core/utils/search mapNotesToFtsResult truncates long descriptions to 200 characters","name":"truncates long descriptions to 200 characters","status":"passed","testResultsByEnv":{"default":"a5c59444b95abf49a707dc2bb7f4771d"}}
