@@ -1,8 +1,6 @@
-_history/e2e/history.jsonl
-_history/component/history.jsonl
 _history/unit/history.jsonl
-_history/component/history.jsonl
 _history/e2e/history.jsonl
+_history/component/history.jsonl
 _history/unit/history.jsonl
 _history/component/history.jsonl
 _history/e2e/history.jsonl
@@ -13,6 +11,9 @@ _history/unit/history.jsonl
 _history/component/history.jsonl
 _history/e2e/history.jsonl
 _history/unit/history.jsonl
+_history/component/history.jsonl
+_history/e2e/history.jsonl
+_history/unit/history.jsonl
 _history/e2e/history.jsonl
 _history/component/history.jsonl
 _history/e2e/history.jsonl
@@ -45,7 +46,6 @@ _history/unit/history.jsonl
 _history/component/history.jsonl
 _history/unit/history.jsonl
 _history/component/history.jsonl
-_history/unit/history.jsonl
 _history/e2e/history.jsonl
 _history/e2e/history.jsonl
 _history/e2e/history.jsonl
