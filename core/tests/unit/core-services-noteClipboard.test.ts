@@ -95,6 +95,21 @@ describe('core/services/noteClipboard', () => {
       const contentThenTrailing = NoteClipboardService.buildPayload('<p>A</p><p></p>')
       expect(contentThenTrailing.html).toContain('<div data-everfreenote-copy="note-body"><p>A</p><p></p></div>')
     })
+
+    it('does not insert a gap across a list boundary (regression: EverFreeNote-e2e notes.copy.spec.ts)', () => {
+      // Regression guard: a <p> right before a list and the <p> inside that
+      // list's first <li> are next to each other in match order (P_BLOCK_PATTERN
+      // only matches <p> tags), but <ol><li> sits between them in the actual
+      // HTML, so they are not a single-Enter paragraph boundary. Inserting a gap
+      // there previously fabricated a phantom blank line *inside* the <li>.
+      const payload = NoteClipboardService.buildPayload(
+        '<p>Before the list</p><ol><li><p>First</p></li><li><p>Second</p></li></ol><p>After</p>',
+      )
+
+      expect(payload.html).not.toContain('<li><p><br></p>')
+      expect(payload.html).not.toContain('<li><p></p>')
+      expect(payload.html).toContain('<ol><li><p>First</p></li><li><p>Second</p></li></ol>')
+    })
   })
 
   describe('htmlToPlainText', () => {
@@ -214,22 +229,36 @@ describe('core/services/noteClipboard', () => {
     })
 
     it('round-trips a mixed-formatting note (EverFreeNote-e2e notes.copy.spec.ts fixture)', () => {
+      // Verbatim shape of what TipTap actually produces for this note (list items
+      // wrap their text in <p>, adjacent marks merge into one <span>) — captured
+      // from a real EverFreeNote-e2e failure, not hand-typed, so this test would
+      // have caught the list-boundary regression below.
+      //
       // Note: as of the "every paragraph boundary gets a blank line" product decision,
       // this fixture's two directly-adjacent paragraphs (center-aligned, right-aligned)
       // now gain an inserted gap between them too. The external e2e test that asserts
       // byte-for-byte equality against the original needs updating to match.
       const richHtmlDescription =
         '<h1>Header formatting</h1>' +
-        '<p style="text-align: center;"><span style="font-size: 18px;"><span style="font-family: serif;">Serif text, size 18px, centered alignment</span></span></p>' +
+        '<p></p>' +
+        '<p style="text-align: center;"><span style="font-family: serif; font-size: 18px;">Serif text, size 18px, centered alignment</span></p>' +
         '<p style="text-align: right;"><span style="font-family: monospace;">Monospace text, standard size, right alignment</span></p>' +
-        '<ol><li>First element of numbered list</li><li>Second element of numbered list</li></ol>' +
+        '<ol><li><p>First element of numbered list</p></li><li><p>Second element of numbered list</p></li></ol>' +
         '<p></p>'
 
       const payload = NoteClipboardService.buildPayload(richHtmlDescription)
       // The two adjacent paragraphs gain a gap between them...
-      expect(payload.html).toContain('centered alignment</span></span></p><p><br></p><p style="text-align: right;">')
-      // ...but the trailing empty paragraph is still untouched — it isn't separating anything.
+      expect(payload.html).toContain('centered alignment</span></p><p><br></p><p style="text-align: right;">')
+      // ...but the blank line right after the heading and the trailing empty
+      // paragraph are both left untouched — headings aren't tracked, and a
+      // trailing paragraph isn't separating anything.
+      expect(payload.html).toContain('<h1>Header formatting</h1><p></p><p style="text-align: center;">')
       expect(payload.html).toContain('</ol><p></p></div>')
+      // Regression guard: a list directly after a paragraph must never gain a
+      // gap fabricated *inside* its first <li> (see insertMissingParagraphGaps).
+      expect(payload.html).not.toContain('<li><p><br></p>')
+      expect(payload.html).not.toContain('<li><p></p>')
+      expect(payload.html).toContain('<ol><li><p>First element of numbered list</p></li>')
 
       const result = SmartPasteService.resolvePaste({
         html: payload.html,

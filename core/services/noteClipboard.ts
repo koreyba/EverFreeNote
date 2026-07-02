@@ -54,6 +54,13 @@ function isEmptyParagraphBlock(block: string): boolean {
 // of directly-adjacent non-empty paragraphs (single Enter). Pre-existing
 // paragraphs — empty or not — are left completely untouched, so this never
 // collapses an existing run of blank lines.
+//
+// "Directly adjacent" means adjacent in the HTML string itself (nothing but
+// possibly whitespace between the two <p> tags), not just next to each other
+// in the list of matched blocks — a <p> right before a list and the <p>
+// inside that list's first <li> are next to each other in match order too,
+// but <ol><li> sits between them, so they are not a single-Enter paragraph
+// boundary and must not get a gap inserted between them.
 function insertMissingParagraphGaps(html: string): string {
   const blocks = Array.from(html.matchAll(P_BLOCK_PATTERN))
   if (blocks.length < 2) return html
@@ -64,8 +71,11 @@ function insertMissingParagraphGaps(html: string): string {
     const block = blocks[i]
     result += html.slice(cursor, block.index)
 
+    const previous = i > 0 ? blocks[i - 1] : null
+    const isDirectlyAdjacent =
+      previous !== null && html.slice(previous.index + previous[0].length, block.index).trim() === ''
     const isContent = !isEmptyParagraphBlock(block[0])
-    const previousWasContent = i > 0 && !isEmptyParagraphBlock(blocks[i - 1][0])
+    const previousWasContent = isDirectlyAdjacent && !isEmptyParagraphBlock(previous[0])
     if (isContent && previousWasContent) {
       result += '<p></p>'
     }
