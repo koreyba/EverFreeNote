@@ -1,1 +1,0 @@
-{"id":"51a74dc344528ea69c5dabfe4b559e92","fullName":"core/tests/unit/core-rag-indexingSettings.test.ts#core/rag/indexingSettings rejects invalid ordering for chunk sizes","name":"rejects invalid ordering for chunk sizes","status":"passed","testResultsByEnv":{"default":"ac28e4c61a434bfe6ca2da110498e8a1"}}
