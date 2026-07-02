@@ -105,10 +105,42 @@ describe('self-copy round-trip (jsdom / DOMParser path)', () => {
       expect(html).toBe('<p>Line one</p><p>Line two</p>')
 
       const payload = NoteClipboardService.buildPayload(html)
-      expect(payload.html).toContain('<p>Line one</p><p><br></p><p>Line two</p>')
+      expect(payload.html).toContain('<p>Line one</p><p data-everfreenote-gap="1"><br></p><p>Line two</p>')
       expect(payload.text).toBe('Line one\n\nLine two')
     } finally {
       editor.destroy()
+    }
+  })
+
+  it('restores the original single-Enter gap (not a permanent blank line) when pasted back into the editor', () => {
+    // Regression guard: a fabricated single-Enter gap must not turn into a real
+    // empty paragraph every time a self-copied note is pasted back into
+    // EverFreeNote — that would silently rewrite the note on every round trip.
+    const source = new Editor({ extensions: editorExtensions, content: '<p>Line one</p>' })
+    let sourceHtml: string
+    try {
+      source.commands.focus('end')
+      source.commands.enter()
+      source.commands.insertContent('Line two')
+      sourceHtml = source.getHTML()
+      expect(sourceHtml).toBe('<p>Line one</p><p>Line two</p>')
+    } finally {
+      source.destroy()
+    }
+
+    const payload = NoteClipboardService.buildPayload(sourceHtml)
+    const result = SmartPasteService.resolvePaste({
+      html: payload.html,
+      text: payload.text,
+      types: ['text/html', 'text/plain'],
+    })
+
+    const target = new Editor({ extensions: editorExtensions, content: '' })
+    try {
+      target.commands.insertContent(result.html)
+      expect(target.getHTML()).toBe('<p>Line one</p><p>Line two</p>')
+    } finally {
+      target.destroy()
     }
   })
 

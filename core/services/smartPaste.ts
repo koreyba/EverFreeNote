@@ -1,4 +1,5 @@
 import MarkdownIt from 'markdown-it'
+import { NoteClipboardService } from '@core/services/noteClipboard'
 import { NoteCopyService } from '@core/services/noteCopy'
 import { SanitizationService } from '@core/services/sanitizer'
 import { normalizeHtml, plainTextToHtml } from '@core/utils/normalize-html'
@@ -138,11 +139,19 @@ function resolvePasteInternal(
     if (detection.type === 'html' && payload.html) {
       const isSelfCopy = NoteCopyService.isSelfCopyHtml(payload.html)
       const sanitized = isSelfCopy
-        ? sanitizePasteHtml(NoteCopyService.unwrapSelfCopyHtml(payload.html), {
-            profile: 'editor-self-copy',
-            styleAllowlist: SELF_COPY_STYLE_ALLOWLIST,
-            imageProtocolAllowlist: SELF_COPY_IMAGE_PROTOCOLS,
-          })
+        ? sanitizePasteHtml(
+            // Strip paragraphs NoteClipboardService fabricated to widen a
+            // single-Enter boundary into a blank line for external paste
+            // targets — pasting back into EverFreeNote itself must restore
+            // the original single-Enter adjacency, not permanently turn it
+            // into a real empty paragraph.
+            NoteClipboardService.stripFabricatedGaps(NoteCopyService.unwrapSelfCopyHtml(payload.html)),
+            {
+              profile: 'editor-self-copy',
+              styleAllowlist: SELF_COPY_STYLE_ALLOWLIST,
+              imageProtocolAllowlist: SELF_COPY_IMAGE_PROTOCOLS,
+            },
+          )
         : sanitizePasteHtml(payload.html)
       const html = isSelfCopy ? sanitized : unwrapSingleParagraph(sanitized)
       return { html, type: 'html', warnings, detection }

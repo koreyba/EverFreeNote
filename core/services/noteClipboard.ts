@@ -26,6 +26,22 @@ const IMAGE_TAG_PATTERN = /<img\b[^>]*>/gi
 // the paragraph boundary counts.
 const BR_ONLY_PARAGRAPH_PATTERN = /<p([^<>]*)>\s*<br\s*\/?>\s*<\/p>/gi
 
+// Attribute on a paragraph that insertMissingParagraphGaps() fabricated to
+// represent a single-Enter boundary as a blank line for external paste
+// targets (Telegram/Facebook don't preserve the editor's smaller CSS gap).
+// Pasting that same HTML back into EverFreeNote itself must NOT treat the
+// fabricated paragraph as a real blank line — that would permanently widen
+// a single Enter into a genuine empty paragraph on every self-copy round
+// trip. The self-copy paste path (core/services/smartPaste.ts) strips any
+// paragraph carrying this marker back out before re-inserting into the
+// editor, restoring the original single-Enter adjacency. Must be allowlisted
+// in the 'editor-self-copy' sanitize profile to survive that far.
+const GAP_MARKER_ATTRIBUTE = 'data-everfreenote-gap'
+const GAP_MARKER_PARAGRAPH_PATTERN = new RegExp(
+  `<p\\b[^<>]*\\b${GAP_MARKER_ATTRIBUTE}="1"[^<>]*>[\\s\\S]*?<\\/p>`,
+  'gi',
+)
+
 // --- Blank-line preservation ------------------------------------------------
 //
 // A single Enter between paragraphs is only a ~20px CSS gap (.note-content p
@@ -77,7 +93,7 @@ function insertMissingParagraphGaps(html: string): string {
     const isContent = !isEmptyParagraphBlock(block[0])
     const previousWasContent = isDirectlyAdjacent && !isEmptyParagraphBlock(previous[0])
     if (isContent && previousWasContent) {
-      result += '<p></p>'
+      result += `<p ${GAP_MARKER_ATTRIBUTE}="1"></p>`
     }
     result += block[0]
     cursor = block.index + block[0].length
@@ -154,6 +170,19 @@ export const NoteClipboardService = {
   /** True when the note body has no copyable content (no text and no images). */
   isBodyEmpty(html: string): boolean {
     return isNoteBodyEmpty(html)
+  },
+
+  /**
+   * Removes paragraphs buildPayload() fabricated to widen a single-Enter
+   * boundary into a blank line for external paste targets. Used on the
+   * self-copy paste path so pasting back into EverFreeNote restores the
+   * original single-Enter adjacency instead of permanently turning it into
+   * a real empty paragraph. Pre-existing blank lines (no marker) are
+   * untouched and still round-trip as real blank lines.
+   */
+  stripFabricatedGaps(html: string): string {
+    if (!html) return html
+    return html.replace(GAP_MARKER_PARAGRAPH_PATTERN, '')
   },
 
   htmlToPlainText(html: string): string {

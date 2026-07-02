@@ -36,10 +36,12 @@ describe('core/services/noteClipboard', () => {
       // globals.css), not a blank line, but paste destinations only see the raw
       // HTML/text — the CSS gap is invisible to them. Every paragraph boundary is
       // normalized to a real blank line on copy so it still looks the same way it
-      // does in the editor once pasted elsewhere.
+      // does in the editor once pasted elsewhere. The fabricated paragraph carries
+      // a marker attribute (data-everfreenote-gap) so a self-copy paste back into
+      // EverFreeNote can tell it apart from a real blank line and undo it.
       const payload = NoteClipboardService.buildPayload('<p>Line one</p><p>Line two</p>')
 
-      expect(payload.html).toContain('<p>Line one</p><p><br></p><p>Line two</p>')
+      expect(payload.html).toContain('<p>Line one</p><p data-everfreenote-gap="1"><br></p><p>Line two</p>')
       expect(payload.text).toBe('Line one\n\nLine two')
     })
 
@@ -109,6 +111,15 @@ describe('core/services/noteClipboard', () => {
       expect(payload.html).not.toContain('<li><p><br></p>')
       expect(payload.html).not.toContain('<li><p></p>')
       expect(payload.html).toContain('<ol><li><p>First</p></li><li><p>Second</p></li></ol>')
+    })
+
+    it('marks a fabricated gap so it can be told apart from a real blank line', () => {
+      const payload = NoteClipboardService.buildPayload('<p>A</p><p>B</p>')
+      expect(payload.html).toContain('data-everfreenote-gap="1"')
+
+      // A pre-existing blank line is never marked as fabricated.
+      const real = NoteClipboardService.buildPayload('<p>A</p><p></p><p>B</p>')
+      expect(real.html).not.toContain('data-everfreenote-gap')
     })
   })
 
@@ -228,6 +239,28 @@ describe('core/services/noteClipboard', () => {
       expect(NoteClipboardService.htmlToPlainText(result.html)).toBe('Line one\n\nLine two')
     })
 
+    it('restores single-Enter adjacency (not a permanent blank line) when a self-copied note is pasted back', () => {
+      // Regression guard: buildPayload() fabricates a <p><br></p> between
+      // directly-adjacent paragraphs so external apps like Telegram/Facebook
+      // show a gap. Pasting that same HTML back into EverFreeNote itself must
+      // NOT treat the fabricated paragraph as a real blank line — that would
+      // permanently widen a single Enter into a genuine empty paragraph on
+      // every self-copy round trip.
+      const payload = NoteClipboardService.buildPayload('<p>Line one</p><p>Line two</p>')
+      expect(payload.html).toContain('data-everfreenote-gap="1"')
+
+      const result = SmartPasteService.resolvePaste({
+        html: payload.html,
+        text: payload.text,
+        types: ['text/html', 'text/plain'],
+      })
+
+      expect(result.type).toBe('html')
+      expect(result.html).not.toContain('data-everfreenote-gap')
+      expect(result.html).not.toContain('<br>')
+      expect(NoteClipboardService.htmlToPlainText(result.html)).toBe('Line one\nLine two')
+    })
+
     it('round-trips a mixed-formatting note (EverFreeNote-e2e notes.copy.spec.ts fixture)', () => {
       // Verbatim shape of what TipTap actually produces for this note (list items
       // wrap their text in <p>, adjacent marks merge into one <span>) — captured
@@ -248,7 +281,9 @@ describe('core/services/noteClipboard', () => {
 
       const payload = NoteClipboardService.buildPayload(richHtmlDescription)
       // The two adjacent paragraphs gain a gap between them...
-      expect(payload.html).toContain('centered alignment</span></p><p><br></p><p style="text-align: right;">')
+      expect(payload.html).toContain(
+        'centered alignment</span></p><p data-everfreenote-gap="1"><br></p><p style="text-align: right;">',
+      )
       // ...but the blank line right after the heading and the trailing empty
       // paragraph are both left untouched — headings aren't tracked, and a
       // trailing paragraph isn't separating anything.
