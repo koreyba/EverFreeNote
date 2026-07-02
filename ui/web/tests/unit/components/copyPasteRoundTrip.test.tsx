@@ -88,12 +88,13 @@ describe('self-copy round-trip (jsdom / DOMParser path)', () => {
     }
   })
 
-  it('leaves a single Enter (adjacent non-empty paragraphs) as a single line break, not a blank line', () => {
-    // Single Enter only produces a ~20px CSS gap in the editor (.note-content p in
-    // globals.css), not a genuine blank line (that's a ~68px gap from a real empty
-    // paragraph, i.e. a second Enter) — verified by measuring both in the actual
-    // app. Compact multi-line notes (e.g. short adjacent items) must not gain a
-    // blank line between every single line when copied elsewhere.
+  it('turns a single Enter (directly-adjacent paragraphs) into a blank line too, matching the visible gap', () => {
+    // Product decision: a single Enter is only a ~20px CSS gap in the editor
+    // (.note-content p in globals.css) while a real empty paragraph is a ~68px
+    // gap — verified by measuring both in the live app — but paste destinations
+    // never see that CSS gap at all, only the raw HTML/text. Every paragraph
+    // boundary is normalized to a blank line on copy so the note still reads the
+    // same way once pasted elsewhere, matching what it already looks like here.
     const editor = new Editor({ extensions: editorExtensions, content: '<p>Line one</p>' })
     try {
       editor.commands.focus('end')
@@ -104,8 +105,30 @@ describe('self-copy round-trip (jsdom / DOMParser path)', () => {
       expect(html).toBe('<p>Line one</p><p>Line two</p>')
 
       const payload = NoteClipboardService.buildPayload(html)
-      expect(payload.html).not.toContain('<br>')
-      expect(payload.text).toBe('Line one\nLine two')
+      expect(payload.html).toContain('<p>Line one</p><p><br></p><p>Line two</p>')
+      expect(payload.text).toBe('Line one\n\nLine two')
+    } finally {
+      editor.destroy()
+    }
+  })
+
+  it('never collapses two genuine blank lines in a row into one', () => {
+    // Explicit product decision: don't flatten intentional multi-line gaps
+    // ourselves. If a paste destination collapses them, that's its own choice.
+    const editor = new Editor({ extensions: editorExtensions, content: '<p>Line one</p>' })
+    try {
+      editor.commands.focus('end')
+      editor.commands.enter()
+      editor.commands.enter()
+      editor.commands.enter()
+      editor.commands.insertContent('Line two')
+
+      const html = editor.getHTML()
+      expect(html).toBe('<p>Line one</p><p></p><p></p><p>Line two</p>')
+
+      const payload = NoteClipboardService.buildPayload(html)
+      expect(payload.html).toContain('<p>Line one</p><p><br></p><p><br></p><p>Line two</p>')
+      expect(payload.text).toBe('Line one\n\n\nLine two')
     } finally {
       editor.destroy()
     }

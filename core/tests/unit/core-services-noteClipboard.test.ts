@@ -31,7 +31,19 @@ describe('core/services/noteClipboard', () => {
       expect(payload.html).toContain('data:image/png;base64,iVBORw0KGgo=')
     })
 
-    it('marks blank-line paragraphs with a <br> so paste targets that dedupe empty tags keep the gap', () => {
+    it('inserts a <br> gap between directly-adjacent paragraphs (single Enter)', () => {
+      // A single Enter is only a ~20px CSS gap in the editor (.note-content p in
+      // globals.css), not a blank line, but paste destinations only see the raw
+      // HTML/text — the CSS gap is invisible to them. Every paragraph boundary is
+      // normalized to a real blank line on copy so it still looks the same way it
+      // does in the editor once pasted elsewhere.
+      const payload = NoteClipboardService.buildPayload('<p>Line one</p><p>Line two</p>')
+
+      expect(payload.html).toContain('<p>Line one</p><p><br></p><p>Line two</p>')
+      expect(payload.text).toBe('Line one\n\nLine two')
+    })
+
+    it('marks an existing blank line (a real empty paragraph) with a <br>', () => {
       // Verified against Telegram Desktop's own HTML tokenizer (desktop-app/lib_ui
       // ui/text/text_html_tags.cpp): paragraph-boundary newlines are deliberately
       // deduplicated to one ("Structural", repeat=false), but a literal <br> is a
@@ -49,11 +61,13 @@ describe('core/services/noteClipboard', () => {
       expect(withImage.html).not.toContain('<br>')
     })
 
-    it('marks each blank line independently across multiple consecutive gaps', () => {
+    it('never collapses multiple consecutive blank lines — each stays its own <br>-marked paragraph', () => {
+      // Explicit product decision: we don't flatten intentional multi-line gaps.
+      // If a paste destination collapses them itself, that's outside our control.
       const payload = NoteClipboardService.buildPayload('<p>A</p><p></p><p></p><p>B</p>')
 
       expect(payload.html).toContain('<p>A</p><p><br></p><p><br></p><p>B</p>')
-      expect(payload.text).toBe('A\n\nB')
+      expect(payload.text).toBe('A\n\n\nB')
     })
 
     it('preserves a blank paragraph\'s own attributes (e.g. alignment) when marking it', () => {
@@ -63,12 +77,9 @@ describe('core/services/noteClipboard', () => {
     })
 
     it('leaves a leading or trailing empty paragraph untouched (nothing to separate)', () => {
-      // Regression guard: a single Enter between paragraphs is only a ~20px CSS gap
-      // (.note-content p in globals.css), not a blank line, and a trailing empty
-      // paragraph — e.g. the cursor's resting spot after the user's last Enter —
-      // isn't a blank line "between" two things either. Marking either would
-      // needlessly change notes that round-trip through copy/paste without a
-      // genuine mid-document gap (see notes.copy.spec.ts in EverFreeNote-e2e).
+      // Regression guard: a trailing empty paragraph — e.g. the cursor's resting
+      // spot after the user's last Enter — isn't a blank line "between" two
+      // things, so it's left as-is rather than marked or gap-inserted around.
       const trailing = NoteClipboardService.buildPayload(
         '<h1>Title</h1><ol><li>One</li><li>Two</li></ol><p></p>',
       )
@@ -79,10 +90,10 @@ describe('core/services/noteClipboard', () => {
       expect(leading.html).toContain('<div data-everfreenote-copy="note-body"><p></p><p>A</p>')
       expect(leading.html).not.toContain('<br>')
 
-      // Single Enter (adjacent non-empty paragraphs) is left alone too.
-      const singleEnter = NoteClipboardService.buildPayload('<p>Line one</p><p>Line two</p>')
-      expect(singleEnter.html).not.toContain('<br>')
-      expect(singleEnter.text).toBe('Line one\nLine two')
+      // A single trailing empty paragraph directly after content stays untouched
+      // too — it must not gain a gap inserted in front of it.
+      const contentThenTrailing = NoteClipboardService.buildPayload('<p>A</p><p></p>')
+      expect(contentThenTrailing.html).toContain('<div data-everfreenote-copy="note-body"><p>A</p><p></p></div>')
     })
   })
 
@@ -202,7 +213,11 @@ describe('core/services/noteClipboard', () => {
       expect(NoteClipboardService.htmlToPlainText(result.html)).toBe('Line one\n\nLine two')
     })
 
-    it('leaves a trailing empty paragraph in a mixed-formatting note untouched through copy and paste-back (EverFreeNote-e2e notes.copy.spec.ts)', () => {
+    it('round-trips a mixed-formatting note (EverFreeNote-e2e notes.copy.spec.ts fixture)', () => {
+      // Note: as of the "every paragraph boundary gets a blank line" product decision,
+      // this fixture's two directly-adjacent paragraphs (center-aligned, right-aligned)
+      // now gain an inserted gap between them too. The external e2e test that asserts
+      // byte-for-byte equality against the original needs updating to match.
       const richHtmlDescription =
         '<h1>Header formatting</h1>' +
         '<p style="text-align: center;"><span style="font-size: 18px;"><span style="font-family: serif;">Serif text, size 18px, centered alignment</span></span></p>' +
@@ -211,7 +226,9 @@ describe('core/services/noteClipboard', () => {
         '<p></p>'
 
       const payload = NoteClipboardService.buildPayload(richHtmlDescription)
-      // The trailing empty paragraph must stay untouched — it isn't separating anything.
+      // The two adjacent paragraphs gain a gap between them...
+      expect(payload.html).toContain('centered alignment</span></span></p><p><br></p><p style="text-align: right;">')
+      // ...but the trailing empty paragraph is still untouched — it isn't separating anything.
       expect(payload.html).toContain('</ol><p></p></div>')
 
       const result = SmartPasteService.resolvePaste({
@@ -220,8 +237,7 @@ describe('core/services/noteClipboard', () => {
         types: ['text/html', 'text/plain'],
       })
 
-      // Content, formatting and structure all survive; the trailing empty
-      // paragraph is still a plain <p></p>, not <p><br></p>.
+      // Content and formatting all survive.
       expect(result.type).toBe('html')
       expect(result.html).toContain('Header formatting')
       expect(result.html).toContain('text-align: center')

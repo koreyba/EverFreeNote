@@ -16,25 +16,98 @@ export type NoteClipboardPayload = {
 const BLOCK_CLOSE_PATTERN = /<\/(p|div|li|h[1-6]|blockquote|pre|tr)\s*>/gi
 const LINE_BREAK_PATTERN = /<\s*br\s*\/?>/gi
 const IMAGE_TAG_PATTERN = /<img\b[^>]*>/gi
-// Many paste destinations strip/collapse fully-empty block elements before
-// turning paragraph boundaries into line breaks, silently eating a blank line
-// between paragraphs. Verified against real client source (Telegram Desktop's
-// HTML-to-text tokenizer, desktop-app/lib_ui ui/text/text_html_tags.cpp):
+
+// A paragraph whose entire content is one <br> is our own blank-line marker
+// (see markInteriorEmptyParagraphs below) — structurally it's still a single
+// empty paragraph, so it must contribute exactly one newline. Left alone, the
+// block-close substitution below would add a newline for the paragraph
+// boundary *and* the <br>-to-newline substitution would add a second one for
+// the same visual blank line. Strip the marker <br> back out first so only
+// the paragraph boundary counts.
+const BR_ONLY_PARAGRAPH_PATTERN = /<p([^<>]*)>\s*<br\s*\/?>\s*<\/p>/gi
+
+// --- Blank-line preservation ------------------------------------------------
+//
+// A single Enter between paragraphs is only a ~20px CSS gap (.note-content p
+// in globals.css), not a blank line — a real blank line (a second Enter, an
+// actually-empty paragraph) measures ~68px, verified by comparison in the
+// live app. Paste destinations don't see either gap: they only see the raw
+// HTML/text, where a single-Enter paragraph boundary is just one line break
+// and a same-looking-in-EverFreeNote gap can silently vanish. So every
+// paragraph-to-paragraph boundary is normalized to represent one blank line
+// on copy, matching how the note already looks in the editor — including
+// direct paragraph-to-paragraph adjacency (single Enter), which gets a gap
+// paragraph inserted. Existing blank lines are never collapsed: N empty
+// paragraphs in a row stay N empty paragraphs (if a paste destination
+// collapses multiple blank lines itself, that's out of our control).
+//
+// Scoped to <p> only (not headings/lists/etc.) — that covers what's been
+// verified; other block types can be added if they turn out to need it too.
+const P_BLOCK_PATTERN = /<p(?:\s+[^<>]*)?>[\s\S]*?<\/p>/gi
+const EMPTY_P_BLOCK_PATTERN = /^<p(?:\s+[^<>]*)?>(?:\s|<br\s*\/?>)*<\/p>$/i
+
+function isEmptyParagraphBlock(block: string): boolean {
+  return EMPTY_P_BLOCK_PATTERN.test(block)
+}
+
+// Walks the top-level <p> blocks and inserts a bare <p></p> between any pair
+// of directly-adjacent non-empty paragraphs (single Enter). Pre-existing
+// paragraphs — empty or not — are left completely untouched, so this never
+// collapses an existing run of blank lines.
+function insertMissingParagraphGaps(html: string): string {
+  const blocks = Array.from(html.matchAll(P_BLOCK_PATTERN))
+  if (blocks.length < 2) return html
+
+  let result = ''
+  let cursor = 0
+  for (let i = 0; i < blocks.length; i += 1) {
+    const block = blocks[i]
+    result += html.slice(cursor, block.index)
+
+    const isContent = !isEmptyParagraphBlock(block[0])
+    const previousWasContent = i > 0 && !isEmptyParagraphBlock(blocks[i - 1][0])
+    if (isContent && previousWasContent) {
+      result += '<p></p>'
+    }
+    result += block[0]
+    cursor = block.index + block[0].length
+  }
+  return result + html.slice(cursor)
+}
+
+// Marks every INTERIOR empty paragraph (pre-existing or just inserted above)
+// with a literal <br>. Verified against real client source (Telegram
+// Desktop's HTML-to-text tokenizer, desktop-app/lib_ui ui/text/text_html_tags.cpp):
 // consecutive paragraph-boundary newlines are deliberately deduplicated down
 // to one ("Structural" line breaks, repeat=false), but a literal <br> is a
-// "Visible" line break (repeat=true) that is never deduplicated. So an empty
-// paragraph needs an actual <br> inside it, not an invisible character —
-// nbsp/zero-width-space markers were tried and both still collapsed to a
-// single newline, since neither one is a <br>.
+// "Visible" line break (repeat=true) that is never deduplicated — an
+// invisible marker (nbsp, zero-width space) doesn't survive that dedup, a
+// real <br> does.
 //
-// Only paragraphs with real content on both sides get marked — a leading or
-// trailing empty paragraph (e.g. the cursor's resting spot after the user's
-// last Enter) isn't separating anything, so it's left as-is. This also keeps
-// single-Enter paragraphs (a small CSS gap, not a blank line — see
-// .note-content p in globals.css) untouched: only a genuine second Enter
-// (an actually-empty paragraph) produces a blank line on copy, matching what
-// the note already looks like in the editor.
-const EMPTY_PARAGRAPH_PATTERN = /<p((?:\s+[^<>]*)?)>(?:\s|<br\s*\/?>)*<\/p>/gi
+// A leading or trailing empty paragraph (e.g. the cursor's resting spot
+// after the user's last Enter) isn't separating anything, so it's left
+// as-is rather than marked.
+function markInteriorEmptyParagraphs(html: string): string {
+  const blocks = Array.from(html.matchAll(P_BLOCK_PATTERN))
+  if (blocks.length < 2) return html
+
+  let result = ''
+  let cursor = 0
+  for (let i = 0; i < blocks.length; i += 1) {
+    const block = blocks[i]
+    result += html.slice(cursor, block.index)
+
+    const isInterior = i > 0 && i < blocks.length - 1
+    if (isInterior && isEmptyParagraphBlock(block[0])) {
+      result += block[0].replace(/>[\s\S]*<\//, '><br></')
+    } else {
+      result += block[0]
+    }
+    cursor = block.index + block[0].length
+  }
+  return result + html.slice(cursor)
+}
+
 // SanitizationService.stripHtml() only removes tags — entities in the remaining
 // text (e.g. ones already present in pasted-from-elsewhere note content) are
 // left encoded. Decode the common ones so plain text never shows a literal
@@ -43,15 +116,6 @@ const HTML_ENTITY_PATTERN = /&(nbsp|#160|#xA0|amp|lt|gt|quot|apos|#39);/gi
 const HTML_ENTITY_DECODE_MAP: Record<string, string> = {
   nbsp: ' ', '#160': ' ', '#xa0': ' ',
   amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'', '#39': '\'',
-}
-
-function preserveInteriorBlankLines(html: string): string {
-  return html.replace(EMPTY_PARAGRAPH_PATTERN, (match, attrs: string, offset: number, full: string) => {
-    const hasContentBefore = full.slice(0, offset).trim().length > 0
-    const hasContentAfter = full.slice(offset + match.length).trim().length > 0
-    if (!hasContentBefore || !hasContentAfter) return match
-    return `<p${attrs}><br></p>`
-  })
 }
 
 /**
@@ -70,9 +134,10 @@ export const NoteClipboardService = {
     }
 
     const sanitized = SanitizationService.sanitize(bodyHtml.trim(), { profile: 'editor-self-copy' })
-    const withBlankLinesPreserved = preserveInteriorBlankLines(sanitized)
-    const html = `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">${withBlankLinesPreserved}</div>`
-    const text = NoteClipboardService.htmlToPlainText(sanitized)
+    const withGaps = insertMissingParagraphGaps(sanitized)
+    const withBlankLinesMarked = markInteriorEmptyParagraphs(withGaps)
+    const html = `<div ${EVERFREENOTE_COPY_ATTRIBUTE}="${EVERFREENOTE_COPY_KIND}">${withBlankLinesMarked}</div>`
+    const text = NoteClipboardService.htmlToPlainText(withGaps)
     return { html, text }
   },
 
@@ -95,18 +160,21 @@ export const NoteClipboardService = {
     // Insert newline boundaries before stripping tags so block structure survives
     // as line breaks (no markdown markers for lists/checkboxes/links).
     const withBreaks = withImages
+      .replace(BR_ONLY_PARAGRAPH_PATTERN, '<p$1></p>')
       .replace(LINE_BREAK_PATTERN, '\n')
       .replace(BLOCK_CLOSE_PATTERN, '$&\n')
 
     const text = SanitizationService.stripHtml(withBreaks)
       .replace(HTML_ENTITY_PATTERN, (match, name: string) => HTML_ENTITY_DECODE_MAP[name.toLowerCase()] ?? match)
 
+    // No collapsing of 3+ consecutive newlines here: each blank line the note
+    // already has (one per empty paragraph) must survive as its own newline,
+    // not get flattened together with its neighbors.
     return text
       .replace(/\r\n?/g, '\n')
       .split('\n')
       .map((line) => line.trimEnd())
       .join('\n')
-      .replace(/\n{3,}/g, '\n\n')
       .trim()
   },
 }
