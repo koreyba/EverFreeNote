@@ -1,0 +1,1 @@
+{"id":"5c7a632c66e809747fcc96f580518864","fullName":"ui/web/tests/unit/hooks/useSearchMode.test.tsx#useSearchMode keeps in-memory state updates when localStorage writes fail","name":"keeps in-memory state updates when localStorage writes fail","status":"passed","testResultsByEnv":{"default":"d8f00512f4b205308a23e68b3d4a3891"}}

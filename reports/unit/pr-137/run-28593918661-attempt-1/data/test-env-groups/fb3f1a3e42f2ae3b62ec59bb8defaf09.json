@@ -1,0 +1,1 @@
+{"id":"fb3f1a3e42f2ae3b62ec59bb8defaf09","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard buildPayload preserves base64 (data:) images on the self-copy path","name":"preserves base64 (data:) images on the self-copy path","status":"passed","testResultsByEnv":{"default":"f0be89a015fbaf18f0d46c5681976717"}}
