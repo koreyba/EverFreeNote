@@ -5,10 +5,6 @@ import { NoteCopyService } from '@core/services/noteCopy'
 import { NoteClipboardService } from '@core/services/noteClipboard'
 import { SanitizationService } from '@core/services/sanitizer'
 
-// Blank-line marker buildPayload() writes into the clipboard HTML (not &nbsp; —
-// see core/services/noteClipboard.ts for why).
-const ZWSP = '​'
-
 /**
  * Regression guard for the self-copy round-trip in a real DOM environment.
  *
@@ -70,9 +66,10 @@ describe('self-copy round-trip (jsdom / DOMParser path)', () => {
   it('preserves a blank line typed via Enter+Enter through the clipboard payload', () => {
     // Regression guard for the Telegram/Facebook bug: TipTap serializes a blank
     // line as a genuinely empty <p></p> (verified here against the real editor,
-    // not a hand-written HTML fixture). Many paste destinations strip fully-empty
-    // elements before turning paragraph boundaries into line breaks, which silently
-    // ate the blank line — buildPayload() must mark it non-empty before that happens.
+    // not a hand-written HTML fixture). Paste destinations that dedupe consecutive
+    // paragraph-boundary newlines (verified against Telegram Desktop's own HTML
+    // tokenizer) collapse that to a single line break, so buildPayload() marks it
+    // with a literal <br> — a "visible" line break that survives that dedup.
     const editor = new Editor({ extensions: editorExtensions, content: '<p>Line one</p>' })
     try {
       editor.commands.focus('end')
@@ -84,8 +81,31 @@ describe('self-copy round-trip (jsdom / DOMParser path)', () => {
       expect(html).toBe('<p>Line one</p><p></p><p>Line two</p>')
 
       const payload = NoteClipboardService.buildPayload(html)
-      expect(payload.html).toContain(`<p>Line one</p><p>${ZWSP}</p><p>Line two</p>`)
+      expect(payload.html).toContain('<p>Line one</p><p><br></p><p>Line two</p>')
       expect(payload.text).toBe('Line one\n\nLine two')
+    } finally {
+      editor.destroy()
+    }
+  })
+
+  it('leaves a single Enter (adjacent non-empty paragraphs) as a single line break, not a blank line', () => {
+    // Single Enter only produces a ~20px CSS gap in the editor (.note-content p in
+    // globals.css), not a genuine blank line (that's a ~68px gap from a real empty
+    // paragraph, i.e. a second Enter) — verified by measuring both in the actual
+    // app. Compact multi-line notes (e.g. short adjacent items) must not gain a
+    // blank line between every single line when copied elsewhere.
+    const editor = new Editor({ extensions: editorExtensions, content: '<p>Line one</p>' })
+    try {
+      editor.commands.focus('end')
+      editor.commands.enter()
+      editor.commands.insertContent('Line two')
+
+      const html = editor.getHTML()
+      expect(html).toBe('<p>Line one</p><p>Line two</p>')
+
+      const payload = NoteClipboardService.buildPayload(html)
+      expect(payload.html).not.toContain('<br>')
+      expect(payload.text).toBe('Line one\nLine two')
     } finally {
       editor.destroy()
     }

@@ -2,12 +2,6 @@ import { NoteClipboardService } from '@core/services/noteClipboard'
 import { NoteCopyService } from '@core/services/noteCopy'
 import { SmartPasteService } from '@core/services/smartPaste'
 
-// The blank-line marker buildPayload() writes into the clipboard HTML. Not
-// &nbsp; — JS/DOM whitespace trimming treats U+00A0 as whitespace, so it
-// fails against the exact "is this empty" check (text.trim() === '') that
-// strips a bare <p></p> in the first place. U+200B sits outside that set.
-const ZWSP = '​'
-
 describe('core/services/noteClipboard', () => {
   describe('buildPayload', () => {
     it('wraps rich HTML in the self-copy marker and round-trips via NoteCopyService', () => {
@@ -37,46 +31,58 @@ describe('core/services/noteClipboard', () => {
       expect(payload.html).toContain('data:image/png;base64,iVBORw0KGgo=')
     })
 
-    it('marks blank-line paragraphs with a zero-width space so paste targets that strip empty tags keep the gap', () => {
+    it('marks blank-line paragraphs with a <br> so paste targets that dedupe empty tags keep the gap', () => {
+      // Verified against Telegram Desktop's own HTML tokenizer (desktop-app/lib_ui
+      // ui/text/text_html_tags.cpp): paragraph-boundary newlines are deliberately
+      // deduplicated to one ("Structural", repeat=false), but a literal <br> is a
+      // "Visible" line break (repeat=true) that is never deduplicated. An invisible
+      // marker (nbsp, zero-width space) doesn't survive that dedup; a real <br> does.
       const emptyParagraph = NoteClipboardService.buildPayload('<p>Line one</p><p></p><p>Line two</p>')
-      expect(emptyParagraph.html).toContain(`<p>Line one</p><p>${ZWSP}</p><p>Line two</p>`)
+      expect(emptyParagraph.html).toContain('<p>Line one</p><p><br></p><p>Line two</p>')
       expect(emptyParagraph.text).toBe('Line one\n\nLine two')
 
       const brOnlyParagraph = NoteClipboardService.buildPayload('<p>Line one</p><p><br></p><p>Line two</p>')
-      expect(brOnlyParagraph.html).toContain(`<p>Line one</p><p>${ZWSP}</p><p>Line two</p>`)
+      expect(brOnlyParagraph.html).toContain('<p>Line one</p><p><br></p><p>Line two</p>')
 
       // Non-empty paragraphs (including ones with only an image) are left untouched.
       const withImage = NoteClipboardService.buildPayload('<p><img src="x.png" alt="pic"></p>')
-      expect(withImage.html).not.toContain(ZWSP)
+      expect(withImage.html).not.toContain('<br>')
     })
 
     it('marks each blank line independently across multiple consecutive gaps', () => {
       const payload = NoteClipboardService.buildPayload('<p>A</p><p></p><p></p><p>B</p>')
 
-      expect(payload.html).toContain(`<p>A</p><p>${ZWSP}</p><p>${ZWSP}</p><p>B</p>`)
+      expect(payload.html).toContain('<p>A</p><p><br></p><p><br></p><p>B</p>')
       expect(payload.text).toBe('A\n\nB')
     })
 
     it('preserves a blank paragraph\'s own attributes (e.g. alignment) when marking it', () => {
       const payload = NoteClipboardService.buildPayload('<p>A</p><p style="text-align: center"></p><p>B</p>')
 
-      expect(payload.html).toContain(`<p style="text-align: center">${ZWSP}</p>`)
+      expect(payload.html).toContain('<p style="text-align: center"><br></p>')
     })
 
     it('leaves a leading or trailing empty paragraph untouched (nothing to separate)', () => {
-      // Regression guard: a trailing empty paragraph — e.g. the cursor's resting spot
-      // after the user's last Enter — isn't a blank line "between" two things, so
-      // marking it would needlessly change notes that round-trip through copy/paste
-      // without a genuine mid-document gap (see notes.copy.spec.ts in EverFreeNote-e2e).
+      // Regression guard: a single Enter between paragraphs is only a ~20px CSS gap
+      // (.note-content p in globals.css), not a blank line, and a trailing empty
+      // paragraph — e.g. the cursor's resting spot after the user's last Enter —
+      // isn't a blank line "between" two things either. Marking either would
+      // needlessly change notes that round-trip through copy/paste without a
+      // genuine mid-document gap (see notes.copy.spec.ts in EverFreeNote-e2e).
       const trailing = NoteClipboardService.buildPayload(
         '<h1>Title</h1><ol><li>One</li><li>Two</li></ol><p></p>',
       )
       expect(trailing.html).toContain('</ol><p></p></div>')
-      expect(trailing.html).not.toContain(ZWSP)
+      expect(trailing.html).not.toContain('<br>')
 
       const leading = NoteClipboardService.buildPayload('<p></p><p>A</p>')
       expect(leading.html).toContain('<div data-everfreenote-copy="note-body"><p></p><p>A</p>')
-      expect(leading.html).not.toContain(ZWSP)
+      expect(leading.html).not.toContain('<br>')
+
+      // Single Enter (adjacent non-empty paragraphs) is left alone too.
+      const singleEnter = NoteClipboardService.buildPayload('<p>Line one</p><p>Line two</p>')
+      expect(singleEnter.html).not.toContain('<br>')
+      expect(singleEnter.text).toBe('Line one\nLine two')
     })
   })
 
@@ -131,16 +137,6 @@ describe('core/services/noteClipboard', () => {
       expect(text).not.toContain('_')
     })
 
-    it('strips the zero-width-space blank-line marker back into a blank line instead of leaving invisible junk', () => {
-      expect(NoteClipboardService.htmlToPlainText(`<p>Line one</p><p>${ZWSP}</p><p>Line two</p>`))
-        .toBe('Line one\n\nLine two')
-    })
-
-    it('still decodes a legacy/pasted-from-elsewhere &nbsp; marker into a blank line', () => {
-      expect(NoteClipboardService.htmlToPlainText('<p>Line one</p><p>&nbsp;</p><p>Line two</p>'))
-        .toBe('Line one\n\nLine two')
-    })
-
     it('decodes common HTML entities instead of leaving them literal', () => {
       const text = NoteClipboardService.htmlToPlainText('<p>AT&amp;T &lt;div&gt; &quot;quoted&quot; &#39;single&#39;</p>')
 
@@ -154,9 +150,6 @@ describe('core/services/noteClipboard', () => {
       expect(NoteClipboardService.isBodyEmpty('   ')).toBe(true)
       expect(NoteClipboardService.isBodyEmpty('<p></p>')).toBe(true)
       expect(NoteClipboardService.isBodyEmpty('<p><br></p>')).toBe(true)
-      // A note whose only remaining content is the blank-line marker (e.g. after
-      // deleting everything else around it) is still visually/semantically empty.
-      expect(NoteClipboardService.isBodyEmpty(`<p>${ZWSP}</p>`)).toBe(true)
     })
 
     it('treats text or image content as non-empty', () => {
@@ -220,7 +213,6 @@ describe('core/services/noteClipboard', () => {
       const payload = NoteClipboardService.buildPayload(richHtmlDescription)
       // The trailing empty paragraph must stay untouched — it isn't separating anything.
       expect(payload.html).toContain('</ol><p></p></div>')
-      expect(payload.html).not.toContain(ZWSP)
 
       const result = SmartPasteService.resolvePaste({
         html: payload.html,
@@ -229,7 +221,7 @@ describe('core/services/noteClipboard', () => {
       })
 
       // Content, formatting and structure all survive; the trailing empty
-      // paragraph is still a plain <p></p>, not <p>&nbsp;</p>.
+      // paragraph is still a plain <p></p>, not <p><br></p>.
       expect(result.type).toBe('html')
       expect(result.html).toContain('Header formatting')
       expect(result.html).toContain('text-align: center')
@@ -239,7 +231,6 @@ describe('core/services/noteClipboard', () => {
       expect(result.html).toContain('First element of numbered list')
       expect(result.html).toContain('Second element of numbered list')
       expect(result.html.endsWith('<p></p>')).toBe(true)
-      expect(result.html).not.toContain(ZWSP)
     })
   })
 })
