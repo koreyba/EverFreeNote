@@ -1,1 +1,0 @@
-{"id":"076862ab838a3f93e6f3f5108218cc05","fullName":"ui/web/tests/unit/components/copyPasteRoundTrip.test.tsx#self-copy round-trip (jsdom / DOMParser path) never collapses two genuine blank lines in a row into one","name":"never collapses two genuine blank lines in a row into one","status":"passed","testResultsByEnv":{"default":"e45c9d62d760d8dc9017f6f3733fb8ca"}}
