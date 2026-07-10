@@ -6,6 +6,42 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/pr-143/run-29121046076-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-143/run-29121046076-attempt-1/",
+    "runId": "29121046076",
+    "runAttempt": "1",
+    "prNumber": "143",
+    "ref": "feature-modern-editor-design",
+    "sha": "e40071d6ffb122bf1bc302092bef233f8ce0f42b",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #143",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-10T20:29:46.861Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit"
     ],
     "suiteLabels": [
@@ -669,40 +705,6 @@
     "scopeLabel": "PR #140",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-10T15:34:40.915Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/allure/pr-140/run-29103717872-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-140/run-29103717872-attempt-1/",
-    "runId": "29103717872",
-    "runAttempt": "1",
-    "prNumber": "140",
-    "ref": "feature-upgrade-allure-packages",
-    "sha": "0f2959ecbcffae4b377814ec46523f46fa71df56",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #140",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-10T15:30:20.793Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
