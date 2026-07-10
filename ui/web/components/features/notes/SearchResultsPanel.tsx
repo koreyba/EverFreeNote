@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useEffect, useState, useRef } from "react"
-import { ChevronLeft, Search, X, Tag } from "lucide-react"
+import { ChevronLeft, Search, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -602,7 +602,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 </TooltipProvider>
 
                 {filterByTag && (
-                    <div className="flex items-center">
+                    <div className="flex items-center" data-testid="search-panel-clear-tag">
                         <InteractiveTag
                             tag={filterByTag}
                             onRemove={controller.handleClearTagFilter}

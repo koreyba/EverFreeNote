@@ -67,14 +67,14 @@ describe('Sidebar Component', () => {
     cy.contains('EverFreeNote').should('be.visible')
     cy.contains('test@example.com').should('be.visible')
     cy.contains('New Note').should('be.visible')
-    cy.contains('Notes displayed: 0 out of 0').should('be.visible')
+    cy.contains('0 of 0 notes').should('be.visible')
     cy.get('[data-testid="note-list"]').should('be.visible')
   })
 
   it('shows provided displayed/total counts', () => {
     cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} notesDisplayed={5} notesTotal={12} />))
 
-    cy.contains('Notes displayed: 5 out of 12').should('be.visible')
+    cy.contains('5 of 12 notes').should('be.visible')
   })
 
   it('does not render legacy Select Notes button when selection mode is off', () => {
@@ -88,7 +88,7 @@ describe('Sidebar Component', () => {
   it('shows unknown total when not provided', () => {
     cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} notesDisplayed={5} notesTotal={undefined} />))
 
-    cy.contains('Notes displayed: 5 out of unknown').should('be.visible')
+    cy.contains('5 of unknown notes').should('be.visible')
   })
 
   it('opens search panel when trigger is clicked', () => {
@@ -177,44 +177,44 @@ describe('Sidebar Component', () => {
     it('shows synchronized status when online with no pending or failed', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={0} failedCount={0} />))
 
-      cy.contains('Synchronized').should('be.visible')
-      cy.contains('Synchronized').should('have.class', 'text-emerald-600')
+      cy.get('[title="Synchronized"]').should('exist')
+      cy.get('[title="Synchronized"]').should('have.class', 'bg-emerald-500')
     })
 
     it('shows syncing status with count when pendingCount > 0', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={3} failedCount={0} />))
 
-      cy.contains('Syncing: 3').should('be.visible')
-      cy.contains('Syncing: 3').should('have.class', 'animate-pulse')
+      cy.get('[title="Syncing: 3"]').should('exist')
+      cy.get('[title="Syncing: 3"]').should('have.class', 'animate-pulse')
     })
 
     it('shows sync failed status with count when failedCount > 0', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={0} failedCount={2} />))
 
-      cy.contains('Sync failed: 2').should('be.visible')
-      cy.contains('Sync failed: 2').should('have.class', 'text-destructive')
+      cy.get('[title="Sync failed: 2"]').should('exist')
+      cy.get('[title="Sync failed: 2"]').should('have.class', 'bg-destructive')
     })
 
     it('shows offline mode when isOffline is true', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline pendingCount={0} failedCount={0} />))
 
-      cy.contains('Offline mode').should('be.visible')
-      cy.contains('Offline mode').should('have.class', 'text-amber-600')
+      cy.get('[title="Offline mode"]').should('exist')
+      cy.get('[title="Offline mode"]').should('have.class', 'bg-amber-500')
     })
 
     it('prioritizes offline status over other statuses', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline pendingCount={5} failedCount={3} />))
 
-      cy.contains('Offline mode').should('be.visible')
-      cy.contains('Syncing').should('not.exist')
-      cy.contains('Sync failed').should('not.exist')
+      cy.get('[title="Offline mode"]').should('exist')
+      cy.get('[title*="Syncing"]').should('not.exist')
+      cy.get('[title*="Sync failed"]').should('not.exist')
     })
 
     it('prioritizes failed status over pending status', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={5} failedCount={2} />))
 
-      cy.contains('Sync failed: 2').should('be.visible')
-      cy.contains('Syncing').should('not.exist')
+      cy.get('[title="Sync failed: 2"]').should('exist')
+      cy.get('[title*="Syncing"]').should('not.exist')
     })
   })
 })

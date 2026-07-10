@@ -316,7 +316,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               placeholder="Note title"
               defaultValue={initialTitle}
               onChange={handleContentChange}
-              className="w-full h-auto border-0 bg-transparent px-0 py-1 text-4xl md:text-4xl font-extrabold tracking-tight placeholder:text-muted-foreground/30 focus-visible:ring-0 focus-visible:outline-none focus:outline-none focus:ring-0 border-none shadow-none"
+              className="w-full h-auto border-none bg-transparent px-0 py-1 text-4xl font-extrabold tracking-tight placeholder:text-muted-foreground/30 focus:outline-none focus:ring-0 shadow-none"
             />
           </div>
           <TagInput
