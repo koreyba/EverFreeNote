@@ -34,6 +34,19 @@ const RichTextEditorWebView = React.forwardRef<
   const editorRef = React.useRef<Editor | null>(null)
   const suppressNextUpdateRef = React.useRef(false)
   const pendingChunkScrollRef = React.useRef<{ charOffset: number; chunkLength: number } | null>(null)
+  const [spellcheckEnabled, setSpellcheckEnabled] = React.useState(true)
+
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem("editor_spellcheck_enabled")
+      if (stored !== null) {
+        setSpellcheckEnabled(stored !== "false")
+      }
+    } catch {
+      // Fallback to true if storage is blocked/disabled
+      setSpellcheckEnabled(true)
+    }
+  }, [])
 
   const handleApplySelectionAsMarkdown = React.useCallback(() => {
     const editor = editorRef.current
@@ -88,11 +101,12 @@ const RichTextEditorWebView = React.forwardRef<
     () => ({
       attributes: {
         class: "focus:outline-none",
+        spellcheck: spellcheckEnabled ? "true" : "false",
       },
       handlePaste,
       handleClick,
     }),
-    [handlePaste, handleClick]
+    [handlePaste, handleClick, spellcheckEnabled]
   )
 
   const editor = useEditor({

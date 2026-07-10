@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Database, Download, Globe, KeyRound, Upload, UserRound, X } from "lucide-react"
+import { ArrowLeft, Database, Download, Globe, KeyRound, Sliders, Upload, UserRound, X } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -16,13 +16,14 @@ import { ApiKeysSettingsPanel } from "@/components/features/settings/ApiKeysSett
 import { AIIndexTab } from "@/components/features/settings/AIIndexTab"
 import { DeleteAccountPanel } from "@/components/features/settings/DeleteAccountPanel"
 import { WordPressSettingsPanel } from "@/components/features/settings/WordPressSettingsPanel"
+import { PreferencesPanel } from "@/components/features/settings/PreferencesPanel"
 import {
   clearSettingsReturnState,
   readSettingsReturnState,
   sanitizeSettingsReturnPath,
 } from "@ui/web/lib/settingsNavigationState"
 
-type SettingsTabId = "wordpress" | "api-keys" | "ai-index" | "import" | "export" | "account"
+type SettingsTabId = "wordpress" | "api-keys" | "ai-index" | "import" | "export" | "account" | "preferences"
 
 type SettingsTabDefinition = {
   id: SettingsTabId
@@ -67,6 +68,12 @@ const SETTINGS_TABS: SettingsTabDefinition[] = [
     label: "AI Index",
     description: "Inspect indexed, stale, and unindexed notes without opening them one by one.",
     icon: Database,
+  },
+  {
+    id: "preferences",
+    label: "Preferences",
+    description: "Editor and application preferences.",
+    icon: Sliders,
   },
 ]
 
@@ -339,6 +346,9 @@ export function SettingsPage() {
                       })}
                       loading={deleteAccountLoading}
                     />
+                  ) : null}
+                  {activeDefinition.id === "preferences" ? (
+                    <PreferencesPanel />
                   ) : null}
                 </div>
               </div>

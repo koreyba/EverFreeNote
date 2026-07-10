@@ -165,4 +165,31 @@ describe('RichTextEditorWebView', () => {
     expect(editor.__tr.setMeta).toHaveBeenNthCalledWith(2, 'addToHistory', false)
     expect(editor.view.dispatch).toHaveBeenCalledWith(editor.state.tr)
   })
+
+  describe('spellcheck settings integration', () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    it('initializes with default spellcheck enabled', () => {
+      render(<RichTextEditorWebView initialContent="<p>Test</p>" />)
+      expect(capturedConfig).toBeTruthy()
+      expect(capturedConfig?.editorProps?.attributes).toEqual(
+        expect.objectContaining({
+          spellcheck: 'true',
+        })
+      )
+    })
+
+    it('initializes with spellcheck disabled when set in localStorage', () => {
+      localStorage.setItem('editor_spellcheck_enabled', 'false')
+      render(<RichTextEditorWebView initialContent="<p>Test</p>" />)
+      expect(capturedConfig).toBeTruthy()
+      expect(capturedConfig?.editorProps?.attributes).toEqual(
+        expect.objectContaining({
+          spellcheck: 'false',
+        })
+      )
+    })
+  })
 })
