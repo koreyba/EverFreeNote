@@ -1,0 +1,1 @@
+{"id":"3e5029de7a069b606d92cf5ba45c3573","fullName":"ui/web/tests/unit/lib/noteClipboard.test.ts#ui/web/lib/noteClipboard falls back to writeText when the rich write is rejected","name":"falls back to writeText when the rich write is rejected","status":"passed","testResultsByEnv":{"default":"61c3d5a0e62abff180f1ba3c222bedc4"}}

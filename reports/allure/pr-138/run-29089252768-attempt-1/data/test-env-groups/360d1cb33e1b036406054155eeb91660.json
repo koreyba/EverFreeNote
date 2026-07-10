@@ -1,0 +1,1 @@
+{"id":"360d1cb33e1b036406054155eeb91660","fullName":"tests/integration/notesScreen.test.tsx#NotesScreen - Delete Functionality Delete error handling keeps note deleted when API fails but fallback succeeds","name":"keeps note deleted when API fails but fallback succeeds","status":"passed","testResultsByEnv":{"default":"cfbc3c2f7a15710b268e53736dc98b47"}}
