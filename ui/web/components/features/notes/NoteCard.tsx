@@ -142,7 +142,7 @@ export const NoteCard = memo(function NoteCard({
             />
           )}
           <div className="flex-1 min-w-0 flex flex-col h-full">
-            <h3 className="font-semibold text-sm leading-snug text-foreground truncate">{note.title}</h3>
+            <h3 className="font-semibold text-sm leading-snug text-foreground truncate">{note.title || "Untitled"}</h3>
             <p className="text-[13px] text-muted-foreground/85 leading-normal line-clamp-2 mt-1.5">
               {note.description ? SanitizationService.stripHtml(note.description) : ""}
             </p>

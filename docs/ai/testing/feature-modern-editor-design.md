@@ -12,11 +12,15 @@ description: Define testing approach and verify the modern editor redesign featu
 - **Manual Checklist**: Create a robust QA checklist for visual validation in Light & Dark modes on different viewports.
 
 ## Unit & Component Tests
-- Ensure that the following tests pass with the new layout:
-  - `richTextEditor.test.tsx` (Tiptap instance and formatting)
-  - `Sidebar.tsx` tests (if any, checking search trigger, settings button)
-  - `NoteCard.tsx` tests (rendering and selection)
-  - `NoteView.tsx` and `NoteEditor.tsx` (handling edit, delete, and copy buttons)
+- Ensure that the following component test suites in `cypress/component/` pass with the new layout:
+  - `Sidebar.cy.tsx` (checks search trigger, settings button, sync dot indicator, and displays count)
+  - `NoteCard.cy.tsx` (checks compact/search variants, rank, tags, selection highlights)
+  - `EmptyState.cy.tsx` (checks logo rendering and new 2-line placeholder messaging)
+  - `SelectionModeActions.cy.tsx` (checks selection Mode counts, Deleting state labels, and buttons)
+  - `NoteView.cy.tsx` (checks reading mode header, copy functionality, tag display scroll)
+  - `NoteEditor.cy.tsx` (checks autosave status, tag inputs suggestions list, title input interactions)
+- **Unit testing coverage**: `richTextEditor.test.tsx` (Jest unit test verifying TipTap initialization and selection markdown conversion).
+- **Gaps & E2E Validation**: End-to-end integration flows (crud, full-text tag filtering) are automated in a separate repository (`koreyba/EverFreeNote-e2e`). Since we updated text strings and added data-testids (e.g. `search-panel-clear-tag`), visual E2E changes should be verified on CI. Remaining visual coverage gaps (animations, light/dark mode transitions, responsive breakpoint collapsing behavior) are covered by manual checklists below.
 
 ## Manual Verification Checklist
 Verify the following features in **both Light and Dark modes**:
