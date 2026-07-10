@@ -1,1 +1,0 @@
-{"id":"f5a1277882d3e314941932d2945e2de8","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard htmlToPlainText degrades links to their visible text only","name":"degrades links to their visible text only","status":"passed","testResultsByEnv":{"default":"a9ed869cd8af413289daf023e6096673"}}
