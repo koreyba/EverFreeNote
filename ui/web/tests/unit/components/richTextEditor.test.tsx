@@ -1,12 +1,14 @@
 import React from 'react'
-import { render } from '@testing-library/react'
+import { render, act } from '@testing-library/react'
 import RichTextEditor from '@ui/web/components/RichTextEditor'
 import { SPELLCHECK_ENABLED_KEY } from "@core/constants/preferences"
+import type { EditorMenuBarProps } from '@ui/web/components/EditorMenuBar'
 
 type UseEditorConfig = Parameters<typeof import('@tiptap/react').useEditor>[0]
 
 let capturedConfig: UseEditorConfig | null = null
 let mockEditor: Record<string, unknown> | null = null
+let capturedMenuBarProps: EditorMenuBarProps | null = null
 
 jest.mock('@tiptap/react', () => {
   return {
@@ -17,6 +19,15 @@ jest.mock('@tiptap/react', () => {
       capturedConfig = config
       return mockEditor
     },
+  }
+})
+
+jest.mock('@ui/web/components/EditorMenuBar', () => {
+  return {
+    EditorMenuBar: (props: EditorMenuBarProps) => {
+      capturedMenuBarProps = props
+      return <div data-testid="mock-menu-bar" />
+    }
   }
 })
 
@@ -63,6 +74,7 @@ describe('RichTextEditor spellcheck integration', () => {
     localStorage.clear()
     capturedConfig = null
     mockEditor = null
+    capturedMenuBarProps = null
   })
 
   it('initializes editor with default spellcheck enabled', () => {
@@ -98,5 +110,27 @@ describe('RichTextEditor spellcheck integration', () => {
         spellcheck: 'true',
       })
     )
+  })
+
+  it('toggles spellcheck via menu bar callback', () => {
+    mockEditor = {
+      state: { doc: { content: { size: 0 } } },
+      options: { parseOptions: {}, enableContentCheck: false },
+      view: { dom: document.createElement('div') },
+      can: () => ({ undo: () => false, redo: () => false }),
+    } as unknown as Record<string, unknown>
+
+    render(<RichTextEditor initialContent="<p>Test</p>" />)
+    
+    expect(capturedMenuBarProps).toBeTruthy()
+    expect(capturedMenuBarProps!.spellcheckEnabled).toBe(true)
+
+    // Call toggle
+    act(() => {
+      capturedMenuBarProps!.onToggleSpellcheck()
+    })
+    
+    expect(capturedMenuBarProps!.spellcheckEnabled).toBe(false)
+    expect(localStorage.getItem(SPELLCHECK_ENABLED_KEY)).toBe('false')
   })
 })

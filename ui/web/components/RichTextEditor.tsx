@@ -145,6 +145,18 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       return true
     }, [])
 
+    const handleToggleSpellcheck = React.useCallback(() => {
+      setSpellcheckEnabled((prev) => {
+        const next = !prev
+        try {
+          localStorage.setItem(SPELLCHECK_ENABLED_KEY, String(next))
+        } catch {
+          // Ignore
+        }
+        return next
+      })
+    }, [])
+
     const editorProps = React.useMemo(() => ({
       attributes: {
         class: "focus:outline-none",
@@ -290,6 +302,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
             onRedo={handleRedo}
             hasSelection={hasSelection}
             onApplyMarkdown={handleApplySelectionAsMarkdown}
+            spellcheckEnabled={spellcheckEnabled}
+            onToggleSpellcheck={handleToggleSpellcheck}
           />
         )}
         <div onMouseDown={handleEditorContainerMouseDown}>

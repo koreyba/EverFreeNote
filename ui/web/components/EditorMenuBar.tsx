@@ -25,6 +25,7 @@ import {
   Outdent,
   Palette,
   RemoveFormatting,
+  SpellCheck,
   Strikethrough,
   Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
@@ -49,12 +50,23 @@ export type EditorMenuBarProps = {
   onRedo: () => void
   hasSelection: boolean
   onApplyMarkdown: () => void
+  spellcheckEnabled: boolean
+  onToggleSpellcheck: () => void
 }
 
 const fontFamilies = ["Sans Serif", "Serif", "Monospace", "Cursive"]
 const fontSizes = ["10", "11", "12", "13", "14", "15", "18", "24", "30", "36"]
 
-export const EditorMenuBar = ({ editor, historyState, onUndo, onRedo, hasSelection, onApplyMarkdown }: EditorMenuBarProps) => {
+export const EditorMenuBar = ({
+  editor,
+  historyState,
+  onUndo,
+  onRedo,
+  hasSelection,
+  onApplyMarkdown,
+  spellcheckEnabled,
+  onToggleSpellcheck,
+}: EditorMenuBarProps) => {
   if (!editor) return null
 
   const addImage = () => {
@@ -225,6 +237,15 @@ export const EditorMenuBar = ({ editor, historyState, onUndo, onRedo, hasSelecti
         </EditorToolbarButton>
         <EditorToolbarButton dataCy="apply-markdown-button" label="Apply as Markdown" onClick={onApplyMarkdown} disabled={!hasSelection} ariaLabel="Apply as Markdown">
           MD
+        </EditorToolbarButton>
+        <EditorToolbarButton
+          dataCy="toggle-spellcheck-button"
+          label={spellcheckEnabled ? "Disable Spellcheck" : "Enable Spellcheck"}
+          active={spellcheckEnabled}
+          onClick={onToggleSpellcheck}
+          ariaLabel="Toggle Spellcheck"
+        >
+          <SpellCheck className="w-4 h-4" />
         </EditorToolbarButton>
 
       </div>
