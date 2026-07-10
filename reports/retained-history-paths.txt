@@ -1,5 +1,6 @@
 _history/allure/history.jsonl
 _history/allure/history.jsonl
+_history/allure/history.jsonl
 _history/e2e/history.jsonl
 _history/e2e/history.jsonl
 _history/component/history.jsonl
