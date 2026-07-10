@@ -1,3 +1,4 @@
+reports/allure/pr-138/run-29089252823-attempt-1
 reports/e2e/manual/run-29013958785-attempt-1
 reports/e2e/manual/run-29011965126-attempt-1
 reports/component/pr-137/run-28596989963-attempt-1

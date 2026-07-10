@@ -236,6 +236,10 @@
         font-weight: 700;
       }
 
+      .family-allure {
+        color: #3b82f6;
+      }
+
       .family-e2e {
         color: var(--accent);
       }
@@ -287,7 +291,7 @@
           <h1>EverFreeNote Allure Reports</h1>
           <p class="lede">Unified GitHub Pages catalog for the latest Allure family reports. The page keeps the newest 20 runs per family.</p>
         </div>
-        <div class="meta">Updated <time id="generated-at" datetime="2026-07-09T11:49:09.699Z">2026-07-09T11:49:09.699Z</time></div>
+        <div class="meta">Updated <time id="generated-at" datetime="2026-07-10T11:25:41.069Z">2026-07-10T11:25:41.069Z</time></div>
       </header>
 
       <section class="stats" aria-label="Report totals">
@@ -307,6 +311,7 @@
           Family
           <select id="family">
             <option value="all">All families</option>
+            <option value="allure">Allure Report</option>
             <option value="e2e">E2E</option>
             <option value="component">Component</option>
             <option value="unit">Unit</option>
@@ -365,6 +370,7 @@
       const generatedAt = document.getElementById('generated-at');
 
       const familyLabels = {
+        allure: 'Allure Report',
         e2e: 'E2E',
         component: 'Component',
         unit: 'Unit',
