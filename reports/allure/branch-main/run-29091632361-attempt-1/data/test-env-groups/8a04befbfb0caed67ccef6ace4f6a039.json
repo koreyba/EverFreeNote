@@ -1,1 +1,0 @@
-{"id":"8a04befbfb0caed67ccef6ace4f6a039","fullName":"tests/integration/noteCopyButton.test.tsx#NoteEditorScreen - Copy button shows an error toast when no payload is returned","name":"shows an error toast when no payload is returned","status":"passed","testResultsByEnv":{"default":"f9970601c63f958990fe46f24cad9d48"}}
