@@ -1,1 +1,0 @@
-{"id":"512aae4b408015583958c1d8a47c6c44","fullName":"core/tests/unit/core-utils-noteBody.test.ts#core/utils/noteBody.isNoteBodyEmpty treats empty, whitespace and empty editor markup as empty","name":"treats empty, whitespace and empty editor markup as empty","status":"passed","testResultsByEnv":{"default":"830b1f98700034f03321a1d683b69ff5"}}

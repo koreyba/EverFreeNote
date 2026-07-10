@@ -1,1 +1,0 @@
-{"id":"b2665704d03a76ca16a85711c7daad05","fullName":"cypress/component/editor/RichTextEditorWebViewPaste.cy.tsx#RichTextEditorWebView – Smart Paste HTML paste strips inline color styles while preserving font-weight","name":"strips inline color styles while preserving font-weight","status":"passed","testResultsByEnv":{"default":"3e8d41efd842b061b1a2b86c1ba469e6"}}
