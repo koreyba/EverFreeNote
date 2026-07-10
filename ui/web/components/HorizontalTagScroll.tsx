@@ -75,6 +75,7 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
   return (
     <div
       ref={scrollContainerRef}
+      role="presentation"
       className={cn(
         "flex items-center gap-2 overflow-x-auto cursor-grab hide-all-scrollbars",
         className

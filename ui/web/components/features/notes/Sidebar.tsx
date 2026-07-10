@@ -116,13 +116,12 @@ export function Sidebar({
             <div className="relative">
               <BrandLogo className="h-8 w-8 shrink-0 transition-transform hover:scale-105" />
               {/* Sync Status Dot */}
-              <span 
+              <output 
                 className={cn(
                   "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card",
                   syncStatus.className
                 )} 
                 title={syncStatus.label}
-                role="status"
                 aria-label={syncStatus.label} 
               />
             </div>

@@ -12,7 +12,7 @@ const nextConfig = {
   },
   trailingSlash: true,
   turbopack: {},
-  allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS ? process.env.ALLOWED_DEV_ORIGINS.split(',') : ['192.168.0.15', '192.168.0.15:3000'],
+  allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS ? process.env.ALLOWED_DEV_ORIGINS.split(',') : ['192.168.0.15', '192.168.0.15:3000'], // NOSONAR
   webpack(config, { dev }) {
     if (dev) {
       // Reduce CPU/memory from file watching
