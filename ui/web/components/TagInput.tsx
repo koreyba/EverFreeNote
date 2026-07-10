@@ -140,7 +140,12 @@ export function TagInput({
 
         <HorizontalTagScroll
           ref={scrollContainerRef}
-          className="flex-1 min-w-0 py-1.5 flex items-center"
+          className={cn("flex-1 min-w-0 py-1.5 flex items-center", !isEditing && !disabled && "cursor-text")}
+          onClick={() => {
+            if (!isEditing && !disabled) {
+              handleStartEditing()
+            }
+          }}
         >
           {tags.map((tag) => (
             <Badge
@@ -151,6 +156,11 @@ export function TagInput({
                 "shrink-0 cursor-pointer transition-all duration-200 hover:bg-accent hover:text-accent-foreground group relative rounded-full px-2.5 py-1 text-[11px] bg-background border shadow-sm",
                 backspaceArmed && tag === tags[tags.length - 1] && "ring-2 ring-destructive"
               )}
+              onMouseDown={(e) => {
+                // Prevent focus loss from input when clicking tags/remove buttons,
+                // which causes onBlur -> layout shift -> missed click events.
+                if (isEditing) e.preventDefault()
+              }}
               onClick={(e) => { e.stopPropagation(); handleTagClick(tag); }}
             >
               <Tag className="w-3 h-3 mr-1 opacity-70" />

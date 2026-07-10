@@ -6,10 +6,11 @@ import { cn } from "@ui/web/lib/utils"
 type HorizontalTagScrollProps = {
   children: React.ReactNode
   className?: string
+  onClick?: (e: React.MouseEvent) => void
 }
 
 export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTagScrollProps>(
-  function HorizontalTagScroll({ children, className }, ref) {
+  function HorizontalTagScroll({ children, className, onClick }, ref) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
 
   // Merge external ref with internal ref
@@ -75,7 +76,7 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
     <div
       ref={scrollContainerRef}
       className={cn(
-        "flex items-center gap-2 overflow-x-scroll scrollbar-none cursor-grab",
+        "flex items-center gap-2 overflow-x-auto cursor-grab hide-all-scrollbars",
         className
       )}
       onWheel={handleWheel}
@@ -84,6 +85,7 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onClickCapture={handleClick}
+      onClick={onClick}
     >
       {children}
     </div>

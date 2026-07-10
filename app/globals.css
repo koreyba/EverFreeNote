@@ -503,3 +503,21 @@ mark {
   --color-sidebar-border: oklch(28% 0.015 256);
   --color-sidebar-ring: oklch(66% 0.15 145);
 }
+
+/* 
+ * Absolute forced hidden scrollbars
+ * Used for components like HorizontalTagScroll that MUST NOT show scrollbars or arrows 
+ */
+.hide-all-scrollbars,
+.hide-all-scrollbars[class*="overflow-"] {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.hide-all-scrollbars::-webkit-scrollbar,
+.hide-all-scrollbars[class*="overflow-"]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
