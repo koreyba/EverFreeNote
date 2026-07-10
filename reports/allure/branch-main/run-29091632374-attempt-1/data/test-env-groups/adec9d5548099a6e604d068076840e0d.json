@@ -1,0 +1,1 @@
+{"id":"adec9d5548099a6e604d068076840e0d","fullName":"ui/web/tests/unit/components/copyPasteRoundTrip.test.tsx#self-copy round-trip (jsdom / DOMParser path) detects the self-copy marker after sanitization","name":"detects the self-copy marker after sanitization","status":"passed","testResultsByEnv":{"default":"e431b695e71ef30192f1b843a290dff2"}}
