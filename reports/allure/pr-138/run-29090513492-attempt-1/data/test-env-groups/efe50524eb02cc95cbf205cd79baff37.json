@@ -1,1 +1,0 @@
-{"id":"efe50524eb02cc95cbf205cd79baff37","fullName":"core/tests/unit/noteAutosaveSession.test.ts#noteAutosaveSession reconcileExternalNoteSnapshot fully replaces draft and baseline when a different note is loaded","name":"fully replaces draft and baseline when a different note is loaded","status":"passed","testResultsByEnv":{"default":"3a7e95f1fe4db0183a5c7d50f024d5a4"}}

@@ -1,1 +1,0 @@
-{"id":"82dd65d8f9925e801a8c44621e371fe9","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard htmlToPlainText degrades images to alt text, or a placeholder when alt is missing","name":"degrades images to alt text, or a placeholder when alt is missing","status":"passed","testResultsByEnv":{"default":"d4561d8f29a46cdfff2e87de2054eafc"}}
