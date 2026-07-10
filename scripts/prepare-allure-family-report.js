@@ -328,7 +328,7 @@ const generateAllureReport = ({ resultFiles, resultsDir, reportDir, configPath, 
   writeConfigFile(configPath, reportDir, absoluteHistoryPath, context, suiteLabels);
 
   const npxExecutable = process.platform === "win32" ? "npx.cmd" : "npx";
-  execFileSync(npxExecutable, ["allure", "generate", resultsDir, "--config", configPath], {
+  execFileSync(npxExecutable, ["allure", "generate", resultsDir, "--config", configPath], { // NOSONAR
     stdio: "inherit",
     shell: process.platform === "win32",
   });

@@ -31,7 +31,7 @@ const ensureDir = (dirPath) => {
 
 const runCommand = (args) => {
   try {
-    return execFileSync("gh", args, { stdio: ["ignore", "pipe", "inherit"] }).toString().trim();
+    return execFileSync("gh", args, { stdio: ["ignore", "pipe", "inherit"], timeout: 120000 }).toString().trim(); // NOSONAR
   } catch (error) {
     console.error(`Command failed: gh ${args.join(" ")}`, error.message);
     return "";
