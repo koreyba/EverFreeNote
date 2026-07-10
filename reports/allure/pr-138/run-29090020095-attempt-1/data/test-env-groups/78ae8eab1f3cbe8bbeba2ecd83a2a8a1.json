@@ -1,1 +1,0 @@
-{"id":"78ae8eab1f3cbe8bbeba2ecd83a2a8a1","fullName":"ui/web/tests/unit/components/noteView.test.tsx#NoteView copy action surfaces an error toast when the clipboard write fails","name":"surfaces an error toast when the clipboard write fails","status":"passed","testResultsByEnv":{"default":"4ee74aa810b3d3f73f1d362bca981983"}}

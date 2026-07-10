@@ -1,1 +1,0 @@
-{"id":"4190ac82cff6f941aa6375dcc9dad295","fullName":"tests/component/editorWebViewMessages.test.tsx#EditorWebView message handling imperative bridge methods resolves getCopyPayload with null when the editor never responds","name":"resolves getCopyPayload with null when the editor never responds","status":"passed","testResultsByEnv":{"default":"c45f817e3344feb2ce75d85331624d5a"}}
