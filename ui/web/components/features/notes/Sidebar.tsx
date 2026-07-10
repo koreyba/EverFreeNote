@@ -60,6 +60,37 @@ export function Sidebar({
     ? notesDisplayed > 0 && selectedCount >= notesDisplayed
     : false
 
+  const syncStatus = React.useMemo(() => {
+    if (isOffline) {
+      return {
+        className: "bg-amber-500 animate-pulse",
+        label: "Offline mode",
+      }
+    }
+    if (failedCount > 0) {
+      return {
+        className: "bg-destructive",
+        label: `Sync failed: ${failedCount}`,
+      }
+    }
+    if (pendingCount > 0) {
+      return {
+        className: "bg-muted-foreground animate-pulse",
+        label: `Syncing: ${pendingCount}`,
+      }
+    }
+    return {
+      className: "bg-emerald-500",
+      label: "Synchronized",
+    }
+  }, [isOffline, failedCount, pendingCount])
+
+  const notesCountText = React.useMemo(() => {
+    const displayed = typeof notesDisplayed === "number" ? notesDisplayed : "-"
+    const total = typeof notesTotal === "number" ? notesTotal : "unknown"
+    return `${displayed} of ${total} notes`
+  }, [notesDisplayed, notesTotal])
+
   const {
     isDialogOpen: bulkDialogOpen,
     setIsDialogOpen: setBulkDialogOpen,
@@ -84,25 +115,15 @@ export function Sidebar({
             <div className="relative">
               <BrandLogo className="h-8 w-8 shrink-0 transition-transform hover:scale-105" />
               {/* Sync Status Dot */}
-              <span className={cn(
-                "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card",
-                isOffline ? "bg-amber-500 animate-pulse" :
-                (failedCount ?? 0) > 0 ? "bg-destructive" :
-                (pendingCount ?? 0) > 0 ? "bg-muted-foreground animate-pulse" :
-                "bg-emerald-500"
-              )} title={
-                isOffline ? "Offline mode" :
-                (failedCount ?? 0) > 0 ? `Sync failed: ${failedCount}` :
-                (pendingCount ?? 0) > 0 ? `Syncing: ${pendingCount}` :
-                "Synchronized"
-              }
-              role="status"
-              aria-label={
-                isOffline ? "Offline mode" :
-                (failedCount ?? 0) > 0 ? `Sync failed: ${failedCount}` :
-                (pendingCount ?? 0) > 0 ? `Syncing: ${pendingCount}` :
-                "Synchronized"
-              } />
+              <span 
+                className={cn(
+                  "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card",
+                  syncStatus.className
+                )} 
+                title={syncStatus.label}
+                role="status"
+                aria-label={syncStatus.label} 
+              />
             </div>
             <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">EverFreeNote</h1>
           </div>
@@ -134,7 +155,7 @@ export function Sidebar({
           New Note
         </Button>
         <p className="text-[11px] text-muted-foreground/80 text-center tracking-wide uppercase font-semibold">
-          {typeof notesDisplayed === "number" ? notesDisplayed : "-"} of {typeof notesTotal === "number" ? notesTotal : "unknown"} notes
+          {notesCountText}
         </p>
         {selectionMode && (
           <SelectionModeActions
