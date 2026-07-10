@@ -1,1 +1,0 @@
-{"id":"e4b59d9681d881ac16ff22050555d71e","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard buildPayload marks a fabricated gap so it can be told apart from a real blank line","name":"marks a fabricated gap so it can be told apart from a real blank line","status":"passed","testResultsByEnv":{"default":"6a056d0d259a2c7d61ca6b7c7d1a73e9"}}

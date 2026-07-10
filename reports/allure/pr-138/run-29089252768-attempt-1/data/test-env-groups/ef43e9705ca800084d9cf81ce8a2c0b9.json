@@ -1,1 +1,0 @@
-{"id":"ef43e9705ca800084d9cf81ce8a2c0b9","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard htmlToPlainText produces non-empty plain text for an image-only note","name":"produces non-empty plain text for an image-only note","status":"passed","testResultsByEnv":{"default":"5db0ca16b2cf9b24675ce6e321423cd4"}}

@@ -1,0 +1,1 @@
+{"id":"499701aaaaf680c5d085aa91e711680d","fullName":"everfreenote:core/tests/unit/core-utils-search.test.ts#core/utils/search mapNotesToFtsResult truncates long descriptions to 200 characters","name":"truncates long descriptions to 200 characters","status":"passed","testResultsByEnv":{"default":"304ba02ca8d95b63eafa2ae469b44c5f"}}

@@ -1,1 +1,0 @@
-{"id":"547d30f3ce91a4ee3655dde63f663d79","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard htmlToPlainText decodes common HTML entities instead of leaving them literal","name":"decodes common HTML entities instead of leaving them literal","status":"passed","testResultsByEnv":{"default":"ec736dd8cf85751eab28163b98af9613"}}
