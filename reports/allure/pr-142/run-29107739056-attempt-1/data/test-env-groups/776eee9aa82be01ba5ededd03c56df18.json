@@ -1,0 +1,1 @@
+{"id":"776eee9aa82be01ba5ededd03c56df18","fullName":"everfreenote:core/tests/integration/smartPaste.integration.test.ts#smartPaste integration escapes raw HTML when content is treated as plain text","name":"escapes raw HTML when content is treated as plain text","status":"passed","testResultsByEnv":{"default":"d529b3c0b0e6f09f88c9608f831335c3"}}
