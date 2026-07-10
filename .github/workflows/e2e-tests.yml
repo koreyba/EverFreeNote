@@ -464,13 +464,18 @@ jobs:
 
       - name: Update gh-pages content
         if: steps.prepare-allure-report.outputs.has_results == 'true'
+        env:
+          REPORT_DIR: ${{ steps.prepare-allure-report.outputs.report_dir }}
+          REPORT_OUTPUT_DIR: ${{ steps.prepare-allure-report.outputs.report_output_dir }}
+          HISTORY_PATH: ${{ steps.prepare-allure-report.outputs.history_path }}
+          METADATA_PATH: ${{ steps.prepare-allure-report.outputs.metadata_path }}
         run: |
           set -euo pipefail
 
-          report_dir="${{ steps.prepare-allure-report.outputs.report_dir }}"
-          report_output_dir="${{ steps.prepare-allure-report.outputs.report_output_dir }}"
-          history_path="${{ steps.prepare-allure-report.outputs.history_path }}"
-          metadata_path="${{ steps.prepare-allure-report.outputs.metadata_path }}"
+          report_dir="${REPORT_DIR}"
+          report_output_dir="${REPORT_OUTPUT_DIR}"
+          history_path="${HISTORY_PATH}"
+          metadata_path="${METADATA_PATH}"
 
           rm -rf ".pages-existing/${report_dir}"
           parent_dir="$(dirname ".pages-existing/${report_dir}")"
