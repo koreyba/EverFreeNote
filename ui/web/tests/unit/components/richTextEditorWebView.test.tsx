@@ -1,6 +1,7 @@
 import React from 'react'
 import { render } from '@testing-library/react'
 import RichTextEditorWebView from '@ui/web/components/RichTextEditorWebView'
+import { SPELLCHECK_ENABLED_KEY } from '@core/constants/preferences'
 
 const mockScrollEditorToChunk = jest.fn()
 const mockExecuteEditorCommand = jest.fn()
@@ -182,7 +183,7 @@ describe('RichTextEditorWebView', () => {
     })
 
     it('initializes with spellcheck disabled when set in localStorage', () => {
-      localStorage.setItem('editor_spellcheck_enabled', 'false')
+      localStorage.setItem(SPELLCHECK_ENABLED_KEY, 'false')
       render(<RichTextEditorWebView initialContent="<p>Test</p>" />)
       expect(capturedConfig).toBeTruthy()
       expect(capturedConfig?.editorProps?.attributes).toEqual(

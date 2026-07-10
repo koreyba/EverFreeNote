@@ -1,6 +1,7 @@
 import React from 'react'
 import { render } from '@testing-library/react'
 import RichTextEditor from '@ui/web/components/RichTextEditor'
+import { SPELLCHECK_ENABLED_KEY } from "@core/constants/preferences"
 
 type UseEditorConfig = Parameters<typeof import('@tiptap/react').useEditor>[0]
 
@@ -76,7 +77,7 @@ describe('RichTextEditor spellcheck integration', () => {
   })
 
   it('initializes editor with spellcheck disabled when set in localStorage', () => {
-    localStorage.setItem('editor_spellcheck_enabled', 'false')
+    localStorage.setItem(SPELLCHECK_ENABLED_KEY, 'false')
     render(<RichTextEditor initialContent="<p>Test</p>" />)
     
     expect(capturedConfig).toBeTruthy()
@@ -88,7 +89,7 @@ describe('RichTextEditor spellcheck integration', () => {
   })
 
   it('initializes editor with spellcheck enabled when set in localStorage', () => {
-    localStorage.setItem('editor_spellcheck_enabled', 'true')
+    localStorage.setItem(SPELLCHECK_ENABLED_KEY, 'true')
     render(<RichTextEditor initialContent="<p>Test</p>" />)
     
     expect(capturedConfig).toBeTruthy()

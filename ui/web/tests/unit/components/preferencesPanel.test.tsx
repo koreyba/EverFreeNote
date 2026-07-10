@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react"
 import * as React from "react"
-import { PreferencesPanel, SPELLCHECK_ENABLED_KEY } from "@/components/features/settings/PreferencesPanel"
+import { PreferencesPanel } from "@/components/features/settings/PreferencesPanel"
+import { SPELLCHECK_ENABLED_KEY } from "@core/constants/preferences"
 
 describe("PreferencesPanel", () => {
   beforeEach(() => {

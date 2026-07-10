@@ -4,6 +4,7 @@ import * as React from "react"
 import { EditorContent, useEditor, type Editor } from "@tiptap/react"
 import { createDocument } from "@tiptap/core"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
+import { SPELLCHECK_ENABLED_KEY } from "@core/constants/preferences"
 import { editorExtensions } from "./editorExtensions"
 import { SmartPasteService } from "@core/services/smartPaste"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
@@ -38,7 +39,7 @@ const RichTextEditorWebView = React.forwardRef<
 
   React.useEffect(() => {
     try {
-      const stored = localStorage.getItem("editor_spellcheck_enabled")
+      const stored = localStorage.getItem(SPELLCHECK_ENABLED_KEY)
       if (stored !== null) {
         setSpellcheckEnabled(stored !== "false")
       }

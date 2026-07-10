@@ -6,7 +6,7 @@ import { Sliders } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 
-export const SPELLCHECK_ENABLED_KEY = "editor_spellcheck_enabled"
+import { SPELLCHECK_ENABLED_KEY } from "@core/constants/preferences"
 
 export function PreferencesPanel() {
   const [spellcheckEnabled, setSpellcheckEnabled] = React.useState(true)
