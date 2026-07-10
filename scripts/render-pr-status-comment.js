@@ -5,11 +5,9 @@ const path = require("node:path");
 const { parseArgs } = require("./allure-pages-utils");
 
 const COMMENT_MARKER = "<!-- everfreenote-pr-status-comment -->";
-const REPORT_FAMILIES = ["unit", "component", "e2e"];
+const REPORT_FAMILIES = ["allure"];
 const FAMILY_LABELS = {
-  component: "Component",
-  e2e: "E2E",
-  unit: "Unit",
+  allure: "Allure Report",
 };
 
 const normalizePrNumber = (value) => `${value ?? ""}`.trim();
