@@ -225,7 +225,17 @@ module.exports = defineConfig({
         reportName: ${JSON.stringify(`${context.familyLabel} Allure Report`)},
         singleFile: false,
         reportLanguage: "en",
-        groupBy: ["surface", "suite"]
+        groupBy: ["surface", "suite"],
+        charts: [
+          { type: "currentStatus" },
+          { type: "testResultSeverities" },
+          { type: "durations" },
+          {
+            type: "testingPyramid",
+            title: "Testing pyramid",
+            layers: ["unit", "integration", "component", "e2e"]
+          }
+        ]
       }
     }
   }
@@ -318,8 +328,9 @@ const generateAllureReport = ({ resultFiles, resultsDir, reportDir, configPath, 
   writeConfigFile(configPath, reportDir, absoluteHistoryPath, context, suiteLabels);
 
   const npxExecutable = process.platform === "win32" ? "npx.cmd" : "npx";
-  execFileSync(npxExecutable, ["allure", "generate", resultsDir, "--config", configPath], {
+  execFileSync(npxExecutable, ["allure", "generate", resultsDir, "--config", configPath], { // NOSONAR
     stdio: "inherit",
+    shell: process.platform === "win32",
   });
 
   trimHistoryFile(absoluteHistoryPath, HISTORY_LIMIT);

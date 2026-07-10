@@ -1,4 +1,4 @@
-﻿name: E2E Tests (PR Preview)
+name: E2E Tests (PR Preview)
 
 on:
   pull_request:
@@ -429,36 +429,53 @@ jobs:
             find .pages-existing -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           fi
 
-      - name: Restore E2E history
+      - name: Download allure artifacts of other suites
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node scripts/download-other-workflow-artifacts.js
+
+      - name: Restore allure history
         run: |
           set -euo pipefail
 
           rm -rf .allure-history
           mkdir -p .allure-history/_history
 
-          if [ -d .pages-existing/_history/e2e ]; then
-            cp -R .pages-existing/_history/e2e .allure-history/_history/e2e
+          if [ -d .pages-existing/_history/allure ]; then
+            cp -R .pages-existing/_history/allure .allure-history/_history/allure
           fi
 
-      - name: Build E2E family report
-        id: prepare-e2e-report
+      - name: Build allure family report
+        id: prepare-allure-report
         run: |
           node scripts/prepare-allure-family-report.js \
-            --family e2e \
-            --work-dir .allure-publish/e2e \
+            --family allure \
+            --work-dir .allure-publish/allure \
             --history-root .allure-history \
+            --input core-unit=.artifacts/core/allure-results/core-unit \
+            --input core-integration=.artifacts/core/allure-results/core-integration \
+            --input web-unit=.artifacts/web/allure-results/web-unit \
+            --input mobile-unit=.artifacts/mobile/allure-results/mobile-unit \
+            --input component=.artifacts/component/allure-results/component \
             --input e2e=.artifacts/e2e/allure-results/e2e \
             --github-output "$GITHUB_OUTPUT"
 
       - name: Update gh-pages content
-        if: steps.prepare-e2e-report.outputs.has_results == 'true'
+        if: steps.prepare-allure-report.outputs.has_results == 'true'
+        env:
+          REPORT_DIR: ${{ steps.prepare-allure-report.outputs.report_dir }}
+          REPORT_OUTPUT_DIR: ${{ steps.prepare-allure-report.outputs.report_output_dir }}
+          HISTORY_PATH: ${{ steps.prepare-allure-report.outputs.history_path }}
+          METADATA_PATH: ${{ steps.prepare-allure-report.outputs.metadata_path }}
         run: |
           set -euo pipefail
 
-          report_dir="${{ steps.prepare-e2e-report.outputs.report_dir }}"
-          report_output_dir="${{ steps.prepare-e2e-report.outputs.report_output_dir }}"
-          history_path="${{ steps.prepare-e2e-report.outputs.history_path }}"
-          metadata_path="${{ steps.prepare-e2e-report.outputs.metadata_path }}"
+          report_dir="${REPORT_DIR}"
+          report_output_dir="${REPORT_OUTPUT_DIR}"
+          history_path="${HISTORY_PATH}"
+          metadata_path="${METADATA_PATH}"
 
           rm -rf ".pages-existing/${report_dir}"
           parent_dir="$(dirname ".pages-existing/${report_dir}")"
@@ -483,28 +500,28 @@ jobs:
             --history-list .pages-existing/reports/retained-history-paths.txt
 
       - name: Push gh-pages updates
-        if: steps.prepare-e2e-report.outputs.has_results == 'true'
+        if: steps.prepare-allure-report.outputs.has_results == 'true'
         env:
-          REPORT_URL: ${{ steps.prepare-e2e-report.outputs.report_url }}
+          REPORT_URL: ${{ steps.prepare-allure-report.outputs.report_url }}
         run: |
           set -euo pipefail
 
           if [ -n "$(git -C .pages-existing status --porcelain)" ]; then
             git -C .pages-existing add .
-            git -C .pages-existing commit -m "Publish e2e Allure report for run ${GITHUB_RUN_ID}"
+            git -C .pages-existing commit -m "Publish allure Allure report for run ${GITHUB_RUN_ID}"
             git -C .pages-existing push origin HEAD:gh-pages
           else
             echo "No gh-pages changes to push."
           fi
 
           {
-            echo "## E2E Allure Report"
+            echo "## Allure Report"
             echo
             echo "- Published report: ${REPORT_URL}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Update PR status comment
-        if: github.event_name == 'pull_request' && steps.prepare-e2e-report.outputs.has_results == 'true'
+        if: github.event_name == 'pull_request' && steps.prepare-allure-report.outputs.has_results == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

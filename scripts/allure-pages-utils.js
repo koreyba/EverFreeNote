@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const FAMILY_LABELS = {
+  allure: "Allure Report",
   component: "Component",
   e2e: "E2E",
   unit: "Unit",

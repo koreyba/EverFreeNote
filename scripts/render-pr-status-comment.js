@@ -5,12 +5,12 @@ const path = require("node:path");
 const { parseArgs } = require("./allure-pages-utils");
 
 const COMMENT_MARKER = "<!-- everfreenote-pr-status-comment -->";
-const REPORT_FAMILIES = ["unit", "component", "e2e"];
-const FAMILY_LABELS = {
-  component: "Component",
-  e2e: "E2E",
-  unit: "Unit",
-};
+const WORKFLOW_NAMES = [
+  "Unit Tests",
+  "Component Tests",
+  "E2E Tests (PR Preview)",
+];
+
 
 const normalizePrNumber = (value) => `${value ?? ""}`.trim();
 const normalizeSha = (value) => `${value ?? ""}`.trim().toLowerCase();
@@ -58,20 +58,27 @@ const readReportsIndex = (filePath) => {
 const selectLatestReports = (reports, prNumber, headSha) => {
   const normalizedPrNumber = normalizePrNumber(prNumber);
   const normalizedHeadSha = normalizeSha(headSha);
-  const reportsByFamily = new Map();
 
-  for (const family of REPORT_FAMILIES) {
-    const match = reports
-      .filter((report) =>
-        report?.family === family &&
-        normalizePrNumber(report?.prNumber) === normalizedPrNumber &&
-        normalizeSha(report?.sha) === normalizedHeadSha
-      )
+  const relevantReports = reports.filter((report) =>
+    report?.family === "allure" &&
+    normalizePrNumber(report?.prNumber) === normalizedPrNumber &&
+    normalizeSha(report?.sha) === normalizedHeadSha
+  );
+
+  const latestReport = [...relevantReports].sort(compareReports)[0] || null;
+
+  const reportsByWorkflow = new Map();
+  for (const workflowName of WORKFLOW_NAMES) {
+    const match = relevantReports
+      .filter((report) => report?.workflow === workflowName)
       .sort(compareReports)[0];
-    reportsByFamily.set(family, match || null);
+    reportsByWorkflow.set(workflowName, match || null);
   }
 
-  return reportsByFamily;
+  return {
+    latestReport,
+    reportsByWorkflow,
+  };
 };
 
 const isSafeHttpUrl = (value) => {
@@ -102,28 +109,14 @@ const buildRunUrl = (repository, report) => {
   return `https://github.com/${repository}/actions/runs/${report.runId}`;
 };
 
-const buildReportCell = (report) => {
-  if (!report?.url) {
-    return "Not published yet";
-  }
-  return buildMarkdownLink("Open report", report.url);
-};
 
-const buildWorkflowCell = (repository, report) => {
-  if (!report) {
-    return "Waiting for publish";
-  }
-
-  const label = report.workflow || "Workflow run";
-  const runUrl = buildRunUrl(repository, report);
-  return runUrl ? buildMarkdownLink(label, runUrl) : escapeMarkdownCell(label);
-};
 
 const renderComment = ({
   catalogUrl,
   headSha,
   prNumber,
-  reportsByFamily,
+  latestReport,
+  reportsByWorkflow,
   repository,
   updatedAt = new Date().toISOString(),
 }) => {
@@ -133,16 +126,48 @@ const renderComment = ({
     "",
     `Updated for PR #${escapeMarkdownCell(prNumber)} at \`${normalizeSha(headSha).slice(0, 7) || "unknown"}\` on ${formatDateTime(updatedAt)}.`,
     "",
-    "### Test Reports",
-    "",
-    "| Family | Source | Report |",
-    "|---|---|---|",
   ];
 
-  for (const family of REPORT_FAMILIES) {
-    const report = reportsByFamily.get(family) || null;
+  if (latestReport?.url) {
     lines.push(
-      `| ${FAMILY_LABELS[family] || family} | ${buildWorkflowCell(repository, report)} | ${buildReportCell(report)} |`
+      "### 📊 Allure Test Report",
+      buildMarkdownLink("Open Allure Report", latestReport.url),
+      ""
+    );
+  } else {
+    lines.push(
+      "### 📊 Allure Test Report",
+      "No reports published yet.",
+      ""
+    );
+  }
+
+  lines.push(
+    "### Contributing Workflows",
+    "",
+    "| Workflow | Status | Suites |",
+    "|---|---|---|",
+  );
+
+  const WORKFLOW_SUITES = {
+    "Unit Tests": "Core Unit, Core Integration, Web Unit, Mobile Unit",
+    "Component Tests": "Web Component",
+    "E2E Tests (PR Preview)": "Web E2E",
+  };
+
+  for (const workflowName of WORKFLOW_NAMES) {
+    const report = reportsByWorkflow.get(workflowName) || null;
+    let statusCell = "*Waiting for run...*";
+    const suitesCell = WORKFLOW_SUITES[workflowName] || "-";
+
+    if (report) {
+      const runUrl = buildRunUrl(repository, report);
+      const runLabel = `Workflow run #${report.runId} (Attempt #${report.runAttempt})`;
+      statusCell = runUrl ? `[${escapeMarkdownCell(runLabel)}](${runUrl})` : escapeMarkdownCell(runLabel);
+    }
+
+    lines.push(
+      `| ${escapeMarkdownCell(workflowName)} | ${statusCell} | ${escapeMarkdownCell(suitesCell)} |`
     );
   }
 
@@ -170,12 +195,13 @@ const main = () => {
   }
 
   const reports = readReportsIndex(args["reports-index"]);
-  const reportsByFamily = selectLatestReports(reports, prNumber, headSha);
+  const { latestReport, reportsByWorkflow } = selectLatestReports(reports, prNumber, headSha);
   const body = renderComment({
     catalogUrl: args["catalog-url"] || "",
     headSha,
     prNumber,
-    reportsByFamily,
+    latestReport,
+    reportsByWorkflow,
     repository,
   });
 
@@ -198,7 +224,7 @@ if (require.main === module) {
 
 module.exports = {
   COMMENT_MARKER,
-  REPORT_FAMILIES,
+  WORKFLOW_NAMES,
   renderComment,
   selectLatestReports,
 };

@@ -236,6 +236,10 @@
         font-weight: 700;
       }
 
+      .family-allure {
+        color: #3b82f6;
+      }
+
       .family-e2e {
         color: var(--accent);
       }
@@ -307,6 +311,7 @@
           Family
           <select id="family">
             <option value="all">All families</option>
+            <option value="allure">Allure Report</option>
             <option value="e2e">E2E</option>
             <option value="component">Component</option>
             <option value="unit">Unit</option>
@@ -365,6 +370,7 @@
       const generatedAt = document.getElementById('generated-at');
 
       const familyLabels = {
+        allure: 'Allure Report',
         e2e: 'E2E',
         component: 'Component',
         unit: 'Unit',
