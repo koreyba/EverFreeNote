@@ -1,0 +1,1 @@
+{"id":"837845667e96037179da7fc4ebcd801c","fullName":"core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard buildPayload inserts a <br> gap between directly-adjacent paragraphs (single Enter)","name":"inserts a <br> gap between directly-adjacent paragraphs (single Enter)","status":"passed","testResultsByEnv":{"default":"f475e95375da428886b26a85e8b3c5e5"}}

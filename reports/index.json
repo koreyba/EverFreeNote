@@ -6,6 +6,40 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
+    "path": "reports/allure/pr-138/run-29090513500-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-138/run-29090513500-attempt-1/",
+    "runId": "29090513500",
+    "runAttempt": "1",
+    "prNumber": "138",
+    "ref": "feature-allure-unified-report",
+    "sha": "a062a18d58ab94a37bb9b702f5f62d3f056b8fd1",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #138",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-10T11:50:04.181Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit",
       "component"
     ],
