@@ -1,0 +1,1 @@
+{"id":"2b63e6c09ef73b7a16facd393242f64f","fullName":"tests/integration/noteCopyButton.test.tsx#NoteEditorScreen - Copy button shows an error toast when both the HTML write and the plain-text fallback fail","name":"shows an error toast when both the HTML write and the plain-text fallback fail","status":"passed","testResultsByEnv":{"default":"e5dab6bd718bf5e04bee3f87a11b2cd2"}}

@@ -1,0 +1,1 @@
+{"id":"a134cdfd03b0b6c56cec28bdb4214bd7","fullName":"ui/web/tests/unit/components/copyPasteRoundTrip.test.tsx#self-copy round-trip (jsdom / DOMParser path) preserves alignment, font-size and color through resolvePaste","name":"preserves alignment, font-size and color through resolvePaste","status":"passed","testResultsByEnv":{"default":"a7c93faf3d816396fdd85a5381c42b36"}}

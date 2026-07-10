@@ -1,0 +1,1 @@
+{"id":"c288c347b46532a9af905446adcddf36","fullName":"cypress/component/lib/adapters/browser.cy.ts#WebBrowserAdapter localStorage calls localStorage.setItem","name":"calls localStorage.setItem","status":"passed","testResultsByEnv":{"default":"31b02020d6ea067b5e3f46f93cf46c1c"}}
