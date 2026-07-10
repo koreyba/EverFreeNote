@@ -145,26 +145,29 @@ const renderComment = ({
   lines.push(
     "### Contributing Workflows",
     "",
-    "| Workflow | Status | Merged Suites |",
+    "| Workflow | Status | Suites |",
     "|---|---|---|",
   );
+
+  const WORKFLOW_SUITES = {
+    "Unit Tests": "Core Unit, Core Integration, Web Unit, Mobile Unit",
+    "Component Tests": "Web Component",
+    "E2E Tests (PR Preview)": "Web E2E",
+  };
 
   for (const workflowName of WORKFLOW_NAMES) {
     const report = reportsByWorkflow.get(workflowName) || null;
     let statusCell = "*Waiting for run...*";
-    let suitesCell = "-";
+    const suitesCell = WORKFLOW_SUITES[workflowName] || "-";
 
     if (report) {
       const runUrl = buildRunUrl(repository, report);
       const runLabel = `Workflow run #${report.runId} (Attempt #${report.runAttempt})`;
       statusCell = runUrl ? `[${escapeMarkdownCell(runLabel)}](${runUrl})` : escapeMarkdownCell(runLabel);
-      
-      const suiteLabels = Array.isArray(report.suiteLabels) ? report.suiteLabels : [];
-      suitesCell = suiteLabels.length > 0 ? suiteLabels.map(escapeMarkdownCell).join(", ") : "-";
     }
 
     lines.push(
-      `| ${escapeMarkdownCell(workflowName)} | ${statusCell} | ${suitesCell} |`
+      `| ${escapeMarkdownCell(workflowName)} | ${statusCell} | ${escapeMarkdownCell(suitesCell)} |`
     );
   }
 
