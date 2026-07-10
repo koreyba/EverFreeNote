@@ -120,7 +120,7 @@ export const NoteCard = memo(function NoteCard({
         role="button"
         tabIndex={0}
         className={cn(
-          "group p-3.5 rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm",
+          "group p-3.5 rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm active:scale-[0.98]",
           isSelected ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
         )}
         {...longPressHandlers}
@@ -191,7 +191,7 @@ export const NoteCard = memo(function NoteCard({
       tabIndex={0}
       {...longPressHandlers}
       className={cn(
-        'group relative rounded-xl border border-border/40 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/20 hover:shadow-sm',
+        'group relative rounded-xl border border-border/40 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/20 hover:shadow-sm active:scale-[0.98]',
         getAccentClass(rank)
       )}
     >

@@ -63,9 +63,9 @@ export const NoteView = React.memo(function NoteView({
   }), [note.content, note.description, note.id, note.tags, note.title])
 
   return (
-    <div className="flex-1 flex min-h-0 flex-col">
+    <div className="flex-1 flex min-h-0 flex-col relative bg-card">
       {/* Note View Header */}
-      <div className="p-4 border-b bg-background/80 backdrop-blur flex items-center justify-between">
+      <div className="absolute top-0 left-0 right-0 z-10 p-4 border-b border-border/40 bg-card/75 backdrop-blur-md flex items-center justify-between">
         <div className="flex items-center gap-2">
           {onBack && (
             <Button
@@ -125,7 +125,7 @@ export const NoteView = React.memo(function NoteView({
       </div>
 
       {/* Note Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-10 bg-card">
+      <div className="flex-1 overflow-y-auto px-6 pt-24 pb-10 bg-card">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-6 leading-tight">
             {note.title}
@@ -140,7 +140,7 @@ export const NoteView = React.memo(function NoteView({
                     tag={tag}
                     onClick={onTagClick}
                     onRemove={onRemoveTag}
-                    className="shrink-0 rounded-full"
+                    className="shrink-0 rounded-full text-[11px] px-2 py-0.5"
                   />
                 ))}
               </HorizontalTagScroll>

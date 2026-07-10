@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useEffect, useState, useRef } from "react"
-import { ChevronLeft, Search, X } from "lucide-react"
+import { ChevronLeft, Search, X, Tag } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -602,22 +602,12 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 </TooltipProvider>
 
                 {filterByTag && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center">
                         <InteractiveTag
                             tag={filterByTag}
-                            onClick={controller.handleClearTagFilter}
-                            showIcon={false}
-                            className="text-xs px-2 py-0.5 max-w-[70%] truncate"
+                            onRemove={controller.handleClearTagFilter}
+                            className="text-[11px] px-2 py-0.5 rounded-full"
                         />
-                        <Button
-                            data-testid="search-panel-clear-tag"
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs"
-                            onClick={controller.handleClearTagFilter}
-                        >
-                            Clear tag
-                        </Button>
                     </div>
                 )}
 

@@ -126,16 +126,22 @@ export function TagInput({
   }
 
   return (
-    <div className={cn("relative overflow-hidden", className)}>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-        <Tag className="w-4 h-4" />
-        <span>Tags:</span>
-      </div>
+    <div className={cn("relative group", className)}>
+      <div 
+        className={cn(
+          "flex items-center min-h-[44px] px-3 bg-muted/30 border border-transparent rounded-2xl transition-all duration-200 cursor-text",
+          isEditing ? "bg-background border-primary/30 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] ring-4 ring-primary/5" : "hover:bg-muted/50"
+        )}
+        onClick={handleStartEditing}
+      >
+        <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider shrink-0 mr-2 select-none">
+          <Tag className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Tags</span>
+        </div>
 
-      <div className="flex items-center gap-2 max-w-full">
         <HorizontalTagScroll
           ref={scrollContainerRef}
-          className="flex-1 min-w-0 py-2"
+          className="flex-1 min-w-0 py-1.5 flex items-center"
         >
           {tags.map((tag) => (
             <Badge
@@ -143,17 +149,17 @@ export function TagInput({
               variant="secondary"
               data-cy="interactive-tag"
               className={cn(
-                "shrink-0 cursor-pointer transition-all duration-200 hover:bg-accent hover:text-accent-foreground group relative",
+                "shrink-0 cursor-pointer transition-all duration-200 hover:bg-accent hover:text-accent-foreground group relative rounded-full px-2.5 py-1 text-[11px] bg-background border shadow-sm",
                 backspaceArmed && tag === tags[tags.length - 1] && "ring-2 ring-destructive"
               )}
-              onClick={() => handleTagClick(tag)}
+              onClick={(e) => { e.stopPropagation(); handleTagClick(tag); }}
             >
-              <Tag className="w-3 h-3 mr-1" />
+              <Tag className="w-3 h-3 mr-1 opacity-70" />
               {tag}
               <button
                 type="button"
                 className={cn(
-                  "ml-2 p-0.5 rounded-full transition-opacity duration-200 hover:bg-destructive/20 hover:text-destructive",
+                  "ml-1.5 p-0.5 rounded-full transition-opacity duration-200 hover:bg-destructive/20 hover:text-destructive",
                   "opacity-100 md:opacity-0 md:group-hover:opacity-100"
                 )}
                 onClick={(e) => handleRemoveClick(e, tag)}
@@ -173,27 +179,26 @@ export function TagInput({
               onKeyDown={handleInputKeyDown}
               onBlur={handleInputBlur}
               placeholder={placeholder}
-              className="shrink-0 min-w-[120px] max-w-[200px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="shrink-0 min-w-[120px] max-w-[200px] bg-transparent text-sm outline-none placeholder:text-muted-foreground/50 ml-2"
               disabled={disabled}
             />
           )}
         </HorizontalTagScroll>
 
-        {/* Fixed add button */}
+        {/* Fixed add button indicator */}
         {!isEditing && (
           <button
             type="button"
-            onClick={handleStartEditing}
             disabled={disabled}
             className={cn(
               "shrink-0 flex items-center justify-center w-7 h-7 rounded-full",
-              "bg-muted hover:bg-accent transition-colors duration-200",
-              "text-muted-foreground hover:text-accent-foreground",
+              "bg-background/50 hover:bg-accent transition-colors duration-200 shadow-sm border",
+              "text-muted-foreground hover:text-accent-foreground ml-2",
               disabled && "opacity-50 cursor-not-allowed"
             )}
             title="Add tag"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
           </button>
         )}
       </div>

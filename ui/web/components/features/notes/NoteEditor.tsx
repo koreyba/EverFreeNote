@@ -244,9 +244,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const showMoreMenu = !!noteId
 
   return (
-    <div className="flex-1 flex min-h-0 flex-col">
+    <div className="flex-1 flex min-h-0 flex-col relative bg-card">
       {/* Editor Header */}
-      <div className="p-4 border-b bg-background/80 backdrop-blur flex items-center justify-between">
+      <div className="absolute top-0 left-0 right-0 z-10 p-4 border-b border-border/40 bg-card/75 backdrop-blur-md flex items-center justify-between">
         <div className="flex items-center gap-2">
           {onBack && (
             <Button
@@ -307,7 +307,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
       {/* Editor Form */}
       <div className="flex-1 overflow-y-auto bg-card">
-        <div className="max-w-4xl mx-auto px-6 pt-8 space-y-5">
+        <div className="max-w-4xl mx-auto px-6 pt-24 space-y-5">
           <div>
             <Input
               key={`title-${editorSessionKey}`}
@@ -316,7 +316,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               placeholder="Note title"
               defaultValue={initialTitle}
               onChange={handleContentChange}
-              className="w-full border-0 bg-transparent px-0 py-1 text-4xl font-extrabold tracking-tight placeholder:text-muted-foreground/30 focus-visible:ring-0 focus-visible:outline-none focus:outline-none focus:ring-0 border-none shadow-none"
+              className="w-full h-auto border-0 bg-transparent px-0 py-1 text-4xl md:text-4xl font-extrabold tracking-tight placeholder:text-muted-foreground/30 focus-visible:ring-0 focus-visible:outline-none focus:outline-none focus:ring-0 border-none shadow-none"
             />
           </div>
           <TagInput

@@ -43,6 +43,37 @@ button,
   display: none;
 }
 
+/* Premium thin scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--color-border), transparent 30%);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--color-border), transparent 30%) transparent;
+}
+
 /* =============================================================================
    SEARCH HIGHLIGHTING
    ============================================================================= */
