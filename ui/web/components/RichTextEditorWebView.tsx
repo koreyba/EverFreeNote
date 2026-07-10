@@ -4,6 +4,7 @@ import * as React from "react"
 import { EditorContent, useEditor, type Editor } from "@tiptap/react"
 import { createDocument } from "@tiptap/core"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
+import { SPELLCHECK_ENABLED_KEY } from "@core/constants/preferences"
 import { editorExtensions } from "./editorExtensions"
 import { SmartPasteService } from "@core/services/smartPaste"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
@@ -34,6 +35,19 @@ const RichTextEditorWebView = React.forwardRef<
   const editorRef = React.useRef<Editor | null>(null)
   const suppressNextUpdateRef = React.useRef(false)
   const pendingChunkScrollRef = React.useRef<{ charOffset: number; chunkLength: number } | null>(null)
+  const [spellcheckEnabled, setSpellcheckEnabled] = React.useState(true)
+
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SPELLCHECK_ENABLED_KEY)
+      if (stored !== null) {
+        setSpellcheckEnabled(stored !== "false")
+      }
+    } catch {
+      // Fallback to true if storage is blocked/disabled
+      setSpellcheckEnabled(true)
+    }
+  }, [])
 
   const handleApplySelectionAsMarkdown = React.useCallback(() => {
     const editor = editorRef.current
@@ -88,11 +102,12 @@ const RichTextEditorWebView = React.forwardRef<
     () => ({
       attributes: {
         class: "focus:outline-none",
+        spellcheck: spellcheckEnabled ? "true" : "false",
       },
       handlePaste,
       handleClick,
     }),
-    [handlePaste, handleClick]
+    [handlePaste, handleClick, spellcheckEnabled]
   )
 
   const editor = useEditor({

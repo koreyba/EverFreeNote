@@ -9,6 +9,7 @@ import {
 import { createDocument } from "@tiptap/core"
 import type { EditorView } from "@tiptap/pm/view"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
+import { SPELLCHECK_ENABLED_KEY } from "@core/constants/preferences"
 import { SmartPasteService } from "@core/services/smartPaste"
 import { NoteClipboardService } from "@core/services/noteClipboard"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
@@ -61,6 +62,19 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     const lastAppliedChunkFocusRequestIdRef = React.useRef<string | null>(null)
     const [hasSelection, setHasSelection] = React.useState(false)
     const [historyState, setHistoryState] = React.useState<HistoryState>(EMPTY_HISTORY_STATE)
+    const [spellcheckEnabled, setSpellcheckEnabled] = React.useState(true)
+
+    React.useEffect(() => {
+      try {
+        const stored = localStorage.getItem(SPELLCHECK_ENABLED_KEY)
+        if (stored !== null) {
+          setSpellcheckEnabled(stored !== "false")
+        }
+      } catch {
+        // Fallback to true if storage is blocked/disabled
+        setSpellcheckEnabled(true)
+      }
+    }, [])
 
     const updateHistoryState = React.useCallback((next: HistoryState) => {
       setHistoryState((prev) => (areHistoryStatesEqual(prev, next) ? prev : next))
@@ -131,15 +145,28 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       return true
     }, [])
 
+    const handleToggleSpellcheck = React.useCallback(() => {
+      setSpellcheckEnabled((prev) => {
+        const next = !prev
+        try {
+          localStorage.setItem(SPELLCHECK_ENABLED_KEY, String(next))
+        } catch {
+          // Ignore
+        }
+        return next
+      })
+    }, [])
+
     const editorProps = React.useMemo(() => ({
       attributes: {
         class: "focus:outline-none",
+        spellcheck: spellcheckEnabled ? "true" : "false",
       },
       handlePaste,
       handleDOMEvents: {
         copy: handleCopy,
       },
-    }), [handlePaste, handleCopy])
+    }), [handlePaste, handleCopy, spellcheckEnabled])
 
     const applyChunkFocusRequest = React.useCallback((targetEditor: Editor, request: ChunkScrollTarget) => {
       if (lastAppliedChunkFocusRequestIdRef.current === request.requestId) {
@@ -275,6 +302,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
             onRedo={handleRedo}
             hasSelection={hasSelection}
             onApplyMarkdown={handleApplySelectionAsMarkdown}
+            spellcheckEnabled={spellcheckEnabled}
+            onToggleSpellcheck={handleToggleSpellcheck}
           />
         )}
         <div onMouseDown={handleEditorContainerMouseDown}>

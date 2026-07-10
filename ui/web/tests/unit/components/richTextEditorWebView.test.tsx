@@ -1,6 +1,7 @@
 import React from 'react'
 import { render } from '@testing-library/react'
 import RichTextEditorWebView from '@ui/web/components/RichTextEditorWebView'
+import { SPELLCHECK_ENABLED_KEY } from '@core/constants/preferences'
 
 const mockScrollEditorToChunk = jest.fn()
 const mockExecuteEditorCommand = jest.fn()
@@ -164,5 +165,32 @@ describe('RichTextEditorWebView', () => {
     expect(editor.__tr.setMeta).toHaveBeenNthCalledWith(1, 'preventUpdate', true)
     expect(editor.__tr.setMeta).toHaveBeenNthCalledWith(2, 'addToHistory', false)
     expect(editor.view.dispatch).toHaveBeenCalledWith(editor.state.tr)
+  })
+
+  describe('spellcheck settings integration', () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    it('initializes with default spellcheck enabled', () => {
+      render(<RichTextEditorWebView initialContent="<p>Test</p>" />)
+      expect(capturedConfig).toBeTruthy()
+      expect(capturedConfig?.editorProps?.attributes).toEqual(
+        expect.objectContaining({
+          spellcheck: 'true',
+        })
+      )
+    })
+
+    it('initializes with spellcheck disabled when set in localStorage', () => {
+      localStorage.setItem(SPELLCHECK_ENABLED_KEY, 'false')
+      render(<RichTextEditorWebView initialContent="<p>Test</p>" />)
+      expect(capturedConfig).toBeTruthy()
+      expect(capturedConfig?.editorProps?.attributes).toEqual(
+        expect.objectContaining({
+          spellcheck: 'false',
+        })
+      )
+    })
   })
 })
