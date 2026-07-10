@@ -69,7 +69,7 @@ button,
 }
 
 /* For Firefox */
-* {
+html, body, .overflow-y-auto, .overflow-x-auto, [class*="overflow-y-"], [class*="overflow-x-"] {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklch, var(--color-border), transparent 30%) transparent;
 }

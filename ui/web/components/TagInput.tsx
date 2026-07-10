@@ -125,6 +125,14 @@ export function TagInput({
     onRemoveTag(tag)
   }
 
+  const handleContainerKeyDown = (event: React.KeyboardEvent) => {
+    if (isEditing) return
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      handleStartEditing()
+    }
+  }
+
   return (
     <div className={cn("relative group", className)}>
       <div 
@@ -133,6 +141,10 @@ export function TagInput({
           isEditing ? "bg-background border-primary/30 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] ring-4 ring-primary/5" : "hover:bg-muted/50"
         )}
         onClick={handleStartEditing}
+        onKeyDown={handleContainerKeyDown}
+        role="button"
+        tabIndex={isEditing ? -1 : 0}
+        aria-label="Edit tags"
       >
         <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider shrink-0 mr-2 select-none">
           <Tag className="w-3.5 h-3.5" />

@@ -95,9 +95,16 @@ export function Sidebar({
                 (failedCount ?? 0) > 0 ? `Sync failed: ${failedCount}` :
                 (pendingCount ?? 0) > 0 ? `Syncing: ${pendingCount}` :
                 "Synchronized"
+              }
+              role="status"
+              aria-label={
+                isOffline ? "Offline mode" :
+                (failedCount ?? 0) > 0 ? `Sync failed: ${failedCount}` :
+                (pendingCount ?? 0) > 0 ? `Syncing: ${pendingCount}` :
+                "Synchronized"
               } />
             </div>
-            <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">EverFreeNote</h1>
+            <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">EverFreeNote</h1>
           </div>
           <ThemeToggle />
         </div>

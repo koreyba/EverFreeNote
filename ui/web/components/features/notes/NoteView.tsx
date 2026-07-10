@@ -134,9 +134,9 @@ export const NoteView = React.memo(function NoteView({
           {note.tags && note.tags.length > 0 && (
             <div className="mb-8 overflow-hidden">
               <HorizontalTagScroll className="pb-1">
-                {note.tags.map((tag, index) => (
+                {note.tags.map((tag) => (
                   <InteractiveTag
-                    key={index}
+                    key={tag}
                     tag={tag}
                     onClick={onTagClick}
                     onRemove={onRemoveTag}
