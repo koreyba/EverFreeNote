@@ -7,6 +7,44 @@
       "core-integration",
       "web-unit",
       "mobile-unit",
+      "component",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-143/run-29124960085-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-143/run-29124960085-attempt-1/",
+    "runId": "29124960085",
+    "runAttempt": "1",
+    "prNumber": "143",
+    "ref": "feature-modern-editor-design",
+    "sha": "fb6d0af2c2e44abbf5381d2b28dcc9f3daf4c031",
+    "outcome": "success",
+    "previewUrl": "https://3d536a76.everfreenote.pages.dev",
+    "e2eRef": "feature-modern-editor-design",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #143",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-10T21:42:27.309Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit",
       "component"
     ],
     "suiteLabels": [
@@ -671,42 +709,6 @@
     "scopeLabel": "PR #143",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-10T20:26:12.776Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component"
-    ],
-    "path": "reports/allure/pr-143/run-29120840426-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-143/run-29120840426-attempt-1/",
-    "runId": "29120840426",
-    "runAttempt": "1",
-    "prNumber": "143",
-    "ref": "feature-modern-editor-design",
-    "sha": "5107db231358daa57544950ec356d07a03564958",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #143",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-10T20:24:44.628Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
