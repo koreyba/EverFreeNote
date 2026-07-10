@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync } = require("node:child_process");
+const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -29,18 +29,18 @@ const ensureDir = (dirPath) => {
   fs.mkdirSync(dirPath, { recursive: true });
 };
 
-const runCommand = (cmd) => {
+const runCommand = (args) => {
   try {
-    return execSync(cmd, { stdio: ["ignore", "pipe", "inherit"] }).toString().trim();
+    return execFileSync("gh", args, { stdio: ["ignore", "pipe", "inherit"] }).toString().trim();
   } catch (error) {
-    console.error(`Command failed: ${cmd}`, error.message);
+    console.error(`Command failed: gh ${args.join(" ")}`, error.message);
     return "";
   }
 };
 
 const getWorkflowRuns = () => {
   const url = `repos/${REPOSITORY}/actions/runs?head_sha=${COMMIT_SHA}&per_page=100`;
-  const responseRaw = runCommand(`gh api "${url}"`);
+  const responseRaw = runCommand(["api", url]);
   if (!responseRaw) return [];
 
   try {
@@ -142,7 +142,7 @@ const main = () => {
 
   for (const run of latestRunsMap.values()) {
     console.log(`Downloading artifacts for workflow '${run.name}' (Run #${run.id}, Run Number ${run.run_number})...`);
-    runCommand(`gh run download ${run.id} --dir "${TEMP_DIR}"`);
+    runCommand(["run", "download", String(run.id), "--dir", TEMP_DIR]);
   }
 
   console.log("Processing downloaded artifacts...");

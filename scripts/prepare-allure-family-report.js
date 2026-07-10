@@ -233,7 +233,7 @@ module.exports = defineConfig({
           {
             type: "testingPyramid",
             title: "Testing pyramid",
-            layers: ["unit", "component", "integration", "e2e"]
+            layers: ["unit", "integration", "component", "e2e"]
           }
         ]
       }

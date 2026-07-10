@@ -51,7 +51,7 @@ flowchart TD
 
 2. **Allure Configuration (`scripts/prepare-allure-family-report.js`)**:
    - Generates the `allurerc.cjs` configuration dynamically.
-   - We will add the `charts` option to the `awesome` plugin configuration, explicitly configuring the `testingPyramid` widget to include `layers: ["unit", "component", "integration", "e2e"]`.
+   - We will add the `charts` option to the `awesome` plugin configuration, explicitly configuring the `testingPyramid` widget to include `layers: ["unit", "integration", "component", "e2e"]`.
 
 3. **PR Comment Renderer (`scripts/render-pr-status-comment.js`)**:
    - Updated to only check and link the `allure` family report.
@@ -75,3 +75,4 @@ flowchart TD
 - **Pipeline Performance**: Jobs run in parallel on separate runner instances to keep CI time minimal.
 - **Aesthetics & UX**: The Testing Pyramid widget displays component tests cleanly as a middle tier between unit and integration tests.
 - **Traceability**: Allure `executor.json` points to the unified workflow run in GitHub Actions.
+- **Security**: The artifact downloader utility uses `execFileSync` to execute the `gh` CLI without invoking a shell, mitigating potential command injection vulnerabilities from dynamic environment variables.

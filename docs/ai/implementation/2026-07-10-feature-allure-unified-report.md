@@ -21,7 +21,7 @@ description: Technical implementation details and instructions for unifying Allu
 
 ### Allure Custom Layers (Testing Pyramid)
 We will modify the dynamically generated `allurerc.cjs` in `scripts/prepare-allure-family-report.js`. The `awesome` plugin will be configured with a custom `charts` array that specifies the `testingPyramid` chart and defines the order of layers:
-`layers: ["unit", "component", "integration", "e2e"]`
+`layers: ["unit", "integration", "component", "e2e"]`
 
 ### PR Comments
 In `scripts/render-pr-status-comment.js`, we change the array `REPORT_FAMILIES` to `["allure"]`. The script will now expect a single report metadata block under the `allure` key in `reports/index.json` and generate one row in the markdown table.
