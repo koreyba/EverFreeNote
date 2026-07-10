@@ -1,1 +1,0 @@
-{"id":"7c13c6db5547ae6e0d6481f353fd8e9c","fullName":"everfreenote:cypress/component/ui/web/hooks/useSearchMode.cy.tsx#useSearchMode restores state from localStorage and ignores a legacy preset field","name":"restores state from localStorage and ignores a legacy preset field","status":"passed","testResultsByEnv":{"default":"611d25c2e65e85e5bdd134a9eceda56d"}}
