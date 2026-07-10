@@ -246,25 +246,25 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   return (
     <div className="flex-1 flex min-h-0 flex-col">
       {/* Editor Header */}
-      <div className="p-4 border-b bg-card flex items-start justify-between">
+      <div className="p-4 border-b bg-background/80 backdrop-blur flex items-center justify-between">
         <div className="flex items-center gap-2">
           {onBack && (
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden -ml-2"
+              className="md:hidden -ml-2 rounded-full h-9 w-9"
               onClick={onBack}
               aria-label="Back"
             >
               <ChevronLeft className="w-5 h-5" />
             </Button>
           )}
-          <h2 className="text-lg font-semibold text-muted-foreground">Editing</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">Editing</h2>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <div className="flex gap-2 items-center">
-            <Button onClick={handleRead} variant="outline" size="sm" disabled={isSaving}>
-              <Eye className="w-4 h-4 mr-2" />
+          <div className="flex gap-1.5 items-center">
+            <Button onClick={handleRead} variant="outline" size="sm" disabled={isSaving} className="rounded-full shadow-sm">
+              <Eye className="w-3.5 h-3.5 mr-1.5" />
               Read
             </Button>
             <Button
@@ -273,15 +273,16 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               disabled={isSaving || isBodyEmpty}
               aria-label="Copy note"
               onClick={handleCopy}
+              className="rounded-full shadow-sm"
             >
               {copied ? (
-                <Check className="w-4 h-4 md:mr-2 text-green-600" />
+                <Check className="w-3.5 h-3.5 md:mr-1.5 text-emerald-600" />
               ) : (
-                <Copy className="w-4 h-4 md:mr-2" />
+                <Copy className="w-3.5 h-3.5 md:mr-1.5" />
               )}
               <span className="hidden md:inline">{copied ? "Copied" : "Copy"}</span>
             </Button>
-            <Button onClick={handleSave} size="sm" disabled={isSaving}>
+            <Button onClick={handleSave} size="sm" disabled={isSaving} className="rounded-full shadow-sm">
               Save
             </Button>
             {/* More actions menu — RAG controls, delete note, WordPress export */}
@@ -295,9 +296,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             )}
           </div>
           {(showSaving || isSaving) ? (
-            <div className="text-xs text-muted-foreground animate-pulse">Saving...</div>
+            <div className="text-[10px] text-muted-foreground/70 animate-pulse font-medium">Saving...</div>
           ) : lastSavedAt ? (
-            <div className="text-xs text-muted-foreground">
+            <div className="text-[10px] text-muted-foreground/70 font-medium">
               Saved at {new Date(lastSavedAt).toLocaleTimeString()}
             </div>
           ) : null}
@@ -306,7 +307,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
       {/* Editor Form */}
       <div className="flex-1 overflow-y-auto bg-card">
-        <div className="max-w-4xl mx-auto px-6 pt-6 space-y-4">
+        <div className="max-w-4xl mx-auto px-6 pt-8 space-y-5">
           <div>
             <Input
               key={`title-${editorSessionKey}`}
@@ -315,7 +316,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               placeholder="Note title"
               defaultValue={initialTitle}
               onChange={handleContentChange}
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-2xl font-bold leading-snug shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="w-full border-0 bg-transparent px-0 py-1 text-4xl font-extrabold tracking-tight placeholder:text-muted-foreground/30 focus-visible:ring-0 focus-visible:outline-none focus:outline-none focus:ring-0 border-none shadow-none"
             />
           </div>
           <TagInput
@@ -327,7 +328,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             placeholder="work, personal, ideas"
           />
         </div>
-        <div className="max-w-4xl mx-auto px-6 pb-6">
+        <div className="max-w-4xl mx-auto px-6 pb-6 mt-4">
           <RichTextEditor
             key={`editor-${editorSessionKey}`}
             ref={editorRef}

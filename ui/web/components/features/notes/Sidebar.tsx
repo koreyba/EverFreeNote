@@ -72,7 +72,7 @@ export function Sidebar({
   return (
     <div
       className={cn(
-        "w-80 bg-card border-r flex flex-col h-full md:sticky md:top-0 md:h-screen md:overflow-hidden",
+        "w-80 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full md:sticky md:top-0 md:h-screen md:overflow-hidden",
         className
       )}
       data-testid={dataTestId}
@@ -80,60 +80,54 @@ export function Sidebar({
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <BrandLogo className="h-7 w-7 shrink-0" />
-            <h1 className="text-xl font-bold">EverFreeNote</h1>
+          <div className="flex items-center gap-2.5">
+            <div className="relative">
+              <BrandLogo className="h-8 w-8 shrink-0 transition-transform hover:scale-105" />
+              {/* Sync Status Dot */}
+              <span className={cn(
+                "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card",
+                isOffline ? "bg-amber-500 animate-pulse" :
+                (failedCount ?? 0) > 0 ? "bg-destructive" :
+                (pendingCount ?? 0) > 0 ? "bg-muted-foreground animate-pulse" :
+                "bg-emerald-500"
+              )} title={
+                isOffline ? "Offline mode" :
+                (failedCount ?? 0) > 0 ? `Sync failed: ${failedCount}` :
+                (pendingCount ?? 0) > 0 ? `Syncing: ${pendingCount}` :
+                "Synchronized"
+              } />
+            </div>
+            <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">EverFreeNote</h1>
           </div>
           <ThemeToggle />
-        </div>
-
-        {/* Sync Status - always visible to prevent layout shift */}
-        <div className="mb-3 flex flex-wrap gap-2 text-xs">
-          {isOffline ? (
-            <span className="rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-1">
-              Offline mode
-            </span>
-          ) : (failedCount ?? 0) > 0 ? (
-            <span className="rounded bg-destructive/10 text-destructive px-2 py-1">
-              Sync failed: {failedCount}
-            </span>
-          ) : (pendingCount ?? 0) > 0 ? (
-            <span className="rounded bg-muted px-2 py-1 text-muted-foreground animate-pulse">
-              Syncing: {pendingCount}
-            </span>
-          ) : (
-            <span className="rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-1">
-              Synchronized
-            </span>
-          )}
         </div>
 
         {/* Search */}
         <button
           type="button"
           onClick={onOpenSearch}
-          className="relative w-full text-left"
+          className="relative w-full group"
           data-testid="sidebar-search-trigger"
           aria-label="Open search panel"
         >
-          <Search aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground mr-2 pointer-events-none" />
-          <div className="flex w-full items-center h-10 px-3 pl-9 py-2 rounded-md border border-input bg-background/50 hover:bg-background/80 transition-colors text-sm text-muted-foreground text-left">
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-hover:text-foreground mr-2 pointer-events-none" />
+          <div className="flex w-full items-center h-10 px-3 pl-9 py-2 rounded-full border border-border/80 bg-background/50 hover:bg-background hover:border-border transition-all duration-200 text-sm text-muted-foreground text-left shadow-sm group-hover:shadow">
             Click to search
           </div>
         </button>
       </div>
 
       {/* New Note Button */}
-      <div className="p-4 border-b space-y-3">
+      <div className="p-4 border-b space-y-3 bg-muted/5">
         <Button
           onClick={onCreateNote}
-          className="w-full"
+          className="w-full rounded-full shadow-sm hover:shadow transition-all duration-200 hover:-translate-y-[0.5px] active:translate-y-0"
         >
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
-        <p className="text-xs text-muted-foreground text-center">
-          Notes displayed: {typeof notesDisplayed === "number" ? notesDisplayed : "-"} out of {typeof notesTotal === "number" ? notesTotal : "unknown"}
+        <p className="text-[11px] text-muted-foreground/80 text-center tracking-wide uppercase font-semibold">
+          {typeof notesDisplayed === "number" ? notesDisplayed : "-"} of {typeof notesTotal === "number" ? notesTotal : "unknown"} notes
         </p>
         {selectionMode && (
           <SelectionModeActions
@@ -144,7 +138,6 @@ export function Sidebar({
             selectingAllDisabled={!hasVisibleNotes || allVisibleSelected || bulkDeleting}
             deletingDisabled={selectedCount === 0 || bulkDeleting}
             deleting={bulkDeleting}
-            className="rounded-md border bg-card/70 backdrop-blur"
           />
         )}
       </div>
@@ -155,32 +148,34 @@ export function Sidebar({
       </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
-              <span className="text-sm font-semibold text-accent-foreground">
-                {user.email?.[0]?.toUpperCase()}
-              </span>
+      <div className="p-4 border-t bg-muted/5">
+        <div className="flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-xs border border-primary/20 shrink-0 shadow-sm">
+              {user.email?.[0]?.toUpperCase()}
             </div>
-            <span className="text-sm truncate">{user.email}</span>
+            <span className="text-xs font-medium text-foreground/80 truncate">{user.email}</span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-2"
-            onClick={onOpenSettings}
-            aria-label="Open settings page"
-          >
-            <Settings className="w-4 h-4" />
-          </Button>
-          <Button
-            onClick={onSignOut}
-            variant="ghost"
-            size="sm"
-          >
-            <LogOut className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={onOpenSettings}
+              aria-label="Open settings page"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={onSignOut}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -120,7 +120,7 @@ export const NoteCard = memo(function NoteCard({
         role="button"
         tabIndex={0}
         className={cn(
-          "group p-3 rounded-lg cursor-pointer transition-colors border h-full",
+          "group p-3.5 rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm",
           isSelected ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
         )}
         {...longPressHandlers}
@@ -142,25 +142,25 @@ export const NoteCard = memo(function NoteCard({
             />
           )}
           <div className="flex-1 min-w-0 flex flex-col h-full">
-            <h3 className="font-semibold truncate">{note.title}</h3>
-            <p className="text-sm text-muted-foreground truncate mt-1">
+            <h3 className="font-semibold text-sm leading-snug text-foreground truncate">{note.title}</h3>
+            <p className="text-[13px] text-muted-foreground/85 leading-normal line-clamp-2 mt-1.5">
               {note.description ? SanitizationService.stripHtml(note.description) : ""}
             </p>
             {note.tags && note.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
+              <div className="flex flex-wrap gap-1 mt-2.5">
                 {note.tags.slice(0, 3).map((tag, index) => (
                   <InteractiveTag
                     key={index}
                     tag={tag}
                     onClick={onTagClick || (() => { })}
                     showIcon={false}
-                    className="text-xs px-2 py-0.5"
+                    className="text-[11px] px-2 py-0.5 rounded-full"
                   />
                 ))}
               </div>
             )}
             <div className="flex-1" />
-            <p className="text-xs text-muted-foreground mt-2">{formatDate(note.updated_at)}</p>
+            <p className="text-[10px] text-muted-foreground/45 mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
           </div>
         </div>
       </div>
@@ -191,7 +191,7 @@ export const NoteCard = memo(function NoteCard({
       tabIndex={0}
       {...longPressHandlers}
       className={cn(
-        'group relative rounded-lg border border-border/60 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/30 hover:shadow-sm',
+        'group relative rounded-xl border border-border/40 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/20 hover:shadow-sm',
         getAccentClass(rank)
       )}
     >
@@ -210,12 +210,12 @@ export const NoteCard = memo(function NoteCard({
           )}
         />
       )}
-      <div className="px-3 py-2.5">
+      <div className="p-3.5">
         {/* Title + rank */}
         <div className="flex items-start gap-2 justify-between">
           <h3
             className={cn(
-              "text-[13.5px] font-semibold leading-snug text-foreground flex-1 line-clamp-2",
+              "text-[14px] font-semibold leading-snug text-foreground flex-1 line-clamp-2",
               onToggleSelect && "pl-6"
             )}
           >
@@ -230,14 +230,14 @@ export const NoteCard = memo(function NoteCard({
 
         {/* Tags */}
         {note.tags && note.tags.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
+          <div className="mt-2 flex flex-wrap gap-1">
             {note.tags.slice(0, 5).map((tag, idx) => (
               <InteractiveTag
                 key={idx}
                 tag={tag}
                 onClick={onTagClick || (() => { })}
                 showIcon={false}
-                className="text-[11px] px-1.5 py-0"
+                className="text-[11px] px-2 py-0.5 rounded-full"
               />
             ))}
             {note.tags.length > 5 && (
@@ -248,7 +248,7 @@ export const NoteCard = memo(function NoteCard({
 
         {/* Headline snippet with JS highlighting — height is deterministic, no CSS clamp needed */}
         {parts && (
-          <div className="mt-2 rounded-md bg-muted/30 px-2.5 py-2">
+          <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2 border border-border/20">
             <p className="text-[12.5px] leading-relaxed text-foreground/80">
               {parts.map((part, i) => {
                 if (pattern && i % 2 === 1) {
@@ -261,7 +261,7 @@ export const NoteCard = memo(function NoteCard({
         )}
 
         {/* Date */}
-        <p className="mt-1.5 text-[11px] text-muted-foreground/50">{formatDate(note.updated_at)}</p>
+        <p className="mt-2.5 text-[10px] text-muted-foreground/45 font-medium">{formatDate(note.updated_at)}</p>
       </div>
     </article>
   )

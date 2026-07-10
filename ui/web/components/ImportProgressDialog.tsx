@@ -105,13 +105,13 @@ export function ImportProgressDialog({
         {isComplete && result && (
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+              <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 border border-green-500/10 rounded-2xl">
                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {result.success}
                 </div>
                 <div className="text-sm text-muted-foreground">Successful</div>
               </div>
-              <div className="text-center p-4 bg-red-50 dark:bg-red-950/20 rounded-lg">
+              <div className="text-center p-4 bg-red-50 dark:bg-red-950/20 border border-destructive/10 rounded-2xl">
                 <div className="text-2xl font-bold text-destructive">
                   {result.errors}
                 </div>
@@ -132,7 +132,7 @@ export function ImportProgressDialog({
                 </summary>
                 <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
                   {result.failedNotes.map((failed, index) => (
-                    <div key={index} className="p-2 bg-muted/50 rounded text-xs">
+                    <div key={index} className="p-2 bg-muted/50 rounded-xl text-xs">
                       <div className="font-medium">{failed.title}</div>
                       <div className="text-muted-foreground">{failed.error}</div>
                     </div>
@@ -145,7 +145,7 @@ export function ImportProgressDialog({
 
         {isComplete && (
           <DialogFooter>
-            <Button onClick={onClose} className="w-full">
+            <Button onClick={onClose} className="w-full rounded-full shadow-sm">
               Close
             </Button>
           </DialogFooter>

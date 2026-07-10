@@ -293,7 +293,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     }), [editor, handleApplySelectionAsMarkdown])
 
     return (
-      <div className={`bg-background ${hideToolbar ? '' : 'border border-t-0 rounded-b-md rounded-t-none'}`}>
+      <div className={`bg-background transition-all duration-200 ${hideToolbar ? '' : 'border border-border/40 rounded-xl shadow-sm'}`}>
         {!hideToolbar && (
           <EditorMenuBar
             editor={editor}

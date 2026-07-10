@@ -24,8 +24,18 @@ export function SelectionModeActions({
   className,
 }: SelectionModeActionsProps) {
   return (
-    <div data-testid="selection-mode-actions" className={cn("flex items-center justify-between gap-2 px-3 py-2 text-sm", className)}>
-      <div data-testid="selection-mode-count" className="font-medium tabular-nums whitespace-nowrap shrink-0" aria-label={`${selectedCount} selected`}>
+    <div
+      data-testid="selection-mode-actions"
+      className={cn(
+        "flex items-center justify-between gap-3 px-3 py-2 text-xs border border-border/40 bg-card/65 dark:bg-card/45 backdrop-blur-md rounded-2xl shadow-sm",
+        className
+      )}
+    >
+      <div
+        data-testid="selection-mode-count"
+        className="flex items-center justify-center h-6 min-w-[24px] px-2 rounded-full bg-primary/10 text-primary text-[11px] font-bold tabular-nums shrink-0"
+        aria-label={`${selectedCount} selected`}
+      >
         {selectedCount}
       </div>
       <div data-testid="selection-mode-buttons" className="flex items-center gap-1 min-w-0">
@@ -33,7 +43,7 @@ export function SelectionModeActions({
           data-testid="selection-mode-select-all"
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-xs whitespace-nowrap"
+          className="rounded-full h-7 px-2.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-all"
           onClick={onSelectAll}
           disabled={selectingAllDisabled}
         >
@@ -41,16 +51,15 @@ export function SelectionModeActions({
         </Button>
         <Button
           data-testid="selection-mode-delete"
-          variant="destructive"
           size="sm"
-          className="h-7 px-2 text-xs whitespace-nowrap"
+          className="rounded-full h-7 px-3 text-[11px] font-bold bg-destructive/15 hover:bg-destructive/25 text-destructive border border-destructive/20 hover:border-destructive/30 disabled:opacity-40 transition-all shadow-none"
           onClick={onDelete}
           disabled={deleting || deletingDisabled}
         >
           {deleting ? (
             <span className="inline-flex items-center gap-1">
               <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Deleting ({selectedCount})</span>
+              <span>Deleting</span>
             </span>
           ) : (
             `Delete (${selectedCount})`
@@ -60,7 +69,7 @@ export function SelectionModeActions({
           data-testid="selection-mode-cancel"
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-xs whitespace-nowrap"
+          className="rounded-full h-7 px-2.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-all"
           onClick={onCancel}
           disabled={deleting}
         >

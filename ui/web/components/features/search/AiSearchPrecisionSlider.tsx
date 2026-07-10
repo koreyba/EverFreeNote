@@ -22,7 +22,7 @@ export function AiSearchPrecisionSlider({
   onCommit,
 }: AiSearchPrecisionSliderProps) {
   return (
-    <div className={cn("space-y-2 rounded-lg border bg-muted/20 px-3 py-3", disabled && "opacity-70")}>
+    <div className={cn("space-y-2 rounded-2xl border border-border/40 bg-muted/30 dark:bg-muted/10 px-3.5 py-3.5 shadow-sm/60", disabled && "opacity-70")}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-xs font-medium text-foreground">Precision</div>

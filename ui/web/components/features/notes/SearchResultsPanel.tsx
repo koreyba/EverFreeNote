@@ -569,7 +569,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                             onChange={(e) => handleSearchChange(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
                             className={cn(
-                                "pl-9 pr-7 h-9 bg-background transition-shadow",
+                                "pl-9 pr-7 h-9 bg-background transition-all rounded-full border-border/40 shadow-sm focus-visible:ring-primary/40 focus-visible:border-primary/40",
                                 aiEnabled && "ring-1 ring-primary/35 focus-visible:ring-primary/60"
                             )}
                         />
@@ -592,7 +592,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button data-testid="search-panel-close" variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8 shrink-0" onClick={onClose}>
+                            <Button data-testid="search-panel-close" variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8 shrink-0 rounded-full hover:bg-muted/50 transition-all" onClick={onClose}>
                                 <X className="w-4 h-4" />
                             </Button>
                         </TooltipTrigger>

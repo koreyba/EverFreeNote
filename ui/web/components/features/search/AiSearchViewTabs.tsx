@@ -87,7 +87,7 @@ export function AiSearchViewTabs({
         <ToggleGroupItem
           data-testid="ai-search-view-tab-note"
           value="note"
-          className="text-xs h-6 px-2 data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+          className="text-xs h-6 px-2.5 rounded-full data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
           aria-label="Note view"
           aria-disabled={disabled}
           data-disabled={disabled ? 'true' : undefined}
@@ -100,7 +100,7 @@ export function AiSearchViewTabs({
         <ToggleGroupItem
           data-testid="ai-search-view-tab-chunk"
           value="chunk"
-          className="text-xs h-6 px-2 data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
+          className="text-xs h-6 px-2.5 rounded-full data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed"
           aria-label="Chunk view"
           aria-disabled={disabled}
           data-disabled={disabled ? 'true' : undefined}

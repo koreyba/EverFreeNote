@@ -65,27 +65,28 @@ export const NoteView = React.memo(function NoteView({
   return (
     <div className="flex-1 flex min-h-0 flex-col">
       {/* Note View Header */}
-      <div className="p-4 border-b bg-card flex items-center justify-between">
+      <div className="p-4 border-b bg-background/80 backdrop-blur flex items-center justify-between">
         <div className="flex items-center gap-2">
           {onBack && (
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden -ml-2"
+              className="md:hidden -ml-2 rounded-full h-9 w-9"
               onClick={onBack}
             >
               <ChevronLeft className="w-5 h-5" />
             </Button>
           )}
-          <h2 className="text-lg font-semibold text-muted-foreground">Reading</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">Reading</h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
             onClick={onEdit}
             variant="outline"
             size="sm"
+            className="rounded-full shadow-sm"
           >
-            <Edit2 className="w-4 h-4 mr-2" />
+            <Edit2 className="w-3.5 h-3.5 mr-1.5" />
             Edit
           </Button>
           <Button
@@ -94,11 +95,12 @@ export const NoteView = React.memo(function NoteView({
             aria-label="Copy note"
             disabled={isBodyEmpty}
             onClick={() => copyNote(bodyHtml)}
+            className="rounded-full shadow-sm"
           >
             {copied ? (
-              <Check className="w-4 h-4 md:mr-2 text-green-600" />
+              <Check className="w-3.5 h-3.5 md:mr-1.5 text-emerald-600" />
             ) : (
-              <Copy className="w-4 h-4 md:mr-2" />
+              <Copy className="w-3.5 h-3.5 md:mr-1.5" />
             )}
             <span className="hidden md:inline">{copied ? "Copied" : "Copy"}</span>
           </Button>
@@ -108,9 +110,9 @@ export const NoteView = React.memo(function NoteView({
             size="sm"
             data-cy="note-delete-button"
             aria-label="Delete note"
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+            className="rounded-full text-destructive hover:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20 border-destructive/25 hover:border-destructive/30 shadow-sm"
           >
-            <Trash2 className="w-4 h-4 mr-2" />
+            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
             <span className="hidden sm:inline" aria-hidden="true">Delete</span>
           </Button>
           {/* More actions menu — always visible, contains RAG index controls + optional WP export */}
@@ -123,14 +125,14 @@ export const NoteView = React.memo(function NoteView({
       </div>
 
       {/* Note Content */}
-      <div className="flex-1 overflow-y-auto p-6 bg-card">
+      <div className="flex-1 overflow-y-auto px-6 py-10 bg-card">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-4">
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-6 leading-tight">
             {note.title}
           </h1>
 
           {note.tags && note.tags.length > 0 && (
-            <div className="mb-6 overflow-hidden">
+            <div className="mb-8 overflow-hidden">
               <HorizontalTagScroll className="pb-1">
                 {note.tags.map((tag, index) => (
                   <InteractiveTag
@@ -138,7 +140,7 @@ export const NoteView = React.memo(function NoteView({
                     tag={tag}
                     onClick={onTagClick}
                     onRemove={onRemoveTag}
-                    className="shrink-0"
+                    className="shrink-0 rounded-full"
                   />
                 ))}
               </HorizontalTagScroll>
@@ -150,9 +152,9 @@ export const NoteView = React.memo(function NoteView({
             dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           />
 
-          <div className="mt-8 pt-4 border-t text-sm text-muted-foreground">
-            <p>Created: {formattedDates.created}</p>
-            <p>Updated: {formattedDates.updated}</p>
+          <div className="mt-12 pt-6 border-t border-border/40 text-[11px] text-muted-foreground/60 flex flex-wrap gap-x-6 gap-y-2">
+            <span>Created: {formattedDates.created}</span>
+            <span>Updated: {formattedDates.updated}</span>
           </div>
         </div>
       </div>

@@ -12,6 +12,7 @@ const nextConfig = {
   },
   trailingSlash: true,
   turbopack: {},
+  allowedDevOrigins: ['192.168.0.15', '192.168.0.15:3000'],
   webpack(config, { dev }) {
     if (dev) {
       // Reduce CPU/memory from file watching
