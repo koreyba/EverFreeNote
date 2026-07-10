@@ -1,1 +1,0 @@
-{"id":"243524ed429e012d295c50a31aa3b7db","fullName":"core/tests/unit/core-utils-wordpress.test.ts#core/utils/wordpress rejects slugs longer than the allowed maximum","name":"rejects slugs longer than the allowed maximum","status":"passed","testResultsByEnv":{"default":"ec8b483e36f1632b437221af0a38222b"}}
