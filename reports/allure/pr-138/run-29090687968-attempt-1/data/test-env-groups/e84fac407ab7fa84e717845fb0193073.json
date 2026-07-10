@@ -1,0 +1,1 @@
+{"id":"e84fac407ab7fa84e717845fb0193073","fullName":"core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste detectPasteType prefers meaningful HTML over markdown text","name":"prefers meaningful HTML over markdown text","status":"passed","testResultsByEnv":{"default":"f406d2e3965acf6254b79c545064a056"}}
