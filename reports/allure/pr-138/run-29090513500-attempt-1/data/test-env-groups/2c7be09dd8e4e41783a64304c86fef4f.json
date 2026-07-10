@@ -1,1 +1,0 @@
-{"id":"2c7be09dd8e4e41783a64304c86fef4f","fullName":"tests/integration/noteCopyButton.test.tsx#NoteEditorScreen - Copy button disables the copy button for an empty note body","name":"disables the copy button for an empty note body","status":"passed","testResultsByEnv":{"default":"b4f381ec13b98509560fb2f5607df0f1"}}
