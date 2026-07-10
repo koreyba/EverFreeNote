@@ -35,12 +35,12 @@ button,
 
 /* Hide scrollbar utility */
 .scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 .scrollbar-none::-webkit-scrollbar {
-  display: none;
+  display: none !important;
 }
 
 /* Premium thin scrollbar styles */
