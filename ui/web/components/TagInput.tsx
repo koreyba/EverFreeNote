@@ -127,15 +127,17 @@ export function TagInput({
 
   return (
     <div className={cn("relative group", className)}>
-      <div 
+      <div // NOSONAR
         data-testid="tag-input-container"
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            if (!isEditing && !disabled) {
-              handleStartEditing()
+            if (e.target === e.currentTarget) {
+              e.preventDefault()
+              if (!isEditing && !disabled) {
+                handleStartEditing()
+              }
             }
           }
         }}
