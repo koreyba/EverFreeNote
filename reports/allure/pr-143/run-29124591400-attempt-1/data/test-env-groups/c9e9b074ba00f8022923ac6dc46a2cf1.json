@@ -1,1 +1,0 @@
-{"id":"c9e9b074ba00f8022923ac6dc46a2cf1","fullName":"everfreenote-mobile:tests/component/useDeleteNote.test.tsx#useDeleteNote Online deletion falls back to queue when API deletion fails","name":"falls back to queue when API deletion fails","status":"passed","testResultsByEnv":{"default":"55176af3ad0cf6e4beb851ec9bb068a5"}}
