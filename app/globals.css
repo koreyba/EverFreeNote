@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @plugin "tailwindcss-animate";
@@ -93,8 +93,8 @@ mark {
 
 /* =============================================================================
    NOTE CONTENT STYLES - SINGLE SOURCE OF TRUTH
-   Единый класс .note-content для режимов чтения и редактирования.
-   ProseMirror наследует стили через .note-content .ProseMirror
+   Ð•Ð´Ð¸Ð½Ñ‹Ð¹ ÐºÐ»Ð°ÑÑ .note-content Ð´Ð»Ñ Ñ€ÐµÐ¶Ð¸Ð¼Ð¾Ð² Ñ‡Ñ‚ÐµÐ½Ð¸Ñ Ð¸ Ñ€ÐµÐ´Ð°ÐºÑ‚Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ.
+   ProseMirror Ð½Ð°ÑÐ»ÐµÐ´ÑƒÐµÑ‚ ÑÑ‚Ð¸Ð»Ð¸ Ñ‡ÐµÑ€ÐµÐ· .note-content .ProseMirror
    ============================================================================= */
 
 .note-content,
@@ -103,7 +103,7 @@ mark {
   font-size: 1.05rem;
   line-height: var(--line-height-body);
   max-width: none;
-  /* Единый white-space для чтения и редактирования */
+  /* Ð•Ð´Ð¸Ð½Ñ‹Ð¹ white-space Ð´Ð»Ñ Ñ‡Ñ‚ÐµÐ½Ð¸Ñ Ð¸ Ñ€ÐµÐ´Ð°ÐºÑ‚Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -163,7 +163,7 @@ mark {
   color: var(--color-foreground);
 }
 
-/* Вложенные div не должны добавлять дополнительные отступы */
+/* Ð’Ð»Ð¾Ð¶ÐµÐ½Ð½Ñ‹Ðµ div Ð½Ðµ Ð´Ð¾Ð»Ð¶Ð½Ñ‹ Ð´Ð¾Ð±Ð°Ð²Ð»ÑÑ‚ÑŒ Ð´Ð¾Ð¿Ð¾Ð»Ð½Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ñ‹Ðµ Ð¾Ñ‚ÑÑ‚ÑƒÐ¿Ñ‹ */
 .note-content div div {
   margin-bottom: 0;
 }
@@ -277,7 +277,7 @@ mark {
   border-bottom: 2px solid var(--color-border);
 }
 
-/* Убираем отступы у первого и последнего элемента */
+/* Ð£Ð±Ð¸Ñ€Ð°ÐµÐ¼ Ð¾Ñ‚ÑÑ‚ÑƒÐ¿Ñ‹ Ñƒ Ð¿ÐµÑ€Ð²Ð¾Ð³Ð¾ Ð¸ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÐµÐ³Ð¾ ÑÐ»ÐµÐ¼ÐµÐ½Ñ‚Ð° */
 .note-content>*:first-child {
   margin-top: 0 !important;
 }
@@ -286,17 +286,17 @@ mark {
   margin-bottom: 0 !important;
 }
 
-/* Поддержка пустых параграфов */
+/* ÐŸÐ¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ° Ð¿ÑƒÑÑ‚Ñ‹Ñ… Ð¿Ð°Ñ€Ð°Ð³Ñ€Ð°Ñ„Ð¾Ð² */
 .note-content p:empty::after {
   content: '\200B';
-  /* Zero-width space для сохранения высоты */
+  /* Zero-width space Ð´Ð»Ñ ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¸Ñ Ð²Ñ‹ÑÐ¾Ñ‚Ñ‹ */
   display: inline;
 }
 
-/* Специфичные стили для ProseMirror (редактор) */
+/* Ð¡Ð¿ÐµÑ†Ð¸Ñ„Ð¸Ñ‡Ð½Ñ‹Ðµ ÑÑ‚Ð¸Ð»Ð¸ Ð´Ð»Ñ ProseMirror (Ñ€ÐµÐ´Ð°ÐºÑ‚Ð¾Ñ€) */
 .note-content .ProseMirror {
   outline: none;
-  /* Переопределяем white-space с break-spaces на pre-wrap для консистентности */
+  /* ÐŸÐµÑ€ÐµÐ¾Ð¿Ñ€ÐµÐ´ÐµÐ»ÑÐµÐ¼ white-space Ñ break-spaces Ð½Ð° pre-wrap Ð´Ð»Ñ ÐºÐ¾Ð½ÑÐ¸ÑÑ‚ÐµÐ½Ñ‚Ð½Ð¾ÑÑ‚Ð¸ */
   white-space: pre-wrap;
 }
 
@@ -325,7 +325,7 @@ mark {
   pointer-events: none;
 }
 
-/* Chunk focus highlight — applied via block Decoration from scrollToChunk */
+/* Chunk focus highlight â€” applied via block Decoration from scrollToChunk */
 .note-content .ProseMirror .chunk-focus-block {
   position: relative;
   --chunk-focus-line-offset: 0.9rem;
@@ -398,7 +398,7 @@ mark {
   --color-popover-foreground: oklch(22% 0.015 240);
 
   /* Primary - Vibrant Emerald */
-  --color-primary: oklch(62% 0.16 145);
+  --color-primary: oklch(52% 0.17 145); /* a11y fix: was 62%, darkened to meet WCAG AA 4.5:1 */
   --color-primary-foreground: oklch(100% 0 0);
 
   /* Secondary */
@@ -422,7 +422,7 @@ mark {
   --color-input: oklch(94% 0.003 240);
 
   /* Focus ring */
-  --color-ring: oklch(62% 0.14 145);
+  --color-ring: oklch(52% 0.17 145);
 
   /* Charts */
   --color-chart-1: oklch(69.75% 0.1403 50.58);
@@ -434,12 +434,12 @@ mark {
   /* Sidebar */
   --color-sidebar-background: oklch(97.5% 0.004 240);
   --color-sidebar-foreground: oklch(35% 0.015 240);
-  --color-sidebar-primary: oklch(62% 0.16 145);
+  --color-sidebar-primary: oklch(52% 0.17 145);
   --color-sidebar-primary-foreground: oklch(100% 0 0);
   --color-sidebar-accent: oklch(95% 0.02 145);
   --color-sidebar-accent-foreground: oklch(30% 0.05 145);
   --color-sidebar-border: oklch(93.5% 0.004 240);
-  --color-sidebar-ring: oklch(62% 0.16 145);
+  --color-sidebar-ring: oklch(52% 0.17 145);
 }
 
 /* =============================================================================
@@ -521,3 +521,4 @@ mark {
   height: 0 !important;
   background: transparent !important;
 }
+
