@@ -126,9 +126,8 @@ describe('NoteEditor Component', () => {
 
     // INPUT_DEBOUNCE_MS (250) + autosaveDelayMs (200) = 450ms
 
-    cy.get('@onAutoSave').should('not.have.been.called', { timeout: 500 })
-
-    cy.get('@onAutoSave').should('have.been.calledOnce', { timeout: 1500 })
+    cy.get('@onAutoSave').should('not.have.been.called')
+    cy.get('@onAutoSave', { timeout: 1500 }).should('have.been.calledOnce')
     cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
       noteId: 'note-1',
       title: 'New Title',
@@ -207,7 +206,7 @@ describe('NoteEditor Component', () => {
     cy.get('input[placeholder="work, personal, ideas"]').type('Pending Tag')
     cy.get('input[placeholder="Note title"]').type(' updated')
 
-    cy.get('@onAutoSave').should('have.been.calledOnce', { timeout: 1500 })
+    cy.get('@onAutoSave', { timeout: 1500 }).should('have.been.calledOnce')
     cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
       noteId: 'note-1',
       tags: 'tag1, tag2, pending tag'
@@ -237,7 +236,7 @@ describe('NoteEditor Component', () => {
 
     // onSave should be called, but onAutoSave should NOT fire
     cy.get('@onSave').should('have.been.calledOnce')
-    cy.get('@onAutoSave').should('not.have.been.called', { timeout: 1000 })
+    cy.get('@onAutoSave').should('not.have.been.called')
   })
 
   it('triggers autosave when tags change', () => {
@@ -259,7 +258,7 @@ describe('NoteEditor Component', () => {
     cy.get('input[placeholder="work, personal, ideas"]').type('onlytag{enter}')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
 
-    cy.get('@onAutoSave').should('have.been.called', { timeout: 800 })
+    cy.get('@onAutoSave', { timeout: 800 }).should('have.been.called')
   })
 
   it('does not interrupt typing when autosave updates props / assigns noteId', () => {
@@ -486,7 +485,7 @@ describe('NoteEditor Component', () => {
 
   it('keeps the header and formatting toolbar visible when scrolling down a long note', () => {
     const longContent = Array.from({ length: 50 }, (_, i) => `<p>Line ${i}</p>`).join('')
-    const props = { ...getDefaultProps(), description: longContent }
+    const props = { ...getDefaultProps(), initialDescription: longContent }
 
     cy.mount(
       <div style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
@@ -508,13 +507,14 @@ describe('NoteEditor Component', () => {
     const props = { ...getDefaultProps(), initialTags: manyTags }
     cy.mount(<NoteEditor {...props} />)
 
-    cy.get('button[title="Add tag"]').click()
+    cy.get('.overflow-x-auto').scrollTo('right', { duration: 100, ensureScrollable: false })
+    cy.get('[data-testid="tag-input-container"]').find('svg.lucide-tag').first().click()
     
     cy.get('input[placeholder="work, personal, ideas"]')
       .should('be.visible')
       .should('have.focus')
 
-    cy.contains('[data-cy="interactive-tag"]', 'tag-19').find('button').click({ force: true })
+    cy.contains('[data-cy="interactive-tag"]', 'tag-19').find('button').click()
     cy.contains('tag-19').should('not.exist')
   })
 })

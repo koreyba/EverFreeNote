@@ -128,6 +128,12 @@ export function TagInput({
   return (
     <div className={cn("relative group", className)}>
       <div 
+        data-testid="tag-input-container"
+        onClick={() => {
+          if (!isEditing && !disabled) {
+            handleStartEditing()
+          }
+        }}
         className={cn(
           "flex items-center min-h-[44px] px-3 bg-muted/30 border border-transparent rounded-2xl transition-all duration-200 cursor-text",
           isEditing ? "bg-background border-primary/30 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] ring-4 ring-primary/5" : "hover:bg-muted/50"
@@ -141,11 +147,6 @@ export function TagInput({
         <HorizontalTagScroll
           ref={scrollContainerRef}
           className={cn("flex-1 min-w-0 py-1.5 flex items-center", !isEditing && !disabled && "cursor-text")}
-          onClick={() => {
-            if (!isEditing && !disabled) {
-              handleStartEditing()
-            }
-          }}
         >
           {tags.map((tag) => (
             <Badge
