@@ -57,7 +57,7 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
       e.currentTarget.releasePointerCapture(e.pointerId)
     }
     isDraggingRef.current = false
-    scrollContainerRef.current.style.cursor = "grab"
+    scrollContainerRef.current.style.cursor = ""
     scrollContainerRef.current.style.userSelect = ""
   }
 
