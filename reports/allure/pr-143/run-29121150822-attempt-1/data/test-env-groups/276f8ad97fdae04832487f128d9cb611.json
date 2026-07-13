@@ -1,1 +1,0 @@
-{"id":"276f8ad97fdae04832487f128d9cb611","fullName":"everfreenote:cypress/component/core/services/SearchService.cy.ts#core/services/SearchService searchNotes falls back to ILIKE when FTS fails","name":"falls back to ILIKE when FTS fails","status":"passed","testResultsByEnv":{"default":"0a2c1ef3a8f78edf286218eba6f55a1b"}}
