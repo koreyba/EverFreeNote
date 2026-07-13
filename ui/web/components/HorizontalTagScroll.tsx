@@ -29,8 +29,9 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
     }
   }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
     if (!scrollContainerRef.current) return
+    e.currentTarget.setPointerCapture(e.pointerId)
     isDraggingRef.current = true
     hasDraggedRef.current = false
     startXRef.current = e.pageX - scrollContainerRef.current.offsetLeft
@@ -39,7 +40,7 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
     scrollContainerRef.current.style.userSelect = "none"
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDraggingRef.current || !scrollContainerRef.current) return
     e.preventDefault()
     const x = e.pageX - scrollContainerRef.current.offsetLeft
@@ -50,17 +51,18 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
     scrollContainerRef.current.scrollLeft = scrollLeftRef.current - walk
   }
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
     if (!scrollContainerRef.current) return
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
     isDraggingRef.current = false
     scrollContainerRef.current.style.cursor = "grab"
     scrollContainerRef.current.style.userSelect = ""
   }
 
-  const handleMouseLeave = () => {
-    if (isDraggingRef.current) {
-      handleMouseUp()
-    }
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    handlePointerUp(e)
   }
 
   // Prevent click events on children when dragging
@@ -75,16 +77,15 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
   return (
     <div
       ref={scrollContainerRef}
-      role="presentation"
       className={cn(
         "flex items-center gap-2 overflow-x-auto cursor-grab hide-all-scrollbars",
         className
       )}
       onWheel={handleWheel}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       onClickCapture={handleClick}
       onClick={onClick}
     >

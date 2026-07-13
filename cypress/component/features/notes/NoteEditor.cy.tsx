@@ -502,7 +502,7 @@ describe('NoteEditor Component', () => {
     cy.get('[data-cy="bold-button"]').should('be.visible')
   })
 
-  it('allows entering tag edit mode by clicking the empty space and deleting tags while scrolled', () => {
+  it('allows entering tag edit mode by clicking the tag icon and deleting tags while scrolled', () => {
     const manyTags = Array.from({ length: 20 }, (_, i) => `tag-${i}`).join(', ')
     const props = { ...getDefaultProps(), initialTags: manyTags }
     cy.mount(<NoteEditor {...props} />)
@@ -515,7 +515,7 @@ describe('NoteEditor Component', () => {
       .should('have.focus')
 
     cy.contains('[data-cy="interactive-tag"]', 'tag-19').find('button').click()
-    cy.contains('tag-19').should('not.exist')
+    cy.get('[data-testid="tag-input-container"]').contains('tag-19').should('not.exist')
   })
 })
 
