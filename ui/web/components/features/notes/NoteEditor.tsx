@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { ChevronLeft, Copy, Check, Eye } from "lucide-react"
@@ -259,7 +259,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               <ChevronLeft className="w-5 h-5" />
             </Button>
           )}
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">Editing</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Editing</h2>
         </div>
         <div className="flex flex-col items-end gap-1">
           <div className="flex gap-1.5 items-center">
@@ -285,7 +285,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             <Button onClick={handleSave} size="sm" disabled={isSaving} className="rounded-full shadow-sm">
               Save
             </Button>
-            {/* More actions menu — RAG controls, delete note, WordPress export */}
+            {/* More actions menu â€” RAG controls, delete note, WordPress export */}
             {showMoreMenu && (
               <MoreActionsMenu
                 noteId={noteId!}
@@ -350,3 +350,4 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     </div>
   )
 }))
+

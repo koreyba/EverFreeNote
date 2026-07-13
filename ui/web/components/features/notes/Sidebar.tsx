@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { LogOut, Plus, Search, Settings } from "lucide-react"
@@ -154,7 +154,7 @@ export function Sidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
-        <p className="text-[11px] text-muted-foreground/80 text-center tracking-wide uppercase font-semibold">
+        <p className="text-[11px] text-muted-foreground text-center tracking-wide uppercase font-semibold">
           {notesCountText}
         </p>
         {selectionMode && (
@@ -219,3 +219,4 @@ export function Sidebar({
     </div>
   )
 }
+

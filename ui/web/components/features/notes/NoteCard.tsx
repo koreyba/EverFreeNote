@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { memo } from "react"
 import type { MouseEvent } from "react"
@@ -143,7 +143,7 @@ export const NoteCard = memo(function NoteCard({
           )}
           <div className="flex-1 min-w-0 flex flex-col h-full">
             <h3 className="font-semibold text-sm leading-snug text-foreground truncate">{note.title || "Untitled"}</h3>
-            <p className="text-[13px] text-muted-foreground/85 leading-normal line-clamp-2 mt-1.5">
+            <p className="text-[13px] text-muted-foreground leading-normal line-clamp-2 mt-1.5">
               {note.description ? SanitizationService.stripHtml(note.description) : ""}
             </p>
             {note.tags && note.tags.length > 0 && (
@@ -160,7 +160,7 @@ export const NoteCard = memo(function NoteCard({
               </div>
             )}
             <div className="flex-1" />
-            <p className="text-[10px] text-muted-foreground/45 mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
+            <p className="text-[10px] text-muted-foreground mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
           </div>
         </div>
       </div>
@@ -171,12 +171,12 @@ export const NoteCard = memo(function NoteCard({
   const searchNote = note as SearchResult
   const rank = searchNote.rank ?? 0
 
-  // Strip HTML marks → plain text → truncate (same approach as ChunkSnippet)
+  // Strip HTML marks â†’ plain text â†’ truncate (same approach as ChunkSnippet)
   const plainHeadline = searchNote.headline
     ? DOMPurify.sanitize(searchNote.headline, { ALLOWED_TAGS: [] })
     : null
   const truncated = plainHeadline
-    ? (plainHeadline.length > 200 ? plainHeadline.slice(0, 200).trimEnd() + '…' : plainHeadline)
+    ? (plainHeadline.length > 200 ? plainHeadline.slice(0, 200).trimEnd() + 'â€¦' : plainHeadline)
     : null
 
   const pattern = highlightQuery ? buildHighlightPattern(highlightQuery) : null
@@ -246,7 +246,7 @@ export const NoteCard = memo(function NoteCard({
           </div>
         )}
 
-        {/* Headline snippet with JS highlighting — height is deterministic, no CSS clamp needed */}
+        {/* Headline snippet with JS highlighting â€” height is deterministic, no CSS clamp needed */}
         {parts && (
           <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2 border border-border/20">
             <p className="text-[12.5px] leading-relaxed text-foreground/80">
@@ -261,8 +261,9 @@ export const NoteCard = memo(function NoteCard({
         )}
 
         {/* Date */}
-        <p className="mt-2.5 text-[10px] text-muted-foreground/45 font-medium">{formatDate(note.updated_at)}</p>
+        <p className="mt-2.5 text-[10px] text-muted-foreground font-medium">{formatDate(note.updated_at)}</p>
       </div>
     </article>
   )
 })
+

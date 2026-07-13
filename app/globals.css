@@ -407,7 +407,7 @@ mark {
 
   /* Muted */
   --color-muted: oklch(96% 0.005 240);
-  --color-muted-foreground: oklch(55% 0.015 240);
+  --color-muted-foreground: oklch(48% 0.015 240); /* a11y fix: was 55%, darkened to meet WCAG AA 4.5:1 on sidebar bg and selected card bg */
 
   /* Accent - Minty fresh */
   --color-accent: oklch(96% 0.03 145);
@@ -521,4 +521,5 @@ mark {
   height: 0 !important;
   background: transparent !important;
 }
+
 
