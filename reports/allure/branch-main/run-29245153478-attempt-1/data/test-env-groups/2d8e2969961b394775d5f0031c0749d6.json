@@ -1,0 +1,1 @@
+{"id":"2d8e2969961b394775d5f0031c0749d6","fullName":"everfreenote:cypress/component/ui/web/hooks/useNoteAppController.cy.tsx#useNoteAppController flushes pending editor save when clicking a tag while editing","name":"flushes pending editor save when clicking a tag while editing","status":"passed","testResultsByEnv":{"default":"e7f5e91d67d5a2b24239e3d87c3f6491"}}
