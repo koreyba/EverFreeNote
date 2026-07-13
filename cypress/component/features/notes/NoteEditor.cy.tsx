@@ -240,7 +240,7 @@ describe('NoteEditor Component', () => {
     cy.get('@onAutoSave').should('not.have.been.called', { timeout: 1000 })
   })
 
-  it('does not autosave when only tags change', () => {
+  it('triggers autosave when tags change', () => {
     const onAutoSave = (() => {
       const stub = cy.stub().resolves()
       cy.wrap(stub).as('onAutoSave')
@@ -259,7 +259,7 @@ describe('NoteEditor Component', () => {
     cy.get('input[placeholder="work, personal, ideas"]').type('onlytag{enter}')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
 
-    cy.get('@onAutoSave').should('not.have.been.called', { timeout: 800 })
+    cy.get('@onAutoSave').should('have.been.called', { timeout: 800 })
   })
 
   it('does not interrupt typing when autosave updates props / assigns noteId', () => {
@@ -482,6 +482,40 @@ describe('NoteEditor Component', () => {
     )
     cy.get('button[aria-label="More actions"]').click()
     cy.contains('[role="menuitem"]', 'Delete note').should('not.exist')
+  })
+
+  it('keeps the header and formatting toolbar visible when scrolling down a long note', () => {
+    const longContent = Array.from({ length: 50 }, (_, i) => `<p>Line ${i}</p>`).join('')
+    const props = { ...getDefaultProps(), description: longContent }
+
+    cy.mount(
+      <div style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
+        <NoteEditor {...props} />
+      </div>
+    )
+
+    cy.get('.tiptap').should('be.visible')
+    cy.get('.overflow-y-auto').scrollTo('bottom', { duration: 100, ensureScrollable: false })
+
+    cy.contains('button', 'Save').should('be.visible')
+    cy.contains('button', 'Read').should('be.visible')
+
+    cy.get('[data-cy="bold-button"]').should('be.visible')
+  })
+
+  it('allows entering tag edit mode by clicking the empty space and deleting tags while scrolled', () => {
+    const manyTags = Array.from({ length: 20 }, (_, i) => `tag-${i}`).join(', ')
+    const props = { ...getDefaultProps(), initialTags: manyTags }
+    cy.mount(<NoteEditor {...props} />)
+
+    cy.get('button[title="Add tag"]').click()
+    
+    cy.get('input[placeholder="work, personal, ideas"]')
+      .should('be.visible')
+      .should('have.focus')
+
+    cy.contains('[data-cy="interactive-tag"]', 'tag-19').find('button').click({ force: true })
+    cy.contains('tag-19').should('not.exist')
   })
 })
 
