@@ -1,0 +1,1 @@
+{"id":"ee600ef467f2e5422c35b3f7b654bcf7","fullName":"everfreenote-mobile:tests/component/useMobileSearchMode.test.tsx#useMobileSearchMode preserves a local edit that happens before hydration finishes","name":"preserves a local edit that happens before hydration finishes","status":"passed","testResultsByEnv":{"default":"dd228fd9c0a2f3f745cf2ec0368dcb88"}}
