@@ -1,1 +1,0 @@
-{"id":"a2907d04f55eb126283388a06dfc1bd7","fullName":"everfreenote:ui/web/tests/unit/components/chunkFocusUtils.test.ts#chunkFocusUtils returns false without dispatching when no text block overlaps the chunk","name":"returns false without dispatching when no text block overlaps the chunk","status":"passed","testResultsByEnv":{"default":"f409a42ec67730cd8b6894cea6864dde"}}
