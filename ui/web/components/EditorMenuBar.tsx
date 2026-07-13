@@ -76,7 +76,7 @@ export const EditorMenuBar = ({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="sticky top-[-1px] z-20 flex flex-wrap items-center gap-1 border-b bg-card p-2 shadow-sm">
+      <div className="sticky top-[69px] z-20 flex flex-wrap items-center gap-1.5 border-b border-border/40 bg-background/85 backdrop-blur-md p-2 shadow-sm rounded-t-xl">
 
         {/* History */}
         <EditorToolbarButton dataCy="undo-button" label="Undo (Ctrl+Z)" onClick={onUndo} disabled={!historyState.canUndo} ariaLabel="Undo">

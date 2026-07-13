@@ -44,12 +44,12 @@ export function DeleteAccountPanel({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border bg-muted/30 p-4">
+      <div className="rounded-2xl border border-border/40 bg-muted/30 dark:bg-muted/10 p-4">
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Email</p>
         <p className="mt-2 break-all text-sm sm:break-normal">{email ?? "No email available"}</p>
       </div>
 
-      <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
         <h3 className="text-base font-semibold text-destructive">Permanent action</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           This will permanently delete your account and all notes. Export your notes before deleting the account if
@@ -57,7 +57,7 @@ export function DeleteAccountPanel({
         </p>
       </div>
 
-      <div className="flex items-start gap-3 rounded-xl border bg-background px-4 py-3">
+      <div className="flex items-start gap-3 rounded-2xl border border-border/40 bg-background px-4 py-3">
         <Checkbox
           id="settings-delete-account-ack"
           checked={acknowledged}

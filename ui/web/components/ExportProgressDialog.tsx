@@ -52,7 +52,7 @@ export function ExportProgressDialog({ open, progress, onClose }: ExportProgress
 
         {isComplete && (
           <DialogFooter>
-            <Button onClick={onClose} className="w-full">
+            <Button onClick={onClose} className="w-full rounded-full shadow-sm">
               Close
             </Button>
           </DialogFooter>

@@ -170,7 +170,7 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
               <p className="text-sm text-muted-foreground">
                 Selected: <span className="font-medium text-foreground">{selectedCount}</span> of {totalCount}
               </p>
-              <Button variant="outline" size="sm" onClick={handleSelectAll} disabled={totalCount === 0}>
+              <Button variant="outline" size="sm" className="rounded-full shadow-sm hover:bg-muted/50 transition-all" onClick={handleSelectAll} disabled={totalCount === 0}>
                 {allSelected ? "Clear selection" : "Select all"}
               </Button>
             </div>
@@ -180,35 +180,35 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by title or text"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/60"
+                className="w-full rounded-full border border-border/40 bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 shadow-sm"
               />
             </div>
           </div>
 
           {initialLoading ? (
-            <div className="flex-1 rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground flex items-center justify-center">
+            <div className="flex-1 rounded-2xl border border-dashed border-border/40 p-6 text-center text-sm text-muted-foreground flex items-center justify-center">
               Loading notes...
             </div>
           ) : totalCount === 0 ? (
-            <div className="flex-1 rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground flex items-center justify-center">
+            <div className="flex-1 rounded-2xl border border-dashed border-border/40 p-6 text-center text-sm text-muted-foreground flex items-center justify-center">
               You do not have any notes to export yet
             </div>
           ) : filteredNotes.length === 0 ? (
-            <div className="flex-1 rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground flex items-center justify-center">
+            <div className="flex-1 rounded-2xl border border-dashed border-border/40 p-6 text-center text-sm text-muted-foreground flex items-center justify-center">
               Nothing found for &quot;{search}&quot;
             </div>
           ) : (
-            <div className="flex-1 sm:flex-none sm:h-[55vh] rounded-md border p-2 min-h-0 overflow-hidden flex flex-col">
+            <div className="flex-1 sm:flex-none sm:h-[55vh] rounded-2xl border border-border/40 p-2 min-h-0 overflow-hidden flex flex-col">
               <div onScroll={handleScroll} className="flex-1 overflow-y-auto pr-1 space-y-2">
                 {filteredNotes.map((note) => {
                   const isSelected = selectAll ? !deselectedIds.has(note.id) : selectedIds.has(note.id)
                   return (
                     <div
                       key={note.id}
-                      className={`flex items-center gap-3 rounded-lg border p-2 transition-colors cursor-pointer ${
+                      className={`flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer ${
                         isSelected
-                          ? "border-primary/60 bg-primary/5"
-                          : "border-border hover:border-primary/40 hover:bg-muted/50"
+                          ? "border-primary bg-primary/5 dark:bg-primary/10"
+                          : "border-border/30 hover:bg-muted/30"
                       }`}
                       onClick={() => toggleNote(note.id)}
                     >
@@ -270,10 +270,10 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
           )}
 
           <div className="flex justify-end gap-2 shrink-0 pt-2 sm:pt-0">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" className="rounded-full shadow-sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleExport} disabled={selectedCount === 0}>
+            <Button className="rounded-full shadow-sm" onClick={handleExport} disabled={selectedCount === 0}>
               Export{selectedCount > 0 ? ` (${selectedCount})` : ""}
             </Button>
           </div>

@@ -35,12 +35,43 @@ button,
 
 /* Hide scrollbar utility */
 .scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 .scrollbar-none::-webkit-scrollbar {
-  display: none;
+  display: none !important;
+}
+
+/* Premium thin scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--color-border), transparent 30%);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* For Firefox */
+html, body, .overflow-y-auto, .overflow-x-auto, [class*="overflow-y-"], [class*="overflow-x-"] {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--color-border), transparent 30%) transparent;
 }
 
 /* =============================================================================
@@ -69,7 +100,7 @@ mark {
 .note-content,
 .note-content .ProseMirror {
   color: var(--color-foreground);
-  font-size: 12pt;
+  font-size: 1.05rem;
   line-height: var(--line-height-body);
   max-width: none;
   /* Единый white-space для чтения и редактирования */
@@ -92,11 +123,12 @@ mark {
 .note-content h6 {
   color: var(--color-foreground);
   font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .note-content h1 {
   margin-top: 0;
-  margin-bottom: 0.8888889em;
+  margin-bottom: 0.8em;
   line-height: var(--line-height-heading);
   font-size: 2.25em;
 }
@@ -356,41 +388,41 @@ mark {
      ============================================================================= */
 
   /* Backgrounds */
-  --color-background: oklch(100% 0 0);
-  --color-foreground: oklch(20% 0.01 256);
+  --color-background: oklch(99% 0.003 240);
+  --color-foreground: oklch(22% 0.015 240);
 
   /* Cards and surfaces */
   --color-card: oklch(100% 0 0);
-  --color-card-foreground: oklch(20% 0.01 256);
+  --color-card-foreground: oklch(22% 0.015 240);
   --color-popover: oklch(100% 0 0);
-  --color-popover-foreground: oklch(20% 0.01 256);
+  --color-popover-foreground: oklch(22% 0.015 240);
 
   /* Primary - Vibrant Emerald */
-  --color-primary: oklch(60% 0.18 145);
+  --color-primary: oklch(62% 0.16 145);
   --color-primary-foreground: oklch(100% 0 0);
 
   /* Secondary */
-  --color-secondary: oklch(97% 0.01 145);
+  --color-secondary: oklch(96% 0.015 145);
   --color-secondary-foreground: oklch(40% 0.05 145);
 
   /* Muted */
-  --color-muted: oklch(97% 0.005 256);
-  --color-muted-foreground: oklch(55% 0.02 256);
+  --color-muted: oklch(96% 0.005 240);
+  --color-muted-foreground: oklch(55% 0.015 240);
 
   /* Accent - Minty fresh */
   --color-accent: oklch(96% 0.03 145);
   --color-accent-foreground: oklch(40% 0.05 145);
 
   /* Destructive */
-  --color-destructive: oklch(55% 0.22 29);
+  --color-destructive: oklch(58% 0.2 29);
   --color-destructive-foreground: oklch(100% 0 0);
 
   /* Borders and inputs */
-  --color-border: oklch(90% 0.005 256);
-  --color-input: oklch(90% 0.005 256);
+  --color-border: oklch(94% 0.003 240);
+  --color-input: oklch(94% 0.003 240);
 
   /* Focus ring */
-  --color-ring: oklch(55% 0.15 145);
+  --color-ring: oklch(62% 0.14 145);
 
   /* Charts */
   --color-chart-1: oklch(69.75% 0.1403 50.58);
@@ -400,14 +432,14 @@ mark {
   --color-chart-5: oklch(76.07% 0.1682 41.23);
 
   /* Sidebar */
-  --color-sidebar-background: oklch(98% 0 0);
-  --color-sidebar-foreground: oklch(35% 0.01 256);
-  --color-sidebar-primary: oklch(55% 0.15 145);
+  --color-sidebar-background: oklch(97.5% 0.004 240);
+  --color-sidebar-foreground: oklch(35% 0.015 240);
+  --color-sidebar-primary: oklch(62% 0.16 145);
   --color-sidebar-primary-foreground: oklch(100% 0 0);
-  --color-sidebar-accent: oklch(96% 0.02 145);
+  --color-sidebar-accent: oklch(95% 0.02 145);
   --color-sidebar-accent-foreground: oklch(30% 0.05 145);
-  --color-sidebar-border: oklch(90% 0.005 256);
-  --color-sidebar-ring: oklch(55% 0.15 145);
+  --color-sidebar-border: oklch(93.5% 0.004 240);
+  --color-sidebar-ring: oklch(62% 0.16 145);
 }
 
 /* =============================================================================
@@ -428,8 +460,8 @@ mark {
   --color-popover-foreground: oklch(95% 0.005 256);
 
   /* Primary - vibrant emerald green for dark theme */
-  --color-primary: oklch(65% 0.18 145);
-  --color-primary-foreground: oklch(15% 0.01 145);
+  --color-primary: oklch(66% 0.15 145);
+  --color-primary-foreground: oklch(12% 0.01 145);
 
   /* Secondary */
   --color-secondary: oklch(30% 0.02 256);
@@ -444,7 +476,7 @@ mark {
   --color-accent-foreground: oklch(95% 0.005 256);
 
   /* Destructive */
-  --color-destructive: oklch(50% 0.2 29);
+  --color-destructive: oklch(50% 0.18 29);
   --color-destructive-foreground: oklch(100% 0 0);
 
   /* Borders and inputs */
@@ -452,7 +484,7 @@ mark {
   --color-input: oklch(32% 0.015 256);
 
   /* Focus ring */
-  --color-ring: oklch(65% 0.18 145);
+  --color-ring: oklch(66% 0.15 145);
 
   /* Charts */
   --color-chart-1: oklch(65% 0.18 145);
@@ -461,13 +493,31 @@ mark {
   --color-chart-4: oklch(65% 0.15 305);
   --color-chart-5: oklch(65% 0.18 351);
 
-  /* Sidebar */
-  --color-sidebar-background: oklch(18% 0.015 256);
+  /* Sidebar - matched to card background for visual continuity */
+  --color-sidebar-background: oklch(24% 0.015 256);
   --color-sidebar-foreground: oklch(92% 0.005 256);
-  --color-sidebar-primary: oklch(65% 0.18 145);
-  --color-sidebar-primary-foreground: oklch(15% 0.01 145);
-  --color-sidebar-accent: oklch(28% 0.03 145);
+  --color-sidebar-primary: oklch(66% 0.15 145);
+  --color-sidebar-primary-foreground: oklch(12% 0.01 145);
+  --color-sidebar-accent: oklch(30% 0.03 145);
   --color-sidebar-accent-foreground: oklch(92% 0.005 256);
   --color-sidebar-border: oklch(28% 0.015 256);
-  --color-sidebar-ring: oklch(65% 0.18 145);
+  --color-sidebar-ring: oklch(66% 0.15 145);
+}
+
+/* 
+ * Absolute forced hidden scrollbars
+ * Used for components like HorizontalTagScroll that MUST NOT show scrollbars or arrows 
+ */
+.hide-all-scrollbars,
+.hide-all-scrollbars[class*="overflow-"] {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.hide-all-scrollbars::-webkit-scrollbar,
+.hide-all-scrollbars[class*="overflow-"]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }

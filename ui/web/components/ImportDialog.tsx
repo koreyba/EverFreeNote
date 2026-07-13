@@ -95,10 +95,10 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-colors ${
               isDragging
                 ? "border-primary bg-primary/5"
-                : "border-muted-foreground/25"
+                : "border-border/40"
             } ${selectedFiles.length > 0 ? "bg-muted/30" : ""}`}
           >
             <input
@@ -121,11 +121,11 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               <Label className="text-sm font-medium">
                 Selected files ({selectedFiles.length})
               </Label>
-              <div className="max-h-32 overflow-y-auto space-y-1 border rounded-md p-2">
+              <div className="max-h-32 overflow-y-auto space-y-1 border border-border/40 rounded-xl p-2">
                 {selectedFiles.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-2 bg-muted/50 rounded text-sm"
+                    className="flex items-center justify-between p-2 bg-muted/50 rounded-xl text-sm"
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <FileText className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
@@ -135,7 +135,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemoveFile(index)}
-                      className="h-6 px-2"
+                      className="h-6 px-2 rounded-full"
                       aria-label={`Remove ${file.name}`}
                     >
                       ×
@@ -189,10 +189,10 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" className="rounded-full shadow-sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleImport} disabled={selectedFiles.length === 0}>
+            <Button className="rounded-full shadow-sm" onClick={handleImport} disabled={selectedFiles.length === 0}>
               Import {selectedFiles.length > 0 && `(${selectedFiles.length})`}
             </Button>
           </div>

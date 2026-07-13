@@ -176,15 +176,15 @@ export function SettingsPage() {
   return (
     <main className="min-h-[100svh] min-h-[100dvh] bg-muted/20 px-3 py-3 sm:px-4 sm:py-5 md:px-6 md:py-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 md:gap-4">
-        <div className="rounded-3xl border bg-background/95 shadow-sm">
-          <div className="border-b px-4 py-4 sm:px-5 md:px-6">
+        <div className="rounded-3xl border border-border/40 bg-background/95 shadow-sm">
+          <div className="border-b border-border/40 px-4 py-4 sm:px-5 md:px-6">
             <div className="grid grid-cols-[auto_1fr_auto] items-start gap-3 md:items-center">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handleExit}
                 aria-label="Back"
-                className="shrink-0"
+                className="shrink-0 rounded-full shadow-sm hover:bg-muted/50 transition-all"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
@@ -195,7 +195,13 @@ export function SettingsPage() {
 
               <div className="flex items-center gap-2 justify-self-end">
                 <ThemeToggle />
-                <Button variant="outline" size="icon" onClick={handleExit} aria-label="Close settings">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleExit}
+                  aria-label="Close settings"
+                  className="rounded-full shadow-sm hover:bg-muted/50 transition-all"
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </div>

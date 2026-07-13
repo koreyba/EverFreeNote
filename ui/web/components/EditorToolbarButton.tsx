@@ -28,10 +28,10 @@ export const EditorToolbarButton = ({
       <Button
         data-cy={dataCy}
         variant={active ? "secondary" : "ghost"}
-        size="sm"
         onClick={onClick}
         disabled={disabled}
         aria-label={ariaLabel}
+        className="h-8 w-8 p-0 rounded-lg active:scale-90 hover:bg-muted transition-all duration-100 ease-out shrink-0"
       >
         {children}
       </Button>

@@ -52,7 +52,7 @@ export default function AuthForm({
         <Button
           data-cy="google-button"
           onClick={handleGoogleAuth}
-          className="w-full h-12 text-base"
+          className="w-full h-12 text-base rounded-full shadow-sm hover:opacity-90 transition-all duration-200"
           disabled={loading}
         >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -80,7 +80,7 @@ export default function AuthForm({
           <>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-border/40" />
               </div>
               <div className="relative flex justify-center text-sm">
                 <span
@@ -97,7 +97,7 @@ export default function AuthForm({
                 data-cy="test-login-button"
                 onClick={handleTestLogin}
                 variant="outline"
-                className="w-full h-10 text-sm hover:bg-accent hover:text-accent-foreground"
+                className="w-full h-10 text-sm rounded-full shadow-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200"
                 disabled={loading}
               >
                 Test Login (Persistent)
@@ -106,7 +106,7 @@ export default function AuthForm({
                 data-cy="skip-auth-button"
                 onClick={handleSkipAuth}
                 variant="outline"
-                className="w-full h-10 text-sm hover:bg-accent hover:text-accent-foreground"
+                className="w-full h-10 text-sm rounded-full shadow-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200"
                 disabled={loading}
               >
                 Skip Authentication (Quick Test)

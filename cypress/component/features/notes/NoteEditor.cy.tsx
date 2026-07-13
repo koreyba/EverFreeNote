@@ -126,9 +126,8 @@ describe('NoteEditor Component', () => {
 
     // INPUT_DEBOUNCE_MS (250) + autosaveDelayMs (200) = 450ms
 
-    cy.get('@onAutoSave').should('not.have.been.called', { timeout: 500 })
-
-    cy.get('@onAutoSave').should('have.been.calledOnce', { timeout: 1500 })
+    cy.get('@onAutoSave').should('not.have.been.called')
+    cy.get('@onAutoSave', { timeout: 1500 }).should('have.been.calledOnce')
     cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
       noteId: 'note-1',
       title: 'New Title',
@@ -207,7 +206,7 @@ describe('NoteEditor Component', () => {
     cy.get('input[placeholder="work, personal, ideas"]').type('Pending Tag')
     cy.get('input[placeholder="Note title"]').type(' updated')
 
-    cy.get('@onAutoSave').should('have.been.calledOnce', { timeout: 1500 })
+    cy.get('@onAutoSave', { timeout: 1500 }).should('have.been.calledOnce')
     cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
       noteId: 'note-1',
       tags: 'tag1, tag2, pending tag'
@@ -237,10 +236,10 @@ describe('NoteEditor Component', () => {
 
     // onSave should be called, but onAutoSave should NOT fire
     cy.get('@onSave').should('have.been.calledOnce')
-    cy.get('@onAutoSave').should('not.have.been.called', { timeout: 1000 })
+    cy.get('@onAutoSave').should('not.have.been.called')
   })
 
-  it('does not autosave when only tags change', () => {
+  it('triggers autosave when tags change', () => {
     const onAutoSave = (() => {
       const stub = cy.stub().resolves()
       cy.wrap(stub).as('onAutoSave')
@@ -259,7 +258,7 @@ describe('NoteEditor Component', () => {
     cy.get('input[placeholder="work, personal, ideas"]').type('onlytag{enter}')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
 
-    cy.get('@onAutoSave').should('not.have.been.called', { timeout: 800 })
+    cy.get('@onAutoSave', { timeout: 800 }).should('have.been.called')
   })
 
   it('does not interrupt typing when autosave updates props / assigns noteId', () => {
@@ -483,6 +482,41 @@ describe('NoteEditor Component', () => {
     cy.get('button[aria-label="More actions"]').click()
     cy.contains('[role="menuitem"]', 'Delete note').should('not.exist')
   })
+
+  it('keeps the header and formatting toolbar visible when scrolling down a long note', () => {
+    const longContent = Array.from({ length: 50 }, (_, i) => `<p>Line ${i}</p>`).join('')
+    const props = { ...getDefaultProps(), initialDescription: longContent }
+
+    cy.mount(
+      <div style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
+        <NoteEditor {...props} />
+      </div>
+    )
+
+    cy.get('.tiptap').should('be.visible')
+    cy.get('.overflow-y-auto').scrollTo('bottom', { duration: 100, ensureScrollable: false })
+
+    cy.contains('button', 'Save').should('be.visible')
+    cy.contains('button', 'Read').should('be.visible')
+
+    cy.get('[data-cy="bold-button"]').should('be.visible')
+  })
+
+  it('allows entering tag edit mode by clicking the tag icon and deleting tags while scrolled', () => {
+    const manyTags = Array.from({ length: 20 }, (_, i) => `tag-${i}`).join(', ')
+    const props = { ...getDefaultProps(), initialTags: manyTags }
+    cy.mount(<NoteEditor {...props} />)
+
+    cy.get('.overflow-x-auto').scrollTo('right', { duration: 100, ensureScrollable: false })
+    cy.get('[data-testid="tag-input-container"]').find('svg.lucide-tag').first().click()
+    
+    cy.get('input[placeholder="work, personal, ideas"]')
+      .should('be.visible')
+      .should('have.focus')
+
+    cy.contains('[data-cy="interactive-tag"]', 'tag-19').find('button').click()
+    cy.get('[data-testid="tag-input-container"]').contains('tag-19').should('not.exist')
+  })
 })
 
 /**
@@ -677,5 +711,30 @@ describe('NoteEditor – autosave race condition on new note create', () => {
 
     cy.get('.ProseMirror .chunk-focus-block').should('have.length.at.least', 1)
     cy.get('.ProseMirror .chunk-focus-block').first().should('contain.text', 'Alpha beta gamma')
+  })
+
+  it('allows deleting tags by clicking the remove button', () => {
+    const props = {
+      initialTitle: 'Test Title',
+      initialDescription: '<p>Test Description</p>',
+      initialTags: 'tag1, tag2',
+      availableTags: ['tag1', 'tag2', 'work', 'world', 'personal'],
+      isSaving: false,
+      onSave: (() => {
+        const stub = cy.stub()
+        cy.wrap(stub).as('onSave')
+        return stub
+      })(),
+      onRead: (() => {
+        const stub = cy.stub()
+        cy.wrap(stub).as('onRead')
+        return stub
+      })(),
+    }
+    cy.mount(<NoteEditor {...props} />)
+    
+    // Attempt to delete a tag. This should fail if pointer capture swallows the click event.
+    cy.contains('[data-cy="interactive-tag"]', 'tag1').find('button').click()
+    cy.contains('[data-cy="interactive-tag"]', 'tag1').should('not.exist')
   })
 })

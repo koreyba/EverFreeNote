@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { NoteCard } from '../../../../ui/web/components/features/notes/NoteCard'
 import type { Note, SearchResult } from '../../../../core/types/domain'
 import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
@@ -32,7 +32,7 @@ describe('NoteCard Component', () => {
 
     cy.contains('My note').should('be.visible')
     cy.contains('Short desc').should('be.visible')
-    cy.get('.bg-accent').should('exist')
+    cy.get('[data-testid="note-card"]').should('exist')
 
     cy.contains('work').click()
     cy.get('@onTagClick').should('have.been.calledWith', 'work')

@@ -6,10 +6,11 @@ import { cn } from "@ui/web/lib/utils"
 type HorizontalTagScrollProps = {
   children: React.ReactNode
   className?: string
+  onClick?: (e: React.MouseEvent) => void
 }
 
 export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTagScrollProps>(
-  function HorizontalTagScroll({ children, className }, ref) {
+  function HorizontalTagScroll({ children, className, onClick }, ref) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
 
   // Merge external ref with internal ref
@@ -28,38 +29,54 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
     }
   }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  React.useEffect(() => {
+    const handleGlobalPointerMove = (e: PointerEvent) => {
+      if (!isDraggingRef.current || !scrollContainerRef.current) return
+      
+      const x = e.pageX - scrollContainerRef.current.offsetLeft
+      const walk = x - startXRef.current
+      
+      if (Math.abs(walk) > 3) {
+        if (!hasDraggedRef.current) {
+          hasDraggedRef.current = true
+          scrollContainerRef.current.style.cursor = "grabbing"
+          scrollContainerRef.current.style.userSelect = "none"
+        }
+      }
+      
+      if (hasDraggedRef.current) {
+        e.preventDefault()
+        scrollContainerRef.current.scrollLeft = scrollLeftRef.current - walk
+      }
+    }
+
+    const handleGlobalPointerUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.style.cursor = ""
+          scrollContainerRef.current.style.userSelect = ""
+        }
+      }
+    }
+
+    window.addEventListener("pointermove", handleGlobalPointerMove)
+    window.addEventListener("pointerup", handleGlobalPointerUp)
+    window.addEventListener("pointercancel", handleGlobalPointerUp)
+
+    return () => {
+      window.removeEventListener("pointermove", handleGlobalPointerMove)
+      window.removeEventListener("pointerup", handleGlobalPointerUp)
+      window.removeEventListener("pointercancel", handleGlobalPointerUp)
+    }
+  }, [])
+
+  const handlePointerDown = (e: React.PointerEvent) => {
     if (!scrollContainerRef.current) return
     isDraggingRef.current = true
     hasDraggedRef.current = false
     startXRef.current = e.pageX - scrollContainerRef.current.offsetLeft
     scrollLeftRef.current = scrollContainerRef.current.scrollLeft
-    scrollContainerRef.current.style.cursor = "grabbing"
-    scrollContainerRef.current.style.userSelect = "none"
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDraggingRef.current || !scrollContainerRef.current) return
-    e.preventDefault()
-    const x = e.pageX - scrollContainerRef.current.offsetLeft
-    const walk = x - startXRef.current
-    if (Math.abs(walk) > 3) {
-      hasDraggedRef.current = true
-    }
-    scrollContainerRef.current.scrollLeft = scrollLeftRef.current - walk
-  }
-
-  const handleMouseUp = () => {
-    if (!scrollContainerRef.current) return
-    isDraggingRef.current = false
-    scrollContainerRef.current.style.cursor = "grab"
-    scrollContainerRef.current.style.userSelect = ""
-  }
-
-  const handleMouseLeave = () => {
-    if (isDraggingRef.current) {
-      handleMouseUp()
-    }
   }
 
   // Prevent click events on children when dragging
@@ -72,18 +89,16 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
   }
 
   return (
-    <div
+    <div // NOSONAR
       ref={scrollContainerRef}
       className={cn(
-        "flex items-center gap-2 overflow-x-scroll scrollbar-none cursor-grab",
+        "flex items-center gap-2 overflow-x-auto cursor-grab hide-all-scrollbars",
         className
       )}
       onWheel={handleWheel}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
+      onPointerDown={handlePointerDown}
       onClickCapture={handleClick}
+      onClick={onClick}
     >
       {children}
     </div>
