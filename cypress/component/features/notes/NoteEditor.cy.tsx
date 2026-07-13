@@ -712,4 +712,29 @@ describe('NoteEditor – autosave race condition on new note create', () => {
     cy.get('.ProseMirror .chunk-focus-block').should('have.length.at.least', 1)
     cy.get('.ProseMirror .chunk-focus-block').first().should('contain.text', 'Alpha beta gamma')
   })
+
+  it('allows deleting tags by clicking the remove button', () => {
+    const props = {
+      initialTitle: 'Test Title',
+      initialDescription: '<p>Test Description</p>',
+      initialTags: 'tag1, tag2',
+      availableTags: ['tag1', 'tag2', 'work', 'world', 'personal'],
+      isSaving: false,
+      onSave: (() => {
+        const stub = cy.stub()
+        cy.wrap(stub).as('onSave')
+        return stub
+      })(),
+      onRead: (() => {
+        const stub = cy.stub()
+        cy.wrap(stub).as('onRead')
+        return stub
+      })(),
+    }
+    cy.mount(<NoteEditor {...props} />)
+    
+    // Attempt to delete a tag. This should fail if pointer capture swallows the click event.
+    cy.contains('[data-cy="interactive-tag"]', 'tag1').find('button').click()
+    cy.contains('[data-cy="interactive-tag"]', 'tag1').should('not.exist')
+  })
 })

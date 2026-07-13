@@ -29,40 +29,54 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
     }
   }
 
+  React.useEffect(() => {
+    const handleGlobalPointerMove = (e: PointerEvent) => {
+      if (!isDraggingRef.current || !scrollContainerRef.current) return
+      
+      const x = e.pageX - scrollContainerRef.current.offsetLeft
+      const walk = x - startXRef.current
+      
+      if (Math.abs(walk) > 3) {
+        if (!hasDraggedRef.current) {
+          hasDraggedRef.current = true
+          scrollContainerRef.current.style.cursor = "grabbing"
+          scrollContainerRef.current.style.userSelect = "none"
+        }
+      }
+      
+      if (hasDraggedRef.current) {
+        e.preventDefault()
+        scrollContainerRef.current.scrollLeft = scrollLeftRef.current - walk
+      }
+    }
+
+    const handleGlobalPointerUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.style.cursor = ""
+          scrollContainerRef.current.style.userSelect = ""
+        }
+      }
+    }
+
+    window.addEventListener("pointermove", handleGlobalPointerMove)
+    window.addEventListener("pointerup", handleGlobalPointerUp)
+    window.addEventListener("pointercancel", handleGlobalPointerUp)
+
+    return () => {
+      window.removeEventListener("pointermove", handleGlobalPointerMove)
+      window.removeEventListener("pointerup", handleGlobalPointerUp)
+      window.removeEventListener("pointercancel", handleGlobalPointerUp)
+    }
+  }, [])
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!scrollContainerRef.current) return
-    e.currentTarget.setPointerCapture(e.pointerId)
     isDraggingRef.current = true
     hasDraggedRef.current = false
     startXRef.current = e.pageX - scrollContainerRef.current.offsetLeft
     scrollLeftRef.current = scrollContainerRef.current.scrollLeft
-    scrollContainerRef.current.style.cursor = "grabbing"
-    scrollContainerRef.current.style.userSelect = "none"
-  }
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDraggingRef.current || !scrollContainerRef.current) return
-    e.preventDefault()
-    const x = e.pageX - scrollContainerRef.current.offsetLeft
-    const walk = x - startXRef.current
-    if (Math.abs(walk) > 3) {
-      hasDraggedRef.current = true
-    }
-    scrollContainerRef.current.scrollLeft = scrollLeftRef.current - walk
-  }
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!scrollContainerRef.current) return
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId)
-    }
-    isDraggingRef.current = false
-    scrollContainerRef.current.style.cursor = ""
-    scrollContainerRef.current.style.userSelect = ""
-  }
-
-  const handlePointerCancel = (e: React.PointerEvent) => {
-    handlePointerUp(e)
   }
 
   // Prevent click events on children when dragging
@@ -83,9 +97,6 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
       )}
       onWheel={handleWheel}
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
       onClickCapture={handleClick}
       onClick={onClick}
     >
