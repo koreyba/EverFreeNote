@@ -60,6 +60,7 @@ export const HorizontalTagScroll = React.forwardRef<HTMLDivElement, HorizontalTa
   const handleMouseLeave = () => {
     if (isDraggingRef.current) {
       handleMouseUp()
+      hasDraggedRef.current = false
     }
   }
 

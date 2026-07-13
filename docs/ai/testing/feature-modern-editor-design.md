@@ -20,7 +20,11 @@ description: Define testing approach and verify the modern editor redesign featu
   - `NoteView.cy.tsx` (checks reading mode header, copy functionality, tag display scroll)
   - `NoteEditor.cy.tsx` (checks autosave status, tag inputs suggestions list, title input interactions)
 - **Unit testing coverage**: `richTextEditor.test.tsx` (Jest unit test verifying TipTap initialization and selection markdown conversion).
-- **Gaps & E2E Validation**: End-to-end integration flows (crud, full-text tag filtering) are automated in a separate repository (`koreyba/EverFreeNote-e2e`). Since we updated text strings and added data-testids (e.g. `search-panel-clear-tag`), visual E2E changes should be verified on CI. Remaining visual coverage gaps (animations, light/dark mode transitions, responsive breakpoint collapsing behavior) are covered by manual checklists below.
+  - *Status (2026-07-10)*: **Passed** (unit-tests-core, unit-tests-web, unit-tests-mobile, component-tests).
+  - *Code Quality (2026-07-10)*: **Passed** type-check, ESLint (Analyze), and SonarCloud Code Analysis.
+- **Gaps & E2E Validation**: End-to-end integration flows (crud, full-text tag filtering) are automated in a separate repository (`koreyba/EverFreeNote-e2e`). Since we updated text strings and added data-testids (e.g. `search-panel-clear-tag`), visual E2E changes should be verified on CI.
+  - *Status (2026-07-10)*: E2E Tests (PR Preview) **Passed** 99.74%.
+  - *Coverage Gaps*: Remaining visual coverage gaps (animations, light/dark mode transitions, responsive breakpoint collapsing behavior) are covered by manual checklists below.
 
 ## Manual Verification Checklist
 Verify the following features in **both Light and Dark modes**:
