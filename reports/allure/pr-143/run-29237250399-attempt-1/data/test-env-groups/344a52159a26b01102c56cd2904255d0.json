@@ -1,1 +1,0 @@
-{"id":"344a52159a26b01102c56cd2904255d0","fullName":"everfreenote:core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard buildPayload returns empty payload for empty/whitespace body","name":"returns empty payload for empty/whitespace body","status":"passed","testResultsByEnv":{"default":"ea2b922475ed1dd0cb3a38047fc202d2"}}
