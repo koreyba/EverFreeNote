@@ -719,9 +719,9 @@ export function AIIndexTab() {
       onClick={handleBulkIndexClick}
       disabled={bulkIndexProgress !== null}
       className={cn(
-        "w-full justify-center whitespace-nowrap border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
+        "w-full justify-center whitespace-nowrap border-primary/30 bg-primary/5 dark:bg-primary/10 text-primary hover:bg-primary/10 dark:hover:bg-primary/15 hover:text-primary",
         bulkIndexProgress
-          ? "cursor-default border-primary/20 bg-primary/10 text-primary/75"
+          ? "cursor-default border-primary/20 bg-primary/5 dark:bg-primary/10 text-primary/75"
           : "font-medium"
       )}
     >

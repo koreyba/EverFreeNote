@@ -200,6 +200,7 @@ export const AIIndexList = memo(function AIIndexList({
             rowHeight={dynamicRowHeight}
             rowProps={itemData}
             overscanCount={4}
+            role="presentation"
             onScroll={(event: React.UIEvent<HTMLDivElement>) => {
               onScrollOffsetChange?.(event.currentTarget.scrollTop)
             }}

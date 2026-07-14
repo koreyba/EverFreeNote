@@ -416,7 +416,7 @@ mark {
   --color-accent-foreground: oklch(40% 0.05 145);
 
   /* Destructive */
-  --color-destructive: oklch(58% 0.2 29);
+  --color-destructive: oklch(52% 0.2 29);
   --color-destructive-foreground: oklch(100% 0 0);
 
   /* Borders and inputs */
@@ -478,7 +478,7 @@ mark {
   --color-accent-foreground: oklch(95% 0.005 256);
 
   /* Destructive */
-  --color-destructive: oklch(65% 0.2 29);
+  --color-destructive: oklch(50% 0.18 29);
   --color-destructive-foreground: oklch(100% 0 0);
 
   /* Borders and inputs */
@@ -522,6 +522,10 @@ mark {
   width: 0 !important;
   height: 0 !important;
   background: transparent !important;
+}
+
+html:not(.dark) {
+  --color-primary-foreground: oklch(100% 0 0);
 }
 
 

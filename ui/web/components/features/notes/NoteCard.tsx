@@ -118,6 +118,7 @@ export const NoteCard = memo(function NoteCard({
               onClick={(e) => e.stopPropagation()}
               tabIndex={selectionMode ? 0 : -1}
               aria-hidden={!selectionMode}
+              aria-label={note.title ? `Select note "${note.title}"` : "Select note"}
               className={cn(
                 "mt-1 shrink-0 transition-opacity",
                 selectionMode
@@ -196,6 +197,7 @@ export const NoteCard = memo(function NoteCard({
           onClick={(e) => e.stopPropagation()}
           tabIndex={selectionMode ? 0 : -1}
           aria-hidden={!selectionMode}
+          aria-label={note.title ? `Select note "${note.title}"` : "Select note"}
           className={cn(
             "absolute left-2 top-2 z-10 bg-background/90 transition-opacity",
             selectionMode

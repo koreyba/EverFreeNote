@@ -43,13 +43,13 @@ export function MoreActionsMenu({
 
   return (
     <>
-      <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
+      <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen} modal={false}>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="icon" aria-label="More actions">
             <MoreHorizontal className="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[200px]">
+        <DropdownMenuContent align="end" className="min-w-[200px]" portalled={false}>
           <DropdownMenuItem
             onSelect={(event) => {
               event.preventDefault()
