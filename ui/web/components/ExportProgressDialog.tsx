@@ -45,7 +45,7 @@ export function ExportProgressDialog({ open, progress, onClose }: ExportProgress
                 {currentNote} of {totalNotes || 0}
               </span>
             </div>
-            <Progress value={percent} className="h-2" />
+            <Progress value={percent} className="h-2" aria-label="Export progress" />
             <div className="text-center text-sm font-semibold text-primary">{percent}%</div>
           </div>
         </div>

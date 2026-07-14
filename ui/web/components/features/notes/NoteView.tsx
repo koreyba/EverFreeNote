@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import { Edit2, Trash2, ChevronLeft, Copy, Check } from "lucide-react"
@@ -152,7 +152,7 @@ export const NoteView = React.memo(function NoteView({
             dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           />
 
-          <div className="mt-12 pt-6 border-t border-border/40 text-[11px] text-muted-foreground/60 flex flex-wrap gap-x-6 gap-y-2">
+          <div className="mt-12 pt-6 border-t border-border/40 text-[11px] text-foreground/70 flex flex-wrap gap-x-6 gap-y-2">
             <span>Created: {formattedDates.created}</span>
             <span>Updated: {formattedDates.updated}</span>
           </div>

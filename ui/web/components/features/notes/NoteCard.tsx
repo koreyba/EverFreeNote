@@ -1,8 +1,7 @@
-﻿"use client"
+"use client"
 
 import { memo } from "react"
 import type { MouseEvent } from "react"
-import type { KeyboardEvent } from "react"
 import InteractiveTag from "@ui/web/components/InteractiveTag"
 import { Checkbox } from "@ui/web/components/ui/checkbox"
 import DOMPurify from "isomorphic-dompurify"
@@ -36,9 +35,9 @@ function getAccentClass(rank: number) {
 }
 
 function getScoreClass(rank: number) {
-  if (rank >= 0.8) return 'text-emerald-400'
-  if (rank >= 0.65) return 'text-amber-400'
-  return 'text-muted-foreground/60'
+  if (rank >= 0.8) return 'text-emerald-700 dark:text-emerald-400'
+  if (rank >= 0.65) return 'text-amber-700 dark:text-amber-400'
+  return 'text-foreground/60'
 }
 
 function escapeRegExp(s: string) {
@@ -97,18 +96,6 @@ export const NoteCard = memo(function NoteCard({
     onClick()
   }
 
-  const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.target !== event.currentTarget) return
-    if (event.key === "Enter") {
-      event.preventDefault()
-      onClick()
-      return
-    }
-    if (event.key === " ") {
-      event.preventDefault()
-      onClick()
-    }
-  }
 
   // Compact variant - for regular note list
   if (variant === "compact") {
@@ -116,9 +103,7 @@ export const NoteCard = memo(function NoteCard({
       <div
         data-testid="note-card"
         onClick={handleCardClick}
-        onKeyDown={handleCardKeyDown}
-        role="button"
-        tabIndex={0}
+        role="none"
         className={cn(
           "group p-3.5 rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm active:scale-[0.98]",
           isSelected ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
@@ -142,7 +127,18 @@ export const NoteCard = memo(function NoteCard({
             />
           )}
           <div className="flex-1 min-w-0 flex flex-col h-full">
-            <h3 className="font-semibold text-sm leading-snug text-foreground truncate">{note.title || "Untitled"}</h3>
+            <h3
+              tabIndex={selectionMode ? -1 : 0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  onClick()
+                }
+              }}
+              className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1"
+            >
+              {note.title || "Untitled"}
+            </h3>
             <p className="text-[13px] text-muted-foreground leading-normal line-clamp-2 mt-1.5">
               {note.description ? SanitizationService.stripHtml(note.description) : ""}
             </p>
@@ -186,9 +182,7 @@ export const NoteCard = memo(function NoteCard({
     <article
       data-testid="note-card"
       onClick={handleCardClick}
-      onKeyDown={handleCardKeyDown}
-      role="button"
-      tabIndex={0}
+      role="none"
       {...longPressHandlers}
       className={cn(
         'group relative rounded-xl border border-border/40 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/20 hover:shadow-sm active:scale-[0.98]',
@@ -214,8 +208,15 @@ export const NoteCard = memo(function NoteCard({
         {/* Title + rank */}
         <div className="flex items-start gap-2 justify-between">
           <h3
+            tabIndex={selectionMode ? -1 : 0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onClick()
+              }
+            }}
             className={cn(
-              "text-[14px] font-semibold leading-snug text-foreground flex-1 line-clamp-2",
+              "text-[14px] font-semibold leading-snug text-foreground flex-1 line-clamp-2 outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1",
               onToggleSelect && "pl-6"
             )}
           >
@@ -252,7 +253,7 @@ export const NoteCard = memo(function NoteCard({
             <p className="text-[12.5px] leading-relaxed text-foreground/80">
               {parts.map((part, i) => {
                 if (pattern && i % 2 === 1) {
-                  return <mark key={i} className="rounded-sm bg-primary/25 px-0.5 text-foreground">{part}</mark>
+                  return <mark key={i} className="rounded-sm bg-amber-100! text-amber-950! dark:bg-amber-950/40! dark:text-amber-200! px-0.5 font-medium">{part}</mark>
                 }
                 return <span key={i}>{part}</span>
               })}

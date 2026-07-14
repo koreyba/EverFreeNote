@@ -544,10 +544,11 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     }
 
     return (
-        <div
+        <aside
             className={cn("relative flex flex-col h-full w-full md:w-[var(--search-panel-width)] shrink-0 bg-card border-r z-10 motion-safe:animate-in motion-safe:slide-in-from-left-2 motion-safe:duration-200", className)}
             style={{ "--search-panel-width": `${panelWidth}px` } as React.CSSProperties}
             data-testid="search-results-panel"
+            aria-label="Search Results Panel"
         >
             <div className="px-3 pt-3 pb-2 border-b shrink-0 space-y-2">
                 {/* Search input row — Back (mobile) | input | X (desktop) */}
@@ -592,7 +593,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
 
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button data-testid="search-panel-close" variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8 shrink-0 rounded-full hover:bg-muted/50 transition-all" onClick={onClose}>
+                            <Button data-testid="search-panel-close" aria-label="Close search panel" variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8 shrink-0 rounded-full hover:bg-muted/50 transition-all" onClick={onClose}>
                                 <X className="w-4 h-4" />
                             </Button>
                         </TooltipTrigger>
@@ -798,6 +799,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 errorMessage={panelBulkDeleteError?.message ?? null}
                 onClearError={clearPanelBulkDeleteError}
             />
-        </div>
+        </aside>
     )
 })

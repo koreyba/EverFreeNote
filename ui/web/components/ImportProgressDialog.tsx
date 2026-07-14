@@ -70,7 +70,7 @@ export function ImportProgressDialog({
                     {currentFile} of {totalFiles}
                   </span>
                 </div>
-                <Progress value={fileProgress} className="h-2" />
+                <Progress value={fileProgress} className="h-2" aria-label="File import progress" />
               </div>
             )}
 
@@ -90,7 +90,7 @@ export function ImportProgressDialog({
                   {currentNote} of {totalNotes}
                 </span>
               </div>
-              <Progress value={noteProgress} className="h-2" />
+              <Progress value={noteProgress} className="h-2" aria-label="Note import progress" />
             </div>
 
             {/* Progress Percentage */}

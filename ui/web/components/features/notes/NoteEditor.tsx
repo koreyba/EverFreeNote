@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import { ChevronLeft, Copy, Check, Eye } from "lucide-react"
@@ -296,9 +296,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             )}
           </div>
           {(showSaving || isSaving) ? (
-            <div className="text-[10px] text-muted-foreground/70 animate-pulse font-medium">Saving...</div>
+            <div className="text-[10px] text-foreground/70 animate-pulse font-medium">Saving...</div>
           ) : lastSavedAt ? (
-            <div className="text-[10px] text-muted-foreground/70 font-medium">
+            <div className="text-[10px] text-foreground/70 font-medium">
               Saved at {new Date(lastSavedAt).toLocaleTimeString()}
             </div>
           ) : null}

@@ -99,7 +99,7 @@ interface SearchItemData {
 }
 
 // Row component for react-window (regular notes list)
-const NoteRow = memo(({ index, style, ...props }: RowComponentProps<ItemData>) => {
+const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentProps<ItemData>) => {
   const {
     items,
     selectedNoteId,
@@ -137,7 +137,7 @@ const NoteRow = memo(({ index, style, ...props }: RowComponentProps<ItemData>) =
   if (!note) return null
 
   return (
-    <div style={style} className="px-2 py-1">
+    <div style={style} className="px-2 py-1" {...ariaAttributes}>
       <NoteCard
         note={note}
         variant="compact"
@@ -157,7 +157,7 @@ const NoteRow = memo(({ index, style, ...props }: RowComponentProps<ItemData>) =
 NoteRow.displayName = 'NoteRow'
 
 // Row component for react-window (search results)
-const SearchRow = memo(({ index, style, ...props }: RowComponentProps<SearchItemData>) => {
+const SearchRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentProps<SearchItemData>) => {
   const {
     items,
     selectionMode,
@@ -195,7 +195,7 @@ const SearchRow = memo(({ index, style, ...props }: RowComponentProps<SearchItem
   if (!note) return null
 
   return (
-    <div style={style} className="px-3 py-1">
+    <div style={style} className="px-3 py-1" {...ariaAttributes}>
       <NoteCard
         note={note}
         variant="search"

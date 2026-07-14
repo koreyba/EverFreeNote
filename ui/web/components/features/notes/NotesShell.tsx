@@ -216,7 +216,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         />
       )}
 
-      <div
+      <main
         className={cn(
           "flex-1 flex min-h-0 flex-col h-full overflow-hidden",
           !showEditor ? "hidden md:flex" : "w-full"
@@ -231,7 +231,7 @@ export function NotesShell({ controller }: NotesShellProps) {
           pendingChunkFocus={pendingChunkFocus}
           onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
         />
-      </div>
+      </main>
 
       <DeleteNoteDialog controller={controller} />
     </div>

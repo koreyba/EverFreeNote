@@ -105,6 +105,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               type="file"
               multiple
               accept=".enex"
+              aria-label="Upload ENEX file"
               onChange={handleFileSelect}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />

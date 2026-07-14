@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import { LogOut, Plus, Search, Settings } from "lucide-react"
@@ -102,12 +102,13 @@ export function Sidebar({
   } = useBulkDeleteConfirm(onBulkDelete)
 
   return (
-    <div
+    <aside
       className={cn(
         "w-80 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full md:sticky md:top-0 md:h-screen md:overflow-hidden",
         className
       )}
       data-testid={dataTestId}
+      aria-label="Sidebar"
     >
       {/* Header */}
       <div className="p-4 border-b">
@@ -216,7 +217,7 @@ export function Sidebar({
         errorMessage={bulkDeleteError?.message ?? null}
         onClearError={clearBulkDeleteError}
       />
-    </div>
+    </aside>
   )
 }
 

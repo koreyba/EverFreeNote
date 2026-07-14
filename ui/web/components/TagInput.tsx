@@ -127,20 +127,8 @@ export function TagInput({
 
   return (
     <div className={cn("relative group", className)}>
-      <div // NOSONAR
+      <div
         data-testid="tag-input-container"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            if (e.target === e.currentTarget) {
-              e.preventDefault()
-              if (!isEditing && !disabled) {
-                handleStartEditing()
-              }
-            }
-          }
-        }}
         onClick={() => {
           if (!isEditing && !disabled) {
             handleStartEditing()
@@ -151,7 +139,7 @@ export function TagInput({
           isEditing ? "bg-background border-primary/30 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] ring-4 ring-primary/5" : "hover:bg-muted/50"
         )}
       >
-        <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider shrink-0 mr-2 select-none">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-foreground/70 uppercase tracking-wider shrink-0 mr-2 select-none">
           <Tag className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Tags</span>
         </div>
