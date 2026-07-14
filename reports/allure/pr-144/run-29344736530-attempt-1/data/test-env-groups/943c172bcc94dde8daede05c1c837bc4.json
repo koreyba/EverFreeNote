@@ -1,0 +1,1 @@
+{"id":"943c172bcc94dde8daede05c1c837bc4","fullName":"everfreenote:ui/web/tests/unit/components/aiIndexTab.test.tsx#AIIndexTab stops subtracting optimistic totals after the server refetch catches up","name":"stops subtracting optimistic totals after the server refetch catches up","status":"passed","testResultsByEnv":{"default":"8b70f6a3444f9a9f62700437928cfa49"}}
