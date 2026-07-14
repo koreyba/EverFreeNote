@@ -127,7 +127,7 @@ export const NoteCard = memo(function NoteCard({
             />
           )}
           <div className="flex-1 min-w-0 flex flex-col h-full">
-            <h3
+            <h2
               tabIndex={selectionMode ? -1 : 0}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -138,8 +138,8 @@ export const NoteCard = memo(function NoteCard({
               className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1"
             >
               {note.title || "Untitled"}
-            </h3>
-            <p className="text-[13px] text-muted-foreground leading-normal line-clamp-2 mt-1.5">
+            </h2>
+            <p className="text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal line-clamp-2 mt-1.5">
               {note.description ? SanitizationService.stripHtml(note.description) : ""}
             </p>
             {note.tags && note.tags.length > 0 && (
@@ -156,7 +156,7 @@ export const NoteCard = memo(function NoteCard({
               </div>
             )}
             <div className="flex-1" />
-            <p className="text-[10px] text-muted-foreground mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
+            <p className="text-[10px] text-muted-foreground dark:text-zinc-400 mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
           </div>
         </div>
       </div>
@@ -207,7 +207,7 @@ export const NoteCard = memo(function NoteCard({
       <div className="p-3.5">
         {/* Title + rank */}
         <div className="flex items-start gap-2 justify-between">
-          <h3
+          <h2
             tabIndex={selectionMode ? -1 : 0}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
@@ -221,7 +221,7 @@ export const NoteCard = memo(function NoteCard({
             )}
           >
             {note.title || 'Untitled'}
-          </h3>
+          </h2>
           {searchNote.rank !== undefined && searchNote.rank !== null && (
             <span className={cn('text-[10px] font-medium tabular-nums shrink-0 mt-0.5', getScoreClass(rank))}>
               {(rank * 100).toFixed(0)}%
@@ -262,7 +262,7 @@ export const NoteCard = memo(function NoteCard({
         )}
 
         {/* Date */}
-        <p className="mt-2.5 text-[10px] text-muted-foreground font-medium">{formatDate(note.updated_at)}</p>
+        <p className="mt-2.5 text-[10px] text-muted-foreground dark:text-zinc-400 font-medium">{formatDate(note.updated_at)}</p>
       </div>
     </article>
   )

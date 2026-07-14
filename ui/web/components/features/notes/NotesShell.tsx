@@ -369,7 +369,7 @@ function DeleteNoteDialog({ controller }: { controller: NoteAppController }) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDeleteNote} className="bg-red-600 hover:bg-red-700">
+          <AlertDialogAction onClick={confirmDeleteNote} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
             Delete
           </AlertDialogAction>
         </AlertDialogFooter>

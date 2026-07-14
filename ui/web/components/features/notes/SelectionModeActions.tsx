@@ -51,8 +51,9 @@ export function SelectionModeActions({
         </Button>
         <Button
           data-testid="selection-mode-delete"
+          variant="outline"
           size="sm"
-          className="rounded-full h-7 px-3 text-[11px] font-bold bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200/50 dark:border-red-900/50 disabled:opacity-40 transition-all shadow-none"
+          className="rounded-full h-7 px-3 text-[11px] font-bold text-destructive dark:text-red-400 hover:text-destructive dark:hover:text-red-300 hover:bg-destructive/10 dark:hover:bg-red-950/30 border-destructive/25 dark:border-red-900/50 hover:border-destructive/30 shadow-sm transition-all"
           onClick={onDelete}
           disabled={deleting || deletingDisabled}
         >

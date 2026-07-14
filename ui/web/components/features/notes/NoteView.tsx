@@ -110,7 +110,7 @@ export const NoteView = React.memo(function NoteView({
             size="sm"
             data-cy="note-delete-button"
             aria-label="Delete note"
-            className="rounded-full text-destructive hover:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20 border-destructive/25 hover:border-destructive/30 shadow-sm"
+            className="rounded-full text-destructive dark:text-red-400 hover:text-destructive dark:hover:text-red-300 hover:bg-destructive/10 dark:hover:bg-red-950/30 border-destructive/25 dark:border-red-900/50 hover:border-destructive/30 shadow-sm"
           >
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />
             <span className="hidden sm:inline" aria-hidden="true">Delete</span>

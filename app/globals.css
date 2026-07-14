@@ -1,5 +1,7 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 @plugin "tailwindcss-animate";
 @plugin "@tailwindcss/typography";
@@ -469,14 +471,14 @@ mark {
 
   /* Muted */
   --color-muted: oklch(28% 0.015 256);
-  --color-muted-foreground: oklch(65% 0.01 256);
+  --color-muted-foreground: oklch(69% 0.01 256);
 
   /* Accent */
   --color-accent: oklch(32% 0.04 145);
   --color-accent-foreground: oklch(95% 0.005 256);
 
   /* Destructive */
-  --color-destructive: oklch(50% 0.18 29);
+  --color-destructive: oklch(65% 0.2 29);
   --color-destructive-foreground: oklch(100% 0 0);
 
   /* Borders and inputs */

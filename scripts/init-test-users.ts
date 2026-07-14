@@ -31,7 +31,7 @@ async function resolveSupabaseUrl() {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       'http://127.0.0.1:54321',
       'http://127.0.0.1:54331',
-    ].filter(Boolean))
+    ].filter((x): x is string => Boolean(x)))
   )
 
   for (const baseUrl of candidates) {
