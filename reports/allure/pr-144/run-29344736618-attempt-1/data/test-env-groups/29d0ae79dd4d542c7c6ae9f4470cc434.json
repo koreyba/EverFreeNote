@@ -1,0 +1,1 @@
+{"id":"29d0ae79dd4d542c7c6ae9f4470cc434","fullName":"everfreenote:core/tests/unit/core-rag-indexingSettings.test.ts#core/rag/indexingSettings rejects overlap >= min_chunk_size","name":"rejects overlap >= min_chunk_size","status":"passed","testResultsByEnv":{"default":"bcb9c4a09ec0fbcea3c632bcb70fcfdf"}}

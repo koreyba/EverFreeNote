@@ -1,0 +1,23 @@
+# ♿ Accessibility Audit Violations (Total Rules Failed: 1)
+
+---
+
+## 🛑 [color-contrast] Elements must meet minimum color contrast ratio thresholds
+- **Severity**: serious
+- **Description**: Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds
+- **Learn More**: [Deque University Link](https://dequeuniversity.com/rules/axe/4.12/color-contrast?application=playwright)
+
+### Affected Elements:
+
+#### Element 1
+- **Selector**: `div[data-title=""]`
+- **HTML Snippet**:
+  ```html
+  <div data-title="" class="">Exported 3 notes</div>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 1.54 (foreground color: #555555, background color: #727272, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1
+
+---

@@ -1,1 +1,0 @@
-{"id":"2a7c2c6f1737fb2f7db20e722905222e","fullName":"everfreenote:cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager drainQueue should stop draining if network goes offline during process","name":"should stop draining if network goes offline during process","status":"passed","testResultsByEnv":{"default":"abe5524f9a7ce95e14944f7ab2265f5c"}}
