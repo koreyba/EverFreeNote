@@ -168,12 +168,12 @@ export const NoteCard = memo(function NoteCard({
   const searchNote = note as SearchResult
   const rank = searchNote.rank ?? 0
 
-  // Strip HTML marks â†’ plain text â†’ truncate (same approach as ChunkSnippet)
+  // Strip HTML tags -> plain text -> truncate (same approach as ChunkSnippet)
   const plainHeadline = searchNote.headline
     ? DOMPurify.sanitize(searchNote.headline, { ALLOWED_TAGS: [] })
     : null
   const truncated = plainHeadline
-    ? (plainHeadline.length > 200 ? plainHeadline.slice(0, 200).trimEnd() + 'â€¦' : plainHeadline)
+    ? (plainHeadline.length > 200 ? plainHeadline.slice(0, 200).trimEnd() + '…' : plainHeadline)
     : null
 
   const pattern = highlightQuery ? buildHighlightPattern(highlightQuery) : null

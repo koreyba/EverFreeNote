@@ -40,7 +40,7 @@ export const NoteView = React.memo(function NoteView({
 }: NoteViewProps) {
   const bodyHtml = note.description || note.content || ''
 
-  // ÐœÐµÐ¼Ð¾Ð¸Ð·Ð°Ñ†Ð¸Ñ ÑÐ°Ð½Ð¸Ñ‚Ð¸Ð·Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð½Ð¾Ð³Ð¾ ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚Ð° Ð´Ð»Ñ Ð¿Ñ€ÐµÐ´Ð¾Ñ‚Ð²Ñ€Ð°Ñ‰ÐµÐ½Ð¸Ñ Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€Ð½Ð¾Ð¹ Ð¾Ð±Ñ€Ð°Ð±Ð¾Ñ‚ÐºÐ¸
+  // Мемоизация санитаризованного контента для предотвращения повторной обработки
   const sanitizedContent = React.useMemo(
     () => SanitizationService.sanitize(bodyHtml),
     [bodyHtml]
@@ -49,7 +49,7 @@ export const NoteView = React.memo(function NoteView({
   const { copied, copyNote } = useCopyNote()
   const isBodyEmpty = React.useMemo(() => NoteClipboardService.isBodyEmpty(bodyHtml), [bodyHtml])
 
-  // Ð¤Ð¾Ñ€Ð¼Ð°Ñ‚Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ðµ Ð´Ð°Ñ‚ Ð´Ð»Ñ Ð¿Ñ€ÐµÐ´Ð¾Ñ‚Ð²Ñ€Ð°Ñ‰ÐµÐ½Ð¸Ñ Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€Ð½Ñ‹Ñ… Ð²Ñ‹Ñ‡Ð¸ÑÐ»ÐµÐ½Ð¸Ð¹
+  // Форматирование дат для предотвращения повторных вычислений
   const formattedDates = React.useMemo(() => ({
     created: new Date(note.created_at).toLocaleString(),
     updated: new Date(note.updated_at).toLocaleString()
@@ -115,7 +115,7 @@ export const NoteView = React.memo(function NoteView({
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />
             <span className="hidden sm:inline" aria-hidden="true">Delete</span>
           </Button>
-          {/* More actions menu â€” always visible, contains RAG index controls + optional WP export */}
+          {/* More actions menu -- always visible, contains RAG index controls + optional WP export */}
           <MoreActionsMenu
             noteId={note.id}
             wordpressConfigured={wordpressConfigured}

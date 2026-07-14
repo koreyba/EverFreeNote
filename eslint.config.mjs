@@ -33,6 +33,8 @@ export default defineConfig([
       'next-env.d.ts',
       'ui/mobile/**', // Ignore mobile project
       'supabase/functions/**', // Deno runtime — not compatible with Node.js TypeScript rules
+      '.scannerwork/**',
+      '.sonarlint/**',
     ],
   },
   

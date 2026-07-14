@@ -41,7 +41,7 @@ type ItemData = {
   onOpenNote: (noteId: string) => void
 }
 
-const AIIndexRowRenderer = memo(({ index, style, ...props }: RowComponentProps<ItemData>) => {
+const AIIndexRowRenderer = memo(({ index, style, ariaAttributes, ...props }: RowComponentProps<ItemData>) => {
   const { items, exitingNoteIds, hasMore, isLoadingMore, onLoadMore, onMutated, onOpenNote } = props as unknown as ItemData
 
   if (index === items.length) {
@@ -57,7 +57,7 @@ const AIIndexRowRenderer = memo(({ index, style, ...props }: RowComponentProps<I
     }
 
     return (
-      <div style={style} className="flex items-center justify-center px-2 py-2">
+      <div style={style} className="flex items-center justify-center px-2 py-2" {...ariaAttributes}>
         {loadMoreContent}
       </div>
     )
@@ -67,7 +67,7 @@ const AIIndexRowRenderer = memo(({ index, style, ...props }: RowComponentProps<I
   if (!note) return null
 
   return (
-    <div style={style} className="px-2 py-1.5">
+    <div style={style} className="px-2 py-1.5" {...ariaAttributes}>
       <AIIndexNoteRow
         note={note}
         onMutated={onMutated}
@@ -200,7 +200,6 @@ export const AIIndexList = memo(function AIIndexList({
             rowHeight={dynamicRowHeight}
             rowProps={itemData}
             overscanCount={4}
-            role="presentation"
             onScroll={(event: React.UIEvent<HTMLDivElement>) => {
               onScrollOffsetChange?.(event.currentTarget.scrollTop)
             }}

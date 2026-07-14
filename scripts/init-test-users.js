@@ -48,7 +48,7 @@ async function resolveSupabaseUrl() {
       if (response.ok) {
         return baseUrl
       }
-    } catch (error) {
+    } catch {
       // Try the next candidate
     }
   }

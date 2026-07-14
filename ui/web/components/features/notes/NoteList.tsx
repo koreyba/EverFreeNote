@@ -116,7 +116,7 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
   // Render Load More / Loading indicator at the end
   if (index === items.length) {
     return (
-      <div style={style} className="px-2 py-2 flex justify-center items-center">
+      <div style={style} className="px-2 py-2 flex justify-center items-center" {...ariaAttributes}>
         {isLoadingMore ? (
           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         ) : hasMore ? (
@@ -174,7 +174,7 @@ const SearchRow = memo(({ index, style, ariaAttributes, ...props }: RowComponent
   // Render Load More / Loading indicator at the end
   if (index === items.length) {
     return (
-      <div style={style} className="px-3 py-2 flex justify-center items-center">
+      <div style={style} className="px-3 py-2 flex justify-center items-center" {...ariaAttributes}>
         {isLoadingMore ? (
           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         ) : hasMore ? (

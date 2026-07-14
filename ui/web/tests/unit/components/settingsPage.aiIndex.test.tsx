@@ -57,6 +57,8 @@ describe("SettingsPage AI Index tab", () => {
     )
 
     expect(screen.getByText("AI Index Tab Content")).toBeTruthy()
-    expect(screen.queryByRole("heading", { name: "AI Index" })).toBeNull()
+    const heading = screen.queryByRole("heading", { name: "AI Index" })
+    expect(heading).not.toBeNull()
+    expect(heading?.className).toContain("sr-only")
   })
 })

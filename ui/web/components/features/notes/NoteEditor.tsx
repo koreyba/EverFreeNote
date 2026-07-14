@@ -285,7 +285,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             <Button onClick={handleSave} size="sm" disabled={isSaving} className="rounded-full shadow-sm">
               Save
             </Button>
-            {/* More actions menu â€” RAG controls, delete note, WordPress export */}
+            {/* More actions menu -- RAG controls, delete note, WordPress export */}
             {showMoreMenu && (
               <MoreActionsMenu
                 noteId={noteId!}
