@@ -1,0 +1,262 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: notes.spec.ts >> notes crud >> create, read, and delete a note
+- Location: tests/notes.spec.ts:39:7
+
+# Error details
+
+```
+Error: Accessibility scan on "Editor View" should have no violations
+
+expect(received).toBe(expected) // Object.is equality
+
+Expected: false
+Received: true
+```
+
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary "Sidebar" [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - generic [ref=e7]:
+              - img "EverFreeNote" [ref=e8]
+              - status "Synchronized" [ref=e9]
+            - heading "EverFreeNote" [level=1] [ref=e10]
+          - button "Toggle theme" [ref=e11] [cursor=pointer]:
+            - img
+            - generic [ref=e12]: Toggle theme
+        - button "Open search panel" [ref=e13] [cursor=pointer]:
+          - img
+          - generic [ref=e14]: Click to search
+      - generic [ref=e15]:
+        - button "New Note" [ref=e16] [cursor=pointer]:
+          - img
+          - text: New Note
+        - paragraph [ref=e17]: 50 of 60 notes
+      - list [ref=e22]:
+        - listitem [ref=e23]:
+          - generic [ref=e24] [cursor=pointer]:
+            - checkbox
+            - generic [ref=e25]:
+              - heading "Pasted Copy Test Note 1783684758993-5e240e" [level=2] [ref=e26]
+              - paragraph [ref=e27]: Header formattingSerif text, size 18px, centered alignmentMonospace text, standard size, right alignmentFirst element of numbered listSecond element of numbered list
+              - paragraph [ref=e28]: 10.07.2026
+        - listitem [ref=e29]:
+          - generic [ref=e30] [cursor=pointer]:
+            - checkbox
+            - generic [ref=e31]:
+              - heading "Original Copy Test Note 1783684758993-5e240e" [level=2] [ref=e32]
+              - paragraph [ref=e33]: Header formattingSerif text, size 18px, centered alignmentMonospace text, standard size, right alignmentFirst element of numbered listSecond element of numbered list
+              - paragraph [ref=e34]: 10.07.2026
+        - listitem [ref=e35]:
+          - generic [ref=e36] [cursor=pointer]:
+            - checkbox
+            - generic [ref=e37]:
+              - heading "Export note 1783593045297-6fe9bf-2" [level=2] [ref=e38]
+              - paragraph [ref=e39]: Export body 1783593045297-6fe9bf-2
+              - generic [ref=e40]:
+                - generic [ref=e41]: export-tag-1783593045297-6fe9bf-2-1
+                - generic [ref=e42]: export-tag-1783593045297-6fe9bf-2-2
+              - paragraph [ref=e43]: 09.07.2026
+        - listitem [ref=e44]:
+          - generic [ref=e45] [cursor=pointer]:
+            - checkbox
+            - generic [ref=e46]:
+              - heading "Export note 1783593045297-6fe9bf-3" [level=2] [ref=e47]
+              - paragraph [ref=e48]: Export body 1783593045297-6fe9bf-3
+              - generic [ref=e49]:
+                - generic [ref=e50]: export-tag-1783593045297-6fe9bf-3-1
+                - generic [ref=e51]: export-tag-1783593045297-6fe9bf-3-2
+              - paragraph [ref=e52]: 09.07.2026
+        - listitem [ref=e53]:
+          - generic [ref=e54] [cursor=pointer]:
+            - checkbox
+            - generic [ref=e55]:
+              - heading "Export note 1783593045297-6fe9bf-1" [level=2] [ref=e56]
+              - paragraph [ref=e57]: Export body 1783593045297-6fe9bf-1
+              - generic [ref=e58]:
+                - generic [ref=e59]: export-tag-1783593045297-6fe9bf-1-1
+                - generic [ref=e60]: export-tag-1783593045297-6fe9bf-1-2
+              - paragraph [ref=e61]: 09.07.2026
+        - listitem [ref=e62]:
+          - generic [ref=e63] [cursor=pointer]:
+            - checkbox
+            - generic [ref=e64]:
+              - heading "keep 1783001996950-3cfdc6" [level=2] [ref=e65]
+              - paragraph [ref=e66]: keep body ftsq17830019969503cfdc6
+              - generic [ref=e68]: search-tag-1783001996950-3cfdc6
+              - paragraph [ref=e69]: 02.07.2026
+        - listitem [ref=e70]:
+          - generic [ref=e71] [cursor=pointer]:
+            - checkbox
+            - generic [ref=e72]:
+              - heading "Pasted Copy Test Note 1782913502333-1dc480" [level=2] [ref=e73]
+              - paragraph [ref=e74]: Header formatting&nbsp;Serif text, size 18px, centered alignmentMonospace text, standard size, right alignmentFirst element of numbered listSecond element of numbered list
+              - paragraph [ref=e75]: 01.07.2026
+        - listitem [ref=e76]:
+          - generic [ref=e77] [cursor=pointer]:
+            - checkbox
+            - generic [ref=e78]:
+              - heading "Pasted Copy Test Note 1782912665522-5a1089" [level=2] [ref=e79]
+              - paragraph [ref=e80]: Header formattingSerif text, size 18px, centered alignmentMonospace text, standard size, right alignmentFirst element of numbered listSecond element of numbered list&nbsp;
+              - paragraph [ref=e81]: 01.07.2026
+        - listitem [ref=e82]:
+          - generic [ref=e83] [cursor=pointer]:
+            - checkbox
+            - generic [ref=e84]:
+              - heading "Pasted Copy Test Note 1782912537587-10f0fe" [level=2] [ref=e85]
+              - paragraph [ref=e86]: Header formattingSerif text, size 18px, centered alignmentMonospace text, standard size, right alignmentFirst element of numbered listSecond element of numbered list&nbsp;
+              - paragraph [ref=e87]: 01.07.2026
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e92]: T
+          - generic [ref=e93]: test@example.com
+        - generic [ref=e94]:
+          - button "Open settings page" [ref=e95] [cursor=pointer]:
+            - img
+          - button "Sign out" [ref=e96] [cursor=pointer]:
+            - img
+    - main [ref=e97]:
+      - generic [ref=e99]:
+        - img "EverFreeNote" [ref=e100]
+        - heading "No Note Selected" [level=2] [ref=e101]
+        - paragraph [ref=e102]: Choose a note from the list or create a new one to start writing.
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e103]:
+        - img [ref=e105]
+        - generic [ref=e108]: Note deleted successfully
+  - alert [ref=e109]
+```
+
+# Test source
+
+```ts
+  69  |       a11yScans.push({ context: 'Editor View', report: a11y });
+  70  |     });
+  71  | 
+  72  |     await test.step('save the note', async () => {
+  73  |       await editView.save();
+  74  |     });
+  75  | 
+  76  |     await test.step('read the created note', async () => {
+  77  |       await expect(
+  78  |         editView.readButton,
+  79  |         'Read button should be enabled after saving the note',
+  80  |       ).toBeEnabled();
+  81  | 
+  82  |       await editView.switchToRead();
+  83  | 
+  84  |       await expect(
+  85  |         readView.readingHeading,
+  86  |         'Reading view heading should be visible after switching to read mode',
+  87  |       ).toBeVisible();
+  88  |       await expect(
+  89  |         readView.noteText,
+  90  |         'Reading view should display the saved note body text',
+  91  |       ).toContainText(noteBodyText);
+  92  | 
+  93  |       const noteCard = leftPanel.getNoteCardNumber(0);
+  94  | 
+  95  |       await expect(
+  96  |         noteCard.titleHeading,
+  97  |         'Top note card title should match the created note title',
+  98  |       ).toHaveText(createdNoteTitle);
+  99  |       await expect(
+  100 |         noteCard.bodyParagraph,
+  101 |         'Top note card body should match the created note body text',
+  102 |       ).toHaveText(noteBodyText);
+  103 | 
+  104 |       const date = getFormattedDate();
+  105 | 
+  106 |       await expect(
+  107 |         noteCard.dateParagraph,
+  108 |         "Top note card date should match today's date",
+  109 |       ).toHaveText(date);
+  110 |     });
+  111 | 
+  112 |     await test.step('Accessibility scan: Read View', async () => {
+  113 |       const a11yRead = await analyzeA11y();
+  114 |       if (a11yRead.hasViolations()) {
+  115 |         await testInfo.attach('a11y-report-read.md', {
+  116 |           body: a11yRead.format(),
+  117 |           contentType: 'text/markdown',
+  118 |         });
+  119 |       }
+  120 |       a11yScans.push({ context: 'Read View', report: a11yRead });
+  121 |     });
+  122 | 
+  123 |     await test.step('open delete dialog', async () => {
+  124 |       await readView.deleteNote();
+  125 |       await expect(
+  126 |         deleteDialog.dialog,
+  127 |         'Delete confirmation dialog should be visible after clicking delete',
+  128 |       ).toBeVisible();
+  129 |     });
+  130 | 
+  131 |     await test.step('Accessibility scan: Delete Dialog', async () => {
+  132 |       const a11yDelete = await analyzeA11y();
+  133 |       if (a11yDelete.hasViolations()) {
+  134 |         await testInfo.attach('a11y-report-delete.md', {
+  135 |           body: a11yDelete.format(),
+  136 |           contentType: 'text/markdown',
+  137 |         });
+  138 |       }
+  139 |       a11yScans.push({ context: 'Delete Dialog', report: a11yDelete });
+  140 |     });
+  141 | 
+  142 |     await test.step('confirm note deletion', async () => {
+  143 |       await deleteDialog.confirm();
+  144 |       await expect(
+  145 |         readView.emptyStateText,
+  146 |         'Empty state text should be visible after deleting the note',
+  147 |       ).toBeVisible();
+  148 | 
+  149 |       const deletedNote = leftPanel.getNoteCardByTitle(createdNoteTitle);
+  150 |       await expect(deletedNote.root, 'Deleted note was found when not expected').toHaveCount(0);
+  151 |       shouldCleanupCreatedNote = false;
+  152 |     });
+  153 | 
+  154 |     await test.step('Verify accessibility compliance', async () => {
+  155 |       for (const scan of a11yScans) {
+  156 |         if (scan.report.hasViolations()) {
+  157 |           await testInfo.attach(
+  158 |             `a11y-report-${scan.context.toLowerCase().replace(/\s+/g, '-')}.md`,
+  159 |             {
+  160 |               body: scan.report.format(),
+  161 |               contentType: 'text/markdown',
+  162 |             },
+  163 |           );
+  164 |         }
+  165 | 
+  166 |         expect(
+  167 |           scan.report.hasViolations(),
+  168 |           `Accessibility scan on "${scan.context}" should have no violations`,
+> 169 |         ).toBe(false);
+      |           ^ Error: Accessibility scan on "Editor View" should have no violations
+  170 |       }
+  171 |     });
+  172 |   });
+  173 | });
+  174 | 
+  175 | function getFormattedDate() {
+  176 |   const now = new Date();
+  177 |   const dd = String(now.getDate()).padStart(2, '0');
+  178 |   const mm = String(now.getMonth() + 1).padStart(2, '0');
+  179 |   const yyyy = String(now.getFullYear());
+  180 |   const formatted = `${dd}.${mm}.${yyyy}`;
+  181 |   return formatted;
+  182 | }
+  183 | 
+```

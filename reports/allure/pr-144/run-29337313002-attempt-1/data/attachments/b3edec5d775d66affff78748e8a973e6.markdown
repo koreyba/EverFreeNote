@@ -1,0 +1,23 @@
+# ♿ Accessibility Audit Violations (Total Rules Failed: 1)
+
+---
+
+## 🛑 [color-contrast] Elements must meet minimum color contrast ratio thresholds
+- **Severity**: serious
+- **Description**: Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds
+- **Learn More**: [Deque University Link](https://dequeuniversity.com/rules/axe/4.12/color-contrast?application=playwright)
+
+### Affected Elements:
+
+#### Element 1
+- **Selector**: `.md\:inline`
+- **HTML Snippet**:
+  ```html
+  <span class="hidden md:inline">Copy</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 3.32 (foreground color: #888c8f, background color: #fcfdfe, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1
+
+---
