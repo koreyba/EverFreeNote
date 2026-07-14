@@ -163,7 +163,6 @@
     "axe-core": "^4.12.1",
     "babel-jest": "^30.2.0",
     "babel-plugin-istanbul": "^7.0.1",
-    "baseline-browser-mapping": "^2.10.12",
     "cypress": "^15.9.0",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.1",
