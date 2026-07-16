@@ -29,7 +29,7 @@ export function ExportProgressDialog({ open, progress, onClose }: ExportProgress
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {!isComplete && <Loader2 className="w-5 h-5 animate-spin" />}
-            {isComplete && <CheckCircle2 className="w-5 h-5 text-green-600" />}
+            {isComplete && <CheckCircle2 className="w-5 h-5 text-green-700 dark:text-green-400" />}
             {isComplete ? (isError ? "Export completed with errors" : "Export completed") : "Export in progress"}
           </DialogTitle>
           <DialogDescription>

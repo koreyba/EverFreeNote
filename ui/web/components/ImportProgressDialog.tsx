@@ -46,7 +46,7 @@ export function ImportProgressDialog({
           <DialogTitle className="flex items-center gap-2">
             {isInProgress && <Loader2 className="w-5 h-5 animate-spin" />}
             {isComplete && result && result.success > 0 && (
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              <CheckCircle2 className="w-5 h-5 text-green-700 dark:text-green-400" />
             )}
             {isComplete && result && result.success === 0 && result.errors > 0 && (
               <XCircle className="w-5 h-5 text-destructive" />
@@ -106,7 +106,7 @@ export function ImportProgressDialog({
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 border border-green-500/10 rounded-2xl">
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                <div className="text-2xl font-bold text-green-700 dark:text-green-400">
                   {result.success}
                 </div>
                 <div className="text-sm text-muted-foreground">Successful</div>
