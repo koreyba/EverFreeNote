@@ -96,8 +96,8 @@ mark {
 
 /* =============================================================================
    NOTE CONTENT STYLES - SINGLE SOURCE OF TRUTH
-   Ð•Ð´Ð¸Ð½Ñ‹Ð¹ ÐºÐ»Ð°ÑÑ .note-content Ð´Ð»Ñ Ñ€ÐµÐ¶Ð¸Ð¼Ð¾Ð² Ñ‡Ñ‚ÐµÐ½Ð¸Ñ Ð¸ Ñ€ÐµÐ´Ð°ÐºÑ‚Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ.
-   ProseMirror Ð½Ð°ÑÐ»ÐµÐ´ÑƒÐµÑ‚ ÑÑ‚Ð¸Ð»Ð¸ Ñ‡ÐµÑ€ÐµÐ· .note-content .ProseMirror
+   Single .note-content class for reading and editing modes.
+   ProseMirror inherits styles via .note-content .ProseMirror
    ============================================================================= */
 
 .note-content,
@@ -106,7 +106,7 @@ mark {
   font-size: 1.05rem;
   line-height: var(--line-height-body);
   max-width: none;
-  /* Ð•Ð´Ð¸Ð½Ñ‹Ð¹ white-space Ð´Ð»Ñ Ñ‡Ñ‚ÐµÐ½Ð¸Ñ Ð¸ Ñ€ÐµÐ´Ð°ÐºÑ‚Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ */
+  /* Single white-space rule for reading and editing */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -166,7 +166,7 @@ mark {
   color: var(--color-foreground);
 }
 
-/* Ð’Ð»Ð¾Ð¶ÐµÐ½Ð½Ñ‹Ðµ div Ð½Ðµ Ð´Ð¾Ð»Ð¶Ð½Ñ‹ Ð´Ð¾Ð±Ð°Ð²Ð»ÑÑ‚ÑŒ Ð´Ð¾Ð¿Ð¾Ð»Ð½Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ñ‹Ðµ Ð¾Ñ‚ÑÑ‚ÑƒÐ¿Ñ‹ */
+/* Nested divs should not add extra margins/paddings */
 .note-content div div {
   margin-bottom: 0;
 }
@@ -280,7 +280,7 @@ mark {
   border-bottom: 2px solid var(--color-border);
 }
 
-/* Ð£Ð±Ð¸Ñ€Ð°ÐµÐ¼ Ð¾Ñ‚ÑÑ‚ÑƒÐ¿Ñ‹ Ñƒ Ð¿ÐµÑ€Ð²Ð¾Ð³Ð¾ Ð¸ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÐµÐ³Ð¾ ÑÐ»ÐµÐ¼ÐµÐ½Ñ‚Ð° */
+/* Remove margins from first and last child elements */
 .note-content>*:first-child {
   margin-top: 0 !important;
 }
@@ -289,17 +289,17 @@ mark {
   margin-bottom: 0 !important;
 }
 
-/* ÐŸÐ¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ° Ð¿ÑƒÑÑ‚Ñ‹Ñ… Ð¿Ð°Ñ€Ð°Ð³Ñ€Ð°Ñ„Ð¾Ð² */
+/* Support for empty paragraphs */
 .note-content p:empty::after {
   content: '\200B';
-  /* Zero-width space Ð´Ð»Ñ ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¸Ñ Ð²Ñ‹ÑÐ¾Ñ‚Ñ‹ */
+  /* Zero-width space to preserve height */
   display: inline;
 }
 
-/* Ð¡Ð¿ÐµÑ†Ð¸Ñ„Ð¸Ñ‡Ð½Ñ‹Ðµ ÑÑ‚Ð¸Ð»Ð¸ Ð´Ð»Ñ ProseMirror (Ñ€ÐµÐ´Ð°ÐºÑ‚Ð¾Ñ€) */
+/* Specific styles for ProseMirror (editor) */
 .note-content .ProseMirror {
   outline: none;
-  /* ÐŸÐµÑ€ÐµÐ¾Ð¿Ñ€ÐµÐ´ÐµÐ»ÑÐµÐ¼ white-space Ñ break-spaces Ð½Ð° pre-wrap Ð´Ð»Ñ ÐºÐ¾Ð½ÑÐ¸ÑÑ‚ÐµÐ½Ñ‚Ð½Ð¾ÑÑ‚Ð¸ */
+  /* Override white-space from break-spaces to pre-wrap for consistency */
   white-space: pre-wrap;
 }
 
@@ -328,7 +328,7 @@ mark {
   pointer-events: none;
 }
 
-/* Chunk focus highlight â€” applied via block Decoration from scrollToChunk */
+/* Chunk focus highlight - applied via block Decoration from scrollToChunk */
 .note-content .ProseMirror .chunk-focus-block {
   position: relative;
   --chunk-focus-line-offset: 0.9rem;
@@ -410,14 +410,14 @@ mark {
 
   /* Muted */
   --color-muted: oklch(96% 0.005 240);
-  --color-muted-foreground: oklch(48% 0.015 240); /* a11y fix: was 55%, darkened to meet WCAG AA 4.5:1 on sidebar bg and selected card bg */
+  --color-muted-foreground: oklch(45% 0.015 240); /* a11y fix: darkened to meet WCAG AA 4.5:1 on bg-muted */
 
   /* Accent - Minty fresh */
   --color-accent: oklch(96% 0.03 145);
   --color-accent-foreground: oklch(40% 0.05 145);
 
   /* Destructive */
-  --color-destructive: oklch(52% 0.2 29);
+  --color-destructive: oklch(48% 0.2 29); /* a11y fix: was 52%, darkened to meet WCAG AA 4.5:1 */
   --color-destructive-foreground: oklch(100% 0 0);
 
   /* Borders and inputs */
