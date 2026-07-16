@@ -1,1 +1,0 @@
-{"id":"c291efad19d4799df151e5be0737a92a","fullName":"everfreenote:core/tests/unit/core-utils-search.test.ts#core/utils/search buildTsQuery returns null for whitespace-only string","name":"returns null for whitespace-only string","status":"passed","testResultsByEnv":{"default":"4a7653b3ee034098a8cc59dae7dafb3c"}}
