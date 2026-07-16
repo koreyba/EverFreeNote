@@ -1,1 +1,0 @@
-{"id":"e10884ec308925c6567cc55dac45931b","fullName":"everfreenote:core/tests/unit/core-services-publicNoteShare.test.ts#core/services/publicNoteShare returns null for blank or missing public tokens","name":"returns null for blank or missing public tokens","status":"passed","testResultsByEnv":{"default":"732e930b63e1c587c164f849da0aa478"}}
