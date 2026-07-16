@@ -479,8 +479,8 @@ mark {
   --color-accent-foreground: oklch(95% 0.005 256);
 
   /* Destructive */
-  --color-destructive: oklch(50% 0.18 29);
-  --color-destructive-foreground: oklch(100% 0 0);
+  --color-destructive: oklch(65% 0.2 29); /* a11y fix: brightened for contrast on dark bg */
+  --color-destructive-foreground: oklch(14% 0.05 240);
 
   /* Borders and inputs */
   --color-border: oklch(32% 0.015 256);
