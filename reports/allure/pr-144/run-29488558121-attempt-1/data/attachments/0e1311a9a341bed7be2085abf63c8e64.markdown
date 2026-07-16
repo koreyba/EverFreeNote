@@ -1,0 +1,34 @@
+# ♿ Accessibility Audit Violations (Total Rules Failed: 1)
+
+---
+
+## 🛑 [color-contrast] Elements must meet minimum color contrast ratio thresholds
+- **Severity**: serious
+- **Description**: Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds
+- **Learn More**: [Deque University Link](https://dequeuniversity.com/rules/axe/4.12/color-contrast?application=playwright)
+
+### Affected Elements:
+
+#### Element 1
+- **Selector**: `.select-none > h2`
+- **HTML Snippet**:
+  ```html
+  <h2 class="text-xl font-semibold text-foreground mb-2 tracking-tight">No Note Selected</h2>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.17 (foreground color: #aeb0b2, background color: #ffffff, font size: 15.0pt (20px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 2
+- **Selector**: `.text-foreground\/70`
+- **HTML Snippet**:
+  ```html
+  <p class="text-sm text-foreground/70 max-w-[250px] mx-auto leading-relaxed">Choose a note from the list or create a new one to start writing.</p>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 1.67 (foreground color: #c6c8c9, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1
+
+---
