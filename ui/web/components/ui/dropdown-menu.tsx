@@ -62,12 +62,13 @@ DropdownMenuSubContent.displayName =
 export type DropdownMenuContentProps =
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
     portalled?: boolean
+    container?: HTMLElement | null
   }
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   DropdownMenuContentProps
->(({ className, sideOffset = 4, portalled = true, ...props }, ref) => {
+>(({ className, sideOffset = 4, portalled = true, container, ...props }, ref) => {
   const content = (
     <DropdownMenuPrimitive.Content
       ref={ref}
@@ -82,7 +83,13 @@ const DropdownMenuContent = React.forwardRef<
   )
 
   if (portalled) {
-    return <DropdownMenuPrimitive.Portal>{content}</DropdownMenuPrimitive.Portal>
+    return (
+      <DropdownMenuPrimitive.Portal container={container || undefined}>
+        <div role="region" aria-label="Dropdown menu">
+          {content}
+        </div>
+      </DropdownMenuPrimitive.Portal>
+    )
   }
 
   return content

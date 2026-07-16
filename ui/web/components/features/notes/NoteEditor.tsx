@@ -296,9 +296,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             )}
           </div>
           {(showSaving || isSaving) ? (
-            <div className="text-[10px] text-foreground/85 animate-pulse font-medium">Saving...</div>
+            <div className="text-[10px] text-muted-foreground font-medium">Saving...</div>
           ) : lastSavedAt ? (
-            <div className="text-[10px] text-foreground/85 font-medium">
+            <div className="text-[10px] text-muted-foreground font-medium">
               Saved at {new Date(lastSavedAt).toLocaleTimeString()}
             </div>
           ) : null}

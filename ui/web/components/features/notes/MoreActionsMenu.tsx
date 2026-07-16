@@ -49,7 +49,7 @@ export function MoreActionsMenu({
             <MoreHorizontal className="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[200px]" portalled={false}>
+        <DropdownMenuContent align="end" className="min-w-[200px]">
           <DropdownMenuItem
             onSelect={(event) => {
               event.preventDefault()
