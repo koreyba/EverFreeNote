@@ -1,0 +1,1 @@
+{"id":"0295bb1b31d82d00ade18666372667f1","fullName":"everfreenote-mobile:tests/unit/localBundle.test.ts#local bundle helpers returns null when running on unsupported platform","name":"returns null when running on unsupported platform","status":"passed","testResultsByEnv":{"default":"62e1bbe978488303e6ca7196bc2f06da"}}
