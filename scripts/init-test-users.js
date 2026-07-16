@@ -43,10 +43,13 @@ async function resolveSupabaseUrl() {
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 2000)
-      const response = await fetch(healthUrl, { signal: controller.signal })
-      clearTimeout(timeout)
-      if (response.ok) {
-        return baseUrl
+      try {
+        const response = await fetch(healthUrl, { signal: controller.signal })
+        if (response.ok) {
+          return baseUrl
+        }
+      } finally {
+        clearTimeout(timeout)
       }
     } catch {
       // Try the next candidate

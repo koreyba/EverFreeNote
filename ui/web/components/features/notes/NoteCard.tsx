@@ -128,17 +128,18 @@ export const NoteCard = memo(function NoteCard({
             />
           )}
           <div className="flex-1 min-w-0 flex flex-col h-full">
-            <h2
-              tabIndex={selectionMode ? -1 : 0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault()
-                  onClick()
-                }
-              }}
-              className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1"
-            >
-              {note.title || "Untitled"}
+            <h2 className="min-w-0">
+              <button
+                type="button"
+                tabIndex={selectionMode ? -1 : 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClick();
+                }}
+                className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer"
+              >
+                {note.title || "Untitled"}
+              </button>
             </h2>
             <p className="text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal line-clamp-2 mt-1.5">
               {note.description ? SanitizationService.stripHtml(note.description) : ""}
@@ -209,20 +210,21 @@ export const NoteCard = memo(function NoteCard({
       <div className="p-3.5">
         {/* Title + rank */}
         <div className="flex items-start gap-2 justify-between">
-          <h2
-            tabIndex={selectionMode ? -1 : 0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault()
-                onClick()
-              }
-            }}
-            className={cn(
-              "text-[14px] font-semibold leading-snug text-foreground flex-1 line-clamp-2 outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1",
-              onToggleSelect && "pl-6"
-            )}
-          >
-            {note.title || 'Untitled'}
+          <h2 className="flex-1 min-w-0">
+            <button
+              type="button"
+              tabIndex={selectionMode ? -1 : 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}
+              className={cn(
+                "text-[14px] font-semibold leading-snug text-foreground flex-1 line-clamp-2 outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer",
+                onToggleSelect && "pl-6"
+              )}
+            >
+              {note.title || 'Untitled'}
+            </button>
           </h2>
           {searchNote.rank !== undefined && searchNote.rank !== null && (
             <span className={cn('text-[10px] font-medium tabular-nums shrink-0 mt-0.5', getScoreClass(rank))}>

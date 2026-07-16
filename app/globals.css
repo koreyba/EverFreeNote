@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* stylelint-disable-next-line scss/at-rule-no-unknown, at-rule-no-unknown */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @plugin "tailwindcss-animate";
