@@ -1,0 +1,1 @@
+{"id":"3a75d86c2f731980e868ce6d6e0a5e75","fullName":"everfreenote:cypress/component/core/utils/noteSnapshot.cy.ts#core/utils/noteSnapshot returns negative infinity for missing or invalid updated_at","name":"returns negative infinity for missing or invalid updated_at","status":"passed","testResultsByEnv":{"default":"b9ee77f08897ed33b70ed8aff8b0c548"}}

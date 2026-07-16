@@ -1,0 +1,199 @@
+# ♿ Accessibility Audit Violations (Total Rules Failed: 1)
+
+---
+
+## 🛑 [color-contrast] Elements must meet minimum color contrast ratio thresholds
+- **Severity**: serious
+- **Description**: Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds
+- **Learn More**: [Deque University Link](https://dequeuniversity.com/rules/axe/4.12/color-contrast?application=playwright)
+
+### Affected Elements:
+
+#### Element 1
+- **Selector**: `.gap-2.items-center.flex > p`
+- **HTML Snippet**:
+  ```html
+  <p class="text-sm text-muted-foreground">Selected: <span class="font-medium text-foreground">3</span> of 63</p>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.36 (foreground color: #4e5258, background color: #101319, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 2
+- **Selector**: `.h-8`
+- **HTML Snippet**:
+  ```html
+  <button class="inline-flex items-ce...">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 4.13 (foreground color: #74777c, background color: #101319, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 3
+- **Selector**: `input`
+- **HTML Snippet**:
+  ```html
+  <input placeholder="Search by title or text" class="w-full rounded-full border border-border/40 bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 shadow-sm" type="text" value="">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 4.13 (foreground color: #74777c, background color: #101319, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 4
+- **Selector**: `.border-primary.bg-primary\/5.dark\:bg-primary\/10:nth-child(1) > .space-y-1.flex-1.min-w-0 > .flex-wrap.gap-1.flex > .bg-muted.px-1\.5.py-0\.5:nth-child(1)`
+- **HTML Snippet**:
+  ```html
+  <span class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">export-tag-1784223166174-a4402a-3-1</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.23 (foreground color: #51555a, background color: #1a1e23, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 5
+- **Selector**: `.border-primary.bg-primary\/5.dark\:bg-primary\/10:nth-child(1) > .space-y-1.flex-1.min-w-0 > .flex-wrap.gap-1.flex > .bg-muted.px-1\.5.py-0\.5:nth-child(2)`
+- **HTML Snippet**:
+  ```html
+  <span class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">export-tag-1784223166174-a4402a-3-2</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.23 (foreground color: #51555a, background color: #1a1e23, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 6
+- **Selector**: `.border-primary.bg-primary\/5.dark\:bg-primary\/10:nth-child(2) > .space-y-1.flex-1.min-w-0 > .flex-wrap.gap-1.flex > .bg-muted.px-1\.5.py-0\.5:nth-child(1)`
+- **HTML Snippet**:
+  ```html
+  <span class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">export-tag-1784223166174-a4402a-2-1</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.23 (foreground color: #51555a, background color: #1a1e23, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 7
+- **Selector**: `.border-primary.bg-primary\/5.dark\:bg-primary\/10:nth-child(2) > .space-y-1.flex-1.min-w-0 > .flex-wrap.gap-1.flex > .bg-muted.px-1\.5.py-0\.5:nth-child(2)`
+- **HTML Snippet**:
+  ```html
+  <span class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">export-tag-1784223166174-a4402a-2-2</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.23 (foreground color: #51555a, background color: #1a1e23, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 8
+- **Selector**: `.border-primary.bg-primary\/5.dark\:bg-primary\/10:nth-child(3) > .space-y-1.flex-1.min-w-0 > .justify-between.gap-2.items-center > .whitespace-nowrap`
+- **HTML Snippet**:
+  ```html
+  <span class="text-xs text-muted-foreground whitespace-nowrap shrink-0">7/16/2026</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.3 (foreground color: #51555a, background color: #141c1d, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 9
+- **Selector**: `.border-primary.bg-primary\/5.dark\:bg-primary\/10:nth-child(3) > .space-y-1.flex-1.min-w-0 > .flex-wrap.gap-1.flex > .bg-muted.px-1\.5.py-0\.5:nth-child(1)`
+- **HTML Snippet**:
+  ```html
+  <span class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">export-tag-1784223166174-a4402a-1-1</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.23 (foreground color: #51555a, background color: #1a1e23, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 10
+- **Selector**: `.border-primary.bg-primary\/5.dark\:bg-primary\/10:nth-child(3) > .space-y-1.flex-1.min-w-0 > .flex-wrap.gap-1.flex > .bg-muted.px-1\.5.py-0\.5:nth-child(2)`
+- **HTML Snippet**:
+  ```html
+  <span class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">export-tag-1784223166174-a4402a-1-2</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.23 (foreground color: #51555a, background color: #1a1e23, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 11
+- **Selector**: `.p-2.transition-colors.border-border\/30:nth-child(4) > .space-y-1.flex-1.min-w-0 > .justify-between.gap-2.items-center > .whitespace-nowrap`
+- **HTML Snippet**:
+  ```html
+  <span class="text-xs text-muted-foreground whitespace-nowrap shrink-0">7/10/2026</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.44 (foreground color: #51555a, background color: #11151a, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 12
+- **Selector**: `.p-2.transition-colors.border-border\/30:nth-child(5) > .space-y-1.flex-1.min-w-0 > .justify-between.gap-2.items-center > .whitespace-nowrap`
+- **HTML Snippet**:
+  ```html
+  <span class="text-xs text-muted-foreground whitespace-nowrap shrink-0">7/10/2026</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.44 (foreground color: #51555a, background color: #11151a, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 13
+- **Selector**: `.justify-end > .hover\:bg-accent.border-input.hover\:text-accent-foreground`
+- **HTML Snippet**:
+  ```html
+  <button class="inline-flex items-ce...">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 4.05 (foreground color: #72757a, background color: #0f1217, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 14
+- **Selector**: `.justify-end > .text-primary-foreground.hover\:bg-primary\/90.bg-primary`
+- **HTML Snippet**:
+  ```html
+  <button class="inline-flex items-ce...">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.14 (foreground color: #0a0d0f, background color: #28512f, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 15
+- **Selector**: `#radix-_r_b_`
+- **HTML Snippet**:
+  ```html
+  <p id="radix-_r_b_" class="text-sm text-muted-foreground">File is ready to download.</p>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.88 (foreground color: #5b5e63, background color: #0e1217, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 16
+- **Selector**: `.justify-between.text-sm.flex > span:nth-child(1)`
+- **HTML Snippet**:
+  ```html
+  <span class="text-muted-foreground">Notes</span>
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.91 (foreground color: #5b5f64, background color: #0f1217, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1
+
+#### Element 17
+- **Selector**: `.flex-col-reverse > .text-primary-foreground.hover\:bg-primary\/90.bg-primary`
+- **HTML Snippet**:
+  ```html
+  <button class="inline-flex items-ce...">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 2.72 (foreground color: #090c0d, background color: #2f6235, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1
+
+---

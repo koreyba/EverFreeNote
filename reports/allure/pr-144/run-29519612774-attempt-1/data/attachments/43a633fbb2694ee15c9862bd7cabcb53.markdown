@@ -1,0 +1,23 @@
+# ♿ Accessibility Audit Violations (Total Rules Failed: 1)
+
+---
+
+## 🛑 [color-contrast] Elements must meet minimum color contrast ratio thresholds
+- **Severity**: serious
+- **Description**: Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds
+- **Learn More**: [Deque University Link](https://dequeuniversity.com/rules/axe/4.12/color-contrast?application=playwright)
+
+### Affected Elements:
+
+#### Element 1
+- **Selector**: `.mt-2`
+- **HTML Snippet**:
+  ```html
+  <button type="button" class="inline-flex items-ce..." data-testid="bulk-delete-cancel">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has insufficient color contrast of 3.33 (foreground color: #676a6f, background color: #13161c, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1
+
+---
