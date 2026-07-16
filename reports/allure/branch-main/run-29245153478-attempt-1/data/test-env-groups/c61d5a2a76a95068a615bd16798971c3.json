@@ -1,1 +1,0 @@
-{"id":"c61d5a2a76a95068a615bd16798971c3","fullName":"everfreenote:core/tests/unit/core-rag-searchSettings.test.ts#core/rag/searchSettings rejects top_k values outside the allowed range","name":"rejects top_k values outside the allowed range","status":"passed","testResultsByEnv":{"default":"dc24a47d878cbc1f3be33c61bf820dca"}}
