@@ -6,6 +6,40 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
+    "path": "reports/allure/pr-144/run-29516573310-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-144/run-29516573310-attempt-1/",
+    "runId": "29516573310",
+    "runAttempt": "1",
+    "prNumber": "144",
+    "ref": "feature/a11y-check",
+    "sha": "c9c987d8023b70443fe125e139fa0100304583f3",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #144",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-16T16:43:27.643Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit",
       "component",
       "e2e"
@@ -665,42 +699,6 @@
     "scopeLabel": "PR #143",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-13T11:05:43.631Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-143/run-29244483620-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-143/run-29244483620-attempt-1/",
-    "runId": "29244483620",
-    "runAttempt": "1",
-    "prNumber": "143",
-    "ref": "feature-modern-editor-design",
-    "sha": "3a1c743b75abd56ee22b394454aaaa1a59756f87",
-    "outcome": "success",
-    "previewUrl": "https://1dc5b8c6.everfreenote.pages.dev",
-    "e2eRef": "feature-modern-editor-design",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #143",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-13T11:03:03.883Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
