@@ -1,1 +1,0 @@
-{"id":"f02fad19c19fd4b45a670b356bada15d","fullName":"everfreenote:core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste filters inline styles using allowlist when DOMParser is present","name":"filters inline styles using allowlist when DOMParser is present","status":"passed","testResultsByEnv":{"default":"f21a8e0993f0cd4ea08afb52ee2e8d9c"}}
