@@ -1,0 +1,1 @@
+{"id":"dbbe4b56338ec66a3be26ddf60f0329e","fullName":"everfreenote:core/tests/unit/core-services-notes-delete.test.ts#core/services/notes - deleteNote deleteNote calls Supabase methods in correct order","name":"calls Supabase methods in correct order","status":"passed","testResultsByEnv":{"default":"7d4e63e40160bf6305a722d55d216584"}}
