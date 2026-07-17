@@ -139,8 +139,8 @@ describe('useNoteSaveHandlers — handleSaveNote upsert', () => {
 
 describe('useNoteSaveHandlers — concurrent note creation', () => {
   it('prevents duplicate creation when manual save overlaps with autosave creation', async () => {
-    let resolveCreate: (val: any) => void = () => {}
-    const createPromise = new Promise(resolve => {
+    let resolveCreate: (val: NoteViewModel) => void = () => {}
+    const createPromise = new Promise<NoteViewModel>(resolve => {
       resolveCreate = resolve
     })
 
@@ -148,7 +148,7 @@ describe('useNoteSaveHandlers — concurrent note creation', () => {
     const mutateAsyncUpdate = jest.fn().mockResolvedValue({})
 
     // We need selectedNoteRef to actually update when syncSelectedNote is called
-    const selectedNoteRef = { current: null as any }
+    const selectedNoteRef = { current: null as NoteViewModel | null }
     const syncSelectedNote = jest.fn((updater) => {
       if (typeof updater === 'function') {
         const next = updater(selectedNoteRef.current)
@@ -158,7 +158,7 @@ describe('useNoteSaveHandlers — concurrent note creation', () => {
       }
     })
 
-    const { result, params } = setup({
+    const { result } = setup({
       selectedNote: null,
       selectedNoteRef,
       createNoteMutation: { mutateAsync: mutateAsyncCreate },
@@ -167,7 +167,7 @@ describe('useNoteSaveHandlers — concurrent note creation', () => {
     })
 
     // 1. Trigger autosave (starts creation)
-    let autoSavePromise: Promise<any>
+    let autoSavePromise: Promise<void>
     act(() => {
       autoSavePromise = result.current.handleAutoSave({ title: 'Auto', description: 'desc', tags: '' })
     })
@@ -176,7 +176,7 @@ describe('useNoteSaveHandlers — concurrent note creation', () => {
     expect(mutateAsyncCreate).toHaveBeenCalledTimes(1)
 
     // 2. Trigger manual save concurrently
-    let saveNotePromise: Promise<any>
+    let saveNotePromise: Promise<void>
     act(() => {
       saveNotePromise = result.current.handleSaveNote({ title: 'Manual', description: 'desc2', tags: '' })
     })

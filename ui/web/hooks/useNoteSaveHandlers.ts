@@ -135,7 +135,7 @@ export function useNoteSaveHandlers({
       try {
         const currentNote = await pendingCreatePromiseRef.current
         existingId = currentNote.id
-      } catch (e) {
+      } catch {
         // If creation failed, we proceed to create it ourselves
       }
     }
@@ -270,7 +270,7 @@ export function useNoteSaveHandlers({
       if (!currentNote && pendingCreatePromiseRef.current) {
         try {
           currentNote = await pendingCreatePromiseRef.current
-        } catch (error) {
+        } catch {
           // If creation failed, we proceed to create it ourselves
         }
       }
