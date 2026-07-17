@@ -1,0 +1,1 @@
+{"id":"309cbf2e562afe30112e3485a4e4b474","fullName":"everfreenote-mobile:tests/component/swipeableNoteCard.test.tsx#SwipeableNoteCard does not call onDelete multiple times on rapid presses","name":"does not call onDelete multiple times on rapid presses","status":"passed","testResultsByEnv":{"default":"e4cd3b431bde1342426a061a7abf2b11"}}
