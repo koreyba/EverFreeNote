@@ -1,0 +1,1 @@
+{"id":"a6eb7e05c5f777b56af37c744facccb8","fullName":"everfreenote:ui/web/tests/unit/lib/noteClipboard.test.ts#ui/web/lib/noteClipboard throws when the clipboard API is unavailable","name":"throws when the clipboard API is unavailable","status":"passed","testResultsByEnv":{"default":"503628c4765ebfaf839dc47658f40c3e"}}
