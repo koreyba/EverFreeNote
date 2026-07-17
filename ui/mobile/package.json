@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
+    "postinstall": "node postinstall.js",
     "start:dev": "cross-env APP_VARIANT=dev EXPO_PUBLIC_APP_VARIANT=dev expo start --dev-client --lan --scheme everfreenote-dev",
     "start:dev:offline": "cross-env APP_VARIANT=dev EXPO_PUBLIC_APP_VARIANT=dev EXPO_PUBLIC_EDITOR_WEBVIEW_URL=file:///android_asset/web-editor/index.html expo start --dev-client --lan --scheme everfreenote-dev",
     "start:stage": "cross-env APP_VARIANT=stage EXPO_PUBLIC_APP_VARIANT=stage expo start --dev-client --lan --scheme everfreenote-stage",

@@ -8,7 +8,6 @@ module.exports = function (api) {
         {
           root: ['./'],
           alias: {
-            '@core': '../../core',
             '@ui/mobile': './',
           },
           extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
