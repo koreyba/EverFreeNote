@@ -40,7 +40,7 @@ export const NoteView = React.memo(function NoteView({
 }: NoteViewProps) {
   const bodyHtml = note.description || note.content || ''
 
-  // Мемоизация санитизированного контента для предотвращения повторной обработки
+  // Мемоизация санитаризованного контента для предотвращения повторной обработки
   const sanitizedContent = React.useMemo(
     () => SanitizationService.sanitize(bodyHtml),
     [bodyHtml]
@@ -77,7 +77,7 @@ export const NoteView = React.memo(function NoteView({
               <ChevronLeft className="w-5 h-5" />
             </Button>
           )}
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">Reading</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reading</h2>
         </div>
         <div className="flex items-center gap-1.5">
           <Button
@@ -110,12 +110,12 @@ export const NoteView = React.memo(function NoteView({
             size="sm"
             data-cy="note-delete-button"
             aria-label="Delete note"
-            className="rounded-full text-destructive hover:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20 border-destructive/25 hover:border-destructive/30 shadow-sm"
+            className="rounded-full text-destructive dark:text-red-400 hover:text-destructive dark:hover:text-red-300 hover:bg-destructive/10 dark:hover:bg-red-950/30 border-destructive/25 dark:border-red-900/50 hover:border-destructive/30 shadow-sm"
           >
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />
             <span className="hidden sm:inline" aria-hidden="true">Delete</span>
           </Button>
-          {/* More actions menu — always visible, contains RAG index controls + optional WP export */}
+          {/* More actions menu -- always visible, contains RAG index controls + optional WP export */}
           <MoreActionsMenu
             noteId={note.id}
             wordpressConfigured={wordpressConfigured}
@@ -152,7 +152,7 @@ export const NoteView = React.memo(function NoteView({
             dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           />
 
-          <div className="mt-12 pt-6 border-t border-border/40 text-[11px] text-muted-foreground/60 flex flex-wrap gap-x-6 gap-y-2">
+          <div className="mt-12 pt-6 border-t border-border/40 text-[11px] text-foreground/70 flex flex-wrap gap-x-6 gap-y-2">
             <span>Created: {formattedDates.created}</span>
             <span>Updated: {formattedDates.updated}</span>
           </div>
@@ -161,3 +161,4 @@ export const NoteView = React.memo(function NoteView({
     </div>
   )
 })
+

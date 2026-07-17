@@ -216,7 +216,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         />
       )}
 
-      <div
+      <main
         className={cn(
           "flex-1 flex min-h-0 flex-col h-full overflow-hidden",
           !showEditor ? "hidden md:flex" : "w-full"
@@ -231,7 +231,7 @@ export function NotesShell({ controller }: NotesShellProps) {
           pendingChunkFocus={pendingChunkFocus}
           onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
         />
-      </div>
+      </main>
 
       <DeleteNoteDialog controller={controller} />
     </div>
@@ -369,7 +369,7 @@ function DeleteNoteDialog({ controller }: { controller: NoteAppController }) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDeleteNote} className="bg-red-600 hover:bg-red-700">
+          <AlertDialogAction onClick={confirmDeleteNote} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
             Delete
           </AlertDialogAction>
         </AlertDialogFooter>

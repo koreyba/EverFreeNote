@@ -50,7 +50,7 @@ export function DeleteAccountPanel({
       </div>
 
       <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
-        <h3 className="text-base font-semibold text-destructive">Permanent action</h3>
+        <h3 className="text-base font-semibold text-red-700 dark:text-red-400">Permanent action</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           This will permanently delete your account and all notes. Export your notes before deleting the account if
           you need a copy.

@@ -48,3 +48,4 @@ export default function RootLayout({
     </html>
   )
 }
+// Force reload of CSS theme variables

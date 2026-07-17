@@ -342,7 +342,7 @@ export function RagIndexingSettingsPanel() {
               Showing default system values until live indexing settings can be loaded from the server.
             </p>
           ) : null}
-          <h4 className="text-sm font-semibold">How your notes are chunked</h4>
+          <h3 className="text-sm font-semibold">How your notes are chunked</h3>
 
             <div className="space-y-3">
               <p className="text-xs text-foreground/80">

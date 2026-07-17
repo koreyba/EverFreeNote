@@ -110,7 +110,7 @@ export const EditorMenuBar = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <PopoverTrigger asChild>
-                <Button data-cy="color-button" variant="ghost" size="sm">
+                <Button data-cy="color-button" variant="ghost" size="sm" aria-label="Text color">
                   <Palette className="w-4 h-4" />
                 </Button>
               </PopoverTrigger>
@@ -130,7 +130,7 @@ export const EditorMenuBar = ({
         <Select onValueChange={(value) => editor.chain().focus().setFontFamily(value).run()} defaultValue={fontFamilies[0]}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <SelectTrigger data-cy="font-family-button" className="w-[120px] text-xs h-8">
+              <SelectTrigger data-cy="font-family-button" className="w-[120px] text-xs h-8" aria-label="Font family">
                 <SelectValue placeholder="Font Family" />
               </SelectTrigger>
             </TooltipTrigger>
@@ -147,7 +147,7 @@ export const EditorMenuBar = ({
         <Select onValueChange={(value) => editor.chain().focus().setFontSize(`${value}pt`).run()} defaultValue={fontSizes[2]}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <SelectTrigger data-cy="font-size-button" className="w-[70px] text-xs h-8">
+              <SelectTrigger data-cy="font-size-button" className="w-[70px] text-xs h-8" aria-label="Font size">
                 <SelectValue placeholder="Font Size" />
               </SelectTrigger>
             </TooltipTrigger>

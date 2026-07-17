@@ -69,9 +69,10 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-muted/30 to-accent/20">
+      <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-muted/30 to-accent/20">
+        <h1 className="sr-only">Loading EverFreeNote</h1>
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      </main>
     )
   }
 

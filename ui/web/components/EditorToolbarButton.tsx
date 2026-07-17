@@ -30,7 +30,7 @@ export const EditorToolbarButton = ({
         variant={active ? "secondary" : "ghost"}
         onClick={onClick}
         disabled={disabled}
-        aria-label={ariaLabel}
+        aria-label={ariaLabel || label}
         className="h-8 w-8 p-0 rounded-lg active:scale-90 hover:bg-muted transition-all duration-100 ease-out shrink-0"
       >
         {children}

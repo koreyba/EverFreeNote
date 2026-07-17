@@ -2,7 +2,6 @@
 
 import { memo } from "react"
 import type { MouseEvent } from "react"
-import type { KeyboardEvent } from "react"
 import InteractiveTag from "@ui/web/components/InteractiveTag"
 import { Checkbox } from "@ui/web/components/ui/checkbox"
 import DOMPurify from "isomorphic-dompurify"
@@ -36,9 +35,9 @@ function getAccentClass(rank: number) {
 }
 
 function getScoreClass(rank: number) {
-  if (rank >= 0.8) return 'text-emerald-400'
-  if (rank >= 0.65) return 'text-amber-400'
-  return 'text-muted-foreground/60'
+  if (rank >= 0.8) return 'text-emerald-700 dark:text-emerald-400'
+  if (rank >= 0.65) return 'text-amber-700 dark:text-amber-400'
+  return 'text-foreground/60'
 }
 
 function escapeRegExp(s: string) {
@@ -97,18 +96,6 @@ export const NoteCard = memo(function NoteCard({
     onClick()
   }
 
-  const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.target !== event.currentTarget) return
-    if (event.key === "Enter") {
-      event.preventDefault()
-      onClick()
-      return
-    }
-    if (event.key === " ") {
-      event.preventDefault()
-      onClick()
-    }
-  }
 
   // Compact variant - for regular note list
   if (variant === "compact") {
@@ -116,9 +103,7 @@ export const NoteCard = memo(function NoteCard({
       <div
         data-testid="note-card"
         onClick={handleCardClick}
-        onKeyDown={handleCardKeyDown}
-        role="button"
-        tabIndex={0}
+        role="none"
         className={cn(
           "group p-3.5 rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm active:scale-[0.98]",
           isSelected ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
@@ -133,6 +118,7 @@ export const NoteCard = memo(function NoteCard({
               onClick={(e) => e.stopPropagation()}
               tabIndex={selectionMode ? 0 : -1}
               aria-hidden={!selectionMode}
+              aria-label={note.title ? `Select note "${note.title}"` : "Select note"}
               className={cn(
                 "mt-1 shrink-0 transition-opacity",
                 selectionMode
@@ -142,8 +128,20 @@ export const NoteCard = memo(function NoteCard({
             />
           )}
           <div className="flex-1 min-w-0 flex flex-col h-full">
-            <h3 className="font-semibold text-sm leading-snug text-foreground truncate">{note.title || "Untitled"}</h3>
-            <p className="text-[13px] text-muted-foreground/85 leading-normal line-clamp-2 mt-1.5">
+            <h2 className="min-w-0">
+              <button
+                type="button"
+                tabIndex={selectionMode ? -1 : 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClick();
+                }}
+                className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer"
+              >
+                {note.title || "Untitled"}
+              </button>
+            </h2>
+            <p className="text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal line-clamp-2 mt-1.5">
               {note.description ? SanitizationService.stripHtml(note.description) : ""}
             </p>
             {note.tags && note.tags.length > 0 && (
@@ -160,7 +158,7 @@ export const NoteCard = memo(function NoteCard({
               </div>
             )}
             <div className="flex-1" />
-            <p className="text-[10px] text-muted-foreground/45 mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
+            <p className="text-[10px] text-muted-foreground dark:text-zinc-400 mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
           </div>
         </div>
       </div>
@@ -171,7 +169,7 @@ export const NoteCard = memo(function NoteCard({
   const searchNote = note as SearchResult
   const rank = searchNote.rank ?? 0
 
-  // Strip HTML marks → plain text → truncate (same approach as ChunkSnippet)
+  // Strip HTML tags -> plain text -> truncate (same approach as ChunkSnippet)
   const plainHeadline = searchNote.headline
     ? DOMPurify.sanitize(searchNote.headline, { ALLOWED_TAGS: [] })
     : null
@@ -186,9 +184,7 @@ export const NoteCard = memo(function NoteCard({
     <article
       data-testid="note-card"
       onClick={handleCardClick}
-      onKeyDown={handleCardKeyDown}
-      role="button"
-      tabIndex={0}
+      role="none"
       {...longPressHandlers}
       className={cn(
         'group relative rounded-xl border border-border/40 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/20 hover:shadow-sm active:scale-[0.98]',
@@ -202,6 +198,7 @@ export const NoteCard = memo(function NoteCard({
           onClick={(e) => e.stopPropagation()}
           tabIndex={selectionMode ? 0 : -1}
           aria-hidden={!selectionMode}
+          aria-label={note.title ? `Select note "${note.title}"` : "Select note"}
           className={cn(
             "absolute left-2 top-2 z-10 bg-background/90 transition-opacity",
             selectionMode
@@ -213,14 +210,22 @@ export const NoteCard = memo(function NoteCard({
       <div className="p-3.5">
         {/* Title + rank */}
         <div className="flex items-start gap-2 justify-between">
-          <h3
-            className={cn(
-              "text-[14px] font-semibold leading-snug text-foreground flex-1 line-clamp-2",
-              onToggleSelect && "pl-6"
-            )}
-          >
-            {note.title || 'Untitled'}
-          </h3>
+          <h2 className="flex-1 min-w-0">
+            <button
+              type="button"
+              tabIndex={selectionMode ? -1 : 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}
+              className={cn(
+                "text-[14px] font-semibold leading-snug text-foreground flex-1 line-clamp-2 outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer",
+                onToggleSelect && "pl-6"
+              )}
+            >
+              {note.title || 'Untitled'}
+            </button>
+          </h2>
           {searchNote.rank !== undefined && searchNote.rank !== null && (
             <span className={cn('text-[10px] font-medium tabular-nums shrink-0 mt-0.5', getScoreClass(rank))}>
               {(rank * 100).toFixed(0)}%
@@ -246,13 +251,13 @@ export const NoteCard = memo(function NoteCard({
           </div>
         )}
 
-        {/* Headline snippet with JS highlighting — height is deterministic, no CSS clamp needed */}
+        {/* Headline snippet with JS highlighting â€” height is deterministic, no CSS clamp needed */}
         {parts && (
           <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2 border border-border/20">
             <p className="text-[12.5px] leading-relaxed text-foreground/80">
               {parts.map((part, i) => {
                 if (pattern && i % 2 === 1) {
-                  return <mark key={i} className="rounded-sm bg-primary/25 px-0.5 text-foreground">{part}</mark>
+                  return <mark key={i} className="rounded-sm bg-amber-100! text-amber-950! dark:bg-amber-950/40! dark:text-amber-200! px-0.5 font-medium">{part}</mark>
                 }
                 return <span key={i}>{part}</span>
               })}
@@ -261,8 +266,9 @@ export const NoteCard = memo(function NoteCard({
         )}
 
         {/* Date */}
-        <p className="mt-2.5 text-[10px] text-muted-foreground/45 font-medium">{formatDate(note.updated_at)}</p>
+        <p className="mt-2.5 text-[10px] text-muted-foreground dark:text-zinc-400 font-medium">{formatDate(note.updated_at)}</p>
       </div>
     </article>
   )
 })
+

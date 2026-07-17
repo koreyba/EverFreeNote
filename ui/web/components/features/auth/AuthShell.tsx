@@ -14,7 +14,7 @@ interface AuthShellProps {
 
 export function AuthShell({ enableTestAuth = false, onTestLogin, onSkipAuth, onGoogleAuth }: AuthShellProps) {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-muted/30 to-accent/20">
+    <main className="flex items-center justify-center min-h-screen bg-gradient-to-br from-muted/30 to-accent/20">
       <div className="relative w-full max-w-md">
         <div className="absolute right-3 top-3">
           <ThemeToggle />
@@ -26,7 +26,9 @@ export function AuthShell({ enableTestAuth = false, onTestLogin, onSkipAuth, onG
               <BrandLogo className="h-16 w-16" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold">EverFreeNote</CardTitle>
+          <CardTitle className="text-3xl font-bold">
+            <h1 className="text-3xl font-bold">EverFreeNote</h1>
+          </CardTitle>
           <CardDescription className="text-base">
             Your personal note-taking companion. Secure, simple, and synced.
           </CardDescription>
@@ -45,6 +47,6 @@ export function AuthShell({ enableTestAuth = false, onTestLogin, onSkipAuth, onG
         </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   )
 }

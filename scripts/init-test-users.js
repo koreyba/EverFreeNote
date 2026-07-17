@@ -17,7 +17,6 @@ if (process.env.NEXT_PUBLIC_ENABLE_TEST_AUTH !== 'true') {
 }
 
 // Use Supabase local API port (see supabase/config.toml -> [api].port)
-const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:54321'
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_KEY
 if (!SERVICE_ROLE_KEY) {
   console.error('Missing SUPABASE_SERVICE_KEY in environment')
@@ -27,6 +26,37 @@ const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD
 if (!TEST_USER_PASSWORD) {
   console.error('Missing TEST_USER_PASSWORD in environment')
   process.exit(1)
+}
+
+async function resolveSupabaseUrl() {
+  const candidates = Array.from(
+    new Set([
+      process.env.SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      'http://127.0.0.1:54321',
+      'http://127.0.0.1:54331',
+    ].filter(Boolean))
+  )
+
+  for (const baseUrl of candidates) {
+    const healthUrl = `${baseUrl.replace(/\/$/, '')}/auth/v1/health`
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 2000)
+      try {
+        const response = await fetch(healthUrl, { signal: controller.signal })
+        if (response.ok) {
+          return baseUrl
+        }
+      } finally {
+        clearTimeout(timeout)
+      }
+    } catch {
+      // Try the next candidate
+    }
+  }
+
+  return candidates[0] || 'http://127.0.0.1:54321'
 }
 
 const TEST_USERS = [
@@ -61,8 +91,8 @@ const TEST_USERS = [
   },
 ]
 
-async function ensureUser(email, password) {
-  const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+async function ensureUser(email, password, supabaseUrl) {
+  const supabaseAdmin = createClient(supabaseUrl, SERVICE_ROLE_KEY)
   const { data: existing, error: fetchError } = await supabaseAdmin.auth.admin.listUsers()
   if (fetchError) throw fetchError
 
@@ -78,8 +108,8 @@ async function ensureUser(email, password) {
   return data.user?.id ?? null
 }
 
-async function insertNotes(userId, notes) {
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+async function insertNotes(userId, notes, supabaseUrl) {
+  const supabase = createClient(supabaseUrl, SERVICE_ROLE_KEY)
   for (const note of notes) {
     const { error } = await supabase.from('notes').insert({
       user_id: userId,
@@ -94,6 +124,9 @@ async function insertNotes(userId, notes) {
 }
 
 async function main() {
+  const SUPABASE_URL = await resolveSupabaseUrl()
+  console.log(`Using Supabase URL: ${SUPABASE_URL}`)
+
   const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
@@ -117,9 +150,9 @@ async function main() {
 
   for (const user of TEST_USERS) {
     try {
-      const userId = await ensureUser(user.email, user.password)
+      const userId = await ensureUser(user.email, user.password, SUPABASE_URL)
       if (userId) {
-        await insertNotes(userId, user.notes)
+        await insertNotes(userId, user.notes, SUPABASE_URL)
         console.log(`Seeded user ${user.email}`)
       }
     } catch (error) {

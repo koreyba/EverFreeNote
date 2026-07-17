@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* stylelint-disable-next-line scss/at-rule-no-unknown, at-rule-no-unknown */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @plugin "tailwindcss-animate";
 @plugin "@tailwindcss/typography";
 
@@ -93,8 +96,8 @@ mark {
 
 /* =============================================================================
    NOTE CONTENT STYLES - SINGLE SOURCE OF TRUTH
-   Единый класс .note-content для режимов чтения и редактирования.
-   ProseMirror наследует стили через .note-content .ProseMirror
+   Single .note-content class for reading and editing modes.
+   ProseMirror inherits styles via .note-content .ProseMirror
    ============================================================================= */
 
 .note-content,
@@ -103,7 +106,7 @@ mark {
   font-size: 1.05rem;
   line-height: var(--line-height-body);
   max-width: none;
-  /* Единый white-space для чтения и редактирования */
+  /* Single white-space rule for reading and editing */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -163,7 +166,7 @@ mark {
   color: var(--color-foreground);
 }
 
-/* Вложенные div не должны добавлять дополнительные отступы */
+/* Nested divs should not add extra margins/paddings */
 .note-content div div {
   margin-bottom: 0;
 }
@@ -277,7 +280,7 @@ mark {
   border-bottom: 2px solid var(--color-border);
 }
 
-/* Убираем отступы у первого и последнего элемента */
+/* Remove margins from first and last child elements */
 .note-content>*:first-child {
   margin-top: 0 !important;
 }
@@ -286,17 +289,17 @@ mark {
   margin-bottom: 0 !important;
 }
 
-/* Поддержка пустых параграфов */
+/* Support for empty paragraphs */
 .note-content p:empty::after {
   content: '\200B';
-  /* Zero-width space для сохранения высоты */
+  /* Zero-width space to preserve height */
   display: inline;
 }
 
-/* Специфичные стили для ProseMirror (редактор) */
+/* Specific styles for ProseMirror (editor) */
 .note-content .ProseMirror {
   outline: none;
-  /* Переопределяем white-space с break-spaces на pre-wrap для консистентности */
+  /* Override white-space from break-spaces to pre-wrap for consistency */
   white-space: pre-wrap;
 }
 
@@ -325,7 +328,7 @@ mark {
   pointer-events: none;
 }
 
-/* Chunk focus highlight — applied via block Decoration from scrollToChunk */
+/* Chunk focus highlight - applied via block Decoration from scrollToChunk */
 .note-content .ProseMirror .chunk-focus-block {
   position: relative;
   --chunk-focus-line-offset: 0.9rem;
@@ -398,7 +401,7 @@ mark {
   --color-popover-foreground: oklch(22% 0.015 240);
 
   /* Primary - Vibrant Emerald */
-  --color-primary: oklch(62% 0.16 145);
+  --color-primary: oklch(49% 0.17 145); /* a11y fix: was 52%, darkened to meet WCAG AA 4.5:1 */
   --color-primary-foreground: oklch(100% 0 0);
 
   /* Secondary */
@@ -407,14 +410,14 @@ mark {
 
   /* Muted */
   --color-muted: oklch(96% 0.005 240);
-  --color-muted-foreground: oklch(55% 0.015 240);
+  --color-muted-foreground: oklch(45% 0.015 240); /* a11y fix: darkened to meet WCAG AA 4.5:1 on bg-muted */
 
   /* Accent - Minty fresh */
   --color-accent: oklch(96% 0.03 145);
   --color-accent-foreground: oklch(40% 0.05 145);
 
   /* Destructive */
-  --color-destructive: oklch(58% 0.2 29);
+  --color-destructive: oklch(48% 0.2 29); /* a11y fix: was 52%, darkened to meet WCAG AA 4.5:1 */
   --color-destructive-foreground: oklch(100% 0 0);
 
   /* Borders and inputs */
@@ -422,7 +425,7 @@ mark {
   --color-input: oklch(94% 0.003 240);
 
   /* Focus ring */
-  --color-ring: oklch(62% 0.14 145);
+  --color-ring: oklch(49% 0.17 145);
 
   /* Charts */
   --color-chart-1: oklch(69.75% 0.1403 50.58);
@@ -434,12 +437,12 @@ mark {
   /* Sidebar */
   --color-sidebar-background: oklch(97.5% 0.004 240);
   --color-sidebar-foreground: oklch(35% 0.015 240);
-  --color-sidebar-primary: oklch(62% 0.16 145);
+  --color-sidebar-primary: oklch(49% 0.17 145);
   --color-sidebar-primary-foreground: oklch(100% 0 0);
   --color-sidebar-accent: oklch(95% 0.02 145);
   --color-sidebar-accent-foreground: oklch(30% 0.05 145);
   --color-sidebar-border: oklch(93.5% 0.004 240);
-  --color-sidebar-ring: oklch(62% 0.16 145);
+  --color-sidebar-ring: oklch(49% 0.17 145);
 }
 
 /* =============================================================================
@@ -469,15 +472,15 @@ mark {
 
   /* Muted */
   --color-muted: oklch(28% 0.015 256);
-  --color-muted-foreground: oklch(65% 0.01 256);
+  --color-muted-foreground: oklch(69% 0.01 256);
 
   /* Accent */
   --color-accent: oklch(32% 0.04 145);
   --color-accent-foreground: oklch(95% 0.005 256);
 
   /* Destructive */
-  --color-destructive: oklch(50% 0.18 29);
-  --color-destructive-foreground: oklch(100% 0 0);
+  --color-destructive: oklch(65% 0.2 29); /* a11y fix: brightened for contrast on dark bg */
+  --color-destructive-foreground: oklch(14% 0.05 240);
 
   /* Borders and inputs */
   --color-border: oklch(32% 0.015 256);
@@ -521,3 +524,9 @@ mark {
   height: 0 !important;
   background: transparent !important;
 }
+
+html:not(.dark) {
+  --color-primary-foreground: oklch(100% 0 0);
+}
+
+

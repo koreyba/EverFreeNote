@@ -309,7 +309,9 @@ export function SettingsPage() {
                       </div>
                     </div>
                   </div>
-                ) : null}
+                ) : (
+                  <h2 className="sr-only">{activeDefinition.label}</h2>
+                )}
                 <div className="rounded-3xl border bg-card p-4 shadow-sm sm:p-5 md:p-6">
                   {activeDefinition.id === "wordpress" ? (
                     <WordPressSettingsPanel />

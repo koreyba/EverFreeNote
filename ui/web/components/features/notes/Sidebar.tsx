@@ -102,12 +102,13 @@ export function Sidebar({
   } = useBulkDeleteConfirm(onBulkDelete)
 
   return (
-    <div
+    <aside
       className={cn(
         "w-80 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full md:sticky md:top-0 md:h-screen md:overflow-hidden",
         className
       )}
       data-testid={dataTestId}
+      aria-label="Sidebar"
     >
       {/* Header */}
       <div className="p-4 border-b">
@@ -154,7 +155,7 @@ export function Sidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
-        <p className="text-[11px] text-muted-foreground/80 text-center tracking-wide uppercase font-semibold">
+        <p className="text-[11px] text-muted-foreground text-center tracking-wide uppercase font-semibold">
           {notesCountText}
         </p>
         {selectionMode && (
@@ -216,6 +217,7 @@ export function Sidebar({
         errorMessage={bulkDeleteError?.message ?? null}
         onClearError={clearBulkDeleteError}
       />
-    </div>
+    </aside>
   )
 }
+
