@@ -1,1 +1,0 @@
-{"id":"35cb99c45d56b5202b4d06aeb8d33bae","fullName":"everfreenote:cypress/component/features/notes/SearchResultsPanel.cy.tsx#SearchResultsPanel refetches matching short FTS queries when AI mode is turned off","name":"refetches matching short FTS queries when AI mode is turned off","status":"passed","testResultsByEnv":{"default":"2bd970ddc89e2d14843d2c74a52ac8ec"}}
