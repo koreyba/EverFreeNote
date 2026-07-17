@@ -1,0 +1,1 @@
+{"id":"8bf8fdc4ccfec34d1c093ee92c0aa6cb","fullName":"everfreenote:cypress/component/unit/searchUtils.cy.ts#Search Utils buildTsQuery should return null on empty query after sanitization","name":"should return null on empty query after sanitization","status":"passed","testResultsByEnv":{"default":"fca934e9d5f198cc3b1a507c28783041"}}
