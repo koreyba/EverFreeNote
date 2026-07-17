@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 import type { NoteViewModel, NoteUpdate } from '@core/types/domain'
@@ -76,6 +76,10 @@ export function useNoteSaveHandlers({
 }: UseNoteSaveHandlersParams) {
   const [saving, setSaving] = useState(false)
   const [autoSaving, setAutoSaving] = useState(false)
+  
+  // Tracks an in-flight note creation (from either auto-save or manual save)
+  // so that concurrent saves don't result in duplicate notes.
+  const pendingCreatePromiseRef = useRef<Promise<NoteViewModel> | null>(null)
 
   const syncSelectedNote = useCallback((note: NoteViewModel | null | ((prev: NoteViewModel | null) => NoteViewModel | null)) => {
     setSelectedNote((prev) => {
@@ -124,7 +128,18 @@ export function useNoteSaveHandlers({
   const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
     if (!user) return
 
-    const existingId = data.noteId ?? selectedNoteRef.current?.id
+    let existingId = data.noteId ?? selectedNoteRef.current?.id
+
+    // Wait for any in-flight creation to finish to avoid duplicates
+    if (!existingId && pendingCreatePromiseRef.current) {
+      try {
+        const currentNote = await pendingCreatePromiseRef.current
+        existingId = currentNote.id
+      } catch (e) {
+        // If creation failed, we proceed to create it ourselves
+      }
+    }
+
     const isNewNote = !existingId
 
     // Determine current baseline to diff against (use refs to avoid dependency cycle)
@@ -154,22 +169,33 @@ export function useNoteSaveHandlers({
           userId: user.id,
         }
 
-        if (isOffline) {
-          await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: noteData, clientUpdatedAt })
-          syncSelectedNote({
-            id: tempId,
-            title: noteData.title,
-            description: noteData.description,
-            tags: noteData.tags,
-            created_at: clientUpdatedAt,
-            updated_at: clientUpdatedAt,
-            user_id: user.id,
-          } as NoteViewModel)
-          assignedNoteId = tempId
-        } else {
-          const created = await createNoteMutation.mutateAsync(noteData)
-          syncSelectedNote(created as NoteViewModel)
+        const createPromise = (async () => {
+          if (isOffline) {
+            await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: noteData, clientUpdatedAt })
+            const note = {
+              id: tempId,
+              title: noteData.title,
+              description: noteData.description,
+              tags: noteData.tags,
+              created_at: clientUpdatedAt,
+              updated_at: clientUpdatedAt,
+              user_id: user.id,
+            } as NoteViewModel
+            syncSelectedNote(note)
+            return note
+          } else {
+            const created = await createNoteMutation.mutateAsync(noteData)
+            syncSelectedNote(created as NoteViewModel)
+            return created as NoteViewModel
+          }
+        })();
+
+        pendingCreatePromiseRef.current = createPromise
+        try {
+          const created = await createPromise
           assignedNoteId = created.id
+        } finally {
+          pendingCreatePromiseRef.current = null
         }
         setLastSavedAt(clientUpdatedAt)
       } else {
@@ -238,42 +264,65 @@ export function useNoteSaveHandlers({
         tags,
       }
 
-      if (selectedNote) {
+      let currentNote = selectedNoteRef.current
+
+      // Wait for any in-flight creation to finish to avoid duplicates
+      if (!currentNote && pendingCreatePromiseRef.current) {
+        try {
+          currentNote = await pendingCreatePromiseRef.current
+        } catch (error) {
+          // If creation failed, we proceed to create it ourselves
+        }
+      }
+
+      if (currentNote) {
         if (isOffline) {
-          await executeOfflineWrite({ operation: 'update', noteId: selectedNote.id, payload: noteData, clientUpdatedAt })
-          syncSelectedNote({ ...selectedNote, ...noteData, updated_at: clientUpdatedAt } as NoteViewModel)
+          await executeOfflineWrite({ operation: 'update', noteId: currentNote.id, payload: noteData, clientUpdatedAt })
+          syncSelectedNote({ ...currentNote, ...noteData, updated_at: clientUpdatedAt } as NoteViewModel)
           toast.success('Saved offline (will sync when online)')
           setLastSavedAt(clientUpdatedAt)
         } else {
           try {
-            const updated = await updateNoteMutation.mutateAsync({ id: selectedNote.id, ...noteData })
-            savedNote = { ...selectedNote, ...updated }
+            const updated = await updateNoteMutation.mutateAsync({ id: currentNote.id, ...noteData })
+            savedNote = { ...currentNote, ...updated }
           } catch (error) {
             if (!isPostgrestNoRowsError(error)) throw error
             // Re-create with the same ID so the user's in-progress work is preserved
-            const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id, id: selectedNote.id })
+            const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id, id: currentNote.id })
             savedNote = created as NoteViewModel
           }
           setLastSavedAt(clientUpdatedAt)
         }
       } else {
         const tempId = uuidv4()
-        if (isOffline) {
-          await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: { ...noteData, userId: user.id }, clientUpdatedAt })
-          syncSelectedNote({
-            id: tempId,
-            ...noteData,
-            created_at: clientUpdatedAt,
-            updated_at: clientUpdatedAt,
-            user_id: user.id,
-          } as NoteViewModel)
-          toast.success('Saved offline (will sync when online)')
-          setLastSavedAt(clientUpdatedAt)
-        } else {
-          const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id })
-          savedNote = created as NoteViewModel
-          setLastSavedAt(clientUpdatedAt)
+        
+        const createPromise = (async () => {
+          if (isOffline) {
+            await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: { ...noteData, userId: user.id }, clientUpdatedAt })
+            const note = {
+              id: tempId,
+              ...noteData,
+              created_at: clientUpdatedAt,
+              updated_at: clientUpdatedAt,
+              user_id: user.id,
+            } as NoteViewModel
+            syncSelectedNote(note)
+            toast.success('Saved offline (will sync when online)')
+            return note
+          } else {
+            const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id })
+            syncSelectedNote(created as NoteViewModel)
+            return created as NoteViewModel
+          }
+        })();
+
+        pendingCreatePromiseRef.current = createPromise
+        try {
+          savedNote = await createPromise
+        } finally {
+          pendingCreatePromiseRef.current = null
         }
+        setLastSavedAt(clientUpdatedAt)
       }
 
       if (savedNote) {
