@@ -37,7 +37,11 @@ function setup(overrides: Record<string, unknown> = {}) {
     deleteNoteMutation: { mutateAsync: jest.fn() },
     removeTagMutation: { mutateAsync: jest.fn() },
     selectedNote: note,
-    setSelectedNote: jest.fn(),
+    setSelectedNote: jest.fn((updater) => {
+      if (typeof updater === 'function') {
+        updater(note);
+      }
+    }),
     setIsEditing: jest.fn(),
     noteToDelete: null,
     setDeleteDialogOpen: jest.fn(),
@@ -130,5 +134,73 @@ describe('useNoteSaveHandlers — handleSaveNote upsert', () => {
     expect(params.setLastSavedAt).not.toHaveBeenCalled()
 
     consoleSpy.mockRestore()
+  })
+})
+
+describe('useNoteSaveHandlers — concurrent note creation', () => {
+  it('prevents duplicate creation when manual save overlaps with autosave creation', async () => {
+    let resolveCreate: (val: any) => void = () => {}
+    const createPromise = new Promise(resolve => {
+      resolveCreate = resolve
+    })
+
+    const mutateAsyncCreate = jest.fn().mockReturnValue(createPromise)
+    const mutateAsyncUpdate = jest.fn().mockResolvedValue({})
+
+    // We need selectedNoteRef to actually update when syncSelectedNote is called
+    const selectedNoteRef = { current: null as any }
+    const syncSelectedNote = jest.fn((updater) => {
+      if (typeof updater === 'function') {
+        const next = updater(selectedNoteRef.current)
+        selectedNoteRef.current = next
+      } else {
+        selectedNoteRef.current = updater
+      }
+    })
+
+    const { result, params } = setup({
+      selectedNote: null,
+      selectedNoteRef,
+      createNoteMutation: { mutateAsync: mutateAsyncCreate },
+      updateNoteMutation: { mutateAsync: mutateAsyncUpdate },
+      setSelectedNote: syncSelectedNote,
+    })
+
+    // 1. Trigger autosave (starts creation)
+    let autoSavePromise: Promise<any>
+    act(() => {
+      autoSavePromise = result.current.handleAutoSave({ title: 'Auto', description: 'desc', tags: '' })
+    })
+
+    // Assert create was called once
+    expect(mutateAsyncCreate).toHaveBeenCalledTimes(1)
+
+    // 2. Trigger manual save concurrently
+    let saveNotePromise: Promise<any>
+    act(() => {
+      saveNotePromise = result.current.handleSaveNote({ title: 'Manual', description: 'desc2', tags: '' })
+    })
+
+    // Assert create was NOT called again (prevent duplicate)
+    expect(mutateAsyncCreate).toHaveBeenCalledTimes(1)
+    expect(mutateAsyncUpdate).not.toHaveBeenCalled()
+
+    // 3. Resolve the creation promise (simulating server response)
+    const createdNote = makeNote({ id: 'new-id', title: 'Auto' })
+
+    act(() => {
+      resolveCreate(createdNote)
+    })
+
+    await act(async () => {
+      await autoSavePromise
+      await saveNotePromise
+    })
+
+    // Assert that the manual save fell back to an UPDATE using the newly created ID
+    expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1)
+    expect(mutateAsyncUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'new-id', title: 'Manual' })
+    )
   })
 })
