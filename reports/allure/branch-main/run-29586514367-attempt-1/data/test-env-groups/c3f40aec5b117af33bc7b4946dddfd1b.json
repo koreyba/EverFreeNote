@@ -1,1 +1,0 @@
-{"id":"c3f40aec5b117af33bc7b4946dddfd1b","fullName":"everfreenote:ui/web/tests/unit/components/copyPasteRoundTrip.test.tsx#self-copy round-trip (jsdom / DOMParser path) never collapses two genuine blank lines in a row into one","name":"never collapses two genuine blank lines in a row into one","status":"passed","testResultsByEnv":{"default":"223323575313cb797fc531f35060ea25"}}
