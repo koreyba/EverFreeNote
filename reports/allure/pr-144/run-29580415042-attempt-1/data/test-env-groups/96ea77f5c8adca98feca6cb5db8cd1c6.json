@@ -1,1 +1,0 @@
-{"id":"96ea77f5c8adca98feca6cb5db8cd1c6","fullName":"everfreenote:core/tests/integration/offlineSync.test.ts#Offline Sync Integration Recovery from failed sync retries failed mutations with exponential backoff","name":"retries failed mutations with exponential backoff","status":"passed","testResultsByEnv":{"default":"480db35f2f88c16b328b67775bda71ee"}}
