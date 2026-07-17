@@ -79,6 +79,7 @@
     "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
+    "@react-native/jest-preset": "^0.86.0",
     "@react-navigation/bottom-tabs": "^7.18.11",
     "@testing-library/react-native": "^13.0.1",
     "@types/jest": "^29.5.14",
