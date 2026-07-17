@@ -1,0 +1,1 @@
+{"id":"cc5512854e73508ac01e1f3daa3ed0a8","fullName":"everfreenote:cypress/component/ui/web/hooks/useNoteAppController.cy.tsx#useNoteAppController flushes pending editor save when creating a note while editing","name":"flushes pending editor save when creating a note while editing","status":"passed","testResultsByEnv":{"default":"a2eaf4340564511841c79f257c28bd5b"}}
