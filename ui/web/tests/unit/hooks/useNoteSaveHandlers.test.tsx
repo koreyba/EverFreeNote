@@ -167,7 +167,7 @@ describe('useNoteSaveHandlers — concurrent note creation', () => {
     })
 
     // 1. Trigger autosave (starts creation)
-    let autoSavePromise: Promise<void>
+    let autoSavePromise: ReturnType<typeof result.current.handleAutoSave>
     act(() => {
       autoSavePromise = result.current.handleAutoSave({ title: 'Auto', description: 'desc', tags: '' })
     })
@@ -176,7 +176,7 @@ describe('useNoteSaveHandlers — concurrent note creation', () => {
     expect(mutateAsyncCreate).toHaveBeenCalledTimes(1)
 
     // 2. Trigger manual save concurrently
-    let saveNotePromise: Promise<void>
+    let saveNotePromise: ReturnType<typeof result.current.handleSaveNote>
     act(() => {
       saveNotePromise = result.current.handleSaveNote({ title: 'Manual', description: 'desc2', tags: '' })
     })

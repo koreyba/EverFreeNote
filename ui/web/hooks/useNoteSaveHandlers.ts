@@ -169,7 +169,7 @@ export function useNoteSaveHandlers({
           userId: user.id,
         }
 
-        const createPromise = (async () => {
+        const createPromise = (async (): Promise<NoteViewModel> => {
           if (isOffline) {
             await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: noteData, clientUpdatedAt })
             const note = {
@@ -296,7 +296,7 @@ export function useNoteSaveHandlers({
       } else {
         const tempId = uuidv4()
         
-        const createPromise = (async () => {
+        const createPromise = (async (): Promise<NoteViewModel> => {
           if (isOffline) {
             await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: { ...noteData, userId: user.id }, clientUpdatedAt })
             const note = {
