@@ -1,1 +1,0 @@
-{"id":"9794f41cc5f7b753bf3f1cc086bb1416","fullName":"everfreenote:core/tests/unit/core-rag-chunking.test.ts#core/rag/chunking — pairwise test suite Regression — реальная заметка (4 абзаца, русский текст) создаёт несколько чанков, не один","name":"создаёт несколько чанков, не один","status":"passed","testResultsByEnv":{"default":"11d46ff6cb05d3c755b75ec115fff300"}}
