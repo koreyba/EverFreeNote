@@ -1,1 +1,0 @@
-{"id":"18c440f94340a01c9bfee4374ace6697","fullName":"everfreenote:core/tests/unit/core-services-noteCopy.test.ts#core/services/noteCopy returns sanitized HTML when parser unwrap fails and fallback cannot match","name":"returns sanitized HTML when parser unwrap fails and fallback cannot match","status":"passed","testResultsByEnv":{"default":"3860ca32aabc816d1f6510e86e976f8c"}}
