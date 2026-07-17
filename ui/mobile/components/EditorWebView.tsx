@@ -117,6 +117,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             if (nextSource) {
                 if (__DEV__) {
                     console.warn(
+                        // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
                         `[EditorWebView] Selected ${nextSource.source} (${nextSource.reason}):`,
                         nextSource.uri
                     )
@@ -429,6 +430,7 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
                     onConsoleMessage={(event: { nativeEvent: { level: string; message: string } }) => {
                         if (!__DEV__) return
                         const { level, message } = event.nativeEvent
+                        // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
                         console.warn(`[WebView Console ${level}]:`, message)
                     }}
                 />

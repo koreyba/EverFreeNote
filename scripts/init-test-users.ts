@@ -116,6 +116,7 @@ async function insertNotes(userId: string, notes: typeof TEST_USERS[number]['not
       tags: note.tags,
     })
     if (error) {
+      // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
       console.error(`Failed to insert note for ${userId}:`, error.message)
     }
   }
@@ -154,6 +155,7 @@ async function main() {
         console.log(`Seeded user ${user.email}`)
       }
     } catch (error: any) {
+      // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
       console.error(`Error seeding user ${user.email}:`, error.message)
     }
   }

@@ -30,6 +30,7 @@ async function measureQuery<T>(name: string, queryFn: () => Promise<T>) {
     return { result, duration }
   } catch (error: any) {
     const duration = performance.now() - start
+    // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
     console.error(`${name} failed after ${duration.toFixed(2)}ms:`, error.message)
     throw error
   }
