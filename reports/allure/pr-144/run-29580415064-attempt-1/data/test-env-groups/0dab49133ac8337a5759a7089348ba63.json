@@ -1,1 +1,0 @@
-{"id":"0dab49133ac8337a5759a7089348ba63","fullName":"everfreenote-mobile:tests/integration/noteEditorScreen.test.tsx#NoteEditorScreen - Delete Functionality Content save on blur flushes pending content save when editor loses focus","name":"flushes pending content save when editor loses focus","status":"passed","testResultsByEnv":{"default":"c35407a8e9cb7893514ca289caa84594"}}

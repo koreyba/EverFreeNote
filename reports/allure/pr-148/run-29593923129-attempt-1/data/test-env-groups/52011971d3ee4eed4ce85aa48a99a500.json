@@ -1,0 +1,1 @@
+{"id":"52011971d3ee4eed4ce85aa48a99a500","fullName":"everfreenote:core/tests/unit/noteAutosaveSession.test.ts#noteAutosaveSession resolveNoteAutosaveSessionChange treats a different assigned note id as a real switch","name":"treats a different assigned note id as a real switch","status":"passed","testResultsByEnv":{"default":"09ab0d4e63dcf07fc5910b9c1853c100"}}
