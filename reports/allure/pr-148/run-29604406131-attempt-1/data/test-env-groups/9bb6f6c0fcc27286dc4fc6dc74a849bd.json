@@ -1,0 +1,1 @@
+{"id":"9bb6f6c0fcc27286dc4fc6dc74a849bd","fullName":"everfreenote:cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager should drain queue on initialization if already online","name":"should drain queue on initialization if already online","status":"passed","testResultsByEnv":{"default":"08589c41877fd92f2d5fc5fd1c12b4ca"}}
