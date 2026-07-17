@@ -48,6 +48,7 @@ function buildHighlightPattern(query: string): RegExp | null {
   const terms = query.trim().split(/\s+/).filter(Boolean)
   if (terms.length === 0) return null
   const unique = Array.from(new Set(terms)).sort((a, b) => b.length - a.length).map(escapeRegExp)
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   return new RegExp(`(${unique.join('|')})`, 'gi')
 }
 

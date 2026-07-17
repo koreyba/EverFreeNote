@@ -118,6 +118,7 @@ async function insertNotes(userId, notes, supabaseUrl) {
       tags: note.tags,
     })
     if (error) {
+      // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
       console.error(`Failed to insert note for ${userId}:`, error.message)
     }
   }
@@ -156,6 +157,7 @@ async function main() {
         console.log(`Seeded user ${user.email}`)
       }
     } catch (error) {
+      // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
       console.error(`Error seeding user ${user.email}:`, error.message)
     }
   }

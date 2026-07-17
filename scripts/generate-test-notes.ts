@@ -117,6 +117,7 @@ async function generateTestNotes(userId: string, count = 1000) {
     const { data, error } = await supabase.from('notes').insert(notes).select('id')
 
     if (error) {
+      // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
       console.error(`❌ Error in batch ${batch + 1}:`, error.message)
       continue
     }

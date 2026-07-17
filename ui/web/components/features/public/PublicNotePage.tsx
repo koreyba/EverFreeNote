@@ -42,6 +42,7 @@ export function PublicNotePage({ note }: PublicNotePageProps) {
 
         <div
           className={`${NOTE_CONTENT_CLASS} mt-8`}
+          // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
           dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
       </article>

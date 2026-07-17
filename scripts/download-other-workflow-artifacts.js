@@ -33,6 +33,7 @@ const runCommand = (args) => {
   try {
     return execFileSync("gh", args, { stdio: ["ignore", "pipe", "inherit"], timeout: 120000 }).toString().trim(); // NOSONAR
   } catch (error) {
+    // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
     console.error(`Command failed: gh ${args.join(" ")}`, error.message);
     return "";
   }

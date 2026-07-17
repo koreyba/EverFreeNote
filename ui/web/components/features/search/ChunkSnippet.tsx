@@ -25,6 +25,7 @@ function buildHighlightPattern(query: string): RegExp | null {
     .map(escapeRegExp)
 
   if (uniqueTerms.length === 0) return null
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   return new RegExp(`(${uniqueTerms.join('|')})`, 'gi')
 }
 
