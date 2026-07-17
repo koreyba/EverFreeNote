@@ -120,11 +120,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: variantConfig.icon,
     userInterfaceStyle: 'automatic',
     scheme: variantConfig.scheme,
-    splash: {
-      image: './assets/splash-icon.png',
-      resizeMode: 'contain',
-      backgroundColor: '#061321',
-    },
+
     ios: {
       supportsTablet: true,
       bundleIdentifier: variantConfig.androidPackage,
@@ -138,10 +134,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       permissions: ['CAMERA', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE'],
     },
     web: {
-      favicon: './assets/favicon.png',
+      bundler: 'metro',
+      output: 'static',
     },
     plugins: [
-      'expo-router',
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-status-bar",
+      "expo-web-browser",
       [
         'expo-sqlite',
         {

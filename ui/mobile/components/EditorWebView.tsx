@@ -1,4 +1,4 @@
-﻿import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View, ActivityIndicator, Text, Pressable } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import Constants from 'expo-constants'
@@ -518,14 +518,14 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
         opacity: 0,
     },
     loadingContainer: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: colors.background,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 16,
     },
     fallbackContainer: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: colors.background,
     },
     debugContainer: {
