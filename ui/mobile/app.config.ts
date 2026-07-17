@@ -154,6 +154,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     experiments: {
       typedRoutes: true,
+      tsconfigPaths: true,
     },
     extra: {
       appVariant: variant,
