@@ -146,9 +146,7 @@ export function useNoteEditorAutoSave({
     const previousDebouncedAutoSave = previousDebouncedAutoSaveRef.current
     if (!previousDebouncedAutoSave || previousDebouncedAutoSave === debouncedAutoSave) {
       previousDebouncedAutoSaveRef.current = debouncedAutoSave
-      return () => {
-        debouncedAutoSave.cancel()
-      }
+      return
     }
 
     const previousPending = previousDebouncedAutoSave.getPending()
@@ -162,10 +160,6 @@ export function useNoteEditorAutoSave({
     }
 
     previousDebouncedAutoSaveRef.current = debouncedAutoSave
-
-    return () => {
-      debouncedAutoSave.cancel()
-    }
   }, [debouncedAutoSave])
 
   // Detect note switches vs autosave ID assignments.
