@@ -1,0 +1,1 @@
+{"id":"395959b48e04750e1558e911c5dc9c4e","fullName":"everfreenote-mobile:tests/integration/notesScreen.test.tsx#NotesScreen - Delete Functionality Delete error handling keeps note deleted when API fails but fallback succeeds","name":"keeps note deleted when API fails but fallback succeeds","status":"passed","testResultsByEnv":{"default":"87d47c5190f3c3f73e8d31abdb41c191"}}
