@@ -1,0 +1,1 @@
+{"id":"a789fc211dd3f34a22a9f471043b3def","fullName":"everfreenote:core/tests/integration/smartPaste.integration.test.ts#smartPaste integration falls back to plain text and strips scripts from non-structural HTML","name":"falls back to plain text and strips scripts from non-structural HTML","status":"passed","testResultsByEnv":{"default":"9c764aba12e68fb702dfdbceac92f696"}}
