@@ -1,1 +1,0 @@
-{"id":"324866ef5554d279e3262cdcc144f4ae","fullName":"everfreenote:core/tests/unit/core-rag-chunking.test.ts#core/rag/chunking — pairwise test suite G — Overlap G3: overlap > длины предыдущего чанка → берёт весь текст","name":"G3: overlap > длины предыдущего чанка → берёт весь текст","status":"passed","testResultsByEnv":{"default":"942861a9a5025921448993987843fcfd"}}
