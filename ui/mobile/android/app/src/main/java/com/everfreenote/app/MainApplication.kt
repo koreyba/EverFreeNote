@@ -33,7 +33,7 @@ class MainApplication : Application(), ReactApplication {
   }
 
   override val reactHost: ReactHost
-    get() = ExpoReactHostFactory.getDefaultReactHost(applicationContext, reactNativeHost)
+    get() = ExpoReactHostFactory.getDefaultReactHost(applicationContext, PackageList(this).packages)
 
   override fun onCreate() {
     super.onCreate()
