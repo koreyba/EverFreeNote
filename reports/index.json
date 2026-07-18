@@ -14,6 +14,40 @@
       "Web Unit",
       "Mobile Unit"
     ],
+    "path": "reports/allure/pr-148/run-29640786075-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-148/run-29640786075-attempt-1/",
+    "runId": "29640786075",
+    "runAttempt": "1",
+    "prNumber": "148",
+    "ref": "fix-supply-chain-updates",
+    "sha": "88c0f2c2a510df0a9db1264862df14eafaedb188",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #148",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-18T10:27:42.277Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
     "path": "reports/allure/pr-149/run-29640753177-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-149/run-29640753177-attempt-1/",
     "runId": "29640753177",
@@ -659,40 +693,6 @@
     "scopeLabel": "PR #148",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-17T18:42:20.267Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/allure/pr-148/run-29604405162-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-148/run-29604405162-attempt-1/",
-    "runId": "29604405162",
-    "runAttempt": "1",
-    "prNumber": "148",
-    "ref": "fix-supply-chain-updates",
-    "sha": "e76b61599db3cd430464f820ef6f183431d7179a",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #148",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-17T18:38:28.296Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
