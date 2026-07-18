@@ -1,0 +1,1 @@
+{"id":"ec55f732bb1f05a0da7c40c15ea50dbc","fullName":"everfreenote:core/tests/integration/offlineSync.test.ts#Offline Sync Integration Delete note offline workflow removes from cache and enqueues delete mutation","name":"removes from cache and enqueues delete mutation","status":"passed","testResultsByEnv":{"default":"17a7e3e3a18961b06d42a51cfdc59220"}}
