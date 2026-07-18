@@ -65,12 +65,14 @@ jobs:
         if: ${{ inputs.environment == 'stage' }}
         run: |
           cd ui/mobile/android
+          chmod +x gradlew
           ./gradlew assembleStageRelease
 
       - name: Build Android Prod Release
         if: ${{ inputs.environment == 'prod' }}
         run: |
           cd ui/mobile/android
+          chmod +x gradlew
           ./gradlew assembleProdRelease
 
       - name: Prepare APK artifact
