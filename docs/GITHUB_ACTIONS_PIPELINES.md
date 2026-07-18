@@ -121,6 +121,33 @@ Actions > Component Tests > Run workflow > Enter build_id
 gh workflow run component-tests.yml -f build_id=$BUILD_ID
 ```
 
+### 5. Android Build Pipeline (`android-build.yml`)
+
+**Triggers:**
+- Manual dispatch with `environment` input (`stage` or `prod`)
+
+**Outputs:**
+- APK artifact: `everfreenote-stage-release-<SHA>.apk` or `everfreenote-prod-release-<SHA>.apk`
+
+**Usage:**
+```bash
+# Manual trigger via GitHub UI
+Actions > Android Build > Run workflow > Select branch and environment (stage/prod)
+
+# Or via GitHub CLI
+gh workflow run android-build.yml -f environment=stage
+```
+
+### 6. PR Android Build Trigger (`pr-build-trigger.yml`)
+
+**Triggers:**
+- Pull Request comments matching `/build-android stage` or `/build-android prod`
+
+**Usage:**
+1. Open a Pull Request.
+2. Add a comment `/build-android stage` or `/build-android prod`.
+3. The trigger workflow will verify collaborator permissions, fetch the head branch, trigger the build pipeline, react with `🚀`, and reply with a link to the running build.
+
 ## Local Testing with Act
 
 ### Prerequisites
@@ -453,8 +480,14 @@ A: Create a new `.yml` file in `.github/workflows/`, test with Act, then push.
 
 ## Related Documentation
 
-- [Requirements](../docs/ai/requirements/feature-github-actions-pipelines.md)
-- [Design](../docs/ai/design/feature-github-actions-pipelines.md)
-- [Implementation](../docs/ai/implementation/feature-github-actions-pipelines.md)
-- [Testing](../docs/ai/testing/feature-github-actions-pipelines.md)
+- GitHub Actions Pipelines:
+  - [Requirements](../docs/ai/requirements/feature-github-actions-pipelines.md)
+  - [Design](../docs/ai/design/feature-github-actions-pipelines.md)
+  - [Implementation](../docs/ai/implementation/feature-github-actions-pipelines.md)
+  - [Testing](../docs/ai/testing/feature-github-actions-pipelines.md)
+- Android Build Pipeline:
+  - [Requirements](../docs/ai/requirements/feature-android-build-pipeline.md)
+  - [Design](../docs/ai/design/feature-android-build-pipeline.md)
+  - [Implementation](../docs/ai/implementation/feature-android-build-pipeline.md)
+  - [Testing](../docs/ai/testing/feature-android-build-pipeline.md)
 
