@@ -1,1 +1,0 @@
-{"id":"5792a70277eb2ae4861d110028531bb0","fullName":"everfreenote:cypress/component/lib/adapters/browser.cy.ts#WebBrowserAdapter calls window.prompt and returns result","name":"calls window.prompt and returns result","status":"passed","testResultsByEnv":{"default":"a95fffefcea5ade33ead2e7b5dc3403e"}}
