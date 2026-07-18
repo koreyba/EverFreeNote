@@ -6,6 +6,42 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-151/run-29642939970-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-151/run-29642939970-attempt-1/",
+    "runId": "29642939970",
+    "runAttempt": "1",
+    "prNumber": "151",
+    "ref": "test-android-build-trigger",
+    "sha": "a0308510ef6c48c663af0db16061bebe321519b1",
+    "outcome": "success",
+    "previewUrl": "https://92e14194.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #151",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-18T11:45:37.158Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit"
     ],
     "suiteLabels": [
@@ -669,42 +705,6 @@
     "scopeLabel": "PR #149",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-18T10:31:05.153Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component"
-    ],
-    "path": "reports/allure/pr-149/run-29640678606-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-149/run-29640678606-attempt-1/",
-    "runId": "29640678606",
-    "runAttempt": "1",
-    "prNumber": "149",
-    "ref": "android-build-pipeline-setup",
-    "sha": "183b9889716fd68ff6543d0500ce358d778f4df0",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #149",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-18T10:29:40.706Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
