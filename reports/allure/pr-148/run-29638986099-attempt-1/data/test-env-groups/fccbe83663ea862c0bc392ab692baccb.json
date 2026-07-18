@@ -1,1 +1,0 @@
-{"id":"fccbe83663ea862c0bc392ab692baccb","fullName":"everfreenote:core/tests/unit/core-utils-search.test.ts#core/utils/search buildTsQuery returns null for query shorter than minimum length","name":"returns null for query shorter than minimum length","status":"passed","testResultsByEnv":{"default":"febfa559132ca4fcbe25c785b1d187a2"}}
