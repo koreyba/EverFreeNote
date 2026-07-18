@@ -27,8 +27,13 @@ jobs:
         ))
       )
     runs-on: ubuntu-latest
+    env:
+      GH_REPO: ${{ github.repository }}
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Add rocket reaction to comment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
