@@ -17,6 +17,7 @@ module.exports = {
   testRegex: ['tests/.*\\.test\\.(ts|tsx)$'],
   setupFilesAfterEnv: ['<rootDir>/tests/setupTests.ts'],
   moduleNameMapper: {
+    '^@everfreenote/core/(.*)$': '<rootDir>/../../core/$1',
     '^@core/(.*)$': '<rootDir>/../../core/$1',
     '^@ui/mobile/(.*)$': '<rootDir>/$1',
     '^@/(.*)$': '<rootDir>/../../$1',
