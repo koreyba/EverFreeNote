@@ -1,0 +1,1 @@
+{"id":"3a77f07e23eb8eb6ef5b4d9e96ce3e4f","fullName":"everfreenote-mobile:tests/component/useDeleteNote.test.tsx#useDeleteNote Optimistic updates cancels in-flight queries on mutate","name":"cancels in-flight queries on mutate","status":"passed","testResultsByEnv":{"default":"b3b5c6080f8c9b22f154417f432d51b3"}}
