@@ -15,6 +15,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "types": ["jest"],
+    "baseUrl": ".",
     "paths": {
       "@core/*": [
         "../../core/*"

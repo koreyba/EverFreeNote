@@ -8,7 +8,7 @@ module.exports = function (api) {
         {
           root: ['./'],
           alias: {
-            '@core': '../../core',
+            '@core': '@everfreenote/core',
             '@ui/mobile': './',
           },
           extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
