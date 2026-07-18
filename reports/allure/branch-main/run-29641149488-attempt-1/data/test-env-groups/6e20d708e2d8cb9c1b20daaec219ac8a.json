@@ -1,0 +1,1 @@
+{"id":"6e20d708e2d8cb9c1b20daaec219ac8a","fullName":"everfreenote-mobile:tests/component/useBulkSelection.test.ts#useBulkSelection activate(id) sets isActive=true and adds id to selectedIds","name":"activate(id) sets isActive=true and adds id to selectedIds","status":"passed","testResultsByEnv":{"default":"ad5dfb8c5d274530ef9b23564e50a13e"}}

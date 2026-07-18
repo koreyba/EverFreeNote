@@ -1,0 +1,1 @@
+{"id":"cbb8fe246896d26291ce6d8b437bc6da","fullName":"everfreenote-mobile:tests/integration/noteCopyButton.test.tsx#NoteEditorScreen - Copy button shows an error toast when no payload is returned","name":"shows an error toast when no payload is returned","status":"passed","testResultsByEnv":{"default":"e27440480b50e04cd5f0c5c1d82a9ef3"}}
