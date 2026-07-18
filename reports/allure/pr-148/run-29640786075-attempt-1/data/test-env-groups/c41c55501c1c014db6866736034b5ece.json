@@ -1,1 +1,0 @@
-{"id":"c41c55501c1c014db6866736034b5ece","fullName":"everfreenote-mobile:tests/component/useBulkDeleteNotes.test.tsx#useBulkDeleteNotes does not call deleteNote when ids array is empty","name":"does not call deleteNote when ids array is empty","status":"passed","testResultsByEnv":{"default":"8a4b06414b67a376ba255e500c49e6c5"}}
