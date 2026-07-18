@@ -6,6 +6,40 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
+    "path": "reports/allure/branch-main/run-29643074669-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-29643074669-attempt-1/",
+    "runId": "29643074669",
+    "runAttempt": "1",
+    "prNumber": null,
+    "ref": "main",
+    "sha": "8947f62e59170a67ba68b53a1eecd02e553085d9",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "branch",
+    "scopeLabel": "main",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-18T11:47:08.879Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit",
       "e2e"
     ],
@@ -669,42 +703,6 @@
     "scopeLabel": "PR #149",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-18T10:32:33.014Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-149/run-29640753165-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-149/run-29640753165-attempt-1/",
-    "runId": "29640753165",
-    "runAttempt": "1",
-    "prNumber": "149",
-    "ref": "android-build-pipeline-setup",
-    "sha": "b6310861f27132605803e900df7bfe25f11df789",
-    "outcome": "success",
-    "previewUrl": "https://1a314c38.everfreenote.pages.dev",
-    "e2eRef": "master",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #149",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-18T10:31:05.153Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
