@@ -1,0 +1,97 @@
+name: Android Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (stage or prod)'
+        required: true
+        default: 'stage'
+        type: choice
+        options:
+          - stage
+          - prod
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Android APK (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder' }}
+      NEXT_PUBLIC_ENABLE_TEST_AUTH: 'true'
+      GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            ui/mobile/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install mobile dependencies
+        run: npm ci --prefix ui/mobile
+
+      - name: Prepare webview bundle
+        run: npm --prefix ui/mobile run prepare:webview-bundle
+
+      - name: Fix Windows path configuration in gradle.properties
+        run: |
+          sed -i '/org.gradle.java.home/d' ui/mobile/android/gradle.properties
+
+      - name: Setup Java Development Kit (JDK)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Android Stage Release
+        if: ${{ inputs.environment == 'stage' }}
+        run: |
+          cd ui/mobile/android
+          chmod +x gradlew
+          ./gradlew assembleStageRelease
+
+      - name: Build Android Prod Release
+        if: ${{ inputs.environment == 'prod' }}
+        run: |
+          cd ui/mobile/android
+          chmod +x gradlew
+          ./gradlew assembleProdRelease
+
+      - name: Prepare APK artifact
+        env:
+          TARGET_ENV: ${{ inputs.environment }}
+        run: |
+          mkdir -p build-apks
+          # Get short SHA for file name
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          if [ "$TARGET_ENV" = "stage" ]; then
+            cp ui/mobile/android/app/build/outputs/apk/stage/release/app-stage-release.apk build-apks/everfreenote-stage-release-${SHORT_SHA}.apk
+          else
+            cp ui/mobile/android/app/build/outputs/apk/prod/release/app-prod-release.apk build-apks/everfreenote-prod-release-${SHORT_SHA}.apk
+          fi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4
+        with:
+          name: everfreenote-${{ inputs.environment }}-apk
+          path: build-apks/
+          retention-days: 30

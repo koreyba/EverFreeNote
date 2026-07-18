@@ -175,6 +175,14 @@ const renderComment = ({
     lines.push("", `Catalog: ${buildMarkdownLink("All reports", catalogUrl)}`);
   }
 
+  lines.push(
+    "",
+    "### 🤖 Android Build Panel",
+    "Check a box below to trigger a release build:",
+    "- [ ] 🚀 Build Stage Release APK",
+    "- [ ] 🚀 Build Prod Release APK"
+  );
+
   return `${lines.join("\n")}\n`;
 };
 
