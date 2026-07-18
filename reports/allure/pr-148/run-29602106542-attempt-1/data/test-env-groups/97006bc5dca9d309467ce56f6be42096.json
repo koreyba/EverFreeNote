@@ -1,1 +1,0 @@
-{"id":"97006bc5dca9d309467ce56f6be42096","fullName":"everfreenote:cypress/component/ui/web/hooks/useNoteBulkActions.cy.tsx#useNoteBulkActions deleteSelectedNotes clears selectedNote after bulk delete","name":"deleteSelectedNotes clears selectedNote after bulk delete","status":"passed","testResultsByEnv":{"default":"ad4c8fb58c7c160bad1791ac85cff8b9"}}
