@@ -1,0 +1,1 @@
+{"id":"3730b4814743ac988802f1211feddd38","fullName":"everfreenote:cypress/component/ui/web/hooks/useNoteData.cy.tsx#useNoteData returns undefined mergedFtsData when aggregatedFtsData is undefined","name":"returns undefined mergedFtsData when aggregatedFtsData is undefined","status":"passed","testResultsByEnv":{"default":"f7d6d8d2b3951b20b0608d89dffc2a2a"}}
