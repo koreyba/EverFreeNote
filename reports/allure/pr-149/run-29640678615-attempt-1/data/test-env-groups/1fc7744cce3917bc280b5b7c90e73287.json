@@ -1,0 +1,1 @@
+{"id":"1fc7744cce3917bc280b5b7c90e73287","fullName":"everfreenote:ui/web/tests/unit/components/settingsPanels.test.tsx#settings panels does not remove the stored Gemini key when the confirmation is cancelled","name":"does not remove the stored Gemini key when the confirmation is cancelled","status":"passed","testResultsByEnv":{"default":"3d77d6cf829e2c0e5d6e865ab1ea5015"}}
