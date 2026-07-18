@@ -1,0 +1,1 @@
+{"id":"833ce2a28008860e2b8319335a78eb55","fullName":"everfreenote:core/tests/unit/core-utils-wordpress.test.ts#core/utils/wordpress rejects slugs longer than the allowed maximum","name":"rejects slugs longer than the allowed maximum","status":"passed","testResultsByEnv":{"default":"290e35c5f3aab01ad5976b46a3e401cd"}}
