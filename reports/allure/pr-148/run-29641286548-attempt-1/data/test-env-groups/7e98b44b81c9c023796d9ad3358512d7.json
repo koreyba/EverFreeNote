@@ -1,1 +1,0 @@
-{"id":"7e98b44b81c9c023796d9ad3358512d7","fullName":"everfreenote-mobile:tests/component/useBulkSelection.test.ts#useBulkSelection clear() empties selectedIds without changing isActive","name":"clear() empties selectedIds without changing isActive","status":"passed","testResultsByEnv":{"default":"ca2f6c6997b3bde98afe854b13c02c4e"}}
