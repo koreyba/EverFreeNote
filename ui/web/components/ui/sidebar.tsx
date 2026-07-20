@@ -630,8 +630,12 @@ const SidebarMenuSkeleton = React.forwardRef<HTMLDivElement, SidebarMenuSkeleton
 ) => {
   // Random width between 50 to 90%.
   const width = React.useMemo(() => {
-    // eslint-disable-next-line react-hooks/purity
-    return `${Math.floor(Math.random() * 40) + 50}%`;
+    if (typeof globalThis.crypto?.getRandomValues === 'function') {
+      const array = new Uint32Array(1)
+      globalThis.crypto.getRandomValues(array)
+      return `${(array[0] % 40) + 50}%`
+    }
+    return '70%'
   }, [])
 
   return (

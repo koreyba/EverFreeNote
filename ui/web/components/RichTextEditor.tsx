@@ -293,10 +293,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     }), [editor, handleApplySelectionAsMarkdown])
 
     return (
-      <div 
-        className={`bg-background transition-all duration-200 ${hideToolbar ? '' : 'border border-border/40 rounded-xl shadow-sm'}`}
-        onMouseDown={handleEditorContainerMouseDown}
-      >
+      <div className={`bg-background transition-all duration-200 ${hideToolbar ? '' : 'border border-border/40 rounded-xl shadow-sm'}`}>
         {!hideToolbar && (
           <EditorMenuBar
             editor={editor}
@@ -309,11 +306,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
             onToggleSpellcheck={handleToggleSpellcheck}
           />
         )}
-        <EditorContent
-          data-cy="editor-content"
-          editor={editor}
-          className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-6 py-4`}
-        />
+        <div onMouseDown={handleEditorContainerMouseDown}>
+          <EditorContent
+            data-cy="editor-content"
+            editor={editor}
+            className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-6 py-4`}
+          />
+        </div>
       </div>
     )
   })

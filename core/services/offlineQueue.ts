@@ -6,10 +6,15 @@ import type {
 } from '../types/offline'
 
 const generateId = (): string => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
   }
-  return `mq_${Date.now()}_${Math.random().toString(16).slice(2)}`
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const array = new Uint32Array(1)
+    globalThis.crypto.getRandomValues(array)
+    return `mq_${Date.now()}_${array[0].toString(16)}`
+  }
+  return `mq_${Date.now()}_0`
 }
 
 export class OfflineQueueService {

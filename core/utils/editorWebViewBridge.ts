@@ -25,7 +25,16 @@ export const sendChunkedText = (
     return
   }
 
-  const transferId = `${type}_${Date.now()}_${Math.random().toString(16).slice(2)}`
+  const getRandomSuffix = (): string => {
+    if (typeof globalThis.crypto?.getRandomValues === 'function') {
+      const array = new Uint32Array(1)
+      globalThis.crypto.getRandomValues(array)
+      return array[0].toString(16)
+    }
+    return '0'
+  }
+
+  const transferId = `${type}_${Date.now()}_${getRandomSuffix()}`
   const total = Math.ceil(text.length / chunkSize)
   send({ type: `${type}${CHUNK_START_SUFFIX}`, payload: { transferId, total } satisfies ChunkStartPayload })
   for (let index = 0; index < total; index++) {

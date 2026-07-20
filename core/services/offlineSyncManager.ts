@@ -40,6 +40,12 @@ export class OfflineSyncManager {
         }
       })
     }
+
+    if (this.online) {
+      queueMicrotask(() => {
+        void this.drainQueue()
+      })
+    }
   }
 
   dispose(): void {
