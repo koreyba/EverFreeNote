@@ -17,9 +17,9 @@ export const pickLatestNote = <T extends UpdatedAtCarrier>(
 ): T | undefined => {
   const filtered = candidates.filter(Boolean) as T[]
   if (!filtered.length) return undefined
-  return filtered.reduce((best, current) => (
+  return filtered.reduce<T>((best, current) => (
     getUpdatedAtMs(current) > getUpdatedAtMs(best) ? current : best
-  ))
+  ), filtered[0])
 }
 
 export const mergeNoteFields = <T extends NoteFields, U extends Partial<NoteFields>>(base: T, override: U): T => {

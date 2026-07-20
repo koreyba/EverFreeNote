@@ -138,6 +138,7 @@ describe('core/enex/note-creator', () => {
   })
 
   it('fails note creation when duplicate lookup errors instead of treating the note as new', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {})
     lookupOrder.mockResolvedValueOnce({
       data: null,
       error: { message: 'lookup failed' },
