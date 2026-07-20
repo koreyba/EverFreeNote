@@ -52,7 +52,6 @@ export class NoteCreator {
   }
 
   private formatCreationError(error: unknown): never {
-    console.error('Note creation failed:', error)
     let message = 'Unknown error'
     if (error instanceof Error) {
       message = error.message
@@ -171,7 +170,6 @@ export class NoteCreator {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Duplicate check failed:', error)
       throw error
     }
 
