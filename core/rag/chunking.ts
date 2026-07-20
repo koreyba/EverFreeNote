@@ -254,7 +254,7 @@ function processListContent(content: string, isOrdered: boolean): string {
 }
 
 function processTopLevelLists(html: string, tagName: 'ol' | 'ul', isOrdered: boolean): string {
-  const openRegex = new RegExp(`<${tagName}\\b[^>]*>`, 'gi')
+  const openRegex = new RegExp(String.raw`<${tagName}\b[^>]*>`, 'gi')
   const closeTag = `</${tagName}>`
   let result = ''
   let cursor = 0
