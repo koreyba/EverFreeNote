@@ -45,9 +45,18 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
 
   return (
     <div style={style} className="px-2 py-1">
-      <button
-        type="button"
+      <div
+        role="option"
+        aria-selected={isSelected}
+        tabIndex={0}
         onClick={() => onSelectNote(note)}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onSelectNote(note)
+          }
+        }}
         className={`w-full text-left group relative p-3 rounded-xl cursor-pointer transition-all duration-200 border ${
           isSelected 
             ? "bg-accent border-primary/20 shadow-sm" 
@@ -90,7 +99,7 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
             </p>
           </div>
         </div>
-      </button>
+      </div>
     </div>
   )
 }

@@ -136,7 +136,6 @@ describe('RichTextEditor spellcheck integration', () => {
 
   describe('Caret placement boundary tests', () => {
     it('handles container mouse down events correctly', () => {
-      const { placeCaretFromCoords } = require('@core/utils/prosemirrorCaret')
       const domNode = document.createElement('div')
       mockEditor = {
         state: { doc: { content: { size: 0 } } },
