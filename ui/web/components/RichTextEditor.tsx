@@ -306,7 +306,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
             onToggleSpellcheck={handleToggleSpellcheck}
           />
         )}
-        <div onMouseDown={handleEditorContainerMouseDown}>
+        <div role="presentation" onMouseDown={handleEditorContainerMouseDown}>
           <EditorContent
             data-cy="editor-content"
             editor={editor}

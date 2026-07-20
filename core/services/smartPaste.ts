@@ -209,22 +209,22 @@ function scoreMarkdown(text: string): { score: number; reasons: string[] } {
     reasons.push('markdown:heading')
   }
 
-  if (/^(\s*[-*+]\s+|\s*\d+\.\s+)/m.test(text)) {
+  if (/^[ \t]*(?:[-*+][ \t]+|\d+\.[ \t]+)/m.test(text)) {
     score += 2
     reasons.push('markdown:list')
   }
 
-  if (/^\s*>\s+/m.test(text)) {
+  if (/^[ \t]*>[ \t]+/m.test(text)) {
     score += 2
     reasons.push('markdown:blockquote')
   }
 
-  if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/m.test(text)) {
+  if (/^[ \t]*(?:-{3,}|\*{3,}|_{3,})[ \t]*$/m.test(text)) {
     score += 3
     reasons.push('markdown:horizontal-rule')
   }
 
-  if (/^\s*```|^\s*~~~/m.test(text)) {
+  if (/^[ \t]*(?:```|~~~)/m.test(text)) {
     score += 3
     reasons.push('markdown:fenced-code')
   }
@@ -247,10 +247,10 @@ function scoreMarkdown(text: string): { score: number; reasons: string[] } {
   return { score, reasons }
 }
 
-const TABLE_SEPARATOR_ROW_PATTERN = /^\s*\|?\s*[-:]+(?:\s*\|\s*[-:]+)*\s*\|?\s*$/
+const TABLE_SEPARATOR_ROW_PATTERN = /^[ \t]*\|?[ \t]*[-:]+(?:[ \t]*\|[ \t]*[-:]+)*[ \t]*\|?[ \t]*$/
 
 function containsUnsupportedMarkdown(text: string): boolean {
-  if (/^\s*[-*+]\s+\[[ xX]\]\s+/m.test(text)) {
+  if (/^[ \t]*[-*+][ \t]+\[[ xX]\][ \t]+/m.test(text)) {
     return true
   }
 

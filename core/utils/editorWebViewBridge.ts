@@ -14,6 +14,8 @@ const CHUNK_SUFFIX = '_CHUNK'
 const CHUNK_END_SUFFIX = '_CHUNK_END'
 const RESERVED_TRANSFER_IDS = new Set(['__proto__', 'prototype', 'constructor'])
 
+let fallbackSuffixCounter = 0
+
 export const sendChunkedText = (
   send: (message: ChunkedMessage) => void,
   type: string,
@@ -31,7 +33,8 @@ export const sendChunkedText = (
       globalThis.crypto.getRandomValues(array)
       return array[0].toString(16)
     }
-    return '0'
+    fallbackSuffixCounter = (fallbackSuffixCounter + 1) & 0xffffff
+    return fallbackSuffixCounter.toString(16)
   }
 
   const transferId = `${type}_${Date.now()}_${getRandomSuffix()}`

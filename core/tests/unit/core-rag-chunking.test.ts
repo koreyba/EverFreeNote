@@ -527,4 +527,32 @@ describe("core/rag/chunking — pairwise test suite", () => {
     })
   })
 
+  describe("H — Depth-aware lists", () => {
+    it("preserves correct prefixes for nested ordered lists", () => {
+      const html = "<ol><li>First<ol><li>SubOne</li><li>SubTwo</li></ol></li><li>Second</li></ol>"
+      const chunks = buildRagIndexChunks({
+        title: "Nested OL",
+        html,
+        tags: [],
+        settings: cfg({ min_chunk_size: 10 }),
+      })
+      expect(chunks[0]!.bodyContent).toContain("1. First")
+      expect(chunks[0]!.bodyContent).toContain("SubOne")
+      expect(chunks[0]!.bodyContent).toContain("SubTwo")
+      expect(chunks[0]!.bodyContent).toContain("2. Second")
+    })
+
+    it("preserves unordered bullet lists nested inside ordered lists", () => {
+      const html = "<ol><li>Parent<ul><li>Bullet A</li><li>Bullet B</li></ul></li></ol>"
+      const chunks = buildRagIndexChunks({
+        title: "Mixed List",
+        html,
+        tags: [],
+        settings: cfg({ min_chunk_size: 10 }),
+      })
+      expect(chunks[0]!.bodyContent).toContain("1. Parent")
+      expect(chunks[0]!.bodyContent).toContain("Bullet A")
+      expect(chunks[0]!.bodyContent).toContain("Bullet B")
+    })
+  })
 })

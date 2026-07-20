@@ -240,7 +240,7 @@ export default function EditorWebViewPage() {
     }
 
     // Wait for fonts to load to prevent FOUT (Flash of Unstyled Text)
-    if (document.fonts?.ready) {
+    if ('fonts' in document && 'ready' in document.fonts) {
       document.fonts.ready.then(notifyReady).catch(notifyReady)
     } else {
       notifyReady()

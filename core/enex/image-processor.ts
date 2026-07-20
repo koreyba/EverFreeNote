@@ -62,7 +62,7 @@ export class ImageProcessor {
     const bytes = new Uint8Array(binaryString.length)
 
     for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
+      bytes[i] = binaryString.codePointAt(i) ?? 0
     }
 
     return new Blob([bytes], { type: mime })

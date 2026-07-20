@@ -110,7 +110,7 @@ import { readJsonErrorMessage } from './settingsErrorMessage'
 const parseContextResponseBody = async (context: Response): Promise<WordPressBridgeError | null> => {
   if (typeof context.json !== 'function') return null
   try {
-    const messageFromHelper = await readJsonErrorMessage(context, ['message', 'msg'])
+    const messageFromHelper = await readJsonErrorMessage(context.clone(), ['message', 'msg'])
     const body = await context.json()
     if (!isRecord(body)) return null
 

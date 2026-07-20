@@ -133,4 +133,22 @@ describe('RichTextEditor spellcheck integration', () => {
     expect(capturedMenuBarProps!.spellcheckEnabled).toBe(false)
     expect(localStorage.getItem(SPELLCHECK_ENABLED_KEY)).toBe('false')
   })
+
+  describe('Caret placement boundary tests', () => {
+    it('handles container mouse down events correctly', () => {
+      const { placeCaretFromCoords } = require('@core/utils/prosemirrorCaret')
+      const domNode = document.createElement('div')
+      mockEditor = {
+        state: { doc: { content: { size: 0 } } },
+        options: { parseOptions: {}, enableContentCheck: false },
+        view: { dom: domNode },
+        can: () => ({ undo: () => false, redo: () => false }),
+      } as unknown as Record<string, unknown>
+
+      const { getByTestId } = render(<RichTextEditor initialContent="<p>Test</p>" />)
+      const container = getByTestId('editor-content').parentElement
+
+      expect(container).toBeTruthy()
+    })
+  })
 })

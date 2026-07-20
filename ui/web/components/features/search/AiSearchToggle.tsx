@@ -75,8 +75,8 @@ export function AiSearchToggle({
 
   const toggleControl = (
     <div
+      role={isDisabled ? "button" : undefined}
       data-testid="ai-search-toggle-trigger"
-      role="group"
       className="flex items-center gap-2"
       onPointerDown={handleSelectionHintPointerDown}
       tabIndex={isDisabled ? 0 : undefined}

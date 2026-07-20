@@ -115,8 +115,16 @@ export function NoteSearchItem({
         'group relative rounded-lg border border-border/60 bg-card border-l-[3px] overflow-hidden transition-all hover:border-primary/30 hover:shadow-sm',
         getAccentClass(group.topScore)
       )}
-      role="listitem"
+      role="button"
+      tabIndex={selectionMode ? 0 : undefined}
       onClick={handleCardClick}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleCardClick(e as unknown as React.MouseEvent<HTMLElement>)
+        }
+      }}
       {...longPressHandlers}
     >
       {onToggleSelect && (

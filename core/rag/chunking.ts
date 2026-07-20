@@ -54,7 +54,7 @@ function normalizeWhitespace(value: string): string {
 }
 
 function stripTags(value: string): string {
-  return normalizeWhitespace(value.replaceAll(/<[^>]*>/g, " "))
+  return normalizeWhitespace(value.replaceAll(/<[^>]+>/g, " "))
 }
 
 function splitPlainTextParagraphs(value: string): string[] {
@@ -181,74 +181,123 @@ function splitAndStripParagraphs(text: string, sectionHeading: string | null): R
 // are not handled correctly because the <li> regex uses a non-greedy match that
 // stops at the first </li>. When DOMParser is available, collectBlocksFromDom
 // handles nested lists properly via DOM traversal.
-function prefixListItems(html: string): string {
-  const processListContent = (content: string, isOrdered: boolean): string => {
-    let result = ''
-    let idx = 1
-    let pos = 0
+function processListContent(content: string, isOrdered: boolean): string {
+  let result = ''
+  let idx = 1
+  let pos = 0
 
-    while (pos < content.length) {
-      const liStart = content.toLowerCase().indexOf('<li', pos)
-      if (liStart === -1) {
-        result += content.slice(pos)
-        break
-      }
-
-      result += content.slice(pos, liStart)
-      const tagClose = content.indexOf('>', liStart)
-      if (tagClose === -1) {
-        result += content.slice(liStart)
-        break
-      }
-
-      let depth = 1
-      let searchPos = tagClose + 1
-      let liEnd = -1
-
-      while (searchPos < content.length && depth > 0) {
-        const nextOpen = content.toLowerCase().indexOf('<li', searchPos)
-        const nextClose = content.toLowerCase().indexOf('</li>', searchPos)
-
-        if (nextClose === -1) break
-
-        if (nextOpen !== -1 && nextOpen < nextClose) {
-          depth++
-          const openTagClose = content.indexOf('>', nextOpen)
-          searchPos = openTagClose !== -1 ? openTagClose + 1 : nextOpen + 3
-        } else {
-          depth--
-          if (depth === 0) {
-            liEnd = nextClose
-          } else {
-            searchPos = nextClose + 5
-          }
-        }
-      }
-
-      if (liEnd === -1) {
-        result += content.slice(liStart)
-        break
-      }
-
-      const liInner = content.slice(tagClose + 1, liEnd)
-      const prefix = isOrdered ? `${idx++}. ` : '- '
-      const stripped = liInner.replaceAll(/<\/?p\b[^>]*>/gi, '')
-      result += `<li>${prefix}${stripped}</li>`
-
-      pos = liEnd + 5
+  while (pos < content.length) {
+    const liStart = content.toLowerCase().indexOf('<li', pos)
+    if (liStart === -1) {
+      result += content.slice(pos)
+      break
     }
 
-    return result
+    result += content.slice(pos, liStart)
+    const tagClose = content.indexOf('>', liStart)
+    if (tagClose === -1) {
+      result += content.slice(liStart)
+      break
+    }
+
+    let depth = 1
+    let searchPos = tagClose + 1
+    let liEnd = -1
+
+    while (searchPos < content.length && depth > 0) {
+      const nextOpen = content.toLowerCase().indexOf('<li', searchPos)
+      const nextClose = content.toLowerCase().indexOf('</li>', searchPos)
+
+      if (nextClose === -1) break
+
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth++
+        const openTagClose = content.indexOf('>', nextOpen)
+        searchPos = openTagClose !== -1 ? openTagClose + 1 : nextOpen + 3
+      } else {
+        depth--
+        if (depth === 0) {
+          liEnd = nextClose
+        } else {
+          searchPos = nextClose + 5
+        }
+      }
+    }
+
+    if (liEnd === -1) {
+      result += content.slice(liStart)
+      break
+    }
+
+    const liInner = content.slice(tagClose + 1, liEnd)
+    const prefix = isOrdered ? `${idx++}. ` : '- '
+    const stripped = liInner.replaceAll(/<\/?p\b[^>]*>/gi, '')
+    result += `<li>${prefix}${stripped}</li>`
+
+    pos = liEnd + 5
   }
 
-  let result = html.replaceAll(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner: string) => {
-    return `<ol>${processListContent(inner, true)}</ol>`
-  })
+  return result
+}
 
-  result = result.replaceAll(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (_match, inner: string) => {
-    return `<ul>${processListContent(inner, false)}</ul>`
-  })
+function processTopLevelLists(html: string, tagName: 'ol' | 'ul', isOrdered: boolean): string {
+  const openRegex = new RegExp(`<${tagName}\\b[^>]*>`, 'gi')
+  const closeTag = `</${tagName}>`
+  let result = ''
+  let cursor = 0
 
+  while (cursor < html.length) {
+    openRegex.lastIndex = cursor
+    const match = openRegex.exec(html)
+    if (!match) {
+      result += html.slice(cursor)
+      break
+    }
+
+    result += html.slice(cursor, match.index)
+    const openTagEnd = match.index + match[0].length
+
+    let depth = 1
+    let searchPos = openTagEnd
+    let listEnd = -1
+
+    while (depth > 0 && searchPos < html.length) {
+      const lower = html.toLowerCase()
+      const nextOpen = lower.indexOf(`<${tagName}`, searchPos)
+      const nextClose = lower.indexOf(closeTag, searchPos)
+
+      if (nextClose === -1) break
+
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth++
+        const openEnd = html.indexOf('>', nextOpen)
+        searchPos = openEnd !== -1 ? openEnd + 1 : nextOpen + tagName.length + 1
+      } else {
+        depth--
+        if (depth === 0) {
+          listEnd = nextClose
+        } else {
+          searchPos = nextClose + closeTag.length
+        }
+      }
+    }
+
+    if (listEnd === -1) {
+      result += html.slice(match.index)
+      break
+    }
+
+    const inner = html.slice(openTagEnd, listEnd)
+    result += `<${tagName}>${processListContent(inner, isOrdered)}</${tagName}>`
+    cursor = listEnd + closeTag.length
+  }
+
+  return result
+}
+
+function prefixListItems(html: string): string {
+  let result = processTopLevelLists(html, 'ol', true)
+  result = processTopLevelLists(result, 'ul', false)
   return result
 }
 
@@ -260,7 +309,7 @@ function collectBlocksWithRegex(html: string): RawBlock[] {
   const rawBlocks: RawBlock[] = []
   let currentHeading: string | null = null
 
-  const headingRegex = /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi
+  const headingRegex = /<h([1-6])\b[^>]*>((?:(?!<\/h\1>)[\s\S])*)<\/h\1>/gi
   let lastIndex = 0
   let match: RegExpExecArray | null
 

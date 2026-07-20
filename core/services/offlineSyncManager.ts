@@ -36,14 +36,18 @@ export class OfflineSyncManager {
       this.unsubscribe = networkStatus.subscribe((isOnline) => {
         this.online = isOnline
         if (isOnline) {
-          void this.drainQueue()
+          void this.drainQueue().catch((err) => {
+            console.error('[OfflineSyncManager] Network online drainQueue failed:', err)
+          })
         }
       })
     }
 
     if (this.online) {
       queueMicrotask(() => {
-        void this.drainQueue()
+        void this.drainQueue().catch((err) => {
+          console.error('[OfflineSyncManager] Initial drainQueue failed:', err)
+        })
       })
     }
   }
@@ -57,7 +61,9 @@ export class OfflineSyncManager {
   async enqueue(item: MutationQueueItemInput): Promise<void> {
     await this.queue.enqueue(item)
     if (this.online) {
-      void this.drainQueue()
+      void this.drainQueue().catch((err) => {
+        console.error('[OfflineSyncManager] Enqueue drainQueue failed:', err)
+      })
     }
   }
 

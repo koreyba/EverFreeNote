@@ -128,9 +128,8 @@ export function TagInput({
   return (
     <div className={cn("relative group", className)}>
       <div
+        role="presentation"
         data-testid="tag-input-container"
-        role="button"
-        tabIndex={isEditing ? -1 : 0}
         onClick={() => {
           if (!isEditing && !disabled) {
             handleStartEditing()

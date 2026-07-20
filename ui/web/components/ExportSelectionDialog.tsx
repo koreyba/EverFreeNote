@@ -203,31 +203,20 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
                 {filteredNotes.map((note) => {
                   const isSelected = selectAll ? !deselectedIds.has(note.id) : selectedIds.has(note.id)
                   return (
-                    <div
+                    <label
                       key={note.id}
-                      role="button"
-                      tabIndex={0}
-                      className={`flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer ${
+                      className={`w-full text-left flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer ${
                         isSelected
                           ? "border-primary bg-primary/5 dark:bg-primary/10"
                           : "border-border/30 hover:bg-muted/30"
                       }`}
-                      onClick={() => toggleNote(note.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          toggleNote(note.id)
-                        }
-                      }}
                     >
-                      <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleNote(note.id)}
-                          className="mt-1"
-                          aria-label={`Select note ${note.title}`}
-                        />
-                      </div>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleNote(note.id)}
+                        className="mt-1"
+                        aria-label={`Select note ${note.title}`}
+                      />
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between gap-2">
                           <h3 className="font-semibold text-sm truncate">{note.title || "Untitled"}</h3>
@@ -265,7 +254,7 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
                           </div>
                         )}
                       </div>
-                    </div>
+                    </label>
                   )
                 })}
                 {hasMore && (

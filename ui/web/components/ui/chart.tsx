@@ -43,7 +43,7 @@ type ChartContainerProps = React.ComponentPropsWithoutRef<"div"> & {
 const ChartContainer = React.forwardRef<HTMLDivElement, ChartContainerProps>(
   ({ id, className, children, config, ...props }, ref) => {
     const uniqueId = React.useId()
-    const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
+    const chartId = `chart-${id || uniqueId.replaceAll(":", "")}`
 
     return (
       <ChartContext.Provider value={{ config }}>

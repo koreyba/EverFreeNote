@@ -160,7 +160,7 @@ export function ImportButton(props: Readonly<ImportButtonProps>) {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
     }
-    if (typeof globalThis.window !== "undefined") {
+    if (globalThis.window !== undefined) {
       globalThis.window.addEventListener("beforeunload", handleBeforeUnload)
       return () => globalThis.window.removeEventListener("beforeunload", handleBeforeUnload)
     }
