@@ -6,6 +6,42 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-153/run-29760768345-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-153/run-29760768345-attempt-1/",
+    "runId": "29760768345",
+    "runAttempt": "1",
+    "prNumber": "153",
+    "ref": "refactor/cognitive-complexity",
+    "sha": "5cb4c11e2044ade11773b36edd5377a34f2847fb",
+    "outcome": "success",
+    "previewUrl": "https://3055ecb1.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #153",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-20T16:49:45.980Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit"
     ],
     "suiteLabels": [
@@ -669,44 +705,6 @@
     "scopeLabel": "main",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-18T10:49:02.850Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-149/run-29640992662-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-149/run-29640992662-attempt-1/",
-    "runId": "29640992662",
-    "runAttempt": "1",
-    "prNumber": "149",
-    "ref": "android-build-pipeline-setup",
-    "sha": "8aded802a26ff1b3cad9a369814d5c9fc6fed315",
-    "outcome": "success",
-    "previewUrl": "https://fb9e58ff.everfreenote.pages.dev",
-    "e2eRef": "master",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #149",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-18T10:47:32.608Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
