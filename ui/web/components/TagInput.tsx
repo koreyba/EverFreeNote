@@ -130,7 +130,7 @@ export function TagInput({
       <div
         data-testid="tag-input-container"
         role="button"
-        tabIndex={0}
+        tabIndex={isEditing ? -1 : 0}
         onClick={() => {
           if (!isEditing && !disabled) {
             handleStartEditing()

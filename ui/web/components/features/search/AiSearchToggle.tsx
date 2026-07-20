@@ -79,6 +79,7 @@ export function AiSearchToggle({
       role="group"
       className="flex items-center gap-2"
       onPointerDown={handleSelectionHintPointerDown}
+      tabIndex={isDisabled ? 0 : undefined}
       aria-disabled={isDisabled || undefined}
       aria-describedby={isDisabled ? disabledReasonId : undefined}
       onKeyDown={(event) => {

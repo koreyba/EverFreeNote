@@ -14,16 +14,23 @@ type ResponseLike = {
   status?: unknown
 }
 
-const readPayloadMessage = async (context: ResponseLike): Promise<string | null> => {
-  if (typeof context.json !== "function") return null
+export const readJsonErrorMessage = async (
+  context: ResponseLike,
+  fields: string[] = ["message", "msg", "error"]
+): Promise<string | null> => {
+  if (typeof context?.json !== "function") return null
 
   try {
     const payload = await context.json()
     if (!payload || typeof payload !== "object") return null
 
-    const obj = payload as { message?: unknown; error?: unknown }
-    if (typeof obj.message === "string") return obj.message
-    if (typeof obj.error === "string") return obj.error
+    const obj = payload as Record<string, unknown>
+    for (const field of fields) {
+      const val = obj[field]
+      if (typeof val === "string" && val.trim()) {
+        return val
+      }
+    }
     return null
   } catch {
     return null
@@ -38,16 +45,17 @@ const isNetworkFailureMessage = (message: string): boolean => {
 }
 
 const readContextErrorMessage = async (context: ResponseLike): Promise<string | null> => {
-  if (typeof context.json !== "function") return null
-
-  const payloadMessage = await readPayloadMessage(context)
-  if (payloadMessage && !isNetworkFailureMessage(payloadMessage)) {
+  const payloadMessage = await readJsonErrorMessage(context)
+  if (payloadMessage) {
+    if (isNetworkFailureMessage(payloadMessage)) {
+      return SETTINGS_SERVICE_UNAVAILABLE_MESSAGE
+    }
     return payloadMessage
   }
   if (typeof context.status === "number" && isServiceUnavailableStatus(context.status)) {
     return SETTINGS_SERVICE_UNAVAILABLE_MESSAGE
   }
-  return payloadMessage
+  return null
 }
 
 export async function readSettingsErrorMessage(error: unknown, fallback: string): Promise<string> {

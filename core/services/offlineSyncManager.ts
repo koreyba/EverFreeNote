@@ -78,7 +78,11 @@ export class OfflineSyncManager {
       await this.performSync(item)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown sync error'
-      await this.queue.markStatus(item.id, 'failed', message)
+      try {
+        await this.queue.markStatus(item.id, 'failed', message)
+      } catch (markError) {
+        console.warn('Failed to mark item status as failed:', markError)
+      }
       return false
     }
 

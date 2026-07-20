@@ -48,7 +48,11 @@ export class SearchService {
       filter_tag: tag ?? null,
     })
 
-    if (error || !data) return null
+    if (error) {
+      console.error('FTS search RPC failed:', error)
+      return null
+    }
+    if (!data) return null
 
     type FtsRow = FtsSearchResult & { total_count?: number }
     const rows = data as FtsRow[]

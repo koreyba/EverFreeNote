@@ -17,18 +17,10 @@ export type WordPressIntegrationUpsertInput = {
   enabled: boolean
 }
 
+import { readJsonErrorMessage } from './settingsErrorMessage'
+
 const extractJsonMessage = async (context: Response): Promise<string | null> => {
-  if (typeof context.json !== 'function') return null
-  try {
-    const payload = await context.json()
-    if (payload && typeof payload === 'object') {
-      if (typeof payload.message === 'string') return payload.message
-      if (typeof payload.msg === 'string') return payload.msg
-    }
-  } catch {
-    // Ignore parse failure
-  }
-  return null
+  return readJsonErrorMessage(context, ['message', 'msg'])
 }
 
 const readErrorMessage = async (error: unknown, fallback: string): Promise<string> => {

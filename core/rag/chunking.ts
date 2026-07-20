@@ -182,23 +182,71 @@ function splitAndStripParagraphs(text: string, sectionHeading: string | null): R
 // stops at the first </li>. When DOMParser is available, collectBlocksFromDom
 // handles nested lists properly via DOM traversal.
 function prefixListItems(html: string): string {
-  // Ordered lists: prepend "1. ", "2. ", etc.
-  let result = html.replaceAll(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner: string) => {
+  const processListContent = (content: string, isOrdered: boolean): string => {
+    let result = ''
     let idx = 1
-    const numbered = inner.replaceAll(/<li\b[^>]*>([^<]*(?:(?!<\/li>)<[^<]*)*)<\/li>/gi, (_liMatch: string, liContent: string) => {
-      const stripped = liContent.replaceAll(/<\/?p\b[^>]*>/gi, "")
-      return `<li>${idx++}. ${stripped}</li>`
-    })
-    return `<ol>${numbered}</ol>`
+    let pos = 0
+
+    while (pos < content.length) {
+      const liStart = content.toLowerCase().indexOf('<li', pos)
+      if (liStart === -1) {
+        result += content.slice(pos)
+        break
+      }
+
+      result += content.slice(pos, liStart)
+      const tagClose = content.indexOf('>', liStart)
+      if (tagClose === -1) {
+        result += content.slice(liStart)
+        break
+      }
+
+      let depth = 1
+      let searchPos = tagClose + 1
+      let liEnd = -1
+
+      while (searchPos < content.length && depth > 0) {
+        const nextOpen = content.toLowerCase().indexOf('<li', searchPos)
+        const nextClose = content.toLowerCase().indexOf('</li>', searchPos)
+
+        if (nextClose === -1) break
+
+        if (nextOpen !== -1 && nextOpen < nextClose) {
+          depth++
+          const openTagClose = content.indexOf('>', nextOpen)
+          searchPos = openTagClose !== -1 ? openTagClose + 1 : nextOpen + 3
+        } else {
+          depth--
+          if (depth === 0) {
+            liEnd = nextClose
+          } else {
+            searchPos = nextClose + 5
+          }
+        }
+      }
+
+      if (liEnd === -1) {
+        result += content.slice(liStart)
+        break
+      }
+
+      const liInner = content.slice(tagClose + 1, liEnd)
+      const prefix = isOrdered ? `${idx++}. ` : '- '
+      const stripped = liInner.replaceAll(/<\/?p\b[^>]*>/gi, '')
+      result += `<li>${prefix}${stripped}</li>`
+
+      pos = liEnd + 5
+    }
+
+    return result
+  }
+
+  let result = html.replaceAll(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner: string) => {
+    return `<ol>${processListContent(inner, true)}</ol>`
   })
 
-  // Unordered lists: prepend "- "
   result = result.replaceAll(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (_match, inner: string) => {
-    const bulleted = inner.replaceAll(/<li\b[^>]*>([^<]*(?:(?!<\/li>)<[^<]*)*)<\/li>/gi, (_liMatch: string, liContent: string) => {
-      const stripped = liContent.replaceAll(/<\/?p\b[^>]*>/gi, "")
-      return `<li>- ${stripped}</li>`
-    })
-    return `<ul>${bulleted}</ul>`
+    return `<ul>${processListContent(inner, false)}</ul>`
   })
 
   return result

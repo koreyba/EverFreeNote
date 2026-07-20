@@ -662,5 +662,11 @@ describe('core/services/smartPaste', () => {
       expect(result.type).toBe('markdown')
       expect(result.detection.reasons).not.toContain('forced-by-user')
     })
+
+    it('does not classify malformed rows like "| : | : |" or "| |" as table separators', () => {
+      const malformedText = 'Header 1 | Header 2\n| : | : |\nRow 1 | Row 2'
+      const detection = SmartPasteService.detectPasteType({ html: null, text: malformedText, types: ['text/plain'] })
+      expect(detection.reasons).not.toContain('markdown:unsupported-table')
+    })
   })
 })
