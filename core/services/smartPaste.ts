@@ -209,7 +209,7 @@ function scoreMarkdown(text: string): { score: number; reasons: string[] } {
     reasons.push('markdown:heading')
   }
 
-  if (/^(\s*[-*+]\s+|\s*\d+\.\s+)/m.test(text)) {
+  if (/^(?:\s*[-*+]\s+|\s*\d+\.\s+)/m.test(text)) {
     score += 2
     reasons.push('markdown:list')
   }
@@ -247,7 +247,7 @@ function scoreMarkdown(text: string): { score: number; reasons: string[] } {
   return { score, reasons }
 }
 
-const TABLE_SEPARATOR_ROW_PATTERN = /^\s*\|?\s*[-:]+(?:\s*\|\s*[-:]+)*\s*\|?\s*$/
+const TABLE_SEPARATOR_ROW_PATTERN = /^\s*\|?[-:\s]+(?:\|[-:\s]+)*\|?\s*$/
 
 function containsUnsupportedMarkdown(text: string): boolean {
   if (/^\s*[-*+]\s+\[[ xX]\]\s+/m.test(text)) {

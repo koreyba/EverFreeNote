@@ -40,11 +40,6 @@ export class OfflineSyncManager {
         }
       })
     }
-
-    // Initial drain if already online
-    if (this.online) {
-      void this.drainQueue()
-    }
   }
 
   dispose(): void {

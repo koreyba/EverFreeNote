@@ -11,7 +11,7 @@ const hasIndexedDB = typeof indexedDB !== 'undefined'
 const getDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
-    request.onerror = () => reject(request.error)
+    request.onerror = () => reject(request.error ?? new Error('Failed to open IndexedDB'))
     request.onupgradeneeded = (event) => {
       const db = request.result
       if (!db.objectStoreNames.contains(NOTES_STORE)) {
@@ -53,8 +53,8 @@ const withStore = async <T>(
     // Set handlers BEFORE executing fn to avoid race condition
     // IndexedDB auto-commits when no pending operations remain
     tx.oncomplete = () => resolve(fnResult)
-    tx.onerror = () => reject(tx.error)
-    tx.onabort = () => reject(tx.error)
+    tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction error'))
+    tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'))
 
     try {
       const result = fn(store)
@@ -182,7 +182,7 @@ const readAll = async <T>(storeName: string): Promise<T[]> => {
     return new Promise((resolve, reject) => {
       const req = store.getAll()
       req.onsuccess = () => resolve(req.result as T[])
-      req.onerror = () => reject(req.error)
+      req.onerror = () => reject(req.error ?? new Error('Failed to read from IndexedDB store'))
     })
   })
 }
@@ -275,7 +275,7 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
                   resolve(results)
                 }
               }
-              request.onerror = () => reject(request.error)
+              request.onerror = () => reject(request.error ?? new Error('Failed to query pending batch cursor'))
             } catch {
               // Fallback if index doesn't exist yet
               const request = store.getAll()
@@ -286,7 +286,7 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
                   .sort((a, b) => Date.parse(a.clientUpdatedAt) - Date.parse(b.clientUpdatedAt))
                 resolve(pending.slice(0, batchSize))
               }
-              request.onerror = () => reject(request.error)
+              request.onerror = () => reject(request.error ?? new Error('Failed to query pending batch fallback'))
             }
           })
         })

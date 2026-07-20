@@ -185,7 +185,7 @@ function prefixListItems(html: string): string {
   // Ordered lists: prepend "1. ", "2. ", etc.
   let result = html.replaceAll(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner: string) => {
     let idx = 1
-    const numbered = inner.replaceAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
+    const numbered = inner.replaceAll(/<li\b[^>]*>([^<]*(?:(?!<\/li>)<[^<]*)*)<\/li>/gi, (_liMatch: string, liContent: string) => {
       const stripped = liContent.replaceAll(/<\/?p\b[^>]*>/gi, "")
       return `<li>${idx++}. ${stripped}</li>`
     })
@@ -194,7 +194,7 @@ function prefixListItems(html: string): string {
 
   // Unordered lists: prepend "- "
   result = result.replaceAll(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (_match, inner: string) => {
-    const bulleted = inner.replaceAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
+    const bulleted = inner.replaceAll(/<li\b[^>]*>([^<]*(?:(?!<\/li>)<[^<]*)*)<\/li>/gi, (_liMatch: string, liContent: string) => {
       const stripped = liContent.replaceAll(/<\/?p\b[^>]*>/gi, "")
       return `<li>- ${stripped}</li>`
     })

@@ -437,7 +437,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     const [panelWidth, setPanelWidth] = useState<number>(() => {
         if (typeof window === "undefined") return 350
         const stored = window.localStorage.getItem(STORAGE_KEY)
-        const parsed = stored ? parseInt(stored, 10) : NaN
+        const parsed = stored ? Number.parseInt(stored, 10) : Number.NaN
         const maxPixelWidth = window.innerWidth * MAX_WIDTH_PCT
         if (Number.isFinite(parsed)) {
             return Math.max(MIN_WIDTH, Math.min(parsed, maxPixelWidth))

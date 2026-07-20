@@ -37,19 +37,19 @@ function normalizeDivsToP(html: string): string {
 }
 
 export function plainTextToHtml(text: string): string {
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
   const paragraphs = normalized.split(/\n{2,}/)
   return paragraphs
-    .map(section => escapeHtml(section).replace(/\n/g, '<br />'))
+    .map(section => escapeHtml(section).replaceAll('\n', '<br />'))
     .map(section => `<p>${section}</p>`)
     .join('')
 }
 
 export function escapeHtml(text: string): string {
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
 }

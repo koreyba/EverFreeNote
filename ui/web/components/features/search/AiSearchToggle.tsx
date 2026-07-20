@@ -76,9 +76,9 @@ export function AiSearchToggle({
   const toggleControl = (
     <div
       data-testid="ai-search-toggle-trigger"
+      role="group"
       className="flex items-center gap-2"
       onPointerDown={handleSelectionHintPointerDown}
-      tabIndex={isDisabled ? 0 : -1}
       aria-disabled={isDisabled || undefined}
       aria-describedby={isDisabled ? disabledReasonId : undefined}
       onKeyDown={(event) => {

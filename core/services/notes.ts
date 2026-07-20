@@ -8,7 +8,7 @@ export type NoteLookupResult =
   | { status: 'transient_error'; error: unknown }
 
 // Sanitize value for PostgREST OR syntax: strip commas to avoid breaking the logic tree
-const sanitizeOrValue = (value: string) => value.replace(/,/g, ' ')
+const sanitizeOrValue = (value: string) => value.replaceAll(',', ' ')
 
 export class NoteService {
   constructor(private supabase: SupabaseClient) { }
