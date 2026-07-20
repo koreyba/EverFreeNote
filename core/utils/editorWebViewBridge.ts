@@ -56,22 +56,22 @@ const parseBaseType = (type: string): { baseType: string; phase: 'START' | 'CHUN
   return null
 }
 
-const handleChunkStart = (payload: unknown, store: ChunkBufferStore): null => {
+const handleChunkStart = (payload: unknown, store: ChunkBufferStore): void => {
+  if (!payload || typeof payload !== 'object') return
   const p = payload as Partial<ChunkStartPayload>
-  if (!isValidTransferId(p.transferId) || typeof p.total !== 'number') return null
-  if (p.total < 1 || p.total > 10_000 || !Number.isInteger(p.total)) return null
+  if (!isValidTransferId(p.transferId) || typeof p.total !== 'number') return
+  if (p.total < 1 || p.total > 10_000 || !Number.isInteger(p.total)) return
   store.set(p.transferId, { total: p.total, chunks: [] })
-  return null
 }
 
-const handleChunkPayload = (payload: unknown, store: ChunkBufferStore): null => {
+const handleChunkPayload = (payload: unknown, store: ChunkBufferStore): void => {
+  if (!payload || typeof payload !== 'object') return
   const p = payload as Partial<ChunkPayload>
-  if (!isValidTransferId(p.transferId) || typeof p.index !== 'number' || typeof p.chunk !== 'string') return null
+  if (!isValidTransferId(p.transferId) || typeof p.index !== 'number' || typeof p.chunk !== 'string') return
   const entry = store.get(p.transferId)
-  if (!entry) return null
-  if (!Number.isInteger(p.index) || p.index < 0 || p.index >= entry.total) return null
+  if (!entry) return
+  if (!Number.isInteger(p.index) || p.index < 0 || p.index >= entry.total) return
   entry.chunks[p.index] = p.chunk
-  return null
 }
 
 const handleChunkEnd = (
@@ -79,6 +79,7 @@ const handleChunkEnd = (
   store: ChunkBufferStore,
   baseType: string
 ): { baseType: string; text: string } | null => {
+  if (!payload || typeof payload !== 'object') return null
   const p = payload as Partial<ChunkEndPayload>
   if (!isValidTransferId(p.transferId)) return null
   const entry = store.get(p.transferId)
@@ -102,10 +103,12 @@ export const consumeChunkedMessage = (
   if (!parsed) return null
 
   if (parsed.phase === 'START') {
-    return handleChunkStart(payload, store)
+    handleChunkStart(payload, store)
+    return null
   }
   if (parsed.phase === 'CHUNK') {
-    return handleChunkPayload(payload, store)
+    handleChunkPayload(payload, store)
+    return null
   }
   return handleChunkEnd(payload, store, parsed.baseType)
 }

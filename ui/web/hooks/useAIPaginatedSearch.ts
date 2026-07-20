@@ -151,11 +151,12 @@ const readInvokeErrorPayload = async (error: unknown): Promise<{ message: string
 
 const toRagSearchRequestError = async (error: unknown): Promise<RagSearchRequestError> => {
   const payload = await readInvokeErrorPayload(error)
-  const fallbackMessage = error instanceof Error
-    ? error.message
-    : typeof (error as { message?: unknown } | null)?.message === 'string'
-      ? (error as { message: string }).message
-      : 'AI Search failed'
+  let fallbackMessage = 'AI Search failed'
+  if (error instanceof Error) {
+    fallbackMessage = error.message
+  } else if (typeof (error as { message?: unknown } | null)?.message === 'string') {
+    fallbackMessage = (error as { message: string }).message
+  }
   return new RagSearchRequestError(payload.message ?? fallbackMessage, payload.code)
 }
 
@@ -220,6 +221,14 @@ async function fetchNoteGroupsWindow(
     chunks: noteResult.chunks,
     groups: noteResult.groups.slice(0, requestedTopK),
   }
+}
+
+function computeDataSignature(
+  effectiveAiOffset: number,
+  data: { chunkCount: number; groups: RagNoteGroup[]; chunks: RagChunk[] }
+): string {
+  return `${effectiveAiOffset}-${data.chunkCount}-${data.groups.length}-` +
+    `${buildChunksSignature(data.chunks)}::${buildGroupsSignature(data.groups)}`
 }
 
 export function useAIPaginatedSearch({
@@ -293,14 +302,10 @@ export function useAIPaginatedSearch({
     }
     if (!result.data) return
 
-    const dataSignature =
-      `${effectiveAiOffset}-${result.data.chunkCount}-${result.data.groups.length}-` +
-      `${buildChunksSignature(result.data.chunks)}::${buildGroupsSignature(result.data.groups)}`
+    const dataSignature = computeDataSignature(effectiveAiOffset, result.data)
     if (dataSignature === lastProcessedDataRef.current) return
     lastProcessedDataRef.current = dataSignature
 
-    // rag-search returns cumulative topK results. Always replacing keeps ranking,
-    // scores, and snippets fresh when existing note groups are updated.
     setAiAccumulatedResults(result.data.groups)
     setAiAccumulatedChunks(result.data.chunks)
   }, [effectiveAiOffset, queryEnabled, result.data])
@@ -333,13 +338,18 @@ export function useAIPaginatedSearch({
       aiAccumulatedResults.length === 0
     ))
 
+  let errorMessage: string | null = null
+  if (result.error instanceof Error) {
+    errorMessage = result.error.message
+  } else if (result.error) {
+    errorMessage = typeof result.error === 'string' ? result.error : 'Unknown AI Search error'
+  }
+
   return {
     noteGroups: queryEnabled && identityCommitted ? aiAccumulatedResults : [],
     chunks: queryEnabled && identityCommitted ? aiAccumulatedChunks : [],
     isLoading: initialLoading,
-    error: result.error instanceof Error
-      ? result.error.message
-      : (result.error ? String(result.error) : null),
+    error: errorMessage,
     errorCode: result.error instanceof RagSearchRequestError ? result.error.code : null,
     refetch,
     aiOffset: effectiveAiOffset,

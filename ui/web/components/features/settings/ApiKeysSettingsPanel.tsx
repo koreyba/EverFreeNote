@@ -34,7 +34,7 @@ function getPlaceholderText(loading: boolean, configured: boolean | null): strin
 function getHelpText(loading: boolean, configured: boolean | null): string {
   if (loading) return "Checking stored key status..."
   if (configured === true) return "A key is already stored. Enter a new one to replace it, or use Remove key below."
-  if (configured === false) return "Your Gemini key is stored encrypted and is never shown again after saving."
+  if (configured === false) return "Your Gemini key will be stored encrypted and is never shown again after saving."
   return "Stored key status is unavailable. Saving a new key will replace any existing key."
 }
 
@@ -45,10 +45,8 @@ function getStatusBadgeText(loading: boolean, configured: boolean | null): strin
   return "Status unavailable"
 }
 
-export function ApiKeysSettingsPanel({
-  onClose,
-  showCloseButton = false,
-}: ApiKeysSettingsPanelProps) {
+export function ApiKeysSettingsPanel(props: Readonly<ApiKeysSettingsPanelProps>) {
+  const { onClose, showCloseButton = false } = props
   const { supabase } = useSupabase()
   const service = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
 
@@ -108,7 +106,7 @@ export function ApiKeysSettingsPanel({
 
   const handleRemove = async () => {
     if (configured !== true) return
-    const confirmed = window.confirm(
+    const confirmed = globalThis.confirm(
       "Remove the stored Gemini API key? AI search and note indexing will stop working until you add a new key."
     )
     if (!confirmed) return

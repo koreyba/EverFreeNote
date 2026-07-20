@@ -155,9 +155,10 @@ function SearchNoteCard({
   const plainHeadline = searchNote.headline
     ? DOMPurify.sanitize(searchNote.headline, { ALLOWED_TAGS: [] })
     : null
-  const truncated = plainHeadline
-    ? (plainHeadline.length > 200 ? plainHeadline.slice(0, 200).trimEnd() + '…' : plainHeadline)
-    : null
+  let truncated: string | null = null
+  if (plainHeadline) {
+    truncated = plainHeadline.length > 200 ? `${plainHeadline.slice(0, 200).trimEnd()}…` : plainHeadline
+  }
 
   const pattern = highlightQuery ? buildHighlightPattern(highlightQuery) : null
   const parts = truncated ? (pattern ? truncated.split(pattern) : [truncated]) : null
@@ -236,9 +237,9 @@ function SearchNoteCard({
             <p className="text-[12.5px] leading-relaxed text-foreground/80">
               {parts.map((part, i) => {
                 if (pattern && i % 2 === 1) {
-                  return <mark key={i} className="rounded-sm bg-amber-100! text-amber-950! dark:bg-amber-950/40! dark:text-amber-200! px-0.5 font-medium">{part}</mark>
+                  return <mark key={`part-match-${i}-${part}`} className="rounded-sm bg-amber-100! text-amber-950! dark:bg-amber-950/40! dark:text-amber-200! px-0.5 font-medium">{part}</mark>
                 }
-                return <span key={i}>{part}</span>
+                return <span key={`part-text-${i}-${part}`}>{part}</span>
               })}
             </p>
           </div>

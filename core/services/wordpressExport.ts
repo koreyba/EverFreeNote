@@ -112,12 +112,12 @@ const parseContextResponseBody = async (context: Response): Promise<WordPressBri
     if (!isRecord(body)) return null
 
     const code = typeof body.code === 'string' ? body.code : 'bridge_error'
-    const message =
-      typeof body.message === 'string'
-        ? body.message
-        : typeof body.msg === 'string'
-          ? body.msg
-          : 'WordPress export failed'
+    let message = 'WordPress export failed'
+    if (typeof body.message === 'string') {
+      message = body.message
+    } else if (typeof body.msg === 'string') {
+      message = body.msg
+    }
     const details = 'details' in body ? body.details : undefined
     return new WordPressBridgeError(message, code, details)
   } catch {
@@ -139,7 +139,7 @@ const parseInvokeError = async (error: unknown): Promise<WordPressBridgeError> =
 }
 
 export class WordPressExportService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private readonly supabase: SupabaseClient) {}
 
   async getCategories(): Promise<WordPressCategoriesResponse> {
     const { data, error } = await this.supabase.functions.invoke('wordpress-bridge', {

@@ -755,7 +755,8 @@ interface SearchResultsContentProps {
     aiEnabled: boolean
 }
 
-function SearchResultsContent({
+function SearchResultsContent(props: Readonly<SearchResultsContentProps>) {
+  const {
     showAIResults,
     showAIInitialization,
     aiLoading,
@@ -791,7 +792,7 @@ function SearchResultsContent({
     loadMoreTagOnly,
     searchDraft,
     aiEnabled,
-}: SearchResultsContentProps) {
+  } = props
     if (showAIResults) {
         return (
             <div className="px-3 py-2">

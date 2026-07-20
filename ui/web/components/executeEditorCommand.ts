@@ -44,7 +44,7 @@ const handleToggleHeadingLevel = (editor: Editor, args: unknown[]) => {
 
 const handleDynamicCommand = (editor: Editor, command: string, args: unknown[]) => {
   const chain = editor.chain().focus() as Record<string, unknown>
-  if (!Object.prototype.hasOwnProperty.call(chain, command)) return
+  if (!Object.hasOwn(chain, command)) return
 
   const candidate = chain[command]
   if (typeof candidate !== "function") return

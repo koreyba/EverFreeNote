@@ -45,7 +45,7 @@ const readErrorMessage = async (error: unknown, fallback: string): Promise<strin
 }
 
 export class WordPressSettingsService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private readonly supabase: SupabaseClient) {}
 
   async getStatus(): Promise<WordPressIntegrationStatus> {
     const { data, error } = await this.supabase.functions.invoke('wordpress-settings-status', {

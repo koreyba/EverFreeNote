@@ -41,7 +41,7 @@ export default function EditorWebViewPage() {
 
   const handleHistoryStateChange = React.useCallback((state: { canUndo: boolean; canRedo: boolean }) => {
     const prev = lastHistoryStateRef.current
-    if (prev && prev.canUndo === state.canUndo && prev.canRedo === state.canRedo) {
+    if (prev?.canUndo === state.canUndo && prev?.canRedo === state.canRedo) {
       return
     }
     lastHistoryStateRef.current = state
@@ -139,6 +139,56 @@ export default function EditorWebViewPage() {
       return false
     }
 
+    const handleCommandNativeEvent = (payload: unknown) => {
+      if (!editorRef.current) return
+      const { method, args = [] } = (payload ?? {}) as { method?: string; args?: unknown[] }
+      if (typeof method === 'string') {
+        editorRef.current.runCommand(method, ...(Array.isArray(args) ? args : []))
+      }
+    }
+
+    const handleScrollToChunkNativeEvent = (payload: unknown) => {
+      const { charOffset, chunkLength } = (payload ?? {}) as { charOffset?: unknown; chunkLength?: unknown }
+      if (typeof charOffset !== 'number' || typeof chunkLength !== 'number') return
+      if (editorRef.current) {
+        editorRef.current.scrollToChunk(charOffset, chunkLength)
+      } else {
+        pendingChunkFocusRef.current = { charOffset, chunkLength }
+      }
+    }
+
+    const handleNativeEventPayload = (type: string, payload: unknown) => {
+      const chunked = consumeChunkedMessage(type, payload, chunkBuffers.current)
+      if (chunked?.baseType === 'SET_CONTENT') {
+        applySetContent(chunked.text)
+        return
+      }
+
+      switch (type) {
+        case 'SET_CONTENT':
+          applySetContent(typeof payload === 'string' ? payload : '')
+          break
+        case 'SET_THEME':
+          applyTheme(typeof payload === 'string' ? payload : '')
+          break
+        case 'GET_CONTENT':
+          if (editorRef.current) sendTextToNative('CONTENT_RESPONSE', editorRef.current.getHTML())
+          break
+        case 'REQUEST_COPY_PAYLOAD':
+          if (editorRef.current) {
+            const copyPayload = NoteClipboardService.buildPayload(editorRef.current.getHTML())
+            sendTextToNative('COPY_PAYLOAD', JSON.stringify(copyPayload))
+          }
+          break
+        case 'COMMAND':
+          handleCommandNativeEvent(payload)
+          break
+        case 'SCROLL_TO_CHUNK':
+          handleScrollToChunkNativeEvent(payload)
+          break
+      }
+    }
+
     const handleMessage = (event: MessageEvent) => {
       try {
         if (event.origin && !isTrustedOrigin(event.origin)) return
@@ -149,45 +199,7 @@ export default function EditorWebViewPage() {
         const { type, payload } = JSON.parse(raw) as { type?: string; payload?: unknown }
         if (!type) return
 
-        const chunked = consumeChunkedMessage(type, payload, chunkBuffers.current)
-        if (chunked?.baseType === 'SET_CONTENT') {
-          applySetContent(chunked.text)
-          return
-        }
-
-        if (type === 'SET_CONTENT') {
-          applySetContent(String(payload ?? ''))
-        } else if (type === 'SET_THEME') {
-          applyTheme(String(payload ?? ''))
-        } else if (type === 'GET_CONTENT') {
-          if (editorRef.current) {
-            sendTextToNative('CONTENT_RESPONSE', editorRef.current.getHTML())
-          }
-        } else if (type === 'REQUEST_COPY_PAYLOAD') {
-          if (editorRef.current) {
-            const copyPayload = NoteClipboardService.buildPayload(editorRef.current.getHTML())
-            sendTextToNative('COPY_PAYLOAD', JSON.stringify(copyPayload))
-          }
-        } else if (type === 'COMMAND') {
-          if (editorRef.current) {
-            const { method, args = [] } = payload as { method?: string; args?: unknown[] }
-            if (typeof method === 'string') {
-              editorRef.current.runCommand(method, ...(Array.isArray(args) ? args : []))
-            }
-          }
-        } else if (type === 'SCROLL_TO_CHUNK') {
-          const { charOffset, chunkLength } = (payload ?? {}) as {
-            charOffset?: unknown
-            chunkLength?: unknown
-          }
-          if (typeof charOffset === 'number' && typeof chunkLength === 'number') {
-            if (editorRef.current) {
-              editorRef.current.scrollToChunk(charOffset, chunkLength)
-            } else {
-              pendingChunkFocusRef.current = { charOffset, chunkLength }
-            }
-          }
-        }
+        handleNativeEventPayload(type, payload)
       } catch (error) {
         console.error('Failed to parse message:', error)
       }

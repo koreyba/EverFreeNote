@@ -121,7 +121,8 @@ async function processImportNote({
   return createdId ? 'success' : 'skipped'
 }
 
-export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024 }: ImportButtonProps) {
+export function ImportButton(props: Readonly<ImportButtonProps>) {
+  const { onImportComplete, maxFileSize = 100 * 1024 * 1024 } = props
   const [importing, setImporting] = React.useState(false)
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [progressDialogOpen, setProgressDialogOpen] = React.useState(false)
@@ -158,11 +159,10 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
-      event.returnValue = "Import is in progress. Are you sure you want to leave?"
     }
-    if (typeof window !== "undefined") {
-      window.addEventListener("beforeunload", handleBeforeUnload)
-      return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+    if (typeof globalThis.window !== "undefined") {
+      globalThis.window.addEventListener("beforeunload", handleBeforeUnload)
+      return () => globalThis.window.removeEventListener("beforeunload", handleBeforeUnload)
     }
     return undefined
   }, [importing])
@@ -186,14 +186,6 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
       return
     }
 
-    let successCount = 0
-    let skippedCount = 0
-    let errorCount = 0
-    let totalNotes = 0
-    const failedNotes: FailedImportNote[] = []
-    let lastSaveTime = 0
-    const SAVE_INTERVAL = 2000
-
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
@@ -216,6 +208,14 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
       )
       const fallbackExistingByTitle = new Map<string, string | null>()
       const seenTitlesInImport = new Set<string>()
+
+      let successCount = 0
+      let skippedCount = 0
+      let errorCount = 0
+      let totalNotes = 0
+      const failedNotes: FailedImportNote[] = []
+      let lastSaveTime = 0
+      const SAVE_INTERVAL = 2000
 
       setProgress({
         currentFile: 0,
@@ -245,7 +245,6 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
 
           for (let noteIndex = 0; noteIndex < notes.length; noteIndex++) {
             const note = notes[noteIndex]
-
             const now = Date.now()
             const isLastNote = noteIndex === notes.length - 1
             if (now - lastSaveTime > SAVE_INTERVAL || isLastNote) {
@@ -283,11 +282,6 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
               } else {
                 skippedCount++
               }
-
-              setProgress((prev) => ({
-                ...prev,
-                currentNote: successCount + skippedCount + errorCount,
-              }))
             } catch (error) {
               const err = error as Error
               console.error("Failed to import note:", note.title, err)
@@ -297,12 +291,12 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
                 title: note.title || "Untitled",
                 error: err.message || "Unknown error",
               })
-
-              setProgress((prev) => ({
-                ...prev,
-                currentNote: successCount + skippedCount + errorCount,
-              }))
             }
+
+            setProgress((prev) => ({
+              ...prev,
+              currentNote: successCount + skippedCount + errorCount,
+            }))
           }
         } catch (error) {
           const err = error as Error
@@ -332,9 +326,9 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
       browser.localStorage.removeItem(IMPORT_STATE_KEY)
 
       setImportResult({
-        success: successCount,
-        errors: errorCount + 1,
-        failedNotes,
+        success: 0,
+        errors: 1,
+        failedNotes: [],
         message: `Import failed: ${err.message}`,
       })
     } finally {

@@ -21,14 +21,10 @@ const readPayloadMessage = async (context: ResponseLike): Promise<string | null>
     const payload = await context.json()
     if (!payload || typeof payload !== "object") return null
 
-    const message =
-      typeof (payload as { message?: unknown }).message === "string"
-        ? (payload as { message: string }).message
-        : typeof (payload as { error?: unknown }).error === "string"
-          ? (payload as { error: string }).error
-          : null
-
-    return message
+    const obj = payload as { message?: unknown; error?: unknown }
+    if (typeof obj.message === "string") return obj.message
+    if (typeof obj.error === "string") return obj.error
+    return null
   } catch {
     return null
   }

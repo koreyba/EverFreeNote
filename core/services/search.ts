@@ -11,13 +11,13 @@ import {
 } from '../utils/search'
 
 export class SearchService {
-  constructor(private supabase: SupabaseClient) { }
+  constructor(private readonly supabase: SupabaseClient) {}
 
   // Sanitize for PostgREST OR syntax
   private sanitizeOrValue(value: string) {
     // Remove double quotes to avoid breaking PostgREST quoted values
     // We will wrap the value in double quotes in the query
-    return value.replace(/"/g, '')
+    return value.replaceAll('"', '')
   }
 
   private extractErrorMessage(error: unknown): string {

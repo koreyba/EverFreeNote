@@ -75,22 +75,27 @@ export class OfflineSyncManager {
   ): Promise<boolean> {
     try {
       await this.performSync(item)
-      await this.queue.removeItems([item.id])
-
-      const onSuccess = options?.onSuccess ?? this.defaultOnSuccess
-      if (onSuccess) {
-        try {
-          await onSuccess(item)
-        } catch (e) {
-          console.warn('onSuccess callback error (sync was successful):', e)
-        }
-      }
-      return true
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown sync error'
       await this.queue.markStatus(item.id, 'failed', message)
       return false
     }
+
+    try {
+      await this.queue.removeItems([item.id])
+    } catch (cleanupError) {
+      console.warn('Failed to remove item from offline queue after successful sync:', cleanupError)
+    }
+
+    const onSuccess = options?.onSuccess ?? this.defaultOnSuccess
+    if (onSuccess) {
+      try {
+        await onSuccess(item)
+      } catch (e) {
+        console.warn('onSuccess callback error (sync was successful):', e)
+      }
+    }
+    return true
   }
 
   private async processBatch(

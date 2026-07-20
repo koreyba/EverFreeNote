@@ -85,9 +85,9 @@ const DropdownMenuContent = React.forwardRef<
   if (portalled) {
     return (
       <DropdownMenuPrimitive.Portal container={container || undefined}>
-        <div role="region" aria-label="Dropdown menu">
+        <section aria-label="Dropdown menu">
           {content}
-        </div>
+        </section>
       </DropdownMenuPrimitive.Portal>
     )
   }
