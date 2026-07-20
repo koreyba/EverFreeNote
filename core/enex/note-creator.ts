@@ -23,6 +23,45 @@ export class NoteCreator {
     this.supabase = supabase
   }
 
+  private async updateExistingNote(
+    existingId: string,
+    noteData: TablesInsert<'notes'>
+  ): Promise<string> {
+    const { data, error } = await this.supabase
+      .from('notes')
+      .update(noteData)
+      .eq('id', existingId)
+      .select('id')
+      .single()
+
+    if (error) throw error
+    if (!data?.id) throw new Error('Updated note id was not returned')
+    return data.id
+  }
+
+  private async insertNewNote(noteData: TablesInsert<'notes'>): Promise<string> {
+    const { data, error } = await this.supabase
+      .from('notes')
+      .insert(noteData)
+      .select('id')
+      .single()
+
+    if (error) throw error
+    if (!data?.id) throw new Error('Created note id was not returned')
+    return data.id
+  }
+
+  private formatCreationError(error: unknown): never {
+    console.error('Note creation failed:', error)
+    let message = 'Unknown error'
+    if (error instanceof Error) {
+      message = error.message
+    } else if (typeof error === 'object' && error !== null && 'message' in error) {
+      message = (error as { message: string }).message
+    }
+    throw new Error(`Failed to create note: ${message}`)
+  }
+
   async create(
     note: ParsedNote,
     userId: string,
@@ -47,48 +86,17 @@ export class NoteCreator {
         updated_at: note.updated.toISOString(),
       }
 
-      if (result.replace && result.existingId) {
-        const { data, error } = await this.supabase
-          .from('notes')
-          .update(noteData)
-          .eq('id', result.existingId)
-          .select('id')
-          .single()
-
-        if (error) throw error
-        if (!data?.id) throw new Error('Updated note id was not returned')
-
-        if (duplicateContext?.skipFileDuplicates) {
-          duplicateContext.seenTitlesInImport.add(normalizedTitle)
-        }
-
-        return data.id
-      }
-
-      const { data, error } = await this.supabase
-        .from('notes')
-        .insert(noteData)
-        .select('id')
-        .single()
-
-      if (error) throw error
-      if (!data?.id) throw new Error('Created note id was not returned')
-      const createdId = data.id
+      const noteId = result.replace && result.existingId
+        ? await this.updateExistingNote(result.existingId, noteData)
+        : await this.insertNewNote(noteData)
 
       if (duplicateContext?.skipFileDuplicates) {
         duplicateContext.seenTitlesInImport.add(normalizedTitle)
       }
 
-      return createdId
+      return noteId
     } catch (error: unknown) {
-      console.error('Note creation failed:', error)
-      let message = 'Unknown error'
-      if (error instanceof Error) {
-        message = error.message
-      } else if (typeof error === 'object' && error !== null && 'message' in error) {
-        message = (error as { message: string }).message
-      }
-      throw new Error(`Failed to create note: ${message}`)
+      this.formatCreationError(error)
     }
   }
 

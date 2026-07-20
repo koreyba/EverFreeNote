@@ -41,26 +41,30 @@ const isNetworkFailureMessage = (message: string): boolean => {
   return NETWORK_ERROR_PATTERNS.some((pattern) => normalized.includes(pattern))
 }
 
+const readContextErrorMessage = async (context: ResponseLike): Promise<string | null> => {
+  if (typeof context.json !== "function") return null
+
+  const payloadMessage = await readPayloadMessage(context)
+  if (payloadMessage && !isNetworkFailureMessage(payloadMessage)) {
+    return payloadMessage
+  }
+  if (typeof context.status === "number" && isServiceUnavailableStatus(context.status)) {
+    return SETTINGS_SERVICE_UNAVAILABLE_MESSAGE
+  }
+  return payloadMessage
+}
+
 export async function readSettingsErrorMessage(error: unknown, fallback: string): Promise<string> {
   if (typeof error === "object" && error && "context" in error) {
     const context = (error as { context?: ResponseLike }).context
-    if (context && typeof context.json === "function") {
-      const payloadMessage = await readPayloadMessage(context)
-      if (payloadMessage && !isNetworkFailureMessage(payloadMessage)) {
-        return payloadMessage
-      }
-      if (typeof context.status === "number" && isServiceUnavailableStatus(context.status)) {
-        return SETTINGS_SERVICE_UNAVAILABLE_MESSAGE
-      }
-      if (payloadMessage) return payloadMessage
+    if (context) {
+      const contextMessage = await readContextErrorMessage(context)
+      if (contextMessage) return contextMessage
     }
   }
 
   if (error instanceof Error && error.message) {
-    if (isNetworkFailureMessage(error.message)) {
-      return SETTINGS_SERVICE_UNAVAILABLE_MESSAGE
-    }
-    return error.message
+    return isNetworkFailureMessage(error.message) ? SETTINGS_SERVICE_UNAVAILABLE_MESSAGE : error.message
   }
 
   return fallback

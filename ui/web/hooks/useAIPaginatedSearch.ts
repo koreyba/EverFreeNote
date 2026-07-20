@@ -167,6 +167,61 @@ const shouldRetryAiSearch = (failureCount: number, error: unknown) => (
   failureCount < 1
 )
 
+async function fetchChunkWindow(
+  supabase: ReturnType<typeof useSupabase>['supabase'],
+  query: string,
+  chunkLimit: number,
+  threshold: number,
+  filterTag: string | null
+) {
+  const { data, error } = await supabase.functions.invoke('rag-search', {
+    body: {
+      query,
+      topK: chunkLimit,
+      threshold,
+      filterTag,
+    },
+  })
+
+  if (error) throw await toRagSearchRequestError(error)
+
+  const chunks = Array.isArray(data?.chunks) ? (data.chunks as RagChunk[]) : []
+  return {
+    chunkCount: chunks.length,
+    hasMore: data?.hasMore === true,
+    chunks,
+    groups: groupByNote(chunks),
+  }
+}
+
+async function fetchNoteGroupsWindow(
+  supabase: ReturnType<typeof useSupabase>['supabase'],
+  query: string,
+  requestedTopK: number,
+  pageSize: number,
+  threshold: number,
+  filterTag: string | null
+) {
+  let chunkLimit = requestedTopK
+  let noteResult = await fetchChunkWindow(supabase, query, chunkLimit, threshold, filterTag)
+
+  while (
+    noteResult.hasMore &&
+    noteResult.groups.length < requestedTopK &&
+    chunkLimit < RAG_SEARCH_TOP_K_MAX
+  ) {
+    chunkLimit = Math.min(RAG_SEARCH_TOP_K_MAX, chunkLimit + pageSize)
+    noteResult = await fetchChunkWindow(supabase, query, chunkLimit, threshold, filterTag)
+  }
+
+  return {
+    chunkCount: noteResult.chunkCount,
+    hasMore: noteResult.groups.length > requestedTopK || noteResult.hasMore,
+    chunks: noteResult.chunks,
+    groups: noteResult.groups.slice(0, requestedTopK),
+  }
+}
+
 export function useAIPaginatedSearch({
   query,
   topK,
@@ -217,49 +272,10 @@ export function useAIPaginatedSearch({
   const result = useQuery({
     queryKey: ['aiSearch', trimmedQuery, pageSize, normalizedThreshold, filterTag, requestedTopK, resultMode],
     queryFn: async () => {
-      const fetchChunkWindow = async (chunkLimit: number) => {
-        const { data, error } = await supabase.functions.invoke('rag-search', {
-          body: {
-            query: trimmedQuery,
-            topK: chunkLimit,
-            threshold: normalizedThresholdValue,
-            filterTag: filterTag ?? null,
-          },
-        })
-
-        if (error) throw await toRagSearchRequestError(error)
-
-        const chunks = Array.isArray(data?.chunks) ? (data.chunks as RagChunk[]) : []
-        return {
-          chunkCount: chunks.length,
-          hasMore: data?.hasMore === true,
-          chunks,
-          groups: groupByNote(chunks),
-        }
-      }
-
       if (resultMode === 'chunk') {
-        return fetchChunkWindow(requestedTopK)
+        return fetchChunkWindow(supabase, trimmedQuery, requestedTopK, normalizedThresholdValue, filterTag ?? null)
       }
-
-      let chunkLimit = requestedTopK
-      let noteResult = await fetchChunkWindow(chunkLimit)
-
-      while (
-        noteResult.hasMore &&
-        noteResult.groups.length < requestedTopK &&
-        chunkLimit < RAG_SEARCH_TOP_K_MAX
-      ) {
-        chunkLimit = Math.min(RAG_SEARCH_TOP_K_MAX, chunkLimit + pageSize)
-        noteResult = await fetchChunkWindow(chunkLimit)
-      }
-
-      return {
-        chunkCount: noteResult.chunkCount,
-        hasMore: noteResult.groups.length > requestedTopK || noteResult.hasMore,
-        chunks: noteResult.chunks,
-        groups: noteResult.groups.slice(0, requestedTopK),
-      }
+      return fetchNoteGroupsWindow(supabase, trimmedQuery, requestedTopK, pageSize, normalizedThresholdValue, filterTag ?? null)
     },
     enabled: queryEnabled,
     staleTime: STALE_TIME_MS,

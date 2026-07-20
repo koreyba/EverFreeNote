@@ -40,6 +40,87 @@ type ImportButtonProps = {
   maxFileSize?: number
 }
 
+const validateFilesSize = (files: File[], maxFileSize: number): boolean => {
+  const oversizedFiles = files.filter((file) => file.size > maxFileSize)
+  if (oversizedFiles.length > 0) {
+    const fileNames = oversizedFiles.map((file) => file.name).join(", ")
+    toast.error(`Files too large (max ${Math.round(maxFileSize / 1024 / 1024)}MB): ${fileNames}`)
+    return false
+  }
+  return true
+}
+
+const buildImportResultMessage = (
+  successCount: number,
+  skippedCount: number,
+  errorCount: number
+): string => {
+  const messageParts: string[] = []
+
+  if (successCount > 0) {
+    messageParts.push(`Successfully imported ${successCount} note${successCount > 1 ? "s" : ""}`)
+  }
+  if (skippedCount > 0) {
+    messageParts.push(`skipped ${skippedCount} duplicate note${skippedCount > 1 ? "s" : ""}`)
+  }
+  if (errorCount > 0) {
+    if (messageParts.length > 0) {
+      messageParts.push(`with ${errorCount} error${errorCount > 1 ? "s" : ""}`)
+    } else {
+      messageParts.push("All imports failed")
+    }
+  }
+
+  return messageParts.length > 0 ? messageParts.join(", ") : "No notes were imported"
+}
+
+type ProcessImportNoteParams = {
+  note: import("@core/enex/types").ParsedNote
+  userId: string
+  converter: ContentConverter
+  noteCreator: NoteCreator
+  duplicateStrategy: DuplicateStrategy
+  skipFileDuplicates: boolean
+  existingByTitle: Map<string, string> | null
+  fallbackExistingByTitle: Map<string, string | null>
+  seenTitlesInImport: Set<string>
+}
+
+async function processImportNote({
+  note,
+  userId,
+  converter,
+  noteCreator,
+  duplicateStrategy,
+  skipFileDuplicates,
+  existingByTitle,
+  fallbackExistingByTitle,
+  seenTitlesInImport,
+}: ProcessImportNoteParams): Promise<'success' | 'skipped'> {
+  const noteId = crypto.randomUUID()
+  const convertedContent = await converter.convert(
+    note.content,
+    note.resources,
+    userId,
+    noteId,
+    note.title || "Untitled"
+  )
+
+  const createdId = await noteCreator.create(
+    { ...note, content: convertedContent },
+    userId,
+    duplicateStrategy,
+    {
+      skipFileDuplicates,
+      existingByTitle,
+      fallbackExistingByTitle,
+      seenTitlesInImport,
+    }
+  )
+
+  return createdId ? 'success' : 'skipped'
+}
+
 export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024 }: ImportButtonProps) {
   const [importing, setImporting] = React.useState(false)
   const [dialogOpen, setDialogOpen] = React.useState(false)
@@ -99,11 +180,7 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
     setProgressDialogOpen(true)
     setImportResult(null)
 
-    // Validate file sizes
-    const oversizedFiles = files.filter((file) => file.size > maxFileSize)
-    if (oversizedFiles.length > 0) {
-      const fileNames = oversizedFiles.map((file) => file.name).join(", ")
-      toast.error(`Files too large (max ${Math.round(maxFileSize / 1024 / 1024)}MB): ${fileNames}`)
+    if (!validateFilesSize(files, maxFileSize)) {
       setImporting(false)
       setProgressDialogOpen(false)
       return
@@ -115,12 +192,10 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
     let totalNotes = 0
     const failedNotes: FailedImportNote[] = []
     let lastSaveTime = 0
-    const SAVE_INTERVAL = 2000 // Save to localStorage every 2 seconds
+    const SAVE_INTERVAL = 2000
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
         toast.error("You must be logged in to import notes")
@@ -134,17 +209,14 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
       const converter = new ContentConverter(imageProcessor)
       const noteCreator = new NoteCreator(supabase)
 
-      // Snapshot существующих заголовков в базе до импорта
       const existingByTitle = await resolveExistingTitlesForImport(
         supabase,
         user.id,
         settings.duplicateStrategy
       )
       const fallbackExistingByTitle = new Map<string, string | null>()
-      // Отслеживаем титлы, уже встреченные в текущем сеансе импорта (внутри файла/файлов)
       const seenTitlesInImport = new Set<string>()
 
-      // Initialize progress
       setProgress({
         currentFile: 0,
         totalFiles: files.length,
@@ -157,7 +229,6 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
         const file = files[fileIndex]
 
         try {
-          // Update file progress
           setProgress((prev) => ({
             ...prev,
             currentFile: fileIndex + 1,
@@ -167,7 +238,6 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
           const notes = await parser.parse(file)
           totalNotes += notes.length
 
-          // Update total notes count
           setProgress((prev) => ({
             ...prev,
             totalNotes,
@@ -176,7 +246,6 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
           for (let noteIndex = 0; noteIndex < notes.length; noteIndex++) {
             const note = notes[noteIndex]
 
-            // Throttle localStorage updates - save every 2 seconds or on last note
             const now = Date.now()
             const isLastNote = noteIndex === notes.length - 1
             if (now - lastSaveTime > SAVE_INTERVAL || isLastNote) {
@@ -197,38 +266,24 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
             }
 
             try {
-              const noteId = crypto.randomUUID()
+              const res = await processImportNote({
+                note,
+                userId: user.id,
+                converter,
+                noteCreator,
+                duplicateStrategy: settings.duplicateStrategy,
+                skipFileDuplicates: settings.skipFileDuplicates,
+                existingByTitle,
+                fallbackExistingByTitle,
+                seenTitlesInImport,
+              })
 
-              const convertedContent = await converter.convert(
-                note.content,
-                note.resources,
-                user.id,
-                noteId,
-                note.title || "Untitled"
-              )
-
-              const createdId = await noteCreator.create(
-                {
-                  ...note,
-                  content: convertedContent,
-                },
-                user.id,
-                settings.duplicateStrategy,
-                {
-                  skipFileDuplicates: settings.skipFileDuplicates,
-                  existingByTitle,
-                  fallbackExistingByTitle,
-                  seenTitlesInImport,
-                }
-              )
-
-              if (createdId) {
+              if (res === 'success') {
                 successCount++
               } else {
                 skippedCount++
               }
 
-              // Update note progress
               setProgress((prev) => ({
                 ...prev,
                 currentNote: successCount + skippedCount + errorCount,
@@ -238,13 +293,11 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
               console.error("Failed to import note:", note.title, err)
               errorCount++
 
-              // Collect failed note details
               failedNotes.push({
                 title: note.title || "Untitled",
                 error: err.message || "Unknown error",
               })
 
-              // Update note progress even on error
               setProgress((prev) => ({
                 ...prev,
                 currentNote: successCount + skippedCount + errorCount,
@@ -259,41 +312,16 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
         }
       }
 
-      // Clear saved state on successful completion
       browser.localStorage.removeItem(IMPORT_STATE_KEY)
 
-      // Set result and keep dialog open
       const result: ImportResult = {
         success: successCount,
         errors: errorCount,
         failedNotes,
-        message: (() => {
-          const messageParts: string[] = []
-
-          if (successCount > 0) {
-            messageParts.push(
-              `Successfully imported ${successCount} note${successCount > 1 ? "s" : ""}`
-            )
-          }
-
-          if (skippedCount > 0) {
-            messageParts.push(`skipped ${skippedCount} duplicate note${skippedCount > 1 ? "s" : ""}`)
-          }
-
-          if (errorCount > 0) {
-            if (messageParts.length > 0) {
-              messageParts.push(`with ${errorCount} error${errorCount > 1 ? "s" : ""}`)
-            } else {
-              messageParts.push("All imports failed")
-            }
-          }
-
-          return messageParts.length > 0 ? messageParts.join(", ") : "No notes were imported"
-        })(),
+        message: buildImportResultMessage(successCount, skippedCount, errorCount),
       }
       setImportResult(result)
 
-      // Call onImportComplete with status
       if (successCount > 0) {
         const status: ImportStatus = errorCount > 0 ? "partial" : "success"
         onImportComplete?.(status, { successCount, errorCount })
@@ -303,7 +331,6 @@ export function ImportButton({ onImportComplete, maxFileSize = 100 * 1024 * 1024
       console.error("Import failed:", err)
       browser.localStorage.removeItem(IMPORT_STATE_KEY)
 
-      // Set error result
       setImportResult({
         success: successCount,
         errors: errorCount + 1,

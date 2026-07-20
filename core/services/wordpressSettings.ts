@@ -17,24 +17,26 @@ export type WordPressIntegrationUpsertInput = {
   enabled: boolean
 }
 
-const readErrorMessage = async (error: unknown, fallback: string) => {
+const extractJsonMessage = async (context: Response): Promise<string | null> => {
+  if (typeof context.json !== 'function') return null
+  try {
+    const payload = await context.json()
+    if (payload && typeof payload === 'object') {
+      if (typeof payload.message === 'string') return payload.message
+      if (typeof payload.msg === 'string') return payload.msg
+    }
+  } catch {
+    // Ignore parse failure
+  }
+  return null
+}
+
+const readErrorMessage = async (error: unknown, fallback: string): Promise<string> => {
   if (typeof error === 'object' && error && 'context' in error) {
     const context = (error as { context?: Response }).context
-    if (context && typeof context.json === 'function') {
-      try {
-        const payload = await context.json()
-        if (payload && typeof payload === 'object') {
-          const message =
-            typeof payload.message === 'string'
-              ? payload.message
-              : typeof payload.msg === 'string'
-                ? payload.msg
-                : null
-          if (message) return message
-        }
-      } catch {
-        // Ignore parse failure and continue fallback chain.
-      }
+    if (context) {
+      const message = await extractJsonMessage(context)
+      if (message) return message
     }
   }
 

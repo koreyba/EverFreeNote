@@ -52,125 +52,106 @@ function buildHighlightPattern(query: string): RegExp | null {
   return new RegExp(`(${unique.join('|')})`, 'gi')
 }
 
-export const NoteCard = memo(function NoteCard({
+type CardInternalProps = NoteCardProps & {
+  checkboxChecked: boolean
+  handleCardClick: (event: MouseEvent<HTMLElement>) => void
+  longPressHandlers: Record<string, unknown>
+  formatDate: (date: string) => string
+}
+
+function CompactNoteCard({
   note,
-  variant,
   isSelected,
   selectionMode,
   onClick,
   onToggleSelect,
   onTagClick,
-  highlightQuery = '',
-}: NoteCardProps) {
-  const checkboxChecked = Boolean(selectionMode && isSelected)
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("ru-RU", {
-      year: "numeric",
-      month: variant === "search" ? "short" : "numeric",
-      day: "numeric",
-    })
-  }
-
-  const hasTextSelectionInside = (target: HTMLElement) => {
-    if (typeof window === "undefined") return false
-    const selection = window.getSelection()
-    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return false
-    const anchorNode = selection.anchorNode
-    const focusNode = selection.focusNode
-    return Boolean(
-      (anchorNode && target.contains(anchorNode)) ||
-      (focusNode && target.contains(focusNode))
-    )
-  }
-
-  const { longPressHandlers, consumeLongPress } = useLongPress(
-    () => onToggleSelect?.(),
-    {
-      enabled: !selectionMode && !!onToggleSelect,
-    }
-  )
-
-  const handleCardClick = (event: MouseEvent<HTMLElement>) => {
-    if (consumeLongPress()) return
-    if (hasTextSelectionInside(event.currentTarget)) return
-    onClick()
-  }
-
-
-  // Compact variant - for regular note list
-  if (variant === "compact") {
-    return (
-      <div
-        data-testid="note-card"
-        onClick={handleCardClick}
-        role="none"
-        className={cn(
-          "group p-3.5 rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm active:scale-[0.98]",
-          isSelected ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
-        )}
-        {...longPressHandlers}
-      >
-        <div className="flex items-start gap-3 h-full">
-          {onToggleSelect && (
-            <Checkbox
-              checked={checkboxChecked}
-              onCheckedChange={() => onToggleSelect?.()}
-              onClick={(e) => e.stopPropagation()}
-              tabIndex={selectionMode ? 0 : -1}
-              aria-hidden={!selectionMode}
-              aria-label={note.title ? `Select note "${note.title}"` : "Select note"}
-              className={cn(
-                "mt-1 shrink-0 transition-opacity",
-                selectionMode
-                  ? "opacity-100"
-                  : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-              )}
-            />
-          )}
-          <div className="flex-1 min-w-0 flex flex-col h-full">
-            <h2 className="min-w-0">
-              <button
-                type="button"
-                tabIndex={selectionMode ? -1 : 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClick();
-                }}
-                className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer"
-              >
-                {note.title || "Untitled"}
-              </button>
-            </h2>
-            <p className="text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal line-clamp-2 mt-1.5">
-              {note.description ? SanitizationService.stripHtml(note.description) : ""}
-            </p>
-            {note.tags && note.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2.5">
-                {note.tags.slice(0, 3).map((tag, index) => (
-                  <InteractiveTag
-                    key={index}
-                    tag={tag}
-                    onClick={onTagClick || (() => { })}
-                    showIcon={false}
-                    className="text-[11px] px-2 py-0.5 rounded-full"
-                  />
-                ))}
-              </div>
+  checkboxChecked,
+  handleCardClick,
+  longPressHandlers,
+  formatDate,
+}: CardInternalProps) {
+  return (
+    <div
+      data-testid="note-card"
+      onClick={handleCardClick}
+      role="none"
+      className={cn(
+        "group p-3.5 rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm active:scale-[0.98]",
+        isSelected ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
+      )}
+      {...longPressHandlers}
+    >
+      <div className="flex items-start gap-3 h-full">
+        {onToggleSelect && (
+          <Checkbox
+            checked={checkboxChecked}
+            onCheckedChange={() => onToggleSelect?.()}
+            onClick={(e) => e.stopPropagation()}
+            tabIndex={selectionMode ? 0 : -1}
+            aria-hidden={!selectionMode}
+            aria-label={note.title ? `Select note "${note.title}"` : "Select note"}
+            className={cn(
+              "mt-1 shrink-0 transition-opacity",
+              selectionMode
+                ? "opacity-100"
+                : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
             )}
-            <div className="flex-1" />
-            <p className="text-[10px] text-muted-foreground dark:text-zinc-400 mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
-          </div>
+          />
+        )}
+        <div className="flex-1 min-w-0 flex flex-col h-full">
+          <h2 className="min-w-0">
+            <button
+              type="button"
+              tabIndex={selectionMode ? -1 : 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}
+              className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer"
+            >
+              {note.title || "Untitled"}
+            </button>
+          </h2>
+          <p className="text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal line-clamp-2 mt-1.5">
+            {note.description ? SanitizationService.stripHtml(note.description) : ""}
+          </p>
+          {note.tags && note.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2.5">
+              {note.tags.slice(0, 3).map((tag) => (
+                <InteractiveTag
+                  key={tag}
+                  tag={tag}
+                  onClick={onTagClick || (() => { })}
+                  showIcon={false}
+                  className="text-[11px] px-2 py-0.5 rounded-full"
+                />
+              ))}
+            </div>
+          )}
+          <div className="flex-1" />
+          <p className="text-[10px] text-muted-foreground dark:text-zinc-400 mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
-  // Search variant - styled to match AI search cards
+function SearchNoteCard({
+  note,
+  selectionMode,
+  onClick,
+  onToggleSelect,
+  onTagClick,
+  highlightQuery = '',
+  checkboxChecked,
+  handleCardClick,
+  longPressHandlers,
+  formatDate,
+}: CardInternalProps) {
   const searchNote = note as SearchResult
   const rank = searchNote.rank ?? 0
 
-  // Strip HTML tags -> plain text -> truncate (same approach as ChunkSnippet)
   const plainHeadline = searchNote.headline
     ? DOMPurify.sanitize(searchNote.headline, { ALLOWED_TAGS: [] })
     : null
@@ -209,7 +190,6 @@ export const NoteCard = memo(function NoteCard({
         />
       )}
       <div className="p-3.5">
-        {/* Title + rank */}
         <div className="flex items-start gap-2 justify-between">
           <h2 className="flex-1 min-w-0">
             <button
@@ -234,12 +214,11 @@ export const NoteCard = memo(function NoteCard({
           )}
         </div>
 
-        {/* Tags */}
         {note.tags && note.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
-            {note.tags.slice(0, 5).map((tag, idx) => (
+            {note.tags.slice(0, 5).map((tag) => (
               <InteractiveTag
-                key={idx}
+                key={tag}
                 tag={tag}
                 onClick={onTagClick || (() => { })}
                 showIcon={false}
@@ -252,7 +231,6 @@ export const NoteCard = memo(function NoteCard({
           </div>
         )}
 
-        {/* Headline snippet with JS highlighting â€” height is deterministic, no CSS clamp needed */}
         {parts && (
           <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2 border border-border/20">
             <p className="text-[12.5px] leading-relaxed text-foreground/80">
@@ -266,10 +244,68 @@ export const NoteCard = memo(function NoteCard({
           </div>
         )}
 
-        {/* Date */}
         <p className="mt-2.5 text-[10px] text-muted-foreground dark:text-zinc-400 font-medium">{formatDate(note.updated_at)}</p>
       </div>
     </article>
   )
+}
+
+export const NoteCard = memo(function NoteCard(props: NoteCardProps) {
+  const {
+    variant,
+    isSelected,
+    selectionMode,
+    onClick,
+    onToggleSelect,
+  } = props
+
+  const checkboxChecked = Boolean(selectionMode && isSelected)
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString("ru-RU", {
+      year: "numeric",
+      month: variant === "search" ? "short" : "numeric",
+      day: "numeric",
+    })
+  }
+
+  const hasTextSelectionInside = (target: HTMLElement) => {
+    if (typeof window === "undefined") return false
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return false
+    const anchorNode = selection.anchorNode
+    const focusNode = selection.focusNode
+    return Boolean(
+      (anchorNode && target.contains(anchorNode)) ||
+      (focusNode && target.contains(focusNode))
+    )
+  }
+
+  const { longPressHandlers, consumeLongPress } = useLongPress(
+    () => onToggleSelect?.(),
+    {
+      enabled: !selectionMode && !!onToggleSelect,
+    }
+  )
+
+  const handleCardClick = (event: MouseEvent<HTMLElement>) => {
+    if (consumeLongPress()) return
+    if (hasTextSelectionInside(event.currentTarget)) return
+    onClick()
+  }
+
+  const cardProps: CardInternalProps = {
+    ...props,
+    checkboxChecked,
+    handleCardClick,
+    longPressHandlers: longPressHandlers as Record<string, unknown>,
+    formatDate,
+  }
+
+  if (variant === "compact") {
+    return <CompactNoteCard {...cardProps} />
+  }
+
+  return <SearchNoteCard {...cardProps} />
 })
 

@@ -36,61 +36,76 @@ export const sendChunkedText = (
   send({ type: `${type}${CHUNK_END_SUFFIX}`, payload: { transferId } satisfies ChunkEndPayload })
 }
 
+const isValidTransferId = (id: unknown): id is string =>
+  typeof id === 'string' &&
+  id.length > 0 &&
+  id.length <= 200 &&
+  !RESERVED_TRANSFER_IDS.has(id) &&
+  !/[^a-zA-Z0-9_\-.]/.test(id)
+
+const parseBaseType = (type: string): { baseType: string; phase: 'START' | 'CHUNK' | 'END' } | null => {
+  if (type.endsWith(CHUNK_START_SUFFIX)) {
+    return { baseType: type.slice(0, -CHUNK_START_SUFFIX.length), phase: 'START' }
+  }
+  if (type.endsWith(CHUNK_SUFFIX)) {
+    return { baseType: type.slice(0, -CHUNK_SUFFIX.length), phase: 'CHUNK' }
+  }
+  if (type.endsWith(CHUNK_END_SUFFIX)) {
+    return { baseType: type.slice(0, -CHUNK_END_SUFFIX.length), phase: 'END' }
+  }
+  return null
+}
+
+const handleChunkStart = (payload: unknown, store: ChunkBufferStore): null => {
+  const p = payload as Partial<ChunkStartPayload>
+  if (!isValidTransferId(p.transferId) || typeof p.total !== 'number') return null
+  if (p.total < 1 || p.total > 10_000 || !Number.isInteger(p.total)) return null
+  store.set(p.transferId, { total: p.total, chunks: [] })
+  return null
+}
+
+const handleChunkPayload = (payload: unknown, store: ChunkBufferStore): null => {
+  const p = payload as Partial<ChunkPayload>
+  if (!isValidTransferId(p.transferId) || typeof p.index !== 'number' || typeof p.chunk !== 'string') return null
+  const entry = store.get(p.transferId)
+  if (!entry) return null
+  if (!Number.isInteger(p.index) || p.index < 0 || p.index >= entry.total) return null
+  entry.chunks[p.index] = p.chunk
+  return null
+}
+
+const handleChunkEnd = (
+  payload: unknown,
+  store: ChunkBufferStore,
+  baseType: string
+): { baseType: string; text: string } | null => {
+  const p = payload as Partial<ChunkEndPayload>
+  if (!isValidTransferId(p.transferId)) return null
+  const entry = store.get(p.transferId)
+  if (!entry || entry.chunks.length !== entry.total) return null
+
+  for (let index = 0; index < entry.total; index++) {
+    if (typeof entry.chunks[index] !== 'string') return null
+  }
+
+  const text = entry.chunks.join('')
+  store.delete(p.transferId)
+  return { baseType, text }
+}
+
 export const consumeChunkedMessage = (
   type: string,
   payload: unknown,
   store: ChunkBufferStore
 ): { baseType: string; text: string } | null => {
-  let baseType: string | null = null
+  const parsed = parseBaseType(type)
+  if (!parsed) return null
 
-  if (type.endsWith(CHUNK_START_SUFFIX)) {
-    baseType = type.slice(0, -CHUNK_START_SUFFIX.length)
-  } else if (type.endsWith(CHUNK_SUFFIX)) {
-    baseType = type.slice(0, -CHUNK_SUFFIX.length)
-  } else if (type.endsWith(CHUNK_END_SUFFIX)) {
-    baseType = type.slice(0, -CHUNK_END_SUFFIX.length)
-  } else {
-    return null
+  if (parsed.phase === 'START') {
+    return handleChunkStart(payload, store)
   }
-
-  const isValidTransferId = (id: unknown): id is string =>
-    typeof id === 'string' &&
-    id.length > 0 &&
-    id.length <= 200 &&
-    !RESERVED_TRANSFER_IDS.has(id) &&
-    !/[^a-zA-Z0-9_\-.]/.test(id)
-
-  if (type.endsWith(CHUNK_START_SUFFIX)) {
-    const p = payload as Partial<ChunkStartPayload>
-    if (!isValidTransferId(p.transferId) || typeof p.total !== 'number') return null
-    if (p.total < 1 || p.total > 10_000 || !Number.isInteger(p.total)) return null
-    store.set(p.transferId, { total: p.total, chunks: [] })
-    return null
+  if (parsed.phase === 'CHUNK') {
+    return handleChunkPayload(payload, store)
   }
-
-  if (type.endsWith(CHUNK_SUFFIX)) {
-    const p = payload as Partial<ChunkPayload>
-    if (!isValidTransferId(p.transferId) || typeof p.index !== 'number' || typeof p.chunk !== 'string') return null
-    const entry = store.get(p.transferId)
-    if (!entry) return null
-    if (!Number.isInteger(p.index) || p.index < 0 || p.index >= entry.total) return null
-    entry.chunks[p.index] = p.chunk
-    return null
-  }
-
-  if (type.endsWith(CHUNK_END_SUFFIX)) {
-    const p = payload as Partial<ChunkEndPayload>
-    if (!isValidTransferId(p.transferId)) return null
-    const entry = store.get(p.transferId)
-    if (!entry) return null
-    if (entry.chunks.length !== entry.total) return null
-    for (let index = 0; index < entry.total; index++) {
-      if (typeof entry.chunks[index] !== 'string') return null
-    }
-    const text = entry.chunks.join('')
-    store.delete(p.transferId)
-    return { baseType, text }
-  }
-
-  return null
+  return handleChunkEnd(payload, store, parsed.baseType)
 }

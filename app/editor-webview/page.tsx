@@ -15,6 +15,21 @@ declare global {
   }
 }
 
+function parseNativeEventData(event: MessageEvent): string | null {
+  if (typeof event.data === 'string') return event.data
+  const nativeData = (event as unknown as { nativeEvent?: { data?: unknown } }).nativeEvent?.data
+  return typeof nativeData === 'string' ? String(nativeData) : null
+}
+
+function sendTextToNative(type: string, text: string) {
+  if (!window.ReactNativeWebView) return
+  sendChunkedText(
+    (message) => window.ReactNativeWebView?.postMessage(JSON.stringify(message)),
+    type,
+    text
+  )
+}
+
 export default function EditorWebViewPage() {
   const [initialContent, setInitialContent] = useState('')
   const editorRef = React.useRef<RichTextEditorWebViewHandle>(null)
@@ -81,13 +96,11 @@ export default function EditorWebViewPage() {
         const src = img.getAttribute('src')
         if (!src) continue
 
-        // 1) Make relative Supabase Storage URLs absolute (common after ENEX conversions / sanitization)
         if (supabaseOrigin && src.startsWith('/storage/v1/')) {
           img.setAttribute('src', `${supabaseOrigin}${src}`)
           continue
         }
 
-        // 2) Replace localhost/127.0.0.1 URLs with the dev machine host (phone can't reach its own localhost)
         try {
           const url = new URL(src)
           if (['localhost', '127.0.0.1', '0.0.0.0'].includes(url.hostname) && devHost) {
@@ -101,15 +114,6 @@ export default function EditorWebViewPage() {
       }
 
       return container.innerHTML
-    }
-
-    const sendTextToNative = (type: string, text: string) => {
-      if (!window.ReactNativeWebView) return
-      sendChunkedText(
-        (message) => window.ReactNativeWebView?.postMessage(JSON.stringify(message)),
-        type,
-        text
-      )
     }
 
     const applySetContent = (html: string) => {
@@ -129,11 +133,8 @@ export default function EditorWebViewPage() {
       applyTheme(theme)
     }
 
-    // Listen for messages from React Native
     const isTrustedOrigin = (origin: string) => {
-      // React Native WebView sends messages with empty or null origin
       if (!origin || origin === 'null' || origin === 'file://') return true
-      // Same-origin messages (dev server, self-hosted)
       if (origin === globalThis.location.origin) return true
       return false
     }
@@ -142,14 +143,7 @@ export default function EditorWebViewPage() {
       try {
         if (event.origin && !isTrustedOrigin(event.origin)) return
 
-        const raw =
-          typeof event.data === 'string'
-            ? event.data
-            : typeof (event as unknown as { nativeEvent?: { data?: unknown } }).nativeEvent?.data ===
-                'string'
-              ? String((event as unknown as { nativeEvent?: { data?: unknown } }).nativeEvent?.data)
-              : null
-
+        const raw = parseNativeEventData(event)
         if (!raw) return
 
         const { type, payload } = JSON.parse(raw) as { type?: string; payload?: unknown }
@@ -171,8 +165,8 @@ export default function EditorWebViewPage() {
           }
         } else if (type === 'REQUEST_COPY_PAYLOAD') {
           if (editorRef.current) {
-            const payload = NoteClipboardService.buildPayload(editorRef.current.getHTML())
-            sendTextToNative('COPY_PAYLOAD', JSON.stringify(payload))
+            const copyPayload = NoteClipboardService.buildPayload(editorRef.current.getHTML())
+            sendTextToNative('COPY_PAYLOAD', JSON.stringify(copyPayload))
           }
         } else if (type === 'COMMAND') {
           if (editorRef.current) {
