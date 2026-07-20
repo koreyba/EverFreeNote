@@ -115,7 +115,7 @@ export function NoteSearchItem({
         'group relative rounded-lg border border-border/60 bg-card border-l-[3px] overflow-hidden transition-all hover:border-primary/30 hover:shadow-sm',
         getAccentClass(group.topScore)
       )}
-      role="button"
+      role={selectionMode ? 'button' : undefined}
       tabIndex={selectionMode ? 0 : undefined}
       onClick={handleCardClick}
       onKeyDown={(e) => {

@@ -181,6 +181,42 @@ function splitAndStripParagraphs(text: string, sectionHeading: string | null): R
 // are not handled correctly because the <li> regex uses a non-greedy match that
 // stops at the first </li>. When DOMParser is available, collectBlocksFromDom
 // handles nested lists properly via DOM traversal.
+function findMatchingClosingTag(
+  html: string,
+  startPos: number,
+  openPrefix: string,
+  closeTag: string
+): number {
+  let depth = 1
+  let searchPos = startPos
+  let matchedEnd = -1
+  const lower = html.toLowerCase()
+  const lowerOpen = openPrefix.toLowerCase()
+  const lowerClose = closeTag.toLowerCase()
+
+  while (depth > 0 && searchPos < html.length) {
+    const nextOpen = lower.indexOf(lowerOpen, searchPos)
+    const nextClose = lower.indexOf(lowerClose, searchPos)
+
+    if (nextClose === -1) break
+
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      depth++
+      const openTagClose = html.indexOf('>', nextOpen)
+      searchPos = openTagClose !== -1 ? openTagClose + 1 : nextOpen + openPrefix.length
+    } else {
+      depth--
+      if (depth === 0) {
+        matchedEnd = nextClose
+      } else {
+        searchPos = nextClose + closeTag.length
+      }
+    }
+  }
+
+  return matchedEnd
+}
+
 function processListContent(content: string, isOrdered: boolean): string {
   let result = ''
   let idx = 1
@@ -200,30 +236,7 @@ function processListContent(content: string, isOrdered: boolean): string {
       break
     }
 
-    let depth = 1
-    let searchPos = tagClose + 1
-    let liEnd = -1
-
-    while (searchPos < content.length && depth > 0) {
-      const nextOpen = content.toLowerCase().indexOf('<li', searchPos)
-      const nextClose = content.toLowerCase().indexOf('</li>', searchPos)
-
-      if (nextClose === -1) break
-
-      if (nextOpen !== -1 && nextOpen < nextClose) {
-        depth++
-        const openTagClose = content.indexOf('>', nextOpen)
-        searchPos = openTagClose !== -1 ? openTagClose + 1 : nextOpen + 3
-      } else {
-        depth--
-        if (depth === 0) {
-          liEnd = nextClose
-        } else {
-          searchPos = nextClose + 5
-        }
-      }
-    }
-
+    const liEnd = findMatchingClosingTag(content, tagClose + 1, '<li', '</li>')
     if (liEnd === -1) {
       result += content.slice(liStart)
       break
@@ -257,31 +270,7 @@ function processTopLevelLists(html: string, tagName: 'ol' | 'ul', isOrdered: boo
     result += html.slice(cursor, match.index)
     const openTagEnd = match.index + match[0].length
 
-    let depth = 1
-    let searchPos = openTagEnd
-    let listEnd = -1
-
-    while (depth > 0 && searchPos < html.length) {
-      const lower = html.toLowerCase()
-      const nextOpen = lower.indexOf(`<${tagName}`, searchPos)
-      const nextClose = lower.indexOf(closeTag, searchPos)
-
-      if (nextClose === -1) break
-
-      if (nextOpen !== -1 && nextOpen < nextClose) {
-        depth++
-        const openEnd = html.indexOf('>', nextOpen)
-        searchPos = openEnd !== -1 ? openEnd + 1 : nextOpen + tagName.length + 1
-      } else {
-        depth--
-        if (depth === 0) {
-          listEnd = nextClose
-        } else {
-          searchPos = nextClose + closeTag.length
-        }
-      }
-    }
-
+    const listEnd = findMatchingClosingTag(html, openTagEnd, `<${tagName}`, closeTag)
     if (listEnd === -1) {
       result += html.slice(match.index)
       break
