@@ -1,0 +1,562 @@
+# ♿ Accessibility Audit Violations (Total Rules Failed: 1)
+
+---
+
+## 🛑 [nested-interactive] Interactive controls must not be nested
+- **Severity**: serious
+- **Description**: Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies
+- **Learn More**: [Deque University Link](https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright)
+
+### Affected Elements:
+
+#### Element 1
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(1)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 2
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(2)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 3
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(3)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 4
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(4)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 5
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(5)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 6
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(6)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 7
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(7)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 8
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(8)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 9
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(9)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 10
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(10)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 11
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(11)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 12
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(12)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 13
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(13)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 14
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(14)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 15
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(15)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 16
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(16)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 17
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(17)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 18
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(18)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 19
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(19)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 20
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(20)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 21
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(21)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 22
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(22)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 23
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(23)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 24
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(24)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 25
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(25)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 26
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(26)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 27
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(27)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 28
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(28)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 29
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(29)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 30
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(30)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 31
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(31)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 32
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(32)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 33
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(33)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 34
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(34)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 35
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(35)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 36
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(36)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 37
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(37)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 38
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(38)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 39
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(39)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 40
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(40)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 41
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(41)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 42
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(42)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 43
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(43)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 44
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(44)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 45
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(45)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 46
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(46)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 47
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(47)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 48
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(48)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 49
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(49)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+#### Element 50
+- **Selector**: `.p-2.transition-colors[role="button"]:nth-child(50)`
+- **HTML Snippet**:
+  ```html
+  <div role="button" tabindex="0" class="flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer border-border/30 hover:bg-muted/30">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+---

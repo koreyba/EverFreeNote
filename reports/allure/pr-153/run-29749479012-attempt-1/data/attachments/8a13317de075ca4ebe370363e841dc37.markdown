@@ -1,0 +1,23 @@
+# ♿ Accessibility Audit Violations (Total Rules Failed: 1)
+
+---
+
+## 🛑 [nested-interactive] Interactive controls must not be nested
+- **Severity**: serious
+- **Description**: Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies
+- **Learn More**: [Deque University Link](https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright)
+
+### Affected Elements:
+
+#### Element 1
+- **Selector**: `.min-h-\[44px\]`
+- **HTML Snippet**:
+  ```html
+  <div data-testid="tag-input-container" role="button" tabindex="0" class="flex items-center min-h-[44px] px-3 bg-muted/30 border border-transparent rounded-2xl transition-all duration-200 cursor-text hover:bg-muted/50">
+  ```
+- **How to Fix**:
+  > [!TIP]
+  > Fix any of the following:
+  >   Element has focusable descendants
+
+---
