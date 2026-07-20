@@ -205,14 +205,22 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
                   return (
                     <div
                       key={note.id}
+                      role="button"
+                      tabIndex={0}
                       className={`flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer ${
                         isSelected
                           ? "border-primary bg-primary/5 dark:bg-primary/10"
                           : "border-border/30 hover:bg-muted/30"
                       }`}
                       onClick={() => toggleNote(note.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          toggleNote(note.id)
+                        }
+                      }}
                     >
-                      <div onClick={(e) => e.stopPropagation()}>
+                      <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => toggleNote(note.id)}
