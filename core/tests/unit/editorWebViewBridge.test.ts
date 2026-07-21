@@ -59,4 +59,39 @@ describe('editorWebViewBridge', () => {
     expect(result).toBeNull()
     expect(store.has(transferId)).toBe(true)
   })
+
+  it('ignores malformed lifecycle messages without mutating the buffer', () => {
+    const store = new Map<string, { total: number; chunks: string[] }>()
+
+    expect(consumeChunkedMessage('CONTENT_CHANGED', null, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', null, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', { transferId: 'x', total: 0 }, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', { transferId: 'x', total: 1.5 }, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', { transferId: 'x', total: 10_001 }, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', { transferId: 'x', total: 1 }, store)).toBeNull()
+
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK', { transferId: 'missing', index: 0, chunk: 'x' }, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_END', { transferId: 'x' }, store)).toBeNull()
+    expect(store.has('x')).toBe(true)
+    store.clear()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_END', { transferId: 'x' }, store)).toBeNull()
+    expect(store).toEqual(new Map())
+  })
+
+  it('rejects invalid chunk indexes and missing chunk slots', () => {
+    const store = new Map<string, { total: number; chunks: string[] }>()
+    const transferId = 'valid-transfer'
+
+    consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', { transferId, total: 2 }, store)
+    for (const index of [-1, 2, 0.5]) {
+      expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK', { transferId, index, chunk: 'bad' }, store)).toBeNull()
+      expect(store.get(transferId)?.chunks).toEqual([undefined, undefined])
+    }
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_END', { transferId }, store)).toBeNull()
+    expect(store.has(transferId)).toBe(true)
+
+    consumeChunkedMessage('CONTENT_CHANGED_CHUNK', { transferId, index: 0, chunk: 'first' }, store)
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_END', { transferId }, store)).toBeNull()
+    expect(store.has(transferId)).toBe(true)
+  })
 })

@@ -34,4 +34,12 @@ describe("core/services/settingsErrorMessage", () => {
       readSettingsErrorMessage(error, "Failed to save settings")
     ).resolves.toBe("Gemini API key is required for initial setup")
   })
+
+  it('uses fallback text for unknown errors and handles malformed contexts', async () => {
+    await expect(readSettingsErrorMessage({}, 'fallback')).resolves.toBe('fallback')
+    await expect(readSettingsErrorMessage({ context: { json: async () => ({}) } }, 'fallback')).resolves.toBe('fallback')
+    await expect(readSettingsErrorMessage({ context: { json: async () => { throw new Error('bad json') } } }, 'fallback')).resolves.toBe('fallback')
+    await expect(readSettingsErrorMessage(new Error('load failed'), 'fallback')).resolves.toBe(SETTINGS_SERVICE_UNAVAILABLE_MESSAGE)
+    await expect(readSettingsErrorMessage(new Error('explicit'), 'fallback')).resolves.toBe('explicit')
+  })
 })
