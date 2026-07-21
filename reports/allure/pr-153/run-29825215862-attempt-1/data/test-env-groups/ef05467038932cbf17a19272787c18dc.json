@@ -1,0 +1,1 @@
+{"id":"ef05467038932cbf17a19272787c18dc","fullName":"everfreenote:ui/web/tests/unit/hooks/useSearchMode.test.tsx#useSearchMode restores state from localStorage and ignores the legacy preset field","name":"restores state from localStorage and ignores the legacy preset field","status":"passed","testResultsByEnv":{"default":"3960e17a6f378b361e99e84e0133672a"}}
