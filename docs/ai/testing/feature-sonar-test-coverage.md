@@ -27,7 +27,11 @@ application test cases.
 ## Integration Tests
 
 - [x] Cypress coverage instrumentation runs in its dedicated Babel environment;
-  an earlier focused coverage run passed four tests.
+  the focused auth/controller coverage run passed 26 tests (7 auth and 19
+  controller tests).
+- [x] Auth-hook component tests use explicit fixture configuration instead of
+  Stage or Production environment variables; controller tests do not exercise
+  deployment-gated login handlers.
 - [x] NYC emits its independent component report under `coverage/component`.
 - [x] Root Jest, Cypress, and mobile Jest outputs use separate directories.
 - [x] Sonar analysis receives all three explicit paths only in the main job.
