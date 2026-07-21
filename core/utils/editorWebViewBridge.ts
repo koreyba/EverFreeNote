@@ -73,7 +73,7 @@ const handleChunkStart = (payload: unknown, store: ChunkBufferStore): void => {
   const p = payload as Partial<ChunkStartPayload>
   if (!isValidTransferId(p.transferId) || typeof p.total !== 'number') return
   if (p.total < 1 || p.total > 10_000 || !Number.isInteger(p.total)) return
-  store.set(p.transferId, { total: p.total, chunks: [] })
+  store.set(p.transferId, { total: p.total, chunks: new Array<string>(p.total) })
 }
 
 const handleChunkPayload = (payload: unknown, store: ChunkBufferStore): void => {
@@ -83,7 +83,7 @@ const handleChunkPayload = (payload: unknown, store: ChunkBufferStore): void => 
   const entry = store.get(p.transferId)
   if (!entry) return
   if (!Number.isInteger(p.index) || p.index < 0 || p.index >= entry.total) return
-  entry.chunks[p.index] = p.chunk
+  entry.chunks.splice(p.index, 1, p.chunk)
 }
 
 const handleChunkEnd = (

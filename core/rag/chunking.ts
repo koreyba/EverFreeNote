@@ -215,7 +215,7 @@ function findMatchingClosingTag(
   const lowerClose = closeTag.toLowerCase()
 
   while (depth > 0 && searchPos < html.length) {
-    const nextOpen = lower.indexOf(lowerOpen, searchPos)
+    const nextOpen = indexOfTag(lower, lowerOpen, searchPos)
     const nextClose = lower.indexOf(lowerClose, searchPos)
 
     if (nextClose === -1) break
@@ -237,13 +237,29 @@ function findMatchingClosingTag(
   return matchedEnd
 }
 
+function isTagNameBoundary(char: string | undefined): boolean {
+  return char === undefined || char === ">" || char === "/" || /\s/.test(char)
+}
+
+function indexOfTag(lowerHtml: string, lowerPrefix: string, fromIndex: number): number {
+  let index = fromIndex
+  while (index !== -1) {
+    index = lowerHtml.indexOf(lowerPrefix, index)
+    if (index === -1) return -1
+    if (isTagNameBoundary(lowerHtml[index + lowerPrefix.length])) return index
+    index += lowerPrefix.length
+  }
+  return -1
+}
+
 function processListContent(content: string, isOrdered: boolean): string {
   let result = ''
   let idx = 1
   let pos = 0
+  const lowerContent = content.toLowerCase()
 
   while (pos < content.length) {
-    const liStart = content.toLowerCase().indexOf('<li', pos)
+    const liStart = indexOfTag(lowerContent, '<li', pos)
     if (liStart === -1) {
       result += content.slice(pos)
       break

@@ -46,8 +46,8 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
   return (
     <div style={style} className="px-2 py-1">
       <div
-        role="option"
-        aria-selected={isSelected}
+        role="button"
+        aria-pressed={isSelected}
         tabIndex={0}
         onClick={() => onSelectNote(note)}
         onKeyDown={(e) => {

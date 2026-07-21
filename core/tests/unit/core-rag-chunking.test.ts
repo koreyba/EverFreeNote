@@ -568,5 +568,18 @@ describe("core/rag/chunking — pairwise test suite", () => {
       expect(chunks[0]!.bodyContent).toContain("- Bullet B")
       expect(chunks[0]!.bodyContent).not.toContain("- - Bullet")
     })
+
+    it("does not treat similarly prefixed tags as nested list items", () => {
+      const html = '<ol><li>Before<link href="https://example.com">After</li><li>Second</li></ol>'
+      const chunks = buildRagIndexChunks({
+        title: "List with link",
+        html,
+        tags: [],
+        settings: cfg({ min_chunk_size: 10 }),
+      })
+
+      expect(chunks[0]!.bodyContent).toContain("1. Before After")
+      expect(chunks[0]!.bodyContent).toContain("2. Second")
+    })
   })
 })

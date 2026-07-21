@@ -14,27 +14,38 @@ type ResponseLike = {
   status?: unknown
 }
 
-export const readJsonErrorMessage = async (
-  context: ResponseLike,
-  fields: string[] = ["message", "msg", "error"]
-): Promise<string | null> => {
+export const readJsonErrorPayload = async (context: ResponseLike): Promise<Record<string, unknown> | null> => {
   if (typeof context?.json !== "function") return null
 
   try {
     const payload = await context.json()
     if (!payload || typeof payload !== "object") return null
-
-    const obj = payload as Record<string, unknown>
-    for (const field of fields) {
-      const val = obj[field]
-      if (typeof val === "string" && val.trim()) {
-        return val
-      }
-    }
-    return null
+    return payload as Record<string, unknown>
   } catch {
     return null
   }
+}
+
+export const extractJsonErrorMessage = (
+  payload: Record<string, unknown> | null,
+  fields: string[] = ["message", "msg", "error"]
+): string | null => {
+  if (!payload) return null
+
+  for (const field of fields) {
+    const val = payload[field]
+    if (typeof val === "string" && val.trim()) {
+      return val
+    }
+  }
+  return null
+}
+
+export const readJsonErrorMessage = async (
+  context: ResponseLike,
+  fields: string[] = ["message", "msg", "error"]
+): Promise<string | null> => {
+  return extractJsonErrorMessage(await readJsonErrorPayload(context), fields)
 }
 
 const isServiceUnavailableStatus = (status: number): boolean => status === 502 || status === 503 || status === 504

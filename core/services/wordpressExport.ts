@@ -105,17 +105,16 @@ const parseExportResponse = (data: unknown): ExportNoteToWordPressResponse | nul
   }
 }
 
-import { readJsonErrorMessage } from './settingsErrorMessage'
+import { extractJsonErrorMessage, readJsonErrorPayload } from './settingsErrorMessage'
 
 const parseContextResponseBody = async (context: Response): Promise<WordPressBridgeError | null> => {
   if (typeof context.json !== 'function') return null
   try {
-    const messageFromHelper = await readJsonErrorMessage(context.clone(), ['message', 'msg'])
-    const body = await context.json()
-    if (!isRecord(body)) return null
+    const body = await readJsonErrorPayload(context)
+    if (!body) return null
 
     const code = typeof body.code === 'string' ? body.code : 'bridge_error'
-    const message = messageFromHelper || 'WordPress export failed'
+    const message = extractJsonErrorMessage(body, ['message', 'msg']) || 'WordPress export failed'
     const details = 'details' in body ? body.details : undefined
     return new WordPressBridgeError(message, code, details)
   } catch {
