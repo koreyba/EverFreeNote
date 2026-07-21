@@ -91,8 +91,9 @@ The AI assistant should proactively use knowledge memory throughout all interact
 - Use mermaid diagrams for any architectural or data-flow visuals (update existing diagrams if needed)
 - Record test coverage results and outstanding gaps in `docs/ai/testing/`
 
-## Key Commands
+## Key Commands & Fast Validation
 When working on this project, you can run commands to:
+- Fast Type-Check and Linting (`npm run type-check && npx eslint . --max-warnings=0`) - use this for fast verification instead of full validate (which includes deno-check).
 - Understand project requirements and goals (`review-requirements`)
 - Review architectural decisions (`review-design`)
 - Plan and execute tasks (`execute-plan`)

@@ -223,7 +223,7 @@ export class ContentConverter {
     const len = binaryString.length
     const buffer = new Uint8Array(len)
     for (let i = 0; i < len; i++) {
-      buffer[i] = binaryString.charCodeAt(i)
+      buffer[i] = binaryString.codePointAt(i) ?? 0
     }
     return this.computeMd5(buffer.buffer)
   }

@@ -63,8 +63,8 @@ export class EnexParser {
       return {
         data: data.trim(),
         mime,
-        width: width ? parseInt(width, 10) : undefined,
-        height: height ? parseInt(height, 10) : undefined,
+        width: width ? Number.parseInt(width, 10) : undefined,
+        height: height ? Number.parseInt(height, 10) : undefined,
         fileName: fileName ?? undefined,
       }
     })

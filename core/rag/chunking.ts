@@ -54,7 +54,27 @@ function normalizeWhitespace(value: string): string {
 }
 
 function stripTags(value: string): string {
-  return normalizeWhitespace(value.replaceAll(/<[^>]*>/g, " "))
+  const parts: string[] = []
+  let cursor = 0
+
+  while (cursor < value.length) {
+    const openingBracket = value.indexOf("<", cursor)
+    if (openingBracket === -1) {
+      parts.push(value.slice(cursor))
+      break
+    }
+
+    const closingBracket = value.indexOf(">", openingBracket + 1)
+    if (closingBracket === -1) {
+      parts.push(value.slice(cursor))
+      break
+    }
+
+    parts.push(value.slice(cursor, openingBracket), " ")
+    cursor = closingBracket + 1
+  }
+
+  return normalizeWhitespace(parts.join(""))
 }
 
 function splitPlainTextParagraphs(value: string): string[] {
@@ -181,25 +201,122 @@ function splitAndStripParagraphs(text: string, sectionHeading: string | null): R
 // are not handled correctly because the <li> regex uses a non-greedy match that
 // stops at the first </li>. When DOMParser is available, collectBlocksFromDom
 // handles nested lists properly via DOM traversal.
-function prefixListItems(html: string): string {
-  // Ordered lists: prepend "1. ", "2. ", etc.
-  let result = html.replaceAll(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner: string) => {
-    let idx = 1
-    const numbered = inner.replaceAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
-      const stripped = liContent.replaceAll(/<\/?p\b[^>]*>/gi, "")
-      return `<li>${idx++}. ${stripped}</li>`
-    })
-    return `<ol>${numbered}</ol>`
-  })
+function findMatchingClosingTag(
+  html: string,
+  startPos: number,
+  openPrefix: string,
+  closeTag: string
+): number {
+  let depth = 1
+  let searchPos = startPos
+  let matchedEnd = -1
+  const lower = html.toLowerCase()
+  const lowerOpen = openPrefix.toLowerCase()
+  const lowerClose = closeTag.toLowerCase()
 
-  // Unordered lists: prepend "- "
-  result = result.replaceAll(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (_match, inner: string) => {
-    const bulleted = inner.replaceAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
-      const stripped = liContent.replaceAll(/<\/?p\b[^>]*>/gi, "")
-      return `<li>- ${stripped}</li>`
-    })
-    return `<ul>${bulleted}</ul>`
-  })
+  while (depth > 0 && searchPos < html.length) {
+    const nextOpen = indexOfTag(lower, lowerOpen, searchPos)
+    const nextClose = lower.indexOf(lowerClose, searchPos)
+
+    if (nextClose === -1) break
+
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      depth++
+      const openTagClose = html.indexOf('>', nextOpen)
+      searchPos = openTagClose !== -1 ? openTagClose + 1 : nextOpen + openPrefix.length
+    } else {
+      depth--
+      if (depth === 0) {
+        matchedEnd = nextClose
+      } else {
+        searchPos = nextClose + closeTag.length
+      }
+    }
+  }
+
+  return matchedEnd
+}
+
+function isTagNameBoundary(char: string | undefined): boolean {
+  return char === undefined || char === ">" || char === "/" || /\s/.test(char)
+}
+
+function indexOfTag(lowerHtml: string, lowerPrefix: string, fromIndex: number): number {
+  let index = fromIndex
+  while (index !== -1) {
+    index = lowerHtml.indexOf(lowerPrefix, index)
+    if (index === -1) return -1
+    if (isTagNameBoundary(lowerHtml[index + lowerPrefix.length])) return index
+    index += lowerPrefix.length
+  }
+  return -1
+}
+
+function processListContent(content: string, isOrdered: boolean): string {
+  let result = ''
+  let idx = 1
+  let pos = 0
+  const lowerContent = content.toLowerCase()
+
+  while (pos < content.length) {
+    const liStart = indexOfTag(lowerContent, '<li', pos)
+    if (liStart === -1) {
+      result += content.slice(pos)
+      break
+    }
+
+    result += content.slice(pos, liStart)
+    const tagClose = content.indexOf('>', liStart)
+    if (tagClose === -1) {
+      result += content.slice(liStart)
+      break
+    }
+
+    const liEnd = findMatchingClosingTag(content, tagClose + 1, '<li', '</li>')
+    if (liEnd === -1) {
+      result += content.slice(liStart)
+      break
+    }
+
+    const liInner = prefixListItems(content.slice(tagClose + 1, liEnd))
+    const prefix = isOrdered ? `${idx++}. ` : '- '
+    const stripped = liInner.replaceAll(/<\/?p\b[^>]*>/gi, '')
+    result += `<li>${prefix}${stripped}</li>`
+
+    pos = liEnd + 5
+  }
+
+  return result
+}
+
+function prefixListItems(html: string): string {
+  const openRegex = /<(ol|ul)\b[^<>]*>/gi
+  let result = ''
+  let cursor = 0
+
+  while (cursor < html.length) {
+    openRegex.lastIndex = cursor
+    const match = openRegex.exec(html)
+    if (!match) {
+      result += html.slice(cursor)
+      break
+    }
+
+    result += html.slice(cursor, match.index)
+    const tagName = match[1]?.toLowerCase() === 'ol' ? 'ol' : 'ul'
+    const closeTag = `</${tagName}>`
+    const openTagEnd = match.index + match[0].length
+
+    const listEnd = findMatchingClosingTag(html, openTagEnd, `<${tagName}`, closeTag)
+    if (listEnd === -1) {
+      result += html.slice(match.index)
+      break
+    }
+
+    const inner = html.slice(openTagEnd, listEnd)
+    result += `<${tagName}>${processListContent(inner, tagName === 'ol')}</${tagName}>`
+    cursor = listEnd + closeTag.length
+  }
 
   return result
 }
@@ -212,7 +329,7 @@ function collectBlocksWithRegex(html: string): RawBlock[] {
   const rawBlocks: RawBlock[] = []
   let currentHeading: string | null = null
 
-  const headingRegex = /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi
+  const headingRegex = /<h([1-6])\b[^>]*>((?:(?!<\/h\1>)[\s\S])*)<\/h\1>/gi
   let lastIndex = 0
   let match: RegExpExecArray | null
 
@@ -248,7 +365,7 @@ function extractBlocksFromHtml(html: string): IndexedBlock[] {
 }
 
 function splitIntoSentenceSegments(block: IndexedBlock): TextSegment[] {
-  const matches = Array.from(block.text.matchAll(/[^.!?]+(?:[.!?]+|$)/g))
+  const matches = Array.from(block.text.matchAll(/[^.!?]+[.!?]*/g))
   if (matches.length <= 1) {
     return [{ sectionHeading: block.sectionHeading, text: block.text, charOffset: block.charOffset }]
   }

@@ -46,8 +46,18 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
   return (
     <div style={style} className="px-2 py-1">
       <div
+        role="button"
+        aria-pressed={isSelected}
+        tabIndex={0}
         onClick={() => onSelectNote(note)}
-        className={`group relative p-3 rounded-xl cursor-pointer transition-all duration-200 border ${
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onSelectNote(note)
+          }
+        }}
+        className={`w-full text-left group relative p-3 rounded-xl cursor-pointer transition-all duration-200 border ${
           isSelected 
             ? "bg-accent border-primary/20 shadow-sm" 
             : "bg-card border-transparent hover:border-border hover:shadow-sm hover:-translate-y-0.5"

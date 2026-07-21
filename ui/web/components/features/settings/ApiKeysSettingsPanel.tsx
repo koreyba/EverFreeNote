@@ -24,10 +24,29 @@ type ApiKeysSettingsPanelProps = {
   showCloseButton?: boolean
 }
 
-export function ApiKeysSettingsPanel({
-  onClose,
-  showCloseButton = false,
-}: ApiKeysSettingsPanelProps) {
+function getPlaceholderText(loading: boolean, configured: boolean | null): string {
+  if (loading) return "Checking key status..."
+  if (configured === true) return "Leave empty to keep current key"
+  if (configured === false) return "AIzaSy..."
+  return "Enter Gemini API key"
+}
+
+function getHelpText(loading: boolean, configured: boolean | null): string {
+  if (loading) return "Checking stored key status..."
+  if (configured === true) return "A key is already stored. Enter a new one to replace it, or use Remove key below."
+  if (configured === false) return "Your Gemini key will be stored encrypted and is never shown again after saving."
+  return "Stored key status is unavailable. Saving a new key will replace any existing key."
+}
+
+function getStatusBadgeText(loading: boolean, configured: boolean | null): string {
+  if (loading) return "Checking..."
+  if (configured === true) return "Configured"
+  if (configured === false) return "Not configured"
+  return "Status unavailable"
+}
+
+export function ApiKeysSettingsPanel(props: Readonly<ApiKeysSettingsPanelProps>) {
+  const { onClose, showCloseButton = false } = props
   const { supabase } = useSupabase()
   const service = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
 
@@ -87,7 +106,7 @@ export function ApiKeysSettingsPanel({
 
   const handleRemove = async () => {
     if (configured !== true) return
-    const confirmed = window.confirm(
+    const confirmed = globalThis.confirm(
       "Remove the stored Gemini API key? AI search and note indexing will stop working until you add a new key."
     )
     if (!confirmed) return
@@ -125,7 +144,7 @@ export function ApiKeysSettingsPanel({
                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                 : "border-border/70 bg-background/70 text-muted-foreground"}
             >
-              {loading ? "Checking..." : configured === true ? "Configured" : configured === false ? "Not configured" : "Status unavailable"}
+              {getStatusBadgeText(loading, configured)}
             </Badge>
           </div>
         </CardHeader>
@@ -138,27 +157,13 @@ export function ApiKeysSettingsPanel({
                 type="password"
                 value={geminiApiKey}
                 onChange={(event) => setGeminiApiKey(event.target.value)}
-                placeholder={
-                  loading
-                    ? "Checking key status..."
-                    : configured === true
-                      ? "Leave empty to keep current key"
-                      : configured === false
-                        ? "AIzaSy..."
-                        : "Enter Gemini API key"
-                }
+                placeholder={getPlaceholderText(loading, configured)}
                 disabled={loading || saving}
                 autoComplete="off"
               />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              {loading
-                ? "Checking stored key status..."
-                : configured === true
-                  ? "A key is already stored. Enter a new one to replace it, or use Remove key below."
-                  : configured === false
-                    ? "Your Gemini key is stored encrypted and is never shown again after saving."
-                    : "Stored key status is unavailable. Saving a new key will replace any existing key."}
+              {getHelpText(loading, configured)}
             </p>
           </div>
 

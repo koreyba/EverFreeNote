@@ -5,11 +5,19 @@ import type {
   OfflineStorageAdapter,
 } from '../types/offline'
 
+let fallbackCounter = 0
+
 const generateId = (): string => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
   }
-  return `mq_${Date.now()}_${Math.random().toString(16).slice(2)}`
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const array = new Uint32Array(1)
+    globalThis.crypto.getRandomValues(array)
+    return `mq_${Date.now()}_${array[0].toString(16)}`
+  }
+  fallbackCounter = (fallbackCounter + 1) & 0xffffff
+  return `mq_${Date.now()}_${fallbackCounter.toString(16)}`
 }
 
 export class OfflineQueueService {

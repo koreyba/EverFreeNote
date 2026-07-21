@@ -1,0 +1,5 @@
+# Gitleaks configuration file
+title = "Gitleaks config for EverFreeNote"
+
+[extend]
+useDefault = true

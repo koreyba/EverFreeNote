@@ -31,7 +31,11 @@ const normalizeValidSiteUrl = (value: string): string | null => {
       return null
     }
 
-    const normalizedPathname = parsedUrl.pathname.replace(/\/+$/, '')
+    let pathnameEnd = parsedUrl.pathname.length
+    while (pathnameEnd > 0 && parsedUrl.pathname[pathnameEnd - 1] === '/') {
+      pathnameEnd -= 1
+    }
+    const normalizedPathname = parsedUrl.pathname.slice(0, pathnameEnd)
     const normalizedBase = `${parsedUrl.origin}${normalizedPathname === '/' ? '' : normalizedPathname}`
     return `${normalizedBase}${parsedUrl.search}`
   } catch {

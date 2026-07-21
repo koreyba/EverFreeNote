@@ -128,9 +128,16 @@ export function TagInput({
   return (
     <div className={cn("relative group", className)}>
       <div
+        role="presentation"
         data-testid="tag-input-container"
         onClick={() => {
           if (!isEditing && !disabled) {
+            handleStartEditing()
+          }
+        }}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && !isEditing && !disabled) {
+            e.preventDefault()
             handleStartEditing()
           }
         }}

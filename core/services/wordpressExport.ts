@@ -52,34 +52,40 @@ const parsePostId = (value: unknown): number | null => {
   return null
 }
 
-const parseCategoriesResponse = (data: unknown): WordPressCategoriesResponse | null => {
-  if (!isRecord(data)) return null
-  const categories = data.categories
-  const rememberedCategoryIds = data.rememberedCategoryIds
+const parseCategoryItem = (category: unknown): WordPressCategory | null => {
+  if (!isRecord(category) || typeof category.name !== 'string') return null
+  const id = parsePostId(category.id)
+  return id ? { id, name: category.name } : null
+}
 
-  if (!Array.isArray(categories) || !Array.isArray(rememberedCategoryIds)) {
-    return null
-  }
-
-  const normalizedCategories: WordPressCategory[] = []
-  for (const category of categories) {
-    if (!isRecord(category)) return null
-    if (typeof category.name !== 'string') return null
-    const id = parsePostId(category.id)
-    if (!id) return null
-    normalizedCategories.push({ id, name: category.name })
-  }
-
+const parseRememberedIds = (rememberedCategoryIds: unknown[]): number[] | null => {
   const normalizedRememberedIds: number[] = []
   for (const categoryId of rememberedCategoryIds) {
     const id = parsePostId(categoryId)
     if (!id) return null
     normalizedRememberedIds.push(id)
   }
+  return normalizedRememberedIds
+}
+
+const parseCategoriesResponse = (data: unknown): WordPressCategoriesResponse | null => {
+  if (!isRecord(data) || !Array.isArray(data.categories) || !Array.isArray(data.rememberedCategoryIds)) {
+    return null
+  }
+
+  const categories: WordPressCategory[] = []
+  for (const category of data.categories) {
+    const parsed = parseCategoryItem(category)
+    if (!parsed) return null
+    categories.push(parsed)
+  }
+
+  const rememberedCategoryIds = parseRememberedIds(data.rememberedCategoryIds)
+  if (!rememberedCategoryIds) return null
 
   return {
-    categories: normalizedCategories,
-    rememberedCategoryIds: normalizedRememberedIds,
+    categories,
+    rememberedCategoryIds,
   }
 }
 
@@ -99,27 +105,27 @@ const parseExportResponse = (data: unknown): ExportNoteToWordPressResponse | nul
   }
 }
 
+import { extractJsonErrorMessage, readJsonErrorPayload } from './settingsErrorMessage'
+
+const parseContextResponseBody = async (context: Response): Promise<WordPressBridgeError | null> => {
+  if (typeof context.json !== 'function') return null
+  try {
+    const body = await readJsonErrorPayload(context)
+    if (!body) return null
+
+    const code = typeof body.code === 'string' ? body.code : 'bridge_error'
+    const message = extractJsonErrorMessage(body, ['message', 'msg']) || 'WordPress export failed'
+    const details = 'details' in body ? body.details : undefined
+    return new WordPressBridgeError(message, code, details)
+  } catch {
+    return null
+  }
+}
+
 const parseInvokeError = async (error: unknown): Promise<WordPressBridgeError> => {
-  if (typeof error === 'object' && error && 'context' in error) {
-    const context = (error as { context?: Response }).context
-    if (context && typeof context.json === 'function') {
-      try {
-        const body = await context.json()
-        if (body && typeof body === 'object') {
-          const code = typeof body.code === 'string' ? body.code : 'bridge_error'
-          const message =
-            typeof body.message === 'string'
-              ? body.message
-              : typeof body.msg === 'string'
-                ? body.msg
-                : 'WordPress export failed'
-          const details = 'details' in body ? body.details : undefined
-          return new WordPressBridgeError(message, code, details)
-        }
-      } catch {
-        // Ignore parse failure and fallback to generic message below.
-      }
-    }
+  if (isRecord(error) && 'context' in error && error.context) {
+    const parsed = await parseContextResponseBody(error.context as Response)
+    if (parsed) return parsed
   }
 
   if (error instanceof Error) {
@@ -130,7 +136,7 @@ const parseInvokeError = async (error: unknown): Promise<WordPressBridgeError> =
 }
 
 export class WordPressExportService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private readonly supabase: SupabaseClient) {}
 
   async getCategories(): Promise<WordPressCategoriesResponse> {
     const { data, error } = await this.supabase.functions.invoke('wordpress-bridge', {

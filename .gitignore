@@ -29,6 +29,8 @@ node_modules/
 /allure-report
 ui/mobile/allure-results/
 ui/mobile/allure-report/
+.scannerwork/
+.sonar/
 
 # Test artifacts (keep test runners in build/, exclude temp results)
 TEST_SUMMARY.md

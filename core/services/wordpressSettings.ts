@@ -17,24 +17,18 @@ export type WordPressIntegrationUpsertInput = {
   enabled: boolean
 }
 
-const readErrorMessage = async (error: unknown, fallback: string) => {
+import { readJsonErrorMessage } from './settingsErrorMessage'
+
+const extractJsonMessage = async (context: Response): Promise<string | null> => {
+  return readJsonErrorMessage(context, ['message', 'msg'])
+}
+
+const readErrorMessage = async (error: unknown, fallback: string): Promise<string> => {
   if (typeof error === 'object' && error && 'context' in error) {
     const context = (error as { context?: Response }).context
-    if (context && typeof context.json === 'function') {
-      try {
-        const payload = await context.json()
-        if (payload && typeof payload === 'object') {
-          const message =
-            typeof payload.message === 'string'
-              ? payload.message
-              : typeof payload.msg === 'string'
-                ? payload.msg
-                : null
-          if (message) return message
-        }
-      } catch {
-        // Ignore parse failure and continue fallback chain.
-      }
+    if (context) {
+      const message = await extractJsonMessage(context)
+      if (message) return message
     }
   }
 
@@ -43,7 +37,7 @@ const readErrorMessage = async (error: unknown, fallback: string) => {
 }
 
 export class WordPressSettingsService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private readonly supabase: SupabaseClient) {}
 
   async getStatus(): Promise<WordPressIntegrationStatus> {
     const { data, error } = await this.supabase.functions.invoke('wordpress-settings-status', {

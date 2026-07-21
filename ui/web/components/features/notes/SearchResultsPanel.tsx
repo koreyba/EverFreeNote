@@ -21,6 +21,8 @@ import {
     RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE,
     useAIPaginatedSearch,
 } from "@ui/web/hooks/useAIPaginatedSearch"
+import type { RagChunk, RagNoteGroup } from "@core/types/ragSearch"
+import type { SearchResult } from "@core/types/domain"
 import { AI_SEARCH_MIN_QUERY_LENGTH } from "@core/constants/aiSearch"
 import { resolveRagSearchSettings } from "@core/rag/searchSettings"
 import { RagSearchSettingsService } from "@core/services/ragSearchSettings"
@@ -74,7 +76,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         tagOnlyLoading,
         tagOnlyHasMore,
         tagOnlyLoadingMore,
-        handleSelectNote,
         handleTagClick,
         handleSearchResultClick,
         loadMoreFts,
@@ -436,7 +437,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     const [panelWidth, setPanelWidth] = useState<number>(() => {
         if (typeof window === "undefined") return 350
         const stored = window.localStorage.getItem(STORAGE_KEY)
-        const parsed = stored ? parseInt(stored, 10) : NaN
+        const parsed = stored ? Number.parseInt(stored, 10) : Number.NaN
         const maxPixelWidth = window.innerWidth * MAX_WIDTH_PCT
         if (Number.isFinite(parsed)) {
             return Math.max(MIN_WIDTH, Math.min(parsed, maxPixelWidth))
@@ -655,130 +656,43 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 )}
             >
                 {renderResultsHeader()}
-                {showAIResults ? (
-                    <div className="px-3 py-2">
-                        {(showAIInitialization || aiLoading) && (
-                            <div className="flex flex-col gap-3 py-2">
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} className="space-y-1.5 p-3 rounded-md bg-card border">
-                                        <div className="h-3 bg-muted animate-pulse rounded w-3/4" />
-                                        <div className="h-2.5 bg-muted animate-pulse rounded w-full" />
-                                        <div className="h-2.5 bg-muted animate-pulse rounded w-5/6" />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        {aiError && !showAIInitialization && !aiLoading && (
-                            <div className="py-2 text-center" data-testid="search-panel-ai-error">
-                                {aiErrorCode === RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE ? (
-                                    <>
-                                        <p className="text-xs text-amber-700 dark:text-amber-300">{aiError}</p>
-                                        <Button
-                                            data-testid="search-panel-ai-reindex"
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-5 text-xs px-0 mt-1"
-                                            onClick={handleOpenAIIndex}
-                                        >
-                                            Reindex now
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p className="text-xs text-destructive">AI Search unavailable</p>
-                                        <Button data-testid="search-panel-ai-retry" variant="ghost" size="sm" className="h-5 text-xs px-0 mt-1" onClick={() => aiRefetch()}>
-                                            Retry
-                                        </Button>
-                                    </>
-                                )}
-                            </div>
-                        )}
-                        {!showAIInitialization && !aiLoading && !aiError && (
-                            viewMode === 'chunk' ? (
-                                <ChunkSearchResults
-                                    chunks={aiChunks}
-                                    onOpenInContext={onOpenInContext}
-                                    query={aiSearchQuery}
-                                    hasMore={aiHasMore}
-                                    loadingMore={aiLoadingMore}
-                                    onLoadMore={loadMoreAI}
-                                />
-                            ) : (
-                                <NoteSearchResults
-                                    noteGroups={noteGroups}
-                                    onOpenInContext={onOpenInContext}
-                                    query={aiSearchQuery}
-                                    onTagClick={handleTagClick}
-                                    selectionMode={panelSelectionMode}
-                                    selectedIds={panelSelectedIds}
-                                    onToggleSelect={togglePanelSelection}
-                                    hasMore={aiHasMore}
-                                    loadingMore={aiLoadingMore}
-                                    onLoadMore={loadMoreAI}
-                                />
-                            )
-                        )}
-                    </div>
-                ) : showFTSResults ? (
-                    <NoteList
-                        notes={[]}
-                        isLoading={ftsSearchResult?.isLoading ?? false}
-                        selectedNoteId={controller.selectedNote?.id}
-                        selectionMode={panelSelectionMode}
-                        selectedIds={panelSelectedIds}
-                        onToggleSelect={(note) => togglePanelSelection(note.id)}
-                        onSelectNote={(note) => handleSelectNote(note)}
-                        onTagClick={handleTagClick}
-                        onLoadMore={() => { }}
-                        hasMore={false}
-                        isFetchingNextPage={false}
-                        ftsQuery={searchQuery}
-                        ftsLoading={ftsSearchResult?.isLoading ?? false}
-                        showFTSResults={showFTSResults}
-                        ftsData={
-                            ftsData
-                                ? {
-                                    total: ftsData.total,
-                                    executionTime: ftsData.executionTime,
-                                    results: ftsData.results,
-                                }
-                                : undefined
-                        }
-                        ftsHasMore={ftsHasMore}
-                        ftsLoadingMore={ftsLoadingMore}
-                        onLoadMoreFts={loadMoreFts}
-                        onSearchResultClick={handleSearchResultClick}
-                        ftsHeader={false}
-                    />
-                ) : showTagOnlyResults ? (
-                    <NoteList
-                        notes={tagOnlyResults}
-                        isLoading={tagOnlyLoading}
-                        selectedNoteId={controller.selectedNote?.id}
-                        selectionMode={panelSelectionMode}
-                        selectedIds={panelSelectedIds}
-                        onToggleSelect={(note) => togglePanelSelection(note.id)}
-                        onSelectNote={(note) => handleSelectNote(note)}
-                        onTagClick={handleTagClick}
-                        onLoadMore={loadMoreTagOnly}
-                        hasMore={tagOnlyHasMore}
-                        isFetchingNextPage={tagOnlyLoadingMore}
-                    />
-                ) : (
-                    <div className="flex flex-col items-center gap-3 py-14 px-6 text-center">
-                        <div className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center">
-                            <Search className="h-5 w-5 text-muted-foreground/50" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground/70">
-                                {searchDraft.trim().length > 0 ? "Press Enter to search" : "Search your notes"}
-                            </p>
-                            {aiEnabled && searchDraft.trim().length > 0 && (
-                                <p className="text-xs text-muted-foreground/45 mt-1">AI search uses semantic similarity</p>
-                            )}
-                        </div>
-                    </div>
-                )}
+                <SearchResultsContent
+                    showAIResults={showAIResults}
+                    showAIInitialization={showAIInitialization}
+                    aiLoading={aiLoading}
+                    aiError={aiError}
+                    aiErrorCode={aiErrorCode}
+                    viewMode={viewMode}
+                    aiChunks={aiChunks}
+                    noteGroups={noteGroups}
+                    onOpenInContext={onOpenInContext}
+                    aiSearchQuery={aiSearchQuery}
+                    aiHasMore={aiHasMore}
+                    aiLoadingMore={aiLoadingMore}
+                    loadMoreAI={loadMoreAI}
+                    handleOpenAIIndex={handleOpenAIIndex}
+                    aiRefetch={aiRefetch}
+                    handleTagClick={handleTagClick}
+                    panelSelectionMode={panelSelectionMode}
+                    panelSelectedIds={panelSelectedIds}
+                    togglePanelSelection={togglePanelSelection}
+                    showFTSResults={showFTSResults}
+                    ftsSearchResult={ftsSearchResult}
+                    controller={controller}
+                    ftsData={ftsData}
+                    ftsHasMore={ftsHasMore}
+                    ftsLoadingMore={ftsLoadingMore}
+                    loadMoreFts={loadMoreFts}
+                    handleSearchResultClick={handleSearchResultClick as unknown as (note: unknown) => void}
+                    showTagOnlyResults={showTagOnlyResults}
+                    tagOnlyResults={tagOnlyResults}
+                    tagOnlyLoading={tagOnlyLoading}
+                    tagOnlyHasMore={tagOnlyHasMore}
+                    tagOnlyLoadingMore={tagOnlyLoadingMore}
+                    loadMoreTagOnly={loadMoreTagOnly}
+                    searchDraft={searchDraft}
+                    aiEnabled={Boolean(aiEnabled)}
+                />
             </div>
 
             {/* Resize Handle */}
@@ -802,3 +716,219 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         </aside>
     )
 })
+
+interface SearchResultsContentProps {
+    showAIResults: boolean
+    showAIInitialization: boolean
+    aiLoading: boolean
+    aiError: string | null
+    aiErrorCode: string | null
+    viewMode: 'note' | 'chunk'
+    aiChunks: RagChunk[]
+    noteGroups: RagNoteGroup[]
+    onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+    aiSearchQuery: string
+    aiHasMore: boolean
+    aiLoadingMore: boolean
+    loadMoreAI: () => void
+    handleOpenAIIndex: () => void
+    aiRefetch: () => void
+    handleTagClick: (tag: string) => void
+    panelSelectionMode: boolean
+    panelSelectedIds: Set<string>
+    togglePanelSelection: (id: string) => void
+    showFTSResults: boolean
+    ftsSearchResult: unknown
+    controller: NoteAppController
+    ftsData: unknown
+    ftsHasMore: boolean
+    ftsLoadingMore: boolean
+    loadMoreFts: () => void
+    handleSearchResultClick: (note: unknown) => void
+    showTagOnlyResults: boolean
+    tagOnlyResults: unknown[]
+    tagOnlyLoading: boolean
+    tagOnlyHasMore: boolean
+    tagOnlyLoadingMore: boolean
+    loadMoreTagOnly: () => void
+    searchDraft: string
+    aiEnabled: boolean
+}
+
+function SearchResultsContent(props: Readonly<SearchResultsContentProps>) {
+  const {
+    showAIResults,
+    showAIInitialization,
+    aiLoading,
+    aiError,
+    aiErrorCode,
+    viewMode,
+    aiChunks,
+    noteGroups,
+    onOpenInContext,
+    aiSearchQuery,
+    aiHasMore,
+    aiLoadingMore,
+    loadMoreAI,
+    handleOpenAIIndex,
+    aiRefetch,
+    handleTagClick,
+    panelSelectionMode,
+    panelSelectedIds,
+    togglePanelSelection,
+    showFTSResults,
+    ftsSearchResult,
+    controller,
+    ftsData,
+    ftsHasMore,
+    ftsLoadingMore,
+    loadMoreFts,
+    handleSearchResultClick,
+    showTagOnlyResults,
+    tagOnlyResults,
+    tagOnlyLoading,
+    tagOnlyHasMore,
+    tagOnlyLoadingMore,
+    loadMoreTagOnly,
+    searchDraft,
+    aiEnabled,
+  } = props
+    if (showAIResults) {
+        return (
+            <div className="px-3 py-2">
+                {(showAIInitialization || aiLoading) && (
+                    <div className="flex flex-col gap-3 py-2">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="space-y-1.5 p-3 rounded-md bg-card border">
+                                <div className="h-3 bg-muted animate-pulse rounded w-3/4" />
+                                <div className="h-2.5 bg-muted animate-pulse rounded w-full" />
+                                <div className="h-2.5 bg-muted animate-pulse rounded w-5/6" />
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {aiError && !showAIInitialization && !aiLoading && (
+                    <div className="py-2 text-center" data-testid="search-panel-ai-error">
+                        {aiErrorCode === RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE ? (
+                            <>
+                                <p className="text-xs text-amber-700 dark:text-amber-300">{aiError}</p>
+                                <Button
+                                    data-testid="search-panel-ai-reindex"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 text-xs px-0 mt-1"
+                                    onClick={handleOpenAIIndex}
+                                >
+                                    Reindex now
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-xs text-destructive">AI Search unavailable</p>
+                                <Button data-testid="search-panel-ai-retry" variant="ghost" size="sm" className="h-5 text-xs px-0 mt-1" onClick={() => aiRefetch()}>
+                                    Retry
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                )}
+                {!showAIInitialization && !aiLoading && !aiError && (
+                    viewMode === 'chunk' ? (
+                        <ChunkSearchResults
+                            chunks={aiChunks}
+                            onOpenInContext={onOpenInContext}
+                            query={aiSearchQuery}
+                            hasMore={aiHasMore}
+                            loadingMore={aiLoadingMore}
+                            onLoadMore={loadMoreAI}
+                        />
+                    ) : (
+                        <NoteSearchResults
+                            noteGroups={noteGroups}
+                            onOpenInContext={onOpenInContext}
+                            query={aiSearchQuery}
+                            onTagClick={handleTagClick}
+                            selectionMode={panelSelectionMode}
+                            selectedIds={panelSelectedIds}
+                            onToggleSelect={togglePanelSelection}
+                            hasMore={aiHasMore}
+                            loadingMore={aiLoadingMore}
+                            onLoadMore={loadMoreAI}
+                        />
+                    )
+                )}
+            </div>
+        )
+    }
+
+    if (showFTSResults) {
+        const ftsResultObject = ftsSearchResult as { isLoading?: boolean } | null
+        const ftsDataObject = ftsData as { total?: number; executionTime?: number; results: unknown[] } | null
+        return (
+            <NoteList
+                notes={[]}
+                isLoading={ftsResultObject?.isLoading ?? false}
+                selectedNoteId={controller.selectedNote?.id}
+                selectionMode={panelSelectionMode}
+                selectedIds={panelSelectedIds}
+                onToggleSelect={(note) => togglePanelSelection(note.id)}
+                onSelectNote={(note) => controller.handleSelectNote(note)}
+                onTagClick={handleTagClick}
+                onLoadMore={() => { }}
+                hasMore={false}
+                isFetchingNextPage={false}
+                ftsQuery={controller.searchQuery}
+                ftsLoading={ftsResultObject?.isLoading ?? false}
+                showFTSResults={showFTSResults}
+                ftsData={
+                    ftsDataObject
+                        ? {
+                            total: ftsDataObject.total ?? 0,
+                            executionTime: ftsDataObject.executionTime,
+                            results: ftsDataObject.results as unknown as SearchResult[],
+                        }
+                        : undefined
+                }
+                ftsHasMore={ftsHasMore}
+                ftsLoadingMore={ftsLoadingMore}
+                onLoadMoreFts={loadMoreFts}
+                onSearchResultClick={handleSearchResultClick as unknown as (note: SearchResult) => void}
+                ftsHeader={false}
+            />
+        )
+    }
+
+    if (showTagOnlyResults) {
+        return (
+            <NoteList
+                notes={tagOnlyResults as unknown as Parameters<typeof NoteList>[0]['notes']}
+                isLoading={tagOnlyLoading}
+                selectedNoteId={controller.selectedNote?.id}
+                selectionMode={panelSelectionMode}
+                selectedIds={panelSelectedIds}
+                onToggleSelect={(note) => togglePanelSelection(note.id)}
+                onSelectNote={(note) => controller.handleSelectNote(note)}
+                onTagClick={handleTagClick}
+                onLoadMore={loadMoreTagOnly}
+                hasMore={tagOnlyHasMore}
+                isFetchingNextPage={tagOnlyLoadingMore}
+            />
+        )
+    }
+
+    return (
+        <div className="flex flex-col items-center gap-3 py-14 px-6 text-center">
+            <div className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center">
+                <Search className="h-5 w-5 text-muted-foreground/50" />
+            </div>
+            <div>
+                <p className="text-sm font-medium text-muted-foreground/70">
+                    {searchDraft.trim().length > 0 ? "Press Enter to search" : "Search your notes"}
+                </p>
+                {aiEnabled && searchDraft.trim().length > 0 && (
+                    <p className="text-xs text-muted-foreground/45 mt-1">AI search uses semantic similarity</p>
+                )}
+            </div>
+        </div>
+    )
+}

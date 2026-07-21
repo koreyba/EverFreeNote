@@ -218,9 +218,9 @@ describe('core/services/smartPaste', () => {
     })
 
     it('does not mistake a pipe-containing line followed by an unrelated dashed line for a table', () => {
-      // Regression guard: TABLE_SEPARATOR_ROW_PATTERN alone matches a bare "---"
-      // (its leading/trailing "|" are optional), so a line with a pipe immediately
-      // followed by an unrelated dashed line used to false-positive as a table.
+      // Regression guard: a separator-cell check alone accepts a bare "---",
+      // so a line with a pipe immediately followed by an unrelated dashed line
+      // must not false-positive as a table.
       // (Text directly followed by "---" is itself a CommonMark Setext H2 heading —
       // unrelated to this fix, just what markdown-it renders it as once it's no
       // longer downgraded to plain text.)
@@ -661,6 +661,28 @@ describe('core/services/smartPaste', () => {
       const result = SmartPasteService.resolvePaste(payload)
       expect(result.type).toBe('markdown')
       expect(result.detection.reasons).not.toContain('forced-by-user')
+    })
+
+    it('does not classify malformed rows like "| : | : |" or "| |" as table separators', () => {
+      const malformedText = 'Header 1 | Header 2\n| : | : |\nRow 1 | Row 2'
+      const detection = SmartPasteService.detectPasteType({ html: null, text: malformedText, types: ['text/plain'] })
+      expect(detection.reasons).not.toContain('markdown:unsupported-table')
+    })
+
+    it('classifies spaced and aligned markdown table separators without regex backtracking', () => {
+      const tableText = '# Table\n\nHeader 1 | Header 2\n | :--- | ---: | \nRow 1 | Row 2'
+      const result = SmartPasteService.resolvePaste({ html: null, text: tableText, types: ['text/plain'] })
+
+      expect(result.type).toBe('plain')
+      expect(result.warnings).toContain('plain:unsupported-markdown')
+    })
+
+    it('continues to classify one-column tables with outer pipes as unsupported', () => {
+      const tableText = '# Table\n\n| Header |\n| --- |\n| Value |'
+      const result = SmartPasteService.resolvePaste({ html: null, text: tableText, types: ['text/plain'] })
+
+      expect(result.type).toBe('plain')
+      expect(result.warnings).toContain('plain:unsupported-markdown')
     })
   })
 })

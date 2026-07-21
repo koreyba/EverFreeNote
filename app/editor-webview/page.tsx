@@ -15,6 +15,21 @@ declare global {
   }
 }
 
+function parseNativeEventData(event: MessageEvent): string | null {
+  if (typeof event.data === 'string') return event.data
+  const nativeData = (event as unknown as { nativeEvent?: { data?: unknown } }).nativeEvent?.data
+  return typeof nativeData === 'string' ? String(nativeData) : null
+}
+
+function sendTextToNative(type: string, text: string) {
+  if (!window.ReactNativeWebView) return
+  sendChunkedText(
+    (message) => window.ReactNativeWebView?.postMessage(JSON.stringify(message)),
+    type,
+    text
+  )
+}
+
 export default function EditorWebViewPage() {
   const [initialContent, setInitialContent] = useState('')
   const editorRef = React.useRef<RichTextEditorWebViewHandle>(null)
@@ -26,7 +41,7 @@ export default function EditorWebViewPage() {
 
   const handleHistoryStateChange = React.useCallback((state: { canUndo: boolean; canRedo: boolean }) => {
     const prev = lastHistoryStateRef.current
-    if (prev && prev.canUndo === state.canUndo && prev.canRedo === state.canRedo) {
+    if (prev?.canUndo === state.canUndo && prev?.canRedo === state.canRedo) {
       return
     }
     lastHistoryStateRef.current = state
@@ -81,13 +96,11 @@ export default function EditorWebViewPage() {
         const src = img.getAttribute('src')
         if (!src) continue
 
-        // 1) Make relative Supabase Storage URLs absolute (common after ENEX conversions / sanitization)
         if (supabaseOrigin && src.startsWith('/storage/v1/')) {
           img.setAttribute('src', `${supabaseOrigin}${src}`)
           continue
         }
 
-        // 2) Replace localhost/127.0.0.1 URLs with the dev machine host (phone can't reach its own localhost)
         try {
           const url = new URL(src)
           if (['localhost', '127.0.0.1', '0.0.0.0'].includes(url.hostname) && devHost) {
@@ -101,15 +114,6 @@ export default function EditorWebViewPage() {
       }
 
       return container.innerHTML
-    }
-
-    const sendTextToNative = (type: string, text: string) => {
-      if (!window.ReactNativeWebView) return
-      sendChunkedText(
-        (message) => window.ReactNativeWebView?.postMessage(JSON.stringify(message)),
-        type,
-        text
-      )
     }
 
     const applySetContent = (html: string) => {
@@ -129,71 +133,73 @@ export default function EditorWebViewPage() {
       applyTheme(theme)
     }
 
-    // Listen for messages from React Native
     const isTrustedOrigin = (origin: string) => {
-      // React Native WebView sends messages with empty or null origin
       if (!origin || origin === 'null' || origin === 'file://') return true
-      // Same-origin messages (dev server, self-hosted)
       if (origin === globalThis.location.origin) return true
       return false
+    }
+
+    const handleCommandNativeEvent = (payload: unknown) => {
+      if (!editorRef.current) return
+      const { method, args = [] } = (payload ?? {}) as { method?: string; args?: unknown[] }
+      if (typeof method === 'string') {
+        editorRef.current.runCommand(method, ...(Array.isArray(args) ? args : []))
+      }
+    }
+
+    const handleScrollToChunkNativeEvent = (payload: unknown) => {
+      const { charOffset, chunkLength } = (payload ?? {}) as { charOffset?: unknown; chunkLength?: unknown }
+      if (typeof charOffset !== 'number' || typeof chunkLength !== 'number') return
+      if (editorRef.current) {
+        editorRef.current.scrollToChunk(charOffset, chunkLength)
+      } else {
+        pendingChunkFocusRef.current = { charOffset, chunkLength }
+      }
+    }
+
+    const handleNativeEventPayload = (type: string, payload: unknown) => {
+      const chunked = consumeChunkedMessage(type, payload, chunkBuffers.current)
+      if (chunked?.baseType === 'SET_CONTENT') {
+        applySetContent(chunked.text)
+        return
+      }
+
+      switch (type) {
+        case 'SET_CONTENT':
+          applySetContent(typeof payload === 'string' ? payload : '')
+          break
+        case 'SET_THEME':
+          applyTheme(typeof payload === 'string' ? payload : '')
+          break
+        case 'GET_CONTENT':
+          if (editorRef.current) sendTextToNative('CONTENT_RESPONSE', editorRef.current.getHTML())
+          break
+        case 'REQUEST_COPY_PAYLOAD':
+          if (editorRef.current) {
+            const copyPayload = NoteClipboardService.buildPayload(editorRef.current.getHTML())
+            sendTextToNative('COPY_PAYLOAD', JSON.stringify(copyPayload))
+          }
+          break
+        case 'COMMAND':
+          handleCommandNativeEvent(payload)
+          break
+        case 'SCROLL_TO_CHUNK':
+          handleScrollToChunkNativeEvent(payload)
+          break
+      }
     }
 
     const handleMessage = (event: MessageEvent) => {
       try {
         if (event.origin && !isTrustedOrigin(event.origin)) return
 
-        const raw =
-          typeof event.data === 'string'
-            ? event.data
-            : typeof (event as unknown as { nativeEvent?: { data?: unknown } }).nativeEvent?.data ===
-                'string'
-              ? String((event as unknown as { nativeEvent?: { data?: unknown } }).nativeEvent?.data)
-              : null
-
+        const raw = parseNativeEventData(event)
         if (!raw) return
 
         const { type, payload } = JSON.parse(raw) as { type?: string; payload?: unknown }
         if (!type) return
 
-        const chunked = consumeChunkedMessage(type, payload, chunkBuffers.current)
-        if (chunked?.baseType === 'SET_CONTENT') {
-          applySetContent(chunked.text)
-          return
-        }
-
-        if (type === 'SET_CONTENT') {
-          applySetContent(String(payload ?? ''))
-        } else if (type === 'SET_THEME') {
-          applyTheme(String(payload ?? ''))
-        } else if (type === 'GET_CONTENT') {
-          if (editorRef.current) {
-            sendTextToNative('CONTENT_RESPONSE', editorRef.current.getHTML())
-          }
-        } else if (type === 'REQUEST_COPY_PAYLOAD') {
-          if (editorRef.current) {
-            const payload = NoteClipboardService.buildPayload(editorRef.current.getHTML())
-            sendTextToNative('COPY_PAYLOAD', JSON.stringify(payload))
-          }
-        } else if (type === 'COMMAND') {
-          if (editorRef.current) {
-            const { method, args = [] } = payload as { method?: string; args?: unknown[] }
-            if (typeof method === 'string') {
-              editorRef.current.runCommand(method, ...(Array.isArray(args) ? args : []))
-            }
-          }
-        } else if (type === 'SCROLL_TO_CHUNK') {
-          const { charOffset, chunkLength } = (payload ?? {}) as {
-            charOffset?: unknown
-            chunkLength?: unknown
-          }
-          if (typeof charOffset === 'number' && typeof chunkLength === 'number') {
-            if (editorRef.current) {
-              editorRef.current.scrollToChunk(charOffset, chunkLength)
-            } else {
-              pendingChunkFocusRef.current = { charOffset, chunkLength }
-            }
-          }
-        }
+        handleNativeEventPayload(type, payload)
       } catch (error) {
         console.error('Failed to parse message:', error)
       }
@@ -234,10 +240,9 @@ export default function EditorWebViewPage() {
     }
 
     // Wait for fonts to load to prevent FOUT (Flash of Unstyled Text)
-    if (document.fonts && document.fonts.ready) {
+    if ('fonts' in document && 'ready' in document.fonts) {
       document.fonts.ready.then(notifyReady).catch(notifyReady)
     } else {
-      // Fallback for browsers without FontFaceSet API
       notifyReady()
     }
 

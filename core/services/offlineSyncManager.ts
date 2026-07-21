@@ -36,14 +36,19 @@ export class OfflineSyncManager {
       this.unsubscribe = networkStatus.subscribe((isOnline) => {
         this.online = isOnline
         if (isOnline) {
-          void this.drainQueue()
+          void this.drainQueue().catch((err) => {
+            console.error('[OfflineSyncManager] Network online drainQueue failed:', err)
+          })
         }
       })
     }
 
-    // Initial drain if already online
     if (this.online) {
-      void this.drainQueue()
+      queueMicrotask(() => {
+        void this.drainQueue().catch((err) => {
+          console.error('[OfflineSyncManager] Initial drainQueue failed:', err)
+        })
+      })
     }
   }
 
@@ -56,7 +61,9 @@ export class OfflineSyncManager {
   async enqueue(item: MutationQueueItemInput): Promise<void> {
     await this.queue.enqueue(item)
     if (this.online) {
-      void this.drainQueue()
+      void this.drainQueue().catch((err) => {
+        console.error('[OfflineSyncManager] Enqueue drainQueue failed:', err)
+      })
     }
   }
 
@@ -69,51 +76,68 @@ export class OfflineSyncManager {
     this.online = false
   }
 
+  private async processSyncItem(
+    item: MutationQueueItem,
+    options?: SyncOptions
+  ): Promise<boolean> {
+    try {
+      await this.performSync(item)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown sync error'
+      try {
+        await this.queue.markStatus(item.id, 'failed', message)
+      } catch (markError) {
+        console.warn('Failed to mark item status as failed:', markError)
+      }
+      return false
+    }
+
+    try {
+      await this.queue.removeItems([item.id])
+    } catch (cleanupError) {
+      console.warn('Failed to remove item from offline queue after successful sync:', cleanupError)
+    }
+
+    const onSuccess = options?.onSuccess ?? this.defaultOnSuccess
+    if (onSuccess) {
+      try {
+        await onSuccess(item)
+      } catch (e) {
+        console.warn('onSuccess callback error (sync was successful):', e)
+      }
+    }
+    return true
+  }
+
+  private async processBatch(
+    batch: MutationQueueItem[],
+    options?: SyncOptions
+  ): Promise<boolean> {
+    let hadProgress = false
+    for (const item of batch) {
+      const success = await this.processSyncItem(item, options)
+      if (success) {
+        hadProgress = true
+      }
+    }
+    return hadProgress
+  }
+
   async drainQueue(options?: SyncOptions): Promise<void> {
-    if (!this.online) return
-    if (this.draining) return // Prevent parallel drain calls
+    if (!this.online || this.draining) return
 
     this.draining = true
     try {
       const batchSize = options?.batchSize ?? 10
-      // Compact queue before processing to avoid conflicting ops
       const current = await this.queue.getQueue()
       const compacted = compactQueue(current)
-      // Always persist compacted queue to ensure statuses are reset to 'pending'
-      // even if the number of items hasn't changed (e.g. retrying failed items)
       await this.queue.upsertQueue(compacted)
 
       while (this.online) {
-        // Get pending items WITHOUT removing them from queue
         const batch = await this.queue.getPendingBatch(batchSize)
         if (!batch.length) break
 
-        let hadProgress = false
-
-        for (const item of batch) {
-          try {
-            await this.performSync(item)
-            // Sync successful - remove immediately so onSuccess sees accurate queue state
-            await this.queue.removeItems([item.id])
-            hadProgress = true
-            
-            // Call onSuccess for UI updates (errors here don't affect queue)
-            const onSuccess = options?.onSuccess ?? this.defaultOnSuccess
-            if (onSuccess) {
-              try {
-                await onSuccess(item)
-              } catch (e) {
-                console.warn('onSuccess callback error (sync was successful):', e)
-              }
-            }
-          } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown sync error'
-            // Mark as failed but keep in queue for retry
-            await this.queue.markStatus(item.id, 'failed', message)
-          }
-        }
-
-        // If no progress was made, stop to avoid infinite loop
+        const hadProgress = await this.processBatch(batch, options)
         if (!hadProgress) break
 
         this.lastSyncAt = new Date().toISOString()

@@ -115,10 +115,17 @@ export function NoteSearchItem({
         'group relative rounded-lg border border-border/60 bg-card border-l-[3px] overflow-hidden transition-all hover:border-primary/30 hover:shadow-sm',
         getAccentClass(group.topScore)
       )}
-      role="listitem"
-      onClick={handleCardClick}
       {...longPressHandlers}
     >
+      {selectionMode && (
+        <button
+          type="button"
+          aria-label={`Toggle selection for note ${group.noteTitle || 'Untitled'}`}
+          aria-pressed={isSelected}
+          className="absolute inset-0 z-[1] cursor-pointer rounded-[inherit] border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          onClick={handleCardClick}
+        />
+      )}
       {onToggleSelect && (
         <Checkbox
           aria-label={`Select note ${group.noteTitle || 'Untitled'}`}
@@ -133,7 +140,7 @@ export function NoteSearchItem({
           )}
         />
       )}
-      <div className="px-3 pt-3 pb-2.5">
+      <div className={cn("px-3 pt-3 pb-2.5", selectionMode && "pointer-events-none relative z-[2]")}>
         {/* Title + score */}
         <div className="flex items-start gap-2 justify-between">
           <h3
@@ -168,7 +175,7 @@ export function NoteSearchItem({
         {topChunk && (
           <div
             role="button"
-            tabIndex={0}
+            tabIndex={selectionMode ? -1 : 0}
             aria-label={`Open top fragment from "${group.noteTitle || 'Untitled'}" in context`}
             className="group relative mt-2.5 rounded-md bg-muted/30 px-2.5 py-2 cursor-pointer border border-transparent transition-all hover:bg-muted/50 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             onClick={(e) => handleChunkActivate(e, topChunk.charOffset, topChunkLength)}
@@ -202,12 +209,15 @@ export function NoteSearchItem({
 
       {/* Expanded fragments — visually separated section */}
       {expanded && (extraChunks.length > 0 || group.hiddenCount > 0) && (
-        <div className="border-t border-border/40 bg-muted/10 px-3 py-2 space-y-1.5">
+        <div className={cn(
+          "border-t border-border/40 bg-muted/10 px-3 py-2 space-y-1.5",
+          selectionMode && "pointer-events-none relative z-[2]"
+        )}>
           {extraChunks.map((chunk, index) => (
             <div
               key={chunk.chunkIndex}
               role="button"
-              tabIndex={0}
+              tabIndex={selectionMode ? -1 : 0}
               aria-label={`Open fragment ${index + 2} from "${group.noteTitle || 'Untitled'}" in context`}
               className="group relative rounded-md bg-background/60 px-2.5 py-2 cursor-pointer border border-border/40 transition-all hover:bg-background hover:border-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               onClick={(e) => handleChunkActivate(e, chunk.charOffset, Math.max(1, getRagChunkBodyLength(chunk.bodyContent ?? chunk.content ?? '')))}

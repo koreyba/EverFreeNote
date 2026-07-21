@@ -52,16 +52,214 @@ function buildHighlightPattern(query: string): RegExp | null {
   return new RegExp(`(${unique.join('|')})`, 'gi')
 }
 
-export const NoteCard = memo(function NoteCard({
+type CardInternalProps = NoteCardProps & {
+  checkboxChecked: boolean
+  handleCardClick: (event: MouseEvent<HTMLElement>) => void
+  longPressHandlers: Record<string, unknown>
+  formatDate: (date: string) => string
+}
+
+function CompactNoteCard({
   note,
-  variant,
   isSelected,
   selectionMode,
   onClick,
   onToggleSelect,
   onTagClick,
+  checkboxChecked,
+  handleCardClick,
+  longPressHandlers,
+  formatDate,
+}: CardInternalProps) {
+  return (
+    <div
+      data-testid="note-card"
+      onClick={handleCardClick}
+      role="none"
+      className={cn(
+        "group p-3.5 rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm active:scale-[0.98]",
+        isSelected ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
+      )}
+      {...longPressHandlers}
+    >
+      <div className="flex items-start gap-3 h-full">
+        {onToggleSelect && (
+          <Checkbox
+            checked={checkboxChecked}
+            onCheckedChange={() => onToggleSelect?.()}
+            onClick={(e) => e.stopPropagation()}
+            tabIndex={selectionMode ? 0 : -1}
+            aria-hidden={!selectionMode}
+            aria-label={note.title ? `Select note "${note.title}"` : "Select note"}
+            className={cn(
+              "mt-1 shrink-0 transition-opacity",
+              selectionMode
+                ? "opacity-100"
+                : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+            )}
+          />
+        )}
+        <div className="flex-1 min-w-0 flex flex-col h-full">
+          <h2 className="min-w-0">
+            <button
+              type="button"
+              tabIndex={selectionMode ? -1 : 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}
+              className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer"
+            >
+              {note.title || "Untitled"}
+            </button>
+          </h2>
+          <p className="text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal line-clamp-2 mt-1.5">
+            {note.description ? SanitizationService.stripHtml(note.description) : ""}
+          </p>
+          {note.tags && note.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2.5">
+              {note.tags.slice(0, 3).map((tag) => (
+                <InteractiveTag
+                  key={tag}
+                  tag={tag}
+                  onClick={onTagClick || (() => { })}
+                  showIcon={false}
+                  className="text-[11px] px-2 py-0.5 rounded-full"
+                />
+              ))}
+            </div>
+          )}
+          <div className="flex-1" />
+          <p className="text-[10px] text-muted-foreground dark:text-zinc-400 mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SearchNoteCard({
+  note,
+  selectionMode,
+  onClick,
+  onToggleSelect,
+  onTagClick,
   highlightQuery = '',
-}: NoteCardProps) {
+  checkboxChecked,
+  handleCardClick,
+  longPressHandlers,
+  formatDate,
+}: CardInternalProps) {
+  const searchNote = note as SearchResult
+  const rank = searchNote.rank ?? 0
+
+  const plainHeadline = searchNote.headline
+    ? DOMPurify.sanitize(searchNote.headline, { ALLOWED_TAGS: [] })
+    : null
+  let truncated: string | null = null
+  if (plainHeadline) {
+    truncated = plainHeadline.length > 200 ? `${plainHeadline.slice(0, 200).trimEnd()}…` : plainHeadline
+  }
+
+  const pattern = highlightQuery ? buildHighlightPattern(highlightQuery) : null
+  const parts = truncated ? (pattern ? truncated.split(pattern) : [truncated]) : null
+
+  return (
+    <article
+      data-testid="note-card"
+      onClick={handleCardClick}
+      role="none"
+      {...longPressHandlers}
+      className={cn(
+        'group relative rounded-xl border border-border/40 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/20 hover:shadow-sm active:scale-[0.98]',
+        getAccentClass(rank)
+      )}
+    >
+      {onToggleSelect && (
+        <Checkbox
+          checked={checkboxChecked}
+          onCheckedChange={() => onToggleSelect?.()}
+          onClick={(e) => e.stopPropagation()}
+          tabIndex={selectionMode ? 0 : -1}
+          aria-hidden={!selectionMode}
+          aria-label={note.title ? `Select note "${note.title}"` : "Select note"}
+          className={cn(
+            "absolute left-2 top-2 z-10 bg-background/90 transition-opacity",
+            selectionMode
+              ? "opacity-100"
+              : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+          )}
+        />
+      )}
+      <div className="p-3.5">
+        <div className="flex items-start gap-2 justify-between">
+          <h2 className="flex-1 min-w-0">
+            <button
+              type="button"
+              tabIndex={selectionMode ? -1 : 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}
+              className={cn(
+                "text-[14px] font-semibold leading-snug text-foreground flex-1 line-clamp-2 outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer",
+                onToggleSelect && "pl-6"
+              )}
+            >
+              {note.title || 'Untitled'}
+            </button>
+          </h2>
+          {searchNote.rank !== undefined && searchNote.rank !== null && (
+            <span className={cn('text-[10px] font-medium tabular-nums shrink-0 mt-0.5', getScoreClass(rank))}>
+              {(rank * 100).toFixed(0)}%
+            </span>
+          )}
+        </div>
+
+        {note.tags && note.tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {note.tags.slice(0, 5).map((tag) => (
+              <InteractiveTag
+                key={tag}
+                tag={tag}
+                onClick={onTagClick || (() => { })}
+                showIcon={false}
+                className="text-[11px] px-2 py-0.5 rounded-full"
+              />
+            ))}
+            {note.tags.length > 5 && (
+              <span className="text-[10px] text-muted-foreground/60 self-center">+{note.tags.length - 5}</span>
+            )}
+          </div>
+        )}
+
+        {parts && (
+          <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2 border border-border/20">
+            <p className="text-[12.5px] leading-relaxed text-foreground/80">
+              {parts.map((part, i) => {
+                if (pattern && i % 2 === 1) {
+                  return <mark key={`part-match-${i}-${part}`} className="rounded-sm bg-amber-100! text-amber-950! dark:bg-amber-950/40! dark:text-amber-200! px-0.5 font-medium">{part}</mark>
+                }
+                return <span key={`part-text-${i}-${part}`}>{part}</span>
+              })}
+            </p>
+          </div>
+        )}
+
+        <p className="mt-2.5 text-[10px] text-muted-foreground dark:text-zinc-400 font-medium">{formatDate(note.updated_at)}</p>
+      </div>
+    </article>
+  )
+}
+
+export const NoteCard = memo(function NoteCard(props: NoteCardProps) {
+  const {
+    variant,
+    isSelected,
+    selectionMode,
+    onClick,
+    onToggleSelect,
+  } = props
+
   const checkboxChecked = Boolean(selectionMode && isSelected)
 
   const formatDate = (date: string) => {
@@ -97,179 +295,18 @@ export const NoteCard = memo(function NoteCard({
     onClick()
   }
 
-
-  // Compact variant - for regular note list
-  if (variant === "compact") {
-    return (
-      <div
-        data-testid="note-card"
-        onClick={handleCardClick}
-        role="none"
-        className={cn(
-          "group p-3.5 rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm active:scale-[0.98]",
-          isSelected ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
-        )}
-        {...longPressHandlers}
-      >
-        <div className="flex items-start gap-3 h-full">
-          {onToggleSelect && (
-            <Checkbox
-              checked={checkboxChecked}
-              onCheckedChange={() => onToggleSelect?.()}
-              onClick={(e) => e.stopPropagation()}
-              tabIndex={selectionMode ? 0 : -1}
-              aria-hidden={!selectionMode}
-              aria-label={note.title ? `Select note "${note.title}"` : "Select note"}
-              className={cn(
-                "mt-1 shrink-0 transition-opacity",
-                selectionMode
-                  ? "opacity-100"
-                  : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-              )}
-            />
-          )}
-          <div className="flex-1 min-w-0 flex flex-col h-full">
-            <h2 className="min-w-0">
-              <button
-                type="button"
-                tabIndex={selectionMode ? -1 : 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClick();
-                }}
-                className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer"
-              >
-                {note.title || "Untitled"}
-              </button>
-            </h2>
-            <p className="text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal line-clamp-2 mt-1.5">
-              {note.description ? SanitizationService.stripHtml(note.description) : ""}
-            </p>
-            {note.tags && note.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2.5">
-                {note.tags.slice(0, 3).map((tag, index) => (
-                  <InteractiveTag
-                    key={index}
-                    tag={tag}
-                    onClick={onTagClick || (() => { })}
-                    showIcon={false}
-                    className="text-[11px] px-2 py-0.5 rounded-full"
-                  />
-                ))}
-              </div>
-            )}
-            <div className="flex-1" />
-            <p className="text-[10px] text-muted-foreground dark:text-zinc-400 mt-2.5 font-medium">{formatDate(note.updated_at)}</p>
-          </div>
-        </div>
-      </div>
-    )
+  const cardProps: CardInternalProps = {
+    ...props,
+    checkboxChecked,
+    handleCardClick,
+    longPressHandlers: longPressHandlers as Record<string, unknown>,
+    formatDate,
   }
 
-  // Search variant - styled to match AI search cards
-  const searchNote = note as SearchResult
-  const rank = searchNote.rank ?? 0
+  if (variant === "compact") {
+    return <CompactNoteCard {...cardProps} />
+  }
 
-  // Strip HTML tags -> plain text -> truncate (same approach as ChunkSnippet)
-  const plainHeadline = searchNote.headline
-    ? DOMPurify.sanitize(searchNote.headline, { ALLOWED_TAGS: [] })
-    : null
-  const truncated = plainHeadline
-    ? (plainHeadline.length > 200 ? plainHeadline.slice(0, 200).trimEnd() + '…' : plainHeadline)
-    : null
-
-  const pattern = highlightQuery ? buildHighlightPattern(highlightQuery) : null
-  const parts = truncated ? (pattern ? truncated.split(pattern) : [truncated]) : null
-
-  return (
-    <article
-      data-testid="note-card"
-      onClick={handleCardClick}
-      role="none"
-      {...longPressHandlers}
-      className={cn(
-        'group relative rounded-xl border border-border/40 bg-card border-l-[3px] cursor-pointer transition-all hover:border-primary/20 hover:shadow-sm active:scale-[0.98]',
-        getAccentClass(rank)
-      )}
-    >
-      {onToggleSelect && (
-        <Checkbox
-          checked={checkboxChecked}
-          onCheckedChange={() => onToggleSelect?.()}
-          onClick={(e) => e.stopPropagation()}
-          tabIndex={selectionMode ? 0 : -1}
-          aria-hidden={!selectionMode}
-          aria-label={note.title ? `Select note "${note.title}"` : "Select note"}
-          className={cn(
-            "absolute left-2 top-2 z-10 bg-background/90 transition-opacity",
-            selectionMode
-              ? "opacity-100"
-              : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-          )}
-        />
-      )}
-      <div className="p-3.5">
-        {/* Title + rank */}
-        <div className="flex items-start gap-2 justify-between">
-          <h2 className="flex-1 min-w-0">
-            <button
-              type="button"
-              tabIndex={selectionMode ? -1 : 0}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClick();
-              }}
-              className={cn(
-                "text-[14px] font-semibold leading-snug text-foreground flex-1 line-clamp-2 outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer",
-                onToggleSelect && "pl-6"
-              )}
-            >
-              {note.title || 'Untitled'}
-            </button>
-          </h2>
-          {searchNote.rank !== undefined && searchNote.rank !== null && (
-            <span className={cn('text-[10px] font-medium tabular-nums shrink-0 mt-0.5', getScoreClass(rank))}>
-              {(rank * 100).toFixed(0)}%
-            </span>
-          )}
-        </div>
-
-        {/* Tags */}
-        {note.tags && note.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {note.tags.slice(0, 5).map((tag, idx) => (
-              <InteractiveTag
-                key={idx}
-                tag={tag}
-                onClick={onTagClick || (() => { })}
-                showIcon={false}
-                className="text-[11px] px-2 py-0.5 rounded-full"
-              />
-            ))}
-            {note.tags.length > 5 && (
-              <span className="text-[10px] text-muted-foreground/60 self-center">+{note.tags.length - 5}</span>
-            )}
-          </div>
-        )}
-
-        {/* Headline snippet with JS highlighting â€” height is deterministic, no CSS clamp needed */}
-        {parts && (
-          <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2 border border-border/20">
-            <p className="text-[12.5px] leading-relaxed text-foreground/80">
-              {parts.map((part, i) => {
-                if (pattern && i % 2 === 1) {
-                  return <mark key={i} className="rounded-sm bg-amber-100! text-amber-950! dark:bg-amber-950/40! dark:text-amber-200! px-0.5 font-medium">{part}</mark>
-                }
-                return <span key={i}>{part}</span>
-              })}
-            </p>
-          </div>
-        )}
-
-        {/* Date */}
-        <p className="mt-2.5 text-[10px] text-muted-foreground dark:text-zinc-400 font-medium">{formatDate(note.updated_at)}</p>
-      </div>
-    </article>
-  )
+  return <SearchNoteCard {...cardProps} />
 })
 

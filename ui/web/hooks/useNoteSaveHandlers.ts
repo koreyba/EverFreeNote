@@ -125,12 +125,32 @@ export function useNoteSaveHandlers({
     return cached
   }, [offlineCache, setOfflineOverlay, enqueueMutation, setPendingCount])
 
+  const executeAutoSaveUpdateNote = useCallback(async (
+    targetId: string,
+    title: string,
+    description: string,
+    tags: string[],
+    clientUpdatedAt: string
+  ): Promise<void> => {
+    const partialPayload: Partial<NoteUpdate> = { title, description, tags }
+    syncSelectedNote((prev) => {
+      if (prev?.id !== targetId) return prev
+      return {
+        ...prev,
+        title: partialPayload.title ?? prev.title,
+        description: partialPayload.description ?? (prev.description ?? ''),
+        tags: partialPayload.tags ?? prev.tags,
+        updated_at: clientUpdatedAt,
+      } as NoteViewModel
+    })
+    await executeOfflineWrite({ operation: 'update', noteId: targetId, payload: partialPayload, clientUpdatedAt })
+  }, [syncSelectedNote, executeOfflineWrite])
+
   const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
     if (!user) return
 
     let existingId = data.noteId ?? selectedNoteRef.current?.id
 
-    // Wait for any in-flight creation to finish to avoid duplicates
     if (!existingId && pendingCreatePromiseRef.current) {
       try {
         const currentNote = await pendingCreatePromiseRef.current
@@ -142,15 +162,13 @@ export function useNoteSaveHandlers({
 
     const isNewNote = !existingId
 
-    // Determine current baseline to diff against (use refs to avoid dependency cycle)
     const current = existingId
-      ? (notesRef.current.find(n => n.id === existingId) || selectedNoteRef.current)
+      ? (notesRef.current.find(n => n.id === existingId) ?? selectedNoteRef.current)
       : null
     const nextTitle = data.title ?? current?.title ?? ''
     const nextDescription = data.description ?? current?.description ?? ''
     const nextTags = data.tags ?? (current?.tags?.join(', ') ?? '')
 
-    // For new notes, skip if all fields are empty
     if (isNewNote && !nextTitle.trim() && !nextDescription.trim() && !nextTags.trim()) return
 
     setAutoSaving(true)
@@ -183,12 +201,11 @@ export function useNoteSaveHandlers({
             } as NoteViewModel
             syncSelectedNote(note)
             return note
-          } else {
-            const created = await createNoteMutation.mutateAsync(noteData)
-            syncSelectedNote(created as NoteViewModel)
-            return created as NoteViewModel
           }
-        })();
+          const created = await createNoteMutation.mutateAsync(noteData)
+          syncSelectedNote(created as NoteViewModel)
+          return created as NoteViewModel
+        })()
 
         pendingCreatePromiseRef.current = createPromise
         try {
@@ -199,32 +216,10 @@ export function useNoteSaveHandlers({
         }
         setLastSavedAt(clientUpdatedAt)
       } else {
-        // Update existing note.
-        // Always uses cache + enqueue regardless of isOffline — the sync system handles both cases.
-        const targetId = existingId!
-        const partialPayload: Partial<NoteUpdate> = {
-          title: nextTitle,
-          description: nextDescription,
-          tags: parsedTags,
-        }
-
-        // Optimistic selectedNote update first (prevents stale NoteView after leaving editor)
-        syncSelectedNote((prev) => {
-          if (!prev || prev.id !== targetId) return prev
-          return {
-            ...prev,
-            title: partialPayload.title ?? prev.title,
-            description: partialPayload.description ?? (prev.description ?? ''),
-            tags: partialPayload.tags ?? prev.tags,
-            updated_at: clientUpdatedAt,
-          } as NoteViewModel
-        })
-
-        await executeOfflineWrite({ operation: 'update', noteId: targetId, payload: partialPayload, clientUpdatedAt })
+        await executeAutoSaveUpdateNote(existingId!, nextTitle, nextDescription, parsedTags, clientUpdatedAt)
         setLastSavedAt(clientUpdatedAt)
       }
 
-      // Refresh counts from queue to avoid drift/stuck pending
       const queue = await offlineQueueRef.current.getQueue()
       setPendingCount(queue.filter((q) => q.status === 'pending').length)
       setFailedCount(queue.filter((q) => q.status === 'failed').length)
@@ -240,15 +235,76 @@ export function useNoteSaveHandlers({
     user,
     isOffline,
     executeOfflineWrite,
-    offlineQueueRef,
     createNoteMutation,
     syncSelectedNote,
+    executeAutoSaveUpdateNote,
+    offlineQueueRef,
     setPendingCount,
     setFailedCount,
     setLastSavedAt,
     notesRef,
     selectedNoteRef,
   ])
+
+  const saveExistingNote = useCallback(async (
+    currentNote: NoteViewModel,
+    noteData: { title: string; description: string; tags: string[] },
+    userId: string,
+    clientUpdatedAt: string
+  ): Promise<NoteViewModel | null> => {
+    if (isOffline) {
+      await executeOfflineWrite({ operation: 'update', noteId: currentNote.id, payload: noteData, clientUpdatedAt })
+      syncSelectedNote({ ...currentNote, ...noteData, updated_at: clientUpdatedAt } as NoteViewModel)
+      toast.success('Saved offline (will sync when online)')
+      setLastSavedAt(clientUpdatedAt)
+      return null
+    }
+    try {
+      const updated = await updateNoteMutation.mutateAsync({ id: currentNote.id, ...noteData })
+      setLastSavedAt(clientUpdatedAt)
+      return { ...currentNote, ...updated }
+    } catch (error) {
+      if (!isPostgrestNoRowsError(error)) throw error
+      const created = await createNoteMutation.mutateAsync({ ...noteData, userId, id: currentNote.id })
+      setLastSavedAt(clientUpdatedAt)
+      return created as NoteViewModel
+    }
+  }, [isOffline, executeOfflineWrite, syncSelectedNote, setLastSavedAt, updateNoteMutation, createNoteMutation])
+
+  const saveNewNote = useCallback(async (
+    noteData: { title: string; description: string; tags: string[] },
+    userId: string,
+    clientUpdatedAt: string
+  ): Promise<NoteViewModel> => {
+    const tempId = uuidv4()
+    const createPromise = (async (): Promise<NoteViewModel> => {
+      if (isOffline) {
+        await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: { ...noteData, userId }, clientUpdatedAt })
+        const note = {
+          id: tempId,
+          ...noteData,
+          created_at: clientUpdatedAt,
+          updated_at: clientUpdatedAt,
+          user_id: userId,
+        } as NoteViewModel
+        syncSelectedNote(note)
+        toast.success('Saved offline (will sync when online)')
+        return note
+      }
+      const created = await createNoteMutation.mutateAsync({ ...noteData, userId })
+      syncSelectedNote(created as NoteViewModel)
+      return created as NoteViewModel
+    })()
+
+    pendingCreatePromiseRef.current = createPromise
+    try {
+      const saved = await createPromise
+      setLastSavedAt(clientUpdatedAt)
+      return saved
+    } finally {
+      pendingCreatePromiseRef.current = null
+    }
+  }, [isOffline, executeOfflineWrite, syncSelectedNote, createNoteMutation, setLastSavedAt])
 
   const handleSaveNote = async (data: { title: string; description: string; tags: string }) => {
     if (!user) return
@@ -266,7 +322,6 @@ export function useNoteSaveHandlers({
 
       let currentNote = selectedNoteRef.current
 
-      // Wait for any in-flight creation to finish to avoid duplicates
       if (!currentNote && pendingCreatePromiseRef.current) {
         try {
           currentNote = await pendingCreatePromiseRef.current
@@ -276,53 +331,9 @@ export function useNoteSaveHandlers({
       }
 
       if (currentNote) {
-        if (isOffline) {
-          await executeOfflineWrite({ operation: 'update', noteId: currentNote.id, payload: noteData, clientUpdatedAt })
-          syncSelectedNote({ ...currentNote, ...noteData, updated_at: clientUpdatedAt } as NoteViewModel)
-          toast.success('Saved offline (will sync when online)')
-          setLastSavedAt(clientUpdatedAt)
-        } else {
-          try {
-            const updated = await updateNoteMutation.mutateAsync({ id: currentNote.id, ...noteData })
-            savedNote = { ...currentNote, ...updated }
-          } catch (error) {
-            if (!isPostgrestNoRowsError(error)) throw error
-            // Re-create with the same ID so the user's in-progress work is preserved
-            const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id, id: currentNote.id })
-            savedNote = created as NoteViewModel
-          }
-          setLastSavedAt(clientUpdatedAt)
-        }
+        savedNote = await saveExistingNote(currentNote, noteData, user.id, clientUpdatedAt)
       } else {
-        const tempId = uuidv4()
-        
-        const createPromise = (async (): Promise<NoteViewModel> => {
-          if (isOffline) {
-            await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: { ...noteData, userId: user.id }, clientUpdatedAt })
-            const note = {
-              id: tempId,
-              ...noteData,
-              created_at: clientUpdatedAt,
-              updated_at: clientUpdatedAt,
-              user_id: user.id,
-            } as NoteViewModel
-            syncSelectedNote(note)
-            toast.success('Saved offline (will sync when online)')
-            return note
-          } else {
-            const created = await createNoteMutation.mutateAsync({ ...noteData, userId: user.id })
-            syncSelectedNote(created as NoteViewModel)
-            return created as NoteViewModel
-          }
-        })();
-
-        pendingCreatePromiseRef.current = createPromise
-        try {
-          savedNote = await createPromise
-        } finally {
-          pendingCreatePromiseRef.current = null
-        }
-        setLastSavedAt(clientUpdatedAt)
+        savedNote = await saveNewNote(noteData, user.id, clientUpdatedAt)
       }
 
       if (savedNote) {
@@ -391,7 +402,7 @@ export function useNoteSaveHandlers({
   const handleRemoveTagFromNote = async (noteId: string, tagToRemove: string) => {
     try {
       const noteToUpdate = notes.find(note => note.id === noteId)
-      if (!noteToUpdate || !noteToUpdate.tags) return
+      if (!noteToUpdate?.tags) return
 
       const updatedTags = noteToUpdate.tags.filter(tag => tag !== tagToRemove)
       await removeTagMutation.mutateAsync({ noteId, updatedTags })

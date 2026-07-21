@@ -474,6 +474,19 @@ describe("core/rag/chunking — pairwise test suite", () => {
       expect(body).toContain("Line one")
       expect(body).toContain("Line three")
     })
+
+    it("preserves text after an unmatched opening bracket in the regex fallback", () => {
+      const malformedSuffix = "unfinished <tag without closing bracket"
+      const chunks = buildRagIndexChunks({
+        title: "Malformed HTML",
+        html: `<p>${solid(30)}</p>${malformedSuffix}`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 20, target_chunk_size: 500, max_chunk_size: 1500 }),
+      })
+
+      expect(chunks).toHaveLength(1)
+      expect(chunks[0]!.bodyContent).toContain(malformedSuffix)
+    })
   })
 
   // ── Regression: реальная заметка ─────────────────────────
@@ -527,4 +540,46 @@ describe("core/rag/chunking — pairwise test suite", () => {
     })
   })
 
+  describe("H — Depth-aware lists", () => {
+    it("preserves correct prefixes for nested ordered lists", () => {
+      const html = "<ol><li>First<ol><li>SubOne</li><li>SubTwo</li></ol></li><li>Second</li></ol>"
+      const chunks = buildRagIndexChunks({
+        title: "Nested OL",
+        html,
+        tags: [],
+        settings: cfg({ min_chunk_size: 10 }),
+      })
+      expect(chunks[0]!.bodyContent).toContain("1. First")
+      expect(chunks[0]!.bodyContent).toContain("1. SubOne")
+      expect(chunks[0]!.bodyContent).toContain("2. SubTwo")
+      expect(chunks[0]!.bodyContent).toContain("2. Second")
+    })
+
+    it("preserves unordered bullet lists nested inside ordered lists", () => {
+      const html = "<ol><li>Parent<ul><li>Bullet A</li><li>Bullet B</li></ul></li></ol>"
+      const chunks = buildRagIndexChunks({
+        title: "Mixed List",
+        html,
+        tags: [],
+        settings: cfg({ min_chunk_size: 10 }),
+      })
+      expect(chunks[0]!.bodyContent).toContain("1. Parent")
+      expect(chunks[0]!.bodyContent).toContain("- Bullet A")
+      expect(chunks[0]!.bodyContent).toContain("- Bullet B")
+      expect(chunks[0]!.bodyContent).not.toContain("- - Bullet")
+    })
+
+    it("does not treat similarly prefixed tags as nested list items", () => {
+      const html = '<ol><li>Before<link href="https://example.com">After</li><li>Second</li></ol>'
+      const chunks = buildRagIndexChunks({
+        title: "List with link",
+        html,
+        tags: [],
+        settings: cfg({ min_chunk_size: 10 }),
+      })
+
+      expect(chunks[0]!.bodyContent).toContain("1. Before After")
+      expect(chunks[0]!.bodyContent).toContain("2. Second")
+    })
+  })
 })
