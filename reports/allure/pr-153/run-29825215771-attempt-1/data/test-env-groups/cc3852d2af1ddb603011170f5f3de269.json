@@ -1,1 +1,0 @@
-{"id":"cc3852d2af1ddb603011170f5f3de269","fullName":"everfreenote:core/tests/unit/core-utils-prosemirrorCaret.test.ts#core/utils/prosemirrorCaret.placeCaretFromCoords is defensive and returns noop on exceptions","name":"is defensive and returns noop on exceptions","status":"passed","testResultsByEnv":{"default":"d71dec2df45a011cd7e8fd52e3014f9a"}}
