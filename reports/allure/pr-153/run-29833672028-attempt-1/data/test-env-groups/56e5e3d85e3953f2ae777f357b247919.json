@@ -1,1 +1,0 @@
-{"id":"56e5e3d85e3953f2ae777f357b247919","fullName":"everfreenote:cypress/component/features/notes/NoteEditorSaveExit.cy.tsx#NoteEditor save on exit (web) saves an existing note after typing when creating a new note","name":"saves an existing note after typing when creating a new note","status":"passed","testResultsByEnv":{"default":"665d0ff538b095467d348a3a3d1e5dd2"}}
