@@ -1,0 +1,1 @@
+{"id":"b8a17153b5c2fbc0a3fcbb11254ba88f","fullName":"everfreenote-mobile:tests/component/searchResultsList.test.tsx#SearchResultsList renders an empty state when there are no rows and no loading footer","name":"renders an empty state when there are no rows and no loading footer","status":"passed","testResultsByEnv":{"default":"db6c4283e6d01abb2530a4f847a203bc"}}
