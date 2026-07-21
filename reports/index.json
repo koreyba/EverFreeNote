@@ -7,6 +7,44 @@
       "core-integration",
       "web-unit",
       "mobile-unit",
+      "component",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-154/run-29847800940-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-154/run-29847800940-attempt-1/",
+    "runId": "29847800940",
+    "runAttempt": "1",
+    "prNumber": "154",
+    "ref": "fix-coverage-issue",
+    "sha": "26a0a3437c5dfa659c2a959d11ea4edf5507cf65",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #154",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-21T16:24:24.686Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit",
       "e2e"
     ],
     "suiteLabels": [
@@ -675,42 +713,6 @@
     "scopeLabel": "PR #153",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-20T16:46:07.923Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component"
-    ],
-    "path": "reports/allure/pr-153/run-29749479025-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-153/run-29749479025-attempt-1/",
-    "runId": "29749479025",
-    "runAttempt": "1",
-    "prNumber": "153",
-    "ref": "refactor/cognitive-complexity",
-    "sha": "2bf614e40cd0943e93a96ffe770a9889605966d3",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #153",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-20T14:28:00.629Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
