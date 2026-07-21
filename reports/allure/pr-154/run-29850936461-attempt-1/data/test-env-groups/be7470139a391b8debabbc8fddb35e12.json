@@ -1,0 +1,1 @@
+{"id":"be7470139a391b8debabbc8fddb35e12","fullName":"everfreenote:ui/web/tests/unit/hooks/useSearchMode.test.tsx#useSearchMode keeps in-memory state updates when localStorage writes fail","name":"keeps in-memory state updates when localStorage writes fail","status":"passed","testResultsByEnv":{"default":"dc2b404e4686029e7f0d1ac858fd6f77"}}
