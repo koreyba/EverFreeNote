@@ -1,1 +1,0 @@
-{"id":"e1e2d7967a64253446189b7bba6c0720","fullName":"everfreenote-mobile:tests/integration/noteEditorUndoRedo.test.tsx#NoteEditorScreen — Undo/Redo header buttons pressing Undo button calls runCommand(\"undo\") on editor","name":"pressing Undo button calls runCommand(\"undo\") on editor","status":"passed","testResultsByEnv":{"default":"a773a0a5257875d8d153d0ba865a0e95"}}
