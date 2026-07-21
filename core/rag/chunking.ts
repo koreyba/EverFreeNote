@@ -54,7 +54,27 @@ function normalizeWhitespace(value: string): string {
 }
 
 function stripTags(value: string): string {
-  return normalizeWhitespace(value.replaceAll(/<[^>]*>/g, " "))
+  const parts: string[] = []
+  let cursor = 0
+
+  while (cursor < value.length) {
+    const openingBracket = value.indexOf("<", cursor)
+    if (openingBracket === -1) {
+      parts.push(value.slice(cursor))
+      break
+    }
+
+    const closingBracket = value.indexOf(">", openingBracket + 1)
+    if (closingBracket === -1) {
+      parts.push(value.slice(cursor))
+      break
+    }
+
+    parts.push(value.slice(cursor, openingBracket), " ")
+    cursor = closingBracket + 1
+  }
+
+  return normalizeWhitespace(parts.join(""))
 }
 
 function splitPlainTextParagraphs(value: string): string[] {
@@ -242,7 +262,7 @@ function processListContent(content: string, isOrdered: boolean): string {
       break
     }
 
-    const liInner = content.slice(tagClose + 1, liEnd)
+    const liInner = prefixListItems(content.slice(tagClose + 1, liEnd))
     const prefix = isOrdered ? `${idx++}. ` : '- '
     const stripped = liInner.replaceAll(/<\/?p\b[^>]*>/gi, '')
     result += `<li>${prefix}${stripped}</li>`
@@ -253,9 +273,8 @@ function processListContent(content: string, isOrdered: boolean): string {
   return result
 }
 
-function processTopLevelLists(html: string, tagName: 'ol' | 'ul', isOrdered: boolean): string {
-  const openRegex = new RegExp(String.raw`<${tagName}\b[^>]*>`, 'gi')
-  const closeTag = `</${tagName}>`
+function prefixListItems(html: string): string {
+  const openRegex = /<(ol|ul)\b[^<>]*>/gi
   let result = ''
   let cursor = 0
 
@@ -268,6 +287,8 @@ function processTopLevelLists(html: string, tagName: 'ol' | 'ul', isOrdered: boo
     }
 
     result += html.slice(cursor, match.index)
+    const tagName = match[1]?.toLowerCase() === 'ol' ? 'ol' : 'ul'
+    const closeTag = `</${tagName}>`
     const openTagEnd = match.index + match[0].length
 
     const listEnd = findMatchingClosingTag(html, openTagEnd, `<${tagName}`, closeTag)
@@ -277,16 +298,10 @@ function processTopLevelLists(html: string, tagName: 'ol' | 'ul', isOrdered: boo
     }
 
     const inner = html.slice(openTagEnd, listEnd)
-    result += `<${tagName}>${processListContent(inner, isOrdered)}</${tagName}>`
+    result += `<${tagName}>${processListContent(inner, tagName === 'ol')}</${tagName}>`
     cursor = listEnd + closeTag.length
   }
 
-  return result
-}
-
-function prefixListItems(html: string): string {
-  let result = processTopLevelLists(html, 'ol', true)
-  result = processTopLevelLists(result, 'ul', false)
   return result
 }
 

@@ -247,7 +247,29 @@ function scoreMarkdown(text: string): { score: number; reasons: string[] } {
   return { score, reasons }
 }
 
-const TABLE_SEPARATOR_ROW_PATTERN = /^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/
+function isMarkdownTableSeparatorCell(cell: string): boolean {
+  const trimmedCell = cell.trim()
+  let start = trimmedCell.startsWith(':') ? 1 : 0
+  const end = trimmedCell.endsWith(':') ? trimmedCell.length - 1 : trimmedCell.length
+
+  if (start >= end) return false
+
+  while (start < end) {
+    if (trimmedCell[start] !== '-') return false
+    start += 1
+  }
+  return true
+}
+
+function isMarkdownTableSeparatorRow(line: string): boolean {
+  let row = line.trim()
+  if (!row.includes('|')) return false
+  if (row.startsWith('|')) row = row.slice(1)
+  if (row.endsWith('|')) row = row.slice(0, -1)
+
+  const cells = row.split('|')
+  return cells.every(isMarkdownTableSeparatorCell)
+}
 
 function containsUnsupportedMarkdown(text: string): boolean {
   if (/^[ \t]*[-*+][ \t]+\[[ xX]\][ \t]+/m.test(text)) {
@@ -256,9 +278,9 @@ function containsUnsupportedMarkdown(text: string): boolean {
 
   const lines = text.split('\n')
   for (let i = 0; i < lines.length - 1; i++) {
-    // The separator row itself must contain a pipe too — otherwise a header-ish
-    // line followed by an unrelated horizontal rule ("---") false-positives as a table.
-    if (lines[i].includes('|') && lines[i + 1].includes('|') && TABLE_SEPARATOR_ROW_PATTERN.test(lines[i + 1])) {
+    const currentLine = lines[i]?.trim() ?? ''
+    const nextLine = lines[i + 1]?.trim() ?? ''
+    if (currentLine.includes('|') && isMarkdownTableSeparatorRow(nextLine)) {
       return true
     }
   }

@@ -131,6 +131,16 @@ describe('core/services/noteClipboard', () => {
       expect(payload.html).not.toContain('data-everfreenote-gap')
       expect(payload.html).toContain('<p>A</p><p><br></p><p>B</p>')
     })
+
+    it.each(['&#160;', '&#xA0;', '<br class="paste-marker">'])(
+      'treats %s as blank paragraph content',
+      (blankContent) => {
+        const payload = NoteClipboardService.buildPayload(`<p>A</p><p>${blankContent}</p><p>B</p>`)
+
+        expect(payload.html).not.toContain('data-everfreenote-gap')
+        expect(payload.text).toBe('A\n\nB')
+      },
+    )
   })
 
   describe('htmlToPlainText', () => {

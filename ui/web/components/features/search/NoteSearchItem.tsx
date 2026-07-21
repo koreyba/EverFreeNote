@@ -115,18 +115,17 @@ export function NoteSearchItem({
         'group relative rounded-lg border border-border/60 bg-card border-l-[3px] overflow-hidden transition-all hover:border-primary/30 hover:shadow-sm',
         getAccentClass(group.topScore)
       )}
-      role="button"
-      tabIndex={0}
-      onClick={handleCardClick}
-      onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          handleCardClick(e as unknown as React.MouseEvent<HTMLElement>)
-        }
-      }}
       {...longPressHandlers}
     >
+      {selectionMode && (
+        <button
+          type="button"
+          aria-label={`Toggle selection for note ${group.noteTitle || 'Untitled'}`}
+          aria-pressed={isSelected}
+          className="absolute inset-0 z-[1] cursor-pointer rounded-[inherit] border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          onClick={handleCardClick}
+        />
+      )}
       {onToggleSelect && (
         <Checkbox
           aria-label={`Select note ${group.noteTitle || 'Untitled'}`}
@@ -141,7 +140,7 @@ export function NoteSearchItem({
           )}
         />
       )}
-      <div className="px-3 pt-3 pb-2.5">
+      <div className={cn("px-3 pt-3 pb-2.5", selectionMode && "pointer-events-none relative z-[2]")}>
         {/* Title + score */}
         <div className="flex items-start gap-2 justify-between">
           <h3
@@ -210,7 +209,10 @@ export function NoteSearchItem({
 
       {/* Expanded fragments — visually separated section */}
       {expanded && (extraChunks.length > 0 || group.hiddenCount > 0) && (
-        <div className="border-t border-border/40 bg-muted/10 px-3 py-2 space-y-1.5">
+        <div className={cn(
+          "border-t border-border/40 bg-muted/10 px-3 py-2 space-y-1.5",
+          selectionMode && "pointer-events-none relative z-[2]"
+        )}>
           {extraChunks.map((chunk, index) => (
             <div
               key={chunk.chunkIndex}

@@ -114,7 +114,7 @@ describe('features/wordpress/WordPressSettingsDialog', () => {
     const supabase = { functions: { invoke } } as unknown as SupabaseClient
     mountDialog(supabase)
 
-    cy.get('#wp-site-url').clear().type('https://stage.dkoreiba.com/')
+    cy.get('#wp-site-url').clear().type('https://stage.dkoreiba.com/articles///?preview=1')
     cy.get('#wp-username').clear().type('koreybadenis')
     cy.get('#wp-app-password').type('cyez RgA9 Fm9L iw8h XmIn P3N6')
     cy.contains('button', 'Save').click()
@@ -124,7 +124,7 @@ describe('features/wordpress/WordPressSettingsDialog', () => {
       'wordpress-settings-upsert',
       Cypress.sinon.match({
         body: Cypress.sinon.match({
-          siteUrl: 'https://stage.dkoreiba.com',
+          siteUrl: 'https://stage.dkoreiba.com/articles?preview=1',
           wpUsername: 'koreybadenis',
           enabled: true,
         }),

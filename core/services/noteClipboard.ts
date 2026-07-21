@@ -59,14 +59,82 @@ const GAP_MARKER_PARAGRAPH_PATTERN = new RegExp(
 //
 // Scoped to <p> only (not headings/lists/etc.) — that covers what's been
 // verified; other block types can be added if they turn out to need it too.
-const P_BLOCK_PATTERN = /<p(?:\s+[^>]*)?>[\s\S]*?<\/p>/gi
+type ParagraphBlock = {
+  html: string
+  index: number
+  endIndex: number
+}
+
+function findParagraphBlocks(html: string): ParagraphBlock[] {
+  const lowerHtml = html.toLowerCase()
+  const blocks: ParagraphBlock[] = []
+  let searchIndex = 0
+
+  while (searchIndex < html.length) {
+    const index = lowerHtml.indexOf('<p', searchIndex)
+    if (index === -1) break
+
+    const boundary = lowerHtml[index + 2]
+    if (boundary !== '>' && boundary?.trim() !== '') {
+      searchIndex = index + 2
+      continue
+    }
+
+    const openingTagEnd = lowerHtml.indexOf('>', index + 2)
+    if (openingTagEnd === -1) break
+
+    const closingTagStart = lowerHtml.indexOf('</p>', openingTagEnd + 1)
+    if (closingTagStart === -1) break
+
+    const endIndex = closingTagStart + 4
+    blocks.push({ html: html.slice(index, endIndex), index, endIndex })
+    searchIndex = endIndex
+  }
+
+  return blocks
+}
 // &nbsp;/&#160;/&#xA0; must count as empty too — isNoteBodyEmpty (core/utils/noteBody.ts)
 // already treats them as whitespace, and a paragraph made of only a non-breaking
 // space (common from pasted-in content) is visually a blank line, not content.
-const EMPTY_P_BLOCK_PATTERN = /^<p(?:\s+[^>]*)?>(?:[\s\t\r\n]|<br\b[^>]*>|&(?:nbsp|#160|#xA0);)*<\/p>$/i
+function isBlankParagraphContent(content: string): boolean {
+  const lowerContent = content.toLowerCase()
+  let cursor = 0
+
+  while (cursor < content.length) {
+    const character = content[cursor]
+    if (character?.trim() === '') {
+      cursor += 1
+      continue
+    }
+
+    const blankEntity = ['&nbsp;', '&#160;', '&#xa0;'].find((entity) =>
+      lowerContent.startsWith(entity, cursor),
+    )
+    if (blankEntity) {
+      cursor += blankEntity.length
+      continue
+    }
+
+    if (lowerContent.startsWith('<br', cursor)) {
+      const boundary = lowerContent[cursor + 3]
+      const isWordBoundary = boundary === undefined || !(/[a-z0-9_]/i.test(boundary))
+      const tagEnd = lowerContent.indexOf('>', cursor + 3)
+      if (isWordBoundary && tagEnd !== -1) {
+        cursor = tagEnd + 1
+        continue
+      }
+    }
+
+    return false
+  }
+
+  return true
+}
 
 function isEmptyParagraphBlock(block: string): boolean {
-  return EMPTY_P_BLOCK_PATTERN.test(block)
+  const openingTagEnd = block.indexOf('>')
+  if (openingTagEnd === -1) return false
+  return isBlankParagraphContent(block.slice(openingTagEnd + 1, -4))
 }
 
 // Walks the top-level <p> blocks and inserts a bare <p></p> between any pair
@@ -81,7 +149,7 @@ function isEmptyParagraphBlock(block: string): boolean {
 // but <ol><li> sits between them, so they are not a single-Enter paragraph
 // boundary and must not get a gap inserted between them.
 function insertMissingParagraphGaps(html: string): string {
-  const blocks = Array.from(html.matchAll(P_BLOCK_PATTERN))
+  const blocks = findParagraphBlocks(html)
   if (blocks.length < 2) return html
 
   let result = ''
@@ -92,14 +160,14 @@ function insertMissingParagraphGaps(html: string): string {
 
     const previous = i > 0 ? blocks[i - 1] : null
     const isDirectlyAdjacent =
-      previous !== null && html.slice(previous.index + previous[0].length, block.index).trim() === ''
-    const isContent = !isEmptyParagraphBlock(block[0])
-    const previousWasContent = isDirectlyAdjacent && !isEmptyParagraphBlock(previous[0])
+      previous !== null && html.slice(previous.endIndex, block.index).trim() === ''
+    const isContent = !isEmptyParagraphBlock(block.html)
+    const previousWasContent = isDirectlyAdjacent && !isEmptyParagraphBlock(previous.html)
     if (isContent && previousWasContent) {
       result += `<p ${GAP_MARKER_ATTRIBUTE}="1"></p>`
     }
-    result += block[0]
-    cursor = block.index + block[0].length
+    result += block.html
+    cursor = block.endIndex
   }
   return result + html.slice(cursor)
 }
@@ -117,7 +185,7 @@ function insertMissingParagraphGaps(html: string): string {
 // after the user's last Enter) isn't separating anything, so it's left
 // as-is rather than marked.
 function markInteriorEmptyParagraphs(html: string): string {
-  const blocks = Array.from(html.matchAll(P_BLOCK_PATTERN))
+  const blocks = findParagraphBlocks(html)
   if (blocks.length < 2) return html
 
   let result = ''
@@ -127,12 +195,13 @@ function markInteriorEmptyParagraphs(html: string): string {
     result += html.slice(cursor, block.index)
 
     const isInterior = i > 0 && i < blocks.length - 1
-    if (isInterior && isEmptyParagraphBlock(block[0])) {
-      result += block[0].replace(/^(<p\b[^>]*>)(?:(?!<\/p>)[\s\S])*(<\/p>)$/i, '$1<br>$2')
+    if (isInterior && isEmptyParagraphBlock(block.html)) {
+      const openingTagEnd = block.html.indexOf('>')
+      result += `${block.html.slice(0, openingTagEnd + 1)}<br>${block.html.slice(-4)}`
     } else {
-      result += block[0]
+      result += block.html
     }
-    cursor = block.index + block[0].length
+    cursor = block.endIndex
   }
   return result + html.slice(cursor)
 }

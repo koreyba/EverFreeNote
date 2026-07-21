@@ -1,14 +1,5 @@
 # Gitleaks configuration file
 title = "Gitleaks config for EverFreeNote"
 
-[allowlist]
-description = "Global allowlist for legacy secrets removed from current HEAD"
-regexes = [
-  '''sonar\.token''',
-]
-fingerprints = [
-  "27df91dc7b38cd92109fdd6d8d2cf913ece762a6:sonar-project.properties:generic-api-key:2",
-]
-paths = [
-  '''sonar-project\.properties''',
-]
+[extend]
+useDefault = true

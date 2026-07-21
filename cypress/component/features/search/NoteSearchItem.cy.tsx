@@ -93,4 +93,26 @@ describe('NoteSearchItem', () => {
 
     cy.get('@onOpenInContext').should('not.have.been.called')
   })
+
+  it('uses a native button to toggle the whole card in selection mode', () => {
+    const onOpenInContext = cy.stub()
+    const onToggleSelect = cy.stub().as('onToggleSelect')
+
+    cy.mount(
+      <NoteSearchItem
+        group={baseGroup}
+        onOpenInContext={onOpenInContext}
+        onToggleSelect={onToggleSelect}
+        selectionMode
+      />
+    )
+
+    cy.get('article').should('not.have.attr', 'role')
+    cy.get('button[aria-label="Toggle selection for note Ontology Basics"]')
+      .should('have.attr', 'aria-pressed', 'false')
+      .should('have.prop', 'tagName', 'BUTTON')
+      .click()
+
+    cy.get('@onToggleSelect').should('have.been.calledOnceWith', 'note-1')
+  })
 })

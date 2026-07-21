@@ -474,6 +474,19 @@ describe("core/rag/chunking — pairwise test suite", () => {
       expect(body).toContain("Line one")
       expect(body).toContain("Line three")
     })
+
+    it("preserves text after an unmatched opening bracket in the regex fallback", () => {
+      const malformedSuffix = "unfinished <tag without closing bracket"
+      const chunks = buildRagIndexChunks({
+        title: "Malformed HTML",
+        html: `<p>${solid(30)}</p>${malformedSuffix}`,
+        tags: [],
+        settings: cfg({ min_chunk_size: 20, target_chunk_size: 500, max_chunk_size: 1500 }),
+      })
+
+      expect(chunks).toHaveLength(1)
+      expect(chunks[0]!.bodyContent).toContain(malformedSuffix)
+    })
   })
 
   // ── Regression: реальная заметка ─────────────────────────
@@ -537,8 +550,8 @@ describe("core/rag/chunking — pairwise test suite", () => {
         settings: cfg({ min_chunk_size: 10 }),
       })
       expect(chunks[0]!.bodyContent).toContain("1. First")
-      expect(chunks[0]!.bodyContent).toContain("SubOne")
-      expect(chunks[0]!.bodyContent).toContain("SubTwo")
+      expect(chunks[0]!.bodyContent).toContain("1. SubOne")
+      expect(chunks[0]!.bodyContent).toContain("2. SubTwo")
       expect(chunks[0]!.bodyContent).toContain("2. Second")
     })
 
@@ -551,8 +564,9 @@ describe("core/rag/chunking — pairwise test suite", () => {
         settings: cfg({ min_chunk_size: 10 }),
       })
       expect(chunks[0]!.bodyContent).toContain("1. Parent")
-      expect(chunks[0]!.bodyContent).toContain("Bullet A")
-      expect(chunks[0]!.bodyContent).toContain("Bullet B")
+      expect(chunks[0]!.bodyContent).toContain("- Bullet A")
+      expect(chunks[0]!.bodyContent).toContain("- Bullet B")
+      expect(chunks[0]!.bodyContent).not.toContain("- - Bullet")
     })
   })
 })

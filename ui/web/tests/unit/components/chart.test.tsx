@@ -19,7 +19,7 @@ describe('ChartContainer component', () => {
     },
   }
 
-  it('renders with custom id replacing colons', () => {
+  it('renders with custom id preserving colons', () => {
     const { container } = render(
       <ChartContainer id="custom:id:123" config={sampleConfig}>
         <div>Chart Content</div>
