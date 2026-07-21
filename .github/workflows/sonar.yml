@@ -179,7 +179,7 @@ jobs:
 
   sonarqube-main:
     name: SonarQube main analysis
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [unit-coverage, component-coverage, mobile-coverage]
     runs-on: ubuntu-latest
     steps:
@@ -190,33 +190,63 @@ jobs:
           persist-credentials: false
 
       - name: Download Jest coverage report
+        if: always()
+        continue-on-error: true
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: jest-coverage-${{ github.run_id }}
           path: coverage/jest
 
       - name: Download Cypress component coverage report
+        if: always()
+        continue-on-error: true
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: component-coverage-${{ github.run_id }}
           path: coverage/component
 
       - name: Download mobile Jest coverage report
+        if: always()
+        continue-on-error: true
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: mobile-coverage-${{ github.run_id }}
           path: ui/mobile/coverage
 
       - name: Verify imported LCOV reports
+        if: always()
+        continue-on-error: true
         run: |
           test -s coverage/jest/lcov.info
           test -s coverage/component/lcov.info
           test -s ui/mobile/coverage/lcov.info
 
+      - name: Detect available LCOV reports
+        id: detect-lcov
+        if: always()
+        run: |
+          set -euo pipefail
+
+          reports=()
+          for report in coverage/jest/lcov.info coverage/component/lcov.info ui/mobile/coverage/lcov.info; do
+            if [ -s "$report" ]; then
+              reports+=("$report")
+            fi
+          done
+
+          if [ "${#reports[@]}" -gt 0 ]; then
+            report_paths=$(IFS=,; echo "${reports[*]}")
+            echo "sonar_args=-Dsonar.javascript.lcov.reportPaths=${report_paths}" >> "$GITHUB_OUTPUT"
+            echo "Using LCOV reports: ${report_paths}"
+          else
+            echo "sonar_args=" >> "$GITHUB_OUTPUT"
+            echo "No LCOV reports available; running SonarQube without coverage."
+          fi
+
       - name: SonarQube Scan with coverage
+        if: always()
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         with:
-          args: >-
-            -Dsonar.javascript.lcov.reportPaths=coverage/jest/lcov.info,coverage/component/lcov.info,ui/mobile/coverage/lcov.info
+          args: ${{ steps.detect-lcov.outputs.sonar_args }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
