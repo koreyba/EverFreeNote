@@ -14,7 +14,7 @@ const note = (id: string, status: AIIndexNoteRow['status']): AIIndexNoteRow => (
 })
 
 describe('bulk index additional branches', () => {
-  it('formats an empty batch summary without inventing outcomes', () => {
+  it('formats zero counters as an empty summary', () => {
     expect(formatBulkIndexSummary(0, 0, 0)).toBe('')
   })
 
