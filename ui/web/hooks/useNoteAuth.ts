@@ -14,7 +14,23 @@ const testAuthPassword = process.env.NEXT_PUBLIC_TEST_AUTH_PASSWORD ?? ''
 const skipAuthEmail = process.env.NEXT_PUBLIC_SKIP_AUTH_EMAIL ?? ''
 const skipAuthPassword = process.env.NEXT_PUBLIC_SKIP_AUTH_PASSWORD ?? ''
 
-export function useNoteAuth() {
+export type NoteAuthConfig = {
+    testAuthEnabled: boolean
+    testAuthEmail: string
+    testAuthPassword: string
+    skipAuthEmail: string
+    skipAuthPassword: string
+}
+
+const runtimeNoteAuthConfig: NoteAuthConfig = {
+    testAuthEnabled: featureFlags.testAuth,
+    testAuthEmail,
+    testAuthPassword,
+    skipAuthEmail,
+    skipAuthPassword,
+}
+
+export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
     const { supabase, loading: providerLoading } = useSupabase()
     const queryClient = useQueryClient()
 
@@ -58,12 +74,12 @@ export function useNoteAuth() {
     }
 
     const handleTestLogin = async () => {
-        if (!featureFlags.testAuth) {
+        if (!config.testAuthEnabled) {
             toast.error('Test authentication is disabled in this environment')
             return
         }
 
-        if (!testAuthEmail || !testAuthPassword) {
+        if (!config.testAuthEmail || !config.testAuthPassword) {
             toast.error('Test auth credentials are not configured')
             return
         }
@@ -71,8 +87,8 @@ export function useNoteAuth() {
         try {
             setAuthLoading(true)
             const { data, error } = await authService.signInWithPassword(
-                testAuthEmail,
-                testAuthPassword
+                config.testAuthEmail,
+                config.testAuthPassword
             )
 
             if (error) {
@@ -93,12 +109,12 @@ export function useNoteAuth() {
     }
 
     const handleSkipAuth = async () => {
-        if (!featureFlags.testAuth) {
+        if (!config.testAuthEnabled) {
             toast.error('Test authentication is disabled in this environment')
             return
         }
 
-        if (!skipAuthEmail || !skipAuthPassword) {
+        if (!config.skipAuthEmail || !config.skipAuthPassword) {
             toast.error('Skip-auth credentials are not configured')
             return
         }
@@ -106,8 +122,8 @@ export function useNoteAuth() {
         try {
             setAuthLoading(true)
             const { data, error } = await authService.signInWithPassword(
-                skipAuthEmail,
-                skipAuthPassword
+                config.skipAuthEmail,
+                config.skipAuthPassword
             )
 
             if (error) {

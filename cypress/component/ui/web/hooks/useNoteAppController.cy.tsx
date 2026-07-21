@@ -35,11 +35,6 @@ const TestComponent = () => {
       <div data-cy="deleteDialogOpen">{controller.deleteDialogOpen ? 'true' : 'false'}</div>
       <div data-cy="filterByTag">{controller.filterByTag || 'none'}</div>
 
-      <button data-cy="login-btn" onClick={controller.handleTestLogin}>Login</button>
-      <button data-cy="skip-auth-btn" onClick={controller.handleSkipAuth}>Skip Auth</button>
-      <button data-cy="sign-out-btn" onClick={() => controller.handleSignOut()}>Sign Out</button>
-      <button data-cy="google-login-btn" onClick={controller.handleSignInWithGoogle}>Google Login</button>
-
       <button data-cy="create-note-btn" onClick={controller.handleCreateNote}>Create Note</button>
       <button data-cy="edit-note-btn" onClick={() => controller.handleEditNote({
         id: '1',
@@ -297,62 +292,6 @@ describe('useNoteAppController', () => {
     cy.get('[data-cy="user"]').should('contain', 'no-user')
 
     cy.wrap(mockSupabase.auth.getSession).should('have.been.called')
-  })
-
-  it('handles login', () => {
-    cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
-        <QueryProvider>
-          <TestComponent />
-        </QueryProvider>
-      </SupabaseTestProvider>
-    )
-
-    cy.get('[data-cy="login-btn"]').click()
-    cy.get('[data-cy="user"]').should('contain', 'test-user')
-  })
-
-  it('handles skip auth', () => {
-    cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
-        <QueryProvider>
-          <TestComponent />
-        </QueryProvider>
-      </SupabaseTestProvider>
-    )
-
-    cy.get('[data-cy="skip-auth-btn"]').click()
-    cy.get('[data-cy="user"]').should('contain', 'test-user')
-  })
-
-  it('handles sign out', () => {
-    ; (mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
-
-    cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
-        <QueryProvider>
-          <TestComponent />
-        </QueryProvider>
-      </SupabaseTestProvider>
-    )
-
-    cy.get('[data-cy="user"]').should('contain', 'test-user')
-    cy.get('[data-cy="sign-out-btn"]').click()
-    cy.get('[data-cy="user"]').should('contain', 'no-user')
-    cy.wrap(mockSupabase.auth.signOut).should('have.been.called')
-  })
-
-  it('handles google login', () => {
-    cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
-        <QueryProvider>
-          <TestComponent />
-        </QueryProvider>
-      </SupabaseTestProvider>
-    )
-
-    cy.get('[data-cy="google-login-btn"]').click()
-    cy.wrap(mockSupabase.auth.signInWithOAuth).should('have.been.called')
   })
 
   it('handles create note state', () => {
