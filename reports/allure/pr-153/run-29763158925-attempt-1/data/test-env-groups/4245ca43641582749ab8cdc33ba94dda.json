@@ -1,1 +1,0 @@
-{"id":"4245ca43641582749ab8cdc33ba94dda","fullName":"everfreenote:cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager enqueue should enqueue item and trigger drain if online","name":"should enqueue item and trigger drain if online","status":"passed","testResultsByEnv":{"default":"801878a1432fd44be0f9c6943e4be6fc"}}
