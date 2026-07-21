@@ -32,6 +32,9 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   `SF:ui/mobile/...` paths that the root Sonar scan can resolve.
 - Root and component coverage include `app`, `core`, and `ui/web`; mobile Jest
   owns `ui/mobile` while also recording imported shared-core modules.
+- `useNoteAuth` accepts an explicit test configuration for component tests;
+  production callers continue to use the environment-derived default. This
+  keeps auth coverage deterministic and independent from GitHub Environments.
 - The workflow has five jobs: scanner-only PR analysis, three parallel main
   coverage producers, and one main scanner that requires all producers.
 - Semgrep was left unchanged because it has no supported runtime LCOV ingestion

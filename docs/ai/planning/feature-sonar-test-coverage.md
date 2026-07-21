@@ -45,12 +45,10 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 - [x] Task 3.4: Perform implementation conformance and code review.
 
 The implementation validation is otherwise complete, with the Cypress
-limitation recorded in the testing document. DevKit recognized all seven
-feature documents, but its required branch-name check is still failed because
-the working branch is intentionally retained as `fix-coverage-issue` instead
-of `feature-sonar-test-coverage`. This is an accepted exception for the current
-checkout; Phase 3 remains incomplete until the feature lint is rerun on the
-expected branch or the exception is formally retired.
+limitation recorded in the testing document. DevKit recognizes all seven
+feature documents and the required branch-name check passes on
+`feature-sonar-test-coverage`. Phase 3 remains incomplete only because the
+deployment checks require GitHub Actions and SonarQube Cloud state.
 
 ## Dependencies
 
