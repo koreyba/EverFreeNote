@@ -1,5 +1,6 @@
 /** @type {import('jest').Config} */
 const os = require('node:os')
+const path = require('node:path')
 
 module.exports = {
   preset: 'jest-expo',
@@ -22,6 +23,30 @@ module.exports = {
     '^@ui/mobile/(.*)$': '<rootDir>/$1',
     '^@/(.*)$': '<rootDir>/../../$1',
   },
+  // Mobile coverage is a separate producer. It owns the Expo application
+  // sources; shared core modules imported by mobile tests are also recorded
+  // naturally by Jest and are deduplicated when Sonar imports all LCOV files.
+  collectCoverageFrom: [
+    '<rootDir>/**/*.{js,jsx,ts,tsx}',
+    '!<rootDir>/tests/**',
+    '!<rootDir>/coverage/**',
+    '!<rootDir>/android/**',
+    '!<rootDir>/ios/**',
+    '!<rootDir>/.expo/**',
+    '!<rootDir>/allure-results/**',
+    '!<rootDir>/allure-report/**',
+    '!<rootDir>/**/*.d.ts',
+    '!<rootDir>/*.config.{js,ts}',
+  ],
+  coverageDirectory: '<rootDir>/coverage',
+  // Sonar scans from the repository root, so LCOV source paths must also be
+  // repository-relative (ui/mobile/...), not relative to this package.
+  coverageReporters: [
+    'json',
+    'text',
+    ['lcov', { projectRoot: path.resolve(__dirname, '../..') }],
+    'html',
+  ],
   clearMocks: true,
   // React Native/Expo tests can leave native listeners open; force exit prevents hangs.
   forceExit: true,

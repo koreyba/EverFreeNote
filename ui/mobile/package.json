@@ -26,7 +26,7 @@
     "test": "jest",
     "test:allure": "jest; test_exit=$?; npm run allure:generate; exit $test_exit",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test:coverage": "jest --coverage --runInBand",
     "allure:generate": "allure generate allure-results/mobile-unit --output allure-report/mobile-unit --report-name \"Mobile Unit Tests\"",
     "allure:open": "allure open allure-report/mobile-unit",
     "type-check": "tsc --noEmit",

@@ -10,8 +10,9 @@ const componentCoverageOptions = {
     'coverage/**/*',
   ],
   include: [
+    'app/**/*.{js,jsx,ts,tsx}',
     'core/**/*.{js,jsx,ts,tsx}',
-    'ui/**/*.{js,jsx,ts,tsx}',
+    'ui/web/**/*.{js,jsx,ts,tsx}',
   ],
 }
 
@@ -55,9 +56,14 @@ export default defineConfig({
 
       const coverageEnabled = config.env.codeCoverage === true || config.env.codeCoverage === 'true'
       if (coverageEnabled) {
+        // Cypress is the owner of browser-side instrumentation. Jest adds its
+        // own Istanbul plugin when --coverage is enabled, so do not use the
+        // generic test Babel environment for this process.
+        process.env.BABEL_ENV = 'cypress-coverage'
         config.env.codeCoverage = componentCoverageOptions
         require('@cypress/code-coverage/task')(on, config)
       } else {
+        process.env.BABEL_ENV = 'test'
         delete config.env.codeCoverage
       }
 
