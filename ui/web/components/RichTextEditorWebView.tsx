@@ -196,7 +196,7 @@ const RichTextEditorWebView = React.forwardRef<
   )
 
   return (
-    <div className="bg-background min-h-screen" onClick={() => editor?.commands.focus()}>
+    <div role="presentation" className="bg-background min-h-screen" onClick={() => editor?.commands.focus()}>
       <EditorContent
         editor={editor}
         className={`${NOTE_CONTENT_CLASS} min-h-screen px-6 py-4 [&_.tiptap]:min-h-[calc(100vh-2rem)] [&_.tiptap]:cursor-text`}

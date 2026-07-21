@@ -54,7 +54,7 @@ function normalizeWhitespace(value: string): string {
 }
 
 function stripTags(value: string): string {
-  return normalizeWhitespace(value.replaceAll(/<[^>]+>/g, " "))
+  return normalizeWhitespace(value.replaceAll(/<[^>]*>/g, " "))
 }
 
 function splitPlainTextParagraphs(value: string): string[] {
@@ -334,7 +334,7 @@ function extractBlocksFromHtml(html: string): IndexedBlock[] {
 }
 
 function splitIntoSentenceSegments(block: IndexedBlock): TextSegment[] {
-  const matches = Array.from(block.text.matchAll(/[^.!?]+(?:[.!?]+|$)/g))
+  const matches = Array.from(block.text.matchAll(/[^.!?]+[.!?]*/g))
   if (matches.length <= 1) {
     return [{ sectionHeading: block.sectionHeading, text: block.text, charOffset: block.charOffset }]
   }
