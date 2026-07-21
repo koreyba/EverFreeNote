@@ -13,28 +13,42 @@ const path = require('node:path')
 // engine selection. The fallback is safe because js-yaml's load/dump APIs are
 // the replacements for the old safeLoad/safeDump APIs.
 
-const packagePath = require.resolve('gray-matter/package.json')
-const packageInfo = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
-const supportedVersion = '4.0.3'
+function patchGrayMatter() {
+  let packagePath
+  try {
+    packagePath = require.resolve('gray-matter/package.json')
+  } catch (error) {
+    if (error?.code === 'MODULE_NOT_FOUND') {
+      console.log('gray-matter is not installed; skipping compatibility patch.')
+      return
+    }
+    throw error
+  }
 
-// Keep this guard: if ai-devkit or gray-matter is upgraded, the patch must be
-// reviewed rather than silently modifying an unknown third-party version.
-if (packageInfo.version !== supportedVersion) {
-  throw new Error(
-    `Unsupported gray-matter version ${packageInfo.version}; expected ${supportedVersion}. Review the compatibility patch.`,
-  )
+  const packageInfo = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
+  const supportedVersion = '4.0.3'
+
+  // Keep this guard: if ai-devkit or gray-matter is upgraded, the patch must
+  // be reviewed rather than silently modifying an unknown third-party version.
+  if (packageInfo.version !== supportedVersion) {
+    throw new Error(
+      `Unsupported gray-matter version ${packageInfo.version}; expected ${supportedVersion}. Review the compatibility patch.`,
+    )
+  }
+
+  const enginesPath = path.join(path.dirname(packagePath), 'lib', 'engines.js')
+  const source = fs.readFileSync(enginesPath, 'utf8')
+  const patched = source
+    .replace('yaml.safeLoad.bind(yaml)', '(yaml.safeLoad || yaml.load).bind(yaml)')
+    .replace('yaml.safeDump.bind(yaml)', '(yaml.safeDump || yaml.dump).bind(yaml)')
+
+  if (patched !== source) {
+    fs.writeFileSync(enginesPath, patched)
+    console.log(`Patched gray-matter ${supportedVersion} for modern js-yaml compatibility.`)
+  }
 }
 
-const enginesPath = path.join(path.dirname(packagePath), 'lib', 'engines.js')
-const source = fs.readFileSync(enginesPath, 'utf8')
-const patched = source
-  .replace('yaml.safeLoad.bind(yaml)', '(yaml.safeLoad || yaml.load).bind(yaml)')
-  .replace('yaml.safeDump.bind(yaml)', '(yaml.safeDump || yaml.dump).bind(yaml)')
-
-if (patched !== source) {
-  fs.writeFileSync(enginesPath, patched)
-  console.log(`Patched gray-matter ${supportedVersion} for modern js-yaml compatibility.`)
-}
+patchGrayMatter()
 
 // Removal condition:
 // delete this script and the package.json `postinstall` entry once ai-devkit
