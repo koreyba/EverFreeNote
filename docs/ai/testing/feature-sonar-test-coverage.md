@@ -14,7 +14,8 @@ application test cases.
 
 ## Unit Tests
 
-- [x] Full Jest unit coverage command succeeds: 53 suites and 488 tests.
+- [x] Full Jest coverage command succeeds with root unit and integration
+  projects: 55 suites and 508 tests.
 - [x] Jest emits a non-empty `coverage/jest/lcov.info` covering `app`, `core`,
   and `ui/web`.
 - [x] Existing unit test suites remain green.
@@ -86,6 +87,12 @@ cannot be completed solely in the local checkout.
 - Sonar workflow YAML and five-job dependency structure: passed.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
+
+The previous root coverage run discovered 53 suites and 488 tests while the
+coverage command selected only `unit-core` and `unit-web`. The current command
+also selects `integration-core`, intentionally adding its 2 suites and 20
+tests; all 55 suites and 508 tests pass. This count is synchronized with
+`feature-sonar-reliability.md`.
 
 ## Bug Tracking
 

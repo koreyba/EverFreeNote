@@ -11,7 +11,7 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 - [x] Milestone 1: Coverage producers emit independent deterministic LCOV files.
 - [x] Milestone 2: GitHub Actions preserves fast PR analysis and is configured
   to publish main coverage.
-- [x] Milestone 3: Documentation, validation, and rollout guidance are complete.
+- [ ] Milestone 3: Documentation, validation, and rollout guidance are complete.
 
 ## Task Breakdown
 
@@ -40,14 +40,17 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 - [x] Task 3.1: Document the SonarCloud Automatic Analysis migration sequence
   and required secret.
 - [x] Task 3.2: Record the Semgrep capability decision.
-- [x] Task 3.3: Validate YAML, DevKit docs, lint, report generation, and scanner
+- [ ] Task 3.3: Validate YAML, DevKit docs, lint, report generation, and scanner
   configuration without publishing an unrequested cloud analysis.
 - [x] Task 3.4: Perform implementation conformance and code review.
 
-Local validation is complete with the Cypress limitation recorded in the
-testing document. DevKit recognized all seven feature documents; its only
-failed required check is the intentionally retained branch name
-`fix-coverage-issue` instead of `feature-sonar-test-coverage`.
+The implementation validation is otherwise complete, with the Cypress
+limitation recorded in the testing document. DevKit recognized all seven
+feature documents, but its required branch-name check is still failed because
+the working branch is intentionally retained as `fix-coverage-issue` instead
+of `feature-sonar-test-coverage`. This is an accepted exception for the current
+checkout; Phase 3 remains incomplete until the feature lint is rerun on the
+expected branch or the exception is formally retired.
 
 ## Dependencies
 

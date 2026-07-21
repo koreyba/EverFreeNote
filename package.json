@@ -8,7 +8,7 @@
     "start": "next start",
     "postinstall": "node scripts/patch-gray-matter-compat.js",
     "test:unit": "jest --config jest.config.cjs --selectProjects unit-core unit-web --passWithNoTests",
-    "test:unit:coverage": "jest --config jest.config.cjs --selectProjects unit-core unit-web --coverage --runInBand",
+    "test:unit:coverage": "jest --config jest.config.cjs --selectProjects unit-core integration-core unit-web --coverage --runInBand",
     "test:unit:core": "jest --config jest.config.cjs --selectProjects unit-core",
     "test:unit:core:allure": "npm run test:unit:core; test_exit=$?; npm run allure:generate:core-unit; exit $test_exit",
     "test:integration:core": "jest --config jest.config.cjs --selectProjects integration-core",

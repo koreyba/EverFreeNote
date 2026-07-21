@@ -53,8 +53,9 @@ pull-request update.
 
 ## Success Criteria
 
-- A PR event runs one SonarQube Cloud project scan without invoking any coverage
-  command.
+- An eligible trusted PR event targeting `main`—opened, synchronized, or
+  reopened from the same repository and not Dependabot—runs one SonarQube Cloud
+  project scan without invoking any coverage command.
 - A push to `main` runs root Jest, Cypress, and mobile Jest coverage in parallel
   and runs Sonar only after all three jobs succeed.
 - Main-branch analysis imports `coverage/jest/lcov.info` and
