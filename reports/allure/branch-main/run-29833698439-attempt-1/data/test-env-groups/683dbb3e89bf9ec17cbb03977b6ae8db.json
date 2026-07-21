@@ -1,1 +1,0 @@
-{"id":"683dbb3e89bf9ec17cbb03977b6ae8db","fullName":"everfreenote:cypress/component/editor/RichTextEditorApplyMarkdown.cy.tsx#RichTextEditor — Apply as Markdown button markdown rendering strips XSS tags from forced markdown input","name":"strips XSS tags from forced markdown input","status":"passed","testResultsByEnv":{"default":"7102bae8d344eb305438211ca12885f8"}}
