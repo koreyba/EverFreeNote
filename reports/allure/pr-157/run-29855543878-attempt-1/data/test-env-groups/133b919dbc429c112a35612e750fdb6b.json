@@ -1,0 +1,1 @@
+{"id":"133b919dbc429c112a35612e750fdb6b","fullName":"everfreenote:cypress/component/features/SearchRobustness.cy.tsx#Search Robustness should handle queries that become empty after sanitization","name":"should handle queries that become empty after sanitization","status":"passed","testResultsByEnv":{"default":"ab662d416d8d271f9b55ed00b8cd3896"}}
