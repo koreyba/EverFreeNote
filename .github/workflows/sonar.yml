@@ -57,18 +57,27 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Run Jest coverage
+        id: run-jest-coverage
+        continue-on-error: true
         run: npm run test:unit:coverage
 
       - name: Verify Jest LCOV
+        id: verify-jest-lcov
+        if: always()
         run: test -s coverage/jest/lcov.info
 
       - name: Upload Jest coverage report
+        if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: jest-coverage-${{ github.run_id }}
           path: coverage/jest
           if-no-files-found: error
           retention-days: 14
+
+      - name: Fail Jest coverage job when tests or report failed
+        if: always() && (steps.run-jest-coverage.outcome != 'success' || steps.verify-jest-lcov.outcome != 'success')
+        run: exit 1
 
   component-coverage:
     name: Cypress component coverage
@@ -94,21 +103,31 @@ jobs:
         run: npx --no-install cypress install
 
       - name: Run Cypress component coverage
+        id: run-cypress-coverage
+        continue-on-error: true
         run: npm run test:component:coverage
 
       - name: Render Cypress component report
+        if: always()
         run: npm run coverage:component
 
       - name: Verify Cypress LCOV
+        id: verify-cypress-lcov
+        if: always()
         run: test -s coverage/component/lcov.info
 
       - name: Upload Cypress component coverage report
+        if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: component-coverage-${{ github.run_id }}
           path: coverage/component
           if-no-files-found: error
           retention-days: 14
+
+      - name: Fail Cypress coverage job when tests or report failed
+        if: always() && (steps.run-cypress-coverage.outcome != 'success' || steps.verify-cypress-lcov.outcome != 'success')
+        run: exit 1
 
   mobile-coverage:
     name: Mobile Jest coverage
@@ -136,18 +155,27 @@ jobs:
         run: npm --prefix ui/mobile ci --ignore-scripts
 
       - name: Run mobile Jest coverage
+        id: run-mobile-coverage
+        continue-on-error: true
         run: npm --prefix ui/mobile run test:coverage -- --ci
 
       - name: Verify mobile Jest LCOV
+        id: verify-mobile-lcov
+        if: always()
         run: test -s ui/mobile/coverage/lcov.info
 
       - name: Upload mobile Jest coverage report
+        if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: mobile-coverage-${{ github.run_id }}
           path: ui/mobile/coverage
           if-no-files-found: error
           retention-days: 14
+
+      - name: Fail mobile coverage job when tests or report failed
+        if: always() && (steps.run-mobile-coverage.outcome != 'success' || steps.verify-mobile-lcov.outcome != 'success')
+        run: exit 1
 
   sonarqube-main:
     name: SonarQube main analysis
