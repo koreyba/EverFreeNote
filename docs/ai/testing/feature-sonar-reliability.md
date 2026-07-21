@@ -54,7 +54,9 @@ description: Regression coverage and validation results for the July 2026 reliab
 - `npm run test:unit -- --runInBand`: passed, 53 suites and 487 tests.
 - Targeted Cypress component run: passed, 9 tests across the two affected specs.
 - `git diff --check`: passed.
-- Jest coverage collection is currently blocked by duplicate Istanbul instrumentation: `.babelrc` loads `babel-plugin-istanbul` for `test`, while Jest's Babel coverage provider injects the same plugin when `--coverage` is enabled. This is an existing test-infrastructure issue; normal test execution is unaffected.
+- Jest coverage uses `npm run test:unit:coverage` and writes an independent report to `coverage/jest`.
+- Cypress component coverage uses `npm run test:component:coverage` followed by `npm run coverage:component` and writes an independent report to `coverage/component`.
+- Babel instrumentation is owned by the runner: Jest injects Istanbul for `--coverage`, while Cypress uses the dedicated `cypress-coverage` Babel environment. These two root-project percentages are intentionally reported separately; mobile Jest is the third independent producer in the Sonar coverage architecture.
 
 ## Manual Testing
 

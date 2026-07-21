@@ -48,6 +48,15 @@ const coreIntegrationAllureOptions = {
 }
 
 module.exports = {
+  collectCoverageFrom: [
+    'app/**/*.{js,jsx,ts,tsx}',
+    'core/**/*.{js,jsx,ts,tsx}',
+    'ui/web/**/*.{js,jsx,ts,tsx}',
+    '!**/*.d.ts',
+    '!**/tests/**',
+  ],
+  coverageDirectory: '<rootDir>/coverage/jest',
+  coverageReporters: ['json', 'text', 'lcov', 'html'],
   projects: [
     {
       displayName: 'unit-core',
