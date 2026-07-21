@@ -1,0 +1,1 @@
+{"id":"fa8d65dd5cd5ed2fc4cbaf5ed143cc54","fullName":"everfreenote-mobile:tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText empty input returns empty string for empty input","name":"returns empty string for empty input","status":"passed","testResultsByEnv":{"default":"5d52f40ccc8e604f9f93375971b01b1e"}}
