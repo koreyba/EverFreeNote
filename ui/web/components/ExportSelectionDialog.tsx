@@ -199,7 +199,7 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
             </div>
           ) : (
             <div className="flex-1 sm:flex-none sm:h-[55vh] rounded-2xl border border-border/40 p-2 min-h-0 overflow-hidden flex flex-col">
-              <div onScroll={handleScroll} className="flex-1 overflow-y-auto pr-1 space-y-2">
+              <div onScroll={handleScroll} data-testid="export-selection-scroll-container" className="flex-1 overflow-y-auto pr-1 space-y-2">
                 {filteredNotes.map((note) => {
                   const isSelected = selectAll ? !deselectedIds.has(note.id) : selectedIds.has(note.id)
                   return (
