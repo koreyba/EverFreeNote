@@ -1,0 +1,1 @@
+{"id":"47a5ae8d252c91e83629ba20ba25742c","fullName":"everfreenote:core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste filters unsafe URLs using regex when DOMParser is unavailable","name":"filters unsafe URLs using regex when DOMParser is unavailable","status":"passed","testResultsByEnv":{"default":"4cfb11d1d801a9c1bf3803047cea53f7"}}
