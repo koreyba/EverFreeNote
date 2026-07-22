@@ -3,6 +3,36 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "component",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web Component",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-159/run-29932197897-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-159/run-29932197897-attempt-1/",
+    "runId": "29932197897",
+    "runAttempt": "1",
+    "prNumber": "159",
+    "ref": "feature-increase-jest-coverage",
+    "sha": "2c039d8dfac12683c66ec9ccca41c9e5de3cfdc6",
+    "outcome": "success",
+    "previewUrl": "https://5649b714.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #159",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-22T15:23:43.620Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "component"
     ],
     "suiteLabels": [
@@ -665,42 +695,6 @@
     "scopeLabel": "PR #158",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-22T07:00:03.881Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-158/run-29898062151-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-158/run-29898062151-attempt-1/",
-    "runId": "29898062151",
-    "runAttempt": "1",
-    "prNumber": "158",
-    "ref": "feature-increase-jest-coverage",
-    "sha": "79fbde716aaccb324633b046678f0586e8e6f07c",
-    "outcome": "success",
-    "previewUrl": "https://9dd55fe7.everfreenote.pages.dev",
-    "e2eRef": "master",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #158",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-22T06:56:50.223Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
