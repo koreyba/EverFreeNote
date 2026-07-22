@@ -6,6 +6,42 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/pr-160/run-29931385311-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-160/run-29931385311-attempt-1/",
+    "runId": "29931385311",
+    "runAttempt": "1",
+    "prNumber": "160",
+    "ref": "feature-tsconfig-setup",
+    "sha": "b59b1c4d1ad11a2b53b5a3f8e6d52f0ab06cdc09",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #160",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-22T15:10:06.282Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit"
     ],
     "suiteLabels": [
@@ -675,40 +711,6 @@
     "scopeLabel": "PR #158",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-22T06:35:46.035Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/allure/pr-158/run-29896852785-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-158/run-29896852785-attempt-1/",
-    "runId": "29896852785",
-    "runAttempt": "1",
-    "prNumber": "158",
-    "ref": "feature-increase-jest-coverage",
-    "sha": "d88406c6aa53fcd5ea2bd52a3ee098727f7ca9d6",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #158",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-22T06:31:19.574Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
