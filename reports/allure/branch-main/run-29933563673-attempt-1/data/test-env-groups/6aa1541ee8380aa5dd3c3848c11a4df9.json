@@ -1,0 +1,1 @@
+{"id":"6aa1541ee8380aa5dd3c3848c11a4df9","fullName":"everfreenote:core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste falls back to plain text when sanitization throws","name":"falls back to plain text when sanitization throws","status":"passed","testResultsByEnv":{"default":"320ca3ae24f3e44efe2f073f039ea0e4"}}
