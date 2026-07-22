@@ -1,0 +1,1 @@
+{"id":"e618cffa656e22c3bbeb3184cd62d484","fullName":"everfreenote:ui/web/tests/unit/hooks/useRagStatus.test.tsx#useRagStatus returns the disabled state without querying when note or user is absent","name":"returns the disabled state without querying when note or user is absent","status":"passed","testResultsByEnv":{"default":"a63149b6d6883fb6d90551a9624c1363"}}
