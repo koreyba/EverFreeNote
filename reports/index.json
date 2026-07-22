@@ -6,6 +6,40 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
+    "path": "reports/allure/pr-158/run-29895615925-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-158/run-29895615925-attempt-1/",
+    "runId": "29895615925",
+    "runAttempt": "1",
+    "prNumber": "158",
+    "ref": "feature-increase-jest-coverage",
+    "sha": "f1aee75bd17a996e1edfceb4204ae4fbb3e1f8af",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #158",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-22T06:06:58.759Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit",
       "component",
       "e2e"
@@ -673,40 +707,6 @@
     "scopeLabel": "PR #155",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-21T17:26:59.138Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/allure/pr-155/run-29852486383-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-155/run-29852486383-attempt-1/",
-    "runId": "29852486383",
-    "runAttempt": "1",
-    "prNumber": "155",
-    "ref": "fix-coverage-issue",
-    "sha": "2e7065a89914ce243e860bf5c6ce83731cde8c91",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #155",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-21T17:22:57.817Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
