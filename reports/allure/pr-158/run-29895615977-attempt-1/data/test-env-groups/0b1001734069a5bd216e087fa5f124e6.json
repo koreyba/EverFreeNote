@@ -1,0 +1,1 @@
+{"id":"0b1001734069a5bd216e087fa5f124e6","fullName":"everfreenote:core/tests/unit/core-utils-wordpress.test.ts#core/utils/wordpress transliterates cyrillic text into a deterministic latin slug","name":"transliterates cyrillic text into a deterministic latin slug","status":"passed","testResultsByEnv":{"default":"ca6bba63667050b7fb5da87841760f36"}}
