@@ -1,0 +1,28 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],
+    "typeRoots": [
+      "../../../core/types",
+      "../../../extensions",
+      "../../../node_modules/@types"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../../../*"],
+      "@ui/web/*": ["../*"],
+      "@core/*": ["../../../core/*"],
+      "@/supabase/*": ["../../../supabase/*"],
+      "@/components/*": ["../components/*"],
+      "@/types/*": ["../../../core/types/*"]
+    }
+  },
+  "include": [
+    "../../../core/types/**/*.d.ts",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

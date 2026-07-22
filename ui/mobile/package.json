@@ -29,7 +29,7 @@
     "test:coverage": "jest --coverage --runInBand",
     "allure:generate": "allure generate allure-results/mobile-unit --output allure-report/mobile-unit --report-name \"Mobile Unit Tests\"",
     "allure:open": "allure open allure-report/mobile-unit",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit && tsc -p tests/tsconfig.json --noEmit",
     "lint": "eslint . --max-warnings=0",
     "validate": "npm run type-check && npm run lint"
   },

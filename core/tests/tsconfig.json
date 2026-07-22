@@ -1,0 +1,20 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["../*"],
+      "@/supabase/*": ["../../supabase/*"],
+      "@/types/*": ["../types/*"],
+      "@/*": ["../../*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

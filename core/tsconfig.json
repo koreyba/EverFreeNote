@@ -1,0 +1,28 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": [
+        "./*"
+      ],
+      "@/supabase/*": [
+        "../supabase/*"
+      ],
+      "@/types/*": [
+        "./types/*"
+      ],
+      "@/*": [
+        "../*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "tests",
+    "node_modules"
+  ]
+}
