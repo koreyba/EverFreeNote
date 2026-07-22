@@ -42,7 +42,7 @@ describe('OfflineSyncManager', () => {
   it('marks failed items and stops when no item progresses', async () => {
     const storage = new MemoryStorage()
     storage.queue = [item('1')]
-    const manager = new OfflineSyncManager(storage, jest.fn().mockRejectedValue(new Error('offline'))) 
+    const manager = new OfflineSyncManager(storage, jest.fn().mockRejectedValue(new Error('offline')))
     await manager.drainQueue()
     expect(storage.queue[0]).toMatchObject({ status: 'failed', lastError: 'offline' })
 

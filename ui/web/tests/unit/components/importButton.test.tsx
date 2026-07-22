@@ -61,7 +61,7 @@ describe('ImportButton', () => {
   const mockResolveExistingTitles = jest.mocked(resolveExistingTitlesForImport)
   const mockToastError = jest.mocked(toast.error)
   const mockToastWarning = jest.mocked(toast.warning)
-  const mockGetItem = jest.mocked(browser.localStorage.getItem)
+  const mockGetItem = browser.localStorage.getItem as unknown as jest.MockedFunction<(key: string) => string | null>
   const mockSetItem = jest.mocked(browser.localStorage.setItem)
   const mockRemoveItem = jest.mocked(browser.localStorage.removeItem)
 
@@ -82,7 +82,7 @@ describe('ImportButton', () => {
   })
 
   it('reports and clears an interrupted import state on mount', () => {
-    mockGetItem.mockReturnValueOnce(JSON.stringify({ successCount: 3 }))
+    mockGetItem.mockImplementationOnce(() => JSON.stringify({ successCount: 3 }))
     render(<ImportButton />)
 
     expect(mockToastWarning).toHaveBeenCalledWith(

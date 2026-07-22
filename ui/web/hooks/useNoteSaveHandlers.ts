@@ -12,17 +12,19 @@ import type { useNoteSelection } from './useNoteSelection'
 type UseNoteSaveHandlersParams = {
   user: { id: string } | null
   isOffline: boolean
-  offlineCache: ReturnType<typeof useNoteSync>['offlineCache']
+  offlineCache: Pick<ReturnType<typeof useNoteSync>['offlineCache'], 'saveNote'>
   enqueueMutation: ReturnType<typeof useNoteSync>['enqueueMutation']
-  offlineQueueRef: ReturnType<typeof useNoteSync>['offlineQueueRef']
+  offlineQueueRef: {
+    current: Pick<ReturnType<typeof useNoteSync>['offlineQueueRef']['current'], 'getQueue'>
+  }
   setOfflineOverlay: ReturnType<typeof useNoteSync>['setOfflineOverlay']
   setPendingCount: ReturnType<typeof useNoteSync>['setPendingCount']
   setFailedCount: ReturnType<typeof useNoteSync>['setFailedCount']
   setLastSavedAt: ReturnType<typeof useNoteSync>['setLastSavedAt']
-  createNoteMutation: ReturnType<typeof useCreateNote>
-  updateNoteMutation: ReturnType<typeof useUpdateNote>
-  deleteNoteMutation: ReturnType<typeof useDeleteNote>
-  removeTagMutation: ReturnType<typeof useRemoveTag>
+  createNoteMutation: Pick<ReturnType<typeof useCreateNote>, 'mutateAsync'>
+  updateNoteMutation: Pick<ReturnType<typeof useUpdateNote>, 'mutateAsync'>
+  deleteNoteMutation: Pick<ReturnType<typeof useDeleteNote>, 'mutateAsync'>
+  removeTagMutation: Pick<ReturnType<typeof useRemoveTag>, 'mutateAsync'>
   selectedNote: NoteViewModel | null
   setSelectedNote: ReturnType<typeof useNoteSelection>['setSelectedNote']
   setIsEditing: ReturnType<typeof useNoteSelection>['setIsEditing']

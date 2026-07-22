@@ -7,6 +7,7 @@ import { isRagDebugChunksEnabled } from '@ui/web/components/features/settings/Ra
 import { logRagIndexDebugChunks } from '@core/rag/debugLog'
 import { toast } from 'sonner'
 import { DropdownMenu, DropdownMenuContent } from '@/components/ui/dropdown-menu'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
   useSupabase: jest.fn(),
@@ -37,13 +38,29 @@ const mockedDebugEnabled = jest.mocked(isRagDebugChunksEnabled)
 const mockedLogDebugChunks = jest.mocked(logRagIndexDebugChunks)
 const mockedToast = jest.mocked(toast)
 
-const createInvoke = (responses: Array<{ data: unknown; error: Error | null }>) => {
-  const invoke = jest.fn().mockImplementation(async () => responses.shift() ?? { data: null, error: null })
-  mockedUseSupabase.mockReturnValue({ supabase: { functions: { invoke } } } as ReturnType<typeof useSupabase>)
+type InvokeResponse = Awaited<ReturnType<SupabaseClient['functions']['invoke']>>
+const supabase = createClient('https://example.supabase.co', 'test-key')
+const functions = supabase.functions
+Object.defineProperty(supabase, 'functions', { value: functions })
+
+const createInvoke = (responses: InvokeResponse[]) => {
+  const invoke = jest.spyOn(functions, 'invoke')
+  invoke.mockImplementation(async () => responses.shift() ?? { data: null, error: null })
+  mockedUseSupabase.mockReturnValue({ supabase, user: null, loading: false })
   return invoke
 }
 
-const setStatus = ({ chunkCount = 0, indexedAt = null, isLoading = false, refresh = jest.fn() } = {}) => {
+const setStatus = ({
+  chunkCount = 0,
+  indexedAt = null,
+  isLoading = false,
+  refresh = jest.fn(),
+}: {
+  chunkCount?: number
+  indexedAt?: string | null
+  isLoading?: boolean
+  refresh?: jest.Mock
+} = {}) => {
   mockedUseRagStatus.mockReturnValue({ chunkCount, indexedAt, isLoading, refresh })
   return refresh
 }
@@ -187,10 +204,10 @@ describe('RagIndexPanel', () => {
   })
 
   it('renders the menu variant and keeps index requests open until they settle', async () => {
-    let resolveInvoke: ((value: { data: unknown; error: null }) => void) | undefined
-    const pending = new Promise<{ data: unknown; error: null }>((resolve) => { resolveInvoke = resolve })
-    const invoke = jest.fn().mockReturnValue(pending)
-    mockedUseSupabase.mockReturnValue({ supabase: { functions: { invoke } } } as ReturnType<typeof useSupabase>)
+    let resolveInvoke: ((value: InvokeResponse) => void) | undefined
+    const pending = new Promise<InvokeResponse>((resolve) => { resolveInvoke = resolve })
+    jest.spyOn(functions, 'invoke').mockReturnValue(pending)
+    mockedUseSupabase.mockReturnValue({ supabase, user: null, loading: false })
     const onMenuClose = jest.fn()
     setStatus({ chunkCount: 1 })
 

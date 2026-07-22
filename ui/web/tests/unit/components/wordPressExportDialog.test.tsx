@@ -140,7 +140,7 @@ describe('WordPressExportDialog', () => {
   })
 
   it('shows bridge and generic export failures and clears submitting state', async () => {
-    mockExportNote.mockRejectedValueOnce(new WordPressBridgeError('Bridge rejected export'))
+    mockExportNote.mockRejectedValueOnce(new WordPressBridgeError('Bridge rejected export', 'bridge_error'))
     renderDialog()
     await waitFor(() => expect(screen.getByLabelText('Travel')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Export' }))

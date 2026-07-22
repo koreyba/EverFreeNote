@@ -8,6 +8,8 @@ import { placeCaretFromCoords } from '@core/utils/prosemirrorCaret'
 import { scrollEditorToChunk } from '@ui/web/components/chunkFocusUtils'
 import { executeEditorCommand } from '@ui/web/components/executeEditorCommand'
 import type { EditorMenuBarProps } from '@ui/web/components/EditorMenuBar'
+import type { PastePayload, PasteResult } from '@core/services/smartPaste'
+import type { NoteClipboardPayload } from '@core/services/noteClipboard'
 
 type UseEditorConfig = Parameters<typeof import('@tiptap/react').useEditor>[0]
 
@@ -94,11 +96,24 @@ describe('RichTextEditor additional observable behavior', () => {
     capturedMenuBarProps = null
     mockEditor = null
     localStorage.clear()
-    jest.mocked(SmartPasteService.buildPayload).mockReturnValue({ html: '<p>source</p>', text: 'source' })
-    jest.mocked(SmartPasteService.resolvePaste).mockReturnValue({ html: '<p>resolved</p>', text: 'resolved' })
-    jest.mocked(NoteClipboardService.buildPayload).mockReturnValue({ html: '<p>marked</p>', text: 'Selected' })
+    const detection = { type: 'html' as const, confidence: 1, reasons: [], warnings: [] }
+    jest.mocked(SmartPasteService.buildPayload).mockReturnValue({
+      html: '<p>source</p>',
+      text: 'source',
+      types: ['text/html', 'text/plain'],
+    } satisfies PastePayload)
+    jest.mocked(SmartPasteService.resolvePaste).mockReturnValue({
+      html: '<p>resolved</p>',
+      type: 'html',
+      warnings: [],
+      detection,
+    } satisfies PasteResult)
+    jest.mocked(NoteClipboardService.buildPayload).mockReturnValue({
+      html: '<p>marked</p>',
+      text: 'Selected',
+    } satisfies NoteClipboardPayload)
     jest.mocked(scrollEditorToChunk).mockReturnValue(true)
-    jest.mocked(placeCaretFromCoords).mockReturnValue({ handled: true })
+    jest.mocked(placeCaretFromCoords).mockReturnValue({ handled: true, reason: 'posAtCoords' })
   })
 
   it('handles external paste, suppresses the duplicate update, then allows the next update', () => {
@@ -107,11 +122,15 @@ describe('RichTextEditor additional observable behavior', () => {
     render(<RichTextEditor initialContent="<p>Initial</p>" onContentChange={onContentChange} />)
 
     const event = clipboardEvent({ html: '<p>source</p>', text: 'source' })
-    const handled = capturedConfig?.editorProps?.handlePaste?.(null, event)
+    const handled = capturedConfig?.editorProps?.handlePaste?.(null as never, event, undefined as never)
 
     expect(handled).toBe(true)
     expect(event.preventDefault).toHaveBeenCalledTimes(1)
-    expect(SmartPasteService.resolvePaste).toHaveBeenCalledWith({ html: '<p>source</p>', text: 'source' })
+    expect(SmartPasteService.resolvePaste).toHaveBeenCalledWith({
+      html: '<p>source</p>',
+      text: 'source',
+      types: ['text/html', 'text/plain'],
+    })
     expect(mockEditor.__chain.focus).toHaveBeenCalled()
     expect(mockEditor.__chain.insertContent).toHaveBeenCalledWith('<p>resolved</p>')
     expect(onContentChange).toHaveBeenCalledTimes(1)
@@ -128,13 +147,13 @@ describe('RichTextEditor additional observable behavior', () => {
     render(<RichTextEditor initialContent="<p>Initial</p>" onContentChange={onContentChange} />)
 
     const internal = clipboardEvent({ html: '<p data-pm-slice="1 1 []">internal</p>' })
-    expect(capturedConfig?.editorProps?.handlePaste?.(null, internal)).toBe(false)
+    expect(capturedConfig?.editorProps?.handlePaste?.(null as never, internal, undefined as never)).toBe(false)
     expect(internal.preventDefault).not.toHaveBeenCalled()
     expect(SmartPasteService.buildPayload).not.toHaveBeenCalled()
 
-    jest.mocked(SmartPasteService.buildPayload).mockReturnValueOnce({ html: '', text: '' })
+    jest.mocked(SmartPasteService.buildPayload).mockReturnValueOnce({ html: '', text: '', types: [] })
     const empty = clipboardEvent({ text: 'ignored' })
-    expect(capturedConfig?.editorProps?.handlePaste?.(null, empty)).toBe(false)
+    expect(capturedConfig?.editorProps?.handlePaste?.(null as never, empty, undefined as never)).toBe(false)
     expect(empty.preventDefault).not.toHaveBeenCalled()
     expect(onContentChange).not.toHaveBeenCalled()
   })

@@ -158,6 +158,7 @@ jest.mock('@/components/features/notes/NoteEditor', () => {
   const ReactModule = jest.requireActual<typeof import('react')>('react')
   const MockNoteEditor = ReactModule.forwardRef<NoteEditorRef, MockNoteEditorProps>((props, ref) => {
     ReactModule.useImperativeHandle(ref, () => ({ flushPendingSave: jest.fn().mockResolvedValue(undefined) }))
+    const pendingChunkFocus = props.pendingChunkFocus
     return (
       <div data-testid="mock-note-editor">
         <span>{props.initialTitle}</span>
@@ -166,15 +167,15 @@ jest.mock('@/components/features/notes/NoteEditor', () => {
         <button type="button" onClick={() => props.onSave()}>Save edited note</button>
         <button type="button" onClick={() => props.onAutoSave({ title: 'Autosaved' })}>Autosave edited note</button>
         <button type="button" onClick={props.onBack}>Back from editor</button>
-        {props.pendingChunkFocus ? (
+        {pendingChunkFocus ? (
           <button
             type="button"
-            onClick={() => props.onPendingChunkFocusApplied(props.pendingChunkFocus.requestId)}
+            onClick={() => props.onPendingChunkFocusApplied(pendingChunkFocus.requestId)}
           >
             Apply pending focus
           </button>
         ) : null}
-        <span>{props.pendingChunkFocus ? 'Pending focus' : 'No pending focus'}</span>
+        <span>{pendingChunkFocus ? 'Pending focus' : 'No pending focus'}</span>
       </div>
     )
   })

@@ -10,10 +10,10 @@ type UseNoteBulkActionsParams = {
   selectedNoteIds: Set<string>
   isOffline: boolean
   enqueueBatchAndDrainIfOnline: ReturnType<typeof useNoteSync>['enqueueBatchAndDrainIfOnline']
-  offlineCache: ReturnType<typeof useNoteSync>['offlineCache']
+  offlineCache: Pick<ReturnType<typeof useNoteSync>['offlineCache'], 'saveNote'>
   setOfflineOverlay: ReturnType<typeof useNoteSync>['setOfflineOverlay']
   setPendingCount: ReturnType<typeof useNoteSync>['setPendingCount']
-  deleteNoteMutation: ReturnType<typeof useDeleteNote>
+  deleteNoteMutation: Pick<ReturnType<typeof useDeleteNote>, 'mutateAsync'>
   exitSelectionMode: ReturnType<typeof useNoteSelection>['exitSelectionMode']
   setBulkDeleting: ReturnType<typeof useNoteSelection>['setBulkDeleting']
   setSelectedNote: ReturnType<typeof useNoteSelection>['setSelectedNote']

@@ -94,7 +94,7 @@ describe('useNoteSearch', () => {
 
   it('keeps short and unauthenticated searches disabled and does not show FTS results', () => {
     const { result, rerender } = renderHook(({ userId }: { userId: string | undefined }) => useNoteSearch(userId), {
-      initialProps: { userId: undefined },
+      initialProps: { userId: undefined as string | undefined },
     })
 
     act(() => result.current.handleSearch('ab'))

@@ -3,6 +3,10 @@ import { toast } from 'sonner'
 import { useNoteSaveHandlers } from '@ui/web/hooks/useNoteSaveHandlers'
 import type { NoteViewModel } from '@core/types/domain'
 
+type SaveHandlersParams = Parameters<typeof useNoteSaveHandlers>[0]
+type SaveHandlersOverrides = Partial<SaveHandlersParams>
+type SelectedNoteState = Parameters<SaveHandlersParams['setSelectedNote']>[0]
+
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 jest.mock('uuid', () => ({ v4: () => 'generated-note-id' }))
 
@@ -17,25 +21,21 @@ const makeNote = (overrides: Partial<NoteViewModel> = {}): NoteViewModel => ({
   ...overrides,
 })
 
-function setup(overrides: Record<string, unknown> = {}) {
+function setup(overrides: SaveHandlersOverrides = {}) {
   const selectedNote = overrides.selectedNote !== undefined
-    ? overrides.selectedNote as NoteViewModel | null
+    ? overrides.selectedNote
     : makeNote()
-  const selectedNoteRef = (overrides.selectedNoteRef as { current: NoteViewModel | null } | undefined) ?? {
-    current: selectedNote,
-  }
-  const setSelectedNote = jest.fn((value: unknown) => {
+  const selectedNoteRef = overrides.selectedNoteRef ?? { current: selectedNote }
+  const setSelectedNote = jest.fn<ReturnType<SaveHandlersParams['setSelectedNote']>, Parameters<SaveHandlersParams['setSelectedNote']>>((value) => {
     selectedNoteRef.current = typeof value === 'function'
-      ? (value as (previous: NoteViewModel | null) => NoteViewModel | null)(selectedNoteRef.current)
-      : value as NoteViewModel | null
+      ? value(selectedNoteRef.current)
+      : value
   })
-  const defaults = {
+  const defaults: SaveHandlersParams = {
     user: { id: 'user-1' },
     isOffline: false,
     offlineCache: {
       saveNote: jest.fn().mockResolvedValue(undefined),
-      loadNotes: jest.fn(),
-      deleteNote: jest.fn().mockResolvedValue(undefined),
     },
     enqueueMutation: jest.fn().mockResolvedValue(undefined),
     offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } },
@@ -58,10 +58,11 @@ function setup(overrides: Record<string, unknown> = {}) {
     selectedNoteRef,
     ...overrides,
   }
+  const params: SaveHandlersParams = { ...defaults, setSelectedNote, selectedNoteRef }
   return {
-    params: { ...defaults, setSelectedNote, selectedNoteRef } as never,
-    ...renderHook(() => useNoteSaveHandlers({ ...defaults, setSelectedNote, selectedNoteRef } as never),
-    ),
+    params,
+    setSelectedNote,
+    ...renderHook(() => useNoteSaveHandlers(params)),
   }
 }
 
@@ -153,7 +154,7 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
 
   it('queues an offline deletion and closes the confirmation state', async () => {
     const note = makeNote()
-    const { result, params } = setup({
+    const { result, params, setSelectedNote } = setup({
       isOffline: true,
       selectedNote: note,
       noteToDelete: note,
@@ -174,9 +175,10 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
       status: 'pending',
     }))
     expect(toast.success).toHaveBeenCalledWith('Deletion queued offline')
-    const clearSelection = params.setSelectedNote.mock.calls
+    const setSelectedNoteCalls = setSelectedNote.mock.calls
+    const clearSelection = setSelectedNoteCalls
       .map(([value]) => value)
-      .find((value) => typeof value === 'function') as ((note: NoteViewModel | null) => NoteViewModel | null) | undefined
+      .find((value): value is Exclude<SelectedNoteState, null | NoteViewModel> => typeof value === 'function')
     expect(clearSelection?.(note)).toBeNull()
     expect(params.setIsEditing).toHaveBeenCalledWith(false)
     expect(params.setDeleteDialogOpen).toHaveBeenCalledWith(false)

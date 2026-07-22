@@ -3,6 +3,7 @@ import { act, render } from '@testing-library/react'
 import RichTextEditorWebView from '@ui/web/components/RichTextEditorWebView'
 import { SmartPasteService } from '@core/services/smartPaste'
 import { placeCaretFromCoords } from '@core/utils/prosemirrorCaret'
+import type { PastePayload, PasteResult } from '@core/services/smartPaste'
 
 type UseEditorConfig = Parameters<typeof import('@tiptap/react').useEditor>[0]
 
@@ -58,9 +59,19 @@ describe('RichTextEditorWebView additional observable behavior', () => {
     jest.clearAllMocks()
     capturedConfig = null
     mockEditor = null
-    jest.mocked(SmartPasteService.buildPayload).mockReturnValue({ html: '<p>source</p>', text: 'source' })
-    jest.mocked(SmartPasteService.resolvePaste).mockReturnValue({ html: '<p>resolved</p>', text: 'resolved' })
-    jest.mocked(placeCaretFromCoords).mockReturnValue({ handled: true })
+    const detection = { type: 'html' as const, confidence: 1, reasons: [], warnings: [] }
+    jest.mocked(SmartPasteService.buildPayload).mockReturnValue({
+      html: '<p>source</p>',
+      text: 'source',
+      types: ['text/html', 'text/plain'],
+    } satisfies PastePayload)
+    jest.mocked(SmartPasteService.resolvePaste).mockReturnValue({
+      html: '<p>resolved</p>',
+      type: 'html',
+      warnings: [],
+      detection,
+    } satisfies PasteResult)
+    jest.mocked(placeCaretFromCoords).mockReturnValue({ handled: true, reason: 'posAtCoords' })
   })
 
   it('handles external paste and suppresses only the following editor update', () => {
@@ -69,7 +80,7 @@ describe('RichTextEditorWebView additional observable behavior', () => {
     render(<RichTextEditorWebView initialContent="<p>Initial</p>" onContentChange={onContentChange} />)
 
     const event = clipboardEvent({ html: '<p>source</p>', text: 'source' })
-    expect(capturedConfig?.editorProps?.handlePaste?.(null, event)).toBe(true)
+    expect(capturedConfig?.editorProps?.handlePaste?.(null as never, event, undefined as never)).toBe(true)
     expect(event.preventDefault).toHaveBeenCalled()
     expect(mockEditor.__chain.insertContent).toHaveBeenCalledWith('<p>resolved</p>')
     expect(onContentChange).toHaveBeenCalledTimes(1)
@@ -84,20 +95,20 @@ describe('RichTextEditorWebView additional observable behavior', () => {
     const noEditorChange = jest.fn()
     const { unmount } = render(<RichTextEditorWebView initialContent="<p>Initial</p>" onContentChange={noEditorChange} />)
     const noEditorEvent = clipboardEvent({ text: 'ignored' })
-    expect(capturedConfig?.editorProps?.handlePaste?.(null, noEditorEvent)).toBe(false)
+    expect(capturedConfig?.editorProps?.handlePaste?.(null as never, noEditorEvent, undefined as never)).toBe(false)
     expect(noEditorEvent.preventDefault).not.toHaveBeenCalled()
     unmount()
 
     mockEditor = createMockEditor()
-    jest.mocked(SmartPasteService.buildPayload).mockReturnValueOnce({ html: '', text: '' })
+    jest.mocked(SmartPasteService.buildPayload).mockReturnValueOnce({ html: '', text: '', types: [] })
     const emptyEvent = clipboardEvent({ text: 'ignored' })
-    expect(capturedConfig?.editorProps?.handlePaste?.(null, emptyEvent)).toBe(false)
+    expect(capturedConfig?.editorProps?.handlePaste?.(null as never, emptyEvent, undefined as never)).toBe(false)
 
     render(<RichTextEditorWebView initialContent="<p>Initial</p>" />)
     const contentNode = document.createElement('span')
     mockEditor.view.dom.appendChild(contentNode)
     const contentClick = { target: contentNode, clientX: 4, clientY: 8 } as unknown as MouseEvent
-    expect(capturedConfig?.editorProps?.handleClick?.(mockEditor.view, 0, contentClick)).toBe(false)
+    expect(capturedConfig?.editorProps?.handleClick?.(mockEditor.view as never, 0, contentClick)).toBe(false)
     expect(placeCaretFromCoords).not.toHaveBeenCalled()
   })
 
@@ -106,7 +117,7 @@ describe('RichTextEditorWebView additional observable behavior', () => {
     render(<RichTextEditorWebView initialContent="<p>Initial</p>" />)
     const backgroundClick = { target: mockEditor.view.dom, clientX: 12, clientY: 20 } as unknown as MouseEvent
 
-    expect(capturedConfig?.editorProps?.handleClick?.(mockEditor.view, 0, backgroundClick)).toBe(true)
+    expect(capturedConfig?.editorProps?.handleClick?.(mockEditor.view as never, 0, backgroundClick)).toBe(true)
     expect(placeCaretFromCoords).toHaveBeenCalledWith(mockEditor.view, 12, 20)
   })
 
@@ -123,8 +134,8 @@ describe('RichTextEditorWebView additional observable behavior', () => {
     act(() => capturedConfig?.onCreate?.({ editor: mockEditor } as never))
     act(() => capturedConfig?.onTransaction?.({ editor: mockEditor } as never))
     act(() => capturedConfig?.onSelectionUpdate?.({ editor: mockEditor } as never))
-    act(() => capturedConfig?.onFocus?.())
-    act(() => capturedConfig?.onBlur?.())
+    act(() => capturedConfig?.onFocus?.({ editor: mockEditor } as never))
+    act(() => capturedConfig?.onBlur?.({ editor: mockEditor } as never))
 
     expect(callbacks.onHistoryStateChange).toHaveBeenCalledWith({ canUndo: true, canRedo: false })
     expect(callbacks.onSelectionChange).toHaveBeenCalledWith(true)

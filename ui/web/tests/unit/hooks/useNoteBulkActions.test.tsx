@@ -18,9 +18,11 @@ const note = (id: string): NoteViewModel => ({
   updated_at: '2026-01-01T00:00:00Z',
 })
 
-const makeParams = (overrides: Record<string, unknown> = {}) => {
+type BulkActionParams = Parameters<typeof useNoteBulkActions>[0]
+
+const makeParams = (overrides: Partial<BulkActionParams> = {}) => {
   const queryClient = new QueryClient()
-  const params = {
+  const params: BulkActionParams = {
     selectedNoteIds: new Set<string>(),
     isOffline: false,
     enqueueBatchAndDrainIfOnline: jest.fn().mockResolvedValue(undefined),
@@ -36,7 +38,7 @@ const makeParams = (overrides: Record<string, unknown> = {}) => {
     selectAllVisibleCallback: jest.fn(),
     ...overrides,
   }
-  return { params: params as Parameters<typeof useNoteBulkActions>[0], queryClient }
+  return { params, queryClient }
 }
 
 describe('useNoteBulkActions', () => {
