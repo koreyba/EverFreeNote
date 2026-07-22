@@ -1,1 +1,0 @@
-{"id":"fc9261a31d1a16bc7be1644d64fd6cdb","fullName":"everfreenote-mobile:tests/integration/noteEditorScreen.test.tsx#NoteEditorScreen - Delete Functionality Delete error handling navigates back when API fails but fallback succeeds","name":"navigates back when API fails but fallback succeeds","status":"passed","testResultsByEnv":{"default":"251d6d8e3332d7455b22fbd92c9f52e5"}}
