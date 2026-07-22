@@ -29,7 +29,7 @@ describe('note snapshot additional branches', () => {
 
   it('selects the latest sparse candidate while preserving identity and stable ties', () => {
     const invalid = { id: 'invalid', updated_at: 'bad' }
-    const missing = { id: 'missing' }
+    const missing = { id: 'missing', updated_at: undefined }
     const latest = { id: 'latest', updated_at: '2026-02-01T00:00:00Z' }
     const sparseCandidates = [null, undefined, invalid, missing, latest]
 
@@ -72,7 +72,7 @@ describe('note snapshot additional branches', () => {
 
     expect(emptyOverride).not.toBe(base)
     expect(emptyOverride).toEqual(base)
-    expect(mergeNoteFields(base, undefined)).toBe(base)
+    expect(mergeNoteFields(base, undefined as never)).toBe(base)
     expect(mergeNoteFields(base, null as never)).toBe(base)
   })
 })

@@ -2,9 +2,9 @@
 
 import { buildRagIndexChunks } from '../../rag/chunking'
 import { getRagChunkBodyText } from '../../rag/chunkTemplate'
-import { RAG_INDEX_EDITABLE_DEFAULTS } from '../../rag/indexingSettings'
+import { RAG_INDEX_EDITABLE_DEFAULTS, type RagIndexingEditableSettings } from '../../rag/indexingSettings'
 
-const settings = (overrides: Partial<typeof RAG_INDEX_EDITABLE_DEFAULTS> = {}) => ({
+const settings = (overrides: Partial<RagIndexingEditableSettings> = {}): RagIndexingEditableSettings => ({
   ...RAG_INDEX_EDITABLE_DEFAULTS,
   min_chunk_size: 5,
   target_chunk_size: 500,

@@ -100,8 +100,8 @@ describe('RAG debug logging additional branches', () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => undefined)
 
     try {
-      ;(console as typeof console & { groupCollapsed?: typeof console.groupCollapsed }).groupCollapsed = undefined
-      ;(console as typeof console & { groupEnd?: typeof console.groupEnd }).groupEnd = undefined
+      Object.defineProperty(console, 'groupCollapsed', { configurable: true, value: undefined, writable: true })
+      Object.defineProperty(console, 'groupEnd', { configurable: true, value: undefined, writable: true })
 
       logRagIndexDebugChunks('fallback-note', [{
         chunkIndex: 2,
@@ -115,8 +115,8 @@ describe('RAG debug logging additional branches', () => {
       expect(log).toHaveBeenCalledWith('[chunk 2]')
       expect(log).toHaveBeenCalledWith('content')
     } finally {
-      console.groupCollapsed = originalGroupCollapsed
-      console.groupEnd = originalGroupEnd
+      Object.defineProperty(console, 'groupCollapsed', { configurable: true, value: originalGroupCollapsed, writable: true })
+      Object.defineProperty(console, 'groupEnd', { configurable: true, value: originalGroupEnd, writable: true })
     }
   })
 

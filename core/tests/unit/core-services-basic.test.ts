@@ -44,7 +44,7 @@ describe('core service and indexing helpers', () => {
     expect(computeFtsHasMore(10, 4, 4, 4)).toBe(true)
     expect(computeFtsHasMore(4, 4, 4, 4)).toBe(false)
     expect(computeFtsHasMore(undefined, 4, 4, 4)).toBe(true)
-    expect(computeFtsHasMore(null, 4, 2, 4)).toBe(false)
+    expect(computeFtsHasMore(undefined, 4, 2, 4)).toBe(false)
     expect(computeFtsTotal(10, 4, true)).toBe(10)
     expect(computeFtsTotal(undefined, 4, true)).toBeUndefined()
     expect(computeFtsTotal(undefined, 4, false)).toBe(4)

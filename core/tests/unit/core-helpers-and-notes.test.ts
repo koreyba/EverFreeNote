@@ -47,7 +47,7 @@ describe('core helper modules', () => {
     const old = { id: 'old', updated_at: '2026-01-01T00:00:00Z' }
     const latest = { id: 'new', updated_at: '2026-01-02T00:00:00Z' }
     expect(pickLatestNote([old, latest])?.id).toBe('new')
-    expect(mergeNoteFields(note() as never, undefined)).toEqual(note())
+    expect(mergeNoteFields(note() as never, undefined as never)).toEqual(note())
     expect(mergeNoteFields(note() as never, { title: 'Updated', tags: [] })).toMatchObject({ title: 'Updated', tags: [] })
 
     const result = applyNoteOverlay(

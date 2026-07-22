@@ -2,7 +2,11 @@
 
 import { EnexParser } from '../../enex/parser'
 
-const enexFile = (text: string): File => ({ text: async () => text } as File)
+const enexFile = (text: string): File => ({ text: async () => text } as unknown as File)
+
+const unreadableFile = (error: unknown): File => ({
+  text: async () => { throw error },
+} as unknown as File)
 
 describe('EnexParser additional branches', () => {
   afterEach(() => {
@@ -95,12 +99,10 @@ describe('EnexParser additional branches', () => {
 
     await expect(parser.parse(enexFile('<en-export><note><title>broken</title>')))
       .rejects.toThrow('Failed to parse .enex file: Invalid XML format')
-    await expect(parser.parse({
-      text: async () => { throw new Error('cannot read file') },
-    } as File)).rejects.toThrow('Failed to parse .enex file: cannot read file')
-    await expect(parser.parse({
-      text: async () => { throw { code: 'READ_FAILED' } },
-    } as File)).rejects.toThrow('Failed to parse .enex file: Unknown error')
+    await expect(parser.parse(unreadableFile(new Error('cannot read file'))))
+      .rejects.toThrow('Failed to parse .enex file: cannot read file')
+    await expect(parser.parse(unreadableFile({ code: 'READ_FAILED' })))
+      .rejects.toThrow('Failed to parse .enex file: Unknown error')
   })
 
   it('returns an empty list for an empty ENEX document', async () => {

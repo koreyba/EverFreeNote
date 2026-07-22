@@ -2,6 +2,7 @@
 
 import { ContentConverter } from '../../enex/converter'
 import { ExportService } from '../../enex/export-service'
+import type { EnexResource } from '../../enex/types'
 
 describe('ContentConverter', () => {
   it('removes ENML wrappers, marks unsupported blocks and sanitizes output', async () => {
@@ -47,7 +48,7 @@ describe('ContentConverter', () => {
   it('calculates a resource hash when the ENEX resource does not provide one', async () => {
     const upload = jest.fn().mockResolvedValue('https://cdn.test/image.png')
     const converter = new ContentConverter({ upload } as never)
-    const resources = [{ data: 'YWJj', mime: 'image/png' }]
+    const resources: EnexResource[] = [{ data: 'YWJj', mime: 'image/png' }]
     await converter.convert('<en-media hash="900150983cd24fb0d6963f7d28e17f72"/>', resources, 'u', 'n')
     expect(resources[0].hash).toBe('900150983cd24fb0d6963f7d28e17f72')
     expect(upload).toHaveBeenCalledWith('YWJj', 'image/png', 'u', 'n', 'image_0')
