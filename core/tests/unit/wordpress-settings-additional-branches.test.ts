@@ -28,10 +28,13 @@ describe('WordPressSettingsService additional branches', () => {
       .mockResolvedValueOnce({ data: 'malformed', error: null })
       .mockResolvedValueOnce({ data: 0, error: null })
       .mockResolvedValueOnce({ data: false, error: null })
+      .mockResolvedValueOnce({ data: 'truthy-malformed', error: null })
     const service = new WordPressSettingsService(serviceWithInvoke(invoke))
 
     await expect(service.getStatus()).resolves.toEqual({ configured: false, integration: null })
     await expect(service.getStatus()).resolves.toEqual({ configured: false, integration: null })
+    await expect(service.upsert({ siteUrl: 'https://wordpress.example', wpUsername: 'editor', enabled: false }))
+      .rejects.toThrow('Unexpected response while saving WordPress settings')
     await expect(service.upsert({ siteUrl: 'https://wordpress.example', wpUsername: 'editor', enabled: false }))
       .rejects.toThrow('Unexpected response while saving WordPress settings')
     await expect(service.upsert({ siteUrl: 'https://wordpress.example', wpUsername: 'editor', enabled: false }))
