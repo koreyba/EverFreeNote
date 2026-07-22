@@ -6,6 +6,40 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
+    "path": "reports/allure/pr-158/run-29900876881-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-158/run-29900876881-attempt-1/",
+    "runId": "29900876881",
+    "runAttempt": "1",
+    "prNumber": "158",
+    "ref": "feature-increase-jest-coverage",
+    "sha": "9190dbc40ddf9ec72499b69eeaa0b0e227862f9f",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #158",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-22T07:40:37.052Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit",
       "component",
       "e2e"
@@ -677,40 +711,6 @@
     "scopeLabel": "PR #157",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-21T18:12:23.150Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/allure/pr-157/run-29855725105-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-157/run-29855725105-attempt-1/",
-    "runId": "29855725105",
-    "runAttempt": "1",
-    "prNumber": "157",
-    "ref": "feature-sonar-test-coverage",
-    "sha": "5e9bace0cd5e9eef01c7928372a6fdca42e4e588",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #157",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-21T18:08:29.678Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
