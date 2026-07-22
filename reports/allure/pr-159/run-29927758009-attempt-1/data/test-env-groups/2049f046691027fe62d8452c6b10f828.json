@@ -1,0 +1,1 @@
+{"id":"2049f046691027fe62d8452c6b10f828","fullName":"everfreenote:ui/web/tests/unit/hooks/useInfiniteScroll.test.tsx#useInfiniteScroll does not create an observer when there is no next page or a fetch is active","name":"does not create an observer when there is no next page or a fetch is active","status":"passed","testResultsByEnv":{"default":"4ab2f2ca788652bb75daa1fd075ba284"}}
