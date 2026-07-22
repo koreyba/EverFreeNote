@@ -43,7 +43,7 @@ describe('compactQueue additional branch behavior', () => {
     expect(result).toEqual([])
   })
 
-  it('keeps a final delete, but drops update-after-delete chains as implemented', () => {
+  it('keeps the final operation for update/delete chains', () => {
     const result = compactQueue([
       item('update-delete', 'deleted-note', 'update', '2026-01-01T00:00:01Z', { title: 'before delete' }),
       item('final-update', 'updated-note', 'update', '2026-01-01T00:00:05Z', { title: 'final update' }),
@@ -54,6 +54,7 @@ describe('compactQueue additional branch behavior', () => {
 
     expect(result).toEqual([
       item('delete', 'deleted-note', 'delete', '2026-01-01T00:00:02Z', { reason: 'removed' }, { status: 'pending' }),
+      item('final-update', 'updated-note', 'update', '2026-01-01T00:00:05Z', { title: 'final update' }, { status: 'pending' }),
     ])
 
     expect(compactQueue([

@@ -48,6 +48,8 @@ describe('NoteCreator duplicate branches', () => {
     const writeFailure = createSupabase({ data: [], error: null }, { data: null, error: { message: 'write failed' } })
     await expect(new NoteCreator(writeFailure.client as never).create(parsedNote(), 'user')).rejects.toThrow('Failed to create note: write failed')
     const missingId = createSupabase({ data: [], error: null }, { data: {}, error: null })
-    await expect(new NoteCreator(missingId.client as never).create(parsedNote(), 'user')).rejects.toThrow('Created note id was not returned')
+    await expect(new NoteCreator(missingId.client as never).create(parsedNote(), 'user')).rejects.toThrow(
+      'Failed to create note: Created note id was not returned',
+    )
   })
 })

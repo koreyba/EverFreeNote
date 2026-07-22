@@ -1,3 +1,5 @@
+/** @jest-environment jsdom */
+
 import { SmartPasteService } from '../../services/smartPaste'
 import { NoteClipboardService } from '../../services/noteClipboard'
 import { SanitizationService } from '../../services/sanitizer'

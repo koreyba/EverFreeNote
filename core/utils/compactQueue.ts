@@ -60,8 +60,9 @@ export function compactQueue(items: MutationQueueItem[]): MutationQueueItem[] {
       continue
     }
 
-    // 4) update (+ updates) => один update с финальным payload
-    if (!hasCreate && !hasDelete && lastOp === 'update') {
+    // 4) update/delete без create, где последняя операция update => один update
+    // с финальным payload. This also preserves an update that follows a delete.
+    if (!hasCreate && lastOp === 'update') {
       result.push(
         withPendingStatus({
           ...last,

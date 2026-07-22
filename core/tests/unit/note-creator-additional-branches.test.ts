@@ -55,6 +55,23 @@ describe('NoteCreator additional branches', () => {
 
     await expect(creator.create(parsedNote(' Untitled '), 'user', 'prefix', context)).resolves.toBeNull()
     expect(table.insert).toHaveBeenCalledTimes(1)
+
+    const failedSetup = createSupabase(
+      { data: [], error: null },
+      { data: null, error: new Error('write failed') },
+    )
+    const failedWrite = jest.fn()
+      .mockResolvedValueOnce({ data: null, error: new Error('write failed') })
+      .mockResolvedValueOnce({ data: { id: 'retried' }, error: null })
+    failedSetup.writeResult.select.mockReturnValue({ single: failedWrite })
+    const failedContext = duplicateContext({ skipFileDuplicates: true })
+    const failedCreator = new NoteCreator(failedSetup.client as never)
+
+    await expect(failedCreator.create(parsedNote('Retry me'), 'user', 'prefix', failedContext))
+      .rejects.toThrow('Failed to create note: write failed')
+    expect(failedContext.seenTitlesInImport).toEqual(new Set())
+    await expect(failedCreator.create(parsedNote('Retry me'), 'user', 'prefix', failedContext)).resolves.toBe('retried')
+    expect(failedContext.seenTitlesInImport).toEqual(new Set(['Retry me']))
   })
 
   it('uses cached fallback lookups for replace and cached misses for prefix', async () => {
