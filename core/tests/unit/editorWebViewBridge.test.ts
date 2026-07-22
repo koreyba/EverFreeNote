@@ -21,6 +21,18 @@ describe('editorWebViewBridge', () => {
     expect(sent[2].type).toBe('CONTENT_CHANGED_CHUNK')
     expect(sent[3].type).toBe('CONTENT_CHANGED_CHUNK')
     expect(sent[4].type).toBe('CONTENT_CHANGED_CHUNK_END')
+
+    const startPayload = sent[0].payload as { transferId: string; total: number }
+    expect(startPayload.total).toBe(3)
+    expect(sent.slice(1, 4)).toEqual([
+      { type: 'CONTENT_CHANGED_CHUNK', payload: { transferId: startPayload.transferId, index: 0, chunk: 'ab' } },
+      { type: 'CONTENT_CHANGED_CHUNK', payload: { transferId: startPayload.transferId, index: 1, chunk: 'cd' } },
+      { type: 'CONTENT_CHANGED_CHUNK', payload: { transferId: startPayload.transferId, index: 2, chunk: 'ef' } },
+    ])
+    expect(sent[4]).toEqual({
+      type: 'CONTENT_CHANGED_CHUNK_END',
+      payload: { transferId: startPayload.transferId },
+    })
   })
 
   it('reassembles chunked messages into text', () => {
@@ -57,6 +69,41 @@ describe('editorWebViewBridge', () => {
     const result = consumeChunkedMessage('CONTENT_RESPONSE_CHUNK_END', { transferId }, store)
 
     expect(result).toBeNull()
+    expect(store.has(transferId)).toBe(true)
+  })
+
+  it('ignores malformed lifecycle messages without mutating the buffer', () => {
+    const store = new Map<string, { total: number; chunks: string[] }>()
+
+    expect(consumeChunkedMessage('CONTENT_CHANGED', null, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', null, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', { transferId: 'x', total: 0 }, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', { transferId: 'x', total: 1.5 }, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', { transferId: 'x', total: 10_001 }, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', { transferId: 'x', total: 1 }, store)).toBeNull()
+
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK', { transferId: 'missing', index: 0, chunk: 'x' }, store)).toBeNull()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_END', { transferId: 'x' }, store)).toBeNull()
+    expect(store.has('x')).toBe(true)
+    store.clear()
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_END', { transferId: 'x' }, store)).toBeNull()
+    expect(store).toEqual(new Map())
+  })
+
+  it('rejects invalid chunk indexes and missing chunk slots', () => {
+    const store = new Map<string, { total: number; chunks: string[] }>()
+    const transferId = 'valid-transfer'
+
+    consumeChunkedMessage('CONTENT_CHANGED_CHUNK_START', { transferId, total: 2 }, store)
+    for (const index of [-1, 2, 0.5]) {
+      expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK', { transferId, index, chunk: 'bad' }, store)).toBeNull()
+      expect(store.get(transferId)?.chunks).toEqual([undefined, undefined])
+    }
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_END', { transferId }, store)).toBeNull()
+    expect(store.has(transferId)).toBe(true)
+
+    consumeChunkedMessage('CONTENT_CHANGED_CHUNK', { transferId, index: 0, chunk: 'first' }, store)
+    expect(consumeChunkedMessage('CONTENT_CHANGED_CHUNK_END', { transferId }, store)).toBeNull()
     expect(store.has(transferId)).toBe(true)
   })
 })
