@@ -2,7 +2,7 @@ import type { MutationQueueItem, OfflineStorageAdapter } from '../../types/offli
 import { OfflineSyncManager } from '../../services/offlineSyncManager'
 
 const item = (id: string, status: 'pending' | 'failed' = 'pending'): MutationQueueItem => ({
-  id, noteId: `note-${id}`, operation: 'update', payload: {}, clientUpdatedAt: `2026-01-01T00:00:0${id}Z`, status,
+  id, noteId: `note-${id}`, operation: 'update', payload: {}, clientUpdatedAt: `2026-01-01T00:00:${id.padStart(2, '0')}Z`, status,
 })
 
 class MemoryStorage implements OfflineStorageAdapter {

@@ -13,7 +13,7 @@ const makeItem = (
   noteId: `note-${id}`,
   operation: "update",
   payload: { title: id },
-  clientUpdatedAt: `2026-01-01T00:00:0${id}Z`,
+  clientUpdatedAt: `2026-01-01T00:00:${id.padStart(2, '0')}Z`,
   status: "pending",
   ...overrides,
 })
