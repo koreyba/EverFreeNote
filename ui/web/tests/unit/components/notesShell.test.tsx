@@ -383,7 +383,7 @@ describe('NotesShell', () => {
     renderShell(controller)
 
     fireEvent.click(screen.getByRole('button', { name: 'Open existing context' }))
-    await waitFor(() => expect(screen.getByText('Pending focus')).toBeTruthy())
+    expect(await screen.findByText('Pending focus')).toBeTruthy()
     expect(controller.handleEditNote).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Apply pending focus' }))
     expect(await screen.findByText('No pending focus')).toBeTruthy()

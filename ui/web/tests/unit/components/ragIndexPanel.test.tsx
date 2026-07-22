@@ -197,7 +197,7 @@ describe('RagIndexPanel', () => {
     await waitFor(() => expect(mockedToast.success).toHaveBeenCalledWith('RAG index removed'))
     expect(refresh).toHaveBeenCalledTimes(1)
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete Index' })).toBeTruthy())
+    expect(await screen.findByRole('button', { name: 'Delete Index' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Delete Index' }))
     fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(mockedToast.error).toHaveBeenCalledWith('delete failed'))

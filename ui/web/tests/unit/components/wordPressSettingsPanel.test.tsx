@@ -124,7 +124,7 @@ describe('WordPressSettingsPanel', () => {
   it('keeps a stored password when saving without replacing it', async () => {
     mockGetStatus.mockResolvedValueOnce(configuredStatus)
     renderPanel()
-    await waitFor(() => expect(screen.getByText('Stored password exists. Enter a new one only to replace it.')).toBeTruthy())
+    expect(await screen.findByText('Stored password exists. Enter a new one only to replace it.')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Site URL'), { target: { value: 'https://new.example.com/' } })
     fireEvent.change(screen.getByLabelText('WordPress username'), { target: { value: 'new-user' } })

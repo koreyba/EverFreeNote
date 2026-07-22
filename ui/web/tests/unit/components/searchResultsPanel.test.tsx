@@ -296,7 +296,7 @@ describe('SearchResultsPanel', () => {
     mockAIState.error = null
     renderPanel(makeController({ searchQuery: 'semantic' }), { hasGeminiApiKey: true })
     await waitFor(() => expect(mockGetStatus).toHaveBeenCalledTimes(2))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save precision' })).toBeTruthy())
+    expect(await screen.findByRole('button', { name: 'Save precision' })).toBeTruthy()
     await waitFor(() => expect((screen.getByLabelText('AI precision') as HTMLInputElement).value).toBe('0.7'))
     fireEvent.click(screen.getByRole('button', { name: 'Save precision' }))
     await waitFor(() => expect(mockUpsert).toHaveBeenCalledWith({ similarity_threshold: 0.8 }))

@@ -71,7 +71,7 @@ describe('WordPressExportDialog', () => {
     expect(screen.getByDisplayValue('cafe-notes')).toBeTruthy()
     expect(screen.getByText('Loading categories...')).toBeTruthy()
 
-    await waitFor(() => expect(screen.getByLabelText('Travel')).toBeTruthy())
+    expect(await screen.findByLabelText('Travel')).toBeTruthy()
     expect(screen.getByLabelText('Travel').getAttribute('data-state')).toBe('checked')
     expect(screen.getByLabelText('Tech').getAttribute('data-state')).toBe('unchecked')
 
@@ -90,7 +90,7 @@ describe('WordPressExportDialog', () => {
 
   it('rejects an invalid slug before starting an export', async () => {
     renderDialog()
-    await waitFor(() => expect(screen.getByLabelText('Travel')).toBeTruthy())
+    expect(await screen.findByLabelText('Travel')).toBeTruthy()
     fireEvent.change(screen.getByDisplayValue('cafe-notes'), { target: { value: 'Bad Slug' } })
     fireEvent.click(screen.getByRole('button', { name: 'Export' }))
 
@@ -100,7 +100,7 @@ describe('WordPressExportDialog', () => {
 
   it('exports successfully and adds the site published tag to the note', async () => {
     renderDialog()
-    await waitFor(() => expect(screen.getByLabelText('Travel')).toBeTruthy())
+    expect(await screen.findByLabelText('Travel')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Export' }))
 
@@ -121,7 +121,7 @@ describe('WordPressExportDialog', () => {
   it('keeps export success while reporting a published-tag update failure', async () => {
     mockNoteUpdateEq.mockResolvedValueOnce({ error: new Error('note update unavailable') })
     renderDialog()
-    await waitFor(() => expect(screen.getByLabelText('Travel')).toBeTruthy())
+    expect(await screen.findByLabelText('Travel')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Export' }))
 
     expect(await screen.findByText('Post published, but failed to update note tag: note update unavailable')).toBeTruthy()
@@ -130,7 +130,7 @@ describe('WordPressExportDialog', () => {
 
   it('does not update note tags when the published-tag checkbox is cleared', async () => {
     renderDialog()
-    await waitFor(() => expect(screen.getByLabelText('Travel')).toBeTruthy())
+    expect(await screen.findByLabelText('Travel')).toBeTruthy()
     fireEvent.click(screen.getByLabelText('Add published tag to the note'))
     fireEvent.click(screen.getByRole('button', { name: 'Export' }))
 
@@ -142,7 +142,7 @@ describe('WordPressExportDialog', () => {
   it('shows bridge and generic export failures and clears submitting state', async () => {
     mockExportNote.mockRejectedValueOnce(new WordPressBridgeError('Bridge rejected export', 'bridge_error'))
     renderDialog()
-    await waitFor(() => expect(screen.getByLabelText('Travel')).toBeTruthy())
+    expect(await screen.findByLabelText('Travel')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Export' }))
 
     expect(await screen.findByText('Bridge rejected export')).toBeTruthy()
@@ -169,7 +169,7 @@ describe('WordPressExportDialog', () => {
   it('notifies the parent when the close button is clicked', async () => {
     const onOpenChange = jest.fn()
     renderDialog({ onOpenChange })
-    await waitFor(() => expect(screen.getByLabelText('Travel')).toBeTruthy())
+    expect(await screen.findByLabelText('Travel')).toBeTruthy()
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0])
     expect(onOpenChange).toHaveBeenCalledWith(false)
