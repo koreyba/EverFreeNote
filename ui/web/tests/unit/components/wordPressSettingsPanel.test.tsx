@@ -1,3 +1,4 @@
+import type React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 import { WordPressSettingsPanel } from '@/components/features/settings/WordPressSettingsPanel'

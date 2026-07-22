@@ -119,8 +119,7 @@ describe('ExportSelectionDialog', () => {
     renderDialog()
     await screen.findByText('Shopping list')
 
-    const indicator = screen.getByText('Scroll down to load more')
-    const scrollContainer = indicator.closest('[class*="overflow-y-auto"]')
+    const scrollContainer = screen.getByTestId('export-selection-scroll-container')
     expect(scrollContainer).toBeTruthy()
     Object.defineProperties(scrollContainer, {
       scrollTop: { configurable: true, value: 100 },

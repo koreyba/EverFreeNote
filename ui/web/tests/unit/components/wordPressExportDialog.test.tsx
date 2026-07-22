@@ -159,9 +159,10 @@ describe('WordPressExportDialog', () => {
     renderDialog()
 
     expect(await screen.findByText('Categories unavailable')).toBeTruthy()
-    mockGetCategories.mockResolvedValueOnce({ categories: [], rememberedCategoryIds: [] })
+    mockGetCategories.mockResolvedValueOnce({ categories: [{ id: 42, name: 'Tech', slug: 'tech' }], rememberedCategoryIds: [] })
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
-    expect(await screen.findByText('No categories returned by WordPress.')).toBeTruthy()
+    const categoryCheckbox = await screen.findByLabelText('Tech')
+    fireEvent.click(categoryCheckbox)
     expect(mockPreferenceUpsert).not.toHaveBeenCalled()
   })
 

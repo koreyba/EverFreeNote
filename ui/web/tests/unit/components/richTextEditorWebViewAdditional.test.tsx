@@ -100,11 +100,11 @@ describe('RichTextEditorWebView additional observable behavior', () => {
     unmount()
 
     mockEditor = createMockEditor()
+    render(<RichTextEditorWebView initialContent="<p>Initial</p>" />)
     jest.mocked(SmartPasteService.buildPayload).mockReturnValueOnce({ html: '', text: '', types: [] })
     const emptyEvent = clipboardEvent({ text: 'ignored' })
     expect(capturedConfig?.editorProps?.handlePaste?.(null as never, emptyEvent, undefined as never)).toBe(false)
 
-    render(<RichTextEditorWebView initialContent="<p>Initial</p>" />)
     const contentNode = document.createElement('span')
     mockEditor.view.dom.appendChild(contentNode)
     const contentClick = { target: contentNode, clientX: 4, clientY: 8 } as unknown as MouseEvent

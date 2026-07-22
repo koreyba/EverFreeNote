@@ -71,22 +71,6 @@ describe('useNoteAuth', () => {
     jest.restoreAllMocks()
   })
 
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
-
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
-
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
-
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
-
   it('loads the current session, tracks auth changes, and unsubscribes on cleanup', async () => {
     const { result, unmount } = renderAuthHook()
 

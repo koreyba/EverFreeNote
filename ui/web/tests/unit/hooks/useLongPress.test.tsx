@@ -57,6 +57,11 @@ describe('useLongPress', () => {
     act(() => jest.advanceTimersByTime(100))
     expect(onLongPress).toHaveBeenCalledTimes(1)
 
+    act(() => result.current.longPressHandlers.onPointerDown(pointer({ clientX: 0, clientY: 0 })))
+    act(() => result.current.longPressHandlers.onPointerMove(pointer({ clientX: 0, clientY: 6 })))
+    act(() => jest.advanceTimersByTime(100))
+    expect(onLongPress).toHaveBeenCalledTimes(1)
+
     act(() => result.current.longPressHandlers.onPointerDown(pointer()))
     act(() => result.current.longPressHandlers.onPointerUp())
     act(() => jest.advanceTimersByTime(100))
