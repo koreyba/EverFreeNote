@@ -1,1 +1,0 @@
-{"id":"3e8d70eb6b7bf9201ba6cd29d714ffeb","fullName":"everfreenote:cypress/component/ui/web/hooks/useNoteBulkActions.cy.tsx#useNoteBulkActions deleteSelectedNotes does nothing when selection is empty","name":"deleteSelectedNotes does nothing when selection is empty","status":"passed","testResultsByEnv":{"default":"8eff052af28f45e7e28828267680261f"}}
