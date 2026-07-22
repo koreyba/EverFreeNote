@@ -1,1 +1,0 @@
-{"id":"cbc37a312872d95bb637711910d704a8","fullName":"everfreenote:ui/web/tests/unit/lib/settingsNavigationState.test.ts#settingsNavigationState gracefully handles blocked sessionStorage access","name":"gracefully handles blocked sessionStorage access","status":"passed","testResultsByEnv":{"default":"95b0819d04c800b6fbe269d51f90b739"}}
