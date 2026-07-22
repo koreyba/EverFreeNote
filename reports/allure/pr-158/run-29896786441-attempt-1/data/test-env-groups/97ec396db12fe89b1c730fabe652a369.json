@@ -1,0 +1,1 @@
+{"id":"97ec396db12fe89b1c730fabe652a369","fullName":"everfreenote-mobile:tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText newline handling converts self-closing <br /> to newline","name":"converts self-closing <br /> to newline","status":"passed","testResultsByEnv":{"default":"a3dc728963d7a5432f0ddf93b898df8f"}}
