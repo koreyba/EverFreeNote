@@ -119,11 +119,40 @@ describe('NoteService', () => {
     const query = createQuery({ data: note(), error: null })
     const from = jest.fn().mockReturnValue(query)
     const service = new NoteService({ from } as never)
+
     await expect(service.createNote({ title: 'T', description: 'D', tags: [], userId: 'u', id: 'id' })).resolves.toEqual(note())
+    expect(from).toHaveBeenCalledWith('notes')
+    expect(query.insert).toHaveBeenCalledWith([{
+      id: 'id', title: 'T', description: 'D', tags: [], user_id: 'u',
+    }])
+    expect(query.select).toHaveBeenCalledWith()
+    expect(query.single).toHaveBeenCalledTimes(1)
+
+    Object.values(query).forEach((method) => method.mockClear())
+    from.mockClear()
     await expect(service.updateNote('id', { title: 'New' })).resolves.toEqual(note())
+    expect(from).toHaveBeenCalledWith('notes')
+    expect(query.update).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'New', updated_at: expect.any(String),
+    }))
+    expect(query.eq).toHaveBeenCalledWith('id', 'id')
+    expect(query.select).toHaveBeenCalledWith()
+    expect(query.single).toHaveBeenCalledTimes(1)
+
+    Object.values(query).forEach((method) => method.mockClear())
+    from.mockClear()
     await expect(service.deleteNote('id')).resolves.toBe('id')
+    expect(from).toHaveBeenCalledWith('notes')
+    expect(query.delete).toHaveBeenCalledWith()
+    expect(query.eq).toHaveBeenCalledWith('id', 'id')
+
+    Object.values(query).forEach((method) => method.mockClear())
+    from.mockClear()
     await expect(service.getNote('id')).resolves.toEqual(note())
-    expect(from).toHaveBeenCalledTimes(4)
+    expect(from).toHaveBeenCalledWith('notes')
+    expect(query.select).toHaveBeenCalledWith('id, title, description, tags, created_at, updated_at, user_id')
+    expect(query.eq).toHaveBeenCalledWith('id', 'id')
+    expect(query.single).toHaveBeenCalledTimes(1)
 
     const failed = createQuery({ data: null, error: new Error('db') })
     const failedService = new NoteService({ from: jest.fn().mockReturnValue(failed) } as never)

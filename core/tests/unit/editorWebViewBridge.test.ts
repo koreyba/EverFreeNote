@@ -21,6 +21,18 @@ describe('editorWebViewBridge', () => {
     expect(sent[2].type).toBe('CONTENT_CHANGED_CHUNK')
     expect(sent[3].type).toBe('CONTENT_CHANGED_CHUNK')
     expect(sent[4].type).toBe('CONTENT_CHANGED_CHUNK_END')
+
+    const startPayload = sent[0].payload as { transferId: string; total: number }
+    expect(startPayload.total).toBe(3)
+    expect(sent.slice(1, 4)).toEqual([
+      { type: 'CONTENT_CHANGED_CHUNK', payload: { transferId: startPayload.transferId, index: 0, chunk: 'ab' } },
+      { type: 'CONTENT_CHANGED_CHUNK', payload: { transferId: startPayload.transferId, index: 1, chunk: 'cd' } },
+      { type: 'CONTENT_CHANGED_CHUNK', payload: { transferId: startPayload.transferId, index: 2, chunk: 'ef' } },
+    ])
+    expect(sent[4]).toEqual({
+      type: 'CONTENT_CHANGED_CHUNK_END',
+      payload: { transferId: startPayload.transferId },
+    })
   })
 
   it('reassembles chunked messages into text', () => {

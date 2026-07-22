@@ -121,19 +121,54 @@ describe('ExportService additional branches', () => {
     const html = urls.map((url) => `<img src="${url}">`).join('')
     const getNotesByIds = jest.fn().mockResolvedValue([makeNote('note-1', html)])
     const extractImageUrls = jest.fn().mockReturnValue(urls)
-    const downloadImage = jest.fn(async (url: string) => {
+    let activeDownloads = 0
+    let maxActiveDownloads = 0
+    const pendingDownloads: Array<{ url: string; resolve: (resource: unknown) => void }> = []
+    const downloadImage = jest.fn((url: string) => new Promise((resolve) => {
+      activeDownloads += 1
+      maxActiveDownloads = Math.max(maxActiveDownloads, activeDownloads)
+      pendingDownloads.push({
+        url,
+        resolve: (resource) => {
+          activeDownloads -= 1
+          resolve(resource)
+        },
+      })
+    }))
+    const build = jest.fn().mockReturnValue('<enex/>')
+    const { service, builder } = makeService({ getNotesByIds, build, extractImageUrls, downloadImage })
+
+    const exportPromise = service.exportNotes(['note-1'], 'user')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(downloadImage).toHaveBeenCalledTimes(5)
+    expect(maxActiveDownloads).toBe(5)
+    expect(pendingDownloads).toHaveLength(5)
+
+    const firstBatch = pendingDownloads.splice(0)
+    firstBatch.forEach(({ resolve, url }) => {
       const index = urls.indexOf(url)
-      return {
+      resolve({
         data: `base64-${index}`,
         mime: 'image/png',
         hash: `hash-${index}`,
         fileName: `image-${index}.png`,
-      }
+      })
     })
-    const build = jest.fn().mockReturnValue('<enex/>')
-    const { service, builder } = makeService({ getNotesByIds, build, extractImageUrls, downloadImage })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(downloadImage).toHaveBeenCalledTimes(6)
+    expect(maxActiveDownloads).toBe(5)
+    expect(pendingDownloads).toHaveLength(1)
 
-    await service.exportNotes(['note-1'], 'user')
+    const lastDownload = pendingDownloads[0]
+    const lastIndex = urls.indexOf(lastDownload.url)
+    lastDownload.resolve({
+      data: `base64-${lastIndex}`,
+      mime: 'image/png',
+      hash: `hash-${lastIndex}`,
+      fileName: `image-${lastIndex}.png`,
+    })
+
+    await exportPromise
 
     const builtNote = builder.build.mock.calls[0][0][0]
     expect(downloadImage).toHaveBeenCalledTimes(6)

@@ -34,14 +34,42 @@ describe('ContentConverter', () => {
   })
 
   it('processes image uploads in batches and accepts precomputed hashes', async () => {
-    const upload = jest.fn().mockResolvedValue('https://cdn.test/image.png')
+    let activeUploads = 0
+    let maxActiveUploads = 0
+    const pendingUploads: Array<{ fileName: string; resolve: (url: string) => void }> = []
+    const upload = jest.fn((_data: string, _mime: string, _userId: string, _noteId: string, fileName: string) => new Promise<string>((resolve) => {
+      activeUploads += 1
+      maxActiveUploads = Math.max(maxActiveUploads, activeUploads)
+      pendingUploads.push({
+        fileName,
+        resolve: (url) => {
+          activeUploads -= 1
+          resolve(url)
+        },
+      })
+    }))
     const converter = new ContentConverter({ upload } as never)
     const resources = Array.from({ length: 6 }, (_, index) => ({
       data: 'AQ==', mime: 'image/png', hash: `hash-${index}`,
     }))
     const html = resources.map((resource) => `<en-media hash="${resource.hash}"/>`).join('')
-    const result = await converter.convert(html, resources, 'u', 'n')
+
+    const conversion = converter.convert(html, resources, 'u', 'n')
+    expect(upload).toHaveBeenCalledTimes(5)
+    expect(maxActiveUploads).toBe(5)
+    expect(pendingUploads).toHaveLength(5)
+
+    const firstBatch = pendingUploads.splice(0)
+    firstBatch.forEach(({ resolve }) => resolve('https://cdn.test/image.png'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
     expect(upload).toHaveBeenCalledTimes(6)
+    expect(maxActiveUploads).toBe(5)
+    expect(pendingUploads).toHaveLength(1)
+    pendingUploads[0].resolve('https://cdn.test/image.png')
+
+    const result = await conversion
+    expect(upload).toHaveBeenCalledTimes(6)
+    expect(pendingUploads[0].fileName).toBe('image_5')
     expect((result.match(/<img /g) ?? []).length).toBe(6)
   })
 
