@@ -1,0 +1,1 @@
+{"id":"6957608d20d41f1142316c230e2b1582","fullName":"everfreenote:core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer sanitize allows data URIs in images (if DOMPurify config permits)","name":"allows data URIs in images (if DOMPurify config permits)","status":"passed","testResultsByEnv":{"default":"45e8706e65108153120615f71cc75d74"}}
