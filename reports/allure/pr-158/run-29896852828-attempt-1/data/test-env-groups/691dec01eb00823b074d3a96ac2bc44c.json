@@ -1,0 +1,1 @@
+{"id":"691dec01eb00823b074d3a96ac2bc44c","fullName":"everfreenote:core/tests/unit/core-rag-chunking.test.ts#core/rag/chunking — pairwise test suite C — Partial split C1: P1 < min, P2 ≤ max, P1+P2 > max → частичный разрез P2","name":"C1: P1 < min, P2 ≤ max, P1+P2 > max → частичный разрез P2","status":"passed","testResultsByEnv":{"default":"67256b4f1ab435b01ee32b8c7e84b65a"}}
