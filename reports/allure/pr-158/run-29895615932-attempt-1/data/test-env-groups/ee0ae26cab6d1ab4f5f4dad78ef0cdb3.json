@@ -1,0 +1,1 @@
+{"id":"ee0ae26cab6d1ab4f5f4dad78ef0cdb3","fullName":"everfreenote-mobile:tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText newline handling converts </p> to double newline (paragraph break)","name":"converts </p> to double newline (paragraph break)","status":"passed","testResultsByEnv":{"default":"12680edbb92e9e4839d17696d31ea3a3"}}
