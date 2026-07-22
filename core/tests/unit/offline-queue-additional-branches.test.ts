@@ -34,6 +34,49 @@ const item = (
 })
 
 describe('offline queue additional branches', () => {
+  it('uses getRandomValues when randomUUID is unavailable', async () => {
+    const originalCrypto = Object.getOwnPropertyDescriptor(globalThis, 'crypto')
+    const getRandomValues = jest.fn((array: Uint32Array) => {
+      array[0] = 0x1af
+      return array
+    })
+    const storage = { upsertQueueItem: jest.fn().mockResolvedValue(undefined) }
+    const service = new OfflineQueueService(storage as never)
+
+    Object.defineProperty(globalThis, 'crypto', { configurable: true, value: { getRandomValues } })
+    try {
+      await service.enqueue(input('generated', 'note-1', 'create', '2026-01-01T00:00:00Z', { id: undefined }))
+    } finally {
+      if (originalCrypto) Object.defineProperty(globalThis, 'crypto', originalCrypto)
+      else Reflect.deleteProperty(globalThis, 'crypto')
+    }
+
+    expect(getRandomValues).toHaveBeenCalledTimes(1)
+    expect(storage.upsertQueueItem.mock.calls[0][0].id).toMatch(/^mq_\d+_1af$/)
+  })
+
+  it('uses an incrementing fallback id when Web Crypto is unavailable', async () => {
+    const originalCrypto = Object.getOwnPropertyDescriptor(globalThis, 'crypto')
+    const storage = { upsertQueueItem: jest.fn().mockResolvedValue(undefined) }
+    const service = new OfflineQueueService(storage as never)
+
+    Object.defineProperty(globalThis, 'crypto', { configurable: true, value: {} })
+    try {
+      await service.enqueue(input('generated-a', 'note-1', 'create', '2026-01-01T00:00:00Z', { id: undefined }))
+      await service.enqueue(input('generated-b', 'note-2', 'create', '2026-01-01T00:00:01Z', { id: undefined }))
+    } finally {
+      if (originalCrypto) Object.defineProperty(globalThis, 'crypto', originalCrypto)
+      else Reflect.deleteProperty(globalThis, 'crypto')
+    }
+
+    const ids = storage.upsertQueueItem.mock.calls.map(([item]) => item.id)
+    const suffix = (id: string) => Number.parseInt(id.slice(id.lastIndexOf('_') + 1), 16)
+    expect(ids[0]).toMatch(/^mq_\d+_[0-9a-f]+$/)
+    expect(ids[1]).toMatch(/^mq_\d+_[0-9a-f]+$/)
+    expect(suffix(ids[1])).toBe((suffix(ids[0]) + 1) & 0xffffff)
+    expect(storage.upsertQueueItem).toHaveBeenCalledTimes(2)
+  })
+
   it('preserves retry metadata and input order when enqueueing a failed batch', async () => {
     const storage = {
       upsertQueueItem: jest.fn().mockResolvedValue(undefined),
