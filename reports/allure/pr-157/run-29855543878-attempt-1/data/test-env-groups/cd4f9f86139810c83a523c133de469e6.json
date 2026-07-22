@@ -1,1 +1,0 @@
-{"id":"cd4f9f86139810c83a523c133de469e6","fullName":"everfreenote:cypress/component/features/notes/NoteEditorSaveExit.cy.tsx#NoteEditor save on exit (web) saves a new note after paste when switching notes","name":"saves a new note after paste when switching notes","status":"passed","testResultsByEnv":{"default":"f6c3d0250112f9612c5baccab5351a27"}}
