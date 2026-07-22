@@ -31,6 +31,20 @@ jobs:
 
       # Keep PR feedback close to Automatic Analysis: scan new code on every
       # update, but do not install dependencies or run coverage suites.
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/mobile/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm --prefix ui/mobile ci --ignore-scripts
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         env:
@@ -188,6 +202,20 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/mobile/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm --prefix ui/mobile ci --ignore-scripts
 
       - name: Download Jest coverage report
         if: always()
