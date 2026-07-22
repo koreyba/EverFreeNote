@@ -1,1 +1,0 @@
-{"id":"cb4e929101d6ae6d2a267fbb9236e384","fullName":"everfreenote:ui/web/tests/unit/components/copyPasteRoundTrip.test.tsx#self-copy round-trip (jsdom / DOMParser path) detects the self-copy marker after sanitization","name":"detects the self-copy marker after sanitization","status":"passed","testResultsByEnv":{"default":"e4c4320995f0a11150584890b7774c2f"}}
