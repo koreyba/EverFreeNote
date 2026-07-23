@@ -1,1 +1,0 @@
-{"id":"3b8b92f8b7651d18d1d2f439d990f2ae","fullName":"everfreenote:ui/web/tests/unit/components/features/notes/Sidebar.test.tsx#Sidebar Sync Status Indicator renders Offline mode status dot when isOffline is true","name":"renders Offline mode status dot when isOffline is true","status":"passed","testResultsByEnv":{"default":"3220e69a0d12f065671f073b9cac7647"}}
