@@ -1,1 +1,0 @@
-{"id":"6804042081fb4eb55f6a0a1c14e61566","fullName":"everfreenote:ui/web/tests/unit/hooks/useInfiniteScroll.test.tsx#useInfiniteScroll unobserves the current sentinel during cleanup and when dependencies change","name":"unobserves the current sentinel during cleanup and when dependencies change","status":"passed","testResultsByEnv":{"default":"ed812fcf4bad1d8a57a4d9af23c5160b"}}

@@ -1,0 +1,1 @@
+{"id":"071700b6798312fc1dfc7ae48cbc5773","fullName":"everfreenote:ui/web/tests/unit/components/authCallbackPage.test.tsx#AuthCallback component redirects with error if no authorization code is present in URL","name":"redirects with error if no authorization code is present in URL","status":"passed","testResultsByEnv":{"default":"f8c847c81c4dbf9018e401a7dc791c80"}}
