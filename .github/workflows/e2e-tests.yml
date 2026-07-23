@@ -556,7 +556,7 @@ jobs:
       - name: Allure Report Official
         if: github.event_name == 'pull_request' && steps.prepare-allure-report.outputs.has_results == 'true'
         continue-on-error: true
-        uses: allure-framework/allure-action@v0.8.0
+        uses: allure-framework/allure-action@bd0373251ed3f1c5ac9aa44ac86ed40d839b3094 # v0.8.0
         with:
           report-directory: ${{ steps.prepare-allure-report.outputs.report_output_dir }}
           remote-href: ${{ steps.prepare-allure-report.outputs.report_url }}
