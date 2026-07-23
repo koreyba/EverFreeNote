@@ -1,0 +1,1 @@
+{"id":"e92801c4ab05d7407f3f353f3b1cc8f5","fullName":"everfreenote:ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx#useAIPaginatedSearch surfaces embedding model mismatch without retrying the request","name":"surfaces embedding model mismatch without retrying the request","status":"passed","testResultsByEnv":{"default":"095a31b72139bb6544d1be179e40a42f"}}

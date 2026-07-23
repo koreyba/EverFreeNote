@@ -1,0 +1,1 @@
+{"id":"2487b1bb3f78387826cb8399b4528002","fullName":"everfreenote:ui/web/tests/unit/components/horizontalTagScroll.test.tsx#HorizontalTagScroll removes global pointer listeners when unmounted","name":"removes global pointer listeners when unmounted","status":"passed","testResultsByEnv":{"default":"fea805fe7a1713577b753fe32119b727"}}

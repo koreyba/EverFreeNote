@@ -1,0 +1,1 @@
+{"id":"80a1550c1c5c64ff6c871e0b6b71c9d9","fullName":"everfreenote:ui/web/tests/unit/lib/settingsNavigationState.test.ts#settingsNavigationState drops malformed stored payloads instead of returning them","name":"drops malformed stored payloads instead of returning them","status":"passed","testResultsByEnv":{"default":"2abb6fe5d8590646a8378f8c92c3bba5"}}
