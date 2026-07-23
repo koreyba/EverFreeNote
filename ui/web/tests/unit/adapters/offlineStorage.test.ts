@@ -5,7 +5,21 @@ jest.mock('@core/constants/offline', () => ({
   OFFLINE_CACHE_LIMIT_BYTES: 200,
 }))
 
-import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
+Object.defineProperty(globalThis, 'indexedDB', {
+  value: undefined,
+  writable: true,
+  configurable: true,
+})
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'indexedDB', {
+    value: undefined,
+    writable: true,
+    configurable: true,
+  })
+}
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { webOfflineStorageAdapter } = require('@ui/web/adapters/offlineStorage')
 
 const makeNote = (id: string, updatedAt: string, extra: Partial<CachedNote> = {}): CachedNote => ({
   id,
@@ -133,4 +147,16 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
     expect(localStorage.getItem('offline_notes')).toBeNull()
     expect(localStorage.getItem('offline_queue')).toBeNull()
   })
+
+  it('does not evict notes when total size is within limit', async () => {
+    const note = makeNote('small-note', '2026-01-01T00:00:00Z', { description: 'tiny' })
+    await webOfflineStorageAdapter.saveNotes([note])
+
+    await webOfflineStorageAdapter.enforceLimit()
+
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([
+      expect.objectContaining({ id: 'small-note' }),
+    ])
+  })
 })
+
