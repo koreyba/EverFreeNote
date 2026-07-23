@@ -1,0 +1,1 @@
+{"id":"6679a19d7904975bea38851761a0b6dd","fullName":"everfreenote:cypress/component/ui/web/hooks/useInfiniteScroll.cy.tsx#useInfiniteScroll does not fetch if hasNextPage is false","name":"does not fetch if hasNextPage is false","status":"passed","testResultsByEnv":{"default":"77e5886e201f3354a5c626b9cb61173a"}}
