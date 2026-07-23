@@ -1,0 +1,270 @@
+# Allure Agent Mode
+
+Use Allure agent mode to design, review, validate, debug, and enrich tests in this project.
+
+This file is project-specific guidance; the durable agent-mode, test-design, expectation, and evidence rules live in the `allure-agent-mode` skill. Before authoring or materially changing a test, invoke the `$allure-agent-mode` skill and read its `references/test-design.md` — do not author tests from general knowledge. If the skill is not installed, use this file plus the core non-negotiables below as the floor and keep conclusions conservative.
+
+## Why Agent Mode
+
+A test run is an instrument, not a pass/fail to scrape. Running tests through `allure agent` turns them into a reviewable account of what actually happened — steps, HTTP/SQL/browser evidence, attachments — plus automated findings about the tests themselves (for example, a test that ran with no assertions). State what the run should confirm with `--goal`; the report carries the goal and the evidence, so you, an upstream agent, or a human can validate it. The console gives a status; the agent output gives understanding and a critique.
+
+Reach for agent mode through the loops in [Core Loops](#core-loops): run with a goal, make evidence checkable with expectations, triage failures and rerun just the failed tests, inspect CI results without local repro, and use a test as a debugging instrument. The run prints a summary digest to stdout (counts, findings, report link); read it, then open the agent output for depth (start at the output dir's `AGENTS.md` guide). Run `allure agent capabilities` to confirm the local surface. Reducing the run with `tail`/`grep`/`head` or `>/dev/null`, or stopping at the counts, throws away the findings and evidence — the agent output is the signal.
+
+## Local Capability Snapshot
+
+Refresh this section when Allure, test runners, Allure results paths, Allure report generation, CI, or project wrappers change. Confirm local support with the project wrapper, `allure --version`, `allure agent --help`, and `allure agent capabilities --json` before using optional commands. If existing-result or dump inspection is in scope, also confirm `allure agent inspect --help` before documenting inspect commands.
+
+Do not store the exact Allure version here. Version output is a runtime fact; this file should store the wrapper, last snapshot marker, and how to refresh capabilities.
+
+- Allure wrapper: `<fill during setup, e.g. yarn allure, npx allure, pnpm allure, ./gradlew allure>`
+- Capability snapshot last checked: `<fill date, commit, or unknown>`
+- Refresh capabilities with: `<wrapper> --version`, `<wrapper> agent --help`, and `<wrapper> agent capabilities --json`
+- Agent execution: `<supported / limited / unsupported / unknown>`
+- Output option: `<fill supported syntax or unknown>`
+- HTML report mode: `<--report auto|off|awesome|config / unsupported / unknown>`
+- Expectation controls: `<fill supported options, command goal controls, file format, or unknown>`
+- Latest/state directory recovery: `<supported / unsupported / unknown>`
+- Selection/rerun support: `<supported / unsupported / unknown>`
+- Existing-result or dump inspection: `<supported syntax, e.g. agent inspect [results...] and --dump <archive>; unsupported; or unknown>`
+- Existing-result fallback commands: `<generated agent-only config + allure generate / allure log / results pack-unpack / unsupported / unknown>`
+- Capability/helper commands: `<capabilities/latest/query/select/state-dir support or unknown>`
+
+## Local Test Surfaces
+
+- Test frameworks and runners: `<fill during setup>`
+- Test roots: `<fill during setup>`
+- Allure results paths: `<fill during setup, e.g. <parent>/allure-results>`
+- Known selector support: `<file/test name/label/package/suite/test plan/unknown>`
+- Known environments or services needed for tests: `<fill during setup>`
+
+## Allure Integrations
+
+Document only integrations detected or explicitly configured in this project.
+
+- Existing Allure adapters/integrations: `<fill or unknown>`
+- Runner config files: `<fill or unknown>`
+- Result-path configuration: `<confirmed config file, option, property, env var, or unknown>`
+- Supported integration configuration targets: `<specified integration / all discovered / none / unknown>`
+- Validation command for integration setup: `<focused smoke, discovery only, or unknown>`
+- Known unsupported or skipped integrations: `<fill with reasons or unknown>`
+- Integration-specific quirks: `<result cleanup, reporter config, env vars, attachments, or unknown>`
+
+## Project Test-Design Conventions
+
+Fill only project-specific conventions below. The durable test-design rules live in the `$allure-agent-mode` skill's `references/test-design.md` — load that skill before authoring, as the top of this file directs.
+
+Core non-negotiables (the floor to follow when the skill is not loaded; full rules in the `$allure-agent-mode` skill's `references/test-design.md`):
+
+- A new or changed regression test must fail for the intended bug before the fix and pass after; if reproducing the pre-fix failure is genuinely impossible, state why and what alternative evidence proves the fix.
+- Do not weaken assertions, delete coverage, or skip, mute, or quarantine tests just to make a run pass; any such change needs explicit rationale.
+- Keep tests boring and explicit — prefer readable, linear tests over loops, factories, or conditionals whose only value is saving a few repeated lines.
+- Do not hide missing coverage behind runtime `if` branches, early returns, conditional test registration, or helper aliases; use the runner's explicit skip/xfail/quarantine with a stated reason.
+- Steps, attachments, parameters, and labels must reflect real behavior from the current run, not filler.
+
+- Accepted test layers: `<unit/component/integration/API/browser/CLI/etc. or unknown>`
+- Preferred assertion style: `<framework matchers, custom assertions, deep-match messages, or unknown>`
+- Parameterized test style: `<case naming, parameter reporting, limits, or unknown>`
+- Boring-test preference: `<explicit tests over loops/factories/conditionals, shared business-step helpers, or unknown>`
+- Smoke coverage conventions: `<higher-layer smoke expectations or unknown>`
+- Mocking and integration-test preference: `<project rule or unknown>`
+- Explicit skip/assumption mechanics: `<it.skip/it.skipIf/assumeThat/xfail/quarantine/setup failure convention or unknown>`
+- Suppression/quarantine policy: `<owner/reason/issue/expiry/restore path or unknown>`
+
+## Run Profiles
+
+Document only profiles that exist in this project. If a profile is inferred rather than confirmed, mark it as inferred.
+Use `allure agent` output defaults in command examples unless an explicit `--output` path is part of the project convention. Include framework result-directory environment variables only when the local adapter needs them and local evidence, installed help, official docs, or package README/source confirms the exact variable name.
+
+| Profile | Command or profile intent | Expected use | Confidence limits |
+| --- | --- | --- | --- |
+| smoke | `<fill>` | Quick signal for critical paths | Does not prove full coverage |
+| affected | `<fill>` | Changes mapped to likely tests | Mapping may miss indirect impact |
+| feature/component | `<fill>` | Focused validation for one area | Depends on local labels/selectors |
+| full | `<fill>` | Broad validation | Cost may be high |
+
+## Execution Signal And CI Trust
+
+Do not present ignored, excluded, swallowed, advisory, or non-gating test execution as proof that behavior is safe.
+
+- Default local test command: `<fill or unknown>`
+- Default local command exclusions: `<fill or unknown>`
+- CI test jobs: `<fill names or unknown>`
+- CI gating status: `<gating / non-gating / allowed failure / advisory / unknown>`
+- Known ignored, skipped, muted, quarantined, or disabled tests: `<fill policy, owner, issue, restore path, or unknown>`
+- Test artifacts retained by CI: `<raw Allure results, Allure dumps, agent output, generated reports, logs, traces, none, or unknown>`
+- Local or CI results/dumps suitable for `allure agent inspect`: `<paths/artifact names, unsupported, or unknown>`
+
+If CI or local execution is non-gating, excludes important tests, or swallows failures, call that out before using the run as proof.
+
+Do not hide missing or unsupported coverage behind runtime `if` branches, early returns, conditional test registration, or helper aliases. Use the project's explicit skip, conditional-skip, assumption, xfail, quarantine, or setup-failure convention so the runner and Allure evidence show the reason.
+
+## Local Expectation Controls
+
+Before each validation run, decide whether expectations reduce a real risk for the intended conclusion. When they do, use the smallest fresh inline options supported by local `allure agent --help`.
+
+- Supported expectation mechanism: `<inline CLI options / command goal controls / advanced file mode / unsupported / unknown>`
+- Exact test/file/suite/label/profile support: `<fill or unknown>`
+- Excluded-scope controls: `<supported / unsupported / unknown>`
+- Evidence expectation controls: `<supported / unsupported / unknown>`
+- Check/assertion step-name controls: `<supported / unsupported / unknown; fill useful substrings or naming convention>`
+- Broad-audit fallback: `<fill local convention or unknown>`
+
+Prefer inline options. Use `--expectations <file>` only as advanced mode when the contract is too large, generated, or policy-controlled.
+
+When expectations are justified, they should state only the parts that matter for this run:
+
+- what claim or validation depth the run is meant to support
+- what should run
+- what should not run
+- which profile, environment, variant, or parameter set is intended
+- what important checks or evidence should be visible through supported reporting or documented step-name conventions
+- why this scope is enough
+- what the run cannot prove
+
+If local expectation support is unavailable or weak, run the narrowest practical command, review observed scope from manifests, and state that expectation checking was limited.
+
+Treat the run goal as a claim boundary for review, not as proof. If the goal is wrong or stale, keep the runtime evidence and report what the observed run actually supports.
+
+## Core Loops
+
+### Test Review Loop
+
+1. Identify the exact review scope and validation depth.
+2. Create the smallest meaningful expectations using local supported controls when they protect the review conclusion.
+3. Choose report mode by audience: `--report off` for iterative agent-only loops, and `--report auto`, `awesome`, or `config` for final user-reviewable runs.
+4. Run only that scope through `allure agent`.
+5. Print the run's `index.md` path.
+6. For final runs with a generated HTML report, share the report link (see the report-link rule under Acceptance Rules).
+7. Review `index.md`, `manifest/run.json`, `manifest/test-events.jsonl`, `manifest/tests.jsonl`, `manifest/findings.jsonl`, `manifest/expected.json` when the run used expectations, and relevant per-test markdown.
+8. Inspect source code only after runtime evidence explains what executed.
+9. Call out weak scope, weak evidence, execution-signal limits, or partial runtime modeling.
+
+### Existing Result Inspection Loop
+
+Use this when a local command, CI, or another pipeline has already produced raw Allure results or Allure dump artifacts.
+
+1. Locate local raw Allure results or download retained result/dump artifacts before parsing logs or generated HTML reports.
+2. Confirm `allure agent inspect` and its input/output flags through `agent capabilities --json` and project-wrapper help.
+3. Pass result directories or globs positionally, and pass dump archives with repeated `--dump <archive-or-glob>`.
+4. Choose a report mode by audience: `--report off` for intermediate agent-only inspection, and `--report auto`, `awesome`, or `config` for a final user-reviewable pass.
+5. Run the supported inspect command with fresh agent output.
+6. Print the inspected output's `index.md` path.
+7. Review `index.md`, manifests, findings, and relevant per-test markdown before raw logs, generated reports, or source code.
+8. If an HTML report is needed, check `manifest/human-report.json` before regenerating anything.
+9. Keep shard, matrix, retry, artifact-retention, and non-gating limits explicit.
+10. If inspect support or artifact shape is unavailable, try the generated agent-only config fallback with `allure generate --config <generated-config> --output <agent-output>` before dropping to raw Allure files, `allure log <allure-results>`, or logs.
+11. If only raw/log inspection is possible, state the weaker evidence path.
+
+### Test Authoring Loop
+
+1. Understand the feature, issue, expected behavior, and risk.
+2. Read the `allure-agent-mode` skill's test-design guidance when available.
+3. Create the smallest meaningful expectations for the intended scope when they reduce a real validation risk.
+4. Write or update focused tests without weakening useful coverage.
+5. Run the intended scope through agent mode.
+6. Review scope, checks, evidence, and execution signal before claiming validation.
+7. Enrich tests when evidence is weak, then rerun with fresh agent output.
+
+### Evidence And Metadata Enrichment Loop
+
+Use this when tests pass but are hard to review:
+
+1. Identify weak evidence, missing checks, missing setup state, missing artifacts, or noisy metadata.
+2. Prefer framework integrations and helper-boundary instrumentation over wrapping every line.
+3. Add useful steps, attachments, parameters, descriptions, labels, or links using project conventions, keeping per-test intent metadata inline with each test.
+4. Redact sensitive values while preserving useful artifact shape.
+5. Rerun the same intended scope and report evidence changes.
+
+### Coverage Review Loop
+
+1. Split broad audits into scoped groups when practical.
+2. Ensure each group has distinct agent output and use expectations only when the group has a known scope or supports a validation conclusion. Use explicit `--output` paths only when useful for organizing groups.
+3. Run each group through agent mode.
+4. Separate observed runtime coverage from inferred source-code coverage.
+5. Mark review incomplete until every scoped group was validated through matched expectations, reviewed observed scope, or documented as a broad package-health audit.
+
+### Failure Triage And Rerun Loop
+
+Use this when a run reports failed, broken, or flaky tests.
+
+1. Get the run output (`allure agent latest` when the run used the default temp directory) and read `index.md`, `manifest/findings.jsonl`, and the failing per-test markdown before touching source.
+2. When a runner-visible failure is missing from `manifest/tests.jsonl`, inspect `artifacts/global/` (for example `stderr`) and treat the run as a partial runtime review.
+3. Classify each failure before editing: product bug, stale test, wrong expectation, fixture/environment problem, or flake. Follow the test-design rules; do not weaken assertions or skip tests just to make the run pass.
+4. Rerun the narrowest scope through agent mode with fresh output, using the local rerun controls from the Capability Snapshot (such as `--rerun-latest` or `--rerun-from <dir>` with the failed preset) rather than rebuilding runner-specific test names by hand.
+5. Re-review the new output and keep shard, retry, flake, and non-gating limits explicit before calling the failure resolved.
+
+## Runtime Artifact Review
+
+After each agent-mode run:
+
+- open the agent-output directory's `AGENTS.md` guide first; it carries the reading order, directory contract, and command map for that run
+- read `manifest/run.json` (the canonical run summary), then `manifest/test-events.jsonl`
+- read `index.md` for the triage overview, and print its path so collaborators can open it
+- read `manifest/tests.jsonl` and `manifest/findings.jsonl`
+- read `manifest/expected.json` when the run used expectations, to confirm the contracted scope resolved as intended
+- read relevant per-test markdown before inspecting source
+- inspect global stderr/log artifacts when runner-visible failures are not represented as logical tests
+- for inspected existing results or dumps, use generated agent output before generated reports or raw logs
+
+## Output, State, And Reruns
+
+Do not create persistent agent output or expectation paths. Modern `allure agent` creates and prints a temp output directory when no output is provided; use that default unless a specific path is needed. In `allure@3.12.0` and newer, each `allure agent` run removes the previous run's CLI-provided temp output automatically. Prefer `--output` for explicit paths only when the project needs them; an explicit `--output` path is the one thing the agent must clean up itself — remove or archive it when done. The framework's `allure-results` is separate; clearing it between runs is unnecessary (agent mode detects only the current run's new results), so leave that to project preference.
+
+Allure results paths such as `<parent>/allure-results` are separate reporting configuration and may be stable project paths. Do not use framework result variables such as `ALLURE_RESULTS_DIR` as agent-output controls; document them only when the local adapter requires them and the exact variable is confirmed, and keep the final directory name `allure-results` when the results must be discovered by Allure.
+
+- Agent output policy: `<CLI-provided temp dir / explicit --output convention / unknown>`
+- Agent output cleanup: `<CLI-managed for default output / caller-managed for explicit --output / unknown>`
+- Latest output recovery: `<supported command or unknown>`
+- State directory override: `<supported env var or unknown>`
+- Rerun from latest/prior output: `<supported command or unknown>`
+- Selection/test plan support: `<supported command/path or unknown>`
+- Inspect existing results/dumps: `<supported command/input syntax, unsupported, or unknown>`
+- HTML report output: `<auto/off/awesome/config support, default threshold source, manifest path, intermediate/final mode convention, unsupported, or unknown>`
+- Generate-with-agent-plugin fallback: `<supported generated config, command syntax, and caller-managed output cleanup, unsupported, or unknown>`
+- Non-agent result inspection fallback: `<supported command/input syntax, unsupported, or unknown>`
+- Parallel-run rule: each concurrent run must pass its own caller-managed `--output` directory — the default temp output is unsafe for concurrency because each run clears the previous run's temp output — and output paths and expectation state must never be shared
+- CI artifact retention: `<raw Allure results, Allure dumps, agent output, logs, traces, none, or unknown>`
+
+## Project Metadata Conventions
+
+Fill only conventions that exist in this project.
+
+Per-test metadata belongs inline with the test. Do not centralize descriptions, labels, links, parameters, or intent-defining step names in helper wrappers, lookup tables, or mappings keyed by test name. Reusable helpers may handle mechanics only; test intent should stay explicit at each test site.
+
+- Feature/story/component/service labels: `<fill or unknown>`
+- Owner/team metadata: `<fill or unknown>`
+- Severity or priority metadata: `<fill or unknown>`
+- Issue, bug, requirement, or known-defect links: `<fill or unknown>`
+- Suite/package/module taxonomy: `<fill or unknown>`
+- Parameter naming and dynamic-history exclusions: `<fill or unknown>`
+- Metadata to avoid: `<decorative labels, unused taxonomy, or unknown>`
+
+## Project Evidence Conventions
+
+Fill only conventions that exist in this project.
+
+- Test descriptions: `<expected style or unknown>`
+- Attachments: `<HTTP exchange/image diff/Playwright trace/logs/SQL/fixture conventions or unknown>`
+- Step naming: `<project style or unknown>`
+- Check/assertion step naming: `<e.g. "expect <actual> to <matcher>", "validate <contract>", or unknown>`
+- Assertion/check visibility: `<integration support, documented step-name convention, or unknown>`
+- Fixture/setup evidence: `<file tree/database rows/config/logs or unknown>`
+- Sensitive data redaction: `<project policy or unknown>`
+
+## Acceptance Rules
+
+Accept a run only when:
+
+- observed scope matches the intended scope, or drift is explained
+- coverage remains meaningful for the stated conclusion
+- important checks are visible through supported reporting, documented step-name conventions, or source review covers the gap
+- evidence is strong enough to explain what happened
+- execution-signal limits are explicit
+- no high-confidence placeholder or noop evidence findings remain
+- partial runtime modeling is called out
+
+When raw local or CI Allure results or dumps are available and `allure agent inspect` support is confirmed, prefer inspected agent output over parsing raw logs or generated HTML reports.
+
+For final user-facing runs, include the generated report link when `manifest/human-report.json` reports `generated`; otherwise state the manifest status if a report was expected. Resolve relative manifest paths, such as `awesome/index.html`, against the agent output directory before presenting them. Call the artifact simply the report and do not wrap it in inline code or a code block; say `Here is the report: <link>` with a normal Markdown link to the absolute local report file so clients can make it clickable or previewable.
+
+If agent output is absent or incomplete, fix that first; do not silently accept console-only conclusions. Fall back to console only when agent mode is genuinely impossible, and then name the blocker and mark the conclusion provisional.
