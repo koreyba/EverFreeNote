@@ -83,7 +83,10 @@ describe('NavigationMenu components', () => {
       <NavigationMenu>
         <NavigationMenuList>
           <NavigationMenuItem>
-            <NavigationMenuLink href="/test">Test Link</NavigationMenuLink>
+            <NavigationMenuTrigger>Test Menu</NavigationMenuTrigger>
+            <NavigationMenuContent>
+              <div>Menu Content</div>
+            </NavigationMenuContent>
           </NavigationMenuItem>
         </NavigationMenuList>
         <NavigationMenuIndicator className="custom-indicator" />
@@ -91,7 +94,10 @@ describe('NavigationMenu components', () => {
       </NavigationMenu>
     )
 
-    const viewport = container.querySelector('[data-slot="viewport"]') || container.querySelector('.custom-viewport')
+    const trigger = screen.getByText('Test Menu')
+    fireEvent.click(trigger)
+
+    const viewport = container.querySelector('.custom-viewport') || container.querySelector('div.absolute')
     expect(viewport).toBeTruthy()
   })
 
