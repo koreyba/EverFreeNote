@@ -1,1 +1,0 @@
-{"id":"257645c9051108ed1aad3abb25e9dec7","fullName":"everfreenote:ui/web/tests/unit/lib/editor.test.ts#applySelectionAsMarkdown does nothing when selection range is empty (from === to)","name":"does nothing when selection range is empty (from === to)","status":"passed","testResultsByEnv":{"default":"97b67ad2f15d508097d56d286ddfc1fb"}}
