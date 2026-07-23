@@ -585,6 +585,7 @@ jobs:
       group: gh-pages-allure-publish
       cancel-in-progress: false
     permissions:
+      checks: write
       contents: write
       issues: write
       pull-requests: write
@@ -772,3 +773,13 @@ jobs:
           else
             gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --input "${payload_file}"
           fi
+
+      - name: Allure Report Official
+        if: github.event_name == 'pull_request' && steps.prepare-allure-report.outputs.has_results == 'true'
+        continue-on-error: true
+        uses: allure-framework/allure-action@v0.8.0
+        with:
+          report-directory: ${{ steps.prepare-allure-report.outputs.report_output_dir }}
+          remote-href: ${{ steps.prepare-allure-report.outputs.report_url }}
+          sections: 'new, flaky, retry'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
