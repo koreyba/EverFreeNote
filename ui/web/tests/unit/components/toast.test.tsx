@@ -47,11 +47,11 @@ describe('Toast components', () => {
     const actionBtn = screen.getByText('Undo')
     expect(actionBtn).not.toBeNull()
 
-    fireEvent.click(actionBtn)
-    expect(handleAction).toHaveBeenCalledTimes(1)
-
     const closeBtn = screen.getByTestId('toast-close')
     expect(closeBtn).not.toBeNull()
+
+    fireEvent.click(actionBtn)
+    expect(handleAction).toHaveBeenCalledTimes(1)
   })
 
   it('renders Toast with destructive variant styling', () => {
