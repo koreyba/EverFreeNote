@@ -1,0 +1,1 @@
+{"id":"4aa88242de6016d16bffffc82203e0d6","fullName":"everfreenote:core/tests/unit/core-utils-search.test.ts#core/utils/search buildTsQuery returns null for query exceeding maximum length","name":"returns null for query exceeding maximum length","status":"passed","testResultsByEnv":{"default":"505f67ca8a976f36bdc477fcb00e592f"}}
