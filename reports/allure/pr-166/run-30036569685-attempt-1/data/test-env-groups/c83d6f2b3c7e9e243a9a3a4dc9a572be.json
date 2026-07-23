@@ -1,0 +1,1 @@
+{"id":"c83d6f2b3c7e9e243a9a3a4dc9a572be","fullName":"everfreenote:ui/web/tests/unit/adapters/networkStatus.test.ts#webNetworkStatus in browser environment subscribe calls callback(false) when window dispatches offline event","name":"calls callback(false) when window dispatches offline event","status":"passed","testResultsByEnv":{"default":"ad2fd55be595cbd0d0fc9475c7accc48"}}

@@ -1,1 +1,0 @@
-{"id":"34272f235b3794d0d549d704e3c3ddae","fullName":"everfreenote:ui/web/tests/unit/components/EditorMenuBar.test.tsx#EditorMenuBar Insert Link & Image does not set link when prompt returns null or empty string","name":"does not set link when prompt returns null or empty string","status":"passed","testResultsByEnv":{"default":"05b268461de9b8c017618208120efb7b"}}
