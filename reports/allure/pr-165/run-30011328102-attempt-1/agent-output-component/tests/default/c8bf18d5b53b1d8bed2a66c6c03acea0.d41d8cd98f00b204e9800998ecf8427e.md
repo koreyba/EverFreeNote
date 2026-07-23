@@ -1,0 +1,111 @@
+# Test Result
+
+- Name: saves on Read action and shows updated content in view mode (FTS context)
+- Full Name: everfreenote:cypress/component/features/notes/NotesShellFtsExitSave.cy.tsx#NotesShell: save on exit via FTS click (web) saves on Read action and shows updated content in view mode (FTS context)
+- Environment: default
+- History ID: c8bf18d5b53b1d8bed2a66c6c03acea0.d41d8cd98f00b204e9800998ecf8427e
+- Test Result ID: c23890bb9e0625b674869620e65fe4b6
+- Status: PASSED
+- Duration: 826ms
+- Started: 2026-07-23T13:34:21.083Z
+- Stopped: 2026-07-23T13:34:21.909Z
+- Flaky: false
+- Known: false
+- Muted: false
+- Retries in This Run: 0
+- Title Path: everfreenote / cypress / component / features / notes / NotesShellFtsExitSave.cy.tsx / NotesShell: save on exit via FTS click (web)
+
+## Labels
+
+- language: javascript
+- framework: cypress
+- parentSuite: NotesShell: save on exit via FTS click (web)
+- host: runnervm3jd5f
+- thread: pid-2836-worker-main
+- package: everfreenote.cypress.component.features.notes.NotesShellFtsExitSave.cy.tsx
+- \_fallbackTestCaseId: 22556d89502b8d6dd10d22daf7d33dc3
+
+## Parameters
+
+- Retry: 2 (excluded)
+
+## Links
+
+None
+
+## Expectation Comparison
+
+- Scope Match: unknown
+- Match Reasons: None
+- Expected References: None
+- Metadata Mismatches: None
+
+## Attachments Manifest
+
+None
+
+## Quality Findings
+
+None
+
+## Current Attempt
+
+- Status: PASSED
+- Duration: 826ms
+- Started: 2026-07-23T13:34:21.083Z
+- Stopped: 2026-07-23T13:34:21.909Z
+- Steps Recorded: 12
+- Attachments Recorded: 0
+
+### Error
+
+None
+
+### Fixtures
+
+### Before Fixture: "before each" hook
+
+- Status: PASSED
+- Duration: 16ms
+- Started: 2026-07-23T13:34:21.083Z
+- Stopped: 2026-07-23T13:34:21.099Z
+
+#### Error
+
+None
+
+#### Steps
+
+- [PASSED] window (0s)
+  - Parameters: Yielded=<window>
+
+### Attachments
+
+None
+
+### Steps
+
+- [PASSED] mount \<SupabaseTestProvider ... /\> (0s)
+  - Parameters: description=Mounts React component, home=https://github.com/cypress-io/cypress, supabase={"auth":{},"functions":{}}, user={"id":"test-user"}, loading=false, children={"type":{"_currentValue":null,"_currentValue2":null,"_threadCount":0,"Consumer":{},"_currentRenderer":null,"_currentRenderer2":n...
+- [PASSED] get \[data-cy="editor-content"\] (152ms)
+  - Parameters: Selector=[data-cy="editor-content"], Yielded=<div data-cy="editor-content" class="note-content min-h-[400px] px-6 py-4"></div>, Elements=1
+- [PASSED] click (73ms)
+  - Parameters: Applied To=<div data-cy="editor-content" class="note-content min-h-[400px] px-6 py-4"></div>, Elements=1, Coords={"x":632,"y":1332}, Actual Element Clicked=<p>Read mo...</p>
+- [PASSED] type Read mode text (286ms)
+  - Parameters: Typed=Read mode text, Applied To=<div data-cy="editor-content" class="note-content min-h-[400px] px-6 py-4"></div>
+- [PASSED] contains button, Read (2ms)
+  - Parameters: Content=Read, Applied To=<body>...</body>, Yielded=<button class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 cursor-pointer border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 text-xs rounded-full shadow-sm">...</button>, Elements=1
+- [PASSED] click (89ms)
+  - Parameters: Applied To=<button class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 cursor-pointer border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 text-xs rounded-full shadow-sm">...</button>, Elements=1, Coords={"x":43,"y":1142}
+- [PASSED] contains Reading (3ms)
+  - Parameters: Content=Reading, Applied To=<body>...</body>, Yielded=<h2 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reading</h2>, Elements=1
+- [PASSED] contains Read mode text (2ms)
+  - Parameters: Content=Read mode text, Applied To=<body>...</body>, Yielded=<p class="text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal line-clamp-2 mt-1.5">Read mo...</p>, Elements=1
+- [PASSED] contains button, Edit (1ms)
+  - Parameters: Content=Edit, Applied To=<body>...</body>, Yielded=<button class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 cursor-pointer border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 text-xs rounded-full shadow-sm">...</button>, Elements=1
+- [PASSED] click (177ms)
+  - Parameters: Applied To=<button class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 cursor-pointer border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 text-xs rounded-full shadow-sm">...</button>, Elements=1, Coords={"x":39,"y":1176}, Actual Element Clicked=<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pen w-3.5 h-3.5 mr-1.5" aria-hidden="true">...</svg>
+- [PASSED] get \[data-cy="editor-content"\] (3ms)
+  - Parameters: Selector=[data-cy="editor-content"], Yielded=<div data-cy="editor-content" class="note-content min-h-[400px] px-6 py-4">...</div>, Elements=1
+  - [PASSED] assert expected \<div.note-content.min-h-\[400px\].px-6.py-4\> to contain Read mode text (0s)
+    - Parameters: subject=<div data-cy="editor-content" class="note-content min-h-[400px] px-6 py-4">...</div>

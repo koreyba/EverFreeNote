@@ -1,0 +1,8 @@
+npm warn "junit" is being parsed as a normal command line argument.
+npm warn "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" is being parsed as a normal command line argument.
+npm warn Unknown cli config "--reporter". This will stop working in the next major version of npm.
+npm warn Unknown cli config "--reporter-options". This will stop working in the next major version of npm.
+<i> [webpack-dev-server] Project is running at:
+<i> [webpack-dev-server] Loopback: [36mhttp://127.0.0.1:8080/[39m
+<i> [webpack-dev-server] Content not from webpack is served from '[36m/home/runner/work/EverFreeNote/EverFreeNote/public[39m' directory
+<i> [webpack-dev-middleware] wait until bundle finished: /__cypress/src/index.html
