@@ -1,0 +1,1 @@
+{"id":"e4c60af3350129c2960573802da7b92a","fullName":"everfreenote:cypress/component/core/utils/search.cy.ts#core/utils/search buildTsQuery returns null if query becomes empty after sanitization","name":"returns null if query becomes empty after sanitization","status":"passed","testResultsByEnv":{"default":"4306fa3353b2a7f3087a232b65ac7a13"}}
