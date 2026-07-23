@@ -1,1 +1,0 @@
-{"id":"637b23472ac3c18935d286d64045eb83","fullName":"everfreenote-mobile:tests/component/useDeleteNote.test.tsx#useDeleteNote Error recovery rolls back optimistic update on queue error (offline)","name":"rolls back optimistic update on queue error (offline)","status":"passed","testResultsByEnv":{"default":"1cf458f3faf4d2f6ee48815f19683956"}}
