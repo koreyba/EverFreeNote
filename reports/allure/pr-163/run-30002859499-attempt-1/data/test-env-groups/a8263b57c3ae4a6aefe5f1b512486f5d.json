@@ -1,0 +1,1 @@
+{"id":"a8263b57c3ae4a6aefe5f1b512486f5d","fullName":"everfreenote:ui/web/tests/unit/components/features/settings/DeleteAccountPanel.test.tsx#DeleteAccountPanel renders fallback text when email is missing or null","name":"renders fallback text when email is missing or null","status":"passed","testResultsByEnv":{"default":"5f89c6439e623f2fc6fb0d2af0de19ad"}}
