@@ -111,6 +111,21 @@ const writeMergedResultFile = (sourcePath, targetPath, suiteName, family) => {
   addLabel(labels, "workflow", suiteMetadata.workflow);
   payload.labels = labels;
 
+  if (payload.status === "failed" || payload.status === "broken") {
+    const attachments = Array.isArray(payload.attachments) ? payload.attachments : [];
+    const hasAgentAttachment = attachments.some(
+      (att) => att.name && att.name.toLowerCase().includes("agent")
+    );
+    if (!hasAgentAttachment) {
+      attachments.push({
+        name: "Agent Overview (index.md)",
+        source: `agent-output-${suiteName}/index.md`,
+        type: "text/markdown",
+      });
+    }
+    payload.attachments = attachments;
+  }
+
   writeFileExclusive(targetPath, () => {
     fs.writeFileSync(targetPath, `${JSON.stringify(payload, null, 2)}\n`, {
       flag: "wx",
@@ -333,6 +348,14 @@ const generateAllureReport = ({ resultFiles, resultsDir, reportDir, configPath, 
     stdio: "inherit",
     shell: process.platform === "win32",
   });
+
+  for (const entry of readDirectoryEntries(resultsDir)) {
+    if (entry.isDirectory() && entry.name.startsWith("agent-output")) {
+      const sourceAgentDir = path.join(resultsDir, entry.name);
+      const targetAgentDir = path.join(reportDir, entry.name);
+      fs.cpSync(sourceAgentDir, targetAgentDir, { recursive: true });
+    }
+  }
 
   trimHistoryFile(absoluteHistoryPath, HISTORY_LIMIT);
 };
