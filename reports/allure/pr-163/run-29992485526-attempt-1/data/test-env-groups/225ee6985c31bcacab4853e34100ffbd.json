@@ -1,0 +1,1 @@
+{"id":"225ee6985c31bcacab4853e34100ffbd","fullName":"everfreenote-mobile:tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText HTML entity decoding decodes &nbsp; to space","name":"decodes &nbsp; to space","status":"passed","testResultsByEnv":{"default":"e18711b5f18a8b56ebd4cf0605664f33"}}

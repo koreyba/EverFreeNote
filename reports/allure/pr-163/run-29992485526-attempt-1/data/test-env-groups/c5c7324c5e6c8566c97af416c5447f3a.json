@@ -1,0 +1,1 @@
+{"id":"c5c7324c5e6c8566c97af416c5447f3a","fullName":"everfreenote:core/tests/unit/core-rag-searchSettings.test.ts#core/rag/searchSettings rejects thresholds that do not align to the slider step","name":"rejects thresholds that do not align to the slider step","status":"passed","testResultsByEnv":{"default":"f50d6193439221a3724c8b63cd6ba3f2"}}
