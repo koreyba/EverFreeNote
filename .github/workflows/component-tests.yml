@@ -46,7 +46,7 @@ jobs:
         run: |
           mkdir -p cypress/results
           set -o pipefail
-          npx allure agent --output allure-results/component/agent-output --report off --goal "Web Component Tests" -- npm run test:component:ci -- --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | tee cypress/results/component-tests.log
+          npx allure agent --output allure-results/component/agent-output-component --report off --goal "Web Component Tests" -- npm run test:component:ci -- --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | tee cypress/results/component-tests.log
           exit ${PIPESTATUS[0]}
 
       - name: Generate test summary

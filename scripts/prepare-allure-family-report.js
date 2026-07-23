@@ -125,7 +125,8 @@ const copyAllureAsset = (sourcePath, targetPath) => {
     return true;
   } catch (error) {
     if (error?.code === "EEXIST") {
-      throw new Error(`File collision while merging Allure results: ${targetPath}`);
+      fs.copyFileSync(sourcePath, targetPath);
+      return true;
     }
     if (error?.code === "ENOENT") {
       return false;

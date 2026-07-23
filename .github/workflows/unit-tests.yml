@@ -38,7 +38,7 @@ jobs:
       - name: Run mobile Jest tests
         id: run-mobile-unit-tests
         continue-on-error: true
-        run: npx allure agent --output ui/mobile/allure-results/mobile-unit/agent-output --report off --goal "Mobile Unit Tests" -- npm --prefix ui/mobile test -- --verbose --ci --json --outputFile=results.json
+        run: npx allure agent --output ui/mobile/allure-results/mobile-unit/agent-output-mobile-unit --report off --goal "Mobile Unit Tests" -- npm --prefix ui/mobile test -- --verbose --ci --json --outputFile=results.json
 
       - name: Generate mobile summary
         if: always()
@@ -212,12 +212,12 @@ jobs:
       - name: Run core unit tests
         id: run-core-unit-tests
         continue-on-error: true
-        run: npx allure agent --output allure-results/core-unit/agent-output --report off --goal "Core Unit Tests" -- npm run test:unit:core -- --verbose --ci --json --outputFile=core-unit-results.json
+        run: npx allure agent --output allure-results/core-unit/agent-output-core-unit --report off --goal "Core Unit Tests" -- npm run test:unit:core -- --verbose --ci --json --outputFile=core-unit-results.json
 
       - name: Run core integration tests
         id: run-core-integration-tests
         continue-on-error: true
-        run: npx allure agent --output allure-results/core-integration/agent-output --report off --goal "Core Integration Tests" -- npm run test:integration:core -- --verbose --ci --json --outputFile=core-integration-results.json
+        run: npx allure agent --output allure-results/core-integration/agent-output-core-integration --report off --goal "Core Integration Tests" -- npm run test:integration:core -- --verbose --ci --json --outputFile=core-integration-results.json
 
       - name: Generate core summary
         if: always()
@@ -410,7 +410,7 @@ jobs:
       - name: Run web unit tests
         id: run-web-unit-tests
         continue-on-error: true
-        run: npx allure agent --output allure-results/web-unit/agent-output --report off --goal "Web Unit Tests" -- npm run test:unit:web -- --verbose --ci --json --outputFile=web-unit-results.json
+        run: npx allure agent --output allure-results/web-unit/agent-output-web-unit --report off --goal "Web Unit Tests" -- npm run test:unit:web -- --verbose --ci --json --outputFile=web-unit-results.json
 
       - name: Generate web summary
         if: always()
