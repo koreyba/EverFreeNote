@@ -1,1 +1,0 @@
-{"id":"c98d456e59d40c1e1152ae1624780188","fullName":"everfreenote:ui/web/tests/unit/adapters/networkStatus.test.ts#webNetworkStatus in browser environment subscribe removes event listeners when unsubscribe function is called","name":"removes event listeners when unsubscribe function is called","status":"passed","testResultsByEnv":{"default":"9a3037db4f72a63377726851ff25aae6"}}

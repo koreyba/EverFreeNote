@@ -1,1 +1,0 @@
-{"id":"adb1513390b8f3acb7b12cca734faab8","fullName":"everfreenote:core/tests/unit/editorWebViewBridge.test.ts#editorWebViewBridge ignores malformed lifecycle messages without mutating the buffer","name":"ignores malformed lifecycle messages without mutating the buffer","status":"passed","testResultsByEnv":{"default":"9219110bec6381a2edb53a2e209b1dc0"}}
