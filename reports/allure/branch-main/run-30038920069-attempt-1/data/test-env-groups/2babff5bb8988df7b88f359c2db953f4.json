@@ -1,0 +1,1 @@
+{"id":"2babff5bb8988df7b88f359c2db953f4","fullName":"everfreenote:ui/web/tests/unit/components/mainPage.test.tsx#App Component (app/page.tsx) restores UI state when consumeSettingsReturnState returns return state","name":"restores UI state when consumeSettingsReturnState returns return state","status":"passed","testResultsByEnv":{"default":"24c4442f48cc3859955e22d5a08cf4ac"}}
