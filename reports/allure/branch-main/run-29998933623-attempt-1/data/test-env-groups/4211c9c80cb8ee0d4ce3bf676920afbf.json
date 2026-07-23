@@ -1,1 +1,0 @@
-{"id":"4211c9c80cb8ee0d4ce3bf676920afbf","fullName":"everfreenote:ui/web/tests/unit/hooks/useTagSuggestions.test.ts#useTagSuggestions returns empty array when allTags is empty","name":"returns empty array when allTags is empty","status":"passed","testResultsByEnv":{"default":"384d34f0309f5ff64ca6817b822d71df"}}

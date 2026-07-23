@@ -1,1 +1,0 @@
-{"id":"5ea1349168e204c6b23fd1561193e61d","fullName":"everfreenote:ui/web/tests/unit/adapters/offlineStorage.test.ts#webOfflineStorageAdapter localStorage fallback maintains the mutation queue and updates item status","name":"maintains the mutation queue and updates item status","status":"passed","testResultsByEnv":{"default":"20905135568a06366e8699b716596f30"}}
