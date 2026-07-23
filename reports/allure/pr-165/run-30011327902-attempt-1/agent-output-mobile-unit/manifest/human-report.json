@@ -1,0 +1,11 @@
+{
+  "schema_version": "allure-agent-human-report/v1",
+  "mode": "off",
+  "status": "disabled",
+  "result_count": null,
+  "threshold": 1000,
+  "path": null,
+  "reports": [],
+  "reason": "disabled by --report off",
+  "error": null
+}

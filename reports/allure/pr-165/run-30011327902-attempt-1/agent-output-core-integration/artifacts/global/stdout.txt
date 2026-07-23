@@ -1,0 +1,5 @@
+
+> everfreenote@0.3.0 test:integration:core
+> jest --config jest.config.cjs --selectProjects integration-core
+
+Running one project: [1mintegration-core[22m
