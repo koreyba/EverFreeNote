@@ -12,14 +12,14 @@ import {
 
 describe('Toast components', () => {
   it('renders ToastViewport with custom and default className', () => {
-    const { container } = render(
+    render(
       <ToastProvider>
         <ToastViewport className="custom-viewport" data-testid="toast-viewport" />
       </ToastProvider>
     )
 
     const viewport = screen.getByTestId('toast-viewport')
-    expect(viewport).toBeTruthy()
+    expect(viewport).not.toBeNull()
     expect(viewport.className).toContain('fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse')
     expect(viewport.className).toContain('custom-viewport')
   })
@@ -41,17 +41,17 @@ describe('Toast components', () => {
       </ToastProvider>
     )
 
-    expect(screen.getByText('Notification Title')).toBeTruthy()
-    expect(screen.getByText('Notification Description')).toBeTruthy()
+    expect(screen.getByText('Notification Title')).not.toBeNull()
+    expect(screen.getByText('Notification Description')).not.toBeNull()
 
     const actionBtn = screen.getByText('Undo')
-    expect(actionBtn).toBeTruthy()
+    expect(actionBtn).not.toBeNull()
 
     fireEvent.click(actionBtn)
     expect(handleAction).toHaveBeenCalledTimes(1)
 
     const closeBtn = screen.getByTestId('toast-close')
-    expect(closeBtn).toBeTruthy()
+    expect(closeBtn).not.toBeNull()
   })
 
   it('renders Toast with destructive variant styling', () => {
@@ -82,9 +82,9 @@ describe('Toast components', () => {
       </ToastProvider>
     )
 
-    expect(titleRef.current).toBeTruthy()
+    expect(titleRef.current).not.toBeNull()
     expect(titleRef.current?.textContent).toBe('Ref Title')
-    expect(descRef.current).toBeTruthy()
+    expect(descRef.current).not.toBeNull()
     expect(descRef.current?.textContent).toBe('Ref Description')
   })
 })

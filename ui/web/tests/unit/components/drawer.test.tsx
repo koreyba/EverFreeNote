@@ -14,13 +14,13 @@ import {
 
 describe('Drawer components', () => {
   it('renders DrawerHeader with custom and default class names', () => {
-    const { container } = render(
+    render(
       <DrawerHeader className="custom-header" data-testid="drawer-header">
         Header Content
       </DrawerHeader>
     )
     const header = screen.getByTestId('drawer-header')
-    expect(header).toBeTruthy()
+    expect(header).not.toBeNull()
     expect(header.textContent).toContain('Header Content')
     expect(header.className).toContain('grid gap-1.5 p-4 text-center sm:text-left')
     expect(header.className).toContain('custom-header')
@@ -33,7 +33,7 @@ describe('Drawer components', () => {
       </DrawerFooter>
     )
     const footer = screen.getByTestId('drawer-footer')
-    expect(footer).toBeTruthy()
+    expect(footer).not.toBeNull()
     expect(footer.textContent).toContain('Footer Content')
     expect(footer.className).toContain('mt-auto flex flex-col gap-2 p-4')
     expect(footer.className).toContain('custom-footer')
@@ -56,10 +56,10 @@ describe('Drawer components', () => {
       </Drawer>
     )
 
-    expect(screen.getByText('Drawer Title')).toBeTruthy()
-    expect(screen.getByText('Drawer Description')).toBeTruthy()
-    expect(screen.getByText('Main content inside drawer')).toBeTruthy()
-    expect(screen.getByText('Close Drawer')).toBeTruthy()
+    expect(screen.getByText('Drawer Title')).not.toBeNull()
+    expect(screen.getByText('Drawer Description')).not.toBeNull()
+    expect(screen.getByText('Main content inside drawer')).not.toBeNull()
+    expect(screen.getByText('Close Drawer')).not.toBeNull()
   })
 
   it('forwards ref and merges className for DrawerOverlay', () => {
@@ -73,7 +73,7 @@ describe('Drawer components', () => {
     )
 
     const overlay = screen.getByTestId('drawer-overlay')
-    expect(overlay).toBeTruthy()
+    expect(overlay).not.toBeNull()
     expect(overlay.className).toContain('fixed inset-0 z-50 bg-black/80')
     expect(overlay.className).toContain('custom-overlay')
     expect(overlayRef.current).toBe(overlay)
@@ -85,6 +85,6 @@ describe('Drawer components', () => {
         <div>Drawer Child</div>
       </Drawer>
     )
-    expect(container).toBeTruthy()
+    expect(container.firstChild).not.toBeNull()
   })
 })
