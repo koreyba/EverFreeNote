@@ -136,7 +136,7 @@ describe('Tabs UI components', () => {
       expect(screen.getByText('Content 1')).toBeTruthy()
       expect(screen.queryByText('Content 2')).toBeNull()
 
-      fireEvent.pointerDown(tab2Trigger, { button: 0 })
+      fireEvent.mouseDown(tab2Trigger, { button: 0 })
       fireEvent.click(tab2Trigger)
 
       expect(tab1Trigger.getAttribute('data-state')).toBe('inactive')
@@ -159,7 +159,7 @@ describe('Tabs UI components', () => {
       )
 
       const tab2Trigger = screen.getByRole('tab', { name: 'Tab 2' })
-      fireEvent.pointerDown(tab2Trigger, { button: 0 })
+      fireEvent.mouseDown(tab2Trigger, { button: 0 })
       fireEvent.click(tab2Trigger)
 
       expect(handleValueChange).toHaveBeenCalledWith('tab2')
@@ -183,7 +183,7 @@ describe('Tabs UI components', () => {
       const disabledTab = screen.getByRole('tab', { name: 'Tab 2 (Disabled)' }) as HTMLButtonElement
       expect(disabledTab.hasAttribute('disabled')).toBe(true)
 
-      fireEvent.pointerDown(disabledTab, { button: 0 })
+      fireEvent.mouseDown(disabledTab, { button: 0 })
       fireEvent.click(disabledTab)
       expect(handleValueChange).not.toHaveBeenCalled()
     })

@@ -5,7 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 describe('Avatar UI components', () => {
   describe('Avatar Root', () => {
     it('renders root span with default styles and merges custom className', () => {
-      const { container } = render(
+      render(
         <Avatar className="custom-avatar-class" data-testid="avatar-root">
           <AvatarFallback>CN</AvatarFallback>
         </Avatar>

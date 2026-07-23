@@ -33,7 +33,7 @@ describe('Calendar component', () => {
         onSelect={onSelect}
       />
     )
-    const dayButton = screen.getByRole('gridcell', { name: '15' }) || screen.getByText('15')
+    const dayButton = screen.getByText('15')
     fireEvent.click(dayButton)
     expect(onSelect).toHaveBeenCalled()
   })

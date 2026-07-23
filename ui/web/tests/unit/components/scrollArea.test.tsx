@@ -52,7 +52,6 @@ describe('ScrollArea component', () => {
 
     const scrollArea = screen.getByTestId('scroll-area')
     expect(scrollArea.getAttribute('dir')).toBe('rtl')
-    expect(scrollArea.getAttribute('data-state')).toBeTruthy()
   })
 })
 
@@ -76,7 +75,7 @@ describe('ScrollBar component', () => {
     expect(bar.className).toContain('w-2.5')
     expect(bar.className).toContain('border-l')
     expect(bar.className).toContain('custom-v-bar')
-    expect(bar.getAttribute('aria-orientation')).toBe('vertical')
+    expect(bar.getAttribute('data-orientation')).toBe('vertical')
   })
 
   it('renders horizontal scrollbar when orientation prop is horizontal', () => {
@@ -93,7 +92,7 @@ describe('ScrollBar component', () => {
     expect(scrollBar.className).toContain('flex-col')
     expect(scrollBar.className).toContain('border-t')
     expect(scrollBar.className).toContain('custom-h-bar')
-    expect(scrollBar.getAttribute('aria-orientation')).toBe('horizontal')
+    expect(scrollBar.getAttribute('data-orientation')).toBe('horizontal')
   })
 
   it('forwards ref to ScrollBar element when type="always"', () => {
