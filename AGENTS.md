@@ -38,6 +38,7 @@ Skills are packaged capabilities that teach you new competencies, patterns, and 
 
 ### Key Installed Skills
 - **memory**: Use AI DevKit's memory service via CLI commands when MCP is unavailable. Read the skill for detailed `memory store` and `memory search` command usage.
+- **allure-agent-mode**: Use Allure Agent Mode (`npx allure agent --goal "..." -- <test-cmd>`) for report-backed test execution, debugging, and coverage review. See [docs/allure-agent-mode.md](file:///c:/Projects/EverFreeNote/docs/allure-agent-mode.md).
 
 ### When to Reference Skills
 - Before implementing features that match a skill's domain

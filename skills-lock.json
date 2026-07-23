@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "allure-agent-mode": {
+      "source": "allure-framework/skills",
+      "sourceType": "github",
+      "skillPath": "skills/allure-agent-mode/SKILL.md",
+      "computedHash": "894c18c80bdf8c5c4951ce806ed255130769e44e3305fc4e88fd23e3b5fa91da"
+    },
+    "allure-configure-agent-workflow": {
+      "source": "allure-framework/skills",
+      "sourceType": "github",
+      "skillPath": "skills/allure-configure-agent-workflow/SKILL.md",
+      "computedHash": "36dc20de27bb7eb2f02badc910d6d26fb30e7046e20946d9f5e5ba0caa628aa7"
+    },
+    "allure-configure-reporting": {
+      "source": "allure-framework/skills",
+      "sourceType": "github",
+      "skillPath": "skills/allure-configure-reporting/SKILL.md",
+      "computedHash": "6f7e1071742fad6a4f5dfb437f0355b9e92442dd851f54e4686eeb61505e682e"
+    }
+  }
+}
