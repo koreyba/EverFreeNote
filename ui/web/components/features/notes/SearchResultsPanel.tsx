@@ -172,10 +172,12 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         }
 
         let visibleCount = 0
-        if (ftsData?.results) {
+        if (filterByTag && ftsData?.results) {
             visibleCount = ftsData.results.length
         } else if (typeof ftsData?.total === 'number') {
             visibleCount = ftsData.total
+        } else if (ftsData?.results) {
+            visibleCount = ftsData.results.length
         }
 
         return {
@@ -183,7 +185,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             singularLabel: 'note',
             pluralLabel: 'notes',
         }
-    }, [showAIResults, viewMode, noteGroups, aiChunks.length, showTagOnlyResults, tagOnlyTotal, ftsData])
+    }, [showAIResults, viewMode, noteGroups, aiChunks.length, showTagOnlyResults, tagOnlyTotal, ftsData, filterByTag])
 
     useEffect(() => {
         if (!hasGeminiApiKey) {

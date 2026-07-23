@@ -245,6 +245,27 @@ describe('SearchResultsPanel', () => {
     expect(screen.getByTestId('search-results-header').textContent).toContain('Found: 2 notes')
   })
 
+  it('correctly calculates FTS result count for ordinary paginated vs tag-filtered searches', () => {
+    const ordinaryController = makeController({
+      searchQuery: 'travel',
+      filterByTag: null,
+      showFTSResults: true,
+      ftsData: { total: 100, executionTime: 15, results: [{ id: 'note-1' }, { id: 'note-2' }] },
+    })
+    const view1 = renderPanel(ordinaryController, { hasGeminiApiKey: false })
+    expect(screen.getByTestId('search-results-header').textContent).toContain('Found: 100 notes')
+    view1.unmount()
+
+    const tagFilteredController = makeController({
+      searchQuery: 'travel',
+      filterByTag: 'vacation',
+      showFTSResults: true,
+      ftsData: { total: 100, executionTime: 15, results: [{ id: 'note-1' }] },
+    })
+    renderPanel(tagFilteredController, { hasGeminiApiKey: false })
+    expect(screen.getByTestId('search-results-header').textContent).toContain('Found: 1 note')
+  })
+
   it('shows AI loading, generic retry, and embedding mismatch reindex actions', async () => {
     mockSearchMode.isAIEnabled = true
     mockAIState.isLoading = true
