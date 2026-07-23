@@ -1,0 +1,1 @@
+{"id":"830216097d67d9f6fbb5ccacd3c6b8c7","fullName":"everfreenote:cypress/component/ui/web/hooks/useBulkDeleteConfirm.cy.tsx#useBulkDeleteConfirm resets in-flight guard after rejected confirm and allows retry","name":"resets in-flight guard after rejected confirm and allows retry","status":"passed","testResultsByEnv":{"default":"1684b486e3d7ab78b9d2ae96715684f1"}}
