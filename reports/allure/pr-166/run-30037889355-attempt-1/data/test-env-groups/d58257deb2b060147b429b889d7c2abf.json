@@ -1,0 +1,1 @@
+{"id":"d58257deb2b060147b429b889d7c2abf","fullName":"everfreenote-mobile:tests/component/useDeleteNote.test.tsx#useDeleteNote Callback handlers does not call onError when API fails but fallback succeeds","name":"does not call onError when API fails but fallback succeeds","status":"passed","testResultsByEnv":{"default":"229d375d3e71238c03d06d5c7fc61bc8"}}
