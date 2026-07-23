@@ -3,6 +3,34 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-165/run-30012325722-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-165/run-30012325722-attempt-1/",
+    "runId": "30012325722",
+    "runAttempt": "1",
+    "prNumber": "165",
+    "ref": "test/allure-report-failure-verification",
+    "sha": "d469179e8c78c73a0840c39ab8abb00e05936db6",
+    "outcome": "success",
+    "previewUrl": "https://29c5cb42.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #165",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-23T13:50:21.874Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "core-unit",
       "core-integration",
       "web-unit",
@@ -593,42 +621,6 @@
     "scopeLabel": "PR #164",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-23T12:05:18.565Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component"
-    ],
-    "path": "reports/allure/pr-164/run-30004610264-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-164/run-30004610264-attempt-1/",
-    "runId": "30004610264",
-    "runAttempt": "1",
-    "prNumber": "164",
-    "ref": "feat/allure-action-official-integration",
-    "sha": "fb3a5e04cc706a1532b5013bdcee3ec2605bfe5a",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #164",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-23T11:59:20.703Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
