@@ -171,13 +171,21 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             }
         }
 
-        const visibleCount = typeof ftsData?.total === 'number' ? ftsData.total : (ftsData?.results.length ?? 0)
+        let visibleCount = 0
+        if (filterByTag && ftsData?.results) {
+            visibleCount = ftsData.results.length
+        } else if (typeof ftsData?.total === 'number') {
+            visibleCount = ftsData.total
+        } else if (ftsData?.results) {
+            visibleCount = ftsData.results.length
+        }
+
         return {
             count: visibleCount,
             singularLabel: 'note',
             pluralLabel: 'notes',
         }
-    }, [showAIResults, viewMode, noteGroups, aiChunks.length, showTagOnlyResults, tagOnlyTotal, ftsData])
+    }, [showAIResults, viewMode, noteGroups, aiChunks.length, showTagOnlyResults, tagOnlyTotal, ftsData, filterByTag])
 
     useEffect(() => {
         if (!hasGeminiApiKey) {
