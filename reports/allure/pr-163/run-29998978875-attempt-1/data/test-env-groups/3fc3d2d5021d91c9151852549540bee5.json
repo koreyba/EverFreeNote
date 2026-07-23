@@ -1,0 +1,1 @@
+{"id":"3fc3d2d5021d91c9151852549540bee5","fullName":"everfreenote:ui/web/tests/unit/components/features/notes/Sidebar.test.tsx#Sidebar Sync Status Indicator renders Sync failed count status dot when failedCount > 0","name":"renders Sync failed count status dot when failedCount > 0","status":"passed","testResultsByEnv":{"default":"f4c8613385e51d0d0e2e70a685f92775"}}
