@@ -1,0 +1,1 @@
+{"id":"e857a400055d5d3384f43833c074a372","fullName":"everfreenote:ui/web/tests/unit/components/features/notes/Sidebar.test.tsx#Sidebar Sync Status Indicator renders Syncing count status dot when pendingCount > 0","name":"renders Syncing count status dot when pendingCount > 0","status":"passed","testResultsByEnv":{"default":"9dc3ffee5bc864469b9a641c3f4a6553"}}
