@@ -1,0 +1,1 @@
+{"id":"4a5cbb776650410b2d5e07cf67c54e22","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteAuth.test.tsx#useNoteAuth reports sign-out and account deletion failures without leaving loading flags set","name":"reports sign-out and account deletion failures without leaving loading flags set","status":"passed","testResultsByEnv":{"default":"fff81bedc14babe702ffb36e22027ac2"}}
