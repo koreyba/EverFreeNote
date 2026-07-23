@@ -171,7 +171,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             }
         }
 
-        const visibleCount = typeof ftsData?.total === 'number' ? ftsData.total : (ftsData?.results.length ?? 0)
+        const visibleCount = ftsData?.results ? ftsData.results.length : (typeof ftsData?.total === 'number' ? ftsData.total : 0)
         return {
             count: visibleCount,
             singularLabel: 'note',
