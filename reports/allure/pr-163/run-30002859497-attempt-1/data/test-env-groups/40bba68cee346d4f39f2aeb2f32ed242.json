@@ -1,0 +1,1 @@
+{"id":"40bba68cee346d4f39f2aeb2f32ed242","fullName":"everfreenote-mobile:tests/integration/noteEditorScreen.test.tsx#NoteEditorScreen - Delete Functionality Content save on blur does not call updateNote on blur if no pending content","name":"does not call updateNote on blur if no pending content","status":"passed","testResultsByEnv":{"default":"9a1efffac4999e3c7e53a0a1b9024416"}}
