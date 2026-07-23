@@ -1,0 +1,1 @@
+{"id":"b89d692f449f0b1764c8e3ab3a94cc6a","fullName":"everfreenote:ui/web/tests/unit/hooks/use-toast.test.tsx#use-toast useToast hook dismisses all toasts when hook dismiss() is called without id","name":"dismisses all toasts when hook dismiss() is called without id","status":"passed","testResultsByEnv":{"default":"00590526d6383c2ed92615076ea323a0"}}

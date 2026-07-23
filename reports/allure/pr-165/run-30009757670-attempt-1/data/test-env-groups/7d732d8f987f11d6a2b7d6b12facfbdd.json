@@ -1,1 +1,0 @@
-{"id":"7d732d8f987f11d6a2b7d6b12facfbdd","fullName":"everfreenote:cypress/component/ui/web/hooks/useNoteBulkActions.cy.tsx#useNoteBulkActions deleteSelectedNotes calls delete for each selected note (online)","name":"deleteSelectedNotes calls delete for each selected note (online)","status":"passed","testResultsByEnv":{"default":"ecc1ae0c61c038217c6845a5a2ecce60"}}
