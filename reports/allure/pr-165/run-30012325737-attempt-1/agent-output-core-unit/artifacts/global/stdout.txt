@@ -1,0 +1,5 @@
+
+> everfreenote@0.3.0 test:unit:core
+> jest --config jest.config.cjs --selectProjects unit-core
+
+Running one project: [1munit-core[22m

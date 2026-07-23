@@ -1,0 +1,1 @@
+{"id":"5355f0111fd2e8efb2fb8f62521e40dc","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteAuth.test.tsx#useNoteAuth rejects skip login when the feature is disabled or credentials are missing","name":"rejects skip login when the feature is disabled or credentials are missing","status":"passed","testResultsByEnv":{"default":"6b18824ea62ee478b8bd21fa6b157aaa"}}
