@@ -1,1 +1,0 @@
-{"id":"c73e818e5415193f024318e9335c325a","fullName":"everfreenote:cypress/component/ui/web/hooks/useNoteSaveHandlers.cy.tsx#useNoteSaveHandlers handleAutoSave skips new note creation when all fields are empty","name":"handleAutoSave skips new note creation when all fields are empty","status":"passed","testResultsByEnv":{"default":"4a7e2567a9db7585ea5219b22a3743df"}}
