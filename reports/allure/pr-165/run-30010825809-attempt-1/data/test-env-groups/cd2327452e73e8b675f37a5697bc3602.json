@@ -1,0 +1,1 @@
+{"id":"cd2327452e73e8b675f37a5697bc3602","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteAuth.test.tsx#useNoteAuth signs out, clears notes, and invokes the callback","name":"signs out, clears notes, and invokes the callback","status":"passed","testResultsByEnv":{"default":"21570944e2ef0133691634fd063bf514"}}
