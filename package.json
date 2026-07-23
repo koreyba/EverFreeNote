@@ -11,6 +11,7 @@
     "test:unit:coverage": "jest --config jest.config.cjs --selectProjects unit-core integration-core unit-web --coverage --runInBand",
     "test:unit:core": "jest --config jest.config.cjs --selectProjects unit-core",
     "test:unit:core:allure": "allure agent --goal \"Core Unit Tests\" -- npm run test:unit:core",
+    "test:integration:core": "jest --config jest.config.cjs --selectProjects integration-core",
     "test:integration:core:allure": "allure agent --goal \"Core Integration Tests\" -- npm run test:integration:core",
     "test:unit:web": "jest --config jest.config.cjs --selectProjects unit-web",
     "test:unit:web:allure": "allure agent --goal \"Web Unit Tests\" -- npm run test:unit:web",
