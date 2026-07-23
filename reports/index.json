@@ -6,6 +6,42 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/branch-main/run-30007501587-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-30007501587-attempt-1/",
+    "runId": "30007501587",
+    "runAttempt": "1",
+    "prNumber": null,
+    "ref": "main",
+    "sha": "054335bb2788d1acca2cf4cbc19bc8bff2b72577",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "branch",
+    "scopeLabel": "main",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-23T12:42:37.901Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit"
     ],
     "suiteLabels": [
@@ -647,40 +683,6 @@
     "scopeLabel": "PR #163",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-23T10:28:28.842Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/allure/pr-163/run-29998978875-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-163/run-29998978875-attempt-1/",
-    "runId": "29998978875",
-    "runAttempt": "1",
-    "prNumber": "163",
-    "ref": "fix/e2e-failures-pr160",
-    "sha": "4cb6326a97752013e7dfafabd7cf0df68d46bca7",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #163",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-23T10:25:24.979Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
