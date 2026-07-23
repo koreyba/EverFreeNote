@@ -209,7 +209,7 @@ jobs:
         id: run-e2e-tests
         continue-on-error: true
         working-directory: e2e
-        run: npx allure agent --report off --goal "Web E2E Tests" -- npm run test
+        run: npx allure agent --output allure-results/e2e/agent-output --report off --goal "Web E2E Tests" -- npm run test
 
       - name: Record run metadata
         id: run-metadata
