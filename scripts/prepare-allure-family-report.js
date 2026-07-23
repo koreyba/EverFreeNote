@@ -119,7 +119,7 @@ const writeMergedResultFile = (sourcePath, targetPath, suiteName, family) => {
     if (!hasAgentAttachment) {
       attachments.push({
         name: "Agent Overview (index.md)",
-        source: `agent-output-${suiteName}/index.md`,
+        source: `${suiteName}-agent-index.md`,
         type: "text/markdown",
       });
     }
@@ -153,6 +153,19 @@ const copyAllureAsset = (sourcePath, targetPath) => {
 const copyDirectory = (sourceDir, targetDir, suiteName, family) => {
   let copiedFiles = 0;
   let resultFiles = 0;
+
+  if (suiteName) {
+    for (const entry of readDirectoryEntries(sourceDir)) {
+      if (entry.isDirectory() && entry.name.startsWith("agent-output")) {
+        const candidate = path.join(sourceDir, entry.name, "index.md");
+        if (fs.existsSync(candidate)) {
+          ensureDir(targetDir);
+          copyAllureAsset(candidate, path.join(targetDir, `${suiteName}-agent-index.md`));
+          break;
+        }
+      }
+    }
+  }
 
   const visit = (currentSource, currentTarget) => {
     ensureDir(currentTarget);
@@ -410,8 +423,12 @@ const main = () => {
   const metadataPath = path.join(workDir, "metadata.json");
   const configPath = path.join(workDir, "allurerc.cjs");
 
-  fs.rmSync(resultsDir, { recursive: true, force: true });
-  fs.rmSync(reportDir, { recursive: true, force: true });
+  try {
+    fs.rmSync(resultsDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  } catch {}
+  try {
+    fs.rmSync(reportDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  } catch {}
   ensureDir(resultsDir);
 
   const context = computeReportContext({ family });
