@@ -3,6 +3,34 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "component"
+    ],
+    "suiteLabels": [
+      "Web Component"
+    ],
+    "path": "reports/allure/pr-165/run-30010825925-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-165/run-30010825925-attempt-1/",
+    "runId": "30010825925",
+    "runAttempt": "1",
+    "prNumber": "165",
+    "ref": "test/allure-report-failure-verification",
+    "sha": "e1ee39672f4bd9e61922e2f8c8ad948c852c4258",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #165",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-23T13:30:53.127Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "e2e"
     ],
     "suiteLabels": [
@@ -605,34 +633,6 @@
     "scopeLabel": "PR #164",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-23T11:45:31.198Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "component"
-    ],
-    "suiteLabels": [
-      "Web Component"
-    ],
-    "path": "reports/allure/branch-main/run-30003663392-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-30003663392-attempt-1/",
-    "runId": "30003663392",
-    "runAttempt": "1",
-    "prNumber": null,
-    "ref": "main",
-    "sha": "53cbb6061c5cf326158fa8d4e048b7ab7e0dd9a9",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "branch",
-    "scopeLabel": "main",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-23T11:43:54.042Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
