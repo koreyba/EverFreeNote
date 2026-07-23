@@ -4,7 +4,11 @@ import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import type { ExportableWordPressNote } from "@/components/features/wordpress/ExportToWordPressButton"
 
 jest.mock("@/components/ui/dropdown-menu", () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-menu">{children}</div>,
+  DropdownMenu: ({ children, open }: { children: React.ReactNode; open?: boolean }) => (
+    <div data-testid="dropdown-menu" data-open={open ? "true" : "false"}>
+      {children}
+    </div>
+  ),
   DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-trigger">{children}</div>,
   DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-content">{children}</div>,
   DropdownMenuItem: ({ children, onSelect, onClick, ...props }: { children?: React.ReactNode; onSelect?: (e: { preventDefault: () => void }) => void; onClick?: (e: React.MouseEvent) => void; className?: string }) => (
@@ -136,8 +140,11 @@ describe("MoreActionsMenu", () => {
   it("supports closing menu via RAG panel callback", () => {
     render(<MoreActionsMenu {...defaultProps} />)
 
+    const menu = screen.getByTestId("dropdown-menu")
     const closeBtn = screen.getByTestId("close-menu-from-rag")
+
     fireEvent.click(closeBtn)
-    expect(closeBtn).toBeTruthy()
+
+    expect(menu.getAttribute("data-open")).toBe("false")
   })
 })

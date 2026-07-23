@@ -64,11 +64,11 @@ describe("ExportToWordPressButton", () => {
 
     it("does not call onRequestExport if getNote returns null or note without id", () => {
       const onRequestExport = jest.fn()
-      const getNote = jest.fn(() => null)
+      const getNoteNull = jest.fn(() => null)
 
-      render(
+      const { rerender } = render(
         <ExportToWordPressButton
-          getNote={getNote}
+          getNote={getNoteNull}
           onRequestExport={onRequestExport}
         />
       )
@@ -76,7 +76,21 @@ describe("ExportToWordPressButton", () => {
       const btn = screen.getByRole("button", { name: /Export to WP/i })
       fireEvent.click(btn)
 
-      expect(getNote).toHaveBeenCalledTimes(1)
+      expect(getNoteNull).toHaveBeenCalledTimes(1)
+      expect(onRequestExport).not.toHaveBeenCalled()
+
+      const getNoteNoId = jest.fn(() => ({ title: "No ID Note" } as unknown as ExportableWordPressNote))
+
+      rerender(
+        <ExportToWordPressButton
+          getNote={getNoteNoId}
+          onRequestExport={onRequestExport}
+        />
+      )
+
+      fireEvent.click(btn)
+
+      expect(getNoteNoId).toHaveBeenCalledTimes(1)
       expect(onRequestExport).not.toHaveBeenCalled()
     })
 

@@ -70,6 +70,8 @@ function createMockEditor(options: MockEditorOptions = {}) {
   })
   chainObj.run = runMock
 
+  // Mirrors TipTap's overloaded editor.isActive signatures:
+  // object argument for attributes (e.g. textAlign), name + attributes for nodes (e.g. heading levels), and plain string name for marks (e.g. bold).
   const isActiveMock = jest.fn((name: string | Record<string, unknown>, attributes?: Record<string, unknown>) => {
     if (typeof name === "object") {
       const key = Object.keys(name)[0]
@@ -286,36 +288,14 @@ describe("EditorMenuBar", () => {
   })
 
   describe("Headings & Paragraph formatting", () => {
-    it("triggers setHeading level 1", () => {
+    it.each([1, 2, 3])("triggers setHeading level %i", (level) => {
       const { editor, chainObj, runMock } = createMockEditor()
       const { container } = render(
         <EditorMenuBar editor={editor} {...defaultProps} />
       )
-      const btn = container.querySelector('[data-cy="h1-button"]') as HTMLButtonElement
+      const btn = container.querySelector(`[data-cy="h${level}-button"]`) as HTMLButtonElement
       fireEvent.click(btn)
-      expect(chainObj.setHeading).toHaveBeenCalledWith({ level: 1 })
-      expect(runMock).toHaveBeenCalled()
-    })
-
-    it("triggers setHeading level 2", () => {
-      const { editor, chainObj, runMock } = createMockEditor()
-      const { container } = render(
-        <EditorMenuBar editor={editor} {...defaultProps} />
-      )
-      const btn = container.querySelector('[data-cy="h2-button"]') as HTMLButtonElement
-      fireEvent.click(btn)
-      expect(chainObj.setHeading).toHaveBeenCalledWith({ level: 2 })
-      expect(runMock).toHaveBeenCalled()
-    })
-
-    it("triggers setHeading level 3", () => {
-      const { editor, chainObj, runMock } = createMockEditor()
-      const { container } = render(
-        <EditorMenuBar editor={editor} {...defaultProps} />
-      )
-      const btn = container.querySelector('[data-cy="h3-button"]') as HTMLButtonElement
-      fireEvent.click(btn)
-      expect(chainObj.setHeading).toHaveBeenCalledWith({ level: 3 })
+      expect(chainObj.setHeading).toHaveBeenCalledWith({ level })
       expect(runMock).toHaveBeenCalled()
     })
 
@@ -447,36 +427,14 @@ describe("EditorMenuBar", () => {
   })
 
   describe("Alignment", () => {
-    it("triggers setTextAlign left", () => {
+    it.each(["left", "center", "right"])("triggers setTextAlign %s", (alignment) => {
       const { editor, chainObj, runMock } = createMockEditor()
       const { container } = render(
         <EditorMenuBar editor={editor} {...defaultProps} />
       )
-      const btn = container.querySelector('[data-cy="align-left-button"]') as HTMLButtonElement
+      const btn = container.querySelector(`[data-cy="align-${alignment}-button"]`) as HTMLButtonElement
       fireEvent.click(btn)
-      expect(chainObj.setTextAlign).toHaveBeenCalledWith("left")
-      expect(runMock).toHaveBeenCalled()
-    })
-
-    it("triggers setTextAlign center", () => {
-      const { editor, chainObj, runMock } = createMockEditor()
-      const { container } = render(
-        <EditorMenuBar editor={editor} {...defaultProps} />
-      )
-      const btn = container.querySelector('[data-cy="align-center-button"]') as HTMLButtonElement
-      fireEvent.click(btn)
-      expect(chainObj.setTextAlign).toHaveBeenCalledWith("center")
-      expect(runMock).toHaveBeenCalled()
-    })
-
-    it("triggers setTextAlign right", () => {
-      const { editor, chainObj, runMock } = createMockEditor()
-      const { container } = render(
-        <EditorMenuBar editor={editor} {...defaultProps} />
-      )
-      const btn = container.querySelector('[data-cy="align-right-button"]') as HTMLButtonElement
-      fireEvent.click(btn)
-      expect(chainObj.setTextAlign).toHaveBeenCalledWith("right")
+      expect(chainObj.setTextAlign).toHaveBeenCalledWith(alignment)
       expect(runMock).toHaveBeenCalled()
     })
   })

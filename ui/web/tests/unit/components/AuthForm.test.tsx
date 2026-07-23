@@ -114,17 +114,13 @@ describe("AuthForm", () => {
 
   it("resets loading state when authentication action fails or throws error", async () => {
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {})
-    const onGoogleAuthMock = jest.fn().mockImplementation(async () => {})
+    const onGoogleAuthMock = jest.fn().mockRejectedValue(new Error("Google auth failed"))
 
     render(<AuthForm {...defaultProps} onGoogleAuth={onGoogleAuthMock} />)
 
     const googleBtn = screen.getByRole("button", { name: /continue with google/i }) as HTMLButtonElement
 
-    try {
-      fireEvent.click(googleBtn)
-    } catch {
-      // Expected error thrown by React event handler in DEV mode
-    }
+    fireEvent.click(googleBtn)
 
     await waitFor(() => {
       expect(googleBtn.disabled).toBe(false)

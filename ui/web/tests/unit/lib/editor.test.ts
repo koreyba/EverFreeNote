@@ -61,24 +61,39 @@ describe("applySelectionAsMarkdown", () => {
       textBetweenMock,
     } = createMockEditor(0, 14, "**Bold Text**")
     const onContentChange = jest.fn()
+    const resolvePasteSpy = jest.spyOn(SmartPasteService, "resolvePaste").mockReturnValueOnce({
+      html: "<strong>Bold Text</strong>",
+      type: "markdown",
+    } as ReturnType<typeof SmartPasteService.resolvePaste>)
 
     applySelectionAsMarkdown(editor, onContentChange)
 
     expect(textBetweenMock).toHaveBeenCalledWith(0, 14, "\n\n")
+    expect(resolvePasteSpy).toHaveBeenCalledWith(
+      { html: null, text: "**Bold Text**", types: ["text/plain"] },
+      undefined,
+      "markdown"
+    )
     expect(chainMock).toHaveBeenCalledTimes(1)
     expect(focusMock).toHaveBeenCalledTimes(1)
     expect(deleteRangeMock).toHaveBeenCalledWith({ from: 0, to: 14 })
-    expect(insertContentMock).toHaveBeenCalledWith("<p><strong>Bold Text</strong></p>\n")
+    expect(insertContentMock).toHaveBeenCalledWith("<strong>Bold Text</strong>")
     expect(runMock).toHaveBeenCalledTimes(1)
     expect(onContentChange).toHaveBeenCalledTimes(1)
+    resolvePasteSpy.mockRestore()
   })
 
   it("works safely when onContentChange callback is omitted", () => {
     const { editor, runMock, insertContentMock } = createMockEditor(0, 10, "*Italic Text*")
+    const resolvePasteSpy = jest.spyOn(SmartPasteService, "resolvePaste").mockReturnValueOnce({
+      html: "<em>Italic Text</em>",
+      type: "markdown",
+    } as ReturnType<typeof SmartPasteService.resolvePaste>)
 
     expect(() => applySelectionAsMarkdown(editor)).not.toThrow()
-    expect(insertContentMock).toHaveBeenCalledWith("<p><em>Italic Text</em></p>\n")
+    expect(insertContentMock).toHaveBeenCalledWith("<em>Italic Text</em>")
     expect(runMock).toHaveBeenCalledTimes(1)
+    resolvePasteSpy.mockRestore()
   })
 
   it("bails out when SmartPasteService returns empty HTML result", () => {

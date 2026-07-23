@@ -107,6 +107,9 @@ describe("DeleteAccountPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("Server error during account deletion")).toBeTruthy()
     })
+    const deleteBtnError = screen.getByRole("button", { name: "Delete account" }) as HTMLButtonElement
+    expect(deleteBtnError).toBeTruthy()
+    expect(deleteBtnError.disabled).toBe(false)
   })
 
   it("displays fallback error message when onConfirm rejects with a non-Error value", async () => {
@@ -122,6 +125,9 @@ describe("DeleteAccountPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("Failed to delete account. Please try again.")).toBeTruthy()
     })
+    const deleteBtnFallback = screen.getByRole("button", { name: "Delete account" }) as HTMLButtonElement
+    expect(deleteBtnFallback).toBeTruthy()
+    expect(deleteBtnFallback.disabled).toBe(false)
   })
 
   it("clears displayed error message when checkbox state changes", async () => {

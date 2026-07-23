@@ -50,7 +50,6 @@ describe('useTagSuggestions', () => {
       })
     )
 
-    expect(result.current).toEqual(['rub', 'rust'].filter((t) => defaultTags.includes(t)))
     expect(result.current).toEqual(['rust'])
   })
 

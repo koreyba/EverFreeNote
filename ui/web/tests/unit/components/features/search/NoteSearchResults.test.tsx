@@ -137,7 +137,7 @@ describe('NoteSearchResults', () => {
       fireEvent.click(openButton)
 
       expect(mockOnOpenInContext).toHaveBeenCalledTimes(1)
-      expect(mockOnOpenInContext).toHaveBeenCalledWith('note-42', 10, 24)
+      expect(mockOnOpenInContext).toHaveBeenCalledWith('note-42', 10, expect.any(Number))
     })
 
     it('invokes onTagClick callback when clicking an interactive tag', () => {

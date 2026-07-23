@@ -1,5 +1,5 @@
 import React from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, act } from "@testing-library/react"
 
 import { PublicSharePageClient } from "@/components/features/public/PublicSharePageClient"
 import type { PublicNote } from "@core/services/publicNoteShare"
@@ -134,6 +134,8 @@ describe("PublicSharePageClient", () => {
   })
 
   it("cancels state updates cleanly when unmounted before request resolves", async () => {
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {})
+
     let resolvePromise!: (value: PublicNote | null) => void
     const pendingPromise = new Promise<PublicNote | null>((resolve) => {
       resolvePromise = resolve
@@ -146,7 +148,12 @@ describe("PublicSharePageClient", () => {
     // Unmount before promise resolves
     unmount()
 
-    // Resolve after unmount - should not throw state update error
-    resolvePromise(makePublicNote())
+    // Resolve after unmount - should not trigger console.error warning
+    await act(async () => {
+      resolvePromise(makePublicNote())
+    })
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
   })
 })

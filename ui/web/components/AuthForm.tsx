@@ -23,6 +23,8 @@ export default function AuthForm({
     setLoading(true)
     try {
       await onTestLogin()
+    } catch {
+      // Handled by parent or toast
     } finally {
       setLoading(false)
     }
@@ -32,6 +34,8 @@ export default function AuthForm({
     setLoading(true)
     try {
       await onSkipAuth()
+    } catch {
+      // Handled by parent or toast
     } finally {
       setLoading(false)
     }
@@ -41,6 +45,8 @@ export default function AuthForm({
     setLoading(true)
     try {
       await onGoogleAuth()
+    } catch {
+      // Handled by parent or toast
     } finally {
       setLoading(false)
     }

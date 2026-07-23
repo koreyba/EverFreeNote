@@ -166,8 +166,7 @@ describe("ImportProgressDialog", () => {
       render(<ImportProgressDialog {...defaultProps} result={result} onClose={onClose} />)
 
       const closeButtons = screen.getAllByRole("button", { name: "Close" })
-      expect(closeButtons.length).toBeGreaterThan(0)
-      const footerBtn = closeButtons.find(btn => btn.textContent === "Close")!
+      const footerBtn = closeButtons.find(btn => !btn.querySelector("svg"))!
       expect(footerBtn).toBeTruthy()
 
       fireEvent.click(footerBtn)

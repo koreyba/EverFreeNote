@@ -119,7 +119,7 @@ describe('use-toast', () => {
 
       expect(toastRef).toBeDefined()
       expect(toastRef?.id).toBeDefined()
-      expect(result.current.toasts.length).toBe(1)
+      expect(result.current.toasts).toHaveLength(1)
       expect(result.current.toasts[0]).toMatchObject({
         id: toastRef?.id,
         title: 'New Toast',
@@ -244,21 +244,21 @@ describe('use-toast', () => {
         result.current.toast({ title: 'Temporary Toast' })
       })
 
-      expect(result.current.toasts.length).toBe(1)
+      expect(result.current.toasts).toHaveLength(1)
 
       act(() => {
         result.current.dismiss()
       })
 
       expect(result.current.toasts[0].open).toBe(false)
-      expect(result.current.toasts.length).toBe(1)
+      expect(result.current.toasts).toHaveLength(1)
 
       // Fast-forward removal delay
       act(() => {
         jest.advanceTimersByTime(1000000)
       })
 
-      expect(result.current.toasts.length).toBe(0)
+      expect(result.current.toasts).toHaveLength(0)
     })
 
     it('prevents duplicate removal timers when dismiss is called twice', () => {
@@ -275,13 +275,14 @@ describe('use-toast', () => {
         result.current.dismiss(createdId)
       })
 
+      expect(jest.getTimerCount()).toBe(1)
       expect(result.current.toasts[0].open).toBe(false)
 
       act(() => {
         jest.advanceTimersByTime(1000000)
       })
 
-      expect(result.current.toasts.length).toBe(0)
+      expect(result.current.toasts).toHaveLength(0)
     })
 
     it('subscribes and unsubscribes listeners cleanly on mount and unmount', () => {
@@ -292,8 +293,8 @@ describe('use-toast', () => {
         toast({ title: 'Shared Toast' })
       })
 
-      expect(hook1.result.current.toasts.length).toBe(1)
-      expect(hook2.result.current.toasts.length).toBe(1)
+      expect(hook1.result.current.toasts).toHaveLength(1)
+      expect(hook2.result.current.toasts).toHaveLength(1)
 
       // Unmount hook1
       hook1.unmount()
