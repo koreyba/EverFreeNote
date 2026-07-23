@@ -1,1 +1,0 @@
-{"id":"0166cf30d37c72350b79472834dab613","fullName":"everfreenote:ui/web/tests/unit/adapters/offlineStorage.test.ts#webOfflineStorageAdapter localStorage fallback ignores malformed stored JSON and clears both stores","name":"ignores malformed stored JSON and clears both stores","status":"passed","testResultsByEnv":{"default":"a6a4eb3f3fa3321b5e1e2761290a407c"}}

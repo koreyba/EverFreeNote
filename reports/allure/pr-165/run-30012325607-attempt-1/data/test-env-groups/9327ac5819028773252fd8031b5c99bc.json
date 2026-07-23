@@ -1,0 +1,1 @@
+{"id":"9327ac5819028773252fd8031b5c99bc","fullName":"everfreenote:cypress/component/features/notes/BulkDeleteDialog.cy.tsx#BulkDeleteDialog keeps the dialog open when confirm reports an error","name":"keeps the dialog open when confirm reports an error","status":"passed","testResultsByEnv":{"default":"30679d2c1d0e340f6fbd7caff11e92eb"}}

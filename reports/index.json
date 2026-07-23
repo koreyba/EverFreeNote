@@ -3,6 +3,36 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "component",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web Component",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-165/run-30012325607-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-165/run-30012325607-attempt-1/",
+    "runId": "30012325607",
+    "runAttempt": "1",
+    "prNumber": "165",
+    "ref": "test/allure-report-failure-verification",
+    "sha": "d469179e8c78c73a0840c39ab8abb00e05936db6",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #165",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-23T13:52:11.428Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "e2e"
     ],
     "suiteLabels": [
@@ -583,44 +613,6 @@
     "scopeLabel": "main",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-23T12:36:56.663Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-164/run-30004610261-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-164/run-30004610261-attempt-1/",
-    "runId": "30004610261",
-    "runAttempt": "1",
-    "prNumber": "164",
-    "ref": "feat/allure-action-official-integration",
-    "sha": "fb3a5e04cc706a1532b5013bdcee3ec2605bfe5a",
-    "outcome": "success",
-    "previewUrl": "https://71dd6ee3.everfreenote.pages.dev",
-    "e2eRef": "feat/allure-action-official-integration",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #164",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-23T12:05:18.565Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
