@@ -1,0 +1,1 @@
+{"id":"3b92e8c5be72d4c369a3e8ae52bb4ac0","fullName":"everfreenote:ui/web/tests/unit/hooks/useRagStatus.test.tsx#useRagStatus refreshes immediately and polls, then stops polling after unmount","name":"refreshes immediately and polls, then stops polling after unmount","status":"passed","testResultsByEnv":{"default":"90a08379a675a4f9812395d50384afb4"}}
