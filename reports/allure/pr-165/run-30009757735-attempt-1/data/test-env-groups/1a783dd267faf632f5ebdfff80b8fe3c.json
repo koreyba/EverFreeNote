@@ -1,1 +1,0 @@
-{"id":"1a783dd267faf632f5ebdfff80b8fe3c","fullName":"everfreenote:ui/web/tests/unit/components/VirtualNoteList.test.tsx#VirtualNoteList Note text & tag fallbacks renders spacer when note has no tags","name":"renders spacer when note has no tags","status":"passed","testResultsByEnv":{"default":"989cf6f2b292691fbc3d4b4445db2ccb"}}

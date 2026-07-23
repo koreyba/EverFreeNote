@@ -1,1 +1,0 @@
-{"id":"a40c961fc7d9f08ed2a1d5c8095c7610","fullName":"everfreenote:ui/web/tests/unit/components/noteView.test.tsx#NoteView copy action surfaces an error toast when the clipboard write fails","name":"surfaces an error toast when the clipboard write fails","status":"passed","testResultsByEnv":{"default":"5d486e5c2a30b2c405661c652c48c610"}}

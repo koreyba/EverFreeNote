@@ -1,1 +1,0 @@
-{"id":"d05b1674592776074386091e1fbd00e9","fullName":"everfreenote:ui/web/tests/unit/hooks/useCopyNote.test.ts#ui/web/hooks/useCopyNote shows an error toast and stays unconfirmed when the clipboard write fails","name":"shows an error toast and stays unconfirmed when the clipboard write fails","status":"passed","testResultsByEnv":{"default":"dc0c1f51e4c232e78e344b9f892de771"}}
