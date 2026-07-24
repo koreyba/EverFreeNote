@@ -1,0 +1,1 @@
+{"id":"2f88e3ccfac4e93147174b7cc7f7edb0","fullName":"everfreenote-mobile:tests/unit/configAdapter.test.ts#config adapter getSupabaseConfig returns config from process.env when expoConfig is empty","name":"returns config from process.env when expoConfig is empty","status":"passed","testResultsByEnv":{"default":"26ca9ff952d1852e13214d917cc17eed"}}

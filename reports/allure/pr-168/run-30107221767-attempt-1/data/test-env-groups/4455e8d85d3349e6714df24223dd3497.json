@@ -1,0 +1,1 @@
+{"id":"4455e8d85d3349e6714df24223dd3497","fullName":"everfreenote-mobile:tests/unit/configAdapter.test.ts#config adapter getOAuthRedirectUrl returns trimmed oauthRedirectUrl from Constants.expoConfig.extra","name":"returns trimmed oauthRedirectUrl from Constants.expoConfig.extra","status":"passed","testResultsByEnv":{"default":"e5998d709b99a85305e079e163cbd26b"}}
