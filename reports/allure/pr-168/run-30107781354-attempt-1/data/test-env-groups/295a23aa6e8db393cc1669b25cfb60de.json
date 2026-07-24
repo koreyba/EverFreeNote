@@ -1,0 +1,1 @@
+{"id":"295a23aa6e8db393cc1669b25cfb60de","fullName":"everfreenote-mobile:tests/component/tagInput.test.tsx#TagInput invokes onChangeTags without the target tag when tag removal is triggered","name":"invokes onChangeTags without the target tag when tag removal is triggered","status":"passed","testResultsByEnv":{"default":"0c0e5770a0c4e3b62f737ecb879c13a9"}}
