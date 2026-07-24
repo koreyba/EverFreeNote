@@ -1,1 +1,0 @@
-{"id":"7e8ee5d3f2bc45ab58ea22e2eb68af00","fullName":"everfreenote:ui/web/tests/unit/hooks/use-toast.test.tsx#use-toast reducer handles DISMISS_TOAST without toastId (dismiss all)","name":"handles DISMISS_TOAST without toastId (dismiss all)","status":"passed","testResultsByEnv":{"default":"f22ff61b3e4759caa214d1f91dafd70d"}}

@@ -1,0 +1,1 @@
+{"id":"f25d653a74492445a9d27b6140bf6134","fullName":"everfreenote-mobile:tests/unit/navigationAdapter.test.ts#navigationAdapter calls router.push(url) when options is omitted","name":"calls router.push(url) when options is omitted","status":"passed","testResultsByEnv":{"default":"846344a1e78d2852fcc3979f525df474"}}

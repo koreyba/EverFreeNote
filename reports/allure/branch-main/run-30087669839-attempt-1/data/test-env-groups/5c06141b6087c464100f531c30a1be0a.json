@@ -1,0 +1,1 @@
+{"id":"5c06141b6087c464100f531c30a1be0a","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter saveNotes delegates to databaseService.saveNotes with notes array","name":"delegates to databaseService.saveNotes with notes array","status":"passed","testResultsByEnv":{"default":"f500d9f3218831f63bf210911a4ae104"}}

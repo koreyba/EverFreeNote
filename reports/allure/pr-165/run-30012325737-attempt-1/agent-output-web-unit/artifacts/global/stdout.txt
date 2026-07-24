@@ -1,5 +1,0 @@
-
-> everfreenote@0.3.0 test:unit:web
-> jest --config jest.config.cjs --selectProjects unit-web
-
-Running one project: [1munit-web[22m

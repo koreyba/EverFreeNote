@@ -1,0 +1,1 @@
+{"id":"7004e645f02a828d0953f9269dfa5d8a","fullName":"everfreenote-mobile:tests/component/useOfflineSync.test.tsx#useOfflineSync safely handles exceptions when mobileSyncService.getManager() throws an error","name":"safely handles exceptions when mobileSyncService.getManager() throws an error","status":"passed","testResultsByEnv":{"default":"45fa7b62c020173a6b3808f196fc691a"}}
