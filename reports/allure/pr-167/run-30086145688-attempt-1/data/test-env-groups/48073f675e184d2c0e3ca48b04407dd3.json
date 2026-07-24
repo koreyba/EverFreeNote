@@ -1,0 +1,1 @@
+{"id":"48073f675e184d2c0e3ca48b04407dd3","fullName":"everfreenote-mobile:tests/component/useBulkDeleteNotes.test.tsx#useBulkDeleteNotes continues remaining deletions when one fails (Promise.allSettled)","name":"continues remaining deletions when one fails (Promise.allSettled)","status":"passed","testResultsByEnv":{"default":"6a70a0665bc965b40230a1bc63873dac"}}

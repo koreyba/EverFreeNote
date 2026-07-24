@@ -1,0 +1,1 @@
+{"id":"378654e2692fcdbdbdda92373a2d9710","fullName":"everfreenote-mobile:tests/component/useOfflineSync.test.tsx#useOfflineSync subscribes to AppState change on mount and unsubscribes on unmount","name":"subscribes to AppState change on mount and unsubscribes on unmount","status":"passed","testResultsByEnv":{"default":"1aea0388873dd0a3bee65e2ad1cacbdd"}}
