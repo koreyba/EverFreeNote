@@ -1,0 +1,1 @@
+{"id":"b6f6d9eea27f19b742876b979efa65f8","fullName":"everfreenote-mobile:tests/unit/searchHistory.test.ts#searchHistory service getSearchHistory returns empty array if parsed JSON is not an array","name":"returns empty array if parsed JSON is not an array","status":"passed","testResultsByEnv":{"default":"55edb4a921933e886ea4636ab291b4e7"}}

@@ -1,0 +1,1 @@
+{"id":"6d5acefaf390ddc421c0050a31678fba","fullName":"everfreenote-mobile:tests/unit/storageAdapter.test.ts#storage adapters asyncStorageAdapter removeItem logs and re-throws error when AsyncStorage.removeItem fails","name":"logs and re-throws error when AsyncStorage.removeItem fails","status":"passed","testResultsByEnv":{"default":"d91020da77c186145874e1a60a3408a4"}}
