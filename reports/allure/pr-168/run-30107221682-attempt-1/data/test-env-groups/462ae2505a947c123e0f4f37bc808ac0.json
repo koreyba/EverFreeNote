@@ -1,0 +1,1 @@
+{"id":"462ae2505a947c123e0f4f37bc808ac0","fullName":"everfreenote-mobile:tests/unit/searchHistory.test.ts#searchHistory service getSearchHistory limits returned items to max 10 items","name":"limits returned items to max 10 items","status":"passed","testResultsByEnv":{"default":"90ecc3be8773d01f92e5f9a266901223"}}

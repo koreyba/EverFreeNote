@@ -1,0 +1,1 @@
+{"id":"074818f4cf4b521efe65b42ff31e1f49","fullName":"everfreenote-mobile:tests/unit/storageAdapter.test.ts#storage adapters secureStorageAdapter setItem logs and re-throws error when SecureStore.setItemAsync fails","name":"logs and re-throws error when SecureStore.setItemAsync fails","status":"passed","testResultsByEnv":{"default":"cafe019dab63c023fd3931a9730f0393"}}
