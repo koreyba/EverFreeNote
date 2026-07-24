@@ -1,0 +1,1 @@
+{"id":"ebc83448caa13bec8ef56a385b94b322","fullName":"everfreenote:ui/web/tests/unit/lib/editor.test.ts#applySelectionAsMarkdown bails out when SmartPasteService returns empty HTML result","name":"bails out when SmartPasteService returns empty HTML result","status":"passed","testResultsByEnv":{"default":"f280b0fe6fa339f96fd9abc85a9037c4"}}

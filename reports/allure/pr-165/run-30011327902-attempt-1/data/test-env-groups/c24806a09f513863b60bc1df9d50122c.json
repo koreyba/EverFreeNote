@@ -1,1 +1,0 @@
-{"id":"c24806a09f513863b60bc1df9d50122c","fullName":"everfreenote:ui/web/tests/unit/components/features/account/DeleteAccountDialog.test.tsx#DeleteAccountDialog handles cancel button click and calls onOpenChange(false)","name":"handles cancel button click and calls onOpenChange(false)","status":"passed","testResultsByEnv":{"default":"ea997aa78f4d776f4c301999c1ac76cb"}}

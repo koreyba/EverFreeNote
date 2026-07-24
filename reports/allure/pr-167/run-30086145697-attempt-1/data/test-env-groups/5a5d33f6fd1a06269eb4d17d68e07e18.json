@@ -1,0 +1,1 @@
+{"id":"5a5d33f6fd1a06269eb4d17d68e07e18","fullName":"everfreenote-mobile:tests/unit/searchHistory.test.ts#searchHistory service getSearchHistory returns an empty array when storage is empty","name":"returns an empty array when storage is empty","status":"passed","testResultsByEnv":{"default":"d07d92f1b59df08b9a03febb8050bb02"}}
