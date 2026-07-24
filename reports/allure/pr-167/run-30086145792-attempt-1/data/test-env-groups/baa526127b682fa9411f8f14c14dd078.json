@@ -1,0 +1,1 @@
+{"id":"baa526127b682fa9411f8f14c14dd078","fullName":"everfreenote:ui/web/tests/unit/hooks/use-mobile.test.tsx#useIsMobile removes matchMedia listener on unmount","name":"removes matchMedia listener on unmount","status":"passed","testResultsByEnv":{"default":"bf1cf3ffc8c85db8228f827776bca488"}}

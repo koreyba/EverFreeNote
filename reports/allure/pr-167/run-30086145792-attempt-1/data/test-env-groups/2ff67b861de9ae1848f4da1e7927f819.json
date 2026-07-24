@@ -1,0 +1,1 @@
+{"id":"2ff67b861de9ae1848f4da1e7927f819","fullName":"everfreenote:ui/web/tests/unit/hooks/useTagSuggestions.test.ts#useTagSuggestions updates suggestions when props (like query or selectedTags) change","name":"updates suggestions when props (like query or selectedTags) change","status":"passed","testResultsByEnv":{"default":"144244342ffc8115cd93404bac0ddab1"}}
