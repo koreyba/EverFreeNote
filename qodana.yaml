@@ -6,5 +6,8 @@ version: "1.0"
 linter: qodana-js
 profile:
   name: qodana.recommended
+bootstrap: |+
+  set -eu
+  npm ci --include=dev
 include:
   - name: CheckDependencyLicenses
