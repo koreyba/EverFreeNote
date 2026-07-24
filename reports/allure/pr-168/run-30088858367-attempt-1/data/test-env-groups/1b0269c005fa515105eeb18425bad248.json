@@ -1,0 +1,1 @@
+{"id":"1b0269c005fa515105eeb18425bad248","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter markSynced updates is_synced and updated_at in DB for noteId","name":"updates is_synced and updated_at in DB for noteId","status":"passed","testResultsByEnv":{"default":"8e1e2190ddb61c4f39df41c76e19e772"}}

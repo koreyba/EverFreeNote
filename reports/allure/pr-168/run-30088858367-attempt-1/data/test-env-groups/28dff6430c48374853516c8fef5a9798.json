@@ -1,0 +1,1 @@
+{"id":"28dff6430c48374853516c8fef5a9798","fullName":"everfreenote:cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager drainQueue should process pending batch and remove successful items","name":"should process pending batch and remove successful items","status":"passed","testResultsByEnv":{"default":"cb6d5b28f23281ed6548a6666d176c12"}}
