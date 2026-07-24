@@ -235,4 +235,68 @@ describe('AIIndexNoteCard', () => {
       nextStatus: 'not_indexed',
     })
   })
+
+  it('shows "Unexpected response." error toast when index action returns an unexpected outcome without a message', async () => {
+    mockInvoke.mockResolvedValue({ data: {}, error: null })
+    parseRagIndexResult.mockReturnValue({ outcome: 'unexpected_outcome', message: null })
+
+    render(<AIIndexNoteCard note={makeNote()} onMutated={onMutated} />)
+    fireEvent.press(screen.getByText('Index note'))
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', text1: 'Unexpected response.' })
+      )
+    })
+    expect(onMutated).not.toHaveBeenCalled()
+  })
+
+  it('shows "Unexpected response." error toast when delete action returns an unexpected outcome without a message', async () => {
+    mockInvoke.mockResolvedValue({ data: {}, error: null })
+    parseRagIndexResult.mockReturnValue({ outcome: 'unexpected_outcome', message: null })
+
+    render(
+      <AIIndexNoteCard
+        note={makeNote({ status: 'indexed', lastIndexedAt: '2025-06-01T00:00:00Z' })}
+        onMutated={onMutated}
+      />
+    )
+    fireEvent.press(screen.getByText('Remove index'))
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', text1: 'Unexpected response.' })
+      )
+    })
+    expect(onMutated).not.toHaveBeenCalled()
+  })
+
+  it('handles non-Error exception thrown during index action or delete action', async () => {
+    mockInvoke.mockRejectedValueOnce('string error')
+
+    render(<AIIndexNoteCard note={makeNote()} onMutated={onMutated} />)
+    fireEvent.press(screen.getByText('Index note'))
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', text1: 'Index note failed' })
+      )
+    })
+
+    mockInvoke.mockRejectedValueOnce({ customError: true })
+
+    render(
+      <AIIndexNoteCard
+        note={makeNote({ status: 'indexed', lastIndexedAt: '2025-06-01T00:00:00Z' })}
+        onMutated={onMutated}
+      />
+    )
+    fireEvent.press(screen.getByText('Remove index'))
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', text1: 'Remove from index failed' })
+      )
+    })
+  })
 })

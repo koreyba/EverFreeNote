@@ -5,9 +5,12 @@ jest.mock('@ui/mobile/providers/SupabaseProvider', () => ({
   useSupabase: jest.fn(),
 }))
 
-type CountResponse = { count: number | null; error: null }
-type LatestResponse = { data: Array<{ indexed_at: string | null }>; error: null }
+type CountResponse = { count: number | null; error: unknown }
+type LatestResponse = { data: Array<{ indexed_at: string | null }> | null; error: unknown }
 type QueryMode = 'count' | 'latest'
+
+type CountResolver = Promise<CountResponse> | (() => Promise<CountResponse>)
+type LatestResolver = Promise<LatestResponse> | (() => Promise<LatestResponse>)
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -19,8 +22,8 @@ function createDeferred<T>() {
 }
 
 function createMockClient(
-  countResolvers: Record<string, Promise<CountResponse>>,
-  latestResolvers: Record<string, Promise<LatestResponse>>,
+  countResolvers: Record<string, CountResolver>,
+  latestResolvers: Record<string, LatestResolver>,
 ) {
   return {
     from: jest.fn(() => {
@@ -44,9 +47,10 @@ function createMockClient(
         limit: () => builder,
         then: (onFulfilled: (value: CountResponse | LatestResponse) => unknown, onRejected?: (reason: unknown) => unknown) => {
           const noteId = state.noteId ?? ''
+          const resolver = state.mode === 'count' ? countResolvers[noteId] : latestResolvers[noteId]
           const result =
-            (state.mode === 'count' ? countResolvers[noteId] : latestResolvers[noteId]) ??
-          Promise.reject(new Error(`No resolver for noteId: ${noteId || '<missing>'}`))
+            (typeof resolver === 'function' ? resolver() : resolver) ??
+            Promise.reject(new Error(`No resolver for noteId: ${noteId || '<missing>'}`))
           return result.then(onFulfilled, onRejected)
         },
       }
@@ -113,6 +117,91 @@ describe('hooks/useRagStatus', () => {
     await waitFor(() => {
       expect(result.current.chunkCount).toBe(0)
       expect(result.current.indexedAt).toBeNull()
+      expect(result.current.isLoading).toBe(false)
+    })
+  })
+
+  it('returns { chunkCount: 0, indexedAt: null, isLoading: false } immediately when noteId is undefined or user is null', () => {
+    useSupabase.mockReturnValue({
+      client: createMockClient({}, {}),
+      user: { id: 'test-user-id' },
+    })
+
+    const { result: resultUndefined } = renderHook(() => useRagStatus(undefined))
+    expect(resultUndefined.current.chunkCount).toBe(0)
+    expect(resultUndefined.current.indexedAt).toBeNull()
+    expect(resultUndefined.current.isLoading).toBe(false)
+
+    useSupabase.mockReturnValue({
+      client: createMockClient({}, {}),
+      user: null,
+    })
+
+    const { result: resultNoUser } = renderHook(() => useRagStatus('note-1'))
+    expect(resultNoUser.current.chunkCount).toBe(0)
+    expect(resultNoUser.current.indexedAt).toBeNull()
+    expect(resultNoUser.current.isLoading).toBe(false)
+  })
+
+  it('handles query errors gracefully (countResult.error or latestResult.error) by setting isLoading: false', async () => {
+    useSupabase.mockReturnValue({
+      client: createMockClient(
+        {
+          'note-err-count': Promise.resolve({ count: null, error: new Error('Count error') }),
+          'note-err-latest': Promise.resolve({ count: 5, error: null }),
+        },
+        {
+          'note-err-count': Promise.resolve({ data: [], error: null }),
+          'note-err-latest': Promise.resolve({ data: null, error: new Error('Latest error') }),
+        },
+      ),
+      user: { id: 'test-user-id' },
+    })
+
+    const { result: resultCountErr } = renderHook(() => useRagStatus('note-err-count'))
+    await waitFor(() => {
+      expect(resultCountErr.current.isLoading).toBe(false)
+    })
+
+    const { result: resultLatestErr } = renderHook(() => useRagStatus('note-err-latest'))
+    await waitFor(() => {
+      expect(resultLatestErr.current.isLoading).toBe(false)
+    })
+  })
+
+  it('refresh() callback function triggers re-fetch of status', async () => {
+    let fetchCount = 0
+    useSupabase.mockReturnValue({
+      client: createMockClient(
+        {
+          'note-refresh': () => {
+            fetchCount += 1
+            return Promise.resolve({ count: fetchCount, error: null })
+          },
+        },
+        {
+          'note-refresh': Promise.resolve({
+            data: [{ indexed_at: '2026-03-09T18:00:00.000Z' }],
+            error: null,
+          }),
+        },
+      ),
+      user: { id: 'test-user-id' },
+    })
+
+    const { result } = renderHook(() => useRagStatus('note-refresh'))
+
+    await waitFor(() => {
+      expect(result.current.chunkCount).toBe(1)
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.refresh()
+    })
+
+    await waitFor(() => {
+      expect(result.current.chunkCount).toBe(2)
       expect(result.current.isLoading).toBe(false)
     })
   })

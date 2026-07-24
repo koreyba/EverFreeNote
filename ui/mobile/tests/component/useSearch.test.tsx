@@ -156,6 +156,73 @@ describe('hooks/useSearch', () => {
       })
       expect(result.current.data?.pages[0].method).toBe('tag_only')
     })
+
+    it('returns nextCursor when online tag-only results have more pages (lines 71-79)', async () => {
+      const manyNotes = Array.from({ length: 50 }, (_, i) => ({
+        id: `note-${i}`,
+        title: `Note ${i}`,
+        description: 'Description',
+        tags: ['work'],
+        updated_at: '2024-01-01T00:00:00Z',
+        created_at: '2024-01-01T00:00:00Z',
+      }))
+
+      mockNoteService.prototype.getNotes = jest.fn().mockResolvedValue({
+        notes: manyNotes,
+        totalCount: 200,
+        hasMore: true,
+      })
+
+      const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
+        wrapper,
+      })
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+      expect(result.current.data?.pages[0].hasMore).toBe(true)
+      expect(result.current.data?.pages[0].nextCursor).toBe(1)
+      expect(result.current.data?.pages[0].method).toBe('tag_only')
+    })
+
+    it('falls back to local FTS search via databaseService.searchNotes when online search throws an error', async () => {
+      jest.spyOn(console, 'warn').mockImplementation(() => {})
+      const mockSearchNotes = jest.fn().mockRejectedValue(new Error('Online search RPC failed'))
+      mockSearchService.prototype.searchNotes = mockSearchNotes
+
+      const mockLocalNotes = [
+        {
+          id: 'note-local-1',
+          title: 'Fallback Local Note',
+          description: 'Description',
+          tags: ['test'],
+          updated_at: '2024-01-01T00:00:00Z',
+          created_at: '2024-01-01T00:00:00Z',
+          user_id: 'test-user-id',
+          snippet: null,
+          rank: null,
+        },
+      ]
+      mockDatabaseService.searchNotes.mockResolvedValue(mockLocalNotes)
+
+      const { result } = renderHook(() => useSearch('fallback query'), {
+        wrapper,
+      })
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+      expect(mockSearchNotes).toHaveBeenCalledWith('test-user-id', 'fallback query', {
+        tag: null,
+        limit: 50,
+        offset: 0,
+      })
+      expect(mockDatabaseService.searchNotes).toHaveBeenCalledWith('fallback query', 'test-user-id', {
+        limit: 50,
+        offset: 0,
+        tag: null,
+      })
+      expect(result.current.data?.pages[0].method).toBe('local_fts')
+      expect(result.current.data?.pages[0].results).toEqual(mockLocalNotes)
+    })
   })
 
   describe('Offline fallback', () => {
@@ -222,6 +289,61 @@ describe('hooks/useSearch', () => {
         offset: 0,
       })
       expect(result.current.data?.pages[0].method).toBe('local_tag_only')
+    })
+
+    it('returns nextCursor when local tag-only results indicate hasMore (lines 98-100)', async () => {
+      // Return more results than offset+length to trigger hasMore=true and nextCursor
+      const manyNotes = Array.from({ length: 50 }, (_, i) => ({
+        id: `note-${i}`,
+        title: `Note ${i}`,
+        description: 'Description',
+        tags: ['work'],
+        updated_at: '2024-01-01T00:00:00Z',
+        created_at: '2024-01-01T00:00:00Z',
+        user_id: 'test-user-id',
+      }))
+
+      mockDatabaseService.getLocalNotesByTag.mockResolvedValue({
+        notes: manyNotes,
+        total: 200, // offset(0) + 50 < 200, so hasMore=true
+      })
+
+      const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
+        wrapper,
+      })
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+      expect(result.current.data?.pages[0].hasMore).toBe(true)
+      expect(result.current.data?.pages[0].nextCursor).toBe(1)
+      expect(result.current.data?.pages[0].method).toBe('local_tag_only')
+    })
+
+    it('returns nextCursor when offline local FTS results fill a full page (lines 108-114)', async () => {
+      // Return exactly PAGE_SIZE results so baseHasMore=true and nextCursor is set
+      const fullPageResults = Array.from({ length: 50 }, (_, i) => ({
+        id: `note-${i}`,
+        title: `Note ${i}`,
+        description: 'Description',
+        tags: ['test'],
+        updated_at: '2024-01-01T00:00:00Z',
+        created_at: '2024-01-01T00:00:00Z',
+        user_id: 'test-user-id',
+        snippet: null,
+        rank: null,
+      }))
+
+      mockDatabaseService.searchNotes.mockResolvedValue(fullPageResults)
+
+      const { result } = renderHook(() => useSearch('test'), {
+        wrapper,
+      })
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+      expect(result.current.data?.pages[0].hasMore).toBe(true)
+      expect(result.current.data?.pages[0].nextCursor).toBe(1)
+      expect(result.current.data?.pages[0].method).toBe('local_fts')
     })
   })
 

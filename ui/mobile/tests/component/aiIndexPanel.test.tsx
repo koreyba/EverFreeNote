@@ -390,4 +390,41 @@ describe('AIIndexPanel', () => {
       )
     })
   })
+
+  it('handles empty state Clear search and Show all notes button presses', async () => {
+    setupMocks({}, [])
+    render(<AIIndexPanel />)
+
+    fireEvent.press(screen.getByText('Indexed'))
+    expect(screen.getByText('Show all notes')).toBeTruthy()
+
+    fireEvent.press(screen.getByText('Show all notes'))
+    expect(mockUseAIIndexNotes).toHaveBeenLastCalledWith('all', '')
+
+    fireEvent.changeText(screen.getByPlaceholderText('Search notes...'), 'testing')
+    act(() => {
+      jest.advanceTimersByTime(300)
+    })
+
+    expect(screen.getByText('Clear search')).toBeTruthy()
+
+    fireEvent.press(screen.getByText('Clear search'))
+    expect(screen.getByPlaceholderText('Search notes...').props.value).toBe('')
+    expect(mockUseAIIndexNotes).toHaveBeenLastCalledWith('all', '')
+  })
+
+  it('clears search text when clear button (X icon) is pressed', () => {
+    render(<AIIndexPanel />)
+
+    const input = screen.getByPlaceholderText('Search notes...')
+    fireEvent.changeText(input, 'search text')
+    expect(input.props.value).toBe('search text')
+
+    const clearBtn = screen.getByLabelText('Clear search text')
+    expect(clearBtn).toBeTruthy()
+
+    fireEvent.press(clearBtn)
+    expect(screen.getByPlaceholderText('Search notes...').props.value).toBe('')
+    expect(mockUseAIIndexNotes).toHaveBeenLastCalledWith('all', '')
+  })
 })

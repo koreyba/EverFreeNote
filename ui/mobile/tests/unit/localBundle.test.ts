@@ -1,4 +1,4 @@
-const loadLocalBundle = (platform: 'android' | 'ios' | 'web') => {
+const loadLocalBundle = (platform: 'android' | 'ios' | 'web' | 'windows' | 'macos') => {
   jest.resetModules()
   jest.doMock('react-native', () => {
     return {
@@ -26,8 +26,22 @@ describe('local bundle helpers', () => {
     expect(getLocalBundleUrl()).toBe('WebEditor/index.html')
   })
 
-  it('returns null when running on unsupported platform', () => {
+  it('returns null when running on web platform', () => {
     const { getLocalBundleUrl, shouldLocalBundleExist } = loadLocalBundle('web')
+
+    expect(shouldLocalBundleExist()).toBe(false)
+    expect(getLocalBundleUrl()).toBeNull()
+  })
+
+  it('returns null when running on windows platform', () => {
+    const { getLocalBundleUrl, shouldLocalBundleExist } = loadLocalBundle('windows')
+
+    expect(shouldLocalBundleExist()).toBe(false)
+    expect(getLocalBundleUrl()).toBeNull()
+  })
+
+  it('returns null when running on macos platform', () => {
+    const { getLocalBundleUrl, shouldLocalBundleExist } = loadLocalBundle('macos')
 
     expect(shouldLocalBundleExist()).toBe(false)
     expect(getLocalBundleUrl()).toBeNull()

@@ -1,4 +1,5 @@
-import { Share } from 'react-native'
+import React from 'react'
+import { Modal, Share } from 'react-native'
 import { fireEvent, render, screen, waitFor } from '../testUtils'
 
 import { ShareNoteDialog } from '@ui/mobile/components/ShareNoteDialog'
@@ -70,7 +71,16 @@ describe('ShareNoteDialog', () => {
     jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' })
   })
 
-  it('generates a public link when opened and invokes the native share sheet', async () => {
+  it('renders "Share note" modal title when visible is true', async () => {
+    render(<ShareNoteDialog noteId="note-1" visible onClose={jest.fn()} />)
+    expect(screen.getByText('Share note')).toBeTruthy()
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('http://localhost:3000/share/?token=abc123')).toBeTruthy()
+    })
+  })
+
+  it('generates a public link when opened and displays it in link input', async () => {
     render(<ShareNoteDialog noteId="note-1" visible onClose={jest.fn()} />)
 
     expect(screen.getByText('Anyone with the link can view')).toBeTruthy()
@@ -81,6 +91,14 @@ describe('ShareNoteDialog', () => {
 
     expect(mockSupabase.chain.eqNoteId).toHaveBeenCalledWith('note_id', 'note-1')
     expect(mockSupabase.chain.eqUserId).toHaveBeenCalledWith('user_id', 'user-1')
+  })
+
+  it('invokes native Share.share when "Share link" button is pressed', async () => {
+    render(<ShareNoteDialog noteId="note-1" visible onClose={jest.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('http://localhost:3000/share/?token=abc123')).toBeTruthy()
+    })
 
     fireEvent.press(screen.getByLabelText('Share link'))
 
@@ -110,11 +128,13 @@ describe('ShareNoteDialog', () => {
     render(<ShareNoteDialog noteId="note-1" visible onClose={jest.fn()} />)
 
     await waitFor(() => {
-      expect(screen.getByText('Public web origin is not configured for this mobile build.')).toBeTruthy()
+      expect(
+        screen.getByText('Public web origin is not configured for this mobile build.')
+      ).toBeTruthy()
     })
   })
 
-  it('does not mark the link as shared when the native sheet is dismissed', async () => {
+  it('handles native share cancellation', async () => {
     jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.dismissedAction })
 
     render(<ShareNoteDialog noteId="note-1" visible onClose={jest.fn()} />)
@@ -131,5 +151,37 @@ describe('ShareNoteDialog', () => {
 
     expect(screen.getByLabelText('Share link')).toBeTruthy()
     expect(screen.queryByLabelText('Link shared')).toBeNull()
+  })
+
+  it('handles native share errors gracefully', async () => {
+    jest.spyOn(Share, 'share').mockRejectedValue(new Error('Sharing unavailable'))
+
+    render(<ShareNoteDialog noteId="note-1" visible onClose={jest.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('http://localhost:3000/share/?token=abc123')).toBeTruthy()
+    })
+
+    fireEvent.press(screen.getByLabelText('Share link'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Could not open sharing. Select the link and copy it manually.')
+      ).toBeTruthy()
+    })
+  })
+
+  it('handles close action when not loading', async () => {
+    const handleClose = jest.fn()
+    render(<ShareNoteDialog noteId="note-1" visible onClose={handleClose} />)
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('http://localhost:3000/share/?token=abc123')).toBeTruthy()
+    })
+
+    const modal = screen.UNSAFE_getByType(Modal)
+    fireEvent(modal, 'requestClose')
+
+    expect(handleClose).toHaveBeenCalled()
   })
 })

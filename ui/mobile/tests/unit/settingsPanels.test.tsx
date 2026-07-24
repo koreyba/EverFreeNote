@@ -478,4 +478,80 @@ describe('settings panels', () => {
       expect(screen.getByRole('button', { name: 'Save retrieval settings' }).props.accessibilityState.disabled).toBe(true)
     })
   })
+
+  it('clears error feedback status messages when changing text/toggles on inputs in ApiKeysSettingsPanel', async () => {
+    mockRagIndexUpsert.mockRejectedValue(new Error('Indexing save failed'))
+    mockRagSearchUpsert.mockRejectedValue(new Error('Retrieval save failed'))
+
+    renderWithTheme(<ApiKeysSettingsPanel />)
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('500')).toBeTruthy()
+      expect(screen.getByDisplayValue('15')).toBeTruthy()
+    })
+
+    // 1. Gemini Key error clearing
+    fireEvent.press(screen.getByRole('button', { name: 'Save API key' }))
+    await waitFor(() => {
+      expect(screen.getByText('Enter a Gemini API key to continue.')).toBeTruthy()
+    })
+    fireEvent.changeText(screen.getByPlaceholderText('AIzaSy...'), 'AIza-test')
+    await waitFor(() => {
+      expect(screen.queryByText('Enter a Gemini API key to continue.')).toBeNull()
+    })
+
+    // 2. Indexing error clearing on numeric change
+    fireEvent.press(screen.getByRole('button', { name: 'Save indexing settings' }))
+    await waitFor(() => {
+      expect(screen.getByText('Indexing save failed')).toBeTruthy()
+    })
+    fireEvent.changeText(screen.getByDisplayValue('500'), '550')
+    await waitFor(() => {
+      expect(screen.queryByText('Indexing save failed')).toBeNull()
+    })
+
+    // Indexing error clearing on toggle change
+    fireEvent.press(screen.getByRole('button', { name: 'Save indexing settings' }))
+    await waitFor(() => {
+      expect(screen.getByText('Indexing save failed')).toBeTruthy()
+    })
+    fireEvent(screen.getByLabelText('Use title for embeddings'), 'valueChange', false)
+    await waitFor(() => {
+      expect(screen.queryByText('Indexing save failed')).toBeNull()
+    })
+
+    // 3. Retrieval error clearing on Top K change
+    fireEvent.press(screen.getByRole('button', { name: 'Save retrieval settings' }))
+    await waitFor(() => {
+      expect(screen.getByText('Retrieval save failed')).toBeTruthy()
+    })
+    fireEvent.changeText(screen.getByDisplayValue('15'), '25')
+    await waitFor(() => {
+      expect(screen.queryByText('Retrieval save failed')).toBeNull()
+    })
+  })
+
+  it('displays error status messages when ragIndexSettingsService or ragSearchSettingsService upsert fails', async () => {
+    mockRagIndexUpsert.mockRejectedValueOnce(new Error('Network error on indexing service'))
+    mockRagSearchUpsert.mockRejectedValueOnce(new Error('Database error on search service'))
+
+    renderWithTheme(<ApiKeysSettingsPanel />)
+
+    await waitFor(() => {
+      expect(screen.getByText('RAG indexing')).toBeTruthy()
+      expect(screen.getByText('RAG retrieval')).toBeTruthy()
+    })
+
+    fireEvent.press(screen.getByRole('button', { name: 'Save indexing settings' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Network error on indexing service')).toBeTruthy()
+    })
+
+    fireEvent.press(screen.getByRole('button', { name: 'Save retrieval settings' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Database error on search service')).toBeTruthy()
+    })
+  })
 })

@@ -170,6 +170,84 @@ describe('MobileEnexImportService', () => {
     expect(mockCreate).not.toHaveBeenCalled()
   })
 
+  it('throws error when XML contains no importable notes', async () => {
+    const service = new MobileEnexImportService({} as never)
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><en-export></en-export>`
+
+    await expect(service.importXml(xml, 'user-1')).rejects.toThrow(
+      'No importable notes were found in the selected .enex file'
+    )
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+
+  it('handles errors thrown by noteCreator.create and populates failedNotes array', async () => {
+    mockCreate
+      .mockResolvedValueOnce('created-id')
+      .mockRejectedValueOnce(new Error('Database write error'))
+      .mockRejectedValueOnce('Unknown string failure')
+
+    const service = new MobileEnexImportService({} as never)
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<en-export>
+  <note>
+    <title>Note 1</title>
+    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE en-note><en-note><div>Body 1</div></en-note>]]></content>
+  </note>
+  <note>
+    <title>Note 2</title>
+    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE en-note><en-note><div>Body 2</div></en-note>]]></content>
+  </note>
+  <note>
+    <title>Note 3</title>
+    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE en-note><en-note><div>Body 3</div></en-note>]]></content>
+  </note>
+</en-export>`
+
+    const result = await service.importXml(xml, 'user-1')
+
+    expect(result).toEqual({
+      success: 1,
+      errors: 2,
+      failedNotes: [
+        { title: 'Note 2', error: 'Database write error' },
+        { title: 'Note 3', error: 'Failed to import note' },
+      ],
+      message: 'Imported 1 note(s), with 2 error(s).',
+    })
+  })
+
+  it('reads asset file using FileSystem.readAsStringAsync for valid non-oversized asset', async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<en-export>
+  <note>
+    <title>Valid Note</title>
+    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE en-note><en-note><div>Hello</div></en-note>]]></content>
+  </note>
+</en-export>`
+    mockReadAsStringAsync.mockResolvedValueOnce(xml)
+    mockCreate.mockResolvedValueOnce('note-id-123')
+
+    const service = new MobileEnexImportService({} as never)
+    const asset = {
+      uri: 'file:///documents/import.enex',
+      name: 'import.enex',
+      size: 5 * 1024 * 1024,
+      lastModified: 0,
+    }
+
+    const result = await service.importAsset(asset, 'user-1')
+
+    expect(mockReadAsStringAsync).toHaveBeenCalledWith('file:///documents/import.enex', {
+      encoding: 'utf8',
+    })
+    expect(result).toEqual({
+      success: 1,
+      errors: 0,
+      failedNotes: [],
+      message: 'Imported 1 note(s).',
+    })
+  })
+
   it('rejects oversized import assets before reading them', async () => {
     const service = new MobileEnexImportService({} as never)
 
