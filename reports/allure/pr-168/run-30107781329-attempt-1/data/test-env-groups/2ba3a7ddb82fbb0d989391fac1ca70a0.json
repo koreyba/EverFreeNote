@@ -1,0 +1,1 @@
+{"id":"2ba3a7ddb82fbb0d989391fac1ca70a0","fullName":"everfreenote-mobile:tests/unit/storageAdapter.test.ts#storage adapters asyncStorageAdapter setItem calls AsyncStorage.setItem with key and value","name":"calls AsyncStorage.setItem with key and value","status":"passed","testResultsByEnv":{"default":"99aee39b914fd8c5ea77fca5b3669a78"}}

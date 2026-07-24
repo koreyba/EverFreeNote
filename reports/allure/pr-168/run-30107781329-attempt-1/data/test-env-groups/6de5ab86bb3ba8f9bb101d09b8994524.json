@@ -1,0 +1,1 @@
+{"id":"6de5ab86bb3ba8f9bb101d09b8994524","fullName":"everfreenote-mobile:tests/component/useNetworkStatus.test.tsx#hooks/useNetworkStatus unsubscribes from provider on unmount","name":"unsubscribes from provider on unmount","status":"passed","testResultsByEnv":{"default":"d13344b14bf1b048c6359dd910414e99"}}

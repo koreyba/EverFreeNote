@@ -1,0 +1,1 @@
+{"id":"ff6b7ff0f009baa77ae7d53d7662b616","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteAuth.test.tsx#useNoteAuth deletes the account, signs out, and calls the supplied callback","name":"deletes the account, signs out, and calls the supplied callback","status":"passed","testResultsByEnv":{"default":"bce2884982be0062998ec4a315a341b5"}}
