@@ -1,1 +1,0 @@
-{"id":"a330f16cc423aed4e4c1018550a93dd0","fullName":"everfreenote:ui/web/tests/unit/lib/editor.test.ts#applySelectionAsMarkdown works safely when onContentChange callback is omitted","name":"works safely when onContentChange callback is omitted","status":"passed","testResultsByEnv":{"default":"f01152e3160019939f4fe13982e5378d"}}

@@ -1,0 +1,1 @@
+{"id":"6fe1bdd2a6aeb26e6f7881e75e2e9d64","fullName":"everfreenote:ui/web/tests/unit/hooks/use-toast.test.tsx#use-toast reducer handles ADD_TOAST and respects TOAST_LIMIT of 1","name":"handles ADD_TOAST and respects TOAST_LIMIT of 1","status":"passed","testResultsByEnv":{"default":"20eefd67b28f35b08b0116645f2cf1ae"}}
