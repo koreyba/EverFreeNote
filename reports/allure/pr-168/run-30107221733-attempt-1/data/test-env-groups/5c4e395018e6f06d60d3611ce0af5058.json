@@ -1,0 +1,1 @@
+{"id":"5c4e395018e6f06d60d3611ce0af5058","fullName":"everfreenote-mobile:tests/unit/networkStatusAdapter.test.ts#MobileNetworkStatusProvider handles null or undefined isConnected property from NetInfo","name":"handles null or undefined isConnected property from NetInfo","status":"passed","testResultsByEnv":{"default":"dbe719aa79c0afb471f64ae33c9181f6"}}

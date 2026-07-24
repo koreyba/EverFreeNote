@@ -6,6 +6,42 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/pr-168/run-30107221733-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-168/run-30107221733-attempt-1/",
+    "runId": "30107221733",
+    "runAttempt": "1",
+    "prNumber": "168",
+    "ref": "qodana-automation-1704673353",
+    "sha": "6ef9c9f06a2d3bc6e2538a20c415484092919410",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #168",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-24T16:04:19.857Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit"
     ],
     "suiteLabels": [
@@ -641,40 +677,6 @@
     "scopeLabel": "PR #166",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-23T19:12:07.539Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/allure/pr-166/run-30036569685-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-166/run-30036569685-attempt-1/",
-    "runId": "30036569685",
-    "runAttempt": "1",
-    "prNumber": "166",
-    "ref": "feature/unit-web-test-coverage",
-    "sha": "b4d641c4f09b0ae4ff397a8121df0c61822beb5e",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #166",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-23T19:10:32.033Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"

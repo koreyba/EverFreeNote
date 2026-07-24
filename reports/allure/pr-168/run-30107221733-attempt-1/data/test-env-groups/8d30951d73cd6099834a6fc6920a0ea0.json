@@ -1,0 +1,1 @@
+{"id":"8d30951d73cd6099834a6fc6920a0ea0","fullName":"everfreenote:ui/web/tests/unit/hooks/useNotesMutations.test.tsx#useNotesMutations rolls back a failed create and calls its error callback","name":"rolls back a failed create and calls its error callback","status":"passed","testResultsByEnv":{"default":"e42540d5fdf01751e3d983f78709f973"}}

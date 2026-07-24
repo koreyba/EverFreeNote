@@ -1,0 +1,1 @@
+{"id":"524bdd1202551821d6a85c0e8cae0e33","fullName":"everfreenote:ui/web/tests/unit/components/authCallbackPage.test.tsx#AuthCallback component redirects to home if existing session is found","name":"redirects to home if existing session is found","status":"passed","testResultsByEnv":{"default":"d22fcf134a08fc818e67a2194b69e512"}}

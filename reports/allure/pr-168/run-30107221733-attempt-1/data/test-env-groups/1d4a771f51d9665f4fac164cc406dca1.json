@@ -1,0 +1,1 @@
+{"id":"1d4a771f51d9665f4fac164cc406dca1","fullName":"everfreenote-mobile:tests/unit/configAdapter.test.ts#config adapter getPublicWebOrigin returns origin for valid http publicWebOrigin from expoConfig.extra","name":"returns origin for valid http publicWebOrigin from expoConfig.extra","status":"passed","testResultsByEnv":{"default":"e6be65510672c26caab1587a0704811c"}}
