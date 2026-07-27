@@ -40,11 +40,10 @@ flowchart TD
 ```
 
 GitHub Actions replaces SonarQube Cloud Automatic Analysis. The repository has
-four independent workflows: `sonar-pr.yml`, `qodana-pr.yml`,
-`sonar-coverage.yml`, and `qodana-coverage.yml`. PR workflows perform analysis
-without tests or coverage. On `main`, the Sonar coverage workflow runs the
-three full coverage producers once; the Qodana coverage workflow is triggered
-after that run and downloads the same immutable artifacts.
+three workflows: `sonar-pr.yml`, `qodana-pr.yml`, and
+`sonar-coverage.yml`. PR workflows perform analysis without tests or coverage.
+On `main`, `sonar-coverage.yml` runs the three full coverage producers once,
+then runs separate Sonar and Qodana analysis jobs against their artifacts.
 
 ## Data Models
 
@@ -77,9 +76,7 @@ of a main-revision analysis, preventing duplicate or partial uploads.
 - `.github/workflows/qodana-pr.yml` owns Qodana PR static analysis without
   coverage.
 - `.github/workflows/sonar-coverage.yml` owns the one-time main coverage
-  producers, artifact upload, and Sonar main analysis.
-- `.github/workflows/qodana-coverage.yml` downloads those artifacts from the
-  completed Sonar coverage run and owns Qodana main analysis.
+  producers, artifact upload, Sonar main analysis, and Qodana main analysis.
 - Jest owns instrumentation for unit coverage and writes `coverage/jest`.
 - Babel Istanbul plus `@cypress/code-coverage` own browser instrumentation;
   NYC renders the final independent component report.
@@ -92,8 +89,8 @@ of a main-revision analysis, preventing duplicate or partial uploads.
   files, and keeps the same product coverage scope as Sonar.
 - `qodana.yaml` selects `qodana-js` and the recommended profile. The separate
   Qodana PR workflow runs for every supported PR update without coverage, while
-  the Qodana coverage workflow runs after the main coverage workflow with the
-  same generated artifacts.
+  the Qodana main job runs after the coverage producers with the same generated
+  artifacts.
 
 ## Design Decisions
 
@@ -101,16 +98,15 @@ of a main-revision analysis, preventing duplicate or partial uploads.
 
 Sonar and Qodana PR scans run on `opened`, `synchronize`, and `reopened`,
 matching the effective Automatic Analysis cadence. Neither PR workflow runs
-tests or imports coverage. Main coverage is produced once by the Sonar
-coverage workflow and then consumed by both main scanners through artifacts.
+tests or imports coverage. Main coverage is produced once at the beginning of
+`sonar-coverage.yml`, then consumed by separate Sonar and Qodana jobs.
 
 ### Main coverage is deterministic
 
 The scanners never rely on implicit discovery of `coverage/lcov.info`.
 Producer jobs create and upload named coverage artifacts; Sonar consumes the
-three LCOV reports in its workflow, then Qodana downloads the raw reports from
-that completed run and consumes one merged LCOV report. The Qodana consumer
-fails if any raw input is absent.
+three LCOV reports and Qodana consumes the raw reports in separate jobs within
+the same workflow run. The Qodana consumer fails if any raw input is absent.
 
 ### Reports remain independent
 

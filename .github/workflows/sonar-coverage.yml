@@ -1,4 +1,4 @@
-name: Sonar main coverage
+name: Main coverage analysis
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: sonar-coverage-${{ github.ref }}
+  group: main-coverage-analysis-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -106,8 +106,9 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: component-coverage-raw-${{ github.run_id }}
-          path: .nyc_output
+          path: .nyc_output/out.json
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
       - name: Fail Cypress coverage job when tests or report failed
@@ -249,4 +250,82 @@ jobs:
           args: ${{ steps.detect-lcov.outputs.sonar_args }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  qodana-main:
+    name: Qodana main coverage
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [unit-coverage, component-coverage, mobile-coverage]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Download Jest coverage report
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: jest-coverage-${{ github.run_id }}
+          path: coverage/jest
+
+      - name: Download Cypress raw coverage data
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: component-coverage-raw-${{ github.run_id }}
+          path: .nyc_output
+
+      - name: Download mobile Jest coverage report
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: mobile-coverage-${{ github.run_id }}
+          path: ui/mobile/coverage
+
+      - name: Verify imported coverage inputs
+        if: always()
+        run: |
+          test -s coverage/jest/coverage-final.json
+          test -s .nyc_output/out.json
+          test -s ui/mobile/coverage/coverage-final.json
+
+      - name: Merge coverage for Qodana
+        run: |
+          node scripts/merge-coverage.cjs \
+            --output .qodana/code-coverage/lcov.info \
+            coverage/jest/coverage-final.json \
+            .nyc_output/out.json \
+            ui/mobile/coverage/coverage-final.json
+          test -s .qodana/code-coverage/lcov.info
+
+      - name: Qodana Scan with coverage
+        uses: JetBrains/qodana-action@4861e015da555e86a72b862892aba6c2b93e6891
+        with:
+          pr-mode: false
+          upload-result: true
+          artifact-name: qodana-main-${{ github.run_id }}
+          args: >-
+            --baseline baseline.sarif.json
+            -v ${{ github.workspace }}/.qodana/code-coverage:/data/coverage
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_1215262580 }}
+          QODANA_ENDPOINT: https://qodana.cloud
 

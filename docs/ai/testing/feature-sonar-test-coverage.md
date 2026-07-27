@@ -53,9 +53,7 @@ such application-level timeout and remains the authoritative full-suite check.
 ## End-to-End Tests
 
 - [ ] First merged `sonar-coverage.yml` workflow publishes main coverage to
-  SonarQube Cloud.
-- [ ] Completion of `sonar-coverage.yml` triggers `qodana-coverage.yml`, which
-  publishes the merged main coverage to Qodana Cloud.
+  SonarQube Cloud and Qodana Cloud from the same producer artifacts.
 - [ ] A later PR push produces a Sonar new-code result without running coverage.
 - [ ] A later PR push starts Qodana analysis without running coverage.
 - [ ] SonarQube Cloud PR decoration/check naming is compatible with branch
@@ -90,8 +88,8 @@ cannot be completed solely in the local checkout.
 - Confirm the Sonar dashboard updates coverage for the analyzed main revision.
 - Add `QODANA_TOKEN` to GitHub repository secrets.
 - Confirm a PR update starts Qodana without running a test or coverage command.
-- Confirm `qodana-coverage.yml` downloads artifacts from the completed
-  `sonar-coverage.yml` run and displays coverage for the merged main revision.
+- Confirm the Qodana main job consumes the same artifacts as Sonar and displays
+  coverage for the merged main revision.
 
 ## Performance Testing
 
@@ -105,7 +103,7 @@ cannot be completed solely in the local checkout.
 - `npm run type-check:tests`: passed.
 - `npm --prefix ui/mobile run type-check`: passed.
 - `npx eslint . --max-warnings=0`: passed.
-- Four workflow YAML files plus the four-job Sonar coverage dependency
+- Three workflow YAML files plus the five-job main coverage dependency
   structure: passed.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
