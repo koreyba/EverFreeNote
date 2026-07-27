@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: sonar-${{ github.event.pull_request.number || github.ref }}
+  group: coverage-analysis-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -54,6 +54,36 @@ jobs:
           args: -Dsonar.javascript.lcov.reportPaths=ui/mobile/coverage/lcov.info
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  qodana-pr:
+    name: Qodana PR analysis
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Qodana Scan without coverage
+        uses: JetBrains/qodana-action@4861e015da555e86a72b862892aba6c2b93e6891
+        with:
+          pr-mode: true
+          upload-result: true
+          artifact-name: qodana-pr-${{ github.run_id }}
+          args: --baseline baseline.sarif.json
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_1215262580 }}
+          QODANA_ENDPOINT: https://qodana.cloud
 
   unit-coverage:
     name: Jest coverage

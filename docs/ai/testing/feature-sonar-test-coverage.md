@@ -38,10 +38,11 @@ application test cases.
 - [x] Qodana receives one merged LCOV built from all three raw Istanbul maps.
 - [x] Qodana merge normalizes Windows absolute paths and deduplicates shared
   files before writing `.qodana/code-coverage/lcov.info`.
-- [x] Qodana job is restricted to `push` on `main`; PR jobs do not run it.
+- [x] Qodana PR analysis runs on `opened`, `synchronize`, and `reopened` without
+  tests or coverage.
 - [x] The dependency-free mobile Sonar TSConfig parses successfully.
-- [x] Qodana has no PR coverage job; the existing Sonar PR mobile coverage
-  behavior remains unchanged.
+- [x] Qodana has a PR analysis job without coverage; the existing Sonar PR
+  mobile coverage behavior remains unchanged.
 
 The full Cypress coverage suite was not completed locally: an earlier full run
 was intentionally interrupted, and a later cold focused webpack build exceeded
@@ -53,7 +54,7 @@ such application-level timeout and remains the authoritative full-suite check.
 - [ ] First merged workflow publishes main coverage to SonarQube Cloud.
 - [ ] First merged workflow publishes the merged main coverage to Qodana Cloud.
 - [ ] A later PR push produces a Sonar new-code result without running coverage.
-- [ ] A later PR push does not start the Qodana job.
+- [ ] A later PR push starts Qodana analysis without running coverage.
 - [ ] SonarQube Cloud PR decoration/check naming is compatible with branch
   protection.
 
@@ -85,6 +86,7 @@ cannot be completed solely in the local checkout.
 - Confirm the first main run reports all three LCOV files in scanner logs.
 - Confirm the Sonar dashboard updates coverage for the analyzed main revision.
 - Add `QODANA_TOKEN` to GitHub repository secrets.
+- Confirm a PR update starts Qodana without running a test or coverage command.
 - Confirm the Qodana job consumes `qodana-main-<run-id>` and displays coverage
   for the merged main revision.
 
@@ -100,7 +102,7 @@ cannot be completed solely in the local checkout.
 - `npm run type-check:tests`: passed.
 - `npm --prefix ui/mobile run type-check`: passed.
 - `npx eslint . --max-warnings=0`: passed.
-- Sonar workflow YAML and five-job dependency structure: passed.
+- Coverage workflow YAML and seven-job dependency structure: passed.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
 
