@@ -36,6 +36,16 @@ describe('hooks/useSearch', () => {
   const renderSearch = (query: string, options?: Parameters<typeof useSearch>[1]) =>
     renderHook(() => useSearch(query, options), { wrapper })
 
+  const renderTagOnlySearch = async (tag: string) => {
+    const { result } = renderSearch('', { tag })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data?.pages[0].method).toBe('tag_only')
+
+    return result
+  }
+
   afterEach(() => {
     queryClient.clear()
   })
@@ -138,9 +148,7 @@ describe('hooks/useSearch', () => {
 
       mockNoteService.prototype.getNotes = mockGetNotes
 
-      const { result } = renderSearch('', { tag: 'work' })
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+      const result = await renderTagOnlySearch('work')
 
       expect(mockGetNotes).toHaveBeenCalledWith('test-user-id', {
         tag: 'work',
@@ -166,13 +174,10 @@ describe('hooks/useSearch', () => {
         hasMore: true,
       })
 
-      const { result } = renderSearch('', { tag: 'work' })
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+      const result = await renderTagOnlySearch('work')
 
       expect(result.current.data?.pages[0].hasMore).toBe(true)
       expect(result.current.data?.pages[0].nextCursor).toBe(1)
-      expect(result.current.data?.pages[0].method).toBe('tag_only')
     })
 
     it('falls back to local FTS search via databaseService.searchNotes when online search throws an error', async () => {
