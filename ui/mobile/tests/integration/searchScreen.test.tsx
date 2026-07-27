@@ -311,6 +311,19 @@ describe('SearchScreen - Delete Functionality', () => {
     })
   })
 
+  const renderAndSearch = async () => {
+    render(<SearchScreen />, { wrapper })
+
+    const searchInput = screen.getByPlaceholderText('Search notes...')
+    fireEvent.changeText(searchInput, 'keyword')
+
+    await waitFor(() => {
+      expect(screen.getByText('Search Result 1')).toBeTruthy()
+    }, { timeout: 10000 })
+
+    return searchInput
+  }
+
   afterEach(() => {
     queryClient.clear()
     mockLocalSearchParams = {}
@@ -318,15 +331,7 @@ describe('SearchScreen - Delete Functionality', () => {
 
   describe('Delete from search results', () => {
     it('renders delete buttons for each search result', async () => {
-      render(<SearchScreen />, { wrapper })
-
-      // Type search query to trigger search
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      expect(
-        await screen.findByText('Search Result 1', {}, { timeout: 10000 })
-      ).toBeTruthy()
+      await renderAndSearch()
 
       expect(screen.getByTestId('delete-button-search-note-1')).toBeTruthy()
       expect(screen.getByTestId('delete-button-search-note-2')).toBeTruthy()
@@ -334,14 +339,7 @@ describe('SearchScreen - Delete Functionality', () => {
     }, 15000)
 
     it('deletes note when swipe delete is triggered in search results', async () => {
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      await renderAndSearch()
 
       const deleteButton = screen.getByTestId('delete-button-search-note-1')
       fireEvent.press(deleteButton)
@@ -352,14 +350,7 @@ describe('SearchScreen - Delete Functionality', () => {
     })
 
     it('removes deleted note from search results', async () => {
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      await renderAndSearch()
 
       const deleteButton = screen.getByTestId('delete-button-search-note-1')
       fireEvent.press(deleteButton)
@@ -374,14 +365,7 @@ describe('SearchScreen - Delete Functionality', () => {
     }, 15000)
 
     it('preserves search query after deletion', async () => {
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      const searchInput = await renderAndSearch()
 
       const deleteButton = screen.getByTestId('delete-button-search-note-1')
       fireEvent.press(deleteButton)
@@ -400,14 +384,7 @@ describe('SearchScreen - Delete Functionality', () => {
       const error = new Error('Network error')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      await renderAndSearch()
 
       const deleteButton = screen.getByTestId('delete-button-search-note-1')
       fireEvent.press(deleteButton)
@@ -430,14 +407,7 @@ describe('SearchScreen - Delete Functionality', () => {
       const error = new Error('Deletion failed')
       mockNoteService.prototype.deleteNote = jest.fn().mockRejectedValue(error)
 
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      await renderAndSearch()
 
       const deleteButton = screen.getByTestId('delete-button-search-note-1')
       fireEvent.press(deleteButton)
@@ -456,14 +426,7 @@ describe('SearchScreen - Delete Functionality', () => {
 
   describe('Manual refresh', () => {
     it('re-runs regular search when the results list is refreshed', async () => {
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      await renderAndSearch()
 
       expect(mockSearchService.prototype.searchNotes).toHaveBeenCalledTimes(1)
 
@@ -477,14 +440,7 @@ describe('SearchScreen - Delete Functionality', () => {
 
   describe('Navigation from search results', () => {
     it('navigates to note editor when search result is pressed', async () => {
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      await renderAndSearch()
 
       fireEvent.press(screen.getByTestId('note-press-search-note-1'))
 
@@ -492,14 +448,7 @@ describe('SearchScreen - Delete Functionality', () => {
     })
 
     it('does not navigate when delete button is pressed', async () => {
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      await renderAndSearch()
 
       const deleteButton = screen.getByTestId('delete-button-search-note-1')
       fireEvent.press(deleteButton)
@@ -511,14 +460,7 @@ describe('SearchScreen - Delete Functionality', () => {
 
   describe('Search results stay in sync after edit', () => {
     it('reflects updated title after note edit', async () => {
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      await renderAndSearch()
 
       const { result } = renderHook(() => useUpdateNote(), { wrapper })
 
@@ -668,14 +610,7 @@ describe('SearchScreen - Delete Functionality', () => {
       // Reset params to ensure clean state
       mockLocalSearchParams = {}
 
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      await renderAndSearch()
 
       const deleteButton1 = screen.getByLabelText('Delete Search Result 1')
       const deleteButton2 = screen.getByLabelText('Delete Search Result 2')
@@ -706,14 +641,7 @@ describe('SearchScreen - Delete Functionality', () => {
         return Promise.resolve(id)
       })
 
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
+      await renderAndSearch()
 
       // Delete first note
       fireEvent.press(screen.getByTestId('delete-button-search-note-1'))
@@ -755,10 +683,7 @@ describe('SearchScreen - Delete Functionality', () => {
       // Reset params to ensure clean state
       mockLocalSearchParams = {}
 
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
+      await renderAndSearch()
 
       await waitFor(() => {
         expect(screen.getByTestId('search-result-search-note-1')).toBeTruthy()
@@ -770,12 +695,7 @@ describe('SearchScreen - Delete Functionality', () => {
 
   describe('Selection mode — query reset', () => {
     it('exits selection mode when search query changes', async () => {
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => expect(screen.getByText('Search Result 1')).toBeTruthy())
+      const searchInput = await renderAndSearch()
 
       // Long press to activate selection mode
       fireEvent(screen.getByTestId('note-press-search-note-1'), 'longPress')

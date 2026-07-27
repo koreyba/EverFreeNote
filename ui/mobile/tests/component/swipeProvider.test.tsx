@@ -24,6 +24,18 @@ function wrapper({ children }: { children: React.ReactNode }) {
     return <SwipeProvider>{children}</SwipeProvider>
 }
 
+/** Render a context with two registered swipeables for active-item scenarios. */
+function renderWithRegisteredSwipeables() {
+    const refA = makeMockRef()
+    const refB = makeMockRef()
+    const { result } = renderHook(() => useSwipeContext(), { wrapper })
+
+    result.current.register('item-a', refA)
+    result.current.register('item-b', refB)
+
+    return { result, refA, refB }
+}
+
 describe('SwipeProvider', () => {
     it('renders children', () => {
         render(
@@ -132,12 +144,7 @@ describe('useSwipeContext', () => {
 
     describe('onSwipeStart', () => {
         it('sets activeId to the swiped item', () => {
-            const refA = makeMockRef()
-            const refB = makeMockRef()
-            const { result } = renderHook(() => useSwipeContext(), { wrapper })
-
-            result.current.register('item-a', refA)
-            result.current.register('item-b', refB)
+            const { result, refA } = renderWithRegisteredSwipeables()
 
             result.current.onSwipeStart('item-a')
 
@@ -148,12 +155,7 @@ describe('useSwipeContext', () => {
         })
 
         it('closes the previous active swipeable when a different one starts swiping', () => {
-            const refA = makeMockRef()
-            const refB = makeMockRef()
-            const { result } = renderHook(() => useSwipeContext(), { wrapper })
-
-            result.current.register('item-a', refA)
-            result.current.register('item-b', refB)
+            const { result, refA, refB } = renderWithRegisteredSwipeables()
 
             result.current.onSwipeStart('item-a')
             result.current.onSwipeStart('item-b')

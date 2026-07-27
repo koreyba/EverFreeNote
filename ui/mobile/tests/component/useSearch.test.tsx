@@ -33,6 +33,9 @@ describe('hooks/useSearch', () => {
     wrapper = createQueryWrapper(queryClient)
   })
 
+  const renderSearch = (query: string, options?: Parameters<typeof useSearch>[1]) =>
+    renderHook(() => useSearch(query, options), { wrapper })
+
   afterEach(() => {
     queryClient.clear()
   })
@@ -57,9 +60,7 @@ describe('hooks/useSearch', () => {
 
       mockSearchService.prototype.searchNotes = mockSearchNotes
 
-      const { result } = renderHook(() => useSearch('test query'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test query')
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -81,9 +82,7 @@ describe('hooks/useSearch', () => {
 
       mockSearchService.prototype.searchNotes = mockSearchNotes
 
-      const { result } = renderHook(() => useSearch('test', { tag: 'work' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('test', { tag: 'work' })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -103,9 +102,7 @@ describe('hooks/useSearch', () => {
 
       mockSearchService.prototype.searchNotes = mockSearchNotes
 
-      const { result } = renderHook(() => useSearch('test', { tag: '  ' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('test', { tag: '  ' })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -117,9 +114,7 @@ describe('hooks/useSearch', () => {
     })
 
     it('returns empty results for empty query without tag', () => {
-      const { result } = renderHook(() => useSearch(''), {
-        wrapper,
-      })
+      const { result } = renderSearch('')
 
       // Query is disabled for empty search without tag
       expect(result.current.fetchStatus).toBe('idle')
@@ -143,9 +138,7 @@ describe('hooks/useSearch', () => {
 
       mockNoteService.prototype.getNotes = mockGetNotes
 
-      const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('', { tag: 'work' })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -173,9 +166,7 @@ describe('hooks/useSearch', () => {
         hasMore: true,
       })
 
-      const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('', { tag: 'work' })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -204,9 +195,7 @@ describe('hooks/useSearch', () => {
       ]
       mockDatabaseService.searchNotes.mockResolvedValue(mockLocalNotes)
 
-      const { result } = renderHook(() => useSearch('fallback query'), {
-        wrapper,
-      })
+      const { result } = renderSearch('fallback query')
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -248,9 +237,7 @@ describe('hooks/useSearch', () => {
 
       mockDatabaseService.searchNotes.mockResolvedValue(mockLocalSearch)
 
-      const { result } = renderHook(() => useSearch('test'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test')
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -278,9 +265,7 @@ describe('hooks/useSearch', () => {
         total: 1,
       })
 
-      const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('', { tag: 'work' })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -308,9 +293,7 @@ describe('hooks/useSearch', () => {
         total: 200, // offset(0) + 50 < 200, so hasMore=true
       })
 
-      const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('', { tag: 'work' })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -335,9 +318,7 @@ describe('hooks/useSearch', () => {
 
       mockDatabaseService.searchNotes.mockResolvedValue(fullPageResults)
 
-      const { result } = renderHook(() => useSearch('test'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test')
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -349,9 +330,7 @@ describe('hooks/useSearch', () => {
 
   describe('Query enabling', () => {
     it('is disabled for query shorter than 2 characters without tag', () => {
-      const { result } = renderHook(() => useSearch('a'), {
-        wrapper,
-      })
+      const { result } = renderSearch('a')
 
       expect(result.current.fetchStatus).toBe('idle')
     })
@@ -363,9 +342,7 @@ describe('hooks/useSearch', () => {
         method: 'fts',
       })
 
-      const { result } = renderHook(() => useSearch('ab'), {
-        wrapper,
-      })
+      const { result } = renderSearch('ab')
 
       await waitFor(() => expect(result.current.fetchStatus).not.toBe('idle'))
     })
@@ -377,9 +354,7 @@ describe('hooks/useSearch', () => {
         hasMore: false,
       })
 
-      const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('', { tag: 'work' })
 
       await waitFor(() => expect(result.current.fetchStatus).not.toBe('idle'))
     })
@@ -391,9 +366,7 @@ describe('hooks/useSearch', () => {
         user: null,
       })
 
-      const { result } = renderHook(() => useSearch('test'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test')
 
       expect(result.current.fetchStatus).toBe('idle')
     })
@@ -423,9 +396,7 @@ describe('hooks/useSearch', () => {
         method: 'fts',
       })
 
-      const { result } = renderHook(() => useSearch('test'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test')
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -452,9 +423,7 @@ describe('hooks/useSearch', () => {
         method: 'fts',
       })
 
-      const { result } = renderHook(() => useSearch('test'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test')
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
