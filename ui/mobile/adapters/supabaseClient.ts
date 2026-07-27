@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   SupabaseClientFactory,
@@ -12,7 +12,7 @@ import type { SupabaseConfig } from '@core/adapters/config'
  */
 export const supabaseClientFactory: SupabaseClientFactory = {
   createClient(config: SupabaseConfig, deps: SupabaseClientFactoryDeps): SupabaseClient {
-    return createClient(config.url, config.anonKey, {
+    return createSupabaseClient(config.url, config.anonKey, {
       auth: {
         storage: deps.storage,
         autoRefreshToken: true,

@@ -524,7 +524,13 @@ export function AIIndexPanel() {
             returnKeyType="search"
           />
           {searchDraft.length > 0 ? (
-            <Pressable onPress={handleClearSearch} style={styles.clearButton} hitSlop={8}>
+            <Pressable
+              onPress={handleClearSearch}
+              style={styles.clearButton}
+              hitSlop={8}
+              accessibilityLabel="Clear search text"
+              accessibilityRole="button"
+            >
               <X size={16} color={colors.mutedForeground} />
             </Pressable>
           ) : null}

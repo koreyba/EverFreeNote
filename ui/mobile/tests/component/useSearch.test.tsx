@@ -33,6 +33,19 @@ describe('hooks/useSearch', () => {
     wrapper = createQueryWrapper(queryClient)
   })
 
+  const renderSearch = (query: string, options?: Parameters<typeof useSearch>[1]) =>
+    renderHook(() => useSearch(query, options), { wrapper })
+
+  const renderTagOnlySearch = async (tag: string) => {
+    const { result } = renderSearch('', { tag })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data?.pages[0].method).toBe('tag_only')
+
+    return result
+  }
+
   afterEach(() => {
     queryClient.clear()
   })
@@ -57,9 +70,7 @@ describe('hooks/useSearch', () => {
 
       mockSearchService.prototype.searchNotes = mockSearchNotes
 
-      const { result } = renderHook(() => useSearch('test query'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test query')
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -81,9 +92,7 @@ describe('hooks/useSearch', () => {
 
       mockSearchService.prototype.searchNotes = mockSearchNotes
 
-      const { result } = renderHook(() => useSearch('test', { tag: 'work' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('test', { tag: 'work' })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -103,9 +112,7 @@ describe('hooks/useSearch', () => {
 
       mockSearchService.prototype.searchNotes = mockSearchNotes
 
-      const { result } = renderHook(() => useSearch('test', { tag: '  ' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('test', { tag: '  ' })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -117,9 +124,7 @@ describe('hooks/useSearch', () => {
     })
 
     it('returns empty results for empty query without tag', () => {
-      const { result } = renderHook(() => useSearch(''), {
-        wrapper,
-      })
+      const { result } = renderSearch('')
 
       // Query is disabled for empty search without tag
       expect(result.current.fetchStatus).toBe('idle')
@@ -143,11 +148,7 @@ describe('hooks/useSearch', () => {
 
       mockNoteService.prototype.getNotes = mockGetNotes
 
-      const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper,
-      })
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+      const result = await renderTagOnlySearch('work')
 
       expect(mockGetNotes).toHaveBeenCalledWith('test-user-id', {
         tag: 'work',
@@ -155,6 +156,66 @@ describe('hooks/useSearch', () => {
         pageSize: 50,
       })
       expect(result.current.data?.pages[0].method).toBe('tag_only')
+    })
+
+    it('returns nextCursor when online tag-only results have more pages (lines 71-79)', async () => {
+      const manyNotes = Array.from({ length: 50 }, (_, i) => ({
+        id: `note-${i}`,
+        title: `Note ${i}`,
+        description: 'Description',
+        tags: ['work'],
+        updated_at: '2024-01-01T00:00:00Z',
+        created_at: '2024-01-01T00:00:00Z',
+      }))
+
+      mockNoteService.prototype.getNotes = jest.fn().mockResolvedValue({
+        notes: manyNotes,
+        totalCount: 200,
+        hasMore: true,
+      })
+
+      const result = await renderTagOnlySearch('work')
+
+      expect(result.current.data?.pages[0].hasMore).toBe(true)
+      expect(result.current.data?.pages[0].nextCursor).toBe(1)
+    })
+
+    it('falls back to local FTS search via databaseService.searchNotes when online search throws an error', async () => {
+      jest.spyOn(console, 'warn').mockImplementation(() => {})
+      const mockSearchNotes = jest.fn().mockRejectedValue(new Error('Online search RPC failed'))
+      mockSearchService.prototype.searchNotes = mockSearchNotes
+
+      const mockLocalNotes = [
+        {
+          id: 'note-local-1',
+          title: 'Fallback Local Note',
+          description: 'Description',
+          tags: ['test'],
+          updated_at: '2024-01-01T00:00:00Z',
+          created_at: '2024-01-01T00:00:00Z',
+          user_id: 'test-user-id',
+          snippet: null,
+          rank: null,
+        },
+      ]
+      mockDatabaseService.searchNotes.mockResolvedValue(mockLocalNotes)
+
+      const { result } = renderSearch('fallback query')
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+      expect(mockSearchNotes).toHaveBeenCalledWith('test-user-id', 'fallback query', {
+        tag: null,
+        limit: 50,
+        offset: 0,
+      })
+      expect(mockDatabaseService.searchNotes).toHaveBeenCalledWith('fallback query', 'test-user-id', {
+        limit: 50,
+        offset: 0,
+        tag: null,
+      })
+      expect(result.current.data?.pages[0].method).toBe('local_fts')
+      expect(result.current.data?.pages[0].results).toEqual(mockLocalNotes)
     })
   })
 
@@ -181,9 +242,7 @@ describe('hooks/useSearch', () => {
 
       mockDatabaseService.searchNotes.mockResolvedValue(mockLocalSearch)
 
-      const { result } = renderHook(() => useSearch('test'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test')
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -211,9 +270,7 @@ describe('hooks/useSearch', () => {
         total: 1,
       })
 
-      const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('', { tag: 'work' })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -223,13 +280,62 @@ describe('hooks/useSearch', () => {
       })
       expect(result.current.data?.pages[0].method).toBe('local_tag_only')
     })
+
+    it('returns nextCursor when local tag-only results indicate hasMore (lines 98-100)', async () => {
+      // Return more results than offset+length to trigger hasMore=true and nextCursor
+      const manyNotes = Array.from({ length: 50 }, (_, i) => ({
+        id: `note-${i}`,
+        title: `Note ${i}`,
+        description: 'Description',
+        tags: ['work'],
+        updated_at: '2024-01-01T00:00:00Z',
+        created_at: '2024-01-01T00:00:00Z',
+        user_id: 'test-user-id',
+      }))
+
+      mockDatabaseService.getLocalNotesByTag.mockResolvedValue({
+        notes: manyNotes,
+        total: 200, // offset(0) + 50 < 200, so hasMore=true
+      })
+
+      const { result } = renderSearch('', { tag: 'work' })
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+      expect(result.current.data?.pages[0].hasMore).toBe(true)
+      expect(result.current.data?.pages[0].nextCursor).toBe(1)
+      expect(result.current.data?.pages[0].method).toBe('local_tag_only')
+    })
+
+    it('returns nextCursor when offline local FTS results fill a full page (lines 108-114)', async () => {
+      // Return exactly PAGE_SIZE results so baseHasMore=true and nextCursor is set
+      const fullPageResults = Array.from({ length: 50 }, (_, i) => ({
+        id: `note-${i}`,
+        title: `Note ${i}`,
+        description: 'Description',
+        tags: ['test'],
+        updated_at: '2024-01-01T00:00:00Z',
+        created_at: '2024-01-01T00:00:00Z',
+        user_id: 'test-user-id',
+        snippet: null,
+        rank: null,
+      }))
+
+      mockDatabaseService.searchNotes.mockResolvedValue(fullPageResults)
+
+      const { result } = renderSearch('test')
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+      expect(result.current.data?.pages[0].hasMore).toBe(true)
+      expect(result.current.data?.pages[0].nextCursor).toBe(1)
+      expect(result.current.data?.pages[0].method).toBe('local_fts')
+    })
   })
 
   describe('Query enabling', () => {
     it('is disabled for query shorter than 2 characters without tag', () => {
-      const { result } = renderHook(() => useSearch('a'), {
-        wrapper,
-      })
+      const { result } = renderSearch('a')
 
       expect(result.current.fetchStatus).toBe('idle')
     })
@@ -241,9 +347,7 @@ describe('hooks/useSearch', () => {
         method: 'fts',
       })
 
-      const { result } = renderHook(() => useSearch('ab'), {
-        wrapper,
-      })
+      const { result } = renderSearch('ab')
 
       await waitFor(() => expect(result.current.fetchStatus).not.toBe('idle'))
     })
@@ -255,9 +359,7 @@ describe('hooks/useSearch', () => {
         hasMore: false,
       })
 
-      const { result } = renderHook(() => useSearch('', { tag: 'work' }), {
-        wrapper,
-      })
+      const { result } = renderSearch('', { tag: 'work' })
 
       await waitFor(() => expect(result.current.fetchStatus).not.toBe('idle'))
     })
@@ -269,9 +371,7 @@ describe('hooks/useSearch', () => {
         user: null,
       })
 
-      const { result } = renderHook(() => useSearch('test'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test')
 
       expect(result.current.fetchStatus).toBe('idle')
     })
@@ -301,9 +401,7 @@ describe('hooks/useSearch', () => {
         method: 'fts',
       })
 
-      const { result } = renderHook(() => useSearch('test'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test')
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
@@ -330,9 +428,7 @@ describe('hooks/useSearch', () => {
         method: 'fts',
       })
 
-      const { result } = renderHook(() => useSearch('test'), {
-        wrapper,
-      })
+      const { result } = renderSearch('test')
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
 

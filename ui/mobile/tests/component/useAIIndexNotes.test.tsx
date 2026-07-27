@@ -1,6 +1,8 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { createQueryWrapper, createTestQueryClient, renderHook, waitFor } from '../testUtils'
 import {
+  getAIIndexNotesQueryKey,
+  getAIIndexNotesQueryPrefix,
   useAIIndexNotes,
   useFlattenedAIIndexNotes,
 } from '@ui/mobile/hooks/useAIIndexNotes'
@@ -20,7 +22,7 @@ const { useSupabase } = require('@ui/mobile/providers') as {
 
 function makeRpcRows(
   rows: Array<{ id: string; title: string; status: string }>,
-  totalCount?: number
+  totalCount?: number | string | null
 ) {
   return rows.map((r, i) => ({
     id: r.id,
@@ -31,6 +33,28 @@ function makeRpcRows(
     total_count: i === 0 ? (totalCount ?? rows.length) : null,
   }))
 }
+
+describe('getAIIndexNotesQueryKey & getAIIndexNotesQueryPrefix', () => {
+  it('returns correctly formatted query key', () => {
+    expect(getAIIndexNotesQueryKey('user-123', 'all', '  search  ')).toEqual([
+      'ai-index-notes',
+      'user-123',
+      'all',
+      'search',
+    ])
+    expect(getAIIndexNotesQueryKey(undefined, 'indexed', '')).toEqual([
+      'ai-index-notes',
+      null,
+      'indexed',
+      '',
+    ])
+  })
+
+  it('returns correctly formatted query prefix', () => {
+    expect(getAIIndexNotesQueryPrefix('user-123')).toEqual(['ai-index-notes', 'user-123'])
+    expect(getAIIndexNotesQueryPrefix()).toEqual(['ai-index-notes', null])
+  })
+})
 
 describe('useAIIndexNotes', () => {
   let queryClient: QueryClient
@@ -96,11 +120,69 @@ describe('useAIIndexNotes', () => {
       client: { rpc: mockRpc },
       user: { id: 'test-user-id' },
     })
-    mockRpc.mockRejectedValue(new Error('Database error'))
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { message: 'Database error' },
+    })
 
     const { result } = renderHook(() => useAIIndexNotes('all', ''), { wrapper })
 
     await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error?.message).toContain('Message: Database error')
+  })
+
+  it('formats PGRST202 RPC error with custom message', async () => {
+    useSupabase.mockReturnValue({
+      client: { rpc: mockRpc },
+      user: { id: 'test-user-id' },
+    })
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: {
+        code: 'PGRST202',
+        message: 'Could not find function get_ai_index_notes in schema',
+        details: 'Function signature mismatch',
+        hint: 'Apply migration',
+      },
+    })
+
+    const { result } = renderHook(() => useAIIndexNotes('all', ''), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error?.message).toContain('AI Index database function is out of date.')
+    expect(result.current.error?.message).toContain('Code: PGRST202')
+  })
+
+  it('parses string total_count in RPC response rows', async () => {
+    useSupabase.mockReturnValue({
+      client: { rpc: mockRpc },
+      user: { id: 'test-user-id' },
+    })
+    mockRpc.mockResolvedValue({
+      data: makeRpcRows([{ id: 'n1', title: 'Note 1', status: 'indexed' }], '42'),
+      error: null,
+    })
+
+    const { result } = renderHook(() => useAIIndexNotes('all', ''), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.pages[0].totalCount).toBe(42)
+  })
+
+  it('defaults total_count to 0 for invalid or missing total_count string/null', async () => {
+    useSupabase.mockReturnValue({
+      client: { rpc: mockRpc },
+      user: { id: 'test-user-id' },
+    })
+    mockRpc.mockResolvedValue({
+      data: makeRpcRows([{ id: 'n1', title: 'Note 1', status: 'indexed' }], 'invalid_num'),
+      error: null,
+    })
+
+    const { result } = renderHook(() => useAIIndexNotes('all', ''), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.pages[0].totalCount).toBe(0)
   })
 })
 
@@ -121,8 +203,11 @@ describe('useFlattenedAIIndexNotes', () => {
     expect(result.current.map((n) => n.id)).toEqual(['a', 'b', 'c', 'd'])
   })
 
-  it('returns empty array when no data', () => {
-    const { result } = renderHook(() => useFlattenedAIIndexNotes({}))
-    expect(result.current).toEqual([])
+  it('returns empty array when no data or data is undefined', () => {
+    const { result: res1 } = renderHook(() => useFlattenedAIIndexNotes({}))
+    expect(res1.current).toEqual([])
+
+    const { result: res2 } = renderHook(() => useFlattenedAIIndexNotes({ data: undefined }))
+    expect(res2.current).toEqual([])
   })
 })

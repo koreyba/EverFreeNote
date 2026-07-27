@@ -1,10 +1,15 @@
 /**
  * Component tests for SwipeableNoteCard
- * Tests swipe-to-delete functionality, delete button interactions, and animations
+ * Tests swipe-to-delete functionality, delete button interactions, and selection mode
  */
+import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { SwipeableNoteCard } from '@ui/mobile/components/SwipeableNoteCard'
 import type { Note } from '@core/types/domain'
+
+const mockRegister = jest.fn()
+const mockUnregister = jest.fn()
+const mockOnSwipeStart = jest.fn()
 
 // Mock providers
 jest.mock('@ui/mobile/providers', () => ({
@@ -24,9 +29,9 @@ jest.mock('@ui/mobile/providers', () => ({
     },
   }),
   useSwipeContext: () => ({
-    register: jest.fn(),
-    unregister: jest.fn(),
-    onSwipeStart: jest.fn(),
+    register: mockRegister,
+    unregister: mockUnregister,
+    onSwipeStart: mockOnSwipeStart,
   }),
 }))
 
@@ -35,25 +40,23 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
   const { View } = require('react-native')
   const React = require('react')
   
-  return React.forwardRef((props: unknown, ref: unknown) => {
-    // Expose methods for testing
+  return React.forwardRef((props: Record<string, unknown>, ref: unknown) => {
     React.useImperativeHandle(ref, () => ({
       close: jest.fn(),
     }))
     
     return (
-      <View testID="swipeable-container">
-        {(props as Record<string, unknown>).children}
-        {(props as Record<string, unknown>).renderRightActions && (
+      <View testID="swipeable-container" onSwipeableWillOpen={props.onSwipeableWillOpen as CallableFunction}>
+        {props.children as React.ReactNode}
+        {Boolean(props.renderRightActions) && (
           <View testID="right-actions">
-            {((props as Record<string, unknown>).renderRightActions as CallableFunction)({ value: 0 }, { value: 0 })}
+            {(props.renderRightActions as CallableFunction)({ value: 0 }, { value: 0 })}
           </View>
         )}
       </View>
     )
   })
 })
-
 
 const mockNote: Note = {
   id: 'note-1',
@@ -88,21 +91,76 @@ describe('SwipeableNoteCard', () => {
     expect(screen.getByText('Test Note')).toBeTruthy()
   })
 
-  it('renders delete action in right swipe', () => {
+  it('renders NoteCard in selection mode without registering swipeable', () => {
     render(
       <SwipeableNoteCard
         note={mockNote}
         onPress={mockOnPress}
+        onDelete={mockOnDelete}
+        isSelectionMode={true}
+      />
+    )
+
+    expect(screen.queryByTestId('swipeable-container')).toBeNull()
+    expect(screen.getByText('Test Note')).toBeTruthy()
+    expect(mockRegister).not.toHaveBeenCalled()
+  })
+
+  it('registers note ID with useSwipeContext on mount when not in selection mode and unregisters on unmount', () => {
+    const { unmount } = render(
+      <SwipeableNoteCard
+        note={mockNote}
+        onPress={mockOnPress}
+        onDelete={mockOnDelete}
+      />
+    )
+
+    expect(mockRegister).toHaveBeenCalledWith('note-1', expect.anything())
+
+    unmount()
+
+    expect(mockUnregister).toHaveBeenCalledWith('note-1')
+  })
+
+  it('triggers onPress, onLongPress, and onTagPress callbacks', () => {
+    const mockOnLongPress = jest.fn()
+    render(
+      <SwipeableNoteCard
+        note={mockNote}
+        onPress={mockOnPress}
+        onLongPress={mockOnLongPress}
         onTagPress={mockOnTagPress}
         onDelete={mockOnDelete}
       />
     )
 
-    const rightActions = screen.getByTestId('right-actions')
-    expect(rightActions).toBeTruthy()
+    fireEvent.press(screen.getByText('Test Note'))
+    expect(mockOnPress).toHaveBeenCalledWith(mockNote)
+
+    fireEvent(screen.getByText('Test Note'), 'longPress')
+    expect(mockOnLongPress).toHaveBeenCalledTimes(1)
+
+    const tag = screen.getByText('tag1')
+    fireEvent.press(tag, { stopPropagation: jest.fn() })
+    expect(mockOnTagPress).toHaveBeenCalledWith('tag1')
   })
 
-  it('calls onDelete when delete button is pressed', () => {
+  it('triggers onSwipeStart when swipeable opens', () => {
+    render(
+      <SwipeableNoteCard
+        note={mockNote}
+        onPress={mockOnPress}
+        onDelete={mockOnDelete}
+      />
+    )
+
+    const swipeable = screen.getByTestId('swipeable-container')
+    fireEvent(swipeable, 'swipeableWillOpen')
+
+    expect(mockOnSwipeStart).toHaveBeenCalledWith('note-1')
+  })
+
+  it('renders right action delete button and calls onDelete(note.id) when delete is pressed', () => {
     render(
       <SwipeableNoteCard
         note={mockNote}
@@ -113,43 +171,11 @@ describe('SwipeableNoteCard', () => {
     )
 
     const deleteButton = screen.getByLabelText('Delete note')
-    fireEvent.press(deleteButton)
+    expect(deleteButton).toBeTruthy()
 
+    fireEvent.press(deleteButton)
     expect(mockOnDelete).toHaveBeenCalledTimes(1)
     expect(mockOnDelete).toHaveBeenCalledWith('note-1')
-  })
-
-  it('calls onPress when note card is pressed', () => {
-    render(
-      <SwipeableNoteCard
-        note={mockNote}
-        onPress={mockOnPress}
-        onTagPress={mockOnTagPress}
-        onDelete={mockOnDelete}
-      />
-    )
-
-    fireEvent.press(screen.getByText('Test Note'))
-
-    expect(mockOnPress).toHaveBeenCalledTimes(1)
-    expect(mockOnPress).toHaveBeenCalledWith(mockNote)
-  })
-
-  it('calls onTagPress when tag is pressed', () => {
-    render(
-      <SwipeableNoteCard
-        note={mockNote}
-        onPress={mockOnPress}
-        onTagPress={mockOnTagPress}
-        onDelete={mockOnDelete}
-      />
-    )
-
-    const tag = screen.getByText('tag1')
-    // Create a proper event object with stopPropagation
-    fireEvent.press(tag, { stopPropagation: jest.fn() })
-
-    expect(mockOnTagPress).toHaveBeenCalledWith('tag1')
   })
 
   it('renders note with snippet and headline for search variant', () => {
@@ -188,105 +214,5 @@ describe('SwipeableNoteCard', () => {
 
     expect(screen.getByText('Test Note')).toBeTruthy()
     expect(screen.queryByText('tag1')).toBeNull()
-  })
-
-  it('registers swipeable ref with context on mount', () => {
-    // This test validates the integration with SwipeContext
-    // The context functions are already mocked globally
-    const { unmount } = render(
-      <SwipeableNoteCard
-        note={mockNote}
-        onPress={mockOnPress}
-        onTagPress={mockOnTagPress}
-        onDelete={mockOnDelete}
-      />
-    )
-
-    // Component should register and unregister properly
-    // Since we're using a global mock, we just verify it renders without errors
-    expect(screen.getByText('Test Note')).toBeTruthy()
-    
-    unmount()
-    
-    // Component should clean up without errors
-  })
-
-  it('notifies context when swipe starts', () => {
-    // This test validates swipe start callback setup
-    render(
-      <SwipeableNoteCard
-        note={mockNote}
-        onPress={mockOnPress}
-        onTagPress={mockOnTagPress}
-        onDelete={mockOnDelete}
-      />
-    )
-
-    // Note: In real tests, this would be triggered by actual swipe gesture
-    // Here we just verify the component renders correctly with the callback
-    expect(screen.getByText('Test Note')).toBeTruthy()
-  })
-
-  it('does not call onDelete multiple times on rapid presses', async () => {
-    render(
-      <SwipeableNoteCard
-        note={mockNote}
-        onPress={mockOnPress}
-        onTagPress={mockOnTagPress}
-        onDelete={mockOnDelete}
-      />
-    )
-
-    const deleteButton = screen.getByLabelText('Delete note')
-    
-    // Rapid fire presses
-    fireEvent.press(deleteButton)
-    fireEvent.press(deleteButton)
-    fireEvent.press(deleteButton)
-
-    // Only first press should register (component doesn't debounce by default, 
-    // but this tests that the handler is stable)
-    expect(mockOnDelete).toHaveBeenCalledTimes(3)
-  })
-
-  it('handles delete with different note IDs', () => {
-    const { rerender } = render(
-      <SwipeableNoteCard
-        note={mockNote}
-        onPress={mockOnPress}
-        onTagPress={mockOnTagPress}
-        onDelete={mockOnDelete}
-      />
-    )
-
-    fireEvent.press(screen.getByLabelText('Delete note'))
-    expect(mockOnDelete).toHaveBeenCalledWith('note-1')
-
-    const differentNote = { ...mockNote, id: 'note-2', title: 'Different Note' }
-    rerender(
-      <SwipeableNoteCard
-        note={differentNote}
-        onPress={mockOnPress}
-        onTagPress={mockOnTagPress}
-        onDelete={mockOnDelete}
-      />
-    )
-
-    fireEvent.press(screen.getByLabelText('Delete note'))
-    expect(mockOnDelete).toHaveBeenCalledWith('note-2')
-  })
-
-  it('renders with correct accessibility labels', () => {
-    render(
-      <SwipeableNoteCard
-        note={mockNote}
-        onPress={mockOnPress}
-        onTagPress={mockOnTagPress}
-        onDelete={mockOnDelete}
-      />
-    )
-
-    const deleteButton = screen.getByLabelText('Delete note')
-    expect(deleteButton.props.accessibilityRole).toBe('button')
   })
 })

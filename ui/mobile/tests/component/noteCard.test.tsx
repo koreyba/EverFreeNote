@@ -86,4 +86,41 @@ describe('NoteCard', () => {
     fireEvent.press(screen.getByText('Test title'))
     expect(onPress).toHaveBeenCalledTimes(1)
   })
+
+  it('renders selection mode checkbox when isSelectionMode is true and indicates checked when isSelected is true', () => {
+    const { rerender } = render(
+      <NoteCard
+        note={baseNote}
+        onPress={jest.fn()}
+        isSelectionMode={true}
+        isSelected={false}
+      />
+    )
+
+    expect(screen.getAllByRole('checkbox').length).toBeGreaterThanOrEqual(1)
+    const cardCheckbox = screen.getAllByRole('checkbox')[0]
+    expect(cardCheckbox.props.accessibilityState).toEqual({ checked: false })
+
+    rerender(
+      <NoteCard
+        note={baseNote}
+        onPress={jest.fn()}
+        isSelectionMode={true}
+        isSelected={true}
+      />
+    )
+
+    const updatedCardCheckbox = screen.getAllByRole('checkbox')[0]
+    expect(updatedCardCheckbox.props.accessibilityState).toEqual({ checked: true })
+  })
+
+  it('renders fallback title "Untitled" when note.title is empty or null', () => {
+    const emptyTitleNote = {
+      ...baseNote,
+      title: '',
+    }
+
+    render(<NoteCard note={emptyTitleNote} onPress={jest.fn()} />)
+    expect(screen.getByText('Untitled')).toBeTruthy()
+  })
 })

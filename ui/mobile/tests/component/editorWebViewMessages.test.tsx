@@ -8,13 +8,18 @@ import { act, render, waitFor } from '@testing-library/react-native'
 // Mock WebView
 const mockPostMessage = jest.fn()
 let capturedOnMessage: ((event: { nativeEvent: { data: string } }) => void) | null = null
+let capturedOnConsoleMessage: ((event: { nativeEvent: { level: string; message: string } }) => void) | null = null
 
 jest.mock('react-native-webview', () => {
   const React = require('react')
 
   return {
-    WebView: React.forwardRef((props: { onMessage?: (event: { nativeEvent: { data: string } }) => void }, ref: unknown) => {
+    WebView: React.forwardRef((props: {
+      onMessage?: (event: { nativeEvent: { data: string } }) => void
+      onConsoleMessage?: (event: { nativeEvent: { level: string; message: string } }) => void
+    }, ref: unknown) => {
       capturedOnMessage = props.onMessage ?? null
+      capturedOnConsoleMessage = props.onConsoleMessage ?? null
 
       React.useImperativeHandle(ref, () => ({
         postMessage: mockPostMessage,
@@ -62,6 +67,7 @@ describe('EditorWebView message handling', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     capturedOnMessage = null
+    capturedOnConsoleMessage = null
     warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
     errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -690,6 +696,42 @@ describe('EditorWebView message handling', () => {
 
       expect(onContentChange).toHaveBeenCalledWith('<p>Content saved on blur</p>')
       expect(onBlur).toHaveBeenCalled()
+    })
+  })
+
+  describe('IMAGE_ERROR handling', () => {
+    it('logs console.error when IMAGE_ERROR message is received', async () => {
+      render(<EditorWebView initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnMessage).not.toBeNull()
+      })
+
+      sendMessage('IMAGE_ERROR', { src: 'https://example.com/broken.png', message: '404 Not Found' })
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[EditorWebView] Image failed to load:',
+        'https://example.com/broken.png',
+        '404 Not Found'
+      )
+    })
+  })
+
+  describe('onConsoleMessage handling', () => {
+    it('logs console.warn when onConsoleMessage event occurs in __DEV__', async () => {
+      render(<EditorWebView initialContent="" />)
+
+      await waitFor(() => {
+        expect(capturedOnConsoleMessage).not.toBeNull()
+      })
+
+      act(() => {
+        capturedOnConsoleMessage?.({
+          nativeEvent: { level: 'log', message: 'Hello from WebView JS' },
+        })
+      })
+
+      expect(warnSpy).toHaveBeenCalledWith('[WebView Console log]:', 'Hello from WebView JS')
     })
   })
 })

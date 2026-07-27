@@ -71,5 +71,12 @@ describe('ui/mobile/utils/htmlToPlainText', () => {
     it('decodes hex numeric entities', () => {
       expect(htmlToPlainText('&#x41;')).toBe('A') // A = 0x41
     })
+
+    it.each([
+      ['hex', 'A &#x110000; B'],
+      ['decimal', 'A &#1114112; B'],
+    ])('preserves %s numeric entities outside the Unicode range', (_format, input) => {
+      expect(htmlToPlainText(input)).toBe(input)
+    })
   })
 })
