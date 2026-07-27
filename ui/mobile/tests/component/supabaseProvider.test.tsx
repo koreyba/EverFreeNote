@@ -43,7 +43,7 @@ jest.mock('@core/services/auth', () => ({
 // ---------------------------------------------------------------------------
 // Import modules under test AFTER mocks are set up
 // ---------------------------------------------------------------------------
-import { SupabaseProvider, useSupabase, useAuth } from '../../providers/SupabaseProvider'
+import { SupabaseProvider, useSupabase, useAuth } from '@ui/mobile/providers'
 import { mobileSyncService } from '@ui/mobile/services/sync'
 
 // ---------------------------------------------------------------------------
