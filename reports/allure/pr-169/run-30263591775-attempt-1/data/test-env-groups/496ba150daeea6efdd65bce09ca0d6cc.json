@@ -1,0 +1,1 @@
+{"id":"496ba150daeea6efdd65bce09ca0d6cc","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService performSync callback delete operation deletes note via NoteService","name":"deletes note via NoteService","status":"passed","testResultsByEnv":{"default":"88688177ed5f9dcdd8412402e040f29a"}}
