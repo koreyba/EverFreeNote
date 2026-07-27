@@ -2,6 +2,9 @@ import js from '@eslint/js'
 import tsPlugin from '@typescript-eslint/eslint-plugin'
 import tsParser from '@typescript-eslint/parser'
 import reactHooksPlugin from 'eslint-plugin-react-hooks'
+import { fileURLToPath } from 'node:url'
+
+const tsconfigRootDir = fileURLToPath(new URL('.', import.meta.url))
 
 export default [
   js.configs.recommended,
@@ -15,6 +18,7 @@ export default [
         ecmaFeatures: {
           jsx: true,
         },
+        tsconfigRootDir,
         project: ['./tsconfig.json', './tests/tsconfig.json'],
       },
       globals: {
@@ -62,7 +66,7 @@ export default [
     },
   },
   {
-    files: ['tests/**/*.{ts,tsx}', 'tests/setupTests.ts'],
+    files: ['**/tests/**/*.{ts,tsx}', '**/tests/setupTests.ts'],
     languageOptions: {
       globals: {
         afterAll: 'readonly',
