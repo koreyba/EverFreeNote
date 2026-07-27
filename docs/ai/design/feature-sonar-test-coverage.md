@@ -27,13 +27,20 @@ flowchart TD
   MobileLCOV --> MainScan
   MainScan --> MainCloud["SonarQube Cloud main baseline"]
 
+  Unit --> QodanaMerge["Istanbul JSON merge"]
+  Component --> QodanaMerge
+  Mobile --> QodanaMerge
+  QodanaMerge --> QodanaLCOV[".qodana/code-coverage/lcov.info"]
+  QodanaLCOV --> QodanaScan["Qodana main scanner"]
+  QodanaScan --> QodanaCloud["Qodana Cloud main report"]
+
   Semgrep["Semgrep static security scan"] --> SemgrepCloud["Semgrep findings"]
 ```
 
-GitHub Actions replaces SonarQube Cloud Automatic Analysis. The PR job invokes
-only the scanner. The main workflow runs three independent coverage producers
-in parallel, downloads their immutable artifacts into a final scanner job, and
-passes all LCOV paths explicitly.
+GitHub Actions replaces SonarQube Cloud Automatic Analysis. The Sonar PR job
+keeps its existing mobile coverage input. On `main`, the workflow runs the
+three full coverage producers once, then separate Sonar and Qodana scanner jobs
+download the immutable artifacts.
 
 ## Data Models
 
@@ -46,6 +53,9 @@ passes all LCOV paths explicitly.
 - `SONAR_TOKEN`: GitHub secret used only by scanner jobs.
 - Sonar analysis parameters: cloud host, organization, cloud project key, and
   optional LCOV paths for the main analysis.
+- `QODANA_TOKEN`: GitHub secret used only by the post-merge Qodana job.
+- `.qodana/code-coverage/lcov.info`: one normalized LCOV union consumed by
+  Qodana for JS.
 
 ## API Design
 
@@ -68,20 +78,26 @@ of a main-revision analysis, preventing duplicate or partial uploads.
   `ui/mobile/coverage`.
 - Semgrep remains a separate SAST workflow. Its platform does not import LCOV
   or represent runtime test coverage.
+- `scripts/merge-coverage.cjs` owns the Qodana input conversion: it merges the
+  three Istanbul JSON maps, normalizes Windows paths, deduplicates overlapping
+  files, and keeps the same product coverage scope as Sonar.
+- `qodana.yaml` selects `qodana-js` and the recommended profile. The
+  `qodana-main` job runs only after a push to `main`; it has no PR trigger.
 
 ## Design Decisions
 
 ### PR analysis remains fast
 
-PR scans run on `opened`, `synchronize`, and `reopened`, matching the effective
-Automatic Analysis cadence. They do not install dependencies or run tests.
-Coverage is therefore unavailable on ordinary PR analyses by design.
+Sonar PR scans run on `opened`, `synchronize`, and `reopened`, matching the
+effective Automatic Analysis cadence. Qodana is deliberately absent from PR
+events; its only scanner job runs after the full `main` coverage producers.
 
 ### Main coverage is deterministic
 
-The scanner never relies on implicit discovery of `coverage/lcov.info`.
-Producer jobs must create and upload their named LCOV file; the consumer fails
-if any report is absent.
+The scanners never rely on implicit discovery of `coverage/lcov.info`.
+Producer jobs create and upload named coverage artifacts; Sonar consumes the
+three LCOV reports and Qodana consumes the one merged LCOV report. The Qodana
+consumer fails if any raw input is absent.
 
 ### Reports remain independent
 
@@ -91,6 +107,15 @@ so its main metric represents code covered by any configured test layer.
 Overlapping lines, including shared core code, are deduplicated and the result
 cannot exceed 100 percent. Sonar Measures still allows drill-down by directory,
 but not by test runner.
+
+### Qodana receives the Sonar-equivalent union
+
+Qodana for JS accepts one LCOV report per analysis, while Sonar accepts the
+three producer reports directly. The Qodana job therefore merges the raw
+Istanbul JSON maps before generating LCOV. The merge is a union of execution
+counts for the same normalized project-relative file, not an average of the
+three producer percentages. The Qodana quality gate does not set an arbitrary
+percentage threshold, matching Sonar's current measurement-only behavior.
 
 ### Cloud identity is the repository default
 
