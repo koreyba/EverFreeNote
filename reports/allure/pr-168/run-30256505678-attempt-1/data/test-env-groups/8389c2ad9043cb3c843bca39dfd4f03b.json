@@ -1,0 +1,1 @@
+{"id":"8389c2ad9043cb3c843bca39dfd4f03b","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteBulkActions.test.tsx#useNoteBulkActions reports partial online failures but still refreshes the local queries","name":"reports partial online failures but still refreshes the local queries","status":"passed","testResultsByEnv":{"default":"d6aca82f099e1879afa16b4f8b1fe19d"}}
