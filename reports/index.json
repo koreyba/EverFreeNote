@@ -6,6 +6,44 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit",
+      "component",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-169/run-30273954372-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-169/run-30273954372-attempt-1/",
+    "runId": "30273954372",
+    "runAttempt": "1",
+    "prNumber": "169",
+    "ref": "mobile-unit-tests-coverage-phase2",
+    "sha": "03d606445b77e5c6983c48e1f2368fd7a59183d0",
+    "outcome": "success",
+    "previewUrl": "https://1fec53df.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #169",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-27T14:18:31.747Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit"
     ],
     "suiteLabels": [
@@ -651,36 +689,6 @@
     "scopeLabel": "PR #169",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-27T11:32:28.250Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-169/run-30261081560-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-169/run-30261081560-attempt-1/",
-    "runId": "30261081560",
-    "runAttempt": "1",
-    "prNumber": "169",
-    "ref": "mobile-unit-tests-coverage-phase2",
-    "sha": "27c3b2827823b18307064092fac70575d9aae45b",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #169",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-27T11:21:35.029Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
