@@ -1,0 +1,1 @@
+{"id":"7e3285f22eecc6a7a75530dec662bb2f","fullName":"everfreenote-mobile:tests/unit/oauthAdapter.test.ts#oauthAdapter startOAuth handles result.type = \"cancel\" gracefully without throwing","name":"handles result.type = \"cancel\" gracefully without throwing","status":"passed","testResultsByEnv":{"default":"3c755199354aef4ad01f342d9a5a42a4"}}
