@@ -61,6 +61,23 @@ describe('DatabaseService', () => {
         ['note-1', 'important']
       )
     })
+
+    it('checks existing notes but does not insert tags when the database has no notes', async () => {
+      mockDb.getAllAsync.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+
+      await service.init()
+
+      expect(mockDb.getAllAsync).toHaveBeenNthCalledWith(1, 'SELECT COUNT(*) as count FROM note_tags')
+      expect(mockDb.getAllAsync).toHaveBeenNthCalledWith(2, 'SELECT id, tags FROM notes')
+      expect(mockDb.runAsync).not.toHaveBeenCalled()
+    })
+
+    it('propagates a database-open failure without executing the schema', async () => {
+      mockOpenDatabaseAsync.mockRejectedValueOnce(new Error('Unable to open database'))
+
+      await expect(service.init()).rejects.toThrow('Unable to open database')
+      expect(mockDb.execAsync).not.toHaveBeenCalled()
+    })
   })
 
   describe('saveNotes', () => {
@@ -97,6 +114,31 @@ describe('DatabaseService', () => {
       expect(mockDb.execAsync).toHaveBeenCalledWith('COMMIT')
     })
 
+    it('preserves legacy string tags and defaults missing sync flags', async () => {
+      mockDb.getAllAsync.mockResolvedValue([{ count: 1 }])
+
+      await service.saveNotes([
+        {
+          id: 'legacy-note',
+          title: 'Legacy note',
+          description: 'Imported note',
+          tags: '["Imported"]' as unknown as string[],
+          user_id: 'user-1',
+          created_at: '2026-07-24T12:00:00Z',
+          updated_at: '2026-07-24T12:00:00Z',
+        },
+      ])
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT OR REPLACE INTO notes'),
+        ['legacy-note', 'Legacy note', 'Imported note', '["Imported"]', 'user-1', '2026-07-24T12:00:00Z', '2026-07-24T12:00:00Z', 1, 0]
+      )
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'INSERT INTO note_tags (note_id, tag) VALUES (?, ?)',
+        ['legacy-note', 'Imported']
+      )
+    })
+
     it('skips notes without user_id', async () => {
       mockDb.getAllAsync.mockResolvedValue([{ count: 1 }])
 
@@ -126,6 +168,8 @@ describe('DatabaseService', () => {
           {
             id: 'note-err',
             title: 'Error Note',
+            description: '',
+            tags: [],
             user_id: 'user-1',
             created_at: '2026-07-24T12:00:00Z',
             updated_at: '2026-07-24T12:00:00Z',
@@ -173,6 +217,42 @@ describe('DatabaseService', () => {
           is_synced: 1,
           is_deleted: 0,
         },
+      ])
+    })
+
+    it('maps null and non-array tag JSON values to empty tag lists', async () => {
+      mockDb.getAllAsync
+        .mockResolvedValueOnce([{ count: 1 }])
+        .mockResolvedValueOnce([
+          {
+            id: 'note-without-tags',
+            title: 'No tags',
+            description: '',
+            tags: null,
+            user_id: 'user-1',
+            created_at: '2026-07-24T12:00:00Z',
+            updated_at: '2026-07-24T12:00:00Z',
+            is_synced: 1,
+            is_deleted: 0,
+          },
+          {
+            id: 'note-with-object-tags',
+            title: 'Object tags',
+            description: '',
+            tags: '{"value":"not-an-array"}',
+            user_id: 'user-1',
+            created_at: '2026-07-24T12:00:00Z',
+            updated_at: '2026-07-24T12:00:00Z',
+            is_synced: 1,
+            is_deleted: 0,
+          },
+        ])
+
+      const notes = await service.getLocalNotes('user-1')
+
+      expect(notes).toEqual([
+        expect.objectContaining({ id: 'note-without-tags', tags: [] }),
+        expect.objectContaining({ id: 'note-with-object-tags', tags: [] }),
       ])
     })
 
@@ -237,6 +317,22 @@ describe('DatabaseService', () => {
       expect(result.notes).toHaveLength(1)
       expect(result.notes[0].tags).toEqual(['important'])
       expect(result.total).toBe(1)
+    })
+
+    it('uses default pagination and returns zero when the total count row is absent', async () => {
+      mockDb.getAllAsync
+        .mockResolvedValueOnce([{ count: 1 }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+
+      const result = await service.getLocalNotesByTag('user-1', 'important')
+
+      expect(mockDb.getAllAsync).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('LIMIT ? OFFSET ?'),
+        ['user-1', 'important', 50, 0]
+      )
+      expect(result).toEqual({ notes: [], total: 0 })
     })
   })
 
@@ -348,6 +444,13 @@ describe('DatabaseService', () => {
       expect(hasPending).toBe(false)
     })
 
+    it('hasPendingWrites returns false when the count row is absent', async () => {
+      mockDb.getAllAsync.mockResolvedValueOnce([{ count: 1 }])
+      mockDb.getFirstAsync.mockResolvedValueOnce(null)
+
+      await expect(service.hasPendingWrites('note-1')).resolves.toBe(false)
+    })
+
     it('markQueueItemStatus updates status and lastError in database', async () => {
       mockDb.getAllAsync.mockResolvedValueOnce([{ count: 1 }])
 
@@ -356,6 +459,17 @@ describe('DatabaseService', () => {
       expect(mockDb.runAsync).toHaveBeenCalledWith(
         'UPDATE mutation_queue SET status = ?, lastError = ?, attempts = attempts + 1 WHERE id = ?',
         ['failed', 'Timeout error', 'q-1']
+      )
+    })
+
+    it('stores a null lastError when queue status has no error message', async () => {
+      mockDb.getAllAsync.mockResolvedValueOnce([{ count: 1 }])
+
+      await service.markQueueItemStatus('q-1', 'pending')
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'UPDATE mutation_queue SET status = ?, lastError = ?, attempts = attempts + 1 WHERE id = ?',
+        ['pending', null, 'q-1']
       )
     })
   })
@@ -433,6 +547,134 @@ describe('DatabaseService', () => {
           snippet: null,
           rank: null,
         },
+      ])
+    })
+
+    it('applies tag and pagination options to the LIKE fallback search', async () => {
+      mockDb.getAllAsync
+        .mockResolvedValueOnce([{ count: 1 }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: 'tagged-fallback',
+            title: 'Tagged match',
+            description: 'Description text',
+            tags: '["important"]',
+            user_id: 'user-1',
+            created_at: '2026-07-24T12:00:00Z',
+            updated_at: '2026-07-24T12:00:00Z',
+            is_synced: 1,
+            is_deleted: 0,
+          },
+        ])
+
+      const results = await service.searchNotes('  match  ', 'user-1', {
+        limit: 5,
+        offset: 3,
+        tag: 'important',
+      })
+
+      expect(mockDb.getAllAsync).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('JOIN note_tags nt ON nt.note_id = n.id'),
+        ['match', 'user-1', 'important', 5, 3]
+      )
+      expect(mockDb.getAllAsync).toHaveBeenNthCalledWith(
+        3,
+        expect.stringContaining('AND nt.tag = ?'),
+        ['user-1', 'important', '%match%', '%match%', 5, 3]
+      )
+      expect(results).toEqual([
+        expect.objectContaining({
+          id: 'tagged-fallback',
+          tags: ['important'],
+          snippet: null,
+          rank: null,
+        }),
+      ])
+    })
+
+    it('does not use the LIKE fallback for a whitespace-only query', async () => {
+      mockDb.getAllAsync.mockResolvedValueOnce([{ count: 1 }]).mockResolvedValueOnce([])
+
+      const results = await service.searchNotes('   ', 'user-1')
+
+      expect(results).toEqual([])
+      expect(mockDb.getAllAsync).toHaveBeenCalledTimes(2)
+      expect(mockDb.getAllAsync).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('MATCH ?'),
+        ['', 'user-1', 50, 0]
+      )
+      expect(mockDb.getAllAsync.mock.calls[1][0]).not.toContain('LIKE ?')
+    })
+
+    it('treats a whitespace-only tag as no tag filter', async () => {
+      mockDb.getAllAsync
+        .mockResolvedValueOnce([{ count: 1 }])
+        .mockResolvedValueOnce([
+          {
+            id: 'untagged-search-result',
+            title: 'Search result',
+            description: 'Body text',
+            tags: '[]',
+            user_id: 'user-1',
+            created_at: '2026-07-24T12:00:00Z',
+            updated_at: '2026-07-24T12:00:00Z',
+            is_synced: 1,
+            is_deleted: 0,
+            snippet: '<mark>match</mark>',
+            rank: -0.5,
+          },
+        ])
+
+      const results = await service.searchNotes('match', 'user-1', { tag: '   ' })
+      const ftsQuery = String(mockDb.getAllAsync.mock.calls[1][0])
+
+      expect(mockDb.getAllAsync).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('MATCH ?'),
+        ['match', 'user-1', 50, 0]
+      )
+      expect(ftsQuery).not.toContain('JOIN note_tags nt ON nt.note_id = n.id')
+      expect(ftsQuery).not.toContain('AND nt.tag = ?')
+      expect(results).toEqual([
+        expect.objectContaining({
+          id: 'untagged-search-result',
+          tags: [],
+          snippet: '<mark>match</mark>',
+          rank: -0.5,
+        }),
+      ])
+    })
+
+    it('omits a missing FTS snippet while preserving the search rank', async () => {
+      mockDb.getAllAsync
+        .mockResolvedValueOnce([{ count: 1 }])
+        .mockResolvedValueOnce([
+          {
+            id: 'no-snippet',
+            title: 'Search result',
+            description: 'Body text',
+            tags: '[]',
+            user_id: 'user-1',
+            created_at: '2026-07-24T12:00:00Z',
+            updated_at: '2026-07-24T12:00:00Z',
+            is_synced: 1,
+            is_deleted: 0,
+            snippet: null,
+            rank: -0.25,
+          },
+        ])
+
+      const results = await service.searchNotes('result', 'user-1')
+
+      expect(results).toEqual([
+        expect.objectContaining({
+          id: 'no-snippet',
+          snippet: undefined,
+          rank: -0.25,
+        }),
       ])
     })
   })

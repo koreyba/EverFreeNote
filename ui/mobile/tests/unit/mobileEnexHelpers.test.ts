@@ -18,16 +18,32 @@ describe('enexMobile helpers', () => {
       )
     })
 
-    it('returns a valid Date for null, undefined, or empty/whitespace strings', () => {
-      const nowMs = Date.now()
-      expect(parseEnexDate(null).getTime()).toBeGreaterThanOrEqual(nowMs - 1000)
-      expect(parseEnexDate(undefined).getTime()).toBeGreaterThanOrEqual(nowMs - 1000)
-      expect(parseEnexDate('   ').getTime()).toBeGreaterThanOrEqual(nowMs - 1000)
+    it('returns the configured current date for null, undefined, or empty/whitespace strings', () => {
+      const expectedTimestamp = new Date('2026-07-27T12:34:56.789Z').getTime()
+
+      jest.useFakeTimers()
+      jest.setSystemTime(expectedTimestamp)
+
+      try {
+        expect(parseEnexDate(null).getTime()).toBe(expectedTimestamp)
+        expect(parseEnexDate(undefined).getTime()).toBe(expectedTimestamp)
+        expect(parseEnexDate('   ').getTime()).toBe(expectedTimestamp)
+      } finally {
+        jest.useRealTimers()
+      }
     })
 
-    it('returns current date when given an invalid date string', () => {
-      const nowMs = Date.now()
-      expect(parseEnexDate('invalid-date-string').getTime()).toBeGreaterThanOrEqual(nowMs - 1000)
+    it('returns the configured current date when given an invalid date string', () => {
+      const expectedTimestamp = new Date('2026-07-27T12:34:56.789Z').getTime()
+
+      jest.useFakeTimers()
+      jest.setSystemTime(expectedTimestamp)
+
+      try {
+        expect(parseEnexDate('invalid-date-string').getTime()).toBe(expectedTimestamp)
+      } finally {
+        jest.useRealTimers()
+      }
     })
   })
 
@@ -96,14 +112,46 @@ describe('enexMobile helpers', () => {
 <en-export>
   <note>
     <title>Object Content Note</title>
-    <content><![CDATA[<en-note>Text object</en-note>]]></content>
-    <tag>single-tag</tag>
+    <content type="text">  Text object  </content>
+    <tag> single-tag </tag>
+    <tag>   </tag>
   </note>
 </en-export>`
 
       const results = parseEnexXml(xml)
       expect(results[0].title).toBe('Object Content Note')
+      expect(results[0].content).toBe('Text object')
       expect(results[0].tags).toEqual(['single-tag'])
+    })
+
+    it('defaults missing content and tags while returning valid fallback dates', () => {
+      const expectedTimestamp = new Date('2026-07-27T12:34:56.789Z').getTime()
+
+      jest.useFakeTimers()
+      jest.setSystemTime(expectedTimestamp)
+
+      try {
+        const results = parseEnexXml(`
+<en-export>
+  <note>
+    <title>Metadata-only note</title>
+  </note>
+</en-export>`)
+
+        expect(results).toHaveLength(1)
+        expect(results[0]).toEqual(
+          expect.objectContaining({
+            title: 'Metadata-only note',
+            content: '',
+            tags: [],
+            resources: [],
+            created: new Date(expectedTimestamp),
+            updated: new Date(expectedTimestamp),
+          })
+        )
+      } finally {
+        jest.useRealTimers()
+      }
     })
 
     it('normalizes whitespace-only ENEX titles to Untitled and handles missing updated date', () => {
@@ -130,6 +178,12 @@ describe('enexMobile helpers', () => {
     it('builds export filename for specified date', () => {
       expect(buildEnexExportFileName(new Date('2026-03-14T08:30:00.000Z'))).toBe(
         'everfreenote-export-20260314-083000.enex'
+      )
+    })
+
+    it('zero-pads each UTC date and time component at lower boundaries', () => {
+      expect(buildEnexExportFileName(new Date('2026-01-02T03:04:05.000Z'))).toBe(
+        'everfreenote-export-20260102-030405.enex'
       )
     })
 
