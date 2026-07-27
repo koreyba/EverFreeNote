@@ -1,0 +1,1 @@
+{"id":"46462424e2808c38f5bea373dd789cf6","fullName":"everfreenote-mobile:tests/component/supabaseProvider.test.tsx#deleteAccount calls AuthService.deleteAccount and then signOut","name":"calls AuthService.deleteAccount and then signOut","status":"passed","testResultsByEnv":{"default":"c757e7a0b24d6f639fc3b6a49d1f637a"}}
