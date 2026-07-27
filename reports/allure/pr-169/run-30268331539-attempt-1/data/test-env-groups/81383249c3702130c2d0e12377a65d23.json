@@ -1,1 +1,0 @@
-{"id":"81383249c3702130c2d0e12377a65d23","fullName":"everfreenote-mobile:tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText newline handling collapses 3+ consecutive newlines to 2","name":"collapses 3+ consecutive newlines to 2","status":"passed","testResultsByEnv":{"default":"ed6d1146a9314989e203d53ebc8aa9d0"}}

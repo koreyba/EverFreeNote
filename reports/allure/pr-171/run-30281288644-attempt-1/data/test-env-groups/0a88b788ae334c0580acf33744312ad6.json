@@ -1,0 +1,1 @@
+{"id":"0a88b788ae334c0580acf33744312ad6","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService performSync callback create operation uses fallback empty values when payload fields are missing","name":"uses fallback empty values when payload fields are missing","status":"passed","testResultsByEnv":{"default":"87d7e66e1b7cf6677fa3a0b80f6426d3"}}
