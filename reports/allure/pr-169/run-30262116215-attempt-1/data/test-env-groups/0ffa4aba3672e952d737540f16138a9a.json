@@ -1,0 +1,1 @@
+{"id":"0ffa4aba3672e952d737540f16138a9a","fullName":"everfreenote:ui/web/tests/unit/lib/noteClipboard.test.ts#ui/web/lib/noteClipboard falls back to writeText when ClipboardItem is unavailable","name":"falls back to writeText when ClipboardItem is unavailable","status":"passed","testResultsByEnv":{"default":"6aa6e30b13b1fb8c0e4c888c7bca4691"}}

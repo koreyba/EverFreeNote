@@ -1,0 +1,1 @@
+{"id":"707905dc152498865bc39bfe8669628c","fullName":"everfreenote:core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer stripHtml removes links but keeps text","name":"removes links but keeps text","status":"passed","testResultsByEnv":{"default":"6a4ffc76d7469c4f34a02c14c6183803"}}
