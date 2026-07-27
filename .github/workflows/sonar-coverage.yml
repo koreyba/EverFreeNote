@@ -1,60 +1,17 @@
-name: Coverage analysis
+name: Sonar main coverage
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
 
 concurrency:
-  group: coverage-analysis-${{ github.event.pull_request.number || github.ref }}
+  group: sonar-coverage-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  sonarqube-pr:
-    name: SonarQube PR analysis
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      # Keep PR feedback close to Automatic Analysis while supplying mobile
-      # unit-test coverage for the PR quality gate.
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            ui/mobile/package-lock.json
-
-      - name: Install dependencies
-        run: |
-          npm ci --ignore-scripts
-          npm --prefix ui/mobile ci --ignore-scripts
-
-      - name: Run mobile Jest coverage
-        run: npm --prefix ui/mobile run test:coverage -- --ci
-
-      - name: SonarQube Scan with mobile coverage
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-        with:
-          args: -Dsonar.javascript.lcov.reportPaths=ui/mobile/coverage/lcov.info
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
   unit-coverage:
     name: Jest coverage
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -293,82 +250,3 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  qodana-main:
-    name: Qodana main coverage
-    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [unit-coverage, component-coverage, mobile-coverage]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      checks: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: |
-          npm ci --ignore-scripts
-          npm --prefix ui/mobile ci --ignore-scripts
-
-      - name: Download Jest coverage report
-        if: always()
-        continue-on-error: true
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: jest-coverage-${{ github.run_id }}
-          path: coverage/jest
-
-      - name: Download Cypress raw coverage data
-        if: always()
-        continue-on-error: true
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: component-coverage-raw-${{ github.run_id }}
-          path: .nyc_output
-
-      - name: Download mobile Jest coverage report
-        if: always()
-        continue-on-error: true
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: mobile-coverage-${{ github.run_id }}
-          path: ui/mobile/coverage
-
-      - name: Verify imported coverage inputs
-        if: always()
-        run: |
-          test -s coverage/jest/coverage-final.json
-          test -s .nyc_output/out.json
-          test -s ui/mobile/coverage/coverage-final.json
-
-      - name: Merge coverage for Qodana
-        run: |
-          node scripts/merge-coverage.cjs \
-            --output .qodana/code-coverage/lcov.info \
-            coverage/jest/coverage-final.json \
-            .nyc_output/out.json \
-            ui/mobile/coverage/coverage-final.json
-          test -s .qodana/code-coverage/lcov.info
-
-      - name: Qodana Scan
-        uses: JetBrains/qodana-action@4861e015da555e86a72b862892aba6c2b93e6891
-        with:
-          pr-mode: false
-          upload-result: true
-          artifact-name: qodana-main-${{ github.run_id }}
-          args: >-
-            --baseline baseline.sarif.json
-            -v ${{ github.workspace }}/.qodana/code-coverage:/data/coverage
-        env:
-          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_1215262580 }}
-          QODANA_ENDPOINT: https://qodana.cloud

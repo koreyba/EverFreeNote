@@ -1,10 +1,10 @@
 ---
 phase: testing
-title: Sonar Test Coverage Testing Strategy
+title: Sonar and Qodana Analysis and Coverage Testing Strategy
 description: Validation strategy for deterministic coverage production and import
 ---
 
-# Sonar Test Coverage Testing Strategy
+# Sonar and Qodana Analysis and Coverage Testing Strategy
 
 ## Test Coverage Goals
 
@@ -34,15 +34,16 @@ application test cases.
   deployment-gated login handlers.
 - [x] NYC emits its independent component report under `coverage/component`.
 - [x] Root Jest, Cypress, and mobile Jest outputs use separate directories.
-- [x] Sonar analysis receives all three explicit paths only in the main job.
+- [x] Sonar PR analysis runs without tests or coverage.
+- [x] Sonar main analysis receives all three explicit paths only in the main
+  coverage workflow.
 - [x] Qodana receives one merged LCOV built from all three raw Istanbul maps.
 - [x] Qodana merge normalizes Windows absolute paths and deduplicates shared
   files before writing `.qodana/code-coverage/lcov.info`.
 - [x] The separate Qodana PR workflow runs on `opened`, `synchronize`, and
   `reopened` without tests or coverage.
 - [x] The dependency-free mobile Sonar TSConfig parses successfully.
-- [x] Qodana has a PR analysis job without coverage; the existing Sonar PR
-  mobile coverage behavior remains unchanged.
+- [x] Qodana has a separate PR analysis workflow without coverage.
 
 The full Cypress coverage suite was not completed locally: an earlier full run
 was intentionally interrupted, and a later cold focused webpack build exceeded
@@ -51,8 +52,10 @@ such application-level timeout and remains the authoritative full-suite check.
 
 ## End-to-End Tests
 
-- [ ] First merged workflow publishes main coverage to SonarQube Cloud.
-- [ ] First merged workflow publishes the merged main coverage to Qodana Cloud.
+- [ ] First merged `sonar-coverage.yml` workflow publishes main coverage to
+  SonarQube Cloud.
+- [ ] Completion of `sonar-coverage.yml` triggers `qodana-coverage.yml`, which
+  publishes the merged main coverage to Qodana Cloud.
 - [ ] A later PR push produces a Sonar new-code result without running coverage.
 - [ ] A later PR push starts Qodana analysis without running coverage.
 - [ ] SonarQube Cloud PR decoration/check naming is compatible with branch
@@ -87,8 +90,8 @@ cannot be completed solely in the local checkout.
 - Confirm the Sonar dashboard updates coverage for the analyzed main revision.
 - Add `QODANA_TOKEN` to GitHub repository secrets.
 - Confirm a PR update starts Qodana without running a test or coverage command.
-- Confirm the Qodana job consumes `qodana-main-<run-id>` and displays coverage
-  for the merged main revision.
+- Confirm `qodana-coverage.yml` downloads artifacts from the completed
+  `sonar-coverage.yml` run and displays coverage for the merged main revision.
 
 ## Performance Testing
 
@@ -102,8 +105,8 @@ cannot be completed solely in the local checkout.
 - `npm run type-check:tests`: passed.
 - `npm --prefix ui/mobile run type-check`: passed.
 - `npx eslint . --max-warnings=0`: passed.
-- Coverage and Qodana workflow YAML plus six-job coverage dependency structure:
-  passed.
+- Four workflow YAML files plus the four-job Sonar coverage dependency
+  structure: passed.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
 

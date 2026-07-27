@@ -1,4 +1,4 @@
-name: Qodana code quality
+name: Qodana PR analysis
 
 on:
   pull_request:

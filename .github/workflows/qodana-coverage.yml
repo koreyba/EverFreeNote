@@ -1,0 +1,98 @@
+name: Qodana main coverage
+
+on:
+  workflow_run:
+    workflows: [Sonar main coverage]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: qodana-coverage-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  qodana-main:
+    name: Qodana main coverage
+    if: >-
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+    steps:
+      - name: Checkout analyzed revision
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Download Jest coverage report
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: jest-coverage-${{ github.event.workflow_run.id }}
+          path: coverage/jest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Download Cypress raw coverage data
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: component-coverage-raw-${{ github.event.workflow_run.id }}
+          path: .nyc_output
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Download mobile Jest coverage report
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: mobile-coverage-${{ github.event.workflow_run.id }}
+          path: ui/mobile/coverage
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify imported coverage inputs
+        run: |
+          test -s coverage/jest/coverage-final.json
+          test -s .nyc_output/out.json
+          test -s ui/mobile/coverage/coverage-final.json
+
+      - name: Merge coverage for Qodana
+        run: |
+          node scripts/merge-coverage.cjs \
+            --output .qodana/code-coverage/lcov.info \
+            coverage/jest/coverage-final.json \
+            .nyc_output/out.json \
+            ui/mobile/coverage/coverage-final.json
+          test -s .qodana/code-coverage/lcov.info
+
+      - name: Qodana Scan with coverage
+        uses: JetBrains/qodana-action@4861e015da555e86a72b862892aba6c2b93e6891
+        with:
+          pr-mode: false
+          upload-result: true
+          artifact-name: qodana-main-${{ github.run_id }}
+          args: >-
+            --baseline baseline.sarif.json
+            -v ${{ github.workspace }}/.qodana/code-coverage:/data/coverage
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_1215262580 }}
+          QODANA_ENDPOINT: https://qodana.cloud
