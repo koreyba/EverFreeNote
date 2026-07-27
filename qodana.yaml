@@ -9,5 +9,6 @@ profile:
 bootstrap: |+
   set -eu
   npm ci --include=dev
+  npm --prefix ui/mobile ci --include=dev
 include:
   - name: CheckDependencyLicenses
