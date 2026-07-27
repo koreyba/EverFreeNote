@@ -38,8 +38,8 @@ application test cases.
 - [x] Qodana receives one merged LCOV built from all three raw Istanbul maps.
 - [x] Qodana merge normalizes Windows absolute paths and deduplicates shared
   files before writing `.qodana/code-coverage/lcov.info`.
-- [x] Qodana PR analysis runs on `opened`, `synchronize`, and `reopened` without
-  tests or coverage.
+- [x] The separate Qodana PR workflow runs on `opened`, `synchronize`, and
+  `reopened` without tests or coverage.
 - [x] The dependency-free mobile Sonar TSConfig parses successfully.
 - [x] Qodana has a PR analysis job without coverage; the existing Sonar PR
   mobile coverage behavior remains unchanged.
@@ -102,7 +102,8 @@ cannot be completed solely in the local checkout.
 - `npm run type-check:tests`: passed.
 - `npm --prefix ui/mobile run type-check`: passed.
 - `npx eslint . --max-warnings=0`: passed.
-- Coverage workflow YAML and seven-job dependency structure: passed.
+- Coverage and Qodana workflow YAML plus six-job coverage dependency structure:
+  passed.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
 
