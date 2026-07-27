@@ -1,1 +1,0 @@
-{"id":"15bb54dab1ec71b892a489e6614d73c6","fullName":"everfreenote:ui/web/tests/unit/adapters/supabaseClient.test.ts#buildBrowserSupabaseStorageKey falls back to a sanitized raw URL when parsing fails","name":"falls back to a sanitized raw URL when parsing fails","status":"passed","testResultsByEnv":{"default":"ab3310d2a55e7a214d6cae10500ada81"}}
