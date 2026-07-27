@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react-native'
 import { createQueryWrapper, createTestQueryClient } from '../testUtils'
-import { useNotes, useNote } from '../../hooks/useNotes'
+import { useNotes, useNote } from '@ui/mobile/hooks/useNotes'
 import type { Note } from '@core/types/domain'
 
 const mockUseSupabase = jest.fn()
