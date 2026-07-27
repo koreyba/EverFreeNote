@@ -1,0 +1,1 @@
+{"id":"41808189c0a0c8558affa6c1a02ea368","fullName":"everfreenote-mobile:tests/unit/storageAdapter.test.ts#storage adapters asyncStorageAdapter removeItem calls AsyncStorage.removeItem with key","name":"calls AsyncStorage.removeItem with key","status":"passed","testResultsByEnv":{"default":"8c1fde6e4eb59b69c45ae6bdeed2e69f"}}
