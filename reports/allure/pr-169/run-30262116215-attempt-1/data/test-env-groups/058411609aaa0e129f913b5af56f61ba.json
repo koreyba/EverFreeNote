@@ -1,1 +1,0 @@
-{"id":"058411609aaa0e129f913b5af56f61ba","fullName":"everfreenote-mobile:tests/component/supabaseProvider.test.tsx#SupabaseProvider starts with loading=true, then sets loading=false after getSession resolves","name":"starts with loading=true, then sets loading=false after getSession resolves","status":"broken","testResultsByEnv":{"default":"7d1a7b4d48b20151714e87f6c35c181e"}}
