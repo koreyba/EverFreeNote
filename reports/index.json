@@ -6,6 +6,42 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/pr-169/run-30264292266-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-169/run-30264292266-attempt-1/",
+    "runId": "30264292266",
+    "runAttempt": "1",
+    "prNumber": "169",
+    "ref": "mobile-unit-tests-coverage-phase2",
+    "sha": "552982af480a1d8d69dd12837d47cb0b1275fe8c",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #169",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-27T12:12:41.373Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit"
     ],
     "suiteLabels": [
@@ -647,40 +683,6 @@
     "scopeLabel": "PR #168",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-24T16:04:19.857Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/allure/pr-168/run-30107221682-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-168/run-30107221682-attempt-1/",
-    "runId": "30107221682",
-    "runAttempt": "1",
-    "prNumber": "168",
-    "ref": "qodana-automation-1704673353",
-    "sha": "6ef9c9f06a2d3bc6e2538a20c415484092919410",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #168",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-24T15:57:16.874Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
