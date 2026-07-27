@@ -35,8 +35,14 @@ application test cases.
 - [x] NYC emits its independent component report under `coverage/component`.
 - [x] Root Jest, Cypress, and mobile Jest outputs use separate directories.
 - [x] Sonar analysis receives all three explicit paths only in the main job.
+- [x] Qodana receives one merged LCOV built from all three raw Istanbul maps.
+- [x] Qodana merge normalizes Windows absolute paths and deduplicates shared
+  files before writing `.qodana/code-coverage/lcov.info`.
+- [x] The separate Qodana PR workflow runs on `opened`, `synchronize`, and
+  `reopened` without tests or coverage.
 - [x] The dependency-free mobile Sonar TSConfig parses successfully.
-- [x] PR workflow contains no coverage test command.
+- [x] Qodana has a PR analysis job without coverage; the existing Sonar PR
+  mobile coverage behavior remains unchanged.
 
 The full Cypress coverage suite was not completed locally: an earlier full run
 was intentionally interrupted, and a later cold focused webpack build exceeded
@@ -46,7 +52,9 @@ such application-level timeout and remains the authoritative full-suite check.
 ## End-to-End Tests
 
 - [ ] First merged workflow publishes main coverage to SonarQube Cloud.
+- [ ] First merged workflow publishes the merged main coverage to Qodana Cloud.
 - [ ] A later PR push produces a Sonar new-code result without running coverage.
+- [ ] A later PR push starts Qodana analysis without running coverage.
 - [ ] SonarQube Cloud PR decoration/check naming is compatible with branch
   protection.
 
@@ -68,6 +76,8 @@ cannot be completed solely in the local checkout.
 - CI artifacts: root Jest, Cypress component, and mobile Jest reports retained
   independently for 14 days.
 - Sonar main coverage: derived union of all three LCOV files.
+- Qodana main coverage: derived union of all three Istanbul JSON files,
+  converted to one LCOV report by `scripts/merge-coverage.cjs`.
 
 ## Manual Testing
 
@@ -75,6 +85,10 @@ cannot be completed solely in the local checkout.
 - Add `SONAR_TOKEN` to GitHub repository secrets.
 - Confirm the first main run reports all three LCOV files in scanner logs.
 - Confirm the Sonar dashboard updates coverage for the analyzed main revision.
+- Add `QODANA_TOKEN` to GitHub repository secrets.
+- Confirm a PR update starts Qodana without running a test or coverage command.
+- Confirm the Qodana job consumes `qodana-main-<run-id>` and displays coverage
+  for the merged main revision.
 
 ## Performance Testing
 
@@ -88,7 +102,8 @@ cannot be completed solely in the local checkout.
 - `npm run type-check:tests`: passed.
 - `npm --prefix ui/mobile run type-check`: passed.
 - `npx eslint . --max-warnings=0`: passed.
-- Sonar workflow YAML and five-job dependency structure: passed.
+- Coverage and Qodana workflow YAML plus six-job coverage dependency structure:
+  passed.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
 
@@ -101,4 +116,5 @@ tests; all 55 suites and 508 tests pass. This count is synchronized with
 ## Bug Tracking
 
 - Missing or stale reports are release-blocking for this workflow.
+- Missing raw Cypress coverage is release-blocking for the Qodana merge job.
 - A scanner-only PR regression is treated as a behavior-preservation defect.

@@ -1,41 +1,44 @@
-name: Qodana
+name: Qodana code quality
+
 on:
-  workflow_dispatch:
   pull_request:
-  push:
-    branches: # Specify your branches here
-      - main # The 'main' branch
-      - 'releases/*' # The release branches
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qodana-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  qodana:
+  qodana-pr:
+    name: Qodana PR analysis
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       checks: write
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}  # use PR head when available, otherwise current commit
-          fetch-depth: 0  # a full history is required for pull request analysis
-      - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            ui/mobile/package-lock.json
-      - name: Install Node.js dependencies
-        run: |
-          npm ci --ignore-scripts
-          npm --prefix ui/mobile ci --ignore-scripts
-      - name: 'Qodana Scan'
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Qodana Scan without coverage
         uses: JetBrains/qodana-action@4861e015da555e86a72b862892aba6c2b93e6891
         with:
-          pr-mode: false
+          pr-mode: true
+          upload-result: true
+          artifact-name: qodana-pr-${{ github.run_id }}
           args: --baseline baseline.sarif.json
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_1215262580 }}
-          QODANA_ENDPOINT: 'https://qodana.cloud'
+          QODANA_ENDPOINT: https://qodana.cloud
