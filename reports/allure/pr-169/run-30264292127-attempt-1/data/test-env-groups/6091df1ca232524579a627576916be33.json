@@ -1,1 +1,0 @@
-{"id":"6091df1ca232524579a627576916be33","fullName":"everfreenote-mobile:tests/unit/featureFlags.test.ts#featureFlags disables testAuth when variant is production","name":"disables testAuth when variant is production","status":"passed","testResultsByEnv":{"default":"c1d2e9e27d3a63d3783192e14342934d"}}
