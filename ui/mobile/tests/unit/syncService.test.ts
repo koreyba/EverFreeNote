@@ -3,6 +3,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 let capturedPerformSync: ((item: MutationQueueItem) => Promise<void>) | null = null
 
+const getCapturedPerformSync = (): (item: MutationQueueItem) => Promise<void> => {
+  expect(capturedPerformSync).not.toBeNull()
+  if (capturedPerformSync === null) {
+    throw new Error('performSync callback was not captured')
+  }
+  return capturedPerformSync
+}
+
 jest.mock('@core/services/notes', () => ({
   NoteService: jest.fn().mockImplementation(() => ({
     createNote: jest.fn(),
@@ -142,7 +150,7 @@ describe('MobileSyncService', () => {
           status: 'pending',
         }
 
-        await capturedPerformSync!(item)
+        await getCapturedPerformSync()(item)
 
         expect(mockNoteServiceInstance.createNote).toHaveBeenCalledWith({
           id: 'note-1',
@@ -181,7 +189,7 @@ describe('MobileSyncService', () => {
           status: 'pending',
         }
 
-        await capturedPerformSync!(item)
+        await getCapturedPerformSync()(item)
 
         expect(mockNoteServiceInstance.createNote).toHaveBeenCalledWith({
           id: 'note-2',
@@ -205,7 +213,7 @@ describe('MobileSyncService', () => {
           status: 'pending',
         }
 
-        await expect(capturedPerformSync!(item)).resolves.toBeUndefined()
+        await expect(getCapturedPerformSync()(item)).resolves.toBeUndefined()
         expect(databaseService.saveNotes).not.toHaveBeenCalled()
       })
 
@@ -222,7 +230,7 @@ describe('MobileSyncService', () => {
           status: 'pending',
         }
 
-        await expect(capturedPerformSync!(item)).rejects.toThrow('Database error')
+        await expect(getCapturedPerformSync()(item)).rejects.toThrow('Database error')
       })
     })
 
@@ -260,7 +268,7 @@ describe('MobileSyncService', () => {
           status: 'pending',
         }
 
-        await capturedPerformSync!(item)
+        await getCapturedPerformSync()(item)
 
         expect(databaseService.getLocalNoteById).toHaveBeenCalledWith('note-1')
         expect(mockNoteServiceInstance.updateNote).toHaveBeenCalledWith('note-1', {
@@ -302,7 +310,7 @@ describe('MobileSyncService', () => {
           status: 'pending',
         }
 
-        await capturedPerformSync!(item)
+        await getCapturedPerformSync()(item)
 
         expect(mockNoteServiceInstance.updateNote).toHaveBeenCalledWith('note-1', {
           title: 'Local Title',
@@ -330,7 +338,7 @@ describe('MobileSyncService', () => {
           status: 'pending',
         }
 
-        await capturedPerformSync!(item)
+        await getCapturedPerformSync()(item)
 
         expect(mockNoteServiceInstance.updateNote).toHaveBeenCalledWith('note-1', {
           title: 'Untitled',
@@ -368,7 +376,7 @@ describe('MobileSyncService', () => {
           status: 'pending',
         }
 
-        await capturedPerformSync!(item)
+        await getCapturedPerformSync()(item)
 
         expect(mockNoteServiceInstance.updateNote).toHaveBeenCalledWith('note-1', {
           title: 'Local Title',
@@ -405,7 +413,7 @@ describe('MobileSyncService', () => {
           status: 'pending',
         }
 
-        await expect(capturedPerformSync!(item)).rejects.toThrow('Internal Server Error')
+        await expect(getCapturedPerformSync()(item)).rejects.toThrow('Internal Server Error')
         expect(mockNoteServiceInstance.createNote).not.toHaveBeenCalled()
       })
     })
@@ -423,7 +431,7 @@ describe('MobileSyncService', () => {
           status: 'pending',
         }
 
-        await capturedPerformSync!(item)
+        await getCapturedPerformSync()(item)
 
         expect(mockNoteServiceInstance.deleteNote).toHaveBeenCalledWith('note-1')
       })
