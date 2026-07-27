@@ -77,12 +77,14 @@ describe('SupabaseProvider', () => {
   it('renders children', async () => {
     mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
 
+    render(
+      <SupabaseProvider>
+        <Text testID="child">Hello</Text>
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Text testID="child">Hello</Text>
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     expect(screen.getByTestId('child')).toBeTruthy()
@@ -99,12 +101,14 @@ describe('SupabaseProvider', () => {
       return null
     }
 
+    render(
+      <SupabaseProvider>
+        <ConsumerLoading />
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <ConsumerLoading />
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     expect(capturedLoading).toBe(false)
@@ -114,7 +118,7 @@ describe('SupabaseProvider', () => {
     const session = makeSession()
     mockGetSession.mockResolvedValue({ data: { session }, error: null })
 
-    let capturedUser: User | null = null
+    let capturedUser: User | null | undefined
     let capturedSession: Session | null = null
 
     const Consumer = () => {
@@ -124,16 +128,21 @@ describe('SupabaseProvider', () => {
       return null
     }
 
+    render(
+      <SupabaseProvider>
+        <Consumer />
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Consumer />
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     expect(capturedUser).not.toBeNull()
-    expect((capturedUser as User).id).toBe('user-1')
+    if (capturedUser === null || capturedUser === undefined) {
+      throw new Error('Expected a user after getSession resolved with a session')
+    }
+    expect(capturedUser.id).toBe('user-1')
     expect(capturedSession).not.toBeNull()
   })
 
@@ -150,12 +159,14 @@ describe('SupabaseProvider', () => {
       return null
     }
 
+    render(
+      <SupabaseProvider>
+        <Consumer />
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Consumer />
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     expect(capturedUser).toBeNull()
@@ -178,12 +189,14 @@ describe('SupabaseProvider', () => {
       return null
     }
 
+    render(
+      <SupabaseProvider>
+        <Consumer />
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Consumer />
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     expect(capturedUser).toBeNull()
@@ -196,12 +209,14 @@ describe('SupabaseProvider', () => {
     const session = makeSession()
     mockGetSession.mockResolvedValue({ data: { session }, error: null })
 
+    render(
+      <SupabaseProvider>
+        <Text>child</Text>
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Text>child</Text>
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     expect(mobileSyncService.init).toHaveBeenCalledWith(mockClient)
@@ -210,12 +225,14 @@ describe('SupabaseProvider', () => {
   it('does NOT call mobileSyncService.init when session is null', async () => {
     mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
 
+    render(
+      <SupabaseProvider>
+        <Text>child</Text>
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Text>child</Text>
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     expect(mobileSyncService.init).not.toHaveBeenCalled()
@@ -233,12 +250,14 @@ describe('SupabaseProvider', () => {
       return { data: { subscription: mockSubscription } }
     })
 
+    render(
+      <SupabaseProvider>
+        <Text>child</Text>
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Text>child</Text>
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     // Clear calls from initial getSession path (null session → no init)
@@ -313,12 +332,14 @@ describe('useAuth', () => {
       return null
     }
 
+    render(
+      <SupabaseProvider>
+        <Consumer />
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Consumer />
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     expect(capturedIsAuthenticated).toBe(true)
@@ -335,12 +356,14 @@ describe('useAuth', () => {
       return null
     }
 
+    render(
+      <SupabaseProvider>
+        <Consumer />
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Consumer />
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     expect(capturedIsAuthenticated).toBe(false)
@@ -359,12 +382,14 @@ describe('useAuth', () => {
       return null
     }
 
+    render(
+      <SupabaseProvider>
+        <Consumer />
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Consumer />
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     expect(typeof capturedSignOut).toBe('function')
@@ -394,12 +419,14 @@ describe('signOut', () => {
       return null
     }
 
+    render(
+      <SupabaseProvider>
+        <Consumer />
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Consumer />
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     await act(async () => {
@@ -433,12 +460,14 @@ describe('deleteAccount', () => {
       return null
     }
 
+    render(
+      <SupabaseProvider>
+        <Consumer />
+      </SupabaseProvider>
+    )
+
     await act(async () => {
-      render(
-        <SupabaseProvider>
-          <Consumer />
-        </SupabaseProvider>
-      )
+      await Promise.resolve()
     })
 
     await act(async () => {
