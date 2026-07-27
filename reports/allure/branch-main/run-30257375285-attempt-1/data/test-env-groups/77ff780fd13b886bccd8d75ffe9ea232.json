@@ -1,0 +1,1 @@
+{"id":"77ff780fd13b886bccd8d75ffe9ea232","fullName":"everfreenote-mobile:tests/component/useDeleteNote.test.tsx#useDeleteNote Online deletion calls database service before API call","name":"calls database service before API call","status":"passed","testResultsByEnv":{"default":"b8b0141454d8ae95d33eef14936b7bcd"}}
