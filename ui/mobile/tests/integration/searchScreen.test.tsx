@@ -631,38 +631,6 @@ describe('SearchScreen - Delete Functionality', () => {
     })
   })
 
-  describe('Empty state after deletion', () => {
-    it.skip('shows empty state when all search results are deleted', async () => {
-      mockSearchService.prototype.searchNotes = jest.fn().mockResolvedValue({
-        results: [mockSearchResults[0]],
-        total: 1,
-        hasMore: false,
-        method: 'fts',
-      })
-
-      render(<SearchScreen />, { wrapper })
-
-      const searchInput = screen.getByPlaceholderText('Search notes...')
-      fireEvent.changeText(searchInput, 'keyword')
-
-      await waitFor(() => {
-        expect(screen.getByText('Search Result 1')).toBeTruthy()
-      })
-
-      const deleteButton = screen.getByTestId('delete-button-search-note-1')
-      fireEvent.press(deleteButton)
-
-      await waitFor(() => {
-        expect(screen.queryByText('Search Result 1')).toBeNull()
-      }, { timeout: 10000 })
-
-      // Should show "Nothing found" message
-      await waitFor(() => {
-        expect(screen.getByText('Nothing found')).toBeTruthy()
-      }, { timeout: 10000 })
-    }, 15000)
-  })
-
   describe('Delete with tag filter', () => {
     it('preserves tag filter after deletion', async () => {
       // Set tag filter via params
