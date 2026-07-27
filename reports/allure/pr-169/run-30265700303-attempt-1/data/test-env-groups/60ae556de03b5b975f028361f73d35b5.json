@@ -1,1 +1,0 @@
-{"id":"60ae556de03b5b975f028361f73d35b5","fullName":"everfreenote-mobile:tests/component/editorToolbar.test.tsx#EditorToolbar closes image menu on cancel without calling onCommand","name":"closes image menu on cancel without calling onCommand","status":"passed","testResultsByEnv":{"default":"e0b380c8621f9f2f32788cfdf2b3b8d0"}}
