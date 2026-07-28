@@ -1,4 +1,4 @@
-name: Main coverage analysis
+name: Merge tests coverage
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: main-coverage-analysis-${{ github.ref }}
+  group: merge-tests-coverage-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -328,4 +328,73 @@ jobs:
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_1215262580 }}
           QODANA_ENDPOINT: https://qodana.cloud
+
+  codacy-main:
+    name: Codacy main coverage
+    needs: [unit-coverage, component-coverage, mobile-coverage]
+    if: >-
+      needs.unit-coverage.result == 'success' &&
+      needs.component-coverage.result == 'success' &&
+      needs.mobile-coverage.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Download Jest coverage report
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: jest-coverage-${{ github.run_id }}
+          path: coverage/jest
+
+      - name: Download Cypress coverage report
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: component-coverage-${{ github.run_id }}
+          path: coverage/component
+
+      - name: Download mobile Jest coverage report
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: mobile-coverage-${{ github.run_id }}
+          path: ui/mobile/coverage
+
+      - name: Verify Codacy LCOV inputs
+        run: |
+          set -euo pipefail
+          test -s coverage/jest/lcov.info
+          test -s coverage/component/lcov.info
+          test -s ui/mobile/coverage/lcov.info
+
+      - name: Download and verify Codacy reporter
+        env:
+          CODACY_REPORTER_VERSION: 14.1.3
+        run: |
+          set -euo pipefail
+          reporter_dir="$RUNNER_TEMP/codacy-reporter/$CODACY_REPORTER_VERSION"
+          reporter_name=codacy-coverage-reporter-linux
+          mkdir -p "$reporter_dir"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --retry 3 \
+            -o "$reporter_dir/$reporter_name" \
+            "https://artifacts.codacy.com/bin/codacy-coverage-reporter/$CODACY_REPORTER_VERSION/$reporter_name"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --retry 3 \
+            -o "$reporter_dir/$reporter_name.SHA512SUM" \
+            "https://github.com/codacy/codacy-coverage-reporter/releases/download/$CODACY_REPORTER_VERSION/$reporter_name.SHA512SUM"
+          (cd "$reporter_dir" && sha512sum --check "$reporter_name.SHA512SUM")
+          chmod +x "$reporter_dir/$reporter_name"
+
+      - name: Upload coverage to Codacy
+        env:
+          CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/codacy-reporter/14.1.3/codacy-coverage-reporter-linux" report \
+            --api-token "$CODACY_API_TOKEN" \
+            --organization-provider gh \
+            --username koreyba \
+            --project-name EverFreeNote \
+            --commit-uuid "${GITHUB_SHA}" \
+            -r coverage/jest/lcov.info \
+            -r coverage/component/lcov.info \
+            -r ui/mobile/coverage/lcov.info
 

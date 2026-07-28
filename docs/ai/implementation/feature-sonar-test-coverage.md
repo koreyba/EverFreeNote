@@ -22,10 +22,10 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   the single PR status comment.
 - `.github/workflows/allure-pr-publish.yml`: single-owner combined PR Allure
   publisher for artifacts from the current orchestration run.
-- `.github/workflows/sonar-coverage.yml`: unchanged main-branch coverage and
+- `.github/workflows/merge-tests-coverage.yml`: main-branch coverage,
+  Codacy upload, and analysis orchestration.
+- `.github/workflows/pr-coverage-analysis.yml`: PR coverage, Codacy upload, and
   analysis orchestration.
-- `.github/workflows/codacy-coverage.yml`: independent Codacy consumers that
-  download artifacts from completed producer workflow runs.
 - `jest.config.cjs`: Jest coverage scope and output directory.
 - `ui/mobile/jest.config.js`: mobile coverage scope and output directory.
 - `ui/mobile/tsconfig.sonar.json`: dependency-free mobile TypeScript program
@@ -92,12 +92,13 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   partial coverage. PR artifact download failure does not suppress analysis.
 - Scanner failures remain visible as the SonarCloud code-analysis check.
 - Codacy upload is skipped when a required coverage producer fails, preventing
-  partial reports from replacing a complete commit report.
-- Codacy runs as a separate `workflow_run` consumer, so Sonar and Qodana files
-  do not own or invoke Codacy analysis.
-- Codacy does not checkout or execute the triggering PR repository. It validates
-  the same-repository PR metadata, downloads only coverage artifacts, and passes
-  the validated commit SHA to the pinned reporter binary.
+  partial reports from replacing a complete commit or pull-request report.
+- Codacy runs as a sibling job of Sonar and Qodana in each orchestrator. Its
+  `needs` reference only coverage producers, so an analyzer failure does not
+  suppress a valid Codacy upload.
+- Codacy jobs do not checkout or execute the PR repository. They download only
+  coverage artifacts, restrict PR uploads to same-repository PRs, and pass the
+  checked-in commit SHA to the pinned reporter binary.
 
 ## Performance Considerations
 

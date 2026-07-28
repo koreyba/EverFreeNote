@@ -134,6 +134,85 @@ jobs:
       checks: write
       pull-requests: write
 
+  codacy-pr:
+    name: Codacy PR coverage
+    needs: [unit-coverage, component-coverage]
+    if: >-
+      needs.unit-coverage.result == 'success' &&
+      needs.component-coverage.result == 'success' &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Download core Jest coverage
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-core-${{ github.run_id }}
+          path: coverage/jest/core
+
+      - name: Download web Jest coverage
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-web-${{ github.run_id }}
+          path: coverage/jest/web
+
+      - name: Download mobile Jest coverage
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-mobile-${{ github.run_id }}
+          path: coverage/jest/mobile
+
+      - name: Download Cypress coverage
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-component-${{ github.run_id }}
+          path: coverage/component
+
+      - name: Verify Codacy LCOV inputs
+        run: |
+          set -euo pipefail
+          test -s coverage/jest/core/lcov.info
+          test -s coverage/jest/web/lcov.info
+          test -s coverage/jest/mobile/lcov.info
+          test -s coverage/component/lcov.info
+
+      - name: Download and verify Codacy reporter
+        env:
+          CODACY_REPORTER_VERSION: 14.1.3
+        run: |
+          set -euo pipefail
+          reporter_dir="$RUNNER_TEMP/codacy-reporter/$CODACY_REPORTER_VERSION"
+          reporter_name=codacy-coverage-reporter-linux
+          mkdir -p "$reporter_dir"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --retry 3 \
+            -o "$reporter_dir/$reporter_name" \
+            "https://artifacts.codacy.com/bin/codacy-coverage-reporter/$CODACY_REPORTER_VERSION/$reporter_name"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --retry 3 \
+            -o "$reporter_dir/$reporter_name.SHA512SUM" \
+            "https://github.com/codacy/codacy-coverage-reporter/releases/download/$CODACY_REPORTER_VERSION/$reporter_name.SHA512SUM"
+          (cd "$reporter_dir" && sha512sum --check "$reporter_name.SHA512SUM")
+          chmod +x "$reporter_dir/$reporter_name"
+
+      - name: Upload coverage to Codacy
+        env:
+          CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/codacy-reporter/14.1.3/codacy-coverage-reporter-linux" report \
+            --api-token "$CODACY_API_TOKEN" \
+            --organization-provider gh \
+            --username koreyba \
+            --project-name EverFreeNote \
+            --commit-uuid "${{ github.event.pull_request.head.sha }}" \
+            -r coverage/jest/core/lcov.info \
+            -r coverage/jest/web/lcov.info \
+            -r coverage/jest/mobile/lcov.info \
+            -r coverage/component/lcov.info
+
   component-status-comment:
     name: Update Component Test Status
     needs: component-coverage
