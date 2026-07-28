@@ -1,4 +1,4 @@
-name: PR coverage analysis
+name: PR Tests
 
 on:
   pull_request:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   unit-coverage:
-    name: Unit tests with coverage
+    name: Run Unit Tests
     uses: ./.github/workflows/unit-tests.yml
     with:
       coverage: true
@@ -25,7 +25,7 @@ jobs:
     secrets: inherit
 
   component-coverage:
-    name: Cypress component tests with coverage
+    name: Run Component Tests
     uses: ./.github/workflows/component-tests.yml
     with:
       coverage: true
@@ -33,7 +33,7 @@ jobs:
     secrets: inherit
 
   allure-publish:
-    name: Publish combined PR Allure report
+    name: Publish PR Allure report
     needs: [unit-coverage, component-coverage]
     if: >-
       always() &&

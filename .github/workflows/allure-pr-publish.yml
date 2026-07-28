@@ -36,7 +36,7 @@ jobs:
       REF_NAME: ${{ github.head_ref || github.ref_name }}
       COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       FAMILY_OUTCOME: ${{ inputs.family_outcome }}
-      WORKFLOW_NAME: PR Coverage Analysis
+      WORKFLOW_NAME: PR Tests
 
     steps:
       - name: Checkout code
