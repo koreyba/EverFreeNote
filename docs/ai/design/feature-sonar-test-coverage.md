@@ -50,6 +50,9 @@ flowchart TD
   QodanaLCOV --> QodanaScan["Qodana main scanner"]
   QodanaScan --> QodanaCloud["Qodana Cloud main report"]
 
+  Main --> CodacyMain["Codacy workflow_run consumer"]
+  CodacyMain --> CodacyCloud["Codacy commit and PR coverage"]
+
   Semgrep["Semgrep static security scan"] --> SemgrepCloud["Semgrep findings"]
 ```
 
@@ -78,6 +81,7 @@ coverage producers and analysis jobs.
 - `QODANA_TOKEN`: GitHub secret used by the PR and post-merge Qodana jobs.
 - `.qodana/code-coverage/lcov.info`: one normalized LCOV union consumed by
   Qodana for JS.
+- `CODACY_API_TOKEN`: GitHub secret used only by Codacy coverage upload jobs.
 
 ## API Design
 
@@ -104,6 +108,9 @@ of a main-revision analysis, preventing duplicate or partial uploads.
   publication and consumes artifacts from the current orchestrator run.
 - `.github/workflows/sonar-coverage.yml` owns the one-time main coverage
   producers, artifact upload, Sonar main analysis, and Qodana main analysis.
+- `.github/workflows/codacy-coverage.yml` owns both Codacy consumers. It is
+  triggered after the existing producer workflows and downloads their
+  artifacts without rerunning tests or coupling Codacy to Sonar/Qodana jobs.
 - Jest owns instrumentation for unit coverage and writes `coverage/jest`.
 - Babel Istanbul plus `@cypress/code-coverage` own browser instrumentation;
   NYC renders the final independent component report.
@@ -167,6 +174,17 @@ Istanbul JSON maps before generating LCOV. The merge is a union of execution
 counts for the same normalized project-relative file, not an average of the
 three producer percentages. The Qodana quality gate does not set an arbitrary
 percentage threshold, matching Sonar's current measurement-only behavior.
+
+### Codacy consumes independent LCOV reports
+
+Codacy receives the producer LCOV files directly, one report per test layer,
+from the dedicated `codacy-coverage.yml` workflow.
+The Coverage Reporter associates every upload with the checked-out commit SHA.
+The main consumer uploads root Jest, Cypress, and mobile Jest reports. The PR
+consumer uploads the core Jest, web Jest, mobile Jest, and Cypress reports from
+the current PR run. Codacy deduplicates overlapping covered lines and uses the
+head commit plus the common ancestor to calculate pull-request coverage
+variation.
 
 ### Cloud identity is the repository default
 
