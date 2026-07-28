@@ -1,1 +1,0 @@
-{"id":"0f8127630f793d82ef12bd437a118362","fullName":"everfreenote-mobile:tests/component/supabaseProvider.test.tsx#useAuth returns isAuthenticated=false when user is null","name":"returns isAuthenticated=false when user is null","status":"passed","testResultsByEnv":{"default":"896bc8b7339cef2e779e1a3d7561db05"}}
