@@ -20,6 +20,12 @@ flowchart LR
   MJ --> R3["Mobile Jest HTML, text and LCOV report"]
 ```
 
+For pull requests, a single orchestrating workflow calls the existing Unit and
+Component workflows with coverage enabled. SonarQube and Qodana depend on
+those two reusable workflow calls with `always()`, so a failed test job does
+not suppress analysis. The main-branch workflow keeps its existing producer
+and scanner jobs unchanged.
+
 Root Jest is authoritative for core and web unit/integration behavior. Cypress
 is authoritative for browser-rendered component and interaction behavior.
 Mobile Jest is authoritative for React Native/Expo behavior. Their percentages
@@ -60,5 +66,6 @@ no preparation script is required. If a local Cypress coverage rerun must be
 isolated from an interrupted run, remove `.nyc_output` and
 `coverage/component` manually before starting it.
 
-CI publishes all reports separately. Only a successful `main` coverage run
-feeds all three files to SonarQube Cloud.
+CI publishes all reports separately. A successful `main` coverage run feeds all
+three files to SonarQube Cloud, while trusted PR analysis consumes the
+corresponding artifacts from the same PR workflow run.

@@ -3,8 +3,14 @@ name: Unit Tests
 on:
   push:
     branches: [main, develop, github-actions-setup]
-  pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      coverage:
+        description: Run Jest tests with coverage and upload coverage artifacts
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -38,7 +44,14 @@ jobs:
       - name: Run mobile Jest tests
         id: run-mobile-unit-tests
         continue-on-error: true
-        run: npm --prefix ui/mobile test -- --verbose --ci --json --outputFile=results.json
+        env:
+          COVERAGE_ENABLED: ${{ inputs.coverage }}
+        run: |
+          coverage_args=()
+          if [ "${COVERAGE_ENABLED}" = "true" ]; then
+            coverage_args+=(--coverage)
+          fi
+          npm --prefix ui/mobile test -- --verbose --ci --json --outputFile=results.json "${coverage_args[@]}"
 
       - name: Generate mobile summary
         if: always()
@@ -186,6 +199,15 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Upload mobile Jest coverage
+        if: always() && inputs.coverage == true
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: pr-coverage-mobile-${{ github.run_id }}
+          path: ui/mobile/coverage
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Mark job as failed when mobile unit tests failed
         if: steps.run-mobile-unit-tests.outcome != 'success'
         run: exit 1
@@ -212,12 +234,49 @@ jobs:
       - name: Run core unit tests
         id: run-core-unit-tests
         continue-on-error: true
-        run: npm run test:unit:core -- --verbose --ci --json --outputFile=core-unit-results.json
+        env:
+          COVERAGE_ENABLED: ${{ inputs.coverage }}
+        run: |
+          coverage_args=()
+          if [ "${COVERAGE_ENABLED}" = "true" ]; then
+            coverage_args+=(--coverage --coverageDirectory=coverage/jest/core-unit)
+          fi
+          npm run test:unit:core -- --verbose --ci --json --outputFile=core-unit-results.json "${coverage_args[@]}"
 
       - name: Run core integration tests
         id: run-core-integration-tests
         continue-on-error: true
-        run: npm run test:integration:core -- --verbose --ci --json --outputFile=core-integration-results.json
+        env:
+          COVERAGE_ENABLED: ${{ inputs.coverage }}
+        run: |
+          coverage_args=()
+          if [ "${COVERAGE_ENABLED}" = "true" ]; then
+            coverage_args+=(--coverage --coverageDirectory=coverage/jest/core-integration)
+          fi
+          npm run test:integration:core -- --verbose --ci --json --outputFile=core-integration-results.json "${coverage_args[@]}"
+
+      - name: Merge core Jest coverage
+        if: always() && inputs.coverage == true
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p .nyc_output/core coverage/jest
+
+          for report in coverage/jest/core-unit/coverage-final.json coverage/jest/core-integration/coverage-final.json; do
+            if [ -s "$report" ]; then
+              name=$(basename "$(dirname "$report")")
+              cp "$report" ".nyc_output/core/${name}.json"
+            fi
+          done
+
+          if [ -n "$(find .nyc_output/core -type f -name '*.json' -print -quit)" ]; then
+            npx --no-install nyc merge .nyc_output/core coverage/jest/coverage-final.json
+            node scripts/merge-coverage.cjs \
+              --output coverage/jest/lcov.info \
+              coverage/jest/coverage-final.json
+          else
+            echo "No core Jest coverage maps were produced."
+          fi
 
       - name: Generate core summary
         if: always()
@@ -384,6 +443,15 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Upload core Jest coverage
+        if: always() && inputs.coverage == true
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: pr-coverage-core-${{ github.run_id }}
+          path: coverage/jest
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Mark job as failed when core tests failed
         if: steps.run-core-unit-tests.outcome != 'success' || steps.run-core-integration-tests.outcome != 'success'
         run: exit 1
@@ -410,7 +478,14 @@ jobs:
       - name: Run web unit tests
         id: run-web-unit-tests
         continue-on-error: true
-        run: npm run test:unit:web -- --verbose --ci --json --outputFile=web-unit-results.json
+        env:
+          COVERAGE_ENABLED: ${{ inputs.coverage }}
+        run: |
+          coverage_args=()
+          if [ "${COVERAGE_ENABLED}" = "true" ]; then
+            coverage_args+=(--coverage)
+          fi
+          npm run test:unit:web -- --verbose --ci --json --outputFile=web-unit-results.json "${coverage_args[@]}"
 
       - name: Generate web summary
         if: always()
@@ -555,6 +630,15 @@ jobs:
           path: |
             allure-results/web-unit
             allure-report/web-unit
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload web Jest coverage
+        if: always() && inputs.coverage == true
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: pr-coverage-web-${{ github.run_id }}
+          path: coverage/jest
           if-no-files-found: ignore
           retention-days: 14
 

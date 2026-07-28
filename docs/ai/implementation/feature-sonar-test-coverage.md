@@ -16,7 +16,10 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 
 ## Code Structure
 
-- `.github/workflows/sonar.yml`: PR and main analysis orchestration.
+- `.github/workflows/pr-coverage-analysis.yml`: PR coverage and analysis
+  orchestration.
+- `.github/workflows/sonar-coverage.yml`: unchanged main-branch coverage and
+  analysis orchestration.
 - `jest.config.cjs`: Jest coverage scope and output directory.
 - `ui/mobile/jest.config.js`: mobile coverage scope and output directory.
 - `ui/mobile/tsconfig.sonar.json`: dependency-free mobile TypeScript program
@@ -35,8 +38,10 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 - `useNoteAuth` accepts an explicit test configuration for component tests;
   production callers continue to use the environment-derived default. This
   keeps auth coverage deterministic and independent from GitHub Environments.
-- The workflow has five jobs: scanner-only PR analysis, three parallel main
-  coverage producers, and one main scanner that requires all producers.
+- PR uses the existing Unit and Component workflows as reusable coverage
+  producers, then invokes SonarQube and Qodana with `always()` after both
+  producers. Main keeps its three parallel coverage producers and dependent
+  scanners unchanged.
 - Semgrep was left unchanged because it has no supported runtime LCOV ingestion
   path; its existing workflow remains an independent SAST signal.
 
@@ -51,19 +56,22 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 
 ## Error Handling
 
-- Coverage producers fail if tests fail or their LCOV output is missing/empty.
+- Coverage test jobs still report test failures. PR analyzer jobs use
+  `always()` and fall back to analysis without coverage when no report artifact
+  is available.
 - CI does not need a cleanup hook because each producer starts on a clean
   runner. Local interrupted Cypress runs may be cleaned manually by removing
   `.nyc_output` and `coverage/component` before rerunning coverage.
-- Artifact download failure prevents the main scanner from publishing partial
-  coverage.
+- Main artifact download failure prevents the main scanner from publishing
+  partial coverage. PR artifact download failure does not suppress analysis.
 - Scanner failures remain visible as the SonarCloud code-analysis check.
 
 ## Performance Considerations
 
 - Coverage producers run concurrently.
 - npm caching uses `package-lock.json`.
-- PR scanning does not install dependencies or execute tests.
+- PR coverage producers install dependencies and execute tests; PR scan jobs
+  only download artifacts and run their analyzers.
 
 ## Security Notes
 

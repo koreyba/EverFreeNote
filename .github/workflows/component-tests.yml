@@ -3,8 +3,14 @@ name: Component Tests
 on:
   push:
     branches: [main, develop, github-actions-setup]
-  pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      coverage:
+        description: Run Cypress component tests with coverage and upload coverage artifacts
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -43,11 +49,21 @@ jobs:
         continue-on-error: true
         env:
           NODE_OPTIONS: --max-old-space-size=6144
+          COVERAGE_ENABLED: ${{ inputs.coverage }}
         run: |
           mkdir -p cypress/results
           set -o pipefail
-          npm run test:component:ci -- --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | tee cypress/results/component-tests.log
+          coverage_args=()
+          if [ "${COVERAGE_ENABLED}" = "true" ]; then
+            coverage_args+=(--env codeCoverage=true)
+          fi
+          npm run test:component:ci -- "${coverage_args[@]}" --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | tee cypress/results/component-tests.log
           exit ${PIPESTATUS[0]}
+
+      - name: Render Cypress coverage report
+        if: always() && inputs.coverage == true
+        continue-on-error: true
+        run: npm run coverage:component
 
       - name: Generate test summary
         if: always()
@@ -246,6 +262,25 @@ jobs:
             allure-report/component
           if-no-files-found: ignore
           retention-days: 30
+
+      - name: Upload Cypress coverage report
+        if: always() && inputs.coverage == true
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: pr-coverage-component-${{ github.run_id }}
+          path: coverage/component
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Cypress raw coverage
+        if: always() && inputs.coverage == true
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: pr-coverage-component-raw-${{ github.run_id }}
+          path: .nyc_output/out.json
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 14
 
       - name: Mark job as failed when component tests failed
         if: steps.run-component-tests.outcome != 'success'

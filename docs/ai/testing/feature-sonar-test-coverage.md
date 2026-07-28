@@ -34,16 +34,20 @@ application test cases.
   deployment-gated login handlers.
 - [x] NYC emits its independent component report under `coverage/component`.
 - [x] Root Jest, Cypress, and mobile Jest outputs use separate directories.
-- [x] Sonar PR analysis runs without tests or coverage.
+- [x] PR coverage orchestration calls the existing Unit and Component
+  workflows with coverage enabled.
+- [x] PR Sonar and Qodana analysis jobs depend on both coverage workflows and
+  use `always()` so test failures do not suppress analysis.
 - [x] Sonar main analysis receives all three explicit paths only in the main
   coverage workflow.
 - [x] Qodana receives one merged LCOV built from all three raw Istanbul maps.
 - [x] Qodana merge normalizes Windows absolute paths and deduplicates shared
   files before writing `.qodana/code-coverage/lcov.info`.
-- [x] The separate Qodana PR workflow runs on `opened`, `synchronize`, and
-  `reopened` without tests or coverage.
+- [x] The PR coverage workflow runs on `opened`, `synchronize`, and `reopened`
+  and keeps Sonar/Qodana restricted to trusted PRs targeting `main`.
 - [x] The dependency-free mobile Sonar TSConfig parses successfully.
-- [x] Qodana has a separate PR analysis workflow without coverage.
+- [x] Qodana remains a separate reusable analysis workflow and receives the
+  merged PR coverage artifact.
 
 The full Cypress coverage suite was not completed locally: an earlier full run
 was intentionally interrupted, and a later cold focused webpack build exceeded
@@ -76,6 +80,9 @@ cannot be completed solely in the local checkout.
 - Mobile command: `npm --prefix ui/mobile run test:coverage`.
 - CI artifacts: root Jest, Cypress component, and mobile Jest reports retained
   independently for 14 days.
+- Sonar PR coverage: derived union of available PR Jest and Cypress LCOV files.
+- Qodana PR coverage: available PR raw Istanbul maps converted to one LCOV
+  report by `scripts/merge-coverage.cjs`.
 - Sonar main coverage: derived union of all three LCOV files.
 - Qodana main coverage: derived union of all three Istanbul JSON files,
   converted to one LCOV report by `scripts/merge-coverage.cjs`.
@@ -87,7 +94,8 @@ cannot be completed solely in the local checkout.
 - Confirm the first main run reports all three LCOV files in scanner logs.
 - Confirm the Sonar dashboard updates coverage for the analyzed main revision.
 - Add `QODANA_TOKEN` to GitHub repository secrets.
-- Confirm a PR update starts Qodana without running a test or coverage command.
+- Confirm a PR update runs coverage before Sonar/Qodana, and that both analyses
+  still start when a coverage test job fails.
 - Confirm the Qodana main job consumes the same artifacts as Sonar and displays
   coverage for the merged main revision.
 
@@ -103,10 +111,13 @@ cannot be completed solely in the local checkout.
 - `npm run type-check:tests`: passed.
 - `npm --prefix ui/mobile run type-check`: passed.
 - `npx eslint . --max-warnings=0`: passed.
-- Three workflow YAML files plus the five-job main coverage dependency
-  structure: passed.
+- All workflow YAML files parse successfully, and the PR reusable-workflow
+  dependency structure passed the targeted static check.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
+- Current `npm run type-check` is blocked in the installed
+  `node_modules/@types/node/tls.d.ts` by `TS1010: '*/' expected`; no production
+  TypeScript files were changed in this workflow-only task.
 
 The previous root coverage run discovered 53 suites and 488 tests while the
 coverage command selected only `unit-core` and `unit-web`. The current command
@@ -117,5 +128,8 @@ tests; all 55 suites and 508 tests pass. This count is synchronized with
 ## Bug Tracking
 
 - Missing or stale reports are release-blocking for this workflow.
-- Missing raw Cypress coverage is release-blocking for the Qodana merge job.
-- A scanner-only PR regression is treated as a behavior-preservation defect.
+- Missing raw Cypress coverage is release-blocking for the main Qodana merge
+  job; PR analysis falls back to running without coverage when artifacts are
+  unavailable.
+- A PR coverage or analyzer-ordering regression is treated as a
+  behavior-preservation defect.

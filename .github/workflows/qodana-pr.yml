@@ -1,9 +1,7 @@
 name: Qodana PR analysis
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
+  workflow_call:
 
 permissions:
   contents: read
@@ -15,10 +13,6 @@ concurrency:
 jobs:
   qodana-pr:
     name: Qodana PR analysis
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,13 +26,87 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Qodana Scan without coverage
+      - name: Setup Node.js
+        if: always()
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dependencies for coverage merge
+        if: always()
+        continue-on-error: true
+        run: npm ci --ignore-scripts
+
+      - name: Download core Jest coverage
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-core-${{ github.run_id }}
+          path: coverage/raw/core
+
+      - name: Download web Jest coverage
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-web-${{ github.run_id }}
+          path: coverage/raw/web
+
+      - name: Download mobile Jest coverage
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-mobile-${{ github.run_id }}
+          path: coverage/raw/mobile
+
+      - name: Download Cypress raw coverage
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-component-raw-${{ github.run_id }}
+          path: coverage/raw/component
+
+      - name: Prepare merged coverage when available
+        id: prepare-coverage
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          echo "qodana_args=" >> "$GITHUB_OUTPUT"
+
+          inputs=()
+          for report in coverage/raw/core/coverage-final.json coverage/raw/web/coverage-final.json coverage/raw/mobile/coverage-final.json coverage/raw/component/out.json; do
+            if [ -s "$report" ]; then
+              inputs+=("$report")
+            fi
+          done
+
+          if [ "${#inputs[@]}" -eq 0 ]; then
+            echo "No raw coverage reports available; running Qodana without coverage."
+            exit 0
+          fi
+
+          node scripts/merge-coverage.cjs \
+            --output .qodana/code-coverage/lcov.info \
+            "${inputs[@]}"
+          test -s .qodana/code-coverage/lcov.info
+          echo "qodana_args=-v ${{ github.workspace }}/.qodana/code-coverage:/data/coverage" >> "$GITHUB_OUTPUT"
+
+      - name: Qodana Scan with available coverage
+        if: always()
         uses: JetBrains/qodana-action@4861e015da555e86a72b862892aba6c2b93e6891
         with:
           pr-mode: true
           upload-result: true
           artifact-name: qodana-pr-${{ github.run_id }}
-          args: --baseline baseline.sarif.json
+          args: >-
+            --baseline baseline.sarif.json
+            ${{ steps.prepare-coverage.outputs.qodana_args }}
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_1215262580 }}
           QODANA_ENDPOINT: https://qodana.cloud
