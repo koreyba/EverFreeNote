@@ -303,8 +303,7 @@ const renderComment = ({
 
     if (report) {
       const runUrl = buildRunUrl(repository, report);
-      const runLabel = `Workflow run #${report.runId} (Attempt #${report.runAttempt})`;
-      statusCell = runUrl ? `[${escapeMarkdownCell(runLabel)}](${runUrl})` : escapeMarkdownCell(runLabel);
+      statusCell = runUrl ? `[${escapeMarkdownCell(statusCell)}](${runUrl})` : statusCell;
     } else if (nextState.runs[statusKey]?.runId) {
       const runUrl = buildRunUrl(repository, nextState.runs[statusKey]);
       statusCell = runUrl ? `[${escapeMarkdownCell(statusCell)}](${runUrl})` : statusCell;

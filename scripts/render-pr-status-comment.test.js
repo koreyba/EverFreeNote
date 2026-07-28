@@ -101,7 +101,7 @@ test("renderComment uses a generic PR status marker, single report link, and wor
   );
   assert.match(
     body,
-    /\| Unit Tests \| \[Workflow run #1 \(Attempt #1\)\]\(https:\/\/github\.com\/koreyba\/EverFreeNote\/actions\/runs\/1\) \| Core Unit, Core Integration, Web Unit, Mobile Unit \|/,
+    /\| Unit Tests \| \[\*Waiting for run\.\.\.\*\]\(https:\/\/github\.com\/koreyba\/EverFreeNote\/actions\/runs\/1\) \| Core Unit, Core Integration, Web Unit, Mobile Unit \|/,
   );
   assert.match(
     body,

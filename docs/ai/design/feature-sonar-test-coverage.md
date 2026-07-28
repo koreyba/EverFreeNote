@@ -18,8 +18,10 @@ flowchart TD
   UnitPR --> PRStatus["Progressive PR status comment"]
   ComponentPR --> PRStatus
   PRArtifacts --> AllurePR["One combined PR Allure publisher"]
+  AllurePR --> PRStatus
+  PR --> E2EPR["E2E tests and Allure publisher"]
+  E2EPR --> PRStatus
   PRStatus --> PRComment["One updated PR comment"]
-  AllurePR --> PRComment
   UnitPR --> PRScan["SonarQube PR scanner"]
   ComponentPR --> PRScan
   UnitPR --> QodanaPR["Qodana PR scanner"]
@@ -54,9 +56,11 @@ flowchart TD
 GitHub Actions replaces SonarQube Cloud Automatic Analysis. PR coverage is
 orchestrated by `pr-coverage-analysis.yml`: Unit and Component are reusable
 coverage producers, `allure-pr-publish.yml` is the sole PR Allure publisher,
-and `pr-status-comment.yml` updates the same PR comment as each producer
-finishes. SonarQube/Qodana consume the producer artifacts after the test jobs. The
-existing `sonar-pr.yml` and `qodana-pr.yml` remain scanner consumers. On
+and `pr-status-comment.yml` is the sole serialized writer for the shared PR
+comment. Publishers return trusted report URLs to that writer instead of
+patching the comment directly. SonarQube/Qodana consume the producer artifacts
+after the test jobs. The existing `sonar-pr.yml` and `qodana-pr.yml` remain
+scanner consumers. On
 `main`, `sonar-coverage.yml` remains unchanged and continues to own its
 coverage producers and analysis jobs.
 
@@ -126,9 +130,11 @@ the PR orchestrator. A serialized status updater updates the existing PR
 comment after each producer completes. A single publisher then downloads the
 current run's Allure artifacts, merges them with any matching external-suite
 artifacts, updates GitHub Pages once, and patches the same comment with the
-final report link. This avoids same-run publishers overwriting one another
-while preserving progressive status visibility and the existing Allure report
-format and history model.
+final report link through the serialized status workflow. E2E follows the same
+contract. Publishers never read a report-index file into an outbound comment
+request; they expose only a validated published URL. This avoids writers
+overwriting one another while preserving progressive status visibility and the
+existing Allure report format and history model.
 
 ### PR analysis remains resilient
 

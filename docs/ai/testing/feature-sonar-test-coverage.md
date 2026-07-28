@@ -39,6 +39,11 @@ application test cases.
 - [x] PR coverage orchestration updates one PR status comment after each
   producer finishes, then runs one combined publisher against current-run Unit
   and Component Allure artifacts.
+- [x] Unit, Component, combined Allure, and E2E updates use one PR-scoped
+  serialized writer and preserve statuses written by earlier suites.
+- [x] The network updater accepts a validated published URL and does not read
+  `reports/index.json`, preventing report file data from entering the outbound
+  GitHub API request.
 - [x] PR Sonar and Qodana analysis jobs depend on both coverage workflows and
   use `always()` so test failures do not suppress analysis.
 - [x] Sonar main analysis receives all three explicit paths only in the main
@@ -104,6 +109,8 @@ cannot be completed solely in the local checkout.
 - Confirm the PR status comment is created or updated after Unit Tests finish,
   again after Component Tests finish, and finally contains the combined Allure
   report link.
+- Confirm a completed E2E publisher preserves the Unit and Component statuses
+  while updating the E2E row and final Allure link.
 - Confirm the Qodana main job consumes the same artifacts as Sonar and displays
   coverage for the merged main revision.
 

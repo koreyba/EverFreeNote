@@ -373,6 +373,9 @@ jobs:
       )
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      has_results: ${{ steps.prepare-allure-report.outputs.has_results }}
+      report_url: ${{ steps.prepare-allure-report.outputs.report_url }}
     concurrency:
       group: gh-pages-allure-publish
       cancel-in-progress: false
@@ -524,21 +527,6 @@ jobs:
             echo "- Published report: ${REPORT_URL}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Update PR status comment
-        if: github.event_name == 'pull_request' && steps.prepare-allure-report.outputs.has_results == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          node scripts/update-pr-status-comment.js \
-            --reports-index .pages-existing/reports/index.json \
-            --pr-number "${PR_NUMBER}" \
-            --head-sha "${COMMIT_SHA}" \
-            --catalog-url "${PAGES_BASE_URL}/" \
-            --status-key e2e \
-            --status "${FAMILY_OUTCOME}"
-
       - name: Allure Report Official
         if: github.event_name == 'pull_request' && steps.prepare-allure-report.outputs.has_results == 'true'
         continue-on-error: true
@@ -548,3 +536,23 @@ jobs:
           remote-href: ${{ steps.prepare-allure-report.outputs.report_url }}
           sections: 'new, flaky, retry'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  update-e2e-status-comment:
+    name: Update E2E Test Status
+    needs: [run-e2e, publish-e2e-report]
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      needs.run-e2e.result != 'skipped' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    uses: ./.github/workflows/pr-status-comment.yml
+    with:
+      status_key: e2e
+      status: >-
+        ${{ needs.run-e2e.result == 'success' && 'success' || needs.run-e2e.result == 'cancelled' && 'cancelled' || 'failure' }}
+      allure_url: ${{ needs.publish-e2e-report.outputs.report_url || '' }}
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write

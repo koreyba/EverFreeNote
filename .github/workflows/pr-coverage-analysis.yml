@@ -67,6 +67,24 @@ jobs:
       issues: write
       pull-requests: write
 
+  allure-status-comment:
+    name: Update Allure Report Link
+    needs: allure-publish
+    if: >-
+      always() &&
+      needs.allure-publish.result == 'success' &&
+      needs.allure-publish.outputs.has_results == 'true' &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    uses: ./.github/workflows/pr-status-comment.yml
+    with:
+      allure_url: ${{ needs.allure-publish.outputs.report_url }}
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
   unit-status-comment:
     name: Update Unit Test Status
     needs: unit-coverage

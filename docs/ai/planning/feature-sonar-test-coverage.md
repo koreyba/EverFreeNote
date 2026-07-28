@@ -35,6 +35,8 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
   artifacts after the coverage producers.
 - [x] Task 2.9: Restore progressive PR status-comment updates while keeping
   combined Allure publication single-owner.
+- [x] Task 2.10: Route Unit, Component, combined Allure, and E2E comment updates
+  through one serialized writer without sending report-index file data.
 - [x] Task 2.5: Add parallel root Jest, Cypress, and mobile Jest coverage jobs
   for pushes to `main`.
 - [x] Task 2.6: Upload each report separately and make the main scanner depend on

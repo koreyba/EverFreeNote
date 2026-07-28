@@ -47,15 +47,18 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   only produce test artifacts. Separate status-comment jobs update the same PR
   comment as each producer finishes. `allure-pr-publish.yml` then downloads
   the current run's unit and component Allure artifacts and publishes one
-  combined report while preserving the progressive status state. SonarQube and
-  Qodana use `always()` after both producers. Main keeps its three parallel
-  coverage producers, existing Allure publishers, and dependent scanners
-  unchanged.
+  combined report. It exposes the published URL to a follow-up
+  `pr-status-comment.yml` call; E2E publication uses the same serialized writer.
+  SonarQube and Qodana use `always()` after both producers. Main keeps its three
+  parallel coverage producers, existing Allure publishers, and dependent
+  scanners unchanged.
 - The combined Allure publisher installs dependencies with
   `npm ci --ignore-scripts`; it only needs the checked-in report tooling and
   must not execute arbitrary dependency lifecycle hooks. The progressive PR
   status updater calls the GitHub REST API directly with Node's `fetch` rather
-  than passing values through a shell command.
+  than passing values through a shell command. It accepts only validated status
+  fields and trusted `koreyba.github.io/EverFreeNote` report URLs; report-index
+  file contents never flow into an outbound request.
 - Semgrep was left unchanged because it has no supported runtime LCOV ingestion
   path; its existing workflow remains an independent SAST signal.
 
@@ -100,3 +103,6 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 - The Allure publisher does not persist checkout credentials and does not run
   dependency lifecycle scripts. The PR comment updater validates repository and
   pull-request identifiers before using the authenticated GitHub REST API.
+- Every PR status mutation runs through the same PR-scoped concurrency group,
+  so Unit, Component, combined Allure, and E2E updates cannot overwrite one
+  another with stale state.
