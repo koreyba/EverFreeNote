@@ -1,0 +1,1 @@
+{"id":"fc91658a65b906eb4abf351378f7c85a","fullName":"everfreenote-mobile:tests/component/useUpdateNote.test.tsx#useUpdateNote re-creates the note with the same id when remote update fails with PGRST116","name":"re-creates the note with the same id when remote update fails with PGRST116","status":"passed","testResultsByEnv":{"default":"fc69c44a9c9c6849e4911efa72b9da3d"}}
