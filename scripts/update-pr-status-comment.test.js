@@ -59,11 +59,11 @@ test("serialized updates preserve completed suites and add the final Allure link
   );
   assert.match(
     e2eBody,
-    /\[✅ Completed\]\(https:\/\/github\.com\/koreyba\/EverFreeNote\/actions\/runs\/100\)/,
+    /\[✅ Completed]\(https:\/\/github\.com\/koreyba\/EverFreeNote\/actions\/runs\/100\)/,
   );
   assert.match(
     e2eBody,
-    /\[✅ Completed\]\(https:\/\/github\.com\/koreyba\/EverFreeNote\/actions\/runs\/200\)/,
+    /\[✅ Completed]\(https:\/\/github\.com\/koreyba\/EverFreeNote\/actions\/runs\/200\)/,
   );
 });
 

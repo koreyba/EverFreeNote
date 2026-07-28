@@ -53,6 +53,8 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 - [ ] Task 3.3: Validate YAML, DevKit docs, lint, report generation, and scanner
   configuration without publishing an unrequested cloud analysis.
 - [x] Task 3.4: Perform implementation conformance and code review.
+- [x] Task 3.5: Remediate the current PR Sonar and Qodana findings without
+  suppressions.
 
 The implementation validation is otherwise complete, with the Cypress
 limitation recorded in the testing document. DevKit recognizes all seven

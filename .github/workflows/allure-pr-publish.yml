@@ -95,15 +95,16 @@ jobs:
 
       - name: Prepare gh-pages branch
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
+          gh auth setup-git
           rm -rf .pages-existing
           git init --quiet .pages-existing
           git -C .pages-existing config user.name "github-actions[bot]"
           git -C .pages-existing config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C .pages-existing remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C .pages-existing remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
 
           if git -C .pages-existing fetch --quiet --depth=1 origin gh-pages; then
             git -C .pages-existing checkout --quiet -B gh-pages FETCH_HEAD
@@ -184,6 +185,7 @@ jobs:
       - name: Push gh-pages updates
         if: steps.prepare-allure-report.outputs.has_results == 'true'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPORT_URL: ${{ steps.prepare-allure-report.outputs.report_url }}
         run: |
           set -euo pipefail

@@ -130,6 +130,8 @@ cannot be completed solely in the local checkout.
 - `npx eslint . --max-warnings=0`: passed.
 - All workflow YAML files parse successfully, and the PR reusable-workflow
   dependency structure passed the targeted static check.
+- The focused PR status-comment regression suite passes 6 tests after the
+  Sonar/Qodana remediation, and targeted ESLint reports zero warnings.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
 - No production TypeScript files were changed in this workflow-only task.

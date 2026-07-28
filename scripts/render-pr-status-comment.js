@@ -7,6 +7,8 @@ const { parseArgs } = require("./allure-pages-utils");
 const COMMENT_MARKER = "<!-- everfreenote-pr-status-comment -->";
 const STATUS_STATE_MARKER_PREFIX = "<!-- everfreenote-pr-status-state:";
 const STATUS_STATE_MARKER_SUFFIX = " -->";
+const STATUS_STATE_MARKER_PATTERN =
+  /<!-- everfreenote-pr-status-state:(\{.*?}) -->/s;
 const WORKFLOW_NAMES = [
   "Unit Tests",
   "Component Tests",
@@ -144,9 +146,7 @@ const cloneDefaultStatusState = () => ({
 
 const readStatusState = (body) => {
   const state = cloneDefaultStatusState();
-  const marker = `${body ?? ""}`.match(
-    /<!-- everfreenote-pr-status-state:(\{.*?\}) -->/s
-  );
+  const marker = STATUS_STATE_MARKER_PATTERN.exec(`${body ?? ""}`);
 
   if (!marker) {
     return state;
@@ -157,7 +157,7 @@ const readStatusState = (body) => {
     state.headSha = normalizeSha(parsed.headSha);
     state.statuses = {
       ...state.statuses,
-      ...(parsed.statuses || {}),
+      ...parsed.statuses,
     };
     for (const key of Object.keys(state.statuses)) {
       state.statuses[key] = normalizeStatus(state.statuses[key]);
@@ -212,7 +212,91 @@ const buildStatusCell = (status) => {
   }
 };
 
+const createRenderState = ({ latestReport, reportsByWorkflow, statusState }) => {
+  const nextState = {
+    ...cloneDefaultStatusState(),
+    ...statusState,
+    statuses: {
+      ...DEFAULT_STATUS_STATE.statuses,
+      ...statusState.statuses,
+    },
+    runs: {
+      ...statusState.runs,
+    },
+    reports: {
+      ...statusState.reports,
+    },
+  };
 
+  for (const workflowName of WORKFLOW_NAMES) {
+    const statusKey = WORKFLOW_STATUS_KEYS[workflowName];
+    const reportState = buildReportState(
+      reportsByWorkflow.get(workflowName),
+    );
+    if (reportState) {
+      nextState.reports[statusKey] = reportState;
+    }
+    nextState.statuses[statusKey] = normalizeStatus(
+      nextState.statuses[statusKey],
+    );
+  }
+
+  if (latestReport?.url && isSafeHttpUrl(latestReport.url)) {
+    nextState.allureUrl = latestReport.url;
+  }
+  return nextState;
+};
+
+const resolveLatestReport = (latestReport, nextState) => {
+  if (latestReport?.url && isSafeHttpUrl(latestReport.url)) {
+    return latestReport;
+  }
+  if (nextState.allureUrl) {
+    return { url: nextState.allureUrl };
+  }
+  return null;
+};
+
+const buildWorkflowStatusCell = ({
+  nextState,
+  report,
+  repository,
+  statusKey,
+}) => {
+  const statusCell = buildStatusCell(nextState.statuses[statusKey]);
+  const run = report || nextState.runs[statusKey];
+  if (!run) {
+    return statusCell;
+  }
+
+  const runUrl = buildRunUrl(repository, run);
+  return runUrl
+    ? `[${escapeMarkdownCell(statusCell)}](${runUrl})`
+    : statusCell;
+};
+
+const buildWorkflowRow = ({
+  nextState,
+  reportsByWorkflow,
+  repository,
+  suitesByWorkflow,
+  workflowName,
+}) => {
+  const statusKey = WORKFLOW_STATUS_KEYS[workflowName];
+  const report =
+    reportsByWorkflow.get(workflowName) ||
+    nextState.reports[statusKey] ||
+    null;
+  const statusCell = buildWorkflowStatusCell({
+    nextState,
+    report,
+    repository,
+    statusKey,
+  });
+  const suitesCell = suitesByWorkflow[workflowName] || "-";
+
+  return `| ${escapeMarkdownCell(workflowName)} | ${statusCell} | ${escapeMarkdownCell(suitesCell)} |`;
+};
 
 const renderComment = ({
   catalogUrl,
@@ -224,40 +308,12 @@ const renderComment = ({
   statusState = cloneDefaultStatusState(),
   updatedAt = new Date().toISOString(),
 }) => {
-  const nextState = {
-    ...cloneDefaultStatusState(),
-    ...statusState,
-    statuses: {
-      ...DEFAULT_STATUS_STATE.statuses,
-      ...(statusState.statuses || {}),
-    },
-    runs: {
-      ...(statusState.runs || {}),
-    },
-    reports: {
-      ...(statusState.reports || {}),
-    },
-  };
-
-  for (const workflowName of WORKFLOW_NAMES) {
-    const statusKey = WORKFLOW_STATUS_KEYS[workflowName];
-    const report = reportsByWorkflow.get(workflowName) || null;
-    const reportState = buildReportState(report);
-    if (reportState) {
-      nextState.reports[statusKey] = reportState;
-    }
-    nextState.statuses[statusKey] = normalizeStatus(nextState.statuses[statusKey]);
-  }
-
-  if (latestReport?.url && isSafeHttpUrl(latestReport.url)) {
-    nextState.allureUrl = latestReport.url;
-  }
-
-  const effectiveLatestReport = latestReport?.url
-    ? latestReport
-    : nextState.allureUrl
-      ? { url: nextState.allureUrl }
-      : null;
+  const nextState = createRenderState({
+    latestReport,
+    reportsByWorkflow,
+    statusState,
+  });
+  const effectiveLatestReport = resolveLatestReport(latestReport, nextState);
 
   const lines = [
     COMMENT_MARKER,
@@ -295,24 +351,17 @@ const renderComment = ({
     "E2E Tests (PR Preview)": "Web E2E",
   };
 
-  for (const workflowName of WORKFLOW_NAMES) {
-    const statusKey = WORKFLOW_STATUS_KEYS[workflowName];
-    const report = reportsByWorkflow.get(workflowName) || nextState.reports[statusKey] || null;
-    let statusCell = buildStatusCell(nextState.statuses[statusKey]);
-    const suitesCell = WORKFLOW_SUITES[workflowName] || "-";
-
-    if (report) {
-      const runUrl = buildRunUrl(repository, report);
-      statusCell = runUrl ? `[${escapeMarkdownCell(statusCell)}](${runUrl})` : statusCell;
-    } else if (nextState.runs[statusKey]?.runId) {
-      const runUrl = buildRunUrl(repository, nextState.runs[statusKey]);
-      statusCell = runUrl ? `[${escapeMarkdownCell(statusCell)}](${runUrl})` : statusCell;
-    }
-
-    lines.push(
-      `| ${escapeMarkdownCell(workflowName)} | ${statusCell} | ${escapeMarkdownCell(suitesCell)} |`
-    );
-  }
+  lines.push(
+    ...WORKFLOW_NAMES.map((workflowName) =>
+      buildWorkflowRow({
+        nextState,
+        reportsByWorkflow,
+        repository,
+        suitesByWorkflow: WORKFLOW_SUITES,
+        workflowName,
+      }),
+    ),
+  );
 
   if (catalogUrl) {
     lines.push("", `Catalog: ${buildMarkdownLink("All reports", catalogUrl)}`);

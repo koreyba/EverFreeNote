@@ -106,3 +106,8 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 - Every PR status mutation runs through the same PR-scoped concurrency group,
   so Unit, Component, combined Allure, and E2E updates cannot overwrite one
   another with stale state.
+- The combined Allure publisher authenticates its clean GitHub remote through
+  the GitHub CLI credential helper; credentials are never embedded in the
+  remote URL. PR status rendering separates state normalization, report
+  selection, and row formatting so scanner-driven maintainability fixes do not
+  change the comment contract.

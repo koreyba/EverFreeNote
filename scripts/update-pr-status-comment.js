@@ -66,10 +66,9 @@ const githubRequest = async ({ endpoint, method = "GET", body }) => {
   }
 
   if (!response.ok) {
+    const responseMessage = responseBody?.message;
     const message =
-      typeof responseBody === "object" && responseBody?.message
-        ? responseBody.message
-        : responseText || "Unknown GitHub API error";
+      responseMessage || responseText || "Unknown GitHub API error";
     throw new Error(
       `GitHub API ${method} ${endpoint} failed (${response.status}): ${message}`,
     );
@@ -133,16 +132,11 @@ const updateComment = async ({ repository, prNumber, commentId, body }) => {
   await githubRequest({ endpoint, method, body: { body } });
 };
 
-const buildCommentBody = ({
-  allureUrl = "",
-  catalogUrl = "",
-  existingBody = "",
+const validateCommentContext = ({
   headSha,
   prNumber,
   repository,
-  runId = "",
-  status = "",
-  statusKey = "",
+  statusKey,
 }) => {
   if (!repository || !prNumber || !headSha) {
     throw new Error("repository, pr-number, and head-sha are required");
@@ -154,28 +148,52 @@ const buildCommentBody = ({
   if (statusKey && !VALID_STATUS_KEYS.has(statusKey)) {
     throw new Error(`Unsupported status-key: ${statusKey}`);
   }
+};
 
-  let statusState = existingBody
+const createStatusState = ({ existingBody, headSha }) => {
+  const previousState = existingBody
     ? readStatusState(existingBody)
     : cloneDefaultStatusState();
+  const statusState =
+    previousState.headSha && previousState.headSha !== headSha
+      ? cloneDefaultStatusState()
+      : previousState;
 
-  if (statusState.headSha && statusState.headSha !== headSha) {
-    statusState = cloneDefaultStatusState();
-  }
   statusState.headSha = headSha;
+  return statusState;
+};
 
-  if (statusKey) {
-    if (!status) {
-      throw new Error("status is required when status-key is provided");
-    }
-    if (runId && !/^\d+$/.test(runId)) {
-      throw new Error(`Invalid run-id: ${runId}`);
-    }
-    statusState.statuses[statusKey] = status;
-    if (runId) {
-      statusState.runs[statusKey] = { runId };
-    }
+const applyStatusUpdate = ({ runId, status, statusKey }, statusState) => {
+  if (!statusKey) {
+    return;
   }
+  if (!status) {
+    throw new Error("status is required when status-key is provided");
+  }
+  if (runId && !/^\d+$/.test(runId)) {
+    throw new Error(`Invalid run-id: ${runId}`);
+  }
+
+  statusState.statuses[statusKey] = status;
+  if (runId) {
+    statusState.runs[statusKey] = { runId };
+  }
+};
+
+const buildCommentBody = ({
+  allureUrl = "",
+  catalogUrl = "",
+  existingBody = "",
+  headSha,
+  prNumber,
+  repository,
+  runId = "",
+  status = "",
+  statusKey = "",
+}) => {
+  validateCommentContext({ headSha, prNumber, repository, statusKey });
+  const statusState = createStatusState({ existingBody, headSha });
+  applyStatusUpdate({ runId, status, statusKey }, statusState);
 
   const normalizedAllureUrl = normalizeReportUrl(allureUrl);
   return renderComment({
