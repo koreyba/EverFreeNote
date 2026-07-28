@@ -1,1 +1,0 @@
-{"id":"46309a98cfbf580c91605fee88ab8ded","fullName":"everfreenote:core/tests/unit/core-services-noteClipboard.test.ts#core/services/noteClipboard htmlToPlainText degrades links to their visible text only","name":"degrades links to their visible text only","status":"passed","testResultsByEnv":{"default":"36927543fa3d1cc1de4a9b2b6d5fd644"}}

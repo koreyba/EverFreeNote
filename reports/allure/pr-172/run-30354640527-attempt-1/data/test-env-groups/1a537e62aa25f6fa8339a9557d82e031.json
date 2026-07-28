@@ -1,1 +1,0 @@
-{"id":"1a537e62aa25f6fa8339a9557d82e031","fullName":"everfreenote:ui/web/tests/unit/components/editorWebviewPage.test.tsx#EditorWebViewPage parses nativeEvent.data when event.data is not a string","name":"parses nativeEvent.data when event.data is not a string","status":"passed","testResultsByEnv":{"default":"14b9011fe4639d27ab8f3f8016c09796"}}
