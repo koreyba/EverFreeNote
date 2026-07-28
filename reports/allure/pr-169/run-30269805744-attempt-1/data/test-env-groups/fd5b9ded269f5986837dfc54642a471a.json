@@ -1,1 +1,0 @@
-{"id":"fd5b9ded269f5986837dfc54642a471a","fullName":"everfreenote:cypress/component/ui/web/hooks/useNoteSaveHandlers.cy.tsx#useNoteSaveHandlers confirmDeleteNote closes dialog and clears noteToDelete","name":"confirmDeleteNote closes dialog and clears noteToDelete","status":"passed","testResultsByEnv":{"default":"161e3d8a0dd30e66fe1666fd5c95011c"}}
