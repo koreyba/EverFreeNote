@@ -1,1 +1,0 @@
-{"id":"b087a6c55261bb32042fc419d964c354","fullName":"everfreenote-mobile:tests/unit/configAdapter.test.ts#config adapter getPublicWebOrigin falls back to editorWebViewUrl when publicWebOrigin is an invalid URL","name":"falls back to editorWebViewUrl when publicWebOrigin is an invalid URL","status":"passed","testResultsByEnv":{"default":"3ad2d338719ab89c167dc88835a70e64"}}

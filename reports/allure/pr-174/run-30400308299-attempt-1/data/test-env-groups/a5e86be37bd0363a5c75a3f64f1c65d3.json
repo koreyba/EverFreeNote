@@ -1,0 +1,1 @@
+{"id":"a5e86be37bd0363a5c75a3f64f1c65d3","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter upsertQueue calls upsertQueueItem for each item in array","name":"calls upsertQueueItem for each item in array","status":"passed","testResultsByEnv":{"default":"a4c92e93b0623fd9a300239e2e8e76fd"}}

@@ -1,0 +1,1 @@
+{"id":"bc86be9908dad09e2bbb9265672877fb","fullName":"everfreenote-mobile:tests/component/swipeProvider.test.tsx#useSwipeContext unregister clears activeId when unregistering the active swipeable","name":"clears activeId when unregistering the active swipeable","status":"passed","testResultsByEnv":{"default":"e77ef0a01ce7bf690d641b205f1f6af1"}}
