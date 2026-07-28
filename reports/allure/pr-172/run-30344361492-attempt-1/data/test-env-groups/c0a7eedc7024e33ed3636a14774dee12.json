@@ -1,0 +1,1 @@
+{"id":"c0a7eedc7024e33ed3636a14774dee12","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService performSync callback update operation updates note via NoteService and saves updated note to database","name":"updates note via NoteService and saves updated note to database","status":"passed","testResultsByEnv":{"default":"37f6a7baa8da481de276b5d54bbd42d6"}}
