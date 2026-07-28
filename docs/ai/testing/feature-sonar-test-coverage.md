@@ -46,6 +46,8 @@ application test cases.
   GitHub API request.
 - [x] PR Sonar and Qodana analysis jobs depend on both coverage workflows and
   use `always()` so test failures do not suppress analysis.
+- [x] Main and PR Codacy jobs depend only on their coverage producers, so
+  analyzer failures do not suppress a valid Codacy upload.
 - [x] Sonar main analysis receives all three explicit paths only in the main
   coverage workflow.
 - [x] Qodana receives one merged LCOV built from all three raw Istanbul maps.
@@ -72,10 +74,13 @@ such application-level timeout and remains the authoritative full-suite check.
 
 ## End-to-End Tests
 
-- [ ] First merged `sonar-coverage.yml` workflow publishes main coverage to
+- [ ] First merged `merge-tests-coverage.yml` workflow publishes main coverage to
   SonarQube Cloud and Qodana Cloud from the same producer artifacts.
+- [ ] First merged `merge-tests-coverage.yml` workflow publishes main coverage to
+  Codacy from the same producer artifacts.
 - [ ] A later PR push produces a Sonar new-code result without running coverage.
 - [ ] A later PR push starts Qodana analysis without running coverage.
+- [ ] A later trusted PR push publishes its four LCOV reports to Codacy.
 - [ ] SonarQube Cloud PR decoration/check naming is compatible with branch
   protection.
 
@@ -102,12 +107,18 @@ cannot be completed solely in the local checkout.
 - Sonar main coverage: derived union of all three LCOV files.
 - Qodana main coverage: derived union of all three Istanbul JSON files,
   converted to one LCOV report by `scripts/merge-coverage.cjs`.
+- Codacy main coverage: root Jest, Cypress component, and mobile Jest LCOV
+  reports uploaded directly by the main orchestrator.
+- Codacy PR coverage: core Jest, web Jest, mobile Jest, and Cypress component
+  LCOV reports uploaded directly by the PR orchestrator.
 
 ## Manual Testing
 
 - Disable Automatic Analysis in SonarQube Cloud.
 - Add `SONAR_TOKEN` to GitHub repository secrets.
 - Confirm the first main run reports all three LCOV files in scanner logs.
+- Confirm the first main run has a successful `Codacy main coverage` job and the
+  Codacy dashboard updates the analyzed main revision.
 - Confirm the Sonar dashboard updates coverage for the analyzed main revision.
 - Add `QODANA_TOKEN` to GitHub repository secrets.
 - Confirm a PR update runs coverage before Sonar/Qodana, and that both analyses
@@ -121,6 +132,8 @@ cannot be completed solely in the local checkout.
   while updating the E2E row and final Allure link.
 - Confirm the Qodana main job consumes the same artifacts as Sonar and displays
   coverage for the merged main revision.
+- Confirm the trusted PR Codacy job uploads coverage using the PR head SHA, and
+  that fork or Dependabot PRs skip the upload job.
 
 ## Performance Testing
 

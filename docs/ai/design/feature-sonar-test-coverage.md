@@ -50,9 +50,9 @@ flowchart TD
   QodanaLCOV --> QodanaScan["Qodana main scanner"]
   QodanaScan --> QodanaCloud["Qodana Cloud main report"]
 
-  PRTests --> CodacyPR["Codacy workflow_run PR consumer"]
+  PRTests --> CodacyPR["Codacy PR coverage job"]
   CodacyPR --> CodacyPRCloud["Codacy PR coverage"]
-  Main --> CodacyMain["Codacy workflow_run consumer"]
+  Main --> CodacyMain["Codacy main coverage job"]
   CodacyMain --> CodacyCloud["Codacy commit coverage"]
 
   Semgrep["Semgrep static security scan"] --> SemgrepCloud["Semgrep findings"]
@@ -66,8 +66,8 @@ comment. Publishers return trusted report URLs to that writer instead of
 patching the comment directly. SonarQube/Qodana consume the producer artifacts
 after the test jobs. The existing `sonar-pr.yml` and `qodana-pr.yml` remain
 scanner consumers. On
-`main`, `sonar-coverage.yml` remains unchanged and continues to own its
-coverage producers and analysis jobs.
+`main`, `merge-tests-coverage.yml` owns the coverage producers, Codacy upload,
+and analysis jobs.
 
 ## Data Models
 
@@ -108,11 +108,13 @@ of a main-revision analysis, preventing duplicate or partial uploads.
   single PR status comment after each coverage producer finishes.
 - `.github/workflows/allure-pr-publish.yml` owns the single combined PR Allure
   publication and consumes artifacts from the current orchestrator run.
-- `.github/workflows/sonar-coverage.yml` owns the one-time main coverage
-  producers, artifact upload, Sonar main analysis, and Qodana main analysis.
-- `.github/workflows/codacy-coverage.yml` owns both Codacy consumers. It is
-  triggered after the existing producer workflows and downloads their
-  artifacts without rerunning tests or coupling Codacy to Sonar/Qodana jobs.
+- `.github/workflows/merge-tests-coverage.yml` owns the one-time main coverage
+  producers, artifact upload, Codacy main upload, Sonar main analysis, and
+  Qodana main analysis.
+- `.github/workflows/pr-coverage-analysis.yml` owns the PR coverage producers,
+  Codacy PR upload, Sonar PR analysis, and Qodana PR analysis. Codacy is kept as
+  a separate job in the same orchestrator, so it does not rerun tests or depend
+  on Sonar/Qodana success.
 - Jest owns instrumentation for unit coverage and writes `coverage/jest`.
 - Babel Istanbul plus `@cypress/code-coverage` own browser instrumentation;
   NYC renders the final independent component report.
@@ -203,7 +205,7 @@ percentage threshold, matching Sonar's current measurement-only behavior.
 ### Codacy consumes independent LCOV reports
 
 Codacy receives the producer LCOV files directly, one report per test layer,
-from the dedicated `codacy-coverage.yml` workflow.
+from jobs in the same main and PR orchestrator workflows as Sonar and Qodana.
 The Coverage Reporter associates every upload with the checked-out commit SHA.
 The main consumer uploads root Jest, Cypress, and mobile Jest reports. The PR
 consumer uploads the core Jest, web Jest, mobile Jest, and Cypress reports from
