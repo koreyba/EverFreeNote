@@ -1,0 +1,1 @@
+{"id":"c5af2a0127eef0cac48cff52b556f491","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService init propagates a database-open failure without executing the schema","name":"propagates a database-open failure without executing the schema","status":"passed","testResultsByEnv":{"default":"0a30213c8a9b7c94b3a02e0a6c178d62"}}

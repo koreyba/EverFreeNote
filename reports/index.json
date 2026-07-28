@@ -16,6 +16,42 @@
       "Mobile Unit",
       "Web Component"
     ],
+    "path": "reports/allure/pr-173/run-30373890558-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-173/run-30373890558-attempt-1/",
+    "runId": "30373890558",
+    "runAttempt": "1",
+    "prNumber": "173",
+    "ref": "codex/codacy-coverage-reporter-plan",
+    "sha": "7de5d18c2675ace53e5f88658f420326cf7adb96",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #173",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-28T15:43:49.265Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
     "path": "reports/allure/branch-main/run-30367009294-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-30367009294-attempt-1/",
     "runId": "30367009294",
@@ -647,34 +683,6 @@
     "scopeLabel": "PR #172",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-28T10:08:31.169Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-172/run-30348711959-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-172/run-30348711959-attempt-1/",
-    "runId": "30348711959",
-    "runAttempt": "1",
-    "prNumber": "172",
-    "ref": "codex/pr-coverage-queue",
-    "sha": "ca03d70c4536157b4a17b4eda0f251a5f74724b3",
-    "outcome": "success",
-    "previewUrl": "https://6f57d58b.everfreenote.pages.dev",
-    "e2eRef": "master",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #172",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-28T10:03:29.170Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
