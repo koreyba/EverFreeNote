@@ -21,6 +21,7 @@ jobs:
     uses: ./.github/workflows/unit-tests.yml
     with:
       coverage: true
+      publish_allure: false
     secrets: inherit
 
   component-coverage:
@@ -28,6 +29,21 @@ jobs:
     uses: ./.github/workflows/component-tests.yml
     with:
       coverage: true
+      publish_allure: false
+    secrets: inherit
+
+  allure-publish:
+    name: Publish combined PR Allure report
+    needs: [unit-coverage, component-coverage]
+    if: >-
+      always() &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    uses: ./.github/workflows/allure-pr-publish.yml
+    with:
+      family_outcome: >-
+        ${{ needs.unit-coverage.result == 'success' && needs.component-coverage.result == 'success' && 'success' || 'failure' }}
     secrets: inherit
 
   sonarqube-pr:

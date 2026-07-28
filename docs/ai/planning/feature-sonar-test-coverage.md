@@ -31,12 +31,14 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 - [x] Task 2.2: Add one PR orchestrator that runs unit and Cypress coverage
   before analysis.
 - [x] Task 2.3: Run SonarQube and Qodana with `always()` after PR coverage.
-- [x] Task 2.4: Add parallel root Jest, Cypress, and mobile Jest coverage jobs
+- [x] Task 2.4: Publish one combined PR Allure report from current-run test
+  artifacts after the coverage producers.
+- [x] Task 2.5: Add parallel root Jest, Cypress, and mobile Jest coverage jobs
   for pushes to `main`.
-- [x] Task 2.5: Upload each report separately and make the main scanner depend on
+- [x] Task 2.6: Upload each report separately and make the main scanner depend on
   all three successful producers.
-- [x] Task 2.6: Pass cloud project identity and all three LCOV paths explicitly.
-- [x] Task 2.7: Analyze root, tests, and mobile with their respective TypeScript
+- [x] Task 2.7: Pass cloud project identity and all three LCOV paths explicitly.
+- [x] Task 2.8: Analyze root, tests, and mobile with their respective TypeScript
   configurations in one Sonar project.
 
 ### Phase 3: Integration & Polish

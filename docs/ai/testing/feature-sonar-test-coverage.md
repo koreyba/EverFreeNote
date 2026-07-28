@@ -36,6 +36,8 @@ application test cases.
 - [x] Root Jest, Cypress, and mobile Jest outputs use separate directories.
 - [x] PR coverage orchestration calls the existing Unit and Component
   workflows with coverage enabled.
+- [x] PR coverage orchestration disables nested Allure publishers and runs one
+  combined publisher against current-run Unit and Component Allure artifacts.
 - [x] PR Sonar and Qodana analysis jobs depend on both coverage workflows and
   use `always()` so test failures do not suppress analysis.
 - [x] Sonar main analysis receives all three explicit paths only in the main
@@ -96,6 +98,8 @@ cannot be completed solely in the local checkout.
 - Add `QODANA_TOKEN` to GitHub repository secrets.
 - Confirm a PR update runs coverage before Sonar/Qodana, and that both analyses
   still start when a coverage test job fails.
+- Confirm the PR Allure report contains Core Unit, Core Integration, Web Unit,
+  Mobile Unit, and Web Component results from the same orchestration run.
 - Confirm the Qodana main job consumes the same artifacts as Sonar and displays
   coverage for the merged main revision.
 

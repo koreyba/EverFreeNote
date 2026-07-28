@@ -18,6 +18,8 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 
 - `.github/workflows/pr-coverage-analysis.yml`: PR coverage and analysis
   orchestration.
+- `.github/workflows/allure-pr-publish.yml`: single-owner combined PR Allure
+  publisher for artifacts from the current orchestration run.
 - `.github/workflows/sonar-coverage.yml`: unchanged main-branch coverage and
   analysis orchestration.
 - `jest.config.cjs`: Jest coverage scope and output directory.
@@ -39,9 +41,12 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   production callers continue to use the environment-derived default. This
   keeps auth coverage deterministic and independent from GitHub Environments.
 - PR uses the existing Unit and Component workflows as reusable coverage
-  producers, then invokes SonarQube and Qodana with `always()` after both
-  producers. Main keeps its three parallel coverage producers and dependent
-  scanners unchanged.
+  producers. Their `publish_allure` input is disabled for this call, so they
+  only produce test artifacts. `allure-pr-publish.yml` then downloads the
+  current run's unit and component Allure artifacts and publishes one combined
+  report. SonarQube and Qodana use `always()` after both producers. Main keeps
+  its three parallel coverage producers, existing Allure publishers, and
+  dependent scanners unchanged.
 - Semgrep was left unchanged because it has no supported runtime LCOV ingestion
   path; its existing workflow remains an independent SAST signal.
 
@@ -59,6 +64,9 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 - Coverage test jobs still report test failures. PR analyzer jobs use
   `always()` and fall back to analysis without coverage when no report artifact
   is available.
+- The PR Allure publisher also uses `always()` at the caller boundary and
+  downloads artifacts with `github.run_id`, so a producer failure cannot make
+  the other producer's Allure results overwrite or hide the available report.
 - CI does not need a cleanup hook because each producer starts on a clean
   runner. Local interrupted Cypress runs may be cleaned manually by removing
   `.nyc_output` and `coverage/component` before rerunning coverage.

@@ -11,6 +11,11 @@ on:
         required: false
         default: false
         type: boolean
+      publish_allure:
+        description: Publish the component Allure report to GitHub Pages
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   actions: read
@@ -293,6 +298,10 @@ jobs:
       always() &&
       needs.component-tests.result != 'skipped' &&
       needs.component-tests.outputs.has_allure_results == 'true' &&
+      (
+        github.event_name != 'pull_request' ||
+        inputs.publish_allure == true
+      ) &&
       (
         github.event_name != 'pull_request' ||
         (

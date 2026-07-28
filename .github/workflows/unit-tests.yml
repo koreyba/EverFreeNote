@@ -11,6 +11,11 @@ on:
         required: false
         default: false
         type: boolean
+      publish_allure:
+        description: Publish the unit Allure report to GitHub Pages
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   actions: read
@@ -655,6 +660,10 @@ jobs:
         needs.unit-tests-mobile.outputs.has_allure_results == 'true' ||
         needs.unit-tests-core.outputs.has_allure_results == 'true' ||
         needs.unit-tests-web.outputs.has_allure_results == 'true'
+      ) &&
+      (
+        github.event_name != 'pull_request' ||
+        inputs.publish_allure == true
       ) &&
       (
         github.event_name != 'pull_request' ||
