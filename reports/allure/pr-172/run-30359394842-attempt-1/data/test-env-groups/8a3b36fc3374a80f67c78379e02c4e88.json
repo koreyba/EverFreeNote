@@ -1,0 +1,1 @@
+{"id":"8a3b36fc3374a80f67c78379e02c4e88","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService performSync callback update operation uses default fallbacks when payload and localNote are missing","name":"uses default fallbacks when payload and localNote are missing","status":"passed","testResultsByEnv":{"default":"c190c6287e0049a3c2c5a26216d24efc"}}
