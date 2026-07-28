@@ -10,9 +10,23 @@ description: CI architecture for fast PR analysis and deterministic main coverag
 
 ```mermaid
 flowchart TD
-  PR["PR opened or updated"] --> PRScan["Lightweight Sonar scanner"]
+  PR["PR opened or updated"] --> PRTests["PR coverage orchestrator"]
+  PRTests --> UnitPR["Unit Jest coverage"]
+  PRTests --> ComponentPR["Cypress component coverage"]
+  UnitPR --> PRArtifacts["Current-run test and Allure artifacts"]
+  ComponentPR --> PRArtifacts
+  UnitPR --> PRStatus["Progressive PR status comment"]
+  ComponentPR --> PRStatus
+  PRArtifacts --> AllurePR["One combined PR Allure publisher"]
+  AllurePR --> PRStatus
+  PR --> E2EPR["E2E tests and Allure publisher"]
+  E2EPR --> PRStatus
+  PRStatus --> PRComment["One updated PR comment"]
+  UnitPR --> PRScan["SonarQube PR scanner"]
+  ComponentPR --> PRScan
+  UnitPR --> QodanaPR["Qodana PR scanner"]
+  ComponentPR --> QodanaPR
   PRScan --> PRCloud["SonarQube Cloud PR / new-code result"]
-  PR --> QodanaPR["Qodana PR scanner"]
   QodanaPR --> QodanaPRCloud["Qodana Cloud PR result"]
 
   Main["Commit merged to main"] --> Unit["Jest unit coverage"]
@@ -39,11 +53,16 @@ flowchart TD
   Semgrep["Semgrep static security scan"] --> SemgrepCloud["Semgrep findings"]
 ```
 
-GitHub Actions replaces SonarQube Cloud Automatic Analysis. The repository has
-three workflows: `sonar-pr.yml`, `qodana-pr.yml`, and
-`sonar-coverage.yml`. PR workflows perform analysis without tests or coverage.
-On `main`, `sonar-coverage.yml` runs the three full coverage producers once,
-then runs separate Sonar and Qodana analysis jobs against their artifacts.
+GitHub Actions replaces SonarQube Cloud Automatic Analysis. PR coverage is
+orchestrated by `pr-coverage-analysis.yml`: Unit and Component are reusable
+coverage producers, `allure-pr-publish.yml` is the sole PR Allure publisher,
+and `pr-status-comment.yml` is the sole serialized writer for the shared PR
+comment. Publishers return trusted report URLs to that writer instead of
+patching the comment directly. SonarQube/Qodana consume the producer artifacts
+after the test jobs. The existing `sonar-pr.yml` and `qodana-pr.yml` remain
+scanner consumers. On
+`main`, `sonar-coverage.yml` remains unchanged and continues to own its
+coverage producers and analysis jobs.
 
 ## Data Models
 
@@ -72,9 +91,17 @@ of a main-revision analysis, preventing duplicate or partial uploads.
 ## Component Breakdown
 
 - `sonar-project.properties` owns cloud identity and stable source/test scope.
-- `.github/workflows/sonar-pr.yml` owns Sonar PR analysis without coverage.
-- `.github/workflows/qodana-pr.yml` owns Qodana PR static analysis without
-  coverage.
+- `.github/workflows/sonar-pr.yml` owns Sonar PR analysis and consumes the PR
+  coverage artifacts when available.
+- `.github/workflows/qodana-pr.yml` owns Qodana PR static analysis and consumes
+  the PR coverage artifacts when available.
+- `.github/workflows/pr-coverage-analysis.yml` owns PR ordering and passes
+  `publish_allure: false` to the reusable test producers. It also starts the
+  progressive unit/component status-comment updates.
+- `.github/workflows/pr-status-comment.yml` owns serialized updates to the
+  single PR status comment after each coverage producer finishes.
+- `.github/workflows/allure-pr-publish.yml` owns the single combined PR Allure
+  publication and consumes artifacts from the current orchestrator run.
 - `.github/workflows/sonar-coverage.yml` owns the one-time main coverage
   producers, artifact upload, Sonar main analysis, and Qodana main analysis.
 - Jest owns instrumentation for unit coverage and writes `coverage/jest`.
@@ -94,12 +121,27 @@ of a main-revision analysis, preventing duplicate or partial uploads.
 
 ## Design Decisions
 
-### PR analysis remains fast
+### PR coverage is ordered and report publication is single-owner
 
 Sonar and Qodana PR scans run on `opened`, `synchronize`, and `reopened`,
-matching the effective Automatic Analysis cadence. Neither PR workflow runs
-tests or imports coverage. Main coverage is produced once at the beginning of
-`sonar-coverage.yml`, then consumed by separate Sonar and Qodana jobs.
+after the Unit and Component coverage producers. Producer workflows upload
+their own test and coverage artifacts but do not publish Allure when called by
+the PR orchestrator. A serialized status updater updates the existing PR
+comment after each producer completes. A single publisher then downloads the
+current run's Allure artifacts, merges them with any matching external-suite
+artifacts, updates GitHub Pages once, and patches the same comment with the
+final report link through the serialized status workflow. E2E follows the same
+contract. Publishers never read a report-index file into an outbound comment
+request; they expose only a validated published URL. This avoids writers
+overwriting one another while preserving progressive status visibility and the
+existing Allure report format and history model.
+
+### PR analysis remains resilient
+
+Sonar and Qodana use `always()` after the coverage jobs, so a test failure does
+not suppress static analysis. Allure publication also runs after both producer
+jobs when the PR is trusted and publishes whatever valid result artifacts are
+available.
 
 ### Main coverage is deterministic
 

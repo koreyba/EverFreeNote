@@ -14,14 +14,18 @@ instance. The npm Sonar scanner can discover a previously generated
 data if generated artifacts are left in the workspace.
 SonarQube Cloud uses Automatic Analysis, which cannot import LCOV reports.
 
-Maintainers need a deterministic main-branch coverage baseline without adding
-the cost of root Jest, Cypress, and mobile Jest coverage runs to every
-pull-request update.
+Maintainers need deterministic coverage on pull-request updates and the main
+branch, while ensuring that SonarQube Cloud and Qodana consume coverage from
+the same PR test run.
 
 ## Goals & Objectives
 
-- Preserve automatic Sonar analysis of new code on every pull-request push,
-  without running coverage tests in that path.
+- Run root Jest, Cypress component, and mobile Jest tests with coverage on
+  pull-request updates.
+- Start SonarQube Cloud and Qodana PR analysis only after the PR coverage jobs
+  have completed.
+- Run both analyses even when one or more coverage test jobs fail, so test
+  failures do not hide static-analysis results.
 - After a merge to `main`, produce fresh root Jest, Cypress component, and
   mobile Jest LCOV reports before running the Sonar scanner.
 - Keep all three reports independent and downloadable as separate CI artifacts.
@@ -34,7 +38,6 @@ pull-request update.
 
 ### Non-goals
 
-- Running coverage on every pull request.
 - Making coverage a required pull-request quality gate.
 - Adding scheduled or nightly coverage runs.
 - Adding browser E2E or mobile E2E coverage to this feature.
@@ -48,14 +51,18 @@ pull-request update.
   so that the Sonar dashboard reflects the repository baseline.
 - As a developer, I want separate root Jest, Cypress, and mobile Jest artifacts
   so that I can diagnose gaps in the appropriate product area and test layer.
+- As a maintainer, I want analysis jobs to run after coverage jobs regardless of
+  test success, so static-analysis feedback remains available on broken PRs.
 - As a maintainer, I want a failed or missing coverage producer to prevent the
   main Sonar scan so that stale coverage is never uploaded.
 
 ## Success Criteria
 
+- A pull-request event runs root Jest, Cypress component, and mobile Jest
+  coverage jobs through one orchestrating workflow.
 - An eligible trusted PR event targeting `main`—opened, synchronized, or
-  reopened from the same repository and not Dependabot—runs one SonarQube Cloud
-  project scan without invoking any coverage command.
+  reopened from the same repository and not Dependabot—runs SonarQube Cloud and
+  Qodana after the coverage jobs, even if a coverage job failed.
 - A push to `main` runs root Jest, Cypress, and mobile Jest coverage in parallel
   and runs Sonar only after all three jobs succeed.
 - Main-branch analysis imports `coverage/jest/lcov.info` and

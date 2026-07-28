@@ -5,11 +5,31 @@ const path = require("node:path");
 const { parseArgs } = require("./allure-pages-utils");
 
 const COMMENT_MARKER = "<!-- everfreenote-pr-status-comment -->";
+const STATUS_STATE_MARKER_PREFIX = "<!-- everfreenote-pr-status-state:";
+const STATUS_STATE_MARKER_SUFFIX = " -->";
+const STATUS_STATE_MARKER_PATTERN =
+  /<!-- everfreenote-pr-status-state:(\{.*?}) -->/s;
 const WORKFLOW_NAMES = [
   "Unit Tests",
   "Component Tests",
   "E2E Tests (PR Preview)",
 ];
+const WORKFLOW_STATUS_KEYS = {
+  "Unit Tests": "unit",
+  "Component Tests": "component",
+  "E2E Tests (PR Preview)": "e2e",
+};
+const DEFAULT_STATUS_STATE = {
+  headSha: "",
+  statuses: {
+    unit: "waiting",
+    component: "waiting",
+    e2e: "waiting",
+  },
+  runs: {},
+  reports: {},
+  allureUrl: "",
+};
 
 
 const normalizePrNumber = (value) => `${value ?? ""}`.trim();
@@ -109,7 +129,174 @@ const buildRunUrl = (repository, report) => {
   return `https://github.com/${repository}/actions/runs/${report.runId}`;
 };
 
+const normalizeStatus = (value) => {
+  const normalized = `${value ?? ""}`.trim().toLowerCase();
+  return ["waiting", "success", "failure", "cancelled", "skipped"].includes(normalized)
+    ? normalized
+    : "waiting";
+};
 
+const cloneDefaultStatusState = () => ({
+  headSha: DEFAULT_STATUS_STATE.headSha,
+  statuses: { ...DEFAULT_STATUS_STATE.statuses },
+  runs: {},
+  reports: {},
+  allureUrl: DEFAULT_STATUS_STATE.allureUrl,
+});
+
+const readStatusState = (body) => {
+  const state = cloneDefaultStatusState();
+  const marker = STATUS_STATE_MARKER_PATTERN.exec(`${body ?? ""}`);
+
+  if (!marker) {
+    return state;
+  }
+
+  try {
+    const parsed = JSON.parse(marker[1]);
+    state.headSha = normalizeSha(parsed.headSha);
+    state.statuses = {
+      ...state.statuses,
+      ...parsed.statuses,
+    };
+    for (const key of Object.keys(state.statuses)) {
+      state.statuses[key] = normalizeStatus(state.statuses[key]);
+    }
+    state.runs = {};
+    if (parsed.runs && typeof parsed.runs === "object") {
+      for (const [key, value] of Object.entries(parsed.runs)) {
+        const runId = `${value?.runId ?? ""}`.trim();
+        if (/^\d+$/.test(runId)) {
+          state.runs[key] = { runId };
+        }
+      }
+    }
+    state.reports = parsed.reports && typeof parsed.reports === "object"
+      ? parsed.reports
+      : {};
+    state.allureUrl = isSafeHttpUrl(parsed.allureUrl) ? parsed.allureUrl : "";
+  } catch {
+    return cloneDefaultStatusState();
+  }
+
+  return state;
+};
+
+const buildReportState = (report) => {
+  if (!report?.url || !isSafeHttpUrl(report.url)) {
+    return null;
+  }
+
+  return {
+    url: report.url,
+    runId: report.runId || "",
+    runAttempt: report.runAttempt || "",
+  };
+};
+
+const buildStateMarker = (state) =>
+  `${STATUS_STATE_MARKER_PREFIX}${JSON.stringify(state)}${STATUS_STATE_MARKER_SUFFIX}`;
+
+const buildStatusCell = (status) => {
+  switch (normalizeStatus(status)) {
+    case "success":
+      return "✅ Completed";
+    case "failure":
+      return "❌ Failed";
+    case "cancelled":
+      return "⏹ Cancelled";
+    case "skipped":
+      return "⚪ Skipped";
+    default:
+      return "*Waiting for run...*";
+  }
+};
+
+const createRenderState = ({ latestReport, reportsByWorkflow, statusState }) => {
+  const nextState = {
+    ...cloneDefaultStatusState(),
+    ...statusState,
+    statuses: {
+      ...DEFAULT_STATUS_STATE.statuses,
+      ...statusState.statuses,
+    },
+    runs: {
+      ...statusState.runs,
+    },
+    reports: {
+      ...statusState.reports,
+    },
+  };
+
+  for (const workflowName of WORKFLOW_NAMES) {
+    const statusKey = WORKFLOW_STATUS_KEYS[workflowName];
+    const reportState = buildReportState(
+      reportsByWorkflow.get(workflowName),
+    );
+    if (reportState) {
+      nextState.reports[statusKey] = reportState;
+    }
+    nextState.statuses[statusKey] = normalizeStatus(
+      nextState.statuses[statusKey],
+    );
+  }
+
+  if (latestReport?.url && isSafeHttpUrl(latestReport.url)) {
+    nextState.allureUrl = latestReport.url;
+  }
+  return nextState;
+};
+
+const resolveLatestReport = (latestReport, nextState) => {
+  if (latestReport?.url && isSafeHttpUrl(latestReport.url)) {
+    return latestReport;
+  }
+  if (nextState.allureUrl) {
+    return { url: nextState.allureUrl };
+  }
+  return null;
+};
+
+const buildWorkflowStatusCell = ({
+  nextState,
+  report,
+  repository,
+  statusKey,
+}) => {
+  const statusCell = buildStatusCell(nextState.statuses[statusKey]);
+  const run = report || nextState.runs[statusKey];
+  if (!run) {
+    return statusCell;
+  }
+
+  const runUrl = buildRunUrl(repository, run);
+  return runUrl
+    ? `[${escapeMarkdownCell(statusCell)}](${runUrl})`
+    : statusCell;
+};
+
+const buildWorkflowRow = ({
+  nextState,
+  reportsByWorkflow,
+  repository,
+  suitesByWorkflow,
+  workflowName,
+}) => {
+  const statusKey = WORKFLOW_STATUS_KEYS[workflowName];
+  const report =
+    reportsByWorkflow.get(workflowName) ||
+    nextState.reports[statusKey] ||
+    null;
+  const statusCell = buildWorkflowStatusCell({
+    nextState,
+    report,
+    repository,
+    statusKey,
+  });
+  const suitesCell = suitesByWorkflow[workflowName] || "-";
+
+  return `| ${escapeMarkdownCell(workflowName)} | ${statusCell} | ${escapeMarkdownCell(suitesCell)} |`;
+};
 
 const renderComment = ({
   catalogUrl,
@@ -118,20 +305,29 @@ const renderComment = ({
   latestReport,
   reportsByWorkflow,
   repository,
+  statusState = cloneDefaultStatusState(),
   updatedAt = new Date().toISOString(),
 }) => {
+  const nextState = createRenderState({
+    latestReport,
+    reportsByWorkflow,
+    statusState,
+  });
+  const effectiveLatestReport = resolveLatestReport(latestReport, nextState);
+
   const lines = [
     COMMENT_MARKER,
+    buildStateMarker(nextState),
     "## PR Status",
     "",
     `Updated for PR #${escapeMarkdownCell(prNumber)} at \`${normalizeSha(headSha).slice(0, 7) || "unknown"}\` on ${formatDateTime(updatedAt)}.`,
     "",
   ];
 
-  if (latestReport?.url) {
+  if (effectiveLatestReport?.url) {
     lines.push(
       "### 📊 Allure Test Report",
-      buildMarkdownLink("Open Allure Report", latestReport.url),
+      buildMarkdownLink("Open Allure Report", effectiveLatestReport.url),
       ""
     );
   } else {
@@ -155,21 +351,17 @@ const renderComment = ({
     "E2E Tests (PR Preview)": "Web E2E",
   };
 
-  for (const workflowName of WORKFLOW_NAMES) {
-    const report = reportsByWorkflow.get(workflowName) || null;
-    let statusCell = "*Waiting for run...*";
-    const suitesCell = WORKFLOW_SUITES[workflowName] || "-";
-
-    if (report) {
-      const runUrl = buildRunUrl(repository, report);
-      const runLabel = `Workflow run #${report.runId} (Attempt #${report.runAttempt})`;
-      statusCell = runUrl ? `[${escapeMarkdownCell(runLabel)}](${runUrl})` : escapeMarkdownCell(runLabel);
-    }
-
-    lines.push(
-      `| ${escapeMarkdownCell(workflowName)} | ${statusCell} | ${escapeMarkdownCell(suitesCell)} |`
-    );
-  }
+  lines.push(
+    ...WORKFLOW_NAMES.map((workflowName) =>
+      buildWorkflowRow({
+        nextState,
+        reportsByWorkflow,
+        repository,
+        suitesByWorkflow: WORKFLOW_SUITES,
+        workflowName,
+      }),
+    ),
+  );
 
   if (catalogUrl) {
     lines.push("", `Catalog: ${buildMarkdownLink("All reports", catalogUrl)}`);
@@ -204,6 +396,8 @@ const main = () => {
 
   const reports = readReportsIndex(args["reports-index"]);
   const { latestReport, reportsByWorkflow } = selectLatestReports(reports, prNumber, headSha);
+  const statusState = cloneDefaultStatusState();
+  statusState.headSha = headSha;
   const body = renderComment({
     catalogUrl: args["catalog-url"] || "",
     headSha,
@@ -211,6 +405,7 @@ const main = () => {
     latestReport,
     reportsByWorkflow,
     repository,
+    statusState,
   });
 
   if (args.output) {
@@ -232,7 +427,13 @@ if (require.main === module) {
 
 module.exports = {
   COMMENT_MARKER,
+  DEFAULT_STATUS_STATE,
+  STATUS_STATE_MARKER_PREFIX,
   WORKFLOW_NAMES,
+  buildReportState,
+  cloneDefaultStatusState,
+  readReportsIndex,
+  readStatusState,
   renderComment,
   selectLatestReports,
 };

@@ -16,7 +16,14 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 
 ## Code Structure
 
-- `.github/workflows/sonar.yml`: PR and main analysis orchestration.
+- `.github/workflows/pr-coverage-analysis.yml`: PR coverage and analysis
+  orchestration, including progressive status-comment jobs.
+- `.github/workflows/pr-status-comment.yml`: serialized reusable updater for
+  the single PR status comment.
+- `.github/workflows/allure-pr-publish.yml`: single-owner combined PR Allure
+  publisher for artifacts from the current orchestration run.
+- `.github/workflows/sonar-coverage.yml`: unchanged main-branch coverage and
+  analysis orchestration.
 - `jest.config.cjs`: Jest coverage scope and output directory.
 - `ui/mobile/jest.config.js`: mobile coverage scope and output directory.
 - `ui/mobile/tsconfig.sonar.json`: dependency-free mobile TypeScript program
@@ -35,8 +42,23 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 - `useNoteAuth` accepts an explicit test configuration for component tests;
   production callers continue to use the environment-derived default. This
   keeps auth coverage deterministic and independent from GitHub Environments.
-- The workflow has five jobs: scanner-only PR analysis, three parallel main
-  coverage producers, and one main scanner that requires all producers.
+- PR uses the existing Unit and Component workflows as reusable coverage
+  producers. Their `publish_allure` input is disabled for this call, so they
+  only produce test artifacts. Separate status-comment jobs update the same PR
+  comment as each producer finishes. `allure-pr-publish.yml` then downloads
+  the current run's unit and component Allure artifacts and publishes one
+  combined report. It exposes the published URL to a follow-up
+  `pr-status-comment.yml` call; E2E publication uses the same serialized writer.
+  SonarQube and Qodana use `always()` after both producers. Main keeps its three
+  parallel coverage producers, existing Allure publishers, and dependent
+  scanners unchanged.
+- The combined Allure publisher installs dependencies with
+  `npm ci --ignore-scripts`; it only needs the checked-in report tooling and
+  must not execute arbitrary dependency lifecycle hooks. The progressive PR
+  status updater calls the GitHub REST API directly with Node's `fetch` rather
+  than passing values through a shell command. It accepts only validated status
+  fields and trusted `koreyba.github.io/EverFreeNote` report URLs; report-index
+  file contents never flow into an outbound request.
 - Semgrep was left unchanged because it has no supported runtime LCOV ingestion
   path; its existing workflow remains an independent SAST signal.
 
@@ -51,19 +73,25 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 
 ## Error Handling
 
-- Coverage producers fail if tests fail or their LCOV output is missing/empty.
+- Coverage test jobs still report test failures. PR analyzer jobs use
+  `always()` and fall back to analysis without coverage when no report artifact
+  is available.
+- The PR Allure publisher also uses `always()` at the caller boundary and
+  downloads artifacts with `github.run_id`, so a producer failure cannot make
+  the other producer's Allure results overwrite or hide the available report.
 - CI does not need a cleanup hook because each producer starts on a clean
   runner. Local interrupted Cypress runs may be cleaned manually by removing
   `.nyc_output` and `coverage/component` before rerunning coverage.
-- Artifact download failure prevents the main scanner from publishing partial
-  coverage.
+- Main artifact download failure prevents the main scanner from publishing
+  partial coverage. PR artifact download failure does not suppress analysis.
 - Scanner failures remain visible as the SonarCloud code-analysis check.
 
 ## Performance Considerations
 
 - Coverage producers run concurrently.
 - npm caching uses `package-lock.json`.
-- PR scanning does not install dependencies or execute tests.
+- PR coverage producers install dependencies and execute tests; PR scan jobs
+  only download artifacts and run their analyzers.
 
 ## Security Notes
 
@@ -72,3 +100,14 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   exclude Dependabot.
 - `pull_request_target` is not used, so untrusted code cannot execute with the
   Sonar secret.
+- The Allure publisher does not persist checkout credentials and does not run
+  dependency lifecycle scripts. The PR comment updater validates repository and
+  pull-request identifiers before using the authenticated GitHub REST API.
+- Every PR status mutation runs through the same PR-scoped concurrency group,
+  so Unit, Component, combined Allure, and E2E updates cannot overwrite one
+  another with stale state.
+- The combined Allure publisher authenticates its clean GitHub remote through
+  the GitHub CLI credential helper; credentials are never embedded in the
+  remote URL. PR status rendering separates state normalization, report
+  selection, and row formatting so scanner-driven maintainability fixes do not
+  change the comment contract.

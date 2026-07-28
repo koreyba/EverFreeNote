@@ -1,9 +1,10 @@
 name: Sonar PR analysis
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
+  workflow_call:
+    secrets:
+      SONAR_TOKEN:
+        required: true
 
 permissions:
   contents: read
@@ -15,10 +16,6 @@ concurrency:
 jobs:
   sonarqube-pr:
     name: SonarQube PR analysis
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -27,7 +24,64 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: SonarQube Scan
+      - name: Download core Jest coverage
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-core-${{ github.run_id }}
+          path: coverage/jest/core
+
+      - name: Download web Jest coverage
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-web-${{ github.run_id }}
+          path: coverage/jest/web
+
+      - name: Download mobile Jest coverage
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-mobile-${{ github.run_id }}
+          path: coverage/jest/mobile
+
+      - name: Download Cypress coverage
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pr-coverage-component-${{ github.run_id }}
+          path: coverage/component
+
+      - name: Detect available LCOV reports
+        id: detect-lcov
+        if: always()
+        run: |
+          set -euo pipefail
+
+          reports=()
+          for report in coverage/jest/core/lcov.info coverage/jest/web/lcov.info coverage/jest/mobile/lcov.info coverage/component/lcov.info; do
+            if [ -s "$report" ]; then
+              reports+=("$report")
+            fi
+          done
+
+          if [ "${#reports[@]}" -gt 0 ]; then
+            report_paths=$(IFS=,; echo "${reports[*]}")
+            echo "sonar_args=-Dsonar.javascript.lcov.reportPaths=${report_paths}" >> "$GITHUB_OUTPUT"
+            echo "Using LCOV reports: ${report_paths}"
+          else
+            echo "sonar_args=" >> "$GITHUB_OUTPUT"
+            echo "No LCOV reports available; running SonarQube without coverage."
+          fi
+
+      - name: SonarQube Scan with available coverage
+        if: always()
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        with:
+          args: ${{ steps.detect-lcov.outputs.sonar_args }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -9,8 +9,8 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 ## Milestones
 
 - [x] Milestone 1: Coverage producers emit independent deterministic LCOV files.
-- [x] Milestone 2: GitHub Actions preserves fast PR analysis and is configured
-  to publish main coverage.
+- [x] Milestone 2: GitHub Actions publishes main coverage and PR analysis
+  consumes coverage from the same test run.
 - [ ] Milestone 3: Documentation, validation, and rollout guidance are complete.
 
 ## Task Breakdown
@@ -26,13 +26,23 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 
 ### Phase 2: Core Features
 
-- [x] Task 2.1: Add a lightweight PR Sonar job without coverage commands.
-- [x] Task 2.2: Add parallel root Jest, Cypress, and mobile Jest coverage jobs
+- [x] Task 2.1: Make Unit and Component workflows reusable with an explicit
+  coverage input.
+- [x] Task 2.2: Add one PR orchestrator that runs unit and Cypress coverage
+  before analysis.
+- [x] Task 2.3: Run SonarQube and Qodana with `always()` after PR coverage.
+- [x] Task 2.4: Publish one combined PR Allure report from current-run test
+  artifacts after the coverage producers.
+- [x] Task 2.9: Restore progressive PR status-comment updates while keeping
+  combined Allure publication single-owner.
+- [x] Task 2.10: Route Unit, Component, combined Allure, and E2E comment updates
+  through one serialized writer without sending report-index file data.
+- [x] Task 2.5: Add parallel root Jest, Cypress, and mobile Jest coverage jobs
   for pushes to `main`.
-- [x] Task 2.3: Upload each report separately and make the main scanner depend on
+- [x] Task 2.6: Upload each report separately and make the main scanner depend on
   all three successful producers.
-- [x] Task 2.4: Pass cloud project identity and all three LCOV paths explicitly.
-- [x] Task 2.5: Analyze root, tests, and mobile with their respective TypeScript
+- [x] Task 2.7: Pass cloud project identity and all three LCOV paths explicitly.
+- [x] Task 2.8: Analyze root, tests, and mobile with their respective TypeScript
   configurations in one Sonar project.
 
 ### Phase 3: Integration & Polish
@@ -43,6 +53,8 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 - [ ] Task 3.3: Validate YAML, DevKit docs, lint, report generation, and scanner
   configuration without publishing an unrequested cloud analysis.
 - [x] Task 3.4: Perform implementation conformance and code review.
+- [x] Task 3.5: Remediate the current PR Sonar and Qodana findings without
+  suppressions.
 
 The implementation validation is otherwise complete, with the Cypress
 limitation recorded in the testing document. DevKit recognizes all seven
@@ -68,7 +80,8 @@ deployment checks require GitHub Actions and SonarQube Cloud state.
 
 - **Duplicate analysis:** disable Automatic Analysis before CI-based scans.
 - **Stale LCOV:** use clean jobs, explicit artifact names, and existence checks.
-- **Slow main feedback:** run producers in parallel and cache npm dependencies.
+- **Slow feedback:** run the two PR coverage producers in parallel and cache npm
+  dependencies; keep both analyzers after the producers.
 - **Fork secret exposure:** skip authenticated Sonar jobs for untrusted PR heads.
 - **Misleading aggregate:** keep independent artifacts and document Sonar as a
   union metric.

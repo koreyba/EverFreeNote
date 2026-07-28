@@ -1,0 +1,152 @@
+name: PR Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: pr-coverage-analysis-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-coverage:
+    name: Run Unit Tests
+    uses: ./.github/workflows/unit-tests.yml
+    with:
+      coverage: true
+      publish_allure: false
+    permissions:
+      actions: read
+      checks: write
+      contents: write
+      issues: write
+      pull-requests: write
+
+  component-coverage:
+    name: Run Component Tests
+    uses: ./.github/workflows/component-tests.yml
+    with:
+      coverage: true
+      publish_allure: false
+    secrets:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_TEST_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_EMAIL }}
+      NEXT_PUBLIC_TEST_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_PASSWORD }}
+      NEXT_PUBLIC_SKIP_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_EMAIL }}
+      NEXT_PUBLIC_SKIP_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_PASSWORD }}
+    permissions:
+      actions: read
+      checks: write
+      contents: write
+      issues: write
+      pull-requests: write
+
+  allure-publish:
+    name: Publish PR Allure report
+    needs: [unit-coverage, component-coverage]
+    if: >-
+      always() &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    uses: ./.github/workflows/allure-pr-publish.yml
+    with:
+      family_outcome: >-
+        ${{ needs.unit-coverage.result == 'success' && needs.component-coverage.result == 'success' && 'success' || 'failure' }}
+    permissions:
+      actions: read
+      checks: write
+      contents: write
+      issues: write
+      pull-requests: write
+
+  allure-status-comment:
+    name: Update Allure Report Link
+    needs: allure-publish
+    if: >-
+      always() &&
+      needs.allure-publish.result == 'success' &&
+      needs.allure-publish.outputs.has_results == 'true' &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    uses: ./.github/workflows/pr-status-comment.yml
+    with:
+      allure_url: ${{ needs.allure-publish.outputs.report_url }}
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+  unit-status-comment:
+    name: Update Unit Test Status
+    needs: unit-coverage
+    if: >-
+      always() &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    uses: ./.github/workflows/pr-status-comment.yml
+    with:
+      status_key: unit
+      status: ${{ needs.unit-coverage.result }}
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+  sonarqube-pr:
+    name: SonarQube PR analysis
+    needs: [unit-coverage, component-coverage]
+    if: >-
+      always() &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    uses: ./.github/workflows/sonar-pr.yml
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    permissions:
+      actions: read
+      contents: read
+
+  qodana-pr:
+    name: Qodana PR analysis
+    needs: [unit-coverage, component-coverage]
+    if: >-
+      always() &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    uses: ./.github/workflows/qodana-pr.yml
+    secrets:
+      QODANA_TOKEN_1215262580: ${{ secrets.QODANA_TOKEN_1215262580 }}
+    permissions:
+      actions: read
+      contents: read
+      checks: write
+      pull-requests: write
+
+  component-status-comment:
+    name: Update Component Test Status
+    needs: component-coverage
+    if: >-
+      always() &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    uses: ./.github/workflows/pr-status-comment.yml
+    with:
+      status_key: component
+      status: ${{ needs.component-coverage.result }}
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write

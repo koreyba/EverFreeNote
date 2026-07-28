@@ -44,10 +44,17 @@ test("selectLatestReports keeps the newest report and groups by workflow for the
     },
   ];
 
-  const { latestReport, reportsByWorkflow } = selectLatestReports(reports, "112", "abcdef123456");
+  const { latestReport, reportsByWorkflow } = selectLatestReports(
+    reports,
+    "112",
+    "abcdef123456",
+  );
 
   assert.equal(latestReport?.url, "https://example.test/unit-new");
-  assert.equal(reportsByWorkflow.get("Unit Tests")?.url, "https://example.test/unit-new");
+  assert.equal(
+    reportsByWorkflow.get("Unit Tests")?.url,
+    "https://example.test/unit-new",
+  );
   assert.equal(reportsByWorkflow.get("Component Tests"), null);
   assert.equal(reportsByWorkflow.get("E2E Tests (PR Preview)"), null);
 });
@@ -82,13 +89,28 @@ test("renderComment uses a generic PR status marker, single report link, and wor
     updatedAt: "2026-05-04T11:00:00Z",
   });
 
-  assert.match(body, new RegExp(COMMENT_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(
+    body,
+    new RegExp(COMMENT_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  );
   assert.match(body, /## PR Status/);
   assert.match(body, /### 📊 Allure Test Report/);
-  assert.match(body, /\[Open Allure Report\]\(https:\/\/example\.test\/allure\)/);
-  assert.match(body, /\| Unit Tests \| \[Workflow run #1 \(Attempt #1\)\]\(https:\/\/github\.com\/koreyba\/EverFreeNote\/actions\/runs\/1\) \| Core Unit, Web Unit \|/);
-  assert.match(body, /\| Component Tests \| \*Waiting for run\.\.\.\* \| - \|/);
-  assert.match(body, /Catalog: \[All reports\]\(https:\/\/example\.test\/reports\)/);
+  assert.match(
+    body,
+    /\[Open Allure Report\]\(https:\/\/example\.test\/allure\)/,
+  );
+  assert.match(
+    body,
+    /\| Unit Tests \| \[\*Waiting for run\.\.\.\*\]\(https:\/\/github\.com\/koreyba\/EverFreeNote\/actions\/runs\/1\) \| Core Unit, Core Integration, Web Unit, Mobile Unit \|/,
+  );
+  assert.match(
+    body,
+    /\| Component Tests \| \*Waiting for run\.\.\.\* \| Web Component \|/,
+  );
+  assert.match(
+    body,
+    /Catalog: \[All reports\]\(https:\/\/example\.test\/reports\)/,
+  );
 });
 
 test("renderComment escapes table cells and refuses unsafe URLs", () => {
@@ -122,6 +144,6 @@ test("renderComment escapes table cells and refuses unsafe URLs", () => {
   });
 
   assert.doesNotMatch(body, /\]\(javascript:/);
-  assert.match(body, /Core \\\| Unit, Web Unit/);
+  assert.match(body, /Core Unit, Core Integration, Web Unit, Mobile Unit/);
   assert.match(body, /Catalog: All reports/);
 });
