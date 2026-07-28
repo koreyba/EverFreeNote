@@ -1,0 +1,1 @@
+{"id":"9d8276adef4a131fc68ea7acaf79edf5","fullName":"everfreenote-mobile:tests/component/supabaseProvider.test.tsx#SupabaseProvider does NOT call mobileSyncService.init when session is null","name":"does NOT call mobileSyncService.init when session is null","status":"passed","testResultsByEnv":{"default":"c2e9b3b3cb0070f364d89d6d3ce19840"}}
