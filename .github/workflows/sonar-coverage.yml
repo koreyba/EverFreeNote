@@ -1,60 +1,17 @@
-name: Coverage analysis
+name: Main coverage analysis
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
 
 concurrency:
-  group: coverage-analysis-${{ github.event.pull_request.number || github.ref }}
+  group: main-coverage-analysis-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  sonarqube-pr:
-    name: SonarQube PR analysis
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      # Keep PR feedback close to Automatic Analysis while supplying mobile
-      # unit-test coverage for the PR quality gate.
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            ui/mobile/package-lock.json
-
-      - name: Install dependencies
-        run: |
-          npm ci --ignore-scripts
-          npm --prefix ui/mobile ci --ignore-scripts
-
-      - name: Run mobile Jest coverage
-        run: npm --prefix ui/mobile run test:coverage -- --ci
-
-      - name: SonarQube Scan with mobile coverage
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-        with:
-          args: -Dsonar.javascript.lcov.reportPaths=ui/mobile/coverage/lcov.info
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
   unit-coverage:
     name: Jest coverage
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -149,8 +106,9 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: component-coverage-raw-${{ github.run_id }}
-          path: .nyc_output
+          path: .nyc_output/out.json
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
       - name: Fail Cypress coverage job when tests or report failed
@@ -316,9 +274,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: |
-          npm ci --ignore-scripts
-          npm --prefix ui/mobile ci --ignore-scripts
+        run: npm ci --ignore-scripts
 
       - name: Download Jest coverage report
         if: always()
@@ -360,7 +316,7 @@ jobs:
             ui/mobile/coverage/coverage-final.json
           test -s .qodana/code-coverage/lcov.info
 
-      - name: Qodana Scan
+      - name: Qodana Scan with coverage
         uses: JetBrains/qodana-action@4861e015da555e86a72b862892aba6c2b93e6891
         with:
           pr-mode: false
@@ -372,3 +328,4 @@ jobs:
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_1215262580 }}
           QODANA_ENDPOINT: https://qodana.cloud
+

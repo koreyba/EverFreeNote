@@ -1,10 +1,10 @@
 ---
 phase: design
-title: Sonar Test Coverage Design
+title: Sonar and Qodana Analysis and Coverage Design
 description: CI architecture for fast PR analysis and deterministic main coverage
 ---
 
-# Sonar Test Coverage Design
+# Sonar and Qodana Analysis and Coverage Design
 
 ## Architecture Overview
 
@@ -39,11 +39,11 @@ flowchart TD
   Semgrep["Semgrep static security scan"] --> SemgrepCloud["Semgrep findings"]
 ```
 
-GitHub Actions replaces SonarQube Cloud Automatic Analysis. The Sonar PR job
-keeps its existing mobile coverage input. Qodana PR analysis lives in its own
-workflow and performs static analysis without tests or coverage. On `main`, the
-coverage workflow runs the three full coverage producers once, then separate
-Sonar and Qodana scanner jobs download the immutable artifacts.
+GitHub Actions replaces SonarQube Cloud Automatic Analysis. The repository has
+three workflows: `sonar-pr.yml`, `qodana-pr.yml`, and
+`sonar-coverage.yml`. PR workflows perform analysis without tests or coverage.
+On `main`, `sonar-coverage.yml` runs the three full coverage producers once,
+then runs separate Sonar and Qodana analysis jobs against their artifacts.
 
 ## Data Models
 
@@ -72,10 +72,11 @@ of a main-revision analysis, preventing duplicate or partial uploads.
 ## Component Breakdown
 
 - `sonar-project.properties` owns cloud identity and stable source/test scope.
-- `.github/workflows/coverage-analysis.yml` owns main coverage production,
-  artifact transfer, and Sonar/Qodana main scanner parameters.
-- `.github/workflows/qodana_code_quality.yml` owns Qodana PR static analysis;
-  it does not produce or import coverage.
+- `.github/workflows/sonar-pr.yml` owns Sonar PR analysis without coverage.
+- `.github/workflows/qodana-pr.yml` owns Qodana PR static analysis without
+  coverage.
+- `.github/workflows/sonar-coverage.yml` owns the one-time main coverage
+  producers, artifact upload, Sonar main analysis, and Qodana main analysis.
 - Jest owns instrumentation for unit coverage and writes `coverage/jest`.
 - Babel Istanbul plus `@cypress/code-coverage` own browser instrumentation;
   NYC renders the final independent component report.
@@ -88,23 +89,24 @@ of a main-revision analysis, preventing duplicate or partial uploads.
   files, and keeps the same product coverage scope as Sonar.
 - `qodana.yaml` selects `qodana-js` and the recommended profile. The separate
   Qodana PR workflow runs for every supported PR update without coverage, while
-  `qodana-main` runs only after a push to `main` with merged coverage.
+  the Qodana main job runs after the coverage producers with the same generated
+  artifacts.
 
 ## Design Decisions
 
 ### PR analysis remains fast
 
-Sonar PR scans run on `opened`, `synchronize`, and `reopened`, matching the
-effective Automatic Analysis cadence. Qodana also runs on those PR events, but
-without test execution or coverage in its separate workflow. The coverage
-workflow's Qodana scanner runs only after the full `main` coverage producers.
+Sonar and Qodana PR scans run on `opened`, `synchronize`, and `reopened`,
+matching the effective Automatic Analysis cadence. Neither PR workflow runs
+tests or imports coverage. Main coverage is produced once at the beginning of
+`sonar-coverage.yml`, then consumed by separate Sonar and Qodana jobs.
 
 ### Main coverage is deterministic
 
 The scanners never rely on implicit discovery of `coverage/lcov.info`.
 Producer jobs create and upload named coverage artifacts; Sonar consumes the
-three LCOV reports and Qodana consumes the one merged LCOV report. The Qodana
-consumer fails if any raw input is absent.
+three LCOV reports and Qodana consumes the raw reports in separate jobs within
+the same workflow run. The Qodana consumer fails if any raw input is absent.
 
 ### Reports remain independent
 
