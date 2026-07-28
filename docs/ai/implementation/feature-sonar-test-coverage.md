@@ -24,6 +24,8 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   publisher for artifacts from the current orchestration run.
 - `.github/workflows/sonar-coverage.yml`: unchanged main-branch coverage and
   analysis orchestration.
+- `.github/workflows/codacy-coverage.yml`: independent Codacy consumers that
+  download artifacts from completed producer workflow runs.
 - `jest.config.cjs`: Jest coverage scope and output directory.
 - `ui/mobile/jest.config.js`: mobile coverage scope and output directory.
 - `ui/mobile/tsconfig.sonar.json`: dependency-free mobile TypeScript program
@@ -67,6 +69,10 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 - SonarQube Cloud project: `koreyba_EverFreeNote`.
 - SonarQube Cloud organization: `koreyba`.
 - GitHub secret: `SONAR_TOKEN`.
+- GitHub secret: `CODACY_API_TOKEN`.
+- Codacy project identity: provider `gh`, username `koreyba`, project
+  `EverFreeNote`.
+- Codacy Coverage Reporter version: `14.1.3`.
 - TypeScript programs: `tsconfig.json`, `tsconfig.tests.json`, and
   `ui/mobile/tsconfig.sonar.json`.
 - Semgrep remains connected only through `.github/workflows/semgrep.yml`.
@@ -85,6 +91,13 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 - Main artifact download failure prevents the main scanner from publishing
   partial coverage. PR artifact download failure does not suppress analysis.
 - Scanner failures remain visible as the SonarCloud code-analysis check.
+- Codacy upload is skipped when a required coverage producer fails, preventing
+  partial reports from replacing a complete commit report.
+- Codacy runs as a separate `workflow_run` consumer, so Sonar and Qodana files
+  do not own or invoke Codacy analysis.
+- Codacy does not checkout or execute the triggering PR repository. It validates
+  the same-repository PR metadata, downloads only coverage artifacts, and passes
+  the validated commit SHA to the pinned reporter binary.
 
 ## Performance Considerations
 
@@ -96,6 +109,10 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 ## Security Notes
 
 - `SONAR_TOKEN` is read from GitHub Secrets and is never stored in the repo.
+- `CODACY_API_TOKEN` is read only in the upload step and is never stored in the
+  repo or written to workflow output.
+- The reporter binary and its SHA-512 manifest are downloaded without secrets,
+  verified before execution, and run from the runner temporary directory.
 - Authenticated PR scans are restricted to branches in the same repository and
   exclude Dependabot.
 - `pull_request_target` is not used, so untrusted code cannot execute with the
