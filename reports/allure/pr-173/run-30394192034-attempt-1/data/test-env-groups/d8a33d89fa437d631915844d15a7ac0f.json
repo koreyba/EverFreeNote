@@ -1,0 +1,1 @@
+{"id":"d8a33d89fa437d631915844d15a7ac0f","fullName":"everfreenote-mobile:tests/integration/noteCopyButton.test.tsx#NoteEditorScreen - Copy button falls back to plain text when the HTML clipboard write is rejected","name":"falls back to plain text when the HTML clipboard write is rejected","status":"passed","testResultsByEnv":{"default":"6d592f3a07c69fc4187273b3ae969849"}}
