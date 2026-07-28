@@ -1,0 +1,1 @@
+{"id":"8ff8b326f8b84659521eab1e49cc71c3","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService saveNotes rolls back transaction on error","name":"rolls back transaction on error","status":"passed","testResultsByEnv":{"default":"d4662cfced90e20c609c0e6847d67b1c"}}

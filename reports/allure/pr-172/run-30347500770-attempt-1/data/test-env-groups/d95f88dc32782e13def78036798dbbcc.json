@@ -1,0 +1,1 @@
+{"id":"d95f88dc32782e13def78036798dbbcc","fullName":"everfreenote:ui/web/tests/unit/hooks/useNotesQuery.test.tsx#useSearchNotes does not execute search if query is whitespace-only","name":"does not execute search if query is whitespace-only","status":"passed","testResultsByEnv":{"default":"1ec2a0c81cd14c2af3a6e8dae9278a6b"}}

@@ -1,1 +1,0 @@
-{"id":"5239fb727de510d8fc6ae41d77e2019b","fullName":"everfreenote-mobile:tests/integration/noteEditorScreen.test.tsx#NoteEditorScreen - Delete Functionality Content save on blur flushes pending content on unmount","name":"flushes pending content on unmount","status":"passed","testResultsByEnv":{"default":"3d83bd92f4de8168a6a159f60bb0c57a"}}
