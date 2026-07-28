@@ -143,18 +143,11 @@ cannot be completed solely in the local checkout.
 
 ## Local Validation Results
 
-- Historical `npm run type-check` validation passed before the local dependency
-  tree became corrupted. Separate attempts have stopped on truncated
-  declarations in `node_modules/@types/node/tls.d.ts` and, after reinstalling,
-  `node_modules/lucide-react/dist/lucide-react.d.ts`, both with
-  `TS1010: '*/' expected`.
-- `npm run type-check:tests` passed before the local dependency corruption and
-  is currently blocked by the same truncated `lucide-react.d.ts` declaration.
+- `npm run type-check`: passed.
+- `npm run type-check:tests`: passed.
 - `npm --prefix ui/mobile run type-check`: passed.
 - `npx eslint . --max-warnings=0`: passed.
-- The feature documentation lint passed before the dependency reinstall; the
-  post-reinstall retry is blocked inside the local `gray-matter`/`js-yaml`
-  dependency resolution before project documents are read.
+- The feature documentation lint passed.
 - All workflow YAML files parse successfully, and the PR reusable-workflow
   dependency structure passed the targeted static check.
 - The focused PR status-comment regression suite passes 6 tests after the
