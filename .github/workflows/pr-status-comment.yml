@@ -1,0 +1,50 @@
+name: PR status comment
+
+on:
+  workflow_call:
+    inputs:
+      status_key:
+        description: Status row to update in the PR comment
+        required: true
+        type: string
+      status:
+        description: GitHub Actions result for the completed producer
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  update-status-comment:
+    name: Update PR status (${{ inputs.status_key }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    concurrency:
+      group: pr-status-comment-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      STATUS_KEY: ${{ inputs.status_key }}
+      STATUS: ${{ inputs.status }}
+      PAGES_BASE_URL: https://korey.github.io/EverFreeNote
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - name: Update PR status comment
+        run: |
+          node scripts/update-pr-status-comment.js \
+            --status-key "${STATUS_KEY}" \
+            --status "${STATUS}" \
+            --catalog-url "${PAGES_BASE_URL}"

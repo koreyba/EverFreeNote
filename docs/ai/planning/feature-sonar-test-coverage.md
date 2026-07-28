@@ -33,6 +33,8 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 - [x] Task 2.3: Run SonarQube and Qodana with `always()` after PR coverage.
 - [x] Task 2.4: Publish one combined PR Allure report from current-run test
   artifacts after the coverage producers.
+- [x] Task 2.9: Restore progressive PR status-comment updates while keeping
+  combined Allure publication single-owner.
 - [x] Task 2.5: Add parallel root Jest, Cypress, and mobile Jest coverage jobs
   for pushes to `main`.
 - [x] Task 2.6: Upload each report separately and make the main scanner depend on

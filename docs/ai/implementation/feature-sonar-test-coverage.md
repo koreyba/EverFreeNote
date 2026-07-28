@@ -17,7 +17,9 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 ## Code Structure
 
 - `.github/workflows/pr-coverage-analysis.yml`: PR coverage and analysis
-  orchestration.
+  orchestration, including progressive status-comment jobs.
+- `.github/workflows/pr-status-comment.yml`: serialized reusable updater for
+  the single PR status comment.
 - `.github/workflows/allure-pr-publish.yml`: single-owner combined PR Allure
   publisher for artifacts from the current orchestration run.
 - `.github/workflows/sonar-coverage.yml`: unchanged main-branch coverage and
@@ -42,11 +44,13 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   keeps auth coverage deterministic and independent from GitHub Environments.
 - PR uses the existing Unit and Component workflows as reusable coverage
   producers. Their `publish_allure` input is disabled for this call, so they
-  only produce test artifacts. `allure-pr-publish.yml` then downloads the
-  current run's unit and component Allure artifacts and publishes one combined
-  report. SonarQube and Qodana use `always()` after both producers. Main keeps
-  its three parallel coverage producers, existing Allure publishers, and
-  dependent scanners unchanged.
+  only produce test artifacts. Separate status-comment jobs update the same PR
+  comment as each producer finishes. `allure-pr-publish.yml` then downloads
+  the current run's unit and component Allure artifacts and publishes one
+  combined report while preserving the progressive status state. SonarQube and
+  Qodana use `always()` after both producers. Main keeps its three parallel
+  coverage producers, existing Allure publishers, and dependent scanners
+  unchanged.
 - Semgrep was left unchanged because it has no supported runtime LCOV ingestion
   path; its existing workflow remains an independent SAST signal.
 

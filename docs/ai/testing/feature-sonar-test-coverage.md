@@ -36,8 +36,9 @@ application test cases.
 - [x] Root Jest, Cypress, and mobile Jest outputs use separate directories.
 - [x] PR coverage orchestration calls the existing Unit and Component
   workflows with coverage enabled.
-- [x] PR coverage orchestration disables nested Allure publishers and runs one
-  combined publisher against current-run Unit and Component Allure artifacts.
+- [x] PR coverage orchestration updates one PR status comment after each
+  producer finishes, then runs one combined publisher against current-run Unit
+  and Component Allure artifacts.
 - [x] PR Sonar and Qodana analysis jobs depend on both coverage workflows and
   use `always()` so test failures do not suppress analysis.
 - [x] Sonar main analysis receives all three explicit paths only in the main
@@ -100,6 +101,9 @@ cannot be completed solely in the local checkout.
   still start when a coverage test job fails.
 - Confirm the PR Allure report contains Core Unit, Core Integration, Web Unit,
   Mobile Unit, and Web Component results from the same orchestration run.
+- Confirm the PR status comment is created or updated after Unit Tests finish,
+  again after Component Tests finish, and finally contains the combined Allure
+  report link.
 - Confirm the Qodana main job consumes the same artifacts as Sonar and displays
   coverage for the merged main revision.
 
@@ -111,7 +115,9 @@ cannot be completed solely in the local checkout.
 
 ## Local Validation Results
 
-- `npm run type-check`: passed.
+- Historical `npm run type-check` validation passed before the dependency issue
+  appeared; the current installed dependency tree blocks it in
+  `node_modules/@types/node/tls.d.ts` with `TS1010: '*/' expected`.
 - `npm run type-check:tests`: passed.
 - `npm --prefix ui/mobile run type-check`: passed.
 - `npx eslint . --max-warnings=0`: passed.
@@ -119,9 +125,7 @@ cannot be completed solely in the local checkout.
   dependency structure passed the targeted static check.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
-- Current `npm run type-check` is blocked in the installed
-  `node_modules/@types/node/tls.d.ts` by `TS1010: '*/' expected`; no production
-  TypeScript files were changed in this workflow-only task.
+- No production TypeScript files were changed in this workflow-only task.
 
 The previous root coverage run discovered 53 suites and 488 tests while the
 coverage command selected only `unit-core` and `unit-web`. The current command

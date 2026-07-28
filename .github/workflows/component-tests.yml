@@ -16,6 +16,23 @@ on:
         required: false
         default: true
         type: boolean
+    secrets:
+      NEXT_PUBLIC_SUPABASE_URL:
+        required: false
+      SUPABASE_URL:
+        required: false
+      NEXT_PUBLIC_SUPABASE_ANON_KEY:
+        required: false
+      SUPABASE_ANON_KEY:
+        required: false
+      NEXT_PUBLIC_TEST_AUTH_EMAIL:
+        required: false
+      NEXT_PUBLIC_TEST_AUTH_PASSWORD:
+        required: false
+      NEXT_PUBLIC_SKIP_AUTH_EMAIL:
+        required: false
+      NEXT_PUBLIC_SKIP_AUTH_PASSWORD:
+        required: false
 
 permissions:
   actions: read

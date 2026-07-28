@@ -15,7 +15,11 @@ flowchart TD
   PRTests --> ComponentPR["Cypress component coverage"]
   UnitPR --> PRArtifacts["Current-run test and Allure artifacts"]
   ComponentPR --> PRArtifacts
+  UnitPR --> PRStatus["Progressive PR status comment"]
+  ComponentPR --> PRStatus
   PRArtifacts --> AllurePR["One combined PR Allure publisher"]
+  PRStatus --> PRComment["One updated PR comment"]
+  AllurePR --> PRComment
   UnitPR --> PRScan["SonarQube PR scanner"]
   ComponentPR --> PRScan
   UnitPR --> QodanaPR["Qodana PR scanner"]
@@ -50,7 +54,8 @@ flowchart TD
 GitHub Actions replaces SonarQube Cloud Automatic Analysis. PR coverage is
 orchestrated by `pr-coverage-analysis.yml`: Unit and Component are reusable
 coverage producers, `allure-pr-publish.yml` is the sole PR Allure publisher,
-and SonarQube/Qodana consume the producer artifacts after the test jobs. The
+and `pr-status-comment.yml` updates the same PR comment as each producer
+finishes. SonarQube/Qodana consume the producer artifacts after the test jobs. The
 existing `sonar-pr.yml` and `qodana-pr.yml` remain scanner consumers. On
 `main`, `sonar-coverage.yml` remains unchanged and continues to own its
 coverage producers and analysis jobs.
@@ -82,11 +87,15 @@ of a main-revision analysis, preventing duplicate or partial uploads.
 ## Component Breakdown
 
 - `sonar-project.properties` owns cloud identity and stable source/test scope.
-- `.github/workflows/sonar-pr.yml` owns Sonar PR analysis without coverage.
-- `.github/workflows/qodana-pr.yml` owns Qodana PR static analysis without
-  coverage.
+- `.github/workflows/sonar-pr.yml` owns Sonar PR analysis and consumes the PR
+  coverage artifacts when available.
+- `.github/workflows/qodana-pr.yml` owns Qodana PR static analysis and consumes
+  the PR coverage artifacts when available.
 - `.github/workflows/pr-coverage-analysis.yml` owns PR ordering and passes
-  `publish_allure: false` to the reusable test producers.
+  `publish_allure: false` to the reusable test producers. It also starts the
+  progressive unit/component status-comment updates.
+- `.github/workflows/pr-status-comment.yml` owns serialized updates to the
+  single PR status comment after each coverage producer finishes.
 - `.github/workflows/allure-pr-publish.yml` owns the single combined PR Allure
   publication and consumes artifacts from the current orchestrator run.
 - `.github/workflows/sonar-coverage.yml` owns the one-time main coverage
@@ -113,10 +122,13 @@ of a main-revision analysis, preventing duplicate or partial uploads.
 Sonar and Qodana PR scans run on `opened`, `synchronize`, and `reopened`,
 after the Unit and Component coverage producers. Producer workflows upload
 their own test and coverage artifacts but do not publish Allure when called by
-the PR orchestrator. A single publisher downloads the current run's Allure
-artifacts, merges them with any matching external-suite artifacts, and updates
-GitHub Pages once. This avoids same-run publishers overwriting one another and
-preserves the existing Allure report format and history model.
+the PR orchestrator. A serialized status updater updates the existing PR
+comment after each producer completes. A single publisher then downloads the
+current run's Allure artifacts, merges them with any matching external-suite
+artifacts, updates GitHub Pages once, and patches the same comment with the
+final report link. This avoids same-run publishers overwriting one another
+while preserving progressive status visibility and the existing Allure report
+format and history model.
 
 ### PR analysis remains resilient
 
