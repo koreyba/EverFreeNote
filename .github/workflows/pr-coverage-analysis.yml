@@ -19,6 +19,12 @@ jobs:
     with:
       coverage: true
       publish_allure: false
+    permissions:
+      actions: read
+      checks: write
+      contents: write
+      issues: write
+      pull-requests: write
 
   component-coverage:
     name: Run Component Tests
@@ -35,6 +41,12 @@ jobs:
       NEXT_PUBLIC_TEST_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_PASSWORD }}
       NEXT_PUBLIC_SKIP_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_EMAIL }}
       NEXT_PUBLIC_SKIP_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_PASSWORD }}
+    permissions:
+      actions: read
+      checks: write
+      contents: write
+      issues: write
+      pull-requests: write
 
   allure-publish:
     name: Publish PR Allure report
