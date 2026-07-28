@@ -6,6 +6,40 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit"
+    ],
+    "path": "reports/allure/branch-main/run-30398417444-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-30398417444-attempt-1/",
+    "runId": "30398417444",
+    "runAttempt": "1",
+    "prNumber": null,
+    "ref": "main",
+    "sha": "c5dc95c56d247f25c90140cc35b7fd095d65def8",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "branch",
+    "scopeLabel": "main",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-28T21:00:19.825Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit",
       "component",
       "e2e"
@@ -651,34 +685,6 @@
     "scopeLabel": "PR #172",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-28T12:43:31.029Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-172/run-30359394920-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-172/run-30359394920-attempt-1/",
-    "runId": "30359394920",
-    "runAttempt": "1",
-    "prNumber": "172",
-    "ref": "codex/pr-coverage-queue",
-    "sha": "e56872499ee5528869eb3f756d2f4618ea9af8b2",
-    "outcome": "success",
-    "previewUrl": "https://faaff8ac.everfreenote.pages.dev",
-    "e2eRef": "master",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #172",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-28T12:39:02.729Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
