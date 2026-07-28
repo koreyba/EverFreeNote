@@ -51,6 +51,11 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   Qodana use `always()` after both producers. Main keeps its three parallel
   coverage producers, existing Allure publishers, and dependent scanners
   unchanged.
+- The combined Allure publisher installs dependencies with
+  `npm ci --ignore-scripts`; it only needs the checked-in report tooling and
+  must not execute arbitrary dependency lifecycle hooks. The progressive PR
+  status updater calls the GitHub REST API directly with Node's `fetch` rather
+  than passing values through a shell command.
 - Semgrep was left unchanged because it has no supported runtime LCOV ingestion
   path; its existing workflow remains an independent SAST signal.
 
@@ -92,3 +97,6 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   exclude Dependabot.
 - `pull_request_target` is not used, so untrusted code cannot execute with the
   Sonar secret.
+- The Allure publisher does not persist checkout credentials and does not run
+  dependency lifecycle scripts. The PR comment updater validates repository and
+  pull-request identifiers before using the authenticated GitHub REST API.

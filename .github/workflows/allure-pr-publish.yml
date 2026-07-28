@@ -53,7 +53,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Download core unit Allure artifact
         continue-on-error: true
@@ -211,5 +211,5 @@ jobs:
         with:
           report-directory: ${{ steps.prepare-allure-report.outputs.report_output_dir }}
           remote-href: ${{ steps.prepare-allure-report.outputs.report_url }}
-          sections: 'new, flaky, retry'
+          sections: "new, flaky, retry"
           github-token: ${{ secrets.GITHUB_TOKEN }}
