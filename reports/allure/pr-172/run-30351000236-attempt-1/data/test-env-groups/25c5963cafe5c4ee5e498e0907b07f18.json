@@ -1,0 +1,1 @@
+{"id":"25c5963cafe5c4ee5e498e0907b07f18","fullName":"everfreenote-mobile:tests/unit/oauthAdapter.test.ts#oauthAdapter startOAuth re-throws error when openAuthSessionAsync fails","name":"re-throws error when openAuthSessionAsync fails","status":"passed","testResultsByEnv":{"default":"b5945dfdb63c4988fb72ef4fcca5145d"}}

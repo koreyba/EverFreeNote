@@ -1,0 +1,1 @@
+{"id":"fdd46d8dce3640cd01e46fd12e1f8908","fullName":"everfreenote-mobile:tests/unit/storageAdapter.test.ts#storage adapters secureStorageAdapter removeItem calls SecureStore.deleteItemAsync with key","name":"calls SecureStore.deleteItemAsync with key","status":"passed","testResultsByEnv":{"default":"1d41e6234d0aa7ebf40c9f84f0e18113"}}
