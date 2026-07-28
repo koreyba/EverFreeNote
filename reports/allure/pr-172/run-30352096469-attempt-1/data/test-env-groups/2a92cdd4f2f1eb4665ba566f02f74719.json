@@ -1,1 +1,0 @@
-{"id":"2a92cdd4f2f1eb4665ba566f02f74719","fullName":"everfreenote-mobile:tests/component/useNotesHook.test.tsx#useNotes & useNote hooks useNotes throws error if user is unauthenticated when queryFn runs","name":"throws error if user is unauthenticated when queryFn runs","status":"passed","testResultsByEnv":{"default":"ee3f6e8b7dfd909472bd23ed2b89f1f5"}}
