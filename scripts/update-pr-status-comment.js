@@ -11,6 +11,7 @@ const normalize = (value) => `${value ?? ""}`.trim();
 const normalizeSha = (value) => normalize(value).toLowerCase();
 const VALID_STATUS_KEYS = new Set(["unit", "component", "e2e"]);
 const GITHUB_API_URL = "https://api.github.com";
+const GITHUB_REQUEST_TIMEOUT_MS = 15_000;
 const REPORT_BASE_URL = new URL("https://koreyba.github.io/EverFreeNote/");
 
 const parseRepository = (repository) => {
@@ -33,16 +34,27 @@ const githubRequest = async ({ endpoint, method = "GET", body }) => {
     throw new Error("GH_TOKEN or GITHUB_TOKEN is required");
   }
 
-  const response = await fetch(`${GITHUB_API_URL}/${endpoint}`, {
-    method,
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-      ...(body ? { "Content-Type": "application/json" } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    GITHUB_REQUEST_TIMEOUT_MS,
+  );
+  let response;
+  try {
+    response = await fetch(`${GITHUB_API_URL}/${endpoint}`, {
+      method,
+      signal: controller.signal,
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
   const responseText = await response.text();
   let responseBody = null;
   if (responseText) {
