@@ -55,12 +55,15 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 - [x] Task 3.4: Perform implementation conformance and code review.
 - [x] Task 3.5: Remediate the current PR Sonar and Qodana findings without
   suppressions.
+- [x] Task 3.6: Reconcile Cypress process, JUnit, and Allure outcomes so
+  component crashes and wrapped spec summaries cannot publish a green report.
 
-The implementation validation is otherwise complete, with the Cypress
-limitation recorded in the testing document. DevKit recognizes all seven
-feature documents and the required branch-name check passes on
-`feature-sonar-test-coverage`. Phase 3 remains incomplete only because the
-deployment checks require GitHub Actions and SonarQube Cloud state.
+The implementation validation is otherwise complete. Component result
+reconciliation is validated against the captured failing CI artifacts and its
+focused regression suite. DevKit recognizes all seven feature documents and
+the required branch-name check passes on `feature-sonar-test-coverage`. Phase 3
+remains incomplete only because the deployment checks require GitHub Actions
+and SonarQube Cloud state.
 
 ## Dependencies
 

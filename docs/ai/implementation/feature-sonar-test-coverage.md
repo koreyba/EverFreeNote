@@ -54,6 +54,14 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   SonarQube and Qodana use `always()` after both producers. Main keeps its three
   parallel coverage producers, existing Allure publishers, and dependent
   scanners unchanged.
+- Component result reconciliation uses Cypress exit status for job gating,
+  top-level JUnit `testsuites` totals for completed test counts, and the
+  Allure Cypress output for test-level presentation. `fast-xml-parser` reads
+  the JUnit reports. Console summary parsing is only a fallback because Cypress
+  wraps long spec paths at terminal width. If Cypress exits before JUnit is
+  written, the last active spec or the runner itself receives one synthetic
+  broken Allure result. Existing project-prefixed Allure package/full-name
+  identifiers prevent duplicate synthetic failures.
 - The combined Allure publisher installs dependencies with
   `npm ci --ignore-scripts`; it only needs the checked-in report tooling and
   must not execute arbitrary dependency lifecycle hooks. The progressive PR
@@ -85,6 +93,10 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 - The PR Allure publisher also uses `always()` at the caller boundary and
   downloads artifacts with `github.run_id`, so a producer failure cannot make
   the other producer's Allure results overwrite or hide the available report.
+- The component workflow builds its GitHub summary and Allure backfill from the
+  same parsed JUnit model. Nested Mocha suites are not added to the top-level
+  totals, and a failed Cypress process cannot publish a green component Allure
+  artifact merely because the adapter stopped before persisting a test result.
 - CI does not need a cleanup hook because each producer starts on a clean
   runner. Local interrupted Cypress runs may be cleaned manually by removing
   `.nyc_output` and `coverage/component` before rerunning coverage.

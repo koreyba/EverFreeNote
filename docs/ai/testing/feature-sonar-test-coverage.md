@@ -56,6 +56,14 @@ application test cases.
 - [x] The dependency-free mobile Sonar TSConfig parses successfully.
 - [x] Qodana remains a separate reusable analysis workflow and receives the
   merged PR coverage artifact.
+- [x] Component JUnit totals are read once from each top-level `testsuites`
+  element; nested Mocha suites do not inflate test counts.
+- [x] Component Allure reconciliation covers dash-form zero counts, wrapped
+  spec paths, project-prefixed failure deduplication, active-spec hard crashes,
+  runner startup failures, and nested JUnit suites.
+- [x] Captured artifacts from run `30394192034` reconcile to 674 component
+  results: 673 passed and one broken `ThemeToggle` spec with the original
+  `ChunkLoadError`.
 
 The full Cypress coverage suite was not completed locally: an earlier full run
 was intentionally interrupted, and a later cold focused webpack build exceeded
@@ -122,16 +130,27 @@ cannot be completed solely in the local checkout.
 
 ## Local Validation Results
 
-- Historical `npm run type-check` validation passed before the dependency issue
-  appeared; the current installed dependency tree blocks it in
-  `node_modules/@types/node/tls.d.ts` with `TS1010: '*/' expected`.
-- `npm run type-check:tests`: passed.
+- Historical `npm run type-check` validation passed before the local dependency
+  tree became corrupted. Separate attempts have stopped on truncated
+  declarations in `node_modules/@types/node/tls.d.ts` and, after reinstalling,
+  `node_modules/lucide-react/dist/lucide-react.d.ts`, both with
+  `TS1010: '*/' expected`.
+- `npm run type-check:tests` passed before the local dependency corruption and
+  is currently blocked by the same truncated `lucide-react.d.ts` declaration.
 - `npm --prefix ui/mobile run type-check`: passed.
 - `npx eslint . --max-warnings=0`: passed.
+- The feature documentation lint passed before the dependency reinstall; the
+  post-reinstall retry is blocked inside the local `gray-matter`/`js-yaml`
+  dependency resolution before project documents are read.
 - All workflow YAML files parse successfully, and the PR reusable-workflow
   dependency structure passed the targeted static check.
 - The focused PR status-comment regression suite passes 6 tests after the
   Sonar/Qodana remediation, and targeted ESLint reports zero warnings.
+- The component reconciliation regression suite passes 6 tests; all root
+  script tests pass 12 tests.
+- Allure inspection of the captured component artifacts models all 674 logical
+  results and matches the expected broken
+  `providers/ThemeToggle.cy.tsx#spec crash` result.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
 - No production TypeScript files were changed in this workflow-only task.

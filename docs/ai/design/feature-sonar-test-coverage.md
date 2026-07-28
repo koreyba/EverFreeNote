@@ -168,6 +168,29 @@ Overlapping lines, including shared core code, are deduplicated and the result
 cannot exceed 100 percent. Sonar Measures still allows drill-down by directory,
 but not by test runner.
 
+### Cypress component result sources are layered
+
+```mermaid
+flowchart LR
+  Cypress["Cypress process exit"] --> Job["Component job outcome"]
+  JUnit["JUnit XML per spec"] --> Reconcile["Component result reconciliation"]
+  AllureRaw["Allure Cypress results"] --> Reconcile
+  Log["Cypress console log"] --> Reconcile
+  Reconcile --> Summary["GitHub step summary"]
+  Reconcile --> AllureArtifact["Complete component Allure artifact"]
+  Job --> PRStatus["PR and report family outcome"]
+```
+
+The Cypress process exit code is the source of truth for the component job
+outcome. JUnit XML is the structured source of truth for completed spec/test
+counts and failures; totals are read once from each top-level `testsuites`
+element rather than summed from nested Mocha suites. Allure remains the
+test-level presentation and history format. A reconciliation step adds a
+spec-level broken result only when JUnit or the failed Cypress process has no
+corresponding failed/broken Allure result. The console summary is not a
+canonical result source because terminal-width wrapping can split long spec
+paths; it is retained only for diagnostic text and compatibility fallback.
+
 ### Qodana receives the Sonar-equivalent union
 
 Qodana for JS accepts one LCOV report per analysis, while Sonar accepts the
