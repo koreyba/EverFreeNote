@@ -50,8 +50,10 @@ flowchart TD
   QodanaLCOV --> QodanaScan["Qodana main scanner"]
   QodanaScan --> QodanaCloud["Qodana Cloud main report"]
 
+  PRTests --> CodacyPR["Codacy workflow_run PR consumer"]
+  CodacyPR --> CodacyPRCloud["Codacy PR coverage"]
   Main --> CodacyMain["Codacy workflow_run consumer"]
-  CodacyMain --> CodacyCloud["Codacy commit and PR coverage"]
+  CodacyMain --> CodacyCloud["Codacy commit coverage"]
 
   Semgrep["Semgrep static security scan"] --> SemgrepCloud["Semgrep findings"]
 ```

@@ -24,7 +24,6 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   publisher for artifacts from the current orchestration run.
 - `.github/workflows/sonar-coverage.yml`: unchanged main-branch coverage and
   analysis orchestration.
-- `.github/workflows/pr-coverage-analysis.yml`: PR coverage orchestration.
 - `.github/workflows/codacy-coverage.yml`: independent Codacy consumers that
   download artifacts from completed producer workflow runs.
 - `jest.config.cjs`: Jest coverage scope and output directory.
@@ -96,6 +95,9 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   partial reports from replacing a complete commit report.
 - Codacy runs as a separate `workflow_run` consumer, so Sonar and Qodana files
   do not own or invoke Codacy analysis.
+- Codacy does not checkout or execute the triggering PR repository. It validates
+  the same-repository PR metadata, downloads only coverage artifacts, and passes
+  the validated commit SHA to the pinned reporter binary.
 
 ## Performance Considerations
 
@@ -109,6 +111,8 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 - `SONAR_TOKEN` is read from GitHub Secrets and is never stored in the repo.
 - `CODACY_API_TOKEN` is read only in the upload step and is never stored in the
   repo or written to workflow output.
+- The reporter binary and its SHA-512 manifest are downloaded without secrets,
+  verified before execution, and run from the runner temporary directory.
 - Authenticated PR scans are restricted to branches in the same repository and
   exclude Dependabot.
 - `pull_request_target` is not used, so untrusted code cannot execute with the
