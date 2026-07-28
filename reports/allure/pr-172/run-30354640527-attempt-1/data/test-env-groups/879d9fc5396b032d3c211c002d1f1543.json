@@ -1,0 +1,1 @@
+{"id":"879d9fc5396b032d3c211c002d1f1543","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService mutation queue methods removeQueueItems does nothing when id list is empty","name":"removeQueueItems does nothing when id list is empty","status":"passed","testResultsByEnv":{"default":"4c99a68c9d84117130116dd0f6617799"}}
