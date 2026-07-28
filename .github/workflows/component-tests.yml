@@ -66,6 +66,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test component Allure crash backfill
+        run: node --test scripts/backfill-cypress-spec-failures-to-allure.test.js
+
       - name: Run component tests
         id: run-component-tests
         continue-on-error: true
@@ -238,7 +241,8 @@ jobs:
         run: |
           node scripts/backfill-cypress-spec-failures-to-allure.js \
             --results-dir allure-results/component \
-            --log-file cypress/results/component-tests.log
+            --log-file cypress/results/component-tests.log \
+            --junit-dir cypress/results
 
       - name: Upload test results
         if: always()

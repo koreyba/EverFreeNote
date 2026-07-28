@@ -38,6 +38,14 @@ const normalizeSpecPath = (value) => {
 
 const isSpecToken = (value) => /\.cy\.(?:js|jsx|ts|tsx)$/.test(value);
 
+const normalizeSummaryCount = (value) => {
+  if (value === "-") {
+    return "0";
+  }
+
+  return /^\d+$/.test(value) ? value : null;
+};
+
 const parseSummarySpecLine = (line) => {
   const tokens = line.trim().split(/\s+/);
   const specIndex = tokens.findIndex(isSpecToken);
@@ -45,8 +53,9 @@ const parseSummarySpecLine = (line) => {
     return null;
   }
 
-  const [, total, passed, failed, pending, skipped] = tokens.slice(specIndex + 1, specIndex + 7);
-  if (!/^\d+$/.test(total) || !/^\d+$/.test(passed) || !/^\d+$/.test(failed)) {
+  const [, ...countTokens] = tokens.slice(specIndex + 1, specIndex + 7);
+  const [total, passed, failed, pending, skipped] = countTokens.map(normalizeSummaryCount);
+  if ([total, passed, failed, pending, skipped].some((value) => value === null)) {
     return null;
   }
 
@@ -91,6 +100,60 @@ const readTextFile = (filePath) => {
   }
 
   return utf8;
+};
+
+const decodeXml = (value = "") =>
+  value
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+      String.fromCodePoint(Number.parseInt(hex, 16)),
+    )
+    .replace(/&#([0-9]+);/g, (_, decimal) =>
+      String.fromCodePoint(Number.parseInt(decimal, 10)),
+    );
+
+const getXmlAttribute = (tag, name) => {
+  const match = tag.match(new RegExp(`\\b${name}="([^"]*)"`));
+  return match ? decodeXml(match[1]) : "";
+};
+
+const collectJunitFailureMessages = (junitDir) => {
+  const failuresBySpec = new Map();
+  if (!junitDir || !fs.existsSync(junitDir)) {
+    return failuresBySpec;
+  }
+
+  for (const entry of fs.readdirSync(junitDir)) {
+    if (!entry.endsWith(".xml")) {
+      continue;
+    }
+
+    const xml = readTextFile(path.join(junitDir, entry));
+    const suiteRegex = /<testsuite\b[^>]*\bfile="[^"]+"[^>]*>[\s\S]*?<\/testsuite>/g;
+    let suiteMatch = suiteRegex.exec(xml);
+    while (suiteMatch) {
+      const suiteBlock = suiteMatch[0];
+      const suiteTag = suiteBlock.match(/<testsuite\b[^>]*>/)?.[0] || "";
+      const file = normalizeSpecPath(getXmlAttribute(suiteTag, "file"));
+      const spec = file.startsWith("cypress/component/")
+        ? file.slice("cypress/component/".length)
+        : file;
+      const failureTag = suiteBlock.match(/<failure\b[^>]*>/)?.[0] || "";
+      const message = getXmlAttribute(failureTag, "message").trim();
+
+      if (isSpecToken(spec) && message && !failuresBySpec.has(spec)) {
+        failuresBySpec.set(spec, message);
+      }
+
+      suiteMatch = suiteRegex.exec(xml);
+    }
+  }
+
+  return failuresBySpec;
 };
 
 const collectExistingFailures = (resultsDir) => {
@@ -165,7 +228,11 @@ const collectSegment = (logLines, spec) => {
   return logLines.slice(startIndex, endIndex);
 };
 
-const buildMessage = (segmentLines, summaryLine) => {
+const buildMessage = (segmentLines, summaryLine, junitMessage = "") => {
+  if (junitMessage) {
+    return junitMessage;
+  }
+
   const messageLines = segmentLines.filter((line) => ERROR_HINT_PATTERN.test(line));
   const trimmedLines = messageLines.slice(0, 8);
   if (trimmedLines.length > 0) {
@@ -250,6 +317,10 @@ const main = () => {
 
   const resultsDir = path.resolve(args["results-dir"]);
   const logFile = path.resolve(args["log-file"]);
+  const junitDir =
+    typeof args["junit-dir"] === "string" && args["junit-dir"].trim() !== ""
+      ? path.resolve(args["junit-dir"])
+      : "";
 
   if (!fs.existsSync(logFile)) {
     console.log(`No Cypress log file found at ${logFile}; skipping Allure backfill.`);
@@ -259,6 +330,7 @@ const main = () => {
   ensureDir(resultsDir);
 
   const existingFailures = collectExistingFailures(resultsDir);
+  const junitFailureMessages = collectJunitFailureMessages(junitDir);
   const logLines = stripAnsi(readTextFile(logFile)).split(/\r?\n/);
   const failingSpecs = extractFailingSpecs(logLines);
   let created = 0;
@@ -270,7 +342,11 @@ const main = () => {
     }
 
     const segment = collectSegment(logLines, failingSpec.spec);
-    const message = buildMessage(segment, failingSpec.summaryLine);
+    const message = buildMessage(
+      segment,
+      failingSpec.summaryLine,
+      junitFailureMessages.get(failingSpec.spec),
+    );
     writeSyntheticFailure(resultsDir, failingSpec.spec, message, failingSpec.summaryLine);
     created += 1;
   }
