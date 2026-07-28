@@ -1,1 +1,0 @@
-{"id":"367fc2f31348e00fa245ac2fd089e846","fullName":"everfreenote-mobile:tests/component/swipeProvider.test.tsx#useSwipeContext closeAll calls close on all registered swipeables and clears activeId","name":"calls close on all registered swipeables and clears activeId","status":"passed","testResultsByEnv":{"default":"96396ed1cddb173a5f226f993e2fd1f2"}}

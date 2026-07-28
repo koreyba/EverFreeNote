@@ -1,1 +1,0 @@
-{"id":"b2cc53ce9ec2f8d805a8c63aa8255adc","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter getPendingBatch returns empty array when queue is empty","name":"returns empty array when queue is empty","status":"passed","testResultsByEnv":{"default":"e9b214e0461c6c07ac41e68c28f59b2b"}}

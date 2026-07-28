@@ -1,1 +1,0 @@
-{"id":"c045750901ad544872c9cf11f61bc6fb","fullName":"everfreenote-mobile:tests/unit/navigationAdapter.test.ts#navigationAdapter calls router.push(url) when options.replace is false","name":"calls router.push(url) when options.replace is false","status":"passed","testResultsByEnv":{"default":"8c525f8eb0c618463dd930ab9531037e"}}
