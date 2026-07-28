@@ -56,6 +56,7 @@ const main = () => {
   const headSha = normalizeSha(args["head-sha"] || process.env.COMMIT_SHA || process.env.GITHUB_SHA);
   const statusKey = normalize(args["status-key"]);
   const status = normalize(args.status).toLowerCase();
+  const runId = normalize(args["run-id"] || process.env.RUN_ID || process.env.GITHUB_RUN_ID);
 
   if (!repository || !prNumber || !headSha) {
     throw new Error("repository, pr-number, and head-sha are required");
@@ -78,7 +79,13 @@ const main = () => {
     if (!status) {
       throw new Error("status is required when status-key is provided");
     }
+    if (runId && !/^\d+$/.test(runId)) {
+      throw new Error(`Invalid run-id: ${runId}`);
+    }
     statusState.statuses[statusKey] = status;
+    if (runId) {
+      statusState.runs[statusKey] = { runId };
+    }
   }
 
   const reportsIndexPath = args["reports-index"];

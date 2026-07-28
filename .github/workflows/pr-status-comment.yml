@@ -33,6 +33,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
       COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      RUN_ID: ${{ github.run_id }}
       STATUS_KEY: ${{ inputs.status_key }}
       STATUS: ${{ inputs.status }}
       PAGES_BASE_URL: https://korey.github.io/EverFreeNote

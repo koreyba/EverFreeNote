@@ -24,6 +24,7 @@ const DEFAULT_STATUS_STATE = {
     component: "waiting",
     e2e: "waiting",
   },
+  runs: {},
   reports: {},
   allureUrl: "",
 };
@@ -136,6 +137,7 @@ const normalizeStatus = (value) => {
 const cloneDefaultStatusState = () => ({
   headSha: DEFAULT_STATUS_STATE.headSha,
   statuses: { ...DEFAULT_STATUS_STATE.statuses },
+  runs: {},
   reports: {},
   allureUrl: DEFAULT_STATUS_STATE.allureUrl,
 });
@@ -159,6 +161,15 @@ const readStatusState = (body) => {
     };
     for (const key of Object.keys(state.statuses)) {
       state.statuses[key] = normalizeStatus(state.statuses[key]);
+    }
+    state.runs = {};
+    if (parsed.runs && typeof parsed.runs === "object") {
+      for (const [key, value] of Object.entries(parsed.runs)) {
+        const runId = `${value?.runId ?? ""}`.trim();
+        if (/^\d+$/.test(runId)) {
+          state.runs[key] = { runId };
+        }
+      }
     }
     state.reports = parsed.reports && typeof parsed.reports === "object"
       ? parsed.reports
@@ -219,6 +230,9 @@ const renderComment = ({
     statuses: {
       ...DEFAULT_STATUS_STATE.statuses,
       ...(statusState.statuses || {}),
+    },
+    runs: {
+      ...(statusState.runs || {}),
     },
     reports: {
       ...(statusState.reports || {}),
@@ -291,6 +305,9 @@ const renderComment = ({
       const runUrl = buildRunUrl(repository, report);
       const runLabel = `Workflow run #${report.runId} (Attempt #${report.runAttempt})`;
       statusCell = runUrl ? `[${escapeMarkdownCell(runLabel)}](${runUrl})` : escapeMarkdownCell(runLabel);
+    } else if (nextState.runs[statusKey]?.runId) {
+      const runUrl = buildRunUrl(repository, nextState.runs[statusKey]);
+      statusCell = runUrl ? `[${escapeMarkdownCell(statusCell)}](${runUrl})` : statusCell;
     }
 
     lines.push(
