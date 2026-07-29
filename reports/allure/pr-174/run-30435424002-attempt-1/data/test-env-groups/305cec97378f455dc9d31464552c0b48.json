@@ -1,0 +1,1 @@
+{"id":"305cec97378f455dc9d31464552c0b48","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter popQueueBatch fetches pending batch, removes items by id, and returns batch","name":"fetches pending batch, removes items by id, and returns batch","status":"passed","testResultsByEnv":{"default":"cadd3c1fdb78f6d41de892dab6b94c43"}}

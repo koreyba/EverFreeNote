@@ -1,0 +1,1 @@
+{"id":"dc3cc33c10cc1c8a45bde19e2c1b4bfc","fullName":"everfreenote:core/tests/unit/core-utils-search.test.ts#core/utils/search buildTsQuery returns null for non-string input","name":"returns null for non-string input","status":"passed","testResultsByEnv":{"default":"a5e90caf77ecd33f61a9a15da335f0d5"}}
