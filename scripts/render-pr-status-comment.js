@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require("node:fs");
+const path = require("node:path");
 const { ensureWithinWorkspace, parseArgs } = require("./allure-pages-utils");
 
 const COMMENT_MARKER = "<!-- everfreenote-pr-status-comment -->";
@@ -30,6 +31,16 @@ const DEFAULT_STATUS_STATE = {
   allureUrl: "",
 };
 
+const assertCanonicalWorkspacePath = (candidatePath, optionName) => {
+  const workspaceRoot = fs.realpathSync.native(process.cwd());
+  if (
+    candidatePath !== workspaceRoot &&
+    !candidatePath.startsWith(`${workspaceRoot}${path.sep}`)
+  ) {
+    throw new Error(`${optionName} resolves outside repository workspace: ${candidatePath}`);
+  }
+  return candidatePath;
+};
 
 const normalizePrNumber = (value) => `${value ?? ""}`.trim();
 const normalizeSha = (value) => `${value ?? ""}`.trim().toLowerCase();
@@ -66,6 +77,7 @@ const readReportsIndex = (filePath) => {
   }
 
   const safeFilePath = ensureWithinWorkspace(filePath, "--reports-index");
+  assertCanonicalWorkspacePath(safeFilePath, "--reports-index");
   if (!fs.existsSync(safeFilePath)) {
     return [];
   }
@@ -413,6 +425,7 @@ const main = () => {
 
   if (args.output) {
     const outputPath = ensureWithinWorkspace(args.output, "--output");
+    assertCanonicalWorkspacePath(outputPath, "--output");
     fs.writeFileSync(outputPath, body);
     return;
   }

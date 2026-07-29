@@ -131,3 +131,37 @@ test("keeps retained-list files inside the prune root", (t) => {
     /must stay within/,
   );
 });
+
+test("preserves directory containment for non-existing descendants below junctions", (t) => {
+  const fixtureDir = makeWorkspaceFixture(t);
+  const canonicalDirectory = path.join(fixtureDir, "canonical");
+  const linkedDirectory = path.join(fixtureDir, "linked");
+  const outsideDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "everfreenote-directory-outside-"));
+  const outsideLink = path.join(fixtureDir, "outside-link");
+  t.after(() => fs.rmSync(outsideDirectory, { recursive: true, force: true }));
+
+  fs.mkdirSync(canonicalDirectory);
+  fs.symlinkSync(
+    canonicalDirectory,
+    linkedDirectory,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  fs.symlinkSync(
+    outsideDirectory,
+    outsideLink,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+
+  assert.equal(
+    ensureWithinDirectory(
+      path.join(linkedDirectory, "generated", "index.html"),
+      "--output",
+      fixtureDir,
+    ),
+    path.join(canonicalDirectory, "generated", "index.html"),
+  );
+  assert.throws(
+    () => ensureWithinDirectory(path.join(outsideLink, "generated"), "--output", fixtureDir),
+    /resolves outside/,
+  );
+});

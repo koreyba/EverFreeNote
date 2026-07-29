@@ -8,11 +8,23 @@ const {
   parseArgs,
 } = require("./allure-pages-utils");
 
+const assertCanonicalWorkspacePath = (candidatePath, optionName) => {
+  const workspaceRoot = fs.realpathSync.native(process.cwd());
+  if (
+    candidatePath !== workspaceRoot &&
+    !candidatePath.startsWith(`${workspaceRoot}${path.sep}`)
+  ) {
+    throw new Error(`${optionName} resolves outside repository workspace: ${candidatePath}`);
+  }
+  return candidatePath;
+};
+
 const readRetained = (filePath, optionName) => {
   if (!filePath) {
     return new Set();
   }
   const safeFilePath = ensureWithinWorkspace(filePath, optionName);
+  assertCanonicalWorkspacePath(safeFilePath, optionName);
   if (!fs.existsSync(safeFilePath)) {
     return new Set();
   }
