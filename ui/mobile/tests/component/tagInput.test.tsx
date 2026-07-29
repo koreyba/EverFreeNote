@@ -12,6 +12,8 @@ jest.mock('@ui/mobile/providers', () => ({
       mutedForeground: '#6b7280',
       foreground: '#111827',
       background: '#ffffff',
+      card: '#ffffff',
+      muted: '#f3f4f6',
     },
   }),
 }))
@@ -110,5 +112,37 @@ describe('TagInput', () => {
     fireEvent.press(screen.getByText('PlusIcon'))
 
     expect(screen.queryByPlaceholderText('tag name')).toBeNull()
+  })
+
+  it('renders tag autocomplete suggestions with count badges when typing', () => {
+    const onChangeTags = jest.fn()
+    const availableTags = ['work', 'weekend', 'welcome', 'idea']
+    const tagCounts = { work: 5, weekend: 3, welcome: 1, idea: 2 }
+
+    render(
+      <TagInput
+        tags={['work']}
+        onChangeTags={onChangeTags}
+        availableTags={availableTags}
+        tagCounts={tagCounts}
+      />
+    )
+
+    fireEvent.press(screen.getByText('PlusIcon'))
+
+    const input = screen.getByPlaceholderText('tag name')
+    fireEvent.changeText(input, 'we')
+
+    expect(screen.getByText('weekend')).toBeTruthy()
+    expect(screen.getByText('3')).toBeTruthy()
+    expect(screen.getByText('welcome')).toBeTruthy()
+    expect(screen.getByText('1')).toBeTruthy()
+
+    expect(screen.queryByText('idea')).toBeNull()
+
+    fireEvent.press(screen.getByText('weekend'))
+
+    expect(onChangeTags).toHaveBeenCalledTimes(1)
+    expect(onChangeTags).toHaveBeenCalledWith(['work', 'weekend'])
   })
 })
