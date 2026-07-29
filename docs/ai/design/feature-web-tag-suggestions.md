@@ -9,21 +9,26 @@ description: Define the technical architecture, components, and data models
 ## Architecture Overview
 **What is the high-level system structure?**
 
-- UI-only change in the web app; no backend or schema changes.
-- Tag suggestions are derived from existing notes in the local React Query cache.
+- UI & query enhancement; tag counts and suggestions cover 100% of user notes in the database.
+- Dedicated lightweight query (`useAllTagsQuery`) fetches tag counts across all database notes without network overhead on keystrokes.
+- Tag suggestions are derived synchronously from global tag cache and include count badges.
 - New tag input UI replaces the current comma-separated input in edit mode.
 - Read mode keeps the existing remove controls for tags.
 
 ```mermaid
 graph TD
-  NotesQuery[useNotesQuery cache] --> TagSuggestions[useTagSuggestions]
-  TagSuggestions -->|alpha, limit=3| SuggestionList
+  SupabaseDB[Supabase DB] -->|select tags| NoteService[NoteService.getAllTagsWithCounts]
+  NoteService -->|staleTime 5m| UseAllTagsQuery[useAllTagsQuery]
+  UseAllTagsQuery -->|tags & counts| NotesShell
   NotesShell --> NoteEditor
   NoteEditor --> TagInput
-  TagInput --> SuggestionList
+  NoteEditor --> TagSuggestions[useTagSuggestions]
+  TagSuggestions --> TagInput
+  TagInput --> SuggestionList[Suggestion List with Count Badges]
   TagInput --> SelectedTags
   SelectedTags -->|tags string| NoteEditor
   NoteEditor -->|autosave/save| NoteMutations
+  NoteMutations -->|invalidate| UseAllTagsQuery
   NoteView -->|read mode| InteractiveTag
 ```
 
@@ -31,30 +36,32 @@ graph TD
 **What data do we need to manage?**
 
 - Tags remain `string[]` on the note model; editor still persists a comma-separated string for saves.
-- Derived tag list: unique tag strings aggregated from loaded notes.
-- Tag suggestion view model: `string[]` filtered by prefix, sorted alphabetically.
+- Global tag count map: `Record<string, number>` mapping normalized tag string to its total occurrence count across all user notes.
+- Tag suggestion view model: `string[]` filtered by prefix, sorted alphabetically, with optional `tagCounts` for count badge rendering.
 
 ## API Design
 **How do components communicate?**
 
-- No new API endpoints.
-- Tag suggestions are computed client-side from existing notes in cache.
-- Existing note save/update flows continue to accept `tags: string[]`.
+- `NoteService.getAllTagsWithCounts(userId)` executes `select('tags').eq('user_id', userId)` to retrieve tag arrays across all user notes.
+- Communicates via React Query key `['tags', 'all-with-counts', userId]`.
+- Keeps zero network requests during typing; autocomplete query filtering stays 100% client-side.
 
 ## Component Breakdown
 **What are the major building blocks?**
 
-- `ui/web/components/features/notes/NoteEditor.tsx`: replace tags input with a tag chip editor + suggestion list.
-- `ui/web/components/InteractiveTag.tsx`: reuse for chip rendering in edit mode to match read mode.
-- `ui/web/components/features/notes/NoteView.tsx`: keep tag removal controls as they exist today.
-- `ui/web/hooks/useTagSuggestions.ts` (new): derive tag suggestions from cached notes.
-- `ui/web/hooks/useNoteAppController.ts`: pass available tag data (if needed) to editor.
+- `core/services/notes.ts`: `getAllTagsWithCounts` aggregates global tags and counts.
+- `ui/web/hooks/useNotesQuery.ts`: `useAllTagsQuery` manages the global tag cache with 5-minute `staleTime`.
+- `ui/web/hooks/useNotesMutations.ts`: invalidates global tag query key on note create/update/delete/removeTag.
+- `ui/web/components/features/notes/NoteEditor.tsx`: renders tag chips, input field, and suggestion dropdown with counts.
+- `ui/web/components/TagInput.tsx`: renders tag chips, input, and suggestion listbox with count badges.
 
 ## Design Decisions
 **Why did we choose this approach?**
 
-- Use local notes cache to avoid new backend dependencies; trade-off is suggestions limited to loaded notes.
+- Fetch global tags/counts in a single lightweight query to ensure 100% accurate count badges (e.g. 4 notes) across all paginated notes.
+- Keep keystroke matching synchronous and local in React memory to prevent network latency while typing.
 - Sort suggestions alphabetically.
+- Display count badges alongside suggestions (`Travel` **5**).
 - Normalize tags for matching/dup prevention using trimmed lowercase tokens and collapsed spaces.
 - Keep tags persistence compatible by emitting a comma-separated string to existing save/autosave handlers.
 - Add tags via comma or Enter to preserve keyboard-first workflow.

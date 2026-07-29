@@ -26,6 +26,7 @@ import type { SearchResultsPanelHandle } from "@/components/features/notes/Searc
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { normalizeTag, normalizeTagList } from "@ui/web/lib/tags"
+import { useAllTagsQuery } from "@ui/web/hooks/useNotesQuery"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
@@ -296,12 +297,21 @@ function EditorPane({
     notes,
   } = controller
 
+  const { user } = useSupabase()
+  const allTagsQuery = useAllTagsQuery({ userId: user?.id, enabled: !!user })
+
   const availableTags = React.useMemo(() => {
+    if (allTagsQuery.data?.tags && allTagsQuery.data.tags.length > 0) {
+      return allTagsQuery.data.tags
+    }
     const collected = notes.flatMap((note) => note.tags ?? [])
     return normalizeTagList(collected)
-  }, [notes])
+  }, [allTagsQuery.data, notes])
 
   const tagCounts = React.useMemo(() => {
+    if (allTagsQuery.data?.counts && Object.keys(allTagsQuery.data.counts).length > 0) {
+      return allTagsQuery.data.counts
+    }
     const counts: Record<string, number> = {}
     for (const note of notes) {
       if (!note.tags) continue
@@ -315,7 +325,7 @@ function EditorPane({
       }
     }
     return counts
-  }, [notes])
+  }, [allTagsQuery.data, notes])
 
   if (!selectedNote && !isEditing) {
     return <EmptyState />

@@ -6,6 +6,7 @@ import {
   useNotesQuery,
   useFlattenedNotes,
   useSearchNotes,
+  useAllTagsQuery,
 } from '@ui/web/hooks/useNotesQuery'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 
@@ -13,6 +14,7 @@ type Note = Tables<'notes'>
 
 const mockNoteService = {
   getNotes: jest.fn(),
+  getAllTagsWithCounts: jest.fn(),
 }
 
 const mockSearchService = {
@@ -62,6 +64,7 @@ describe('useNotesQuery', () => {
     jest.clearAllMocks()
     jest.mocked(useSupabase).mockReturnValue({
       supabase: mockSupabase as never,
+      noteService: mockNoteService as never,
       user: null,
       loading: false,
     })
@@ -420,5 +423,102 @@ describe('useSearchNotes', () => {
     await waitFor(() => expect(result.current.isError).toBe(true))
 
     expect(result.current.error).toEqual(searchError)
+  })
+})
+
+describe('useAllTagsQuery', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    jest.mocked(useSupabase).mockReturnValue({
+      supabase: mockSupabase as never,
+      noteService: mockNoteService as never,
+      user: null,
+      loading: false,
+    })
+  })
+
+  it('fetches tags and counts for a valid user', async () => {
+    const mockTagsData = {
+      tags: ['personal', 'work'],
+      counts: { personal: 1, work: 3 },
+    }
+    mockNoteService.getAllTagsWithCounts.mockResolvedValue(mockTagsData)
+
+    const { result } = renderHook(() => useAllTagsQuery({ userId: 'user-1' }), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(mockNoteService.getAllTagsWithCounts).toHaveBeenCalledWith('user-1')
+    expect(result.current.data).toEqual(mockTagsData)
+  })
+
+  it('does not execute query when enabled is false', () => {
+    const { result } = renderHook(() => useAllTagsQuery({ userId: 'user-1', enabled: false }), {
+      wrapper: createWrapper(),
+    })
+
+    expect(mockNoteService.getAllTagsWithCounts).not.toHaveBeenCalled()
+    expect(result.current.fetchStatus).toBe('idle')
+  })
+
+  it('does not execute query when userId is undefined', () => {
+    const { result } = renderHook(() => useAllTagsQuery({ userId: undefined }), {
+      wrapper: createWrapper(),
+    })
+
+    expect(mockNoteService.getAllTagsWithCounts).not.toHaveBeenCalled()
+    expect(result.current.fetchStatus).toBe('idle')
+  })
+
+  it('does not execute query when supabase is not available', () => {
+    jest.mocked(useSupabase).mockReturnValue({
+      supabase: null as never,
+      user: null,
+      loading: false,
+    })
+
+    const { result } = renderHook(() => useAllTagsQuery({ userId: 'user-1' }), {
+      wrapper: createWrapper(),
+    })
+
+    expect(mockNoteService.getAllTagsWithCounts).not.toHaveBeenCalled()
+    expect(result.current.fetchStatus).toBe('idle')
+  })
+
+  it('uses React Query caching and data resolution', async () => {
+    const mockTagsData = {
+      tags: ['dev'],
+      counts: { dev: 5 },
+    }
+    mockNoteService.getAllTagsWithCounts.mockResolvedValue(mockTagsData)
+
+    const wrapper = createWrapper()
+
+    const { result: result1 } = renderHook(() => useAllTagsQuery({ userId: 'user-1' }), { wrapper })
+    await waitFor(() => expect(result1.current.isSuccess).toBe(true))
+
+    expect(mockNoteService.getAllTagsWithCounts).toHaveBeenCalledTimes(1)
+
+    // Render a second hook instance sharing the same wrapper (QueryClient)
+    const { result: result2 } = renderHook(() => useAllTagsQuery({ userId: 'user-1' }), { wrapper })
+
+    expect(result2.current.data).toEqual(mockTagsData)
+    // Should serve from cache without calling noteService again
+    expect(mockNoteService.getAllTagsWithCounts).toHaveBeenCalledTimes(1)
+  })
+
+  it('handles error when getAllTagsWithCounts rejects', async () => {
+    const error = new Error('Failed to fetch tags')
+    mockNoteService.getAllTagsWithCounts.mockRejectedValue(error)
+
+    const { result } = renderHook(() => useAllTagsQuery({ userId: 'user-1' }), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+
+    expect(result.current.error).toEqual(error)
   })
 })
