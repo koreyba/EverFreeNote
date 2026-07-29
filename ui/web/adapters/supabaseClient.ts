@@ -6,8 +6,9 @@ import type { SupabaseConfig } from '@core/adapters/config'
 
 function sanitizeStorageKeyPart(value: string) {
   let sanitized = ''
+  const str = typeof value === 'string' ? value : String(value ?? '')
 
-  for (const character of value) {
+  for (const character of str) {
     const isAsciiLetter = (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z')
     const isDigit = character >= '0' && character <= '9'
     sanitized += isAsciiLetter || isDigit || character === '-' ? character : '-'
@@ -23,21 +24,23 @@ function normalizeUrlPath(pathname: string) {
 
 export function buildBrowserSupabaseStorageKey(supabaseUrl: string) {
   try {
-    const parsedUrl = new URL(supabaseUrl)
+    const parsedUrl = new URL(supabaseUrl || 'https://placeholder.supabase.co')
     const pathPart = normalizeUrlPath(parsedUrl.pathname)
     const rawKey = `everfreenote-auth-${parsedUrl.protocol}-${parsedUrl.hostname}-${parsedUrl.port || 'default'}-${pathPart}`
     return sanitizeStorageKeyPart(rawKey)
   } catch {
-    return `everfreenote-auth-${sanitizeStorageKeyPart(supabaseUrl)}`
+    return `everfreenote-auth-${sanitizeStorageKeyPart(supabaseUrl || 'default')}`
   }
 }
 
 export const webSupabaseClientFactory: SupabaseClientFactory = {
   createClient(config: SupabaseConfig): SupabaseClient {
+    const url = config.url || 'https://placeholder.supabase.co'
+    const anonKey = config.anonKey || 'placeholder'
     // createBrowserClient manages its own storage; deps.storage reserved for future explicit storage wiring if needed
-    return createBrowserClient(config.url, config.anonKey, {
+    return createBrowserClient(url, anonKey, {
       auth: {
-        storageKey: buildBrowserSupabaseStorageKey(config.url),
+        storageKey: buildBrowserSupabaseStorageKey(url),
       },
     })
   },

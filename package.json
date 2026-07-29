@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "postinstall": "node scripts/patch-gray-matter-compat.js",
     "test:unit": "jest --config jest.config.cjs --selectProjects unit-core unit-web --passWithNoTests",
