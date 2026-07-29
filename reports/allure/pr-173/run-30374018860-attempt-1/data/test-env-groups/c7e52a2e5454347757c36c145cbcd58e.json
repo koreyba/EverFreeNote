@@ -1,1 +1,0 @@
-{"id":"c7e52a2e5454347757c36c145cbcd58e","fullName":"everfreenote-mobile:tests/unit/searchHistory.test.ts#searchHistory service addSearchHistoryItem does not add items with length less than 2","name":"does not add items with length less than 2","status":"passed","testResultsByEnv":{"default":"ef4ba754d4827f3b6ed29aec6e2a0a02"}}
