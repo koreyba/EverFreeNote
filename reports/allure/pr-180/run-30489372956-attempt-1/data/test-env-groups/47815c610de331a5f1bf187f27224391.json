@@ -1,0 +1,1 @@
+{"id":"47815c610de331a5f1bf187f27224391","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter getQueue delegates to databaseService.getQueue","name":"delegates to databaseService.getQueue","status":"passed","testResultsByEnv":{"default":"28e08341ca8b1d7d7a2418dd3de5167e"}}

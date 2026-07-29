@@ -1,0 +1,1 @@
+{"id":"73d79a4a009f6a03154f3ab487857e8d","fullName":"everfreenote-mobile:tests/component/useDeleteNote.test.tsx#useDeleteNote Optimistic updates returns previous notes snapshot in onMutate context","name":"returns previous notes snapshot in onMutate context","status":"passed","testResultsByEnv":{"default":"f4b9da70d5f7ff2e9cd15cc182e2e975"}}
