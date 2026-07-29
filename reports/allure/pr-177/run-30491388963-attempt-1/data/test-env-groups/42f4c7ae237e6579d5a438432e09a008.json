@@ -1,0 +1,1 @@
+{"id":"42f4c7ae237e6579d5a438432e09a008","fullName":"everfreenote:ui/web/tests/unit/components/features/wordpress/ExportToWordPressButton.test.tsx#ExportToWordPressButton Button Trigger Variant disables the button when disabled prop is true","name":"disables the button when disabled prop is true","status":"passed","testResultsByEnv":{"default":"fd37b42cbce8f795664d23c3a4b347b9"}}
