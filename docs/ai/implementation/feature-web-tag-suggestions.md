@@ -32,23 +32,25 @@ description: Technical implementation notes, patterns, and code guidelines
   - Exclude tags already selected on the current note.
   - Enforce minimum input length of 3 and limit to 3 suggestions.
   - Normalize tags for matching (trim, collapse spaces, lowercase).
+  - Perform instant case-insensitive prefix matching without artificial debounce delays.
 - Tag input UI:
-  - Render selected tags using the same chip component as read mode.
-  - Keep a small text input for new tag entry and suggestions.
-  - Add tags via comma or Enter only; no auto-add on blur or space.
-  - Commit pending tags on save/leave/blur; autosave can include pending tags from non-tag edits.
-  - Store normalized tags (trim, collapse spaces, lowercase) on edit/save; no migration.
-  - Support backspace removal on the second press when the input is empty.
-  - Do not trigger autosave on tag input or tag add/remove events.
+  - Render selected tags using chip UI with removal control.
+  - Keep an inline text input field active for tag entry and suggestions.
+  - Keyboard navigation: ArrowDown/ArrowUp to highlight suggestions, Enter/Tab to select highlighted suggestion or commit typed tag.
+  - Add tags via comma or Enter.
+  - Commit pending tags on save, leave, or blur.
+  - Store normalized tags (trim, collapse spaces, lowercase) on edit/save.
+  - Require double backspace when input is empty to delete the last tag chip (first backspace arms tag with red outline).
+  - Do NOT trigger autosave on tag additions or removals (tags are saved when manual save, note switch, or title/body edits occur).
+  - Always render remove controls on mobile viewports (`opacity-100` on mobile).
 - Read mode:
-  - Keep the existing remove handler so tag deletion remains available.
+  - Retain existing remove handler in read mode (`NoteView`).
 
 ### Patterns & Best Practices
-- Memoize suggestion lists to avoid recalculating on each keystroke.
-- Keep the source of truth for tags in the editor component and emit a comma-separated string for existing save logic.
+- Memoize suggestion lists using `useMemo` in `useTagSuggestions.ts`.
+- Keep the source of truth for tags in the editor state and format as a clean string for save operations.
 - Keep UI behavior consistent with existing `InteractiveTag` styles.
-- Debounce tag suggestion query and keep the tag input uncontrolled to reduce re-renders while typing.
-- Ensure remove icons are always visible on mobile viewports (responsive classes in `InteractiveTag`).
+- Ensure remove icons are always visible on mobile viewports.
 
 ## Integration Points
 **How do pieces connect?**

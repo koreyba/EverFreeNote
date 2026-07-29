@@ -81,9 +81,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     selectedTagsRef.current = selectedTags
   }, [selectedTags])
 
-  const debouncedTagQuery = useDebouncedCallback((value: string) => {
+  const handleTagQueryChange = React.useCallback((value: string) => {
     setTagQuery(normalizeTag(value))
-  }, 320)
+  }, [])
 
   const getFormData = React.useCallback(() => ({
     title: titleInputRef.current?.value ?? initialTitle,
@@ -108,10 +108,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       const parsed = parseTagString(snapshot.tags)
       selectedTagsRef.current = parsed
       setSelectedTags(parsed)
-      debouncedTagQuery.cancel()
       setTagQuery("")
     }
-  }, [debouncedTagQuery])
+  }, [])
 
   const { editorSessionKey, handleContentChange, scheduleAutoSave, cancelAutoSave, flushPendingSave } =
     useNoteEditorAutoSave({
@@ -123,7 +122,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       onAutoSave,
       getFormData,
       applyExternalSnapshot,
-      cancelDebouncedTagQuery: debouncedTagQuery.cancel,
+      cancelDebouncedTagQuery: () => {},
       onNoteSwitch: () => {
         const parsed = parseTagString(initialTags)
         setSelectedTags(parsed)
@@ -197,17 +196,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     }
     selectedTagsRef.current = merged
     setSelectedTags(merged)
-    debouncedTagQuery.cancel()
     setTagQuery("")
-    scheduleAutoSave({ tags: buildTagString(merged) })
-  }, [debouncedTagQuery, scheduleAutoSave])
+  }, [])
 
   const removeTag = React.useCallback((tagToRemove: string) => {
     const next = selectedTagsRef.current.filter((tag) => tag !== tagToRemove)
     selectedTagsRef.current = next
     setSelectedTags(next)
-    scheduleAutoSave({ tags: buildTagString(next) })
-  }, [scheduleAutoSave])
+  }, [])
 
   React.useImperativeHandle(ref, () => ({
     flushPendingSave,
@@ -324,7 +320,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             onAddTags={addTags}
             onRemoveTag={removeTag}
             suggestions={suggestions}
-            onQueryChange={debouncedTagQuery.call}
+            onQueryChange={handleTagQueryChange}
             placeholder="work, personal, ideas"
           />
         </div>

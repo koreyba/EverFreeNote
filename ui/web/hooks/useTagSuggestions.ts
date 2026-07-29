@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { normalizeTag } from "@ui/web/lib/tags"
 
 type UseTagSuggestionsParams = {
   allTags: string[]
@@ -16,11 +17,25 @@ export const useTagSuggestions = ({
   limit = 3,
 }: UseTagSuggestionsParams) => {
   return useMemo(() => {
-    if (query.length < minChars) return []
+    const normalizedQuery = normalizeTag(query)
+    if (normalizedQuery.length < minChars) return []
 
-    const selected = new Set(selectedTags)
-    const filtered = allTags.filter((tag) => tag.startsWith(query) && !selected.has(tag))
+    const selectedSet = new Set(selectedTags.map((t) => normalizeTag(t)))
+    const matchesMap = new Map<string, string>()
 
-    return filtered.sort((a, b) => a.localeCompare(b)).slice(0, limit)
+    for (const tag of allTags) {
+      const normalizedCandidate = normalizeTag(tag)
+      if (!normalizedCandidate || selectedSet.has(normalizedCandidate)) continue
+      if (normalizedCandidate.startsWith(normalizedQuery)) {
+        if (!matchesMap.has(normalizedCandidate)) {
+          matchesMap.set(normalizedCandidate, normalizedCandidate)
+        }
+      }
+    }
+
+    return Array.from(matchesMap.values())
+      .sort((a, b) => a.localeCompare(b))
+      .slice(0, limit)
   }, [allTags, selectedTags, query, minChars, limit])
 }
+
