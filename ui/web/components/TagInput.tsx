@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { X, Tag } from "lucide-react"
+import { Plus, X, Tag } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
 import { cn } from "@ui/web/lib/utils"
@@ -241,6 +241,27 @@ export function TagInput({
             />
           )}
         </HorizontalTagScroll>
+
+        {!disabled && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={(e) => {
+              e.stopPropagation()
+              focusInput()
+            }}
+            className={cn(
+              "shrink-0 flex items-center justify-center w-7 h-7 rounded-full",
+              "bg-background/50 hover:bg-accent transition-colors duration-200 shadow-sm border",
+              "text-muted-foreground hover:text-accent-foreground ml-2",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
+            title="Add tag"
+            aria-label="Add tag"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Suggestions dropdown */}
