@@ -28,9 +28,21 @@ describe("buildBrowserSupabaseStorageKey", () => {
 })
 
 describe("webSupabaseClientFactory", () => {
-  it("throws descriptive error listing missing env parameters", () => {
+  it("throws descriptive error listing missing env parameters when both are missing", () => {
     expect(() => webSupabaseClientFactory.createClient({ url: "", anonKey: "" })).toThrow(
       "Missing required Supabase configuration parameter(s): NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY. Please check if they are set in your .env / .env.local file."
+    )
+  })
+
+  it("throws descriptive error listing only NEXT_PUBLIC_SUPABASE_URL when url is missing", () => {
+    expect(() => webSupabaseClientFactory.createClient({ url: "  ", anonKey: "valid-key" })).toThrow(
+      "Missing required Supabase configuration parameter(s): NEXT_PUBLIC_SUPABASE_URL. Please check if they are set in your .env / .env.local file."
+    )
+  })
+
+  it("throws descriptive error listing only NEXT_PUBLIC_SUPABASE_ANON_KEY when anonKey is missing", () => {
+    expect(() => webSupabaseClientFactory.createClient({ url: "https://test.supabase.co", anonKey: "" })).toThrow(
+      "Missing required Supabase configuration parameter(s): NEXT_PUBLIC_SUPABASE_ANON_KEY. Please check if they are set in your .env / .env.local file."
     )
   })
 })

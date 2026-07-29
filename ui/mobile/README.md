@@ -77,7 +77,7 @@ Three separate apps can be installed side-by-side on Android:
 
 ## Available Scripts
 
-### Build & Install (requires connected device/emulator)
+### Build & Install (requires a connected device or emulator)
 ```bash
 npm run android:dev            # Build and install dev variant
 npm run android:stage          # Build and install stage variant
@@ -86,6 +86,7 @@ npm run android:prod           # Build and install prod variant
 ```
 
 ### Build Standalone APK (no connected device required)
+*Note: Requires the webview bundle (Next.js prerequisites used by `npm run prepare:webview-bundle`), even though no connected device is needed.*
 ```bash
 npm run build:android:stage    # Build stage release APK (app-stage-release.apk)
 npm run build:android:prod     # Build prod release APK (app-prod-release.apk)

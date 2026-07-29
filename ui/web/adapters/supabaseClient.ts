@@ -40,9 +40,12 @@ export function buildBrowserSupabaseStorageKey(supabaseUrl: string) {
 
 export const webSupabaseClientFactory: SupabaseClientFactory = {
   createClient(config: SupabaseConfig): SupabaseClient {
+    const url = config?.url?.trim()
+    const anonKey = config?.anonKey?.trim()
+
     const missing: string[] = []
-    if (!config?.url) missing.push('NEXT_PUBLIC_SUPABASE_URL')
-    if (!config?.anonKey) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+    if (!url) missing.push('NEXT_PUBLIC_SUPABASE_URL')
+    if (!anonKey) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 
     if (missing.length > 0) {
       throw new Error(
