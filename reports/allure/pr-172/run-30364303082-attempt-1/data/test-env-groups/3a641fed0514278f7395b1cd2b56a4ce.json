@@ -1,1 +1,0 @@
-{"id":"3a641fed0514278f7395b1cd2b56a4ce","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter markQueueItemStatus passes undefined for lastError if omitted","name":"passes undefined for lastError if omitted","status":"passed","testResultsByEnv":{"default":"e3f77ddcbfc5b27d0b4fd6f76ab4a7ed"}}
