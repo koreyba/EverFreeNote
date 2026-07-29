@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { NoteClipboardService } from "@core/services/noteClipboard"
 import { useCopyNote } from "@ui/web/hooks/useCopyNote"
-import { useDebouncedCallback } from "@ui/web/hooks/useDebouncedCallback"
 import { TagInput } from "@/components/TagInput"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
@@ -15,6 +14,7 @@ import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
+const NOOP_CANCEL = () => {}
 
 export interface NoteEditorHandle {
   flushPendingSave: () => Promise<void>
@@ -114,7 +114,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     }
   }, [])
 
-  const { editorSessionKey, handleContentChange, scheduleAutoSave, cancelAutoSave, flushPendingSave } =
+  const { editorSessionKey, handleContentChange, cancelAutoSave, flushPendingSave } =
     useNoteEditorAutoSave({
       noteId,
       initialTitle,
@@ -124,7 +124,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       onAutoSave,
       getFormData,
       applyExternalSnapshot,
-      cancelDebouncedTagQuery: () => {},
+      cancelDebouncedTagQuery: NOOP_CANCEL,
       onNoteSwitch: () => {
         const parsed = parseTagString(initialTags)
         setSelectedTags(parsed)
@@ -205,6 +205,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     const next = selectedTagsRef.current.filter((tag) => tag !== tagToRemove)
     selectedTagsRef.current = next
     setSelectedTags(next)
+    setTagQuery("")
   }, [])
 
   React.useImperativeHandle(ref, () => ({

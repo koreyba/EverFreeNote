@@ -30,14 +30,14 @@ description: Define testing approach, test cases, and quality assurance
 - [x] Normalizes tags to avoid duplicates (trim, collapse spaces, lowercase). (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 - [x] Backspace removes last tag only on the second press when input is empty. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 - [x] Edit mode uses chip UI and X remove control works. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
-- [x] Tag input changes alone do NOT trigger autosave. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Tag input changes alone do NOT trigger autosave directly and persist on manual save, note switch, or title/body edits. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 - [x] Pending tag is committed on blur / save. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 
 ## Integration Tests
 **How do we test component interactions?**
 
 - [ ] Edit note: type 3+ chars, see suggestions, select one, tag appears as chip.
-- [ ] Edit note: remove tag via X and via backspace, autosave payload updates tags.
+- [ ] Edit note: remove tag via X and via backspace; tag-only changes do not trigger autosave directly and persist on manual save, note switch, or title/body edits.
 - [ ] Read mode: tags display with removal behavior unchanged.
 
 ## End-to-End Tests

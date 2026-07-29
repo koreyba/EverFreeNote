@@ -234,6 +234,8 @@ export function TagInput({
               aria-autocomplete="list"
               aria-expanded={isExpanded}
               aria-haspopup="listbox"
+              aria-controls="tag-suggestions-listbox"
+              aria-activedescendant={highlightedIndex >= 0 ? `tag-suggestion-option-${highlightedIndex}` : undefined}
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleInputKeyDown}
@@ -268,6 +270,7 @@ export function TagInput({
       {/* Suggestions dropdown */}
       {isExpanded && (
         <div
+          id="tag-suggestions-listbox"
           role="listbox"
           className="absolute z-50 mt-1 w-full max-w-xs rounded-md border border-input bg-popover text-popover-foreground shadow-lg"
         >
@@ -276,6 +279,7 @@ export function TagInput({
             return (
               <button
                 key={suggestion}
+                id={`tag-suggestion-option-${index}`}
                 type="button"
                 role="option"
                 aria-selected={index === highlightedIndex}

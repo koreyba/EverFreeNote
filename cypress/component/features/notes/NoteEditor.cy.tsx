@@ -156,7 +156,17 @@ describe('NoteEditor Component', () => {
     cy.contains('button', 'work').should('be.visible')
     cy.contains('button', 'world').should('be.visible')
 
-    cy.get('input[placeholder="work, personal, ideas"]').type('{downarrow}{enter}')
+    // Navigate down to first suggestion ('work'), then second ('world'), then up to first ('work')
+    cy.get('input[placeholder="work, personal, ideas"]').type('{downarrow}')
+    cy.contains('button', 'work').should('have.attr', 'aria-selected', 'true')
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('{downarrow}')
+    cy.contains('button', 'world').should('have.attr', 'aria-selected', 'true')
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('{uparrow}')
+    cy.contains('button', 'work').should('have.attr', 'aria-selected', 'true')
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('{enter}')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
     cy.contains('[data-cy="interactive-tag"]', 'work').should('be.visible')
   })
