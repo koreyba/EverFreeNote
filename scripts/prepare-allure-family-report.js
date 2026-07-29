@@ -11,44 +11,11 @@ const {
   listify,
   normalizeSlashes,
   parseArgs,
+  ensureWithinWorkspace,
 } = require("./allure-pages-utils");
 
 const SKIPPED_FILENAMES = new Set(["executor.json", "environment.properties", "categories.json"]);
 const HISTORY_LIMIT = 20;
-const realpathSyncNative = fs.realpathSync.native || fs.realpathSync;
-
-const isWithinDirectory = (baseDir, candidatePath) => {
-  const relativePath = path.relative(baseDir, candidatePath);
-  return relativePath !== ".." && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath);
-};
-
-const resolvePathForWorkspaceCheck = (targetPath) => {
-  let currentPath = path.resolve(targetPath);
-  const trailingSegments = [];
-
-  while (!fs.existsSync(currentPath)) {
-    const parentPath = path.dirname(currentPath);
-    if (parentPath === currentPath) {
-      throw new Error(`Unable to resolve workspace ancestor for path: ${targetPath}`);
-    }
-    trailingSegments.unshift(path.basename(currentPath));
-    currentPath = parentPath;
-  }
-
-  let resolvedPath = realpathSyncNative(currentPath);
-  for (const segment of trailingSegments) {
-    resolvedPath = path.join(resolvedPath, segment);
-  }
-  return resolvedPath;
-};
-
-const ensureWithinWorkspace = (targetPath, optionName) => {
-  const workspaceRoot = realpathSyncNative(process.cwd());
-  const resolvedTargetPath = resolvePathForWorkspaceCheck(targetPath);
-  if (!isWithinDirectory(workspaceRoot, resolvedTargetPath)) {
-    throw new Error(`${optionName} must be inside repository workspace: ${targetPath}`);
-  }
-};
 
 const GROUPING_LABELS = new Set(["suite", "surface", "layer", "workflow"]);
 
@@ -191,7 +158,8 @@ const writeExecutorFile = (resultsDir, context, suites) => {
     description: suites.join(", "),
   };
 
-  fs.writeFileSync(path.join(resultsDir, "executor.json"), `${JSON.stringify(payload, null, 2)}\n`);
+  const executorPath = ensureWithinWorkspace(path.join(resultsDir, "executor.json"), "results");
+  fs.writeFileSync(executorPath, `${JSON.stringify(payload, null, 2)}\n`);
 };
 
 const writeConfigFile = (configPath, reportDir, historyPath, context, suites) => {
@@ -242,7 +210,8 @@ module.exports = defineConfig({
 });
 `;
 
-  fs.writeFileSync(configPath, config);
+  const safeConfigPath = ensureWithinWorkspace(configPath, "--work-dir");
+  fs.writeFileSync(safeConfigPath, config);
 };
 
 const parseInput = (item) => {
@@ -253,8 +222,7 @@ const parseInput = (item) => {
 
   const suite = item.slice(0, separatorIndex);
   getSuiteMetadata(suite);
-  const sourceDir = path.resolve(item.slice(separatorIndex + 1));
-  ensureWithinWorkspace(sourceDir, "--input");
+  const sourceDir = ensureWithinWorkspace(item.slice(separatorIndex + 1), "--input");
 
   return { suite, sourceDir };
 };
@@ -321,7 +289,9 @@ const generateAllureReport = ({ resultFiles, resultsDir, reportDir, configPath, 
   }
 
   writeExecutorFile(resultsDir, context, suiteLabels);
-  const absoluteHistoryPath = context.historyPath ? path.join(historyRoot, context.historyPath) : "";
+  const absoluteHistoryPath = context.historyPath
+    ? ensureWithinWorkspace(path.join(historyRoot, context.historyPath), "--history-root")
+    : "";
   if (absoluteHistoryPath) {
     ensureDir(path.dirname(absoluteHistoryPath));
   }
@@ -341,9 +311,11 @@ const trimHistoryFile = (historyPath, limit) => {
     return;
   }
 
+  const safeHistoryPath = ensureWithinWorkspace(historyPath, "--history-root");
+
   let fileDescriptor;
   try {
-    fileDescriptor = fs.openSync(historyPath, "r+");
+    fileDescriptor = fs.openSync(safeHistoryPath, "r+");
   } catch (error) {
     if (error?.code === "ENOENT") {
       return;
@@ -366,10 +338,14 @@ const main = () => {
   const args = parseArgs(process.argv);
   const family = args.family;
   const inputArgs = listify(args.input);
-  const workDir = path.resolve(args["work-dir"] || path.join(".allure-publish", family || "report"));
-  const historyRoot = path.resolve(args["history-root"] || workDir);
-  ensureWithinWorkspace(workDir, "--work-dir");
-  ensureWithinWorkspace(historyRoot, "--history-root");
+  const workDir = ensureWithinWorkspace(
+    args["work-dir"] || path.join(".allure-publish", family || "report"),
+    "--work-dir"
+  );
+  const historyRoot = ensureWithinWorkspace(
+    args["history-root"] || workDir,
+    "--history-root"
+  );
 
   if (!family) {
     throw new Error("--family is required");
@@ -381,10 +357,10 @@ const main = () => {
 
   ensureDir(workDir);
 
-  const resultsDir = path.join(workDir, "results");
-  const reportDir = path.join(workDir, "report");
-  const metadataPath = path.join(workDir, "metadata.json");
-  const configPath = path.join(workDir, "allurerc.cjs");
+  const resultsDir = ensureWithinWorkspace(path.join(workDir, "results"), "--work-dir");
+  const reportDir = ensureWithinWorkspace(path.join(workDir, "report"), "--work-dir");
+  const metadataPath = ensureWithinWorkspace(path.join(workDir, "metadata.json"), "--work-dir");
+  const configPath = ensureWithinWorkspace(path.join(workDir, "allurerc.cjs"), "--work-dir");
 
   fs.rmSync(resultsDir, { recursive: true, force: true });
   fs.rmSync(reportDir, { recursive: true, force: true });

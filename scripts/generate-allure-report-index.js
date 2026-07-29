@@ -5,15 +5,20 @@ const path = require("node:path");
 const {
   DEFAULT_PER_FAMILY_LIMIT,
   ensureDir,
+  ensureWithinWorkspace,
   parseArgs,
   readJson,
 } = require("./allure-pages-utils");
 
 const readExistingReports = (filePath) => {
-  if (!filePath || !fs.existsSync(filePath)) {
+  if (!filePath) {
     return [];
   }
-  const parsed = readJson(filePath, []);
+  const safeFilePath = ensureWithinWorkspace(filePath, "--existing");
+  if (!fs.existsSync(safeFilePath)) {
+    return [];
+  }
+  const parsed = readJson(safeFilePath, []);
   return Array.isArray(parsed) ? parsed : [];
 };
 
@@ -29,16 +34,21 @@ const readCurrentReports = (currentArgs) => {
   const files = Array.isArray(currentArgs) ? currentArgs : [currentArgs];
   return files
     .filter(Boolean)
-    .map((filePath) => readJson(path.resolve(filePath), null))
+    .map((filePath) => readJson(filePath, null))
     .filter((payload) => payload?.path);
 };
 
 const main = () => {
   const args = parseArgs(process.argv);
   const current = readCurrentReports(args.current);
-  const existing = readExistingReports(args.existing ? path.resolve(args.existing) : "");
-  const outputDir = path.resolve(args.output || ".pages-index");
-  const templatePath = path.resolve(args.template || ".github/pages/allure-reports-index.html");
+  const existing = readExistingReports(
+    args.existing ? ensureWithinWorkspace(args.existing, "--existing") : ""
+  );
+  const outputDir = ensureWithinWorkspace(args.output || ".pages-index", "--output");
+  const templatePath = ensureWithinWorkspace(
+    args.template || ".github/pages/allure-reports-index.html",
+    "--template"
+  );
   const limitPerFamily = parseLimit(args["limit-per-family"]);
   const generatedAt = new Date().toISOString();
 
@@ -76,14 +86,29 @@ const main = () => {
     return rightDate - leftDate;
   });
 
-  ensureDir(path.join(outputDir, "reports"));
-  fs.writeFileSync(path.join(outputDir, "reports", "index.json"), `${JSON.stringify(reports, null, 2)}\n`);
+  const reportsDir = ensureWithinWorkspace(path.join(outputDir, "reports"), "--output");
+  const reportsIndexPath = ensureWithinWorkspace(
+    path.join(reportsDir, "index.json"),
+    "--output"
+  );
+  const retainedPathsPath = ensureWithinWorkspace(
+    path.join(reportsDir, "retained-paths.txt"),
+    "--output"
+  );
+  const retainedHistoryPathsPath = ensureWithinWorkspace(
+    path.join(reportsDir, "retained-history-paths.txt"),
+    "--output"
+  );
+  const indexPath = ensureWithinWorkspace(path.join(outputDir, "index.html"), "--output");
+
+  ensureDir(reportsDir);
+  fs.writeFileSync(reportsIndexPath, `${JSON.stringify(reports, null, 2)}\n`);
   fs.writeFileSync(
-    path.join(outputDir, "reports", "retained-paths.txt"),
+    retainedPathsPath,
     `${reports.map((report) => report.path).join("\n")}\n`
   );
   fs.writeFileSync(
-    path.join(outputDir, "reports", "retained-history-paths.txt"),
+    retainedHistoryPathsPath,
     `${reports.map((report) => report.historyPath).filter(Boolean).join("\n")}\n`
   );
 
@@ -91,7 +116,7 @@ const main = () => {
   const html = template
     .replaceAll("__GENERATED_AT__", generatedAt)
     .replaceAll("__REPORT_LIMIT__", `${limitPerFamily}`);
-  fs.writeFileSync(path.join(outputDir, "index.html"), html);
+  fs.writeFileSync(indexPath, html);
 };
 
 try {

@@ -12,7 +12,16 @@ type FeedbackState =
   | { variant: 'error' | 'success' | 'info'; message: string }
   | null
 
-const normalizeSiteUrl = (value: string) => value.trim().replace(/\/+$/, '')
+const normalizeSiteUrl = (value: string) => {
+  const trimmed = value.trim()
+  let end = trimmed.length
+
+  while (end > 0 && trimmed[end - 1] === '/') {
+    end -= 1
+  }
+
+  return trimmed.slice(0, end)
+}
 
 export function WordPressSettingsPanel() {
   const { client } = useSupabase()

@@ -40,10 +40,10 @@ jobs:
             ui/mobile/package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Install mobile dependencies
-        run: npm --prefix ui/mobile ci
+        run: npm --prefix ui/mobile ci --ignore-scripts
 
       - name: Run mobile Jest tests
         id: run-mobile-unit-tests
@@ -233,7 +233,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Run core unit tests
         id: run-core-unit-tests
@@ -477,7 +477,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Run web unit tests
         id: run-web-unit-tests
@@ -701,7 +701,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Download core Allure artifact
         continue-on-error: true

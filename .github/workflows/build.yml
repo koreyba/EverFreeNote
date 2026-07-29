@@ -42,13 +42,13 @@ jobs:
             ui/mobile/package-lock.json
       
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Test CI support scripts
         run: node --test scripts/*.test.js
 
       - name: Install mobile dependencies
-        run: npm --prefix ui/mobile ci
+        run: npm --prefix ui/mobile ci --ignore-scripts
 
       - name: Setup Deno
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4

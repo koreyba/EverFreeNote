@@ -56,6 +56,116 @@ const SUITE_METADATA = {
 };
 
 const DEFAULT_PER_FAMILY_LIMIT = 20;
+const realpathSyncNative = fs.realpathSync.native || fs.realpathSync;
+
+const isPathWithin = (basePath, candidatePath) => {
+  const relativePath = path.relative(basePath, candidatePath);
+  return (
+    relativePath === "" ||
+    (relativePath !== ".." &&
+      !relativePath.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relativePath))
+  );
+};
+
+const findExistingAncestor = (candidatePath) => {
+  let currentPath = candidatePath;
+  while (true) {
+    try {
+      fs.lstatSync(currentPath);
+      return currentPath;
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        throw error;
+      }
+
+      const parentPath = path.dirname(currentPath);
+      if (parentPath === currentPath) {
+        throw new Error(`No existing ancestor found for path: ${candidatePath}`);
+      }
+      currentPath = parentPath;
+    }
+  }
+};
+
+const canonicalizePath = (candidatePath, allowedBasePath, optionName) => {
+  const resolvedCandidatePath = path.resolve(candidatePath);
+  const resolvedBasePath = path.resolve(allowedBasePath);
+  const relativePath = path.relative(resolvedBasePath, resolvedCandidatePath);
+  if (
+    relativePath === ".." ||
+    relativePath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativePath)
+  ) {
+    throw new Error(`${optionName} must stay within ${resolvedBasePath}: ${candidatePath}`);
+  }
+
+  const existingAncestor = findExistingAncestor(resolvedCandidatePath);
+  const canonicalAncestor = realpathSyncNative(existingAncestor);
+  const relativeSuffix = path.relative(existingAncestor, resolvedCandidatePath);
+  return relativeSuffix
+    ? path.join(canonicalAncestor, relativeSuffix)
+    : canonicalAncestor;
+};
+
+const ensureWithinWorkspace = (targetPath, optionName) => {
+  const workspaceRoot = path.resolve(process.cwd());
+  const candidatePath = path.resolve(targetPath);
+  if (!isPathWithin(workspaceRoot, candidatePath)) {
+    throw new Error(`${optionName} must be inside repository workspace: ${targetPath}`);
+  }
+
+  const canonicalWorkspaceRoot = realpathSyncNative(workspaceRoot);
+  const canonicalPath = canonicalizePath(candidatePath, workspaceRoot, optionName);
+  if (!isPathWithin(canonicalWorkspaceRoot, canonicalPath)) {
+    throw new Error(`${optionName} resolves outside repository workspace: ${targetPath}`);
+  }
+  return canonicalPath;
+};
+
+const ensureWithinDirectory = (targetPath, optionName, baseDir) => {
+  const resolvedBase = path.resolve(baseDir);
+  const candidatePath = path.resolve(targetPath);
+  if (!isPathWithin(resolvedBase, candidatePath)) {
+    throw new Error(`${optionName} must stay within ${resolvedBase}: ${targetPath}`);
+  }
+
+  const canonicalBase = canonicalizePath(resolvedBase, resolvedBase, optionName);
+  const canonicalPath = canonicalizePath(candidatePath, resolvedBase, optionName);
+  if (!isPathWithin(canonicalBase, canonicalPath)) {
+    throw new Error(`${optionName} resolves outside ${resolvedBase}: ${targetPath}`);
+  }
+  return canonicalPath;
+};
+
+const ensureGithubOutputPath = (targetPath) => {
+  if (!targetPath) return "";
+  const configuredPath = process.env.GITHUB_OUTPUT;
+  if (!configuredPath) {
+    throw new Error("--github-output requires GITHUB_OUTPUT");
+  }
+
+  const resolvedCandidatePath = path.resolve(targetPath);
+  const resolvedExpectedPath = path.resolve(configuredPath);
+  if (resolvedCandidatePath !== resolvedExpectedPath) {
+    throw new Error("--github-output must match GITHUB_OUTPUT");
+  }
+
+  const candidatePath = canonicalizePath(
+    resolvedCandidatePath,
+    path.dirname(resolvedExpectedPath),
+    "--github-output",
+  );
+  const expectedPath = canonicalizePath(
+    resolvedExpectedPath,
+    path.dirname(resolvedExpectedPath),
+    "--github-output",
+  );
+  if (candidatePath !== expectedPath) {
+    throw new Error("--github-output must match GITHUB_OUTPUT");
+  }
+  return candidatePath;
+};
 
 const parseArgs = (argv) => {
   const args = {};
@@ -143,12 +253,14 @@ const slugify = (value) =>
   };
 
 const ensureDir = (dirPath) => {
-  fs.mkdirSync(dirPath, { recursive: true });
+  const safeDirPath = ensureWithinWorkspace(dirPath, "directory");
+  fs.mkdirSync(safeDirPath, { recursive: true });
 };
 
 const readJson = (filePath, fallback = null) => {
+  const safeFilePath = ensureWithinWorkspace(filePath, "JSON input");
   try {
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return JSON.parse(fs.readFileSync(safeFilePath, "utf8"));
   } catch {
     return fallback;
   }
@@ -172,6 +284,7 @@ const createGithubOutputDelimiter = (key, value) => {
 
 const appendGithubOutput = (githubOutputPath, values) => {
   if (!githubOutputPath) return;
+  const safeGithubOutputPath = ensureGithubOutputPath(githubOutputPath);
   const lines = [];
   for (const [key, value] of Object.entries(values)) {
     const normalizedValue = `${value ?? ""}`;
@@ -183,7 +296,7 @@ const appendGithubOutput = (githubOutputPath, values) => {
     const delimiter = createGithubOutputDelimiter(key, normalizedValue);
     lines.push(`${key}<<${delimiter}`, normalizedValue, delimiter);
   }
-  fs.appendFileSync(githubOutputPath, `${lines.join("\n")}\n`);
+  fs.appendFileSync(safeGithubOutputPath, `${lines.join("\n")}\n`);
 };
 
 const getFamilyLabel = (family) => FAMILY_LABELS[family] || family;
@@ -275,6 +388,9 @@ module.exports = {
   appendGithubOutput,
   computeReportContext,
   ensureDir,
+  ensureGithubOutputPath,
+  ensureWithinDirectory,
+  ensureWithinWorkspace,
   getFamilyLabel,
   getSuiteMetadata,
   listify,

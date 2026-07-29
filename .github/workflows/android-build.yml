@@ -41,10 +41,10 @@ jobs:
             ui/mobile/package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Install mobile dependencies
-        run: npm ci --prefix ui/mobile
+        run: npm ci --prefix ui/mobile --ignore-scripts
 
       - name: Prepare webview bundle
         run: npm --prefix ui/mobile run prepare:webview-bundle
@@ -60,7 +60,7 @@ jobs:
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       - name: Build Android Stage Release
         if: ${{ inputs.environment == 'stage' }}
