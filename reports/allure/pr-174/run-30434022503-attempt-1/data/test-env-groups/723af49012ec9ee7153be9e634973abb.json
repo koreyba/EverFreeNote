@@ -1,0 +1,1 @@
+{"id":"723af49012ec9ee7153be9e634973abb","fullName":"everfreenote-mobile:tests/unit/mobileEnexHelpers.test.ts#enexMobile helpers parseEnexDate returns the configured current date when given an invalid date string","name":"returns the configured current date when given an invalid date string","status":"passed","testResultsByEnv":{"default":"15dc05d6c75c1531a2d89d6bc3a98799"}}

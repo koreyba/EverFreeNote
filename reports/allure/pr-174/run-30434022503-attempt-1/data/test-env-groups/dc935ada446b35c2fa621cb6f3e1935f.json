@@ -1,0 +1,1 @@
+{"id":"dc935ada446b35c2fa621cb6f3e1935f","fullName":"everfreenote-mobile:tests/unit/mobileEnexHelpers.test.ts#enexMobile helpers extractEnexContent returns original trimmed text if no <en-note> wrapper exists","name":"returns original trimmed text if no <en-note> wrapper exists","status":"passed","testResultsByEnv":{"default":"6d87c237ae00c713be4bd7b1b3dd8ba6"}}
