@@ -165,7 +165,7 @@ export function TagInput({
   const isExpanded = !disabled && suggestions.length > 0
 
   return (
-    <div className={cn("relative group", className)}>
+    <div className={cn("relative z-30 group", className)}>
       <div
         role="presentation"
         data-testid="tag-input-container"
@@ -247,7 +247,7 @@ export function TagInput({
       {isExpanded && (
         <div
           role="listbox"
-          className="absolute z-10 mt-1 w-full max-w-xs rounded-md border border-input bg-popover text-popover-foreground shadow-md"
+          className="absolute z-50 mt-1 w-full max-w-xs rounded-md border border-input bg-popover text-popover-foreground shadow-lg"
         >
           {suggestions.map((suggestion, index) => (
             <button
