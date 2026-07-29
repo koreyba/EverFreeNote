@@ -64,7 +64,6 @@ describe('useNotesQuery', () => {
     jest.clearAllMocks()
     jest.mocked(useSupabase).mockReturnValue({
       supabase: mockSupabase as never,
-      noteService: mockNoteService as never,
       user: null,
       loading: false,
     })
@@ -431,7 +430,6 @@ describe('useAllTagsQuery', () => {
     jest.clearAllMocks()
     jest.mocked(useSupabase).mockReturnValue({
       supabase: mockSupabase as never,
-      noteService: mockNoteService as never,
       user: null,
       loading: false,
     })

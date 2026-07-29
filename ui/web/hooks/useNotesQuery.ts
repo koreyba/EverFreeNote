@@ -176,12 +176,12 @@ export function useSearchNotes(query: string, userId?: string, options: SearchOp
 
 export function useAllTagsQuery({ userId, enabled = true }: { userId?: string; enabled?: boolean }) {
   const { supabase } = useSupabase()
-  const noteService = useMemo(() => new NoteService(supabase), [supabase])
 
   return useQuery({
     queryKey: ['tags', 'all-with-counts', userId],
     queryFn: async () => {
       if (!userId || !supabase) return { tags: [], counts: {} }
+      const noteService = new NoteService(supabase)
       return noteService.getAllTagsWithCounts(userId)
     },
     enabled: !!(enabled && userId && supabase),
