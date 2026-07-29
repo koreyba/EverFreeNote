@@ -1,4 +1,4 @@
-import { buildBrowserSupabaseStorageKey } from "@ui/web/adapters/supabaseClient"
+import { buildBrowserSupabaseStorageKey, webSupabaseClientFactory } from "@ui/web/adapters/supabaseClient"
 
 describe("buildBrowserSupabaseStorageKey", () => {
   it("includes host and port so local Supabase stacks do not share auth state", () => {
@@ -29,7 +29,6 @@ describe("buildBrowserSupabaseStorageKey", () => {
 
 describe("webSupabaseClientFactory", () => {
   it("throws descriptive error listing missing env parameters", () => {
-    const { webSupabaseClientFactory } = require("@ui/web/adapters/supabaseClient")
     expect(() => webSupabaseClientFactory.createClient({ url: "", anonKey: "" })).toThrow(
       "Missing required Supabase configuration parameter(s): NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY. Please check if they are set in your .env / .env.local file."
     )
