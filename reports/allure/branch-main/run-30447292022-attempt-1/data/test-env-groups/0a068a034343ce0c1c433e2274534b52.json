@@ -1,0 +1,1 @@
+{"id":"0a068a034343ce0c1c433e2274534b52","fullName":"everfreenote-mobile:tests/unit/searchHistory.test.ts#searchHistory service addSearchHistoryItem trims whitespace when adding a query","name":"trims whitespace when adding a query","status":"passed","testResultsByEnv":{"default":"365833bf23465b753376f85c5129c78e"}}
