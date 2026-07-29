@@ -3,6 +3,34 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-174/run-30438943071-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-174/run-30438943071-attempt-1/",
+    "runId": "30438943071",
+    "runAttempt": "1",
+    "prNumber": "174",
+    "ref": "codex/fix-allure-component-failure-reporting",
+    "sha": "e2dcd09c368465b48ab68bdf92cb38b5a4e13b34",
+    "outcome": "success",
+    "previewUrl": "https://5dbd2e89.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #174",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-29T09:22:35.779Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "core-unit",
       "core-integration",
       "web-unit",
@@ -631,44 +659,6 @@
     "scopeLabel": "PR #173",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-28T20:05:02.171Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-173/run-30386667610-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-173/run-30386667610-attempt-1/",
-    "runId": "30386667610",
-    "runAttempt": "1",
-    "prNumber": "173",
-    "ref": "codex/codacy-coverage-reporter-plan",
-    "sha": "3e652c2320c7efda79f33b535622c127ff267086",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #173",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-28T18:27:07.066Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
