@@ -4,10 +4,14 @@ import type { NetworkStatusProvider } from '@core/types/offline'
 export class MobileNetworkStatusProvider implements NetworkStatusProvider {
     private online: boolean = true
 
-    constructor() {
-        void NetInfo.fetch().then(state => {
-            this.online = !!state.isConnected
-        })
+    initialize() {
+        void NetInfo.fetch()
+            .then(state => {
+                this.online = !!state.isConnected
+            })
+            .catch(() => {
+                // Keep the optimistic default when the initial status cannot be fetched.
+            })
     }
 
     isOnline() {
@@ -24,3 +28,4 @@ export class MobileNetworkStatusProvider implements NetworkStatusProvider {
 }
 
 export const mobileNetworkStatusProvider = new MobileNetworkStatusProvider()
+mobileNetworkStatusProvider.initialize()

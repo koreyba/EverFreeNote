@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require("node:fs");
-const path = require("node:path");
-const { parseArgs } = require("./allure-pages-utils");
+const { ensureWithinWorkspace, parseArgs } = require("./allure-pages-utils");
 
 const COMMENT_MARKER = "<!-- everfreenote-pr-status-comment -->";
 const STATUS_STATE_MARKER_PREFIX = "<!-- everfreenote-pr-status-state:";
@@ -62,11 +61,15 @@ const compareReports = (left, right) => {
 };
 
 const readReportsIndex = (filePath) => {
-  if (!filePath || !fs.existsSync(filePath)) {
+  if (!filePath) {
     return [];
   }
 
-  let rawContents = fs.readFileSync(path.resolve(filePath), "utf8");
+  const safeFilePath = ensureWithinWorkspace(filePath, "--reports-index");
+  if (!fs.existsSync(safeFilePath)) {
+    return [];
+  }
+  let rawContents = fs.readFileSync(safeFilePath, "utf8");
   if (rawContents.charCodeAt(0) === 0xfeff) {
     rawContents = rawContents.slice(1);
   }
@@ -409,7 +412,8 @@ const main = () => {
   });
 
   if (args.output) {
-    fs.writeFileSync(path.resolve(args.output), body);
+    const outputPath = ensureWithinWorkspace(args.output, "--output");
+    fs.writeFileSync(outputPath, body);
     return;
   }
 

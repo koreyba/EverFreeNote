@@ -36,6 +36,7 @@ describe('MobileNetworkStatusProvider', () => {
     mockNetInfoFetch.mockReturnValue(fetchPromise)
 
     const provider = new MobileNetworkStatusProvider()
+    provider.initialize()
     expect(provider.isOnline()).toBe(true)
 
     resolveFetch({ isConnected: false })
@@ -47,6 +48,7 @@ describe('MobileNetworkStatusProvider', () => {
   it('handles null or undefined isConnected property from NetInfo', async () => {
     mockNetInfoFetch.mockResolvedValue({ isConnected: null } as unknown as NetInfoState)
     const provider = new MobileNetworkStatusProvider()
+    provider.initialize()
 
     await Promise.resolve()
 
