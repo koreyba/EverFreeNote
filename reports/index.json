@@ -8,6 +8,34 @@
     "suiteLabels": [
       "Web E2E"
     ],
+    "path": "reports/allure/pr-177/run-30490027109-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-177/run-30490027109-attempt-1/",
+    "runId": "30490027109",
+    "runAttempt": "1",
+    "prNumber": "177",
+    "ref": "implement_tag_autocomplete_feature",
+    "sha": "523a65d523c4d1d90ee7812546af71b641123604",
+    "outcome": "success",
+    "previewUrl": "https://2a872082.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #177",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-29T21:00:10.036Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web E2E"
+    ],
     "path": "reports/allure/pr-180/run-30490010354-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-180/run-30490010354-attempt-1/",
     "runId": "30490010354",
@@ -621,44 +649,6 @@
     "scopeLabel": "PR #178",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-29T15:02:31.663Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-178/run-30460899670-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-178/run-30460899670-attempt-1/",
-    "runId": "30460899670",
-    "runAttempt": "1",
-    "prNumber": "178",
-    "ref": "codex/sonar-quality-gate",
-    "sha": "9bb09e5cc969501251254888af388854c127e485",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #178",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-29T14:37:25.778Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
