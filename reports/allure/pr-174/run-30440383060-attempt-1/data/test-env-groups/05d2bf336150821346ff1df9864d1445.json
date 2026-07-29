@@ -1,1 +1,0 @@
-{"id":"05d2bf336150821346ff1df9864d1445","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter markQueueItemStatus delegates status and error to databaseService.markQueueItemStatus","name":"delegates status and error to databaseService.markQueueItemStatus","status":"passed","testResultsByEnv":{"default":"9d7be2fc682001d7eb6f3f65f37a065a"}}
