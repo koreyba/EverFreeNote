@@ -61,7 +61,9 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   wraps long spec paths at terminal width. If Cypress exits before JUnit is
   written, the last active spec or the runner itself receives one synthetic
   broken Allure result. Existing project-prefixed Allure package/full-name
-  identifiers prevent duplicate synthetic failures.
+  identifiers prevent duplicate synthetic failures. Retry JUnit files are
+  deduplicated by spec using the latest file, synthetic result filenames reuse
+  their payload UUID, and stored traces are limited to 500 lines.
 - The combined Allure publisher installs dependencies with
   `npm ci --ignore-scripts`; it only needs the checked-in report tooling and
   must not execute arbitrary dependency lifecycle hooks. The progressive PR
@@ -97,6 +99,8 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   same parsed JUnit model. Nested Mocha suites are not added to the top-level
   totals, and a failed Cypress process cannot publish a green component Allure
   artifact merely because the adapter stopped before persisting a test result.
+  All CLI-provided report paths must remain inside the current workspace,
+  including through existing symlink ancestors.
 - CI does not need a cleanup hook because each producer starts on a clean
   runner. Local interrupted Cypress runs may be cleaned manually by removing
   `.nyc_output` and `coverage/component` before rerunning coverage.

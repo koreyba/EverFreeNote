@@ -58,12 +58,10 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 - [x] Task 3.6: Reconcile Cypress process, JUnit, and Allure outcomes so
   component crashes and wrapped spec summaries cannot publish a green report.
 
-The implementation validation is otherwise complete. Component result
-reconciliation is validated against the captured failing CI artifacts and its
-focused regression suite. DevKit recognizes all seven feature documents and
-the required branch-name check passes on `feature-sonar-test-coverage`. Phase 3
-remains incomplete only because the deployment checks require GitHub Actions
-and SonarQube Cloud state.
+The reconciliation-focused validation is complete against the captured failing
+CI artifacts and its focused regression suite. Task 3.3 and Phase 3 remain
+incomplete pending their broader DevKit, scanner-configuration, report
+generation, and deployment validation requirements.
 
 ## Dependencies
 

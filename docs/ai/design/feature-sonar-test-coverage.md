@@ -186,8 +186,9 @@ flowchart LR
 The Cypress process exit code is the source of truth for the component job
 outcome. JUnit XML is the structured source of truth for completed spec/test
 counts and failures; totals are read once from each top-level `testsuites`
-element rather than summed from nested Mocha suites. Allure remains the
-test-level presentation and history format. A reconciliation step adds a
+element rather than summed from nested Mocha suites. If retries leave more than
+one JUnit file for a spec, only the latest report is canonical. Allure remains
+the test-level presentation and history format. A reconciliation step adds a
 spec-level broken result only when JUnit or the failed Cypress process has no
 corresponding failed/broken Allure result. The console summary is not a
 canonical result source because terminal-width wrapping can split long spec

@@ -27,6 +27,7 @@ const createFixture = (t) => {
 };
 
 const runBackfill = ({
+  tempDir,
   resultsDir,
   junitDir,
   logFile,
@@ -50,16 +51,28 @@ const runBackfill = ({
     args.push("--run-outcome", runOutcome);
   }
 
-  return spawnSync(process.execPath, args, { encoding: "utf8" });
+  return spawnSync(process.execPath, args, {
+    cwd: tempDir,
+    encoding: "utf8",
+  });
 };
 
-const readAllureResults = (resultsDir) =>
+const listAllureResultFiles = (resultsDir) =>
   fs
     .readdirSync(resultsDir)
-    .filter((entry) => entry.endsWith("-result.json"))
+    .filter((entry) => entry.endsWith("-result.json"));
+
+const readAllureResults = (resultsDir) =>
+  listAllureResultFiles(resultsDir)
     .map((entry) =>
       JSON.parse(fs.readFileSync(path.join(resultsDir, entry), "utf8")),
     );
+
+const readSingleAllureResult = (resultsDir) => {
+  const results = readAllureResults(resultsDir);
+  assert.equal(results.length, 1, "expected exactly one Allure result");
+  return results[0];
+};
 
 const writeFailedJunit = (junitDir, spec, message) => {
   fs.writeFileSync(
@@ -91,9 +104,12 @@ test("backfills a broken result when Cypress renders zero counts as dashes", (t)
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /Synthetic Allure failures created: 1/);
 
-  const [payload] = readAllureResults(fixture.resultsDir);
+  const payload = readSingleAllureResult(fixture.resultsDir);
   assert.equal(payload.status, "broken");
   assert.equal(payload.name, "spec crash: providers/ThemeToggle.cy.tsx");
+  assert.deepEqual(listAllureResultFiles(fixture.resultsDir), [
+    `${payload.uuid}-result.json`,
+  ]);
 
   const parameters = Object.fromEntries(
     payload.parameters.map(({ name, value }) => [name, value]),
@@ -107,6 +123,11 @@ test("backfills a broken result when Cypress renders zero counts as dashes", (t)
     "Spec pending": "0",
     "Spec skipped": "0",
   });
+
+  const secondRun = runBackfill(fixture);
+  assert.equal(secondRun.status, 0, secondRun.stderr);
+  assert.match(secondRun.stdout, /Synthetic Allure failures created: 0/);
+  assert.equal(listAllureResultFiles(fixture.resultsDir).length, 1);
 });
 
 test("uses JUnit when Cypress wraps a long spec path in its console summary", (t) => {
@@ -131,7 +152,7 @@ test("uses JUnit when Cypress wraps a long spec path in its console summary", (t
 
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /Synthetic Allure failures created: 1/);
-  const [payload] = readAllureResults(fixture.resultsDir);
+  const payload = readSingleAllureResult(fixture.resultsDir);
   assert.equal(payload.name, `spec crash: ${spec}`);
   assert.equal(
     payload.statusDetails.message,
@@ -186,25 +207,29 @@ test("backfills the active spec when Cypress crashes before JUnit and summary ou
 
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /Synthetic Allure failures created: 1/);
-  const [payload] = readAllureResults(fixture.resultsDir);
+  const payload = readSingleAllureResult(fixture.resultsDir);
   assert.equal(payload.name, "spec crash: providers/ThemeToggle.cy.tsx");
   assert.match(payload.statusDetails.message, /heap out of memory/i);
 });
 
 test("backfills a runner failure when Cypress exits before starting a spec", (t) => {
   const fixture = createFixture(t);
-  fs.writeFileSync(
-    fixture.logFile,
-    "Error: Cypress configuration could not be loaded",
+  const logLines = Array.from(
+    { length: 600 },
+    (_, index) => `diagnostic line ${index}`,
   );
+  logLines.push("Error: Cypress configuration could not be loaded");
+  fs.writeFileSync(fixture.logFile, logLines.join("\n"));
 
   const run = runBackfill({ ...fixture, runOutcome: "failure" });
 
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /Synthetic Allure failures created: 1/);
-  const [payload] = readAllureResults(fixture.resultsDir);
+  const payload = readSingleAllureResult(fixture.resultsDir);
   assert.equal(payload.name, "Cypress component runner failed");
   assert.match(payload.statusDetails.message, /configuration could not be loaded/i);
+  assert.equal(payload.statusDetails.trace.split("\n").length, 500);
+  assert.doesNotMatch(payload.statusDetails.trace, /diagnostic line 0(?:\D|$)/);
 });
 
 test("uses top-level JUnit totals once when suites are nested", (t) => {
@@ -239,6 +264,65 @@ test("uses top-level JUnit totals once when suites are nested", (t) => {
   assert.match(summary, /\| Tests \(total\) \| 6 \|/);
   assert.match(summary, /\| Tests \(passed\) \| 6 \|/);
   assert.doesNotMatch(summary, /\| Tests \(total\) \| 12 \|/);
+});
+
+test("uses only the latest JUnit report when a spec is retried", (t) => {
+  const fixture = createFixture(t);
+  fs.writeFileSync(fixture.logFile, "");
+  const olderReport = path.join(fixture.junitDir, "component-tests-older.xml");
+  const newerReport = path.join(fixture.junitDir, "component-tests-newer.xml");
+  const spec = "providers/ThemeToggle.cy.tsx";
+  fs.writeFileSync(
+    olderReport,
+    [
+      '<testsuites tests="1" failures="1" skipped="0" time="0.5">',
+      `  <testsuite file="cypress/component/${spec}" tests="1" failures="1">`,
+      '    <testcase name="old attempt"><failure message="old failure" /></testcase>',
+      "  </testsuite>",
+      "</testsuites>",
+    ].join("\n"),
+  );
+  fs.writeFileSync(
+    newerReport,
+    [
+      '<testsuites tests="2" failures="0" skipped="0" time="0.7">',
+      `  <testsuite file="cypress/component/${spec}" tests="2" failures="0">`,
+      '    <testcase name="retry passed" />',
+      '    <testcase name="second test passed" />',
+      "  </testsuite>",
+      "</testsuites>",
+    ].join("\n"),
+  );
+  fs.utimesSync(olderReport, new Date(1_000), new Date(1_000));
+  fs.utimesSync(newerReport, new Date(2_000), new Date(2_000));
+
+  const run = runBackfill({
+    ...fixture,
+    runOutcome: "success",
+    summaryFile: fixture.summaryFile,
+  });
+
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /Synthetic Allure failures created: 0/);
+  const summary = fs.readFileSync(fixture.summaryFile, "utf8");
+  assert.match(summary, /\| Tests \(total\) \| 2 \|/);
+  assert.match(summary, /\| Tests \(passed\) \| 2 \|/);
+  assert.match(summary, /\| Tests \(failed\) \| 0 \|/);
+  assert.doesNotMatch(summary, /\| Tests \(total\) \| 3 \|/);
+});
+
+test("rejects output paths outside the workspace", (t) => {
+  const fixture = createFixture(t);
+  const outsideDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "everfreenote-cypress-outside-"),
+  );
+  t.after(() => fs.rmSync(outsideDir, { recursive: true, force: true }));
+  fs.writeFileSync(fixture.logFile, "");
+
+  const run = runBackfill({ ...fixture, resultsDir: outsideDir });
+
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, /--results-dir must stay within the workspace/);
 });
 
 test("HTML-encodes dynamic JUnit values in the GitHub step summary", (t) => {
