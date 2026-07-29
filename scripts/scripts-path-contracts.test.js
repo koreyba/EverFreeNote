@@ -177,6 +177,46 @@ test("prune and render CLIs reject unsafe list, report-index, root, and output p
   fs.writeFileSync(outsideList, "reports/allure/pr-1/run-1\n");
   fs.writeFileSync(reportsIndex, "[]\n");
 
+  const retainedSourceDir = path.join(root, "reports-source");
+  const retainedLinkDir = path.join(root, "reports-link");
+  fs.mkdirSync(retainedSourceDir, { recursive: true });
+  fs.writeFileSync(path.join(retainedSourceDir, "retained-paths.txt"), "reports/allure/pr-1/run-1\n");
+  createDirectoryLink(retainedSourceDir, retainedLinkDir);
+
+  const canonicalReportsIndexDir = path.join(fixtureDir, "reports-index-source");
+  const reportsIndexLinkDir = path.join(fixtureDir, "reports-index-link");
+  fs.mkdirSync(canonicalReportsIndexDir);
+  fs.writeFileSync(path.join(canonicalReportsIndexDir, "index.json"), "[]\n");
+  createDirectoryLink(canonicalReportsIndexDir, reportsIndexLinkDir);
+
+  const canonicalOutputDir = path.join(fixtureDir, "comment-output-source");
+  const outputLinkDir = path.join(fixtureDir, "comment-output-link");
+  fs.mkdirSync(canonicalOutputDir);
+  createDirectoryLink(canonicalOutputDir, outputLinkDir);
+
+  const canonicalPruneRun = runScript("prune-allure-pages.js", [
+    "--root",
+    root,
+    "--reports-list",
+    path.join(retainedLinkDir, "retained-paths.txt"),
+  ]);
+  assert.equal(canonicalPruneRun.status, 0, canonicalPruneRun.stderr);
+
+  const canonicalRenderRun = runScript("render-pr-status-comment.js", [
+    "--repository",
+    "koreyba/EverFreeNote",
+    "--pr-number",
+    "1",
+    "--head-sha",
+    "a".repeat(40),
+    "--reports-index",
+    path.join(reportsIndexLinkDir, "index.json"),
+    "--output",
+    path.join(outputLinkDir, "comment.md"),
+  ]);
+  assert.equal(canonicalRenderRun.status, 0, canonicalRenderRun.stderr);
+  assert.match(fs.readFileSync(path.join(canonicalOutputDir, "comment.md"), "utf8"), /## PR Status/);
+
   const escapedListRun = runScript("prune-allure-pages.js", [
     "--root",
     root,

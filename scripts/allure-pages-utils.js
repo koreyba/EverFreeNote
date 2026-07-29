@@ -88,6 +88,15 @@ const findExistingAncestor = (candidatePath) => {
   }
 };
 
+const canonicalizePath = (candidatePath) => {
+  const existingAncestor = findExistingAncestor(candidatePath);
+  const canonicalAncestor = realpathSyncNative(existingAncestor);
+  const relativeSuffix = path.relative(existingAncestor, candidatePath);
+  return relativeSuffix
+    ? path.join(canonicalAncestor, relativeSuffix)
+    : canonicalAncestor;
+};
+
 const ensureWithinWorkspace = (targetPath, optionName) => {
   const workspaceRoot = path.resolve(process.cwd());
   const candidatePath = path.resolve(targetPath);
@@ -96,12 +105,11 @@ const ensureWithinWorkspace = (targetPath, optionName) => {
   }
 
   const canonicalWorkspaceRoot = realpathSyncNative(workspaceRoot);
-  const existingAncestor = findExistingAncestor(candidatePath);
-  const canonicalAncestor = realpathSyncNative(existingAncestor);
-  if (!isPathWithin(canonicalWorkspaceRoot, canonicalAncestor)) {
+  const canonicalPath = canonicalizePath(candidatePath);
+  if (!isPathWithin(canonicalWorkspaceRoot, canonicalPath)) {
     throw new Error(`${optionName} resolves outside repository workspace: ${targetPath}`);
   }
-  return candidatePath;
+  return canonicalPath;
 };
 
 const ensureWithinDirectory = (targetPath, optionName, baseDir) => {
@@ -111,13 +119,12 @@ const ensureWithinDirectory = (targetPath, optionName, baseDir) => {
     throw new Error(`${optionName} must stay within ${resolvedBase}: ${targetPath}`);
   }
 
-  const canonicalBase = realpathSyncNative(findExistingAncestor(resolvedBase));
-  const existingAncestor = findExistingAncestor(candidatePath);
-  const canonicalAncestor = realpathSyncNative(existingAncestor);
-  if (!isPathWithin(canonicalBase, canonicalAncestor)) {
+  const canonicalBase = canonicalizePath(resolvedBase);
+  const canonicalPath = canonicalizePath(candidatePath);
+  if (!isPathWithin(canonicalBase, canonicalPath)) {
     throw new Error(`${optionName} resolves outside ${resolvedBase}: ${targetPath}`);
   }
-  return candidatePath;
+  return canonicalPath;
 };
 
 const ensureGithubOutputPath = (targetPath) => {
@@ -127,8 +134,8 @@ const ensureGithubOutputPath = (targetPath) => {
     throw new Error("--github-output requires GITHUB_OUTPUT");
   }
 
-  const candidatePath = path.resolve(targetPath);
-  const expectedPath = path.resolve(configuredPath);
+  const candidatePath = canonicalizePath(path.resolve(targetPath));
+  const expectedPath = canonicalizePath(path.resolve(configuredPath));
   if (candidatePath !== expectedPath) {
     throw new Error("--github-output must match GITHUB_OUTPUT");
   }

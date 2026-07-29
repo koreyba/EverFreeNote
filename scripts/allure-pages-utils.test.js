@@ -31,6 +31,23 @@ test("accepts non-existing descendants and rejects lexical workspace escapes", (
   );
 });
 
+test("returns canonical paths for non-existing descendants below an in-workspace link", (t) => {
+  const fixtureDir = makeWorkspaceFixture(t);
+  const canonicalDirectory = path.join(fixtureDir, "canonical");
+  const linkedDirectory = path.join(fixtureDir, "linked");
+  fs.mkdirSync(canonicalDirectory);
+  fs.symlinkSync(
+    canonicalDirectory,
+    linkedDirectory,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+
+  assert.equal(
+    ensureWithinWorkspace(path.join(linkedDirectory, "generated", "index.html"), "--output"),
+    path.join(canonicalDirectory, "generated", "index.html"),
+  );
+});
+
 test("rejects symlinked ancestors and dangling symlinks", (t) => {
   const fixtureDir = makeWorkspaceFixture(t);
   const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), "everfreenote-pages-outside-"));
@@ -78,7 +95,7 @@ test("allows only the configured GitHub output file outside the workspace", (t) 
 
   try {
     process.env.GITHUB_OUTPUT = outputPath;
-    assert.equal(ensureGithubOutputPath(outputPath), outputPath);
+    assert.equal(ensureGithubOutputPath(outputPath), fs.realpathSync.native(outputDir) + path.sep + "github-output");
     appendGithubOutput(outputPath, { metadata: path.join(fixtureDir, "metadata.json") });
     assert.match(fs.readFileSync(outputPath, "utf8"), /metadata=/);
     assert.throws(
