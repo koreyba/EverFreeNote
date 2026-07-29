@@ -1,1 +1,0 @@
-{"id":"f802928cc0921c76b0de9c1fefc46b3c","fullName":"everfreenote-mobile:tests/component/supabaseProvider.test.tsx#SupabaseProvider calls mobileSyncService.init when onAuthStateChange fires with a session","name":"calls mobileSyncService.init when onAuthStateChange fires with a session","status":"passed","testResultsByEnv":{"default":"2be62447c2d9b5bb5957e8d9038b7a15"}}
