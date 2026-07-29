@@ -145,7 +145,11 @@ final report link through the serialized status workflow. E2E follows the same
 contract. Publishers never read a report-index file into an outbound comment
 request; they expose only a validated published URL. This avoids writers
 overwriting one another while preserving progressive status visibility and the
-existing Allure report format and history model.
+existing Allure report format and history model. Before reading or mutating the
+comment, the updater verifies that its producer SHA is still the current PR
+head, then verifies the head again immediately before the API write. Stale-head
+updates are successful no-ops, and an older run for the same SHA cannot replace
+a newer status for the same workflow row.
 
 ### PR analysis remains resilient
 
@@ -169,6 +173,30 @@ so its main metric represents code covered by any configured test layer.
 Overlapping lines, including shared core code, are deduplicated and the result
 cannot exceed 100 percent. Sonar Measures still allows drill-down by directory,
 but not by test runner.
+
+### Cypress component result sources are layered
+
+```mermaid
+flowchart LR
+  Cypress["Cypress process exit"] --> Job["Component job outcome"]
+  JUnit["JUnit XML per spec"] --> Reconcile["Component result reconciliation"]
+  AllureRaw["Allure Cypress results"] --> Reconcile
+  Log["Cypress console log"] --> Reconcile
+  Reconcile --> Summary["GitHub step summary"]
+  Reconcile --> AllureArtifact["Complete component Allure artifact"]
+  Job --> PRStatus["PR and report family outcome"]
+```
+
+The Cypress process exit code is the source of truth for the component job
+outcome. JUnit XML is the structured source of truth for completed spec/test
+counts and failures; totals are read once from each top-level `testsuites`
+element rather than summed from nested Mocha suites. If retries leave more than
+one JUnit file for a spec, only the latest report is canonical. Allure remains
+the test-level presentation and history format. A reconciliation step adds a
+spec-level broken result only when JUnit or the failed Cypress process has no
+corresponding failed/broken Allure result. The console summary is not a
+canonical result source because terminal-width wrapping can split long spec
+paths; it is retained only for diagnostic text and compatibility fallback.
 
 ### Qodana receives the Sonar-equivalent union
 

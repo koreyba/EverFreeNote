@@ -20,6 +20,8 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   orchestration, including progressive status-comment jobs.
 - `.github/workflows/pr-status-comment.yml`: serialized reusable updater for
   the single PR status comment.
+- `.github/workflows/build.yml`: canonical CI gate for all Node-based support
+  script tests under `scripts/*.test.js`.
 - `.github/workflows/allure-pr-publish.yml`: single-owner combined PR Allure
   publisher for artifacts from the current orchestration run.
 - `.github/workflows/merge-tests-coverage.yml`: main-branch coverage,
@@ -54,6 +56,19 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   SonarQube and Qodana use `always()` after both producers. Main keeps its three
   parallel coverage producers, existing Allure publishers, and dependent
   scanners unchanged.
+- Node-based CI support-script tests run once in the Build workflow after root
+  dependency installation. Component Tests execute Cypress and production
+  reconciliation only; they do not own the reconciliation script's unit tests.
+- Component result reconciliation uses Cypress exit status for job gating,
+  top-level JUnit `testsuites` totals for completed test counts, and the
+  Allure Cypress output for test-level presentation. `fast-xml-parser` reads
+  the JUnit reports. Console summary parsing is only a fallback because Cypress
+  wraps long spec paths at terminal width. If Cypress exits before JUnit is
+  written, the last active spec or the runner itself receives one synthetic
+  broken Allure result. Existing project-prefixed Allure package/full-name
+  identifiers prevent duplicate synthetic failures. Retry JUnit files are
+  deduplicated by spec using the latest file, synthetic result filenames reuse
+  their payload UUID, and stored traces are limited to 500 lines.
 - The combined Allure publisher installs dependencies with
   `npm ci --ignore-scripts`; it only needs the checked-in report tooling and
   must not execute arbitrary dependency lifecycle hooks. The progressive PR
@@ -85,6 +100,13 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 - The PR Allure publisher also uses `always()` at the caller boundary and
   downloads artifacts with `github.run_id`, so a producer failure cannot make
   the other producer's Allure results overwrite or hide the available report.
+- The component workflow builds its GitHub summary and Allure backfill from the
+  same parsed JUnit model. Nested Mocha suites are not added to the top-level
+  totals, and a failed Cypress process cannot publish a green component Allure
+  artifact merely because the adapter stopped before persisting a test result.
+  All CLI-provided report paths must remain inside the current workspace,
+  including through existing symlink ancestors. The GitHub step-summary command
+  file is the sole exception and must exactly match `GITHUB_STEP_SUMMARY`.
 - CI does not need a cleanup hook because each producer starts on a clean
   runner. Local interrupted Cypress runs may be cleaned manually by removing
   `.nyc_output` and `coverage/component` before rerunning coverage.
@@ -122,8 +144,11 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   dependency lifecycle scripts. The PR comment updater validates repository and
   pull-request identifiers before using the authenticated GitHub REST API.
 - Every PR status mutation runs through the same PR-scoped concurrency group,
-  so Unit, Component, combined Allure, and E2E updates cannot overwrite one
-  another with stale state.
+  so Unit, Component, combined Allure, and E2E updates perform serialized
+  read-modify-write operations. The updater also reads the authoritative PR
+  head before processing and immediately before PATCH; a stale producer is a
+  successful no-op, API lookup failures fail closed, and an older run ID cannot
+  replace newer state for the same workflow row.
 - The combined Allure publisher authenticates its clean GitHub remote through
   the GitHub CLI credential helper; credentials are never embedded in the
   remote URL. PR status rendering separates state normalization, report

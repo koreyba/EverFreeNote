@@ -100,6 +100,19 @@ const normalizeReportUrl = (value) => {
   return url.toString();
 };
 
+const readPullRequestHeadSha = async ({ repository, prNumber }) => {
+  const { owner, name } = parseRepository(repository);
+  const endpoint = `repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/pulls/${prNumber}`;
+  const pullRequest = await githubRequest({ endpoint });
+  const headSha = normalizeSha(pullRequest?.head?.sha);
+  if (!/^[0-9a-f]{40}$/.test(headSha)) {
+    throw new Error(
+      `GitHub API returned an invalid head SHA for ${repository}#${prNumber}`,
+    );
+  }
+  return headSha;
+};
+
 const readExistingComment = async ({ repository, prNumber }) => {
   const { owner, name } = parseRepository(repository);
   const repositoryPath = `${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
@@ -165,7 +178,7 @@ const createStatusState = ({ existingBody, headSha }) => {
 
 const applyStatusUpdate = ({ runId, status, statusKey }, statusState) => {
   if (!statusKey) {
-    return;
+    return true;
   }
   if (!status) {
     throw new Error("status is required when status-key is provided");
@@ -174,13 +187,23 @@ const applyStatusUpdate = ({ runId, status, statusKey }, statusState) => {
     throw new Error(`Invalid run-id: ${runId}`);
   }
 
+  const existingRunId = statusState.runs[statusKey]?.runId;
+  if (
+    runId &&
+    existingRunId &&
+    BigInt(runId) < BigInt(existingRunId)
+  ) {
+    return false;
+  }
+
   statusState.statuses[statusKey] = status;
   if (runId) {
     statusState.runs[statusKey] = { runId };
   }
+  return true;
 };
 
-const buildCommentBody = ({
+const buildCommentUpdate = ({
   allureUrl = "",
   catalogUrl = "",
   existingBody = "",
@@ -193,18 +216,90 @@ const buildCommentBody = ({
 }) => {
   validateCommentContext({ headSha, prNumber, repository, statusKey });
   const statusState = createStatusState({ existingBody, headSha });
-  applyStatusUpdate({ runId, status, statusKey }, statusState);
+  const statusApplied = applyStatusUpdate(
+    { runId, status, statusKey },
+    statusState,
+  );
 
   const normalizedAllureUrl = normalizeReportUrl(allureUrl);
-  return renderComment({
-    catalogUrl: normalizeReportUrl(catalogUrl),
+  return {
+    body: renderComment({
+      catalogUrl: normalizeReportUrl(catalogUrl),
+      headSha,
+      prNumber,
+      latestReport: normalizedAllureUrl ? { url: normalizedAllureUrl } : null,
+      reportsByWorkflow: new Map(),
+      repository,
+      statusState,
+    }),
+    statusApplied,
+  };
+};
+
+const buildCommentBody = (options) => buildCommentUpdate(options).body;
+
+const synchronizeStatusComment = async ({
+  allureUrl = "",
+  catalogUrl = "",
+  headSha,
+  prNumber,
+  readComment = readExistingComment,
+  readCurrentHeadSha = readPullRequestHeadSha,
+  repository,
+  runId = "",
+  status = "",
+  statusKey = "",
+  writeComment = updateComment,
+}) => {
+  validateCommentContext({ headSha, prNumber, repository, statusKey });
+  const currentHeadSha = await readCurrentHeadSha({ repository, prNumber });
+  if (normalizeSha(currentHeadSha) !== headSha) {
+    return {
+      applied: false,
+      currentHeadSha: normalizeSha(currentHeadSha),
+      reason: "stale-head",
+    };
+  }
+
+  const existingComment = await readComment({ repository, prNumber });
+  const { body, statusApplied } = buildCommentUpdate({
+    allureUrl,
+    catalogUrl,
+    existingBody: existingComment?.body,
     headSha,
     prNumber,
-    latestReport: normalizedAllureUrl ? { url: normalizedAllureUrl } : null,
-    reportsByWorkflow: new Map(),
     repository,
-    statusState,
+    runId,
+    status,
+    statusKey,
   });
+  if (!statusApplied) {
+    return { applied: false, currentHeadSha, reason: "older-run" };
+  }
+
+  const headShaBeforeWrite = normalizeSha(
+    await readCurrentHeadSha({ repository, prNumber }),
+  );
+  if (headShaBeforeWrite !== headSha) {
+    return {
+      applied: false,
+      currentHeadSha: headShaBeforeWrite,
+      reason: "head-changed-before-write",
+    };
+  }
+
+  await writeComment({
+    repository,
+    prNumber,
+    commentId: existingComment?.id,
+    body,
+  });
+
+  return {
+    applied: true,
+    created: !existingComment,
+    currentHeadSha: headShaBeforeWrite,
+  };
 };
 
 const main = async () => {
@@ -221,19 +316,9 @@ const main = async () => {
   const runId = normalize(
     args["run-id"] || process.env.RUN_ID || process.env.GITHUB_RUN_ID,
   );
-  if (!repository || !prNumber || !headSha) {
-    throw new Error("repository, pr-number, and head-sha are required");
-  }
-  parseRepository(repository);
-  if (!/^\d+$/.test(prNumber)) {
-    throw new Error(`Invalid pull request number: ${prNumber}`);
-  }
-
-  const existingComment = await readExistingComment({ repository, prNumber });
-  const body = buildCommentBody({
+  const result = await synchronizeStatusComment({
     allureUrl: args["allure-url"],
     catalogUrl: args["catalog-url"],
-    existingBody: existingComment?.body,
     headSha,
     prNumber,
     repository,
@@ -242,15 +327,15 @@ const main = async () => {
     statusKey,
   });
 
-  await updateComment({
-    repository,
-    prNumber,
-    commentId: existingComment?.id,
-    body,
-  });
+  if (!result.applied) {
+    console.log(
+      `Skipped PR status comment update for ${repository}#${prNumber}: ${result.reason} (incoming ${headSha}, current ${result.currentHeadSha})`,
+    );
+    return;
+  }
 
   console.log(
-    `${existingComment ? "Updated" : "Created"} PR status comment for ${repository}#${prNumber}`,
+    `${result.created ? "Created" : "Updated"} PR status comment for ${repository}#${prNumber}`,
   );
 };
 
@@ -265,4 +350,5 @@ module.exports = {
   buildCommentBody,
   normalizeReportUrl,
   parseRepository,
+  synchronizeStatusComment,
 };

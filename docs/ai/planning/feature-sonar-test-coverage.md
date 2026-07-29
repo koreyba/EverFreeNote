@@ -37,6 +37,10 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
   combined Allure publication single-owner.
 - [x] Task 2.10: Route Unit, Component, combined Allure, and E2E comment updates
   through one serialized writer without sending report-index file data.
+- [x] Task 2.11: Reject status-comment updates from stale PR heads and prevent
+  older same-head workflow runs from overwriting newer row state.
+- [x] Task 2.12: Run all Node-based CI support-script tests once in the Build
+  workflow instead of coupling reconciliation tests to Cypress execution.
 - [x] Task 2.5: Add parallel root Jest, Cypress, and mobile Jest coverage jobs
   for pushes to `main`.
 - [x] Task 2.6: Upload each report separately and make the main scanner depend on
@@ -55,12 +59,13 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 - [x] Task 3.4: Perform implementation conformance and code review.
 - [x] Task 3.5: Remediate the current PR Sonar and Qodana findings without
   suppressions.
+- [x] Task 3.6: Reconcile Cypress process, JUnit, and Allure outcomes so
+  component crashes and wrapped spec summaries cannot publish a green report.
 
-The implementation validation is otherwise complete, with the Cypress
-limitation recorded in the testing document. DevKit recognizes all seven
-feature documents and the required branch-name check passes on
-`feature-sonar-test-coverage`. Phase 3 remains incomplete only because the
-deployment checks require GitHub Actions and SonarQube Cloud state.
+The reconciliation-focused validation is complete against the captured failing
+CI artifacts and its focused regression suite. Task 3.3 and Phase 3 remain
+incomplete pending their broader DevKit, scanner-configuration, report
+generation, and deployment validation requirements.
 
 ## Dependencies
 

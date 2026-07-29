@@ -41,6 +41,12 @@ application test cases.
   and Component Allure artifacts.
 - [x] Unit, Component, combined Allure, and E2E updates use one PR-scoped
   serialized writer and preserve statuses written by earlier suites.
+- [x] Status-comment reconciliation rejects stale producer SHAs, aborts when
+  the PR head changes before PATCH, fails closed when the head lookup fails,
+  and ignores older run IDs for an already updated workflow row.
+- [x] The Build workflow runs `node --test scripts/*.test.js`, covering both
+  status-comment and Cypress reconciliation support scripts once per CI run;
+  Component Tests no longer duplicate the Node reconciliation test suite.
 - [x] The network updater accepts a validated published URL and does not read
   `reports/index.json`, preventing report file data from entering the outbound
   GitHub API request.
@@ -58,6 +64,16 @@ application test cases.
 - [x] The dependency-free mobile Sonar TSConfig parses successfully.
 - [x] Qodana remains a separate reusable analysis workflow and receives the
   merged PR coverage artifact.
+- [x] Component JUnit totals are read once from each top-level `testsuites`
+  element; nested Mocha suites do not inflate test counts.
+- [x] Component Allure reconciliation covers dash-form zero counts, wrapped
+  spec paths, project-prefixed failure deduplication, active-spec hard crashes,
+  runner startup failures, nested JUnit suites, retry report deduplication,
+  workspace path validation, the external GitHub step-summary command file,
+  bounded traces, UUID consistency, idempotency, and summary HTML encoding.
+- [x] Captured artifacts from run `30394192034` reconcile to 674 component
+  results: 673 passed and one broken `ThemeToggle` spec with the original
+  `ChunkLoadError`.
 
 The full Cypress coverage suite was not completed locally: an earlier full run
 was intentionally interrupted, and a later cold focused webpack build exceeded
@@ -135,16 +151,20 @@ cannot be completed solely in the local checkout.
 
 ## Local Validation Results
 
-- Historical `npm run type-check` validation passed before the dependency issue
-  appeared; the current installed dependency tree blocks it in
-  `node_modules/@types/node/tls.d.ts` with `TS1010: '*/' expected`.
+- `npm run type-check`: passed.
 - `npm run type-check:tests`: passed.
 - `npm --prefix ui/mobile run type-check`: passed.
 - `npx eslint . --max-warnings=0`: passed.
+- The feature documentation lint passed.
 - All workflow YAML files parse successfully, and the PR reusable-workflow
   dependency structure passed the targeted static check.
-- The focused PR status-comment regression suite passes 6 tests after the
+- The focused PR status-comment regression suite passes 10 tests after the
   Sonar/Qodana remediation, and targeted ESLint reports zero warnings.
+- The component reconciliation regression suite passes 11 tests; all root
+  script tests pass 21 tests.
+- Allure inspection of the captured component artifacts models all 674 logical
+  results and matches the expected broken
+  `providers/ThemeToggle.cy.tsx#spec crash` result.
 - `npx tsc -p ui/mobile/tsconfig.sonar.json --noEmit`: passed.
 - `git diff --check`: passed apart from Git's informational LF/CRLF warnings.
 - No production TypeScript files were changed in this workflow-only task.
