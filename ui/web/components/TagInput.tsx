@@ -12,6 +12,7 @@ type TagInputProps = {
   onRemoveTag: (tag: string) => void
   onTagClick?: (tag: string) => void
   suggestions?: string[]
+  tagCounts?: Record<string, number>
   onQueryChange?: (query: string) => void
   placeholder?: string
   disabled?: boolean
@@ -24,6 +25,7 @@ export function TagInput({
   onRemoveTag,
   onTagClick,
   suggestions = [],
+  tagCounts = {},
   onQueryChange,
   placeholder = "Add tag...",
   disabled = false,
@@ -243,26 +245,24 @@ export function TagInput({
           )}
         </HorizontalTagScroll>
 
-        {!disabled && (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={(e) => {
-              e.stopPropagation()
-              focusInput()
-            }}
-            className={cn(
-              "shrink-0 flex items-center justify-center w-7 h-7 rounded-full",
-              "bg-background/50 hover:bg-accent transition-colors duration-200 shadow-sm border",
-              "text-muted-foreground hover:text-accent-foreground ml-2",
-              disabled && "opacity-50 cursor-not-allowed"
-            )}
-            title="Add tag"
-            aria-label="Add tag"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={(e) => {
+            e.stopPropagation()
+            focusInput()
+          }}
+          className={cn(
+            "shrink-0 flex items-center justify-center w-7 h-7 rounded-full",
+            "bg-background/50 hover:bg-accent transition-colors duration-200 shadow-sm border",
+            "text-muted-foreground hover:text-accent-foreground ml-2",
+            disabled && "opacity-50 cursor-not-allowed"
+          )}
+          title="Add tag"
+          aria-label="Add tag"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Suggestions dropdown */}
@@ -271,22 +271,30 @@ export function TagInput({
           role="listbox"
           className="absolute z-50 mt-1 w-full max-w-xs rounded-md border border-input bg-popover text-popover-foreground shadow-lg"
         >
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={suggestion}
-              type="button"
-              role="option"
-              aria-selected={index === highlightedIndex}
-              className={cn(
-                "w-full px-3 py-2 text-left text-sm transition-colors first:rounded-t-md last:rounded-b-md",
-                index === highlightedIndex ? "bg-accent text-accent-foreground font-semibold" : "hover:bg-muted"
-              )}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              {suggestion}
-            </button>
-          ))}
+          {suggestions.map((suggestion, index) => {
+            const count = tagCounts[suggestion]
+            return (
+              <button
+                key={suggestion}
+                type="button"
+                role="option"
+                aria-selected={index === highlightedIndex}
+                className={cn(
+                  "w-full px-3 py-2 text-left text-sm flex items-center justify-between transition-colors first:rounded-t-md last:rounded-b-md",
+                  index === highlightedIndex ? "bg-accent text-accent-foreground font-semibold" : "hover:bg-muted"
+                )}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSuggestionClick(suggestion)}
+              >
+                <span>{suggestion}</span>
+                {typeof count === "number" && (
+                  <span className="text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full font-mono font-normal">
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

@@ -70,13 +70,23 @@ jest.mock('@/components/TagInput', () => ({
   TagInput: ({
     tags,
     onAddTags,
+    onRemoveTag,
+    onQueryChange,
   }: {
     tags: string[]
     onAddTags: (tags: string[]) => void
+    onRemoveTag: (tag: string) => void
+    onQueryChange?: (query: string) => void
   }) => (
     <div>
       <button type="button" onClick={() => onAddTags(['local-tag'])}>
         Add local tag
+      </button>
+      <button type="button" onClick={() => onRemoveTag(tags[0])}>
+        Remove first tag
+      </button>
+      <button type="button" onClick={() => onQueryChange?.('search-tag')}>
+        Change tag query
       </button>
       <div data-testid="selected-tags">{tags.join(',')}</div>
     </div>
@@ -460,3 +470,57 @@ describe('NoteEditor copy action', () => {
     expect((screen.getByLabelText('Copy note') as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+describe('NoteEditor tag handlers & save/read actions', () => {
+  const renderEditor = (props: Partial<React.ComponentProps<typeof NoteEditor>> = {}) => {
+    const onSave = jest.fn()
+    const onRead = jest.fn()
+    const view = render(
+      <NoteEditor
+        noteId="note-1"
+        initialTitle="Test Note"
+        initialDescription="<p>Test Content</p>"
+        initialTags="work, urgent"
+        isSaving={false}
+        onSave={onSave}
+        onRead={onRead}
+        onAutoSave={jest.fn()}
+        {...props}
+      />,
+    )
+    return { ...view, onSave, onRead }
+  }
+
+  it('triggers onSave and onRead callbacks with form data', () => {
+    const { onSave, onRead } = renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+    expect(onSave).toHaveBeenCalledWith({
+      title: 'Test Note',
+      description: '<p>Test Content</p>',
+      tags: 'work, urgent',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /^read$/i }))
+    expect(onRead).toHaveBeenCalledWith({
+      title: 'Test Note',
+      description: '<p>Test Content</p>',
+      tags: 'work, urgent',
+    })
+  })
+
+  it('adds and removes tags properly in NoteEditor', () => {
+    renderEditor()
+
+    expect(screen.getByTestId('selected-tags').textContent).toBe('work,urgent')
+
+    fireEvent.click(screen.getByText('Add local tag'))
+    expect(screen.getByTestId('selected-tags').textContent).toBe('work,urgent,local-tag')
+
+    fireEvent.click(screen.getByText('Remove first tag'))
+    expect(screen.getByTestId('selected-tags').textContent).toBe('urgent,local-tag')
+
+    fireEvent.click(screen.getByText('Change tag query'))
+  })
+})
+

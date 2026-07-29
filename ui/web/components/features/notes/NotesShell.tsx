@@ -25,7 +25,7 @@ import { SearchResultsPanel } from "@/components/features/notes/SearchResultsPan
 import type { SearchResultsPanelHandle } from "@/components/features/notes/SearchResultsPanel"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
-import { normalizeTagList } from "@ui/web/lib/tags"
+import { normalizeTag, normalizeTagList } from "@ui/web/lib/tags"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
@@ -301,6 +301,22 @@ function EditorPane({
     return normalizeTagList(collected)
   }, [notes])
 
+  const tagCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const note of notes) {
+      if (!note.tags) continue
+      const seenInNote = new Set<string>()
+      for (const rawTag of note.tags) {
+        const tag = normalizeTag(rawTag)
+        if (tag && !seenInNote.has(tag)) {
+          seenInNote.add(tag)
+          counts[tag] = (counts[tag] || 0) + 1
+        }
+      }
+    }
+    return counts
+  }, [notes])
+
   if (!selectedNote && !isEditing) {
     return <EmptyState />
   }
@@ -314,6 +330,7 @@ function EditorPane({
         initialDescription={selectedNote?.description ?? selectedNote?.content ?? ""}
         initialTags={selectedNote?.tags?.join(", ") ?? ""}
         availableTags={availableTags}
+        tagCounts={tagCounts}
         isSaving={saving}
         onSave={handleSaveNote}
         onRead={handleReadNote}

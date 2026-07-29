@@ -164,4 +164,17 @@ describe('useTagSuggestions', () => {
 
     expect(result.current).toEqual(['redux'])
   })
+
+  it('handles case insensitivity, duplicate tags, and empty candidate tags gracefully', () => {
+    const { result } = renderHook(() =>
+      useTagSuggestions({
+        allTags: ['  ', '', 'React-Native', 'REACT', 'react', 'redux'],
+        selectedTags: [],
+        query: ' REA ',
+      })
+    )
+
+    expect(result.current).toEqual(['react', 'react-native'])
+  })
 })
+

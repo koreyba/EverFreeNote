@@ -34,6 +34,7 @@ interface NoteEditorProps {
   initialDescription?: string
   initialTags?: string
   availableTags?: string[]
+  tagCounts?: Record<string, number>
   isSaving: boolean
   onSave: (data: { title: string; description: string; tags: string }) => void
   onRead: (data: { title: string; description: string; tags: string }) => void
@@ -61,6 +62,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   noteId,
   lastSavedAt,
   availableTags = [],
+  tagCounts = {},
   wordpressConfigured = false,
   onDelete,
   onBack,
@@ -320,6 +322,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             onAddTags={addTags}
             onRemoveTag={removeTag}
             suggestions={suggestions}
+            tagCounts={tagCounts}
             onQueryChange={handleTagQueryChange}
             placeholder="work, personal, ideas"
           />
