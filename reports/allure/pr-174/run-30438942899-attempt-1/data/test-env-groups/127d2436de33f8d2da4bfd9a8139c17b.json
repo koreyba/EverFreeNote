@@ -1,0 +1,1 @@
+{"id":"127d2436de33f8d2da4bfd9a8139c17b","fullName":"everfreenote-mobile:tests/unit/configAdapter.test.ts#config adapter getSupabaseConfig throws error when only supabaseUrl is provided but key is missing","name":"throws error when only supabaseUrl is provided but key is missing","status":"passed","testResultsByEnv":{"default":"2e2ce0d2d38ed810d0d8d8f3c110ed99"}}
