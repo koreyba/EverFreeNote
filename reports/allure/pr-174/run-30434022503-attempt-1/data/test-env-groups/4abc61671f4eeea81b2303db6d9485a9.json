@@ -1,1 +1,0 @@
-{"id":"4abc61671f4eeea81b2303db6d9485a9","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService init initializes only once on multiple init calls","name":"initializes only once on multiple init calls","status":"passed","testResultsByEnv":{"default":"c3600de9d428223209b35c8045db5fc2"}}
