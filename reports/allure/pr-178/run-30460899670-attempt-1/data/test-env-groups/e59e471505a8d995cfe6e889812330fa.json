@@ -1,0 +1,1 @@
+{"id":"e59e471505a8d995cfe6e889812330fa","fullName":"everfreenote-mobile:tests/component/useBulkSelection.test.ts#useBulkSelection deactivate() resets isActive and clears selectedIds","name":"deactivate() resets isActive and clears selectedIds","status":"passed","testResultsByEnv":{"default":"a0108db99dd19064a59bc9ce979e6a5e"}}
