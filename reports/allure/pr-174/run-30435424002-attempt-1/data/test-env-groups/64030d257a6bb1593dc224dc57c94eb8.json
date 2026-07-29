@@ -1,1 +1,0 @@
-{"id":"64030d257a6bb1593dc224dc57c94eb8","fullName":"everfreenote-mobile:tests/component/useDeleteNote.test.tsx#useDeleteNote Callback handlers calls onError callback when queue fails (offline)","name":"calls onError callback when queue fails (offline)","status":"passed","testResultsByEnv":{"default":"2302e4a933556ef7fef3ce6ee7e61650"}}
