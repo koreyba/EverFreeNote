@@ -192,6 +192,27 @@ const resolveWorkspacePath = (value, argumentName, required = false) => {
   return candidatePath;
 };
 
+const resolveSummaryPath = (value) => {
+  const summaryPath =
+    typeof value === "string" && value.trim() !== ""
+      ? path.resolve(value.trim())
+      : "";
+  if (!summaryPath) {
+    return "";
+  }
+
+  const githubSummaryPath =
+    typeof process.env.GITHUB_STEP_SUMMARY === "string" &&
+    process.env.GITHUB_STEP_SUMMARY.trim() !== ""
+      ? path.resolve(process.env.GITHUB_STEP_SUMMARY.trim())
+      : "";
+  if (githubSummaryPath && summaryPath === githubSummaryPath) {
+    return githubSummaryPath;
+  }
+
+  return resolveWorkspacePath(value, "summary-file");
+};
+
 const collectFilesByExtension = (rootDir, extension) => {
   if (!rootDir || !fs.existsSync(rootDir)) {
     return [];
@@ -692,7 +713,7 @@ const parseRunOptions = (argv) => {
     resultsDir: resolveWorkspacePath(args["results-dir"], "results-dir", true),
     logFile: resolveWorkspacePath(args["log-file"], "log-file", true),
     junitDir: resolveWorkspacePath(args["junit-dir"], "junit-dir"),
-    summaryFile: resolveWorkspacePath(args["summary-file"], "summary-file"),
+    summaryFile: resolveSummaryPath(args["summary-file"]),
     screenshotsDir: resolveWorkspacePath(
       args["screenshots-dir"],
       "screenshots-dir",

@@ -33,6 +33,7 @@ const runBackfill = ({
   logFile,
   summaryFile,
   runOutcome,
+  env = {},
 }) => {
   const args = [
     scriptPath,
@@ -54,6 +55,7 @@ const runBackfill = ({
   return spawnSync(process.execPath, args, {
     cwd: tempDir,
     encoding: "utf8",
+    env: { ...process.env, ...env },
   });
 };
 
@@ -323,6 +325,38 @@ test("rejects output paths outside the workspace", (t) => {
 
   assert.equal(run.status, 1);
   assert.match(run.stderr, /--results-dir must stay within the workspace/);
+});
+
+test("accepts the GitHub step summary command file outside the workspace", (t) => {
+  const fixture = createFixture(t);
+  const runnerTempDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "everfreenote-runner-temp-"),
+  );
+  t.after(() => fs.rmSync(runnerTempDir, { recursive: true, force: true }));
+  const githubSummaryFile = path.join(runnerTempDir, "step-summary.md");
+  fs.writeFileSync(fixture.logFile, "");
+
+  const run = runBackfill({
+    ...fixture,
+    runOutcome: "success",
+    summaryFile: githubSummaryFile,
+    env: { GITHUB_STEP_SUMMARY: githubSummaryFile },
+  });
+
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(
+    fs.readFileSync(githubSummaryFile, "utf8"),
+    /## Component Tests Passed/,
+  );
+
+  const rejectedRun = runBackfill({
+    ...fixture,
+    runOutcome: "success",
+    summaryFile: path.join(runnerTempDir, "different-summary.md"),
+    env: { GITHUB_STEP_SUMMARY: githubSummaryFile },
+  });
+  assert.equal(rejectedRun.status, 1);
+  assert.match(rejectedRun.stderr, /--summary-file must stay within the workspace/);
 });
 
 test("HTML-encodes dynamic JUnit values in the GitHub step summary", (t) => {

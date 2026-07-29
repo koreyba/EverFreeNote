@@ -100,7 +100,8 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   totals, and a failed Cypress process cannot publish a green component Allure
   artifact merely because the adapter stopped before persisting a test result.
   All CLI-provided report paths must remain inside the current workspace,
-  including through existing symlink ancestors.
+  including through existing symlink ancestors. The GitHub step-summary command
+  file is the sole exception and must exactly match `GITHUB_STEP_SUMMARY`.
 - CI does not need a cleanup hook because each producer starts on a clean
   runner. Local interrupted Cypress runs may be cleaned manually by removing
   `.nyc_output` and `coverage/component` before rerunning coverage.

@@ -63,8 +63,8 @@ application test cases.
 - [x] Component Allure reconciliation covers dash-form zero counts, wrapped
   spec paths, project-prefixed failure deduplication, active-spec hard crashes,
   runner startup failures, nested JUnit suites, retry report deduplication,
-  workspace path validation, bounded traces, UUID consistency, idempotency, and
-  summary HTML encoding.
+  workspace path validation, the external GitHub step-summary command file,
+  bounded traces, UUID consistency, idempotency, and summary HTML encoding.
 - [x] Captured artifacts from run `30394192034` reconcile to 674 component
   results: 673 passed and one broken `ThemeToggle` spec with the original
   `ChunkLoadError`.
@@ -154,8 +154,8 @@ cannot be completed solely in the local checkout.
   dependency structure passed the targeted static check.
 - The focused PR status-comment regression suite passes 6 tests after the
   Sonar/Qodana remediation, and targeted ESLint reports zero warnings.
-- The component reconciliation regression suite passes 9 tests; all root
-  script tests pass 15 tests.
+- The component reconciliation regression suite passes 10 tests; all root
+  script tests pass 16 tests.
 - Allure inspection of the captured component artifacts models all 674 logical
   results and matches the expected broken
   `providers/ThemeToggle.cy.tsx#spec crash` result.
