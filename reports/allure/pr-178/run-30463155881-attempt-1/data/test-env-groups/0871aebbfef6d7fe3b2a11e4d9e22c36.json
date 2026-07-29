@@ -1,1 +1,0 @@
-{"id":"0871aebbfef6d7fe3b2a11e4d9e22c36","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService init initializes OfflineSyncManager with adapters and NoteService","name":"initializes OfflineSyncManager with adapters and NoteService","status":"passed","testResultsByEnv":{"default":"3fd10fc379781dd6a9e0e0aeea4d501a"}}

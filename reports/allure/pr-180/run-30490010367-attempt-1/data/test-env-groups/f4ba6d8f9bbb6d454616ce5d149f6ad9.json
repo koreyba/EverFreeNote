@@ -1,0 +1,1 @@
+{"id":"f4ba6d8f9bbb6d454616ce5d149f6ad9","fullName":"everfreenote:cypress/component/ui/web/hooks/useBulkDeleteConfirm.cy.tsx#useBulkDeleteConfirm prevents duplicate confirm calls while delete is in progress","name":"prevents duplicate confirm calls while delete is in progress","status":"passed","testResultsByEnv":{"default":"b903139a7317ef9d1eb00ddfb7e70625"}}
