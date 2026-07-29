@@ -1,0 +1,1 @@
+{"id":"4e5badeffca3a43a2aaa956919de20f7","fullName":"everfreenote-mobile:tests/unit/searchHistory.test.ts#searchHistory service addSearchHistoryItem limits history to max 10 items when adding","name":"limits history to max 10 items when adding","status":"passed","testResultsByEnv":{"default":"f39f3fa47893a02ada53a9f7a7e9559a"}}
