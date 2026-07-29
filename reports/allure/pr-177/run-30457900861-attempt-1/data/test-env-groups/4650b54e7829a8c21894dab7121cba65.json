@@ -1,1 +1,0 @@
-{"id":"4650b54e7829a8c21894dab7121cba65","fullName":"everfreenote:ui/web/tests/unit/components/tagInput.test.tsx#TagInput disarms backspace removal state when a non-backspace key is pressed","name":"disarms backspace removal state when a non-backspace key is pressed","status":"passed","testResultsByEnv":{"default":"d7115862ec71ac9edd2f70f81313aa30"}}

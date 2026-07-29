@@ -1,1 +1,0 @@
-{"id":"602ab1a33a1cfd2f091dc352853816fa","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService getLocalNotes and getLocalNoteById maps null and non-array tag JSON values to empty tag lists","name":"maps null and non-array tag JSON values to empty tag lists","status":"passed","testResultsByEnv":{"default":"e89b23bad8a3fdf47d00a5a2d15463a9"}}
