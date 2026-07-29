@@ -11,6 +11,8 @@ type TagInputProps = {
   label?: string
   placeholder?: string
   disabled?: boolean
+  availableTags?: string[]
+  tagCounts?: Record<string, number>
   style?: ViewStyle
 }
 
@@ -43,6 +45,8 @@ export function TagInput({
   label = 'Tags',
   placeholder = 'Add tags using button on the right side:',
   disabled = false,
+  availableTags,
+  tagCounts,
   style,
 }: TagInputProps) {
   const { colors } = useTheme()
@@ -51,12 +55,39 @@ export function TagInput({
   const [draft, setDraft] = useState('')
   const inputRef = useRef<TextInput>(null)
 
+  const suggestions = useMemo(() => {
+    const query = draft.trim().toLowerCase()
+    if (!query || !availableTags?.length) return []
+
+    const selectedSet = new Set(tags.map((t) => t.trim().toLowerCase()))
+    const matches: string[] = []
+
+    for (const rawTag of availableTags) {
+      const tag = rawTag.trim().toLowerCase()
+      if (!tag || selectedSet.has(tag)) continue
+      if (tag.startsWith(query)) {
+        if (!matches.includes(tag)) {
+          matches.push(tag)
+        }
+      }
+    }
+
+    return matches.sort((a, b) => a.localeCompare(b)).slice(0, 3)
+  }, [draft, availableTags, tags])
+
   const handleAdd = () => {
     const parsed = parseTags(draft)
     if (parsed.length > 0) {
       const nextTags = dedupeTags([...tags, ...parsed])
       onChangeTags(nextTags)
     }
+    setDraft('')
+    setIsEditing(false)
+  }
+
+  const handleSelectSuggestion = (suggestion: string) => {
+    const nextTags = dedupeTags([...tags, suggestion])
+    onChangeTags(nextTags)
     setDraft('')
     setIsEditing(false)
   }
@@ -137,6 +168,30 @@ export function TagInput({
           </Pressable>
         )}
       </View>
+
+      {/* Suggestions dropdown */}
+      {isEditing && suggestions.length > 0 && (
+        <View style={styles.suggestionsContainer}>
+          {suggestions.map((suggestion) => {
+            const count = tagCounts?.[suggestion]
+            return (
+              <Pressable
+                key={suggestion}
+                style={({ pressed }) => [
+                  styles.suggestionItem,
+                  pressed && styles.suggestionItemPressed,
+                ]}
+                onPress={() => handleSelectSuggestion(suggestion)}
+              >
+                <Text style={styles.suggestionText}>{suggestion}</Text>
+                {typeof count === 'number' && count > 0 && (
+                  <Text style={styles.suggestionCount}>{count}</Text>
+                )}
+              </Pressable>
+            )
+          })}
+        </View>
+      )}
     </View>
   )
 }
@@ -202,5 +257,39 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   addButtonPressed: {
     backgroundColor: colors.accent,
     borderColor: colors.primary,
+  },
+  suggestionsContainer: {
+    marginTop: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    overflow: 'hidden',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  suggestionItemPressed: {
+    backgroundColor: colors.accent,
+  },
+  suggestionText: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+    color: colors.foreground,
+  },
+  suggestionCount: {
+    fontSize: 11,
+    fontFamily: 'SpaceMono_400Regular',
+    color: colors.mutedForeground,
+    backgroundColor: colors.muted,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
 })

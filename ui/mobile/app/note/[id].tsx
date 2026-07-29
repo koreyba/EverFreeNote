@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Alert, Pressable, View, TextInput, StyleSheet, ActivityIndicator, Text, Platform, Keyboard } from 'react-native'
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useNote, useUpdateNote, useDeleteNote } from '@ui/mobile/hooks'
+import { useNote, useUpdateNote, useDeleteNote, useAllTags } from '@ui/mobile/hooks'
 import EditorWebView, { type EditorWebViewHandle } from '@ui/mobile/components/EditorWebView'
 import { EditorToolbar, TOOLBAR_CONTENT_HEIGHT } from '@ui/mobile/components/EditorToolbar'
 import { useTheme } from '@ui/mobile/providers'
@@ -247,6 +247,7 @@ export default function NoteEditorScreen() {
   useEffect(() => {
     deletedMessageShownRef.current = false
   }, [id])
+  const allTagsQuery = useAllTags()
   const [tags, setTags] = useState<string[]>([])
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
@@ -658,6 +659,8 @@ export default function NoteEditorScreen() {
           tags={tags}
           onChangeTags={handleTagsChange}
           onTagPress={handleTagPress}
+          availableTags={allTagsQuery.data?.tags}
+          tagCounts={allTagsQuery.data?.counts}
           label=""
           style={styles.tags}
         />

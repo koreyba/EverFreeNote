@@ -13,7 +13,7 @@ export const useTagSuggestions = ({
   allTags,
   selectedTags,
   query,
-  minChars = 3,
+  minChars = 1,
   limit = 3,
 }: UseTagSuggestionsParams) => {
   return useMemo(() => {
