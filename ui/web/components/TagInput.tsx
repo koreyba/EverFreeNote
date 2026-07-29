@@ -171,6 +171,7 @@ export function TagInput({
         data-testid="tag-input-container"
         onClick={() => focusInput()}
         onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return
           if ((e.key === "Enter" || e.key === " ") && !disabled) {
             e.preventDefault()
             focusInput()
