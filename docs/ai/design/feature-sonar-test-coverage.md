@@ -145,7 +145,11 @@ final report link through the serialized status workflow. E2E follows the same
 contract. Publishers never read a report-index file into an outbound comment
 request; they expose only a validated published URL. This avoids writers
 overwriting one another while preserving progressive status visibility and the
-existing Allure report format and history model.
+existing Allure report format and history model. Before reading or mutating the
+comment, the updater verifies that its producer SHA is still the current PR
+head, then verifies the head again immediately before the API write. Stale-head
+updates are successful no-ops, and an older run for the same SHA cannot replace
+a newer status for the same workflow row.
 
 ### PR analysis remains resilient
 

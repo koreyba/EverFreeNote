@@ -41,6 +41,12 @@ application test cases.
   and Component Allure artifacts.
 - [x] Unit, Component, combined Allure, and E2E updates use one PR-scoped
   serialized writer and preserve statuses written by earlier suites.
+- [x] Status-comment reconciliation rejects stale producer SHAs, aborts when
+  the PR head changes before PATCH, fails closed when the head lookup fails,
+  and ignores older run IDs for an already updated workflow row.
+- [x] The Build workflow runs `node --test scripts/*.test.js`, covering both
+  status-comment and Cypress reconciliation support scripts once per CI run;
+  Component Tests no longer duplicate the Node reconciliation test suite.
 - [x] The network updater accepts a validated published URL and does not read
   `reports/index.json`, preventing report file data from entering the outbound
   GitHub API request.
@@ -152,10 +158,10 @@ cannot be completed solely in the local checkout.
 - The feature documentation lint passed.
 - All workflow YAML files parse successfully, and the PR reusable-workflow
   dependency structure passed the targeted static check.
-- The focused PR status-comment regression suite passes 6 tests after the
+- The focused PR status-comment regression suite passes 10 tests after the
   Sonar/Qodana remediation, and targeted ESLint reports zero warnings.
 - The component reconciliation regression suite passes 10 tests; all root
-  script tests pass 16 tests.
+  script tests pass 20 tests.
 - Allure inspection of the captured component artifacts models all 674 logical
   results and matches the expected broken
   `providers/ThemeToggle.cy.tsx#spec crash` result.

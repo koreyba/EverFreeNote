@@ -20,6 +20,8 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   orchestration, including progressive status-comment jobs.
 - `.github/workflows/pr-status-comment.yml`: serialized reusable updater for
   the single PR status comment.
+- `.github/workflows/build.yml`: canonical CI gate for all Node-based support
+  script tests under `scripts/*.test.js`.
 - `.github/workflows/allure-pr-publish.yml`: single-owner combined PR Allure
   publisher for artifacts from the current orchestration run.
 - `.github/workflows/merge-tests-coverage.yml`: main-branch coverage,
@@ -54,6 +56,9 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   SonarQube and Qodana use `always()` after both producers. Main keeps its three
   parallel coverage producers, existing Allure publishers, and dependent
   scanners unchanged.
+- Node-based CI support-script tests run once in the Build workflow after root
+  dependency installation. Component Tests execute Cypress and production
+  reconciliation only; they do not own the reconciliation script's unit tests.
 - Component result reconciliation uses Cypress exit status for job gating,
   top-level JUnit `testsuites` totals for completed test counts, and the
   Allure Cypress output for test-level presentation. `fast-xml-parser` reads
@@ -139,8 +144,11 @@ description: Implementation notes for SonarQube Cloud coverage reporting
   dependency lifecycle scripts. The PR comment updater validates repository and
   pull-request identifiers before using the authenticated GitHub REST API.
 - Every PR status mutation runs through the same PR-scoped concurrency group,
-  so Unit, Component, combined Allure, and E2E updates cannot overwrite one
-  another with stale state.
+  so Unit, Component, combined Allure, and E2E updates perform serialized
+  read-modify-write operations. The updater also reads the authoritative PR
+  head before processing and immediately before PATCH; a stale producer is a
+  successful no-op, API lookup failures fail closed, and an older run ID cannot
+  replace newer state for the same workflow row.
 - The combined Allure publisher authenticates its clean GitHub remote through
   the GitHub CLI credential helper; credentials are never embedded in the
   remote URL. PR status rendering separates state normalization, report

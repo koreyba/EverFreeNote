@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const {
   buildCommentBody,
   normalizeReportUrl,
+  synchronizeStatusComment,
 } = require("./update-pr-status-comment");
 const { readStatusState } = require("./render-pr-status-comment");
 
@@ -103,4 +104,143 @@ test("report links are restricted to the trusted GitHub Pages location", () => {
       ),
     /Invalid report URL/,
   );
+});
+
+test("a stale workflow cannot reset statuses recorded for the current PR head", async () => {
+  const currentHeadSha = "a".repeat(40);
+  const staleHeadSha = "b".repeat(40);
+  let comment = null;
+
+  const synchronize = async ({
+    headSha = currentHeadSha,
+    runId,
+    status,
+    statusKey,
+  }) =>
+    synchronizeStatusComment({
+      ...context,
+      headSha,
+      readComment: async () => comment,
+      readCurrentHeadSha: async () => currentHeadSha,
+      runId,
+      status,
+      statusKey,
+      writeComment: async ({ body }) => {
+        comment = { body, id: 1 };
+      },
+    });
+
+  await synchronize({ runId: "300", status: "success", statusKey: "unit" });
+  const staleResult = await synchronize({
+    headSha: staleHeadSha,
+    runId: "299",
+    status: "success",
+    statusKey: "e2e",
+  });
+  await synchronize({ runId: "301", status: "success", statusKey: "e2e" });
+  await synchronize({
+    runId: "300",
+    status: "success",
+    statusKey: "component",
+  });
+
+  assert.equal(staleResult.applied, false);
+  assert.equal(staleResult.reason, "stale-head");
+  assert.deepEqual(readStatusState(comment.body).statuses, {
+    unit: "success",
+    component: "success",
+    e2e: "success",
+  });
+  assert.deepEqual(readStatusState(comment.body).runs, {
+    unit: { runId: "300" },
+    component: { runId: "300" },
+    e2e: { runId: "301" },
+  });
+});
+
+test("a head change immediately before PATCH aborts the comment update", async () => {
+  const incomingHeadSha = "a".repeat(40);
+  const replacementHeadSha = "b".repeat(40);
+  let headReadCount = 0;
+  let writeCalled = false;
+
+  const result = await synchronizeStatusComment({
+    ...context,
+    headSha: incomingHeadSha,
+    readComment: async () => null,
+    readCurrentHeadSha: async () => {
+      headReadCount += 1;
+      return headReadCount === 1 ? incomingHeadSha : replacementHeadSha;
+    },
+    runId: "300",
+    status: "success",
+    statusKey: "unit",
+    writeComment: async () => {
+      writeCalled = true;
+    },
+  });
+
+  assert.equal(result.applied, false);
+  assert.equal(result.reason, "head-changed-before-write");
+  assert.equal(headReadCount, 2);
+  assert.equal(writeCalled, false);
+});
+
+test("a GitHub head lookup failure fails closed without writing", async () => {
+  let readCommentCalled = false;
+  let writeCalled = false;
+
+  await assert.rejects(
+    synchronizeStatusComment({
+      ...context,
+      headSha: "a".repeat(40),
+      readComment: async () => {
+        readCommentCalled = true;
+        return null;
+      },
+      readCurrentHeadSha: async () => {
+        throw new Error("GitHub API unavailable");
+      },
+      runId: "300",
+      status: "success",
+      statusKey: "unit",
+      writeComment: async () => {
+        writeCalled = true;
+      },
+    }),
+    /GitHub API unavailable/,
+  );
+  assert.equal(readCommentCalled, false);
+  assert.equal(writeCalled, false);
+});
+
+test("an older run for the same head cannot overwrite a newer status", async () => {
+  const headSha = "a".repeat(40);
+  const newerBody = buildCommentBody({
+    ...context,
+    headSha,
+    runId: "301",
+    status: "success",
+    statusKey: "unit",
+  });
+  let writeCalled = false;
+
+  const result = await synchronizeStatusComment({
+    ...context,
+    headSha,
+    readComment: async () => ({ body: newerBody, id: 1 }),
+    readCurrentHeadSha: async () => headSha,
+    runId: "300",
+    status: "failure",
+    statusKey: "unit",
+    writeComment: async () => {
+      writeCalled = true;
+    },
+  });
+
+  assert.equal(result.applied, false);
+  assert.equal(result.reason, "older-run");
+  assert.equal(writeCalled, false);
+  assert.equal(readStatusState(newerBody).statuses.unit, "success");
+  assert.deepEqual(readStatusState(newerBody).runs.unit, { runId: "301" });
 });
