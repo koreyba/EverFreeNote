@@ -74,7 +74,9 @@ test("rejects symlinked ancestors and dangling symlinks", (t) => {
     process.platform === "win32" ? "junction" : "dir",
   );
   fs.rmSync(danglingTarget, { recursive: true, force: true });
-  assert.throws(() => ensureWithinWorkspace(danglingLink, "--output"));
+  assert.throws(() => ensureWithinWorkspace(danglingLink, "--output"), {
+    code: "ENOENT",
+  });
 });
 
 test("readJson does not turn an unsafe path into a fallback value", () => {

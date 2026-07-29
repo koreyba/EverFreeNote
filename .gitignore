@@ -35,6 +35,8 @@ ui/mobile/allure-report/
 # Test artifacts (keep test runners in build/, exclude temp results)
 TEST_SUMMARY.md
 TESTING_LOG.md
+/.tmp-script-contracts-*
+/.tmp-allure-pages-utils-*
 
 # Next.js
 /.next/

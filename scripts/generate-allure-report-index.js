@@ -34,16 +34,16 @@ const readCurrentReports = (currentArgs) => {
   const files = Array.isArray(currentArgs) ? currentArgs : [currentArgs];
   return files
     .filter(Boolean)
-    .map((filePath) => readJson(filePath, null))
+    .map((filePath) =>
+      readJson(ensureWithinWorkspace(filePath, "--current"), null)
+    )
     .filter((payload) => payload?.path);
 };
 
 const main = () => {
   const args = parseArgs(process.argv);
   const current = readCurrentReports(args.current);
-  const existing = readExistingReports(
-    args.existing ? ensureWithinWorkspace(args.existing, "--existing") : ""
-  );
+  const existing = readExistingReports(args.existing || "");
   const outputDir = ensureWithinWorkspace(args.output || ".pages-index", "--output");
   const templatePath = ensureWithinWorkspace(
     args.template || ".github/pages/allure-reports-index.html",
