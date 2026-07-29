@@ -1,0 +1,1 @@
+{"id":"7545da4a1de37e501270f7a71cfc1652","fullName":"everfreenote-mobile:tests/component/supabaseProvider.test.tsx#SupabaseProvider sets user and session when getSession returns a session","name":"sets user and session when getSession returns a session","status":"passed","testResultsByEnv":{"default":"4e157e86dce41e57b141412e4e7810e9"}}
