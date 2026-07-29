@@ -1,0 +1,1 @@
+{"id":"74ff49e74ca82e962c4933e22e8815d7","fullName":"everfreenote-mobile:tests/component/useOfflineSync.test.tsx#useOfflineSync does nothing when AppState becomes active but network is offline","name":"does nothing when AppState becomes active but network is offline","status":"passed","testResultsByEnv":{"default":"1672bb605ae7c0ca6299c9f736b65922"}}
