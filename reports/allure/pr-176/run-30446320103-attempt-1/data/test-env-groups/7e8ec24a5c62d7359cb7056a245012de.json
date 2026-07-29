@@ -1,0 +1,1 @@
+{"id":"7e8ec24a5c62d7359cb7056a245012de","fullName":"everfreenote-mobile:tests/component/noteCard.test.tsx#NoteCard renders fallback title \"Untitled\" when note.title is empty or null","name":"renders fallback title \"Untitled\" when note.title is empty or null","status":"passed","testResultsByEnv":{"default":"044c3759f2147d70b535f470a22715c4"}}

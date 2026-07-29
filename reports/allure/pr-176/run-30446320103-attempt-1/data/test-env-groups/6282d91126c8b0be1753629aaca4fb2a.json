@@ -1,0 +1,1 @@
+{"id":"6282d91126c8b0be1753629aaca4fb2a","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService getManager throws error if service is not initialized","name":"throws error if service is not initialized","status":"passed","testResultsByEnv":{"default":"7ca583dd49c0c6dc9218cdbaad3d765a"}}

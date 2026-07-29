@@ -16,6 +16,42 @@
       "Mobile Unit",
       "Web Component"
     ],
+    "path": "reports/allure/pr-176/run-30446320103-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-176/run-30446320103-attempt-1/",
+    "runId": "30446320103",
+    "runAttempt": "1",
+    "prNumber": "176",
+    "ref": "codex/install-codacy-skills",
+    "sha": "b65620550b1aeef1c92bd51150d0b1f9c53e9cdd",
+    "outcome": "failure",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #176",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-29T11:16:06.068Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
     "path": "reports/allure/branch-main/run-30441617427-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-30441617427-attempt-1/",
     "runId": "30441617427",
@@ -633,34 +669,6 @@
     "scopeLabel": "PR #175",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-28T20:58:17.538Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-175/run-30397981222-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-175/run-30397981222-attempt-1/",
-    "runId": "30397981222",
-    "runAttempt": "1",
-    "prNumber": "175",
-    "ref": "codex/improve-coverage-workflow",
-    "sha": "e1d2cc2e201d54c3a09e660aa52ec06abc6ecdca",
-    "outcome": "success",
-    "previewUrl": "https://7c845a04.everfreenote.pages.dev",
-    "e2eRef": "master",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #175",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-28T20:56:31.785Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
