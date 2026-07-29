@@ -18,6 +18,9 @@ allprojects {
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
   }
+  dependencyLocking {
+    lockAllConfigurations()
+  }
 }
 
 apply plugin: "expo-root-project"

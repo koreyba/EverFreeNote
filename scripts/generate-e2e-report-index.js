@@ -2,6 +2,11 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const {
+  ensureDir,
+  ensureWithinWorkspace,
+  readJson,
+} = require('./allure-pages-utils');
 
 const DEFAULT_LIMIT = 20;
 
@@ -20,12 +25,8 @@ const parseArgs = (argv) => {
 };
 
 const readExistingReports = (filePath) => {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  const parsed = readJson(filePath, []);
+  return Array.isArray(parsed) ? parsed : [];
 };
 
 const requireEnv = (name) => {
@@ -46,9 +47,14 @@ const parseLimit = (value) => {
 
 const main = () => {
   const args = parseArgs(process.argv);
-  const existingPath = args.existing;
-  const outputDir = args.output || '.pages-index';
-  const templatePath = args.template || '.github/pages/e2e-reports-index.html';
+  const existingPath = args.existing
+    ? ensureWithinWorkspace(args.existing, '--existing')
+    : '';
+  const outputDir = ensureWithinWorkspace(args.output || '.pages-index', '--output');
+  const templatePath = ensureWithinWorkspace(
+    args.template || '.github/pages/e2e-reports-index.html',
+    '--template'
+  );
   const limit = parseLimit(args.limit);
 
   if (!existingPath) {
@@ -86,17 +92,24 @@ const main = () => {
     })
     .slice(0, limit);
 
-  const reportsDir = path.join(outputDir, 'reports');
-  fs.mkdirSync(reportsDir, { recursive: true });
-  fs.writeFileSync(path.join(reportsDir, 'index.json'), `${JSON.stringify(reports, null, 2)}\n`);
-  fs.writeFileSync(path.join(reportsDir, 'retained-paths.txt'), `${reports.map((item) => item.path).join('\n')}\n`);
+  const reportsDir = ensureWithinWorkspace(path.join(outputDir, 'reports'), '--output');
+  const reportsIndexPath = ensureWithinWorkspace(path.join(reportsDir, 'index.json'), '--output');
+  const retainedPathsPath = ensureWithinWorkspace(
+    path.join(reportsDir, 'retained-paths.txt'),
+    '--output'
+  );
+  const indexPath = ensureWithinWorkspace(path.join(outputDir, 'index.html'), '--output');
+
+  ensureDir(reportsDir);
+  fs.writeFileSync(reportsIndexPath, `${JSON.stringify(reports, null, 2)}\n`);
+  fs.writeFileSync(retainedPathsPath, `${reports.map((item) => item.path).join('\n')}\n`);
 
   const template = fs.readFileSync(templatePath, 'utf8');
   const html = template
     .replaceAll('__GENERATED_AT__', generatedAt)
     .replaceAll('__REPORT_LIMIT__', `${limit}`);
 
-  fs.writeFileSync(path.join(outputDir, 'index.html'), html);
+  fs.writeFileSync(indexPath, html);
 };
 
 try {

@@ -2,15 +2,35 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { parseArgs } = require("./allure-pages-utils");
+const {
+  ensureWithinDirectory,
+  ensureWithinWorkspace,
+  parseArgs,
+} = require("./allure-pages-utils");
 
-const readRetained = (filePath) => {
-  if (!filePath || !fs.existsSync(filePath)) {
+const assertCanonicalWorkspacePath = (candidatePath, optionName) => {
+  const workspaceRoot = fs.realpathSync.native(process.cwd());
+  if (
+    candidatePath !== workspaceRoot &&
+    !candidatePath.startsWith(`${workspaceRoot}${path.sep}`)
+  ) {
+    throw new Error(`${optionName} resolves outside repository workspace: ${candidatePath}`);
+  }
+  return candidatePath;
+};
+
+const readRetained = (filePath, optionName) => {
+  if (!filePath) {
+    return new Set();
+  }
+  const safeFilePath = ensureWithinWorkspace(filePath, optionName);
+  assertCanonicalWorkspacePath(safeFilePath, optionName);
+  if (!fs.existsSync(safeFilePath)) {
     return new Set();
   }
   return new Set(
     fs
-      .readFileSync(filePath, "utf8")
+      .readFileSync(safeFilePath, "utf8")
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean)
@@ -30,8 +50,9 @@ const isDescendant = (root, candidatePath) => {
 };
 
 const removeReportDirectory = (root, reportPath) => {
-  fs.rmSync(reportPath, { recursive: true, force: true });
-  removeEmptyParents(root, reportPath);
+  const safeReportPath = ensureWithinDirectory(reportPath, "report path", root);
+  fs.rmSync(safeReportPath, { recursive: true, force: true });
+  removeEmptyParents(root, safeReportPath);
 };
 
 const removeEmptyParents = (root, currentPath) => {
@@ -42,19 +63,20 @@ const removeEmptyParents = (root, currentPath) => {
       break;
     }
 
-    if (fs.existsSync(cursor) && fs.readdirSync(cursor).length !== 0) {
+    const safeCursor = ensureWithinDirectory(cursor, "empty parent path", resolvedRoot);
+    if (fs.existsSync(safeCursor) && fs.readdirSync(safeCursor).length !== 0) {
       break;
     }
 
-    if (fs.existsSync(cursor)) {
-      fs.rmSync(cursor, { recursive: true, force: true });
+    if (fs.existsSync(safeCursor)) {
+      fs.rmSync(safeCursor, { recursive: true, force: true });
     }
     cursor = path.dirname(cursor);
   }
 };
 
 const collectReportRunPaths = (root) => {
-  const reportsRoot = path.join(root, "reports");
+  const reportsRoot = ensureWithinDirectory(path.join(root, "reports"), "reports root", root);
   if (!fs.existsSync(reportsRoot)) {
     return [];
   }
@@ -86,25 +108,28 @@ const pruneReportDirectories = (root, retainedPaths) => {
 };
 
 const pruneHistoryFiles = (root, retainedHistoryPaths) => {
-  const historyRoot = path.join(root, "_history");
+  const historyRoot = ensureWithinDirectory(path.join(root, "_history"), "history root", root);
   if (!fs.existsSync(historyRoot)) {
     return;
   }
 
   const visit = (currentDir) => {
-    for (const entry of listEntries(currentDir)) {
-      const entryPath = path.join(currentDir, entry.name);
+    const safeCurrentDir = ensureWithinDirectory(currentDir, "history directory", root);
+    for (const entry of listEntries(safeCurrentDir)) {
+      const entryPath = path.join(safeCurrentDir, entry.name);
       if (entry.isDirectory()) {
         visit(entryPath);
-        if (fs.existsSync(entryPath) && fs.readdirSync(entryPath).length === 0) {
-          fs.rmSync(entryPath, { recursive: true, force: true });
+        const safeEntryPath = ensureWithinDirectory(entryPath, "empty history directory", root);
+        if (fs.existsSync(safeEntryPath) && fs.readdirSync(safeEntryPath).length === 0) {
+          fs.rmSync(safeEntryPath, { recursive: true, force: true });
         }
         continue;
       }
 
       const relativePath = path.relative(root, entryPath).replaceAll(path.sep, "/");
       if (!retainedHistoryPaths.has(relativePath)) {
-        fs.rmSync(entryPath, { force: true });
+        const safeEntryPath = ensureWithinDirectory(entryPath, "history file", root);
+        fs.rmSync(safeEntryPath, { force: true });
       }
     }
   };
@@ -114,9 +139,15 @@ const pruneHistoryFiles = (root, retainedHistoryPaths) => {
 
 const main = () => {
   const args = parseArgs(process.argv);
-  const root = path.resolve(args.root || ".");
-  const retainedPaths = readRetained(args["reports-list"] ? path.resolve(args["reports-list"]) : "");
-  const retainedHistoryPaths = readRetained(args["history-list"] ? path.resolve(args["history-list"]) : "");
+  const root = ensureWithinWorkspace(args.root || ".", "--root");
+  const reportsListPath = args["reports-list"]
+    ? ensureWithinDirectory(path.resolve(args["reports-list"]), "--reports-list", root)
+    : "";
+  const historyListPath = args["history-list"]
+    ? ensureWithinDirectory(path.resolve(args["history-list"]), "--history-list", root)
+    : "";
+  const retainedPaths = readRetained(reportsListPath, "--reports-list");
+  const retainedHistoryPaths = readRetained(historyListPath, "--history-list");
 
   pruneReportDirectories(root, retainedPaths);
   pruneHistoryFiles(root, retainedHistoryPaths);

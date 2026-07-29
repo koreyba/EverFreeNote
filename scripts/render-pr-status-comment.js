@@ -2,7 +2,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { parseArgs } = require("./allure-pages-utils");
+const { ensureWithinWorkspace, parseArgs } = require("./allure-pages-utils");
 
 const COMMENT_MARKER = "<!-- everfreenote-pr-status-comment -->";
 const STATUS_STATE_MARKER_PREFIX = "<!-- everfreenote-pr-status-state:";
@@ -31,6 +31,16 @@ const DEFAULT_STATUS_STATE = {
   allureUrl: "",
 };
 
+const assertCanonicalWorkspacePath = (candidatePath, optionName) => {
+  const workspaceRoot = fs.realpathSync.native(process.cwd());
+  if (
+    candidatePath !== workspaceRoot &&
+    !candidatePath.startsWith(`${workspaceRoot}${path.sep}`)
+  ) {
+    throw new Error(`${optionName} resolves outside repository workspace: ${candidatePath}`);
+  }
+  return candidatePath;
+};
 
 const normalizePrNumber = (value) => `${value ?? ""}`.trim();
 const normalizeSha = (value) => `${value ?? ""}`.trim().toLowerCase();
@@ -62,11 +72,16 @@ const compareReports = (left, right) => {
 };
 
 const readReportsIndex = (filePath) => {
-  if (!filePath || !fs.existsSync(filePath)) {
+  if (!filePath) {
     return [];
   }
 
-  let rawContents = fs.readFileSync(path.resolve(filePath), "utf8");
+  const safeFilePath = ensureWithinWorkspace(filePath, "--reports-index");
+  assertCanonicalWorkspacePath(safeFilePath, "--reports-index");
+  if (!fs.existsSync(safeFilePath)) {
+    return [];
+  }
+  let rawContents = fs.readFileSync(safeFilePath, "utf8");
   if (rawContents.charCodeAt(0) === 0xfeff) {
     rawContents = rawContents.slice(1);
   }
@@ -409,7 +424,9 @@ const main = () => {
   });
 
   if (args.output) {
-    fs.writeFileSync(path.resolve(args.output), body);
+    const outputPath = ensureWithinWorkspace(args.output, "--output");
+    assertCanonicalWorkspacePath(outputPath, "--output");
+    fs.writeFileSync(outputPath, body);
     return;
   }
 

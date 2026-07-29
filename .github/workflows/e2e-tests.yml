@@ -15,12 +15,6 @@ on:
         default: ''
         type: string
 
-permissions:
-  contents: read
-  pull-requests: read
-  deployments: read
-  checks: read
-
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -32,6 +26,7 @@ jobs:
   resolve-e2e-branch:
     name: Resolve E2E branch
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       e2e_ref: ${{ steps.resolve.outputs.e2e_ref }}
 
@@ -69,6 +64,9 @@ jobs:
     if: github.event_name == 'pull_request' && !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    permissions:
+      deployments: read
+      checks: read
     outputs:
       preview_url: ${{ steps.wait.outputs.preview_url }}
 
@@ -172,6 +170,8 @@ jobs:
       (needs.wait-cloudflare-preview.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.wait-cloudflare-preview.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
     outputs:
       preview_url: ${{ steps.run-metadata.outputs.preview_url }}
       e2e_ref: ${{ steps.run-metadata.outputs.e2e_ref }}
@@ -199,11 +199,11 @@ jobs:
 
       - name: Install dependencies
         working-directory: e2e
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Install Playwright browsers
         working-directory: e2e
-        run: npx playwright install --with-deps
+        run: ./node_modules/.bin/playwright install --with-deps
 
       - name: Run E2E tests
         id: run-e2e-tests
@@ -409,7 +409,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Download E2E Allure artifact
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
