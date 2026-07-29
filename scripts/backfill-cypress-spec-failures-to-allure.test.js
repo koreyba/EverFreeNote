@@ -195,6 +195,24 @@ test("does not duplicate a real Allure failure with the project package prefix",
   assert.equal(readAllureResults(fixture.resultsDir).length, 1);
 });
 
+test("tolerates an Allure payload whose labels value is not an array", (t) => {
+  const fixture = createFixture(t);
+  fs.writeFileSync(fixture.logFile, "");
+  fs.writeFileSync(
+    path.join(fixture.resultsDir, "malformed-labels-result.json"),
+    JSON.stringify({
+      fullName: "everfreenote:cypress/component/providers/ThemeToggle.cy.tsx",
+      labels: { name: "package", value: "not-an-array" },
+      status: "passed",
+    }),
+  );
+
+  const run = runBackfill({ ...fixture, runOutcome: "success" });
+
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /Synthetic Allure failures created: 0/);
+});
+
 test("backfills the active spec when Cypress crashes before JUnit and summary output", (t) => {
   const fixture = createFixture(t);
   fs.writeFileSync(

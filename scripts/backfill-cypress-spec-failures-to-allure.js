@@ -13,7 +13,7 @@ const SPEC_PATTERN = /\.cy\.(?:js|jsx|ts|tsx)$/;
 const SPEC_IN_FULL_NAME_PATTERN =
   /(?:^|:)cypress\/component\/(.+?\.cy\.(?:js|jsx|ts|tsx))(?:#|$)/;
 const ERROR_HINT_PATTERN =
-  /(OOM|heap|out of memory|failed|failure|renderer|crash|exception|fatal|error)/i;
+  /(?:OOM|heap|out of memory|failed|failure|renderer|crash|exception|fatal|error)/i;
 const MAX_TRACE_LINES = 500;
 const SYNTHETIC_REASON =
   "Generated because Cypress reported a component failure that had no failing Allure result.";
@@ -401,8 +401,9 @@ const readAllurePayload = (filePath) => {
 };
 
 const mergeAllurePayload = (state, payload) => {
-  const packageLabel = (payload.labels || []).find(
-    (label) => label.name === "package",
+  const labels = Array.isArray(payload.labels) ? payload.labels : [];
+  const packageLabel = labels.find(
+    (label) => label?.name === "package",
   )?.value;
   const packageParts = getPackageParts(packageLabel);
   if (packageParts.prefix) {

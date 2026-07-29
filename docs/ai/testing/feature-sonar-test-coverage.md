@@ -160,8 +160,8 @@ cannot be completed solely in the local checkout.
   dependency structure passed the targeted static check.
 - The focused PR status-comment regression suite passes 10 tests after the
   Sonar/Qodana remediation, and targeted ESLint reports zero warnings.
-- The component reconciliation regression suite passes 10 tests; all root
-  script tests pass 20 tests.
+- The component reconciliation regression suite passes 11 tests; all root
+  script tests pass 21 tests.
 - Allure inspection of the captured component artifacts models all 674 logical
   results and matches the expected broken
   `providers/ThemeToggle.cy.tsx#spec crash` result.
