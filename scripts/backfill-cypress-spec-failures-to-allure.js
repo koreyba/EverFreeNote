@@ -400,6 +400,34 @@ const readAllurePayload = (filePath) => {
   }
 };
 
+const mergeAllurePayload = (state, payload) => {
+  const packageLabel = (payload.labels || []).find(
+    (label) => label.name === "package",
+  )?.value;
+  const packageParts = getPackageParts(packageLabel);
+  if (packageParts.prefix) {
+    state.packagePrefix = packageParts.prefix;
+  }
+
+  const detectedFullNamePrefix = getFullNamePrefix(payload.fullName);
+  if (detectedFullNamePrefix) {
+    state.fullNamePrefix = detectedFullNamePrefix;
+  }
+
+  if (payload.status !== "failed" && payload.status !== "broken") {
+    return;
+  }
+
+  state.hasFailure = true;
+  const spec = extractSpecFromFullName(payload.fullName);
+  if (spec) {
+    state.failedSpecs.add(spec);
+  }
+  if (packageParts.suffix) {
+    state.failedPackageSuffixes.add(packageParts.suffix);
+  }
+};
+
 const collectAllureState = (resultsDir) => {
   const state = {
     failedSpecs: new Set(),
@@ -419,32 +447,7 @@ const collectAllureState = (resultsDir) => {
     if (!payload) {
       continue;
     }
-
-    const packageLabel = (payload.labels || []).find(
-      (label) => label.name === "package",
-    )?.value;
-    const packageParts = getPackageParts(packageLabel);
-    if (packageParts.prefix) {
-      state.packagePrefix = packageParts.prefix;
-    }
-
-    const detectedFullNamePrefix = getFullNamePrefix(payload.fullName);
-    if (detectedFullNamePrefix) {
-      state.fullNamePrefix = detectedFullNamePrefix;
-    }
-
-    if (payload.status !== "failed" && payload.status !== "broken") {
-      continue;
-    }
-
-    state.hasFailure = true;
-    const spec = extractSpecFromFullName(payload.fullName);
-    if (spec) {
-      state.failedSpecs.add(spec);
-    }
-    if (packageParts.suffix) {
-      state.failedPackageSuffixes.add(packageParts.suffix);
-    }
+    mergeAllurePayload(state, payload);
   }
 
   return state;
