@@ -1,0 +1,1 @@
+{"id":"23aebac8d099cc5471f573faaa850778","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService performSync callback update operation rethrows update error when error is NOT postgrest no rows error","name":"rethrows update error when error is NOT postgrest no rows error","status":"passed","testResultsByEnv":{"default":"32d77a4e4c3ebcfe9a7c7e48b5aa9921"}}

@@ -1,1 +1,0 @@
-{"id":"d676ab1bf14c3cdeb02c96c5c4448c37","fullName":"everfreenote:core/tests/unit/wordpress-services.test.ts#WordPress services rejects malformed category items and export fields instead of coercing them","name":"rejects malformed category items and export fields instead of coercing them","status":"passed","testResultsByEnv":{"default":"b00cfb8c6c99cae15e4ce90eb6af2512"}}
