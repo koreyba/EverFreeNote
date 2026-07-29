@@ -1,0 +1,1 @@
+{"id":"e89c52ef42f5eb6983690e62885f218d","fullName":"everfreenote-mobile:tests/unit/mobileEnexHelpers.test.ts#enexMobile helpers buildEnexExportFileName builds export filename using default current date when omitted","name":"builds export filename using default current date when omitted","status":"passed","testResultsByEnv":{"default":"5408c9a1349fb34e73beed5d38978ef3"}}

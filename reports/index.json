@@ -6,6 +6,42 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/branch-main/run-30481773727-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-30481773727-attempt-1/",
+    "runId": "30481773727",
+    "runAttempt": "1",
+    "prNumber": null,
+    "ref": "main",
+    "sha": "410c6b4ab142f9e4a7e238097b0009bc154cd7b5",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "branch",
+    "scopeLabel": "main",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-29T19:00:51.443Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit"
     ],
     "suiteLabels": [
@@ -609,44 +645,6 @@
     "scopeLabel": "PR #177",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-29T13:08:42.623Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-176/run-30446782990-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-176/run-30446782990-attempt-1/",
-    "runId": "30446782990",
-    "runAttempt": "1",
-    "prNumber": "176",
-    "ref": "codex/install-codacy-skills",
-    "sha": "a9072e1e305726b3fc4afc210c35649621b94901",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #176",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-29T11:38:22.353Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
