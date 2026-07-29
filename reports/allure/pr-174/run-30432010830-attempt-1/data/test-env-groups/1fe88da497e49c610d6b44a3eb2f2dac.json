@@ -1,1 +1,0 @@
-{"id":"1fe88da497e49c610d6b44a3eb2f2dac","fullName":"everfreenote-mobile:tests/component/supabaseProvider.test.tsx#SupabaseProvider calls mobileSyncService.init when session is available","name":"calls mobileSyncService.init when session is available","status":"passed","testResultsByEnv":{"default":"e23cb4a6b7735700bb917e2fe0e47e73"}}
