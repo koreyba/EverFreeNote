@@ -317,6 +317,7 @@ function EditorPane({
       if (!note.tags) continue
       const seenInNote = new Set<string>()
       for (const rawTag of note.tags) {
+        if (typeof rawTag !== 'string') continue
         const tag = normalizeTag(rawTag)
         if (tag && !seenInNote.has(tag)) {
           seenInNote.add(tag)

@@ -92,7 +92,7 @@ describe('NoteService - getAllTagsWithCounts', () => {
     })
   })
 
-  it('handles empty notes list and null or empty tags gracefully', async () => {
+  it('handles empty notes list, non-string tags, and null or empty tags gracefully', async () => {
     const userId = 'user-123'
     const mockSelect = jest.fn()
     const mockEq = jest.fn().mockResolvedValue({
@@ -100,6 +100,7 @@ describe('NoteService - getAllTagsWithCounts', () => {
         { tags: null },
         { tags: [] },
         { tags: ['   '] },
+        { tags: ['valid', null, 123 as unknown as string] },
       ],
       error: null,
     })
@@ -110,8 +111,8 @@ describe('NoteService - getAllTagsWithCounts', () => {
     const result = await service.getAllTagsWithCounts(userId)
 
     expect(result).toEqual({
-      tags: [],
-      counts: {},
+      tags: ['valid'],
+      counts: { valid: 1 },
     })
   })
 

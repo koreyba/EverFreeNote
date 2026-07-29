@@ -158,6 +158,7 @@ export class NoteService {
       if (!row.tags) continue
       const seen = new Set<string>()
       for (const rawTag of row.tags) {
+        if (typeof rawTag !== 'string') continue
         const trimmed = rawTag.trim().replace(/\s+/g, ' ').toLowerCase()
         if (trimmed && !seen.has(trimmed)) {
           seen.add(trimmed)
