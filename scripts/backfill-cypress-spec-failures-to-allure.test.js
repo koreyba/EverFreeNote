@@ -240,3 +240,23 @@ test("uses top-level JUnit totals once when suites are nested", (t) => {
   assert.match(summary, /\| Tests \(passed\) \| 6 \|/);
   assert.doesNotMatch(summary, /\| Tests \(total\) \| 12 \|/);
 });
+
+test("HTML-encodes dynamic JUnit values in the GitHub step summary", (t) => {
+  const fixture = createFixture(t);
+  writeFailedJunit(
+    fixture.junitDir,
+    "providers/ThemeToggle.cy.tsx",
+    "&lt;img src=x onerror=alert(1)&gt;",
+  );
+
+  const run = runBackfill({
+    ...fixture,
+    runOutcome: "failure",
+    summaryFile: fixture.summaryFile,
+  });
+
+  assert.equal(run.status, 0, run.stderr);
+  const summary = fs.readFileSync(fixture.summaryFile, "utf8");
+  assert.match(summary, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(summary, /<img src=x onerror=alert\(1\)>/);
+});

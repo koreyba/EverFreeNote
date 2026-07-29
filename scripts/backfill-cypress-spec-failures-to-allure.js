@@ -523,6 +523,16 @@ const collectScreenshots = (screenshotsDir) => {
     .slice(0, 15);
 };
 
+const escapeSummaryValue = (value) =>
+  String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
 const buildStepSummary = ({
   junitResults,
   junitWarnings,
@@ -559,7 +569,7 @@ const buildStepSummary = ({
     markdown += "JUnit report files were not found in `cypress/results`.\n\n";
   }
   for (const warning of junitWarnings) {
-    markdown += `- ${warning}\n`;
+    markdown += `- ${escapeSummaryValue(warning)}\n`;
   }
   if (junitWarnings.length > 0) {
     markdown += "\n";
@@ -569,9 +579,9 @@ const buildStepSummary = ({
     markdown += "<details>\n";
     markdown += `<summary>Failed tests (${failedTests.length})</summary>\n\n`;
     for (const failure of failedTests.slice(0, 30)) {
-      markdown += `- **${failure.suite} > ${failure.name}**  \n`;
-      markdown += `  \`${failure.file}\`  \n`;
-      markdown += `  ${failure.message.split("\n").find(Boolean) || failure.message}\n`;
+      markdown += `- <strong>${escapeSummaryValue(failure.suite)} &gt; ${escapeSummaryValue(failure.name)}</strong>  \n`;
+      markdown += `  <code>${escapeSummaryValue(failure.file)}</code>  \n`;
+      markdown += `  ${escapeSummaryValue(failure.message.split("\n").find(Boolean) || failure.message)}\n`;
     }
     if (failedTests.length > 30) {
       markdown += `\n- ... and ${failedTests.length - 30} more\n`;
@@ -584,7 +594,7 @@ const buildStepSummary = ({
     markdown += "<details>\n";
     markdown += `<summary>Failed test screenshots (${screenshots.length})</summary>\n\n`;
     for (const screenshot of screenshots) {
-      markdown += `- \`cypress/screenshots/${screenshot}\`\n`;
+      markdown += `- <code>${escapeSummaryValue(`cypress/screenshots/${screenshot}`)}</code>\n`;
     }
     markdown += "\n</details>\n";
   }
