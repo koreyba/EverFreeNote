@@ -23,24 +23,37 @@ function normalizeUrlPath(pathname: string) {
 }
 
 export function buildBrowserSupabaseStorageKey(supabaseUrl: string) {
+  if (!supabaseUrl) {
+    throw new Error(
+      "Missing required parameter 'NEXT_PUBLIC_SUPABASE_URL'. Please check if it is set in your .env / .env.local file."
+    )
+  }
   try {
-    const parsedUrl = new URL(supabaseUrl || 'https://placeholder.supabase.co')
+    const parsedUrl = new URL(supabaseUrl)
     const pathPart = normalizeUrlPath(parsedUrl.pathname)
     const rawKey = `everfreenote-auth-${parsedUrl.protocol}-${parsedUrl.hostname}-${parsedUrl.port || 'default'}-${pathPart}`
     return sanitizeStorageKeyPart(rawKey)
   } catch {
-    return `everfreenote-auth-${sanitizeStorageKeyPart(supabaseUrl || 'default')}`
+    return `everfreenote-auth-${sanitizeStorageKeyPart(supabaseUrl)}`
   }
 }
 
 export const webSupabaseClientFactory: SupabaseClientFactory = {
   createClient(config: SupabaseConfig): SupabaseClient {
-    const url = config.url || 'https://placeholder.supabase.co'
-    const anonKey = config.anonKey || 'placeholder'
+    const missing: string[] = []
+    if (!config?.url) missing.push('NEXT_PUBLIC_SUPABASE_URL')
+    if (!config?.anonKey) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+
+    if (missing.length > 0) {
+      throw new Error(
+        `Missing required Supabase configuration parameter(s): ${missing.join(', ')}. Please check if they are set in your .env / .env.local file.`
+      )
+    }
+
     // createBrowserClient manages its own storage; deps.storage reserved for future explicit storage wiring if needed
-    return createBrowserClient(url, anonKey, {
+    return createBrowserClient(config.url, config.anonKey, {
       auth: {
-        storageKey: buildBrowserSupabaseStorageKey(url),
+        storageKey: buildBrowserSupabaseStorageKey(config.url),
       },
     })
   },
