@@ -1,0 +1,1 @@
+{"id":"8308967980727c417fb5eb54308d6cf5","fullName":"everfreenote-mobile:tests/component/useNotesHook.test.tsx#useNotes & useNote hooks useNote when online, fetches remote status via NoteService and caches if found","name":"when online, fetches remote status via NoteService and caches if found","status":"passed","testResultsByEnv":{"default":"79f051bb0d4c4bbf0d8361e08c12751e"}}

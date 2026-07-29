@@ -1,1 +1,0 @@
-{"id":"213cb1019ca49063b13d3e73c17360e3","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSync.test.tsx#useNoteSync — performSync upsert re-throws non-PGRST116 update errors without attempting create","name":"re-throws non-PGRST116 update errors without attempting create","status":"passed","testResultsByEnv":{"default":"a7e8e274f3ad7f04980bf58bb5986e51"}}

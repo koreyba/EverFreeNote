@@ -1,0 +1,1 @@
+{"id":"4daaa7d4b7cc80ab174917ebc11e5f09","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService performSync callback create operation creates note via NoteService and saves it to local database","name":"creates note via NoteService and saves it to local database","status":"passed","testResultsByEnv":{"default":"c8c117344ea3842b72f242dd566f7e4f"}}
