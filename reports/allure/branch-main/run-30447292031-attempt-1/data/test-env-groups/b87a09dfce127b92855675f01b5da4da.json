@@ -1,0 +1,1 @@
+{"id":"b87a09dfce127b92855675f01b5da4da","fullName":"everfreenote-mobile:tests/unit/featureFlags.test.ts#featureFlags enables testAuth when variant is dev and EXPO_PUBLIC_ENABLE_TEST_AUTH is true","name":"enables testAuth when variant is dev and EXPO_PUBLIC_ENABLE_TEST_AUTH is true","status":"passed","testResultsByEnv":{"default":"b22429d89af5cf456f312f53fa95ef03"}}
