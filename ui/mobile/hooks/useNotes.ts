@@ -135,3 +135,18 @@ export function useNote(id: string) {
     refetchOnMount: 'always',
   })
 }
+
+export function useAllTags() {
+  const { client, user } = useSupabase()
+
+  return useQuery({
+    queryKey: ['tags', 'all-with-counts', user?.id],
+    queryFn: async () => {
+      if (!user?.id || !client) return { tags: [], counts: {} }
+      const noteService = new NoteService(client)
+      return noteService.getAllTagsWithCounts(user.id)
+    },
+    enabled: !!(user?.id && client),
+    staleTime: 5 * 60 * 1000,
+  })
+}

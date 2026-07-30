@@ -134,19 +134,38 @@ describe('NoteEditor Component', () => {
     }))
   })
 
-  it('shows suggestions after 3 characters and applies selection', () => {
+  it('shows suggestions starting at 1 character and applies selection', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
     cy.get('button[title="Add tag"]').click()
-    cy.get('input[placeholder="work, personal, ideas"]').type('wo')
-    cy.contains('button', 'work').should('not.exist')
-
-    cy.get('input[placeholder="work, personal, ideas"]').type('r')
+    cy.get('input[placeholder="work, personal, ideas"]').type('w')
     cy.contains('button', 'work').should('be.visible')
     cy.contains('button', 'world').should('be.visible')
 
     cy.contains('button', 'work').click()
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
+  })
+
+  it('supports keyboard ArrowDown/ArrowUp navigation to select tag suggestions', () => {
+    cy.mount(<NoteEditor {...getDefaultProps()} />)
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('wor')
+    cy.contains('button', 'work').should('be.visible')
+    cy.contains('button', 'world').should('be.visible')
+
+    // Navigate down to first suggestion ('work'), then second ('world'), then up to first ('work')
+    cy.get('input[placeholder="work, personal, ideas"]').type('{downarrow}')
+    cy.contains('button', 'work').should('have.attr', 'aria-selected', 'true')
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('{downarrow}')
+    cy.contains('button', 'world').should('have.attr', 'aria-selected', 'true')
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('{uparrow}')
+    cy.contains('button', 'work').should('have.attr', 'aria-selected', 'true')
+
+    cy.get('input[placeholder="work, personal, ideas"]').type('{enter}')
+    cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
+    cy.contains('[data-cy="interactive-tag"]', 'work').should('be.visible')
   })
 
   it('excludes already selected tags from suggestions', () => {
@@ -239,7 +258,7 @@ describe('NoteEditor Component', () => {
     cy.get('@onAutoSave').should('not.have.been.called')
   })
 
-  it('triggers autosave when tags change', () => {
+  it('does NOT trigger autosave when tags change alone', () => {
     const onAutoSave = (() => {
       const stub = cy.stub().resolves()
       cy.wrap(stub).as('onAutoSave')
@@ -254,11 +273,12 @@ describe('NoteEditor Component', () => {
 
     cy.mount(<NoteEditor {...props} />)
 
-    cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('onlytag{enter}')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
 
-    cy.get('@onAutoSave', { timeout: 800 }).should('have.been.called')
+    // Wait to ensure autosave timer is NOT triggered by tag additions
+    cy.wait(400)
+    cy.get('@onAutoSave').should('not.have.been.called')
   })
 
   it('does not interrupt typing when autosave updates props / assigns noteId', () => {

@@ -18,27 +18,26 @@ description: Define testing approach, test cases, and quality assurance
 **What individual components need testing?**
 
 ### Tag suggestion hook (`useTagSuggestions`)
-- [x] Returns no suggestions below 3 characters. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
-- [x] Filters by prefix only. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
-- [x] Excludes tags already selected on the note. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
-- [x] Sorts alphabetically and limits to 3. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Returns no suggestions below 3 characters. (Covered in `ui/web/tests/unit/hooks/useTagSuggestions.test.ts`)
+- [x] Filters by case-insensitive prefix matching. (Covered in `ui/web/tests/unit/hooks/useTagSuggestions.test.ts`)
+- [x] Excludes tags already selected on the note. (Covered in `ui/web/tests/unit/hooks/useTagSuggestions.test.ts`)
+- [x] Sorts alphabetically and limits to 3 items. (Covered in `ui/web/tests/unit/hooks/useTagSuggestions.test.ts`)
 
-### Tag input UI (new component or `NoteEditor` integration)
+### Tag input UI (`TagInput` & `NoteEditor` integration)
 - [x] Adds tag when suggestion clicked. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Supports keyboard ArrowDown/ArrowUp and Enter/Tab suggestion selection. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 - [x] Adds tag via comma and Enter. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
-- [x] Does not add tag on space or blur. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 - [x] Normalizes tags to avoid duplicates (trim, collapse spaces, lowercase). (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 - [x] Backspace removes last tag only on the second press when input is empty. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
-- [x] Edit mode uses the same chip UI as read mode and the remove icon removes the tag. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
-- [x] Pending tag is committed on autosave. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
-- [x] Tag input changes do not trigger autosave. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
-- [x] Pending tag is committed on blur. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Edit mode uses chip UI and X remove control works. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Tag input changes alone do NOT trigger autosave directly and persist on manual save, note switch, or title/body edits. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
+- [x] Pending tag is committed on blur / save. (Covered in `cypress/component/features/notes/NoteEditor.cy.tsx`)
 
 ## Integration Tests
 **How do we test component interactions?**
 
 - [ ] Edit note: type 3+ chars, see suggestions, select one, tag appears as chip.
-- [ ] Edit note: remove tag via X and via backspace, autosave payload updates tags.
+- [ ] Edit note: remove tag via X and via backspace; tag-only changes do not trigger autosave directly and persist on manual save, note switch, or title/body edits.
 - [ ] Read mode: tags display with removal behavior unchanged.
 
 ## End-to-End Tests

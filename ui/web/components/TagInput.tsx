@@ -12,6 +12,7 @@ type TagInputProps = {
   onRemoveTag: (tag: string) => void
   onTagClick?: (tag: string) => void
   suggestions?: string[]
+  tagCounts?: Record<string, number>
   onQueryChange?: (query: string) => void
   placeholder?: string
   disabled?: boolean
@@ -24,21 +25,25 @@ export function TagInput({
   onRemoveTag,
   onTagClick,
   suggestions = [],
+  tagCounts = {},
   onQueryChange,
   placeholder = "Add tag...",
   disabled = false,
   className,
 }: TagInputProps) {
-  const [isEditing, setIsEditing] = React.useState(false)
   const [inputValue, setInputValue] = React.useState("")
   const [backspaceArmed, setBackspaceArmed] = React.useState(false)
+  const [highlightedIndex, setHighlightedIndex] = React.useState<number>(-1)
   const inputRef = React.useRef<HTMLInputElement>(null)
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
 
-  const handleStartEditing = () => {
+  // Reset highlighted suggestion index when suggestions list changes
+  React.useEffect(() => {
+    setHighlightedIndex(-1)
+  }, [suggestions])
+
+  const focusInput = () => {
     if (disabled) return
-    setIsEditing(true)
-    // Scroll to end when opening input
     setTimeout(() => {
       inputRef.current?.focus()
       if (scrollContainerRef.current) {
@@ -66,21 +71,54 @@ export function TagInput({
     setInputValue("")
     onQueryChange?.("")
     setBackspaceArmed(false)
+    setHighlightedIndex(-1)
   }
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown") {
+      if (suggestions.length > 0) {
+        event.preventDefault()
+        setHighlightedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0))
+      }
+      return
+    }
+
+    if (event.key === "ArrowUp") {
+      if (suggestions.length > 0) {
+        event.preventDefault()
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1))
+      }
+      return
+    }
+
+    if (event.key === "Tab") {
+      if (suggestions.length > 0 && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+        event.preventDefault()
+        handleSuggestionClick(suggestions[highlightedIndex])
+        return
+      }
+      if (inputValue.trim()) {
+        commitTags(inputValue)
+      }
+      return
+    }
+
     if (event.key === "Enter" || event.key === ",") {
       event.preventDefault()
+      if (suggestions.length > 0 && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+        handleSuggestionClick(suggestions[highlightedIndex])
+        return
+      }
       commitTags(inputValue)
       return
     }
 
     if (event.key === "Escape") {
       event.preventDefault()
-      setIsEditing(false)
       setInputValue("")
       onQueryChange?.("")
       setBackspaceArmed(false)
+      setHighlightedIndex(-1)
       return
     }
 
@@ -105,14 +143,15 @@ export function TagInput({
     if (inputValue.trim()) {
       commitTags(inputValue)
     }
-    setIsEditing(false)
     setBackspaceArmed(false)
+    setHighlightedIndex(-1)
   }
 
   const handleSuggestionClick = (suggestion: string) => {
     onAddTags([suggestion])
     setInputValue("")
     onQueryChange?.("")
+    setHighlightedIndex(-1)
     inputRef.current?.focus()
   }
 
@@ -125,25 +164,23 @@ export function TagInput({
     onRemoveTag(tag)
   }
 
+  const isExpanded = !disabled && suggestions.length > 0
+
   return (
-    <div className={cn("relative group", className)}>
+    <div className={cn("relative z-30 group", className)}>
       <div
         role="presentation"
         data-testid="tag-input-container"
-        onClick={() => {
-          if (!isEditing && !disabled) {
-            handleStartEditing()
-          }
-        }}
+        onClick={() => focusInput()}
         onKeyDown={(e) => {
-          if ((e.key === 'Enter' || e.key === ' ') && !isEditing && !disabled) {
+          if (e.target !== e.currentTarget) return
+          if ((e.key === "Enter" || e.key === " ") && !disabled) {
             e.preventDefault()
-            handleStartEditing()
+            focusInput()
           }
         }}
         className={cn(
-          "flex items-center min-h-[44px] px-3 bg-muted/30 border border-transparent rounded-2xl transition-all duration-200 cursor-text",
-          isEditing ? "bg-background border-primary/30 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] ring-4 ring-primary/5" : "hover:bg-muted/50"
+          "flex items-center min-h-[44px] px-3 bg-muted/30 border border-transparent rounded-2xl transition-all duration-200 cursor-text bg-background border-primary/30 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] ring-4 ring-primary/5"
         )}
       >
         <div className="flex items-center gap-1.5 text-xs font-bold text-foreground/70 uppercase tracking-wider shrink-0 mr-2 select-none">
@@ -153,7 +190,7 @@ export function TagInput({
 
         <HorizontalTagScroll
           ref={scrollContainerRef}
-          className={cn("flex-1 min-w-0 py-1.5 flex items-center", !isEditing && !disabled && "cursor-text")}
+          className="flex-1 min-w-0 py-1.5 flex items-center cursor-text"
         >
           {tags.map((tag) => (
             <Badge
@@ -165,11 +202,13 @@ export function TagInput({
                 backspaceArmed && tag === tags[tags.length - 1] && "ring-2 ring-destructive"
               )}
               onMouseDown={(e) => {
-                // Prevent focus loss from input when clicking tags/remove buttons,
-                // which causes onBlur -> layout shift -> missed click events.
-                if (isEditing) e.preventDefault()
+                // Prevent focus loss from input when clicking tags/remove buttons
+                e.preventDefault()
               }}
-              onClick={(e) => { e.stopPropagation(); handleTagClick(tag); }}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleTagClick(tag)
+              }}
             >
               <Tag className="w-3 h-3 mr-1 opacity-70" />
               {tag}
@@ -187,10 +226,16 @@ export function TagInput({
             </Badge>
           ))}
 
-          {isEditing && (
+          {!disabled && (
             <input
               ref={inputRef}
               type="text"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={isExpanded}
+              aria-haspopup="listbox"
+              aria-controls="tag-suggestions-listbox"
+              aria-activedescendant={highlightedIndex >= 0 ? `tag-suggestion-option-${highlightedIndex}` : undefined}
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleInputKeyDown}
@@ -202,42 +247,61 @@ export function TagInput({
           )}
         </HorizontalTagScroll>
 
-        {/* Fixed add button indicator */}
-        {!isEditing && (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={(e) => { e.stopPropagation(); handleStartEditing(); }}
-            className={cn(
-              "shrink-0 flex items-center justify-center w-7 h-7 rounded-full",
-              "bg-background/50 hover:bg-accent transition-colors duration-200 shadow-sm border",
-              "text-muted-foreground hover:text-accent-foreground ml-2",
-              disabled && "opacity-50 cursor-not-allowed"
-            )}
-            title="Add tag"
-            aria-label="Add tag"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={(e) => {
+            e.stopPropagation()
+            focusInput()
+          }}
+          className={cn(
+            "shrink-0 flex items-center justify-center w-7 h-7 rounded-full",
+            "bg-background/50 hover:bg-accent transition-colors duration-200 shadow-sm border",
+            "text-muted-foreground hover:text-accent-foreground ml-2",
+            disabled && "opacity-50 cursor-not-allowed"
+          )}
+          title="Add tag"
+          aria-label="Add tag"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Suggestions dropdown */}
-      {isEditing && suggestions.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full max-w-xs rounded-md border border-input bg-popover text-popover-foreground shadow-md">
-          {suggestions.map((suggestion) => (
-            <button
-              key={suggestion}
-              type="button"
-              className="w-full px-3 py-2 text-left text-sm hover:bg-muted first:rounded-t-md last:rounded-b-md"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              {suggestion}
-            </button>
-          ))}
+      {isExpanded && (
+        <div
+          id="tag-suggestions-listbox"
+          role="listbox"
+          className="absolute z-50 mt-1 w-full max-w-xs rounded-md border border-input bg-popover text-popover-foreground shadow-lg"
+        >
+          {suggestions.map((suggestion, index) => {
+            const count = tagCounts[suggestion]
+            return (
+              <button
+                key={suggestion}
+                id={`tag-suggestion-option-${index}`}
+                type="button"
+                role="option"
+                aria-selected={index === highlightedIndex}
+                className={cn(
+                  "w-full px-3 py-2 text-left text-sm flex items-center justify-between transition-colors first:rounded-t-md last:rounded-b-md",
+                  index === highlightedIndex ? "bg-accent text-accent-foreground font-semibold" : "hover:bg-muted"
+                )}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSuggestionClick(suggestion)}
+              >
+                <span>{suggestion}</span>
+                {typeof count === "number" && (
+                  <span className="text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full font-mono font-normal">
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
   )
 }
+

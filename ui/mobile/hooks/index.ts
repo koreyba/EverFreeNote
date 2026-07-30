@@ -2,7 +2,7 @@
  * Custom hooks for mobile app
  */
 
-export { useNotes, useNote } from './useNotes'
+export { useNotes, useNote, useAllTags } from './useNotes'
 export { useCreateNote, useUpdateNote, useDeleteNote } from './useNotesMutations'
 export { useNetworkStatus } from './useNetworkStatus'
 export { useOfflineSync } from './useOfflineSync'

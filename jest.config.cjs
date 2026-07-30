@@ -63,7 +63,7 @@ module.exports = {
       rootDir: __dirname,
       testEnvironment: 'allure-jest/node',
       testEnvironmentOptions: coreUnitAllureOptions,
-      testRegex: ['core/tests/unit/.*\\.test\\.(ts|tsx)$'],
+      testRegex: ['core/tests/(unit|services)/.*\\.test\\.(ts|tsx)$'],
       setupFilesAfterEnv: ['<rootDir>/tests/jest/core.setup.cjs'],
       transform,
       moduleNameMapper,

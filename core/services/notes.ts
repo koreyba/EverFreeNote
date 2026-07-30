@@ -144,4 +144,29 @@ export class NoteService {
     if (error) throw error
     return (data as Note[]) || []
   }
+
+  async getAllTagsWithCounts(userId: string): Promise<{ tags: string[]; counts: Record<string, number> }> {
+    const { data, error } = await this.supabase
+      .from('notes')
+      .select('tags')
+      .eq('user_id', userId)
+
+    if (error) throw error
+
+    const counts: Record<string, number> = {}
+    for (const row of data || []) {
+      if (!row.tags) continue
+      const seen = new Set<string>()
+      for (const rawTag of row.tags) {
+        if (typeof rawTag !== 'string') continue
+        const trimmed = rawTag.trim().replace(/\s+/g, ' ').toLowerCase()
+        if (trimmed && !seen.has(trimmed)) {
+          seen.add(trimmed)
+          counts[trimmed] = (counts[trimmed] || 0) + 1
+        }
+      }
+    }
+    const tags = Object.keys(counts).sort((a, b) => a.localeCompare(b))
+    return { tags, counts }
+  }
 }

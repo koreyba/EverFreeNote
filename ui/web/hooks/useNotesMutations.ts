@@ -126,6 +126,7 @@ export function useCreateNote(callbacks: MutationCallbacks = defaultCreateCallba
     // Refetch on success
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
+      queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
       callbacks.onSuccess?.()
     },
   })
@@ -184,6 +185,7 @@ export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallba
 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
+      queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
       callbacks.onSuccess?.()
     },
   })
@@ -233,6 +235,7 @@ export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCall
 
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
+      queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
       if (!vars?.silent && !callbacks.silent) {
         callbacks.onSuccess?.()
       }
@@ -286,6 +289,7 @@ export function useRemoveTag(callbacks: MutationCallbacks = defaultRemoveTagCall
 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
+      queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
       callbacks.onSuccess?.()
     },
   })

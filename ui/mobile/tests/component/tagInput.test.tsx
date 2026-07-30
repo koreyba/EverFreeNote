@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react-native'
+import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
 
 jest.mock('@ui/mobile/providers', () => ({
@@ -12,6 +12,8 @@ jest.mock('@ui/mobile/providers', () => ({
       mutedForeground: '#6b7280',
       foreground: '#111827',
       background: '#ffffff',
+      card: '#ffffff',
+      muted: '#f3f4f6',
     },
   }),
 }))
@@ -110,5 +112,117 @@ describe('TagInput', () => {
     fireEvent.press(screen.getByText('PlusIcon'))
 
     expect(screen.queryByPlaceholderText('tag name')).toBeNull()
+  })
+
+  it('renders tag autocomplete suggestions with count badges when typing', () => {
+    const onChangeTags = jest.fn()
+    const availableTags = ['work', 'weekend', 'welcome', 'idea']
+    const tagCounts = { work: 5, weekend: 3, welcome: 1, idea: 2 }
+
+    render(
+      <TagInput
+        tags={['work']}
+        onChangeTags={onChangeTags}
+        availableTags={availableTags}
+        tagCounts={tagCounts}
+      />
+    )
+
+    fireEvent.press(screen.getByText('PlusIcon'))
+
+    const input = screen.getByPlaceholderText('tag name')
+    fireEvent.changeText(input, 'we')
+
+    expect(screen.getByText('weekend')).toBeTruthy()
+    expect(screen.getByText('3')).toBeTruthy()
+    expect(screen.getByText('welcome')).toBeTruthy()
+    expect(screen.getByText('1')).toBeTruthy()
+
+    expect(screen.queryByText('idea')).toBeNull()
+
+    fireEvent.press(screen.getByText('weekend'))
+
+    expect(onChangeTags).toHaveBeenCalledTimes(1)
+    expect(onChangeTags).toHaveBeenCalledWith(['work', 'weekend'])
+    expect(screen.getByPlaceholderText('tag name')).toBeTruthy()
+  })
+
+  it('preserves active tag input focus and avoids blur side-effects when selecting a suggestion', () => {
+    const onChangeTags = jest.fn()
+    render(
+      <TagInput
+        tags={['work']}
+        onChangeTags={onChangeTags}
+        availableTags={['weekend', 'welcome']}
+      />
+    )
+
+    fireEvent.press(screen.getByText('PlusIcon'))
+    const input = screen.getByPlaceholderText('tag name')
+    fireEvent.changeText(input, 'we')
+
+    // Pressing suggestion keeps editing state active and input in-place without blurring to title/editor
+    fireEvent.press(screen.getByText('weekend'))
+
+    expect(screen.getByPlaceholderText('tag name')).toBeTruthy()
+    expect(onChangeTags).toHaveBeenCalledWith(['work', 'weekend'])
+  })
+
+  it('prevents suggestion taps from also committing the typed draft prefix on blur', () => {
+    const onChangeTags = jest.fn()
+    render(
+      <TagInput
+        tags={['work']}
+        onChangeTags={onChangeTags}
+        availableTags={['weekend', 'welcome']}
+      />
+    )
+
+    fireEvent.press(screen.getByText('PlusIcon'))
+    const input = screen.getByPlaceholderText('tag name')
+    fireEvent.changeText(input, 'we')
+
+    // Simulate native touch ordering where pressIn / blur occurs when tapping a suggestion
+    const suggestion = screen.getByText('weekend')
+    fireEvent(suggestion, 'pressIn')
+    fireEvent(input, 'blur')
+    fireEvent.press(suggestion)
+
+    // Should call onChangeTags exactly once with ['work', 'weekend'], and NOT commit 'we'
+    expect(onChangeTags).toHaveBeenCalledTimes(1)
+    expect(onChangeTags).toHaveBeenCalledWith(['work', 'weekend'])
+  })
+
+  it('resumes normal draft submission on blur when a suggestion press gesture is cancelled', () => {
+    jest.useFakeTimers()
+    const onChangeTags = jest.fn()
+    render(
+      <TagInput
+        tags={['work']}
+        onChangeTags={onChangeTags}
+        availableTags={['weekend', 'welcome']}
+      />
+    )
+
+    fireEvent.press(screen.getByText('PlusIcon'))
+    const input = screen.getByPlaceholderText('tag name')
+    fireEvent.changeText(input, 'we')
+
+    // Simulate gesture pressIn and pressOut without press (user dragged finger away)
+    const suggestion = screen.getByText('weekend')
+    fireEvent(suggestion, 'pressIn')
+    fireEvent(suggestion, 'pressOut')
+
+    // Advance fake timers so pressOut timeout clears the guard
+    act(() => {
+      jest.advanceTimersByTime(200)
+    })
+
+    // Subsequent blur should normally commit the draft prefix 'we'
+    fireEvent(input, 'blur')
+
+    expect(onChangeTags).toHaveBeenCalledTimes(1)
+    expect(onChangeTags).toHaveBeenCalledWith(['work', 'we'])
+    jest.useRealTimers()
   })
 })

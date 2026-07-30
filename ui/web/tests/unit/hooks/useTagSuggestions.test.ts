@@ -4,12 +4,12 @@ import { useTagSuggestions } from '@ui/web/hooks/useTagSuggestions'
 describe('useTagSuggestions', () => {
   const defaultTags = ['react', 'react-dom', 'react-router', 'redux', 'refactor', 'rust']
 
-  it('returns empty array when query length is less than default minChars (3)', () => {
+  it('returns empty array when query length is less than default minChars (1)', () => {
     const { result } = renderHook(() =>
       useTagSuggestions({
         allTags: defaultTags,
         selectedTags: [],
-        query: 're',
+        query: '',
       })
     )
 
@@ -33,7 +33,7 @@ describe('useTagSuggestions', () => {
       useTagSuggestions({
         allTags: defaultTags,
         selectedTags: [],
-        query: 'rea',
+        query: 'r',
       })
     )
 
@@ -45,12 +45,12 @@ describe('useTagSuggestions', () => {
       useTagSuggestions({
         allTags: defaultTags,
         selectedTags: [],
-        query: 'ru',
-        minChars: 2,
+        query: 're',
+        minChars: 3,
       })
     )
 
-    expect(result.current).toEqual(['rust'])
+    expect(result.current).toEqual([])
   })
 
   it('filters out already selected tags from suggestions', () => {
@@ -164,4 +164,17 @@ describe('useTagSuggestions', () => {
 
     expect(result.current).toEqual(['redux'])
   })
+
+  it('handles case insensitivity, duplicate tags, and empty candidate tags gracefully', () => {
+    const { result } = renderHook(() =>
+      useTagSuggestions({
+        allTags: ['  ', '', 'React-Native', 'REACT', 'react', 'redux'],
+        selectedTags: [],
+        query: ' REA ',
+      })
+    )
+
+    expect(result.current).toEqual(['react', 'react-native'])
+  })
 })
+

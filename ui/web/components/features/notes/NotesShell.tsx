@@ -25,7 +25,8 @@ import { SearchResultsPanel } from "@/components/features/notes/SearchResultsPan
 import type { SearchResultsPanelHandle } from "@/components/features/notes/SearchResultsPanel"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
-import { normalizeTagList } from "@ui/web/lib/tags"
+import { normalizeTag, normalizeTagList } from "@ui/web/lib/tags"
+import { useAllTagsQuery } from "@ui/web/hooks/useNotesQuery"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
@@ -296,10 +297,36 @@ function EditorPane({
     notes,
   } = controller
 
+  const { user } = useSupabase()
+  const allTagsQuery = useAllTagsQuery({ userId: user?.id, enabled: !!user })
+
   const availableTags = React.useMemo(() => {
+    if (allTagsQuery.data?.tags && allTagsQuery.data.tags.length > 0) {
+      return allTagsQuery.data.tags
+    }
     const collected = notes.flatMap((note) => note.tags ?? [])
     return normalizeTagList(collected)
-  }, [notes])
+  }, [allTagsQuery.data, notes])
+
+  const tagCounts = React.useMemo(() => {
+    if (allTagsQuery.data?.counts && Object.keys(allTagsQuery.data.counts).length > 0) {
+      return allTagsQuery.data.counts
+    }
+    const counts: Record<string, number> = {}
+    for (const note of notes) {
+      if (!note.tags) continue
+      const seenInNote = new Set<string>()
+      for (const rawTag of note.tags) {
+        if (typeof rawTag !== 'string') continue
+        const tag = normalizeTag(rawTag)
+        if (tag && !seenInNote.has(tag)) {
+          seenInNote.add(tag)
+          counts[tag] = (counts[tag] || 0) + 1
+        }
+      }
+    }
+    return counts
+  }, [allTagsQuery.data, notes])
 
   if (!selectedNote && !isEditing) {
     return <EmptyState />
@@ -314,6 +341,7 @@ function EditorPane({
         initialDescription={selectedNote?.description ?? selectedNote?.content ?? ""}
         initialTags={selectedNote?.tags?.join(", ") ?? ""}
         availableTags={availableTags}
+        tagCounts={tagCounts}
         isSaving={saving}
         onSave={handleSaveNote}
         onRead={handleReadNote}
