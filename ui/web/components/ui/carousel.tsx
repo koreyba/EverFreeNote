@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button"
 type CarouselApi = UseEmblaCarouselType[1]
 
 type CarouselProps = {
-  opts?: Parameters<typeof useEmblaCarousel>[0]
-  plugins?: Parameters<typeof useEmblaCarousel>[1]
+  opts?: NonNullable<Parameters<typeof useEmblaCarousel>[0]>
+  plugins?: NonNullable<Parameters<typeof useEmblaCarousel>[1]>
   orientation?: "horizontal" | "vertical"
   className?: string
   children: React.ReactNode
@@ -46,8 +46,13 @@ const Carousel = ({
     plugins,
   )
 
+  const contextValue = React.useMemo(
+    () => ({ carouselRef, api, orientation }),
+    [carouselRef, api, orientation]
+  )
+
   return (
-    <CarouselContext.Provider value={{ carouselRef, api, orientation }}>
+    <CarouselContext.Provider value={contextValue}>
       <div
         className={cn(
           "relative",

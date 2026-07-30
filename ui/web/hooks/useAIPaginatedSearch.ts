@@ -120,6 +120,13 @@ interface UseAIPaginatedSearchResult {
   resetAIResults: () => void
 }
 
+interface RagSearchWindow {
+  chunkCount: number
+  hasMore: boolean
+  chunks: RagChunk[]
+  groups: RagNoteGroup[]
+}
+
 const readInvokeErrorPayload = async (error: unknown): Promise<{ message: string | null; code: string | null }> => {
   const context = (error as { context?: unknown } | null)?.context as {
     clone?: () => { json?: () => Promise<unknown> }
@@ -187,12 +194,13 @@ async function fetchChunkWindow(
   if (error) throw await toRagSearchRequestError(error)
 
   const chunks = Array.isArray(data?.chunks) ? (data.chunks as RagChunk[]) : []
-  return {
+  const result: RagSearchWindow = {
     chunkCount: chunks.length,
     hasMore: data?.hasMore === true,
     chunks,
     groups: groupByNote(chunks),
   }
+  return result
 }
 
 async function fetchNoteGroupsWindow(
@@ -215,12 +223,28 @@ async function fetchNoteGroupsWindow(
     noteResult = await fetchChunkWindow(supabase, query, chunkLimit, threshold, filterTag)
   }
 
-  return {
+  const result: RagSearchWindow = {
     chunkCount: noteResult.chunkCount,
     hasMore: noteResult.groups.length > requestedTopK || noteResult.hasMore,
     chunks: noteResult.chunks,
     groups: noteResult.groups.slice(0, requestedTopK),
   }
+  return result
+}
+
+async function fetchSearchWindow(
+  resultMode: 'note' | 'chunk',
+  supabase: ReturnType<typeof useSupabase>['supabase'],
+  query: string,
+  requestedTopK: number,
+  pageSize: number,
+  threshold: number,
+  filterTag: string | null
+): Promise<RagSearchWindow> {
+  if (resultMode === 'chunk') {
+    return fetchChunkWindow(supabase, query, requestedTopK, threshold, filterTag)
+  }
+  return fetchNoteGroupsWindow(supabase, query, requestedTopK, pageSize, threshold, filterTag)
 }
 
 function computeDataSignature(
@@ -229,6 +253,39 @@ function computeDataSignature(
 ): string {
   return `${effectiveAiOffset}-${data.chunkCount}-${data.groups.length}-` +
     `${buildChunksSignature(data.chunks)}::${buildGroupsSignature(data.groups)}`
+}
+
+function syncAccumulatedResults({
+  queryEnabled,
+  data,
+  effectiveAiOffset,
+  lastProcessedDataRef,
+  reset,
+  update,
+}: {
+  queryEnabled: boolean
+  data: RagSearchWindow | undefined
+  effectiveAiOffset: number
+  lastProcessedDataRef: { current: string }
+  reset: () => void
+  update: (data: RagSearchWindow) => void
+}): void {
+  if (!queryEnabled) {
+    reset()
+    return
+  }
+  if (!data) return
+
+  const dataSignature = computeDataSignature(effectiveAiOffset, data)
+  if (dataSignature === lastProcessedDataRef.current) return
+  lastProcessedDataRef.current = dataSignature
+  update(data)
+}
+
+function getSearchErrorMessage(error: unknown): string | null {
+  if (error instanceof Error) return error.message
+  if (!error) return null
+  return typeof error === 'string' ? error : 'Unknown AI Search error'
 }
 
 export function useAIPaginatedSearch({
@@ -280,34 +337,37 @@ export function useAIPaginatedSearch({
 
   const result = useQuery({
     queryKey: ['aiSearch', trimmedQuery, pageSize, normalizedThreshold, filterTag, requestedTopK, resultMode],
-    queryFn: async () => {
-      if (resultMode === 'chunk') {
-        return fetchChunkWindow(supabase, trimmedQuery, requestedTopK, normalizedThresholdValue, filterTag ?? null)
-      }
-      return fetchNoteGroupsWindow(supabase, trimmedQuery, requestedTopK, pageSize, normalizedThresholdValue, filterTag ?? null)
-    },
+    queryFn: () => fetchSearchWindow(
+      resultMode,
+      supabase,
+      trimmedQuery,
+      requestedTopK,
+      pageSize,
+      normalizedThresholdValue,
+      filterTag ?? null
+    ),
     enabled: queryEnabled,
     staleTime: STALE_TIME_MS,
     retry: shouldRetryAiSearch,
   })
 
   useEffect(() => {
-    if (!queryEnabled) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAiAccumulatedResults([])
-      setAiAccumulatedChunks([])
-      setAiOffset(0)
-      lastProcessedDataRef.current = ''
-      return
-    }
-    if (!result.data) return
-
-    const dataSignature = computeDataSignature(effectiveAiOffset, result.data)
-    if (dataSignature === lastProcessedDataRef.current) return
-    lastProcessedDataRef.current = dataSignature
-
-    setAiAccumulatedResults(result.data.groups)
-    setAiAccumulatedChunks(result.data.chunks)
+    syncAccumulatedResults({
+      queryEnabled,
+      data: result.data,
+      effectiveAiOffset,
+      lastProcessedDataRef,
+      reset: () => {
+        setAiAccumulatedResults([])
+        setAiAccumulatedChunks([])
+        setAiOffset(0)
+        lastProcessedDataRef.current = ''
+      },
+      update: (data) => {
+        setAiAccumulatedResults(data.groups)
+        setAiAccumulatedChunks(data.chunks)
+      },
+    })
   }, [effectiveAiOffset, queryEnabled, result.data])
 
   const aiHasMore =
@@ -338,12 +398,7 @@ export function useAIPaginatedSearch({
       aiAccumulatedResults.length === 0
     ))
 
-  let errorMessage: string | null = null
-  if (result.error instanceof Error) {
-    errorMessage = result.error.message
-  } else if (result.error) {
-    errorMessage = typeof result.error === 'string' ? result.error : 'Unknown AI Search error'
-  }
+  const errorMessage = getSearchErrorMessage(result.error)
 
   return {
     noteGroups: queryEnabled && identityCommitted ? aiAccumulatedResults : [],

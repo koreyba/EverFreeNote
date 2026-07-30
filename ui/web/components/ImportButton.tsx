@@ -121,6 +121,137 @@ async function processImportNote({
   return createdId ? 'success' : 'skipped'
 }
 
+type ImportCounters = {
+  successCount: number
+  skippedCount: number
+  errorCount: number
+  totalNotes: number
+  lastSaveTime: number
+  failedNotes: FailedImportNote[]
+}
+
+type ProcessImportFileParams = {
+  file: File
+  fileIndex: number
+  files: File[]
+  parser: EnexParser
+  userId: string
+  converter: ContentConverter
+  noteCreator: NoteCreator
+  duplicateStrategy: DuplicateStrategy
+  skipFileDuplicates: boolean
+  existingByTitle: Map<string, string> | null
+  fallbackExistingByTitle: Map<string, string | null>
+  seenTitlesInImport: Set<string>
+  counters: ImportCounters
+  setProgress: React.Dispatch<React.SetStateAction<ImportProgress>>
+}
+
+const saveImportState = (
+  file: File,
+  fileIndex: number,
+  files: File[],
+  counters: ImportCounters
+) => {
+  browser.localStorage.setItem(
+    IMPORT_STATE_KEY,
+    JSON.stringify({
+      currentFile: fileIndex + 1,
+      totalFiles: files.length,
+      currentNote:
+        counters.successCount + counters.skippedCount + counters.errorCount,
+      totalNotes: counters.totalNotes,
+      successCount: counters.successCount,
+      skippedCount: counters.skippedCount,
+      errorCount: counters.errorCount,
+      fileName: file.name,
+    })
+  )
+}
+
+async function processImportFile({
+  file,
+  fileIndex,
+  files,
+  parser,
+  userId,
+  converter,
+  noteCreator,
+  duplicateStrategy,
+  skipFileDuplicates,
+  existingByTitle,
+  fallbackExistingByTitle,
+  seenTitlesInImport,
+  counters,
+  setProgress,
+}: ProcessImportFileParams): Promise<void> {
+  try {
+    setProgress((prev) => ({
+      ...prev,
+      currentFile: fileIndex + 1,
+      fileName: file.name,
+    }))
+
+    const notes = await parser.parse(file)
+    counters.totalNotes += notes.length
+
+    setProgress((prev) => ({
+      ...prev,
+      totalNotes: counters.totalNotes,
+    }))
+
+    for (let noteIndex = 0; noteIndex < notes.length; noteIndex++) {
+      const note = notes[noteIndex]
+      const now = Date.now()
+      const isLastNote = noteIndex === notes.length - 1
+      if (now - counters.lastSaveTime > 2000 || isLastNote) {
+        saveImportState(file, fileIndex, files, counters)
+        counters.lastSaveTime = now
+      }
+
+      try {
+        const result = await processImportNote({
+          note,
+          userId,
+          converter,
+          noteCreator,
+          duplicateStrategy,
+          skipFileDuplicates,
+          existingByTitle,
+          fallbackExistingByTitle,
+          seenTitlesInImport,
+        })
+
+        if (result === 'success') {
+          counters.successCount++
+        } else {
+          counters.skippedCount++
+        }
+      } catch (error) {
+        const err = error as Error
+        console.error("Failed to import note:", note.title, err)
+        counters.errorCount++
+
+        counters.failedNotes.push({
+          title: note.title || "Untitled",
+          error: err.message || "Unknown error",
+        })
+      }
+
+      setProgress((prev) => ({
+        ...prev,
+        currentNote:
+          counters.successCount + counters.skippedCount + counters.errorCount,
+      }))
+    }
+  } catch (error) {
+    const err = error as Error
+    console.error("Failed to process file:", file.name, err)
+    toast.error(`Failed to process ${file.name}: ${err.message}`)
+    counters.errorCount++
+  }
+}
+
 export function ImportButton(props: Readonly<ImportButtonProps>) {
   const { onImportComplete, maxFileSize = 100 * 1024 * 1024 } = props
   const [importing, setImporting] = React.useState(false)
@@ -209,13 +340,14 @@ export function ImportButton(props: Readonly<ImportButtonProps>) {
       const fallbackExistingByTitle = new Map<string, string | null>()
       const seenTitlesInImport = new Set<string>()
 
-      let successCount = 0
-      let skippedCount = 0
-      let errorCount = 0
-      let totalNotes = 0
-      const failedNotes: FailedImportNote[] = []
-      let lastSaveTime = 0
-      const SAVE_INTERVAL = 2000
+      const counters: ImportCounters = {
+        successCount: 0,
+        skippedCount: 0,
+        errorCount: 0,
+        totalNotes: 0,
+        lastSaveTime: 0,
+        failedNotes: [],
+      }
 
       setProgress({
         currentFile: 0,
@@ -226,99 +358,44 @@ export function ImportButton(props: Readonly<ImportButtonProps>) {
       })
 
       for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
-        const file = files[fileIndex]
-
-        try {
-          setProgress((prev) => ({
-            ...prev,
-            currentFile: fileIndex + 1,
-            fileName: file.name,
-          }))
-
-          const notes = await parser.parse(file)
-          totalNotes += notes.length
-
-          setProgress((prev) => ({
-            ...prev,
-            totalNotes,
-          }))
-
-          for (let noteIndex = 0; noteIndex < notes.length; noteIndex++) {
-            const note = notes[noteIndex]
-            const now = Date.now()
-            const isLastNote = noteIndex === notes.length - 1
-            if (now - lastSaveTime > SAVE_INTERVAL || isLastNote) {
-              browser.localStorage.setItem(
-                IMPORT_STATE_KEY,
-                JSON.stringify({
-                  currentFile: fileIndex + 1,
-                  totalFiles: files.length,
-                  currentNote: successCount + skippedCount + errorCount,
-                  totalNotes,
-                  successCount,
-                  skippedCount,
-                  errorCount,
-                  fileName: file.name,
-                })
-              )
-              lastSaveTime = now
-            }
-
-            try {
-              const res = await processImportNote({
-                note,
-                userId: user.id,
-                converter,
-                noteCreator,
-                duplicateStrategy: settings.duplicateStrategy,
-                skipFileDuplicates: settings.skipFileDuplicates,
-                existingByTitle,
-                fallbackExistingByTitle,
-                seenTitlesInImport,
-              })
-
-              if (res === 'success') {
-                successCount++
-              } else {
-                skippedCount++
-              }
-            } catch (error) {
-              const err = error as Error
-              console.error("Failed to import note:", note.title, err)
-              errorCount++
-
-              failedNotes.push({
-                title: note.title || "Untitled",
-                error: err.message || "Unknown error",
-              })
-            }
-
-            setProgress((prev) => ({
-              ...prev,
-              currentNote: successCount + skippedCount + errorCount,
-            }))
-          }
-        } catch (error) {
-          const err = error as Error
-          console.error("Failed to process file:", file.name, err)
-          toast.error(`Failed to process ${file.name}: ${err.message}`)
-          errorCount++
-        }
+        await processImportFile({
+          file: files[fileIndex],
+          fileIndex,
+          files,
+          parser,
+          userId: user.id,
+          converter,
+          noteCreator,
+          duplicateStrategy: settings.duplicateStrategy,
+          skipFileDuplicates: settings.skipFileDuplicates,
+          existingByTitle,
+          fallbackExistingByTitle,
+          seenTitlesInImport,
+          counters,
+          setProgress,
+        })
       }
 
       browser.localStorage.removeItem(IMPORT_STATE_KEY)
 
       const result: ImportResult = {
-        success: successCount,
-        errors: errorCount,
-        failedNotes,
-        message: buildImportResultMessage(successCount, skippedCount, errorCount),
+        success: counters.successCount,
+        errors: counters.errorCount,
+        failedNotes: counters.failedNotes,
+        message: buildImportResultMessage(
+          counters.successCount,
+          counters.skippedCount,
+          counters.errorCount
+        ),
       }
       setImportResult(result)
 
-      if (successCount > 0) {
-        const status: ImportStatus = errorCount > 0 ? "partial" : "success"
-        onImportComplete?.(status, { successCount, errorCount })
+      if (counters.successCount > 0) {
+        const status: ImportStatus = counters.errorCount > 0 ? "partial" : "success"
+        onImportComplete?.(status, {
+          successCount: counters.successCount,
+          errorCount: counters.errorCount,
+        })
       }
     } catch (error) {
       const err = error as Error

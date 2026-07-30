@@ -6,14 +6,45 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react"
-import { DayPicker, getDefaultClassNames } from "react-day-picker"
+import {
+  DayPicker,
+  getDefaultClassNames,
+  type ChevronProps,
+  type RootProps,
+  type WeekNumberProps,
+} from "react-day-picker"
 
 import { cn } from "@ui/web/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 
 type CalendarProps = React.ComponentProps<typeof DayPicker> & {
-  className?: string
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
+}
+
+function CalendarRoot({ className, rootRef, ...rootProps }: RootProps) {
+  return <div data-slot="calendar" ref={rootRef} className={cn(className)} {...rootProps} />
+}
+
+function CalendarChevron({ className, orientation, ...chevronProps }: ChevronProps) {
+  if (orientation === "left") {
+    return <ChevronLeftIcon className={cn("size-4", className)} {...chevronProps} />
+  }
+
+  if (orientation === "right") {
+    return <ChevronRightIcon className={cn("size-4", className)} {...chevronProps} />
+  }
+
+  return <ChevronDownIcon className={cn("size-4", className)} {...chevronProps} />
+}
+
+function CalendarWeekNumber({ children, ...weekProps }: WeekNumberProps) {
+  return (
+    <td {...weekProps}>
+      <div className="flex size-[--cell-size] items-center justify-center text-center">
+        {children}
+      </div>
+    </td>
+  )
 }
 
 function Calendar({
@@ -33,8 +64,8 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn(
         "bg-background group/calendar p-3 [--cell-size:2rem] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
-        String.raw`rtl:**:[.rdp-button_next>svg]:rotate-180`,
-        String.raw`rtl:**:[.rdp-button_previous>svg]:rotate-180`,
+        "rtl:**:[.rdp-button_next>svg]:rotate-180",
+        "rtl:**:[.rdp-button_previous>svg]:rotate-180",
         className
       )}
       captionLayout={captionLayout}
@@ -113,30 +144,10 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Root: ({ className, rootRef, ...rootProps }) => (
-          <div data-slot="calendar" ref={rootRef} className={cn(className)} {...rootProps} />
-        ),
-        Chevron: ({ className, orientation, ...chevronProps }) => {
-          if (orientation === "left") {
-            return <ChevronLeftIcon className={cn("size-4", className)} {...chevronProps} />
-          }
-
-          if (orientation === "right") {
-            return <ChevronRightIcon className={cn("size-4", className)} {...chevronProps} />
-          }
-
-          return <ChevronDownIcon className={cn("size-4", className)} {...chevronProps} />
-        },
+        Root: CalendarRoot,
+        Chevron: CalendarChevron,
         DayButton: CalendarDayButton,
-        WeekNumber: ({ children, ...weekProps }) => {
-          return (
-            <td {...weekProps}>
-              <div className="flex size-[--cell-size] items-center justify-center text-center">
-                {children}
-              </div>
-            </td>
-          )
-        },
+        WeekNumber: CalendarWeekNumber,
         ...components,
       }}
       {...props}

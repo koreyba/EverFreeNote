@@ -35,6 +35,118 @@ function runAsyncSafely(task: PromiseLike<unknown> | void, onError?: () => void)
   })
 }
 
+function getIdleSearchMessage(hasGeminiApiKey: boolean, geminiConfigured: boolean | null) {
+  if (hasGeminiApiKey) {
+    return 'Switch on AI Search for semantic matching, or keep typing for regular search.'
+  }
+  if (geminiConfigured === false) {
+    return 'Type a query to search your notes. AI Search unlocks after you add a Gemini API key in Settings.'
+  }
+  return 'Type a query to search your notes. AI Search will be available once key status finishes loading.'
+}
+
+function getActiveMode(aiModeEnabled: boolean, viewMode: 'note' | 'chunk') {
+  if (!aiModeEnabled) return 'regular' as const
+  return viewMode === 'chunk' ? 'ai-chunk' as const : 'ai-note' as const
+}
+
+function getSelectableResultIds(
+  aiModeEnabled: boolean,
+  viewMode: 'note' | 'chunk',
+  noteGroups: ReturnType<typeof useMobileAIPaginatedSearch>['noteGroups'],
+  regularResults: ReadonlyArray<{ id: string }>
+) {
+  if (aiModeEnabled && viewMode === 'note') {
+    return noteGroups.map((group) => group.noteId)
+  }
+  if (aiModeEnabled && viewMode === 'chunk') return []
+  return regularResults.map((note) => note.id)
+}
+
+type IdleSearchStateParams = Readonly<{
+  showHistory: boolean
+  isRegularLoading: boolean
+  isAILoading: boolean
+  aiError: string | null
+  regularResults: ReadonlyArray<{ id: string }>
+  noteGroups: ReturnType<typeof useMobileAIPaginatedSearch>['noteGroups']
+  aiChunks: ReturnType<typeof useMobileAIPaginatedSearch>['chunks']
+  activeTag: string | null
+  queryTrimmed: string
+}>
+
+function shouldShowIdleSearchState({
+  showHistory,
+  isRegularLoading,
+  isAILoading,
+  aiError,
+  regularResults,
+  noteGroups,
+  aiChunks,
+  activeTag,
+  queryTrimmed,
+}: IdleSearchStateParams) {
+  return !showHistory &&
+    !isRegularLoading &&
+    !isAILoading &&
+    !aiError &&
+    !regularResults.length &&
+    !noteGroups.length &&
+    !aiChunks.length &&
+    !activeTag &&
+    queryTrimmed.length === 0
+}
+
+function hasVisibleSearchResults(
+  aiModeEnabled: boolean,
+  viewMode: 'note' | 'chunk',
+  regularResults: ReadonlyArray<{ id: string }>,
+  noteGroups: ReturnType<typeof useMobileAIPaginatedSearch>['noteGroups'],
+  aiChunks: ReturnType<typeof useMobileAIPaginatedSearch>['chunks']
+) {
+  if (!aiModeEnabled) return regularResults.length > 0
+  return viewMode === 'chunk' ? aiChunks.length > 0 : noteGroups.length > 0
+}
+
+type EmptySearchResultsParams = Readonly<{
+  showHistory: boolean
+  shouldShowResultsList: boolean
+  isRegularLoading: boolean
+  isAILoading: boolean
+  aiError: string | null
+  aiModeEnabled: boolean
+  queryTrimmed: string
+  activeTag: string | null
+  aiQueryReady: boolean
+}>
+
+function shouldShowEmptySearchResults({
+  showHistory,
+  shouldShowResultsList,
+  isRegularLoading,
+  isAILoading,
+  aiError,
+  aiModeEnabled,
+  queryTrimmed,
+  activeTag,
+  aiQueryReady,
+}: EmptySearchResultsParams) {
+  if (showHistory || shouldShowResultsList || isRegularLoading || isAILoading || aiError) return false
+  if (!aiModeEnabled) return queryTrimmed.length >= SEARCH_CONFIG.MIN_QUERY_LENGTH || !!activeTag
+  return aiQueryReady
+}
+
+function getResultsRefreshing(
+  aiModeEnabled: boolean,
+  isAIRefreshing: boolean,
+  isRegularFetching: boolean,
+  isFetchingNextPage: boolean,
+  regularResults: ReadonlyArray<{ id: string }>
+) {
+  if (aiModeEnabled) return isAIRefreshing
+  return isRegularFetching && !isFetchingNextPage && regularResults.length > 0
+}
+
 function useSearchHistoryState(userId: string | undefined, queryTrimmed: string, activeTag: string | null) {
   const [history, setHistory] = useState<string[]>([])
   const showHistory = queryTrimmed.length === 0 && history.length > 0 && !activeTag
@@ -83,7 +195,7 @@ function useSelectionLifecycle({
   isActive: boolean
   deactivate: () => void
   navigation: {
-    setOptions: (options: { title?: string; headerLeft?: (() => unknown) | undefined }) => void
+    setOptions: (options: { title?: string; headerLeft?: () => unknown }) => void
   }
   selectedIds: Set<string>
   selectableResultIds: string[]
@@ -149,7 +261,7 @@ function useSelectionLifecycle({
   }, [deactivate, isActive, selectableResultIds, selectedIds])
 }
 
-type SearchScreenBodyProps = {
+type SearchScreenBodyProps = Readonly<{
   styles: ReturnType<typeof createStyles>
   colors: ReturnType<typeof useTheme>['colors']
   showHistory: boolean
@@ -190,7 +302,7 @@ type SearchScreenBodyProps = {
   shouldShowIdleState: boolean
   hasGeminiApiKey: boolean
   geminiConfigured: boolean | null
-}
+}>
 
 function SearchScreenBody({
   styles,
@@ -348,11 +460,7 @@ function SearchScreenBody({
     <View style={styles.messageCard}>
       <Text style={styles.messageTitle}>Search your notes</Text>
       <Text style={styles.messageBody}>
-        {hasGeminiApiKey
-          ? 'Switch on AI Search for semantic matching, or keep typing for regular search.'
-          : geminiConfigured === false
-            ? 'Type a query to search your notes. AI Search unlocks after you add a Gemini API key in Settings.'
-            : 'Type a query to search your notes. AI Search will be available once key status finishes loading.'}
+        {getIdleSearchMessage(hasGeminiApiKey, geminiConfigured)}
       </Text>
     </View>
   )
@@ -451,26 +559,22 @@ export default function SearchScreen() {
     activeTag
   )
   const aiQueryReady = aiModeEnabled && queryTrimmed.length >= AI_SEARCH_MIN_QUERY_LENGTH
-  const shouldShowIdleState =
-    !showHistory &&
-    !isRegularLoading &&
-    !isAILoading &&
-    !aiError &&
-    !regularResults.length &&
-    !noteGroups.length &&
-    !aiChunks.length &&
-    !activeTag &&
-    queryTrimmed.length === 0
+  const shouldShowIdleState = shouldShowIdleSearchState({
+    showHistory,
+    isRegularLoading,
+    isAILoading,
+    aiError,
+    regularResults,
+    noteGroups,
+    aiChunks,
+    activeTag,
+    queryTrimmed,
+  })
 
-  const selectableResultIds = useMemo(() => {
-    if (aiModeEnabled && viewMode === 'note') {
-      return noteGroups.map((group) => group.noteId)
-    }
-    if (aiModeEnabled && viewMode === 'chunk') {
-      return []
-    }
-    return regularResults.map((note) => note.id)
-  }, [aiModeEnabled, noteGroups, regularResults, viewMode])
+  const selectableResultIds = useMemo(
+    () => getSelectableResultIds(aiModeEnabled, viewMode, noteGroups, regularResults),
+    [aiModeEnabled, noteGroups, regularResults, viewMode]
+  )
 
   useEffect(() => {
     if (typeof params.tag === 'string' && params.tag.trim().length > 0) {
@@ -621,18 +725,25 @@ export default function SearchScreen() {
     return null
   }, [aiModeEnabled, geminiConfigured, queryTrimmed.length, selectionLockActive])
 
-  const activeMode = aiModeEnabled ? (viewMode === 'chunk' ? 'ai-chunk' : 'ai-note') : 'regular'
-  const shouldShowResultsList =
-    (!aiModeEnabled && regularResults.length > 0) ||
-    (aiModeEnabled && (viewMode === 'chunk' ? aiChunks.length > 0 : noteGroups.length > 0))
-  const shouldShowEmptyResults =
-    !showHistory &&
-    !shouldShowResultsList &&
-    !isRegularLoading &&
-    !isAILoading &&
-    !aiError &&
-    ((!aiModeEnabled && (queryTrimmed.length >= SEARCH_CONFIG.MIN_QUERY_LENGTH || !!activeTag)) ||
-      (aiModeEnabled && aiQueryReady))
+  const activeMode = getActiveMode(aiModeEnabled, viewMode)
+  const shouldShowResultsList = hasVisibleSearchResults(
+    aiModeEnabled,
+    viewMode,
+    regularResults,
+    noteGroups,
+    aiChunks
+  )
+  const shouldShowEmptyResults = shouldShowEmptySearchResults({
+    showHistory,
+    shouldShowResultsList,
+    isRegularLoading,
+    isAILoading,
+    aiError,
+    aiModeEnabled,
+    queryTrimmed,
+    activeTag,
+    aiQueryReady,
+  })
 
   const listBottomInset = isActive ? 88 : 16
   const handleLoadMore = useCallback(() => {
@@ -653,9 +764,13 @@ export default function SearchScreen() {
   const handleHistoryItemPress = useCallback((item: string) => {
     setQuery(applyHistoryItem(item))
   }, [applyHistoryItem])
-  const isResultsRefreshing = aiModeEnabled
-    ? isAIRefreshing
-    : isRegularFetching && !isFetchingNextPage && regularResults.length > 0
+  const isResultsRefreshing = getResultsRefreshing(
+    aiModeEnabled,
+    isAIRefreshing,
+    isRegularFetching,
+    isFetchingNextPage,
+    regularResults
+  )
 
   return (
     <View style={styles.container}>

@@ -19,11 +19,7 @@ describe('Search Utils', () => {
     })
 
     it('should handle C++', () => {
-      // Current implementation keeps +
-      // expect(buildTsQuery('C++')).to.equal('C++:*') 
-      // We want to see what it does now
-      const result = buildTsQuery('C++')
-      console.log('C++ result:', result)
+      expect(buildTsQuery('C++')).to.equal('C++:*')
     })
   })
 })

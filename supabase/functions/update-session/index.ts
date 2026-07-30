@@ -31,23 +31,16 @@ const contentSizeBytes = (value: string) => new TextEncoder().encode(value).leng
 
 const MAX_CONTENT_BYTES = 50 * 1024
 
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+type SessionInput = {
+  id: string
+  mode: string
+  rawTopic: string
+  topic: string
+  contentTrimmed: string
+  appendTrimmed: string
 }
 
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders })
-  }
-
-  if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405)
-  }
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return jsonResponse({ error: "Function not configured" }, 500)
-  }
-
+const parseSessionInput = async (req: Request): Promise<SessionInput> => {
   let payload: Record<string, unknown> | null = null
   try {
     payload = await req.json()
@@ -58,11 +51,21 @@ serve(async (req: Request) => {
   const id = typeof payload?.id === "string" ? payload.id.trim() : ""
   const mode = typeof payload?.mode === "string" ? payload.mode.trim() : ""
   const rawTopic = typeof payload?.topic === "string" ? payload.topic : ""
-  const topic = rawTopic.trim()
   const content = typeof payload?.content === "string" ? payload.content : ""
   const appendText = typeof payload?.append === "string" ? payload.append : ""
-  const contentTrimmed = content.trim()
-  const appendTrimmed = appendText.trim()
+
+  return {
+    id,
+    mode,
+    rawTopic,
+    topic: rawTopic.trim(),
+    contentTrimmed: content.trim(),
+    appendTrimmed: appendText.trim(),
+  }
+}
+
+const validateSessionInput = (input: SessionInput): Response | null => {
+  const { id, mode, rawTopic, topic, contentTrimmed, appendTrimmed } = input
 
   if (!id) {
     return jsonResponse({ error: "Missing id" }, 400)
@@ -88,6 +91,89 @@ serve(async (req: Request) => {
     return jsonResponse({ error: "Content exceeds 50KB limit" }, 400)
   }
 
+  return null
+}
+
+const loadSession = async (supabaseAdmin: ReturnType<typeof createClient>, id: string, userId: string) => {
+  const { data: noteRow, error: noteError } = await supabaseAdmin
+    .from("notes")
+    .select("created_at, description")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .contains("tags", [CLAUDE_TAG])
+    .maybeSingle()
+
+  if (noteError) {
+    throw noteError
+  }
+
+  return noteRow
+}
+
+const buildUpdates = async (
+  supabaseAdmin: ReturnType<typeof createClient>,
+  input: SessionInput,
+  userId: string,
+): Promise<Record<string, unknown> | Response> => {
+  const { id, mode, topic, contentTrimmed, appendTrimmed } = input
+  const updates: Record<string, unknown> = {}
+
+  if (mode === "replace") {
+    updates.description = contentTrimmed
+  }
+
+  if (mode !== "append" && !topic) {
+    return updates
+  }
+
+  const noteRow = await loadSession(supabaseAdmin, id, userId)
+  if (!noteRow?.created_at) {
+    return jsonResponse({ error: "Session not found" }, 404)
+  }
+
+  if (mode === "append") {
+    const existing = typeof noteRow.description === "string" ? noteRow.description : ""
+    const separator = existing ? "\n\n" : ""
+    const nextDescription = `${existing}${separator}${appendTrimmed}`
+
+    if (contentSizeBytes(nextDescription) > MAX_CONTENT_BYTES) {
+      return jsonResponse({ error: "Content exceeds 50KB limit" }, 400)
+    }
+
+    updates.description = nextDescription
+  }
+
+  if (topic) {
+    const dateStamp = new Date(noteRow.created_at).toISOString().slice(0, 10)
+    updates.title = `Session ${dateStamp} - ${topic}`
+  }
+
+  return updates
+}
+
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+}
+
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders })
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405)
+  }
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return jsonResponse({ error: "Function not configured" }, 500)
+  }
+
+  const input = await parseSessionInput(req)
+  const validationError = validateSessionInput(input)
+  if (validationError) {
+    return validationError
+  }
+
   const userId = defaultUserId || null
   if (!userId) {
     return jsonResponse({ error: "Missing COACHING_USER_ID" }, 500)
@@ -96,51 +182,15 @@ serve(async (req: Request) => {
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
   try {
-    const updates: Record<string, unknown> = {}
-
-    if (mode === "replace") {
-      updates.description = contentTrimmed
-    }
-
-    if (mode === "append" || topic) {
-      const { data: noteRow, error: noteError } = await supabaseAdmin
-        .from("notes")
-        .select("created_at, description")
-        .eq("id", id)
-        .eq("user_id", userId)
-        .contains("tags", [CLAUDE_TAG])
-        .maybeSingle()
-
-      if (noteError) {
-        throw noteError
-      }
-
-      if (!noteRow?.created_at) {
-        return jsonResponse({ error: "Session not found" }, 404)
-      }
-
-      if (mode === "append") {
-        const existing = typeof noteRow.description === "string" ? noteRow.description : ""
-        const separator = existing ? "\n\n" : ""
-        const nextDescription = `${existing}${separator}${appendTrimmed}`
-
-        if (contentSizeBytes(nextDescription) > MAX_CONTENT_BYTES) {
-          return jsonResponse({ error: "Content exceeds 50KB limit" }, 400)
-        }
-
-        updates.description = nextDescription
-      }
-
-      if (topic) {
-        const dateStamp = new Date(noteRow.created_at).toISOString().slice(0, 10)
-        updates.title = `Session ${dateStamp} - ${topic}`
-      }
+    const updates = await buildUpdates(supabaseAdmin, input, userId)
+    if (updates instanceof Response) {
+      return updates
     }
 
     const { data, error } = await supabaseAdmin
       .from("notes")
       .update(updates)
-      .eq("id", id)
+      .eq("id", input.id)
       .eq("user_id", userId)
       .contains("tags", [CLAUDE_TAG])
       .select("id, title, description, tags, created_at, updated_at, user_id")
