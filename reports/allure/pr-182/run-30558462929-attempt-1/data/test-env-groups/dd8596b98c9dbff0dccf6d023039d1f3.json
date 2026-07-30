@@ -1,0 +1,1 @@
+{"id":"dd8596b98c9dbff0dccf6d023039d1f3","fullName":"everfreenote:ui/web/tests/unit/components/mainPage.test.tsx#App Component (app/page.tsx) renders NotesShell when loading is false and user is authenticated","name":"renders NotesShell when loading is false and user is authenticated","status":"passed","testResultsByEnv":{"default":"4f2dc97daaf440a7ae5ace6cd7eb2a1d"}}

@@ -1,0 +1,1 @@
+{"id":"80394b41b1dd59741d25a881f4032d37","fullName":"everfreenote-mobile:tests/unit/searchHistory.test.ts#searchHistory service addSearchHistoryItem normalizes duplicates (case-insensitive and trimmed)","name":"normalizes duplicates (case-insensitive and trimmed)","status":"passed","testResultsByEnv":{"default":"be7d742b9bf13668f30c2e81cd1c7a31"}}

@@ -1,0 +1,1 @@
+{"id":"275ec44f9f8108f60a825a0dada643b0","fullName":"everfreenote:ui/web/tests/unit/adapters/networkStatus.test.ts#webNetworkStatus in browser environment isOnline returns false when navigator.onLine is false","name":"returns false when navigator.onLine is false","status":"passed","testResultsByEnv":{"default":"fa7e6423820d9f7b912552090fa176f0"}}

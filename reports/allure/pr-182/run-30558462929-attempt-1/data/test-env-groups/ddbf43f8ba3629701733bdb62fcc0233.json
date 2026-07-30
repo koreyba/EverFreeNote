@@ -1,0 +1,1 @@
+{"id":"ddbf43f8ba3629701733bdb62fcc0233","fullName":"everfreenote:ui/web/tests/unit/hooks/use-mobile.test.tsx#useIsMobile registers matchMedia listener for max-width: 767px","name":"registers matchMedia listener for max-width: 767px","status":"passed","testResultsByEnv":{"default":"217b3b76c54e652d2532d737d66d0100"}}
