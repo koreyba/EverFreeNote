@@ -3,6 +3,44 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit",
+      "component",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-177/run-30528173110-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-177/run-30528173110-attempt-1/",
+    "runId": "30528173110",
+    "runAttempt": "1",
+    "prNumber": "177",
+    "ref": "implement_tag_autocomplete_feature",
+    "sha": "f4ced12d60bb0cf0b4450f460fd280b88a0cf36d",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #177",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-30T09:10:44.050Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "e2e"
     ],
     "suiteLabels": [
@@ -613,44 +651,6 @@
     "scopeLabel": "PR #177",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-29T20:45:53.065Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-180/run-30488215324-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-180/run-30488215324-attempt-1/",
-    "runId": "30488215324",
-    "runAttempt": "1",
-    "prNumber": "180",
-    "ref": "fix_android_stage_build",
-    "sha": "87a15d155e66ff88b159f2b12bcb81b7f8b9726a",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #180",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-29T20:33:34.189Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
