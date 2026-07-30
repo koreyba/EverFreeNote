@@ -63,17 +63,29 @@ function getSelectableResultIds(
   return regularResults.map((note) => note.id)
 }
 
-function shouldShowIdleSearchState(
-  showHistory: boolean,
-  isRegularLoading: boolean,
-  isAILoading: boolean,
-  aiError: string | null,
-  regularResults: ReadonlyArray<{ id: string }>,
-  noteGroups: ReturnType<typeof useMobileAIPaginatedSearch>['noteGroups'],
-  aiChunks: ReturnType<typeof useMobileAIPaginatedSearch>['chunks'],
-  activeTag: string | null,
+type IdleSearchStateParams = Readonly<{
+  showHistory: boolean
+  isRegularLoading: boolean
+  isAILoading: boolean
+  aiError: string | null
+  regularResults: ReadonlyArray<{ id: string }>
+  noteGroups: ReturnType<typeof useMobileAIPaginatedSearch>['noteGroups']
+  aiChunks: ReturnType<typeof useMobileAIPaginatedSearch>['chunks']
+  activeTag: string | null
   queryTrimmed: string
-) {
+}>
+
+function shouldShowIdleSearchState({
+  showHistory,
+  isRegularLoading,
+  isAILoading,
+  aiError,
+  regularResults,
+  noteGroups,
+  aiChunks,
+  activeTag,
+  queryTrimmed,
+}: IdleSearchStateParams) {
   return !showHistory &&
     !isRegularLoading &&
     !isAILoading &&
@@ -96,17 +108,29 @@ function hasVisibleSearchResults(
   return viewMode === 'chunk' ? aiChunks.length > 0 : noteGroups.length > 0
 }
 
-function shouldShowEmptySearchResults(
-  showHistory: boolean,
-  shouldShowResultsList: boolean,
-  isRegularLoading: boolean,
-  isAILoading: boolean,
-  aiError: string | null,
-  aiModeEnabled: boolean,
-  queryTrimmed: string,
-  activeTag: string | null,
+type EmptySearchResultsParams = Readonly<{
+  showHistory: boolean
+  shouldShowResultsList: boolean
+  isRegularLoading: boolean
+  isAILoading: boolean
+  aiError: string | null
+  aiModeEnabled: boolean
+  queryTrimmed: string
+  activeTag: string | null
   aiQueryReady: boolean
-) {
+}>
+
+function shouldShowEmptySearchResults({
+  showHistory,
+  shouldShowResultsList,
+  isRegularLoading,
+  isAILoading,
+  aiError,
+  aiModeEnabled,
+  queryTrimmed,
+  activeTag,
+  aiQueryReady,
+}: EmptySearchResultsParams) {
   if (showHistory || shouldShowResultsList || isRegularLoading || isAILoading || aiError) return false
   if (!aiModeEnabled) return queryTrimmed.length >= SEARCH_CONFIG.MIN_QUERY_LENGTH || !!activeTag
   return aiQueryReady
@@ -535,7 +559,7 @@ export default function SearchScreen() {
     activeTag
   )
   const aiQueryReady = aiModeEnabled && queryTrimmed.length >= AI_SEARCH_MIN_QUERY_LENGTH
-  const shouldShowIdleState = shouldShowIdleSearchState(
+  const shouldShowIdleState = shouldShowIdleSearchState({
     showHistory,
     isRegularLoading,
     isAILoading,
@@ -544,8 +568,8 @@ export default function SearchScreen() {
     noteGroups,
     aiChunks,
     activeTag,
-    queryTrimmed
-  )
+    queryTrimmed,
+  })
 
   const selectableResultIds = useMemo(
     () => getSelectableResultIds(aiModeEnabled, viewMode, noteGroups, regularResults),
@@ -709,7 +733,7 @@ export default function SearchScreen() {
     noteGroups,
     aiChunks
   )
-  const shouldShowEmptyResults = shouldShowEmptySearchResults(
+  const shouldShowEmptyResults = shouldShowEmptySearchResults({
     showHistory,
     shouldShowResultsList,
     isRegularLoading,
@@ -718,8 +742,8 @@ export default function SearchScreen() {
     aiModeEnabled,
     queryTrimmed,
     activeTag,
-    aiQueryReady
-  )
+    aiQueryReady,
+  })
 
   const listBottomInset = isActive ? 88 : 16
   const handleLoadMore = useCallback(() => {

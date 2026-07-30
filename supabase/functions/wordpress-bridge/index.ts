@@ -476,6 +476,19 @@ const findExistingTagId = (existing: unknown, exactName: string, exactSlug: stri
     : null
 }
 
+const findTermExistsId = (body: unknown): number | null => {
+  if (!body || typeof body !== "object" || (body as Record<string, unknown>).code !== "term_exists") {
+    return null
+  }
+  const payloadData = (body as Record<string, unknown>).data
+  const maybeTermId = Number(
+    payloadData && typeof payloadData === "object"
+      ? (payloadData as Record<string, unknown>).term_id
+      : undefined
+  )
+  return Number.isInteger(maybeTermId) && maybeTermId > 0 ? maybeTermId : null
+}
+
 const createTag = async (config: IntegrationConfig, tag: string): Promise<number> => {
   const createResponse = await wordpressFetch(config, `/wp-json/wp/v2/tags`, {
       method: "POST",
@@ -490,19 +503,8 @@ const createTag = async (config: IntegrationConfig, tag: string): Promise<number
     }
 
   if (!createResponse.ok) {
-    if (
-      createBody &&
-      typeof createBody === "object" &&
-      (createBody as Record<string, unknown>).code === "term_exists"
-    ) {
-      const payloadData = (createBody as Record<string, unknown>).data
-      const maybeTermId = Number(
-        payloadData && typeof payloadData === "object"
-          ? (payloadData as Record<string, unknown>).term_id
-          : undefined
-      )
-      if (Number.isInteger(maybeTermId) && maybeTermId > 0) return maybeTermId
-    }
+    const termExistsId = findTermExistsId(createBody)
+    if (termExistsId !== null) return termExistsId
     throw mapWordPressError(createResponse.status, createBody)
   }
 
