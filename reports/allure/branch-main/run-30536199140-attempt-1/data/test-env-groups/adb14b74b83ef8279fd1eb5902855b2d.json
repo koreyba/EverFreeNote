@@ -1,1 +1,0 @@
-{"id":"adb14b74b83ef8279fd1eb5902855b2d","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter upsertQueueItem delegates to databaseService.upsertQueueItem","name":"delegates to databaseService.upsertQueueItem","status":"passed","testResultsByEnv":{"default":"4e7794693a3d2ad873d9abb8d1c87e89"}}
