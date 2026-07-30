@@ -1,0 +1,1 @@
+{"id":"4f8aebc50d8409e533922a857624afad","fullName":"everfreenote:cypress/component/features/notes/NoteEditor.cy.tsx#NoteEditor Component does NOT trigger autosave when tags change alone","name":"does NOT trigger autosave when tags change alone","status":"passed","testResultsByEnv":{"default":"e5a77ada288c3ce777180e18c7c86fe5"}}
