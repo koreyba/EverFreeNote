@@ -1,23 +1,6 @@
-import crypto from 'node:crypto'
-import { getRandomFloat, getRandomElement, getRandomElements, generateNote } from '../../../scripts/generate-test-notes'
+import { getRandomElement, getRandomElements, generateNote } from '../../../scripts/generate-test-notes'
 
 describe('generate-test-notes randomness helpers', () => {
-  it('getRandomFloat generates a number strictly in range [0, 1)', () => {
-    for (let i = 0; i < 50; i++) {
-      const val = getRandomFloat()
-      expect(val).toBeGreaterThanOrEqual(0)
-      expect(val).toBeLessThan(1)
-    }
-  })
-
-  it('getRandomFloat handles maximum uint32 boundary without returning 1.0', () => {
-    const spy = jest.spyOn(crypto, 'randomBytes').mockImplementation(() => Buffer.from([0xff, 0xff, 0xff, 0xff]) as unknown as Buffer)
-    const val = getRandomFloat()
-    expect(val).toBeLessThan(1)
-    expect(val).toBe(4294967295 / 4294967296)
-    spy.mockRestore()
-  })
-
   it('getRandomElement picks an element from an array', () => {
     const array = ['apple', 'banana', 'cherry']
     const picked = getRandomElement(array)

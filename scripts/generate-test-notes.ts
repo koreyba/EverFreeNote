@@ -68,26 +68,29 @@ Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
 
 Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.`
 
-export function getRandomFloat(): number {
-  return crypto.randomBytes(4).readUInt32LE(0) / 0x100000000
-}
-
 export function getRandomElement<T>(array: T[]): T {
-  return array[Math.floor(getRandomFloat() * array.length)]
+  if (array.length === 0) return array[0]
+  return array[crypto.randomInt(0, array.length)]
 }
 
 export function getRandomElements<T>(array: T[], count: number): T[] {
-  const shuffled = [...array].sort(() => 0.5 - getRandomFloat())
-  return shuffled.slice(0, count)
+  const copy = [...array]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1)
+    const temp = copy[i]
+    copy[i] = copy[j]
+    copy[j] = temp
+  }
+  return copy.slice(0, count)
 }
 
 export function generateNote(index: number) {
   const title = `${getRandomElement(titles)} #${index + 1}`
-  const paragraphs = Math.floor(getRandomFloat() * 5) + 1
+  const paragraphs = crypto.randomInt(1, 6)
   const description = Array(paragraphs).fill(loremIpsum).join('\n\n')
-  const noteTags = getRandomElements(tags, Math.floor(getRandomFloat() * 4) + 1)
+  const noteTags = getRandomElements(tags, crypto.randomInt(1, 5))
 
-  const daysAgo = Math.floor(getRandomFloat() * 365)
+  const daysAgo = crypto.randomInt(0, 365)
   const createdAt = new Date()
   createdAt.setDate(createdAt.getDate() - daysAgo)
 
