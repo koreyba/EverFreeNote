@@ -7,31 +7,12 @@ import { useNetworkStatus } from './useNetworkStatus'
 import { mobileNetworkStatusProvider } from '@ui/mobile/adapters/networkStatus'
 import { updateNoteCaches } from '@ui/mobile/utils/noteCache'
 import { isPostgrestNoRowsError } from '@core/utils/postgrest'
+import * as Crypto from 'expo-crypto'
 import type { Note } from '@core/types/domain'
 import type { RagNoteGroup } from '@core/types/ragSearch'
 import type { NotesPage } from './useNotes'
 
-let fallbackSeq = 0
-export const generateUuidV4 = (): string => {
-  const cryptoObj = (globalThis as unknown as { crypto?: { randomUUID?: () => string; getRandomValues?: (arr: Uint8Array) => Uint8Array } }).crypto
-  if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
-    return cryptoObj.randomUUID()
-  }
-  const getRandomByte = (): number => {
-    if (cryptoObj && typeof cryptoObj.getRandomValues === 'function') {
-      const arr = new Uint8Array(1)
-      cryptoObj.getRandomValues(arr)
-      return arr[0] % 16
-    }
-    fallbackSeq = (fallbackSeq + 1) & 0x7fffffff
-    return (Date.now() + fallbackSeq) % 16
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
-    const random = getRandomByte()
-    const value = char === 'x' ? random : (random & 0x3) | 0x8
-    return value.toString(16)
-  })
-}
+export const generateUuidV4 = (): string => Crypto.randomUUID()
 
 type SearchPage = {
   results: { id: string }[]
