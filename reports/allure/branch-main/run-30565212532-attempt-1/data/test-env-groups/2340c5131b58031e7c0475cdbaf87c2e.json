@@ -1,0 +1,1 @@
+{"id":"2340c5131b58031e7c0475cdbaf87c2e","fullName":"everfreenote:ui/web/tests/unit/hooks/useInfiniteScroll.test.tsx#useInfiniteScroll observes the sentinel and fetches only when it intersects","name":"observes the sentinel and fetches only when it intersects","status":"passed","testResultsByEnv":{"default":"858ae62e9926076f51dbfa41858ef87e"}}
