@@ -1,0 +1,1 @@
+{"id":"6fb5d2ef3ad31141ffce3d0a9e41ae3e","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService markDeleted sets is_deleted = 1 and removes tags from note_tags","name":"sets is_deleted = 1 and removes tags from note_tags","status":"passed","testResultsByEnv":{"default":"b6872c0952b266c2d13c469be3c8928a"}}
