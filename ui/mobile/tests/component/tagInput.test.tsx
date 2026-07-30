@@ -144,5 +144,6 @@ describe('TagInput', () => {
 
     expect(onChangeTags).toHaveBeenCalledTimes(1)
     expect(onChangeTags).toHaveBeenCalledWith(['work', 'weekend'])
+    expect(screen.getByPlaceholderText('tag name')).toBeTruthy()
   })
 })

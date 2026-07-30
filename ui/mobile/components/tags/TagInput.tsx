@@ -89,7 +89,8 @@ export function TagInput({
     const nextTags = dedupeTags([...tags, suggestion])
     onChangeTags(nextTags)
     setDraft('')
-    setIsEditing(false)
+    setIsEditing(true)
+    setTimeout(() => inputRef.current?.focus(), 50)
   }
 
   const handleRemove = (tagToRemove: string) => {
