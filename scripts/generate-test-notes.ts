@@ -159,7 +159,9 @@ async function main() {
   await generateTestNotes(userId, count)
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+if (typeof require !== 'undefined' && require.main === module) {
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+}
