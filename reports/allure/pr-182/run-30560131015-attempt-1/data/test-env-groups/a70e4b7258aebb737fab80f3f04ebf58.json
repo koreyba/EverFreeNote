@@ -1,0 +1,1 @@
+{"id":"a70e4b7258aebb737fab80f3f04ebf58","fullName":"everfreenote-mobile:tests/unit/configAdapter.test.ts#config adapter getPublicWebOrigin returns empty string when editorWebViewUrl is invalid URL string","name":"returns empty string when editorWebViewUrl is invalid URL string","status":"passed","testResultsByEnv":{"default":"e28de047486ce89cd35e73f8b9bbc4b7"}}
