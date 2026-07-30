@@ -191,6 +191,11 @@ export function TagInput({
                 onPressIn={() => {
                   isSelectingSuggestionRef.current = true
                 }}
+                onPressOut={() => {
+                  setTimeout(() => {
+                    isSelectingSuggestionRef.current = false
+                  }, 150)
+                }}
                 onPress={() => handleSelectSuggestion(suggestion)}
               >
                 <Text style={styles.suggestionText}>{suggestion}</Text>

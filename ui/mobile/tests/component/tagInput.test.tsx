@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react-native'
+import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { TagInput } from '@ui/mobile/components/tags/TagInput'
 
 jest.mock('@ui/mobile/providers', () => ({
@@ -191,5 +191,38 @@ describe('TagInput', () => {
     // Should call onChangeTags exactly once with ['work', 'weekend'], and NOT commit 'we'
     expect(onChangeTags).toHaveBeenCalledTimes(1)
     expect(onChangeTags).toHaveBeenCalledWith(['work', 'weekend'])
+  })
+
+  it('resumes normal draft submission on blur when a suggestion press gesture is cancelled', () => {
+    jest.useFakeTimers()
+    const onChangeTags = jest.fn()
+    render(
+      <TagInput
+        tags={['work']}
+        onChangeTags={onChangeTags}
+        availableTags={['weekend', 'welcome']}
+      />
+    )
+
+    fireEvent.press(screen.getByText('PlusIcon'))
+    const input = screen.getByPlaceholderText('tag name')
+    fireEvent.changeText(input, 'we')
+
+    // Simulate gesture pressIn and pressOut without press (user dragged finger away)
+    const suggestion = screen.getByText('weekend')
+    fireEvent(suggestion, 'pressIn')
+    fireEvent(suggestion, 'pressOut')
+
+    // Advance fake timers so pressOut timeout clears the guard
+    act(() => {
+      jest.advanceTimersByTime(200)
+    })
+
+    // Subsequent blur should normally commit the draft prefix 'we'
+    fireEvent(input, 'blur')
+
+    expect(onChangeTags).toHaveBeenCalledTimes(1)
+    expect(onChangeTags).toHaveBeenCalledWith(['work', 'we'])
+    jest.useRealTimers()
   })
 })
