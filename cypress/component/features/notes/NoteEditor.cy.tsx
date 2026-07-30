@@ -134,14 +134,11 @@ describe('NoteEditor Component', () => {
     }))
   })
 
-  it('shows suggestions after 3 characters and applies selection', () => {
+  it('shows suggestions starting at 1 character and applies selection', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
     cy.get('button[title="Add tag"]').click()
-    cy.get('input[placeholder="work, personal, ideas"]').type('wo')
-    cy.contains('button', 'work').should('not.exist')
-
-    cy.get('input[placeholder="work, personal, ideas"]').type('r')
+    cy.get('input[placeholder="work, personal, ideas"]').type('w')
     cy.contains('button', 'work').should('be.visible')
     cy.contains('button', 'world').should('be.visible')
 
