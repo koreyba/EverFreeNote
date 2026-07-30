@@ -37,6 +37,13 @@ type BenchmarkResult = {
   error?: string
 }
 
+type BenchmarkComparison = {
+  query: string
+  fts: BenchmarkResult
+  ilike: BenchmarkResult
+  speedup: number
+}
+
 async function benchmarkFTS(query: string, userId: string): Promise<BenchmarkResult> {
   const startTime = Date.now()
 
@@ -103,6 +110,38 @@ async function benchmarkILIKE(query: string, userId: string): Promise<BenchmarkR
   }
 }
 
+async function runQueries(userId: string): Promise<BenchmarkComparison[]> {
+  const results: BenchmarkComparison[] = []
+
+  for (const query of TEST_QUERIES) {
+    console.log(`Testing query: "${query}"`)
+
+    const ftsResult = await benchmarkFTS(query, userId)
+    console.log(
+      `  FTS:   ${ftsResult.duration}ms (${ftsResult.count || 0} results)${
+        ftsResult.error ? ` ERROR: ${ftsResult.error}` : ''
+      }`,
+    )
+
+    const ilikeResult = await benchmarkILIKE(query, userId)
+    console.log(
+      `  ILIKE: ${ilikeResult.duration}ms (${ilikeResult.count || 0} results)${
+        ilikeResult.error ? ` ERROR: ${ilikeResult.error}` : ''
+      }`,
+    )
+
+    if (!ftsResult.error && !ilikeResult.error) {
+      const speedup = Number.parseFloat((ilikeResult.duration / ftsResult.duration).toFixed(2))
+      console.log(`  Speedup: ${speedup}x faster\n`)
+      results.push({ query, fts: ftsResult, ilike: ilikeResult, speedup })
+    } else {
+      console.log()
+    }
+  }
+
+  return results
+}
+
 async function runBenchmark() {
   console.log('🚀 Starting FTS Performance Benchmark\n')
 
@@ -132,38 +171,7 @@ async function runBenchmark() {
     process.exit(0)
   }
 
-  const results: Array<{
-    query: string
-    fts: BenchmarkResult
-    ilike: BenchmarkResult
-    speedup: number
-  }> = []
-
-  for (const query of TEST_QUERIES) {
-    console.log(`Testing query: "${query}"`)
-
-    const ftsResult = await benchmarkFTS(query, userId)
-    console.log(
-      `  FTS:   ${ftsResult.duration}ms (${ftsResult.count || 0} results)${
-        ftsResult.error ? ` ERROR: ${ftsResult.error}` : ''
-      }`,
-    )
-
-    const ilikeResult = await benchmarkILIKE(query, userId)
-    console.log(
-      `  ILIKE: ${ilikeResult.duration}ms (${ilikeResult.count || 0} results)${
-        ilikeResult.error ? ` ERROR: ${ilikeResult.error}` : ''
-      }`,
-    )
-
-    if (!ftsResult.error && !ilikeResult.error) {
-      const speedup = parseFloat((ilikeResult.duration / ftsResult.duration).toFixed(2))
-      console.log(`  Speedup: ${speedup}x faster\n`)
-      results.push({ query, fts: ftsResult, ilike: ilikeResult, speedup })
-    } else {
-      console.log()
-    }
-  }
+  const results = await runQueries(userId)
 
   if (results.length > 0) {
     const avgFTS = results.reduce((sum, r) => sum + r.fts.duration, 0) / results.length

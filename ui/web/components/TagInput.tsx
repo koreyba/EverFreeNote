@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
 import { cn } from "@ui/web/lib/utils"
 
-type TagInputProps = {
+type TagInputProps = Readonly<{
   tags: string[]
   onAddTags: (tags: string[]) => void
   onRemoveTag: (tag: string) => void
@@ -17,7 +17,7 @@ type TagInputProps = {
   placeholder?: string
   disabled?: boolean
   className?: string
-}
+}>
 
 export function TagInput({
   tags,
@@ -74,71 +74,6 @@ export function TagInput({
     setHighlightedIndex(-1)
   }
 
-  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "ArrowDown") {
-      if (suggestions.length > 0) {
-        event.preventDefault()
-        setHighlightedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0))
-      }
-      return
-    }
-
-    if (event.key === "ArrowUp") {
-      if (suggestions.length > 0) {
-        event.preventDefault()
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1))
-      }
-      return
-    }
-
-    if (event.key === "Tab") {
-      if (suggestions.length > 0 && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-        event.preventDefault()
-        handleSuggestionClick(suggestions[highlightedIndex])
-        return
-      }
-      if (inputValue.trim()) {
-        commitTags(inputValue)
-      }
-      return
-    }
-
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault()
-      if (suggestions.length > 0 && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-        handleSuggestionClick(suggestions[highlightedIndex])
-        return
-      }
-      commitTags(inputValue)
-      return
-    }
-
-    if (event.key === "Escape") {
-      event.preventDefault()
-      setInputValue("")
-      onQueryChange?.("")
-      setBackspaceArmed(false)
-      setHighlightedIndex(-1)
-      return
-    }
-
-    if (event.key === "Backspace" && inputValue.length === 0 && tags.length > 0) {
-      event.preventDefault()
-      const lastTag = tags[tags.length - 1]
-      if (backspaceArmed) {
-        setBackspaceArmed(false)
-        if (lastTag) onRemoveTag(lastTag)
-      } else {
-        setBackspaceArmed(true)
-      }
-      return
-    }
-
-    if (event.key !== "Backspace") {
-      setBackspaceArmed(false)
-    }
-  }
-
   const handleInputBlur = () => {
     if (inputValue.trim()) {
       commitTags(inputValue)
@@ -155,6 +90,86 @@ export function TagInput({
     inputRef.current?.focus()
   }
 
+  const getHighlightedSuggestion = () =>
+    suggestions.length > 0 && highlightedIndex >= 0 ? suggestions.at(highlightedIndex) : undefined
+
+  const handleArrowKey = (event: React.KeyboardEvent<HTMLInputElement>, direction: 1 | -1) => {
+    if (suggestions.length === 0) return
+
+    event.preventDefault()
+    setHighlightedIndex((prev) => {
+      if (direction === 1) return prev < suggestions.length - 1 ? prev + 1 : 0
+      return prev > 0 ? prev - 1 : suggestions.length - 1
+    })
+  }
+
+  const handleSelectionKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    event.preventDefault()
+    const suggestion = getHighlightedSuggestion()
+    if (suggestion) {
+      handleSuggestionClick(suggestion)
+      return
+    }
+    commitTags(inputValue)
+  }
+
+  const handleTabKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const suggestion = getHighlightedSuggestion()
+    if (suggestion) {
+      event.preventDefault()
+      handleSuggestionClick(suggestion)
+      return
+    }
+    if (inputValue.trim()) commitTags(inputValue)
+  }
+
+  const handleEscapeKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    event.preventDefault()
+    setInputValue("")
+    onQueryChange?.("")
+    setBackspaceArmed(false)
+    setHighlightedIndex(-1)
+  }
+
+  const handleBackspaceKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (inputValue.length > 0 || tags.length === 0) return
+
+    event.preventDefault()
+    const lastTag = tags.at(-1)
+    if (backspaceArmed) {
+      setBackspaceArmed(false)
+      if (lastTag) onRemoveTag(lastTag)
+      return
+    }
+    setBackspaceArmed(true)
+  }
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    switch (event.key) {
+      case "ArrowDown":
+        handleArrowKey(event, 1)
+        return
+      case "ArrowUp":
+        handleArrowKey(event, -1)
+        return
+      case "Tab":
+        handleTabKey(event)
+        return
+      case "Enter":
+      case ",":
+        handleSelectionKey(event)
+        return
+      case "Escape":
+        handleEscapeKey(event)
+        return
+      case "Backspace":
+        handleBackspaceKey(event)
+        return
+      default:
+        setBackspaceArmed(false)
+    }
+  }
+
   const handleTagClick = (tag: string) => {
     onTagClick?.(tag)
   }
@@ -169,7 +184,6 @@ export function TagInput({
   return (
     <div className={cn("relative z-30 group", className)}>
       <div
-        role="presentation"
         data-testid="tag-input-container"
         onClick={() => focusInput()}
         onKeyDown={(e) => {
@@ -199,7 +213,7 @@ export function TagInput({
               data-cy="interactive-tag"
               className={cn(
                 "shrink-0 cursor-pointer transition-all duration-200 hover:bg-accent hover:text-accent-foreground group relative rounded-full px-2.5 py-1 text-[11px] bg-background border shadow-sm",
-                backspaceArmed && tag === tags[tags.length - 1] && "ring-2 ring-destructive"
+                backspaceArmed && tag === tags.at(-1) && "ring-2 ring-destructive"
               )}
               onMouseDown={(e) => {
                 // Prevent focus loss from input when clicking tags/remove buttons

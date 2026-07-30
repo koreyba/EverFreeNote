@@ -29,6 +29,61 @@ type ThemeColors = ReturnType<typeof useTheme>['colors']
 
 type Operation = 'indexing' | 'deleting' | null
 
+type RagClient = ReturnType<typeof useSupabase>['client']
+
+async function indexNote(
+    client: RagClient,
+    noteId: string,
+    isIndexed: boolean,
+    showToast: (text: string, isError?: boolean) => void,
+    refresh: () => void
+) {
+    const action = isIndexed ? 'reindex' : 'index'
+    const { data, error } = await client.functions.invoke('rag-index', {
+        body: { noteId, action, debugChunks: true },
+    })
+    if (error) throw error
+    const result = parseRagIndexResult(data)
+    if (result.debugChunks.length > 0) logRagIndexDebugChunks(noteId, result.debugChunks)
+    if (result.outcome === 'indexed') {
+        showToast(`Indexed into ${result.chunkCount} chunks`)
+    } else {
+        showToast(result.message ?? 'Indexing returned an unexpected response.', true)
+    }
+    refresh()
+}
+
+async function deleteNote(
+    client: RagClient,
+    noteId: string,
+    showToast: (text: string, isError?: boolean) => void,
+    refresh: () => void
+) {
+    const { data, error } = await client.functions.invoke('rag-index', {
+        body: { noteId, action: 'delete' },
+    })
+    if (error) throw error
+    const result = parseRagIndexResult(data)
+    if (result.outcome === 'deleted') {
+        showToast('Removed from AI index')
+    } else {
+        showToast(result.message ?? 'Delete returned an unexpected response.', true)
+    }
+    refresh()
+}
+
+function getStatusText(operation: Operation, isLoading: boolean, isIndexed: boolean, indexedAt: string | null, chunkCount: number): string {
+    if (operation === 'indexing') return 'Indexing...'
+    if (operation === 'deleting') return 'Removing...'
+    if (isLoading) return '...'
+    if (isIndexed) {
+        const time = indexedAt ? new Date(indexedAt).toLocaleTimeString() : ''
+        const timeSuffix = time ? ` · ${time}` : ''
+        return `${chunkCount} chunks${timeSuffix}`
+    }
+    return 'Not indexed'
+}
+
 function useWordPressExportAvailability(
     visible: boolean,
     onExportToWordPress: (() => void) | undefined,
@@ -220,21 +275,7 @@ export function NoteIndexMenu({
         if (isIndexActionDisabled) return
         setOperation('indexing')
         try {
-            const action = isIndexed ? 'reindex' : 'index'
-            const { data, error } = await client.functions.invoke('rag-index', {
-                body: { noteId, action, debugChunks: true },
-            })
-            if (error) throw error
-            const result = parseRagIndexResult(data)
-            if (result.debugChunks.length > 0) {
-                logRagIndexDebugChunks(noteId, result.debugChunks)
-            }
-            if (result.outcome === 'indexed') {
-                showToast(`Indexed into ${result.chunkCount} chunks`)
-            } else {
-                showToast(result.message ?? 'Indexing returned an unexpected response.', true)
-            }
-            refresh()
+            await indexNote(client, noteId, isIndexed, showToast, refresh)
         } catch (err) {
             showToast(await extractErrorMessage(err, 'Indexing failed'), true)
         } finally {
@@ -246,17 +287,7 @@ export function NoteIndexMenu({
         setOperation('deleting')
         setDeleteConfirmVisible(false)
         try {
-            const { data, error } = await client.functions.invoke('rag-index', {
-                body: { noteId, action: 'delete' },
-            })
-            if (error) throw error
-            const result = parseRagIndexResult(data)
-            if (result.outcome === 'deleted') {
-                showToast('Removed from AI index')
-            } else {
-                showToast(result.message ?? 'Delete returned an unexpected response.', true)
-            }
-            refresh()
+            await deleteNote(client, noteId, showToast, refresh)
         } catch (err) {
             showToast(await extractErrorMessage(err, 'Delete failed'), true)
         } finally {
@@ -272,20 +303,8 @@ export function NoteIndexMenu({
         handleDelete().catch(() => undefined)
     }
 
-    const statusText = (): string => {
-        if (operation === 'indexing') return 'Indexing...'
-        if (operation === 'deleting') return 'Removing...'
-        if (isLoading) return '...'
-        if (isIndexed) {
-            const time = indexedAt ? new Date(indexedAt).toLocaleTimeString() : ''
-            return `${chunkCount} chunks${time ? ` · ${time}` : ''}`
-        }
-        return 'Not indexed'
-    }
-
     return (
-        <>
-            <Modal
+        <Modal
                 visible={visible}
                 transparent
                 animationType="slide"
@@ -299,7 +318,7 @@ export function NoteIndexMenu({
                         {isLoading ? (
                             <ActivityIndicator size="small" color={colors.mutedForeground} style={styles.statusSpinner} />
                         ) : (
-                            <Text style={styles.statusText}>{statusText()}</Text>
+                            <Text style={styles.statusText}>{getStatusText(operation, isLoading, isIndexed, indexedAt, chunkCount)}</Text>
                         )}
 
                         {/* Toast */}
@@ -431,8 +450,7 @@ export function NoteIndexMenu({
                         </View>
                     </Modal>
                 </View>
-            </Modal>
-        </>
+        </Modal>
     )
 }
 

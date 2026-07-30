@@ -252,7 +252,8 @@ const wordpressFetch = async (
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
   const headers = new Headers(init.headers || {})
-  headers.set("Authorization", `Basic ${btoa(`${config.username}:${config.password}`)}`)
+  const credentials = `${config.username}:${config.password}`
+  headers.set("Authorization", `Basic ${btoa(credentials)}`)
   headers.set("Accept", "application/json")
   if (init.method && init.method !== "GET" && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json")
@@ -321,7 +322,7 @@ const loadIntegrationConfig = async (supabaseAdmin: ReturnType<typeof createClie
     })
   }
 
-  if (!data || !data.enabled || !data.site_url || !data.wp_username || !data.wp_app_password_encrypted) {
+  if (!data?.enabled || !data.site_url || !data.wp_username || !data.wp_app_password_encrypted) {
     throw new BridgeError({
       code: "not_configured",
       message: "WordPress integration is not configured",
@@ -382,53 +383,64 @@ const saveRememberedCategoryIds = async (
   }
 }
 
+const parseCategory = (raw: unknown): { id: number; name: string } | null => {
+  if (!raw || typeof raw !== "object") return null
+  const row = raw as Record<string, unknown>
+  const id = Number(row.id)
+  const name = row.name
+  if (!Number.isInteger(id) || id <= 0 || typeof name !== "string" || !name.trim()) return null
+  return { id, name }
+}
+
+const fetchCategoryPage = async (
+  config: IntegrationConfig,
+  page: number
+): Promise<{ categories: Array<{ id: number; name: string }>; isLastPage: boolean }> => {
+  const response = await wordpressFetch(
+    config,
+    `/wp-json/wp/v2/categories?per_page=100&page=${page}&_fields=id,name`,
+    { method: "GET" }
+  )
+
+  let result: unknown = null
+  try {
+    result = await response.json()
+  } catch {
+    result = null
+  }
+
+  if (!response.ok) {
+    const wpCode =
+      result && typeof result === "object" && typeof (result as Record<string, unknown>).code === "string"
+        ? (result as Record<string, unknown>).code
+        : ""
+    if (response.status === 400 && wpCode === "rest_post_invalid_page_number") {
+      return { categories: [], isLastPage: true }
+    }
+    throw mapWordPressError(response.status, result)
+  }
+
+  if (!Array.isArray(result)) {
+    throw new BridgeError({
+      code: "wp_invalid_categories_response",
+      message: "WordPress returned an invalid categories response",
+      status: 502,
+    })
+  }
+
+  return {
+    categories: result.map(parseCategory).filter((category): category is { id: number; name: string } => category !== null),
+    isLastPage: result.length < 100,
+  }
+}
+
 const fetchCategories = async (config: IntegrationConfig): Promise<Array<{ id: number; name: string }>> => {
   const categories: Array<{ id: number; name: string }> = []
 
   for (let page = 1; page <= 10; page += 1) {
-    const response = await wordpressFetch(
-      config,
-      `/wp-json/wp/v2/categories?per_page=100&page=${page}&_fields=id,name`,
-      { method: "GET" }
-    )
-
-    let result: unknown = null
-    try {
-      result = await response.json()
-    } catch {
-      result = null
-    }
-
-    if (!response.ok) {
-      const wpCode =
-        result && typeof result === "object" && typeof (result as Record<string, unknown>).code === "string"
-          ? (result as Record<string, unknown>).code
-          : ""
-      if (response.status === 400 && wpCode === "rest_post_invalid_page_number") {
-        break
-      }
-      throw mapWordPressError(response.status, result)
-    }
-
-    if (!Array.isArray(result)) {
-      throw new BridgeError({
-        code: "wp_invalid_categories_response",
-        message: "WordPress returned an invalid categories response",
-        status: 502,
-      })
-    }
-
-    for (const raw of result) {
-      if (!raw || typeof raw !== "object") continue
-      const id = Number((raw as Record<string, unknown>).id)
-      const name = (raw as Record<string, unknown>).name
-      if (!Number.isInteger(id) || id <= 0 || typeof name !== "string" || !name.trim()) continue
-      categories.push({ id, name })
-    }
-
-    if (result.length < 100) {
-      break
-    }
+    const result = await fetchCategoryPage(config, page)
+    categories.push(...result.categories)
+    if (result.isLastPage) break
   }
 
   return categories
@@ -450,35 +462,22 @@ const ensureSlugIsAvailable = async (config: IntegrationConfig, slug: string): P
   }
 }
 
-const resolveTagIds = async (config: IntegrationConfig, tags: string[]): Promise<number[]> => {
-  const tagIds: number[] = []
+const findExistingTagId = (existing: unknown, exactName: string, exactSlug: string): number | null => {
+  if (!Array.isArray(existing)) return null
+  const exactMatch = existing.find((entry) => {
+    if (!entry || typeof entry !== "object") return false
+    const row = entry as Record<string, unknown>
+    const name = typeof row.name === "string" ? row.name.toLocaleLowerCase() : ""
+    const slug = typeof row.slug === "string" ? row.slug.toLocaleLowerCase() : ""
+    return name === exactName || slug === exactSlug
+  })
+  return exactMatch && typeof (exactMatch as Record<string, unknown>).id === "number"
+    ? (exactMatch as Record<string, unknown>).id as number
+    : null
+}
 
-  for (const tag of tags) {
-    const exactName = tag.toLocaleLowerCase()
-    const exactSlug = exactName.replace(/\s+/g, "-")
-
-    const existing = await fetchWordPressJson(
-      config,
-      `/wp-json/wp/v2/tags?search=${encodeURIComponent(tag)}&per_page=100&_fields=id,name,slug`,
-      { method: "GET" }
-    )
-
-    if (Array.isArray(existing)) {
-      const exactMatch = existing.find((entry) => {
-        if (!entry || typeof entry !== "object") return false
-        const row = entry as Record<string, unknown>
-        const name = typeof row.name === "string" ? row.name.toLocaleLowerCase() : ""
-        const slug = typeof row.slug === "string" ? row.slug.toLocaleLowerCase() : ""
-        return name === exactName || slug === exactSlug
-      })
-
-      if (exactMatch && typeof (exactMatch as Record<string, unknown>).id === "number") {
-        tagIds.push((exactMatch as Record<string, unknown>).id as number)
-        continue
-      }
-    }
-
-    const createResponse = await wordpressFetch(config, `/wp-json/wp/v2/tags`, {
+const createTag = async (config: IntegrationConfig, tag: string): Promise<number> => {
+  const createResponse = await wordpressFetch(config, `/wp-json/wp/v2/tags`, {
       method: "POST",
       body: JSON.stringify({ name: tag }),
     })
@@ -490,50 +489,144 @@ const resolveTagIds = async (config: IntegrationConfig, tags: string[]): Promise
       createBody = null
     }
 
-    if (!createResponse.ok) {
-      if (
-        createBody &&
-        typeof createBody === "object" &&
-        (createBody as Record<string, unknown>).code === "term_exists"
-      ) {
-        const payloadData = (createBody as Record<string, unknown>).data
-        const maybeTermId = Number(
-          payloadData && typeof payloadData === "object"
-            ? (payloadData as Record<string, unknown>).term_id
-            : undefined
-        )
-
-        if (Number.isInteger(maybeTermId) && maybeTermId > 0) {
-          tagIds.push(maybeTermId)
-          continue
-        }
-      }
-
-      throw mapWordPressError(createResponse.status, createBody)
+  if (!createResponse.ok) {
+    if (
+      createBody &&
+      typeof createBody === "object" &&
+      (createBody as Record<string, unknown>).code === "term_exists"
+    ) {
+      const payloadData = (createBody as Record<string, unknown>).data
+      const maybeTermId = Number(
+        payloadData && typeof payloadData === "object"
+          ? (payloadData as Record<string, unknown>).term_id
+          : undefined
+      )
+      if (Number.isInteger(maybeTermId) && maybeTermId > 0) return maybeTermId
     }
-
-    const createdId = Number(
-      createBody && typeof createBody === "object"
-        ? (createBody as Record<string, unknown>).id
-        : undefined
-    )
-
-    if (!Number.isInteger(createdId) || createdId <= 0) {
-      throw new BridgeError({
-        code: "wp_invalid_tag_response",
-        message: "Failed to resolve WordPress tags",
-        status: 502,
-      })
-    }
-
-    tagIds.push(createdId)
+    throw mapWordPressError(createResponse.status, createBody)
   }
 
+  const createdId = Number(
+    createBody && typeof createBody === "object"
+      ? (createBody as Record<string, unknown>).id
+      : undefined
+  )
+  if (!Number.isInteger(createdId) || createdId <= 0) {
+    throw new BridgeError({
+      code: "wp_invalid_tag_response",
+      message: "Failed to resolve WordPress tags",
+      status: 502,
+    })
+  }
+  return createdId
+}
+
+const resolveTagId = async (config: IntegrationConfig, tag: string): Promise<number> => {
+  const exactName = tag.toLocaleLowerCase()
+  const exactSlug = exactName.replace(/\s+/g, "-")
+  const existing = await fetchWordPressJson(
+    config,
+    `/wp-json/wp/v2/tags?search=${encodeURIComponent(tag)}&per_page=100&_fields=id,name,slug`,
+    { method: "GET" }
+  )
+  return findExistingTagId(existing, exactName, exactSlug) ?? createTag(config, tag)
+}
+
+const resolveTagIds = async (config: IntegrationConfig, tags: string[]): Promise<number[]> => {
+  const tagIds: number[] = []
+  for (const tag of tags) tagIds.push(await resolveTagId(config, tag))
   return tagIds
 }
 
 if (!supabaseUrl || !serviceRoleKey) {
   console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+}
+
+const getCategoriesResponse = async (
+  integration: IntegrationConfig,
+  supabaseAdmin: ReturnType<typeof createClient>,
+  userId: string
+) => {
+  const [categories, rememberedCategoryIds] = await Promise.all([
+    fetchCategories(integration),
+    loadRememberedCategoryIds(supabaseAdmin, userId),
+  ])
+  return jsonResponse({ action: "get_categories", categories, rememberedCategoryIds })
+}
+
+const exportNote = async (
+  integration: IntegrationConfig,
+  supabaseAdmin: ReturnType<typeof createClient>,
+  userId: string,
+  payload: Record<string, unknown>
+) => {
+  const noteId = typeof payload.noteId === "string" ? payload.noteId.trim() : ""
+  const slug = validateSlug(typeof payload.slug === "string" ? payload.slug : "")
+  const categoryIds = normalizeCategoryIds(payload.categoryIds)
+  const hasExplicitTags = Array.isArray(payload.tags)
+  const exportTags = normalizeTags(payload.tags)
+  const exportTitle = typeof payload.title === "string" ? payload.title.trim() : ""
+
+  if (!noteId) {
+    throw new BridgeError({ code: "invalid_input", message: "noteId is required", status: 400 })
+  }
+
+  const { data: note, error: noteError } = await supabaseAdmin
+    .from("notes")
+    .select("id, title, description, tags")
+    .eq("id", noteId)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (noteError) {
+    throw new BridgeError({ code: "note_lookup_failed", message: "Failed to load note", status: 500, details: noteError })
+  }
+  if (!note) {
+    throw new BridgeError({ code: "note_not_found", message: "Note not found", status: 404 })
+  }
+
+  await ensureSlugIsAvailable(integration, slug)
+  const tags = hasExplicitTags ? exportTags : normalizeTags(note.tags)
+  const tagIds = tags.length > 0 ? await resolveTagIds(integration, tags) : []
+  const postBody = {
+    title: exportTitle || note.title || "Untitled",
+    content: note.description || "",
+    status: "publish",
+    slug,
+    categories: categoryIds,
+    tags: tagIds,
+  }
+
+  const createResult = await fetchWordPressJson(integration, `/wp-json/wp/v2/posts`, {
+    method: "POST",
+    body: JSON.stringify(postBody),
+  })
+  if (!createResult || typeof createResult !== "object") {
+    throw new BridgeError({ code: "wp_invalid_post_response", message: "WordPress returned an invalid post response", status: 502 })
+  }
+
+  const createdPost = createResult as Record<string, unknown>
+  const postId = Number(createdPost.id)
+  const postUrl = typeof createdPost.link === "string" ? createdPost.link : ""
+  const createdSlug = typeof createdPost.slug === "string" ? createdPost.slug : slug
+  if (!Number.isInteger(postId) || postId <= 0) {
+    throw new BridgeError({ code: "wp_invalid_post_response", message: "WordPress returned an invalid post response", status: 502 })
+  }
+
+  await saveRememberedCategoryIds(supabaseAdmin, userId, categoryIds)
+  return jsonResponse({ action: "export_note", postId, postUrl, slug: createdSlug })
+}
+
+const handleAction = async (
+  action: string,
+  integration: IntegrationConfig,
+  supabaseAdmin: ReturnType<typeof createClient>,
+  userId: string,
+  payload: Record<string, unknown>
+) => {
+  if (action === "get_categories") return getCategoriesResponse(integration, supabaseAdmin, userId)
+  if (action === "export_note") return exportNote(integration, supabaseAdmin, userId, payload)
+  throw new BridgeError({ code: "invalid_action", message: "Unsupported action", status: 400 })
 }
 
 serve(async (req: Request) => {
@@ -574,115 +667,7 @@ serve(async (req: Request) => {
     const action = typeof payload.action === "string" ? payload.action : ""
 
     const integration = await loadIntegrationConfig(supabaseAdmin, userId)
-
-    if (action === "get_categories") {
-      const [categories, rememberedCategoryIds] = await Promise.all([
-        fetchCategories(integration),
-        loadRememberedCategoryIds(supabaseAdmin, userId),
-      ])
-
-      return jsonResponse({
-        action: "get_categories",
-        categories,
-        rememberedCategoryIds,
-      })
-    }
-
-    if (action === "export_note") {
-      const noteId = typeof payload.noteId === "string" ? payload.noteId.trim() : ""
-      const slug = validateSlug(typeof payload.slug === "string" ? payload.slug : "")
-      const categoryIds = normalizeCategoryIds(payload.categoryIds)
-      const hasExplicitTags = Array.isArray(payload.tags)
-      const exportTags = normalizeTags(payload.tags)
-      const exportTitle = typeof payload.title === "string" ? payload.title.trim() : ""
-
-      if (!noteId) {
-        throw new BridgeError({
-          code: "invalid_input",
-          message: "noteId is required",
-          status: 400,
-        })
-      }
-
-      const { data: note, error: noteError } = await supabaseAdmin
-        .from("notes")
-        .select("id, title, description, tags")
-        .eq("id", noteId)
-        .eq("user_id", userId)
-        .maybeSingle()
-
-      if (noteError) {
-        throw new BridgeError({
-          code: "note_lookup_failed",
-          message: "Failed to load note",
-          status: 500,
-          details: noteError,
-        })
-      }
-
-      if (!note) {
-        throw new BridgeError({
-          code: "note_not_found",
-          message: "Note not found",
-          status: 404,
-        })
-      }
-
-      await ensureSlugIsAvailable(integration, slug)
-
-      const tags = hasExplicitTags ? exportTags : normalizeTags(note.tags)
-      const tagIds = tags.length > 0 ? await resolveTagIds(integration, tags) : []
-
-      const postBody = {
-        title: exportTitle || note.title || "Untitled",
-        content: note.description || "",
-        status: "publish",
-        slug,
-        categories: categoryIds,
-        tags: tagIds,
-      }
-
-      const createResult = await fetchWordPressJson(integration, `/wp-json/wp/v2/posts`, {
-        method: "POST",
-        body: JSON.stringify(postBody),
-      })
-
-      if (!createResult || typeof createResult !== "object") {
-        throw new BridgeError({
-          code: "wp_invalid_post_response",
-          message: "WordPress returned an invalid post response",
-          status: 502,
-        })
-      }
-
-      const createdPost = createResult as Record<string, unknown>
-      const postId = Number(createdPost.id)
-      const postUrl = typeof createdPost.link === "string" ? createdPost.link : ""
-      const createdSlug = typeof createdPost.slug === "string" ? createdPost.slug : slug
-
-      if (!Number.isInteger(postId) || postId <= 0) {
-        throw new BridgeError({
-          code: "wp_invalid_post_response",
-          message: "WordPress returned an invalid post response",
-          status: 502,
-        })
-      }
-
-      await saveRememberedCategoryIds(supabaseAdmin, userId, categoryIds)
-
-      return jsonResponse({
-        action: "export_note",
-        postId,
-        postUrl,
-        slug: createdSlug,
-      })
-    }
-
-    throw new BridgeError({
-      code: "invalid_action",
-      message: "Unsupported action",
-      status: 400,
-    })
+    return handleAction(action, integration, supabaseAdmin, userId, payload)
   } catch (error) {
     if (error instanceof BridgeError) {
       return errorResponse(error)

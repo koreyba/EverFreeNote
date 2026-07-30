@@ -31,6 +31,63 @@ const parseLimit = (value: string | null) => {
   return parsed
 }
 
+const authenticate = async (supabaseAdmin: any, token: string) => {
+  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
+  if (userError || !userData?.user) {
+    return null
+  }
+  return userData.user
+}
+
+const getNoteById = async (supabaseAdmin: any, userId: string, id: string) => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(id)) {
+    return jsonResponse({ error: "Invalid id format" }, 400)
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("notes")
+    .select("id, title, description, tags, created_at, updated_at, user_id")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    return jsonResponse({ error: "Note not found" }, 404)
+  }
+
+  return jsonResponse({ success: true, note: data })
+}
+
+const listNotes = async (supabaseAdmin: any, userId: string, url: URL, title: string | null) => {
+  const limitValue = parseLimit(url.searchParams.get("limit"))
+  if (limitValue === null || limitValue < 1 || limitValue > 100) {
+    return jsonResponse({ error: "Limit must be between 1 and 100" }, 400)
+  }
+
+  let query = supabaseAdmin
+    .from("notes")
+    .select("id, title, description, tags, created_at, updated_at, user_id")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(limitValue)
+
+  if (title) {
+    query = query.eq("title", title)
+  }
+
+  const { data, error } = await query
+  if (error) {
+    throw error
+  }
+
+  return jsonResponse({ success: true, notes: data ?? [] })
+}
+
 if (!supabaseUrl || !serviceRoleKey) {
   console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
 }
@@ -57,65 +114,21 @@ serve(async (req: Request) => {
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
   try {
-    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
-    if (userError || !userData?.user) {
+    const user = await authenticate(supabaseAdmin, token)
+    if (!user) {
       return jsonResponse({ error: "Unauthorized" }, 401)
     }
-    const userId = userData.user.id
+    const userId = user.id
 
     const url = new URL(req.url)
     const id = url.searchParams.get("id")
     const title = url.searchParams.get("title")
 
-    // Single note by ID
     if (id) {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-      if (!uuidRegex.test(id)) {
-        return jsonResponse({ error: "Invalid id format" }, 400)
-      }
-
-      const { data, error } = await supabaseAdmin
-        .from("notes")
-        .select("id, title, description, tags, created_at, updated_at, user_id")
-        .eq("id", id)
-        .eq("user_id", userId)
-        .maybeSingle()
-
-      if (error) {
-        throw error
-      }
-
-      if (!data) {
-        return jsonResponse({ error: "Note not found" }, 404)
-      }
-
-      return jsonResponse({ success: true, note: data })
+      return await getNoteById(supabaseAdmin, userId, id)
     }
 
-    // List notes with optional filters
-    const limitValue = parseLimit(url.searchParams.get("limit"))
-    if (limitValue === null || limitValue < 1 || limitValue > 100) {
-      return jsonResponse({ error: "Limit must be between 1 and 100" }, 400)
-    }
-
-    let query = supabaseAdmin
-      .from("notes")
-      .select("id, title, description, tags, created_at, updated_at, user_id")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false })
-      .limit(limitValue)
-
-    if (title) {
-      query = query.eq("title", title)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      throw error
-    }
-
-    return jsonResponse({ success: true, notes: data ?? [] })
+    return await listNotes(supabaseAdmin, userId, url, title)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch notes"
     return jsonResponse({ error: message }, 500)

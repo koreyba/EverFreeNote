@@ -281,89 +281,98 @@ const EditorWebView = forwardRef<EditorWebViewHandle, Props>(
             }
         }
 
+        const handleChunkedMessage = (type: string, payload: unknown) => {
+            const chunked = consumeChunkedMessage(type, payload, pendingChunks.current)
+            if (!chunked) return false
+
+            if (chunked.baseType === 'CONTENT_CHANGED' || chunked.baseType === 'CONTENT_ON_BLUR') {
+                onContentChange?.(chunked.text)
+                return true
+            }
+            if (chunked.baseType === 'CONTENT_RESPONSE') {
+                if (contentResolver.current) {
+                    contentResolver.current(chunked.text)
+                    contentResolver.current = null
+                }
+                return true
+            }
+            if (chunked.baseType === 'COPY_PAYLOAD') {
+                resolveCopyPayload(chunked.text)
+                return true
+            }
+
+            return false
+        }
+
+        const handleMessageType = (type: string, payload: unknown) => {
+            switch (type) {
+                case 'READY':
+                    if (pendingContent.current !== null) {
+                        sendText('SET_CONTENT', pendingContent.current)
+                        pendingContent.current = null
+                    }
+                    if (pendingTheme.current) {
+                        post({ type: 'SET_THEME', payload: pendingTheme.current })
+                    }
+                    if (pendingChunkFocus.current) {
+                        post({ type: 'SCROLL_TO_CHUNK', payload: pendingChunkFocus.current })
+                        pendingChunkFocus.current = null
+                    }
+                    setIsReady(true)
+                    if (readyTimeoutRef.current) {
+                        clearTimeout(readyTimeoutRef.current)
+                        readyTimeoutRef.current = null
+                    }
+                    onReady?.()
+                    break
+                case 'CONTENT_CHANGED':
+                    onContentChange?.(String(payload ?? ''))
+                    break
+                case 'CONTENT_RESPONSE':
+                    if (contentResolver.current) {
+                        contentResolver.current(String(payload ?? ''))
+                        contentResolver.current = null
+                    }
+                    break
+                case 'COPY_PAYLOAD':
+                    resolveCopyPayload(typeof payload === 'string' ? payload : '')
+                    break
+                case 'IMAGE_ERROR': {
+                    const p = (payload ?? {}) as { src?: unknown; message?: unknown }
+                    console.error('[EditorWebView] Image failed to load:', p.src, p.message)
+                    break
+                }
+                case 'EDITOR_FOCUS':
+                    onFocus?.()
+                    break
+                case 'EDITOR_BLUR':
+                    onBlur?.()
+                    break
+                case 'SELECTION_CHANGE':
+                    onSelectionChange?.(Boolean(payload))
+                    break
+                case 'HISTORY_STATE': {
+                    const p = payload as { canUndo?: unknown; canRedo?: unknown } | null
+                    onHistoryStateChange?.({
+                        canUndo: Boolean(p?.canUndo),
+                        canRedo: Boolean(p?.canRedo),
+                    })
+                    break
+                }
+                case 'CONTENT_ON_BLUR':
+                    // Safety net: content sent on blur ensures nothing is lost
+                    onContentChange?.(String(payload ?? ''))
+                    break
+            }
+        }
+
         const handleMessage = (event: WebViewMessageEvent) => {
             try {
                 const { type, payload } = JSON.parse(event.nativeEvent.data) as { type?: string; payload?: unknown }
                 if (!type) return
 
-                const chunked = consumeChunkedMessage(type, payload, pendingChunks.current)
-                if (chunked) {
-                    if (chunked.baseType === 'CONTENT_CHANGED' || chunked.baseType === 'CONTENT_ON_BLUR') {
-                        onContentChange?.(chunked.text)
-                        return
-                    }
-                    if (chunked.baseType === 'CONTENT_RESPONSE') {
-                        if (contentResolver.current) {
-                            contentResolver.current(chunked.text)
-                            contentResolver.current = null
-                        }
-                        return
-                    }
-                    if (chunked.baseType === 'COPY_PAYLOAD') {
-                        resolveCopyPayload(chunked.text)
-                        return
-                    }
-                }
-
-                switch (type) {
-                    case 'READY':
-                        if (pendingContent.current !== null) {
-                            sendText('SET_CONTENT', pendingContent.current)
-                            pendingContent.current = null
-                        }
-                        if (pendingTheme.current) {
-                            post({ type: 'SET_THEME', payload: pendingTheme.current })
-                        }
-                        if (pendingChunkFocus.current) {
-                            post({ type: 'SCROLL_TO_CHUNK', payload: pendingChunkFocus.current })
-                            pendingChunkFocus.current = null
-                        }
-                        setIsReady(true)
-                        if (readyTimeoutRef.current) {
-                            clearTimeout(readyTimeoutRef.current)
-                            readyTimeoutRef.current = null
-                        }
-                        onReady?.()
-                        break
-                    case 'CONTENT_CHANGED':
-                        onContentChange?.(String(payload ?? ''))
-                        break
-                    case 'CONTENT_RESPONSE':
-                        if (contentResolver.current) {
-                            contentResolver.current(String(payload ?? ''))
-                            contentResolver.current = null
-                        }
-                        break
-                    case 'COPY_PAYLOAD':
-                        resolveCopyPayload(typeof payload === 'string' ? payload : '')
-                        break
-                    case 'IMAGE_ERROR': {
-                        const p = (payload ?? {}) as { src?: unknown; message?: unknown }
-                        console.error('[EditorWebView] Image failed to load:', p.src, p.message)
-                        break
-                    }
-                    case 'EDITOR_FOCUS':
-                        onFocus?.()
-                        break
-                    case 'EDITOR_BLUR':
-                        onBlur?.()
-                        break
-                    case 'SELECTION_CHANGE':
-                        onSelectionChange?.(Boolean(payload))
-                        break
-                    case 'HISTORY_STATE': {
-                        const p = payload as { canUndo?: unknown; canRedo?: unknown } | null
-                        onHistoryStateChange?.({
-                            canUndo: Boolean(p?.canUndo),
-                            canRedo: Boolean(p?.canRedo),
-                        })
-                        break
-                    }
-                    case 'CONTENT_ON_BLUR':
-                        // Safety net: content sent on blur ensures nothing is lost
-                        onContentChange?.(String(payload ?? ''))
-                        break
-                }
+                if (handleChunkedMessage(type, payload)) return
+                handleMessageType(type, payload)
             } catch (error) {
                 console.error('[EditorWebView] Failed to parse message:', error)
             }

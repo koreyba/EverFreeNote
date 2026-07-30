@@ -183,7 +183,7 @@ function HeaderRightActions({
       <View style={styles.headerRightGroup}>
         <ThemeToggle style={styles.headerToggle} />
         <Pressable
-          onPress={() => { void onCopy() }}
+          onPress={onCopy}
           disabled={copyDisabled}
           accessibilityLabel="Copy note"
           accessibilityRole="button"
