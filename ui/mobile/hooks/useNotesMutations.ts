@@ -11,7 +11,8 @@ import type { Note } from '@core/types/domain'
 import type { RagNoteGroup } from '@core/types/ragSearch'
 import type { NotesPage } from './useNotes'
 
-const generateUuidV4 = (): string => {
+let fallbackSeq = 0
+export const generateUuidV4 = (): string => {
   const cryptoObj = (globalThis as unknown as { crypto?: { randomUUID?: () => string; getRandomValues?: (arr: Uint8Array) => Uint8Array } }).crypto
   if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
     return cryptoObj.randomUUID()
@@ -22,7 +23,8 @@ const generateUuidV4 = (): string => {
       cryptoObj.getRandomValues(arr)
       return arr[0] % 16
     }
-    return (Date.now() % 16)
+    fallbackSeq = (fallbackSeq + 1) & 0x7fffffff
+    return (Date.now() + fallbackSeq) % 16
   }
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
     const random = getRandomByte()

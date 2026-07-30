@@ -68,20 +68,20 @@ Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
 
 Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.`
 
-function getRandomFloat(): number {
-  return crypto.randomBytes(4).readUInt32LE(0) / 0xffffffff
+export function getRandomFloat(): number {
+  return crypto.randomBytes(4).readUInt32LE(0) / 0x100000000
 }
 
-function getRandomElement<T>(array: T[]): T {
+export function getRandomElement<T>(array: T[]): T {
   return array[Math.floor(getRandomFloat() * array.length)]
 }
 
-function getRandomElements<T>(array: T[], count: number): T[] {
+export function getRandomElements<T>(array: T[], count: number): T[] {
   const shuffled = [...array].sort(() => 0.5 - getRandomFloat())
   return shuffled.slice(0, count)
 }
 
-function generateNote(index: number) {
+export function generateNote(index: number) {
   const title = `${getRandomElement(titles)} #${index + 1}`
   const paragraphs = Math.floor(getRandomFloat() * 5) + 1
   const description = Array(paragraphs).fill(loremIpsum).join('\n\n')
