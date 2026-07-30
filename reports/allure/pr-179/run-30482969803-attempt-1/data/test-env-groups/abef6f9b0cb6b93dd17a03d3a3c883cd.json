@@ -1,1 +1,0 @@
-{"id":"abef6f9b0cb6b93dd17a03d3a3c883cd","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter clearAll executes delete statements on notes and mutation_queue","name":"executes delete statements on notes and mutation_queue","status":"passed","testResultsByEnv":{"default":"a3ecf6126b6eaf4b1e0c6cdd1726e1a1"}}

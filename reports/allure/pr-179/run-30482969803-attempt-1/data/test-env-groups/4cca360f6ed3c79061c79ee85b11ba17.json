@@ -1,1 +1,0 @@
-{"id":"4cca360f6ed3c79061c79ee85b11ba17","fullName":"everfreenote-mobile:tests/unit/navigationAdapter.test.ts#navigationAdapter logs error and re-throws when router.replace throws","name":"logs error and re-throws when router.replace throws","status":"passed","testResultsByEnv":{"default":"44c0547bfd0ccd37a280fc2af2d7ea2d"}}
