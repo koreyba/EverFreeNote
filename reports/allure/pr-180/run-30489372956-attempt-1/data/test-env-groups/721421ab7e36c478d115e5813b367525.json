@@ -1,1 +1,0 @@
-{"id":"721421ab7e36c478d115e5813b367525","fullName":"everfreenote:ui/web/tests/unit/components/sidebar.test.tsx#Sidebar toggles the desktop sidebar, invokes the trigger callback, and persists the state","name":"toggles the desktop sidebar, invokes the trigger callback, and persists the state","status":"passed","testResultsByEnv":{"default":"cb6fc02252f98de0ebaa1f5ea9783c86"}}
