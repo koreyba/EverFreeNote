@@ -11,7 +11,7 @@ describe('generate-test-notes randomness helpers', () => {
   })
 
   it('getRandomFloat handles maximum uint32 boundary without returning 1.0', () => {
-    const spy = jest.spyOn(crypto, 'randomBytes').mockImplementation(() => Buffer.from([0xff, 0xff, 0xff, 0xff]) as any)
+    const spy = jest.spyOn(crypto, 'randomBytes').mockImplementation(() => Buffer.from([0xff, 0xff, 0xff, 0xff]) as unknown as Buffer)
     const val = getRandomFloat()
     expect(val).toBeLessThan(1)
     expect(val).toBe(4294967295 / 4294967296)
