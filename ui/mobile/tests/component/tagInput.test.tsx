@@ -146,4 +146,25 @@ describe('TagInput', () => {
     expect(onChangeTags).toHaveBeenCalledWith(['work', 'weekend'])
     expect(screen.getByPlaceholderText('tag name')).toBeTruthy()
   })
+
+  it('preserves active tag input focus and avoids blur side-effects when selecting a suggestion', () => {
+    const onChangeTags = jest.fn()
+    render(
+      <TagInput
+        tags={['work']}
+        onChangeTags={onChangeTags}
+        availableTags={['weekend', 'welcome']}
+      />
+    )
+
+    fireEvent.press(screen.getByText('PlusIcon'))
+    const input = screen.getByPlaceholderText('tag name')
+    fireEvent.changeText(input, 'we')
+
+    // Pressing suggestion keeps editing state active and input in-place without blurring to title/editor
+    fireEvent.press(screen.getByText('weekend'))
+
+    expect(screen.getByPlaceholderText('tag name')).toBeTruthy()
+    expect(onChangeTags).toHaveBeenCalledWith(['work', 'weekend'])
+  })
 })
