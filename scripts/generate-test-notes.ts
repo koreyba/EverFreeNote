@@ -1,19 +1,6 @@
+import crypto from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
-
-dotenv.config({ path: '.env.local' })
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Missing Supabase credentials in .env.local (NEXT_PUBLIC_SUPABASE_URL + anon/service key)')
-  process.exit(1)
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey)
 
 const titles = [
   'Meeting Notes',
@@ -67,22 +54,31 @@ Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
 
 Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.`
 
-function getRandomElement<T>(array: T[]): T {
-  return array[Math.floor(Math.random() * array.length)]
+export function getRandomElement<T>(array: T[]): T {
+  if (array.length === 0) {
+    throw new RangeError('Cannot select a random element from an empty array')
+  }
+  return array[crypto.randomInt(0, array.length)]
 }
 
-function getRandomElements<T>(array: T[], count: number): T[] {
-  const shuffled = [...array].sort(() => 0.5 - Math.random())
-  return shuffled.slice(0, count)
+export function getRandomElements<T>(array: T[], count: number): T[] {
+  const copy = [...array]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1)
+    const temp = copy[i]
+    copy[i] = copy[j]
+    copy[j] = temp
+  }
+  return copy.slice(0, count)
 }
 
-function generateNote(index: number) {
+export function generateNote(index: number) {
   const title = `${getRandomElement(titles)} #${index + 1}`
-  const paragraphs = Math.floor(Math.random() * 5) + 1
+  const paragraphs = crypto.randomInt(1, 6)
   const description = Array(paragraphs).fill(loremIpsum).join('\n\n')
-  const noteTags = getRandomElements(tags, Math.floor(Math.random() * 4) + 1)
+  const noteTags = getRandomElements(tags, crypto.randomInt(1, 5))
 
-  const daysAgo = Math.floor(Math.random() * 365)
+  const daysAgo = crypto.randomInt(0, 365)
   const createdAt = new Date()
   createdAt.setDate(createdAt.getDate() - daysAgo)
 
@@ -96,6 +92,19 @@ function generateNote(index: number) {
 }
 
 async function generateTestNotes(userId: string, count = 1000) {
+  dotenv.config({ path: '.env.local' })
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase credentials in .env.local (NEXT_PUBLIC_SUPABASE_URL + anon/service key)')
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey)
+
   console.log(`🚀 Generating ${count} test notes for user ${userId}...`)
 
   const batchSize = 100
@@ -154,7 +163,9 @@ async function main() {
   await generateTestNotes(userId, count)
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+if (typeof require !== 'undefined' && require.main === module) {
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+}

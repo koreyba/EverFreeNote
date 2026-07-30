@@ -7,21 +7,12 @@ import { useNetworkStatus } from './useNetworkStatus'
 import { mobileNetworkStatusProvider } from '@ui/mobile/adapters/networkStatus'
 import { updateNoteCaches } from '@ui/mobile/utils/noteCache'
 import { isPostgrestNoRowsError } from '@core/utils/postgrest'
+import * as Crypto from 'expo-crypto'
 import type { Note } from '@core/types/domain'
 import type { RagNoteGroup } from '@core/types/ragSearch'
 import type { NotesPage } from './useNotes'
 
-const generateUuidV4 = (): string => {
-  const cryptoObj = (globalThis as unknown as { crypto?: { randomUUID?: () => string } }).crypto
-  if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
-    return cryptoObj.randomUUID()
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
-    const random = Math.floor(Math.random() * 16)
-    const value = char === 'x' ? random : (random & 0x3) | 0x8
-    return value.toString(16)
-  })
-}
+export const generateUuidV4 = (): string => Crypto.randomUUID()
 
 type SearchPage = {
   results: { id: string }[]
