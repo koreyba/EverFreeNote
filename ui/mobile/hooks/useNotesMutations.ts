@@ -12,12 +12,20 @@ import type { RagNoteGroup } from '@core/types/ragSearch'
 import type { NotesPage } from './useNotes'
 
 const generateUuidV4 = (): string => {
-  const cryptoObj = (globalThis as unknown as { crypto?: { randomUUID?: () => string } }).crypto
+  const cryptoObj = (globalThis as unknown as { crypto?: { randomUUID?: () => string; getRandomValues?: (arr: Uint8Array) => Uint8Array } }).crypto
   if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
     return cryptoObj.randomUUID()
   }
+  const getRandomByte = (): number => {
+    if (cryptoObj && typeof cryptoObj.getRandomValues === 'function') {
+      const arr = new Uint8Array(1)
+      cryptoObj.getRandomValues(arr)
+      return arr[0] % 16
+    }
+    return (Date.now() % 16)
+  }
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
-    const random = Math.floor(Math.random() * 16)
+    const random = getRandomByte()
     const value = char === 'x' ? random : (random & 0x3) | 0x8
     return value.toString(16)
   })

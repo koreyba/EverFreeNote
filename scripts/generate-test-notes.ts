@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
 
@@ -67,22 +68,26 @@ Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
 
 Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.`
 
+function getRandomFloat(): number {
+  return crypto.randomBytes(4).readUInt32LE(0) / 0xffffffff
+}
+
 function getRandomElement<T>(array: T[]): T {
-  return array[Math.floor(Math.random() * array.length)]
+  return array[Math.floor(getRandomFloat() * array.length)]
 }
 
 function getRandomElements<T>(array: T[], count: number): T[] {
-  const shuffled = [...array].sort(() => 0.5 - Math.random())
+  const shuffled = [...array].sort(() => 0.5 - getRandomFloat())
   return shuffled.slice(0, count)
 }
 
 function generateNote(index: number) {
   const title = `${getRandomElement(titles)} #${index + 1}`
-  const paragraphs = Math.floor(Math.random() * 5) + 1
+  const paragraphs = Math.floor(getRandomFloat() * 5) + 1
   const description = Array(paragraphs).fill(loremIpsum).join('\n\n')
-  const noteTags = getRandomElements(tags, Math.floor(Math.random() * 4) + 1)
+  const noteTags = getRandomElements(tags, Math.floor(getRandomFloat() * 4) + 1)
 
-  const daysAgo = Math.floor(Math.random() * 365)
+  const daysAgo = Math.floor(getRandomFloat() * 365)
   const createdAt = new Date()
   createdAt.setDate(createdAt.getDate() - daysAgo)
 
