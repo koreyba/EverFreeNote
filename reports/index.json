@@ -3,6 +3,34 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-181/run-30537132583-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-181/run-30537132583-attempt-1/",
+    "runId": "30537132583",
+    "runAttempt": "1",
+    "prNumber": "181",
+    "ref": "fix/sonar-security-grade-a",
+    "sha": "4cc317858305ca89a67bb32da670eddef045cbb8",
+    "outcome": "success",
+    "previewUrl": "https://a0c75e92.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #181",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-30T11:10:53.292Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "core-unit",
       "core-integration",
       "web-unit",
@@ -631,44 +659,6 @@
     "scopeLabel": "PR #180",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-29T21:10:43.594Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-177/run-30490027018-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-177/run-30490027018-attempt-1/",
-    "runId": "30490027018",
-    "runAttempt": "1",
-    "prNumber": "177",
-    "ref": "implement_tag_autocomplete_feature",
-    "sha": "523a65d523c4d1d90ee7812546af71b641123604",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #177",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-29T21:03:51.984Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
