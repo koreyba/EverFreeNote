@@ -1,1 +1,0 @@
-{"id":"1da475285643653c18389ed4cbdfa5e3","fullName":"everfreenote:ui/web/tests/unit/hooks/useAISearch.test.tsx#useAISearch does not invoke the service for disabled or too-short queries","name":"does not invoke the service for disabled or too-short queries","status":"passed","testResultsByEnv":{"default":"b2c0ff2214c5c68c06927a7dd3d2dbdf"}}
