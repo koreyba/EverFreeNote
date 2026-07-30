@@ -1,0 +1,1 @@
+{"id":"45c483fd6b61fe5e4734a2bc7b58520f","fullName":"everfreenote-mobile:tests/component/supabaseProvider.test.tsx#SupabaseProvider sets user=null and session=null when getSession returns null session","name":"sets user=null and session=null when getSession returns null session","status":"passed","testResultsByEnv":{"default":"2352341eb859a0d0352c0adc3e6e88d3"}}
