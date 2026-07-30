@@ -167,4 +167,29 @@ describe('TagInput', () => {
     expect(screen.getByPlaceholderText('tag name')).toBeTruthy()
     expect(onChangeTags).toHaveBeenCalledWith(['work', 'weekend'])
   })
+
+  it('prevents suggestion taps from also committing the typed draft prefix on blur', () => {
+    const onChangeTags = jest.fn()
+    render(
+      <TagInput
+        tags={['work']}
+        onChangeTags={onChangeTags}
+        availableTags={['weekend', 'welcome']}
+      />
+    )
+
+    fireEvent.press(screen.getByText('PlusIcon'))
+    const input = screen.getByPlaceholderText('tag name')
+    fireEvent.changeText(input, 'we')
+
+    // Simulate native touch ordering where pressIn / blur occurs when tapping a suggestion
+    const suggestion = screen.getByText('weekend')
+    fireEvent(suggestion, 'pressIn')
+    fireEvent(input, 'blur')
+    fireEvent.press(suggestion)
+
+    // Should call onChangeTags exactly once with ['work', 'weekend'], and NOT commit 'we'
+    expect(onChangeTags).toHaveBeenCalledTimes(1)
+    expect(onChangeTags).toHaveBeenCalledWith(['work', 'weekend'])
+  })
 })

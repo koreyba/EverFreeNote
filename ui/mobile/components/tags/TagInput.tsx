@@ -54,6 +54,7 @@ export function TagInput({
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<TextInput>(null)
+  const isSelectingSuggestionRef = useRef(false)
 
   const suggestions = useMemo(() => {
     const query = draft.trim().toLowerCase()
@@ -86,11 +87,15 @@ export function TagInput({
   }
 
   const handleSelectSuggestion = (suggestion: string) => {
+    isSelectingSuggestionRef.current = true
     const nextTags = dedupeTags([...tags, suggestion])
     onChangeTags(nextTags)
     setDraft('')
     setIsEditing(true)
-    setTimeout(() => inputRef.current?.focus(), 50)
+    setTimeout(() => {
+      isSelectingSuggestionRef.current = false
+      inputRef.current?.focus()
+    }, 100)
   }
 
   const handleRemove = (tagToRemove: string) => {
@@ -105,6 +110,7 @@ export function TagInput({
   }
 
   const handleBlur = () => {
+    if (isSelectingSuggestionRef.current) return
     if (draft.trim()) {
       handleAdd()
     } else {
@@ -182,6 +188,9 @@ export function TagInput({
                   styles.suggestionItem,
                   pressed && styles.suggestionItemPressed,
                 ]}
+                onPressIn={() => {
+                  isSelectingSuggestionRef.current = true
+                }}
                 onPress={() => handleSelectSuggestion(suggestion)}
               >
                 <Text style={styles.suggestionText}>{suggestion}</Text>
