@@ -1,1 +1,0 @@
-{"id":"a8b1a2204641f8a9be902e203bc1092a","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService searchNotes omits a missing FTS snippet while preserving the search rank","name":"omits a missing FTS snippet while preserving the search rank","status":"passed","testResultsByEnv":{"default":"4e6feed47192f6f65925bda79a17af18"}}
