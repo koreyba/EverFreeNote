@@ -6,6 +6,42 @@
       "core-unit",
       "core-integration",
       "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/branch-main/run-30562596033-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-30562596033-attempt-1/",
+    "runId": "30562596033",
+    "runAttempt": "1",
+    "prNumber": null,
+    "ref": "main",
+    "sha": "30229560f5cd587318ac4166251b04905dc4003f",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Component Tests",
+    "scopeType": "branch",
+    "scopeLabel": "main",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-30T16:51:24.164Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
       "mobile-unit"
     ],
     "suiteLabels": [
@@ -625,44 +661,6 @@
     "scopeLabel": "PR #181",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-30T11:51:29.592Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-181/run-30538532600-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-181/run-30538532600-attempt-1/",
-    "runId": "30538532600",
-    "runAttempt": "1",
-    "prNumber": "181",
-    "ref": "fix/sonar-security-grade-a",
-    "sha": "1463e4ba719971f3c0c36c3ac896ad4e9d5c69a3",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #181",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-30T11:42:45.077Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
