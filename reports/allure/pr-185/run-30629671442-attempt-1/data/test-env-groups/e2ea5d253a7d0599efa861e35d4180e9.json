@@ -1,1 +1,0 @@
-{"id":"e2ea5d253a7d0599efa861e35d4180e9","fullName":"everfreenote:ui/web/tests/unit/components/searchResultsPanel.test.tsx#SearchResultsPanel shows the empty state, debounces search, handles Enter/clear, and closes","name":"shows the empty state, debounces search, handles Enter/clear, and closes","status":"passed","testResultsByEnv":{"default":"82f62e935a56dea4a3ff5d1cb2c66607"}}
