@@ -28,11 +28,15 @@ export function NavRail({
 }: NavRailProps) {
   // Read the persisted state during the first render so navigation opens without a collapsed flash.
   const [isExpanded, setIsExpanded] = React.useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved !== null) {
-        return saved === "true"
+    try {
+      if (typeof window !== "undefined") {
+        const saved = window.localStorage.getItem(STORAGE_KEY)
+        if (saved !== null) {
+          return saved === "true"
+        }
       }
+    } catch {
+      // Fall back to the collapsed default when storage is unavailable.
     }
     return false
   })
@@ -40,8 +44,12 @@ export function NavRail({
   const handleToggleExpand = React.useCallback(() => {
     setIsExpanded((prev) => {
       const next = !prev
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, String(next))
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(STORAGE_KEY, String(next))
+        }
+      } catch {
+        // Keep the in-memory toggle working when storage is unavailable.
       }
       return next
     })
