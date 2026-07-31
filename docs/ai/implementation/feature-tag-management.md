@@ -9,8 +9,8 @@ description: Implementation notes and guidelines for core tag logic and web UI.
 ## Code Structure
 
 - `core/types/tags.ts`: Core interfaces for tag metrics and alphabetical groupings.
-- `core/services/tags.ts`: Core functions for tag aggregation, alphabetical grouping, renaming, and deleting across note lists.
-- `core/tests/tags.test.ts`: Jest unit tests for tag service.
+- `core/services/tags.ts`: Core functions for tag aggregation, alphabetical grouping, renaming, deleting, and cleanup across note lists.
+- `core/tests/unit/tags.test.ts`: Jest unit tests for tag service.
 - `ui/web/components/features/tags/`:
   - `TagsPage.tsx`: Main management page component.
   - `AlphabeticalGrid.tsx`: Interactive A-Z quick jump index grid.

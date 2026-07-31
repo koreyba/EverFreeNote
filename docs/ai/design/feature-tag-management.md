@@ -34,8 +34,9 @@ graph TD
     TagsPage --> TagService
     TagService -->|Compute Tag Counts & A-Z Groups| NoteController
     TagCard -->|Rename / Delete Action| ActionModal
-    ActionModal -->|Invoke renameTag / deleteTag| TagService
-    TagService -->|Update Notes Array| NoteController
+    ActionModal -->|Invoke renameTag / deleteTag| NoteController
+    NoteController -->|Call tag helpers| TagService
+    TagService -->|Return updated Notes Array| NoteController
     NoteController -->|Persist Changes| DB
 ```
 
@@ -83,6 +84,13 @@ export function renameTagInNotes<T extends { tags?: string[] }>(
 export function deleteTagFromNotes<T extends { tags?: string[] }>(
   notes: T[],
   targetTag: string
+): T[]
+
+/**
+ * Removes invalid, empty, whitespace-only, and duplicate tags from notes.
+ */
+export function cleanUnusedOrEmptyTagsInNotes<T extends { tags?: string[] }>(
+  notes: T[]
 ): T[]
 ```
 

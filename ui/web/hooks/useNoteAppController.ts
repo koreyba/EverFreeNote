@@ -431,23 +431,61 @@ export function useNoteAppController() {
   ])
 
   // -- Main Navigation View --
-  const [activeMainView, setActiveMainView] = useState<'notes' | 'tags'>('notes')
+  const [activeMainView, setActiveMainView] = useState<'notes' | 'tags'>(() => {
+    if (typeof window === 'undefined') return 'notes'
+    return new URLSearchParams(window.location.search).get('view') === 'tags' ? 'tags' : 'notes'
+  })
 
-  useEffect(() => {
+  const syncSearchPanelFromUrl = useCallback(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    const viewParam = params.get('view')
-    if (viewParam === 'tags') {
-      setActiveMainView('tags')
-    } else if (viewParam === 'notes') {
-      setActiveMainView('notes')
-    }
-    if (params.get('search') === 'open') {
-      setIsSearchPanelOpen(true)
-    }
-  }, [])
+    setIsSearchPanelOpen(params.get('search') === 'open')
+  }, [setIsSearchPanelOpen])
+
+  useEffect(() => {
+    syncSearchPanelFromUrl()
+    window.addEventListener('popstate', syncSearchPanelFromUrl)
+    return () => window.removeEventListener('popstate', syncSearchPanelFromUrl)
+  }, [syncSearchPanelFromUrl])
 
   // -- Batch Tag Mutations --
+  const persistTagChanges = useCallback(async (updatedNotes: NoteViewModel[], originalNotes: NoteViewModel[]) => {
+    const changedNotes = updatedNotes.filter((note, index) => note !== originalNotes[index])
+    const results = await Promise.allSettled(
+      changedNotes.map((note) =>
+        updateNoteMutation.mutateAsync({
+          id: note.id,
+          title: note.title,
+          description: note.description,
+          tags: note.tags,
+        })
+      )
+    )
+    const failedResult = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')
+
+    if (!failedResult) return
+
+    const rollbackResults = await Promise.allSettled(
+      changedNotes.flatMap((updatedNote, index) => {
+        if (results[index].status !== 'fulfilled') return []
+        const originalNote = originalNotes.find((note) => note.id === updatedNote.id)
+        if (!originalNote) return []
+        return updateNoteMutation.mutateAsync({
+          id: originalNote.id,
+          title: originalNote.title,
+          description: originalNote.description,
+          tags: originalNote.tags,
+        })
+      })
+    )
+    const rollbackFailure = rollbackResults.find((result): result is PromiseRejectedResult => result.status === 'rejected')
+    if (rollbackFailure) {
+      throw new Error(`Tag changes failed and rollback was incomplete: ${rollbackFailure.reason instanceof Error ? rollbackFailure.reason.message : String(rollbackFailure.reason)}`)
+    }
+
+    throw failedResult.reason instanceof Error ? failedResult.reason : new Error(String(failedResult.reason))
+  }, [updateNoteMutation])
+
   const handleRenameTag = useCallback(async (oldTag: string, newTag: string) => {
     const updatedNotes = renameTagInNotes(notes, oldTag, newTag)
     const changedNotes = updatedNotes.filter((note, i) => note !== notes[i])
@@ -455,21 +493,12 @@ export function useNoteAppController() {
     if (changedNotes.length === 0) return
 
     try {
-      await Promise.all(
-        changedNotes.map((note) =>
-          updateNoteMutation.mutateAsync({
-            id: note.id,
-            title: note.title,
-            description: note.description,
-            tags: note.tags,
-          })
-        )
-      )
+      await persistTagChanges(updatedNotes, notes)
       toast.success(`Tag "${oldTag}" renamed to "${newTag}"`)
     } catch (error) {
       toast.error(`Failed to rename tag: ${(error as Error).message}`)
     }
-  }, [notes, updateNoteMutation])
+  }, [notes, persistTagChanges])
 
   const handleDeleteTag = useCallback(async (targetTag: string) => {
     const updatedNotes = deleteTagFromNotes(notes, targetTag)
@@ -478,21 +507,12 @@ export function useNoteAppController() {
     if (changedNotes.length === 0) return
 
     try {
-      await Promise.all(
-        changedNotes.map((note) =>
-          updateNoteMutation.mutateAsync({
-            id: note.id,
-            title: note.title,
-            description: note.description,
-            tags: note.tags,
-          })
-        )
-      )
+      await persistTagChanges(updatedNotes, notes)
       toast.success(`Tag "${targetTag}" deleted`)
     } catch (error) {
       toast.error(`Failed to delete tag: ${(error as Error).message}`)
     }
-  }, [notes, updateNoteMutation])
+  }, [notes, persistTagChanges])
 
   const handleCleanTags = useCallback(async () => {
     const updatedNotes = cleanUnusedOrEmptyTagsInNotes(notes)
@@ -504,21 +524,12 @@ export function useNoteAppController() {
     }
 
     try {
-      await Promise.all(
-        changedNotes.map((note) =>
-          updateNoteMutation.mutateAsync({
-            id: note.id,
-            title: note.title,
-            description: note.description,
-            tags: note.tags,
-          })
-        )
-      )
+      await persistTagChanges(updatedNotes, notes)
       toast.success("Cleaned up empty and duplicate tags")
     } catch (error) {
       toast.error(`Failed to clean tags: ${(error as Error).message}`)
     }
-  }, [notes, updateNoteMutation])
+  }, [notes, persistTagChanges])
 
   return {
     registerNoteEditorRef,

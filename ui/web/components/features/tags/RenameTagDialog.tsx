@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 interface RenameTagDialogProps {
   open: boolean
   tagName: string | null
+  existingTagNames: string[]
   onOpenChange: (open: boolean) => void
   onConfirmRename: (oldTag: string, newTag: string) => void
 }
@@ -22,21 +23,35 @@ interface RenameTagDialogProps {
 export function RenameTagDialog({
   open,
   tagName,
+  existingTagNames,
   onOpenChange,
   onConfirmRename,
 }: RenameTagDialogProps) {
   const [newTagName, setNewTagName] = React.useState("")
+  const [mergeWarningVisible, setMergeWarningVisible] = React.useState(false)
 
   React.useEffect(() => {
     if (tagName) {
       setNewTagName(tagName)
     }
+    setMergeWarningVisible(false)
   }, [tagName])
+
+  const trimmedNewTagName = newTagName.trim()
+  const normalizedCurrentTag = tagName?.trim().toLowerCase()
+  const mergesExistingTag = existingTagNames.some((existingTagName) => {
+    const normalizedExistingTag = existingTagName.trim().toLowerCase()
+    return normalizedExistingTag === trimmedNewTagName.toLowerCase() && normalizedExistingTag !== normalizedCurrentTag
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (tagName && newTagName.trim() && newTagName.trim() !== tagName) {
-      onConfirmRename(tagName, newTagName.trim())
+    if (tagName && trimmedNewTagName && trimmedNewTagName !== tagName) {
+      if (mergesExistingTag && !mergeWarningVisible) {
+        setMergeWarningVisible(true)
+        return
+      }
+      onConfirmRename(tagName, trimmedNewTagName)
       onOpenChange(false)
     }
   }
@@ -55,11 +70,20 @@ export function RenameTagDialog({
           <div className="py-4">
             <Input
               value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
+              onChange={(e) => {
+                setNewTagName(e.target.value)
+                setMergeWarningVisible(false)
+              }}
               placeholder="Enter new tag name"
               autoFocus
               data-testid="rename-tag-input"
             />
+            {mergeWarningVisible && mergesExistingTag && (
+              <p role="alert" className="mt-2 text-sm text-destructive">
+                This name already exists. Saving will merge the two tags.
+                Submit again to confirm.
+              </p>
+            )}
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
@@ -68,7 +92,7 @@ export function RenameTagDialog({
             </Button>
             <Button
               type="submit"
-              disabled={!newTagName.trim() || newTagName.trim() === tagName}
+              disabled={!trimmedNewTagName || trimmedNewTagName === tagName}
               data-testid="confirm-rename-tag-button"
             >
               Save

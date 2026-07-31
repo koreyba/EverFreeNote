@@ -92,11 +92,11 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleSelectNote,
     isSearchPanelOpen,
     setIsSearchPanelOpen,
-    activeMainView = "notes",
-    setActiveMainView = () => {},
-    handleRenameTag = () => {},
-    handleDeleteTag = () => {},
-    notes = [],
+    activeMainView,
+    setActiveMainView,
+    handleRenameTag,
+    handleDeleteTag,
+    notes,
   } = controller
 
   const refreshWordPressStatus = React.useCallback(async () => {

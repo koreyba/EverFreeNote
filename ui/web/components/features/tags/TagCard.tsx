@@ -35,7 +35,7 @@ export function TagCard({
       data-testid={`tag-card-${tag.name}`}
       className={cn(
         "group flex items-center justify-between p-3 rounded-xl border border-border/80 bg-card hover:bg-accent/40 active:scale-[0.99] transition-all shadow-sm hover:shadow min-h-[52px]",
-        isHighlighted && "ring-2 ring-primary bg-primary/10 border-primary/50 shadow-md animate-pulse",
+        isHighlighted && "ring-2 ring-primary bg-primary/10 border-primary/50 shadow-md animate-pulse motion-reduce:animate-none",
         className
       )}
     >

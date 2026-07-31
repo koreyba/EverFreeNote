@@ -18,8 +18,8 @@ description: Milestone breakdown, tasks, dependencies, and timeline for tag mana
 
 ### Phase 1: Core Service (`core/services/tags.ts`)
 - [x] Task 1.1: Create `core/types/tags.ts` data structures (`TagWithCount`, `AlphabeticalTagGroup`).
-- [x] Task 1.2: Implement `getTagsWithCounts`, `groupTagsAlphabetically`, `renameTagInNotes`, `deleteTagFromNotes`.
-- [x] Task 1.3: Write 100% test coverage for `@core` tag services (`core/tests/unit/tags.test.ts`).
+- [x] Task 1.2: Implement `getTagsWithCounts`, `groupTagsAlphabetically`, `renameTagInNotes`, `deleteTagFromNotes`, and `cleanUnusedOrEmptyTagsInNotes`.
+- [x] Task 1.3: Write unit coverage for `@core` tag services (`core/tests/unit/tags.test.ts`), including cleanup behavior.
 
 ### Phase 2: Navigation & Access UI
 - [x] Task 2.1: Design and implement `NavRail.tsx` Collapsible Left Navigation Dock for desktop & Mobile Navigation Bar.

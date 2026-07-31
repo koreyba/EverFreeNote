@@ -3,6 +3,7 @@ import {
   groupTagsAlphabetically,
   renameTagInNotes,
   deleteTagFromNotes,
+  cleanUnusedOrEmptyTagsInNotes,
 } from '../../services/tags'
 
 describe('core/services/tags', () => {
@@ -106,6 +107,27 @@ describe('core/services/tags', () => {
 
     it('returns original notes array if targetTag is empty', () => {
       expect(deleteTagFromNotes(sampleNotes, '  ')).toBe(sampleNotes)
+    })
+  })
+
+  describe('cleanUnusedOrEmptyTagsInNotes', () => {
+    it('removes invalid, whitespace-only, and duplicate tags without mutating notes', () => {
+      const notes = [
+        { id: '1', tags: [' React ', 'react', '   ', 'JAVASCRIPT'] },
+        { id: '2', tags: ['TypeScript'] },
+      ]
+
+      const cleaned = cleanUnusedOrEmptyTagsInNotes(notes)
+
+      expect(cleaned[0].tags).toEqual(['React', 'JAVASCRIPT'])
+      expect(cleaned[1]).toBe(notes[1])
+      expect(notes[0].tags).toEqual([' React ', 'react', '   ', 'JAVASCRIPT'])
+    })
+
+    it('removes non-string tag values', () => {
+      const notes = [{ id: '1', tags: ['valid', null, 42, undefined] as unknown as string[] }]
+
+      expect(cleanUnusedOrEmptyTagsInNotes(notes)[0].tags).toEqual(['valid'])
     })
   })
 })

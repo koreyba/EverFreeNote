@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { getTagsWithCounts, groupTagsAlphabetically } from "@core/services/tags"
 import { TagWithCount } from "@core/types/tags"
+import { cn } from "@ui/web/lib/utils"
 import { AlphabeticalGrid } from "./AlphabeticalGrid"
 import { TagCard } from "./TagCard"
 import { RenameTagDialog } from "./RenameTagDialog"
@@ -34,9 +35,18 @@ export function TagsPage({
   const [searchQuery, setSearchQuery] = React.useState("")
   const [selectedLetter, setSelectedLetter] = React.useState<string | null>(null)
   const [highlightedTag, setHighlightedTag] = React.useState<string | null>(null)
+  const highlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [renameTarget, setRenameTarget] = React.useState<TagWithCount | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<TagWithCount | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // 1. Aggregate and sort tags from notes using core tag service
   const allTags = React.useMemo(() => {
@@ -87,12 +97,8 @@ export function TagsPage({
   }, [])
 
   const handleJumpToLetter = React.useCallback((letter: string) => {
-    // If a filter was active, clear it first so all groups are visible for scrolling
-    if (selectedLetter !== null) {
-      setSelectedLetter(null)
-    }
     scrollToTarget(`tag-group-${encodeURIComponent(letter)}`)
-  }, [selectedLetter, scrollToTarget])
+  }, [scrollToTarget])
 
   const handleConfirmRename = React.useCallback((oldTag: string, newTag: string) => {
     onRenameTag(oldTag, newTag)
@@ -102,14 +108,19 @@ export function TagsPage({
     setSelectedLetter(null)
 
     // Highlight renamed tag
-    setHighlightedTag(newTag)
+    const normalizedNewTag = newTag.trim()
+    setHighlightedTag(normalizedNewTag)
 
     // Smoothly scroll to the target tag card
-    scrollToTarget(`tag-card-${encodeURIComponent(newTag)}`)
+    scrollToTarget(`tag-card-${encodeURIComponent(normalizedNewTag)}`)
 
     // Remove glow highlight after 2.5 seconds
-    setTimeout(() => {
-      setHighlightedTag((current) => (current === newTag ? null : current))
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current)
+    }
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedTag((current) => (current === normalizedNewTag ? null : current))
+      highlightTimeoutRef.current = null
     }, 2500)
   }, [onRenameTag, scrollToTarget])
 
@@ -118,7 +129,7 @@ export function TagsPage({
       id="tags-page-container"
       ref={containerRef}
       data-testid="tags-page"
-      className="flex-1 flex flex-col h-full bg-background overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full pb-32 md:pb-12 scroll-smooth"
+      className={cn("flex-1 flex flex-col h-full bg-background overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full pb-32 md:pb-12 scroll-smooth", className)}
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 pb-4 border-b">
@@ -219,6 +230,7 @@ export function TagsPage({
       <RenameTagDialog
         open={Boolean(renameTarget)}
         tagName={renameTarget?.name || null}
+        existingTagNames={allTags.map((tag) => tag.name)}
         onOpenChange={(open) => !open && setRenameTarget(null)}
         onConfirmRename={handleConfirmRename}
       />

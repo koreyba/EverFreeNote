@@ -26,16 +26,14 @@ export function NavRail({
   className,
   "data-testid": dataTestId,
 }: NavRailProps) {
-  // Synchronously initialize state from localStorage so there is zero initial layout flash
-  const [isExpanded, setIsExpanded] = React.useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved !== null) {
-        return saved === "true"
-      }
+  const [isExpanded, setIsExpanded] = React.useState(false)
+
+  React.useEffect(() => {
+    const saved = window.localStorage.getItem(STORAGE_KEY)
+    if (saved !== null) {
+      setIsExpanded(saved === "true")
     }
-    return false
-  })
+  }, [])
 
   const handleToggleExpand = React.useCallback(() => {
     setIsExpanded((prev) => {
@@ -125,6 +123,7 @@ export function NavRail({
                     item.active && "bg-primary/10 text-primary hover:bg-primary/15 font-semibold"
                   )}
                   title={item.label}
+                  aria-current={item.active ? "page" : undefined}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   {isExpanded && <span className="text-sm truncate">{item.label}</span>}
@@ -150,6 +149,7 @@ export function NavRail({
                   item.active ? "bg-primary/10 text-primary hover:bg-primary/15 font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
                 title={item.label}
+                aria-current={item.active ? "page" : undefined}
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 {isExpanded && <span className="text-sm truncate">{item.label}</span>}
@@ -162,7 +162,7 @@ export function NavRail({
       {/* Mobile Bottom Navigation Bar (Visible on small screens) */}
       <nav
         aria-label="Mobile Navigation"
-        data-testid="mobile-bottom-nav"
+        data-testid={dataTestId ? `${dataTestId}-mobile` : "mobile-bottom-nav"}
         className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/95 backdrop-blur-md border-t border-border flex items-center justify-around z-40 px-2"
       >
         {navItems.map((item) => {
@@ -173,6 +173,7 @@ export function NavRail({
               type="button"
               onClick={item.onClick}
               data-testid={`mobile-nav-${item.id}`}
+              aria-current={item.active ? "page" : undefined}
               className={cn(
                 "flex flex-col items-center justify-center w-16 h-12 rounded-lg transition-colors text-xs font-medium gap-1",
                 item.active ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
@@ -192,6 +193,7 @@ export function NavRail({
               type="button"
               onClick={item.onClick}
               data-testid={`mobile-action-${item.id}`}
+              aria-current={item.active ? "page" : undefined}
               className={cn(
                 "flex flex-col items-center justify-center w-16 h-12 rounded-lg transition-colors text-xs font-medium gap-1",
                 item.active ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"

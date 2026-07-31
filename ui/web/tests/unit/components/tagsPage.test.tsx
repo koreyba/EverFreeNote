@@ -4,8 +4,8 @@ import { TagsPage } from '@/components/features/tags/TagsPage'
 
 describe('TagsPage Component', () => {
   const mockNotes = [
-    { id: '1', tags: ['react', 'javascript', 'заметки'] },
-    { id: '2', tags: ['REACT', 'typescript', 'архив'] },
+    { id: '1', tags: ['react', 'javascript', 'Ð·Ð°Ð¼ÐµÑ‚ÐºÐ¸'] },
+    { id: '2', tags: ['REACT', 'typescript', 'Ð°Ñ€Ñ…Ð¸Ð²'] },
   ]
 
   const mockOnSelectTag = jest.fn()
@@ -26,9 +26,9 @@ describe('TagsPage Component', () => {
       />
     )
 
-    expect(screen.getByText('Tag Management')).toBeDefined()
-    expect(screen.getByText('react')).toBeDefined()
-    expect(screen.getByText('(2)')).toBeDefined()
+    expect(screen.getByText('Tag Management')).toBeTruthy()
+    expect(screen.getByText('react')).toBeTruthy()
+    expect(screen.getByText('(2)')).toBeTruthy()
   })
 
   it('filters tags when searching', () => {
@@ -44,9 +44,9 @@ describe('TagsPage Component', () => {
     const searchInput = screen.getByTestId('tags-search-input')
     fireEvent.change(searchInput, { target: { value: 'script' } })
 
-    expect(screen.getByText('javascript')).toBeDefined()
-    expect(screen.getByText('typescript')).toBeDefined()
-    expect(screen.queryByText('архив')).toBeNull()
+    expect(screen.getByText('javascript')).toBeTruthy()
+    expect(screen.getByText('typescript')).toBeTruthy()
+    expect(screen.queryByText('Ð°Ñ€Ñ…Ð¸Ð²')).toBeNull()
   })
 
   it('triggers onSelectTag when a tag card is clicked', () => {
@@ -63,5 +63,76 @@ describe('TagsPage Component', () => {
     fireEvent.click(tagCard)
 
     expect(mockOnSelectTag).toHaveBeenCalledWith('react')
+  })
+
+  it('keeps the newly selected letter active when switching letters', () => {
+    render(
+      <TagsPage
+        notes={[{ id: '1', tags: ['alpha', 'beta'] }]}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={mockOnRenameTag}
+        onDeleteTag={mockOnDeleteTag}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('letter-jump-A'))
+    expect(screen.getByTestId('select-tag-alpha')).toBeTruthy()
+    expect(screen.queryByTestId('select-tag-beta')).toBeNull()
+
+    fireEvent.click(screen.getByTestId('letter-jump-B'))
+    expect(screen.getByTestId('select-tag-beta')).toBeTruthy()
+    expect(screen.queryByTestId('select-tag-alpha')).toBeNull()
+  })
+
+  it('warns before renaming a tag into an existing tag', () => {
+    render(
+      <TagsPage
+        notes={[{ id: '1', tags: ['react', 'javascript'] }]}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={mockOnRenameTag}
+        onDeleteTag={mockOnDeleteTag}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('tag-menu-trigger-react'))
+    fireEvent.click(screen.getByTestId('rename-action-react'))
+    fireEvent.change(screen.getByTestId('rename-tag-input'), { target: { value: 'javascript' } })
+    fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
+
+    expect(screen.getByRole('alert').textContent).toContain('merge the two tags')
+    expect(mockOnRenameTag).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
+    expect(mockOnRenameTag).toHaveBeenCalledWith('react', 'javascript')
+  })
+
+  it('confirms deleting a tag through the delete dialog', () => {
+    render(
+      <TagsPage
+        notes={[{ id: '1', tags: ['react'] }]}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={mockOnRenameTag}
+        onDeleteTag={mockOnDeleteTag}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('tag-menu-trigger-react'))
+    fireEvent.click(screen.getByTestId('delete-action-react'))
+    fireEvent.click(screen.getByTestId('confirm-delete-tag-button'))
+
+    expect(mockOnDeleteTag).toHaveBeenCalledWith('react')
+  })
+
+  it('shows an empty state when there are no tags', () => {
+    render(
+      <TagsPage
+        notes={[]}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={mockOnRenameTag}
+        onDeleteTag={mockOnDeleteTag}
+      />
+    )
+
+    expect(screen.getByText('No tags found')).toBeTruthy()
   })
 })
