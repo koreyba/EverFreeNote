@@ -1,1 +1,0 @@
-{"id":"f6ab03d90221437cd4268a7662b63c11","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService mutation queue methods markQueueItemStatus updates status and lastError in database","name":"markQueueItemStatus updates status and lastError in database","status":"passed","testResultsByEnv":{"default":"8cbf4342646e2a11c0ec5f425910cb46"}}
