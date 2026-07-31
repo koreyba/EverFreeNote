@@ -1,0 +1,1 @@
+{"id":"4ba527d5651d1a93d4c82623aa74f36b","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService saveNotes does nothing when notes array is empty","name":"does nothing when notes array is empty","status":"passed","testResultsByEnv":{"default":"48102ea24d965afbcaaef07cd846d71d"}}
