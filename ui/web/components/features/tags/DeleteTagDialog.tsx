@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
+/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars -- callback parameter names are type-only */
 interface DeleteTagDialogProps {
   readonly open: boolean
   readonly tagName: string | null
@@ -19,6 +20,7 @@ interface DeleteTagDialogProps {
   readonly onOpenChange: (_open: boolean) => void
   readonly onConfirmDelete: (_tagName: string) => void
 }
+/* eslint-enable no-unused-vars, @typescript-eslint/no-unused-vars */
 
 export function DeleteTagDialog({
   open,

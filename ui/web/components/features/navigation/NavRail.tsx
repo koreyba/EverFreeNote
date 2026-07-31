@@ -7,6 +7,7 @@ import { cn } from "@ui/web/lib/utils"
 
 export type MainNavView = "notes" | "tags" | "settings"
 
+/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars -- callback parameter names are type-only */
 interface NavRailProps {
   readonly activeView: MainNavView
   readonly onSelectView: (_view: MainNavView) => void
@@ -15,6 +16,7 @@ interface NavRailProps {
   readonly className?: string
   readonly "data-testid"?: string
 }
+/* eslint-enable no-unused-vars, @typescript-eslint/no-unused-vars */
 
 const STORAGE_KEY = "everfreenote_nav_rail_expanded"
 

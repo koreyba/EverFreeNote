@@ -16,6 +16,7 @@ interface NoteLike {
   readonly tags?: string[]
 }
 
+/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars -- callback parameter names are type-only */
 interface TagsPageProps {
   readonly notes: NoteLike[]
   readonly onSelectTag: (_tagName: string) => void
@@ -23,6 +24,7 @@ interface TagsPageProps {
   readonly onDeleteTag: (_tagName: string) => void
   readonly className?: string
 }
+/* eslint-enable no-unused-vars, @typescript-eslint/no-unused-vars */
 
 export function TagsPage({
   notes,
@@ -229,7 +231,7 @@ export function TagsPage({
       {/* Rename Dialog */}
       <RenameTagDialog
         open={Boolean(renameTarget)}
-        tagName={renameTarget?.name || null}
+        tagName={renameTarget?.name ?? null}
         existingTagNames={allTags.map((tag) => tag.name)}
         onOpenChange={(open) => !open && setRenameTarget(null)}
         onConfirmRename={handleConfirmRename}
@@ -238,8 +240,8 @@ export function TagsPage({
       {/* Delete Dialog */}
       <DeleteTagDialog
         open={Boolean(deleteTarget)}
-        tagName={deleteTarget?.name || null}
-        noteCount={deleteTarget?.count || 0}
+        tagName={deleteTarget?.name ?? null}
+        noteCount={deleteTarget?.count ?? 0}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         onConfirmDelete={onDeleteTag}
       />
