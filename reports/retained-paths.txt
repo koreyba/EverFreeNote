@@ -1,3 +1,4 @@
+reports/allure/pr-186/run-30656294622-attempt-1
 reports/allure/pr-186/run-30656294667-attempt-1
 reports/allure/pr-186/run-30655694716-attempt-1
 reports/allure/pr-186/run-30655562672-attempt-1
@@ -17,7 +18,6 @@ reports/allure/manual/run-30634374838-attempt-1
 reports/allure/pr-185/run-30633470019-attempt-1
 reports/allure/manual/run-30633185513-attempt-1
 reports/allure/pr-185/run-30632758962-attempt-1
-reports/allure/manual/run-30633309800-attempt-1
 reports/e2e/manual/run-29013958785-attempt-1
 reports/e2e/manual/run-29011965126-attempt-1
 reports/component/pr-137/run-28596989963-attempt-1
