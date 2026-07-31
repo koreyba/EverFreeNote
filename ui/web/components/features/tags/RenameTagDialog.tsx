@@ -16,8 +16,8 @@ interface RenameTagDialogProps {
   readonly open: boolean
   readonly tagName: string | null
   readonly existingTagNames: string[]
-  readonly onOpenChange: (open: boolean) => void
-  readonly onConfirmRename: (oldTag: string, newTag: string) => void
+  readonly onOpenChange: (boolean) => void
+  readonly onConfirmRename: (string, string) => void
 }
 
 export function RenameTagDialog({

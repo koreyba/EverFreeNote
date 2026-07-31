@@ -105,14 +105,12 @@ export function renameTagInNotes<T extends NoteWithTags>(
   return notes.map(note => {
     if (!note.tags || !Array.isArray(note.tags)) return note
     
-    let modified = false
     const newTags: string[] = []
     const seen = new Set<string>()
 
     for (const tag of note.tags) {
       const lower = tag.trim().toLowerCase()
       if (lower === targetLower) {
-        modified = true
         const repLower = replacementClean.toLowerCase()
         if (!seen.has(repLower)) {
           seen.add(repLower)
@@ -124,7 +122,8 @@ export function renameTagInNotes<T extends NoteWithTags>(
       }
     }
 
-    if (!modified) return note
+    const changed = newTags.length !== note.tags.length || newTags.some((tag, index) => tag !== note.tags[index])
+    if (!changed) return note
     return { ...note, tags: newTags }
   })
 }

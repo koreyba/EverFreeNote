@@ -18,9 +18,9 @@ interface NoteLike {
 
 interface TagsPageProps {
   readonly notes: NoteLike[]
-  readonly onSelectTag: (tagName: string) => void
-  readonly onRenameTag: (oldTag: string, newTag: string) => void
-  readonly onDeleteTag: (tagName: string) => void
+  readonly onSelectTag: (string) => void
+  readonly onRenameTag: (string, string) => void
+  readonly onDeleteTag: (string) => void
   readonly className?: string
 }
 
@@ -101,7 +101,7 @@ export function TagsPage({
   }, [scrollToTarget])
 
   const handleConfirmRename = React.useCallback((oldTag: string, newTag: string) => {
-    void onRenameTag(oldTag, newTag)
+    onRenameTag(oldTag, newTag)
     setRenameTarget(null)
 
     // Clear letter filter to ensure target letter section is rendered

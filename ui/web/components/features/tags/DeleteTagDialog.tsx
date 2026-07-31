@@ -16,8 +16,8 @@ interface DeleteTagDialogProps {
   readonly open: boolean
   readonly tagName: string | null
   readonly noteCount?: number
-  readonly onOpenChange: (open: boolean) => void
-  readonly onConfirmDelete: (tagName: string) => void
+  readonly onOpenChange: (boolean) => void
+  readonly onConfirmDelete: (string) => void
 }
 
 export function DeleteTagDialog({
