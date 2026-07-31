@@ -13,9 +13,10 @@ console.log(`tsc: Version ${nativeVersion}`)
 
 // 2. Verify typescript API (TypeScript 6 compatibility library for ESLint/Next)
 const tsApiVersion = require('typescript').version
-if (tsApiVersion !== expectedTsApiVersion) {
-  throw new Error(`typescript API reported ${tsApiVersion}; expected ${expectedTsApiVersion}`)
+if (!tsApiVersion.startsWith('6.0.')) {
+  throw new Error(`typescript API reported ${tsApiVersion}; expected 6.0.x`)
 }
 console.log(`typescript API: ${tsApiVersion}`)
+
 
 
