@@ -5,7 +5,7 @@ import { Search, Tag as TagIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { getTagsWithCounts, groupTagsAlphabetically } from "@core/services/tags"
-import { TagWithCount } from "@core/types/tags"
+import type { TagWithCount } from "@core/types/tags"
 import { cn } from "@ui/web/lib/utils"
 import { AlphabeticalGrid } from "./AlphabeticalGrid"
 import { TagCard } from "./TagCard"
@@ -13,15 +13,15 @@ import { RenameTagDialog } from "./RenameTagDialog"
 import { DeleteTagDialog } from "./DeleteTagDialog"
 
 interface NoteLike {
-  tags?: string[]
+  readonly tags?: string[]
 }
 
 interface TagsPageProps {
-  notes: NoteLike[]
-  onSelectTag: (tagName: string) => void
-  onRenameTag: (oldTag: string, newTag: string) => void
-  onDeleteTag: (tagName: string) => void
-  className?: string
+  readonly notes: NoteLike[]
+  readonly onSelectTag: (tagName: string) => void
+  readonly onRenameTag: (oldTag: string, newTag: string) => void
+  readonly onDeleteTag: (tagName: string) => void
+  readonly className?: string
 }
 
 export function TagsPage({
@@ -80,7 +80,7 @@ export function TagsPage({
   const scrollToTarget = React.useCallback((targetId: string) => {
     requestAnimationFrame(() => {
       setTimeout(() => {
-        const container = containerRef.current || document.getElementById("tags-page-container")
+        const container = containerRef.current ?? document.getElementById("tags-page-container")
         const target = document.getElementById(targetId)
         if (!container || !target) return
 
@@ -101,7 +101,7 @@ export function TagsPage({
   }, [scrollToTarget])
 
   const handleConfirmRename = React.useCallback((oldTag: string, newTag: string) => {
-    onRenameTag(oldTag, newTag)
+    void onRenameTag(oldTag, newTag)
     setRenameTarget(null)
 
     // Clear letter filter to ensure target letter section is rendered

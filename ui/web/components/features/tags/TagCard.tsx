@@ -13,12 +13,12 @@ import { TagWithCount } from "@core/types/tags"
 import { cn } from "@ui/web/lib/utils"
 
 interface TagCardProps {
-  tag: TagWithCount
-  onSelectTag: (tagName: string) => void
-  onRequestRename: (tag: TagWithCount) => void
-  onRequestDelete: (tag: TagWithCount) => void
-  isHighlighted?: boolean
-  className?: string
+  readonly tag: TagWithCount
+  readonly onSelectTag: (tagName: string) => void
+  readonly onRequestRename: (tag: TagWithCount) => void
+  readonly onRequestDelete: (tag: TagWithCount) => void
+  readonly isHighlighted?: boolean
+  readonly className?: string
 }
 
 export function TagCard({

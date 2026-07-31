@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 
 interface AlphabeticalGridProps {
-  availableLetters: string[]
-  selectedLetter: string | null
-  onSelectLetter: (letter: string | null) => void
-  onJumpToLetter?: (letter: string) => void
-  className?: string
+  readonly availableLetters: string[]
+  readonly selectedLetter: string | null
+  readonly onSelectLetter: (letter: string | null) => void
+  readonly onJumpToLetter?: (letter: string) => void
+  readonly className?: string
 }
 
 export function AlphabeticalGrid({

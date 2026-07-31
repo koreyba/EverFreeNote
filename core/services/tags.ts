@@ -4,35 +4,41 @@ interface NoteWithTags {
   tags?: string[]
 }
 
+type TagCountEntry = { canonical: string; count: number }
+
+function addNoteTagsToCounts(tags: string[], countsMap: Map<string, TagCountEntry>) {
+  const uniqueInNote = new Set<string>()
+
+  for (const rawTag of tags) {
+    if (!rawTag || typeof rawTag !== 'string') continue
+    const trimmed = rawTag.trim()
+    if (!trimmed) continue
+
+    const lower = trimmed.toLowerCase()
+    if (uniqueInNote.has(lower)) continue
+    uniqueInNote.add(lower)
+
+    const existing = countsMap.get(lower)
+    if (existing) {
+      existing.count += 1
+    } else {
+      countsMap.set(lower, { canonical: trimmed, count: 1 })
+    }
+  }
+}
+
 /**
  * Extracts unique tags from notes with usage counts, sorted alphabetically.
  */
 export function getTagsWithCounts<T extends NoteWithTags>(
   notes: T[],
-  locale: string = 'ru'
+  locale = 'ru'
 ): TagWithCount[] {
-  const countsMap = new Map<string, { canonical: string; count: number }>()
+  const countsMap = new Map<string, TagCountEntry>()
 
   for (const note of notes) {
     if (!note.tags || !Array.isArray(note.tags)) continue
-    
-    // Deduplicate within the same note to prevent double counting
-    const uniqueInNote = new Set<string>()
-    for (const rawTag of note.tags) {
-      if (!rawTag || typeof rawTag !== 'string') continue
-      const trimmed = rawTag.trim()
-      if (!trimmed) continue
-      const lower = trimmed.toLowerCase()
-      if (!uniqueInNote.has(lower)) {
-        uniqueInNote.add(lower)
-        const existing = countsMap.get(lower)
-        if (existing) {
-          existing.count += 1
-        } else {
-          countsMap.set(lower, { canonical: trimmed, count: 1 })
-        }
-      }
-    }
+    addNoteTagsToCounts(note.tags, countsMap)
   }
 
   const result: TagWithCount[] = Array.from(countsMap.values()).map(item => ({
@@ -51,7 +57,7 @@ export function getTagsWithCounts<T extends NoteWithTags>(
  */
 export function groupTagsAlphabetically(
   tags: TagWithCount[],
-  locale: string = 'ru'
+  locale = 'ru'
 ): AlphabeticalTagGroup[] {
   const groupsMap = new Map<string, TagWithCount[]>()
 
@@ -59,7 +65,7 @@ export function groupTagsAlphabetically(
     if (!tag.name) continue
     const firstChar = tag.name.trim().charAt(0).toUpperCase()
     // Test if character is English or Russian letter
-    const isAlpha = /^[\p{L}]$/u.test(firstChar)
+    const isAlpha = /^\p{L}$/u.test(firstChar)
     const letter = isAlpha ? firstChar : '#'
 
     const list = groupsMap.get(letter)
@@ -79,7 +85,7 @@ export function groupTagsAlphabetically(
 
   return keys.map(letter => ({
     letter,
-    tags: groupsMap.get(letter) || [],
+    tags: groupsMap.get(letter) ?? [],
   }))
 }
 
@@ -112,11 +118,9 @@ export function renameTagInNotes<T extends NoteWithTags>(
           seen.add(repLower)
           newTags.push(replacementClean)
         }
-      } else {
-        if (!seen.has(lower)) {
-          seen.add(lower)
-          newTags.push(tag)
-        }
+      } else if (!seen.has(lower)) {
+        seen.add(lower)
+        newTags.push(tag)
       }
     }
 

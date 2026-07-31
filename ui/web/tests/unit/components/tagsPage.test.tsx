@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { TagsPage } from '@/components/features/tags/TagsPage'
 
 describe('TagsPage Component', () => {
@@ -68,7 +68,7 @@ describe('TagsPage Component', () => {
   it('keeps the newly selected letter active when switching letters', () => {
     render(
       <TagsPage
-        notes={[{ id: '1', tags: ['alpha', 'beta'] }]}
+        notes={[{ tags: ['alpha', 'beta'] }]}
         onSelectTag={mockOnSelectTag}
         onRenameTag={mockOnRenameTag}
         onDeleteTag={mockOnDeleteTag}
@@ -87,7 +87,7 @@ describe('TagsPage Component', () => {
   it('warns before renaming a tag into an existing tag', () => {
     render(
       <TagsPage
-        notes={[{ id: '1', tags: ['react', 'javascript'] }]}
+        notes={[{ tags: ['react', 'javascript'] }]}
         onSelectTag={mockOnSelectTag}
         onRenameTag={mockOnRenameTag}
         onDeleteTag={mockOnDeleteTag}
@@ -109,7 +109,7 @@ describe('TagsPage Component', () => {
   it('confirms deleting a tag through the delete dialog', () => {
     render(
       <TagsPage
-        notes={[{ id: '1', tags: ['react'] }]}
+        notes={[{ tags: ['react'] }]}
         onSelectTag={mockOnSelectTag}
         onRenameTag={mockOnRenameTag}
         onDeleteTag={mockOnDeleteTag}
@@ -121,6 +121,52 @@ describe('TagsPage Component', () => {
     fireEvent.click(screen.getByTestId('confirm-delete-tag-button'))
 
     expect(mockOnDeleteTag).toHaveBeenCalledWith('react')
+  })
+
+  it('clears the rename highlight after its timeout and cleans up on unmount', () => {
+    jest.useFakeTimers()
+    try {
+      const { rerender, unmount } = render(
+        <TagsPage
+          notes={[{ tags: ['alpha'] }]}
+          onSelectTag={mockOnSelectTag}
+          onRenameTag={mockOnRenameTag}
+          onDeleteTag={mockOnDeleteTag}
+        />
+      )
+
+      fireEvent.click(screen.getByTestId('tag-menu-trigger-alpha'))
+      fireEvent.click(screen.getByTestId('rename-action-alpha'))
+      fireEvent.change(screen.getByTestId('rename-tag-input'), { target: { value: 'beta' } })
+      fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
+
+      rerender(
+        <TagsPage
+          notes={[{ tags: ['beta'] }]}
+          onSelectTag={mockOnSelectTag}
+          onRenameTag={mockOnRenameTag}
+          onDeleteTag={mockOnDeleteTag}
+        />
+      )
+      expect(screen.getByText('Updated')).toBeTruthy()
+
+      act(() => {
+        jest.advanceTimersByTime(2500)
+      })
+      expect(screen.queryByText('Updated')).toBeNull()
+
+      fireEvent.click(screen.getByTestId('tag-menu-trigger-beta'))
+      fireEvent.click(screen.getByTestId('rename-action-beta'))
+      fireEvent.change(screen.getByTestId('rename-tag-input'), { target: { value: 'gamma' } })
+      fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
+      unmount()
+
+      act(() => {
+        jest.advanceTimersByTime(2500)
+      })
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it('shows an empty state when there are no tags', () => {

@@ -13,11 +13,11 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
 interface RenameTagDialogProps {
-  open: boolean
-  tagName: string | null
-  existingTagNames: string[]
-  onOpenChange: (open: boolean) => void
-  onConfirmRename: (oldTag: string, newTag: string) => void
+  readonly open: boolean
+  readonly tagName: string | null
+  readonly existingTagNames: string[]
+  readonly onOpenChange: (open: boolean) => void
+  readonly onConfirmRename: (oldTag: string, newTag: string) => void
 }
 
 export function RenameTagDialog({
@@ -35,7 +35,7 @@ export function RenameTagDialog({
       setNewTagName(tagName)
     }
     setMergeWarningVisible(false)
-  }, [tagName])
+  }, [open, tagName])
 
   const trimmedNewTagName = newTagName.trim()
   const normalizedCurrentTag = tagName?.trim().toLowerCase()
@@ -75,6 +75,7 @@ export function RenameTagDialog({
                 setMergeWarningVisible(false)
               }}
               placeholder="Enter new tag name"
+              aria-label="New tag name"
               autoFocus
               data-testid="rename-tag-input"
             />

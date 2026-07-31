@@ -13,11 +13,11 @@ import {
 } from "@/components/ui/alert-dialog"
 
 interface DeleteTagDialogProps {
-  open: boolean
-  tagName: string | null
-  noteCount?: number
-  onOpenChange: (open: boolean) => void
-  onConfirmDelete: (tagName: string) => void
+  readonly open: boolean
+  readonly tagName: string | null
+  readonly noteCount?: number
+  readonly onOpenChange: (open: boolean) => void
+  readonly onConfirmDelete: (tagName: string) => void
 }
 
 export function DeleteTagDialog({

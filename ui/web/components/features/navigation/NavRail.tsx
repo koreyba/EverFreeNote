@@ -8,12 +8,12 @@ import { cn } from "@ui/web/lib/utils"
 export type MainNavView = "notes" | "tags" | "settings"
 
 interface NavRailProps {
-  activeView: MainNavView
-  onSelectView: (view: MainNavView) => void
-  onOpenSearch: () => void
-  onOpenSettings: () => void
-  className?: string
-  "data-testid"?: string
+  readonly activeView: MainNavView
+  readonly onSelectView: (view: MainNavView) => void
+  readonly onOpenSearch: () => void
+  readonly onOpenSettings: () => void
+  readonly className?: string
+  readonly "data-testid"?: string
 }
 
 const STORAGE_KEY = "everfreenote_nav_rail_expanded"
@@ -94,7 +94,7 @@ export function NavRail({
       {/* Desktop Navigation Rail (Visible on md and larger) */}
       <nav
         aria-label="Main Navigation"
-        data-testid={dataTestId || "desktop-nav-rail"}
+        data-testid={dataTestId ?? "desktop-nav-rail"}
         className={cn(
           "hidden md:flex flex-col justify-between border-r border-sidebar-border bg-sidebar-background transition-all duration-300 z-20 shrink-0 h-screen sticky top-0 py-3",
           isExpanded ? "w-48 px-3" : "w-16 items-center px-2",
