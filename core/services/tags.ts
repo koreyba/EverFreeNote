@@ -178,8 +178,7 @@ export function cleanUnusedOrEmptyTagsInNotes<T extends NoteWithTags>(
         continue
       }
       const lower = trimmed.toLowerCase()
-      if (seen.has(lower)) {
-      } else {
+      if (!seen.has(lower)) {
         seen.add(lower)
         cleanedTags.push(trimmed)
       }
