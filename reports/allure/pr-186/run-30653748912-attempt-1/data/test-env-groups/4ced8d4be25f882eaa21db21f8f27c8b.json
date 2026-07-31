@@ -1,0 +1,1 @@
+{"id":"4ced8d4be25f882eaa21db21f8f27c8b","fullName":"everfreenote:cypress/component/features/notes/BulkDeleteDialog.cy.tsx#BulkDeleteDialog resets confirmation input when dialog closes and opens again","name":"resets confirmation input when dialog closes and opens again","status":"passed","testResultsByEnv":{"default":"dd10f84b0ca539b5ada8cc0c5c4d92d8"}}
