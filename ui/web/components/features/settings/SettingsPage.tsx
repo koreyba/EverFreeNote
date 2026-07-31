@@ -22,6 +22,8 @@ import {
   sanitizeSettingsReturnPath,
 } from "@ui/web/lib/settingsNavigationState"
 
+import { NavRail, MainNavView } from "@/components/features/navigation/NavRail"
+
 type SettingsTabId = "wordpress" | "api-keys" | "ai-index" | "import" | "export" | "account"
 
 type SettingsTabDefinition = {
@@ -165,6 +167,18 @@ export function SettingsPage() {
     }, 700)
   }, [updateMobileTabsIndicator])
 
+  const handleNavSelectView = React.useCallback((view: MainNavView) => {
+    if (view === "notes") {
+      router.push("/?view=notes")
+    } else if (view === "tags") {
+      router.push("/?view=tags")
+    }
+  }, [router])
+
+  const handleNavOpenSearch = React.useCallback(() => {
+    router.push("/?search=open")
+  }, [router])
+
   if (loading || !user) {
     return (
       <main className="flex min-h-[100svh] min-h-[100dvh] items-center justify-center bg-muted/20">
@@ -174,7 +188,14 @@ export function SettingsPage() {
   }
 
   return (
-    <main className="min-h-[100svh] min-h-[100dvh] bg-muted/20 px-3 py-3 sm:px-4 sm:py-5 md:px-6 md:py-6">
+    <div className="flex h-screen overflow-hidden bg-background">
+      <NavRail
+        activeView="settings"
+        onSelectView={handleNavSelectView}
+        onOpenSearch={handleNavOpenSearch}
+        onOpenSettings={() => {}}
+      />
+      <main className="flex-1 min-h-[100svh] min-h-[100dvh] bg-muted/20 px-3 py-3 sm:px-4 sm:py-5 md:px-6 md:py-6 overflow-y-auto pb-24 md:pb-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 md:gap-4">
         <div className="rounded-3xl border border-border/40 bg-background/95 shadow-sm">
           <div className="border-b border-border/40 px-4 py-4 sm:px-5 md:px-6">
@@ -355,6 +376,7 @@ export function SettingsPage() {
         </div>
       </div>
     </main>
+  </div>
   )
 }
 

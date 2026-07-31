@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -16,9 +16,11 @@ import { useNoteBulkActions } from './useNoteBulkActions'
 import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
+import { renameTagInNotes, deleteTagFromNotes } from '@core/services/tags'
 import { type NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
 import { clearActiveSettingsNoteReturnPath } from '@ui/web/lib/aiIndexNavigationState'
 import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
+
 
 export type EditFormState = {
   title: string
@@ -424,6 +426,96 @@ export function useNoteAppController() {
     setSelectedNote,
   ])
 
+  // -- Main Navigation View --
+  const [activeMainView, setActiveMainView] = useState<'notes' | 'tags'>('notes')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const viewParam = params.get('view')
+    if (viewParam === 'tags') {
+      setActiveMainView('tags')
+    } else if (viewParam === 'notes') {
+      setActiveMainView('notes')
+    }
+    if (params.get('search') === 'open') {
+      setIsSearchPanelOpen(true)
+    }
+  }, [])
+
+  // -- Batch Tag Mutations --
+  const handleRenameTag = useCallback(async (oldTag: string, newTag: string) => {
+    const updatedNotes = renameTagInNotes(notes, oldTag, newTag)
+    const changedNotes = updatedNotes.filter((note, i) => note !== notes[i])
+
+    if (changedNotes.length === 0) return
+
+    try {
+      await Promise.all(
+        changedNotes.map((note) =>
+          updateNoteMutation.mutateAsync({
+            id: note.id,
+            title: note.title,
+            description: note.description,
+            tags: note.tags,
+          })
+        )
+      )
+      toast.success(`Tag "${oldTag}" renamed to "${newTag}"`)
+    } catch (error) {
+      toast.error(`Failed to rename tag: ${(error as Error).message}`)
+    }
+  }, [notes, updateNoteMutation])
+
+  const handleDeleteTag = useCallback(async (targetTag: string) => {
+    const updatedNotes = deleteTagFromNotes(notes, targetTag)
+    const changedNotes = updatedNotes.filter((note, i) => note !== notes[i])
+
+    if (changedNotes.length === 0) return
+
+    try {
+      await Promise.all(
+        changedNotes.map((note) =>
+          updateNoteMutation.mutateAsync({
+            id: note.id,
+            title: note.title,
+            description: note.description,
+            tags: note.tags,
+          })
+        )
+      )
+      toast.success(`Tag "${targetTag}" deleted`)
+    } catch (error) {
+      toast.error(`Failed to delete tag: ${(error as Error).message}`)
+    }
+  }, [notes, updateNoteMutation])
+
+  const handleCleanTags = useCallback(async () => {
+    const updatedNotes = cleanUnusedOrEmptyTagsInNotes(notes)
+    const changedNotes = updatedNotes.filter((note, i) => note !== notes[i])
+
+    if (changedNotes.length === 0) {
+      toast.info("No empty or duplicate tags found to clean")
+      return
+    }
+
+    try {
+      await Promise.all(
+        changedNotes.map((note) =>
+          updateNoteMutation.mutateAsync({
+            id: note.id,
+            title: note.title,
+            description: note.description,
+            tags: note.tags,
+          })
+        )
+      )
+      toast.success("Cleaned up empty and duplicate tags")
+    } catch (error) {
+      toast.error(`Failed to clean tags: ${(error as Error).message}`)
+    }
+  }, [notes, updateNoteMutation])
+
   return {
     registerNoteEditorRef,
     // State
@@ -446,8 +538,15 @@ export function useNoteAppController() {
     bulkDeleting,
     deleteAccountLoading,
     isOffline,
+    activeMainView,
+    setActiveMainView,
+    handleRenameTag,
+    handleDeleteTag,
+
+
 
     // Data
+
     notes,
     notesQuery,
     ftsSearchResult,
