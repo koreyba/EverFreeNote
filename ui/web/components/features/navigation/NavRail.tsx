@@ -26,14 +26,16 @@ export function NavRail({
   className,
   "data-testid": dataTestId,
 }: NavRailProps) {
-  const [isExpanded, setIsExpanded] = React.useState(false)
-
-  React.useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY)
-    if (saved !== null) {
-      setIsExpanded(saved === "true")
+  // Read the persisted state during the first render so navigation opens without a collapsed flash.
+  const [isExpanded, setIsExpanded] = React.useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved !== null) {
+        return saved === "true"
+      }
     }
-  }, [])
+    return false
+  })
 
   const handleToggleExpand = React.useCallback(() => {
     setIsExpanded((prev) => {
