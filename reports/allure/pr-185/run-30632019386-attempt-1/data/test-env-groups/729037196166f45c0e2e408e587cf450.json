@@ -1,1 +1,0 @@
-{"id":"729037196166f45c0e2e408e587cf450","fullName":"everfreenote:ui/web/tests/unit/hooks/useTagSuggestions.test.ts#useTagSuggestions returns empty array when query length is less than default minChars (1)","name":"returns empty array when query length is less than default minChars (1)","status":"passed","testResultsByEnv":{"default":"27a301aed6c97c10ea94e9c4684dc49d"}}
