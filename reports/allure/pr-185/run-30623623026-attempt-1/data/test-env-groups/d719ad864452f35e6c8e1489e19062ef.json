@@ -1,0 +1,1 @@
+{"id":"d719ad864452f35e6c8e1489e19062ef","fullName":"everfreenote-mobile:tests/unit/navigationAdapter.test.ts#navigationAdapter logs error and re-throws when router.push throws","name":"logs error and re-throws when router.push throws","status":"passed","testResultsByEnv":{"default":"5a86e2b1801af29f1d153a1b09adba41"}}

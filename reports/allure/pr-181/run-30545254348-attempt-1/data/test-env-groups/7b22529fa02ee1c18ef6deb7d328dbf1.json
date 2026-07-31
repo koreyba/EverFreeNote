@@ -1,1 +1,0 @@
-{"id":"7b22529fa02ee1c18ef6deb7d328dbf1","fullName":"everfreenote:ui/web/tests/unit/components/EditorMenuBar.test.tsx#EditorMenuBar History actions disables redo button when historyState.canRedo is false","name":"disables redo button when historyState.canRedo is false","status":"passed","testResultsByEnv":{"default":"bd886411c7ae9631a75c42e60c40ec88"}}
