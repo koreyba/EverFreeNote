@@ -1,1 +1,0 @@
-{"id":"ac46a927fa58773a3c8cca16f0cecffb","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService getLocalNotes and getLocalNoteById getLocalNoteById returns null when note is not found","name":"getLocalNoteById returns null when note is not found","status":"passed","testResultsByEnv":{"default":"c7a29f91bdb6c4e6aa076df1dbb32b05"}}

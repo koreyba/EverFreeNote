@@ -5,6 +5,40 @@
     "suites": [
       "core-unit",
       "core-integration",
+      "web-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/pr-185/run-30632758962-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-185/run-30632758962-attempt-1/",
+    "runId": "30632758962",
+    "runAttempt": "1",
+    "prNumber": "185",
+    "ref": "upgrade-to-latest-typescript",
+    "sha": "b6be38377a44ed7710b9a8989863aa036bd1b460",
+    "outcome": "failure",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #185",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-31T13:13:20.228Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
       "web-unit"
     ],
     "suiteLabels": [
@@ -655,42 +689,6 @@
     "scopeLabel": "PR #183",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-30T16:24:04.448Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component"
-    ],
-    "path": "reports/allure/pr-182/run-30560131015-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-182/run-30560131015-attempt-1/",
-    "runId": "30560131015",
-    "runAttempt": "1",
-    "prNumber": "182",
-    "ref": "codex/sonar-triage-2026-07-30",
-    "sha": "cb98374ede90b2b454ceef32584557411b1f2efd",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #182",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-30T16:22:40.313Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
