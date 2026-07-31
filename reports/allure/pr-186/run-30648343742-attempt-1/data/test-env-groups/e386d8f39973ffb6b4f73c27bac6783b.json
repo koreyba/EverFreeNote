@@ -1,0 +1,1 @@
+{"id":"e386d8f39973ffb6b4f73c27bac6783b","fullName":"everfreenote:cypress/component/features/notes/SearchResultsPanel.cy.tsx#SearchResultsPanel syncs the current query to FTS when AI mode is turned off","name":"syncs the current query to FTS when AI mode is turned off","status":"passed","testResultsByEnv":{"default":"753632cc2ac5f0a5fc79ea70d9e2534e"}}

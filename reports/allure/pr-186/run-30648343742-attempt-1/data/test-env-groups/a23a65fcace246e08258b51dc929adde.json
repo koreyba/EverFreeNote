@@ -1,0 +1,1 @@
+{"id":"a23a65fcace246e08258b51dc929adde","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter upsertQueue does not call upsertQueueItem for empty array","name":"does not call upsertQueueItem for empty array","status":"passed","testResultsByEnv":{"default":"ac98eb43d9e1f2f9a6a2fc34fc1a4ac7"}}

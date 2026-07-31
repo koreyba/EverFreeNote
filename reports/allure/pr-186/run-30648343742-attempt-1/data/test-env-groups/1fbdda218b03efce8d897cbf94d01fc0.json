@@ -1,0 +1,1 @@
+{"id":"1fbdda218b03efce8d897cbf94d01fc0","fullName":"everfreenote-mobile:tests/component/tagInput.test.tsx#TagInput parses draft text and calls onChangeTags on blur","name":"parses draft text and calls onChangeTags on blur","status":"passed","testResultsByEnv":{"default":"083e575d5cb63baad0f68e24c2e49df1"}}
