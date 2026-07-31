@@ -206,5 +206,11 @@
     "supabase": "^2.76.3",
     "tailwindcss": "^4.1.14",
     "typescript": "5.9.3"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "sharp@0.34.5": true,
+    "cypress@15.19.0": true,
+    "unrs-resolver@1.12.2": true
   }
 }
