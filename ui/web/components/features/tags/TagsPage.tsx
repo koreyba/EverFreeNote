@@ -5,7 +5,7 @@ import { Search, Tag as TagIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { getTagsWithCounts, groupTagsAlphabetically } from "@core/services/tags"
-import type { TagWithCount } from "@core/types/tags"
+type TagWithCount = { name: string; count: number }
 import { cn } from "@ui/web/lib/utils"
 import { AlphabeticalGrid } from "./AlphabeticalGrid"
 import { TagCard } from "./TagCard"
@@ -18,9 +18,9 @@ interface NoteLike {
 
 interface TagsPageProps {
   readonly notes: NoteLike[]
-  readonly onSelectTag: (string) => void
-  readonly onRenameTag: (string, string) => void
-  readonly onDeleteTag: (string) => void
+  readonly onSelectTag: (_tagName: string) => void
+  readonly onRenameTag: (_oldTag: string, _newTag: string) => void
+  readonly onDeleteTag: (_tagName: string) => void
   readonly className?: string
 }
 

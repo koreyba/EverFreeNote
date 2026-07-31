@@ -6,6 +6,10 @@ interface NoteWithTags {
 
 type TagCountEntry = { canonical: string; count: number }
 
+function tagsAreEqual(left: string[], right: string[]) {
+  return left.length === right.length && left.every((tag, index) => tag === right[index])
+}
+
 function addNoteTagsToCounts(tags: string[], countsMap: Map<string, TagCountEntry>) {
   const uniqueInNote = new Set<string>()
 
@@ -122,8 +126,7 @@ export function renameTagInNotes<T extends NoteWithTags>(
       }
     }
 
-    const changed = newTags.length !== note.tags.length || newTags.some((tag, index) => tag !== note.tags[index])
-    if (!changed) return note
+    if (tagsAreEqual(note.tags, newTags)) return note
     return { ...note, tags: newTags }
   })
 }
@@ -141,17 +144,15 @@ export function deleteTagFromNotes<T extends NoteWithTags>(
   return notes.map(note => {
     if (!note.tags || !Array.isArray(note.tags)) return note
 
-    let modified = false
     const newTags = note.tags.filter(tag => {
       const lower = tag.trim().toLowerCase()
       if (lower === targetLower) {
-        modified = true
         return false
       }
       return true
     })
 
-    if (!modified) return note
+    if (tagsAreEqual(note.tags, newTags)) return note
     return { ...note, tags: newTags }
   })
 }
@@ -165,30 +166,26 @@ export function cleanUnusedOrEmptyTagsInNotes<T extends NoteWithTags>(
   return notes.map(note => {
     if (!note.tags || !Array.isArray(note.tags)) return note
 
-    let modified = false
     const seen = new Set<string>()
     const cleanedTags: string[] = []
 
     for (const tag of note.tags) {
       if (!tag || typeof tag !== 'string') {
-        modified = true
         continue
       }
       const trimmed = tag.trim()
       if (!trimmed) {
-        modified = true
         continue
       }
       const lower = trimmed.toLowerCase()
       if (seen.has(lower)) {
-        modified = true
       } else {
         seen.add(lower)
         cleanedTags.push(trimmed)
       }
     }
 
-    if (!modified) return note
+    if (tagsAreEqual(note.tags, cleanedTags)) return note
     return { ...note, tags: cleanedTags }
   })
 }
