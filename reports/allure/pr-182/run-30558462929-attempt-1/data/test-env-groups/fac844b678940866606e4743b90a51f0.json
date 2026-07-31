@@ -1,1 +1,0 @@
-{"id":"fac844b678940866606e4743b90a51f0","fullName":"everfreenote-mobile:tests/unit/configAdapter.test.ts#config adapter getSupabaseConfig returns config from Constants.expoConfig.extra when present","name":"returns config from Constants.expoConfig.extra when present","status":"passed","testResultsByEnv":{"default":"b62c43a11c387dbb5de832e2140e88e2"}}

@@ -1,0 +1,1 @@
+{"id":"6d4dd40ddb2501f200e07582a8fd2c9f","fullName":"everfreenote:ui/web/tests/unit/components/mainPage.test.tsx#App Component (app/page.tsx) renders AuthShell when loading is false and user is null","name":"renders AuthShell when loading is false and user is null","status":"passed","testResultsByEnv":{"default":"90ed0c7eeb48ec4b9bdd19c2a80b1f24"}}
