@@ -8,9 +8,11 @@ export const navigationAdapter: NavigationAdapter = {
   navigate(url: string, options?: { replace?: boolean }): void {
     try {
       if (options?.replace) {
-        ;(router.replace as (url: string) => void)(url)
+        const replaceRoute = router.replace as (url: string) => void
+        replaceRoute(url)
       } else {
-        ;(router.push as (url: string) => void)(url)
+        const pushRoute = router.push as (url: string) => void
+        pushRoute(url)
       }
     } catch (error) {
       console.error('[Navigation] Error navigating to:', url, error)
