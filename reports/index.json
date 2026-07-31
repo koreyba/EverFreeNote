@@ -16,6 +16,42 @@
       "Mobile Unit",
       "Web Component"
     ],
+    "path": "reports/allure/pr-185/run-30626564912-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-185/run-30626564912-attempt-1/",
+    "runId": "30626564912",
+    "runAttempt": "1",
+    "prNumber": "185",
+    "ref": "upgrade-to-latest-typescript",
+    "sha": "3535a002fd4e6d9f85593617f9fdcbd21805ebf9",
+    "outcome": "failure",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #185",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-31T11:28:55.420Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
     "path": "reports/allure/pr-185/run-30623623026-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-185/run-30623623026-attempt-1/",
     "runId": "30623623026",
@@ -649,34 +685,6 @@
     "scopeLabel": "PR #181",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-30T13:35:05.397Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-181/run-30546083989-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-181/run-30546083989-attempt-1/",
-    "runId": "30546083989",
-    "runAttempt": "1",
-    "prNumber": "181",
-    "ref": "fix/sonar-security-grade-a",
-    "sha": "edc8c126a80a6bf139edd03616186f29b970f5db",
-    "outcome": "success",
-    "previewUrl": "https://fb39526f.everfreenote.pages.dev",
-    "e2eRef": "master",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #181",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-30T13:21:45.568Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"

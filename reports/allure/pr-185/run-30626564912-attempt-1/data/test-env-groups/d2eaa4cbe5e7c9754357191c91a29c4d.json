@@ -1,0 +1,1 @@
+{"id":"d2eaa4cbe5e7c9754357191c91a29c4d","fullName":"everfreenote-mobile:tests/unit/featureFlags.test.ts#featureFlags disables testAuth when variant is prod even if EXPO_PUBLIC_ENABLE_TEST_AUTH is true","name":"disables testAuth when variant is prod even if EXPO_PUBLIC_ENABLE_TEST_AUTH is true","status":"passed","testResultsByEnv":{"default":"7e45938ae4f5f6f025b7e6416f9f703e"}}
