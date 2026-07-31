@@ -22,6 +22,7 @@ describe('Mobile Layout Adaptation', () => {
       setActiveMainView: cy.stub(),
       handleRenameTag: cy.stub().resolves(),
       handleDeleteTag: cy.stub().resolves(),
+      handleCleanTags: cy.stub().resolves(),
       user: mockUser,
       loading: false,
       notes: [],
