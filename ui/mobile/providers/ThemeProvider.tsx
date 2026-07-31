@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY)
-        const saved = raw === 'light' || raw === 'dark' || raw === 'system' ? (raw as ThemeMode) : null
+        const saved = raw === 'light' || raw === 'dark' || raw === 'system' ? raw : null
         if (!cancelled && saved) {
           setModeState(saved)
         }

@@ -89,6 +89,7 @@ export default [
       '.expo/**',
       'allure-results/**',
       'allure-report/**',
+      'android/build/**',
       'android/app/build/**',
       'android/app/src/main/assets/web-editor/**',
       'ios/**/WebEditor/**',

@@ -7,7 +7,6 @@
       "../../../extensions",
       "../../../node_modules/@types"
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": ["../../../*"],
       "@ui/web/*": ["../*"],

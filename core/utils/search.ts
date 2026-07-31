@@ -72,9 +72,15 @@ export type SearchResult = {
 
 export type NotesTable = Tables<'notes'>
 
+export const normalizeSearchNote = (note: NotesTable): NotesTable => ({
+  ...note,
+  tags: note.tags ?? [],
+  updated_at: note.updated_at ?? note.created_at ?? '',
+})
+
 export const mapNotesToFtsResult = (notes: NotesTable[], userId: string): FtsSearchResult[] =>
   notes.map((note) => ({
-    ...note,
+    ...normalizeSearchNote(note),
     user_id: userId,
     rank: 0,
     headline: note.description ? note.description.substring(0, 200) : '',

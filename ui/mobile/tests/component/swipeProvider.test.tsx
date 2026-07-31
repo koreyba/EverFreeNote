@@ -16,7 +16,7 @@ function makeMockRef(): SwipeableMethods {
         openLeft: jest.fn(),
         openRight: jest.fn(),
         reset: jest.fn(),
-    } as unknown as SwipeableMethods
+    }
 }
 
 /** Convenience wrapper that renders children inside SwipeProvider */

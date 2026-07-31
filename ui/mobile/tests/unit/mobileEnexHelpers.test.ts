@@ -204,7 +204,7 @@ describe('enexMobile helpers', () => {
           created_at: '2026-03-13T12:00:00.000Z',
           updated_at: '2026-03-14T08:30:00.000Z',
           user_id: 'user-1',
-        } as unknown as Parameters<typeof toEnexExportNotes>[0][number],
+        },
       ])
 
       expect(exportNotes).toEqual([

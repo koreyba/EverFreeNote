@@ -60,7 +60,7 @@ export function useCreateNote() {
         await manager.enqueue({
           noteId: id,
           operation: 'create',
-          payload: { id, ...note, user_id: user.id } as Partial<Note>,
+          payload: { id, ...note, user_id: user.id },
           clientUpdatedAt: new Date().toISOString()
         })
 
@@ -75,7 +75,7 @@ export function useCreateNote() {
           is_deleted: 0,
         }])
 
-        return { id, ...note } as Note
+        return { id, ...note }
       }
     },
     onSuccess: () => {
@@ -136,10 +136,10 @@ export function useUpdateNote() {
         await manager.enqueue({
           noteId: id,
           operation: 'update',
-          payload: mergedNote as Partial<Note>,
+          payload: mergedNote,
           clientUpdatedAt: new Date().toISOString()
         })
-        return { id, ...mergedNote } as Note
+        return { id, ...mergedNote }
       }
     },
     onMutate: ({ id, updates }) => {

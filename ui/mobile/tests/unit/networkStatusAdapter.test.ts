@@ -18,7 +18,7 @@ describe('MobileNetworkStatusProvider', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    mockNetInfoFetch.mockResolvedValue({ isConnected: true } as NetInfoState)
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true })
     mockAddEventListener.mockReturnValue(jest.fn())
   })
 
@@ -46,7 +46,7 @@ describe('MobileNetworkStatusProvider', () => {
   })
 
   it('handles null or undefined isConnected property from NetInfo', async () => {
-    mockNetInfoFetch.mockResolvedValue({ isConnected: null } as unknown as NetInfoState)
+    mockNetInfoFetch.mockResolvedValue({ isConnected: null })
     const provider = new MobileNetworkStatusProvider()
     provider.initialize()
 

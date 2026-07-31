@@ -5,6 +5,7 @@ import {
   detectLanguage,
   ftsLanguage,
   mapNotesToFtsResult,
+  normalizeSearchNote,
   type LanguageCode,
   type SearchOptions,
   type SearchResult,
@@ -59,7 +60,7 @@ export class SearchService {
     if (rows.length === 0) return null
 
     const normalizedRows: FtsSearchResult[] = rows.map((row) => ({
-      ...(row as unknown as Tables<'notes'>),
+      ...normalizeSearchNote(row as unknown as Tables<'notes'>),
       user_id: userId,
       description:
         (row as unknown as { description?: string | null }).description ??
