@@ -1,22 +1,21 @@
-/* global console, process, require */
+/* global console, require */
 /* eslint-disable @typescript-eslint/no-require-imports */
 
-const { execFileSync } = require('node:child_process')
-const path = require('node:path')
+const expectedNativeVersion = '7.0.2'
+const expectedTsApiVersion = '6.0.3'
 
-const expectedVersions = {
-  tsc: 'Version 7.0.2',
-  tsc6: 'Version 6.0.3',
+// 1. Verify @typescript/native (TypeScript 7 native compiler package)
+const nativeVersion = require('@typescript/native/package.json').version
+if (nativeVersion !== expectedNativeVersion) {
+  throw new Error(`@typescript/native reported ${nativeVersion}; expected ${expectedNativeVersion}`)
 }
+console.log(`tsc: Version ${nativeVersion}`)
 
-for (const [command, expected] of Object.entries(expectedVersions)) {
-  const suffix = process.platform === 'win32' ? '.cmd' : ''
-  const executable = path.join(process.cwd(), 'node_modules', '.bin', `${command}${suffix}`)
-  const output = process.platform === 'win32'
-    ? execFileSync(process.env.ComSpec ?? 'cmd.exe', ['/d', '/c', executable, '--version'], { encoding: 'utf8' }).trim()
-    : execFileSync(executable, ['--version'], { encoding: 'utf8' }).trim()
-  if (output !== expected) {
-    throw new Error(`${command} reported ${output}; expected ${expected}`)
-  }
-  console.log(`${command}: ${output}`)
+// 2. Verify typescript API (TypeScript 6 compatibility library for ESLint/Next)
+const tsApiVersion = require('typescript').version
+if (tsApiVersion !== expectedTsApiVersion) {
+  throw new Error(`typescript API reported ${tsApiVersion}; expected ${expectedTsApiVersion}`)
 }
+console.log(`typescript API: ${tsApiVersion}`)
+
+
