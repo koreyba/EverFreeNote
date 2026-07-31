@@ -183,7 +183,7 @@ const createLegacyAiGroup = (noteId: string): RagNoteGroup =>
         similarity: 0.88,
       },
     ],
-  } as RagNoteGroup)
+  })
 
 describe('SearchResultsList', () => {
   beforeEach(() => {

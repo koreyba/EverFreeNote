@@ -3,7 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react-native'
 import {
   SettingsTabBar,
   type SettingsTabDefinition,
-  type SettingsTabKey,
 } from '@ui/mobile/components/settings/SettingsTabBar'
 
 jest.mock('@ui/mobile/providers', () => ({
@@ -87,7 +86,7 @@ describe('SettingsTabBar', () => {
     fireEvent.press(screen.getByText('Export'))
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange).toHaveBeenCalledWith('export' as SettingsTabKey)
+    expect(onChange).toHaveBeenCalledWith('export')
   })
 
   it('triggers onLayout handler and handles scrolling when layout x is recorded', () => {

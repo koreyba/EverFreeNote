@@ -33,7 +33,7 @@ describe('useOfflineSync', () => {
       if (type === 'change') {
         appStateListener = listener as (status: AppStateStatus) => void
       }
-      return { remove: mockRemoveSubscription } as ReturnType<typeof AppState.addEventListener>
+      return { remove: mockRemoveSubscription }
     })
   })
 

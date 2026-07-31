@@ -93,7 +93,7 @@ const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>
 mockAsyncStorage.setItem.mockResolvedValue(undefined)
 mockAsyncStorage.getItem.mockResolvedValue(null)
 
-globalThis.fetch = jest.fn() as unknown as typeof fetch
+globalThis.fetch = jest.fn()
 
 jest.mock('isomorphic-dompurify', () => ({
   __esModule: true,

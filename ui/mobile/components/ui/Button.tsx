@@ -112,7 +112,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variantStyle.text.color as string}
+          color={variantStyle.text.color}
         />
       ) : typeof children === 'string' ? (
         <Text

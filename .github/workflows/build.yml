@@ -50,6 +50,11 @@ jobs:
       - name: Install mobile dependencies
         run: npm --prefix ui/mobile ci --ignore-scripts
 
+      - name: Verify TypeScript toolchains
+        run: |
+          npm run type-check:versions
+          npm --prefix ui/mobile run type-check:versions
+
       - name: Setup Deno
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
         with:

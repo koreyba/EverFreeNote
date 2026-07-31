@@ -50,7 +50,7 @@ async function searchOnline({ userId, trimmed, tag, pageParam, searchService, no
             limit: SEARCH_CONFIG.PAGE_SIZE,
             offset,
         })
-        const results = result.results as SearchResultItem[]
+        const results = result.results
         const total = result.total
         const hasMore = offset + results.length < total
         return {
@@ -68,7 +68,7 @@ async function searchOnline({ userId, trimmed, tag, pageParam, searchService, no
         pageSize: SEARCH_CONFIG.PAGE_SIZE,
     })
     return {
-        results: result.notes as SearchResultItem[],
+        results: result.notes,
         total: result.totalCount,
         hasMore: result.hasMore,
         nextCursor: result.hasMore ? pageParam + 1 : undefined,
@@ -86,7 +86,7 @@ async function searchOffline({ userId, trimmed, tag, pageParam }: SearchQueryCon
         })
         const hasMore = offset + notes.length < total
         return {
-            results: notes as SearchResultItem[],
+            results: notes,
             total,
             hasMore,
             nextCursor: hasMore ? pageParam + 1 : undefined,
@@ -101,7 +101,7 @@ async function searchOffline({ userId, trimmed, tag, pageParam }: SearchQueryCon
     })
     const hasMore = results.length === SEARCH_CONFIG.PAGE_SIZE
     return {
-        results: results as SearchResultItem[],
+        results,
         total: offset + results.length,
         hasMore,
         nextCursor: hasMore ? pageParam + 1 : undefined,
