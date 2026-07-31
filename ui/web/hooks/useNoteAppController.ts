@@ -16,7 +16,11 @@ import { useNoteBulkActions } from './useNoteBulkActions'
 import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
-import { renameTagInNotes, deleteTagFromNotes } from '@core/services/tags'
+import {
+  renameTagInNotes,
+  deleteTagFromNotes,
+  cleanUnusedOrEmptyTagsInNotes,
+} from '@core/services/tags'
 import { type NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
 import { clearActiveSettingsNoteReturnPath } from '@ui/web/lib/aiIndexNavigationState'
 import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
