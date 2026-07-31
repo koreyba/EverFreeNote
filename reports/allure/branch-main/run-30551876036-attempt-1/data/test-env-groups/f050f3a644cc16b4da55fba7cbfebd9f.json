@@ -1,1 +1,0 @@
-{"id":"f050f3a644cc16b4da55fba7cbfebd9f","fullName":"everfreenote-mobile:tests/component/tagInput.test.tsx#TagInput prevents suggestion taps from also committing the typed draft prefix on blur","name":"prevents suggestion taps from also committing the typed draft prefix on blur","status":"passed","testResultsByEnv":{"default":"c79bbeca973b783bebfe3ccca08e6d31"}}

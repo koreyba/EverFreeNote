@@ -16,6 +16,42 @@
       "Mobile Unit",
       "Web Component"
     ],
+    "path": "reports/allure/pr-185/run-30632019386-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-185/run-30632019386-attempt-1/",
+    "runId": "30632019386",
+    "runAttempt": "1",
+    "prNumber": "185",
+    "ref": "upgrade-to-latest-typescript",
+    "sha": "abd4c97b550818feb197dc521305a8c67061dd1e",
+    "outcome": "failure",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #185",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-07-31T12:52:30.578Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
     "path": "reports/allure/pr-185/run-30630076296-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-185/run-30630076296-attempt-1/",
     "runId": "30630076296",
@@ -655,40 +691,6 @@
     "scopeLabel": "main",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-07-30T14:37:43.907Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit"
-    ],
-    "path": "reports/allure/branch-main/run-30551876036-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-30551876036-attempt-1/",
-    "runId": "30551876036",
-    "runAttempt": "1",
-    "prNumber": null,
-    "ref": "main",
-    "sha": "55a12fe45ed9d069e0e1de057bc368ad21695c79",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Unit Tests",
-    "scopeType": "branch",
-    "scopeLabel": "main",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-07-30T14:31:20.365Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
