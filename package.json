@@ -16,7 +16,7 @@
     "test:unit:web": "jest --config jest.config.cjs --selectProjects unit-web",
     "test:unit:web:allure": "allure agent --goal \"Web Unit Tests\" -- npm run test:unit:web",
     "type-check": "tsc --noEmit && tsc -p core/tsconfig.json --noEmit && tsc -p core/tests/tsconfig.json --noEmit && tsc -p ui/web/tests/tsconfig.json --noEmit && npm --prefix ui/mobile run type-check",
-    "type-check:versions": "tsc --version && tsc6 --version",
+    "type-check:versions": "node scripts/verify-typescript-versions.cjs",
     "type-check:tests": "tsc -p core/tests/tsconfig.json --noEmit && tsc -p ui/web/tests/tsconfig.json --noEmit && tsc -p ui/mobile/tests/tsconfig.json --noEmit",
     "eslint": "eslint . --max-warnings=0",
     "deno-check": "deno check supabase/functions/**/*.ts",

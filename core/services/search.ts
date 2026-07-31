@@ -61,6 +61,8 @@ export class SearchService {
     const normalizedRows: FtsSearchResult[] = rows.map((row) => ({
       ...(row as unknown as Tables<'notes'>),
       user_id: userId,
+      tags: row.tags ?? [],
+      updated_at: row.updated_at ?? row.created_at ?? '',
       description:
         (row as unknown as { description?: string | null }).description ??
         (row as unknown as { content?: string | null }).content ??

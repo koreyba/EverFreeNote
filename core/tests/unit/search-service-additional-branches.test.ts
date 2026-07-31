@@ -50,8 +50,8 @@ describe('SearchService additional branches', () => {
   it('normalizes missing description, content and headline fields in FTS rows', async () => {
     const rpc = jest.fn().mockResolvedValue({
       data: [
-        { id: 'missing-fields', rank: 0.2, description: null, content: null },
-        { id: 'content-only', rank: 0.3, description: null, content: 'content fallback', headline: null, total_count: 2 },
+        { id: 'missing-fields', rank: 0.2, description: null, content: null, created_at: '2024-01-01T00:00:00Z' },
+        { id: 'content-only', rank: 0.3, description: null, content: 'content fallback', headline: null, total_count: 2, created_at: '2024-01-02T00:00:00Z' },
       ],
       error: null,
     })
@@ -61,8 +61,26 @@ describe('SearchService additional branches', () => {
       method: 'fts',
       total: 2,
       results: [
-        { id: 'missing-fields', user_id: 'user-1', description: '', content: null, headline: null, rank: 0.2 },
-        { id: 'content-only', user_id: 'user-1', description: 'content fallback', content: 'content fallback', headline: null, rank: 0.3 },
+        {
+          id: 'missing-fields',
+          user_id: 'user-1',
+          description: '',
+          content: null,
+          headline: null,
+          rank: 0.2,
+          tags: [],
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        {
+          id: 'content-only',
+          user_id: 'user-1',
+          description: 'content fallback',
+          content: 'content fallback',
+          headline: null,
+          rank: 0.3,
+          tags: [],
+          updated_at: '2024-01-02T00:00:00Z',
+        },
       ],
     })
   })
@@ -88,6 +106,19 @@ describe('SearchService additional branches', () => {
       result_offset: 14,
       search_user_id: 'user-42',
       filter_tag: 'important',
+    })
+  })
+
+  it('normalizes missing fallback tags and updated_at', async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: [], error: null })
+    const chain = createFallbackChain([
+      { id: 'note-1', title: 'Title', description: 'Description', created_at: '2024-01-01T00:00:00Z' },
+    ])
+    const service = createService(rpc, chain)
+
+    await expect(service.searchNotes('user-1', 'title')).resolves.toMatchObject({
+      method: 'fallback',
+      results: [{ id: 'note-1', tags: [], updated_at: '2024-01-01T00:00:00Z' }],
     })
   })
 

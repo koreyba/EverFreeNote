@@ -118,6 +118,8 @@ describe("additional settings and search branches", () => {
           title: "Title",
           user_id: "user-1",
           description: "",
+          tags: [],
+          updated_at: "",
           rank: 0.7,
           headline: null,
           content: null,
