@@ -1,0 +1,1 @@
+{"id":"94624b384ab2b148ae7a104fc60a9f67","fullName":"everfreenote-mobile:tests/component/editorWebViewMessages.test.tsx#EditorWebView message handling SELECTION_CHANGE handling calls onSelectionChange(true) when payload is true","name":"calls onSelectionChange(true) when payload is true","status":"passed","testResultsByEnv":{"default":"f20754df22a1a9a8029f5ea7b97cc2f6"}}
