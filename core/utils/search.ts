@@ -72,7 +72,7 @@ export type SearchResult = {
 
 export type NotesTable = Tables<'notes'>
 
-const normalizeSearchNote = (note: NotesTable): NotesTable => ({
+export const normalizeSearchNote = (note: NotesTable): NotesTable => ({
   ...note,
   tags: note.tags ?? [],
   updated_at: note.updated_at ?? note.created_at ?? '',
