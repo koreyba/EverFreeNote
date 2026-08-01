@@ -1,1 +1,0 @@
-{"id":"168f9ab036fc320a66a64bdb85ccfd23","fullName":"everfreenote-mobile:tests/unit/storageAdapter.test.ts#storage adapters secureStorageAdapter getItem logs error and returns null when SecureStore.getItemAsync throws","name":"logs error and returns null when SecureStore.getItemAsync throws","status":"passed","testResultsByEnv":{"default":"601d2fa1ed0786f2878440cf4b6418b0"}}
