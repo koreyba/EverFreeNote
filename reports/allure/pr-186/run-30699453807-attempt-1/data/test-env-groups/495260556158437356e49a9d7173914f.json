@@ -1,0 +1,1 @@
+{"id":"495260556158437356e49a9d7173914f","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter removeQueueItems delegates to databaseService.removeQueueItems","name":"delegates to databaseService.removeQueueItems","status":"passed","testResultsByEnv":{"default":"42bc6a583c9d93a71ff3567c5363782b"}}
