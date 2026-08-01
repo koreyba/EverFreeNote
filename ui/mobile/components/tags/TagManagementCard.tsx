@@ -14,8 +14,8 @@ export function TagManagementCard({ tag, onPress, onActions }: TagManagementCard
   const styles = createStyles(colors)
 
   const stopPropagation = (event: GestureResponderEvent) => {
-    const nativeEvent = event as unknown as { stopPropagation?: () => void }
-    nativeEvent.stopPropagation?.()
+    const nativeEvent = event as unknown as { stopPropagation?: () => void } | undefined
+    nativeEvent?.stopPropagation?.()
   }
 
   return (
