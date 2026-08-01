@@ -1,0 +1,1 @@
+{"id":"2b3e0f7b8a7362601fc14ae5bd015ee7","fullName":"everfreenote:ui/web/tests/unit/components/notesShell.test.tsx#NotesShell renders the empty editor, registers the editor ref, and wires list actions","name":"renders the empty editor, registers the editor ref, and wires list actions","status":"passed","testResultsByEnv":{"default":"60198a182d92d54509b81fc0844ed2d4"}}
