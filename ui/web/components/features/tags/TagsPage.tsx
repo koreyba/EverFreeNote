@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Tag as TagIcon } from "lucide-react"
+import { Search, Tag as TagIcon, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { getTagsWithCounts, groupTagsAlphabetically } from "@core/services/tags"
@@ -157,9 +157,20 @@ export function TagsPage({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tags..."
-              className="pl-9 rounded-full bg-muted/40 hover:bg-muted/70 focus:bg-background transition-colors text-sm w-full"
+              className="pl-9 pr-8 rounded-full bg-muted/40 hover:bg-muted/70 focus:bg-background transition-colors text-sm w-full"
               data-testid="tags-search-input"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                data-testid="tags-search-clear"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear tag search"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            )}
           </div>
           {/* Desktop Theme Toggle */}
           <div className="hidden sm:block shrink-0">
@@ -246,3 +257,4 @@ export function TagsPage({
     </div>
   )
 }
+

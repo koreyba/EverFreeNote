@@ -4,8 +4,8 @@ import { TagsPage } from '@/components/features/tags/TagsPage'
 
 describe('TagsPage Component', () => {
   const mockNotes = [
-    { id: '1', tags: ['react', 'javascript', 'ÃÂ·ÃÂ°ÃÂ¼ÃÂµÃ‘â€šÃÂºÃÂ¸'] },
-    { id: '2', tags: ['REACT', 'typescript', 'ÃÂ°Ã‘â‚¬Ã‘â€¦ÃÂ¸ÃÂ²'] },
+    { id: '1', tags: ['react', 'javascript', 'Ð·Ð°Ð¼ÐµÑ‚ÐºÐ¸'] },
+    { id: '2', tags: ['REACT', 'typescript', 'Ð°Ñ€Ñ…Ð¸Ð²'] },
   ]
 
   const mockOnSelectTag = jest.fn()
@@ -51,7 +51,28 @@ describe('TagsPage Component', () => {
 
     expect(screen.getByText('javascript')).toBeTruthy()
     expect(screen.getByText('typescript')).toBeTruthy()
-    expect(screen.queryByText('ÃÂ°Ã‘â‚¬Ã‘â€¦ÃÂ¸ÃÂ²')).toBeNull()
+    expect(screen.queryByText('Ð°Ñ€Ñ…Ð¸Ð²')).toBeNull()
+  })
+
+  it('clears the tag search and restores all tags', () => {
+    render(
+      <TagsPage
+        notes={mockNotes}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={mockOnRenameTag}
+        onDeleteTag={mockOnDeleteTag}
+      />
+    )
+
+    const searchInput = screen.getByTestId('tags-search-input')
+    fireEvent.change(searchInput, { target: { value: 'script' } })
+
+    expect(screen.getByTestId('tags-search-clear')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('tags-search-clear'))
+
+    expect((searchInput as HTMLInputElement).value).toBe('')
+    expect(screen.getByText('react')).toBeTruthy()
+    expect(screen.getByText('typescript')).toBeTruthy()
   })
 
   it('triggers onSelectTag when a tag card is clicked', () => {
