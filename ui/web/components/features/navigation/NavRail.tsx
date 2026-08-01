@@ -9,7 +9,9 @@ export type MainNavView = "notes" | "tags" | "settings"
 
 interface NavRailProps {
   readonly activeView: MainNavView
-  readonly onSelectView: (...args: [MainNavView]) => void
+  readonly onSelectView: {
+    (view: MainNavView): void
+  }
   readonly onOpenSearch: () => void
   readonly onOpenSettings: () => void
   readonly className?: string

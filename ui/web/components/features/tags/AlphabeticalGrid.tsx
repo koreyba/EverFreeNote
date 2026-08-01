@@ -7,8 +7,12 @@ import { cn } from "@ui/web/lib/utils"
 interface AlphabeticalGridProps {
   readonly availableLetters: string[]
   readonly selectedLetter: string | null
-  readonly onSelectLetter: (...args: [string | null]) => void
-  readonly onJumpToLetter?: (...args: [string]) => void
+  readonly onSelectLetter: {
+    (letter: string | null): void
+  }
+  readonly onJumpToLetter?: {
+    (letter: string): void
+  }
   readonly className?: string
 }
 
