@@ -101,3 +101,6 @@ When working on this project, you can run commands to:
 - Verify implementation against design (`check-implementation`)
 - Writing tests (`writing-test`)
 - Perform structured code reviews (`code-review`)
+
+## Restrictions:
+- Never create a new worktree inside current worktree directory.
