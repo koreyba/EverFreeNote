@@ -3,6 +3,7 @@ import { NotesShell } from '../../../../ui/web/components/features/notes/NotesSh
 import type { NoteAppController } from '../../../../ui/web/hooks/useNoteAppController'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { NoteWorkspaceTab } from '../../../../core/services/noteWorkspaceTabs'
 import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
 
 describe('Mobile Layout Adaptation', () => {
@@ -16,6 +17,16 @@ describe('Mobile Layout Adaptation', () => {
     createMockController = (overrides: Partial<NoteAppController> = {}): NoteAppController => {
       const handleSelectNote = cy.stub().as('handleSelectNote')
       handleSelectNote.resolves()
+      const activeTab: NoteWorkspaceTab = {
+        id: 'test-tab',
+        noteId: null,
+        note: null,
+        mode: 'reading',
+        draft: { title: '', description: '', tags: '' },
+        view: { scrollTop: 0 },
+        saveState: 'saved',
+        saveError: null,
+      }
 
       return ({
       activeMainView: 'notes',
@@ -31,6 +42,14 @@ describe('Mobile Layout Adaptation', () => {
       notesQuery: { isLoading: false, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: cy.stub() } as any,
       selectedNote: null,
       isEditing: false,
+      tabs: [activeTab],
+      activeTabId: activeTab.id,
+      activeTab,
+      addTab: cy.stub().resolves(),
+      activateTab: cy.stub().resolves(),
+      closeTab: cy.stub().resolves(),
+      handleDraftChange: cy.stub(),
+      handleViewSessionChange: cy.stub(),
       setIsEditing: cy.stub(),
       isSearchPanelOpen: false,
       setIsSearchPanelOpen: cy.stub(),
@@ -101,6 +120,7 @@ describe('Mobile Layout Adaptation', () => {
       ...overrides,
 
       // Required by controller type (used by NotesShell to register editor ref)
+      notePaneVisible: overrides.notePaneVisible ?? Boolean(overrides.selectedNote || overrides.isEditing),
       registerNoteEditorRef: overrides.registerNoteEditorRef ?? cy.stub(),
       resetFtsResults: overrides.resetFtsResults ?? cy.stub(),
       resetAIResults: overrides.resetAIResults ?? cy.stub(),

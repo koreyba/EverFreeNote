@@ -217,6 +217,7 @@ function setup() {
 describe('useNoteAppController additional observable behavior', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    window.sessionStorage.clear()
     mockSelectedNote = null
     mockIsEditing = true
     mockIsOffline = false
@@ -248,8 +249,8 @@ describe('useNoteAppController additional observable behavior', () => {
 
     const snapshot = await act(async () => result.current.captureSettingsReturnState())
     expect(snapshot).toEqual({
-      selectedNoteId: note.id,
-      selectedNote: note,
+      selectedNoteId: null,
+      selectedNote: null,
       isEditing: true,
       isSearchPanelOpen: true,
       searchQuery: 'initial search',
@@ -275,7 +276,7 @@ describe('useNoteAppController additional observable behavior', () => {
 
     jest.clearAllMocks()
     await act(async () => {
-      await result.current.handleSelectNote(current)
+      await result.current.handleSelectNote(remote)
     })
     expect(mockGetNoteStatus).not.toHaveBeenCalled()
     expect(mockSetIsEditing).toHaveBeenCalledWith(false)
