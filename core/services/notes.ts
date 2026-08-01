@@ -162,7 +162,7 @@ export class NoteService {
 
       if (error) throw error
 
-      const pageNotes = (data as Note[]) || []
+      const pageNotes = Array.isArray(data) ? (data as Note[]) : []
       notes.push(...pageNotes)
       if (pageNotes.length < ALL_NOTES_PAGE_SIZE) return notes
     }

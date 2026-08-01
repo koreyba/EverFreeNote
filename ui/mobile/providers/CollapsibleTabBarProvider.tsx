@@ -7,7 +7,7 @@ import {
 
 type CollapsibleTabBarContextValue = {
   isVisible: boolean
-  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
+  onScroll: (_event: NativeSyntheticEvent<NativeScrollEvent>) => void
   reset: () => void
 }
 const CollapsibleTabBarContext = createContext<CollapsibleTabBarContextValue | undefined>(undefined)

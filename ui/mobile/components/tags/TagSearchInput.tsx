@@ -5,7 +5,7 @@ import { Input } from '@ui/mobile/components/ui'
 
 type TagSearchInputProps = {
   value: string
-  onChangeText: (value: string) => void
+  onChangeText: (_value: string) => void
   onClear: () => void
 }
 

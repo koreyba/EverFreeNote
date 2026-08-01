@@ -289,7 +289,7 @@ type SearchScreenBodyProps = Readonly<{
   ) => void
   onTagPress: (tag: string) => void
   onScrollBeginDrag: () => void
-  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
+  onScroll: (_event: NativeSyntheticEvent<NativeScrollEvent>) => void
   selectionMode: boolean
   selectedIds: Set<string>
   onActivateSelection: (id: string) => void

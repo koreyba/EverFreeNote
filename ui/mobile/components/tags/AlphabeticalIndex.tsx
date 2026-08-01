@@ -4,7 +4,7 @@ import { useTheme } from '@ui/mobile/providers'
 type AlphabeticalIndexProps = {
   letters: string[]
   selectedLetter: string | null
-  onSelect: (letter: string | null) => void
+  onSelect: (_letter: string | null) => void
 }
 
 export function AlphabeticalIndex({ letters, selectedLetter, onSelect }: AlphabeticalIndexProps) {

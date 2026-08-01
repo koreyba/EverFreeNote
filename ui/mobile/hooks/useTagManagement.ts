@@ -28,7 +28,7 @@ export function useTagManagementData() {
   const { client, user } = useSupabase()
   const isOnline = useNetworkStatus()
 
-  const query = useQuery<TagManagementQueryResult, Error>({
+  const query = useQuery<TagManagementQueryResult>({
     queryKey: getTagManagementQueryKey(user?.id),
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')

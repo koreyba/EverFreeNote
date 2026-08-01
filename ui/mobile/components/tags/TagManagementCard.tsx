@@ -5,8 +5,8 @@ import type { MobileTagSummary } from '@ui/mobile/utils/tagManagement'
 
 type TagManagementCardProps = {
   tag: MobileTagSummary
-  onPress: (tag: string) => void
-  onActions: (tag: MobileTagSummary) => void
+  onPress: (_tag: string) => void
+  onActions: (_tag: MobileTagSummary) => void
 }
 
 export function TagManagementCard({ tag, onPress, onActions }: TagManagementCardProps) {
@@ -15,7 +15,7 @@ export function TagManagementCard({ tag, onPress, onActions }: TagManagementCard
 
   const stopPropagation = (event: GestureResponderEvent) => {
     const nativeEvent = event as unknown as { stopPropagation?: () => void }
-    nativeEvent?.stopPropagation?.()
+    nativeEvent.stopPropagation?.()
   }
 
   return (

@@ -289,7 +289,7 @@ function RenameTagModal({
   value: string
   error?: string
   loading: boolean
-  onChangeValue: (value: string) => void
+  onChangeValue: (_value: string) => void
   onClose: () => void
   onSubmit: () => void
 }) {

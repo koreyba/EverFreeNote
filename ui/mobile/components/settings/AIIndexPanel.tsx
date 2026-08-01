@@ -217,7 +217,7 @@ function AIIndexContent({
   queryResult: ReturnType<typeof useAIIndexNotes>
   renderItem: ({ item }: { item: AIIndexNoteRow }) => ReactElement
   styles: ReturnType<typeof createStyles>
-  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
+  onScroll: (_event: NativeSyntheticEvent<NativeScrollEvent>) => void
 }>) {
   if (queryResult.isLoading) {
     return (
