@@ -14,6 +14,11 @@ describe('TagsPage Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      writable: true,
+      value: jest.fn(),
+    })
   })
 
   it('renders tag list with counts and total count header', () => {
@@ -84,7 +89,7 @@ describe('TagsPage Component', () => {
     expect(screen.queryByTestId('select-tag-alpha')).toBeNull()
   })
 
-  it('warns before renaming a tag into an existing tag', () => {
+  it('warns before renaming a tag into an existing tag', async () => {
     render(
       <TagsPage
         notes={[{ tags: ['react', 'javascript'] }]}
@@ -94,9 +99,9 @@ describe('TagsPage Component', () => {
       />
     )
 
-    fireEvent.click(screen.getByTestId('tag-menu-trigger-react'))
-    fireEvent.click(screen.getByTestId('rename-action-react'))
-    fireEvent.change(screen.getByTestId('rename-tag-input'), { target: { value: 'javascript' } })
+    fireEvent.keyDown(screen.getByTestId('tag-menu-trigger-react'), { key: 'Enter' })
+    fireEvent.click(await screen.findByTestId('rename-action-react'))
+    fireEvent.change(await screen.findByTestId('rename-tag-input'), { target: { value: 'javascript' } })
     fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
 
     expect(screen.getByRole('alert').textContent).toContain('merge the two tags')
@@ -106,7 +111,7 @@ describe('TagsPage Component', () => {
     expect(mockOnRenameTag).toHaveBeenCalledWith('react', 'javascript')
   })
 
-  it('confirms deleting a tag through the delete dialog', () => {
+  it('confirms deleting a tag through the delete dialog', async () => {
     render(
       <TagsPage
         notes={[{ tags: ['react'] }]}
@@ -116,14 +121,14 @@ describe('TagsPage Component', () => {
       />
     )
 
-    fireEvent.click(screen.getByTestId('tag-menu-trigger-react'))
-    fireEvent.click(screen.getByTestId('delete-action-react'))
-    fireEvent.click(screen.getByTestId('confirm-delete-tag-button'))
+    fireEvent.keyDown(screen.getByTestId('tag-menu-trigger-react'), { key: 'Enter' })
+    fireEvent.click(await screen.findByTestId('delete-action-react'))
+    fireEvent.click(await screen.findByTestId('confirm-delete-tag-button'))
 
     expect(mockOnDeleteTag).toHaveBeenCalledWith('react')
   })
 
-  it('clears the rename highlight after its timeout and cleans up on unmount', () => {
+  it('clears the rename highlight after its timeout and cleans up on unmount', async () => {
     jest.useFakeTimers()
     try {
       const { rerender, unmount } = render(
@@ -135,9 +140,9 @@ describe('TagsPage Component', () => {
         />
       )
 
-      fireEvent.click(screen.getByTestId('tag-menu-trigger-alpha'))
-      fireEvent.click(screen.getByTestId('rename-action-alpha'))
-      fireEvent.change(screen.getByTestId('rename-tag-input'), { target: { value: 'beta' } })
+      fireEvent.keyDown(screen.getByTestId('tag-menu-trigger-alpha'), { key: 'Enter' })
+      fireEvent.click(await screen.findByTestId('rename-action-alpha'))
+      fireEvent.change(await screen.findByTestId('rename-tag-input'), { target: { value: 'beta' } })
       fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
 
       rerender(
@@ -155,9 +160,9 @@ describe('TagsPage Component', () => {
       })
       expect(screen.queryByText('Updated')).toBeNull()
 
-      fireEvent.click(screen.getByTestId('tag-menu-trigger-beta'))
-      fireEvent.click(screen.getByTestId('rename-action-beta'))
-      fireEvent.change(screen.getByTestId('rename-tag-input'), { target: { value: 'gamma' } })
+      fireEvent.keyDown(screen.getByTestId('tag-menu-trigger-beta'), { key: 'Enter' })
+      fireEvent.click(await screen.findByTestId('rename-action-beta'))
+      fireEvent.change(await screen.findByTestId('rename-tag-input'), { target: { value: 'gamma' } })
       fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
       unmount()
 

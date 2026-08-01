@@ -241,6 +241,8 @@ function makeController(overrides: Record<string, unknown> = {}) {
     deleteDialogOpen: false,
     noteToDelete: null,
     isSearchPanelOpen: false,
+    activeMainView: 'notes',
+    setActiveMainView: jest.fn(),
     exitSelectionMode: jest.fn(),
     selectAllVisible: jest.fn(),
     deleteSelectedNotes: jest.fn(),
