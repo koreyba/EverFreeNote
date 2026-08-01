@@ -1,0 +1,1 @@
+{"id":"627dab4cbdc2aa20f8cf0945230d39dd","fullName":"everfreenote:cypress/component/features/notes/NoteEditor.cy.tsx#NoteEditor Component cancels pending autosave when Save is clicked","name":"cancels pending autosave when Save is clicked","status":"passed","testResultsByEnv":{"default":"cd6a20ccc0d4e4dbf4117309e6d22132"}}

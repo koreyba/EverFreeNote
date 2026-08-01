@@ -1,0 +1,1 @@
+{"id":"e17417604a02388afaf89d250358d74b","fullName":"everfreenote:core/tests/unit/noteAutosaveSession.test.ts#noteAutosaveSession resolveNoteAutosaveSessionChange returns unchanged when the note id stays the same","name":"returns unchanged when the note id stays the same","status":"passed","testResultsByEnv":{"default":"d6581856c1afb06a6675f5cad5a8f641"}}
