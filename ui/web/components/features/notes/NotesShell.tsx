@@ -190,7 +190,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [handleSelectNote, router])
 
   const handleSelectTagFromTagsPage = React.useCallback((tag: string) => {
-    controller.handleTagClick(tag)
+    controller.handleTagClick(tag).catch(() => undefined)
     setActiveMainView("notes")
   }, [controller, setActiveMainView])
 

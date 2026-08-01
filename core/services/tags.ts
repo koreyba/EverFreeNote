@@ -1,4 +1,4 @@
-import { TagWithCount, AlphabeticalTagGroup } from '../types/tags'
+import type { TagWithCount, AlphabeticalTagGroup } from '@core/types/tags'
 
 interface NoteWithTags {
   tags?: string[]
@@ -146,10 +146,7 @@ export function deleteTagFromNotes<T extends NoteWithTags>(
 
     const newTags = note.tags.filter(tag => {
       const lower = tag.trim().toLowerCase()
-      if (lower === targetLower) {
-        return false
-      }
-      return true
+      return lower !== targetLower
     })
 
     if (tagsAreEqual(note.tags, newTags)) return note
