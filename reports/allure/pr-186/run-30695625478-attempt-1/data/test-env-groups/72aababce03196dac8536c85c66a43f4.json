@@ -1,0 +1,1 @@
+{"id":"72aababce03196dac8536c85c66a43f4","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService searchNotes does not use the LIKE fallback for a whitespace-only query","name":"does not use the LIKE fallback for a whitespace-only query","status":"passed","testResultsByEnv":{"default":"dee7a235e07dab990fd5ce7ca2a888e8"}}
