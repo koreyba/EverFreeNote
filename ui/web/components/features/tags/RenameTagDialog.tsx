@@ -12,7 +12,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
-/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars -- callback parameter names are type-only */
 interface RenameTagDialogProps {
   readonly open: boolean
   readonly tagName: string | null
@@ -20,7 +19,6 @@ interface RenameTagDialogProps {
   readonly onOpenChange: (_open: boolean) => void
   readonly onConfirmRename: (_oldTag: string, _newTag: string) => void
 }
-/* eslint-enable no-unused-vars, @typescript-eslint/no-unused-vars */
 
 export function RenameTagDialog({
   open,

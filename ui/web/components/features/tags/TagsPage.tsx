@@ -16,7 +16,6 @@ interface NoteLike {
   readonly tags?: string[]
 }
 
-/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars -- callback parameter names are type-only */
 interface TagsPageProps {
   readonly notes: NoteLike[]
   readonly onSelectTag: (_tagName: string) => void
@@ -24,7 +23,6 @@ interface TagsPageProps {
   readonly onDeleteTag: (_tagName: string) => void
   readonly className?: string
 }
-/* eslint-enable no-unused-vars, @typescript-eslint/no-unused-vars */
 
 export function TagsPage({
   notes,

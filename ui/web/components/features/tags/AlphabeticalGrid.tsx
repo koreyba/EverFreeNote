@@ -4,7 +4,6 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 
-/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars -- callback parameter names are type-only */
 interface AlphabeticalGridProps {
   readonly availableLetters: string[]
   readonly selectedLetter: string | null
@@ -12,7 +11,6 @@ interface AlphabeticalGridProps {
   readonly onJumpToLetter?: (_letter: string) => void
   readonly className?: string
 }
-/* eslint-enable no-unused-vars, @typescript-eslint/no-unused-vars */
 
 export function AlphabeticalGrid({
   availableLetters,

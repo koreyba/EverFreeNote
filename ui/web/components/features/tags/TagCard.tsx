@@ -12,7 +12,6 @@ import {
 import { TagWithCount } from "@core/types/tags"
 import { cn } from "@ui/web/lib/utils"
 
-/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars -- callback parameter names are type-only */
 interface TagCardProps {
   readonly tag: TagWithCount
   readonly onSelectTag: (_tagName: string) => void
@@ -21,7 +20,6 @@ interface TagCardProps {
   readonly isHighlighted?: boolean
   readonly className?: string
 }
-/* eslint-enable no-unused-vars, @typescript-eslint/no-unused-vars */
 
 export function TagCard({
   tag,
