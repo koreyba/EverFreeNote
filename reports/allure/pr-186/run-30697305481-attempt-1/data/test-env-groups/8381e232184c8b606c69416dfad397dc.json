@@ -1,1 +1,0 @@
-{"id":"8381e232184c8b606c69416dfad397dc","fullName":"everfreenote:ui/web/tests/unit/components/VirtualNoteList.test.tsx#VirtualNoteList Selection State renders selected styling when note matches selectedNote id","name":"renders selected styling when note matches selectedNote id","status":"passed","testResultsByEnv":{"default":"9376a6826e0d71ec761541ab1f0af7c8"}}
