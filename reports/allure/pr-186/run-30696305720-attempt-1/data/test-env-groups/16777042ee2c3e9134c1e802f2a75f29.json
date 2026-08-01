@@ -1,0 +1,1 @@
+{"id":"16777042ee2c3e9134c1e802f2a75f29","fullName":"everfreenote:cypress/component/ui/web/hooks/useLongPress.cy.tsx#useLongPress cancels long press when pointer moves beyond threshold","name":"cancels long press when pointer moves beyond threshold","status":"passed","testResultsByEnv":{"default":"f877e91c70b302f7dcfca8964a2bbde8"}}
