@@ -14,15 +14,9 @@ import { cn } from "@ui/web/lib/utils"
 
 interface TagCardProps {
   readonly tag: TagWithCount
-  readonly onSelectTag: {
-    (tagName: string): void
-  }
-  readonly onRequestRename: {
-    (tag: TagWithCount): void
-  }
-  readonly onRequestDelete: {
-    (tag: TagWithCount): void
-  }
+  readonly onSelectTag: (tagName: string) => void
+  readonly onRequestRename: (tag: TagWithCount) => void
+  readonly onRequestDelete: (tag: TagWithCount) => void
   readonly isHighlighted?: boolean
   readonly className?: string
 }
