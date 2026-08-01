@@ -380,6 +380,27 @@ describe('useNoteAppController additional observable behavior', () => {
     window.history.pushState({}, '', '/')
   })
 
+  it('opens the tags view when the app mounts after navigating from settings', () => {
+    window.history.pushState({}, '', '/settings')
+
+    const { result, unmount } = renderHook(() => {
+      const controller = useNoteAppController()
+
+      // Model the route transition before passive effects run: the server-rendered
+      // controller starts with the notes fallback, then the browser is on tags.
+      React.useLayoutEffect(() => {
+        window.history.replaceState({}, '', '/?view=tags')
+      }, [])
+
+      return controller
+    }, { wrapper: createWrapper(new QueryClient({ defaultOptions: { queries: { retry: false } } })) })
+
+    expect(result.current.activeMainView).toBe('tags')
+
+    unmount()
+    window.history.pushState({}, '', '/')
+  })
+
   it('persists tag rename, deletion, and cleanup mutations', async () => {
     const firstNote = makeNote({ id: 'first', tags: ['Old', 'keep'] })
     const secondNote = makeNote({ id: 'second', tags: ['old', '  ', 'KEEP'] })

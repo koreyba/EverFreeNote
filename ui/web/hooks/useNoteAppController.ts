@@ -442,16 +442,22 @@ export function useNoteAppController() {
     setIsSearchPanelOpen(params.get('search') === 'open')
   }, [setIsSearchPanelOpen])
 
-  useEffect(() => {
+  const syncNavigationFromUrl = useCallback(() => {
+    if (typeof window === 'undefined') return
+
+    const params = new URLSearchParams(window.location.search)
+    setActiveMainView(params.get('view') === 'tags' ? 'tags' : 'notes')
     syncSearchPanelFromUrl()
-    const syncNavigationFromUrl = () => {
-      const params = new URLSearchParams(window.location.search)
-      setActiveMainView(params.get('view') === 'tags' ? 'tags' : 'notes')
-      syncSearchPanelFromUrl()
-    }
+  }, [setActiveMainView, syncSearchPanelFromUrl])
+
+  useEffect(() => {
+    // Reconcile the server-rendered notes fallback with the browser URL on mount.
+    // This state update is intentional: the route may already be /?view=tags after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- required for SSR URL reconciliation
+    syncNavigationFromUrl()
     window.addEventListener('popstate', syncNavigationFromUrl)
     return () => window.removeEventListener('popstate', syncNavigationFromUrl)
-  }, [setActiveMainView, syncSearchPanelFromUrl])
+  }, [syncNavigationFromUrl])
 
   // -- Batch Tag Mutations --
   const tagMutationQueueRef = useRef<Promise<void>>(Promise.resolve())
