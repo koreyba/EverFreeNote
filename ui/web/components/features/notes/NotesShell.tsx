@@ -32,6 +32,8 @@ import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 import { saveSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
 import { consumeActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
+import { NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
+import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMenu"
 
 import { NavRail } from "@/components/features/navigation/NavRail"
 import { TagsPage } from "@/components/features/tags/TagsPage"
@@ -89,6 +91,12 @@ export function NotesShell({ controller }: NotesShellProps) {
     isOffline,
     selectedNote,
     isEditing,
+    notePaneVisible,
+    tabs = [],
+    activeTabId = '',
+    addTab,
+    activateTab,
+    closeTab,
     handleSelectNote,
     isSearchPanelOpen,
     setIsSearchPanelOpen,
@@ -147,7 +155,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     await controller.handleEditNote(note)
   }, [controller, supabase])
 
-  const showEditor = !!(selectedNote || isEditing)
+  const showEditor = notePaneVisible ?? !!(selectedNote || isEditing)
   const handleOpenSearchPanel = React.useCallback(() => {
     if (activeMainView !== "notes") {
       setActiveMainView("notes")
@@ -267,14 +275,30 @@ export function NotesShell({ controller }: NotesShellProps) {
             )}
             data-testid="editor-container"
           >
-            <EditorPane
-              controller={controller}
-              onBack={handleBackFromNote}
-              noteEditorRef={noteEditorRef}
-              wordpressConfigured={wordpressConfigured}
-              pendingChunkFocus={pendingChunkFocus}
-              onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
+            <NotesTabStrip
+              tabs={tabs}
+              activeTabId={activeTabId}
+              onAddTab={() => void addTab?.()}
+              onActivateTab={(tabId) => void activateTab?.(tabId)}
+              onCloseTab={(tabId) => void closeTab?.(tabId)}
             />
+            <MobileNotesTabMenu
+              tabs={tabs}
+              activeTabId={activeTabId}
+              onAddTab={() => void addTab?.()}
+              onActivateTab={(tabId) => void activateTab?.(tabId)}
+              onCloseTab={(tabId) => void closeTab?.(tabId)}
+            />
+            <div className="flex-1 min-h-0 flex">
+              <EditorPane
+                controller={controller}
+                onBack={handleBackFromNote}
+                noteEditorRef={noteEditorRef}
+                wordpressConfigured={wordpressConfigured}
+                pendingChunkFocus={pendingChunkFocus}
+                onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
+              />
+            </div>
           </main>
         </>
       )}
@@ -331,6 +355,8 @@ function EditorPane({
 }) {
   const {
     selectedNote,
+    activeTab,
+    activeTabId,
     isEditing,
     saving,
     autoSaving,
@@ -382,10 +408,14 @@ function EditorPane({
     return (
       <NoteEditor
         ref={noteEditorRef}
+        key={`workspace-tab-${activeTabId}`}
         noteId={selectedNote?.id}
-        initialTitle={selectedNote?.title ?? ""}
-        initialDescription={selectedNote?.description ?? selectedNote?.content ?? ""}
-        initialTags={selectedNote?.tags?.join(", ") ?? ""}
+        initialTitle={activeTab.draft.title}
+        initialDescription={activeTab.draft.description}
+        initialTags={activeTab.draft.tags}
+        initialSession={{ draft: activeTab.draft, view: activeTab.view }}
+        onDraftChange={controller.handleDraftChange}
+        onViewSessionChange={controller.handleViewSessionChange}
         availableTags={availableTags}
         tagCounts={tagCounts}
         isSaving={saving}
@@ -406,6 +436,7 @@ function EditorPane({
   if (selectedNote) {
     return (
       <NoteView
+        key={`workspace-tab-${activeTabId}-note-${selectedNote.id}`}
         note={selectedNote}
         onEdit={() => handleEditNote(selectedNote)}
         onDelete={() => handleDeleteNote(selectedNote)}
@@ -413,6 +444,8 @@ function EditorPane({
         onRemoveTag={(tag) => handleRemoveTagFromNote(selectedNote.id, tag)}
         onBack={onBack}
         wordpressConfigured={wordpressConfigured}
+        initialScrollTop={activeTab.view.scrollTop}
+        onViewSessionChange={controller.handleViewSessionChange}
       />
     )
   }

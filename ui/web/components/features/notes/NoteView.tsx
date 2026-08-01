@@ -11,6 +11,7 @@ import { NoteClipboardService } from "@core/services/noteClipboard"
 import { useCopyNote } from "@ui/web/hooks/useCopyNote"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import type { Note } from "@core/types/domain"
+import type { NoteViewSession } from "@core/services/noteWorkspaceTabs"
 
 // Define NoteRecord locally to match what's used in page.tsx
 type NoteRecord = Note & {
@@ -27,6 +28,8 @@ interface NoteViewProps {
   onRemoveTag: (tag: string) => void
   onBack?: () => void
   wordpressConfigured?: boolean
+  initialScrollTop?: number
+  onViewSessionChange?: (view: Partial<NoteViewSession>) => void
 }
 
 export const NoteView = React.memo(function NoteView({
@@ -37,6 +40,8 @@ export const NoteView = React.memo(function NoteView({
   onRemoveTag,
   onBack,
   wordpressConfigured = false,
+  initialScrollTop = 0,
+  onViewSessionChange,
 }: NoteViewProps) {
   const bodyHtml = note.description || note.content || ''
 
@@ -48,6 +53,14 @@ export const NoteView = React.memo(function NoteView({
 
   const { copied, copyNote } = useCopyNote()
   const isBodyEmpty = React.useMemo(() => NoteClipboardService.isBodyEmpty(bodyHtml), [bodyHtml])
+  const contentRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      if (contentRef.current) contentRef.current.scrollTop = initialScrollTop
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [initialScrollTop, note.id])
 
   // Форматирование дат для предотвращения повторных вычислений
   const formattedDates = React.useMemo(() => ({
@@ -125,7 +138,11 @@ export const NoteView = React.memo(function NoteView({
       </div>
 
       {/* Note Content */}
-      <div className="flex-1 overflow-y-auto px-6 pt-24 pb-10 bg-card">
+      <div
+        ref={contentRef}
+        className="flex-1 overflow-y-auto px-6 pt-24 pb-10 bg-card"
+        onScroll={(event) => onViewSessionChange?.({ scrollTop: event.currentTarget.scrollTop })}
+      >
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-6 leading-tight">
             {note.title}
