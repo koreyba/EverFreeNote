@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import type { NoteViewModel, SearchResult } from '@core/types/domain'
+import { toast } from 'sonner'
 
 let mockSelectedNote: NoteViewModel | null = null
 let mockIsEditing = true
@@ -26,8 +27,10 @@ const mockClearTagFilter = jest.fn()
 const mockResetFtsResults = jest.fn()
 const mockClearActiveSettingsNoteReturnPath = jest.fn()
 const mockResolveSearchResult = jest.fn(() => mockResolvedSearchResult)
+const mockUpdateNoteMutation = jest.fn()
+const mockPersistOfflineNoteUpdates = jest.fn().mockResolvedValue(undefined)
 
-jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() } }))
+jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn() } }))
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
   useSupabase: () => ({ supabase: { key: 'supabase' } }),
 }))
@@ -105,7 +108,7 @@ jest.mock('@ui/web/hooks/useNoteSync', () => ({
 }))
 jest.mock('@ui/web/hooks/useNotesMutations', () => ({
   useCreateNote: () => ({ mutateAsync: jest.fn() }),
-  useUpdateNote: () => ({ mutateAsync: jest.fn() }),
+  useUpdateNote: () => ({ mutateAsync: mockUpdateNoteMutation }),
   useDeleteNote: () => ({ mutateAsync: jest.fn() }),
   useRemoveTag: () => ({ mutateAsync: jest.fn() }),
 }))
@@ -141,6 +144,7 @@ jest.mock('@ui/web/hooks/useNoteSaveHandlers', () => ({
     handleReadNote: jest.fn(),
     confirmDeleteNote: jest.fn(),
     handleRemoveTagFromNote: jest.fn(),
+    persistOfflineNoteUpdates: mockPersistOfflineNoteUpdates,
   }),
 }))
 jest.mock('@ui/web/hooks/useNoteBulkActions', () => ({
@@ -150,33 +154,40 @@ jest.mock('@ui/web/hooks/useNoteBulkActions', () => ({
     deleteNotesByIds: jest.fn(),
   }),
 }))
-jest.mock('@ui/web/hooks/useNoteSearch', () => ({
-  useNoteSearch: () => ({
-    searchQuery: 'initial search',
-    filterByTag: 'initial-tag',
-    isSearchPanelOpen: true,
-    setIsSearchPanelOpen: jest.fn(),
-    handleSearch: mockHandleSearch,
-    handleTagClick: mockOnTagClick,
-    handleClearTagFilter: mockClearTagFilter,
-    showFTSResults: false,
-    aggregatedFtsData: [],
-    ftsObserverTarget: { current: null },
-    ftsHasMore: false,
-    ftsLoadingMore: false,
-    ftsAccumulatedResults: [],
-    loadMoreFts: jest.fn(),
-    ftsSearchResult: null,
-    resetFtsResults: mockResetFtsResults,
-    showTagOnlyResults: false,
-    tagOnlyResults: [],
-    tagOnlyTotal: 0,
-    tagOnlyLoading: false,
-    tagOnlyHasMore: false,
-    tagOnlyLoadingMore: false,
-    loadMoreTagOnly: jest.fn(),
-  }),
-}))
+jest.mock('@ui/web/hooks/useNoteSearch', () => {
+  const ReactRuntime = jest.requireActual('react')
+
+  return {
+    useNoteSearch: () => {
+      const [isSearchPanelOpen, setIsSearchPanelOpen] = ReactRuntime.useState(true)
+      return {
+        searchQuery: 'initial search',
+        filterByTag: 'initial-tag',
+        isSearchPanelOpen,
+        setIsSearchPanelOpen,
+        handleSearch: mockHandleSearch,
+        handleTagClick: mockOnTagClick,
+        handleClearTagFilter: mockClearTagFilter,
+        showFTSResults: false,
+        aggregatedFtsData: [],
+        ftsObserverTarget: { current: null },
+        ftsHasMore: false,
+        ftsLoadingMore: false,
+        ftsAccumulatedResults: [],
+        loadMoreFts: jest.fn(),
+        ftsSearchResult: null,
+        resetFtsResults: mockResetFtsResults,
+        showTagOnlyResults: false,
+        tagOnlyResults: [],
+        tagOnlyTotal: 0,
+        tagOnlyLoading: false,
+        tagOnlyHasMore: false,
+        tagOnlyLoadingMore: false,
+        loadMoreTagOnly: jest.fn(),
+      }
+    },
+  }
+})
 
 const makeNote = (overrides: Partial<NoteViewModel> = {}): NoteViewModel => ({
   id: 'note-1',
@@ -212,12 +223,15 @@ describe('useNoteAppController additional observable behavior', () => {
     mockOfflineOverlay = []
     mockNotes = []
     mockResolvedSearchResult = null
+    mockUpdateNoteMutation.mockReset()
+    mockUpdateNoteMutation.mockResolvedValue(undefined)
   })
 
   it('flushes pending editor work before creating a note and captures the current UI state', async () => {
     const note = makeNote()
     mockSelectedNote = note
     mockNotes = [note]
+    window.history.pushState({}, '', '/?search=open')
     const flushPendingSave = jest.fn().mockResolvedValue(undefined)
     const editorRef = { current: { flushPendingSave } }
     const { result } = setup()
@@ -242,6 +256,7 @@ describe('useNoteAppController additional observable behavior', () => {
       filterByTag: 'initial-tag',
     })
     expect(flushPendingSave).toHaveBeenCalledTimes(2)
+    window.history.pushState({}, '', '/')
   })
 
   it('selects the remote note after flushing, but exits editing when selecting the already selected note', async () => {
@@ -359,4 +374,136 @@ describe('useNoteAppController additional observable behavior', () => {
     expect(mockSetSelectedNote).toHaveBeenCalledWith(null)
     expect(mockSetIsEditing).toHaveBeenCalledWith(false)
   })
+
+  it('synchronizes the active view and search panel with browser navigation', () => {
+    window.history.pushState({}, '', '/?view=tags&search=open')
+    const { result, unmount } = setup()
+
+    expect(result.current.activeMainView).toBe('tags')
+    expect(result.current.isSearchPanelOpen).toBe(true)
+
+    act(() => {
+      window.history.pushState({}, '', '/?view=notes')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+
+    expect(result.current.activeMainView).toBe('notes')
+    expect(result.current.isSearchPanelOpen).toBe(false)
+    unmount()
+    window.history.pushState({}, '', '/')
+  })
+
+  it('opens the tags view when the app mounts after navigating from settings', () => {
+    window.history.pushState({}, '', '/settings')
+
+    const { result, unmount } = renderHook(() => {
+      const controller = useNoteAppController()
+
+      // Model the route transition before passive effects run: the server-rendered
+      // controller starts with the notes fallback, then the browser is on tags.
+      React.useLayoutEffect(() => {
+        window.history.replaceState({}, '', '/?view=tags')
+      }, [])
+
+      return controller
+    }, { wrapper: createWrapper(new QueryClient({ defaultOptions: { queries: { retry: false } } })) })
+
+    expect(result.current.activeMainView).toBe('tags')
+
+    unmount()
+    window.history.pushState({}, '', '/')
+  })
+
+  it('persists tag rename, deletion, and cleanup mutations', async () => {
+    const firstNote = makeNote({ id: 'first', tags: ['Old', 'keep'] })
+    const secondNote = makeNote({ id: 'second', tags: ['old', '  ', 'KEEP'] })
+    mockNotes = [firstNote, secondNote]
+    const { result } = setup()
+
+    await act(async () => {
+      await result.current.handleRenameTag('old', 'new')
+    })
+    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'first',
+      tags: ['new', 'keep'],
+    }))
+    expect(mockUpdateNoteMutation.mock.calls[0][0]).not.toHaveProperty('title')
+    expect(mockUpdateNoteMutation.mock.calls[0][0]).not.toHaveProperty('description')
+    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'second',
+      tags: ['new', '  ', 'KEEP'],
+    }))
+    expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+
+    mockUpdateNoteMutation.mockClear()
+    await act(async () => {
+      await result.current.handleDeleteTag('keep')
+    })
+    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'first',
+      tags: ['Old'],
+    }))
+    expect(toast.success).toHaveBeenCalledWith('Tag "keep" deleted')
+
+    mockUpdateNoteMutation.mockClear()
+    await act(async () => {
+      await result.current.handleCleanTags()
+    })
+    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'second',
+      tags: ['old', 'KEEP'],
+    }))
+    expect(toast.success).toHaveBeenCalledWith('Cleaned up empty and duplicate tags')
+  })
+
+  it('reports no-op cleanup and mutation failures without throwing', async () => {
+    mockNotes = [makeNote({ tags: ['stable'] })]
+    const { result, unmount } = setup()
+
+    await act(async () => {
+      await result.current.handleRenameTag('missing', 'new')
+      await result.current.handleDeleteTag('missing')
+      await result.current.handleCleanTags()
+    })
+    expect(toast.info).toHaveBeenCalledWith('No empty or duplicate tags found to clean')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    unmount()
+
+    const firstNote = makeNote({ id: 'first', tags: ['old'] })
+    const secondNote = makeNote({ id: 'second', tags: ['old'] })
+    mockNotes = [firstNote, secondNote]
+    mockUpdateNoteMutation
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('write failed'))
+      .mockResolvedValueOnce(undefined)
+
+    const rerendered = setup()
+    await act(async () => {
+      await rerendered.result.current.handleRenameTag('old', 'new')
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('Failed to rename tag: write failed')
+    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'first',
+      tags: ['old'],
+    }))
+  })
+
+  it('routes tag changes through the offline queue when offline', async () => {
+    mockIsOffline = true
+    const firstNote = makeNote({ id: 'first', tags: ['old'] })
+    mockNotes = [firstNote]
+    const { result } = setup()
+
+    await act(async () => {
+      await result.current.handleRenameTag('old', 'new')
+    })
+
+    expect(mockPersistOfflineNoteUpdates).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'first', tags: ['new'] }),
+    ])
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
 })
+

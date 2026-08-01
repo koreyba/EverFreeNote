@@ -148,6 +148,25 @@ export function useNoteSaveHandlers({
     await executeOfflineWrite({ operation: 'update', noteId: targetId, payload: partialPayload, clientUpdatedAt })
   }, [syncSelectedNote, executeOfflineWrite])
 
+  const persistOfflineNoteUpdates = useCallback(async (updatedNotes: NoteViewModel[]) => {
+    const clientUpdatedAt = new Date().toISOString()
+
+    await Promise.all(updatedNotes.map((note) => executeOfflineWrite({
+      operation: 'update',
+      noteId: note.id,
+      payload: {
+        title: note.title,
+        description: note.description,
+        tags: note.tags,
+      },
+      clientUpdatedAt,
+    })))
+
+    const queue = await offlineQueueRef.current.getQueue()
+    setPendingCount(queue.filter((item) => item.status === 'pending').length)
+    setFailedCount(queue.filter((item) => item.status === 'failed').length)
+  }, [executeOfflineWrite, offlineQueueRef, setFailedCount, setPendingCount])
+
   const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
     if (!user) return
 
@@ -429,5 +448,7 @@ export function useNoteSaveHandlers({
     handleReadNote,
     confirmDeleteNote,
     handleRemoveTagFromNote,
+    persistOfflineNoteUpdates,
   }
 }
+

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -16,9 +16,15 @@ import { useNoteBulkActions } from './useNoteBulkActions'
 import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
+import {
+  renameTagInNotes,
+  deleteTagFromNotes,
+  cleanUnusedOrEmptyTagsInNotes,
+} from '@core/services/tags'
 import { type NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
 import { clearActiveSettingsNoteReturnPath } from '@ui/web/lib/aiIndexNavigationState'
 import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
+
 
 export type EditFormState = {
   title: string
@@ -236,6 +242,7 @@ export function useNoteAppController() {
     handleReadNote,
     confirmDeleteNote,
     handleRemoveTagFromNote,
+    persistOfflineNoteUpdates,
   } = useNoteSaveHandlers({
     user,
     isOffline,
@@ -424,6 +431,126 @@ export function useNoteAppController() {
     setSelectedNote,
   ])
 
+  // -- Main Navigation View --
+  const [activeMainView, setActiveMainView] = useState<'notes' | 'tags'>(() => {
+    if (typeof window === 'undefined') return 'notes'
+    return new URLSearchParams(window.location.search).get('view') === 'tags' ? 'tags' : 'notes'
+  })
+
+  const syncSearchPanelFromUrl = useCallback(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    setIsSearchPanelOpen(params.get('search') === 'open')
+  }, [setIsSearchPanelOpen])
+
+  const syncNavigationFromUrl = useCallback(() => {
+    if (typeof window === 'undefined') return
+
+    const params = new URLSearchParams(window.location.search)
+    setActiveMainView(params.get('view') === 'tags' ? 'tags' : 'notes')
+    syncSearchPanelFromUrl()
+  }, [setActiveMainView, syncSearchPanelFromUrl])
+
+  useEffect(() => {
+    // Reconcile the server-rendered notes fallback with the browser URL on mount.
+    // This state update is intentional: the route may already be /?view=tags after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- required for SSR URL reconciliation
+    syncNavigationFromUrl()
+    window.addEventListener('popstate', syncNavigationFromUrl)
+    return () => window.removeEventListener('popstate', syncNavigationFromUrl)
+  }, [syncNavigationFromUrl])
+
+  // -- Batch Tag Mutations --
+  const tagMutationQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const persistTagChanges = useCallback((updatedNotes: NoteViewModel[], originalNotes: NoteViewModel[]) => {
+    const runMutation = async () => {
+      const changedNotes = updatedNotes.filter((note, index) => note !== originalNotes[index])
+      if (isOffline) {
+        await persistOfflineNoteUpdates(changedNotes)
+        return
+      }
+
+      const results = await Promise.allSettled(
+        changedNotes.map((note) =>
+          updateNoteMutation.mutateAsync({
+            id: note.id,
+            tags: note.tags,
+          })
+        )
+      )
+      const failedResult = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')
+
+      if (!failedResult) return
+
+      const rollbackResults = await Promise.allSettled(
+        changedNotes.flatMap((updatedNote, index) => {
+          if (results[index].status !== 'fulfilled') return []
+          const originalNote = originalNotes.find((note) => note.id === updatedNote.id)
+          if (!originalNote) return []
+          return updateNoteMutation.mutateAsync({
+            id: originalNote.id,
+            tags: originalNote.tags,
+          })
+        })
+      )
+      const rollbackFailure = rollbackResults.find((result): result is PromiseRejectedResult => result.status === 'rejected')
+      if (rollbackFailure) {
+        throw new Error(`Tag changes failed and rollback was incomplete: ${rollbackFailure.reason instanceof Error ? rollbackFailure.reason.message : String(rollbackFailure.reason)}`)
+      }
+
+      throw failedResult.reason instanceof Error ? failedResult.reason : new Error(String(failedResult.reason))
+    }
+
+    const queuedMutation = tagMutationQueueRef.current.then(runMutation, runMutation)
+    tagMutationQueueRef.current = queuedMutation.then(() => undefined, () => undefined)
+    return queuedMutation
+  }, [isOffline, persistOfflineNoteUpdates, updateNoteMutation])
+
+  const handleRenameTag = useCallback(async (oldTag: string, newTag: string) => {
+    const updatedNotes = renameTagInNotes(notes, oldTag, newTag)
+    const changedNotes = updatedNotes.filter((note, i) => note !== notes[i])
+
+    if (changedNotes.length === 0) return
+
+    try {
+      await persistTagChanges(updatedNotes, notes)
+      toast.success(`Tag "${oldTag}" renamed to "${newTag}"`)
+    } catch (error) {
+      toast.error(`Failed to rename tag: ${(error as Error).message}`)
+    }
+  }, [notes, persistTagChanges])
+
+  const handleDeleteTag = useCallback(async (targetTag: string) => {
+    const updatedNotes = deleteTagFromNotes(notes, targetTag)
+    const changedNotes = updatedNotes.filter((note, i) => note !== notes[i])
+
+    if (changedNotes.length === 0) return
+
+    try {
+      await persistTagChanges(updatedNotes, notes)
+      toast.success(`Tag "${targetTag}" deleted`)
+    } catch (error) {
+      toast.error(`Failed to delete tag: ${(error as Error).message}`)
+    }
+  }, [notes, persistTagChanges])
+
+  const handleCleanTags = useCallback(async () => {
+    const updatedNotes = cleanUnusedOrEmptyTagsInNotes(notes)
+    const changedNotes = updatedNotes.filter((note, i) => note !== notes[i])
+
+    if (changedNotes.length === 0) {
+      toast.info("No empty or duplicate tags found to clean")
+      return
+    }
+
+    try {
+      await persistTagChanges(updatedNotes, notes)
+      toast.success("Cleaned up empty and duplicate tags")
+    } catch (error) {
+      toast.error(`Failed to clean tags: ${(error as Error).message}`)
+    }
+  }, [notes, persistTagChanges])
+
   return {
     registerNoteEditorRef,
     // State
@@ -446,8 +573,16 @@ export function useNoteAppController() {
     bulkDeleting,
     deleteAccountLoading,
     isOffline,
+    activeMainView,
+    setActiveMainView,
+    handleRenameTag,
+    handleDeleteTag,
+    handleCleanTags,
+
+
 
     // Data
+
     notes,
     notesQuery,
     ftsSearchResult,
@@ -513,3 +648,4 @@ export function useNoteAppController() {
 }
 
 export type NoteAppController = ReturnType<typeof useNoteAppController>
+

@@ -107,6 +107,37 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     expect(params.setLastSavedAt).toHaveBeenCalledWith(expect.any(String))
   })
 
+  it('persists offline tag changes through the shared cache and queue path', async () => {
+    const first = makeNote({ id: 'first', tags: ['new'] })
+    const second = makeNote({ id: 'second', title: 'Second', tags: ['other'] })
+    const queue = [
+      { status: 'pending' },
+      { status: 'failed' },
+    ]
+    const { result, params } = setup({
+      offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue(queue) } },
+    })
+
+    await act(async () => {
+      await result.current.persistOfflineNoteUpdates([first, second])
+    })
+
+    expect(params.offlineCache.saveNote).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'first',
+      title: 'Original',
+      description: 'Original body',
+      tags: ['new'],
+      status: 'pending',
+    }))
+    expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
+      noteId: 'second',
+      operation: 'update',
+      payload: expect.objectContaining({ title: 'Second', tags: ['other'] }),
+    }))
+    expect(params.setPendingCount).toHaveBeenCalledWith(1)
+    expect(params.setFailedCount).toHaveBeenCalledWith(1)
+  })
+
   it('updates an existing note offline with parsed tags and the current timestamp', async () => {
     const note = makeNote()
     const { result, params } = setup({ isOffline: true, selectedNote: note })
@@ -244,3 +275,4 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     consoleSpy.mockRestore()
   })
 })
+

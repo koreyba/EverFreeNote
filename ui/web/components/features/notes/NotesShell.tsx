@@ -33,6 +33,9 @@ import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 import { saveSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
 import { consumeActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
 
+import { NavRail } from "@/components/features/navigation/NavRail"
+import { TagsPage } from "@/components/features/tags/TagsPage"
+
 type NoteRecord = Note & {
   content?: string | null
   headline?: string | null
@@ -44,6 +47,7 @@ type NotesShellProps = {
 }
 
 export function NotesShell({ controller }: NotesShellProps) {
+
   const router = useRouter()
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
   const searchPanelRef = React.useRef<SearchResultsPanelHandle | null>(null)
@@ -88,6 +92,11 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleSelectNote,
     isSearchPanelOpen,
     setIsSearchPanelOpen,
+    activeMainView,
+    setActiveMainView,
+    handleRenameTag,
+    handleDeleteTag,
+    notes,
   } = controller
 
   const refreshWordPressStatus = React.useCallback(async () => {
@@ -140,12 +149,16 @@ export function NotesShell({ controller }: NotesShellProps) {
 
   const showEditor = !!(selectedNote || isEditing)
   const handleOpenSearchPanel = React.useCallback(() => {
+    if (activeMainView !== "notes") {
+      setActiveMainView("notes")
+    }
     if (isSearchPanelOpen) {
       searchPanelRef.current?.focusInput()
       return
     }
     setIsSearchPanelOpen(true)
-  }, [isSearchPanelOpen, setIsSearchPanelOpen])
+  }, [activeMainView, isSearchPanelOpen, setActiveMainView, setIsSearchPanelOpen])
+
 
   const handlePendingChunkFocusApplied = React.useCallback((requestId: string) => {
     setPendingChunkFocus((current) => (current?.requestId === requestId ? null : current))
@@ -176,68 +189,101 @@ export function NotesShell({ controller }: NotesShellProps) {
     })
   }, [handleSelectNote, router])
 
+  const handleSelectTagFromTagsPage = React.useCallback((tag: string) => {
+    controller.handleTagClick(tag).catch(() => undefined)
+    setActiveMainView("notes")
+  }, [controller, setActiveMainView])
+
   return (
     <div
-      className="flex h-[100dvh] max-h-[100dvh] min-h-[100svh] bg-muted/20 overflow-hidden"
+      className="flex h-[100dvh] max-h-[100dvh] min-h-[100svh] bg-muted/20 overflow-hidden relative"
       data-testid="notes-shell"
     >
-      <Sidebar
-        user={user!}
-        filterByTag={filterByTag}
-        notesDisplayed={notesDisplayed}
-        notesTotal={notesTotal}
-        pendingCount={pendingCount}
-        failedCount={failedCount}
-        isOffline={isOffline}
-        selectionMode={selectionMode}
-        selectedCount={selectedCount}
-        bulkDeleting={bulkDeleting}
-        onExitSelectionMode={exitSelectionMode}
-        onSelectAll={selectAllVisible}
-        onBulkDelete={deleteSelectedNotes}
-        onClearTagFilter={handleClearTagFilter}
-        onOpenSettings={() => void handleOpenSettings()}
-        onCreateNote={handleCreateNote}
-        onSignOut={handleSignOut}
+      {/* Main Navigation Rail (Desktop Dock & Mobile Bottom Bar) */}
+      <NavRail
+        activeView={activeMainView}
+        onSelectView={(view) => {
+          if (view === "settings") {
+            void handleOpenSettings()
+          } else {
+            setActiveMainView(view)
+          }
+        }}
         onOpenSearch={handleOpenSearchPanel}
-        className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
-        data-testid="sidebar-container"
-      >
-        <ListPane controller={controller} />
-      </Sidebar>
+        onOpenSettings={() => void handleOpenSettings()}
+      />
 
-      {isSearchPanelOpen && (
-        <SearchResultsPanel
-          ref={searchPanelRef}
-          controller={controller}
-          hasGeminiApiKey={hasGeminiApiKey}
-          onOpenInContext={handleOpenInContext}
-          onClose={() => setIsSearchPanelOpen(false)}
-          className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
-        />
+      {activeMainView === "tags" ? (
+        <main className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
+          <TagsPage
+            notes={notes}
+            onSelectTag={handleSelectTagFromTagsPage}
+            onRenameTag={handleRenameTag}
+            onDeleteTag={handleDeleteTag}
+          />
+        </main>
+      ) : (
+        <>
+          <Sidebar
+            user={user!}
+            filterByTag={filterByTag}
+            notesDisplayed={notesDisplayed}
+            notesTotal={notesTotal}
+            pendingCount={pendingCount}
+            failedCount={failedCount}
+            isOffline={isOffline}
+            selectionMode={selectionMode}
+            selectedCount={selectedCount}
+            bulkDeleting={bulkDeleting}
+            onExitSelectionMode={exitSelectionMode}
+            onSelectAll={selectAllVisible}
+            onBulkDelete={deleteSelectedNotes}
+            onClearTagFilter={handleClearTagFilter}
+            onOpenSettings={() => void handleOpenSettings()}
+            onCreateNote={handleCreateNote}
+            onSignOut={handleSignOut}
+            onOpenSearch={handleOpenSearchPanel}
+            className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
+            data-testid="sidebar-container"
+          >
+            <ListPane controller={controller} />
+          </Sidebar>
+
+          {isSearchPanelOpen && (
+            <SearchResultsPanel
+              ref={searchPanelRef}
+              controller={controller}
+              hasGeminiApiKey={hasGeminiApiKey}
+              onOpenInContext={handleOpenInContext}
+              onClose={() => setIsSearchPanelOpen(false)}
+              className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
+            />
+          )}
+
+          <main
+            className={cn(
+              "flex-1 flex min-h-0 flex-col h-full overflow-hidden",
+              !showEditor ? "hidden md:flex" : "w-full"
+            )}
+            data-testid="editor-container"
+          >
+            <EditorPane
+              controller={controller}
+              onBack={handleBackFromNote}
+              noteEditorRef={noteEditorRef}
+              wordpressConfigured={wordpressConfigured}
+              pendingChunkFocus={pendingChunkFocus}
+              onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
+            />
+          </main>
+        </>
       )}
-
-      <main
-        className={cn(
-          "flex-1 flex min-h-0 flex-col h-full overflow-hidden",
-          !showEditor ? "hidden md:flex" : "w-full"
-        )}
-        data-testid="editor-container"
-      >
-        <EditorPane
-          controller={controller}
-          onBack={handleBackFromNote}
-          noteEditorRef={noteEditorRef}
-          wordpressConfigured={wordpressConfigured}
-          pendingChunkFocus={pendingChunkFocus}
-          onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
-        />
-      </main>
 
       <DeleteNoteDialog controller={controller} />
     </div>
   )
 }
+
 
 function ListPane({ controller }: { controller: NoteAppController }) {
   const {

@@ -18,9 +18,15 @@ describe('Mobile Layout Adaptation', () => {
       handleSelectNote.resolves()
 
       return ({
+      activeMainView: 'notes',
+      setActiveMainView: cy.stub(),
+      handleRenameTag: cy.stub().resolves(),
+      handleDeleteTag: cy.stub().resolves(),
+      handleCleanTags: cy.stub().resolves(),
       user: mockUser,
       loading: false,
       notes: [],
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       notesQuery: { isLoading: false, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: cy.stub() } as any,
       selectedNote: null,

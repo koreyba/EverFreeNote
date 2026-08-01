@@ -16,7 +16,7 @@ import type { Tables } from '@/supabase/types'
 type Note = Tables<'notes'>
 
 type CreateNoteParams = Pick<Note, 'title' | 'description' | 'tags'> & { userId: string; id?: string }
-type UpdateNoteParams = Pick<Note, 'id' | 'title' | 'description' | 'tags'>
+type UpdateNoteParams = Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'description' | 'tags'>>
 type DeleteNoteParams = { id: string; silent?: boolean }
 
 type NotesPage = {
@@ -140,9 +140,9 @@ export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallba
   return useMutation({
     mutationFn: async (params: UpdateNoteParams) => {
       return noteService.updateNote(params.id, {
-        title: params.title,
-        description: params.description,
-        tags: params.tags
+        ...(params.title !== undefined ? { title: params.title } : {}),
+        ...(params.description !== undefined ? { description: params.description } : {}),
+        ...(params.tags !== undefined ? { tags: params.tags } : {}),
       })
     },
 
@@ -161,9 +161,9 @@ export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallba
             note.id === updatedNote.id
               ? {
                 ...note,
-                title: updatedNote.title,
-                description: updatedNote.description,
-                tags: updatedNote.tags,
+                title: updatedNote.title ?? note.title,
+                description: updatedNote.description ?? note.description,
+                tags: updatedNote.tags ?? note.tags,
                 updated_at: new Date().toISOString(),
               }
               : note
@@ -294,3 +294,4 @@ export function useRemoveTag(callbacks: MutationCallbacks = defaultRemoveTagCall
     },
   })
 }
+
