@@ -90,6 +90,7 @@ export default [
       'allure-results/**',
       'allure-report/**',
       'android/app/build/**',
+      'android/build/**',
       'android/app/src/main/assets/web-editor/**',
       'ios/**/WebEditor/**',
       'expo-env.d.ts',

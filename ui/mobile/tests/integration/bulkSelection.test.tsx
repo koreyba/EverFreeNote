@@ -23,6 +23,8 @@ const mockPush = jest.fn()
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
+  useLocalSearchParams: () => ({}),
+  usePathname: () => '/',
   useNavigation: () => ({ setOptions: jest.fn() }),
 }))
 
@@ -54,6 +56,9 @@ jest.mock('@ui/mobile/providers', () => ({
   useSwipeContext: () => ({
     register: jest.fn(), unregister: jest.fn(),
     closeAll: jest.fn(), onSwipeStart: jest.fn(),
+  }),
+  useCollapsibleTabBar: () => ({
+    onScroll: jest.fn(), reset: jest.fn(), isVisible: true,
   }),
 }))
 

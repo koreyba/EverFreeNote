@@ -1,4 +1,4 @@
-import { View, StyleSheet, ActivityIndicator, Text, Pressable, Alert, BackHandler } from 'react-native'
+import { View, StyleSheet, ActivityIndicator, Text, Pressable, Alert, BackHandler, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
@@ -18,7 +18,7 @@ import {
   useMobileSearchMode,
   useMobileAIPaginatedSearch,
 } from '@ui/mobile/hooks'
-import { useSupabase, useTheme, useSwipeContext } from '@ui/mobile/providers'
+import { useCollapsibleTabBar, useSupabase, useTheme, useSwipeContext } from '@ui/mobile/providers'
 import { addSearchHistoryItem, clearSearchHistory, getSearchHistory } from '@ui/mobile/services/searchHistory'
 import { TagFilterBar } from '@ui/mobile/components/tags'
 import { BulkActionBar } from '@ui/mobile/components/BulkActionBar'
@@ -289,6 +289,7 @@ type SearchScreenBodyProps = Readonly<{
   ) => void
   onTagPress: (tag: string) => void
   onScrollBeginDrag: () => void
+  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   selectionMode: boolean
   selectedIds: Set<string>
   onActivateSelection: (id: string) => void
@@ -328,6 +329,7 @@ function SearchScreenBody({
   onOpenAiResult,
   onTagPress,
   onScrollBeginDrag,
+  onScroll,
   selectionMode,
   selectedIds,
   onActivateSelection,
@@ -421,6 +423,7 @@ function SearchScreenBody({
         onOpenAiResult={onOpenAiResult}
         onTagPress={onTagPress}
         onScrollBeginDrag={onScrollBeginDrag}
+        onScroll={onScroll}
         selectionMode={selectionMode}
         selectedIds={selectedIds}
         onActivateSelection={onActivateSelection}
@@ -446,6 +449,7 @@ function SearchScreenBody({
         onDeleteRegularNote={onDeleteRegularNote}
         onOpenAiResult={onOpenAiResult}
         onTagPress={onTagPress}
+        onScroll={onScroll}
         selectionMode={false}
         bottomInset={bottomInset}
       />
@@ -473,6 +477,7 @@ export default function SearchScreen() {
   const { colors } = useTheme()
   const styles = useMemo(() => createStyles(colors), [colors])
   const { closeAll } = useSwipeContext()
+  const { onScroll } = useCollapsibleTabBar()
   const params = useLocalSearchParams<{ tag?: string }>()
 
   const apiKeysSettingsService = useMemo(() => new ApiKeysSettingsService(client), [client])
@@ -830,6 +835,7 @@ export default function SearchScreen() {
         onOpenAiResult={handleOpenAiResult}
         onTagPress={handleTagPress}
         onScrollBeginDrag={closeAll}
+        onScroll={onScroll}
         selectionMode={isActive && selectionCapable}
         selectedIds={selectedIds}
         onActivateSelection={activate}

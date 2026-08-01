@@ -2,6 +2,10 @@ import type { MutationQueueItem, MutationStatus, MutationOperation } from '../ty
 
 type Op = MutationOperation
 
+const isTagMutation = (operation: Op): boolean => (
+  operation === 'renameTag' || operation === 'deleteTag'
+)
+
 /**
  * Сжимает очередь мутаций для одной и той же заметки, сводя цепочку операций к минимально
  * необходимому набору для отправки на сервер.
@@ -30,6 +34,13 @@ export function compactQueue(items: MutationQueueItem[]): MutationQueueItem[] {
     const sorted = [...ops].sort((a, b) => Date.parse(a.clientUpdatedAt) - Date.parse(b.clientUpdatedAt))
     const first = sorted[0]
     const last = sorted[sorted.length - 1]
+
+    // Bulk tag operations have their own idempotent replay semantics and must
+    // not be collapsed into ordinary note create/update/delete operations.
+    if (sorted.some((operation) => isTagMutation(operation.operation))) {
+      result.push(withPendingStatus(last))
+      continue
+    }
 
     const hasCreate = sorted.some((o) => o.operation === 'create')
     const hasDelete = sorted.some((o) => o.operation === 'delete')

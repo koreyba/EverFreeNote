@@ -9,6 +9,8 @@ import {
   Text,
   TextInput,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native'
 import { Database, Search, X } from 'lucide-react-native'
 import Toast from 'react-native-toast-message'
@@ -32,7 +34,7 @@ import {
   useAIIndexNotes,
   useFlattenedAIIndexNotes,
 } from '@ui/mobile/hooks/useAIIndexNotes'
-import { useSupabase, useTheme } from '@ui/mobile/providers'
+import { useCollapsibleTabBar, useSupabase, useTheme } from '@ui/mobile/providers'
 
 type FilterOption = Readonly<{
   value: AIIndexFilter
@@ -198,6 +200,7 @@ function AIIndexContent({
   queryResult,
   renderItem,
   styles,
+  onScroll,
 }: Readonly<{
   colors: ReturnType<typeof useTheme>['colors']
   emptyMessage: string
@@ -214,6 +217,7 @@ function AIIndexContent({
   queryResult: ReturnType<typeof useAIIndexNotes>
   renderItem: ({ item }: { item: AIIndexNoteRow }) => ReactElement
   styles: ReturnType<typeof createStyles>
+  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
 }>) {
   if (queryResult.isLoading) {
     return (
@@ -271,6 +275,8 @@ function AIIndexContent({
       onEndReachedThreshold={0.4}
       refreshing={queryResult.isRefetching && !queryResult.isFetchingNextPage}
       onRefresh={onRefresh}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       keyboardShouldPersistTaps="handled"
       ListFooterComponent={
         queryResult.isFetchingNextPage ? (
@@ -283,6 +289,7 @@ function AIIndexContent({
 
 export function AIIndexPanel() {
   const { colors } = useTheme()
+  const { onScroll } = useCollapsibleTabBar()
   const { client: supabase, user } = useSupabase()
   const queryClient = useQueryClient()
   const styles = useMemo(() => createStyles(colors), [colors])
@@ -569,6 +576,7 @@ export function AIIndexPanel() {
         queryResult={queryResult}
         renderItem={renderItem}
         styles={styles}
+        onScroll={onScroll}
       />
     </View>
   )

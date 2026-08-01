@@ -76,6 +76,28 @@ export class MobileSyncService {
                         }
                     }
                     break
+                case 'renameTag':
+                case 'deleteTag': {
+                    const payload = item.payload
+                    const tag = payload.tag?.trim()
+                    const userId = payload.user_id
+                    if (!tag || !userId) {
+                        throw new Error(`Invalid ${item.operation} queue payload`)
+                    }
+
+                    const changedNotes = item.operation === 'renameTag'
+                        ? await noteService.renameTag(userId, tag, payload.replacement ?? '')
+                        : await noteService.deleteTag(userId, tag)
+
+                    if (changedNotes.length > 0) {
+                        await databaseService.saveNotes(changedNotes.map((note) => ({
+                            ...note,
+                            is_synced: 1,
+                            is_deleted: 0,
+                        })))
+                    }
+                    break
+                }
                 case 'delete':
                     await noteService.deleteNote(item.noteId)
                     break

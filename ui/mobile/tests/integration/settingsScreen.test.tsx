@@ -8,6 +8,7 @@ import { createTestQueryClient } from '../testUtils'
 import { resolveRagIndexingSettings } from '@core/rag/indexingSettings'
 import { resolveRagSearchSettings } from '@core/rag/searchSettings'
 
+import { CollapsibleTabBarProvider } from '@ui/mobile/providers/CollapsibleTabBarProvider'
 import { ThemeProvider } from '@ui/mobile/providers/ThemeProvider'
 
 const mockSignOut = jest.fn()
@@ -100,7 +101,9 @@ const renderScreen = () =>
     <QueryClientProvider client={createTestQueryClient()}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <SettingsScreen />
+          <CollapsibleTabBarProvider>
+            <SettingsScreen />
+          </CollapsibleTabBarProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </QueryClientProvider>

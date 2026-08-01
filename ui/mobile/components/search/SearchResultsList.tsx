@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo } from 'react'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { FlashList, type ListRenderItem } from '@shopify/flash-list'
 import { Search } from 'lucide-react-native'
 import * as Haptics from 'expo-haptics'
@@ -25,6 +25,7 @@ type SearchResultsListProps = {
   onOpenAiResult: (note: AiNoteSnapshot, charOffset: number, chunkLength: number) => void
   onTagPress?: (tag: string) => void
   onScrollBeginDrag?: () => void
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   selectionMode?: boolean
   selectedIds?: Set<string>
   onActivateSelection?: (id: string) => void
@@ -130,6 +131,7 @@ export const SearchResultsList = memo(function SearchResultsList({
   onOpenAiResult,
   onTagPress,
   onScrollBeginDrag,
+  onScroll,
   selectionMode = false,
   selectedIds = new Set<string>(),
   onActivateSelection,
@@ -217,6 +219,8 @@ export const SearchResultsList = memo(function SearchResultsList({
       contentContainerStyle={contentContainerStyle}
       extraData={{ mode, selectionMode, selectedIds }}
       onScrollBeginDrag={onScrollBeginDrag}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       refreshing={refreshing}
       onRefresh={onRefresh}
       onEndReached={() => {
