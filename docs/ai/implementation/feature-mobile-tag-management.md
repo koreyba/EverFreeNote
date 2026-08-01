@@ -24,7 +24,9 @@ description: Technical implementation notes, patterns, and code guidelines
 - Mobile application and test TypeScript checks pass.
 - Mobile ESLint passes with zero warnings/errors after excluding generated Android build reports.
 - Focused behavior, core service, sync replay, hook, and existing-screen regression tests pass through Allure Agent.
-- Full mobile Jest regression passes 700/700 tests through Allure Agent.
+- Full mobile Jest regression passes 705/705 tests across 82 suites.
+- Root unit/integration/web coverage passes 1,417/1,417 tests across 183 suites.
+- The mobile declaration for `lucide-react-native` is explicitly included by both application and test TypeScript configs so clean validation can resolve the package's missing published declaration.
 - Focused coverage was generated; device-level Android/iOS smoke testing remains outstanding.
 
 ## Expected File Areas

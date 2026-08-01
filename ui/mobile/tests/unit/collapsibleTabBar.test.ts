@@ -29,6 +29,13 @@ describe('collapsible tab bar state', () => {
     expect(shown).toEqual(initialCollapsibleTabBarState)
   })
 
+  it('shows after an upward threshold before reaching the top', () => {
+    const hidden = reduceCollapsibleTabBarState(initialCollapsibleTabBarState, 20)
+    const shown = reduceCollapsibleTabBarState(hidden, 4)
+
+    expect(shown).toEqual({ visible: true, lastOffset: 4, accumulatedDelta: 0 })
+  })
+
   it('restarts accumulation when scroll direction changes', () => {
     const partialDown = reduceCollapsibleTabBarState(initialCollapsibleTabBarState, 12)
     const directionChanged = reduceCollapsibleTabBarState(partialDown, 8)

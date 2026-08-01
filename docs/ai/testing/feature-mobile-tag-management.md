@@ -56,10 +56,9 @@ Use coverage as supporting evidence, not as a replacement for the behavioral ass
 
 ## Phase 7 Evidence
 
-- Focused feature run: 30/30 passed through Allure Agent, including the native Tags screen, offline mutation, sync replay, and collapsible controller.
-- Core run: 3/3 passed through Allure Agent (`tag-management-notes` and `tag-mutation-queue`).
-- Sync replay run: 17/17 passed through Allure Agent.
-- Existing-screen regression after adding the controller: 74/74 passed through Allure Agent across Notes, Search, Settings, AI Index, and bulk selection.
-- Full mobile regression: 700/700 passed through Allure Agent with complete runtime modeling and zero findings.
-- Focused mobile coverage run: 30/30 passed. New-file coverage included 100% lines for `ui/mobile/services/sync.ts`, 93.33% lines for `ui/mobile/utils/tagManagement.ts`, 92.3% lines for `ui/mobile/utils/collapsibleTabBar.ts`, 100% lines for `TagManagementCard`/`TagSearchInput`, 55.95% lines for `tags.tsx`, and 72.58% lines for `useTagManagementMutations.ts`. The overall percentage is intentionally low because the command collects all mobile sources while selecting only feature tests.
+- Focused feature regression: 23/23 passed through Jest across the Tags screen, data/mutation hooks, provider, and collapsible controller.
+- Full mobile regression with coverage: 82 suites and 705 tests passed; changed-file line coverage includes 92.3% for `tags.tsx`, 100% for `useTagManagement.ts`, `useTagManagementMutations.ts`, and `CollapsibleTabBarProvider.tsx`, and 100% for `ui/mobile/utils/collapsibleTabBar.ts`.
+- Root unit/integration/web coverage: 183 suites and 1,417 tests passed; changed `core/services/notes.ts` lines are covered and the tag queue tests pass.
+- The fresh local union of executable changed lines is 92.8% (258/278), above the Sonar new-code threshold; the external Sonar result must still be rechecked after the fix is pushed.
+- `npx ai-devkit@latest lint --feature mobile-tag-management`, root type-check, mobile type-check, mobile lint, and core test type-check pass.
 - Manual Android/iOS smoke testing is not available in this environment; safe-area, modal/keyboard, dark-mode, and animated-bar behavior remain a device QA gate.

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NoteService } from '../../services/notes'
-import type { Tables } from '../../supabase/types'
+import type { Tables } from '../../../supabase/types'
 
 type Note = Tables<'notes'>
 

@@ -84,4 +84,50 @@ describe('useTagManagementData', () => {
     expect(result.current.data?.usedLocalFallback).toBe(true)
     expect(result.current.allTags).toEqual([{ name: 'Offline', count: 1, letter: 'O' }])
   })
+
+  it('falls back to local notes when the online query fails', async () => {
+    const localNotes = [createNote('local', ['Recovered'])]
+    mockUseSupabase.mockReturnValue({ client: {}, user: { id: 'user-1' } })
+    mockUseNetworkStatus.mockReturnValue(true)
+    mockGetAllNotes.mockRejectedValue(new Error('network down'))
+    mockGetLocalNotes.mockResolvedValue(localNotes)
+
+    const queryClient = createTestQueryClient()
+    const { result } = renderHook(() => useTagManagementData(), {
+      wrapper: createQueryWrapper(queryClient),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual({ notes: localNotes, usedLocalFallback: true })
+    expect(result.current.filterTags('', null)).toEqual([
+      { name: 'Recovered', count: 1, letter: 'R' },
+    ])
+  })
+
+  it('rethrows the online error when no local fallback exists', async () => {
+    mockUseSupabase.mockReturnValue({ client: {}, user: { id: 'user-1' } })
+    mockUseNetworkStatus.mockReturnValue(true)
+    mockGetAllNotes.mockRejectedValue(new Error('network down'))
+    mockGetLocalNotes.mockResolvedValue([])
+
+    const { result } = renderHook(() => useTagManagementData(), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error).toEqual(new Error('network down'))
+  })
+
+  it('reports a missing Supabase client for online users', async () => {
+    mockUseSupabase.mockReturnValue({ client: null, user: { id: 'user-1' } })
+    mockUseNetworkStatus.mockReturnValue(true)
+
+    const { result } = renderHook(() => useTagManagementData(), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error).toEqual(new Error('Supabase client unavailable'))
+  })
 })
