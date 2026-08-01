@@ -1,0 +1,1 @@
+{"id":"849bf980f42dbb307983743d8d1b0235","fullName":"everfreenote:ui/web/tests/unit/hooks/useNotesMutations.test.tsx#useNotesMutations deletes optimistically, honors silent success, and rolls back failures","name":"deletes optimistically, honors silent success, and rolls back failures","status":"passed","testResultsByEnv":{"default":"0dc9d68ab7d84478a3a04d9a3353ce7f"}}
