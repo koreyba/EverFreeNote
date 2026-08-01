@@ -18,9 +18,9 @@ interface NoteLike {
 
 interface TagsPageProps {
   readonly notes: NoteLike[]
-  readonly onSelectTag: (_tagName: string) => void
-  readonly onRenameTag: (_oldTag: string, _newTag: string) => void
-  readonly onDeleteTag: (_tagName: string) => void
+  readonly onSelectTag: (...args: [string]) => void
+  readonly onRenameTag: (...args: [string, string]) => void
+  readonly onDeleteTag: (...args: [string]) => void
   readonly className?: string
 }
 
