@@ -4,8 +4,8 @@ import { TagsPage } from '@/components/features/tags/TagsPage'
 
 describe('TagsPage Component', () => {
   const mockNotes = [
-    { id: '1', tags: ['react', 'javascript', 'Ð·Ð°Ð¼ÐµÑ‚ÐºÐ¸'] },
-    { id: '2', tags: ['REACT', 'typescript', 'Ð°Ñ€Ñ…Ð¸Ð²'] },
+    { id: '1', tags: ['react', 'javascript', 'ÃÂ·ÃÂ°ÃÂ¼ÃÂµÃ‘â€šÃÂºÃÂ¸'] },
+    { id: '2', tags: ['REACT', 'typescript', 'ÃÂ°Ã‘â‚¬Ã‘â€¦ÃÂ¸ÃÂ²'] },
   ]
 
   const mockOnSelectTag = jest.fn()
@@ -51,7 +51,7 @@ describe('TagsPage Component', () => {
 
     expect(screen.getByText('javascript')).toBeTruthy()
     expect(screen.getByText('typescript')).toBeTruthy()
-    expect(screen.queryByText('Ð°Ñ€Ñ…Ð¸Ð²')).toBeNull()
+    expect(screen.queryByText('ÃÂ°Ã‘â‚¬Ã‘â€¦ÃÂ¸ÃÂ²')).toBeNull()
   })
 
   it('triggers onSelectTag when a tag card is clicked', () => {
@@ -160,6 +160,7 @@ describe('TagsPage Component', () => {
       })
       expect(screen.queryByText('Updated')).toBeNull()
 
+      const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout')
       fireEvent.keyDown(screen.getByTestId('tag-menu-trigger-beta'), { key: 'Enter' })
       fireEvent.click(await screen.findByTestId('rename-action-beta'))
       fireEvent.change(await screen.findByTestId('rename-tag-input'), { target: { value: 'gamma' } })
@@ -169,6 +170,8 @@ describe('TagsPage Component', () => {
       act(() => {
         jest.advanceTimersByTime(2500)
       })
+      expect(clearTimeoutSpy).toHaveBeenCalled()
+      clearTimeoutSpy.mockRestore()
     } finally {
       jest.useRealTimers()
     }
@@ -187,3 +190,4 @@ describe('TagsPage Component', () => {
     expect(screen.getByText('No tags found')).toBeTruthy()
   })
 })
+

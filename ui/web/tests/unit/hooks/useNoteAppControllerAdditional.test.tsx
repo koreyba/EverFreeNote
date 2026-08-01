@@ -28,6 +28,7 @@ const mockResetFtsResults = jest.fn()
 const mockClearActiveSettingsNoteReturnPath = jest.fn()
 const mockResolveSearchResult = jest.fn(() => mockResolvedSearchResult)
 const mockUpdateNoteMutation = jest.fn()
+const mockPersistOfflineNoteUpdates = jest.fn().mockResolvedValue(undefined)
 
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn() } }))
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
@@ -143,6 +144,7 @@ jest.mock('@ui/web/hooks/useNoteSaveHandlers', () => ({
     handleReadNote: jest.fn(),
     confirmDeleteNote: jest.fn(),
     handleRemoveTagFromNote: jest.fn(),
+    persistOfflineNoteUpdates: mockPersistOfflineNoteUpdates,
   }),
 }))
 jest.mock('@ui/web/hooks/useNoteBulkActions', () => ({
@@ -152,33 +154,40 @@ jest.mock('@ui/web/hooks/useNoteBulkActions', () => ({
     deleteNotesByIds: jest.fn(),
   }),
 }))
-jest.mock('@ui/web/hooks/useNoteSearch', () => ({
-  useNoteSearch: () => ({
-    searchQuery: 'initial search',
-    filterByTag: 'initial-tag',
-    isSearchPanelOpen: true,
-    setIsSearchPanelOpen: jest.fn(),
-    handleSearch: mockHandleSearch,
-    handleTagClick: mockOnTagClick,
-    handleClearTagFilter: mockClearTagFilter,
-    showFTSResults: false,
-    aggregatedFtsData: [],
-    ftsObserverTarget: { current: null },
-    ftsHasMore: false,
-    ftsLoadingMore: false,
-    ftsAccumulatedResults: [],
-    loadMoreFts: jest.fn(),
-    ftsSearchResult: null,
-    resetFtsResults: mockResetFtsResults,
-    showTagOnlyResults: false,
-    tagOnlyResults: [],
-    tagOnlyTotal: 0,
-    tagOnlyLoading: false,
-    tagOnlyHasMore: false,
-    tagOnlyLoadingMore: false,
-    loadMoreTagOnly: jest.fn(),
-  }),
-}))
+jest.mock('@ui/web/hooks/useNoteSearch', () => {
+  const ReactRuntime = jest.requireActual('react')
+
+  return {
+    useNoteSearch: () => {
+      const [isSearchPanelOpen, setIsSearchPanelOpen] = ReactRuntime.useState(true)
+      return {
+        searchQuery: 'initial search',
+        filterByTag: 'initial-tag',
+        isSearchPanelOpen,
+        setIsSearchPanelOpen,
+        handleSearch: mockHandleSearch,
+        handleTagClick: mockOnTagClick,
+        handleClearTagFilter: mockClearTagFilter,
+        showFTSResults: false,
+        aggregatedFtsData: [],
+        ftsObserverTarget: { current: null },
+        ftsHasMore: false,
+        ftsLoadingMore: false,
+        ftsAccumulatedResults: [],
+        loadMoreFts: jest.fn(),
+        ftsSearchResult: null,
+        resetFtsResults: mockResetFtsResults,
+        showTagOnlyResults: false,
+        tagOnlyResults: [],
+        tagOnlyTotal: 0,
+        tagOnlyLoading: false,
+        tagOnlyHasMore: false,
+        tagOnlyLoadingMore: false,
+        loadMoreTagOnly: jest.fn(),
+      }
+    },
+  }
+})
 
 const makeNote = (overrides: Partial<NoteViewModel> = {}): NoteViewModel => ({
   id: 'note-1',
@@ -222,6 +231,7 @@ describe('useNoteAppController additional observable behavior', () => {
     const note = makeNote()
     mockSelectedNote = note
     mockNotes = [note]
+    window.history.pushState({}, '', '/?search=open')
     const flushPendingSave = jest.fn().mockResolvedValue(undefined)
     const editorRef = { current: { flushPendingSave } }
     const { result } = setup()
@@ -246,6 +256,7 @@ describe('useNoteAppController additional observable behavior', () => {
       filterByTag: 'initial-tag',
     })
     expect(flushPendingSave).toHaveBeenCalledTimes(2)
+    window.history.pushState({}, '', '/')
   })
 
   it('selects the remote note after flushing, but exits editing when selecting the already selected note', async () => {
@@ -369,6 +380,7 @@ describe('useNoteAppController additional observable behavior', () => {
     const { result, unmount } = setup()
 
     expect(result.current.activeMainView).toBe('tags')
+    expect(result.current.isSearchPanelOpen).toBe(true)
 
     act(() => {
       window.history.pushState({}, '', '/?view=notes')
@@ -376,6 +388,7 @@ describe('useNoteAppController additional observable behavior', () => {
     })
 
     expect(result.current.activeMainView).toBe('notes')
+    expect(result.current.isSearchPanelOpen).toBe(false)
     unmount()
     window.history.pushState({}, '', '/')
   })
@@ -414,6 +427,8 @@ describe('useNoteAppController additional observable behavior', () => {
       id: 'first',
       tags: ['new', 'keep'],
     }))
+    expect(mockUpdateNoteMutation.mock.calls[0][0]).not.toHaveProperty('title')
+    expect(mockUpdateNoteMutation.mock.calls[0][0]).not.toHaveProperty('description')
     expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({
       id: 'second',
       tags: ['new', '  ', 'KEEP'],
@@ -473,4 +488,22 @@ describe('useNoteAppController additional observable behavior', () => {
       tags: ['old'],
     }))
   })
+
+  it('routes tag changes through the offline queue when offline', async () => {
+    mockIsOffline = true
+    const firstNote = makeNote({ id: 'first', tags: ['old'] })
+    mockNotes = [firstNote]
+    const { result } = setup()
+
+    await act(async () => {
+      await result.current.handleRenameTag('old', 'new')
+    })
+
+    expect(mockPersistOfflineNoteUpdates).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'first', tags: ['new'] }),
+    ])
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
 })
+

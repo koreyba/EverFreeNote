@@ -242,6 +242,7 @@ export function useNoteAppController() {
     handleReadNote,
     confirmDeleteNote,
     handleRemoveTagFromNote,
+    persistOfflineNoteUpdates,
   } = useNoteSaveHandlers({
     user,
     isOffline,
@@ -464,12 +465,15 @@ export function useNoteAppController() {
   const persistTagChanges = useCallback((updatedNotes: NoteViewModel[], originalNotes: NoteViewModel[]) => {
     const runMutation = async () => {
       const changedNotes = updatedNotes.filter((note, index) => note !== originalNotes[index])
+      if (isOffline) {
+        await persistOfflineNoteUpdates(changedNotes)
+        return
+      }
+
       const results = await Promise.allSettled(
         changedNotes.map((note) =>
           updateNoteMutation.mutateAsync({
             id: note.id,
-            title: note.title,
-            description: note.description,
             tags: note.tags,
           })
         )
@@ -485,8 +489,6 @@ export function useNoteAppController() {
           if (!originalNote) return []
           return updateNoteMutation.mutateAsync({
             id: originalNote.id,
-            title: originalNote.title,
-            description: originalNote.description,
             tags: originalNote.tags,
           })
         })
@@ -502,7 +504,7 @@ export function useNoteAppController() {
     const queuedMutation = tagMutationQueueRef.current.then(runMutation, runMutation)
     tagMutationQueueRef.current = queuedMutation.then(() => undefined, () => undefined)
     return queuedMutation
-  }, [updateNoteMutation])
+  }, [isOffline, persistOfflineNoteUpdates, updateNoteMutation])
 
   const handleRenameTag = useCallback(async (oldTag: string, newTag: string) => {
     const updatedNotes = renameTagInNotes(notes, oldTag, newTag)
@@ -646,3 +648,4 @@ export function useNoteAppController() {
 }
 
 export type NoteAppController = ReturnType<typeof useNoteAppController>
+
