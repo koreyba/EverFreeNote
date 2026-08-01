@@ -91,7 +91,7 @@ describe('Notes workspace tab controls', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Open note tabs (2)' }))
-    fireEvent.click(screen.getByRole('option', { name: /Second note/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Second note/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Open note tabs (2)' }))
     fireEvent.click(screen.getByRole('button', { name: 'Close First note' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add tab' }))

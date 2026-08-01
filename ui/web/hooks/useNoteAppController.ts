@@ -382,8 +382,13 @@ export function useNoteAppController() {
       saveState: 'saving',
       saveError: null,
     })
-    await handleSaveNote(data)
-    updateTab(activeTabId, { saveState: 'saved', saveError: null })
+    try {
+      await handleSaveNote(data)
+      updateTab(activeTabId, { saveState: 'saved', saveError: null })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      updateTab(activeTabId, { saveState: 'error', saveError: message })
+    }
   }, [activeTabId, handleSaveNote, updateTab])
 
   const handleReadNoteWithWorkspace = useCallback(async (data: {
@@ -396,8 +401,13 @@ export function useNoteAppController() {
       saveState: 'saving',
       saveError: null,
     })
-    await handleReadNote(data)
-    updateTab(activeTabId, { saveState: 'saved', saveError: null })
+    try {
+      await handleReadNote(data)
+      updateTab(activeTabId, { saveState: 'saved', saveError: null })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      updateTab(activeTabId, { saveState: 'error', saveError: message })
+    }
   }, [activeTabId, handleReadNote, updateTab])
 
   // -- Bulk actions --
@@ -634,25 +644,23 @@ export function useNoteAppController() {
     }
   }, [filterByTag, flushAndCaptureActiveTab, isEditing, isSearchPanelOpen, searchQuery, selectedNoteRef])
 
-  const restoreUiState = useCallback(async (snapshot: NotesUiStateSnapshot) => {
-    // Temporary bridge for the /settings route. The contract is intentionally narrow
-    // and should not keep expanding forever. If returning from settings needs richer
-    // workspace history, move the primary notes UI state into route/history instead.
-    let restoredSelectedNote = snapshot.selectedNoteId
-      ? pickLatestNote([
-        notesRef.current.find((note) => note.id === snapshot.selectedNoteId),
-        snapshot.selectedNote,
-      ]) ?? null
-      : null
+  const resolveSettingsReturnNote = useCallback(async (snapshot: NotesUiStateSnapshot) => {
+    if (!snapshot.selectedNoteId) return null
 
-    if (!restoredSelectedNote && snapshot.selectedNoteId) {
-      try {
-        restoredSelectedNote = await noteService.getNote(snapshot.selectedNoteId)
-      } catch {
-        restoredSelectedNote = null
-      }
+    const cachedNote = pickLatestNote([
+      notesRef.current.find((note) => note.id === snapshot.selectedNoteId),
+      snapshot.selectedNote,
+    ])
+    if (cachedNote) return cachedNote
+
+    try {
+      return await noteService.getNote(snapshot.selectedNoteId)
+    } catch {
+      return null
     }
+  }, [noteService, notesRef])
 
+  const restoreSettingsSearchState = useCallback((snapshot: NotesUiStateSnapshot) => {
     if (snapshot.searchQuery) {
       handleSearch(snapshot.searchQuery)
     } else {
@@ -664,22 +672,23 @@ export function useNoteAppController() {
     } else {
       handleClearTagFilter()
     }
+  }, [handleClearTagFilter, handleSearch, onTagClick, resetFtsResults])
 
-    setIsSearchPanelOpen(snapshot.isSearchPanelOpen || Boolean(snapshot.searchQuery) || Boolean(snapshot.filterByTag))
-    const canRestoreEditing =
-      snapshot.isEditing &&
-      (restoredSelectedNote !== null || snapshot.selectedNoteId === null)
-
+  const restoreSettingsWorkspaceState = useCallback((
+    restoredSelectedNote: NoteViewModel | null,
+    canRestoreEditing: boolean,
+  ) => {
+    const mode = canRestoreEditing ? 'editing' : 'reading'
     if (restoredSelectedNote) {
       setLegacySelectedNote(restoredSelectedNote)
       setLegacyIsEditing(canRestoreEditing)
       const existingTab = findTabByNoteId(restoredSelectedNote.id)
       if (existingTab) {
         activateTab(existingTab.id)
-        updateTab(existingTab.id, { mode: canRestoreEditing ? 'editing' : 'reading' })
+        updateTab(existingTab.id, { mode })
       } else {
         openNote(restoredSelectedNote)
-        updateTab(activeTabId, { mode: canRestoreEditing ? 'editing' : 'reading' })
+        updateTab(activeTabId, { mode })
       }
     } else {
       setLegacySelectedNote(null)
@@ -687,25 +696,39 @@ export function useNoteAppController() {
       updateTab(activeTabId, {
         note: null,
         noteId: null,
-        mode: canRestoreEditing ? 'editing' : 'reading',
+        mode,
       })
     }
-    setNotePaneVisible(Boolean(restoredSelectedNote || canRestoreEditing))
   }, [
-    handleClearTagFilter,
-    handleSearch,
-    setLegacyIsEditing,
-    setLegacySelectedNote,
-    noteService,
-    notesRef,
-    onTagClick,
-    resetFtsResults,
-    setIsSearchPanelOpen,
     activeTabId,
     activateTab,
     findTabByNoteId,
     openNote,
+    setLegacyIsEditing,
+    setLegacySelectedNote,
     updateTab,
+  ])
+
+  const restoreUiState = useCallback(async (snapshot: NotesUiStateSnapshot) => {
+    // Temporary bridge for the /settings route. The contract is intentionally narrow
+    // and should not keep expanding forever. If returning from settings needs richer
+    // workspace history, move the primary notes UI state into route/history instead.
+    const restoredSelectedNote = await resolveSettingsReturnNote(snapshot)
+    const canRestoreEditing = snapshot.isEditing && (
+      restoredSelectedNote !== null || snapshot.selectedNoteId === null
+    )
+
+    restoreSettingsSearchState(snapshot)
+    setIsSearchPanelOpen(
+      snapshot.isSearchPanelOpen || Boolean(snapshot.searchQuery) || Boolean(snapshot.filterByTag),
+    )
+    restoreSettingsWorkspaceState(restoredSelectedNote, canRestoreEditing)
+    setNotePaneVisible(Boolean(restoredSelectedNote || canRestoreEditing))
+  }, [
+    resolveSettingsReturnNote,
+    restoreSettingsSearchState,
+    restoreSettingsWorkspaceState,
+    setIsSearchPanelOpen,
   ])
 
   // -- Main Navigation View --

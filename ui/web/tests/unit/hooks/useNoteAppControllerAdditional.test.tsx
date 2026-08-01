@@ -25,6 +25,9 @@ const mockOnTagClick = jest.fn()
 const mockHandleSearch = jest.fn()
 const mockClearTagFilter = jest.fn()
 const mockResetFtsResults = jest.fn()
+const mockHandleAutoSave = jest.fn()
+const mockHandleSaveNote = jest.fn()
+const mockHandleReadNote = jest.fn()
 const mockClearActiveSettingsNoteReturnPath = jest.fn()
 const mockResolveSearchResult = jest.fn(() => mockResolvedSearchResult)
 const mockUpdateNoteMutation = jest.fn()
@@ -139,9 +142,9 @@ jest.mock('@ui/web/hooks/useNoteSaveHandlers', () => ({
   useNoteSaveHandlers: () => ({
     saving: false,
     autoSaving: false,
-    handleAutoSave: jest.fn(),
-    handleSaveNote: jest.fn(),
-    handleReadNote: jest.fn(),
+    handleAutoSave: mockHandleAutoSave,
+    handleSaveNote: mockHandleSaveNote,
+    handleReadNote: mockHandleReadNote,
     confirmDeleteNote: jest.fn(),
     handleRemoveTagFromNote: jest.fn(),
     persistOfflineNoteUpdates: mockPersistOfflineNoteUpdates,
@@ -224,6 +227,9 @@ describe('useNoteAppController additional observable behavior', () => {
     mockOfflineOverlay = []
     mockNotes = []
     mockResolvedSearchResult = null
+    mockHandleAutoSave.mockReset().mockResolvedValue(undefined)
+    mockHandleSaveNote.mockReset().mockResolvedValue(undefined)
+    mockHandleReadNote.mockReset().mockResolvedValue(undefined)
     mockUpdateNoteMutation.mockReset()
     mockUpdateNoteMutation.mockResolvedValue(undefined)
   })
@@ -301,6 +307,44 @@ describe('useNoteAppController additional observable behavior', () => {
     })
     expect(mockResolveSearchResult).toHaveBeenCalledWith({ id: 'result' })
     expect(mockHandleSearchResultClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'result' }))
+  })
+
+  it('tracks manual save success and keeps save failures visible on the active tab', async () => {
+    const data = { title: 'Saved title', description: 'Saved body', tags: 'one, two' }
+    const { result } = setup()
+
+    await act(async () => {
+      await result.current.handleSaveNote(data)
+    })
+    expect(result.current.activeTab.draft).toEqual(data)
+    expect(result.current.activeTab.saveState).toBe('saved')
+    expect(result.current.activeTab.saveError).toBeNull()
+
+    mockHandleSaveNote.mockRejectedValueOnce(new Error('network failure'))
+    await act(async () => {
+      await result.current.handleSaveNote(data)
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    expect(result.current.activeTab.saveError).toBe('network failure')
+  })
+
+  it('marks auto-save and Read failures on the active tab', async () => {
+    const data = { title: 'Draft', description: 'Body', tags: '' }
+    const { result } = setup()
+
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('auto-save failure'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ ...data, noteId: 'note-1' })).rejects.toThrow('auto-save failure')
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    expect(result.current.activeTab.saveError).toBe('auto-save failure')
+
+    mockHandleReadNote.mockRejectedValueOnce(new Error('read-save failure'))
+    await act(async () => {
+      await result.current.handleReadNote(data)
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    expect(result.current.activeTab.saveError).toBe('read-save failure')
   })
 
   it('ignores a stale select request when a newer request completes first', async () => {

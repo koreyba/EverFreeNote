@@ -362,6 +362,7 @@ export function useNoteSaveHandlers({
       }
     } catch (error) {
       console.error('Error saving note:', error)
+      throw error
     } finally {
       setSaving(false)
     }

@@ -13,8 +13,12 @@ import {
 import type { NoteViewModel } from '@core/types/domain'
 import { readNoteWorkspaceState, writeNoteWorkspaceState } from '@ui/web/lib/noteWorkspaceStorage'
 
+const INITIAL_TAB_ID = 'note-tab-initial'
+
 export function useNoteWorkspaceTabs() {
-  const [state, setState] = useState(createNoteWorkspaceState)
+  // Keep the server render and the first browser render identical. The real
+  // tab ID is loaded from sessionStorage immediately after hydration.
+  const [state, setState] = useState(() => createNoteWorkspaceState(() => INITIAL_TAB_ID))
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import type { NoteViewModel } from '@core/types/domain'
 
-export const NOTE_WORKSPACE_VERSION = 1 as const
+export const NOTE_WORKSPACE_VERSION = 1
+export const MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH = 2 * 1024 * 1024
 
 export type NoteWorkspaceMode = 'reading' | 'editing'
 export type NoteWorkspaceSaveState = 'saved' | 'dirty' | 'saving' | 'error'
@@ -49,11 +50,16 @@ export type NoteWorkspaceIdFactory = () => string
 const DEFAULT_DRAFT: NoteDraftSnapshot = { title: '', description: '', tags: '' }
 const DEFAULT_VIEW: NoteViewSession = { scrollTop: 0 }
 
+let fallbackIdCounter = 0
+
 const defaultIdFactory: NoteWorkspaceIdFactory = () => {
-  if (typeof globalThis.crypto?.randomUUID === 'function') {
-    return globalThis.crypto.randomUUID()
+  const cryptoApi = typeof globalThis.crypto === 'undefined' ? null : globalThis.crypto
+  if (cryptoApi && typeof cryptoApi.randomUUID === 'function') {
+    return cryptoApi.randomUUID()
   }
-  return `note-tab-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+  const counter = fallbackIdCounter++
+  return `note-tab-${Date.now()}-${counter}`
 }
 
 const asString = (value: unknown, fallback: string): string => (
@@ -124,7 +130,7 @@ export function createNoteWorkspaceState(idFactory: NoteWorkspaceIdFactory = def
 }
 
 export function getActiveWorkspaceTab(state: NoteWorkspaceState): NoteWorkspaceTab {
-  return state.tabs.find((tab) => tab.id === state.activeTabId) ?? state.tabs[0]!
+  return state.tabs.find((tab) => tab.id === state.activeTabId) ?? state.tabs[0]
 }
 
 export function findWorkspaceTabByNoteId(
@@ -231,43 +237,68 @@ const normalizeNote = (value: unknown): NoteViewModel | null => {
     : null
 }
 
+const asRecord = (value: unknown): Record<string, unknown> | null => (
+  value && typeof value === 'object' ? value as Record<string, unknown> : null
+)
+
+const normalizeTabId = (
+  raw: Record<string, unknown>,
+  idFactory: NoteWorkspaceIdFactory,
+  usedTabIds: Set<string>,
+): string => {
+  let id = typeof raw.id === 'string' && raw.id.length > 0 ? raw.id : idFactory()
+  while (usedTabIds.has(id)) id = idFactory()
+  usedTabIds.add(id)
+  return id
+}
+
+const normalizeTabDraft = (
+  rawDraft: Record<string, unknown>,
+  note: NoteViewModel | null,
+): NoteDraftSnapshot => ({
+  title: asString(rawDraft.title, note?.title ?? ''),
+  description: asString(rawDraft.description, note?.description ?? note?.content ?? ''),
+  tags: asString(rawDraft.tags, note?.tags?.join(', ') ?? ''),
+})
+
+const normalizeTabView = (rawView: Record<string, unknown>): NoteViewSession => {
+  const titleSelection = normalizeRange(rawView.titleSelection, 'titleSelection')
+  const editorSelection = normalizeRange(rawView.editorSelection, 'editorSelection')
+  return {
+    scrollTop: asNonNegativeFiniteNumber(rawView.scrollTop, 0),
+    ...(titleSelection ? { titleSelection } : {}),
+    ...(editorSelection ? { editorSelection } : {}),
+  }
+}
+
+const normalizeSaveState = (value: unknown): NoteWorkspaceSaveState => (
+  value === 'dirty' || value === 'saving' || value === 'error' ? value : 'saved'
+)
+
 const normalizeTab = (
   value: unknown,
   idFactory: NoteWorkspaceIdFactory,
   usedTabIds: Set<string>,
 ): NoteWorkspaceTab | null => {
-  if (!value || typeof value !== 'object') return null
-  const raw = value as Record<string, unknown>
-  let id = typeof raw.id === 'string' && raw.id.length > 0 ? raw.id : idFactory()
-  while (usedTabIds.has(id)) id = idFactory()
-  usedTabIds.add(id)
+  const raw = asRecord(value)
+  if (!raw) return null
+
+  const id = normalizeTabId(raw, idFactory, usedTabIds)
 
   const note = normalizeNote(raw.note)
   const rawNoteId = typeof raw.noteId === 'string' && raw.noteId.length > 0 ? raw.noteId : null
   const noteId = note?.id ?? rawNoteId
-  const rawDraft = raw.draft && typeof raw.draft === 'object' ? raw.draft as Record<string, unknown> : {}
-  const rawView = raw.view && typeof raw.view === 'object' ? raw.view as Record<string, unknown> : {}
-  const titleSelection = normalizeRange(rawView.titleSelection, 'titleSelection')
-  const editorSelection = normalizeRange(rawView.editorSelection, 'editorSelection')
+  const rawDraft = asRecord(raw.draft) ?? {}
+  const rawView = asRecord(raw.view) ?? {}
 
   return {
     id,
     noteId,
     note: noteId && note?.id === noteId ? note : null,
     mode: raw.mode === 'reading' ? 'reading' : 'editing',
-    draft: {
-      title: asString(rawDraft.title, note?.title ?? ''),
-      description: asString(rawDraft.description, note?.description ?? note?.content ?? ''),
-      tags: asString(rawDraft.tags, note?.tags?.join(', ') ?? ''),
-    },
-    view: {
-      scrollTop: asNonNegativeFiniteNumber(rawView.scrollTop, 0),
-      ...(titleSelection ? { titleSelection } : {}),
-      ...(editorSelection ? { editorSelection } : {}),
-    },
-    saveState: raw.saveState === 'dirty' || raw.saveState === 'saving' || raw.saveState === 'error'
-      ? raw.saveState
-      : 'saved',
+    draft: normalizeTabDraft(rawDraft, note),
+    view: normalizeTabView(rawView),
+    saveState: normalizeSaveState(raw.saveState),
     saveError: typeof raw.saveError === 'string' ? raw.saveError : null,
   }
 }
@@ -278,6 +309,9 @@ export function hydrateNoteWorkspaceState(
 ): NoteWorkspaceState {
   let parsed: unknown = raw
   if (typeof raw === 'string') {
+    if (raw.length > MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH) {
+      return createNoteWorkspaceState(idFactory)
+    }
     try {
       parsed = JSON.parse(raw) as unknown
     } catch {
@@ -310,5 +344,9 @@ export function hydrateNoteWorkspaceState(
 }
 
 export function serializeNoteWorkspaceState(state: NoteWorkspaceState): string {
-  return JSON.stringify(state)
+  const serialized = JSON.stringify(state)
+  if (serialized.length > MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH) {
+    throw new RangeError('Note workspace state exceeds the storage limit')
+  }
+  return serialized
 }

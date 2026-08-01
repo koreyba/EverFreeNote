@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 
 import { NotesShell } from '@/components/features/notes/NotesShell'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
+import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 
 const mockRouterPush = jest.fn()
 const mockWordPressGetStatus = jest.fn()
@@ -74,6 +75,23 @@ type MockAlertDialogProps = MockDialogProps & { open: boolean }
 type MockAlertDialogActionProps = MockDialogProps & { onClick: () => void }
 
 type NoteEditorRef = { flushPendingSave: () => Promise<void> }
+
+function makeWorkspaceTab(selectedNote: typeof note | null, isEditing: boolean): NoteWorkspaceTab {
+  return {
+    id: 'tab-1',
+    noteId: selectedNote?.id ?? null,
+    note: selectedNote,
+    mode: isEditing ? 'editing' : 'reading',
+    draft: {
+      title: selectedNote?.title ?? '',
+      description: selectedNote?.description ?? '',
+      tags: selectedNote?.tags.join(', ') ?? '',
+    },
+    view: { scrollTop: 0 },
+    saveState: 'saved',
+    saveError: null,
+  }
+}
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
@@ -215,6 +233,10 @@ jest.mock('@/components/ui/alert-dialog', () => ({
 }))
 
 function makeController(overrides: Record<string, unknown> = {}) {
+  const selectedNote = (overrides.selectedNote as typeof note | null | undefined) ?? null
+  const isEditing = (overrides.isEditing as boolean | undefined) ?? false
+  const activeTab = makeWorkspaceTab(selectedNote, isEditing)
+
   return {
     user: { id: 'user-1', email: 'user@example.com' },
     notes: [note],
@@ -233,8 +255,14 @@ function makeController(overrides: Record<string, unknown> = {}) {
     pendingCount: 0,
     failedCount: 0,
     isOffline: false,
-    selectedNote: null,
-    isEditing: false,
+    selectedNote,
+    isEditing,
+    tabs: [activeTab],
+    activeTabId: activeTab.id,
+    activeTab,
+    addTab: jest.fn(),
+    activateTab: jest.fn(),
+    closeTab: jest.fn(),
     saving: false,
     autoSaving: false,
     lastSavedAt: null,

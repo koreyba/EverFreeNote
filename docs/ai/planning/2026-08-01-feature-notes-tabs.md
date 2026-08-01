@@ -75,7 +75,7 @@ These are engineering estimates only; autosave/editor lifecycle and native navig
 - **Duplicate sessions from different entry points:** centralize all open-note actions in controller/reducer and test each source.
 - **Editor selection coordinates become stale:** treat restoration as best effort and validate bounds before applying.
 - **Native/web behavior diverges:** share reducer/invariants and keep presentation-specific adapters thin.
-- **Unrelated dirty files in the main checkout:** work only in `.worktrees/codex-notes-tabs` and stage task files explicitly.
+- **Unrelated dirty files in the main checkout:** work only in the Harness-managed worktree under its configured root and stage task files explicitly.
 
 ## Resources Needed
 

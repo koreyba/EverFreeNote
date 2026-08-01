@@ -14,6 +14,8 @@ export type NotesTabStripProps = {
   onCloseTab: (tabId: string) => void | Promise<void>
 }
 
+type ReadonlyNotesTabStripProps = Readonly<NotesTabStripProps>
+
 function getTabLabel(tab: NoteWorkspaceTab): string {
   const title = tab.note?.title?.trim() || tab.draft.title.trim()
   if (title) return title
@@ -64,20 +66,24 @@ function activateWithKeyboard(
   event: KeyboardEvent<HTMLButtonElement>,
   tabIndex: number,
   tabs: NoteWorkspaceTab[],
-  onActivateTab: NotesTabStripProps["onActivateTab"],
+  onActivateTab: ReadonlyNotesTabStripProps["onActivateTab"],
 ) {
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight" && event.key !== "Home" && event.key !== "End") {
     return
   }
 
   event.preventDefault()
-  const nextIndex = event.key === "Home"
-    ? 0
-    : event.key === "End"
-      ? tabs.length - 1
-      : (tabIndex + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length
+  let nextIndex = tabIndex
+  if (event.key === "Home") {
+    nextIndex = 0
+  } else if (event.key === "End") {
+    nextIndex = tabs.length - 1
+  } else {
+    const direction = event.key === "ArrowRight" ? 1 : -1
+    nextIndex = (tabIndex + direction + tabs.length) % tabs.length
+  }
   const nextTab = tabs[nextIndex]
-  if (nextTab) onActivateTab(nextTab.id)
+  if (nextTab) void onActivateTab(nextTab.id)
 }
 
 export function NotesTabStrip({
@@ -86,7 +92,7 @@ export function NotesTabStrip({
   onAddTab,
   onActivateTab,
   onCloseTab,
-}: NotesTabStripProps) {
+}: ReadonlyNotesTabStripProps) {
   return (
     <div className="hidden min-w-0 items-center gap-1 border-b border-border/60 bg-background/80 px-2 py-1 backdrop-blur md:flex">
       <div className="min-w-0 flex-1 overflow-x-auto" role="tablist" aria-label="Open notes">

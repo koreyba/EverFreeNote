@@ -7,6 +7,7 @@ import {
   findWorkspaceTabByNoteId,
   getActiveWorkspaceTab,
   hydrateNoteWorkspaceState,
+  MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH,
   openNoteInWorkspace,
   serializeNoteWorkspaceState,
   updateWorkspaceTab,
@@ -134,6 +135,17 @@ describe('note workspace tab state', () => {
     const malformed = hydrateNoteWorkspaceState('{not-json', ids('fallback'))
     expect(malformed.tabs).toHaveLength(1)
     expect(malformed.activeTabId).toBe('fallback')
+
+    const oversized = hydrateNoteWorkspaceState(
+      JSON.stringify({ version: 1, activeTabId: 'tab-1', tabs: [{ ...state.tabs[0], draft: { title: 'x'.repeat(MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH) } }] }),
+      ids('oversized'),
+    )
+    expect(oversized.tabs).toHaveLength(1)
+    expect(oversized.activeTabId).toBe('oversized')
+    expect(() => serializeNoteWorkspaceState({
+      ...state,
+      tabs: [{ ...state.tabs[0], draft: { ...state.tabs[0].draft, description: 'x'.repeat(MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH) } }],
+    })).toThrow('exceeds the storage limit')
   })
 
   it('ignores activation and updates for unknown tab IDs', () => {

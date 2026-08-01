@@ -223,24 +223,22 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     selectedTagsRef.current = merged
     setSelectedTags(merged)
     setTagQuery("")
-    handleContentChange()
     onDraftChange?.({
       ...getFormData(),
       tags: buildTagString(merged),
     })
-  }, [getFormData, handleContentChange, onDraftChange])
+  }, [getFormData, onDraftChange])
 
   const removeTag = React.useCallback((tagToRemove: string) => {
     const next = selectedTagsRef.current.filter((tag) => tag !== tagToRemove)
     selectedTagsRef.current = next
     setSelectedTags(next)
     setTagQuery("")
-    handleContentChange()
     onDraftChange?.({
       ...getFormData(),
       tags: buildTagString(next),
     })
-  }, [getFormData, handleContentChange, onDraftChange])
+  }, [getFormData, onDraftChange])
 
   React.useImperativeHandle(ref, () => ({
     flushPendingSave,

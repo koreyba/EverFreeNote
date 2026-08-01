@@ -8,7 +8,7 @@ description: Technical implementation notes, patterns, and code guidelines
 
 ## Development Setup
 
-- Worktree: `.worktrees/codex-notes-tabs`, branch `codex/notes-tabs`.
+- Worktree: use the Harness-managed worktree under the Worktree root configured in Harness settings; never create one inside the project checkout.
 - Root dependencies: `npm ci`.
 - Mobile dependencies: `npm --prefix ui/mobile ci`.
 - Fast validation: `npm run type-check` and `npx eslint . --max-warnings=0`.
@@ -35,6 +35,8 @@ ui/web/components/features/notes/NoteView.tsx
 
 - Keep reducer transitions pure and make invalid states impossible through normalization.
 - Use an injected ID factory in reducer tests; production uses `crypto.randomUUID` with a safe fallback.
+- Use a deterministic initial tab ID for the server/client first render, then replace it with the hydrated session workspace.
+- Bound serialized workspace state and fall back to a blank tab when a persisted snapshot is malformed or exceeds the storage limit.
 - Hydrate once, then persist state changes through a guarded storage adapter.
 - Capture the current editor before unmount, flush autosave first, and then apply tab transitions.
 - Use the active tab's draft as editor initial content; never use a server refresh to overwrite a dirty local field without existing reconciliation rules.
@@ -59,6 +61,7 @@ ui/web/components/features/notes/NoteView.tsx
 
 - Storage parse/access/quota errors fall back to the in-memory state and optionally log a debug warning.
 - Autosave errors set the active tab to `error`, retain the draft, and keep the existing toast/retry behavior.
+- Manual save errors are propagated from the save handler to the controller wrapper so the active tab remains in `error` instead of being reported as saved.
 - Failed-tab close requires explicit confirmation; canceling leaves the tab and draft intact.
 - Invalid note snapshots are ignored or revalidated through existing note status logic.
 

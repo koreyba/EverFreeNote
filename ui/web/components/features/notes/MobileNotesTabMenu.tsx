@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 import { getTabLabel, SaveStateIndicator, type NotesTabStripProps } from "./NotesTabStrip"
 
-export type MobileNotesTabMenuProps = NotesTabStripProps
+export type MobileNotesTabMenuProps = Readonly<NotesTabStripProps>
 
 export function MobileNotesTabMenu({
   tabs,
@@ -21,12 +21,12 @@ export function MobileNotesTabMenu({
   const activeLabel = activeTab ? getTabLabel(activeTab) : "No open notes"
 
   const handleActivate = (tabId: string) => {
-    onActivateTab(tabId)
+    void onActivateTab(tabId)
     setIsOpen(false)
   }
 
   const handleClose = (tab: NoteWorkspaceTab) => {
-    onCloseTab(tab.id)
+    void onCloseTab(tab.id)
     if (tab.id === activeTabId && tabs.length <= 1) setIsOpen(false)
   }
 
@@ -55,7 +55,7 @@ export function MobileNotesTabMenu({
       </div>
 
       {isOpen && (
-        <div id="mobile-notes-tab-list" className="mt-2 rounded-xl border border-border bg-card p-1 shadow-lg" role="listbox" aria-label="Open notes">
+        <div id="mobile-notes-tab-list" className="mt-2 rounded-xl border border-border bg-card p-1 shadow-lg" aria-label="Open notes">
           {tabs.map((tab) => {
             const label = getTabLabel(tab)
             const isActive = tab.id === activeTabId
@@ -64,8 +64,7 @@ export function MobileNotesTabMenu({
               <div key={tab.id} className="flex items-center gap-1 rounded-lg">
                 <Button
                   type="button"
-                  role="option"
-                  aria-selected={isActive}
+                  aria-pressed={isActive}
                   variant="ghost"
                   className={cn("min-w-0 flex-1 justify-start rounded-lg px-2.5", isActive && "bg-muted font-semibold")}
                   title={label}

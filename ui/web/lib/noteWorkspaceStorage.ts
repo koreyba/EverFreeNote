@@ -8,7 +8,7 @@ import {
 export const NOTE_WORKSPACE_STORAGE_KEY = 'everfreenote:notes-workspace:v1'
 
 function getSessionStorage(): Storage | null {
-  if (typeof globalThis.window === 'undefined') return null
+  if (globalThis.window === undefined) return null
 
   try {
     return globalThis.window.sessionStorage

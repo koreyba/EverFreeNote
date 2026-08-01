@@ -3,6 +3,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
 import type { NoteViewModel, SearchResult } from '../../../../core/types/domain'
+import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 import type { NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 
@@ -17,6 +18,21 @@ const pastePlainText = (text: string) => {
 }
 
 type FakeController = Record<string, unknown>
+
+const makeWorkspaceTab = (note: NoteViewModel | null, isEditing: boolean): NoteWorkspaceTab => ({
+  id: 'tab-1',
+  noteId: note?.id ?? null,
+  note,
+  mode: isEditing ? 'editing' : 'reading',
+  draft: {
+    title: note?.title ?? '',
+    description: note?.description ?? '',
+    tags: note?.tags.join(', ') ?? '',
+  },
+  view: { scrollTop: 0 },
+  saveState: 'saved',
+  saveError: null,
+})
 
 const buildController = () => {
   const supabase = {
@@ -67,6 +83,7 @@ const buildController = () => {
       () => notes.find((n) => n.id === selectedNoteId) ?? null,
       [notes, selectedNoteId]
     )
+    const activeTab = React.useMemo(() => makeWorkspaceTab(selectedNote, isEditing), [selectedNote, isEditing])
 
     const flushIfEditing = React.useCallback(async () => {
       if (!isEditing) return
@@ -176,6 +193,14 @@ const buildController = () => {
 
       selectedNote,
       isEditing,
+      tabs: [activeTab],
+      activeTabId: activeTab.id,
+      activeTab,
+      addTab: () => {},
+      activateTab: () => {},
+      closeTab: () => {},
+      handleDraftChange: () => {},
+      handleViewSessionChange: () => {},
       saving: false,
       autoSaving: false,
       lastSavedAt: null,

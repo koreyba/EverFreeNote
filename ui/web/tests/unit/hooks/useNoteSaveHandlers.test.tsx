@@ -106,7 +106,9 @@ describe('useNoteSaveHandlers — handleSaveNote upsert', () => {
     })
 
     await act(async () => {
-      await result.current.handleSaveNote({ title: 'X', description: '', tags: '' })
+      await expect(result.current.handleSaveNote({ title: 'X', description: '', tags: '' })).rejects.toThrow(
+        'network failure',
+      )
     })
 
     expect(consoleSpy).toHaveBeenCalledWith('Error saving note:', expect.any(Error))
@@ -116,7 +118,7 @@ describe('useNoteSaveHandlers — handleSaveNote upsert', () => {
     consoleSpy.mockRestore()
   })
 
-  it('logs error when PGRST116 update → create fallback also fails', async () => {
+  it('rethrows when PGRST116 update → create fallback also fails', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
     const pgrst116 = Object.assign(new Error('PGRST116'), { code: 'PGRST116' })
 
@@ -126,7 +128,9 @@ describe('useNoteSaveHandlers — handleSaveNote upsert', () => {
     })
 
     await act(async () => {
-      await result.current.handleSaveNote({ title: 'X', description: '', tags: '' })
+      await expect(result.current.handleSaveNote({ title: 'X', description: '', tags: '' })).rejects.toThrow(
+        'create fail',
+      )
     })
 
     expect(consoleSpy).toHaveBeenCalledWith('Error saving note:', expect.any(Error))

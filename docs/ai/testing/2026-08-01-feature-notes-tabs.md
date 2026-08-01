@@ -72,6 +72,9 @@ description: Define testing approach, test cases, and quality assurance
 - Existing controller regression run under Allure Agent: 18/18 passed, findings 0. Report: `C:\Users\DenysKoreiba\AppData\Local\Temp\allure-agent-yHYkoU`.
 - `npm run type-check`: passed, including root, core, web tests, and `ui/mobile`.
 - Focused ESLint for changed source/test files: passed.
+- Full unit coverage run: 184 suites and 1,430 tests passed; changed workspace/controller paths were exercised, including manual-save, autosave, Read error states, and oversized snapshot rejection.
+- Targeted Chrome component run: 41/41 logical tests passed across NoteEditor, FTS exit-save, like-search exit-save, and AI open-in-context scenarios. The local Cypress process still returned exit 1 after the passing spec summaries; Allure attributed that to a runner-level webpack-dev-server bootstrap signal, with no assertion failures.
+- `npx ai-devkit@latest lint --feature notes-tabs`: passed.
 - Native mobile route/store tab adaptation was not included; responsive web mobile controls are covered by component tests.
 
 - Desktop: keyboard tab navigation, ellipsis, horizontal overflow, dirty/error markers, close confirmation.
