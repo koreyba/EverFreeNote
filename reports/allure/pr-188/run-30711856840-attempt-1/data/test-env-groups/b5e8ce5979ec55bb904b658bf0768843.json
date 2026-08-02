@@ -1,1 +1,0 @@
-{"id":"b5e8ce5979ec55bb904b658bf0768843","fullName":"everfreenote-mobile:tests/unit/storageAdapter.test.ts#storage adapters secureStorageAdapter getItem returns null when item is not found","name":"returns null when item is not found","status":"passed","testResultsByEnv":{"default":"eb10fa76703bc498e64b3ef09dccd62f"}}
