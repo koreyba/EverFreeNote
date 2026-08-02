@@ -1,1 +1,0 @@
-{"id":"7bfa6355bbda4099384404b9bebfe868","fullName":"everfreenote:ui/web/tests/unit/lib/noteWorkspaceStorage.test.ts#note workspace session storage uses a blank workspace when stored JSON is invalid","name":"uses a blank workspace when stored JSON is invalid","status":"passed","testResultsByEnv":{"default":"31c2ee7328c79b75cdca32b2f7f36c40"}}

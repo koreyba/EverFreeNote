@@ -1,1 +1,0 @@
-{"id":"43cc9fee34240e48846e8299e6388efd","fullName":"everfreenote-mobile:tests/component/useAIIndexNotes.test.tsx#useAIIndexNotes defaults total_count to 0 for invalid or missing total_count string/null","name":"defaults total_count to 0 for invalid or missing total_count string/null","status":"passed","testResultsByEnv":{"default":"c35daf1811be70e3c5e69f3e4a476e77"}}

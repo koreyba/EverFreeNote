@@ -1,1 +1,0 @@
-{"id":"fc46c0706994a1d60388ee78fcff07a7","fullName":"everfreenote:ui/web/tests/unit/adapters/supabaseClient.test.ts#buildBrowserSupabaseStorageKey throws a descriptive error when URL is empty","name":"throws a descriptive error when URL is empty","status":"passed","testResultsByEnv":{"default":"5af6a0ef0238fdd3a8ba976e7e9fac73"}}

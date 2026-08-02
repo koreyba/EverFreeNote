@@ -1,1 +1,0 @@
-{"id":"d2e39f84ebe1597b904b1ea108f664e9","fullName":"everfreenote:ui/web/tests/unit/lib/noteWorkspaceStorage.test.ts#note workspace session storage keeps the in-memory contract when storage access throws","name":"keeps the in-memory contract when storage access throws","status":"passed","testResultsByEnv":{"default":"71063ee4843bed08a25ba375eb5bcd5e"}}
