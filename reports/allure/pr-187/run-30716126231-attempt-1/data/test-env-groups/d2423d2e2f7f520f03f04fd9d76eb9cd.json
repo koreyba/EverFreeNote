@@ -1,1 +1,0 @@
-{"id":"d2423d2e2f7f520f03f04fd9d76eb9cd","fullName":"everfreenote-mobile:tests/unit/oauthAdapter.test.ts#oauthAdapter startOAuth re-throws error when warmUpAsync fails","name":"re-throws error when warmUpAsync fails","status":"passed","testResultsByEnv":{"default":"28edd68e4798a82c6fa2d3e5fcf6bd47"}}
