@@ -75,6 +75,44 @@ describe('Notes workspace tab controls', () => {
     expect(onActivateTab).toHaveBeenCalledWith('tab-2')
   })
 
+  it('supports reverse, first, and last keyboard navigation', () => {
+    const onActivateTab = jest.fn()
+
+    render(
+      <NotesTabStrip
+        tabs={tabs}
+        activeTabId="tab-1"
+        onAddTab={jest.fn()}
+        onActivateTab={onActivateTab}
+        onCloseTab={jest.fn()}
+      />,
+    )
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'First note' }), { key: 'ArrowLeft' })
+    fireEvent.keyDown(screen.getByRole('tab', { name: /Second note/ }), { key: 'Home' })
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'First note' }), { key: 'End' })
+
+    expect(onActivateTab.mock.calls).toEqual([['tab-2'], ['tab-1'], ['tab-2']])
+  })
+
+  it('shows saving and error indicators for the active workspace tab', () => {
+    render(
+      <NotesTabStrip
+        tabs={[
+          makeTab('tab-saving', 'Saving note', { saveState: 'saving' }),
+          makeTab('tab-error', 'Failed note', { saveState: 'error', saveError: 'Network unavailable' }),
+        ]}
+        activeTabId="tab-saving"
+        onAddTab={jest.fn()}
+        onActivateTab={jest.fn()}
+        onCloseTab={jest.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText('Saving changes')).toBeTruthy()
+    expect(screen.getByLabelText('Network unavailable')).toBeTruthy()
+  })
+
   it('opens the compact mobile list and forwards activation, close, and add actions', () => {
     const onAddTab = jest.fn()
     const onActivateTab = jest.fn()
@@ -99,5 +137,26 @@ describe('Notes workspace tab controls', () => {
     expect(onActivateTab).toHaveBeenCalledWith('tab-2')
     expect(onCloseTab).toHaveBeenCalledWith('tab-1')
     expect(onAddTab).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes the mobile menu after closing its only active tab', () => {
+    const onCloseTab = jest.fn()
+    render(
+      <MobileNotesTabMenu
+        tabs={[makeTab('tab-1', 'Only note')]}
+        activeTabId="tab-1"
+        onAddTab={jest.fn()}
+        onActivateTab={jest.fn()}
+        onCloseTab={onCloseTab}
+      />,
+    )
+
+    const menuButton = screen.getByRole('button', { name: 'Open note tabs (1)' })
+    fireEvent.click(menuButton)
+    fireEvent.click(screen.getByRole('button', { name: 'Close Only note' }))
+
+    expect(onCloseTab).toHaveBeenCalledWith('tab-1')
+    expect(menuButton.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByText('1 tab')).toBeTruthy()
   })
 })

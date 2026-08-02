@@ -53,7 +53,7 @@ const DEFAULT_VIEW: NoteViewSession = { scrollTop: 0 }
 let fallbackIdCounter = 0
 
 const defaultIdFactory: NoteWorkspaceIdFactory = () => {
-  const cryptoApi = typeof globalThis.crypto === 'undefined' ? null : globalThis.crypto
+  const cryptoApi = globalThis.crypto === undefined ? null : globalThis.crypto
   if (cryptoApi && typeof cryptoApi.randomUUID === 'function') {
     return cryptoApi.randomUUID()
   }

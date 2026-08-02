@@ -22,7 +22,7 @@ function getTabLabel(tab: NoteWorkspaceTab): string {
   return tab.noteId ? "Untitled note" : "New note"
 }
 
-function SaveStateIndicator({ tab }: { tab: NoteWorkspaceTab }) {
+function SaveStateIndicator({ tab }: Readonly<{ tab: NoteWorkspaceTab }>) {
   if (tab.saveState === "dirty") {
     return (
       <span
@@ -73,7 +73,7 @@ function activateWithKeyboard(
   }
 
   event.preventDefault()
-  let nextIndex = tabIndex
+  let nextIndex: number
   if (event.key === "Home") {
     nextIndex = 0
   } else if (event.key === "End") {
@@ -121,6 +121,7 @@ export function NotesTabStrip({
                     isActive && "font-semibold text-foreground hover:bg-transparent",
                   )}
                   title={label}
+                  onMouseDown={(event) => event.preventDefault()}
                   onClick={() => onActivateTab(tab.id)}
                   onKeyDown={(event) => activateWithKeyboard(event, index, tabs, onActivateTab)}
                 >
@@ -134,6 +135,7 @@ export function NotesTabStrip({
                   className="mr-0.5 h-6 w-6 shrink-0 text-muted-foreground opacity-70 hover:text-foreground group-hover:opacity-100"
                   aria-label={`Close ${label}`}
                   title={`Close ${label}`}
+                  onMouseDown={(event) => event.preventDefault()}
                   onClick={() => onCloseTab(tab.id)}
                 >
                   <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -143,7 +145,7 @@ export function NotesTabStrip({
           })}
         </div>
       </div>
-      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onAddTab} aria-label="Add note tab" title="Add note tab">
+      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onMouseDown={(event) => event.preventDefault()} onClick={onAddTab} aria-label="Add note tab" title="Add note tab">
         <Plus className="h-4 w-4" aria-hidden="true" />
       </Button>
     </div>

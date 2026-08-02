@@ -68,6 +68,7 @@ export function MobileNotesTabMenu({
                   variant="ghost"
                   className={cn("min-w-0 flex-1 justify-start rounded-lg px-2.5", isActive && "bg-muted font-semibold")}
                   title={label}
+                  onMouseDown={(event) => event.preventDefault()}
                   onClick={() => handleActivate(tab.id)}
                 >
                   <span className="min-w-0 flex-1 truncate text-left">{label}</span>
@@ -80,6 +81,7 @@ export function MobileNotesTabMenu({
                   className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                   aria-label={`Close ${label}`}
                   title={`Close ${label}`}
+                  onMouseDown={(event) => event.preventDefault()}
                   onClick={() => handleClose(tab)}
                 >
                   <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -87,7 +89,7 @@ export function MobileNotesTabMenu({
               </div>
             )
           })}
-          <Button type="button" variant="ghost" className="mt-1 w-full justify-start rounded-lg" onClick={onAddTab}>
+          <Button type="button" variant="ghost" className="mt-1 w-full justify-start rounded-lg" onMouseDown={(event) => event.preventDefault()} onClick={onAddTab}>
             <Plus className="h-4 w-4" aria-hidden="true" />
             Add tab
           </Button>

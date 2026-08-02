@@ -371,6 +371,19 @@ describe('NotesShell', () => {
     await waitFor(() => expect(mockWordPressGetStatus).toHaveBeenCalled())
   })
 
+  it('routes workspace tab controls through the notes controller', () => {
+    const controller = makeController({ selectedNote: note })
+    renderShell(controller)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Travel note' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add note tab' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close Travel note' }))
+
+    expect(controller.activateTab).toHaveBeenCalledWith('tab-1')
+    expect(controller.addTab).toHaveBeenCalledTimes(1)
+    expect(controller.closeTab).toHaveBeenCalledWith('tab-1')
+  })
+
   it('passes editing state and pending chunk focus through the editor', async () => {
     const controller = makeController({ selectedNote: note, isEditing: true })
     renderShell(controller)

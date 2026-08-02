@@ -158,8 +158,8 @@ export function useNoteAppController() {
   }, [activeTabId, updateTab])
 
   const flushAndCaptureActiveTab = useCallback(async () => {
-    await flushPendingEditorSave()
     captureActiveTabSession()
+    await flushPendingEditorSave()
   }, [captureActiveTabSession, flushPendingEditorSave])
 
   // -- Infrastructure --

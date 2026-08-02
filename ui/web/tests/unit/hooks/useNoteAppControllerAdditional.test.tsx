@@ -266,6 +266,29 @@ describe('useNoteAppController additional observable behavior', () => {
     window.history.pushState({}, '', '/')
   })
 
+  it('captures the editor selection before switching to a new workspace tab', async () => {
+    const { result } = setup()
+
+    const flushPendingSave = jest.fn().mockResolvedValue(undefined)
+    const captureSession = jest.fn(() => ({
+      draft: { title: 'Draft', description: '<p>Body</p>', tags: '' },
+      view: { scrollTop: 12, editorSelection: { from: 4, to: 9 } },
+    }))
+    const editorRef = { current: { flushPendingSave, captureSession } }
+    act(() => result.current.registerNoteEditorRef(editorRef as never))
+
+    await act(async () => {
+      await result.current.addTab()
+    })
+
+    expect(captureSession).toHaveBeenCalledTimes(1)
+    expect(flushPendingSave).toHaveBeenCalledTimes(1)
+    expect(result.current.tabs[0].view).toEqual({
+      scrollTop: 12,
+      editorSelection: { from: 4, to: 9 },
+    })
+  })
+
   it('selects the remote note after flushing, but exits editing when selecting the already selected note', async () => {
     const current = makeNote({ id: 'current' })
     const remote = makeNote({ id: 'remote', title: 'Remote' })

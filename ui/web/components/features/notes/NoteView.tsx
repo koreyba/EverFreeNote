@@ -54,13 +54,14 @@ export const NoteView = React.memo(function NoteView({
   const { copied, copyNote } = useCopyNote()
   const isBodyEmpty = React.useMemo(() => NoteClipboardService.isBodyEmpty(bodyHtml), [bodyHtml])
   const contentRef = React.useRef<HTMLDivElement | null>(null)
+  const initialScrollTopRef = React.useRef(initialScrollTop)
 
   React.useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      if (contentRef.current) contentRef.current.scrollTop = initialScrollTop
+      if (contentRef.current) contentRef.current.scrollTop = initialScrollTopRef.current
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [initialScrollTop, note.id])
+  }, [note.id])
 
   // Форматирование дат для предотвращения повторных вычислений
   const formattedDates = React.useMemo(() => ({
