@@ -1,0 +1,1 @@
+{"id":"604d2490a5abb86081f6633186775dff","fullName":"everfreenote-mobile:tests/unit/databaseService.test.ts#DatabaseService searchNotes falls back to LIKE query when FTS5 search yields 0 results","name":"falls back to LIKE query when FTS5 search yields 0 results","status":"passed","testResultsByEnv":{"default":"a7b4df9e5f9a9b5c303dbde9d8700d9a"}}

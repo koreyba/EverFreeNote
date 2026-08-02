@@ -3,6 +3,44 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit",
+      "component",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-188/run-30743868975-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-188/run-30743868975-attempt-1/",
+    "runId": "30743868975",
+    "runAttempt": "1",
+    "prNumber": "188",
+    "ref": "feature-mobile-tag-management",
+    "sha": "76b36e42c2d64d559ecd5eacea7d7ebc31a2dac6",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #188",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-08-02T10:40:49.083Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "e2e"
     ],
     "suiteLabels": [
@@ -641,44 +679,6 @@
     "scopeLabel": "main",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-08-01T19:07:43.922Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-189/run-30713711295-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-189/run-30713711295-attempt-1/",
-    "runId": "30713711295",
-    "runAttempt": "1",
-    "prNumber": "189",
-    "ref": "skills-update",
-    "sha": "4ac7822b313d68615bd7e67af004040f67b4570f",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #189",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-08-01T19:06:11.430Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"

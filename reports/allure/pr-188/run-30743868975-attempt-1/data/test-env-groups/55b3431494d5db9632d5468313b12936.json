@@ -1,0 +1,1 @@
+{"id":"55b3431494d5db9632d5468313b12936","fullName":"everfreenote-mobile:tests/unit/searchHistory.test.ts#searchHistory service getSearchHistory handles non-string elements gracefully","name":"handles non-string elements gracefully","status":"passed","testResultsByEnv":{"default":"8bfd6b0e72603e1ca6da310423dc1655"}}
