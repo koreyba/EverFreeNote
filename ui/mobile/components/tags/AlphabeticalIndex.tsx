@@ -1,11 +1,11 @@
 import { ScrollView, Pressable, StyleSheet, Text } from 'react-native'
 import { useTheme } from '@ui/mobile/providers'
 
-type AlphabeticalIndexProps = {
+type AlphabeticalIndexProps = Readonly<{
   letters: string[]
   selectedLetter: string | null
   onSelect: (_letter: string | null) => void
-}
+}>
 
 export function AlphabeticalIndex({ letters, selectedLetter, onSelect }: AlphabeticalIndexProps) {
   const { colors } = useTheme()

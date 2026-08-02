@@ -44,7 +44,7 @@ export function useTagManagementData() {
 
       try {
         const notes = await new NoteService(client).getAllNotes(user.id)
-        if (notes.length > 0) await databaseService.saveNotes(notes)
+        await databaseService.replaceNotesForUser(user.id, notes)
         return { notes, usedLocalFallback: false }
       } catch (error) {
         const localNotes = await databaseService.getLocalNotes(user.id)

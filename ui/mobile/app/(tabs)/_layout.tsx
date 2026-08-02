@@ -1,11 +1,21 @@
 import { Redirect, Tabs, usePathname } from 'expo-router'
 import { CollapsibleTabBarProvider, useAuth, useCollapsibleTabBar, useTheme } from '@ui/mobile/providers'
-import { ActivityIndicator, Animated, View, Text, StyleSheet } from 'react-native'
+import { ActivityIndicator, Animated, View, Text, StyleSheet, type ColorValue } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNetworkStatus, useOfflineSync } from '@ui/mobile/hooks'
 import { FileText, Search, Settings, Tags, WifiOff } from 'lucide-react-native'
 import { useEffect, useMemo, useRef } from 'react'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
+
+type TabBarIconProps = Readonly<{ color: ColorValue }>
+type TabsLayoutContentProps = Readonly<{
+  colors: ReturnType<typeof useTheme>['colors']
+  isOnline: boolean
+  styles: ReturnType<typeof createStyles>
+  topInset: number
+}>
+
+const TagsTabIcon = ({ color }: TabBarIconProps) => <Tags size={24} color={color} />
 
 export default function TabsLayout() {
   const { isAuthenticated, loading } = useAuth()
@@ -44,12 +54,7 @@ function TabsLayoutContent({
   isOnline,
   styles,
   topInset,
-}: {
-  colors: ReturnType<typeof useTheme>['colors']
-  isOnline: boolean
-  styles: ReturnType<typeof createStyles>
-  topInset: number
-}) {
+}: TabsLayoutContentProps) {
   const pathname = usePathname()
   const { isVisible, reset } = useCollapsibleTabBar()
   const tabBarTranslateY = useRef(new Animated.Value(0)).current
@@ -121,7 +126,7 @@ function TabsLayoutContent({
           options={{
             title: 'Tags',
             tabBarLabel: 'Tags',
-            tabBarIcon: ({ color }) => <Tags size={24} color={color} />,
+            tabBarIcon: TagsTabIcon,
           }}
         />
         <Tabs.Screen

@@ -12,7 +12,9 @@ type CollapsibleTabBarContextValue = {
 }
 const CollapsibleTabBarContext = createContext<CollapsibleTabBarContextValue | undefined>(undefined)
 
-export function CollapsibleTabBarProvider({ children }: { children: ReactNode }) {
+type CollapsibleTabBarProviderProps = Readonly<{ children: ReactNode }>
+
+export function CollapsibleTabBarProvider({ children }: CollapsibleTabBarProviderProps) {
   const [state, setState] = useState(initialCollapsibleTabBarState)
 
   const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {

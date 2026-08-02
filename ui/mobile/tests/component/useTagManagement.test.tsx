@@ -6,7 +6,7 @@ import { createQueryWrapper, createTestQueryClient } from '../testUtils'
 const mockUseSupabase = jest.fn()
 const mockUseNetworkStatus = jest.fn()
 const mockGetAllNotes = jest.fn()
-const mockSaveNotes = jest.fn()
+const mockReplaceNotesForUser = jest.fn()
 const mockGetLocalNotes = jest.fn()
 
 jest.mock('@ui/mobile/providers', () => ({
@@ -25,7 +25,7 @@ jest.mock('@core/services/notes', () => ({
 
 jest.mock('@ui/mobile/services/database', () => ({
   databaseService: {
-    saveNotes: (...args: unknown[]) => mockSaveNotes(...args),
+    replaceNotesForUser: (...args: unknown[]) => mockReplaceNotesForUser(...args),
     getLocalNotes: (...args: unknown[]) => mockGetLocalNotes(...args),
   },
 }))
@@ -59,7 +59,7 @@ describe('useTagManagementData', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
     expect(mockGetAllNotes).toHaveBeenCalledWith('user-1')
-    expect(mockSaveNotes).toHaveBeenCalledWith(notes)
+    expect(mockReplaceNotesForUser).toHaveBeenCalledWith('user-1', notes)
     expect(result.current.allTags).toEqual([
       { name: 'Personal', count: 1, letter: 'P' },
       { name: 'Work', count: 1, letter: 'W' },
@@ -83,6 +83,21 @@ describe('useTagManagementData', () => {
     expect(mockGetAllNotes).not.toHaveBeenCalled()
     expect(result.current.data?.usedLocalFallback).toBe(true)
     expect(result.current.allTags).toEqual([{ name: 'Offline', count: 1, letter: 'O' }])
+  })
+
+  it('clears stale local notes when the online snapshot is empty', async () => {
+    mockUseSupabase.mockReturnValue({ client: {}, user: { id: 'user-1' } })
+    mockUseNetworkStatus.mockReturnValue(true)
+    mockGetAllNotes.mockResolvedValue([])
+
+    const { result } = renderHook(() => useTagManagementData(), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(mockReplaceNotesForUser).toHaveBeenCalledWith('user-1', [])
+    expect(result.current.allTags).toEqual([])
   })
 
   it('falls back to local notes when the online query fails', async () => {

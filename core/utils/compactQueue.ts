@@ -31,60 +31,46 @@ export function compactQueue(items: MutationQueueItem[]): MutationQueueItem[] {
   const result: MutationQueueItem[] = []
 
   for (const ops of byNote.values()) {
-    const sorted = [...ops].sort((a, b) => Date.parse(a.clientUpdatedAt) - Date.parse(b.clientUpdatedAt))
-    const first = sorted[0]
-    const last = sorted[sorted.length - 1]
-
-    // Bulk tag operations have their own idempotent replay semantics and must
-    // not be collapsed into ordinary note create/update/delete operations.
-    if (sorted.some((operation) => isTagMutation(operation.operation))) {
-      result.push(withPendingStatus(last))
-      continue
-    }
-
-    const hasCreate = sorted.some((o) => o.operation === 'create')
-    const hasDelete = sorted.some((o) => o.operation === 'delete')
-    const lastOp: Op = last.operation
-
-    // 1) create + delete => noop
-    if (hasCreate && hasDelete) {
-      continue
-    }
-
-    // 2) delete без create => оставить delete
-    if (!hasCreate && lastOp === 'delete') {
-      result.push(withPendingStatus(last))
-      continue
-    }
-
-    // 3) create (+ updates) => один create с финальным payload
-    if (hasCreate && !hasDelete) {
-      result.push(
-        withPendingStatus({
-          ...first,
-          operation: 'create',
-          payload: last.payload,
-          clientUpdatedAt: last.clientUpdatedAt,
-          id: last.id,
-        })
-      )
-      continue
-    }
-
-    // 4) update/delete без create, где последняя операция update => один update
-    // с финальным payload. This also preserves an update that follows a delete.
-    if (!hasCreate && lastOp === 'update') {
-      result.push(
-        withPendingStatus({
-          ...last,
-          operation: 'update',
-        })
-      )
-    }
+    const compacted = compactNoteOperations(ops)
+    if (compacted) result.push(compacted)
   }
 
   // Сортировка по clientUpdatedAt, чтобы сохранить общий порядок выполнения
   return result.sort((a, b) => Date.parse(a.clientUpdatedAt) - Date.parse(b.clientUpdatedAt))
+}
+
+const compactNoteOperations = (operations: MutationQueueItem[]): MutationQueueItem | null => {
+  const sorted = [...operations].sort((a, b) => Date.parse(a.clientUpdatedAt) - Date.parse(b.clientUpdatedAt))
+  const first = sorted[0]
+  const last = sorted[sorted.length - 1]
+
+  // Bulk tag operations have their own idempotent replay semantics and must
+  // not be collapsed into ordinary note create/update/delete operations.
+  if (sorted.some((operation) => isTagMutation(operation.operation))) {
+    return withPendingStatus(last)
+  }
+
+  const hasCreate = sorted.some((operation) => operation.operation === 'create')
+  const hasDelete = sorted.some((operation) => operation.operation === 'delete')
+
+  // A create followed by a delete never needs to reach the server.
+  if (hasCreate && hasDelete) return null
+
+  if (hasCreate) {
+    return withPendingStatus({
+      ...first,
+      operation: 'create',
+      payload: last.payload,
+      clientUpdatedAt: last.clientUpdatedAt,
+      id: last.id,
+    })
+  }
+
+  if (last.operation === 'delete' || last.operation === 'update') {
+    return withPendingStatus(last)
+  }
+
+  return null
 }
 
 const withPendingStatus = (item: MutationQueueItem): MutationQueueItem => ({

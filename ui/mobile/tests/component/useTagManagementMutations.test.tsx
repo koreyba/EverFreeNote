@@ -130,7 +130,7 @@ describe('useTagManagementMutations', () => {
 
   it('queues an online mutation when the remote service fails', async () => {
     mockIsOnline.mockReturnValue(true)
-    mockRenameTag.mockRejectedValue(new Error('remote failure'))
+    mockRenameTag.mockRejectedValue(new Error('Failed to fetch'))
 
     const { result } = renderHook(() => useRenameTag(), {
       wrapper: createQueryWrapper(createTestQueryClient()),
@@ -144,6 +144,29 @@ describe('useTagManagementMutations', () => {
       operation: 'renameTag',
       payload: { tag: 'old', replacement: 'New', user_id: 'user-1' },
     }))
+  })
+
+  it('propagates permanent online mutation failures instead of queueing them', async () => {
+    mockIsOnline.mockReturnValue(true)
+    const permanentError = Object.assign(new Error('permission denied'), {
+      code: '42501',
+      status: 403,
+    })
+    mockRenameTag.mockRejectedValue(permanentError)
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const { result } = renderHook(() => useRenameTag(), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    })
+
+    await act(async () => {
+      await expect(result.current.mutateAsync({ tag: 'Old', replacement: 'New' }))
+        .rejects.toThrow('permission denied')
+    })
+
+    expect(warnSpy).toHaveBeenCalledWith('Online tag mutation failed', permanentError)
+    expect(mockEnqueue).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
   })
 
   it('rejects invalid tag inputs before touching local storage', async () => {

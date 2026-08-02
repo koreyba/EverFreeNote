@@ -20,6 +20,30 @@ type TagManagementQueryData = {
   usedLocalFallback: boolean
 }
 
+const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504])
+const RETRYABLE_ERROR_PATTERNS = [
+  'failed to fetch',
+  'network request failed',
+  'fetch failed',
+  'load failed',
+  'network timeout',
+  'connection reset',
+  'connection refused',
+  'timed out',
+] as const
+
+const isRetryableBulkMutationError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false
+
+  const candidate = error as { code?: unknown; message?: unknown; name?: unknown; status?: unknown }
+  if (typeof candidate.status === 'number' && RETRYABLE_STATUS_CODES.has(candidate.status)) return true
+  if (candidate.name === 'AbortError' || candidate.code === 'ETIMEDOUT' || candidate.code === 'ECONNRESET') return true
+
+  if (typeof candidate.message !== 'string') return false
+  const message = candidate.message.toLowerCase()
+  return RETRYABLE_ERROR_PATTERNS.some((pattern) => message.includes(pattern))
+}
+
 const normalizeInput = (operation: TagMutationOperation, input: TagMutationInput) => {
   const tag = input.tag.trim()
   const replacement = input.replacement?.trim()
@@ -113,7 +137,9 @@ export function useTagMutation(operation: TagMutationOperation) {
         }
 
         return { queued: false, changedNotes: persistedNotes }
-      } catch {
+      } catch (error) {
+        console.warn('Online tag mutation failed', error)
+        if (!isRetryableBulkMutationError(error)) throw error
         return queueBulkMutation()
       }
     },

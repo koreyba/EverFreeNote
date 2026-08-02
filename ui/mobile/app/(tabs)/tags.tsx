@@ -248,17 +248,19 @@ export default function TagsScreen() {
   )
 }
 
+type TagActionsModalProps = Readonly<{
+  tag: MobileTagSummary | null
+  onClose: () => void
+  onRename: () => void
+  onDelete: () => void
+}>
+
 function TagActionsModal({
   tag,
   onClose,
   onRename,
   onDelete,
-}: {
-  tag: MobileTagSummary | null
-  onClose: () => void
-  onRename: () => void
-  onDelete: () => void
-}) {
+}: TagActionsModalProps) {
   const { colors } = useTheme()
   const styles = createStyles(colors)
 
@@ -276,6 +278,16 @@ function TagActionsModal({
   )
 }
 
+type RenameTagModalProps = Readonly<{
+  visible: boolean
+  value: string
+  error?: string
+  loading: boolean
+  onChangeValue: (_value: string) => void
+  onClose: () => void
+  onSubmit: () => void
+}>
+
 function RenameTagModal({
   visible,
   value,
@@ -284,15 +296,7 @@ function RenameTagModal({
   onChangeValue,
   onClose,
   onSubmit,
-}: {
-  visible: boolean
-  value: string
-  error?: string
-  loading: boolean
-  onChangeValue: (_value: string) => void
-  onClose: () => void
-  onSubmit: () => void
-}) {
+}: RenameTagModalProps) {
   const { colors } = useTheme()
   const styles = createStyles(colors)
 

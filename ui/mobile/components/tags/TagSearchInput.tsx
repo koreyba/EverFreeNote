@@ -3,11 +3,11 @@ import { Search, X } from 'lucide-react-native'
 import { useTheme } from '@ui/mobile/providers'
 import { Input } from '@ui/mobile/components/ui'
 
-type TagSearchInputProps = {
+type TagSearchInputProps = Readonly<{
   value: string
   onChangeText: (_value: string) => void
   onClear: () => void
-}
+}>
 
 export function TagSearchInput({ value, onChangeText, onClear }: TagSearchInputProps) {
   const { colors } = useTheme()

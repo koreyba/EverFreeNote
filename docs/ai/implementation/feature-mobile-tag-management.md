@@ -6,14 +6,14 @@ description: Technical implementation notes, patterns, and code guidelines
 
 # Mobile Tag Management Implementation Guide
 
-> This is the initial Phase 1 guide. Update it with concrete file-level decisions after requirements/design review and during implementation.
+> Implementation status: the native mobile tag-management flow, offline bulk synchronization, collapsible tab bar, tests, and validation evidence documented below are implemented on the feature branch.
 
 ## Implemented Structure
 
-- `core/services/notes.ts` now exposes `getAllNotes`, `renameTag`, and `deleteTag`; bulk methods operate on the complete user-scoped set and persist only changed notes.
+- `core/services/notes.ts` now exposes `getAllNotes`, `renameTag`, and `deleteTag`; bulk methods operate on the complete user-scoped set and persist only changed notes through one shared concurrent helper.
 - `core/types/offline.ts` and `core/utils/compactQueue.ts` support idempotent `renameTag`/`deleteTag` queue operations without collapsing them into ordinary note edits; `OfflineSyncManager` removes superseded/no-op queue rows after compaction.
-- `ui/mobile/hooks/useTagManagement.ts` derives mobile summaries from shared core tag functions and falls back from Supabase to SQLite.
-- `ui/mobile/hooks/useTagManagementMutations.ts` performs optimistic cache/local updates, queues offline/failed remote operations, and invalidates note/tag/search queries. `MobileSyncService` rejects malformed bulk payloads instead of silently dropping them.
+- `ui/mobile/hooks/useTagManagement.ts` derives mobile summaries from shared core tag functions, replaces the user-scoped SQLite snapshot after every successful remote load, and falls back from Supabase to SQLite.
+- `ui/mobile/hooks/useTagManagementMutations.ts` performs optimistic cache/local updates, queues offline and retryable remote operations, propagates permanent remote failures, and invalidates note/tag/search queries. `MobileSyncService` rejects malformed bulk payloads instead of silently dropping them.
 - `ui/mobile/app/(tabs)/tags.tsx` plus `ui/mobile/components/tags/{TagSearchInput,AlphabeticalIndex,TagManagementCard}.tsx` provide the native screen and interactions.
 - `ui/mobile/providers/CollapsibleTabBarProvider.tsx` and `ui/mobile/utils/collapsibleTabBar.ts` own scroll-direction state; Notes, Search, Tags, Settings, and AI Index report scroll events. The tabs layout animates the native bar with a 180 ms transform/opacity transition and resets on pathname changes.
 - `ui/mobile/types/lucide-react-native.d.ts` supplies the local icon declarations required by the installed package artifact; `ui/mobile/eslint.config.mjs` ignores generated `android/build` reports.
@@ -25,6 +25,7 @@ description: Technical implementation notes, patterns, and code guidelines
 - Mobile ESLint passes with zero warnings/errors after excluding generated Android build reports.
 - Focused behavior, core service, sync replay, hook, and existing-screen regression tests pass through Allure Agent.
 - Queue compaction regression coverage proves superseded failed bulk operations are removed before replay; malformed rename payload coverage proves invalid items remain retryable failures.
+- Tag-management regressions cover clearing an empty remote snapshot without losing pending local notes, and propagating permanent online mutation failures instead of retrying them indefinitely.
 - Full mobile Jest regression passes 706/706 tests across 82 suites.
 - Root unit/integration/web coverage passes 1,418/1,418 tests across 183 suites.
 - The mobile declaration for `lucide-react-native` is explicitly included by both application and test TypeScript configs so clean validation can resolve the package's missing published declaration.

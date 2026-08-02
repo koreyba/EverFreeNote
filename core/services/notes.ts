@@ -168,30 +168,21 @@ export class NoteService {
     }
   }
 
+  private async persistTagMutation(updatedNotes: Note[], notes: Note[]): Promise<Note[]> {
+    const changedNotes = updatedNotes.filter((note, index) => note !== notes[index])
+    return Promise.all(changedNotes.map((note) => this.updateNote(note.id, { tags: note.tags })))
+  }
+
   async renameTag(userId: string, sourceTag: string, replacementTag: string): Promise<Note[]> {
     const notes = await this.getAllNotes(userId)
     const updatedNotes = renameTagInNotes(notes, sourceTag, replacementTag)
-    const changedNotes = updatedNotes.filter((note, index) => note !== notes[index])
-    const persistedNotes: Note[] = []
-
-    for (const note of changedNotes) {
-      persistedNotes.push(await this.updateNote(note.id, { tags: note.tags }))
-    }
-
-    return persistedNotes
+    return this.persistTagMutation(updatedNotes, notes)
   }
 
   async deleteTag(userId: string, sourceTag: string): Promise<Note[]> {
     const notes = await this.getAllNotes(userId)
     const updatedNotes = deleteTagFromNotes(notes, sourceTag)
-    const changedNotes = updatedNotes.filter((note, index) => note !== notes[index])
-    const persistedNotes: Note[] = []
-
-    for (const note of changedNotes) {
-      persistedNotes.push(await this.updateNote(note.id, { tags: note.tags }))
-    }
-
-    return persistedNotes
+    return this.persistTagMutation(updatedNotes, notes)
   }
 
   async getAllTagsWithCounts(userId: string): Promise<{ tags: string[]; counts: Record<string, number> }> {

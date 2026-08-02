@@ -3,11 +3,11 @@ import { MoreVertical, Tag } from 'lucide-react-native'
 import { useTheme } from '@ui/mobile/providers'
 import type { MobileTagSummary } from '@ui/mobile/utils/tagManagement'
 
-type TagManagementCardProps = {
+type TagManagementCardProps = Readonly<{
   tag: MobileTagSummary
   onPress: (_tag: string) => void
   onActions: (_tag: MobileTagSummary) => void
-}
+}>
 
 export function TagManagementCard({ tag, onPress, onActions }: TagManagementCardProps) {
   const { colors } = useTheme()

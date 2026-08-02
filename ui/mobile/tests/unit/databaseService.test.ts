@@ -181,6 +181,28 @@ describe('DatabaseService', () => {
     })
   })
 
+  describe('replaceNotesForUser', () => {
+    it('removes the synced snapshot when the remote result is empty while preserving pending notes', async () => {
+      mockDb.getAllAsync
+        .mockResolvedValueOnce([{ count: 1 }])
+        .mockResolvedValueOnce([{ id: 'pending-note' }])
+
+      await service.replaceNotesForUser('user-1', [])
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'DELETE FROM note_tags WHERE note_id IN (SELECT id FROM notes WHERE user_id = ? AND is_synced = 1)',
+        ['user-1']
+      )
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'DELETE FROM notes WHERE user_id = ? AND is_synced = 1',
+        ['user-1']
+      )
+      expect(mockDb.runAsync).not.toHaveBeenCalledWith(expect.stringContaining('INSERT OR REPLACE INTO notes'), expect.anything())
+      expect(mockDb.execAsync).toHaveBeenCalledWith('BEGIN')
+      expect(mockDb.execAsync).toHaveBeenCalledWith('COMMIT')
+    })
+  })
+
   describe('getLocalNotes and getLocalNoteById', () => {
     it('getLocalNotes queries notes by userId and parses JSON tags', async () => {
       mockDb.getAllAsync

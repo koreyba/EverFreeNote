@@ -16,14 +16,15 @@ Verify that mobile Tag Management is behaviorally aligned with the web rules, re
 
 - `ui/mobile/tests/unit/tagManagement.test.ts` covers canonical casing/counts, search, letter filtering, and grouping.
 - `ui/mobile/tests/unit/collapsibleTabBar.test.ts` covers initial visible, downward hide threshold, upward reveal, direction reversal, and top reset.
-- `core/tests/services/tag-management-notes.test.ts` covers complete-note rename/delete semantics and merge behavior.
+- `core/tests/services/tag-management-notes.test.ts` covers complete-note rename/delete semantics, merge behavior, and shared persistence of changed notes.
 - `core/tests/unit/tag-mutation-queue.test.ts` covers preservation and pending reset for bulk queue items.
 - `core/tests/unit/offline-sync-manager.test.ts` covers removing superseded queue rows after compaction so failed bulk operations are not replayed.
 
 ## Component and Hook Tests
 
-- `ui/mobile/tests/component/useTagManagement.test.tsx` covers online full-note loading/caching and offline SQLite fallback.
-- `ui/mobile/tests/component/useTagManagementMutations.test.tsx` covers optimistic local persistence and offline queue creation.
+- `ui/mobile/tests/component/useTagManagement.test.tsx` covers online full-note loading, empty-snapshot reconciliation, and offline SQLite fallback.
+- `ui/mobile/tests/component/useTagManagementMutations.test.tsx` covers optimistic local persistence, retryable offline queue creation, and propagation of permanent online failures.
+- `ui/mobile/tests/unit/databaseService.test.ts` covers replacing a user snapshot while preserving unsynced local notes.
 - `ui/mobile/tests/component/alphabeticalIndex.test.tsx` proves clicking another letter selects it rather than toggling the prior letter off.
 - `ui/mobile/tests/component/tagSearchInput.test.tsx` covers conditional clear-X rendering and clearing.
 - `ui/mobile/tests/integration/tagsScreen.test.tsx` covers the native screen, search/clear, letter filtering, tag navigation, actions, and rename modal.
