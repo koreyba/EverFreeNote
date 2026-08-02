@@ -1,1 +1,0 @@
-{"id":"6213c6ad9383746b8c8a21bd005f7fc0","fullName":"everfreenote-mobile:tests/unit/ui-mobile-utils-htmlToPlainText.test.ts#ui/mobile/utils/htmlToPlainText HTML entity decoding decodes &lt; and &gt;","name":"decodes &lt; and &gt;","status":"passed","testResultsByEnv":{"default":"f742f6b52d3a9650deb60f83061cba0c"}}

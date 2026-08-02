@@ -1,0 +1,1 @@
+{"id":"24d60b6b5a633c4a6ad0cbb7ce1c482b","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService performSync callback bulk tag operations replays a delete operation and rejects malformed payloads","name":"replays a delete operation and rejects malformed payloads","status":"passed","testResultsByEnv":{"default":"8e19b5334637aeb4ab589b9f8ac2b9cf"}}
