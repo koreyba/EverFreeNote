@@ -79,7 +79,7 @@ export function MobileNotesTabMenu({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                  aria-label={`Close ${label}`}
+                  aria-label={tab.noteId ? `Close ${label}` : "Close empty note tab"}
                   title={`Close ${label}`}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => handleClose(tab)}

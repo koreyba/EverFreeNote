@@ -133,7 +133,7 @@ export function NotesTabStrip({
                   variant="ghost"
                   size="icon"
                   className="mr-0.5 h-6 w-6 shrink-0 text-muted-foreground opacity-70 hover:text-foreground group-hover:opacity-100"
-                  aria-label={`Close ${label}`}
+                  aria-label={tab.noteId ? `Close ${label}` : "Close empty note tab"}
                   title={`Close ${label}`}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => onCloseTab(tab.id)}
