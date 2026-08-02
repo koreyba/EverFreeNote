@@ -11,9 +11,9 @@ description: Technical implementation notes, patterns, and code guidelines
 ## Implemented Structure
 
 - `core/services/notes.ts` now exposes `getAllNotes`, `renameTag`, and `deleteTag`; bulk methods operate on the complete user-scoped set and persist only changed notes.
-- `core/types/offline.ts` and `core/utils/compactQueue.ts` support idempotent `renameTag`/`deleteTag` queue operations without collapsing them into ordinary note edits.
+- `core/types/offline.ts` and `core/utils/compactQueue.ts` support idempotent `renameTag`/`deleteTag` queue operations without collapsing them into ordinary note edits; `OfflineSyncManager` removes superseded/no-op queue rows after compaction.
 - `ui/mobile/hooks/useTagManagement.ts` derives mobile summaries from shared core tag functions and falls back from Supabase to SQLite.
-- `ui/mobile/hooks/useTagManagementMutations.ts` performs optimistic cache/local updates, queues offline/failed remote operations, and invalidates note/tag/search queries.
+- `ui/mobile/hooks/useTagManagementMutations.ts` performs optimistic cache/local updates, queues offline/failed remote operations, and invalidates note/tag/search queries. `MobileSyncService` rejects malformed bulk payloads instead of silently dropping them.
 - `ui/mobile/app/(tabs)/tags.tsx` plus `ui/mobile/components/tags/{TagSearchInput,AlphabeticalIndex,TagManagementCard}.tsx` provide the native screen and interactions.
 - `ui/mobile/providers/CollapsibleTabBarProvider.tsx` and `ui/mobile/utils/collapsibleTabBar.ts` own scroll-direction state; Notes, Search, Tags, Settings, and AI Index report scroll events. The tabs layout animates the native bar with a 180 ms transform/opacity transition and resets on pathname changes.
 - `ui/mobile/types/lucide-react-native.d.ts` supplies the local icon declarations required by the installed package artifact; `ui/mobile/eslint.config.mjs` ignores generated `android/build` reports.
@@ -24,8 +24,9 @@ description: Technical implementation notes, patterns, and code guidelines
 - Mobile application and test TypeScript checks pass.
 - Mobile ESLint passes with zero warnings/errors after excluding generated Android build reports.
 - Focused behavior, core service, sync replay, hook, and existing-screen regression tests pass through Allure Agent.
-- Full mobile Jest regression passes 705/705 tests across 82 suites.
-- Root unit/integration/web coverage passes 1,417/1,417 tests across 183 suites.
+- Queue compaction regression coverage proves superseded failed bulk operations are removed before replay; malformed rename payload coverage proves invalid items remain retryable failures.
+- Full mobile Jest regression passes 706/706 tests across 82 suites.
+- Root unit/integration/web coverage passes 1,418/1,418 tests across 183 suites.
 - The mobile declaration for `lucide-react-native` is explicitly included by both application and test TypeScript configs so clean validation can resolve the package's missing published declaration.
 - Focused coverage was generated; device-level Android/iOS smoke testing remains outstanding.
 

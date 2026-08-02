@@ -494,6 +494,21 @@ describe('MobileSyncService', () => {
           status: 'pending',
         })).rejects.toThrow('Invalid deleteTag queue payload')
       })
+
+      it('rejects a rename operation without a replacement instead of dropping it', async () => {
+        mockNoteServiceInstance.renameTag.mockResolvedValueOnce([])
+
+        await expect(getCapturedPerformSync()({
+          id: 'q-tag-invalid-rename',
+          noteId: 'tag:user-1:renameTag:react',
+          operation: 'renameTag',
+          payload: { tag: 'react', user_id: 'user-1' },
+          clientUpdatedAt: '100',
+          status: 'pending',
+        })).rejects.toThrow('Invalid renameTag queue payload')
+
+        expect(mockNoteServiceInstance.renameTag).not.toHaveBeenCalled()
+      })
     })
   })
 

@@ -18,6 +18,7 @@ Verify that mobile Tag Management is behaviorally aligned with the web rules, re
 - `ui/mobile/tests/unit/collapsibleTabBar.test.ts` covers initial visible, downward hide threshold, upward reveal, direction reversal, and top reset.
 - `core/tests/services/tag-management-notes.test.ts` covers complete-note rename/delete semantics and merge behavior.
 - `core/tests/unit/tag-mutation-queue.test.ts` covers preservation and pending reset for bulk queue items.
+- `core/tests/unit/offline-sync-manager.test.ts` covers removing superseded queue rows after compaction so failed bulk operations are not replayed.
 
 ## Component and Hook Tests
 
@@ -26,7 +27,7 @@ Verify that mobile Tag Management is behaviorally aligned with the web rules, re
 - `ui/mobile/tests/component/alphabeticalIndex.test.tsx` proves clicking another letter selects it rather than toggling the prior letter off.
 - `ui/mobile/tests/component/tagSearchInput.test.tsx` covers conditional clear-X rendering and clearing.
 - `ui/mobile/tests/integration/tagsScreen.test.tsx` covers the native screen, search/clear, letter filtering, tag navigation, actions, and rename modal.
-- `ui/mobile/tests/unit/syncService.test.ts` covers rename/delete queue replay and malformed payload rejection.
+- `ui/mobile/tests/unit/syncService.test.ts` covers rename/delete queue replay and malformed payload rejection, including a missing rename replacement.
 
 ## Integration Tests
 
@@ -57,8 +58,8 @@ Use coverage as supporting evidence, not as a replacement for the behavioral ass
 ## Phase 7 Evidence
 
 - Focused feature regression: 23/23 passed through Jest across the Tags screen, data/mutation hooks, provider, and collapsible controller.
-- Full mobile regression with coverage: 82 suites and 705 tests passed; changed-file line coverage includes 92.3% for `tags.tsx`, 100% for `useTagManagement.ts`, `useTagManagementMutations.ts`, and `CollapsibleTabBarProvider.tsx`, and 100% for `ui/mobile/utils/collapsibleTabBar.ts`.
-- Root unit/integration/web coverage: 183 suites and 1,417 tests passed; changed `core/services/notes.ts` lines are covered and the tag queue tests pass.
+- Full mobile regression with coverage: 82 suites and 706 tests passed; changed-file line coverage includes 92.3% for `tags.tsx`, 100% for `useTagManagement.ts`, `useTagManagementMutations.ts`, and `CollapsibleTabBarProvider.tsx`, and 100% for `ui/mobile/utils/collapsibleTabBar.ts`.
+- Root unit/integration/web coverage: 183 suites and 1,418 tests passed; changed `core/services/notes.ts` lines are covered and the tag queue tests pass.
 - The fresh local union of executable changed lines is 92.8% (258/278), above the Sonar new-code threshold; the external Sonar result must still be rechecked after the fix is pushed.
 - `npx ai-devkit@latest lint --feature mobile-tag-management`, root type-check, mobile type-check, mobile lint, and core test type-check pass.
 - Manual Android/iOS smoke testing is not available in this environment; safe-area, modal/keyboard, dark-mode, and animated-bar behavior remain a device QA gate.

@@ -79,14 +79,17 @@ export class MobileSyncService {
                 case 'renameTag':
                 case 'deleteTag': {
                     const payload = item.payload
-                    const tag = payload.tag?.trim()
-                    const userId = payload.user_id
-                    if (!tag || !userId) {
+                    const tag = typeof payload.tag === 'string' ? payload.tag.trim() : undefined
+                    const userId = typeof payload.user_id === 'string' ? payload.user_id.trim() : undefined
+                    const replacement = typeof payload.replacement === 'string'
+                        ? payload.replacement.trim()
+                        : undefined
+                    if (!tag || !userId || (item.operation === 'renameTag' && !replacement)) {
                         throw new Error(`Invalid ${item.operation} queue payload`)
                     }
 
                     const changedNotes = item.operation === 'renameTag'
-                        ? await noteService.renameTag(userId, tag, payload.replacement ?? '')
+                        ? await noteService.renameTag(userId, tag, replacement ?? '')
                         : await noteService.deleteTag(userId, tag)
 
                     if (changedNotes.length > 0) {

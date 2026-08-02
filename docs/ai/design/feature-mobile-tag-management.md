@@ -83,7 +83,7 @@ The existing `useAllTags` aggregate result remains available for note-editor aut
 - Add `NoteService.getAllNotes(userId)` using the existing note projection and user filter. The mobile management query calls it when online, caches the result in SQLite, and falls back to local notes when the network request fails.
 - Add `NoteService.renameTag(userId, sourceTag, replacementTag)` and `NoteService.deleteTag(userId, sourceTag)`. Each method loads all notes, applies the shared pure operation, updates only changed notes, and returns the changed notes. The operation is idempotent so a retry after a partial network success is safe.
 - Extend `MutationOperation` with `renameTag` and `deleteTag`, and define a typed payload containing `tag`, optional `replacement`, and `user_id`. A bulk queue item uses a stable synthetic `noteId` for compaction/storage because the existing SQLite schema requires a non-null note ID.
-- `MobileSyncService` replays bulk items through the service methods and persists returned changed notes locally. `compactQueue` preserves bulk tag operations and keeps their chronological order instead of treating them as ordinary note updates.
+- `MobileSyncService` replays bulk items through the service methods and persists returned changed notes locally. `compactQueue` preserves bulk tag operations and keeps their chronological order instead of treating them as ordinary note updates. The sync manager removes queue rows discarded by compaction so failed superseded operations cannot be replayed later.
 - The screen's query derives `TagWithCount[]` with `getTagsWithCounts` and groups it with `groupTagsAlphabetically`, preserving web casing and locale behavior. Local fallback uses the same derivation.
 
 ## Domain Semantics
@@ -112,7 +112,7 @@ The domain functions should remain deterministic and independently testable. Rea
 
 The chosen strategy is a typed bulk operation. While offline, the screen applies the pure operation to cached local notes and enqueues one `renameTag` or `deleteTag` item with the normalized source tag, optional trimmed replacement, and authenticated user ID. The queue item is authoritative for the complete operation; it is not inferred that an incomplete local cache means all server notes were changed. On reconnect, sync loads the complete server note set, applies the idempotent operation, persists changed notes, and removes the queue item only after success.
 
-When a bulk operation and a per-note update coexist, queue replay order follows `clientUpdatedAt`. Local note updates are built from the already-optimistically-updated local note, so a later note edit does not reintroduce a pre-mutation tag. Repeated bulk operations with the same synthetic key are compacted to the latest pending operation without converting them into ordinary note updates.
+When a bulk operation and a per-note update coexist, queue replay order follows `clientUpdatedAt`. Local note updates are built from the already-optimistically-updated local note, so a later note edit does not reintroduce a pre-mutation tag. Repeated bulk operations with the same synthetic key are compacted to the latest pending operation without converting them into ordinary note updates; superseded queue rows are deleted as part of the compaction pass. Replayed bulk payloads validate the source tag, user ID, and rename replacement before the operation can be removed as successful.
 
 ## Collapsible Bottom Tab Bar
 
