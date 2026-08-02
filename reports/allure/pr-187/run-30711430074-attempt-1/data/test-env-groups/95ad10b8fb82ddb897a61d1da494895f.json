@@ -1,1 +1,0 @@
-{"id":"95ad10b8fb82ddb897a61d1da494895f","fullName":"everfreenote:ui/web/tests/unit/adapters/offlineStorage.test.ts#webOfflineStorageAdapter localStorage fallback does not evict notes when total size is within limit","name":"does not evict notes when total size is within limit","status":"passed","testResultsByEnv":{"default":"02d8ea7e78891add9c9674318d76a61a"}}

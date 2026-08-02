@@ -1,0 +1,1 @@
+{"id":"b123bb710573a17db61e279b24a7bf17","fullName":"everfreenote:core/tests/unit/editorWebViewBridge.test.ts#editorWebViewBridge sends chunked messages for long text","name":"sends chunked messages for long text","status":"passed","testResultsByEnv":{"default":"64a702ca1f0d65c4fa6d9756317c92a4"}}
