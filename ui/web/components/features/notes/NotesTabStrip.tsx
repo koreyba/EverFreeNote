@@ -95,7 +95,7 @@ export function NotesTabStrip({
 }: ReadonlyNotesTabStripProps) {
   return (
     <div className="hidden min-w-0 items-center gap-1 border-b border-border/60 bg-background/80 px-2 py-1 backdrop-blur md:flex">
-      <div className="min-w-0 flex-1 overflow-x-auto" role="tablist" aria-label="Open notes">
+      <div className="min-w-0 flex-1 overflow-x-auto" aria-label="Open notes">
         <div className="flex min-w-max items-center gap-1">
           {tabs.map((tab, index) => {
             const label = getTabLabel(tab)
@@ -112,8 +112,7 @@ export function NotesTabStrip({
               >
                 <Button
                   type="button"
-                  role="tab"
-                  aria-selected={isActive}
+                  aria-pressed={isActive}
                   tabIndex={isActive ? 0 : -1}
                   variant="ghost"
                   className={cn(

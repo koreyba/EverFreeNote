@@ -375,7 +375,7 @@ describe('NotesShell', () => {
     const controller = makeController({ selectedNote: note })
     renderShell(controller)
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Travel note' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Travel note', pressed: true }))
     fireEvent.click(screen.getByRole('button', { name: 'Add note tab' }))
     fireEvent.click(screen.getByRole('button', { name: 'Close Travel note' }))
 

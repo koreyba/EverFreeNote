@@ -45,11 +45,11 @@ describe('Notes workspace tab controls', () => {
       />,
     )
 
-    expect(screen.getByRole('tab', { name: 'First note' }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: /Second note/ }).getAttribute('aria-selected')).toBe('false')
+    expect(screen.getByRole('button', { name: 'First note' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: /^Second note/ }).getAttribute('aria-pressed')).toBe('false')
     expect(screen.getByLabelText('Unsaved changes')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('tab', { name: /Second note/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Second note/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Close First note' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add note tab' }))
 
@@ -71,7 +71,7 @@ describe('Notes workspace tab controls', () => {
       />,
     )
 
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'First note' }), { key: 'ArrowRight' })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'First note' }), { key: 'ArrowRight' })
     expect(onActivateTab).toHaveBeenCalledWith('tab-2')
   })
 
@@ -88,9 +88,9 @@ describe('Notes workspace tab controls', () => {
       />,
     )
 
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'First note' }), { key: 'ArrowLeft' })
-    fireEvent.keyDown(screen.getByRole('tab', { name: /Second note/ }), { key: 'Home' })
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'First note' }), { key: 'End' })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'First note' }), { key: 'ArrowLeft' })
+    fireEvent.keyDown(screen.getByRole('button', { name: /^Second note/ }), { key: 'Home' })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'First note' }), { key: 'End' })
 
     expect(onActivateTab.mock.calls).toEqual([['tab-2'], ['tab-1'], ['tab-2']])
   })
