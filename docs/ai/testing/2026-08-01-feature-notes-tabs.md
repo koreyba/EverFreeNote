@@ -42,6 +42,7 @@ description: Define testing approach, test cases, and quality assurance
 - [x] Editor draft, title selection, scroll, and best-effort ProseMirror selection restore after activation.
 - [x] Reading scroll restores after activation.
 - [x] Settings return preserves tabs and active tab; Tags/Search view changes do not clear them.
+- [x] Mobile Add tab closes the compact menu, keeps the note list available, and lets the next list selection fill the new active slot.
 
 ## End-to-End Tests
 
@@ -50,6 +51,7 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Reload the same browser tab and verify order, active tab, mode, draft, and scroll.
 - [ ] Close active tabs in both neighbor directions and close the final tab.
 - [x] Use the compact mobile tab list to switch and close tabs.
+- [x] Create a blank mobile tab, close the menu, and select a note from the visible list.
 
 ## Test Data
 

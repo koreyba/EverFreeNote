@@ -3,36 +3,13 @@ import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
 import type { NoteViewModel, SearchResult } from '../../../../core/types/domain'
-import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
-import type { NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
-
-const pastePlainText = (text: string) => {
-  cy.get('[data-cy="editor-content"]').click()
-  cy.get('.ProseMirror').trigger('paste', {
-    clipboardData: {
-      types: ['text/plain'],
-      getData: (type: string) => (type === 'text/plain' ? text : ''),
-    },
-  })
-}
-
-type FakeController = Record<string, unknown>
-
-const makeWorkspaceTab = (note: NoteViewModel | null, isEditing: boolean): NoteWorkspaceTab => ({
-  id: 'tab-1',
-  noteId: note?.id ?? null,
-  note,
-  mode: isEditing ? 'editing' : 'reading',
-  draft: {
-    title: note?.title ?? '',
-    description: note?.description ?? '',
-    tags: note?.tags.join(', ') ?? '',
-  },
-  view: { scrollTop: 0 },
-  saveState: 'saved',
-  saveError: null,
-})
+import {
+  makeWorkspaceTab,
+  pastePlainText,
+  useEditorExitState,
+  type FakeController,
+} from './notesShellTestUtils'
 
 const buildController = () => {
   const supabase = {
@@ -74,21 +51,16 @@ const buildController = () => {
   ]
 
   const Harness = () => {
-    const registeredEditorRef = React.useRef<React.RefObject<NoteEditorHandle | null> | null>(null)
     const [notes, setNotes] = React.useState<NoteViewModel[]>(baseNotes)
     const [selectedNoteId, setSelectedNoteId] = React.useState<string>('note-1')
     const [isEditing, setIsEditing] = React.useState(true)
+    const { registerNoteEditorRef, flushIfEditing } = useEditorExitState(isEditing)
 
     const selectedNote = React.useMemo(
       () => notes.find((n) => n.id === selectedNoteId) ?? null,
       [notes, selectedNoteId]
     )
     const activeTab = React.useMemo(() => makeWorkspaceTab(selectedNote, isEditing), [selectedNote, isEditing])
-
-    const flushIfEditing = React.useCallback(async () => {
-      if (!isEditing) return
-      await registeredEditorRef.current?.current?.flushPendingSave()
-    }, [isEditing])
 
     const ftsResults: SearchResult[] = React.useMemo(() => {
       // Simulate search results payload that may be stale. We re-resolve on click.
@@ -152,9 +124,7 @@ const buildController = () => {
     }, [flushIfEditing, notes])
 
     const controller: FakeController = {
-      registerNoteEditorRef: (ref: React.RefObject<NoteEditorHandle | null>) => {
-        registeredEditorRef.current = ref
-      },
+      registerNoteEditorRef,
       user,
       notes,
       notesQuery: {

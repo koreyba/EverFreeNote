@@ -137,6 +137,7 @@ describe('Notes workspace tab controls', () => {
     expect(onActivateTab).toHaveBeenCalledWith('tab-2')
     expect(onCloseTab).toHaveBeenCalledWith('tab-1')
     expect(onAddTab).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Open note tabs (2)' }).getAttribute('aria-expanded')).toBe('false')
   })
 
   it('closes the mobile menu after closing its only active tab', () => {

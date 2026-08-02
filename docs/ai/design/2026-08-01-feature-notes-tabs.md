@@ -16,7 +16,7 @@ graph TD
   Controller --> Flush[Editor flush and session capture]
   Flush --> Workspace
   Controller --> TabStrip[Desktop NotesTabStrip]
-  Controller --> MobileTabs[Compact MobileTabsList]
+  Controller --> MobileTabs[Compact MobileNotesTabMenu]
   Controller --> EditorPane[EditorPane]
   EditorPane --> NoteEditor[NoteEditor]
   EditorPane --> NoteView[NoteView]
@@ -106,13 +106,22 @@ The React hook adds hydration/persistence and stable callbacks. Controller integ
 | Web persistence | `ui/web/lib/noteWorkspaceStorage.ts` | `sessionStorage` adapter, version/key/quota handling |
 | Web hook | `ui/web/hooks/useNoteWorkspaceTabs.ts` | React state, hydration, persistence, stable actions |
 | Desktop UI | `ui/web/components/features/notes/NotesTabStrip.tsx` | Horizontal tabs, add/close, active and save indicators |
-| Mobile web UI | `ui/web/components/features/notes/MobileTabsList.tsx` | Active-tab summary and compact switch/close sheet/list |
+| Mobile web UI | `ui/web/components/features/notes/MobileNotesTabMenu.tsx` | Active-tab summary and compact switch/close/add list |
 | Controller | `ui/web/hooks/useNoteAppController.ts` | Flush/capture/transition; routes every note-open path through tabs |
 | Editor session | `NoteEditor.tsx`, `RichTextEditor.tsx` | Capture/restore draft, scroll, caret/selection |
 | Reading session | `NoteView.tsx` | Capture/restore reading scroll |
 | Layout | `NotesShell.tsx` | Places tab UI above Reading/Editing actions and keeps it mounted across Notes subviews |
 
 ## Design Decisions
+
+### Mobile empty-tab navigation
+
+The mobile tab menu is mounted in the shared Notes header above both the note
+list and the active editor. Adding a tab closes the menu and returns the mobile
+layout to the note list, leaving the new blank tab active. Selecting a note from
+that list replaces the active blank slot through the existing controller rule;
+it does not create another tab. Activating an empty reading tab uses the same
+list state so an empty tab never traps the user in a blank editor screen.
 
 ### Active-slot replacement is the default
 

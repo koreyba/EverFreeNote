@@ -1,5 +1,5 @@
 import React from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NoteView } from '@ui/web/components/features/notes/NoteView'
 import { toast } from 'sonner'
 import { copyNotePayloadToClipboard } from '@ui/web/lib/noteClipboard'
@@ -121,9 +121,7 @@ describe('NoteView copy action', () => {
     expect(requestAnimationFrame).toHaveBeenCalled()
     expect(content.scrollTop).toBe(48)
 
-    act(() => {
-      fireEvent.scroll(content, { target: { scrollTop: 93 } })
-    })
+    fireEvent.scroll(content, { target: { scrollTop: 93 } })
     expect(onViewSessionChange).toHaveBeenCalledWith({ scrollTop: 93 })
 
     requestAnimationFrame.mockRestore()

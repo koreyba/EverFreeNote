@@ -3,7 +3,7 @@ import { NotesShell } from '../../../../ui/web/components/features/notes/NotesSh
 import type { NoteAppController } from '../../../../ui/web/hooks/useNoteAppController'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { NoteWorkspaceTab } from '../../../../core/services/noteWorkspaceTabs'
+import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
 
 describe('Mobile Layout Adaptation', () => {
@@ -180,6 +180,35 @@ describe('Mobile Layout Adaptation', () => {
 
     // Editor should be hidden
     cy.get('[data-testid=\'editor-container\']').should('have.class', 'hidden')
+  })
+
+  it('keeps the active tab switcher above the mobile note list for a new tab', () => {
+    cy.viewport('iphone-se2')
+    const note = {
+      id: 'choose-me',
+      title: 'Choose me',
+      description: 'A note for the new tab',
+      tags: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: 'test-user',
+    }
+    const controller = createMockController({ notes: [note], notesDisplayed: 1, notesTotal: 1 })
+
+    cy.mount(
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
+    )
+
+    cy.get('[aria-label="Open note tabs (1)"]').click()
+    cy.contains('button', 'Add tab').click()
+    cy.get('[aria-label="Open note tabs (1)"]').should('have.attr', 'aria-expanded', 'false')
+    cy.get('[data-testid="sidebar-container"]').should('not.have.class', 'hidden')
+    cy.get('[data-testid="note-card"]').contains('Choose me').click()
+    cy.get('@handleSelectNote').should('have.been.calledWith', note)
   })
 
   it('shows editor and hides sidebar when note is selected on mobile', () => {

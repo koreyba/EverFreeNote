@@ -231,76 +231,78 @@ export function NotesShell({ controller }: NotesShellProps) {
           />
         </main>
       ) : (
-        <>
-          <Sidebar
-            user={user!}
-            filterByTag={filterByTag}
-            notesDisplayed={notesDisplayed}
-            notesTotal={notesTotal}
-            pendingCount={pendingCount}
-            failedCount={failedCount}
-            isOffline={isOffline}
-            selectionMode={selectionMode}
-            selectedCount={selectedCount}
-            bulkDeleting={bulkDeleting}
-            onExitSelectionMode={exitSelectionMode}
-            onSelectAll={selectAllVisible}
-            onBulkDelete={deleteSelectedNotes}
-            onClearTagFilter={handleClearTagFilter}
-            onOpenSettings={() => void handleOpenSettings()}
-            onCreateNote={handleCreateNote}
-            onSignOut={handleSignOut}
-            onOpenSearch={handleOpenSearchPanel}
-            className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
-            data-testid="sidebar-container"
-          >
-            <ListPane controller={controller} />
-          </Sidebar>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <MobileNotesTabMenu
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onAddTab={() => void addTab?.()}
+            onActivateTab={(tabId) => void activateTab?.(tabId)}
+            onCloseTab={(tabId) => void closeTab?.(tabId)}
+          />
+          <div className="flex min-h-0 flex-1">
+            <Sidebar
+              user={user!}
+              filterByTag={filterByTag}
+              notesDisplayed={notesDisplayed}
+              notesTotal={notesTotal}
+              pendingCount={pendingCount}
+              failedCount={failedCount}
+              isOffline={isOffline}
+              selectionMode={selectionMode}
+              selectedCount={selectedCount}
+              bulkDeleting={bulkDeleting}
+              onExitSelectionMode={exitSelectionMode}
+              onSelectAll={selectAllVisible}
+              onBulkDelete={deleteSelectedNotes}
+              onClearTagFilter={handleClearTagFilter}
+              onOpenSettings={() => void handleOpenSettings()}
+              onCreateNote={handleCreateNote}
+              onSignOut={handleSignOut}
+              onOpenSearch={handleOpenSearchPanel}
+              className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
+              data-testid="sidebar-container"
+            >
+              <ListPane controller={controller} />
+            </Sidebar>
 
-          {isSearchPanelOpen && (
-            <SearchResultsPanel
-              ref={searchPanelRef}
-              controller={controller}
-              hasGeminiApiKey={hasGeminiApiKey}
-              onOpenInContext={handleOpenInContext}
-              onClose={() => setIsSearchPanelOpen(false)}
-              className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
-            />
-          )}
-
-          <main
-            className={cn(
-              "flex-1 flex min-h-0 flex-col h-full overflow-hidden",
-              !showEditor ? "hidden md:flex" : "w-full"
-            )}
-            data-testid="editor-container"
-          >
-            <NotesTabStrip
-              tabs={tabs}
-              activeTabId={activeTabId}
-              onAddTab={() => void addTab?.()}
-              onActivateTab={(tabId) => void activateTab?.(tabId)}
-              onCloseTab={(tabId) => void closeTab?.(tabId)}
-            />
-            <MobileNotesTabMenu
-              tabs={tabs}
-              activeTabId={activeTabId}
-              onAddTab={() => void addTab?.()}
-              onActivateTab={(tabId) => void activateTab?.(tabId)}
-              onCloseTab={(tabId) => void closeTab?.(tabId)}
-            />
-            <div className="flex-1 min-h-0 flex">
-              <EditorPane
+            {isSearchPanelOpen && (
+              <SearchResultsPanel
+                ref={searchPanelRef}
                 controller={controller}
-                onBack={handleBackFromNote}
-                noteEditorRef={noteEditorRef}
-                wordpressConfigured={wordpressConfigured}
-                pendingChunkFocus={pendingChunkFocus}
-                onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
+                hasGeminiApiKey={hasGeminiApiKey}
+                onOpenInContext={handleOpenInContext}
+                onClose={() => setIsSearchPanelOpen(false)}
+                className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
               />
-            </div>
-          </main>
-        </>
+            )}
+
+            <main
+              className={cn(
+                "flex-1 flex min-h-0 flex-col h-full overflow-hidden",
+                !showEditor ? "hidden md:flex" : "w-full"
+              )}
+              data-testid="editor-container"
+            >
+              <NotesTabStrip
+                tabs={tabs}
+                activeTabId={activeTabId}
+                onAddTab={() => void addTab?.()}
+                onActivateTab={(tabId) => void activateTab?.(tabId)}
+                onCloseTab={(tabId) => void closeTab?.(tabId)}
+              />
+              <div className="flex-1 min-h-0 flex">
+                <EditorPane
+                  controller={controller}
+                  onBack={handleBackFromNote}
+                  noteEditorRef={noteEditorRef}
+                  wordpressConfigured={wordpressConfigured}
+                  pendingChunkFocus={pendingChunkFocus}
+                  onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
+                />
+              </div>
+            </main>
+          </div>
+        </div>
       )}
 
       <DeleteNoteDialog controller={controller} />

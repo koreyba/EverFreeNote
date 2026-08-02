@@ -55,7 +55,7 @@ ui/web/components/features/notes/NoteView.tsx
 - `useNoteEditorAutoSave` remains responsible for debouncing and flush; `useNoteSaveHandlers` remains responsible for online/offline writes.
 - `NoteEditorHandle` gains capture/restore methods without exposing TipTap internals to the controller.
 - `NoteView` reports reading scroll position to the active tab.
-- `NotesShell` renders the tab UI above the existing editor action area and leaves the workspace mounted when `activeMainView` changes.
+- `NotesShell` renders the desktop strip in the editor and keeps `MobileNotesTabMenu` in a shared mobile header above both the note list and editor. Creating a blank mobile tab closes the menu and returns to the note list; the next note selection fills that active slot.
 
 ## Error Handling
 

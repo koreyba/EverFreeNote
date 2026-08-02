@@ -289,6 +289,29 @@ describe('useNoteAppController additional observable behavior', () => {
     })
   })
 
+  it('returns to the note list after creating a blank tab so the active slot can receive a note', async () => {
+    const { result } = setup()
+
+    await act(async () => {
+      await result.current.addTab()
+    })
+
+    expect(result.current.activeTab.note).toBeNull()
+    expect(result.current.notePaneVisible).toBe(false)
+  })
+
+  it('returns to the note list when closing the final blank tab replacement', async () => {
+    const { result } = setup()
+    const activeTabId = result.current.activeTabId
+
+    await act(async () => {
+      await result.current.closeTab(activeTabId)
+    })
+
+    expect(result.current.activeTab.note).toBeNull()
+    expect(result.current.notePaneVisible).toBe(false)
+  })
+
   it('selects the remote note after flushing, but exits editing when selecting the already selected note', async () => {
     const current = makeNote({ id: 'current' })
     const remote = makeNote({ id: 'remote', title: 'Remote' })

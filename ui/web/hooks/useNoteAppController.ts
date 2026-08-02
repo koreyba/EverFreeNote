@@ -572,20 +572,33 @@ export function useNoteAppController() {
   const handleAddTab = useCallback(async () => {
     await flushAndCaptureActiveTab()
     addTab()
-    setNotePaneVisible(true)
+    // On mobile, an empty tab must return to the note list so the user can
+    // choose which note fills the new active slot. Desktop keeps its editor
+    // pane visible through the responsive `md:flex` layout rule.
+    setNotePaneVisible(false)
   }, [addTab, flushAndCaptureActiveTab])
 
   const handleActivateTab = useCallback(async (tabId: string) => {
-    if (tabId === activeTabId) return
+    const targetTab = tabs.find((tab) => tab.id === tabId)
+    if (!targetTab) return
+    if (tabId === activeTabId) {
+      setNotePaneVisible(Boolean(targetTab.note || targetTab.mode === 'editing'))
+      return
+    }
     await flushAndCaptureActiveTab()
     activateTab(tabId)
-    setNotePaneVisible(true)
+    setNotePaneVisible(Boolean(targetTab.note || targetTab.mode === 'editing'))
     setLastSavedAt(null)
-  }, [activateTab, activeTabId, flushAndCaptureActiveTab, setLastSavedAt])
+  }, [activateTab, activeTabId, flushAndCaptureActiveTab, setLastSavedAt, tabs])
 
   const handleCloseTab = useCallback(async (tabId: string) => {
     const tab = tabs.find((candidate) => candidate.id === tabId)
     if (!tab) return
+
+    const tabIndex = tabs.findIndex((candidate) => candidate.id === tabId)
+    const nextVisibleTab = tab.id === activeTabId
+      ? (tabs[tabIndex + 1] ?? tabs[tabIndex - 1] ?? null)
+      : tabs.find((candidate) => candidate.id === activeTabId) ?? null
 
     const discardFailedSave = tab.saveState === 'error'
       && typeof window !== 'undefined'
@@ -601,7 +614,7 @@ export function useNoteAppController() {
     }
 
     closeTab(tabId)
-    setNotePaneVisible(true)
+    setNotePaneVisible(Boolean(nextVisibleTab?.note || nextVisibleTab?.mode === 'editing'))
     setLastSavedAt(null)
   }, [activeTabId, closeTab, flushAndCaptureActiveTab, setLastSavedAt, tabs])
 

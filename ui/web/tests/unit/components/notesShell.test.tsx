@@ -345,6 +345,13 @@ describe('NotesShell', () => {
     expect(controller.handleSignOut).toHaveBeenCalled()
   })
 
+  it('keeps the mobile workspace tab switcher available while the note list is visible', () => {
+    renderShell(makeController())
+
+    expect(screen.getByRole('button', { name: 'Open note tabs (1)' })).toBeTruthy()
+    expect(screen.getByTestId('mock-note-list')).toBeTruthy()
+  })
+
   it('renders a selected note and routes its callbacks, back action, and delete confirmation', async () => {
     const controller = makeController({
       selectedNote: note,

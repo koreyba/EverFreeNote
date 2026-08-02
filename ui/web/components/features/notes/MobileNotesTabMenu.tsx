@@ -25,6 +25,11 @@ export function MobileNotesTabMenu({
     setIsOpen(false)
   }
 
+  const handleAdd = () => {
+    setIsOpen(false)
+    void onAddTab()
+  }
+
   const handleClose = (tab: NoteWorkspaceTab) => {
     void onCloseTab(tab.id)
     if (tab.id === activeTabId && tabs.length <= 1) setIsOpen(false)
@@ -90,7 +95,7 @@ export function MobileNotesTabMenu({
               </div>
             )
           })}
-          <Button type="button" variant="ghost" className="mt-1 w-full justify-start rounded-lg" onMouseDown={(event) => event.preventDefault()} onClick={onAddTab}>
+          <Button type="button" variant="ghost" className="mt-1 w-full justify-start rounded-lg" onMouseDown={(event) => event.preventDefault()} onClick={handleAdd}>
             <Plus className="h-4 w-4" aria-hidden="true" />
             Add tab
           </Button>
