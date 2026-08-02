@@ -1,1 +1,0 @@
-{"id":"7e3062a3f305be14d61d14ea8a0ad2b0","fullName":"everfreenote-mobile:tests/unit/searchHistory.test.ts#searchHistory service getSearchHistory returns empty array on invalid JSON","name":"returns empty array on invalid JSON","status":"passed","testResultsByEnv":{"default":"6acaf9f64c0a4f8b6ad9d1b0c772a5a6"}}
