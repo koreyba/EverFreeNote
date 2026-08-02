@@ -1,0 +1,1 @@
+{"id":"cd11be3f5fd2da9942c1326a0cec33a3","fullName":"everfreenote:ui/web/tests/unit/components/tagsPage.test.tsx#TagsPage Component clears the rename highlight after its timeout and cleans up on unmount","name":"clears the rename highlight after its timeout and cleans up on unmount","status":"passed","testResultsByEnv":{"default":"336c004650f5ca9b49945152711d52c5"}}

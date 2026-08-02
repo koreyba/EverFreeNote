@@ -1,0 +1,1 @@
+{"id":"ffd40cf31069ce8855638812196184d6","fullName":"everfreenote-mobile:tests/unit/noteCache.test.ts#noteCache utilities does not create or alter cache entries when there is no update to apply","name":"does not create or alter cache entries when there is no update to apply","status":"passed","testResultsByEnv":{"default":"afdb012f272de7c5c2f1c6cb356a4ed7"}}

@@ -1,0 +1,1 @@
+{"id":"5e8e6fac978def7872091672b52a4050","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService getManager returns OfflineSyncManager instance after initialization","name":"returns OfflineSyncManager instance after initialization","status":"passed","testResultsByEnv":{"default":"eae4d2015cab5ce813c0d36a74635209"}}

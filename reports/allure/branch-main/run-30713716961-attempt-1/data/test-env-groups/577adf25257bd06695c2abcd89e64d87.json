@@ -1,1 +1,0 @@
-{"id":"577adf25257bd06695c2abcd89e64d87","fullName":"everfreenote-mobile:tests/unit/configAdapter.test.ts#config adapter getPublicWebOrigin returns origin for valid http publicWebOrigin from process.env","name":"returns origin for valid http publicWebOrigin from process.env","status":"passed","testResultsByEnv":{"default":"777f76b8ee3f9e7e3b07375f4c892ab4"}}

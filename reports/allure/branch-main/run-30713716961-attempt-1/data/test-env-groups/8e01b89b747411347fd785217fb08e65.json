@@ -1,1 +1,0 @@
-{"id":"8e01b89b747411347fd785217fb08e65","fullName":"everfreenote:core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste detectPasteType falls back to plain text when markdown score is low","name":"falls back to plain text when markdown score is low","status":"passed","testResultsByEnv":{"default":"5c0c44c338c5c3b6d779a3c3850fe1a6"}}
