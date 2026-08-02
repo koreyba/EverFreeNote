@@ -1,0 +1,1 @@
+{"id":"14bdf25a214268404cab62c432f06e7b","fullName":"everfreenote:ui/web/tests/unit/components/noteEditor.test.tsx#NoteEditor tag handlers & save/read actions triggers onSave and onRead callbacks with form data","name":"triggers onSave and onRead callbacks with form data","status":"passed","testResultsByEnv":{"default":"30703ccafe9b82fe3b516d2e16e0904f"}}

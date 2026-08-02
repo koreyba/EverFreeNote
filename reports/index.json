@@ -3,6 +3,44 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit",
+      "component",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-187/run-30746421811-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-187/run-30746421811-attempt-1/",
+    "runId": "30746421811",
+    "runAttempt": "1",
+    "prNumber": "187",
+    "ref": "codex/notes-tabs",
+    "sha": "f0cc5aa242d83e9224fbae4bce02918dc9467bc7",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #187",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-08-02T11:57:55.678Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "e2e"
     ],
     "suiteLabels": [
@@ -629,42 +667,6 @@
     "scopeLabel": "PR #188",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-08-01T20:46:29.291Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component"
-    ],
-    "path": "reports/allure/pr-188/run-30716448649-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-188/run-30716448649-attempt-1/",
-    "runId": "30716448649",
-    "runAttempt": "1",
-    "prNumber": "188",
-    "ref": "feature-mobile-tag-management",
-    "sha": "21015f558237e943c5867bcf4d5986b94d6681f5",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #188",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-08-01T20:26:21.259Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"

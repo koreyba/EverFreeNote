@@ -1,1 +1,0 @@
-{"id":"2f0dcdeac04b132ebbabf50417691d80","fullName":"everfreenote-mobile:tests/unit/collapsibleTabBar.test.ts#collapsible tab bar state hides only after accumulated downward scrolling crosses the threshold","name":"hides only after accumulated downward scrolling crosses the threshold","status":"passed","testResultsByEnv":{"default":"e11adc5d6361822348ba476798e9195c"}}
