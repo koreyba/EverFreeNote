@@ -139,6 +139,30 @@ describe('DatabaseService', () => {
       )
     })
 
+    it('uses non-null timestamp fallbacks when note timestamps are missing', async () => {
+      mockDb.getAllAsync.mockResolvedValue([{ count: 1 }])
+
+      await service.saveNotes([
+        {
+          id: 'missing-timestamps',
+          title: 'Missing timestamps',
+          description: '',
+          tags: [],
+          user_id: 'user-1',
+          created_at: null as unknown as string,
+          updated_at: null as unknown as string,
+        },
+      ])
+
+      const insertCall = mockDb.runAsync.mock.calls.find(([query]) => (
+        String(query).includes('INSERT OR REPLACE INTO notes')
+      ))
+      const values = insertCall?.[1] as unknown[]
+
+      expect(values[5]).toEqual(expect.any(String))
+      expect(values[6]).toBe(values[5])
+    })
+
     it('skips notes without user_id', async () => {
       mockDb.getAllAsync.mockResolvedValue([{ count: 1 }])
 

@@ -141,6 +141,30 @@ describe("OfflineSyncManager additional branches", () => {
     expect(storage.queue).toEqual([])
   })
 
+  it("continues draining when compacted queue cleanup fails", async () => {
+    const storage = new DeterministicStorage()
+    storage.queue = [
+      makeItem("stale", {
+        noteId: "same-note",
+        clientUpdatedAt: "2026-01-01T00:00:01Z",
+      }),
+      makeItem("latest", {
+        noteId: "same-note",
+        clientUpdatedAt: "2026-01-01T00:00:02Z",
+      }),
+    ]
+    storage.removeQueueItems.mockRejectedValueOnce(new Error("cleanup failed"))
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined)
+    const performSync = jest.fn().mockResolvedValue(undefined)
+    const manager = new OfflineSyncManager(storage, performSync, makeNetwork(false))
+
+    await expect(manager.handleOnline()).resolves.toBeUndefined()
+
+    expect(warn).toHaveBeenCalledWith("Failed to remove compacted queue items:", expect.any(Error))
+    expect(performSync).toHaveBeenCalledWith(expect.objectContaining({ id: "latest" }))
+    expect(storage.getPendingBatch).toHaveBeenCalled()
+  })
+
   it("recovers after compaction storage failure because draining is reset", async () => {
     const storage = new DeterministicStorage()
     storage.queue = [makeItem("1")]

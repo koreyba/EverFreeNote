@@ -178,11 +178,13 @@ export class DatabaseService {
             const tagsJson = typeof note.tags === 'string' ? note.tags : JSON.stringify(note.tags ?? [])
             const isSynced = typeof note.is_synced === 'number' ? note.is_synced : 1
             const isDeleted = typeof note.is_deleted === 'number' ? note.is_deleted : 0
+            const createdAt = note.created_at ?? new Date().toISOString()
+            const updatedAt = note.updated_at ?? createdAt
 
             await db.runAsync(
                 `INSERT OR REPLACE INTO notes (id, title, description, tags, user_id, created_at, updated_at, is_synced, is_deleted)
  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [note.id, note.title ?? '', note.description ?? '', tagsJson, note.user_id, note.created_at, note.updated_at, isSynced, isDeleted]
+                [note.id, note.title ?? '', note.description ?? '', tagsJson, note.user_id, createdAt, updatedAt, isSynced, isDeleted]
             )
             await this.replaceNoteTags(note.id, note.tags, db)
         }

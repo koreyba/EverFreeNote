@@ -21,6 +21,16 @@ type TagManagementQueryData = {
 }
 
 const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504])
+const RETRYABLE_ERROR_CODES = new Set([
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'PGRST000',
+  'PGRST001',
+  'PGRST002',
+  'PGRST003',
+  '57P01',
+  '57P03',
+])
 const RETRYABLE_ERROR_PATTERNS = [
   'failed to fetch',
   'network request failed',
@@ -37,7 +47,9 @@ const isRetryableBulkMutationError = (error: unknown): boolean => {
 
   const candidate = error as { code?: unknown; message?: unknown; name?: unknown; status?: unknown }
   if (typeof candidate.status === 'number' && RETRYABLE_STATUS_CODES.has(candidate.status)) return true
-  if (candidate.name === 'AbortError' || candidate.code === 'ETIMEDOUT' || candidate.code === 'ECONNRESET') return true
+  const code = typeof candidate.code === 'string' ? candidate.code.toUpperCase() : undefined
+  if (candidate.name === 'AbortError') return true
+  if (code && (RETRYABLE_ERROR_CODES.has(code) || code.startsWith('08'))) return true
 
   if (typeof candidate.message !== 'string') return false
   const message = candidate.message.toLowerCase()

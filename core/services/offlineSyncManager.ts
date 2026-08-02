@@ -140,7 +140,11 @@ export class OfflineSyncManager {
       if (discardedIds.length > 0) {
         // Adapters implement upsert as an item-level operation, so explicitly
         // remove entries that compaction replaced or reduced to a no-op.
-        await this.queue.removeItems(discardedIds)
+        try {
+          await this.queue.removeItems(discardedIds)
+        } catch (cleanupError) {
+          console.warn('Failed to remove compacted queue items:', cleanupError)
+        }
       }
 
       while (this.online) {

@@ -146,6 +146,24 @@ describe('useTagManagementMutations', () => {
     }))
   })
 
+  it.each(['08006', 'PGRST000', 'PGRST001', 'PGRST002', 'PGRST003', '57P01', '57P03'])('queues transient PostgREST code %s for retry', async (code) => {
+    mockIsOnline.mockReturnValue(true)
+    mockRenameTag.mockRejectedValue(Object.assign(new Error('temporary database outage'), { code }))
+
+    const { result } = renderHook(() => useRenameTag(), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({ tag: 'Old', replacement: 'New' })
+    })
+
+    expect(mockEnqueue).toHaveBeenCalledWith(expect.objectContaining({
+      operation: 'renameTag',
+      payload: { tag: 'old', replacement: 'New', user_id: 'user-1' },
+    }))
+  })
+
   it('propagates permanent online mutation failures instead of queueing them', async () => {
     mockIsOnline.mockReturnValue(true)
     const permanentError = Object.assign(new Error('permission denied'), {

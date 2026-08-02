@@ -76,4 +76,6 @@ const compactNoteOperations = (operations: MutationQueueItem[]): MutationQueueIt
 const withPendingStatus = (item: MutationQueueItem): MutationQueueItem => ({
   ...item,
   status: 'pending' as MutationStatus,
+  attempts: 0,
+  lastError: undefined,
 })
