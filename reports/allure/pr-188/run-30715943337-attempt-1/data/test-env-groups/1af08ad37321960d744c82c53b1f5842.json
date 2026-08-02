@@ -1,1 +1,0 @@
-{"id":"1af08ad37321960d744c82c53b1f5842","fullName":"everfreenote-mobile:tests/unit/tagManagement.test.ts#mobile tag management derivation preserves canonical casing and counts each normalized tag once per note","name":"preserves canonical casing and counts each normalized tag once per note","status":"passed","testResultsByEnv":{"default":"685f1d4ce44ca1bb26e88fb4f989c398"}}

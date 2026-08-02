@@ -1,1 +1,0 @@
-{"id":"3cf39946553366f8263c5c5ae7d70acf","fullName":"everfreenote-mobile:tests/unit/storageAdapter.test.ts#storage adapters secureStorageAdapter removeItem logs and re-throws error when SecureStore.deleteItemAsync fails","name":"logs and re-throws error when SecureStore.deleteItemAsync fails","status":"passed","testResultsByEnv":{"default":"f475de38213f203615b1b8f4c4ea9f31"}}
