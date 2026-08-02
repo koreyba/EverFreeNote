@@ -1,1 +1,0 @@
-{"id":"73c84bceae0f64cf024addcce7f9c04d","fullName":"everfreenote-mobile:tests/unit/mobileEnexHelpers.test.ts#enexMobile helpers buildEnexExportFileName zero-pads each UTC date and time component at lower boundaries","name":"zero-pads each UTC date and time component at lower boundaries","status":"passed","testResultsByEnv":{"default":"3dacd56793a180ea29a27407404ba287"}}
