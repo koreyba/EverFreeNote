@@ -6,6 +6,7 @@ import type { NoteViewModel, SearchResult } from '../../../../core/types/domain'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import {
   pastePlainText,
+  useNotesShellAutoSave,
   useNotesShellTestState,
   type FakeController,
 } from './notesShellTestUtils'
@@ -63,6 +64,8 @@ const buildController = () => {
       activeTab,
     } = useNotesShellTestState(baseNotes)
 
+    const handleAutoSave = useNotesShellAutoSave(selectedNoteId, setNotes)
+
     const ftsResults: SearchResult[] = React.useMemo(() => {
       // Simulate search results payload that may be stale. We re-resolve on click.
       return notes.map((n) => ({
@@ -78,22 +81,6 @@ const buildController = () => {
         content: null,
       }))
     }, [notes])
-
-    const handleAutoSave = React.useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
-      const noteId = data.noteId ?? selectedNoteId
-      if (!noteId) return
-
-      setNotes((prev) => prev.map((n) => {
-        if (n.id !== noteId) return n
-        return {
-          ...n,
-          title: data.title ?? n.title,
-          description: data.description ?? n.description,
-          // tags not relevant for this test
-          updated_at: new Date().toISOString(),
-        }
-      }))
-    }, [selectedNoteId, setNotes])
 
     const handleSaveNote = React.useCallback((data: { title: string; description: string; tags: string }) => {
       const noteId = selectedNoteId

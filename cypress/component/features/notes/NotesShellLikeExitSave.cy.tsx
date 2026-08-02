@@ -6,6 +6,7 @@ import type { NoteViewModel } from '../../../../core/types/domain'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import {
   pastePlainText,
+  useNotesShellAutoSave,
   useNotesShellTestState,
   type FakeController,
 } from './notesShellTestUtils'
@@ -63,20 +64,7 @@ const buildController = () => {
       activeTab,
     } = useNotesShellTestState(baseNotes)
 
-    const handleAutoSave = React.useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
-      const noteId = data.noteId ?? selectedNoteId
-      if (!noteId) return
-
-      setNotes((prev) => prev.map((n) => {
-        if (n.id !== noteId) return n
-        return {
-          ...n,
-          title: data.title ?? n.title,
-          description: data.description ?? n.description,
-          updated_at: new Date().toISOString(),
-        }
-      }))
-    }, [selectedNoteId, setNotes])
+    const handleAutoSave = useNotesShellAutoSave(selectedNoteId, setNotes)
 
     const handleSaveNote = React.useCallback((data: { title: string; description: string; tags: string }) => {
       const noteId = selectedNoteId

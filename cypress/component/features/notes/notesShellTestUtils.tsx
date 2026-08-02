@@ -5,6 +5,13 @@ import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEdi
 
 export type FakeController = Record<string, unknown>
 
+type NotesShellAutoSaveData = {
+  noteId?: string
+  title?: string
+  description?: string
+  tags?: string
+}
+
 export const pastePlainText = (text: string) => {
   cy.get('[data-cy="editor-content"]').click()
   cy.get('.ProseMirror').trigger('paste', {
@@ -54,6 +61,27 @@ export function useNotesShellTestState(baseNotes: NoteViewModel[]) {
     selectedNote,
     activeTab,
   }
+}
+
+export function useNotesShellAutoSave(
+  selectedNoteId: string,
+  setNotes: React.Dispatch<React.SetStateAction<NoteViewModel[]>>
+) {
+  return React.useCallback(async (data: NotesShellAutoSaveData) => {
+    const noteId = data.noteId ?? selectedNoteId
+    if (!noteId) return
+
+    setNotes((prev) => prev.map((n) => {
+      if (n.id !== noteId) return n
+      return {
+        ...n,
+        title: data.title ?? n.title,
+        description: data.description ?? n.description,
+        // Tags are not relevant to these exit-save scenarios.
+        updated_at: new Date().toISOString(),
+      }
+    }))
+  }, [selectedNoteId, setNotes])
 }
 
 export function useEditorExitState(isEditing: boolean) {

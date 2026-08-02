@@ -1,5 +1,5 @@
 import React from 'react'
-import { NotesTabStrip } from '../../../../ui/web/components/features/notes/NotesTabStrip'
+import { NotesTabStrip } from '@ui/web/components/features/notes/NotesTabStrip'
 import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 
 describe('Desktop notes tab strip', () => {
