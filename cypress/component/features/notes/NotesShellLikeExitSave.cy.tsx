@@ -5,9 +5,8 @@ import { NotesShell } from '../../../../ui/web/components/features/notes/NotesSh
 import type { NoteViewModel } from '../../../../core/types/domain'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import {
-  makeWorkspaceTab,
   pastePlainText,
-  useEditorExitState,
+  useNotesShellTestState,
   type FakeController,
 } from './notesShellTestUtils'
 
@@ -51,16 +50,18 @@ const buildController = () => {
   ]
 
   const Harness = () => {
-    const [notes, setNotes] = React.useState<NoteViewModel[]>(baseNotes)
-    const [selectedNoteId, setSelectedNoteId] = React.useState<string>('note-1')
-    const [isEditing, setIsEditing] = React.useState(true)
-    const { registerNoteEditorRef, flushIfEditing } = useEditorExitState(isEditing)
-
-    const selectedNote = React.useMemo(
-      () => notes.find((n) => n.id === selectedNoteId) ?? null,
-      [notes, selectedNoteId]
-    )
-    const activeTab = React.useMemo(() => makeWorkspaceTab(selectedNote, isEditing), [selectedNote, isEditing])
+    const {
+      notes,
+      setNotes,
+      selectedNoteId,
+      setSelectedNoteId,
+      isEditing,
+      setIsEditing,
+      registerNoteEditorRef,
+      flushIfEditing,
+      selectedNote,
+      activeTab,
+    } = useNotesShellTestState(baseNotes)
 
     const handleAutoSave = React.useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
       const noteId = data.noteId ?? selectedNoteId
@@ -75,28 +76,28 @@ const buildController = () => {
           updated_at: new Date().toISOString(),
         }
       }))
-    }, [selectedNoteId])
+    }, [selectedNoteId, setNotes])
 
     const handleSaveNote = React.useCallback((data: { title: string; description: string; tags: string }) => {
       const noteId = selectedNoteId
       setNotes((prev) => prev.map((n) => (n.id === noteId ? { ...n, title: data.title, description: data.description, updated_at: new Date().toISOString() } : n)))
-    }, [selectedNoteId])
+    }, [selectedNoteId, setNotes])
 
     const handleReadNote = React.useCallback((data: { title: string; description: string; tags: string }) => {
       handleSaveNote(data)
       setIsEditing(false)
-    }, [handleSaveNote])
+    }, [handleSaveNote, setIsEditing])
 
     const handleEditNote = React.useCallback((note: NoteViewModel) => {
       setSelectedNoteId(note.id)
       setIsEditing(true)
-    }, [])
+    }, [setIsEditing, setSelectedNoteId])
 
     const handleSelectNote = React.useCallback(async (note: NoteViewModel | null) => {
       await flushIfEditing()
       setSelectedNoteId(note?.id ?? '')
       setIsEditing(false)
-    }, [flushIfEditing])
+    }, [flushIfEditing, setIsEditing, setSelectedNoteId])
 
     const controller: FakeController = {
       registerNoteEditorRef,

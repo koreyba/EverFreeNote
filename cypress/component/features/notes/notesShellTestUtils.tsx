@@ -1,7 +1,7 @@
 import React from 'react'
 import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
-import type { NoteViewModel } from '../../../../core/types/domain'
-import type { NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
+import type { NoteViewModel } from '@core/types/domain'
+import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 
 export type FakeController = Record<string, unknown>
 
@@ -29,6 +29,32 @@ export const makeWorkspaceTab = (note: NoteViewModel | null, isEditing: boolean)
   saveState: 'saved',
   saveError: null,
 })
+
+export function useNotesShellTestState(baseNotes: NoteViewModel[]) {
+  const [notes, setNotes] = React.useState<NoteViewModel[]>(baseNotes)
+  const [selectedNoteId, setSelectedNoteId] = React.useState<string>('note-1')
+  const [isEditing, setIsEditing] = React.useState(true)
+  const { registerNoteEditorRef, flushIfEditing } = useEditorExitState(isEditing)
+
+  const selectedNote = React.useMemo(
+    () => notes.find((n) => n.id === selectedNoteId) ?? null,
+    [notes, selectedNoteId]
+  )
+  const activeTab = React.useMemo(() => makeWorkspaceTab(selectedNote, isEditing), [selectedNote, isEditing])
+
+  return {
+    notes,
+    setNotes,
+    selectedNoteId,
+    setSelectedNoteId,
+    isEditing,
+    setIsEditing,
+    registerNoteEditorRef,
+    flushIfEditing,
+    selectedNote,
+    activeTab,
+  }
+}
 
 export function useEditorExitState(isEditing: boolean) {
   const registeredEditorRef = React.useRef<React.RefObject<NoteEditorHandle | null> | null>(null)
