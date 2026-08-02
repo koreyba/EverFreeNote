@@ -15,6 +15,9 @@ export function MobileNotesTabMenu({
   onAddTab,
   onActivateTab,
   onCloseTab,
+  addTabDisabled = false,
+  addTabCapacityPending = false,
+  maximumTabCount,
 }: MobileNotesTabMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]
@@ -26,9 +29,16 @@ export function MobileNotesTabMenu({
   }
 
   const handleAdd = () => {
+    if (addTabDisabled || addTabCapacityPending) return
     setIsOpen(false)
     void onAddTab()
   }
+
+  const addTabLabel = addTabCapacityPending
+    ? "Add tab (checking workspace capacity)"
+    : addTabDisabled
+      ? `Add tab (limit reached: ${maximumTabCount ?? "maximum"} tabs)`
+      : "Add tab"
 
   const handleClose = (tab: NoteWorkspaceTab) => {
     void onCloseTab(tab.id)
@@ -61,43 +71,54 @@ export function MobileNotesTabMenu({
 
       {isOpen && (
         <div id="mobile-notes-tab-list" className="mt-2 rounded-xl border border-border bg-card p-1 shadow-lg" aria-label="Open notes">
-          {tabs.map((tab) => {
-            const label = getTabLabel(tab)
-            const isActive = tab.id === activeTabId
+          <div className="max-h-[60vh] overflow-y-auto overscroll-contain">
+            {tabs.map((tab) => {
+              const label = getTabLabel(tab)
+              const isActive = tab.id === activeTabId
 
-            return (
-              <div key={tab.id} className="flex items-center gap-1 rounded-lg">
-                <Button
-                  type="button"
-                  aria-pressed={isActive}
-                  aria-label={tab.noteId ? undefined : "Open empty note tab"}
-                  variant="ghost"
-                  className={cn("min-w-0 flex-1 justify-start rounded-lg px-2.5", isActive && "bg-muted font-semibold")}
-                  title={label}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => handleActivate(tab.id)}
-                >
-                  <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-                  <SaveStateIndicator tab={tab} />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                  aria-label={tab.noteId ? `Close ${label}` : "Close empty note tab"}
-                  title={`Close ${label}`}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => handleClose(tab)}
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden="true" />
-                </Button>
-              </div>
-            )
-          })}
-          <Button type="button" variant="ghost" className="mt-1 w-full justify-start rounded-lg" onMouseDown={(event) => event.preventDefault()} onClick={handleAdd}>
+              return (
+                <div key={tab.id} className="flex items-center gap-1 rounded-lg">
+                  <Button
+                    type="button"
+                    aria-pressed={isActive}
+                    aria-label={tab.noteId ? undefined : "Open empty note tab"}
+                    variant="ghost"
+                    className={cn("min-w-0 flex-1 justify-start rounded-lg px-2.5", isActive && "bg-muted font-semibold")}
+                    title={label}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => handleActivate(tab.id)}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+                    <SaveStateIndicator tab={tab} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                    aria-label={tab.noteId ? `Close ${label}` : "Close empty note tab"}
+                    title={`Close ${label}`}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => handleClose(tab)}
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            className="mt-1 w-full justify-start rounded-lg"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={handleAdd}
+            disabled={addTabDisabled || addTabCapacityPending}
+            aria-label={addTabLabel}
+            title={addTabLabel}
+          >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            Add tab
+            <span>Add tab</span>
           </Button>
         </div>
       )}

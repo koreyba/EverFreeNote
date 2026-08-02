@@ -1,5 +1,6 @@
 import React from 'react'
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
+import { MobileNotesTabMenu } from '../../../../ui/web/components/features/notes/MobileNotesTabMenu'
 import type { NoteAppController } from '../../../../ui/web/hooks/useNoteAppController'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -45,6 +46,8 @@ describe('Mobile Layout Adaptation', () => {
       tabs: [activeTab],
       activeTabId: activeTab.id,
       activeTab,
+      canAddTab: true,
+      workspaceHydrated: true,
       addTab: cy.stub().resolves(),
       activateTab: cy.stub().resolves(),
       closeTab: cy.stub().resolves(),
@@ -209,6 +212,47 @@ describe('Mobile Layout Adaptation', () => {
     cy.get('[data-testid="sidebar-container"]').should('not.have.class', 'hidden')
     cy.get('[data-testid="note-card"]').contains('Choose me').click()
     cy.get('@handleSelectNote').should('have.been.calledWith', note)
+  })
+
+  it('scrolls a large mobile tab list and exposes the shared disabled Add state', () => {
+    cy.viewport('iphone-se2')
+    const baseTab: NoteWorkspaceTab = {
+      id: 'mobile-tab-0',
+      noteId: null,
+      note: null,
+      mode: 'reading',
+      draft: { title: 'Note 1', description: '', tags: '' },
+      view: { scrollTop: 0 },
+      saveState: 'saved',
+      saveError: null,
+    }
+    const manyTabs = Array.from({ length: 40 }, (_, index) => ({
+      ...baseTab,
+      id: `mobile-tab-${index}`,
+      draft: { ...baseTab.draft, title: `Note ${index + 1}` },
+    }))
+    cy.mount(
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <MobileNotesTabMenu
+          tabs={manyTabs}
+          activeTabId={manyTabs[0].id}
+          onAddTab={cy.stub()}
+          onActivateTab={cy.stub()}
+          onCloseTab={cy.stub()}
+          addTabDisabled
+          maximumTabCount={32}
+        />
+      </ThemeProvider>
+    )
+
+    cy.get('[aria-label="Open note tabs (40)"]').click()
+    cy.get('[id="mobile-notes-tab-list"]')
+      .find('button[aria-label="Add tab (limit reached: 32 tabs)"]')
+      .should('be.visible')
+      .and('be.disabled')
+    cy.get('[id="mobile-notes-tab-list"] > div')
+      .first()
+      .should('have.class', 'overflow-y-auto')
   })
 
   it('shows editor and hides sidebar when note is selected on mobile', () => {

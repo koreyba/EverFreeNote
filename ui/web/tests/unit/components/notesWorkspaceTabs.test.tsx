@@ -1,6 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { NotesTabStrip } from '@/components/features/notes/NotesTabStrip'
+import { getTabCapacity, MIN_TAB_WIDTH_PX, NotesTabStrip } from '@/components/features/notes/NotesTabStrip'
 import { MobileNotesTabMenu } from '@/components/features/notes/MobileNotesTabMenu'
 import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 
@@ -29,7 +29,34 @@ const tabs = [
   makeTab('tab-2', 'Second note', { saveState: 'dirty' }),
 ]
 
+function mockClientWidth(width: number) {
+  const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')
+  Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+    configurable: true,
+    get: () => width,
+  })
+
+  return () => {
+    if (descriptor) {
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', descriptor)
+    } else {
+      delete (HTMLElement.prototype as unknown as { clientWidth?: number }).clientWidth
+    }
+  }
+}
+
 describe('Notes workspace tab controls', () => {
+  let restoreDefaultClientWidth: (() => void) | null = null
+
+  beforeEach(() => {
+    restoreDefaultClientWidth = mockClientWidth(800)
+  })
+
+  afterEach(() => {
+    restoreDefaultClientWidth?.()
+    restoreDefaultClientWidth = null
+  })
+
   it('renders desktop tabs, save indicators, add, activation, and close actions', () => {
     const onAddTab = jest.fn()
     const onActivateTab = jest.fn()
@@ -56,6 +83,40 @@ describe('Notes workspace tab controls', () => {
     expect(onActivateTab).toHaveBeenCalledWith('tab-2')
     expect(onCloseTab).toHaveBeenCalledWith('tab-1')
     expect(onAddTab).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps Add tab first and disables it when the measured minimum-width capacity is reached', () => {
+    const restoreClientWidth = mockClientWidth(MIN_TAB_WIDTH_PX * 2 + 4)
+
+    try {
+      const manyTabs = [
+        makeTab('tab-1', 'First note'),
+        makeTab('tab-2', 'Second note'),
+        makeTab('tab-3', 'Third note'),
+      ]
+      render(
+        <NotesTabStrip
+          tabs={manyTabs}
+          activeTabId="tab-1"
+          onAddTab={jest.fn()}
+          onActivateTab={jest.fn()}
+          onCloseTab={jest.fn()}
+        />,
+      )
+
+      const addButton = screen.getByRole('button', { name: 'Add note tab (limit reached: 2 tabs)' })
+      expect(addButton.hasAttribute('disabled')).toBe(true)
+      expect(addButton.parentElement?.firstElementChild).toBe(addButton)
+      expect(screen.getByLabelText('Open notes').className).toContain('overflow-x-auto')
+    } finally {
+      restoreClientWidth()
+    }
+  })
+
+  it('calculates capacity from the tab minimum instead of allowing zero-width tabs', () => {
+    expect(getTabCapacity(MIN_TAB_WIDTH_PX - 1)).toBe(1)
+    expect(getTabCapacity(MIN_TAB_WIDTH_PX * 2 + 4)).toBe(2)
+    expect(getTabCapacity(0)).toBe(1)
   })
 
   it('supports keyboard tab navigation', () => {
@@ -138,6 +199,47 @@ describe('Notes workspace tab controls', () => {
     expect(onCloseTab).toHaveBeenCalledWith('tab-1')
     expect(onAddTab).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: 'Open note tabs (2)' }).getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('keeps the mobile tab list scrollable and exposes a disabled Add state at the shared limit', () => {
+    const manyTabs = Array.from({ length: 40 }, (_, index) => makeTab(`tab-${index}`, `Note ${index}`))
+    const onAddTab = jest.fn()
+
+    render(
+      <MobileNotesTabMenu
+        tabs={manyTabs}
+        activeTabId="tab-0"
+        onAddTab={onAddTab}
+        onActivateTab={jest.fn()}
+        onCloseTab={jest.fn()}
+        addTabDisabled
+        maximumTabCount={32}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open note tabs (40)' }))
+    const addButton = screen.getByRole('button', { name: 'Add tab (limit reached: 32 tabs)' })
+    expect(addButton.hasAttribute('disabled')).toBe(true)
+    expect(onAddTab).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Open notes').firstElementChild?.className).toContain('overflow-y-auto')
+  })
+
+  it('announces capacity checking instead of claiming the limit during hydration', () => {
+    render(
+      <MobileNotesTabMenu
+        tabs={[makeTab('tab-1', 'First note')]}
+        activeTabId="tab-1"
+        onAddTab={jest.fn()}
+        onActivateTab={jest.fn()}
+        onCloseTab={jest.fn()}
+        addTabCapacityPending
+        maximumTabCount={32}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open note tabs (1)' }))
+    const addButton = screen.getByRole('button', { name: 'Add tab (checking workspace capacity)' })
+    expect(addButton.hasAttribute('disabled')).toBe(true)
   })
 
   it('closes the mobile menu after closing its only active tab', () => {

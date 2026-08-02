@@ -43,6 +43,8 @@ description: Define testing approach, test cases, and quality assurance
 - [x] Reading scroll restores after activation.
 - [x] Settings return preserves tabs and active tab; Tags/Search view changes do not clear them.
 - [x] Mobile Add tab closes the compact menu, keeps the note list available, and lets the next list selection fill the new active slot.
+- [x] Desktop Add tab stays before the scrolling tab viewport and disables at the measured minimum-width capacity.
+- [x] Core/controller Add guard blocks the shared 32-tab ceiling without flushing, and mobile announces the same disabled state with a scrollable list.
 
 ## End-to-End Tests
 
@@ -79,7 +81,7 @@ description: Define testing approach, test cases, and quality assurance
 - `npx ai-devkit@latest lint --feature notes-tabs`: passed.
 - Native mobile route/store tab adaptation was not included; responsive web mobile controls are covered by component tests.
 
-- Desktop: keyboard tab navigation, ellipsis, horizontal overflow, dirty/error markers, close confirmation.
+- Desktop: keyboard tab navigation, ellipsis, horizontal overflow, dirty/error markers, close confirmation, and accessible capacity state with Add fixed on the left.
 - Mobile viewport: active-note summary, tab count, compact list/sheet, touch targets, screen-reader labels.
 - Reload: verify `sessionStorage` restore and separate browser-tab isolation.
 - Network/offline: switch during autosave and after an induced save error.

@@ -3,6 +3,13 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import type { NoteViewModel, SearchResult } from '@core/types/domain'
+import {
+  addWorkspaceTab,
+  createNoteWorkspaceState,
+  MAX_NOTE_WORKSPACE_TABS,
+  serializeNoteWorkspaceState,
+} from '@core/services/noteWorkspaceTabs'
+import { NOTE_WORKSPACE_STORAGE_KEY } from '@ui/web/lib/noteWorkspaceStorage'
 import { toast } from 'sonner'
 
 let mockSelectedNote: NoteViewModel | null = null
@@ -310,6 +317,28 @@ describe('useNoteAppController additional observable behavior', () => {
 
     expect(result.current.activeTab.note).toBeNull()
     expect(result.current.notePaneVisible).toBe(false)
+  })
+
+  it('blocks controller Add tab before flushing when the shared workspace limit is reached', async () => {
+    let nextId = 0
+    let state = createNoteWorkspaceState(() => `tab-${nextId++}`)
+    while (state.tabs.length < MAX_NOTE_WORKSPACE_TABS) {
+      state = addWorkspaceTab(state, () => `tab-${nextId++}`)
+    }
+    window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(state))
+
+    const { result } = setup()
+    await waitFor(() => expect(result.current.tabs).toHaveLength(MAX_NOTE_WORKSPACE_TABS))
+    expect(result.current.canAddTab).toBe(false)
+
+    const flushPendingSave = jest.fn().mockResolvedValue(undefined)
+    act(() => result.current.registerNoteEditorRef({ current: { flushPendingSave } } as never))
+    await act(async () => {
+      await result.current.addTab()
+    })
+
+    expect(flushPendingSave).not.toHaveBeenCalled()
+    expect(result.current.tabs).toHaveLength(MAX_NOTE_WORKSPACE_TABS)
   })
 
   it('selects the remote note after flushing, but exits editing when selecting the already selected note', async () => {

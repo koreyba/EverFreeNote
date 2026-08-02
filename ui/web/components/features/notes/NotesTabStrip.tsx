@@ -1,8 +1,8 @@
 "use client"
 
-import type { KeyboardEvent } from "react"
+import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 import { AlertCircle, Loader2, Plus, Circle, X } from "lucide-react"
-import type { NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
+import { MAX_NOTE_WORKSPACE_TABS, type NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 
@@ -12,9 +12,25 @@ export type NotesTabStripProps = {
   onAddTab: () => void
   onActivateTab: (tabId: string) => void | Promise<void>
   onCloseTab: (tabId: string) => void | Promise<void>
+  addTabDisabled?: boolean
+  addTabCapacityPending?: boolean
+  maximumTabCount?: number
 }
 
 type ReadonlyNotesTabStripProps = Readonly<NotesTabStripProps>
+
+/**
+ * Keep the close affordance and a useful part of the title visible at the
+ * narrowest desktop size. The CSS min-width below and this value are kept in
+ * sync so add capacity reflects the actual layout constraint.
+ */
+export const MIN_TAB_WIDTH_PX = 120
+const TAB_GAP_PX = 4
+
+export function getTabCapacity(availableWidth: number): number {
+  if (!Number.isFinite(availableWidth) || availableWidth <= 0) return 1
+  return Math.max(1, Math.floor((availableWidth + TAB_GAP_PX) / (MIN_TAB_WIDTH_PX + TAB_GAP_PX)))
+}
 
 function getTabLabel(tab: NoteWorkspaceTab): string {
   const title = tab.note?.title?.trim() || tab.draft.title.trim()
@@ -67,6 +83,7 @@ function activateWithKeyboard(
   tabIndex: number,
   tabs: NoteWorkspaceTab[],
   onActivateTab: ReadonlyNotesTabStripProps["onActivateTab"],
+  onFocusTab: (tabId: string) => void,
 ) {
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight" && event.key !== "Home" && event.key !== "End") {
     return
@@ -83,7 +100,10 @@ function activateWithKeyboard(
     nextIndex = (tabIndex + direction + tabs.length) % tabs.length
   }
   const nextTab = tabs[nextIndex]
-  if (nextTab) void onActivateTab(nextTab.id)
+  if (nextTab) {
+    void onActivateTab(nextTab.id)
+    onFocusTab(nextTab.id)
+  }
 }
 
 export function NotesTabStrip({
@@ -92,11 +112,77 @@ export function NotesTabStrip({
   onAddTab,
   onActivateTab,
   onCloseTab,
+  addTabDisabled = false,
+  addTabCapacityPending = false,
+  maximumTabCount = MAX_NOTE_WORKSPACE_TABS,
 }: ReadonlyNotesTabStripProps) {
+  const tabViewportRef = useRef<HTMLDivElement | null>(null)
+  const tabButtonRefs = useRef(new Map<string, HTMLButtonElement>())
+  const [tabViewportWidth, setTabViewportWidth] = useState<number | null>(null)
+
+  useEffect(() => {
+    const viewport = tabViewportRef.current
+    if (!viewport) return
+
+    const measure = () => {
+      const width = viewport.clientWidth || viewport.getBoundingClientRect().width
+      setTabViewportWidth(width > 0 ? width : null)
+    }
+
+    measure()
+    if (typeof ResizeObserver === "undefined") return
+
+    const observer = new ResizeObserver(measure)
+    observer.observe(viewport)
+    return () => observer.disconnect()
+  }, [])
+
+  const measuredCapacity = tabViewportWidth === null ? null : getTabCapacity(tabViewportWidth)
+  const tabCapacity = measuredCapacity === null
+    ? null
+    : Math.min(measuredCapacity, maximumTabCount)
+  const isCapacityPending = addTabCapacityPending || tabViewportWidth === null
+  const isAddDisabled = addTabDisabled || isCapacityPending || (tabCapacity !== null && tabs.length >= tabCapacity)
+  let addTabLabel = "Add note tab"
+  if (addTabCapacityPending) {
+    addTabLabel = "Add note tab (checking workspace capacity)"
+  } else if (addTabDisabled) {
+    addTabLabel = `Add note tab (limit reached: ${maximumTabCount} tabs)`
+  } else if (isCapacityPending) {
+    addTabLabel = "Add note tab (checking capacity)"
+  } else if (isAddDisabled) {
+    addTabLabel = `Add note tab (limit reached: ${tabCapacity} tabs)`
+  }
+
+  const focusTab = (tabId: string) => {
+    const button = tabButtonRefs.current.get(tabId)
+    if (!button) return
+    button.focus()
+    button.scrollIntoView?.({ block: "nearest", inline: "nearest" })
+  }
+
+  useEffect(() => {
+    const button = tabButtonRefs.current.get(activeTabId)
+    button?.scrollIntoView?.({ block: "nearest", inline: "nearest" })
+  }, [activeTabId])
+
   return (
     <div className="hidden min-w-0 items-center gap-1 border-b border-border/60 bg-background/80 px-2 py-1 backdrop-blur md:flex">
-      <div className="min-w-0 flex-1 overflow-x-auto" aria-label="Open notes">
-        <div className="flex min-w-max items-center gap-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={onAddTab}
+        aria-label={addTabLabel}
+        title={addTabLabel}
+        disabled={isAddDisabled}
+      >
+        <Plus className="h-4 w-4" aria-hidden="true" />
+      </Button>
+      <div ref={tabViewportRef} className="min-w-0 flex-1 overflow-x-auto" aria-label="Open notes">
+        <div className="flex min-w-full items-center gap-1">
           {tabs.map((tab, index) => {
             const label = getTabLabel(tab)
             const isActive = tab.id === activeTabId
@@ -105,7 +191,7 @@ export function NotesTabStrip({
               <div
                 key={tab.id}
                 className={cn(
-                  "group flex min-w-0 max-w-56 items-center rounded-md border border-transparent",
+                  "group flex min-w-[120px] max-w-56 flex-1 items-center rounded-md border border-transparent",
                   isActive && "border-border bg-muted/60",
                 )}
                 data-tab-id={tab.id}
@@ -115,6 +201,10 @@ export function NotesTabStrip({
                   aria-pressed={isActive}
                   aria-label={tab.noteId ? undefined : "Open empty note tab"}
                   tabIndex={isActive ? 0 : -1}
+                  ref={(button) => {
+                    if (button) tabButtonRefs.current.set(tab.id, button)
+                    else tabButtonRefs.current.delete(tab.id)
+                  }}
                   variant="ghost"
                   className={cn(
                     "h-8 min-w-0 flex-1 justify-start rounded-md px-2 text-xs",
@@ -123,7 +213,7 @@ export function NotesTabStrip({
                   title={label}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => onActivateTab(tab.id)}
-                  onKeyDown={(event) => activateWithKeyboard(event, index, tabs, onActivateTab)}
+                  onKeyDown={(event) => activateWithKeyboard(event, index, tabs, onActivateTab, focusTab)}
                 >
                   <span className="min-w-0 truncate">{label}</span>
                   <SaveStateIndicator tab={tab} />
@@ -145,9 +235,6 @@ export function NotesTabStrip({
           })}
         </div>
       </div>
-      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onMouseDown={(event) => event.preventDefault()} onClick={onAddTab} aria-label="Add note tab" title="Add note tab">
-        <Plus className="h-4 w-4" aria-hidden="true" />
-      </Button>
     </div>
   )
 }

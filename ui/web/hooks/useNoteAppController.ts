@@ -96,6 +96,7 @@ export function useNoteAppController() {
     updateTab,
     closeTab,
     findTabByNoteId,
+    canAddTab,
   } = workspace
   const selectedNote = activeTab.note
   const isEditing = activeTab.mode === 'editing'
@@ -570,13 +571,14 @@ export function useNoteAppController() {
   ])
 
   const handleAddTab = useCallback(async () => {
+    if (!workspaceHydrated || !canAddTab) return
     await flushAndCaptureActiveTab()
     addTab()
     // On mobile, an empty tab must return to the note list so the user can
     // choose which note fills the new active slot. Desktop keeps its editor
     // pane visible through the responsive `md:flex` layout rule.
     setNotePaneVisible(false)
-  }, [addTab, flushAndCaptureActiveTab])
+  }, [addTab, canAddTab, flushAndCaptureActiveTab, workspaceHydrated])
 
   const handleActivateTab = useCallback(async (tabId: string) => {
     const targetTab = tabs.find((tab) => tab.id === tabId)
@@ -948,6 +950,8 @@ export function useNoteAppController() {
     addTab: handleAddTab,
     activateTab: handleActivateTab,
     closeTab: handleCloseTab,
+    canAddTab,
+    workspaceHydrated,
     enterSelectionMode,
     exitSelectionMode,
     toggleNoteSelection,

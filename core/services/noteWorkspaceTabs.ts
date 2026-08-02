@@ -2,6 +2,7 @@ import type { NoteViewModel } from '@core/types/domain'
 
 export const NOTE_WORKSPACE_VERSION = 1
 export const MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH = 2 * 1024 * 1024
+export const MAX_NOTE_WORKSPACE_TABS = 32
 
 export type NoteWorkspaceMode = 'reading' | 'editing'
 export type NoteWorkspaceSaveState = 'saved' | 'dirty' | 'saving' | 'error'
@@ -141,10 +142,15 @@ export function findWorkspaceTabByNoteId(
   return state.tabs.find((tab) => tab.noteId === noteId) ?? null
 }
 
+export function canAddWorkspaceTab(state: NoteWorkspaceState): boolean {
+  return state.tabs.length < MAX_NOTE_WORKSPACE_TABS
+}
+
 export function addWorkspaceTab(
   state: NoteWorkspaceState,
   idFactory: NoteWorkspaceIdFactory = defaultIdFactory,
 ): NoteWorkspaceState {
+  if (!canAddWorkspaceTab(state)) return state
   const tab = createEmptyTab(idFactory)
   return {
     ...state,

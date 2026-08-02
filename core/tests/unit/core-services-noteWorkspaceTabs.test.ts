@@ -2,12 +2,14 @@ import type { NoteViewModel } from '@core/types/domain'
 import {
   activateWorkspaceTab,
   addWorkspaceTab,
+  canAddWorkspaceTab,
   closeWorkspaceTab,
   createNoteWorkspaceState,
   findWorkspaceTabByNoteId,
   getActiveWorkspaceTab,
   hydrateNoteWorkspaceState,
   MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH,
+  MAX_NOTE_WORKSPACE_TABS,
   openNoteInWorkspace,
   serializeNoteWorkspaceState,
   updateWorkspaceTab,
@@ -48,6 +50,17 @@ describe('note workspace tab state', () => {
     expect(state.tabs.map((tab) => tab.id)).toEqual(['tab-1', 'tab-2'])
     expect(state.activeTabId).toBe('tab-2')
     expect(state.tabs[0]).toBe(first.tabs[0])
+  })
+
+  it('guards the shared workspace tab limit in the core transition', () => {
+    let state = createNoteWorkspaceState(ids('tab-0'))
+    for (let index = 1; index < MAX_NOTE_WORKSPACE_TABS; index += 1) {
+      state = addWorkspaceTab(state, ids(`tab-${index}`))
+    }
+
+    expect(state.tabs).toHaveLength(MAX_NOTE_WORKSPACE_TABS)
+    expect(canAddWorkspaceTab(state)).toBe(false)
+    expect(addWorkspaceTab(state, ids('unexpected'))).toBe(state)
   })
 
   it('replaces the active tab when opening a new note', () => {

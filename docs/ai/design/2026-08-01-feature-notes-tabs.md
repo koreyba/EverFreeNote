@@ -123,6 +123,20 @@ that list replaces the active blank slot through the existing controller rule;
 it does not create another tab. Activating an empty reading tab uses the same
 list state so an empty tab never traps the user in a blank editor screen.
 
+### Responsive desktop tab capacity
+
+The desktop tab strip keeps Add as the first, non-scrolling control. The tab
+viewport uses a browser-like flex layout: tabs grow while there is room, stop
+at a 120px minimum, and horizontally scroll when a restored workspace is
+larger than the viewport. A `ResizeObserver` measures the tab viewport and
+disables Add when another tab would require shrinking below that minimum.
+The shared core model/controller also enforces a 32-tab ceiling, so direct
+calls cannot bypass the UI guard. The disabled button exposes the applicable
+limit in its accessible name so the constraint is understandable without
+relying on the visual layout. The mobile menu receives the controller's
+disabled state explicitly and keeps its tab rows in a scrollable region while
+leaving Add available as the fixed menu footer.
+
 ### Active-slot replacement is the default
 
 `openNoteInWorkspace` updates the active tab. `addWorkspaceTab` is the only operation that increases tab count. This encodes the product's key rule in one reducer function instead of relying on individual click handlers.
@@ -152,7 +166,9 @@ The workspace is modeled as a list of independent tab sessions, while the contro
 - Switching tabs performs no new network request unless existing note revalidation is required; reducer transitions are synchronous after the current save flush.
 - Storage writes are best-effort and serialized from a small, bounded state snapshot; storage failures never block editing.
 - Tab buttons are keyboard reachable, have accessible names, and expose active/dirty/error state.
-- Long titles are ellipsized; desktop overflow is horizontal and mobile uses a compact list.
+- Long titles are ellipsized; desktop tabs grow/shrink within the 120px
+  minimum and overflow horizontally when needed, with Add fixed on the left;
+  mobile uses a compact list.
 - No secrets or auth tokens are added to workspace storage.
 
 ## Design Review Resolution (2026-08-01)

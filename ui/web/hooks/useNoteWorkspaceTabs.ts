@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   activateWorkspaceTab,
   addWorkspaceTab,
+  canAddWorkspaceTab,
   closeWorkspaceTab,
   createNoteWorkspaceState,
   findWorkspaceTabByNoteId,
@@ -58,6 +59,7 @@ export function useNoteWorkspaceTabs() {
   const findTabByNoteId = useCallback((noteId: string | null | undefined) => (
     findWorkspaceTabByNoteId(state, noteId)
   ), [state])
+  const canAddTab = canAddWorkspaceTab(state)
 
   return {
     ...state,
@@ -69,5 +71,6 @@ export function useNoteWorkspaceTabs() {
     updateTab,
     closeTab,
     findTabByNoteId,
+    canAddTab,
   }
 }

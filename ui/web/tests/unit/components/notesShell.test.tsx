@@ -12,6 +12,7 @@ const mockWordPressGetStatus = jest.fn()
 const mockApiKeysGetStatus = jest.fn()
 const mockSearchFocusInput = jest.fn()
 const mockMaybeSingle = jest.fn()
+const originalClientWidthDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')
 
 const note = {
   id: 'note-1',
@@ -320,6 +321,18 @@ describe('NotesShell', () => {
     jest.mocked(useQuery).mockReturnValue({ data: { gemini: { configured: true } } } as never)
     mockConsumeReturnPath.mockReturnValue(null)
     mockMaybeSingle.mockResolvedValue({ data: fetchedNote })
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get: () => 800,
+    })
+  })
+
+  afterEach(() => {
+    if (originalClientWidthDescriptor) {
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', originalClientWidthDescriptor)
+    } else {
+      delete (HTMLElement.prototype as unknown as { clientWidth?: number }).clientWidth
+    }
   })
 
   it('renders the empty editor, registers the editor ref, and wires list actions', async () => {

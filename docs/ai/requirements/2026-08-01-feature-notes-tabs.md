@@ -72,7 +72,12 @@ The feature serves authenticated EverFreeNote users who work with several notes 
 
 The following review decisions resolve the v1 ambiguities without changing the requested behavior:
 
-- No hard tab-count cap is introduced. Desktop uses horizontal overflow and mobile uses a compact list.
+- Desktop Add capacity is responsive: tabs keep a 120px minimum, overflow
+  remains scrollable for existing/restored tabs, and Add is disabled when the
+  measured viewport cannot accommodate one more minimum-width tab. The shared
+  workspace model also enforces a 32-tab ceiling in the core/controller, and
+  mobile exposes that same disabled state while its compact list remains
+  scrollable.
 - Web persistence is explicitly `sessionStorage` per external browser tab. Native mobile persistence is an adapter concern and is not allowed to change the web contract.
 - If flushing the active editor fails during a normal switch, the transition is aborted so the user can retry and the failed state remains visible. Closing a failed tab is allowed only after an explicit discard confirmation.
 - Caret/text-selection restoration is best effort and may be skipped after remote content reconciliation; draft and scroll restoration remain mandatory.

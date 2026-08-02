@@ -37,6 +37,7 @@ import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMe
 
 import { NavRail } from "@/components/features/navigation/NavRail"
 import { TagsPage } from "@/components/features/tags/TagsPage"
+import { MAX_NOTE_WORKSPACE_TABS } from "@core/services/noteWorkspaceTabs"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -97,6 +98,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     addTab,
     activateTab,
     closeTab,
+    canAddTab = true,
+    workspaceHydrated = true,
     handleSelectNote,
     isSearchPanelOpen,
     setIsSearchPanelOpen,
@@ -235,6 +238,9 @@ export function NotesShell({ controller }: NotesShellProps) {
           <MobileNotesTabMenu
             tabs={tabs}
             activeTabId={activeTabId}
+            addTabDisabled={!workspaceHydrated || !canAddTab}
+            addTabCapacityPending={!workspaceHydrated}
+            maximumTabCount={MAX_NOTE_WORKSPACE_TABS}
             onAddTab={() => void addTab?.()}
             onActivateTab={(tabId) => void activateTab?.(tabId)}
             onCloseTab={(tabId) => void closeTab?.(tabId)}
@@ -286,6 +292,9 @@ export function NotesShell({ controller }: NotesShellProps) {
               <NotesTabStrip
                 tabs={tabs}
                 activeTabId={activeTabId}
+                addTabDisabled={!workspaceHydrated || !canAddTab}
+                addTabCapacityPending={!workspaceHydrated}
+                maximumTabCount={MAX_NOTE_WORKSPACE_TABS}
                 onAddTab={() => void addTab?.()}
                 onActivateTab={(tabId) => void activateTab?.(tabId)}
                 onCloseTab={(tabId) => void closeTab?.(tabId)}

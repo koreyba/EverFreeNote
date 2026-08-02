@@ -41,6 +41,11 @@ ui/web/components/features/notes/NoteView.tsx
 - Capture the current editor before unmount, flush autosave first, and then apply tab transitions.
 - Use the active tab's draft as editor initial content; never use a server refresh to overwrite a dirty local field without existing reconciliation rules.
 - Keep tab indicators derived from explicit per-tab save state rather than global UI assumptions.
+- Keep the desktop Add control outside the scrolling tab viewport. `NotesTabStrip`
+  measures that viewport, uses the same 120px minimum as its CSS `min-width`,
+  and disables Add when the next tab would violate the minimum. Existing tabs
+  can still be inspected by horizontal scrolling, including after restoring a
+  wider workspace into a narrow viewport.
 
 ### Patterns & Best Practices
 
@@ -49,6 +54,12 @@ ui/web/components/features/notes/NoteView.tsx
 - Do not add direct Supabase calls to tab UI or storage.
 - Use `sessionStorage` only through the adapter and never read/write it during server rendering.
 - Keep accessibility labels stable so component tests can target behavior rather than CSS.
+- When desktop capacity is reached, retain a real disabled button and expose
+  the measured limit in its accessible name; do not hide Add or rely on a
+  tooltip-only explanation.
+- The core reducer and controller enforce the shared 32-tab ceiling before
+  flushing editor work. `MobileNotesTabMenu` receives that explicit state and
+  renders a scrollable tab-list body with Add as a non-scrolling footer.
 
 ## Integration Points
 
