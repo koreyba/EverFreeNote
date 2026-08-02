@@ -1,0 +1,1 @@
+{"id":"670b8e054a8bc0f8df3677975504e3c7","fullName":"everfreenote-mobile:tests/unit/supabaseClientAdapter.test.ts#supabaseClientFactory falls back to global fetch when deps.fetch is undefined","name":"falls back to global fetch when deps.fetch is undefined","status":"passed","testResultsByEnv":{"default":"c315191c1b7f05a2411ab101ddbc540c"}}
