@@ -65,6 +65,7 @@ export function MobileNotesTabMenu({
                 <Button
                   type="button"
                   aria-pressed={isActive}
+                  aria-label={tab.noteId ? undefined : "Open empty note tab"}
                   variant="ghost"
                   className={cn("min-w-0 flex-1 justify-start rounded-lg px-2.5", isActive && "bg-muted font-semibold")}
                   title={label}

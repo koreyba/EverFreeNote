@@ -113,6 +113,7 @@ export function NotesTabStrip({
                 <Button
                   type="button"
                   aria-pressed={isActive}
+                  aria-label={tab.noteId ? undefined : "Open empty note tab"}
                   tabIndex={isActive ? 0 : -1}
                   variant="ghost"
                   className={cn(
