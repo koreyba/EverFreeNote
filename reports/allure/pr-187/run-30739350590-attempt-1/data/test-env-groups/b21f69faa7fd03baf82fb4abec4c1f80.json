@@ -1,1 +1,0 @@
-{"id":"b21f69faa7fd03baf82fb4abec4c1f80","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteAuth.test.tsx#useNoteAuth does not delete an account when no user is signed in","name":"does not delete an account when no user is signed in","status":"passed","testResultsByEnv":{"default":"4399b12fe8290332f703d97c8431e0e0"}}
