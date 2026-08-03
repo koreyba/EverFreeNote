@@ -12,6 +12,12 @@ type NotesShellAutoSaveData = {
   tags?: string
 }
 
+type NotesShellSaveData = {
+  title: string
+  description: string
+  tags: string
+}
+
 export const pastePlainText = (text: string) => {
   cy.get('[data-cy="editor-content"]').click()
   cy.get('.ProseMirror').trigger('paste', {
@@ -49,6 +55,27 @@ export function useNotesShellTestState(baseNotes: NoteViewModel[]) {
   )
   const activeTab = React.useMemo(() => makeWorkspaceTab(selectedNote, isEditing), [selectedNote, isEditing])
 
+  const handleSaveNote = React.useCallback((data: NotesShellSaveData) => {
+    const noteId = selectedNoteId
+    setNotes((prev) => prev.map((n) => (n.id === noteId ? { ...n, title: data.title, description: data.description, updated_at: new Date().toISOString() } : n)))
+  }, [selectedNoteId, setNotes])
+
+  const handleReadNote = React.useCallback((data: NotesShellSaveData) => {
+    handleSaveNote(data)
+    setIsEditing(false)
+  }, [handleSaveNote, setIsEditing])
+
+  const handleEditNote = React.useCallback((note: NoteViewModel) => {
+    setSelectedNoteId(note.id)
+    setIsEditing(true)
+  }, [setIsEditing, setSelectedNoteId])
+
+  const handleSelectNote = React.useCallback(async (note: NoteViewModel | null) => {
+    await flushIfEditing()
+    setSelectedNoteId(note?.id ?? '')
+    setIsEditing(false)
+  }, [flushIfEditing, setIsEditing, setSelectedNoteId])
+
   return {
     notes,
     setNotes,
@@ -60,6 +87,10 @@ export function useNotesShellTestState(baseNotes: NoteViewModel[]) {
     flushIfEditing,
     selectedNote,
     activeTab,
+    handleSaveNote,
+    handleReadNote,
+    handleEditNote,
+    handleSelectNote,
   }
 }
 

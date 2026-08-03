@@ -55,37 +55,19 @@ const buildController = () => {
       notes,
       setNotes,
       selectedNoteId,
-      setSelectedNoteId,
       isEditing,
       setIsEditing,
       registerNoteEditorRef,
       flushIfEditing,
       selectedNote,
       activeTab,
+      handleSaveNote,
+      handleReadNote,
+      handleEditNote,
+      handleSelectNote,
     } = useNotesShellTestState(baseNotes)
 
     const handleAutoSave = useNotesShellAutoSave(selectedNoteId, setNotes)
-
-    const handleSaveNote = React.useCallback((data: { title: string; description: string; tags: string }) => {
-      const noteId = selectedNoteId
-      setNotes((prev) => prev.map((n) => (n.id === noteId ? { ...n, title: data.title, description: data.description, updated_at: new Date().toISOString() } : n)))
-    }, [selectedNoteId, setNotes])
-
-    const handleReadNote = React.useCallback((data: { title: string; description: string; tags: string }) => {
-      handleSaveNote(data)
-      setIsEditing(false)
-    }, [handleSaveNote, setIsEditing])
-
-    const handleEditNote = React.useCallback((note: NoteViewModel) => {
-      setSelectedNoteId(note.id)
-      setIsEditing(true)
-    }, [setIsEditing, setSelectedNoteId])
-
-    const handleSelectNote = React.useCallback(async (note: NoteViewModel | null) => {
-      await flushIfEditing()
-      setSelectedNoteId(note?.id ?? '')
-      setIsEditing(false)
-    }, [flushIfEditing, setIsEditing, setSelectedNoteId])
 
     const controller: FakeController = {
       registerNoteEditorRef,
