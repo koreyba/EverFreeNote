@@ -1,8 +1,10 @@
 import React from 'react'
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
+import { MobileNotesTabMenu } from '@ui/web/components/features/notes/MobileNotesTabMenu'
 import type { NoteAppController } from '../../../../ui/web/hooks/useNoteAppController'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
 
 describe('Mobile Layout Adaptation', () => {
@@ -16,6 +18,16 @@ describe('Mobile Layout Adaptation', () => {
     createMockController = (overrides: Partial<NoteAppController> = {}): NoteAppController => {
       const handleSelectNote = cy.stub().as('handleSelectNote')
       handleSelectNote.resolves()
+      const activeTab: NoteWorkspaceTab = {
+        id: 'test-tab',
+        noteId: null,
+        note: null,
+        mode: 'reading',
+        draft: { title: '', description: '', tags: '' },
+        view: { scrollTop: 0 },
+        saveState: 'saved',
+        saveError: null,
+      }
 
       return ({
       activeMainView: 'notes',
@@ -31,6 +43,16 @@ describe('Mobile Layout Adaptation', () => {
       notesQuery: { isLoading: false, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: cy.stub() } as any,
       selectedNote: null,
       isEditing: false,
+      tabs: [activeTab],
+      activeTabId: activeTab.id,
+      activeTab,
+      canAddTab: true,
+      workspaceHydrated: true,
+      addTab: cy.stub().resolves(),
+      activateTab: cy.stub().resolves(),
+      closeTab: cy.stub().resolves(),
+      handleDraftChange: cy.stub(),
+      handleViewSessionChange: cy.stub(),
       setIsEditing: cy.stub(),
       isSearchPanelOpen: false,
       setIsSearchPanelOpen: cy.stub(),
@@ -101,6 +123,7 @@ describe('Mobile Layout Adaptation', () => {
       ...overrides,
 
       // Required by controller type (used by NotesShell to register editor ref)
+      notePaneVisible: overrides.notePaneVisible ?? Boolean(overrides.selectedNote || overrides.isEditing),
       registerNoteEditorRef: overrides.registerNoteEditorRef ?? cy.stub(),
       resetFtsResults: overrides.resetFtsResults ?? cy.stub(),
       resetAIResults: overrides.resetAIResults ?? cy.stub(),
@@ -160,6 +183,76 @@ describe('Mobile Layout Adaptation', () => {
 
     // Editor should be hidden
     cy.get('[data-testid=\'editor-container\']').should('have.class', 'hidden')
+  })
+
+  it('keeps the active tab switcher above the mobile note list for a new tab', () => {
+    cy.viewport('iphone-se2')
+    const note = {
+      id: 'choose-me',
+      title: 'Choose me',
+      description: 'A note for the new tab',
+      tags: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: 'test-user',
+    }
+    const controller = createMockController({ notes: [note], notesDisplayed: 1, notesTotal: 1 })
+
+    cy.mount(
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
+    )
+
+    cy.get('[aria-label="Open note tabs (1)"]').click()
+    cy.contains('button', 'Add tab').click()
+    cy.get('[aria-label="Open note tabs (1)"]').should('have.attr', 'aria-expanded', 'false')
+    cy.get('[data-testid="sidebar-container"]').should('not.have.class', 'hidden')
+    cy.get('[data-testid="note-card"]').contains('Choose me').click()
+    cy.get('@handleSelectNote').should('have.been.calledWith', note)
+  })
+
+  it('scrolls a large mobile tab list and exposes the shared disabled Add state', () => {
+    cy.viewport('iphone-se2')
+    const baseTab: NoteWorkspaceTab = {
+      id: 'mobile-tab-0',
+      noteId: null,
+      note: null,
+      mode: 'reading',
+      draft: { title: 'Note 1', description: '', tags: '' },
+      view: { scrollTop: 0 },
+      saveState: 'saved',
+      saveError: null,
+    }
+    const manyTabs = Array.from({ length: 40 }, (_, index) => ({
+      ...baseTab,
+      id: `mobile-tab-${index}`,
+      draft: { ...baseTab.draft, title: `Note ${index + 1}` },
+    }))
+    cy.mount(
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <MobileNotesTabMenu
+          tabs={manyTabs}
+          activeTabId={manyTabs[0].id}
+          onAddTab={cy.stub()}
+          onActivateTab={cy.stub()}
+          onCloseTab={cy.stub()}
+          addTabDisabled
+          maximumTabCount={32}
+        />
+      </ThemeProvider>
+    )
+
+    cy.get('[aria-label="Open note tabs (40)"]').click()
+    cy.get('[id="mobile-notes-tab-list"]')
+      .find('button[aria-label="Add tab (limit reached: 32 tabs)"]')
+      .should('be.visible')
+      .and('be.disabled')
+    cy.get('[id="mobile-notes-tab-list"] > div')
+      .first()
+      .should('have.class', 'overflow-y-auto')
   })
 
   it('shows editor and hides sidebar when note is selected on mobile', () => {

@@ -70,7 +70,7 @@ function createMockEditor() {
       dispatch: jest.fn(),
       serializeForClipboard: jest.fn(() => ({ dom: { innerHTML: '<p>Selected</p>' } })),
     },
-    commands: { undo: jest.fn(), redo: jest.fn() },
+    commands: { undo: jest.fn(), redo: jest.fn(), setTextSelection: jest.fn() },
     chain: jest.fn(() => chain),
     can: jest.fn(() => ({ undo: () => true, redo: () => false })),
     __chain: chain,
@@ -231,5 +231,18 @@ describe('RichTextEditor additional observable behavior', () => {
 
     capturedMenuBarProps?.onApplyMarkdown()
     expect(applySelectionAsMarkdown).toHaveBeenCalledWith(mockEditor, onContentChange)
+
+    expect(ref.current?.getSelection?.()).toEqual({ from: 2, to: 5 })
+    ref.current?.setSelection?.({ from: -4.8, to: 20.2 })
+    expect(mockEditor.commands.setTextSelection).toHaveBeenCalledWith({ from: 1, to: 9 })
+  })
+
+  it('keeps selection methods safe before the editor instance is available', () => {
+    mockEditor = null
+    const ref = React.createRef<React.ElementRef<typeof RichTextEditor>>()
+    render(<RichTextEditor ref={ref} initialContent="<p>Initial</p>" />)
+
+    expect(ref.current?.getSelection?.()).toBeUndefined()
+    expect(() => ref.current?.setSelection?.({ from: 1, to: 2 })).not.toThrow()
   })
 })

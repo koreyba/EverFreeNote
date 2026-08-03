@@ -3,20 +3,13 @@ import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
 import type { NoteViewModel, SearchResult } from '../../../../core/types/domain'
-import type { NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
-
-const pastePlainText = (text: string) => {
-  cy.get('[data-cy="editor-content"]').click()
-  cy.get('.ProseMirror').trigger('paste', {
-    clipboardData: {
-      types: ['text/plain'],
-      getData: (type: string) => (type === 'text/plain' ? text : ''),
-    },
-  })
-}
-
-type FakeController = Record<string, unknown>
+import {
+  pastePlainText,
+  useNotesShellAutoSave,
+  useNotesShellTestState,
+  type FakeController,
+} from './notesShellTestUtils'
 
 const buildController = () => {
   const supabase = {
@@ -58,20 +51,24 @@ const buildController = () => {
   ]
 
   const Harness = () => {
-    const registeredEditorRef = React.useRef<React.RefObject<NoteEditorHandle | null> | null>(null)
-    const [notes, setNotes] = React.useState<NoteViewModel[]>(baseNotes)
-    const [selectedNoteId, setSelectedNoteId] = React.useState<string>('note-1')
-    const [isEditing, setIsEditing] = React.useState(true)
+    const {
+      notes,
+      setNotes,
+      selectedNoteId,
+      setSelectedNoteId,
+      isEditing,
+      setIsEditing,
+      registerNoteEditorRef,
+      flushIfEditing,
+      selectedNote,
+      activeTab,
+      handleSaveNote,
+      handleReadNote,
+      handleEditNote,
+      handleSelectNote,
+    } = useNotesShellTestState(baseNotes)
 
-    const selectedNote = React.useMemo(
-      () => notes.find((n) => n.id === selectedNoteId) ?? null,
-      [notes, selectedNoteId]
-    )
-
-    const flushIfEditing = React.useCallback(async () => {
-      if (!isEditing) return
-      await registeredEditorRef.current?.current?.flushPendingSave()
-    }, [isEditing])
+    const handleAutoSave = useNotesShellAutoSave(selectedNoteId, setNotes)
 
     const ftsResults: SearchResult[] = React.useMemo(() => {
       // Simulate search results payload that may be stale. We re-resolve on click.
@@ -89,55 +86,16 @@ const buildController = () => {
       }))
     }, [notes])
 
-    const handleAutoSave = React.useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
-      const noteId = data.noteId ?? selectedNoteId
-      if (!noteId) return
-
-      setNotes((prev) => prev.map((n) => {
-        if (n.id !== noteId) return n
-        return {
-          ...n,
-          title: data.title ?? n.title,
-          description: data.description ?? n.description,
-          // tags not relevant for this test
-          updated_at: new Date().toISOString(),
-        }
-      }))
-    }, [selectedNoteId])
-
-    const handleSaveNote = React.useCallback((data: { title: string; description: string; tags: string }) => {
-      const noteId = selectedNoteId
-      setNotes((prev) => prev.map((n) => (n.id === noteId ? { ...n, title: data.title, description: data.description, updated_at: new Date().toISOString() } : n)))
-    }, [selectedNoteId])
-
-    const handleReadNote = React.useCallback((data: { title: string; description: string; tags: string }) => {
-      handleSaveNote(data)
-      setIsEditing(false)
-    }, [handleSaveNote])
-
-    const handleEditNote = React.useCallback((note: NoteViewModel) => {
-      setSelectedNoteId(note.id)
-      setIsEditing(true)
-    }, [])
-
-    const handleSelectNote = React.useCallback(async (note: NoteViewModel | null) => {
-      await flushIfEditing()
-      setSelectedNoteId(note?.id ?? '')
-      setIsEditing(false)
-    }, [flushIfEditing])
-
     const handleSearchResultClick = React.useCallback(async (note: SearchResult) => {
       await flushIfEditing()
       // Resolve to latest note state on click
       const latest = notes.find((n) => n.id === note.id) ?? (note as unknown as NoteViewModel)
       setSelectedNoteId(latest.id)
       setIsEditing(false)
-    }, [flushIfEditing, notes])
+    }, [flushIfEditing, notes, setIsEditing, setSelectedNoteId])
 
     const controller: FakeController = {
-      registerNoteEditorRef: (ref: React.RefObject<NoteEditorHandle | null>) => {
-        registeredEditorRef.current = ref
-      },
+      registerNoteEditorRef,
       user,
       notes,
       notesQuery: {
@@ -176,6 +134,14 @@ const buildController = () => {
 
       selectedNote,
       isEditing,
+      tabs: [activeTab],
+      activeTabId: activeTab.id,
+      activeTab,
+      addTab: () => {},
+      activateTab: () => {},
+      closeTab: () => {},
+      handleDraftChange: () => {},
+      handleViewSessionChange: () => {},
       saving: false,
       autoSaving: false,
       lastSavedAt: null,

@@ -5,6 +5,10 @@ import { copyNotePayloadToClipboard } from '@ui/web/lib/noteClipboard'
 
 const mockSetEditorContent = jest.fn()
 let mockEditorHtml = '<p>Body A</p>'
+let mockEditorSelection = { from: 2, to: 5 }
+const mockSetEditorSelection = jest.fn((selection: { from: number; to: number }) => {
+  mockEditorSelection = selection
+})
 
 jest.mock('@/components/ui/button', () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
@@ -27,7 +31,14 @@ jest.mock('@/components/RichTextEditor', () => {
   const ReactModule = jest.requireActual<typeof import('react')>('react')
 
   const MockRichTextEditor = ReactModule.forwardRef<
-    { getHTML: () => string; setContent: (html: string) => void; runCommand: () => void; scrollToChunk: () => void },
+    {
+      getHTML: () => string
+      getSelection: () => { from: number; to: number }
+      setSelection: (selection: { from: number; to: number }) => void
+      setContent: (html: string) => void
+      runCommand: () => void
+      scrollToChunk: () => void
+    },
     { initialContent: string; onContentChange?: () => void }
   >((props, ref) => {
     const initializedRef = ReactModule.useRef(false)
@@ -38,6 +49,8 @@ jest.mock('@/components/RichTextEditor', () => {
 
     ReactModule.useImperativeHandle(ref, () => ({
       getHTML: () => mockEditorHtml,
+      getSelection: () => mockEditorSelection,
+      setSelection: mockSetEditorSelection,
       setContent: (html: string) => {
         mockSetEditorContent(html)
         mockEditorHtml = html
@@ -117,6 +130,7 @@ describe('NoteEditor same-note autosave reconciliation', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockEditorHtml = '<p>Body A</p>'
+    mockEditorSelection = { from: 2, to: 5 }
   })
 
   afterEach(() => {
@@ -418,6 +432,17 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     expect((screen.getByPlaceholderText('Note title') as HTMLInputElement).value).toBe('Existing note')
     expect(screen.getByText('<p>Remote body</p>')).toBeTruthy()
     expect(screen.getByTestId('selected-tags').textContent).toBe('remote-tag')
+  })
+
+  it('captures and restores the rich-text selection in the editing session', async () => {
+    const session = {
+      draft: { title: 'First', description: '<p>Body A</p>', tags: 'tag-a' },
+      view: { scrollTop: 12, editorSelection: { from: 7, to: 14 } },
+    }
+    const { ref } = renderEditor({ initialSession: session })
+
+    await waitFor(() => expect(mockSetEditorSelection).toHaveBeenCalledWith({ from: 7, to: 14 }))
+    expect(ref.current?.captureSession?.().view.editorSelection).toEqual({ from: 7, to: 14 })
   })
 })
 

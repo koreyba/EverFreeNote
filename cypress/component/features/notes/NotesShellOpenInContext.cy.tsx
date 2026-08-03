@@ -3,10 +3,8 @@ import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
 import type { NoteViewModel } from '../../../../core/types/domain'
-import type { NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
-
-type FakeController = Record<string, unknown>
+import { makeWorkspaceTab, useEditorExitState, type FakeController } from './notesShellTestUtils'
 
 describe('NotesShell: AI open in context', () => {
   it('applies scroll and chunk highlight on the first open-in-context click', () => {
@@ -76,15 +74,14 @@ describe('NotesShell: AI open in context', () => {
     } as unknown as SupabaseClient
 
     function Harness() {
-      const registeredEditorRef = React.useRef<React.RefObject<NoteEditorHandle | null> | null>(null)
       const [selectedNote, setSelectedNote] = React.useState<NoteViewModel | null>(null)
       const [isEditing, setIsEditing] = React.useState(false)
       const [isSearchPanelOpen, setIsSearchPanelOpen] = React.useState(true)
+      const { registerNoteEditorRef } = useEditorExitState(isEditing)
+      const activeTab = React.useMemo(() => makeWorkspaceTab(selectedNote, isEditing), [selectedNote, isEditing])
 
       const controller: FakeController = {
-        registerNoteEditorRef: (ref: React.RefObject<NoteEditorHandle | null>) => {
-          registeredEditorRef.current = ref
-        },
+        registerNoteEditorRef,
         user,
         notes: [note],
         notesQuery: {
@@ -138,6 +135,14 @@ describe('NotesShell: AI open in context', () => {
         deleteNotesByIds: async () => ({ total: 0, failed: 0, queuedOffline: false }),
         selectedNote,
         isEditing,
+        tabs: [activeTab],
+        activeTabId: activeTab.id,
+        activeTab,
+        addTab: () => {},
+        activateTab: () => {},
+        closeTab: () => {},
+        handleDraftChange: () => {},
+        handleViewSessionChange: () => {},
         saving: false,
         autoSaving: false,
         lastSavedAt: null,

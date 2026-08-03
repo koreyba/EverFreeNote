@@ -13,6 +13,8 @@ import { useNoteSync } from './useNoteSync'
 import { useNoteData } from './useNoteData'
 import { useNoteSaveHandlers } from './useNoteSaveHandlers'
 import { useNoteBulkActions } from './useNoteBulkActions'
+import { useNoteWorkspaceTabs } from './useNoteWorkspaceTabs'
+import type { NoteDraftSnapshot, NoteViewSession } from '@core/services/noteWorkspaceTabs'
 import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
@@ -54,10 +56,10 @@ export function useNoteAppController() {
 
   // -- Selection --
   const {
-    selectedNote,
-    setSelectedNote,
-    isEditing,
-    setIsEditing,
+    selectedNote: legacySelectedNote,
+    isEditing: legacyIsEditing,
+    setSelectedNote: setLegacySelectedNote,
+    setIsEditing: setLegacyIsEditing,
     deleteDialogOpen,
     setDeleteDialogOpen,
     noteToDelete,
@@ -66,17 +68,71 @@ export function useNoteAppController() {
     selectionMode,
     bulkDeleting,
     setBulkDeleting,
-    handleSelectNote,
-    handleSearchResultClick,
-    handleEditNote: handleEditNoteRaw,
-    handleCreateNote,
     handleDeleteNote,
     enterSelectionMode,
     exitSelectionMode,
     toggleNoteSelection,
     selectAllVisible: selectAllVisibleCallback,
     clearSelection,
+    handleSelectNote: handleSelectNoteLegacy,
+    handleSearchResultClick: handleSearchResultClickLegacy,
+    handleEditNote: handleEditNoteRaw,
+    handleCreateNote,
   } = useNoteSelection()
+
+  // -- Notes workspace tabs --
+  // The existing selection hook still owns bulk-selection/dialog state. The
+  // selected note and editor mode are now derived from the active workspace tab
+  // so every save/navigation consumer observes the same session.
+  const workspace = useNoteWorkspaceTabs()
+  const {
+    activeTab,
+    hydrated: workspaceHydrated,
+    tabs,
+    activeTabId,
+    addTab,
+    activateTab,
+    openNote,
+    updateTab,
+    closeTab,
+    findTabByNoteId,
+    canAddTab,
+  } = workspace
+  const selectedNote = activeTab.note
+  const isEditing = activeTab.mode === 'editing'
+  const [notePaneVisible, setNotePaneVisible] = useState(false)
+  const legacyBridgeAppliedRef = useRef(false)
+
+  const setSelectedNote = useCallback((value: NoteViewModel | null | ((previous: NoteViewModel | null) => NoteViewModel | null)) => {
+    const currentNote = activeTab.note
+    const note = typeof value === 'function' ? value(currentNote) : value
+    updateTab(activeTabId, {
+      note,
+      noteId: note?.id ?? null,
+    })
+  }, [activeTab.note, activeTabId, updateTab])
+
+  const setIsEditing = useCallback((value: boolean | ((previous: boolean) => boolean)) => {
+    const editing = typeof value === 'function' ? value(isEditing) : value
+    updateTab(activeTabId, { mode: editing ? 'editing' : 'reading' })
+  }, [activeTabId, isEditing, updateTab])
+
+  useEffect(() => {
+    if (!workspaceHydrated || legacyBridgeAppliedRef.current) return
+    legacyBridgeAppliedRef.current = true
+    if (activeTab.note || (!legacySelectedNote && !legacyIsEditing)) return
+    updateTab(activeTabId, {
+      ...(legacySelectedNote ? { note: legacySelectedNote, noteId: legacySelectedNote.id } : {}),
+      mode: legacyIsEditing ? 'editing' : 'reading',
+    })
+  }, [
+    activeTab.note,
+    legacyIsEditing,
+    legacySelectedNote,
+    activeTabId,
+    updateTab,
+    workspaceHydrated,
+  ])
 
   // -- Editor ref (cross-cutting: bridges UI editor with save/navigation logic) --
   const noteEditorRef = useRef<React.RefObject<NoteEditorHandle | null> | null>(null)
@@ -91,6 +147,21 @@ export function useNoteAppController() {
     if (!handle) return
     await handle.flushPendingSave()
   }, [isEditing])
+
+  const captureActiveTabSession = useCallback(() => {
+    const session = noteEditorRef.current?.current?.captureSession?.()
+    if (!session) return
+
+    updateTab(activeTabId, {
+      draft: session.draft as NoteDraftSnapshot,
+      view: session.view as NoteViewSession,
+    })
+  }, [activeTabId, updateTab])
+
+  const flushAndCaptureActiveTab = useCallback(async () => {
+    captureActiveTabSession()
+    await flushPendingEditorSave()
+  }, [captureActiveTabSession, flushPendingEditorSave])
 
   // -- Infrastructure --
   const queryClient = useQueryClient()
@@ -268,6 +339,78 @@ export function useNoteAppController() {
     selectedNoteRef,
   })
 
+  const handleDraftChange = useCallback((draft: NoteDraftSnapshot) => {
+    updateTab(activeTabId, {
+      draft,
+      saveState: 'dirty',
+      saveError: null,
+    })
+  }, [activeTabId, updateTab])
+
+  const handleViewSessionChange = useCallback((view: Partial<NoteViewSession>) => {
+    updateTab(activeTabId, { view })
+  }, [activeTabId, updateTab])
+
+  const handleAutoSaveWithWorkspace = useCallback(async (data: {
+    noteId?: string
+    title: string
+    description: string
+    tags: string
+  }) => {
+    updateTab(activeTabId, {
+      draft: { title: data.title, description: data.description, tags: data.tags },
+      saveState: 'saving',
+      saveError: null,
+    })
+    try {
+      const result = await handleAutoSave(data)
+      updateTab(activeTabId, { saveState: 'saved', saveError: null })
+      return result
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      updateTab(activeTabId, { saveState: 'error', saveError: message })
+      throw error
+    }
+  }, [activeTabId, handleAutoSave, updateTab])
+
+  const handleSaveNoteWithWorkspace = useCallback(async (data: {
+    title: string
+    description: string
+    tags: string
+  }) => {
+    updateTab(activeTabId, {
+      draft: data,
+      saveState: 'saving',
+      saveError: null,
+    })
+    try {
+      await handleSaveNote(data)
+      updateTab(activeTabId, { saveState: 'saved', saveError: null })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      updateTab(activeTabId, { saveState: 'error', saveError: message })
+    }
+  }, [activeTabId, handleSaveNote, updateTab])
+
+  const handleReadNoteWithWorkspace = useCallback(async (data: {
+    title: string
+    description: string
+    tags: string
+  }) => {
+    updateTab(activeTabId, {
+      draft: data,
+      saveState: 'saving',
+      saveError: null,
+    })
+    try {
+      await handleReadNote(data)
+      updateTab(activeTabId, { saveState: 'saved', saveError: null })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      updateTab(activeTabId, { saveState: 'error', saveError: message })
+    }
+  }, [activeTabId, handleReadNote, updateTab])
+
   // -- Bulk actions --
   const { selectAllVisible, deleteSelectedNotes, deleteNotesByIds } = useNoteBulkActions({
     selectedNoteIds,
@@ -288,67 +431,202 @@ export function useNoteAppController() {
   // -- Nav wrappers: flush pending editor save before any navigation --
   const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null) => {
     const requestId = ++latestSelectRequestRef.current
-    await flushPendingEditorSave()
+    await flushAndCaptureActiveTab()
     if (requestId !== latestSelectRequestRef.current) return
     clearActiveSettingsNoteReturnPath()
-    if (note?.id && selectedNoteRef.current?.id === note.id) {
-      setIsEditing(false)
+    if (!note) {
+      // Mobile back/search navigation hides the pane without closing the tab.
+      handleSelectNoteLegacy(null)
+      setNotePaneVisible(false)
       setLastSavedAt(null)
       return
     }
-    const openableNote = note ? await resolveOpenableNote(note) : null
+
+    const existingTab = findTabByNoteId(note.id)
+    if (existingTab) {
+      activateTab(existingTab.id)
+      setNotePaneVisible(true)
+      if (existingTab.id === activeTabId) {
+        setLegacyIsEditing(false)
+        setIsEditing(false)
+      }
+      setLastSavedAt(null)
+      return
+    }
+
+    const openableNote = await resolveOpenableNote(note)
     if (requestId !== latestSelectRequestRef.current) return
-    if (note && !openableNote) return
-    handleSelectNote(openableNote)
+    if (!openableNote) return
+    openNote(openableNote)
+    handleSelectNoteLegacy(openableNote)
+    setNotePaneVisible(true)
     setLastSavedAt(null)
-  }, [flushPendingEditorSave, handleSelectNote, resolveOpenableNote, setLastSavedAt, setIsEditing])
+  }, [
+    flushAndCaptureActiveTab,
+    resolveOpenableNote,
+    setIsEditing,
+    setLastSavedAt,
+    activeTabId,
+    activateTab,
+    findTabByNoteId,
+    openNote,
+    handleSelectNoteLegacy,
+    setLegacyIsEditing,
+  ])
 
   const wrappedHandleCreateNote = useCallback(async () => {
-    await flushPendingEditorSave()
+    await flushAndCaptureActiveTab()
     clearActiveSettingsNoteReturnPath()
+    updateTab(activeTabId, {
+      note: null,
+      noteId: null,
+      mode: 'editing',
+      draft: { title: '', description: '', tags: '' },
+      view: { scrollTop: 0, titleSelection: undefined, editorSelection: undefined },
+      saveState: 'saved',
+      saveError: null,
+    })
     handleCreateNote()
+    setNotePaneVisible(true)
     setLastSavedAt(null)
-  }, [flushPendingEditorSave, handleCreateNote, setLastSavedAt])
+  }, [activeTabId, flushAndCaptureActiveTab, handleCreateNote, setLastSavedAt, updateTab])
 
   const wrappedHandleEditNote = useCallback(async (note: NoteViewModel) => {
     const requestId = ++latestEditRequestRef.current
-    await flushPendingEditorSave()
+    await flushAndCaptureActiveTab()
     if (requestId !== latestEditRequestRef.current) return
     const openableNote = await resolveOpenableNote(note)
     if (requestId !== latestEditRequestRef.current) return
     if (!openableNote) {
-      handleSelectNote(null)
+      handleSelectNoteLegacy(null)
+      setNotePaneVisible(false)
       return
     }
-    handleEditNoteRaw(openableNote)
+
+    const existingTab = findTabByNoteId(openableNote.id)
+    if (existingTab) {
+      activateTab(existingTab.id)
+      updateTab(existingTab.id, { mode: 'editing', saveState: 'saved', saveError: null })
+      handleEditNoteRaw(openableNote)
+    } else {
+      openNote(openableNote)
+      updateTab(activeTabId, { mode: 'editing', saveState: 'saved', saveError: null })
+      handleEditNoteRaw(openableNote)
+    }
+    setNotePaneVisible(true)
     setLastSavedAt(null)
-  }, [flushPendingEditorSave, handleEditNoteRaw, handleSelectNote, resolveOpenableNote, setLastSavedAt])
+  }, [
+    flushAndCaptureActiveTab,
+    resolveOpenableNote,
+    setLastSavedAt,
+    activeTabId,
+    activateTab,
+    findTabByNoteId,
+    openNote,
+    updateTab,
+    handleEditNoteRaw,
+    handleSelectNoteLegacy,
+  ])
 
   const handleTagClick = useCallback(async (tag: string) => {
-    await flushPendingEditorSave()
+    await flushAndCaptureActiveTab()
     clearActiveSettingsNoteReturnPath()
     onTagClick(tag)
-    setSelectedNote(null)
-    setIsEditing(false)
+    setLegacySelectedNote(null)
+    setLegacyIsEditing(false)
+    setNotePaneVisible(false)
     setLastSavedAt(null)
-  }, [flushPendingEditorSave, onTagClick, setSelectedNote, setIsEditing, setLastSavedAt])
+  }, [flushAndCaptureActiveTab, onTagClick, setLastSavedAt, setLegacySelectedNote, setLegacyIsEditing])
 
   const wrappedHandleSearchResultClick = useCallback(async (note: SearchResult) => {
     const requestId = ++latestSearchClickRequestRef.current
-    await flushPendingEditorSave()
+    await flushAndCaptureActiveTab()
     if (requestId !== latestSearchClickRequestRef.current) return
     clearActiveSettingsNoteReturnPath()
-    if (note?.id && selectedNoteRef.current?.id === note.id) {
-      setIsEditing(false)
+    const resolvedSearchNote = resolveSearchResult(note)
+    const existingTab = findTabByNoteId(resolvedSearchNote.id)
+    if (existingTab) {
+      activateTab(existingTab.id)
+      handleSearchResultClickLegacy(resolvedSearchNote)
+      setNotePaneVisible(true)
       setLastSavedAt(null)
       return
     }
-    const openableNote = await resolveOpenableNote(resolveSearchResult(note))
+    const openableNote = await resolveOpenableNote(resolvedSearchNote)
     if (requestId !== latestSearchClickRequestRef.current) return
     if (!openableNote) return
-    handleSearchResultClick(openableNote)
+    openNote(openableNote)
+    handleSearchResultClickLegacy(openableNote)
+    setNotePaneVisible(true)
     setLastSavedAt(null)
-  }, [flushPendingEditorSave, handleSearchResultClick, resolveOpenableNote, resolveSearchResult, setLastSavedAt, setIsEditing])
+  }, [
+    flushAndCaptureActiveTab,
+    resolveOpenableNote,
+    resolveSearchResult,
+    setLastSavedAt,
+    activateTab,
+    findTabByNoteId,
+    openNote,
+    handleSearchResultClickLegacy,
+  ])
+
+  const handleAddTab = useCallback(async () => {
+    if (!workspaceHydrated || !canAddTab) return
+    await flushAndCaptureActiveTab()
+    addTab()
+    // On mobile, an empty tab must return to the note list so the user can
+    // choose which note fills the new active slot. Desktop keeps its editor
+    // pane visible through the responsive `md:flex` layout rule.
+    setNotePaneVisible(false)
+  }, [addTab, canAddTab, flushAndCaptureActiveTab, workspaceHydrated])
+
+  const handleActivateTab = useCallback(async (tabId: string) => {
+    const targetTab = tabs.find((tab) => tab.id === tabId)
+    if (!targetTab) return
+    if (tabId === activeTabId) {
+      setNotePaneVisible(Boolean(targetTab.note || targetTab.mode === 'editing'))
+      return
+    }
+    await flushAndCaptureActiveTab()
+    activateTab(tabId)
+    setNotePaneVisible(Boolean(targetTab.note || targetTab.mode === 'editing'))
+    setLastSavedAt(null)
+  }, [activateTab, activeTabId, flushAndCaptureActiveTab, setLastSavedAt, tabs])
+
+  const handleCloseTab = useCallback(async (tabId: string) => {
+    const tab = tabs.find((candidate) => candidate.id === tabId)
+    if (!tab) return
+
+    const tabIndex = tabs.findIndex((candidate) => candidate.id === tabId)
+    const nextVisibleTab = tab.id === activeTabId
+      ? (tabs[tabIndex + 1] ?? tabs[tabIndex - 1] ?? null)
+      : tabs.find((candidate) => candidate.id === activeTabId) ?? null
+
+    const discardFailedSave = tab.saveState === 'error'
+      && typeof window !== 'undefined'
+      && window.confirm(`Discard unsaved changes in "${tab.note?.title || 'this tab'}"?`)
+    if (tab.saveState === 'error' && !discardFailedSave) return
+
+    if (tab.id === activeTabId && !discardFailedSave) {
+      try {
+        await flushAndCaptureActiveTab()
+      } catch {
+        return
+      }
+    }
+
+    closeTab(tabId)
+    setNotePaneVisible(Boolean(nextVisibleTab?.note || nextVisibleTab?.mode === 'editing'))
+    setLastSavedAt(null)
+  }, [activeTabId, closeTab, flushAndCaptureActiveTab, setLastSavedAt, tabs])
+
+  const workspaceHydrationAppliedRef = useRef(false)
+  useEffect(() => {
+    if (!workspaceHydrated || workspaceHydrationAppliedRef.current) return
+    workspaceHydrationAppliedRef.current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- restore pane visibility from sessionStorage
+    setNotePaneVisible(Boolean(activeTab.note || activeTab.mode === 'editing'))
+  }, [activeTab, workspaceHydrated])
 
   const aiPaginationControlsRef = useRef<AIPaginationControls>({
     resetAIResults: () => {},
@@ -368,7 +646,7 @@ export function useNoteAppController() {
   }, [])
 
   const captureSettingsReturnState = useCallback(async (): Promise<NotesUiStateSnapshot> => {
-    await flushPendingEditorSave()
+    await flushAndCaptureActiveTab()
     const selectedNoteForSnapshot = selectedNoteRef.current
 
     return {
@@ -379,27 +657,25 @@ export function useNoteAppController() {
       searchQuery,
       filterByTag,
     }
-  }, [filterByTag, flushPendingEditorSave, isEditing, isSearchPanelOpen, searchQuery, selectedNoteRef])
+  }, [filterByTag, flushAndCaptureActiveTab, isEditing, isSearchPanelOpen, searchQuery, selectedNoteRef])
 
-  const restoreUiState = useCallback(async (snapshot: NotesUiStateSnapshot) => {
-    // Temporary bridge for the /settings route. The contract is intentionally narrow
-    // and should not keep expanding forever. If returning from settings needs richer
-    // workspace history, move the primary notes UI state into route/history instead.
-    let restoredSelectedNote = snapshot.selectedNoteId
-      ? pickLatestNote([
-        notesRef.current.find((note) => note.id === snapshot.selectedNoteId),
-        snapshot.selectedNote,
-      ]) ?? null
-      : null
+  const resolveSettingsReturnNote = useCallback(async (snapshot: NotesUiStateSnapshot) => {
+    if (!snapshot.selectedNoteId) return null
 
-    if (!restoredSelectedNote && snapshot.selectedNoteId) {
-      try {
-        restoredSelectedNote = await noteService.getNote(snapshot.selectedNoteId)
-      } catch {
-        restoredSelectedNote = null
-      }
+    const cachedNote = pickLatestNote([
+      notesRef.current.find((note) => note.id === snapshot.selectedNoteId),
+      snapshot.selectedNote,
+    ])
+    if (cachedNote) return cachedNote
+
+    try {
+      return await noteService.getNote(snapshot.selectedNoteId)
+    } catch {
+      return null
     }
+  }, [noteService, notesRef])
 
+  const restoreSettingsSearchState = useCallback((snapshot: NotesUiStateSnapshot) => {
     if (snapshot.searchQuery) {
       handleSearch(snapshot.searchQuery)
     } else {
@@ -411,24 +687,63 @@ export function useNoteAppController() {
     } else {
       handleClearTagFilter()
     }
+  }, [handleClearTagFilter, handleSearch, onTagClick, resetFtsResults])
 
-    setIsSearchPanelOpen(snapshot.isSearchPanelOpen || Boolean(snapshot.searchQuery) || Boolean(snapshot.filterByTag))
-    const canRestoreEditing =
-      snapshot.isEditing &&
-      (restoredSelectedNote !== null || snapshot.selectedNoteId === null)
-
-    setSelectedNote(restoredSelectedNote)
-    setIsEditing(canRestoreEditing)
+  const restoreSettingsWorkspaceState = useCallback((
+    restoredSelectedNote: NoteViewModel | null,
+    canRestoreEditing: boolean,
+  ) => {
+    const mode = canRestoreEditing ? 'editing' : 'reading'
+    if (restoredSelectedNote) {
+      setLegacySelectedNote(restoredSelectedNote)
+      setLegacyIsEditing(canRestoreEditing)
+      const existingTab = findTabByNoteId(restoredSelectedNote.id)
+      if (existingTab) {
+        activateTab(existingTab.id)
+        updateTab(existingTab.id, { mode })
+      } else {
+        openNote(restoredSelectedNote)
+        updateTab(activeTabId, { mode })
+      }
+    } else {
+      setLegacySelectedNote(null)
+      setLegacyIsEditing(canRestoreEditing)
+      updateTab(activeTabId, {
+        note: null,
+        noteId: null,
+        mode,
+      })
+    }
   }, [
-    handleClearTagFilter,
-    handleSearch,
-    noteService,
-    notesRef,
-    onTagClick,
-    resetFtsResults,
-    setIsEditing,
+    activeTabId,
+    activateTab,
+    findTabByNoteId,
+    openNote,
+    setLegacyIsEditing,
+    setLegacySelectedNote,
+    updateTab,
+  ])
+
+  const restoreUiState = useCallback(async (snapshot: NotesUiStateSnapshot) => {
+    // Temporary bridge for the /settings route. The contract is intentionally narrow
+    // and should not keep expanding forever. If returning from settings needs richer
+    // workspace history, move the primary notes UI state into route/history instead.
+    const restoredSelectedNote = await resolveSettingsReturnNote(snapshot)
+    const canRestoreEditing = snapshot.isEditing && (
+      restoredSelectedNote !== null || snapshot.selectedNoteId === null
+    )
+
+    restoreSettingsSearchState(snapshot)
+    setIsSearchPanelOpen(
+      snapshot.isSearchPanelOpen || Boolean(snapshot.searchQuery) || Boolean(snapshot.filterByTag),
+    )
+    restoreSettingsWorkspaceState(restoredSelectedNote, canRestoreEditing)
+    setNotePaneVisible(Boolean(restoredSelectedNote || canRestoreEditing))
+  }, [
+    resolveSettingsReturnNote,
+    restoreSettingsSearchState,
+    restoreSettingsWorkspaceState,
     setIsSearchPanelOpen,
-    setSelectedNote,
   ])
 
   // -- Main Navigation View --
@@ -559,6 +874,10 @@ export function useNoteAppController() {
     selectedNote,
     searchQuery,
     isEditing,
+    notePaneVisible,
+    tabs,
+    activeTabId,
+    activeTab,
     setIsEditing,
     isSearchPanelOpen,
     setIsSearchPanelOpen,
@@ -618,14 +937,21 @@ export function useNoteAppController() {
     handleDeleteAccount,
     handleCreateNote: wrappedHandleCreateNote,
     handleEditNote: wrappedHandleEditNote,
-    handleSaveNote,
-    handleReadNote,
-    handleAutoSave,
+    handleSaveNote: handleSaveNoteWithWorkspace,
+    handleReadNote: handleReadNoteWithWorkspace,
+    handleAutoSave: handleAutoSaveWithWorkspace,
+    handleDraftChange,
+    handleViewSessionChange,
     handleDeleteNote,
     confirmDeleteNote,
     handleRemoveTagFromNote,
     handleSelectNote: wrappedHandleSelectNote,
     handleSearchResultClick: wrappedHandleSearchResultClick,
+    addTab: handleAddTab,
+    activateTab: handleActivateTab,
+    closeTab: handleCloseTab,
+    canAddTab,
+    workspaceHydrated,
     enterSelectionMode,
     exitSelectionMode,
     toggleNoteSelection,

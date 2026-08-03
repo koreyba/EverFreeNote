@@ -12,13 +12,20 @@ import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
+import type { NoteDraftSnapshot, NoteViewSession } from "@core/services/noteWorkspaceTabs"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 const NOOP_CANCEL = () => {}
 
 export interface NoteEditorHandle {
   flushPendingSave: () => Promise<void>
+  captureSession?: () => NoteEditorSession
   scrollToChunk: (charOffset: number, chunkLength: number) => void
+}
+
+export type NoteEditorSession = {
+  draft: NoteDraftSnapshot
+  view: NoteViewSession
 }
 
 export type PendingChunkFocus = {
@@ -47,6 +54,9 @@ interface NoteEditorProps {
   onBack?: () => void
   pendingChunkFocus?: PendingChunkFocus | null
   onPendingChunkFocusApplied?: (requestId: string) => void
+  initialSession?: NoteEditorSession
+  onDraftChange?: (draft: NoteDraftSnapshot) => void
+  onViewSessionChange?: (view: Partial<NoteViewSession>) => void
 }
 
 export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor({
@@ -68,6 +78,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   onBack,
   pendingChunkFocus = null,
   onPendingChunkFocusApplied,
+  initialSession,
+  onDraftChange,
+  onViewSessionChange,
 }: NoteEditorProps, ref) {
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
@@ -76,6 +89,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [isBodyEmpty, setIsBodyEmpty] = React.useState(() => NoteClipboardService.isBodyEmpty(initialDescription))
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
+  const initialSessionRef = React.useRef(initialSession)
   const previousNoteIdRef = React.useRef(noteId)
 
   const selectedTagsRef = React.useRef<string[]>(selectedTags)
@@ -92,6 +107,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     description: editorRef.current?.getHTML() ?? initialDescription,
     tags: buildTagString(selectedTagsRef.current),
   }), [initialTitle, initialDescription])
+
+  React.useEffect(() => {
+    initialSessionRef.current = initialSession
+  }, [initialSession])
+
+  const notifyDraftChange = React.useCallback(() => {
+    onDraftChange?.(getFormData())
+  }, [getFormData, onDraftChange])
 
   const applyExternalSnapshot = React.useCallback((
     snapshot: { title: string; description: string; tags: string },
@@ -152,7 +175,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const handleEditorContentChange = React.useCallback(() => {
     handleContentChange()
     setIsBodyEmpty(NoteClipboardService.isBodyEmpty(editorRef.current?.getHTML() ?? ""))
-  }, [handleContentChange])
+    notifyDraftChange()
+  }, [handleContentChange, notifyDraftChange])
 
   const handleCopy = React.useCallback(() => {
     void copyNote(editorRef.current?.getHTML() ?? initialDescription)
@@ -199,21 +223,63 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     selectedTagsRef.current = merged
     setSelectedTags(merged)
     setTagQuery("")
-  }, [])
+    onDraftChange?.({
+      ...getFormData(),
+      tags: buildTagString(merged),
+    })
+  }, [getFormData, onDraftChange])
 
   const removeTag = React.useCallback((tagToRemove: string) => {
     const next = selectedTagsRef.current.filter((tag) => tag !== tagToRemove)
     selectedTagsRef.current = next
     setSelectedTags(next)
     setTagQuery("")
-  }, [])
+    onDraftChange?.({
+      ...getFormData(),
+      tags: buildTagString(next),
+    })
+  }, [getFormData, onDraftChange])
 
   React.useImperativeHandle(ref, () => ({
     flushPendingSave,
+    captureSession: () => ({
+      draft: getFormData(),
+      view: {
+        scrollTop: scrollContainerRef.current?.scrollTop ?? 0,
+        ...(titleInputRef.current?.selectionStart !== null && titleInputRef.current?.selectionStart !== undefined && titleInputRef.current?.selectionEnd !== null && titleInputRef.current?.selectionEnd !== undefined
+          ? {
+              titleSelection: {
+                start: titleInputRef.current.selectionStart,
+                end: titleInputRef.current.selectionEnd,
+              },
+            }
+          : {}),
+        ...(editorRef.current?.getSelection?.() ? { editorSelection: editorRef.current.getSelection?.() } : {}),
+      },
+    }),
     scrollToChunk: (charOffset: number, chunkLength: number) => {
       editorRef.current?.scrollToChunk(charOffset, chunkLength)
     },
-  }), [flushPendingSave])
+  }), [flushPendingSave, getFormData])
+
+  React.useEffect(() => {
+    const session = initialSessionRef.current
+    if (!session) return
+
+    const frame = window.requestAnimationFrame(() => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = session.view.scrollTop
+      }
+      if (titleInputRef.current && session.view.titleSelection) {
+        titleInputRef.current.setSelectionRange(session.view.titleSelection.start, session.view.titleSelection.end)
+      }
+      if (session.view.editorSelection) {
+        editorRef.current?.setSelection?.(session.view.editorSelection)
+      }
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [editorSessionKey])
 
   const effectivePendingChunkFocus = React.useMemo(() => {
     if (!pendingChunkFocus || !noteId) return null
@@ -305,7 +371,11 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       </div>
 
       {/* Editor Form */}
-      <div className="flex-1 overflow-y-auto bg-card">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto bg-card"
+        onScroll={(event) => onViewSessionChange?.({ scrollTop: event.currentTarget.scrollTop })}
+      >
         <div className="max-w-4xl mx-auto px-6 pt-24 space-y-5">
           <div>
             <Input
@@ -314,7 +384,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               type="text"
               placeholder="Note title"
               defaultValue={initialTitle}
-              onChange={handleContentChange}
+              onChange={() => {
+                handleContentChange()
+                notifyDraftChange()
+              }}
               className="w-full h-auto border-0 bg-transparent px-0 py-1 text-4xl font-extrabold tracking-tight placeholder:text-muted-foreground/30 focus-visible:ring-0 shadow-none"
             />
           </div>

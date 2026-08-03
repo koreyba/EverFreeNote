@@ -3,6 +3,13 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import type { NoteViewModel, SearchResult } from '@core/types/domain'
+import {
+  addWorkspaceTab,
+  createNoteWorkspaceState,
+  MAX_NOTE_WORKSPACE_TABS,
+  serializeNoteWorkspaceState,
+} from '@core/services/noteWorkspaceTabs'
+import { NOTE_WORKSPACE_STORAGE_KEY } from '@ui/web/lib/noteWorkspaceStorage'
 import { toast } from 'sonner'
 
 let mockSelectedNote: NoteViewModel | null = null
@@ -25,6 +32,9 @@ const mockOnTagClick = jest.fn()
 const mockHandleSearch = jest.fn()
 const mockClearTagFilter = jest.fn()
 const mockResetFtsResults = jest.fn()
+const mockHandleAutoSave = jest.fn()
+const mockHandleSaveNote = jest.fn()
+const mockHandleReadNote = jest.fn()
 const mockClearActiveSettingsNoteReturnPath = jest.fn()
 const mockResolveSearchResult = jest.fn(() => mockResolvedSearchResult)
 const mockUpdateNoteMutation = jest.fn()
@@ -139,9 +149,9 @@ jest.mock('@ui/web/hooks/useNoteSaveHandlers', () => ({
   useNoteSaveHandlers: () => ({
     saving: false,
     autoSaving: false,
-    handleAutoSave: jest.fn(),
-    handleSaveNote: jest.fn(),
-    handleReadNote: jest.fn(),
+    handleAutoSave: mockHandleAutoSave,
+    handleSaveNote: mockHandleSaveNote,
+    handleReadNote: mockHandleReadNote,
     confirmDeleteNote: jest.fn(),
     handleRemoveTagFromNote: jest.fn(),
     persistOfflineNoteUpdates: mockPersistOfflineNoteUpdates,
@@ -217,12 +227,16 @@ function setup() {
 describe('useNoteAppController additional observable behavior', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    window.sessionStorage.clear()
     mockSelectedNote = null
     mockIsEditing = true
     mockIsOffline = false
     mockOfflineOverlay = []
     mockNotes = []
     mockResolvedSearchResult = null
+    mockHandleAutoSave.mockReset().mockResolvedValue(undefined)
+    mockHandleSaveNote.mockReset().mockResolvedValue(undefined)
+    mockHandleReadNote.mockReset().mockResolvedValue(undefined)
     mockUpdateNoteMutation.mockReset()
     mockUpdateNoteMutation.mockResolvedValue(undefined)
   })
@@ -248,8 +262,8 @@ describe('useNoteAppController additional observable behavior', () => {
 
     const snapshot = await act(async () => result.current.captureSettingsReturnState())
     expect(snapshot).toEqual({
-      selectedNoteId: note.id,
-      selectedNote: note,
+      selectedNoteId: null,
+      selectedNote: null,
       isEditing: true,
       isSearchPanelOpen: true,
       searchQuery: 'initial search',
@@ -257,6 +271,74 @@ describe('useNoteAppController additional observable behavior', () => {
     })
     expect(flushPendingSave).toHaveBeenCalledTimes(2)
     window.history.pushState({}, '', '/')
+  })
+
+  it('captures the editor selection before switching to a new workspace tab', async () => {
+    const { result } = setup()
+
+    const flushPendingSave = jest.fn().mockResolvedValue(undefined)
+    const captureSession = jest.fn(() => ({
+      draft: { title: 'Draft', description: '<p>Body</p>', tags: '' },
+      view: { scrollTop: 12, editorSelection: { from: 4, to: 9 } },
+    }))
+    const editorRef = { current: { flushPendingSave, captureSession } }
+    act(() => result.current.registerNoteEditorRef(editorRef as never))
+
+    await act(async () => {
+      await result.current.addTab()
+    })
+
+    expect(captureSession).toHaveBeenCalledTimes(1)
+    expect(flushPendingSave).toHaveBeenCalledTimes(1)
+    expect(result.current.tabs[0].view).toEqual({
+      scrollTop: 12,
+      editorSelection: { from: 4, to: 9 },
+    })
+  })
+
+  it('returns to the note list after creating a blank tab so the active slot can receive a note', async () => {
+    const { result } = setup()
+
+    await act(async () => {
+      await result.current.addTab()
+    })
+
+    expect(result.current.activeTab.note).toBeNull()
+    expect(result.current.notePaneVisible).toBe(false)
+  })
+
+  it('returns to the note list when closing the final blank tab replacement', async () => {
+    const { result } = setup()
+    const activeTabId = result.current.activeTabId
+
+    await act(async () => {
+      await result.current.closeTab(activeTabId)
+    })
+
+    expect(result.current.activeTab.note).toBeNull()
+    expect(result.current.notePaneVisible).toBe(false)
+  })
+
+  it('blocks controller Add tab before flushing when the shared workspace limit is reached', async () => {
+    let nextId = 0
+    let state = createNoteWorkspaceState(() => `tab-${nextId++}`)
+    while (state.tabs.length < MAX_NOTE_WORKSPACE_TABS) {
+      state = addWorkspaceTab(state, () => `tab-${nextId++}`)
+    }
+    window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(state))
+
+    const { result } = setup()
+    await waitFor(() => expect(result.current.tabs).toHaveLength(MAX_NOTE_WORKSPACE_TABS))
+    expect(result.current.canAddTab).toBe(false)
+
+    const flushPendingSave = jest.fn().mockResolvedValue(undefined)
+    act(() => result.current.registerNoteEditorRef({ current: { flushPendingSave } } as never))
+    await act(async () => {
+      await result.current.addTab()
+    })
+
+    expect(flushPendingSave).not.toHaveBeenCalled()
+    expect(result.current.tabs).toHaveLength(MAX_NOTE_WORKSPACE_TABS)
   })
 
   it('selects the remote note after flushing, but exits editing when selecting the already selected note', async () => {
@@ -275,7 +357,7 @@ describe('useNoteAppController additional observable behavior', () => {
 
     jest.clearAllMocks()
     await act(async () => {
-      await result.current.handleSelectNote(current)
+      await result.current.handleSelectNote(remote)
     })
     expect(mockGetNoteStatus).not.toHaveBeenCalled()
     expect(mockSetIsEditing).toHaveBeenCalledWith(false)
@@ -300,6 +382,44 @@ describe('useNoteAppController additional observable behavior', () => {
     })
     expect(mockResolveSearchResult).toHaveBeenCalledWith({ id: 'result' })
     expect(mockHandleSearchResultClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'result' }))
+  })
+
+  it('tracks manual save success and keeps save failures visible on the active tab', async () => {
+    const data = { title: 'Saved title', description: 'Saved body', tags: 'one, two' }
+    const { result } = setup()
+
+    await act(async () => {
+      await result.current.handleSaveNote(data)
+    })
+    expect(result.current.activeTab.draft).toEqual(data)
+    expect(result.current.activeTab.saveState).toBe('saved')
+    expect(result.current.activeTab.saveError).toBeNull()
+
+    mockHandleSaveNote.mockRejectedValueOnce(new Error('network failure'))
+    await act(async () => {
+      await result.current.handleSaveNote(data)
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    expect(result.current.activeTab.saveError).toBe('network failure')
+  })
+
+  it('marks auto-save and Read failures on the active tab', async () => {
+    const data = { title: 'Draft', description: 'Body', tags: '' }
+    const { result } = setup()
+
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('auto-save failure'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ ...data, noteId: 'note-1' })).rejects.toThrow('auto-save failure')
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    expect(result.current.activeTab.saveError).toBe('auto-save failure')
+
+    mockHandleReadNote.mockRejectedValueOnce(new Error('read-save failure'))
+    await act(async () => {
+      await result.current.handleReadNote(data)
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    expect(result.current.activeTab.saveError).toBe('read-save failure')
   })
 
   it('ignores a stale select request when a newer request completes first', async () => {
