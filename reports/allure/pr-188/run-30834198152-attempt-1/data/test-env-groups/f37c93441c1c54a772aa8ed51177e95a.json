@@ -1,0 +1,1 @@
+{"id":"f37c93441c1c54a772aa8ed51177e95a","fullName":"everfreenote-mobile:tests/component/supabaseProvider.test.tsx#SupabaseProvider unsubscribes from auth state change on unmount","name":"unsubscribes from auth state change on unmount","status":"passed","testResultsByEnv":{"default":"d17a8b206f38ea536a3d5bfa2e7a29a4"}}

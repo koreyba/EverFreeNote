@@ -1,0 +1,1 @@
+{"id":"01cab3a218c281dbea69c3fa07b7fc7b","fullName":"everfreenote:ui/web/tests/unit/hooks/useNotesQuery.test.tsx#useSearchNotes defaults language to ru for unsupported browser locale","name":"defaults language to ru for unsupported browser locale","status":"passed","testResultsByEnv":{"default":"0f3ccb4c4cdd3494d437bbc39bdeaa17"}}
