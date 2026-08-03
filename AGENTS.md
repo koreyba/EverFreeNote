@@ -103,4 +103,11 @@ When working on this project, you can run commands to:
 - Perform structured code reviews (`code-review`)
 
 ## Restrictions:
-- Never create a new worktree inside current worktree directory.
+- Worktrees must be created through the Harness managed-worktree flow
+  (Codex, Claude, Antigravity) and use the Worktree root configured in Harness
+  settings. Before starting work, verify the actual managed worktree path and
+  run all commands there.
+- Do not manually choose a different worktree root or create worktrees with
+  `git worktree add` outside the configured Harness root.
+- Never create a worktree in the main repository root or any of its
+  subdirectories. In particular, do not use `<project-root>\.worktrees`.
