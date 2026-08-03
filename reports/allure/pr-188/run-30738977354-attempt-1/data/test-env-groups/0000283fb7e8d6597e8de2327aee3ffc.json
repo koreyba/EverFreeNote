@@ -1,1 +1,0 @@
-{"id":"0000283fb7e8d6597e8de2327aee3ffc","fullName":"everfreenote-mobile:tests/component/useTagManagementMutations.test.tsx#useTagManagementMutations rejects invalid tag inputs before touching local storage","name":"rejects invalid tag inputs before touching local storage","status":"passed","testResultsByEnv":{"default":"c4f77ba7b1be19521ac6a1f7d0400951"}}
