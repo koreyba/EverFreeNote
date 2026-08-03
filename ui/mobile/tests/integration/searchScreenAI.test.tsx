@@ -29,6 +29,7 @@ jest.mock('expo-router', () => ({
     setParams: mockSetParams,
   }),
   useLocalSearchParams: () => ({}),
+  usePathname: () => '/',
   useNavigation: () => ({ setOptions: jest.fn() }),
 }))
 
@@ -68,6 +69,11 @@ jest.mock('@ui/mobile/providers', () => ({
     unregister: jest.fn(),
     closeAll: jest.fn(),
     onSwipeStart: jest.fn(),
+  }),
+  useCollapsibleTabBar: () => ({
+    onScroll: jest.fn(),
+    reset: jest.fn(),
+    isVisible: true,
   }),
 }))
 

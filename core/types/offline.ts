@@ -1,8 +1,16 @@
 import type { Note } from './domain'
 
 export type NoteSyncStatus = 'synced' | 'pending' | 'failed'
-export type MutationOperation = 'create' | 'update' | 'delete'
+export type MutationOperation = 'create' | 'update' | 'delete' | 'renameTag' | 'deleteTag'
 export type MutationStatus = 'pending' | 'failed' | 'synced'
+
+export type TagMutationQueuePayload = {
+  tag?: string
+  replacement?: string
+  user_id?: string
+}
+
+export type MutationQueuePayload = Partial<Note> & TagMutationQueuePayload
 
 export interface CachedNote extends Partial<Note> {
   id: string
@@ -18,7 +26,7 @@ export interface MutationQueueItem {
   id: string
   noteId: string
   operation: MutationOperation
-  payload: Partial<Note>
+  payload: MutationQueuePayload
   clientUpdatedAt: string
   status: MutationStatus
   attempts?: number

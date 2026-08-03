@@ -13,7 +13,11 @@ class MemoryStorage implements OfflineStorageAdapter {
   async deleteNote() {}
   async getQueue() { return this.queue }
   async upsertQueueItem(value: MutationQueueItem) { this.queue.push(value) }
-  async upsertQueue(values: MutationQueueItem[]) { this.queue = values }
+  async upsertQueue(values: MutationQueueItem[]) {
+    const byId = new Map(this.queue.map((value) => [value.id, value]))
+    for (const value of values) byId.set(value.id, value)
+    this.queue = Array.from(byId.values())
+  }
   async popQueueBatch(size: number) { return this.queue.slice(0, size) }
   async getPendingBatch(size: number) { return this.queue.filter((value) => value.status === 'pending').slice(0, size) }
   async removeQueueItems(ids: string[]) { this.queue = this.queue.filter((value) => !ids.includes(value.id)) }
@@ -37,6 +41,33 @@ describe('OfflineSyncManager', () => {
     expect(performSync).toHaveBeenCalledTimes(1)
     expect(onSuccess).toHaveBeenCalledTimes(1)
     await expect(manager.getState()).resolves.toMatchObject({ isOnline: true, queueSize: 0 })
+  })
+
+  it('removes queue items discarded by compaction instead of replaying stale operations', async () => {
+    const storage = new MemoryStorage()
+    storage.queue = [
+      {
+        ...item('1', 'failed'),
+        noteId: 'tag:user-1:renameTag:react',
+        operation: 'renameTag',
+        payload: { tag: 'react', replacement: 'ReactJS', user_id: 'user-1' },
+      },
+      {
+        ...item('2'),
+        noteId: 'tag:user-1:renameTag:react',
+        operation: 'renameTag',
+        payload: { tag: 'react', replacement: 'React Native', user_id: 'user-1' },
+        clientUpdatedAt: '2026-01-01T00:00:02Z',
+      },
+    ]
+    const performSync = jest.fn().mockResolvedValue(undefined)
+    const manager = new OfflineSyncManager(storage, performSync, undefined)
+
+    await manager.drainQueue()
+
+    expect(performSync).toHaveBeenCalledTimes(1)
+    expect(performSync).toHaveBeenCalledWith(expect.objectContaining({ id: '2' }))
+    expect(storage.queue).toEqual([])
   })
 
   it('marks failed items and stops when no item progresses', async () => {

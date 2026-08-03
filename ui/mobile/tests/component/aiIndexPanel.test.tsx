@@ -44,6 +44,11 @@ jest.mock('@ui/mobile/providers', () => ({
     client: { functions: { invoke: mockInvoke } },
     user: { id: 'test-user-id' },
   }),
+  useCollapsibleTabBar: () => ({
+    onScroll: jest.fn(),
+    reset: jest.fn(),
+    isVisible: true,
+  }),
 }))
 
 jest.mock('@tanstack/react-query', () => {

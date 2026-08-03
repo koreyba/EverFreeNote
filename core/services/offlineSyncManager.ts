@@ -133,6 +133,20 @@ export class OfflineSyncManager {
       const compacted = compactQueue(current)
       await this.queue.upsertQueue(compacted)
 
+      const compactedIds = new Set(compacted.map((item) => item.id))
+      const discardedIds = current
+        .filter((item) => !compactedIds.has(item.id))
+        .map((item) => item.id)
+      if (discardedIds.length > 0) {
+        // Adapters implement upsert as an item-level operation, so explicitly
+        // remove entries that compaction replaced or reduced to a no-op.
+        try {
+          await this.queue.removeItems(discardedIds)
+        } catch (cleanupError) {
+          console.warn('Failed to remove compacted queue items:', cleanupError)
+        }
+      }
+
       while (this.online) {
         const batch = await this.queue.getPendingBatch(batchSize)
         if (!batch.length) break

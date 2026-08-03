@@ -167,6 +167,29 @@ export class DatabaseService {
         }
     }
 
+    private async saveNotesInTransaction(db: SQLite.SQLiteDatabase, notes: LocalNote[]) {
+        for (const note of notes) {
+            // Skip notes without user_id to avoid constraint violations
+            if (!note.user_id) {
+                console.warn(`[DatabaseService] Skipping note ${note.id} because user_id is missing`);
+                continue;
+            }
+
+            const tagsJson = typeof note.tags === 'string' ? note.tags : JSON.stringify(note.tags ?? [])
+            const isSynced = typeof note.is_synced === 'number' ? note.is_synced : 1
+            const isDeleted = typeof note.is_deleted === 'number' ? note.is_deleted : 0
+            const createdAt = note.created_at ?? new Date().toISOString()
+            const updatedAt = note.updated_at ?? createdAt
+
+            await db.runAsync(
+                `INSERT OR REPLACE INTO notes (id, title, description, tags, user_id, created_at, updated_at, is_synced, is_deleted)
+ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [note.id, note.title ?? '', note.description ?? '', tagsJson, note.user_id, createdAt, updatedAt, isSynced, isDeleted]
+            )
+            await this.replaceNoteTags(note.id, note.tags, db)
+        }
+    }
+
     async saveNotes(notes: LocalNote[]) {
         return this.enqueueWrite(async () => {
             const db = await this.init()
@@ -174,24 +197,35 @@ export class DatabaseService {
 
             await db.execAsync('BEGIN')
             try {
-                for (const note of notes) {
-                    // Skip notes without user_id to avoid constraint violations
-                    if (!note.user_id) {
-                        console.warn(`[DatabaseService] Skipping note ${note.id} because user_id is missing`);
-                        continue;
-                    }
+                await this.saveNotesInTransaction(db, notes)
+                await db.execAsync('COMMIT')
+            } catch (error) {
+                await db.execAsync('ROLLBACK')
+                throw error
+            }
+        })
+    }
 
-                    const tagsJson = typeof note.tags === 'string' ? note.tags : JSON.stringify(note.tags ?? [])
-                    const isSynced = typeof note.is_synced === 'number' ? note.is_synced : 1
-                    const isDeleted = typeof note.is_deleted === 'number' ? note.is_deleted : 0
+    async replaceNotesForUser(userId: string, notes: LocalNote[]) {
+        return this.enqueueWrite(async () => {
+            const db = await this.init()
+            const pendingRows = await db.getAllAsync<{ id: string }>(
+                'SELECT id FROM notes WHERE user_id = ? AND is_synced = 0',
+                [userId]
+            )
+            const pendingIds = new Set(pendingRows.map((row) => row.id))
 
-                    await db.runAsync(
-                        `INSERT OR REPLACE INTO notes (id, title, description, tags, user_id, created_at, updated_at, is_synced, is_deleted) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [note.id, note.title ?? '', note.description ?? '', tagsJson, note.user_id, note.created_at, note.updated_at, isSynced, isDeleted]
-                    )
-                    await this.replaceNoteTags(note.id, note.tags, db)
-                }
+            await db.execAsync('BEGIN')
+            try {
+                await db.runAsync(
+                    'DELETE FROM note_tags WHERE note_id IN (SELECT id FROM notes WHERE user_id = ? AND is_synced = 1)',
+                    [userId]
+                )
+                await db.runAsync('DELETE FROM notes WHERE user_id = ? AND is_synced = 1', [userId])
+                await this.saveNotesInTransaction(
+                    db,
+                    notes.filter((note) => !pendingIds.has(note.id))
+                )
                 await db.execAsync('COMMIT')
             } catch (error) {
                 await db.execAsync('ROLLBACK')
