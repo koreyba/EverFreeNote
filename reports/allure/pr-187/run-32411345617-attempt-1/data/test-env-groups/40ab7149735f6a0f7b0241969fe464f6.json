@@ -1,0 +1,1 @@
+{"id":"40ab7149735f6a0f7b0241969fe464f6","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteAppControllerAdditional.test.tsx#useNoteAppController additional observable behavior resets every workspace tab that shows a deleted note","name":"resets every workspace tab that shows a deleted note","status":"passed","testResultsByEnv":{"default":"46383f155a1243622c12ce67d373a0a0"}}

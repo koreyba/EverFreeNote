@@ -1,0 +1,1 @@
+{"id":"210d22513e7af8e983b90cc9645f4fbf","fullName":"everfreenote-mobile:tests/component/useNetworkStatus.test.tsx#hooks/useNetworkStatus returns initial online status as false when provider is offline","name":"returns initial online status as false when provider is offline","status":"passed","testResultsByEnv":{"default":"8a9a531e9c515457e2119033f73323c5"}}
