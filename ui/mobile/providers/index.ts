@@ -5,3 +5,4 @@
 export { SupabaseProvider, useSupabase, useAuth } from './SupabaseProvider'
 export { ThemeProvider, useTheme } from './ThemeProvider'
 export { SwipeProvider, useSwipeContext } from './SwipeProvider'
+export { CollapsibleTabBarProvider, useCollapsibleTabBar } from './CollapsibleTabBarProvider'

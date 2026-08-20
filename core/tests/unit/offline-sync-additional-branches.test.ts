@@ -21,8 +21,17 @@ const makeItem = (
 class DeterministicStorage implements OfflineStorageAdapter {
   queue: MutationQueueItem[] = []
   readonly getQueue = jest.fn(async () => this.queue)
+  // Mirrors the item-level semantics of the real adapters: existing rows are
+  // updated in place and rows absent from `items` are preserved.
   readonly upsertQueue = jest.fn(async (items: MutationQueueItem[]) => {
-    this.queue = [...items]
+    for (const item of items) {
+      const existingIndex = this.queue.findIndex((entry) => entry.id === item.id)
+      if (existingIndex === -1) {
+        this.queue.push(item)
+      } else {
+        this.queue[existingIndex] = item
+      }
+    }
   })
   readonly upsertQueueItem = jest.fn(async (item: MutationQueueItem) => {
     this.queue.push(item)
@@ -138,6 +147,49 @@ describe("OfflineSyncManager additional branches", () => {
     ])
     expect(performSync).toHaveBeenCalledTimes(1)
     expect(performSync).toHaveBeenCalledWith(expect.objectContaining({ id: "final-delete", operation: "delete" }))
+    expect(storage.queue).toEqual([])
+  })
+
+  it("continues draining unaffected notes when compacted queue cleanup fails and never replays the superseded item", async () => {
+    const storage = new DeterministicStorage()
+    storage.queue = [
+      makeItem("stale", {
+        noteId: "same-note",
+        clientUpdatedAt: "2026-01-01T00:00:01Z",
+      }),
+      makeItem("latest", {
+        noteId: "same-note",
+        clientUpdatedAt: "2026-01-01T00:00:02Z",
+      }),
+      makeItem("other", {
+        noteId: "other-note",
+        clientUpdatedAt: "2026-01-01T00:00:03Z",
+      }),
+    ]
+    storage.removeQueueItems.mockRejectedValueOnce(new Error("cleanup failed"))
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined)
+    const performSync = jest.fn().mockResolvedValue(undefined)
+    const manager = new OfflineSyncManager(storage, performSync, makeNetwork(false))
+
+    await expect(manager.handleOnline()).resolves.toBeUndefined()
+
+    // The failed cleanup leaves "stale" in storage, so its note is held back
+    // entirely while the unaffected note keeps draining.
+    expect(warn).toHaveBeenCalledWith("Failed to remove compacted queue items:", expect.any(Error))
+    expect(performSync).toHaveBeenCalledTimes(1)
+    expect(performSync).toHaveBeenCalledWith(expect.objectContaining({ id: "other" }))
+    expect(performSync).not.toHaveBeenCalledWith(expect.objectContaining({ id: "stale" }))
+    expect(performSync).not.toHaveBeenCalledWith(expect.objectContaining({ id: "latest" }))
+    expect(storage.getPendingBatch).toHaveBeenCalledTimes(2)
+    expect(storage.queue.map((item) => item.id).sort()).toEqual(["latest", "stale"])
+
+    // The next drain re-compacts, retries the removal, and syncs only "latest".
+    await expect(manager.drainQueue()).resolves.toBeUndefined()
+
+    expect(performSync).toHaveBeenCalledTimes(2)
+    expect(performSync).toHaveBeenCalledWith(expect.objectContaining({ id: "latest" }))
+    expect(performSync).not.toHaveBeenCalledWith(expect.objectContaining({ id: "stale" }))
+    expect(storage.getPendingBatch).toHaveBeenCalledTimes(4)
     expect(storage.queue).toEqual([])
   })
 

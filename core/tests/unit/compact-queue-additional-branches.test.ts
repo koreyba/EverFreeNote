@@ -28,7 +28,7 @@ describe('compactQueue additional branch behavior', () => {
     ])
 
     expect(result).toEqual([
-      item('update-late', 'new-note', 'create', '2026-01-01T00:00:03Z', { title: 'final' }, { attempts: 2, status: 'pending' }),
+      item('update-late', 'new-note', 'create', '2026-01-01T00:00:03Z', { title: 'final' }, { attempts: 0, status: 'pending' }),
     ])
   })
 
@@ -53,15 +53,15 @@ describe('compactQueue additional branch behavior', () => {
     ])
 
     expect(result).toEqual([
-      item('delete', 'deleted-note', 'delete', '2026-01-01T00:00:02Z', { reason: 'removed' }, { status: 'pending' }),
-      item('final-update', 'updated-note', 'update', '2026-01-01T00:00:05Z', { title: 'final update' }, { status: 'pending' }),
+      item('delete', 'deleted-note', 'delete', '2026-01-01T00:00:02Z', { reason: 'removed' }, { attempts: 0, status: 'pending' }),
+      item('final-update', 'updated-note', 'update', '2026-01-01T00:00:05Z', { title: 'final update' }, { attempts: 0, status: 'pending' }),
     ])
 
     expect(compactQueue([
       item('update-one', 'updated-only', 'update', '2026-01-01T00:00:01Z', { title: 'initial' }),
       item('update-two', 'updated-only', 'update', '2026-01-01T00:00:02Z', { title: 'final' }),
     ])).toEqual([
-      item('update-two', 'updated-only', 'update', '2026-01-01T00:00:02Z', { title: 'final' }, { status: 'pending' }),
+      item('update-two', 'updated-only', 'update', '2026-01-01T00:00:02Z', { title: 'final' }, { attempts: 0, status: 'pending' }),
     ])
   })
 

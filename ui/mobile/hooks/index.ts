@@ -3,6 +3,8 @@
  */
 
 export { useNotes, useNote, useAllTags } from './useNotes'
+export { useTagManagementData, getTagManagementQueryKey } from './useTagManagement'
+export { useTagMutation, useRenameTag, useDeleteTag } from './useTagManagementMutations'
 export { useCreateNote, useUpdateNote, useDeleteNote } from './useNotesMutations'
 export { useNetworkStatus } from './useNetworkStatus'
 export { useOfflineSync } from './useOfflineSync'

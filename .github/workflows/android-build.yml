@@ -11,6 +11,18 @@ on:
         options:
           - stage
           - prod
+      supabase_url:
+        description: 'Override Supabase project URL (public client config; else repo secrets)'
+        required: false
+        default: ''
+      supabase_publishable_key:
+        description: 'Override Supabase publishable/anon key (public client config; else repo secrets)'
+        required: false
+        default: ''
+      editor_webview_url:
+        description: 'Override stage editor WebView URL'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -20,9 +32,40 @@ jobs:
     name: Build Android APK (${{ inputs.environment }})
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder' }}
-      NEXT_PUBLIC_ENABLE_TEST_AUTH: 'true'
+      TARGET_ENV: ${{ inputs.environment }}
+
+      # Expo reads the app config (ui/mobile/app.config.ts) during the Gradle
+      # build, so the variant selector and the variant-specific EXPO_PUBLIC_*
+      # values below MUST be present in the Gradle process environment.
+      # Without APP_VARIANT the config silently resolves to the dev variant
+      # with an empty Supabase URL and the APK crashes on startup.
+      APP_VARIANT: ${{ inputs.environment }}
+      EXPO_PUBLIC_APP_VARIANT: ${{ inputs.environment }}
+
+      # --- Native (Expo) Supabase config -------------------------------------
+      # Dispatch inputs (public client config) win, then dedicated secrets.
+      # Stage falls back to the web-app secrets because the stage mobile app
+      # must talk to the same Supabase project as the deployed web app
+      # (the remote editor WebView shares auth with the native side).
+      EXPO_PUBLIC_SUPABASE_URL_STAGE: ${{ inputs.supabase_url || secrets.EXPO_PUBLIC_SUPABASE_URL_STAGE || secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_STAGE: ${{ inputs.supabase_publishable_key || secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_STAGE || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_SUPABASE_URL_PROD: ${{ inputs.supabase_url || secrets.EXPO_PUBLIC_SUPABASE_URL_PROD }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_PROD: ${{ inputs.supabase_publishable_key || secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_PROD }}
+
+      # Stage loads the editor from the deployed web app; prod ships the
+      # bundled editor and only needs the public origin for share links.
+      EXPO_PUBLIC_STAGE_EDITOR_WEBVIEW_URL: ${{ inputs.editor_webview_url || vars.EXPO_PUBLIC_STAGE_EDITOR_WEBVIEW_URL || 'https://everfreenote.pages.dev/editor-webview' }}
+      EXPO_PUBLIC_PROD_PUBLIC_WEB_ORIGIN: ${{ vars.EXPO_PUBLIC_PROD_PUBLIC_WEB_ORIGIN || 'https://everfreenote.pages.dev' }}
+
+      # Test-login button (compiled into the JS bundle; dev/stage only —
+      # featureFlags.ts ignores it for the prod variant). Only enabled when
+      # test credentials are actually configured.
+      EXPO_PUBLIC_ENABLE_TEST_AUTH: ${{ inputs.environment == 'stage' && (secrets.EXPO_PUBLIC_TEST_AUTH_EMAIL != '' || secrets.NEXT_PUBLIC_TEST_AUTH_EMAIL != '') && 'true' || 'false' }}
+      EXPO_PUBLIC_TEST_AUTH_EMAIL: ${{ secrets.EXPO_PUBLIC_TEST_AUTH_EMAIL || secrets.NEXT_PUBLIC_TEST_AUTH_EMAIL }}
+      EXPO_PUBLIC_TEST_AUTH_PASSWORD: ${{ secrets.EXPO_PUBLIC_TEST_AUTH_PASSWORD || secrets.NEXT_PUBLIC_TEST_AUTH_PASSWORD }}
+
+      NEXT_PUBLIC_ENABLE_TEST_AUTH: ${{ inputs.environment == 'stage' && 'true' || 'false' }}
+
       GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC"
 
     steps:
@@ -30,6 +73,66 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
         with:
           fetch-depth: 0
+
+      - name: Resolve environment-specific configuration
+        run: |
+          # The bundled editor WebView (built by prepare:webview-bundle) must
+          # talk to the same Supabase project as the native side of the APK,
+          # so NEXT_PUBLIC_* for the web build are derived from the target
+          # environment instead of being hardcoded to one project.
+          if [ "$TARGET_ENV" = "prod" ]; then
+            SUPABASE_URL_FOR_BUILD="$EXPO_PUBLIC_SUPABASE_URL_PROD"
+            SUPABASE_KEY_FOR_BUILD="$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_PROD"
+          else
+            SUPABASE_URL_FOR_BUILD="$EXPO_PUBLIC_SUPABASE_URL_STAGE"
+            SUPABASE_KEY_FOR_BUILD="$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_STAGE"
+          fi
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL_FOR_BUILD"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_KEY_FOR_BUILD"
+          } >> "$GITHUB_ENV"
+
+      - name: Validate build inputs
+        run: |
+          # A release APK built without real Supabase config installs but
+          # crashes on startup (getSupabaseConfig throws). Fail loudly here
+          # instead of shipping a broken artifact.
+          fail=0
+          check() {
+            name="$1"; value="$2"
+            case "$value" in
+              ''|*placeholder*)
+                echo "::error::$name is empty or a placeholder — configure the repository secret/variable."
+                fail=1
+                ;;
+              *)
+                echo "$name: OK"
+                ;;
+            esac
+          }
+          if [ "$TARGET_ENV" = "prod" ]; then
+            check "EXPO_PUBLIC_SUPABASE_URL_PROD" "$EXPO_PUBLIC_SUPABASE_URL_PROD"
+            check "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_PROD" "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_PROD"
+            check "EXPO_PUBLIC_PROD_PUBLIC_WEB_ORIGIN" "$EXPO_PUBLIC_PROD_PUBLIC_WEB_ORIGIN"
+          else
+            check "EXPO_PUBLIC_SUPABASE_URL_STAGE" "$EXPO_PUBLIC_SUPABASE_URL_STAGE"
+            check "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_STAGE" "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY_STAGE"
+            check "EXPO_PUBLIC_STAGE_EDITOR_WEBVIEW_URL" "$EXPO_PUBLIC_STAGE_EDITOR_WEBVIEW_URL"
+          fi
+          check "NEXT_PUBLIC_SUPABASE_URL (webview bundle)" "$NEXT_PUBLIC_SUPABASE_URL"
+          check "NEXT_PUBLIC_SUPABASE_ANON_KEY (webview bundle)" "$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+
+          # Probe the Supabase project so a stale/wrong URL fails the build
+          # instead of shipping an APK that cannot reach its backend.
+          status=$(curl -s -o /dev/null -w "%{http_code}" -m 15 \
+            -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+            "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/health" || echo "000")
+          if [ "$status" != "200" ]; then
+            echo "::error::Supabase health check failed (HTTP $status) for the configured project URL."
+            exit 1
+          fi
+          echo "Supabase health check: OK"
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v4
@@ -62,6 +165,28 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
+      - name: Verify resolved Expo config
+        run: |
+          # Sanity check that the Gradle build will embed a real Supabase URL
+          # for the selected variant (values come from the env of this job).
+          npx expo config --type public --json > /tmp/expo-config.json
+          node -e "
+            const config = require('/tmp/expo-config.json');
+            const extra = config.extra ?? {};
+            console.log('variant:', extra.appVariant);
+            console.log('supabaseUrl:', extra.supabaseUrl || '(empty)');
+            console.log('editorWebViewUrl:', extra.editorWebViewUrl || '(bundled/local)');
+            if (extra.appVariant !== process.env.TARGET_ENV) {
+              console.error('Expo config resolved variant ' + extra.appVariant + ', expected ' + process.env.TARGET_ENV);
+              process.exit(1);
+            }
+            if (!extra.supabaseUrl || !extra.supabasePublishableKey) {
+              console.error('Expo config resolved an empty Supabase URL/key — the APK would crash on startup.');
+              process.exit(1);
+            }
+          "
+        working-directory: ui/mobile
+
       - name: Build Android Stage Release
         if: ${{ inputs.environment == 'stage' }}
         run: |
@@ -77,8 +202,6 @@ jobs:
           ./gradlew assembleProdRelease
 
       - name: Prepare APK artifact
-        env:
-          TARGET_ENV: ${{ inputs.environment }}
         run: |
           mkdir -p build-apks
           # Get short SHA for file name

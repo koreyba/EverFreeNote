@@ -13,7 +13,7 @@ import {
   type SettingsTabKey,
 } from '@ui/mobile/components/settings/SettingsTabBar'
 import { WordPressSettingsPanel } from '@ui/mobile/components/settings/WordPressSettingsPanel'
-import { useAuth, useSupabase, useTheme } from '@ui/mobile/providers'
+import { useAuth, useCollapsibleTabBar, useSupabase, useTheme } from '@ui/mobile/providers'
 
 const tabs: SettingsTabDefinition[] = [
   { key: 'account', label: 'My Account' },
@@ -70,6 +70,7 @@ export default function SettingsScreen() {
   const { colors, mode, setMode, colorScheme } = useTheme()
   const { signOut, deleteAccount } = useAuth()
   const { user } = useSupabase()
+  const { onScroll } = useCollapsibleTabBar()
   const insets = useSafeAreaInsets()
   const styles = useMemo(() => createStyles(colors, insets.bottom), [colors, insets.bottom])
   const [activeTab, setActiveTab] = useState<SettingsTabKey>('account')
@@ -136,6 +137,8 @@ export default function SettingsScreen() {
           style={[styles.panelScroll, isAIIndexTabActive && styles.panelHidden]}
           contentContainerStyle={styles.panelScrollContent}
           keyboardShouldPersistTaps="handled"
+          onScroll={onScroll}
+          scrollEventThrottle={16}
         >
           <View style={styles.panelWrap}>
             {panelConfigs.map((panel) =>

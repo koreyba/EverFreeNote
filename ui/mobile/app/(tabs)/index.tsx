@@ -6,7 +6,7 @@ import * as Haptics from 'expo-haptics'
 import { SwipeableNoteCard } from '@ui/mobile/components/SwipeableNoteCard'
 import { BulkActionBar } from '@ui/mobile/components/BulkActionBar'
 import { Button } from '@ui/mobile/components/ui'
-import { useTheme } from '@ui/mobile/providers'
+import { useCollapsibleTabBar, useTheme } from '@ui/mobile/providers'
 import { useMemo, useCallback, useEffect, useState } from 'react'
 import type { Note } from '@core/types/domain'
 import { useNotes, useCreateNote, useDeleteNote, useOpenNote, useBulkSelection, useBulkDeleteNotes } from '@ui/mobile/hooks'
@@ -22,6 +22,7 @@ export default function NotesScreen() {
   const { mutate: createNote } = useCreateNote()
   const { mutate: deleteNote } = useDeleteNote()
   const { closeAll } = useSwipeContext()
+  const { onScroll } = useCollapsibleTabBar()
   const openNote = useOpenNote()
 
   const { isActive, selectedIds, activate, toggle, selectAll, clear, deactivate } = useBulkSelection()
@@ -172,6 +173,8 @@ export default function NotesScreen() {
       <ScrollView
         testID="empty-state-scroll"
         contentContainerStyle={styles.centerContainer}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isManualRefreshing}
@@ -206,6 +209,8 @@ export default function NotesScreen() {
         onRefresh={handleRefresh}
         refreshing={isManualRefreshing}
         onScrollBeginDrag={closeAll}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
         extraData={selectionExtraData}

@@ -15,6 +15,8 @@ jest.mock('@core/services/notes', () => ({
   NoteService: jest.fn().mockImplementation(() => ({
     createNote: jest.fn(),
     updateNote: jest.fn(),
+    renameTag: jest.fn(),
+    deleteTag: jest.fn(),
     deleteNote: jest.fn(),
   })),
 }))
@@ -74,6 +76,8 @@ describe('MobileSyncService', () => {
   let mockNoteServiceInstance: {
     createNote: jest.Mock
     updateNote: jest.Mock
+    renameTag: jest.Mock
+    deleteTag: jest.Mock
     deleteNote: jest.Mock
   }
 
@@ -434,6 +438,76 @@ describe('MobileSyncService', () => {
         await getCapturedPerformSync()(item)
 
         expect(mockNoteServiceInstance.deleteNote).toHaveBeenCalledWith('note-1')
+      })
+    })
+
+    describe('bulk tag operations', () => {
+      it('replays a rename operation through the complete-note service and saves changed notes', async () => {
+        const changedNotes = [{
+          id: 'note-1',
+          title: 'Note',
+          description: '',
+          tags: ['ReactJS'],
+          user_id: 'user-1',
+          created_at: '2026-07-24T12:00:00Z',
+          updated_at: '2026-07-24T12:05:00Z',
+        }]
+        mockNoteServiceInstance.renameTag.mockResolvedValueOnce(changedNotes)
+
+        const item: MutationQueueItem = {
+          id: 'q-tag-rename',
+          noteId: 'tag:user-1:renameTag:react',
+          operation: 'renameTag',
+          payload: { tag: 'react', replacement: 'ReactJS', user_id: 'user-1' },
+          clientUpdatedAt: '100',
+          status: 'pending',
+        }
+
+        await getCapturedPerformSync()(item)
+
+        expect(mockNoteServiceInstance.renameTag).toHaveBeenCalledWith('user-1', 'react', 'ReactJS')
+        expect(databaseService.saveNotes).toHaveBeenCalledWith([
+          { ...changedNotes[0], is_synced: 1, is_deleted: 0 },
+        ])
+      })
+
+      it('replays a delete operation and rejects malformed payloads', async () => {
+        mockNoteServiceInstance.deleteTag.mockResolvedValueOnce([])
+
+        await getCapturedPerformSync()({
+          id: 'q-tag-delete',
+          noteId: 'tag:user-1:deleteTag:react',
+          operation: 'deleteTag',
+          payload: { tag: 'react', user_id: 'user-1' },
+          clientUpdatedAt: '100',
+          status: 'pending',
+        })
+
+        expect(mockNoteServiceInstance.deleteTag).toHaveBeenCalledWith('user-1', 'react')
+
+        await expect(getCapturedPerformSync()({
+          id: 'q-tag-invalid',
+          noteId: 'tag:invalid',
+          operation: 'deleteTag',
+          payload: { tag: 'react' },
+          clientUpdatedAt: '100',
+          status: 'pending',
+        })).rejects.toThrow('Invalid deleteTag queue payload')
+      })
+
+      it('rejects a rename operation without a replacement instead of dropping it', async () => {
+        mockNoteServiceInstance.renameTag.mockResolvedValueOnce([])
+
+        await expect(getCapturedPerformSync()({
+          id: 'q-tag-invalid-rename',
+          noteId: 'tag:user-1:renameTag:react',
+          operation: 'renameTag',
+          payload: { tag: 'react', user_id: 'user-1' },
+          clientUpdatedAt: '100',
+          status: 'pending',
+        })).rejects.toThrow('Invalid renameTag queue payload')
+
+        expect(mockNoteServiceInstance.renameTag).not.toHaveBeenCalled()
       })
     })
   })

@@ -1,11 +1,21 @@
-import { Redirect, Tabs } from 'expo-router'
-import { useAuth, useTheme } from '@ui/mobile/providers'
-import { ActivityIndicator, View, Text, StyleSheet } from 'react-native'
+import { Redirect, Tabs, usePathname } from 'expo-router'
+import { CollapsibleTabBarProvider, useAuth, useCollapsibleTabBar, useTheme } from '@ui/mobile/providers'
+import { ActivityIndicator, Animated, View, Text, StyleSheet, type ColorValue } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNetworkStatus, useOfflineSync } from '@ui/mobile/hooks'
-import { FileText, Search, Settings, WifiOff } from 'lucide-react-native'
-import { useMemo } from 'react'
+import { FileText, Search, Settings, Tags, WifiOff } from 'lucide-react-native'
+import { useEffect, useMemo, useRef } from 'react'
 import { ThemeToggle } from '@ui/mobile/components/ThemeToggle'
+
+type TabBarIconProps = Readonly<{ color: ColorValue }>
+type TabsLayoutContentProps = Readonly<{
+  colors: ReturnType<typeof useTheme>['colors']
+  isOnline: boolean
+  styles: ReturnType<typeof createStyles>
+  topInset: number
+}>
+
+const TagsTabIcon = ({ color }: TabBarIconProps) => <Tags size={24} color={color} />
 
 export default function TabsLayout() {
   const { isAuthenticated, loading } = useAuth()
@@ -28,9 +38,47 @@ export default function TabsLayout() {
   }
 
   return (
+    <CollapsibleTabBarProvider>
+      <TabsLayoutContent
+        colors={colors}
+        isOnline={isOnline}
+        styles={styles}
+        topInset={insets.top}
+      />
+    </CollapsibleTabBarProvider>
+  )
+}
+
+function TabsLayoutContent({
+  colors,
+  isOnline,
+  styles,
+  topInset,
+}: TabsLayoutContentProps) {
+  const pathname = usePathname()
+  const { isVisible, reset } = useCollapsibleTabBar()
+  const tabBarTranslateY = useRef(new Animated.Value(0)).current
+  const tabBarOpacity = tabBarTranslateY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [1, 0],
+  })
+
+  useEffect(() => {
+    reset()
+  }, [pathname, reset])
+
+  useEffect(() => {
+    Animated.timing(tabBarTranslateY, {
+      toValue: isVisible ? 0 : 100,
+      duration: 180,
+      useNativeDriver: true,
+    }).start()
+  }, [isVisible, tabBarTranslateY])
+
+  return (
     <View style={styles.container}>
       {!isOnline && (
-        <View style={[styles.offlineBanner, { paddingTop: insets.top + 6 }]}>
+        <View style={[styles.offlineBanner, { paddingTop: topInset + 6 }]}>
           <View style={styles.offlineContent}>
             <WifiOff size={14} color={colors.mutedForeground} />
             <Text style={styles.offlineText}>
@@ -47,6 +95,8 @@ export default function TabsLayout() {
           tabBarStyle: {
             backgroundColor: colors.background,
             borderTopColor: colors.border,
+            opacity: tabBarOpacity,
+            transform: [{ translateY: tabBarTranslateY }],
           },
           headerStyle: {
             backgroundColor: colors.background,
@@ -69,6 +119,14 @@ export default function TabsLayout() {
             title: 'Search',
             tabBarLabel: 'Search',
             tabBarIcon: ({ color }) => <Search size={24} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="tags"
+          options={{
+            title: 'Tags',
+            tabBarLabel: 'Tags',
+            tabBarIcon: TagsTabIcon,
           }}
         />
         <Tabs.Screen

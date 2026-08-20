@@ -1,7 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/supabase/types'
+import { deleteTagFromNotes, renameTagInNotes } from './tags'
 
 type Note = Tables<'notes'>
+const ALL_NOTES_PAGE_SIZE = 1000
 export type NoteLookupResult =
   | { status: 'found'; note: Note }
   | { status: 'not_found' }
@@ -143,6 +145,44 @@ export class NoteService {
 
     if (error) throw error
     return (data as Note[]) || []
+  }
+
+  async getAllNotes(userId: string): Promise<Note[]> {
+    const notes: Note[] = []
+
+    for (let page = 0; ; page += 1) {
+      const start = page * ALL_NOTES_PAGE_SIZE
+      const end = start + ALL_NOTES_PAGE_SIZE - 1
+      const { data, error } = await this.supabase
+        .from('notes')
+        .select('id, title, description, tags, created_at, updated_at, user_id')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .range(start, end)
+
+      if (error) throw error
+
+      const pageNotes = Array.isArray(data) ? (data as Note[]) : []
+      notes.push(...pageNotes)
+      if (pageNotes.length < ALL_NOTES_PAGE_SIZE) return notes
+    }
+  }
+
+  private async persistTagMutation(updatedNotes: Note[], notes: Note[]): Promise<Note[]> {
+    const changedNotes = updatedNotes.filter((note, index) => note !== notes[index])
+    return Promise.all(changedNotes.map((note) => this.updateNote(note.id, { tags: note.tags })))
+  }
+
+  async renameTag(userId: string, sourceTag: string, replacementTag: string): Promise<Note[]> {
+    const notes = await this.getAllNotes(userId)
+    const updatedNotes = renameTagInNotes(notes, sourceTag, replacementTag)
+    return this.persistTagMutation(updatedNotes, notes)
+  }
+
+  async deleteTag(userId: string, sourceTag: string): Promise<Note[]> {
+    const notes = await this.getAllNotes(userId)
+    const updatedNotes = deleteTagFromNotes(notes, sourceTag)
+    return this.persistTagMutation(updatedNotes, notes)
   }
 
   async getAllTagsWithCounts(userId: string): Promise<{ tags: string[]; counts: Record<string, number> }> {

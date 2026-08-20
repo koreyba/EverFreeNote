@@ -139,6 +139,30 @@ describe('DatabaseService', () => {
       )
     })
 
+    it('uses non-null timestamp fallbacks when note timestamps are missing', async () => {
+      mockDb.getAllAsync.mockResolvedValue([{ count: 1 }])
+
+      await service.saveNotes([
+        {
+          id: 'missing-timestamps',
+          title: 'Missing timestamps',
+          description: '',
+          tags: [],
+          user_id: 'user-1',
+          created_at: null as unknown as string,
+          updated_at: null as unknown as string,
+        },
+      ])
+
+      const insertCall = mockDb.runAsync.mock.calls.find(([query]) => (
+        String(query).includes('INSERT OR REPLACE INTO notes')
+      ))
+      const values = insertCall?.[1] as unknown[]
+
+      expect(values[5]).toEqual(expect.any(String))
+      expect(values[6]).toBe(values[5])
+    })
+
     it('skips notes without user_id', async () => {
       mockDb.getAllAsync.mockResolvedValue([{ count: 1 }])
 
@@ -178,6 +202,28 @@ describe('DatabaseService', () => {
       ).rejects.toThrow('DB failure')
 
       expect(mockDb.execAsync).toHaveBeenCalledWith('ROLLBACK')
+    })
+  })
+
+  describe('replaceNotesForUser', () => {
+    it('removes the synced snapshot when the remote result is empty while preserving pending notes', async () => {
+      mockDb.getAllAsync
+        .mockResolvedValueOnce([{ count: 1 }])
+        .mockResolvedValueOnce([{ id: 'pending-note' }])
+
+      await service.replaceNotesForUser('user-1', [])
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'DELETE FROM note_tags WHERE note_id IN (SELECT id FROM notes WHERE user_id = ? AND is_synced = 1)',
+        ['user-1']
+      )
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'DELETE FROM notes WHERE user_id = ? AND is_synced = 1',
+        ['user-1']
+      )
+      expect(mockDb.runAsync).not.toHaveBeenCalledWith(expect.stringContaining('INSERT OR REPLACE INTO notes'), expect.anything())
+      expect(mockDb.execAsync).toHaveBeenCalledWith('BEGIN')
+      expect(mockDb.execAsync).toHaveBeenCalledWith('COMMIT')
     })
   })
 
