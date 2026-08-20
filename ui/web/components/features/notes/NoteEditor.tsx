@@ -12,9 +12,13 @@ import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
+import { useDebouncedSessionCallback } from "@ui/web/hooks/useDebouncedSessionCallback"
 import type { NoteDraftSnapshot, NoteViewSession } from "@core/services/noteWorkspaceTabs"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
+// Below the autosave delay so a pending draft notification always lands before
+// the autosave completion marks the tab as saved.
+const SESSION_SYNC_DELAY_MS = 250
 const NOOP_CANCEL = () => {}
 
 export interface NoteEditorHandle {
@@ -112,9 +116,24 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     initialSessionRef.current = initialSession
   }, [initialSession])
 
+  // Typing fires per keystroke and scrolling per frame; debounce both before
+  // they reach workspace-tab state. Draft updates are cancelled on unmount
+  // because tab transitions capture the live editor synchronously, while the
+  // latest scroll position is flushed so it is never lost.
+  const debouncedDraftNotify = useDebouncedSessionCallback<NoteDraftSnapshot>(
+    onDraftChange,
+    SESSION_SYNC_DELAY_MS,
+    'cancel',
+  )
+  const debouncedViewNotify = useDebouncedSessionCallback<Partial<NoteViewSession>>(
+    onViewSessionChange,
+    SESSION_SYNC_DELAY_MS,
+    'flush',
+  )
+
   const notifyDraftChange = React.useCallback(() => {
-    onDraftChange?.(getFormData())
-  }, [getFormData, onDraftChange])
+    debouncedDraftNotify.schedule(getFormData())
+  }, [debouncedDraftNotify, getFormData])
 
   const applyExternalSnapshot = React.useCallback((
     snapshot: { title: string; description: string; tags: string },
@@ -184,11 +203,15 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
   const handleSave = () => {
     cancelAutoSave()
+    // The manual save records the draft itself; a late debounced notification
+    // would re-mark the saved tab as dirty.
+    debouncedDraftNotify.cancel()
     onSave(getFormData())
   }
 
   const handleRead = () => {
     cancelAutoSave()
+    debouncedDraftNotify.cancel()
     onRead(getFormData())
   }
 
@@ -223,44 +246,44 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     selectedTagsRef.current = merged
     setSelectedTags(merged)
     setTagQuery("")
-    onDraftChange?.({
-      ...getFormData(),
-      tags: buildTagString(merged),
-    })
-  }, [getFormData, onDraftChange])
+    notifyDraftChange()
+  }, [notifyDraftChange])
 
   const removeTag = React.useCallback((tagToRemove: string) => {
     const next = selectedTagsRef.current.filter((tag) => tag !== tagToRemove)
     selectedTagsRef.current = next
     setSelectedTags(next)
     setTagQuery("")
-    onDraftChange?.({
-      ...getFormData(),
-      tags: buildTagString(next),
-    })
-  }, [getFormData, onDraftChange])
+    notifyDraftChange()
+  }, [notifyDraftChange])
 
   React.useImperativeHandle(ref, () => ({
     flushPendingSave,
-    captureSession: () => ({
-      draft: getFormData(),
-      view: {
-        scrollTop: scrollContainerRef.current?.scrollTop ?? 0,
-        ...(titleInputRef.current?.selectionStart !== null && titleInputRef.current?.selectionStart !== undefined && titleInputRef.current?.selectionEnd !== null && titleInputRef.current?.selectionEnd !== undefined
-          ? {
-              titleSelection: {
-                start: titleInputRef.current.selectionStart,
-                end: titleInputRef.current.selectionEnd,
-              },
-            }
-          : {}),
-        ...(editorRef.current?.getSelection?.() ? { editorSelection: editorRef.current.getSelection?.() } : {}),
-      },
-    }),
+    captureSession: () => {
+      const titleInput = titleInputRef.current
+      const titleSelection = titleInput && titleInput.selectionStart !== null && titleInput.selectionEnd !== null
+        ? { start: titleInput.selectionStart, end: titleInput.selectionEnd }
+        : undefined
+      const editorSelection = editorRef.current?.getSelection?.()
+
+      // The capture reads the live editor, so a pending debounced draft
+      // notification is stale and must not fire after the transition.
+      debouncedDraftNotify.cancel()
+      debouncedViewNotify.cancel()
+
+      return {
+        draft: getFormData(),
+        view: {
+          scrollTop: scrollContainerRef.current?.scrollTop ?? 0,
+          ...(titleSelection ? { titleSelection } : {}),
+          ...(editorSelection ? { editorSelection } : {}),
+        },
+      }
+    },
     scrollToChunk: (charOffset: number, chunkLength: number) => {
       editorRef.current?.scrollToChunk(charOffset, chunkLength)
     },
-  }), [flushPendingSave, getFormData])
+  }), [debouncedDraftNotify, debouncedViewNotify, flushPendingSave, getFormData])
 
   React.useEffect(() => {
     const session = initialSessionRef.current
@@ -374,7 +397,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto bg-card"
-        onScroll={(event) => onViewSessionChange?.({ scrollTop: event.currentTarget.scrollTop })}
+        onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
       >
         <div className="max-w-4xl mx-auto px-6 pt-24 space-y-5">
           <div>

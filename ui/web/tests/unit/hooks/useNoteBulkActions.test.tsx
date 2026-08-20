@@ -32,7 +32,7 @@ const makeParams = (overrides: Partial<BulkActionParams> = {}) => {
     deleteNoteMutation: { mutateAsync: jest.fn().mockResolvedValue(undefined) },
     exitSelectionMode: jest.fn(),
     setBulkDeleting: jest.fn(),
-    setSelectedNote: jest.fn(),
+    onNotesDeleted: jest.fn(),
     queryClient,
     notes: [note('visible')],
     selectAllVisibleCallback: jest.fn(),
@@ -80,7 +80,7 @@ describe('useNoteBulkActions', () => {
     expect(toast.success).toHaveBeenCalledWith('Deleted 2 notes')
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['notes'] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['aiSearch'] })
-    expect(params.setSelectedNote).toHaveBeenCalledWith(null)
+    expect(params.onNotesDeleted).toHaveBeenCalledWith(['one', 'two'])
   })
 
   it('reports partial online failures but still refreshes the local queries', async () => {
@@ -98,7 +98,7 @@ describe('useNoteBulkActions', () => {
     })
     expect(toast.error).toHaveBeenCalledWith('Failed to delete 1 notes')
     expect(invalidate).toHaveBeenCalledTimes(2)
-    expect(params.setSelectedNote).toHaveBeenCalledWith(null)
+    expect(params.onNotesDeleted).toHaveBeenCalledWith(['good'])
   })
 
   it('queues offline deletions, persists optimistic tombstones, and updates overlay state', async () => {
@@ -132,6 +132,7 @@ describe('useNoteBulkActions', () => {
     expect(applyOverlay([]).map((entry) => entry.id)).toEqual(['one', 'two'])
     expect(setPendingCount).toHaveBeenCalledWith(expect.any(Function))
     expect(toast.success).toHaveBeenCalledWith('Queued deletion of 2 notes (offline)')
+    expect(params.onNotesDeleted).toHaveBeenCalledWith(['one', 'two'])
   })
 
   it('manages the bulk deleting transition and exits selection mode only on success', async () => {

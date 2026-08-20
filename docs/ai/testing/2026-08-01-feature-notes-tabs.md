@@ -48,12 +48,19 @@ description: Define testing approach, test cases, and quality assurance
 
 ## End-to-End Tests
 
-- [ ] Open note A, add tab, open note B, switch A/B, and verify both contexts.
-- [ ] Open note A from normal list, search, tag-only results, and AI/internal flow and verify one tab.
-- [ ] Reload the same browser tab and verify order, active tab, mode, draft, and scroll.
-- [ ] Close active tabs in both neighbor directions and close the final tab.
-- [x] Use the compact mobile tab list to switch and close tabs.
-- [x] Create a blank mobile tab, close the menu, and select a note from the visible list.
+Playwright E2E lives in the separate `koreyba/EverFreeNote-e2e` repository, which
+has no notes-tabs coverage yet. The four scenarios below are a scoped follow-up
+in that repository; they are not deliverable from this branch. The mobile items
+are covered by in-repo Cypress component tests (`MobileLayout.cy.tsx`), and the
+desktop flows were verified manually against the PR preview deployment (see
+Recorded Evidence).
+
+- [ ] Open note A, add tab, open note B, switch A/B, and verify both contexts. *(follow-up in EverFreeNote-e2e)*
+- [ ] Open note A from normal list, search, tag-only results, and AI/internal flow and verify one tab. *(follow-up in EverFreeNote-e2e)*
+- [ ] Reload the same browser tab and verify order, active tab, mode, draft, and scroll. *(follow-up in EverFreeNote-e2e)*
+- [ ] Close active tabs in both neighbor directions and close the final tab. *(follow-up in EverFreeNote-e2e)*
+- [x] Use the compact mobile tab list to switch and close tabs. *(Cypress component coverage)*
+- [x] Create a blank mobile tab, close the menu, and select a note from the visible list. *(Cypress component coverage)*
 
 ## Test Data
 
@@ -70,6 +77,11 @@ description: Define testing approach, test cases, and quality assurance
 
 ## Manual Testing
 
+- Desktop: keyboard tab navigation, ellipsis, horizontal overflow, dirty/error markers, close confirmation, and accessible capacity state with Add fixed on the left.
+- Mobile viewport: active-note summary, tab count, compact list/sheet, touch targets, screen-reader labels.
+- Reload: verify `sessionStorage` restore and separate browser-tab isolation.
+- Network/offline: switch during autosave and after an induced save error.
+
 ## Recorded Evidence
 
 - Allure Agent workspace/model/UI run: 34/34 passed, expectations matched, findings 0. Report: `C:\Users\DenysKoreiba\AppData\Local\Temp\allure-agent-58hLNC`.
@@ -81,10 +93,14 @@ description: Define testing approach, test cases, and quality assurance
 - `npx ai-devkit@latest lint --feature notes-tabs`: passed.
 - Native mobile route/store tab adaptation was not included; responsive web mobile controls are covered by component tests.
 
-- Desktop: keyboard tab navigation, ellipsis, horizontal overflow, dirty/error markers, close confirmation, and accessible capacity state with Add fixed on the left.
-- Mobile viewport: active-note summary, tab count, compact list/sheet, touch targets, screen-reader labels.
-- Reload: verify `sessionStorage` restore and separate browser-tab isolation.
-- Network/offline: switch during autosave and after an induced save error.
+### Final review pass (2026-08-20)
+
+- `npm run type-check`: passed (root, core, core tests, web tests, `ui/mobile`).
+- `npx eslint . --max-warnings=0`: passed.
+- `npm run test:unit`: 183 suites, 1,441 tests passed — includes new coverage for `resetWorkspaceTabsForNotes`, `useDebouncedSessionCallback`, flush-failure transition abort, delete-driven tab reset, and `onNotesDeleted` bulk reporting.
+- `npm run test:integration:core`: 2 suites, 20 tests passed.
+- Focused Cypress component run (`NotesTabStrip`, `MobileLayout`, `NotesShellFtsExitSave`, `NotesShellLikeExitSave`, `NotesShellOpenInContext`, `useNoteBulkActionsDirect`): 20/20 passed in Electron.
+- Manual verification against the PR preview deployment (test-auth user): desktop tab add/replace/dedupe/switch/close, reload restore, mobile compact menu.
 
 ## Performance Testing
 

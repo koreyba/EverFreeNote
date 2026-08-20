@@ -214,6 +214,31 @@ export function updateWorkspaceTab(
   return { ...state, tabs }
 }
 
+/**
+ * Turns every tab that shows one of the given notes back into a blank landing
+ * slot. Used after a note is deleted so no tab keeps rendering (or can
+ * resurrect through autosave) a note that no longer exists. Tab identity,
+ * order, and the active tab are preserved.
+ */
+export function resetWorkspaceTabsForNotes(
+  state: NoteWorkspaceState,
+  noteIds: readonly string[],
+): NoteWorkspaceState {
+  const deletedNoteIds = new Set(noteIds.filter((noteId) => noteId.length > 0))
+  if (deletedNoteIds.size === 0) return state
+
+  let changed = false
+  const tabs = state.tabs.map((tab) => {
+    if (!tab.noteId || !deletedNoteIds.has(tab.noteId)) return tab
+    changed = true
+    return {
+      ...createEmptyTab(() => tab.id),
+    }
+  })
+
+  return changed ? { ...state, tabs } : state
+}
+
 export function closeWorkspaceTab(
   state: NoteWorkspaceState,
   tabId: string,

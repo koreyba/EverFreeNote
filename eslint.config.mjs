@@ -28,6 +28,7 @@ export default defineConfig([
       'allure-report/**',
       '.tmp-artifacts/**',
       '.worktrees/**',
+      '.claude/worktrees/**', // In-repo agent worktrees must not affect lint runs
       'act-artifacts/**',
       'out/**',
       'next-env.d.ts',

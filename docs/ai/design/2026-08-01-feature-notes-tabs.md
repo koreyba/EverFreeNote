@@ -88,6 +88,7 @@ activateWorkspaceTab(state, tabId): NoteWorkspaceState
 openNoteInWorkspace(state, note, tabId?): NoteWorkspaceState
 closeWorkspaceTab(state, tabId): NoteWorkspaceState
 updateWorkspaceTab(state, tabId, patch): NoteWorkspaceState
+resetWorkspaceTabsForNotes(state, noteIds): NoteWorkspaceState
 findWorkspaceTabByNoteId(state, noteId): NoteWorkspaceTab | null
 ```
 
@@ -156,6 +157,30 @@ The existing editor remains mounted only for the active tab, so its DOM/TipTap i
 ### Save errors are explicit
 
 The tab stores `saveState: 'error'` and `saveError`. Closing a failed tab requires an explicit confirmation from the user; an error is never silently discarded. Dirty/saving states are non-blocking indicators.
+
+`flushAndCaptureActiveTab` never rejects: it returns a success flag, and every
+tab/note transition aborts explicitly when the flush fails, so the failed tab
+keeps its draft and error marker and no caller is left with an unhandled
+promise rejection. Entering edit mode changes only the tab mode and never
+clears an unresolved dirty/error marker.
+
+### Deleted notes reset their tabs
+
+A successful delete (single or bulk, online or queued offline) resets every tab
+whose `noteId` was deleted back to a blank landing slot via
+`resetWorkspaceTabsForNotes`. Tab identity, order, and activation are
+preserved; only affected tabs change. This prevents a stale tab from rendering
+a deleted note or re-creating it through autosave, and bulk delete no longer
+clears the active tab when its note survived.
+
+### Session updates are debounced
+
+Typing and scrolling notify workspace state through
+`useDebouncedSessionCallback` (250 ms, below the 500 ms autosave debounce).
+Draft updates are cancelled on unmount and on manual Save/Read because every
+transition captures the live editor synchronously first — a late flush would
+re-mark a saved tab as dirty. Reading scroll has no synchronous capture path,
+so its latest value is flushed on unmount instead.
 
 ### Split View remains possible
 

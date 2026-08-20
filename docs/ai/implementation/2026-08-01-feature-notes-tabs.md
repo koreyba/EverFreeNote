@@ -20,6 +20,7 @@ description: Technical implementation notes, patterns, and code guidelines
 core/services/noteWorkspaceTabs.ts
 ui/web/lib/noteWorkspaceStorage.ts
 ui/web/hooks/useNoteWorkspaceTabs.ts
+ui/web/hooks/useDebouncedSessionCallback.ts
 ui/web/components/features/notes/NotesTabStrip.tsx
 ui/web/components/features/notes/MobileNotesTabMenu.tsx
 ui/web/hooks/useNoteAppController.ts
@@ -38,7 +39,9 @@ ui/web/components/features/notes/NoteView.tsx
 - Use a deterministic initial tab ID for the server/client first render, then replace it with the hydrated session workspace.
 - Bound serialized workspace state and fall back to a blank tab when a persisted snapshot is malformed or exceeds the storage limit.
 - Hydrate once, then persist state changes through a guarded storage adapter.
-- Capture the current editor before unmount, flush autosave first, and then apply tab transitions.
+- Capture the current editor before unmount, flush autosave first, and then apply tab transitions. `flushAndCaptureActiveTab` returns a success flag instead of rejecting; transitions abort when it reports failure.
+- Debounce per-keystroke draft and per-frame scroll notifications with `useDebouncedSessionCallback` (250 ms) so workspace state and `sessionStorage` are not written on every event. Draft updates cancel on unmount/manual save (the capture path reads the live editor); reading scroll flushes on unmount.
+- After a successful delete, call `resetTabsForNotes` with the deleted IDs so no tab keeps a deleted note; bulk delete reports the actually-deleted IDs through `onNotesDeleted`.
 - Use the active tab's draft as editor initial content; never use a server refresh to overwrite a dirty local field without existing reconciliation rules.
 - Keep tab indicators derived from explicit per-tab save state rather than global UI assumptions.
 - Keep the desktop Add control outside the scrolling tab viewport. `NotesTabStrip`

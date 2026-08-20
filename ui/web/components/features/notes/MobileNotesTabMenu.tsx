@@ -31,7 +31,7 @@ export function MobileNotesTabMenu({
   const handleAdd = () => {
     if (addTabDisabled || addTabCapacityPending) return
     setIsOpen(false)
-    void onAddTab()
+    onAddTab()
   }
 
   const addTabLabel = addTabCapacityPending

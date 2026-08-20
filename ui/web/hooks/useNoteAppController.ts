@@ -95,6 +95,7 @@ export function useNoteAppController() {
     openNote,
     updateTab,
     closeTab,
+    resetTabsForNotes,
     findTabByNoteId,
     canAddTab,
   } = workspace
@@ -158,9 +159,20 @@ export function useNoteAppController() {
     })
   }, [activeTabId, updateTab])
 
-  const flushAndCaptureActiveTab = useCallback(async () => {
+  /**
+   * Captures the outgoing tab session and flushes pending autosave work.
+   * Returns `false` when the flush fails so callers abort the transition:
+   * the failed tab keeps its draft and error state and the user can retry.
+   * Never rejects — save errors are already surfaced on the tab itself.
+   */
+  const flushAndCaptureActiveTab = useCallback(async (): Promise<boolean> => {
     captureActiveTabSession()
-    await flushPendingEditorSave()
+    try {
+      await flushPendingEditorSave()
+      return true
+    } catch {
+      return false
+    }
   }, [captureActiveTabSession, flushPendingEditorSave])
 
   // -- Infrastructure --
@@ -339,6 +351,16 @@ export function useNoteAppController() {
     selectedNoteRef,
   })
 
+  const confirmDeleteNoteWithWorkspace = useCallback(async () => {
+    const deletedNoteId = noteToDelete?.id ?? null
+    const deleted = await confirmDeleteNote()
+    // A deleted note must not survive in any workspace tab: a stale tab would
+    // keep rendering it and typing there would re-create the note.
+    if (deleted && deletedNoteId) {
+      resetTabsForNotes([deletedNoteId])
+    }
+  }, [confirmDeleteNote, noteToDelete, resetTabsForNotes])
+
   const handleDraftChange = useCallback((draft: NoteDraftSnapshot) => {
     updateTab(activeTabId, {
       draft,
@@ -422,7 +444,7 @@ export function useNoteAppController() {
     deleteNoteMutation,
     exitSelectionMode,
     setBulkDeleting,
-    setSelectedNote,
+    onNotesDeleted: resetTabsForNotes,
     queryClient,
     notes,
     selectAllVisibleCallback,
@@ -431,8 +453,8 @@ export function useNoteAppController() {
   // -- Nav wrappers: flush pending editor save before any navigation --
   const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null) => {
     const requestId = ++latestSelectRequestRef.current
-    await flushAndCaptureActiveTab()
-    if (requestId !== latestSelectRequestRef.current) return
+    const flushed = await flushAndCaptureActiveTab()
+    if (!flushed || requestId !== latestSelectRequestRef.current) return
     clearActiveSettingsNoteReturnPath()
     if (!note) {
       // Mobile back/search navigation hides the pane without closing the tab.
@@ -475,7 +497,7 @@ export function useNoteAppController() {
   ])
 
   const wrappedHandleCreateNote = useCallback(async () => {
-    await flushAndCaptureActiveTab()
+    if (!(await flushAndCaptureActiveTab())) return
     clearActiveSettingsNoteReturnPath()
     updateTab(activeTabId, {
       note: null,
@@ -493,8 +515,8 @@ export function useNoteAppController() {
 
   const wrappedHandleEditNote = useCallback(async (note: NoteViewModel) => {
     const requestId = ++latestEditRequestRef.current
-    await flushAndCaptureActiveTab()
-    if (requestId !== latestEditRequestRef.current) return
+    const flushed = await flushAndCaptureActiveTab()
+    if (!flushed || requestId !== latestEditRequestRef.current) return
     const openableNote = await resolveOpenableNote(note)
     if (requestId !== latestEditRequestRef.current) return
     if (!openableNote) {
@@ -506,11 +528,13 @@ export function useNoteAppController() {
     const existingTab = findTabByNoteId(openableNote.id)
     if (existingTab) {
       activateTab(existingTab.id)
-      updateTab(existingTab.id, { mode: 'editing', saveState: 'saved', saveError: null })
+      // Only the mode changes: an unsaved dirty/error marker must survive
+      // entering the editor, otherwise a failed save looks resolved.
+      updateTab(existingTab.id, { mode: 'editing' })
       handleEditNoteRaw(openableNote)
     } else {
       openNote(openableNote)
-      updateTab(activeTabId, { mode: 'editing', saveState: 'saved', saveError: null })
+      updateTab(activeTabId, { mode: 'editing' })
       handleEditNoteRaw(openableNote)
     }
     setNotePaneVisible(true)
@@ -540,8 +564,8 @@ export function useNoteAppController() {
 
   const wrappedHandleSearchResultClick = useCallback(async (note: SearchResult) => {
     const requestId = ++latestSearchClickRequestRef.current
-    await flushAndCaptureActiveTab()
-    if (requestId !== latestSearchClickRequestRef.current) return
+    const flushed = await flushAndCaptureActiveTab()
+    if (!flushed || requestId !== latestSearchClickRequestRef.current) return
     clearActiveSettingsNoteReturnPath()
     const resolvedSearchNote = resolveSearchResult(note)
     const existingTab = findTabByNoteId(resolvedSearchNote.id)
@@ -572,7 +596,7 @@ export function useNoteAppController() {
 
   const handleAddTab = useCallback(async () => {
     if (!workspaceHydrated || !canAddTab) return
-    await flushAndCaptureActiveTab()
+    if (!(await flushAndCaptureActiveTab())) return
     addTab()
     // On mobile, an empty tab must return to the note list so the user can
     // choose which note fills the new active slot. Desktop keeps its editor
@@ -587,7 +611,7 @@ export function useNoteAppController() {
       setNotePaneVisible(Boolean(targetTab.note || targetTab.mode === 'editing'))
       return
     }
-    await flushAndCaptureActiveTab()
+    if (!(await flushAndCaptureActiveTab())) return
     activateTab(tabId)
     setNotePaneVisible(Boolean(targetTab.note || targetTab.mode === 'editing'))
     setLastSavedAt(null)
@@ -608,11 +632,7 @@ export function useNoteAppController() {
     if (tab.saveState === 'error' && !discardFailedSave) return
 
     if (tab.id === activeTabId && !discardFailedSave) {
-      try {
-        await flushAndCaptureActiveTab()
-      } catch {
-        return
-      }
+      if (!(await flushAndCaptureActiveTab())) return
     }
 
     closeTab(tabId)
@@ -943,7 +963,7 @@ export function useNoteAppController() {
     handleDraftChange,
     handleViewSessionChange,
     handleDeleteNote,
-    confirmDeleteNote,
+    confirmDeleteNote: confirmDeleteNoteWithWorkspace,
     handleRemoveTagFromNote,
     handleSelectNote: wrappedHandleSelectNote,
     handleSearchResultClick: wrappedHandleSearchResultClick,

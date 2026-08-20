@@ -18,6 +18,7 @@ let mockIsOffline = false
 let mockOfflineOverlay: Array<{ id: string; status: string }> = []
 let mockNotes: NoteViewModel[] = []
 let mockResolvedSearchResult: NoteViewModel | null = null
+let mockNoteToDelete: NoteViewModel | null = null
 
 const mockGetNoteStatus = jest.fn()
 const mockGetNote = jest.fn()
@@ -39,6 +40,7 @@ const mockClearActiveSettingsNoteReturnPath = jest.fn()
 const mockResolveSearchResult = jest.fn(() => mockResolvedSearchResult)
 const mockUpdateNoteMutation = jest.fn()
 const mockPersistOfflineNoteUpdates = jest.fn().mockResolvedValue(undefined)
+const mockConfirmDeleteNote = jest.fn()
 
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn() } }))
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
@@ -81,7 +83,7 @@ jest.mock('@ui/web/hooks/useNoteSelection', () => ({
     setIsEditing: mockSetIsEditing,
     deleteDialogOpen: false,
     setDeleteDialogOpen: jest.fn(),
-    noteToDelete: null,
+    noteToDelete: mockNoteToDelete,
     setNoteToDelete: jest.fn(),
     selectedNoteIds: new Set<string>(),
     selectionMode: false,
@@ -152,7 +154,7 @@ jest.mock('@ui/web/hooks/useNoteSaveHandlers', () => ({
     handleAutoSave: mockHandleAutoSave,
     handleSaveNote: mockHandleSaveNote,
     handleReadNote: mockHandleReadNote,
-    confirmDeleteNote: jest.fn(),
+    confirmDeleteNote: mockConfirmDeleteNote,
     handleRemoveTagFromNote: jest.fn(),
     persistOfflineNoteUpdates: mockPersistOfflineNoteUpdates,
   }),
@@ -234,9 +236,11 @@ describe('useNoteAppController additional observable behavior', () => {
     mockOfflineOverlay = []
     mockNotes = []
     mockResolvedSearchResult = null
+    mockNoteToDelete = null
     mockHandleAutoSave.mockReset().mockResolvedValue(undefined)
     mockHandleSaveNote.mockReset().mockResolvedValue(undefined)
     mockHandleReadNote.mockReset().mockResolvedValue(undefined)
+    mockConfirmDeleteNote.mockReset().mockResolvedValue(true)
     mockUpdateNoteMutation.mockReset()
     mockUpdateNoteMutation.mockResolvedValue(undefined)
   })
@@ -458,6 +462,75 @@ describe('useNoteAppController additional observable behavior', () => {
 
     expect(mockHandleSelectNote).toHaveBeenCalledTimes(1)
     expect(mockHandleSelectNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'second' }))
+  })
+
+  it('aborts a note selection when flushing the outgoing editor fails', async () => {
+    const target = makeNote({ id: 'target' })
+    mockGetNoteStatus.mockResolvedValue({ status: 'found', note: target })
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    const flushPendingSave = jest.fn().mockRejectedValue(new Error('autosave failed'))
+    act(() => result.current.registerNoteEditorRef({ current: { flushPendingSave } } as never))
+
+    await act(async () => {
+      await result.current.handleSelectNote(target)
+    })
+
+    expect(flushPendingSave).toHaveBeenCalledTimes(1)
+    expect(mockGetNoteStatus).not.toHaveBeenCalled()
+    expect(mockHandleSelectNote).not.toHaveBeenCalled()
+    expect(result.current.activeTab.noteId).toBeNull()
+  })
+
+  it('resets every workspace tab that shows a deleted note', async () => {
+    const first = makeNote({ id: 'first', title: 'First' })
+    const second = makeNote({ id: 'second', title: 'Second' })
+    mockNoteToDelete = first
+    mockGetNoteStatus.mockImplementation((id: string) => Promise.resolve({
+      status: 'found',
+      note: id === 'first' ? first : second,
+    }))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    await act(async () => {
+      await result.current.handleSelectNote(first)
+    })
+    await act(async () => {
+      await result.current.addTab()
+    })
+    await act(async () => {
+      await result.current.handleSelectNote(second)
+    })
+    expect(result.current.tabs.map((tab) => tab.noteId)).toEqual(['first', 'second'])
+
+    await act(async () => {
+      await result.current.confirmDeleteNote()
+    })
+
+    expect(mockConfirmDeleteNote).toHaveBeenCalledTimes(1)
+    expect(result.current.tabs).toHaveLength(2)
+    expect(result.current.tabs.map((tab) => tab.noteId)).toEqual([null, 'second'])
+    expect(result.current.tabs[0].draft).toEqual({ title: '', description: '', tags: '' })
+  })
+
+  it('keeps workspace tabs untouched when the delete fails', async () => {
+    const first = makeNote({ id: 'first', title: 'First' })
+    mockNoteToDelete = first
+    mockConfirmDeleteNote.mockResolvedValue(false)
+    mockGetNoteStatus.mockResolvedValue({ status: 'found', note: first })
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    await act(async () => {
+      await result.current.handleSelectNote(first)
+    })
+    await act(async () => {
+      await result.current.confirmDeleteNote()
+    })
+
+    expect(result.current.tabs.map((tab) => tab.noteId)).toEqual(['first'])
   })
 
   it('registers, resets, and loads AI pagination controls', () => {

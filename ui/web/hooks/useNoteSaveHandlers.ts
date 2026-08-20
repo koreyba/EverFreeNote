@@ -376,8 +376,8 @@ export function useNoteSaveHandlers({
     setIsEditing(false)
   }
 
-  const confirmDeleteNote = async () => {
-    if (!noteToDelete) return
+  const confirmDeleteNote = async (): Promise<boolean> => {
+    if (!noteToDelete) return false
 
     try {
       if (isOffline) {
@@ -413,8 +413,10 @@ export function useNoteSaveHandlers({
         syncSelectedNote(null)
         setIsEditing(false)
       }
+      return true
     } catch (error) {
       console.error('Error deleting note:', error)
+      return false
     } finally {
       setDeleteDialogOpen(false)
       setNoteToDelete(null)

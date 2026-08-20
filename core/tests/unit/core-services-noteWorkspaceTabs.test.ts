@@ -11,6 +11,7 @@ import {
   MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH,
   MAX_NOTE_WORKSPACE_TABS,
   openNoteInWorkspace,
+  resetWorkspaceTabsForNotes,
   serializeNoteWorkspaceState,
   updateWorkspaceTab,
 } from '@core/services/noteWorkspaceTabs'
@@ -116,6 +117,40 @@ describe('note workspace tab state', () => {
 
     const afterRightmostClose = closeWorkspaceTab(activateWorkspaceTab(afterMiddleClose, 'tab-3'), 'tab-3', ids('replacement'))
     expect(afterRightmostClose.activeTabId).toBe('tab-1')
+  })
+
+  it('resets tabs showing deleted notes back to blank slots without changing order or activation', () => {
+    let state = openNoteInWorkspace(createNoteWorkspaceState(ids('tab-1')), note('note-1'))
+    state = addWorkspaceTab(state, ids('tab-2'))
+    state = openNoteInWorkspace(state, note('note-2'))
+    state = addWorkspaceTab(state, ids('tab-3'))
+    state = openNoteInWorkspace(state, note('note-3'))
+    state = updateWorkspaceTab(state, 'tab-2', { draft: { title: 'Unsaved edits' }, saveState: 'dirty' })
+
+    const reset = resetWorkspaceTabsForNotes(state, ['note-2', 'missing-note'])
+
+    expect(reset.tabs.map((tab) => tab.id)).toEqual(['tab-1', 'tab-2', 'tab-3'])
+    expect(reset.activeTabId).toBe('tab-3')
+    expect(findWorkspaceTabByNoteId(reset, 'note-2')).toBeNull()
+    expect(reset.tabs[1]).toMatchObject({
+      id: 'tab-2',
+      noteId: null,
+      note: null,
+      mode: 'reading',
+      draft: { title: '', description: '', tags: '' },
+      saveState: 'saved',
+      saveError: null,
+    })
+    expect(reset.tabs[0]).toBe(state.tabs[0])
+    expect(reset.tabs[2]).toBe(state.tabs[2])
+  })
+
+  it('returns the same state when no tab shows a deleted note', () => {
+    const state = openNoteInWorkspace(createNoteWorkspaceState(ids('tab-1')), note('note-1'))
+
+    expect(resetWorkspaceTabsForNotes(state, ['other-note'])).toBe(state)
+    expect(resetWorkspaceTabsForNotes(state, [])).toBe(state)
+    expect(resetWorkspaceTabsForNotes(state, [''])).toBe(state)
   })
 
   it('keeps one blank active tab when the last tab closes', () => {

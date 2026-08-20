@@ -11,8 +11,8 @@ description: Break down work into actionable tasks and estimate timeline
 - [x] M1: Shared tab model, safe persistence, and focused unit tests.
 - [x] M2: Web controller integration and editor/reader session preservation.
 - [x] M3: Desktop and mobile web tab presentations plus all open-note paths.
-- [ ] M4: Native mobile presentation using the shared model semantics.
-- [ ] M5: Full verification, documentation updates, and review.
+- [ ] M4: Native mobile presentation using the shared model semantics. *(deferred follow-up; `ui/mobile` intentionally unchanged in this branch)*
+- [x] M5: Full verification, documentation updates, and review.
 
 ## Task Breakdown
 
@@ -47,7 +47,7 @@ description: Break down work into actionable tasks and estimate timeline
 - [x] T5.1: Update implementation/testing/deployment/monitoring docs with actual commands and evidence.
 - [x] T5.2: Run focused unit/integration tests, production type-check, ESLint, and mobile checks independently.
 - [x] T5.3: Run the project Allure agent-mode focused tests and inspect results/evidence.
-- [ ] T5.4: Review diff/status for unrelated files and perform final code review.
+- [x] T5.4: Review diff/status for unrelated files and perform final code review.
 
 ## Dependencies
 
@@ -92,3 +92,10 @@ These are engineering estimates only; autosave/editor lifecycle and native navig
 
 - T1.1 — done (2026-08-01): pure workspace model and 9 focused Jest tests. Allure agent output `C:\Users\DenysKoreiba\AppData\Local\Temp\allure-agent-QVm6RR`; 9/9 passed, expectations matched, no findings.
 - T1.2/T1.3 — done (2026-08-01): web storage adapter, hook, and combined 13-test model/storage run. Allure agent output `C:\Users\DenysKoreiba\AppData\Local\Temp\allure-agent-Rc7Bph`; 13/13 passed, expectations matched, no findings.
+- T5.4 — done (2026-08-20): final code review found and fixed four issues:
+  1. Scroll/typing wrote the full workspace to state and `sessionStorage` on every event; session updates are now debounced (`useDebouncedSessionCallback`, 250 ms) with capture-safe flush/cancel semantics.
+  2. A failed autosave flush made every navigation wrapper reject with unhandled promise rejections; `flushAndCaptureActiveTab` now returns a success flag and transitions abort explicitly.
+  3. Deleting a note (single or bulk) left it alive in other workspace tabs where typing could re-create it, and bulk delete blanked the active tab even when its note survived; `resetWorkspaceTabsForNotes` now resets exactly the affected tabs.
+  4. Entering edit mode wiped a tab's dirty/error save marker without saving; the transition now changes only the mode.
+  Codacy findings (optional chains, `void` operator) resolved; Jest/ESLint configs now ignore in-repo agent worktrees under `.claude/worktrees/`.
+- Native mobile (M4) remains a separately scoped follow-up: expose the shared reducer through the native store/adapter, route `useOpenNote` and note routes through it, and add a native session UI. Desktop Playwright E2E flows are a follow-up in the `koreyba/EverFreeNote-e2e` repository.

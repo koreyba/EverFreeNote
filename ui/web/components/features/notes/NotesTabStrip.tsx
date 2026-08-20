@@ -38,6 +38,13 @@ function getTabLabel(tab: NoteWorkspaceTab): string {
   return tab.noteId ? "Untitled note" : "New note"
 }
 
+function scrollTabIntoView(button: HTMLButtonElement) {
+  // jsdom does not implement scrollIntoView, so guard explicitly.
+  if (typeof button.scrollIntoView === "function") {
+    button.scrollIntoView({ block: "nearest", inline: "nearest" })
+  }
+}
+
 function SaveStateIndicator({ tab }: Readonly<{ tab: NoteWorkspaceTab }>) {
   if (tab.saveState === "dirty") {
     return (
@@ -158,12 +165,12 @@ export function NotesTabStrip({
     const button = tabButtonRefs.current.get(tabId)
     if (!button) return
     button.focus()
-    button.scrollIntoView?.({ block: "nearest", inline: "nearest" })
+    scrollTabIntoView(button)
   }
 
   useEffect(() => {
     const button = tabButtonRefs.current.get(activeTabId)
-    button?.scrollIntoView?.({ block: "nearest", inline: "nearest" })
+    if (button) scrollTabIntoView(button)
   }, [activeTabId])
 
   return (

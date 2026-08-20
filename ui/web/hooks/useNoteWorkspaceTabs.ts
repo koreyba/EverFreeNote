@@ -8,6 +8,7 @@ import {
   findWorkspaceTabByNoteId,
   getActiveWorkspaceTab,
   openNoteInWorkspace,
+  resetWorkspaceTabsForNotes,
   updateWorkspaceTab,
   type NoteWorkspaceTabPatch,
 } from '@core/services/noteWorkspaceTabs'
@@ -55,6 +56,10 @@ export function useNoteWorkspaceTabs() {
     setState((current) => closeWorkspaceTab(current, tabId))
   }, [])
 
+  const resetTabsForNotes = useCallback((noteIds: readonly string[]) => {
+    setState((current) => resetWorkspaceTabsForNotes(current, noteIds))
+  }, [])
+
   const activeTab = useMemo(() => getActiveWorkspaceTab(state), [state])
   const findTabByNoteId = useCallback((noteId: string | null | undefined) => (
     findWorkspaceTabByNoteId(state, noteId)
@@ -70,6 +75,7 @@ export function useNoteWorkspaceTabs() {
     openNote,
     updateTab,
     closeTab,
+    resetTabsForNotes,
     findTabByNoteId,
     canAddTab,
   }
