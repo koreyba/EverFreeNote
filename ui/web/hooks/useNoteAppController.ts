@@ -353,13 +353,28 @@ export function useNoteAppController() {
 
   const confirmDeleteNoteWithWorkspace = useCallback(async () => {
     const deletedNoteId = noteToDelete?.id ?? null
+    // The save handler clears the active tab's noteId before we run, so the
+    // tab that shows the note must be resolved before the delete.
+    const tabHoldingNote = deletedNoteId ? findTabByNoteId(deletedNoteId) : null
     const deleted = await confirmDeleteNote()
     // A deleted note must not survive in any workspace tab: a stale tab would
-    // keep rendering it and typing there would re-create the note.
+    // keep rendering it (or its draft as the tab label) and typing there
+    // would re-create the note.
     if (deleted && deletedNoteId) {
       resetTabsForNotes([deletedNoteId])
+      if (tabHoldingNote) {
+        updateTab(tabHoldingNote.id, {
+          note: null,
+          noteId: null,
+          mode: 'reading',
+          draft: { title: '', description: '', tags: '' },
+          view: { scrollTop: 0, titleSelection: undefined, editorSelection: undefined },
+          saveState: 'saved',
+          saveError: null,
+        })
+      }
     }
-  }, [confirmDeleteNote, noteToDelete, resetTabsForNotes])
+  }, [confirmDeleteNote, findTabByNoteId, noteToDelete, resetTabsForNotes, updateTab])
 
   const handleDraftChange = useCallback((draft: NoteDraftSnapshot) => {
     updateTab(activeTabId, {

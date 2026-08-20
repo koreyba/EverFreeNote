@@ -46,7 +46,7 @@ export function MobileNotesTabMenu({
   }
 
   return (
-    <div className="relative border-b border-border/60 bg-background/80 px-3 py-2 backdrop-blur md:hidden">
+    <div className="relative min-w-0 border-b border-border/60 bg-background/80 px-3 py-2 backdrop-blur md:hidden">
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium" title={activeLabel}>{activeLabel}</p>
