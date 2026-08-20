@@ -134,16 +134,21 @@ export class OfflineSyncManager {
       await this.queue.upsertQueue(compacted)
 
       const compactedIds = new Set(compacted.map((item) => item.id))
-      const discardedIds = current
-        .filter((item) => !compactedIds.has(item.id))
-        .map((item) => item.id)
-      if (discardedIds.length > 0) {
-        // Adapters implement upsert as an item-level operation, so explicitly
+      const discarded = current.filter((item) => !compactedIds.has(item.id))
+      // Item-level adapters keep superseded rows when this cleanup fails, and
+      // syncing their superseding items anyway would leave the stale rows free
+      // to replay in a later drain (after the superseding item is gone). Hold
+      // back every note touched by an unremoved superseded item; the next
+      // drain re-compacts and retries the removal.
+      const heldBackNoteIds = new Set<string>()
+      if (discarded.length > 0) {
+        // Adapters may implement upsert as an item-level operation, so explicitly
         // remove entries that compaction replaced or reduced to a no-op.
         try {
-          await this.queue.removeItems(discardedIds)
+          await this.queue.removeItems(discarded.map((item) => item.id))
         } catch (cleanupError) {
           console.warn('Failed to remove compacted queue items:', cleanupError)
+          for (const item of discarded) heldBackNoteIds.add(item.noteId)
         }
       }
 
@@ -151,7 +156,12 @@ export class OfflineSyncManager {
         const batch = await this.queue.getPendingBatch(batchSize)
         if (!batch.length) break
 
-        const hadProgress = await this.processBatch(batch, options)
+        const actionable = heldBackNoteIds.size > 0
+          ? batch.filter((item) => !heldBackNoteIds.has(item.noteId))
+          : batch
+        if (!actionable.length) break
+
+        const hadProgress = await this.processBatch(actionable, options)
         if (!hadProgress) break
 
         this.lastSyncAt = new Date().toISOString()

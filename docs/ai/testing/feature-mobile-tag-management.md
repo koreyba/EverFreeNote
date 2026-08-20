@@ -18,7 +18,7 @@ Verify that mobile Tag Management is behaviorally aligned with the web rules, re
 - `ui/mobile/tests/unit/collapsibleTabBar.test.ts` covers initial visible, downward hide threshold, upward reveal, direction reversal, and top reset.
 - `core/tests/services/tag-management-notes.test.ts` covers complete-note rename/delete semantics, merge behavior, and shared persistence of changed notes.
 - `core/tests/unit/tag-mutation-queue.test.ts` covers preservation, retry-metadata reset, and pending reset for bulk queue items.
-- `core/tests/unit/offline-sync-manager.test.ts` and `core/tests/unit/offline-sync-additional-branches.test.ts` cover removing superseded queue rows after compaction and continuing the drain when cleanup fails.
+- `core/tests/unit/offline-sync-manager.test.ts` and `core/tests/unit/offline-sync-additional-branches.test.ts` cover removing superseded queue rows after compaction; the cleanup-failure test uses item-level upsert semantics (matching the real adapters) and proves the drain continues for unaffected notes, never replays the superseded row, holds back the affected note, and recovers on the next drain.
 
 ## Component and Hook Tests
 
