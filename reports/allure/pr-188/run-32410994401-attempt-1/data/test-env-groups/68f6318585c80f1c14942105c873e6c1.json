@@ -1,0 +1,1 @@
+{"id":"68f6318585c80f1c14942105c873e6c1","fullName":"everfreenote:ui/web/tests/unit/components/chunkFocusUtils.test.ts#chunkFocusUtils falls back to native scrollIntoView when there is no scroll parent","name":"falls back to native scrollIntoView when there is no scroll parent","status":"passed","testResultsByEnv":{"default":"b2e837bf891a15e8bc5869739161ef9b"}}

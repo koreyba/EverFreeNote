@@ -1,0 +1,1 @@
+{"id":"0ec1c821e72fb97e0d97d7a6f5eb916c","fullName":"everfreenote:ui/web/tests/unit/adapters/networkStatus.test.ts#webNetworkStatus in browser environment subscribe handles multiple unsubscribe calls safely","name":"handles multiple unsubscribe calls safely","status":"passed","testResultsByEnv":{"default":"63a7de8f78d4b76a7ba8e1ae245a23ea"}}

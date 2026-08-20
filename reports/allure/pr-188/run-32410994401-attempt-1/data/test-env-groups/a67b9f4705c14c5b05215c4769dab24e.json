@@ -1,0 +1,1 @@
+{"id":"a67b9f4705c14c5b05215c4769dab24e","fullName":"everfreenote:ui/web/tests/unit/components/EditorMenuBar.test.tsx#EditorMenuBar Indent & Outdent disables outdent button when liftListItem is false","name":"disables outdent button when liftListItem is false","status":"passed","testResultsByEnv":{"default":"f85e2ec4a9ac3f248863db81e1707d0c"}}
