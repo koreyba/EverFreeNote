@@ -411,6 +411,17 @@ function EditorPane({
     return counts
   }, [allTagsQuery.data, notes])
 
+  // The editor treats its initial* props as an external snapshot and
+  // reconciles them against local typing. The live tab draft echoes every
+  // keystroke back through the controller, so it must be frozen per editor
+  // session (tab + note + mode) — otherwise the echo is acknowledged as an
+  // external refresh and the pending autosave is cancelled before it runs.
+  const sessionDraft = React.useMemo(
+    () => activeTab.draft,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- session identity only; the live draft must not retrigger
+    [activeTabId, activeTab.noteId, activeTab.mode],
+  )
+
   if (!selectedNote && !isEditing) {
     return <EmptyState />
   }
@@ -421,10 +432,10 @@ function EditorPane({
         ref={noteEditorRef}
         key={`workspace-tab-${activeTabId}`}
         noteId={selectedNote?.id}
-        initialTitle={activeTab.draft.title}
-        initialDescription={activeTab.draft.description}
-        initialTags={activeTab.draft.tags}
-        initialSession={{ draft: activeTab.draft, view: activeTab.view }}
+        initialTitle={sessionDraft.title}
+        initialDescription={sessionDraft.description}
+        initialTags={sessionDraft.tags}
+        initialSession={{ draft: sessionDraft, view: activeTab.view }}
         onDraftChange={controller.handleDraftChange}
         onViewSessionChange={controller.handleViewSessionChange}
         availableTags={availableTags}

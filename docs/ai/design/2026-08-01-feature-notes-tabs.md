@@ -173,6 +173,17 @@ preserved; only affected tabs change. This prevents a stale tab from rendering
 a deleted note or re-creating it through autosave, and bulk delete no longer
 clears the active tab when its note survived.
 
+### The editor's initial snapshot is frozen per session
+
+`NoteEditor` reconciles its `initial*` props as an external (server-backed)
+snapshot. The live tab draft echoes every keystroke back through
+`handleDraftChange`, so `NotesShell` freezes the draft passed to the editor per
+editor session (tab + note + mode). Feeding the live draft in directly makes
+the autosave reconciliation acknowledge the user's own typing as an external
+refresh and silently cancel every pending autosave — nothing is ever written
+to Supabase until a manual Save. Guarded by the `NotesShellAutoSaveEcho`
+component spec, which reproduces the echo loop with a real editor.
+
 ### Session updates are debounced
 
 Typing and scrolling notify workspace state through

@@ -99,8 +99,9 @@ Recorded Evidence).
 - `npx eslint . --max-warnings=0`: passed.
 - `npm run test:unit`: 183 suites, 1,441 tests passed — includes new coverage for `resetWorkspaceTabsForNotes`, `useDebouncedSessionCallback`, flush-failure transition abort, delete-driven tab reset, and `onNotesDeleted` bulk reporting.
 - `npm run test:integration:core`: 2 suites, 20 tests passed.
-- Focused Cypress component run (`NotesTabStrip`, `MobileLayout`, `NotesShellFtsExitSave`, `NotesShellLikeExitSave`, `NotesShellOpenInContext`, `useNoteBulkActionsDirect`): 20/20 passed in Electron.
-- Manual verification against the PR preview deployment (test-auth user): desktop tab add/replace/dedupe/switch/close, reload restore, mobile compact menu.
+- Focused Cypress component run (`NotesTabStrip`, `MobileLayout`, `NotesShellFtsExitSave`, `NotesShellLikeExitSave`, `NotesShellOpenInContext`, `NotesShellAutoSaveEcho`, `useNoteBulkActionsDirect`): 21/21 passed in Electron.
+- Manual verification against the PR preview deployment (test-auth user): desktop tab add/replace/dedupe/switch/close, draft/mode restore across switches, reload restore, mobile compact menu.
+- The manual preview pass caught an autosave-killing draft-echo defect that the suites missed (fake controllers used a no-op `handleDraftChange`): typing produced zero Supabase writes and the dirty marker never cleared. Fixed in `NotesShell` (frozen session draft) and regression-guarded by `NotesShellAutoSaveEcho.cy.tsx`, verified to fail without the fix.
 
 ## Performance Testing
 
