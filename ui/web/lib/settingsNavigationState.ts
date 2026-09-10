@@ -96,6 +96,9 @@ export function sanitizeSettingsReturnPath(path: string | null | undefined): str
   }
 
   try {
+    // A base for parsing an in-app path. It never leaves the app, so https://localhost
+    // is the right value inside the shell.
+    // eslint-disable-next-line no-restricted-syntax -- internal URL parsing base
     const baseOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://everfreenote.local'
     const parsedPath = new URL(trimmedPath, baseOrigin)
 
