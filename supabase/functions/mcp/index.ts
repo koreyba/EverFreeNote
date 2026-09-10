@@ -18,6 +18,14 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { createNotebookMcpServer } from '@core/mcp/notebookServer.ts'
 import { createSupabaseNotebookRepository } from '@core/mcp/supabaseNotebookRepository.ts'
 import {
+  groupChunksByNote,
+  mapUnavailableResponse,
+  type RagSearchChunk,
+  type SemanticSearch,
+  type SemanticSearchOutcome,
+  type SemanticSearchParams,
+} from '@core/mcp/semanticSearch.ts'
+import {
   buildAuthorizationServerIssuer,
   buildProtectedResourceMetadata,
   buildResourceMetadataUrl,
@@ -36,6 +44,10 @@ const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Access-Control-Expose-Headers': 'mcp-session-id, mcp-protocol-version, www-authenticate',
 }
+
+// Mirrors core/rag/searchSettings.ts; rag-search validates both ranges itself.
+const RAG_SEARCH_MAX_TOP_K = 100
+const RAG_SEARCH_DEFAULT_THRESHOLD = 0.55
 
 const jsonResponse = (body: unknown, status = 200, extraHeaders: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
@@ -57,6 +69,48 @@ const withCors = (response: Response): Response => {
   }
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
 }
+
+/**
+ * Semantic search delegated to the `rag-search` Edge Function of this same
+ * project. That function already owns the parts MCP must not duplicate: it
+ * loads the user's Gemini API key, decrypts it with the server-side secret,
+ * embeds the query and runs the pgvector match under RLS. Here we only forward
+ * the caller's token and translate the answer.
+ */
+const createRagSemanticSearch = (functionsOrigin: string, token: string): SemanticSearch => ({
+  async search(params: SemanticSearchParams): Promise<SemanticSearchOutcome> {
+    const response = await fetch(`${functionsOrigin}/functions/v1/rag-search`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: params.query,
+        // rag-search caps topK itself; ask for the notes we intend to report.
+        topK: Math.min(Math.max(params.limit, 1), RAG_SEARCH_MAX_TOP_K),
+        threshold: params.minSimilarity ?? RAG_SEARCH_DEFAULT_THRESHOLD,
+        ...(params.tag ? { filterTag: params.tag } : {}),
+      }),
+    })
+
+    let body: unknown = null
+    try {
+      body = await response.json()
+    } catch {
+      body = null
+    }
+
+    if (!response.ok) {
+      const unavailable = mapUnavailableResponse(response.status, body)
+      if (unavailable) return unavailable
+
+      const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
+      const message = typeof record.error === 'string' ? record.error : `rag-search returned ${response.status}`
+      throw new Error(message)
+    }
+
+    const chunks = (body as { chunks?: RagSearchChunk[] } | null)?.chunks ?? []
+    return { status: 'ok', notes: groupChunksByNote(chunks, params.limit) }
+  },
+})
 
 const handleRequest = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
@@ -118,7 +172,10 @@ const handleRequest = async (req: Request): Promise<Response> => {
   }
   const userId = data.user.id
 
-  const server = createNotebookMcpServer(createSupabaseNotebookRepository(supabase, userId))
+  const server = createNotebookMcpServer(
+    createSupabaseNotebookRepository(supabase, userId),
+    createRagSemanticSearch(supabaseUrl, token),
+  )
   // Stateless: Edge Functions are short-lived and multi-instance, so no session ids and plain JSON responses.
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

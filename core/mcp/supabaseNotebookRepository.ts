@@ -6,8 +6,11 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+import { applyTagEdit, aggregateTags, tagsUnchanged } from './tagVocabulary.ts'
 import type {
   CreateNoteInput,
+  EditNoteTagsInput,
+  TagVocabulary,
   ListNotesParams,
   ListNotesResult,
   NoteRecord,
@@ -16,6 +19,13 @@ import type {
 } from './types.ts'
 
 export const NOTE_COLUMNS = 'id, title, description, tags, created_at, updated_at'
+
+/**
+ * Upper bound on the notes scanned to build the tag vocabulary. There is no RPC
+ * for it, so one small array column is read per note; the cap keeps a runaway
+ * notebook from turning a tool call into a full table read.
+ */
+export const TAG_SCAN_NOTE_LIMIT = 5000
 
 /** Writable columns of `public.notes`. The note body lives in `description`. */
 type NoteColumns = {
@@ -60,15 +70,17 @@ export function createSupabaseNotebookRepository(supabase: SupabaseClient, userI
   }
 
   return {
-    async listNotes({ query, tag, limit, offset }: ListNotesParams): Promise<ListNotesResult> {
+    async listNotes({ query, tags, tagMatch, limit, offset }: ListNotesParams): Promise<ListNotesResult> {
       let request = notes()
         .select(NOTE_COLUMNS, { count: 'exact' })
         .eq('user_id', userId)
         .order('updated_at', { ascending: false })
         .range(offset, offset + limit - 1)
 
-      if (tag) {
-        request = request.contains('tags', [tag])
+      // Both operators are served by idx_notes_tags (GIN): @> for "all", && for "any".
+      const tagFilter = tags.filter((value) => value.trim().length > 0)
+      if (tagFilter.length > 0) {
+        request = tagMatch === 'any' ? request.overlaps('tags', tagFilter) : request.contains('tags', tagFilter)
       }
 
       const needle = query ? escapeIlikeValue(query) : ''
@@ -117,6 +129,45 @@ export function createSupabaseNotebookRepository(supabase: SupabaseClient, userI
 
       const { data, error } = await notes()
         .update(changes)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select(NOTE_COLUMNS)
+        .maybeSingle()
+
+      if (error) throw error
+      return data ? toNoteRecord(data as NoteRow) : null
+    },
+
+    async listTags(): Promise<TagVocabulary> {
+      const { data, error } = await notes()
+        .select('tags')
+        .eq('user_id', userId)
+        .not('tags', 'eq', '{}')
+        .limit(TAG_SCAN_NOTE_LIMIT)
+
+      if (error) throw error
+
+      const rows = (data ?? []) as { tags: unknown }[]
+      const tagLists = rows.map((row) => (Array.isArray(row.tags) ? row.tags.filter((tag): tag is string => typeof tag === 'string') : []))
+
+      return {
+        tags: aggregateTags(tagLists),
+        total: rows.length,
+        truncated: rows.length >= TAG_SCAN_NOTE_LIMIT,
+      }
+    },
+
+    async editNoteTags(id: string, edit: EditNoteTagsInput): Promise<NoteRecord | null> {
+      const note = await getNote(id)
+      if (!note) return null
+
+      const nextTags = applyTagEdit(note.tags, edit)
+      // Nothing to write: adding a tag that is already there, or removing one
+      // that is not, must still succeed so a retried call is harmless.
+      if (tagsUnchanged(note.tags, nextTags)) return note
+
+      const { data, error } = await notes()
+        .update({ tags: nextTags })
         .eq('id', id)
         .eq('user_id', userId)
         .select(NOTE_COLUMNS)
