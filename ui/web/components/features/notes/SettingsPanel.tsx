@@ -1,6 +1,6 @@
 "use client"
 
-import { Settings } from "lucide-react"
+import { Gear as Settings } from "@phosphor-icons/react"
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
 

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { LogOut, Plus, Search, Settings } from "lucide-react"
+import { SignOut as LogOut, Plus, MagnifyingGlass as Search, Gear as Settings } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { BrandLogo } from "@/components/BrandLogo"
@@ -200,6 +200,7 @@ export function Sidebar({
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
+              data-cy="sign-out-button"
               aria-label="Sign out"
             >
               <LogOut className="w-4 h-4" />

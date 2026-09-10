@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from 'react'
-import { MoreHorizontal, Share2, Trash2 } from 'lucide-react'
+import { DotsThree as MoreHorizontal, ShareNetwork as Share2, Trash as Trash2 } from "@phosphor-icons/react"
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -45,7 +45,7 @@ export function MoreActionsMenu({
     <>
       <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen} modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" aria-label="More actions">
+          <Button variant="outline" size="icon" data-cy="note-more-button" aria-label="More actions">
             <MoreHorizontal className="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>

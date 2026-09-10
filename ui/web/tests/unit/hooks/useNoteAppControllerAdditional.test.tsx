@@ -3,6 +3,13 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import type { NoteViewModel, SearchResult } from '@core/types/domain'
+import {
+  addWorkspaceTab,
+  createNoteWorkspaceState,
+  MAX_NOTE_WORKSPACE_TABS,
+  serializeNoteWorkspaceState,
+} from '@core/services/noteWorkspaceTabs'
+import { NOTE_WORKSPACE_STORAGE_KEY } from '@ui/web/lib/noteWorkspaceStorage'
 import { toast } from 'sonner'
 
 let mockSelectedNote: NoteViewModel | null = null
@@ -11,6 +18,7 @@ let mockIsOffline = false
 let mockOfflineOverlay: Array<{ id: string; status: string }> = []
 let mockNotes: NoteViewModel[] = []
 let mockResolvedSearchResult: NoteViewModel | null = null
+let mockNoteToDelete: NoteViewModel | null = null
 
 const mockGetNoteStatus = jest.fn()
 const mockGetNote = jest.fn()
@@ -25,10 +33,14 @@ const mockOnTagClick = jest.fn()
 const mockHandleSearch = jest.fn()
 const mockClearTagFilter = jest.fn()
 const mockResetFtsResults = jest.fn()
+const mockHandleAutoSave = jest.fn()
+const mockHandleSaveNote = jest.fn()
+const mockHandleReadNote = jest.fn()
 const mockClearActiveSettingsNoteReturnPath = jest.fn()
 const mockResolveSearchResult = jest.fn(() => mockResolvedSearchResult)
 const mockUpdateNoteMutation = jest.fn()
 const mockPersistOfflineNoteUpdates = jest.fn().mockResolvedValue(undefined)
+const mockConfirmDeleteNote = jest.fn()
 
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn() } }))
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
@@ -71,7 +83,7 @@ jest.mock('@ui/web/hooks/useNoteSelection', () => ({
     setIsEditing: mockSetIsEditing,
     deleteDialogOpen: false,
     setDeleteDialogOpen: jest.fn(),
-    noteToDelete: null,
+    noteToDelete: mockNoteToDelete,
     setNoteToDelete: jest.fn(),
     selectedNoteIds: new Set<string>(),
     selectionMode: false,
@@ -139,10 +151,10 @@ jest.mock('@ui/web/hooks/useNoteSaveHandlers', () => ({
   useNoteSaveHandlers: () => ({
     saving: false,
     autoSaving: false,
-    handleAutoSave: jest.fn(),
-    handleSaveNote: jest.fn(),
-    handleReadNote: jest.fn(),
-    confirmDeleteNote: jest.fn(),
+    handleAutoSave: mockHandleAutoSave,
+    handleSaveNote: mockHandleSaveNote,
+    handleReadNote: mockHandleReadNote,
+    confirmDeleteNote: mockConfirmDeleteNote,
     handleRemoveTagFromNote: jest.fn(),
     persistOfflineNoteUpdates: mockPersistOfflineNoteUpdates,
   }),
@@ -217,12 +229,18 @@ function setup() {
 describe('useNoteAppController additional observable behavior', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    window.sessionStorage.clear()
     mockSelectedNote = null
     mockIsEditing = true
     mockIsOffline = false
     mockOfflineOverlay = []
     mockNotes = []
     mockResolvedSearchResult = null
+    mockNoteToDelete = null
+    mockHandleAutoSave.mockReset().mockResolvedValue(undefined)
+    mockHandleSaveNote.mockReset().mockResolvedValue(undefined)
+    mockHandleReadNote.mockReset().mockResolvedValue(undefined)
+    mockConfirmDeleteNote.mockReset().mockResolvedValue(true)
     mockUpdateNoteMutation.mockReset()
     mockUpdateNoteMutation.mockResolvedValue(undefined)
   })
@@ -248,8 +266,8 @@ describe('useNoteAppController additional observable behavior', () => {
 
     const snapshot = await act(async () => result.current.captureSettingsReturnState())
     expect(snapshot).toEqual({
-      selectedNoteId: note.id,
-      selectedNote: note,
+      selectedNoteId: null,
+      selectedNote: null,
       isEditing: true,
       isSearchPanelOpen: true,
       searchQuery: 'initial search',
@@ -257,6 +275,132 @@ describe('useNoteAppController additional observable behavior', () => {
     })
     expect(flushPendingSave).toHaveBeenCalledTimes(2)
     window.history.pushState({}, '', '/')
+  })
+
+  it('captures the editor selection before switching to a new workspace tab', async () => {
+    const { result } = setup()
+
+    const flushPendingSave = jest.fn().mockResolvedValue(undefined)
+    const captureSession = jest.fn(() => ({
+      draft: { title: 'Draft', description: '<p>Body</p>', tags: '' },
+      view: { scrollTop: 12, editorSelection: { from: 4, to: 9 } },
+    }))
+    const editorRef = { current: { flushPendingSave, captureSession } }
+    act(() => result.current.registerNoteEditorRef(editorRef as never))
+
+    await act(async () => {
+      await result.current.addTab()
+    })
+
+    expect(captureSession).toHaveBeenCalledTimes(1)
+    expect(flushPendingSave).toHaveBeenCalledTimes(1)
+    expect(result.current.tabs[0].view).toEqual({
+      scrollTop: 12,
+      editorSelection: { from: 4, to: 9 },
+    })
+  })
+
+  it('returns to the note list after creating a blank tab so the active slot can receive a note', async () => {
+    const { result } = setup()
+
+    await act(async () => {
+      await result.current.addTab()
+    })
+
+    expect(result.current.activeTab.note).toBeNull()
+    expect(result.current.notePaneVisible).toBe(false)
+  })
+
+  it('returns to the note list when closing the final blank tab replacement', async () => {
+    const { result } = setup()
+    const activeTabId = result.current.activeTabId
+
+    await act(async () => {
+      await result.current.closeTab(activeTabId)
+    })
+
+    expect(result.current.activeTab.note).toBeNull()
+    expect(result.current.notePaneVisible).toBe(false)
+  })
+
+  it('asks before discarding a tab whose save failed, and only closes on confirm', async () => {
+    const { result } = setup()
+    const tabId = result.current.activeTabId
+
+    // Reach the error state the way the app does: an autosave that rejects.
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Network unavailable'))
+    await act(async () => {
+      await expect(
+        result.current.handleAutoSave({ title: '', description: '<p>x</p>', tags: '' }),
+      ).rejects.toThrow('Network unavailable')
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+
+    await act(async () => {
+      await result.current.closeTab(tabId)
+    })
+
+    // Still open, and the shell now has something to render a dialog from.
+    expect(result.current.tabPendingClose).toEqual({ tabId, label: 'this tab' })
+    expect(result.current.tabs.map((tab) => tab.id)).toContain(tabId)
+
+    act(() => {
+      result.current.cancelCloseTab()
+    })
+    expect(result.current.tabPendingClose).toBeNull()
+    expect(result.current.tabs.map((tab) => tab.id)).toContain(tabId)
+
+    await act(async () => {
+      await result.current.closeTab(tabId)
+    })
+    await act(async () => {
+      await result.current.confirmCloseTab()
+    })
+
+    expect(result.current.tabPendingClose).toBeNull()
+    expect(result.current.tabs.map((tab) => tab.id)).not.toContain(tabId)
+  })
+
+  it('names the failed tab from its draft when the note never reached the server', async () => {
+    const { result } = setup()
+    const tabId = result.current.activeTabId
+
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Network unavailable'))
+    await act(async () => {
+      await expect(
+        result.current.handleAutoSave({ title: 'Unsent note', description: '<p>x</p>', tags: '' }),
+      ).rejects.toThrow('Network unavailable')
+    })
+
+    await act(async () => {
+      await result.current.closeTab(tabId)
+    })
+
+    expect(result.current.tabPendingClose?.label).toBe('Unsent note')
+  })
+
+  it('blocks controller Add tab before flushing when the shared workspace limit is reached', async () => {
+    let nextId = 0
+    // Stamped with the signed-in account: workspace state from anyone else is
+    // deliberately discarded on hydration.
+    let state = createNoteWorkspaceState(() => `tab-${nextId++}`, 'user-1')
+    while (state.tabs.length < MAX_NOTE_WORKSPACE_TABS) {
+      state = addWorkspaceTab(state, () => `tab-${nextId++}`)
+    }
+    window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(state))
+
+    const { result } = setup()
+    await waitFor(() => expect(result.current.tabs).toHaveLength(MAX_NOTE_WORKSPACE_TABS))
+    expect(result.current.canAddTab).toBe(false)
+
+    const flushPendingSave = jest.fn().mockResolvedValue(undefined)
+    act(() => result.current.registerNoteEditorRef({ current: { flushPendingSave } } as never))
+    await act(async () => {
+      await result.current.addTab()
+    })
+
+    expect(flushPendingSave).not.toHaveBeenCalled()
+    expect(result.current.tabs).toHaveLength(MAX_NOTE_WORKSPACE_TABS)
   })
 
   it('selects the remote note after flushing, but exits editing when selecting the already selected note', async () => {
@@ -275,7 +419,7 @@ describe('useNoteAppController additional observable behavior', () => {
 
     jest.clearAllMocks()
     await act(async () => {
-      await result.current.handleSelectNote(current)
+      await result.current.handleSelectNote(remote)
     })
     expect(mockGetNoteStatus).not.toHaveBeenCalled()
     expect(mockSetIsEditing).toHaveBeenCalledWith(false)
@@ -300,6 +444,44 @@ describe('useNoteAppController additional observable behavior', () => {
     })
     expect(mockResolveSearchResult).toHaveBeenCalledWith({ id: 'result' })
     expect(mockHandleSearchResultClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'result' }))
+  })
+
+  it('tracks manual save success and keeps save failures visible on the active tab', async () => {
+    const data = { title: 'Saved title', description: 'Saved body', tags: 'one, two' }
+    const { result } = setup()
+
+    await act(async () => {
+      await result.current.handleSaveNote(data)
+    })
+    expect(result.current.activeTab.draft).toEqual(data)
+    expect(result.current.activeTab.saveState).toBe('saved')
+    expect(result.current.activeTab.saveError).toBeNull()
+
+    mockHandleSaveNote.mockRejectedValueOnce(new Error('network failure'))
+    await act(async () => {
+      await result.current.handleSaveNote(data)
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    expect(result.current.activeTab.saveError).toBe('network failure')
+  })
+
+  it('marks auto-save and Read failures on the active tab', async () => {
+    const data = { title: 'Draft', description: 'Body', tags: '' }
+    const { result } = setup()
+
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('auto-save failure'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ ...data, noteId: 'note-1' })).rejects.toThrow('auto-save failure')
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    expect(result.current.activeTab.saveError).toBe('auto-save failure')
+
+    mockHandleReadNote.mockRejectedValueOnce(new Error('read-save failure'))
+    await act(async () => {
+      await result.current.handleReadNote(data)
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    expect(result.current.activeTab.saveError).toBe('read-save failure')
   })
 
   it('ignores a stale select request when a newer request completes first', async () => {
@@ -338,6 +520,75 @@ describe('useNoteAppController additional observable behavior', () => {
 
     expect(mockHandleSelectNote).toHaveBeenCalledTimes(1)
     expect(mockHandleSelectNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'second' }))
+  })
+
+  it('aborts a note selection when flushing the outgoing editor fails', async () => {
+    const target = makeNote({ id: 'target' })
+    mockGetNoteStatus.mockResolvedValue({ status: 'found', note: target })
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    const flushPendingSave = jest.fn().mockRejectedValue(new Error('autosave failed'))
+    act(() => result.current.registerNoteEditorRef({ current: { flushPendingSave } } as never))
+
+    await act(async () => {
+      await result.current.handleSelectNote(target)
+    })
+
+    expect(flushPendingSave).toHaveBeenCalledTimes(1)
+    expect(mockGetNoteStatus).not.toHaveBeenCalled()
+    expect(mockHandleSelectNote).not.toHaveBeenCalled()
+    expect(result.current.activeTab.noteId).toBeNull()
+  })
+
+  it('resets every workspace tab that shows a deleted note', async () => {
+    const first = makeNote({ id: 'first', title: 'First' })
+    const second = makeNote({ id: 'second', title: 'Second' })
+    mockNoteToDelete = first
+    mockGetNoteStatus.mockImplementation((id: string) => Promise.resolve({
+      status: 'found',
+      note: id === 'first' ? first : second,
+    }))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    await act(async () => {
+      await result.current.handleSelectNote(first)
+    })
+    await act(async () => {
+      await result.current.addTab()
+    })
+    await act(async () => {
+      await result.current.handleSelectNote(second)
+    })
+    expect(result.current.tabs.map((tab) => tab.noteId)).toEqual(['first', 'second'])
+
+    await act(async () => {
+      await result.current.confirmDeleteNote()
+    })
+
+    expect(mockConfirmDeleteNote).toHaveBeenCalledTimes(1)
+    expect(result.current.tabs).toHaveLength(2)
+    expect(result.current.tabs.map((tab) => tab.noteId)).toEqual([null, 'second'])
+    expect(result.current.tabs[0].draft).toEqual({ title: '', description: '', tags: '' })
+  })
+
+  it('keeps workspace tabs untouched when the delete fails', async () => {
+    const first = makeNote({ id: 'first', title: 'First' })
+    mockNoteToDelete = first
+    mockConfirmDeleteNote.mockResolvedValue(false)
+    mockGetNoteStatus.mockResolvedValue({ status: 'found', note: first })
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    await act(async () => {
+      await result.current.handleSelectNote(first)
+    })
+    await act(async () => {
+      await result.current.confirmDeleteNote()
+    })
+
+    expect(result.current.tabs.map((tab) => tab.noteId)).toEqual(['first'])
   })
 
   it('registers, resets, and loads AI pagination controls', () => {

@@ -21,6 +21,8 @@ import { scrollEditorToChunk } from "./chunkFocusUtils"
 
 export type RichTextEditorHandle = {
   getHTML: () => string
+  getSelection?: () => { from: number; to: number } | undefined
+  setSelection?: (selection: { from: number; to: number }) => void
   setContent: (html: string) => void
   runCommand: (command: string, ...args: unknown[]) => void
   /** Scroll to and highlight the given plain-text chunk range.
@@ -261,6 +263,18 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     // Expose methods via ref
     React.useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() ?? "",
+      getSelection: () => {
+        if (!editor) return undefined
+        const { from, to } = editor.state.selection
+        return { from, to }
+      },
+      setSelection: ({ from, to }: { from: number; to: number }) => {
+        if (!editor) return
+        const maxPosition = editor.state.doc.content.size
+        const safeFrom = Math.min(Math.max(Math.trunc(from), 1), maxPosition)
+        const safeTo = Math.min(Math.max(Math.trunc(to), safeFrom), maxPosition)
+        editor.commands.setTextSelection({ from: safeFrom, to: safeTo })
+      },
       setContent: (html: string) => {
         if (!editor) return
         const document = createDocument(html, editor.schema, editor.options.parseOptions, {

@@ -4,9 +4,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { NoteList } from '@/components/features/notes/NoteList'
 import type { Note, SearchResult } from '@core/types/domain'
 
-jest.mock('lucide-react', () => ({
-  Loader2: ({ className }: { className?: string }) => <span data-testid="loader" className={className} />,
-  Zap: () => <span data-testid="zap" />,
+jest.mock('@phosphor-icons/react', () => ({
+  CircleNotch: ({ className }: { className?: string }) => <span data-testid="loader" className={className} />,
+  Lightning: () => <span data-testid="zap" />,
 }))
 
 jest.mock('@/components/NoteListSkeleton', () => ({

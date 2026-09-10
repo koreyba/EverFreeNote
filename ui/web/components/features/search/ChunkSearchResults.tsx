@@ -1,6 +1,6 @@
 import { ChunkSearchItem } from './ChunkSearchItem'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { CircleNotch as Loader2 } from "@phosphor-icons/react"
 import type { RagChunk } from '@core/types/ragSearch'
 
 interface ChunkSearchResultsProps {

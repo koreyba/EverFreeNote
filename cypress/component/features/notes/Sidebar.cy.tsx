@@ -141,7 +141,7 @@ describe('Sidebar Component', () => {
     cy.get('button[aria-label="Open settings page"]').click()
     cy.get('@onOpenSettings').should('have.been.calledOnce')
 
-    cy.get('button').find('.lucide-log-out').parent().click()
+    cy.get('[data-cy="sign-out-button"]').click()
     cy.get('@onSignOut').should('have.been.calledOnce')
   })
 

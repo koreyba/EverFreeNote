@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { Loader2 } from "lucide-react"
+import { CircleNotch as Loader2 } from "@phosphor-icons/react"
 
 import { PublicPageHeader } from "@/components/features/public/PublicPageHeader"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

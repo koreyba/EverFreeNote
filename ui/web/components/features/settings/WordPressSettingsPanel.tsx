@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { WarningCircle as AlertCircle, CheckCircle as CheckCircle2 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"

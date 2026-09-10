@@ -5,7 +5,7 @@ import type { CSSProperties } from "react"
 import * as React from "react"
 import AutoSizer from "react-virtualized-auto-sizer"
 import * as ReactWindow from "react-window"
-import { Loader2 } from "lucide-react"
+import { CircleNotch as Loader2 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import type { AIIndexMutationResult, AIIndexNoteRow as AIIndexNoteRowData } from "@core/types/aiIndex"

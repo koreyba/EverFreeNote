@@ -12,6 +12,12 @@ const nextConfig = {
   },
   trailingSlash: true,
   turbopack: {},
+  experimental: {
+    // @phosphor-icons/react is a barrel of ~1500 icons. Without this, a static
+    // export pulls the whole set into the client bundle instead of the few
+    // dozen the app renders.
+    optimizePackageImports: ['@phosphor-icons/react'],
+  },
   allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS ? process.env.ALLOWED_DEV_ORIGINS.split(',') : ['192.168.0.15', '192.168.0.15:3000'], // NOSONAR
   webpack(config, { dev }) {
     if (dev) {

@@ -69,7 +69,7 @@ const Harness = ({ selectedIds, isOffline = false, deleteShouldRejectIds = [] }:
   const setPendingCount = React.useMemo(() => cy.stub().as('setPendingCount'), [])
   const exitSelectionMode = React.useMemo(() => cy.stub().as('exitSelectionMode'), [])
   const setBulkDeleting = React.useMemo(() => cy.stub().as('setBulkDeleting'), [])
-  const setSelectedNote = React.useMemo(() => cy.stub().as('setSelectedNote'), [])
+  const onNotesDeleted = React.useMemo(() => cy.stub().as('onNotesDeleted'), [])
   const selectAllVisibleCallback = React.useMemo(() => cy.stub().as('selectAllVisibleCallback'), [])
 
   const actions = useNoteBulkActions({
@@ -82,7 +82,7 @@ const Harness = ({ selectedIds, isOffline = false, deleteShouldRejectIds = [] }:
     deleteNoteMutation: deleteNoteMutation as never,
     exitSelectionMode: exitSelectionMode as never,
     setBulkDeleting: setBulkDeleting as never,
-    setSelectedNote: setSelectedNote as never,
+    onNotesDeleted: onNotesDeleted as never,
     queryClient,
     notes: sampleNotes,
     selectAllVisibleCallback,
@@ -145,7 +145,7 @@ describe('useNoteBulkActions direct', () => {
     cy.get('@mutateAsync').should('have.callCount', 2)
     cy.get('@invalidateQueries').should('have.been.calledWithMatch', { queryKey: ['notes'] })
     cy.get('@invalidateQueries').should('have.been.calledWithMatch', { queryKey: ['aiSearch'] })
-    cy.get('@setSelectedNote').should('have.been.calledWith', null)
+    cy.get('@onNotesDeleted').should('have.been.calledWith', ['note-1'])
   })
 
   it('queues offline delete path and marks pending count', () => {

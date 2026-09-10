@@ -6,6 +6,8 @@ import type { useNoteSelection } from './useNoteSelection'
 import type { useDeleteNote } from './useNotesMutations'
 import type { QueryClient } from '@tanstack/react-query'
 
+export type NotesDeletedHandler = (noteIds: string[]) => void
+
 type UseNoteBulkActionsParams = {
   selectedNoteIds: Set<string>
   isOffline: boolean
@@ -16,7 +18,8 @@ type UseNoteBulkActionsParams = {
   deleteNoteMutation: Pick<ReturnType<typeof useDeleteNote>, 'mutateAsync'>
   exitSelectionMode: ReturnType<typeof useNoteSelection>['exitSelectionMode']
   setBulkDeleting: ReturnType<typeof useNoteSelection>['setBulkDeleting']
-  setSelectedNote: ReturnType<typeof useNoteSelection>['setSelectedNote']
+  /** Receives the IDs that were actually deleted (or queued for deletion offline). */
+  onNotesDeleted: NotesDeletedHandler
   queryClient: QueryClient
   notes: NoteViewModel[]
   selectAllVisibleCallback: (source: NoteViewModel[]) => void
@@ -41,7 +44,7 @@ export function useNoteBulkActions({
   deleteNoteMutation,
   exitSelectionMode,
   setBulkDeleting,
-  setSelectedNote,
+  onNotesDeleted,
   queryClient,
   notes,
   selectAllVisibleCallback,
@@ -57,6 +60,7 @@ export function useNoteBulkActions({
 
     try {
       let failed = 0
+      let deletedIds = ids
       if (isOffline) {
         await enqueueBatchAndDrainIfOnline(
           ids.map((id) => ({
@@ -91,6 +95,7 @@ export function useNoteBulkActions({
           ids.map((id) => deleteNoteMutation.mutateAsync({ id, silent: true }))
         )
         failed = results.filter((r) => r.status === 'rejected').length
+        deletedIds = ids.filter((_, index) => results[index].status === 'fulfilled')
         if (failed > 0) {
           toast.error(`Failed to delete ${failed} notes`)
         } else {
@@ -102,7 +107,7 @@ export function useNoteBulkActions({
         queryClient.invalidateQueries({ queryKey: ['notes'] }),
         queryClient.invalidateQueries({ queryKey: ['aiSearch'] }),
       ])
-      setSelectedNote(null)
+      onNotesDeleted(deletedIds)
 
       return { total: ids.length, failed, queuedOffline: isOffline }
     } catch (error) {

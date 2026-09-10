@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Tag as TagIcon, X } from "lucide-react"
+import { MagnifyingGlass as Search, Tag as TagIcon, X } from "@phosphor-icons/react"
 import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { getTagsWithCounts, groupTagsAlphabetically } from "@core/services/tags"

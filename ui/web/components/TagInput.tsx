@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, X, Tag } from "lucide-react"
+import { Plus, X, Tag } from "@phosphor-icons/react"
 import { Badge } from "@/components/ui/badge"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
 import { cn } from "@ui/web/lib/utils"
@@ -197,7 +197,7 @@ export function TagInput({
           "flex items-center min-h-[44px] px-3 bg-muted/30 border border-transparent rounded-2xl transition-all duration-200 cursor-text bg-background border-primary/30 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] ring-4 ring-primary/5"
         )}
       >
-        <div className="flex items-center gap-1.5 text-xs font-bold text-foreground/70 uppercase tracking-wider shrink-0 mr-2 select-none">
+        <div data-cy="tag-input-label" className="flex items-center gap-1.5 text-xs font-bold text-foreground/70 uppercase tracking-wider shrink-0 mr-2 select-none">
           <Tag className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Tags</span>
         </div>

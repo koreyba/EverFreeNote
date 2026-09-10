@@ -1,4 +1,4 @@
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight } from "@phosphor-icons/react"
 import { ChunkSnippet } from './ChunkSnippet'
 import { cn } from '@ui/web/lib/utils'
 import { getRagChunkBodyLength } from '@core/rag/chunkTemplate'

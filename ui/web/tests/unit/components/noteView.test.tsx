@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NoteView } from '@ui/web/components/features/notes/NoteView'
 import { toast } from 'sonner'
 import { copyNotePayloadToClipboard } from '@ui/web/lib/noteClipboard'
@@ -33,7 +33,14 @@ jest.mock('@ui/web/lib/noteClipboard', () => ({
 
 const mockCopy = copyNotePayloadToClipboard as jest.MockedFunction<typeof copyNotePayloadToClipboard>
 
-function renderNoteView(overrides: Partial<{ description: string; content: string }> = {}) {
+type NoteViewTestOverrides = Partial<{
+  description: string
+  content: string
+  initialScrollTop: number
+  onViewSessionChange: (view: { scrollTop?: number }) => void
+}>
+
+function renderNoteView(overrides: NoteViewTestOverrides = {}) {
   return render(
     <NoteView
       note={{
@@ -49,6 +56,8 @@ function renderNoteView(overrides: Partial<{ description: string; content: strin
       onDelete={jest.fn()}
       onTagClick={jest.fn()}
       onRemoveTag={jest.fn()}
+      initialScrollTop={overrides.initialScrollTop}
+      onViewSessionChange={overrides.onViewSessionChange}
     />,
   )
 }
@@ -98,5 +107,51 @@ describe('NoteView copy action', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Failed to copy note')
     })
+  })
+
+  it('restores the saved scroll position and reports later scrolling after the debounce delay', () => {
+    jest.useFakeTimers()
+    const requestAnimationFrame = jest.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0)
+      return 1
+    })
+    try {
+      const onViewSessionChange = jest.fn()
+      const { container } = renderNoteView({ initialScrollTop: 48, onViewSessionChange })
+      const content = container.querySelector('.overflow-y-auto') as HTMLDivElement
+
+      expect(requestAnimationFrame).toHaveBeenCalled()
+      expect(content.scrollTop).toBe(48)
+
+      fireEvent.scroll(content, { target: { scrollTop: 60 } })
+      fireEvent.scroll(content, { target: { scrollTop: 93 } })
+      // Scroll updates are debounced: nothing is reported per event.
+      expect(onViewSessionChange).not.toHaveBeenCalled()
+
+      act(() => {
+        jest.advanceTimersByTime(250)
+      })
+      expect(onViewSessionChange).toHaveBeenCalledTimes(1)
+      expect(onViewSessionChange).toHaveBeenCalledWith({ scrollTop: 93 })
+    } finally {
+      requestAnimationFrame.mockRestore()
+      jest.useRealTimers()
+    }
+  })
+
+  it('flushes the latest scroll position when the reading view unmounts', () => {
+    jest.useFakeTimers()
+    try {
+      const onViewSessionChange = jest.fn()
+      const { container, unmount } = renderNoteView({ onViewSessionChange })
+      const content = container.querySelector('.overflow-y-auto') as HTMLDivElement
+
+      fireEvent.scroll(content, { target: { scrollTop: 77 } })
+      unmount()
+
+      expect(onViewSessionChange).toHaveBeenCalledWith({ scrollTop: 77 })
+    } finally {
+      jest.useRealTimers()
+    }
   })
 })
