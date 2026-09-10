@@ -325,7 +325,9 @@ describe('useNoteAppController additional observable behavior', () => {
 
   it('blocks controller Add tab before flushing when the shared workspace limit is reached', async () => {
     let nextId = 0
-    let state = createNoteWorkspaceState(() => `tab-${nextId++}`)
+    // Stamped with the signed-in account: workspace state from anyone else is
+    // deliberately discarded on hydration.
+    let state = createNoteWorkspaceState(() => `tab-${nextId++}`, 'user-1')
     while (state.tabs.length < MAX_NOTE_WORKSPACE_TABS) {
       state = addWorkspaceTab(state, () => `tab-${nextId++}`)
     }

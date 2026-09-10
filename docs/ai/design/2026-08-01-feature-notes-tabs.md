@@ -60,6 +60,7 @@ type NoteWorkspaceTab = {
 
 type NoteWorkspaceState = {
   version: 1
+  userId: string | null
   tabs: NoteWorkspaceTab[]
   activeTabId: string
 }
@@ -75,6 +76,8 @@ The persisted JSON contains only serializable values. Runtime refs, promises, Re
 - A blank tab has `note === null` and `noteId === null`.
 - Closing an active tab applies right-neighbor-then-left-neighbor selection.
 - Invalid persisted records are discarded rather than partially applied.
+- Persisted state whose `userId` does not match the account being restored for
+  is discarded, never partially adopted.
 
 ## API Design
 
@@ -82,7 +85,7 @@ The pure reducer/service exposes deterministic operations that both web and nati
 
 ```ts
 createWorkspaceState(idFactory?): NoteWorkspaceState
-hydrateWorkspaceState(raw, idFactory?): NoteWorkspaceState
+hydrateWorkspaceState(raw, idFactory?, userId?): NoteWorkspaceState
 addWorkspaceTab(state, idFactory?): NoteWorkspaceState
 activateWorkspaceTab(state, tabId): NoteWorkspaceState
 openNoteInWorkspace(state, note, tabId?): NoteWorkspaceState
@@ -160,6 +163,27 @@ menu footer. The menu is an absolutely positioned popover: in flow it pushed
 the note down by its own height (over 500px with a full tab list), leaving a
 sliver of the note visible. It scrolls its active row into view on open and
 dismisses on outside pointer-down and on Escape.
+
+### Workspace state is scoped to the signed-in account
+
+Tabs persist in per-browser-tab `sessionStorage`, and every tab caches the note
+it shows — title, tags and body. That storage outlives a sign-out, so without a
+guard the next account to sign in inside the same browser tab restores the
+previous account's open notes and can read their contents.
+
+Two layers close this:
+
+- `NoteWorkspaceState` carries a `userId`. `hydrateNoteWorkspaceState` compares
+  it against the account being restored for and starts a fresh workspace on any
+  mismatch. State with no stamp at all (written before this guard) is treated
+  as foreign. This covers every path that skips a clean sign-out — a crash, an
+  expired token, a session swapped in another way.
+- `handleSignOut` calls `clearNoteWorkspaceState()`, so the cached notes are
+  gone at sign-out rather than lingering until the next sign-in.
+
+The hook re-hydrates whenever the user id changes and only writes once the
+in-memory state belongs to the account currently signed in, so the outgoing
+account's tabs are never rewritten under the incoming one.
 
 ### Active-slot replacement is the default
 

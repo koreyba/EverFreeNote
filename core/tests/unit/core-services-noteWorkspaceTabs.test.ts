@@ -203,4 +203,43 @@ describe('note workspace tab state', () => {
     expect(updateWorkspaceTab(state, 'missing', { mode: 'reading' })).toBe(state)
     expect(findWorkspaceTabByNoteId(state, null)).toBeNull()
   })
+
+  it('refuses to restore a workspace stamped with another account', () => {
+    const owned = note('note-1')
+    const state = openNoteInWorkspace(createNoteWorkspaceState(ids('owner'), 'user-1'), owned)
+    const serialized = serializeNoteWorkspaceState(state)
+
+    const sameUser = hydrateNoteWorkspaceState(serialized, ids('same'), 'user-1')
+    expect(sameUser.userId).toBe('user-1')
+    expect(sameUser.tabs[0].noteId).toBe('note-1')
+
+    const otherUser = hydrateNoteWorkspaceState(serialized, ids('other'), 'user-2')
+    expect(otherUser.userId).toBe('user-2')
+    expect(otherUser.tabs).toHaveLength(1)
+    expect(otherUser.tabs[0].noteId).toBeNull()
+    expect(otherUser.tabs[0].note).toBeNull()
+  })
+
+  it('discards workspace state written before the account stamp existed', () => {
+    const owned = note('note-1')
+    const legacy = {
+      version: 1,
+      tabs: [{
+        id: 'tab-legacy',
+        noteId: owned.id,
+        note: owned,
+        mode: 'reading',
+        draft: { title: owned.title, description: '', tags: '' },
+        view: { scrollTop: 0 },
+        saveState: 'saved',
+        saveError: null,
+      }],
+      activeTabId: 'tab-legacy',
+    }
+
+    const hydrated = hydrateNoteWorkspaceState(legacy, ids('legacy'), 'user-1')
+
+    expect(hydrated.tabs[0].noteId).toBeNull()
+    expect(hydrated.tabs[0].note).toBeNull()
+  })
 })

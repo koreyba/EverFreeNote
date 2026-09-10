@@ -36,7 +36,7 @@ describe('note workspace session storage', () => {
   it('uses a blank workspace when stored JSON is invalid', () => {
     window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, '{invalid')
 
-    const state = readNoteWorkspaceState(window.sessionStorage, () => 'fallback-tab')
+    const state = readNoteWorkspaceState({ storage: window.sessionStorage, idFactory: () => 'fallback-tab' })
 
     expect(state.tabs).toHaveLength(1)
     expect(state.activeTabId).toBe('fallback-tab')
@@ -51,7 +51,7 @@ describe('note workspace session storage', () => {
     } as unknown as Storage
     const state = createNoteWorkspaceState(() => 'tab-1')
 
-    expect(readNoteWorkspaceState(throwingStorage, () => 'fallback-tab').activeTabId).toBe('fallback-tab')
+    expect(readNoteWorkspaceState({ storage: throwingStorage, idFactory: () => 'fallback-tab' }).activeTabId).toBe('fallback-tab')
     expect(writeNoteWorkspaceState(state, throwingStorage)).toBe(false)
     expect(() => clearNoteWorkspaceState(throwingStorage)).not.toThrow()
   })
@@ -64,5 +64,19 @@ describe('note workspace session storage', () => {
 
     expect(window.sessionStorage.getItem(NOTE_WORKSPACE_STORAGE_KEY)).toBeNull()
     expect(window.sessionStorage.getItem('unrelated')).toBe('keep')
+  })
+
+  it('does not restore another account\'s workspace from the shared session key', () => {
+    const previous = openNoteInWorkspace(createNoteWorkspaceState(() => 'tab-1', 'user-1'), note)
+    writeNoteWorkspaceState(previous)
+
+    const restoredForOwner = readNoteWorkspaceState({ userId: 'user-1' })
+    expect(restoredForOwner.tabs[0].noteId).toBe(note.id)
+
+    const restoredForOther = readNoteWorkspaceState({ userId: 'user-2' })
+    expect(restoredForOther.userId).toBe('user-2')
+    expect(restoredForOther.tabs).toHaveLength(1)
+    expect(restoredForOther.tabs[0].noteId).toBeNull()
+    expect(restoredForOther.tabs[0].note).toBeNull()
   })
 })

@@ -32,6 +32,13 @@ export type NoteWorkspaceTab = {
 
 export type NoteWorkspaceState = {
   version: typeof NOTE_WORKSPACE_VERSION
+  /**
+   * Account the persisted tabs belong to. Workspace state is kept in
+   * per-browser-tab storage that outlives a sign-out, and every tab caches the
+   * note it shows — body included. Without this stamp the next account to sign
+   * in inside the same browser tab adopts the previous account's open notes.
+   */
+  userId: string | null
   tabs: NoteWorkspaceTab[]
   activeTabId: string
 }
@@ -121,10 +128,14 @@ const createNoteTab = (id: string, note: NoteViewModel): NoteWorkspaceTab => ({
   saveError: null,
 })
 
-export function createNoteWorkspaceState(idFactory: NoteWorkspaceIdFactory = defaultIdFactory): NoteWorkspaceState {
+export function createNoteWorkspaceState(
+  idFactory: NoteWorkspaceIdFactory = defaultIdFactory,
+  userId: string | null = null,
+): NoteWorkspaceState {
   const tab = createEmptyTab(idFactory)
   return {
     version: NOTE_WORKSPACE_VERSION,
+    userId,
     tabs: [tab],
     activeTabId: tab.id,
   }
@@ -337,24 +348,30 @@ const normalizeTab = (
 export function hydrateNoteWorkspaceState(
   raw: unknown,
   idFactory: NoteWorkspaceIdFactory = defaultIdFactory,
+  userId: string | null = null,
 ): NoteWorkspaceState {
   let parsed: unknown = raw
   if (typeof raw === 'string') {
     if (raw.length > MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH) {
-      return createNoteWorkspaceState(idFactory)
+      return createNoteWorkspaceState(idFactory, userId)
     }
     try {
       parsed = JSON.parse(raw) as unknown
     } catch {
-      return createNoteWorkspaceState(idFactory)
+      return createNoteWorkspaceState(idFactory, userId)
     }
   }
 
-  if (!parsed || typeof parsed !== 'object') return createNoteWorkspaceState(idFactory)
+  if (!parsed || typeof parsed !== 'object') return createNoteWorkspaceState(idFactory, userId)
   const source = parsed as Record<string, unknown>
   if (source.version !== NOTE_WORKSPACE_VERSION || !Array.isArray(source.tabs)) {
-    return createNoteWorkspaceState(idFactory)
+    return createNoteWorkspaceState(idFactory, userId)
   }
+
+  // Never hand one account's cached notes to another. A stamp that is absent
+  // (state written before this guard existed) is treated as foreign too.
+  const storedUserId = typeof source.userId === 'string' ? source.userId : null
+  if (storedUserId !== userId) return createNoteWorkspaceState(idFactory, userId)
 
   const usedTabIds = new Set<string>()
   const usedNoteIds = new Set<string>()
@@ -368,10 +385,10 @@ export function hydrateNoteWorkspaceState(
       return true
     })
 
-  if (tabs.length === 0) return createNoteWorkspaceState(idFactory)
+  if (tabs.length === 0) return createNoteWorkspaceState(idFactory, userId)
   const requestedActive = typeof source.activeTabId === 'string' ? source.activeTabId : ''
   const activeTabId = tabs.some((tab) => tab.id === requestedActive) ? requestedActive : tabs[0].id
-  return { version: NOTE_WORKSPACE_VERSION, tabs, activeTabId }
+  return { version: NOTE_WORKSPACE_VERSION, userId, tabs, activeTabId }
 }
 
 export function serializeNoteWorkspaceState(state: NoteWorkspaceState): string {

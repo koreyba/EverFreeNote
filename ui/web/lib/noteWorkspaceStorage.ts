@@ -17,16 +17,28 @@ function getSessionStorage(): Storage | null {
   }
 }
 
-export function readNoteWorkspaceState(
-  storage: Storage | null = getSessionStorage(),
-  idFactory?: NoteWorkspaceIdFactory,
-): NoteWorkspaceState {
-  if (!storage) return hydrateNoteWorkspaceState(null, idFactory)
+export type ReadNoteWorkspaceStateOptions = {
+  /**
+   * Scopes the restore. State stamped with a different account — or with no
+   * stamp at all — is discarded rather than adopted, so signing in as someone
+   * else in the same browser tab never surfaces the previous account's notes.
+   */
+  userId?: string | null
+  storage?: Storage | null
+  idFactory?: NoteWorkspaceIdFactory
+}
+
+export function readNoteWorkspaceState({
+  userId = null,
+  storage = getSessionStorage(),
+  idFactory,
+}: ReadNoteWorkspaceStateOptions = {}): NoteWorkspaceState {
+  if (!storage) return hydrateNoteWorkspaceState(null, idFactory, userId)
 
   try {
-    return hydrateNoteWorkspaceState(storage.getItem(NOTE_WORKSPACE_STORAGE_KEY), idFactory)
+    return hydrateNoteWorkspaceState(storage.getItem(NOTE_WORKSPACE_STORAGE_KEY), idFactory, userId)
   } catch {
-    return hydrateNoteWorkspaceState(null, idFactory)
+    return hydrateNoteWorkspaceState(null, idFactory, userId)
   }
 }
 

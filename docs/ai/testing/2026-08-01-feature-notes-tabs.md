@@ -146,6 +146,27 @@ Known, not fixed here (pre-existing, outside this feature):
   ~12px, clipping the "more actions" button. Unchanged by this PR and fine
   from 360px up.
 
+### Account-boundary pass (2026-09-10)
+
+Found by signing in as a second test user in the same browser tab: the tab
+strip still listed the first user's notes, and their bodies were readable from
+`sessionStorage`. Workspace state had no account stamp and
+`clearNoteWorkspaceState()` was never called from app code.
+
+Verified after the fix, against the running app with two seeded users:
+
+- Signing out empties the persisted workspace (one blank tab, `userId: null`,
+  no cached note objects).
+- Signing in as the second user yields a workspace stamped with *their* id and
+  a single blank tab; none of the first user's titles or bodies appear.
+- A workspace blob stamped with another account, planted directly into
+  `sessionStorage` to simulate a sign-out that never ran, is discarded on the
+  next load instead of rendered.
+
+Regression coverage: `core-services-noteWorkspaceTabs.test.ts` (mismatched
+stamp, and legacy state with no stamp) and `noteWorkspaceStorage.test.ts`
+(shared session key not restored across accounts).
+
 ## Performance Testing
 
 - Verify switching does not mount more than one editor or trigger duplicate fetches.

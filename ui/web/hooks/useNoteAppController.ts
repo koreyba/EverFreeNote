@@ -84,7 +84,7 @@ export function useNoteAppController() {
   // The existing selection hook still owns bulk-selection/dialog state. The
   // selected note and editor mode are now derived from the active workspace tab
   // so every save/navigation consumer observes the same session.
-  const workspace = useNoteWorkspaceTabs()
+  const workspace = useNoteWorkspaceTabs(user?.id ?? null)
   const {
     activeTab,
     hydrated: workspaceHydrated,
