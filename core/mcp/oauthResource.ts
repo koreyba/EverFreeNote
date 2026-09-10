@@ -23,7 +23,11 @@ export type McpRoute = 'mcp' | 'metadata' | 'unknown'
 
 export type BearerChallengeError = 'invalid_request' | 'invalid_token' | 'insufficient_scope'
 
-const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '')
+const trimTrailingSlashes = (value: string): string => {
+  let end = value.length
+  while (end > 0 && value[end - 1] === '/') end -= 1
+  return value.slice(0, end)
+}
 
 /** Classifies a request path as the MCP endpoint, the metadata document, or something else. */
 export function classifyMcpRoute(pathname: string): McpRoute {
@@ -137,9 +141,16 @@ export function buildWwwAuthenticateHeader(params: {
 export function extractBearerToken(authorizationHeader: string | null | undefined): string | null {
   if (!authorizationHeader) return null
 
-  const match = /^\s*Bearer\s+(.+?)\s*$/i.exec(authorizationHeader)
-  if (!match) return null
+  // Parsed by hand rather than with a regex: a pattern like /^\s*Bearer\s+(.+?)\s*$/
+  // backtracks quadratically on a long header of trailing whitespace.
+  const header = authorizationHeader.trim()
+  const schemeEnd = header.indexOf(' ')
+  if (schemeEnd === -1) return null
+  if (header.slice(0, schemeEnd).toLowerCase() !== 'bearer') return null
 
-  const token = match[1]
-  return token && !/\s/.test(token) ? token : null
+  const token = header.slice(schemeEnd + 1).trim()
+  if (!token) return null
+
+  // A bearer token is one opaque string; inner whitespace means a malformed header.
+  return /\s/.test(token) ? null : token
 }

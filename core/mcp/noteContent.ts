@@ -43,44 +43,92 @@ function readTagName(tagBody: string): { name: string; closing: boolean } {
   return { name: rest.slice(0, end).toLowerCase(), closing }
 }
 
+/** Index just past the closing tag of a skipped element, or -1 when it never closes. */
+function findSkippedElementEnd(html: string, lowerHtml: string, name: string, from: number): number {
+  const closeStart = lowerHtml.indexOf(`</${name}`, from)
+  if (closeStart === -1) return -1
+
+  const closeEnd = html.indexOf('>', closeStart)
+  return closeEnd === -1 ? -1 : closeEnd + 1
+}
+
+/** The plain-text separator a tag contributes: a bullet for list items, a line break for blocks. */
+function separatorForTag(name: string, closing: boolean): string {
+  if (!closing && name === 'li') return '\n• '
+  if (LINE_BREAK_TAGS.has(name)) return '\n'
+  if (closing && BLOCK_TAGS.has(name)) return '\n'
+  return ''
+}
+
 /**
  * Walks the markup once, dropping every tag, skipping script/style content and
  * emitting line breaks for block boundaries (list items get a bullet).
  */
 function stripMarkup(html: string): string {
-  const lower = html.toLowerCase()
+  const lowerHtml = html.toLowerCase()
   let output = ''
   let index = 0
 
   while (index < html.length) {
-    const char = html[index]
-    if (char !== '<') {
-      output += char
-      index += 1
-      continue
+    const tagStart = html.indexOf('<', index)
+    if (tagStart === -1) {
+      output += html.slice(index)
+      break
     }
 
-    const tagEnd = html.indexOf('>', index + 1)
+    output += html.slice(index, tagStart)
+
+    const tagEnd = html.indexOf('>', tagStart + 1)
     if (tagEnd === -1) break // unterminated tag: drop the rest
 
-    const { name, closing } = readTagName(html.slice(index + 1, tagEnd))
+    const { name, closing } = readTagName(html.slice(tagStart + 1, tagEnd))
 
     if (!closing && SKIPPED_ELEMENTS.has(name)) {
-      const closeStart = lower.indexOf(`</${name}`, tagEnd + 1)
-      if (closeStart === -1) break
-      const closeEnd = html.indexOf('>', closeStart)
-      if (closeEnd === -1) break
-      index = closeEnd + 1
+      const resumeAt = findSkippedElementEnd(html, lowerHtml, name, tagEnd + 1)
+      if (resumeAt === -1) break
+      index = resumeAt
       continue
     }
 
-    if (!closing && name === 'li') {
-      output += '\n• '
-    } else if (LINE_BREAK_TAGS.has(name) || (closing && BLOCK_TAGS.has(name))) {
-      output += '\n'
+    output += separatorForTag(name, closing)
+    index = tagEnd + 1
+  }
+
+  return output
+}
+
+const HORIZONTAL_WHITESPACE = new Set([' ', '\t', '\f', '\v', '\u00a0'])
+
+/**
+ * Collapses runs of horizontal whitespace into a single space, reduces any
+ * whitespace around a line break to one `\n`, and trims both ends. Written as a
+ * single pass because the equivalent regexes backtrack super-linearly.
+ */
+function collapseWhitespace(text: string): string {
+  let output = ''
+  let pendingSpace = false
+  let pendingBreak = false
+
+  for (const char of text) {
+    if (char === '\n' || char === '\r') {
+      pendingBreak = true
+      pendingSpace = false
+      continue
     }
 
-    index = tagEnd + 1
+    if (HORIZONTAL_WHITESPACE.has(char)) {
+      pendingSpace = true
+      continue
+    }
+
+    if (output.length > 0) {
+      if (pendingBreak) output += '\n'
+      else if (pendingSpace) output += ' '
+    }
+
+    pendingBreak = false
+    pendingSpace = false
+    output += char
   }
 
   return output
@@ -94,15 +142,12 @@ function stripMarkup(html: string): string {
 export function htmlToPlainText(html: string | null | undefined): string {
   if (!html) return ''
 
-  return decodeEntities(stripMarkup(html))
-    .replace(/[ \t\f\v\u00a0]+/g, ' ')
-    .replace(/\s*\n\s*/g, '\n')
-    .trim()
+  return collapseWhitespace(decodeEntities(stripMarkup(html)))
 }
 
 /** Single-line excerpt of a note body, truncated with an ellipsis. */
 export function buildExcerpt(html: string | null | undefined, maxLength = 200): string {
-  const singleLine = htmlToPlainText(html).replace(/\s*\n\s*/g, ' ').trim()
+  const singleLine = htmlToPlainText(html).split('\n').join(' ')
   if (singleLine.length <= maxLength) return singleLine
 
   const cut = Math.max(1, maxLength - 1)
