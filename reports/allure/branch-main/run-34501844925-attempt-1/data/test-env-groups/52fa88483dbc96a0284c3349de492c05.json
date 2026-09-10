@@ -1,1 +1,0 @@
-{"id":"52fa88483dbc96a0284c3349de492c05","fullName":"everfreenote:core/tests/unit/core-mcp-oauthResource.test.ts#core/mcp/oauthResource resolvePublicOrigin ignores an invalid override and falls through","name":"ignores an invalid override and falls through","status":"passed","testResultsByEnv":{"default":"2908d18ed950d1670ea43e43031691d6"}}
