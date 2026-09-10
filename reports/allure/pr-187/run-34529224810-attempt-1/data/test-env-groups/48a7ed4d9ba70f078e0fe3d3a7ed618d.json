@@ -1,0 +1,1 @@
+{"id":"48a7ed4d9ba70f078e0fe3d3a7ed618d","fullName":"everfreenote-mobile:tests/unit/syncService.test.ts#MobileSyncService performSync callback create operation rethrows non-unique constraint errors on create","name":"rethrows non-unique constraint errors on create","status":"passed","testResultsByEnv":{"default":"e4aaa0bc3690d5d9b2eb9d6b0e9dd610"}}
