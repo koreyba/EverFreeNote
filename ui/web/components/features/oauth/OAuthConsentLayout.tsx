@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react"
 import { PublicPageHeader } from "@/components/features/public/PublicPageHeader"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-export function OAuthConsentLayout({ children }: { children: ReactNode }) {
+export function OAuthConsentLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <main className="min-h-[100dvh] bg-background text-foreground">
       <PublicPageHeader />
@@ -17,16 +17,16 @@ export function OAuthConsentLayout({ children }: { children: ReactNode }) {
   )
 }
 
-export function OAuthConsentSpinner({ text }: { text: string }) {
+export function OAuthConsentSpinner({ text }: Readonly<{ text: string }>) {
   return (
-    <div className="flex flex-col items-center gap-3 text-center" role="status">
+    <output className="flex flex-col items-center gap-3 text-center">
       <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
       <p className="text-sm text-muted-foreground">{text}</p>
-    </div>
+    </output>
   )
 }
 
-export function OAuthConsentMessageCard({ title, message }: { title: string; message: string }) {
+export function OAuthConsentMessageCard({ title, message }: Readonly<{ title: string; message: string }>) {
   return (
     <Card className="w-full shadow-lg" data-testid="oauth-consent-message">
       <CardHeader className="text-center">

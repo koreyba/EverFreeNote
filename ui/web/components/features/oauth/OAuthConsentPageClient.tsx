@@ -61,7 +61,7 @@ type OAuthConsentPageClientProps = {
   navigate?: (url: string) => void
 }
 
-export function OAuthConsentPageClient({ navigate = defaultNavigate }: OAuthConsentPageClientProps) {
+export function OAuthConsentPageClient({ navigate = defaultNavigate }: Readonly<OAuthConsentPageClientProps>) {
   const searchParams = useSearchParams()
   const rawAuthorizationId = searchParams.get("authorization_id")
   const authorizationId = isValidAuthorizationId(rawAuthorizationId) ? rawAuthorizationId : null

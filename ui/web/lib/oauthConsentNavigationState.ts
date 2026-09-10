@@ -12,7 +12,7 @@ const AUTHORIZATION_ID_PATTERN = /^[A-Za-z0-9._~-]{1,255}$/
 export const OAUTH_CONSENT_PATH = '/oauth/consent'
 
 function getSessionStorage(): Storage | null {
-  if (typeof globalThis.window === 'undefined') return null
+  if (globalThis.window === undefined) return null
 
   try {
     return globalThis.window.sessionStorage
