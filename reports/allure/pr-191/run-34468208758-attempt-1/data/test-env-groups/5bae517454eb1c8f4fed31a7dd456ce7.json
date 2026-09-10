@@ -1,1 +1,0 @@
-{"id":"5bae517454eb1c8f4fed31a7dd456ce7","fullName":"everfreenote:ui/web/tests/unit/hooks/useCopyNote.test.ts#ui/web/hooks/useCopyNote does nothing for an empty body (no clipboard write, no confirmation)","name":"does nothing for an empty body (no clipboard write, no confirmation)","status":"passed","testResultsByEnv":{"default":"78acad67b4c3b0a62c1a3026fa1b8c9b"}}
