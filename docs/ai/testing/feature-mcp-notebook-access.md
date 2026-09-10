@@ -55,7 +55,7 @@ description: Unit, protocol-level and component coverage for the MCP server, OAu
 
 - [x] `deno check` of `supabase/functions/mcp/index.ts` (resolves `@core/mcp/*`, `npm:` SDK, `npm:zod`, esm.sh supabase-js)
 - [x] `deno run` smoke test: `GET …/.well-known/oauth-protected-resource` → 200 JSON; `POST /mcp` without token → 401 + `WWW-Authenticate`; bogus token with unreachable Supabase → 401 `invalid_token`; unknown route → 404; `OPTIONS` → CORS
-- [ ] Authenticated JSON-RPC round-trip against a running Supabase (local stack or stage) — manual, see acceptance below
+- [x] Authenticated JSON-RPC round-trip against stage (2026-09-10): dynamic client registration → authorize → consent page on `stage.everfreenote.pages.dev` (test login) → Approve → PKCE token exchange (access + refresh token) → initialize, tools/list, create_note, get_note, update_note, list_notes (query and tag), not-found and empty-patch errors, 401 on a bad token
 
 ## End-to-End Tests
 
