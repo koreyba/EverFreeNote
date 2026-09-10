@@ -147,7 +147,7 @@ export function htmlToPlainText(html: string | null | undefined): string {
 
 /** Single-line excerpt of a note body, truncated with an ellipsis. */
 export function buildExcerpt(html: string | null | undefined, maxLength = 200): string {
-  const singleLine = htmlToPlainText(html).split('\n').join(' ')
+  const singleLine = htmlToPlainText(html).replaceAll('\n', ' ')
   if (singleLine.length <= maxLength) return singleLine
 
   const cut = Math.max(1, maxLength - 1)
