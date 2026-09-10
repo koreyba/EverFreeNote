@@ -34,34 +34,42 @@ reviewed script rather than from a large vendored directory.
 
 ## Build
 
+One command builds an installable APK. It runs the web build, regenerates the native
+project, syncs and calls Gradle:
+
 ```bash
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21
 export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
-export APP_VARIANT=stage
 
-npm --prefix ui/shell ci
-npm --prefix ui/shell run build:web     # root `npm run build`, staged into www/
-npm --prefix ui/shell run add:android   # generates android/, patches manifest + gradle
-cd ui/shell && npx cap sync android && npm run apk:debug
+npm --prefix ui/shell ci                       # first time only
+APP_VARIANT=stage npm --prefix ui/shell run apk:debug
 ```
 
-Supabase credentials come from the environment; placeholders are injected when unset,
-which is enough to build but not to sign in. For a build you intend to log into:
+It prints the APK path and the `adb install` line to run. Rebuilding after a code
+change is the same command — `android/` is a working directory, regenerated as needed.
+
+Supabase credentials are picked up automatically from the repo-root `.env.local`, so a
+stage build signs in without extra setup. Set the variables explicitly to override, and
+the build warns loudly if it finds neither:
 
 ```bash
-set -a && . .env.local && set +a          # or export the two values yourself
-APP_VARIANT=stage npm --prefix ui/shell run build:web
+NEXT_PUBLIC_SUPABASE_URL=… NEXT_PUBLIC_SUPABASE_ANON_KEY=… \
+  APP_VARIANT=stage npm --prefix ui/shell run apk:debug
 ```
 
-Release builds are signed with whatever `SHELL_KEYSTORE` points at:
+Release builds need a keystore; the script refuses to run without one rather than
+producing an APK that will not install:
 
 ```bash
 keytool -genkeypair -keystore /tmp/shell.keystore -alias shell -keyalg RSA -keysize 2048 \
   -validity 365 -storepass shellshell -keypass shellshell -dname "CN=EverFreeNote, O=EverFreeNote, C=NA"
-SHELL_KEYSTORE=/tmp/shell.keystore npm --prefix ui/shell run apk:release
+SHELL_KEYSTORE=/tmp/shell.keystore SHELL_KEYSTORE_PASSWORD=shellshell \
+  SHELL_KEY_ALIAS=shell SHELL_KEY_PASSWORD=shellshell \
+  APP_VARIANT=stage npm --prefix ui/shell run apk
 ```
 
-CI builds a debug APK on demand — see `.github/workflows/shell-build.yml`.
+CI builds a debug APK on demand through the same script — see
+`.github/workflows/shell-build.yml`.
 
 ## OAuth
 
@@ -87,10 +95,12 @@ it in Supabase first.
 ## Measuring on a device
 
 ```bash
+# The harness route is compiled out unless this is set.
+export NEXT_PUBLIC_ENABLE_PERF_HARNESS=true
 APP_VARIANT=stage npm --prefix ui/shell run build:web
-node ui/shell/scripts/make-harness-www.js          # boot straight into the perf harness
+node ui/shell/scripts/make-harness-www.js                   # boot straight into it
 PERF_NOTES=5000 node ui/shell/scripts/make-harness-www.js   # or a different list size
-cd ui/shell && npx cap sync android && npm run apk:debug
+cd ui/shell && npx cap sync android && (cd android && ./gradlew assembleDebug)
 SHELL_PKG=com.everfreenote.shell.stage ./scripts/measure.sh <apk> "label" 5
 ```
 
