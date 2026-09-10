@@ -71,6 +71,27 @@ SHELL_KEYSTORE=/tmp/shell.keystore SHELL_KEYSTORE_PASSWORD=shellshell \
 CI builds a debug APK on demand through the same script — see
 `.github/workflows/shell-build.yml`.
 
+## Web-facing URLs
+
+The WebView origin is `https://localhost`, which is meaningless outside the app, so
+anything a recipient will open must use the deployment origin instead. That origin is
+configuration, never code — same as `ui/mobile`'s `EXPO_PUBLIC_PUBLIC_WEB_ORIGIN`:
+
+```
+NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_DEV / _STAGE / _PROD
+NEXT_PUBLIC_PUBLIC_WEB_ORIGIN                      # whichever variant is building
+```
+
+`ui/web/adapters/publicWebOrigin.ts` resolves it; the browser keeps using its own
+origin. When it is unset the build says so, and sharing reports it rather than handing
+out a `https://localhost` link nobody can open.
+
+## Saving files
+
+An `<a download>` click does nothing in an Android WebView — no file, no prompt, no
+error. `ui/web/adapters/fileDownload.ts` routes exports through the share sheet in the
+shell (`@capacitor/filesystem` + `@capacitor/share`), matching what ui/mobile does.
+
 ## OAuth
 
 Sign-in opens in an Android Custom Tab, because Google rejects OAuth inside embedded
@@ -91,6 +112,25 @@ dashboard change was needed. The cost while both apps exist: if both are install
 Android asks which app should handle the callback. Set `SHELL_SCHEME` (build) and
 `NEXT_PUBLIC_SHELL_SCHEME` (runtime) to a dedicated scheme to avoid that, and register
 it in Supabase first.
+
+## Developing against a local backend
+
+`SHELL_LOCAL_HTTP=true` (dev variant only) serves the app from `http://localhost`
+instead of `https://localhost`. A local Supabase speaks plain http, which Android
+blocks outright on targetSdk 36 and which an https page could not fetch anyway;
+`http://localhost` is still a secure context, so `crypto.subtle` and IndexedDB behave
+as they do in production.
+
+```bash
+npm run db:start                    # local Supabase
+npm run db:init-users               # needs NEXT_PUBLIC_ENABLE_TEST_AUTH=true,
+                                    # SUPABASE_SERVICE_KEY and TEST_USER_PASSWORD
+adb reverse tcp:54321 tcp:54321     # the device reaches the host's Supabase
+SHELL_LOCAL_HTTP=true APP_VARIANT=dev npm --prefix ui/shell run apk:debug
+```
+
+Point `NEXT_PUBLIC_SUPABASE_URL` at `http://localhost:54321` for that build. The test
+login buttons appear when `NEXT_PUBLIC_ENABLE_TEST_AUTH=true`.
 
 ## Measuring on a device
 

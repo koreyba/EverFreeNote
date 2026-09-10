@@ -57,6 +57,37 @@ export function schemeFor(variant: AppVariant): string {
   return schemeOverride() ?? SHELL_VARIANTS[variant].scheme
 }
 
+/**
+ * Where this build's app is deployed on the web.
+ *
+ * Deliberately not hardcoded: a deployment hostname is configuration, and ui/mobile
+ * already takes it from EXPO_PUBLIC_PUBLIC_WEB_ORIGIN rather than from code. The
+ * variant-suffixed name wins, so one env file can describe every variant:
+ *
+ *   NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_DEV / _STAGE / _PROD
+ *   NEXT_PUBLIC_PUBLIC_WEB_ORIGIN        (applies to whichever variant is building)
+ *
+ * Empty when unset. Callers must report that rather than fall back to the shell's own
+ * https://localhost origin, which nobody else can reach.
+ */
+export function publicWebOriginFor(variant: AppVariant): string {
+  // Written out one name at a time on purpose: Next.js inlines NEXT_PUBLIC_* only for
+  // static property accesses, so a computed key would be undefined in the browser
+  // bundle while still passing in Jest, where process.env is real.
+  const perVariant = {
+    dev: process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_DEV,
+    stage: process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_STAGE,
+    prod: process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_PROD,
+  }[variant]
+
+  for (const candidate of [perVariant, process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN]) {
+    const trimmed = candidate?.trim()
+    if (trimmed) return trimmed
+  }
+
+  return ''
+}
+
 export function resolveVariant(value: string | undefined): AppVariant {
   if (value === 'dev' || value === 'stage' || value === 'prod') return value
   return 'dev'

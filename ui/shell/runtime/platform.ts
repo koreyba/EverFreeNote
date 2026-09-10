@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 
-import { oauthRedirectUri, resolveVariant, schemeFor } from '@ui/shell/variants'
+import { oauthRedirectUri, publicWebOriginFor, resolveVariant, schemeFor } from '@ui/shell/variants'
 
 /**
  * True when the web bundle is running inside the Android shell rather than a browser.
@@ -25,4 +25,12 @@ export function shellOAuthRedirectUri(): string {
 
 export function shellScheme(): string {
   return schemeFor(shellVariant())
+}
+
+/**
+ * The deployed web origin this build should hand out in share links. Empty when the
+ * variant has no deployment, which callers must surface rather than paper over.
+ */
+export function shellPublicWebOrigin(): string {
+  return publicWebOriginFor(shellVariant())
 }

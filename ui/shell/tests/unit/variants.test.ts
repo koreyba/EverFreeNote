@@ -1,4 +1,4 @@
-import { SHELL_VARIANTS, oauthRedirectUri, resolveVariant, schemeFor } from '@ui/shell/variants'
+import { SHELL_VARIANTS, oauthRedirectUri, publicWebOriginFor, resolveVariant, schemeFor } from '@ui/shell/variants'
 
 describe('shell variants', () => {
   const originalScheme = process.env.NEXT_PUBLIC_SHELL_SCHEME
@@ -53,6 +53,38 @@ describe('shell variants', () => {
     delete process.env.SHELL_SCHEME
 
     expect(schemeFor('prod')).toBe('everfreenote')
+  })
+
+  describe('publicWebOriginFor', () => {
+    const originalGeneric = process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN
+    const originalStage = process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_STAGE
+
+    afterEach(() => {
+      restore('NEXT_PUBLIC_PUBLIC_WEB_ORIGIN', originalGeneric)
+      restore('NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_STAGE', originalStage)
+    })
+
+    it('prefers the variant-suffixed value', () => {
+      process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN = 'https://generic.example.com'
+      process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_STAGE = 'https://stage.example.com'
+
+      expect(publicWebOriginFor('stage')).toBe('https://stage.example.com')
+    })
+
+    it('falls back to the unsuffixed value', () => {
+      delete process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_STAGE
+      process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN = 'https://generic.example.com'
+
+      expect(publicWebOriginFor('stage')).toBe('https://generic.example.com')
+    })
+
+    it.each(['', '   '])('treats %p as unset rather than as an origin', (value) => {
+      process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_STAGE = value
+      process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN = value
+
+      // No hardcoded deployment hostname exists to fall back to, by design.
+      expect(publicWebOriginFor('stage')).toBe('')
+    })
   })
 
   it('builds the redirect URI Supabase is configured with', () => {

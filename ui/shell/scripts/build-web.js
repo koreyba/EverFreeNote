@@ -6,14 +6,16 @@
  * so there is one bundle to reason about and no mobile-specific web build.
  *
  * Env passed through to the web build:
- *   NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY  - real values optional;
- *     placeholders are injected when unset so the perf harness can build without secrets.
+ *   NEXT_PUBLIC_SUPABASE_URL[_STAGE|_PROD] and the matching ANON_KEY - see supabaseEnv.js
+ *     for how a variant picks its project; prod must be given its values explicitly.
  *   NEXT_PUBLIC_ENABLE_PERF_HARNESS=true                      - enables /perf-harness/.
  *   APP_VARIANT=dev|stage|prod                                - selects the shell variant.
  */
 const { execSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
+
+const { projectRef, resolveSupabaseEnv } = require('./supabaseEnv')
 
 const SHELL_DIR = path.join(__dirname, '..')
 const REPO_ROOT = path.join(SHELL_DIR, '..', '..')
@@ -25,34 +27,33 @@ const WWW_DIR = path.join(SHELL_DIR, 'www')
 const variant = ['dev', 'stage', 'prod'].includes(process.env.APP_VARIANT) ? process.env.APP_VARIANT : 'dev'
 
 /**
- * Next.js loads .env.local itself, but an explicit environment variable beats it — so
- * injecting a placeholder unconditionally would silently override real credentials.
- * Only fill in what neither the environment nor a root env file provides.
+ * Read a variable out of the root env files, in the order Next.js itself prefers.
+ * Values are used for reporting, not re-injected — see supabaseEnv.js.
  */
-function definedInEnvFiles(name) {
-  return ['.env.local', '.env'].some((file) => {
+function readFromEnvFiles(name) {
+  for (const file of ['.env.local', '.env']) {
     const filePath = path.join(REPO_ROOT, file)
-    if (!fs.existsSync(filePath)) return false
-    return fs
-      .readFileSync(filePath, 'utf-8')
-      .split('\n')
-      .some((line) => new RegExp(`^\\s*${name}\\s*=\\s*\\S`).test(line))
-  })
+    if (!fs.existsSync(filePath)) continue
+
+    for (const line of fs.readFileSync(filePath, 'utf-8').split('\n')) {
+      const match = new RegExp(`^\\s*(?:export\\s+)?${name}\\s*=\\s*(.*)$`).exec(line)
+      if (!match) continue
+
+      const value = match[1].trim().replace(/^(['"])(.*)\1$/, '$2').trim()
+      if (value) return value
+    }
+  }
+  return undefined
 }
 
-function withFallback(name, fallback) {
-  if (process.env[name]) return { [name]: process.env[name] }
-  if (definedInEnvFiles(name)) return {}
-  return { [name]: fallback }
+let supabase
+try {
+  supabase = resolveSupabaseEnv({ variant, env: process.env, readFromEnvFiles })
+} catch (error) {
+  // A misconfigured variant is a user error, not a crash; a stack trace only hides it.
+  console.error(`\n❌ ${error instanceof Error ? error.message : String(error)}\n`)
+  process.exit(1)
 }
-
-const supabaseEnv = {
-  ...withFallback('NEXT_PUBLIC_SUPABASE_URL', 'https://placeholder.supabase.co'),
-  ...withFallback('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'placeholder-anon-key'),
-}
-
-const usingPlaceholders = 'NEXT_PUBLIC_SUPABASE_URL' in supabaseEnv &&
-  supabaseEnv.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co'
 
 const env = {
   ...process.env,
@@ -60,12 +61,32 @@ const env = {
   // The runtime derives its OAuth scheme from this, so it must match the variant the
   // native project was generated for.
   NEXT_PUBLIC_APP_VARIANT: variant,
-  ...supabaseEnv,
+  ...supabase.env,
   NEXT_PUBLIC_ENABLE_PERF_HARNESS: process.env.NEXT_PUBLIC_ENABLE_PERF_HARNESS || 'false',
 }
 
 console.log(`📦 Building Next.js static export (variant: ${variant})...`)
-if (usingPlaceholders) {
+// Printed on every build: a variant pointed at the wrong project is invisible in the APK.
+console.log(`   Supabase project: ${projectRef(supabase.url)} (${supabase.source})`)
+
+// Kept in step with publicWebOriginFor() in ui/shell/variants.ts, which cannot be
+// required from here: it is TypeScript, and this script runs before compilation.
+const publicWebOrigin = (
+  process.env[`NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_${variant.toUpperCase()}`] ||
+  process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN ||
+  readFromEnvFiles(`NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_${variant.toUpperCase()}`) ||
+  readFromEnvFiles('NEXT_PUBLIC_PUBLIC_WEB_ORIGIN') ||
+  ''
+).trim()
+
+if (publicWebOrigin) {
+  console.log(`   Share links point at: ${publicWebOrigin}`)
+} else {
+  console.log(
+    `⚠️  NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_${variant.toUpperCase()} is not set — sharing a note will report that instead of producing a link.`
+  )
+}
+if (supabase.usingPlaceholders) {
   console.log('⚠️  No Supabase credentials found — building with placeholders. Sign-in will not work.')
 }
 execSync('npm run build', { cwd: REPO_ROOT, stdio: 'inherit', env })

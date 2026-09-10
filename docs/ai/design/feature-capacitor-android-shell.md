@@ -120,6 +120,27 @@ are applied by `scripts/add-android.js`. A reviewed script is easier to audit th
 vendored directory, and CI regenerates it on every run. If native customization grows
 beyond what a patch script can express, commit the directory instead.
 
+### The WebView origin is not a web address
+
+Two defects came out of this, both from code that assumed the serving origin is
+something a user can open:
+
+- **Share links.** `ShareNoteDialog` built them from `window.location.origin`, which in
+  the shell is `https://localhost`. The deployment origin now comes from
+  `NEXT_PUBLIC_PUBLIC_WEB_ORIGIN[_DEV|_STAGE|_PROD]` — configuration, not code, matching
+  `ui/mobile`'s `EXPO_PUBLIC_PUBLIC_WEB_ORIGIN` — and is resolved by
+  `ui/web/adapters/publicWebOrigin.ts`. An unconfigured build says so at build time and
+  reports it at share time, rather than handing out a dead link.
+- **Exports.** An `<a download>` click produces no file, no prompt and no error in an
+  Android WebView — verified on device. `ui/web/adapters/fileDownload.ts` writes the
+  file and opens the share sheet in the shell, which is what `ui/mobile` does with
+  expo-file-system and expo-sharing.
+
+Two things that looked risky turned out fine, and were checked rather than assumed:
+WordPress publishing goes through the `wordpress-bridge` Edge Function (so the shell's
+origin never reaches WordPress, and every function answers `Access-Control-Allow-Origin: *`),
+and `target="_blank"` links dispatch an `ACTION_VIEW` intent to the system browser.
+
 ## Testing
 
 `ui/shell/tests/unit/` runs inside the existing `unit-web` Jest project, since the

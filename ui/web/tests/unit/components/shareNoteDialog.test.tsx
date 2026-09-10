@@ -2,6 +2,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 import { ShareNoteDialog } from "@/components/features/notes/ShareNoteDialog"
 import { SupabaseTestProvider } from "@ui/web/providers/SupabaseProvider"
+import { resolvePublicWebOrigin } from "@ui/web/adapters/publicWebOrigin"
+
+jest.mock("@ui/web/adapters/publicWebOrigin", () => ({
+  resolvePublicWebOrigin: jest.fn(),
+}))
 
 const shareLink = {
   id: "share-1",
@@ -37,6 +42,8 @@ function createSupabaseMock(results = [shareLink], insertedLink = shareLink) {
 
 describe("ShareNoteDialog", () => {
   beforeEach(() => {
+    // clearMocks wipes factory implementations, so the browser default is set per test.
+    jest.mocked(resolvePublicWebOrigin).mockReturnValue(globalThis.location.origin)
     Object.defineProperty(globalThis.navigator, "clipboard", {
       value: {
         writeText: jest.fn().mockResolvedValue(undefined),
@@ -83,6 +90,42 @@ describe("ShareNoteDialog", () => {
       expect(globalThis.navigator.clipboard.writeText).toHaveBeenCalledWith("http://localhost/share/?token=abc123")
       expect(screen.getByRole("button", { name: "Link copied" })).toBeTruthy()
     })
+  })
+
+  it("uses the deployed origin, not the WebView origin, inside the Android shell", async () => {
+    // Regression: the shell serves the app from https://localhost, so a link built
+    // from the serving origin is unopenable for whoever receives it.
+    jest.mocked(resolvePublicWebOrigin).mockReturnValue("https://stage.everfreenote.pages.dev")
+    const { supabase } = createSupabaseMock()
+
+    render(
+      <SupabaseTestProvider supabase={supabase as never} user={{ id: "user-1" } as never}>
+        <ShareNoteDialog noteId="note-1" open onOpenChange={jest.fn()} />
+      </SupabaseTestProvider>
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByDisplayValue("https://stage.everfreenote.pages.dev/share/?token=abc123")
+      ).toBeTruthy()
+    })
+  })
+
+  it("reports a build with no configured public origin instead of a broken link", async () => {
+    jest.mocked(resolvePublicWebOrigin).mockReturnValue("")
+    const { supabase, chain } = createSupabaseMock()
+
+    render(
+      <SupabaseTestProvider supabase={supabase as never} user={{ id: "user-1" } as never}>
+        <ShareNoteDialog noteId="note-1" open onOpenChange={jest.fn()} />
+      </SupabaseTestProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("Public web origin is not configured for this build.")).toBeTruthy()
+    })
+    // No link is requested at all, so nothing is created that cannot be used.
+    expect(chain.select).not.toHaveBeenCalled()
   })
 
   it("shows an auth error when no user is available", async () => {

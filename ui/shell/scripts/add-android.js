@@ -23,11 +23,38 @@ const scheme =
   (process.env.SHELL_SCHEME ?? process.env.NEXT_PUBLIC_SHELL_SCHEME ?? '').trim() ||
   { dev: 'everfreenote-dev', stage: 'everfreenote-stage', prod: 'everfreenote' }[variant]
 
+const APP_IDS = {
+  dev: 'com.everfreenote.shell.dev',
+  stage: 'com.everfreenote.shell.stage',
+  prod: 'com.everfreenote.shell',
+}
+const expectedAppId = APP_IDS[variant]
+
+/**
+ * The applicationId and the MainActivity package are baked in when the project is
+ * generated, and `cap sync` does not revisit them. Reusing a project built for another
+ * variant therefore produces an APK for that other variant, silently — so the existing
+ * project is discarded whenever it does not match. It is a working directory; nothing
+ * of value is lost.
+ */
+function existingAppId() {
+  const gradlePath = path.join(ANDROID_DIR, 'app', 'build.gradle')
+  if (!fs.existsSync(gradlePath)) return undefined
+  return /applicationId\s+"([^"]+)"/.exec(fs.readFileSync(gradlePath, 'utf-8'))?.[1]
+}
+
+const currentAppId = existingAppId()
+
+if (currentAppId && currentAppId !== expectedAppId) {
+  console.log(`♻️  android/ was generated for ${currentAppId}; regenerating for ${expectedAppId}`)
+  fs.rmSync(ANDROID_DIR, { recursive: true, force: true })
+}
+
 if (!fs.existsSync(ANDROID_DIR)) {
   console.log(`📱 Generating android project (variant: ${variant})`)
   execSync('npx cap add android', { cwd: SHELL_DIR, stdio: 'inherit' })
 } else {
-  console.log('📱 android/ already exists — patching manifest only')
+  console.log(`📱 android/ already matches ${expectedAppId} — patching only`)
 }
 
 const sdkDir = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT
