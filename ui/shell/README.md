@@ -40,8 +40,7 @@ and the `adb install` line:
 
 | Script | What it builds |
 |---|---|
-| `android:dev` | dev debug |
-| `android:dev:local` | dev debug against a local Supabase (see below) |
+| `android:dev` | dev debug — for a local backend, see below |
 | `android:stage` | stage debug — for on-device debugging |
 | `android:stage:release` | stage release — the candidate you hand to someone |
 | `android:prod` | prod debug |
@@ -123,18 +122,20 @@ it in Supabase first.
 
 ## Developing against a local backend
 
-`SHELL_LOCAL_HTTP=true` (dev variant only) serves the app from `http://localhost`
-instead of `https://localhost`. A local Supabase speaks plain http, which Android
-blocks outright on targetSdk 36 and which an https page could not fetch anyway;
-`http://localhost` is still a secure context, so `crypto.subtle` and IndexedDB behave
-as they do in production.
+The dev variant is served from `http://localhost` rather than `https://localhost`. A
+local Supabase speaks plain http, which Android blocks outright on targetSdk 36 and
+which an https page could not fetch anyway. `http://localhost` is still a secure
+context, so `crypto.subtle` and IndexedDB behave as they do in production — and an http
+page can still reach a remote https backend, so the one mode covers both cases. That is
+the whole reason the dev variant exists; point it at a remote project and you have
+`android:stage` with a different name.
 
 ```bash
 npm run db:start                    # local Supabase
 npm run db:init-users               # needs NEXT_PUBLIC_ENABLE_TEST_AUTH=true,
                                     # SUPABASE_SERVICE_KEY and TEST_USER_PASSWORD
 adb reverse tcp:54321 tcp:54321     # the device reaches the host's Supabase
-npm --prefix ui/shell run android:dev:local
+npm --prefix ui/shell run android:dev
 ```
 
 Point `NEXT_PUBLIC_SUPABASE_URL` at `http://localhost:54321` for that build. The test

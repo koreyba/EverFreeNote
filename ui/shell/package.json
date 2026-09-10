@@ -8,7 +8,6 @@
     "add:android": "node scripts/add-android.js",
     "sync": "node scripts/build-web.js && npx cap sync android",
     "android:dev": "cross-env APP_VARIANT=dev node scripts/build-apk.js debug",
-    "android:dev:local": "cross-env APP_VARIANT=dev SHELL_LOCAL_HTTP=true node scripts/build-apk.js debug",
     "android:stage": "cross-env APP_VARIANT=stage node scripts/build-apk.js debug",
     "android:stage:release": "cross-env APP_VARIANT=stage node scripts/build-apk.js release",
     "android:prod": "cross-env APP_VARIANT=prod node scripts/build-apk.js debug",

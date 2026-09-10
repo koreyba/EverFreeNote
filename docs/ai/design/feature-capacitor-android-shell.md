@@ -160,6 +160,24 @@ adb shell am start -a android.intent.action.VIEW \
 
 which exercises the whole return leg without any credentials.
 
+### Variants earn their keep, or they go
+
+Unlike `ui/mobile`, where a variant also drove icons and the editor WebView URL, the
+shell has no native divergence between variants: only the Supabase project, the OAuth
+scheme, the applicationId and the deployment origin differ, and all four are build
+configuration.
+
+That leaves three variants with distinct jobs. **prod** ships. **stage** is the
+candidate you install next to prod and hand to someone. **dev** exists for one reason —
+working against a local Supabase — which is why it is served over `http://localhost`:
+Android blocks cleartext on targetSdk 36, an https page cannot fetch http, and
+`http://localhost` remains a secure context. An http page can still reach a remote
+https backend, so a single dev mode covers both; a dev build pointed at a remote project
+is just `android:stage` under another name, which is why there is no second dev script.
+
+Only stage and prod are built by CI or handed to anyone, matching what
+`android-build.yml` already offers for the React Native app.
+
 ## What this does not decide
 
 Retiring `ui/mobile`. That needs the shell used in earnest first — editor typing
