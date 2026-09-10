@@ -1,0 +1,1 @@
+{"id":"bb4a9351587844deb067985c536dce1b","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSelection.test.tsx#useNoteSelection exits selection mode and resets ids while preserving the bulk deleting flag","name":"exits selection mode and resets ids while preserving the bulk deleting flag","status":"passed","testResultsByEnv":{"default":"4e03b3a9e52f4606f68769a4d3d8b476"}}
