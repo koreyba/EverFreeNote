@@ -391,10 +391,78 @@ export function hydrateNoteWorkspaceState(
   return { version: NOTE_WORKSPACE_VERSION, userId, tabs, activeTabId }
 }
 
+/**
+ * A clean tab's draft is a byte-for-byte copy of the note it shows, and each
+ * tab holds a whole note body. Dropping the copy halves what the workspace
+ * costs to store; hydration rebuilds it from the note (see normalizeTabDraft),
+ * so the round trip is unchanged.
+ */
+type PersistedWorkspaceTab = Omit<NoteWorkspaceTab, 'draft'> & { draft?: NoteDraftSnapshot }
+
+const toPersistedTab = (tab: NoteWorkspaceTab): PersistedWorkspaceTab => {
+  if (!tab.note) return tab
+  const derived = draftFromNote(tab.note)
+  const isCopyOfNote = tab.draft.title === derived.title
+    && tab.draft.description === derived.description
+    && tab.draft.tags === derived.tags
+  if (!isCopyOfNote) return tab
+
+  const withoutDraft: PersistedWorkspaceTab = { ...tab }
+  delete withoutDraft.draft
+  return withoutDraft
+}
+
+const serializeTabs = (state: NoteWorkspaceState, tabs: NoteWorkspaceTab[]): string => (
+  JSON.stringify({ ...state, tabs: tabs.map(toPersistedTab) })
+)
+
 export function serializeNoteWorkspaceState(state: NoteWorkspaceState): string {
-  const serialized = JSON.stringify(state)
+  const serialized = serializeTabs(state, state.tabs)
   if (serialized.length > MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH) {
     throw new RangeError('Note workspace state exceeds the storage limit')
   }
   return serialized
+}
+
+export type NoteWorkspaceSerialization = {
+  serialized: string
+  /** Tabs left out to stay inside the budget, in the order they were dropped. */
+  droppedTabIds: string[]
+}
+
+/**
+ * Serializes as much of the workspace as fits the budget instead of failing
+ * outright. A single oversized write used to lose every tab silently; keeping
+ * a subset means a reload restores fewer tabs rather than none.
+ *
+ * The active tab is never dropped, and tabs carrying unsaved work go last —
+ * losing a saved note costs a re-open, losing a draft costs the user's typing.
+ * Returns null only when even the active tab alone exceeds the budget.
+ */
+export function serializeNoteWorkspaceStateWithinLimit(
+  state: NoteWorkspaceState,
+  maxLength: number = MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH,
+): NoteWorkspaceSerialization | null {
+  let tabs = state.tabs
+  const droppedTabIds: string[] = []
+
+  for (;;) {
+    const serialized = serializeTabs(state, tabs)
+    if (serialized.length <= maxLength) return { serialized, droppedTabIds }
+
+    // Drop the least costly tab to lose: saved before unsaved, latest first.
+    const droppable = tabs
+      .map((tab, index) => ({ tab, index }))
+      .filter(({ tab }) => tab.id !== state.activeTabId)
+      .sort((left, right) => {
+        const rank = (entry: { tab: NoteWorkspaceTab }) => (entry.tab.saveState === 'saved' ? 0 : 1)
+        return rank(left) - rank(right) || right.index - left.index
+      })
+
+    const next = droppable[0]
+    if (!next) return null
+
+    droppedTabIds.push(next.tab.id)
+    tabs = tabs.filter((tab) => tab.id !== next.tab.id)
+  }
 }

@@ -167,6 +167,28 @@ Regression coverage: `core-services-noteWorkspaceTabs.test.ts` (mismatched
 stamp, and legacy state with no stamp) and `noteWorkspaceStorage.test.ts`
 (shared session key not restored across accounts).
 
+### Storage-budget pass (2026-09-10)
+
+Measured before changing anything: a tab costs ~2x the note body, because the
+note and a clean tab's identical draft are both stored. At 60KB bodies only 17
+tabs fit the 2MB budget while the UI allows 32 — past that the write threw,
+the error was swallowed, and nothing persisted at all.
+
+After the change, per-tab cost is halved and the ceiling clears the cap:
+
+| note body | tabs that fit, before | after |
+|---|---|---|
+| 10,000 chars | 103 | 204 |
+| 30,000 chars | 34 | 69 |
+| 60,000 chars | 17 (below the 32 cap) | 34 |
+
+Coverage: core tests assert the redundant draft is omitted while a diverged
+draft is kept, that the round trip is unchanged, that an over-budget snapshot
+keeps the active and unsaved tabs and sheds saved ones, and that it reports
+failure only when the active tab alone will not fit. A hook test asserts the
+warning fires once rather than on every write, and that a changed account
+re-reads the workspace.
+
 ## Performance Testing
 
 - Verify switching does not mount more than one editor or trigger duplicate fetches.

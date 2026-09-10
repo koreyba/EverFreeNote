@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import {
   activateWorkspaceTab,
   addWorkspaceTab,
@@ -37,9 +38,19 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
   // otherwise the outgoing account's tabs get rewritten under the new user.
   const hydrated = hydratedUserId === userId
 
+  // Persistence runs on every workspace change, so the warning is raised once
+  // per session — the alternative is a toast on each keystroke.
+  const warnedAboutDroppedTabsRef = useRef(false)
+
   useEffect(() => {
     if (!hydrated) return
-    writeNoteWorkspaceState(state)
+    const { droppedTabIds } = writeNoteWorkspaceState(state)
+    if (droppedTabIds.length === 0 || warnedAboutDroppedTabsRef.current) return
+
+    warnedAboutDroppedTabsRef.current = true
+    toast.warning('Too many long notes are open to remember them all', {
+      description: 'Some tabs will not come back after a reload. Close a few to keep the rest.',
+    })
   }, [hydrated, state])
 
   const addTab = useCallback(() => {

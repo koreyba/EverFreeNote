@@ -185,6 +185,25 @@ The hook re-hydrates whenever the user id changes and only writes once the
 in-memory state belongs to the account currently signed in, so the outgoing
 account's tabs are never rewritten under the incoming one.
 
+### The persisted workspace degrades in pieces, not all at once
+
+Each tab caches the note it shows, so the 2MB session budget is a real
+constraint rather than a theoretical one. Two rules keep it out of the way:
+
+- A clean tab's draft is a byte-for-byte copy of its note, so it is not
+  written; hydration rebuilds it from the note. That halves the cost per tab
+  and moves the ceiling above the 32-tab cap for notes up to roughly 60KB —
+  before this, a workspace of 60KB notes stopped persisting at 17 tabs.
+- Over budget, the snapshot keeps the active tab, then every tab carrying
+  unsaved work, then as many saved tabs as fit. Losing a saved note costs a
+  re-open; losing a draft costs the user's typing. Previously one oversized
+  snapshot threw, the write was swallowed, and the entire workspace silently
+  stopped persisting.
+
+Dropping tabs is reported once per session rather than per write, since
+persistence runs on every workspace change. Nothing is written only when a
+single note is too large for the budget on its own.
+
 ### Active-slot replacement is the default
 
 `openNoteInWorkspace` updates the active tab. `addWorkspaceTab` is the only operation that increases tab count. This encodes the product's key rule in one reducer function instead of relying on individual click handlers.

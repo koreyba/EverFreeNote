@@ -1,6 +1,6 @@
 import {
   hydrateNoteWorkspaceState,
-  serializeNoteWorkspaceState,
+  serializeNoteWorkspaceStateWithinLimit,
   type NoteWorkspaceIdFactory,
   type NoteWorkspaceState,
 } from '@core/services/noteWorkspaceTabs'
@@ -42,18 +42,31 @@ export function readNoteWorkspaceState({
   }
 }
 
+export type WriteNoteWorkspaceStateResult = {
+  persisted: boolean
+  /** Tabs left out to fit the budget; empty when everything was stored. */
+  droppedTabIds: string[]
+}
+
+const NOT_PERSISTED: WriteNoteWorkspaceStateResult = { persisted: false, droppedTabIds: [] }
+
 export function writeNoteWorkspaceState(
   state: NoteWorkspaceState,
   storage: Storage | null = getSessionStorage(),
-): boolean {
-  if (!storage) return false
+): WriteNoteWorkspaceStateResult {
+  if (!storage) return NOT_PERSISTED
+
+  // Store as much as fits rather than losing the whole workspace to one
+  // oversized snapshot.
+  const serialization = serializeNoteWorkspaceStateWithinLimit(state)
+  if (!serialization) return NOT_PERSISTED
 
   try {
-    storage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(state))
-    return true
+    storage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serialization.serialized)
+    return { persisted: true, droppedTabIds: serialization.droppedTabIds }
   } catch {
     // Quota/private-mode failures must not block the in-memory workspace.
-    return false
+    return NOT_PERSISTED
   }
 }
 

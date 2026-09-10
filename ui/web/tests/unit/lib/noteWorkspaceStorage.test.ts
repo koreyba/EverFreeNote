@@ -28,7 +28,7 @@ describe('note workspace session storage', () => {
   it('round-trips workspace state through the versioned session key', () => {
     const state = openNoteInWorkspace(createNoteWorkspaceState(() => 'tab-1'), note)
 
-    expect(writeNoteWorkspaceState(state)).toBe(true)
+    expect(writeNoteWorkspaceState(state).persisted).toBe(true)
     expect(window.sessionStorage.getItem(NOTE_WORKSPACE_STORAGE_KEY)).toContain('note-1')
     expect(readNoteWorkspaceState()).toEqual(state)
   })
@@ -52,7 +52,7 @@ describe('note workspace session storage', () => {
     const state = createNoteWorkspaceState(() => 'tab-1')
 
     expect(readNoteWorkspaceState({ storage: throwingStorage, idFactory: () => 'fallback-tab' }).activeTabId).toBe('fallback-tab')
-    expect(writeNoteWorkspaceState(state, throwingStorage)).toBe(false)
+    expect(writeNoteWorkspaceState(state, throwingStorage).persisted).toBe(false)
     expect(() => clearNoteWorkspaceState(throwingStorage)).not.toThrow()
   })
 

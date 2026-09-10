@@ -13,6 +13,7 @@ import {
   openNoteInWorkspace,
   resetWorkspaceTabsForNotes,
   serializeNoteWorkspaceState,
+  serializeNoteWorkspaceStateWithinLimit,
   updateWorkspaceTab,
 } from '@core/services/noteWorkspaceTabs'
 
@@ -241,5 +242,60 @@ describe('note workspace tab state', () => {
 
     expect(hydrated.tabs[0].noteId).toBeNull()
     expect(hydrated.tabs[0].note).toBeNull()
+  })
+
+  it('omits a draft that is only a copy of the note it shows', () => {
+    const big = note('note-big')
+    big.description = '<p>' + 'x'.repeat(50_000) + '</p>'
+    const state = openNoteInWorkspace(createNoteWorkspaceState(ids('tab-1'), 'user-1'), big)
+
+    const serialized = serializeNoteWorkspaceState(state)
+
+    // The body appears once, not once for the note and once for the draft.
+    expect(serialized.split('x'.repeat(50_000)).length - 1).toBe(1)
+    // ...and the round trip still yields the draft.
+    expect(hydrateNoteWorkspaceState(serialized, ids('r1'), 'user-1')).toEqual(state)
+  })
+
+  it('keeps a draft that has diverged from the note', () => {
+    const edited = note('note-edited')
+    let state = openNoteInWorkspace(createNoteWorkspaceState(ids('tab-1'), 'user-1'), edited)
+    state = updateWorkspaceTab(state, state.activeTabId, {
+      draft: { title: 'Locally edited' },
+      saveState: 'dirty',
+    })
+
+    const restored = hydrateNoteWorkspaceState(serializeNoteWorkspaceState(state), ids('r1'), 'user-1')
+
+    expect(restored.tabs[0].draft.title).toBe('Locally edited')
+  })
+
+  it('stores as many tabs as fit instead of losing the whole workspace', () => {
+    const body = '<p>' + 'y'.repeat(20_000) + '</p>'
+    let state = createNoteWorkspaceState(ids('tab-0'), 'user-1')
+    state = openNoteInWorkspace(state, { ...note('note-0'), description: body })
+    for (let index = 1; index < 6; index += 1) {
+      state = addWorkspaceTab(state, ids(`tab-${index}`))
+      state = openNoteInWorkspace(state, { ...note(`note-${index}`), description: body })
+    }
+    // Mark one background tab as carrying unsaved work.
+    state = updateWorkspaceTab(state, state.tabs[1].id, { saveState: 'dirty' })
+
+    // A budget that only fits a couple of these tabs.
+    const result = serializeNoteWorkspaceStateWithinLimit(state, 60_000)
+
+    expect(result).not.toBeNull()
+    expect(result!.droppedTabIds.length).toBeGreaterThan(0)
+    expect(result!.serialized.length).toBeLessThanOrEqual(60_000)
+    // The active tab and the unsaved one survive; saved tabs are given up first.
+    expect(result!.droppedTabIds).not.toContain(state.activeTabId)
+    expect(result!.droppedTabIds).not.toContain(state.tabs[1].id)
+  })
+
+  it('reports failure only when even the active tab cannot fit', () => {
+    const huge = { ...note('note-huge'), description: '<p>' + 'z'.repeat(5_000) + '</p>' }
+    const state = openNoteInWorkspace(createNoteWorkspaceState(ids('tab-1'), 'user-1'), huge)
+
+    expect(serializeNoteWorkspaceStateWithinLimit(state, 500)).toBeNull()
   })
 })
