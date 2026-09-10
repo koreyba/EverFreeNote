@@ -34,42 +34,50 @@ reviewed script rather than from a large vendored directory.
 
 ## Build
 
-One command builds an installable APK. It runs the web build, regenerates the native
-project, syncs and calls Gradle:
+One script per build, mirroring `ui/mobile`'s `android:*` naming. Each runs the web
+build, regenerates the native project, syncs and calls Gradle, then prints the APK path
+and the `adb install` line:
+
+| Script | What it builds |
+|---|---|
+| `android:dev` | dev debug |
+| `android:dev:local` | dev debug against a local Supabase (see below) |
+| `android:stage` | stage debug — for on-device debugging |
+| `android:stage:release` | stage release — the candidate you hand to someone |
+| `android:prod` | prod debug |
+| `android:prod:release` | prod release — what ships |
 
 ```bash
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21
 export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
 
-npm --prefix ui/shell ci                       # first time only
-APP_VARIANT=stage npm --prefix ui/shell run apk:debug
+npm --prefix ui/shell ci          # first time only
+npm --prefix ui/shell run android:stage
 ```
 
-It prints the APK path and the `adb install` line to run. Rebuilding after a code
-change is the same command — `android/` is a working directory, regenerated as needed.
+Rebuilding after a code change is the same command — `android/` is a working directory,
+regenerated as needed, including when you switch variants.
 
-Supabase credentials are picked up automatically from the repo-root `.env.local`, so a
-stage build signs in without extra setup. Set the variables explicitly to override, and
-the build warns loudly if it finds neither:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=… NEXT_PUBLIC_SUPABASE_ANON_KEY=… \
-  APP_VARIANT=stage npm --prefix ui/shell run apk:debug
-```
+Supabase credentials come from the repo-root `.env.local`, so a stage build signs in
+without extra setup. Prod is the exception: it requires `NEXT_PUBLIC_SUPABASE_URL_PROD`
+and `NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD` explicitly, because inheriting the root env
+files would ship a prod-branded app talking to stage. Every build prints the project it
+resolved.
 
 Release builds need a keystore; the script refuses to run without one rather than
-producing an APK that will not install:
+producing an APK that cannot be installed:
 
 ```bash
 keytool -genkeypair -keystore /tmp/shell.keystore -alias shell -keyalg RSA -keysize 2048 \
   -validity 365 -storepass shellshell -keypass shellshell -dname "CN=EverFreeNote, O=EverFreeNote, C=NA"
 SHELL_KEYSTORE=/tmp/shell.keystore SHELL_KEYSTORE_PASSWORD=shellshell \
   SHELL_KEY_ALIAS=shell SHELL_KEY_PASSWORD=shellshell \
-  APP_VARIANT=stage npm --prefix ui/shell run apk
+  npm --prefix ui/shell run android:stage:release
 ```
 
-CI builds a debug APK on demand through the same script — see
-`.github/workflows/shell-build.yml`.
+CI runs the same scripts — see `.github/workflows/shell-build.yml`, which takes a
+variant and a build type. A release build there needs `SHELL_KEYSTORE_BASE64` and its
+password secrets.
 
 ## Web-facing URLs
 
@@ -126,7 +134,7 @@ npm run db:start                    # local Supabase
 npm run db:init-users               # needs NEXT_PUBLIC_ENABLE_TEST_AUTH=true,
                                     # SUPABASE_SERVICE_KEY and TEST_USER_PASSWORD
 adb reverse tcp:54321 tcp:54321     # the device reaches the host's Supabase
-SHELL_LOCAL_HTTP=true APP_VARIANT=dev npm --prefix ui/shell run apk:debug
+npm --prefix ui/shell run android:dev:local
 ```
 
 Point `NEXT_PUBLIC_SUPABASE_URL` at `http://localhost:54321` for that build. The test
@@ -140,7 +148,7 @@ export NEXT_PUBLIC_ENABLE_PERF_HARNESS=true
 APP_VARIANT=stage npm --prefix ui/shell run build:web
 node ui/shell/scripts/make-harness-www.js                   # boot straight into it
 PERF_NOTES=5000 node ui/shell/scripts/make-harness-www.js   # or a different list size
-cd ui/shell && npx cap sync android && (cd android && ./gradlew assembleDebug)
+npm --prefix ui/shell run android:stage
 SHELL_PKG=com.everfreenote.shell.stage ./scripts/measure.sh <apk> "label" 5
 ```
 
