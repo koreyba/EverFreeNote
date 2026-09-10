@@ -106,6 +106,11 @@ if (gradle.includes('signingConfigs')) {
             storePassword System.getenv("SHELL_KEYSTORE_PASSWORD") ?: "shellshell"
             keyAlias System.getenv("SHELL_KEY_ALIAS") ?: "shell"
             keyPassword System.getenv("SHELL_KEY_PASSWORD") ?: "shellshell"
+            // AGP turns v1 off once minSdk is 24+, since v2 covers those devices. Some
+            // OEM package installers still choke without it, and the extra signature
+            // costs nothing, so both are enabled.
+            enableV1Signing true
+            enableV2Signing true
         }
     }
 `
