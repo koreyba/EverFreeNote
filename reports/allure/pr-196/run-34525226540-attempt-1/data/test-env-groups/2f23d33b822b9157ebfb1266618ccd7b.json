@@ -1,1 +1,0 @@
-{"id":"2f23d33b822b9157ebfb1266618ccd7b","fullName":"everfreenote-mobile:tests/unit/offlineStorage.test.ts#mobileOfflineStorageAdapter deleteNote updates is_deleted = 1 for given noteId in DB","name":"updates is_deleted = 1 for given noteId in DB","status":"passed","testResultsByEnv":{"default":"9a5a7f2423c491d2592e50bb38b2bbd9"}}

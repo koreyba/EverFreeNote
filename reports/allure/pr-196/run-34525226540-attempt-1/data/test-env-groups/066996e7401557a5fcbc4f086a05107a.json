@@ -1,1 +1,0 @@
-{"id":"066996e7401557a5fcbc4f086a05107a","fullName":"everfreenote-mobile:tests/component/swipeProvider.test.tsx#useSwipeContext onSwipeStart closes the previous active swipeable when a different one starts swiping","name":"closes the previous active swipeable when a different one starts swiping","status":"passed","testResultsByEnv":{"default":"ba86b30304f50808f309e4f81d2cf06d"}}
