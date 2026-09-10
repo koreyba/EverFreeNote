@@ -123,6 +123,26 @@ before anyone tries to debug a release build through logcat.
 - Android Studio is **not** required; command line tools are sufficient, which keeps
   CI identical to the existing `android-build.yml` approach.
 
+### 4. OAuth leaves the app correctly, but has no way back
+
+Measured with a stage-keyed build on the emulator: tapping "Continue with Google"
+makes Capacitor hand the URL to the system browser, which opens
+
+```
+https://<stage-ref>.supabase.co/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Flocalhost%2Fauth%2Fcallback
+```
+
+So the outbound leg already does the right thing — the flow runs in Chrome, not in an
+embedded WebView, and Google's `disallowed_useragent` block never applies. What is
+missing is the **return leg**: Google redirects to `https://localhost/auth/callback`,
+which the external browser cannot hand back to the app. The WebView stays on
+`https://localhost/` and the user lands back on the login screen.
+
+Closing this needs shell wiring only, no web code changes: `@capacitor/browser` to
+open the flow, a custom scheme (e.g. `com.everfreenote.poc://auth/callback`) declared
+in the manifest, an `appUrlOpen` listener from `@capacitor/app`, and that redirect URL
+registered in Supabase Auth.
+
 ## Ecosystem risk: Ionic's commercial wind-down
 
 Ionic has stopped selling and is winding down its commercial products — Appflow
