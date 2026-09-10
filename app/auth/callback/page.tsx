@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react"
 import { webSupabaseClientFactory } from "@ui/web/adapters/supabaseClient"
 import { webStorageAdapter } from "@ui/web/adapters/storage"
 import { supabaseConfig } from "@ui/web/config"
+import { consumeOAuthConsentReturnPath } from "@ui/web/lib/oauthConsentNavigationState"
 
 export default function AuthCallback() {
   const router = useRouter()
@@ -29,7 +30,7 @@ export default function AuthCallback() {
         // and we already have a session, just redirect without re-exchanging the code.
         const { data: existingSession } = await supabase.auth.getSession()
         if (existingSession.session) {
-          router.push("/")
+          router.push(consumeOAuthConsentReturnPath() ?? "/")
           return
         }
 
@@ -63,7 +64,7 @@ export default function AuthCallback() {
         if (!hasCodeVerifier) {
           const { data: postCheck } = await supabase.auth.getSession()
           if (postCheck.session) {
-            router.push("/")
+            router.push(consumeOAuthConsentReturnPath() ?? "/")
             return
           }
           console.error("No code_verifier found in storage; skipping exchange to avoid 400 error.")
@@ -99,7 +100,7 @@ export default function AuthCallback() {
         }
 
         // Redirect to home page
-        router.push("/")
+        router.push(consumeOAuthConsentReturnPath() ?? "/")
       } catch (error) {
         // Catch any unexpected errors (e.g., TypeError from destructuring)
         console.error("Unexpected error in auth callback:", error)

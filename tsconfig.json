@@ -54,6 +54,7 @@
     "ui/mobile",
     "core/tests",
     "ui/web/tests",
+    "supabase/functions",
     "**/web-editor/**"
   ]
 }
