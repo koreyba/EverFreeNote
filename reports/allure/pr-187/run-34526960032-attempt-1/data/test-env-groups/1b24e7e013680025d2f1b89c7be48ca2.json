@@ -1,1 +1,0 @@
-{"id":"1b24e7e013680025d2f1b89c7be48ca2","fullName":"everfreenote:core/tests/unit/core-mcp-semanticSearch.test.ts#core/mcp/semanticSearch mapUnavailableResponse returns null for genuine failures so the caller surfaces them","name":"returns null for genuine failures so the caller surfaces them","status":"passed","testResultsByEnv":{"default":"f36d06f0f4e6779ae0d7466e989b42d7"}}
