@@ -1,5 +1,5 @@
 import { type KeyboardEvent, type MouseEvent, useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, ArrowUpRight } from 'lucide-react'
+import { CaretDown as ChevronDown, CaretUp as ChevronUp, ArrowUpRight } from "@phosphor-icons/react"
 import InteractiveTag from '@/components/InteractiveTag'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ChunkSnippet } from './ChunkSnippet'

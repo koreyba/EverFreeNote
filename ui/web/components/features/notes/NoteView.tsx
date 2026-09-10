@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Edit2, Trash2, ChevronLeft, Copy, Check } from "lucide-react"
+import { PencilSimple as Edit2, Trash as Trash2, CaretLeft as ChevronLeft, Copy, Check } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
@@ -101,6 +101,7 @@ export const NoteView = React.memo(function NoteView({
               size="icon"
               className="h-9 w-9 shrink-0 rounded-full shadow-sm md:hidden"
               onClick={onBack}
+              data-cy="note-back-button"
               aria-label="Back"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -117,6 +118,7 @@ export const NoteView = React.memo(function NoteView({
             onClick={onEdit}
             variant="outline"
             size="sm"
+            data-cy="note-edit-button"
             aria-label="Edit"
             className="rounded-full shadow-sm"
           >
@@ -126,6 +128,7 @@ export const NoteView = React.memo(function NoteView({
           <Button
             variant="outline"
             size="sm"
+            data-cy="note-copy-button"
             aria-label="Copy note"
             disabled={isBodyEmpty}
             onClick={() => copyNote(bodyHtml)}

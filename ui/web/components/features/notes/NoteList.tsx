@@ -3,7 +3,7 @@
 import { memo, useMemo } from "react"
 import type { CSSProperties } from "react"
 import type { ReactNode } from "react"
-import { Loader2, Zap } from "lucide-react"
+import { CircleNotch as Loader2, Lightning as Zap } from "@phosphor-icons/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { NoteListSkeleton } from "@/components/NoteListSkeleton"

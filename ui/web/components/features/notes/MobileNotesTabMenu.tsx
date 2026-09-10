@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { List, Plus, X } from "lucide-react"
+import { List, Plus, X } from "@phosphor-icons/react"
 import type { NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
@@ -95,6 +95,7 @@ export function MobileNotesTabMenu({
           variant="outline"
           size="sm"
           className="shrink-0"
+          data-cy="mobile-tabs-toggle"
           aria-expanded={isOpen}
           aria-controls="mobile-notes-tab-list"
           aria-label={`Open note tabs (${tabs.length})`}
@@ -127,6 +128,7 @@ export function MobileNotesTabMenu({
                 >
                   <Button
                     type="button"
+                    data-cy="mobile-workspace-tab"
                     aria-pressed={isActive}
                     aria-label={tab.noteId ? undefined : "Open empty note tab"}
                     variant="ghost"
@@ -143,6 +145,7 @@ export function MobileNotesTabMenu({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                    data-cy="mobile-workspace-tab-close"
                     aria-label={tab.noteId ? `Close ${label}` : "Close empty note tab"}
                     title={`Close ${label}`}
                     onMouseDown={(event) => event.preventDefault()}
@@ -158,6 +161,7 @@ export function MobileNotesTabMenu({
             type="button"
             variant="ghost"
             className="mt-1 w-full justify-start rounded-lg"
+            data-cy="mobile-add-tab-button"
             onMouseDown={(event) => event.preventDefault()}
             onClick={handleAdd}
             disabled={addTabDisabled || addTabCapacityPending}

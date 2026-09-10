@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Loader2, XCircle } from "lucide-react"
+import { CheckCircle as CheckCircle2, CircleNotch as Loader2, XCircle } from "@phosphor-icons/react"
 
 import type { ImportProgress, ImportResult } from "@core/enex/types"
 

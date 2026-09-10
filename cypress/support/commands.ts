@@ -148,7 +148,7 @@ Cypress.Commands.add('filterByTag', (tag: string) => {
 })
 
 Cypress.Commands.add('toggleTheme', () => {
-  cy.get('button').filter(':has(svg.lucide-sun, svg.lucide-moon)').click()
+  cy.get('[data-cy="theme-toggle"]').click()
 })
 
 Cypress.Commands.add('importEnex', (filename: string, strategy: ImportStrategy = 'prefix') => {

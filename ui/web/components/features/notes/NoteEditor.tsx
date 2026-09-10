@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, Copy, Check, Eye, Save as SaveIcon } from "lucide-react"
+import { CaretLeft as ChevronLeft, Copy, Check, Eye, FloppyDisk as SaveIcon } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
@@ -375,6 +375,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               size="icon"
               className="h-9 w-9 shrink-0 rounded-full shadow-sm md:hidden"
               onClick={onBack}
+              data-cy="note-back-button"
               aria-label="Back"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -394,6 +395,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               onClick={handleRead}
               variant="outline"
               size="sm"
+              data-cy="note-read-button"
               aria-label="Read"
               disabled={isSaving}
               className="rounded-full shadow-sm"
@@ -405,6 +407,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               variant="outline"
               size="sm"
               disabled={isSaving || isBodyEmpty}
+              data-cy="note-copy-button"
               aria-label="Copy note"
               onClick={handleCopy}
               className="rounded-full shadow-sm"
@@ -419,6 +422,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             <Button
               onClick={handleSave}
               size="sm"
+              data-cy="note-save-button"
               aria-label="Save"
               disabled={isSaving}
               className="rounded-full shadow-sm"

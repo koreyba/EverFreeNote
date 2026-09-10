@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useEffect, useState, useRef } from "react"
-import { ChevronLeft, Search, X } from "lucide-react"
+import { CaretLeft as ChevronLeft, MagnifyingGlass as Search, X } from "@phosphor-icons/react"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"

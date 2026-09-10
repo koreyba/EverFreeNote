@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type KeyboardEvent, type WheelEvent } from "react"
-import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Plus, Circle, X } from "lucide-react"
+import { WarningCircle as AlertCircle, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CircleNotch as Loader2, Plus, Circle, X } from "@phosphor-icons/react"
 import { MAX_NOTE_WORKSPACE_TABS, type NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
@@ -225,6 +225,7 @@ export function NotesTabStrip({
         variant="ghost"
         size="icon"
         className="h-8 w-6 shrink-0"
+        data-cy={direction === -1 ? "tabs-scroll-left" : "tabs-scroll-right"}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => scrollByTabs(direction)}
         disabled={!enabled}
@@ -243,6 +244,7 @@ export function NotesTabStrip({
         variant="ghost"
         size="icon"
         className="h-8 w-8 shrink-0"
+        data-cy="add-tab-button"
         onMouseDown={(event) => event.preventDefault()}
         onClick={onAddTab}
         aria-label={addTabLabel}
@@ -281,6 +283,7 @@ export function NotesTabStrip({
               >
                 <Button
                   type="button"
+                  data-cy="workspace-tab"
                   aria-pressed={isActive}
                   aria-label={tab.noteId ? undefined : "Open empty note tab"}
                   tabIndex={isActive ? 0 : -1}
@@ -306,6 +309,7 @@ export function NotesTabStrip({
                   variant="ghost"
                   size="icon"
                   className="mr-0.5 h-6 w-6 shrink-0 text-muted-foreground opacity-70 hover:text-foreground group-hover:opacity-100"
+                  data-cy="workspace-tab-close"
                   aria-label={tab.noteId ? `Close ${label}` : "Close empty note tab"}
                   title={`Close ${label}`}
                   onMouseDown={(event) => event.preventDefault()}

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { FileText, Tag, Search, Settings, PanelLeftClose, PanelLeft } from "lucide-react"
+import { FileText, Tag, MagnifyingGlass as Search, Gear as Settings, Sidebar as PanelLeftClose, SidebarSimple as PanelLeft } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 

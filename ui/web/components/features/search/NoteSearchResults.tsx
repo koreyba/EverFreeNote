@@ -1,6 +1,6 @@
 import { NoteSearchItem } from './NoteSearchItem'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { CircleNotch as Loader2 } from "@phosphor-icons/react"
 import type { RagNoteGroup } from '@core/types/ragSearch'
 
 const EMPTY_SELECTED_IDS = new Set<string>()

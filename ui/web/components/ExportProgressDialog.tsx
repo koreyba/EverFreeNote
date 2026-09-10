@@ -3,7 +3,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { CheckCircle as CheckCircle2, CircleNotch as Loader2 } from "@phosphor-icons/react"
 
 import type { ExportProgress } from "@core/enex/export-types"
 

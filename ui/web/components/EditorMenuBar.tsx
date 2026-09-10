@@ -3,34 +3,7 @@
 import * as React from "react"
 import type { Editor } from "@tiptap/react"
 import { Button } from "@ui/web/components/ui/button"
-import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  Bold,
-  Undo,
-  Redo,
-  CheckSquare,
-  Heading1,
-  Heading2,
-  Heading3,
-  Highlighter,
-  ImageIcon,
-  Indent,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Minus,
-  Outdent,
-  Palette,
-  RemoveFormatting,
-  SpellCheck,
-  Strikethrough,
-  Subscript as SubscriptIcon,
-  Superscript as SuperscriptIcon,
-  Underline as UnderlineIcon,
-} from "lucide-react"
+import { TextAlignCenter as AlignCenter, TextAlignLeft as AlignLeft, TextAlignRight as AlignRight, TextB as Bold, ArrowUUpLeft as Undo, ArrowUUpRight as Redo, CheckSquare, TextHOne as Heading1, TextHTwo as Heading2, TextHThree as Heading3, Highlighter, Image as ImageIcon, TextIndent as Indent, TextItalic as Italic, LinkSimple as Link2, List, ListNumbers as ListOrdered, Minus, TextOutdent as Outdent, Palette, TextTSlash as RemoveFormatting, TextAa as SpellCheck, TextStrikethrough as Strikethrough, TextSubscript as SubscriptIcon, TextSuperscript as SuperscriptIcon, TextUnderline as UnderlineIcon } from "@phosphor-icons/react"
 import { Popover, PopoverContent, PopoverTrigger } from "@ui/web/components/ui/popover"
 import { TwitterPicker, type ColorResult } from "react-color"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/web/components/ui/select"

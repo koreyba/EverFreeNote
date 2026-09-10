@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Tag, X } from "lucide-react"
+import { Tag, X } from "@phosphor-icons/react"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@ui/web/lib/utils"

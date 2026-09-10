@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Download } from "lucide-react"
+import { DownloadSimple as Download } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { ExportSelectionDialog } from "@/components/ExportSelectionDialog"

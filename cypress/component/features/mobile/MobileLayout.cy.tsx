@@ -324,11 +324,11 @@ describe('Mobile Layout Adaptation', () => {
       </ThemeProvider>
     )
 
-    // Back button (ChevronLeft) should exist
-    cy.get('.lucide-chevron-left').should('exist')
+    // Back button should exist
+    cy.get('[data-cy="note-back-button"]').should('exist')
 
     // Click back button
-    cy.get('.lucide-chevron-left').parent().click()
+    cy.get('[data-cy="note-back-button"]').click()
     cy.get('@handleSelectNote').should('have.been.calledWith', null)
   })
 
@@ -354,6 +354,6 @@ describe('Mobile Layout Adaptation', () => {
     )
 
     // Back button should have md:hidden class
-    cy.get('.lucide-chevron-left').parent().should('have.class', 'md:hidden')
+    cy.get('[data-cy="note-back-button"]').should('have.class', 'md:hidden')
   })
 })

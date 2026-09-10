@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ArrowUpRight, Database, Loader2, RefreshCcw, Trash2 } from "lucide-react"
+import { ArrowUpRight, Database, CircleNotch as Loader2, ArrowCounterClockwise as RefreshCcw, Trash as Trash2 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"

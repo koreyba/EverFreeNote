@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2 } from "lucide-react"
+import { CircleNotch as Loader2 } from "@phosphor-icons/react"
 import { useQuery } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import {

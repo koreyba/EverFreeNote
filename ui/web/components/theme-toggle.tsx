@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Moon, Sun } from "lucide-react"
+import { Moon, Sun } from "@phosphor-icons/react"
 import { useTheme } from "next-themes"
 
 import { Button } from "@/components/ui/button"
@@ -34,6 +34,7 @@ export function ThemeToggle() {
         setTheme(newTheme)
       }}
       className="w-9 h-9"
+      data-cy="theme-toggle"
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
       {isDark ? (

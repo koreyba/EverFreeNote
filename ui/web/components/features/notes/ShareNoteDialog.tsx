@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, Copy, Globe2, Loader2, RotateCcw } from "lucide-react"
+import { Check, Copy, GlobeHemisphereWest as Globe2, CircleNotch as Loader2, ArrowCounterClockwise as RotateCcw } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,

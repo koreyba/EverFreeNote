@@ -39,7 +39,7 @@ describe('Desktop notes tab strip', () => {
     // (The scroll arrows depend on measured overflow, which this component
     // harness does not reproduce faithfully — they are covered in the jsdom
     // unit test where the viewport size is controlled directly.)
-    cy.get('button[aria-label="Add note tab"]')
+    cy.get('[data-cy="add-tab-button"]')
       .should('be.visible')
       .and('not.be.disabled')
       .parent()
