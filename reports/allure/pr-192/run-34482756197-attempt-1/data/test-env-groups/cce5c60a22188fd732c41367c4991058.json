@@ -1,0 +1,1 @@
+{"id":"cce5c60a22188fd732c41367c4991058","fullName":"everfreenote:core/tests/unit/core-mcp-oauthResource.test.ts#core/mcp/oauthResource buildProtectedResourceMetadata omits scopes_supported for an empty list","name":"omits scopes_supported for an empty list","status":"passed","testResultsByEnv":{"default":"4aa699947af6ae2a5bf724a073fd1be6"}}

@@ -1,0 +1,1 @@
+{"id":"832eca3c5d898a21a480822053d487e5","fullName":"everfreenote-mobile:tests/unit/enexExport.test.ts#MobileEnexExportService falls back to cacheDirectory when documentDirectory is unavailable","name":"falls back to cacheDirectory when documentDirectory is unavailable","status":"passed","testResultsByEnv":{"default":"6f48505023a2c72bcdbfc7ec6718b827"}}
