@@ -8,6 +8,34 @@
     "suiteLabels": [
       "Web E2E"
     ],
+    "path": "reports/allure/pr-194/run-34491066424-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-194/run-34491066424-attempt-1/",
+    "runId": "34491066424",
+    "runAttempt": "1",
+    "prNumber": "194",
+    "ref": "fix/static-analysis-findings",
+    "sha": "4d041d3f7b6bafa139674436bbeea9127a4402e4",
+    "outcome": "success",
+    "previewUrl": "https://05085459.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #194",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-09-10T14:52:35.274Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web E2E"
+    ],
     "path": "reports/allure/pr-193/run-34484274800-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-193/run-34484274800-attempt-1/",
     "runId": "34484274800",
@@ -615,44 +643,6 @@
     "scopeLabel": "PR #191",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-09-10T10:53:17.467Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-191/run-34466535864-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-191/run-34466535864-attempt-1/",
-    "runId": "34466535864",
-    "runAttempt": "1",
-    "prNumber": "191",
-    "ref": "claude/mcp-notebook-access-5787c5",
-    "sha": "03590f89aca543fdb97e8654c6cffb1a46407a91",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #191",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-09-10T10:44:19.584Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
