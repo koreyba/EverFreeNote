@@ -61,7 +61,10 @@ Supabase credentials come from the repo-root `.env.local`, so a stage build sign
 without extra setup. Prod is the exception: it requires `NEXT_PUBLIC_SUPABASE_URL_PROD`
 and `NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD` explicitly, because inheriting the root env
 files would ship a prod-branded app talking to stage. Every build prints the project it
-resolved.
+resolved — read that line, because the labels cannot be trusted on their own: a local
+`ui/mobile/.env` was found with stage and prod pointing at each other's projects (see
+the warning in `ui/mobile/.env.example`). Production is `pmlloiywmuglbjkhrggo`, whose
+Supabase project is named "EverFreeNote" and whose Site URL is `everfreenote.pages.dev`.
 
 Release builds need a keystore; the script refuses to run without one rather than
 producing an APK that cannot be installed:
