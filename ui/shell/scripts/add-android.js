@@ -122,6 +122,15 @@ if (gradle.includes('signingConfigs')) {
   console.log('✅ added release signing config')
 }
 
+// Launcher icon and splash, from assets/. Regenerated every time because android/ is a
+// working directory: without this the app would fall back to the stock Capacitor icon
+// after any rebuild that recreates the project.
+console.log('🎨 Generating launcher icon and splash')
+execSync('npx @capacitor/assets generate --android --assetPath assets', {
+  cwd: SHELL_DIR,
+  stdio: ['ignore', 'ignore', 'inherit'],
+})
+
 console.log(`
 Redirect URL this build expects in Supabase Auth -> URL Configuration:
   ${scheme}://auth/callback
