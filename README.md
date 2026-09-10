@@ -16,6 +16,7 @@
 - **[Mobile App Guide](ui/mobile/README.md)** — React Native mobile app setup and development
 - **[GitHub Actions Pipelines](docs/GITHUB_ACTIONS_PIPELINES.md)** — CI/CD pipelines and running with Act
 - **[GitHub MCP Server Setup](docs/GITHUB_MCP_SETUP.md)** — connect Cursor to GitHub via MCP
+- **[MCP Notebook Access](docs/MCP_SETUP.md)** — let Claude, ChatGPT and other AI agents read and write your notes via MCP
 - **[Testing Guide](docs/run_test.md)** — how to run tests locally and in CI
 - **[Architecture Guide](docs/ARCHITECTURE.md)** — required reading before contributing
 - **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** — deploy to Cloudflare Pages
