@@ -26,7 +26,7 @@ Environments:
 | Environment | Supabase project | Notes |
 |-------------|------------------|-------|
 | Local | `supabase start` | `[auth.oauth_server]` enabled in `config.toml`; Site URL `http://127.0.0.1:3000`; `npm run functions:serve` |
-| Stage | `yabcuywqxgjlruuyhwin` ("EverFreeNoteStage", dkoreiba account) | OAuth server enabled, authorization path `/oauth/consent`, dynamic client registration ON (done 2026-09-10). **Site URL is still the wildcard `https://*.everfreenote.pages.dev/*` and must be changed to a concrete deployment URL containing the consent page.** Function deployed 2026-09-10 (`supabase functions deploy mcp --no-verify-jwt`). |
+| Stage | `yabcuywqxgjlruuyhwin` ("EverFreeNoteStage", dkoreiba account) | OAuth server enabled, authorization path `/oauth/consent`, dynamic client registration ON (done 2026-09-10). Site URL set to `https://stage.everfreenote.pages.dev` (branch `stage`, auto-deployed by Cloudflare Pages; bundle verified to use this project) on 2026-09-10. Function deployed 2026-09-10 (`supabase functions deploy mcp --no-verify-jwt`). |
 | Production | `pmlloiywmuglbjkhrggo` ("EverFreeNote", dkoreiba account) | OAuth server enabled, authorization path `/oauth/consent`, dynamic client registration ON (done 2026-09-10). Site URL `https://everfreenote.pages.dev` is already concrete; consent page goes live when this branch reaches the production deploy. Function deployed 2026-09-10. |
 
 ## Release Steps
