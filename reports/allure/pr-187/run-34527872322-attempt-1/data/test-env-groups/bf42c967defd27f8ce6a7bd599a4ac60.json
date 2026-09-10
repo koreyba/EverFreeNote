@@ -1,0 +1,1 @@
+{"id":"bf42c967defd27f8ce6a7bd599a4ac60","fullName":"everfreenote:core/tests/unit/core-mcp-noteHtml.test.ts#core/mcp/noteHtml - sanitizeNoteHtml drops script-bearing URLs but keeps safe ones","name":"drops script-bearing URLs but keeps safe ones","status":"passed","testResultsByEnv":{"default":"76aa691f965921743b95ac57ff27fc55"}}
