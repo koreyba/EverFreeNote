@@ -14,11 +14,16 @@ export type NoteRecord = {
   updated_at: string | null
 }
 
+/** How several tags combine: every tag, or at least one of them. */
+export type TagMatch = 'all' | 'any'
+
 export type ListNotesParams = {
   /** Case-insensitive substring matched against title and body. */
   query: string | null
-  /** Exact tag filter. */
-  tag: string | null
+  /** Exact tag values; empty means no tag filter. */
+  tags: string[]
+  /** Only meaningful when more than one tag is given. */
+  tagMatch: TagMatch
   /** 1..100 */
   limit: number
   /** >= 0 */
@@ -39,6 +44,19 @@ export type CreateNoteInput = {
 
 export type UpdateNotePatch = Partial<CreateNoteInput>
 
+export type TagVocabulary = {
+  tags: { name: string; count: number }[]
+  /** Notes carrying at least one tag that were scanned. */
+  total: number
+  /** True when the scan hit its cap, so the vocabulary may be incomplete. */
+  truncated: boolean
+}
+
+export type EditNoteTagsInput = {
+  add: string[]
+  remove: string[]
+}
+
 /**
  * Data access boundary for the MCP tools. Implementations must already be
  * scoped to a single user (the Supabase implementation relies on RLS plus an
@@ -51,4 +69,11 @@ export interface NotebookRepository {
   createNote(input: CreateNoteInput): Promise<NoteRecord>
   /** Resolves `null` when nothing was updated (missing or foreign note). */
   updateNote(id: string, patch: UpdateNotePatch): Promise<NoteRecord | null>
+  /** Every tag the user has, with the number of notes carrying it. */
+  listTags(): Promise<TagVocabulary>
+  /**
+   * Adds and removes individual tags without disturbing the rest.
+   * Resolves `null` when the note does not exist or belongs to another user.
+   */
+  editNoteTags(id: string, edit: EditNoteTagsInput): Promise<NoteRecord | null>
 }

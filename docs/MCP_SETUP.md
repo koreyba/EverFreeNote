@@ -1,6 +1,6 @@
 # MCP Notebook Access
 
-EverFreeNote exposes your notebook to AI agents through a **remote MCP server** (Model Context Protocol, Streamable HTTP). Any MCP-capable client — Claude (web, desktop, iOS, Android), ChatGPT, Claude Code, Cursor and others — can list, search, read, create and update your notes after you approve it once on a consent screen. Deleting notes is intentionally not available.
+EverFreeNote exposes your notebook to AI agents through a **remote MCP server** (Model Context Protocol, Streamable HTTP). Any MCP-capable client — Claude (web, desktop, iOS, Android), ChatGPT, Claude Code, Cursor and others — can search your notes by text, tag or meaning, read them, create new ones, and edit their content and tags, after you approve it once on a consent screen. Deleting notes is intentionally not available.
 
 The server runs as the Supabase Edge Function `mcp`; authentication is standard OAuth 2.1 with PKCE, provided by Supabase Auth's OAuth 2.1 Server. Only your own notes are accessible, enforced by Row Level Security.
 
@@ -28,7 +28,9 @@ Source code:
 | What | Where |
 |---|---|
 | HTTP handler (CORS, routing, token validation, transport) | `supabase/functions/mcp/index.ts` |
-| Tools `list_notes` / `get_note` / `create_note` / `update_note` | `core/mcp/notebookServer.ts` |
+| Tool definitions (all seven) | `core/mcp/notebookServer.ts` |
+| Tag aggregation and incremental tag edits | `core/mcp/tagVocabulary.ts` |
+| Semantic-search port and response mapping | `core/mcp/semanticSearch.ts` |
 | Database access under RLS | `core/mcp/supabaseNotebookRepository.ts` |
 | Write-side HTML sanitizer | `core/mcp/noteHtml.ts` |
 | OAuth resource-server helpers | `core/mcp/oauthResource.ts` |
@@ -137,10 +139,23 @@ Any client that implements the MCP authorization spec (Streamable HTTP + OAuth 2
 
 | Tool | Description |
 |------|-------------|
-| `list_notes` | Most recently updated notes; optional `query` (substring in title/body), `tag`, `limit` (1–100), `offset`. Returns summaries with a plain-text excerpt. |
+| `list_notes` | Most recently updated notes; optional `query` (substring in title/body), `tags` with `tag_match` (`all` by default, or `any`), `limit` (1–100), `offset`. Returns summaries with a plain-text excerpt. |
 | `get_note` | Full note: `content_html` (editor HTML) and `content_text`. |
+| `list_tags` | Every tag with the number of notes carrying it, most used first. Optional substring `query` and `limit`. |
 | `create_note` | `title`, optional `content_html`, optional `tags`. |
-| `update_note` | Replace `title`, `content_html` and/or `tags` of a note. |
+| `update_note` | Replace `title`, `content_html` and/or `tags` of a note. Tags are replaced wholesale. |
+| `edit_note_tags` | Add and/or remove individual tags on a note, leaving the others alone. Use this rather than `update_note` when only tags change. |
+| `search_notes_semantic` | Finds notes close in meaning to the query using the notebook's AI index. Optional `limit`, `min_similarity`, `tag`. Returns one entry per note with matching passages. |
+
+
+### Semantic search prerequisites
+
+`search_notes_semantic` reuses the same AI index the web app's search uses. It works once **both** are true:
+
+1. A **Gemini API key** is saved under Settings → Indexing (RAG). Every search spends that key's embedding quota.
+2. The notes have been **indexed** from that screen.
+
+If the key is missing, the notes were indexed with a different embedding model, or AI indexing is not set up, the tool says which of those it is instead of returning an empty result. Nothing extra is deployed or configured for it: the MCP function calls the project's existing `rag-search` function with your own token.
 
 Note bodies are the editor's HTML (`<p>`, `<h1>`–`<h3>`, lists, `<strong>`, `<em>`, links, `<code>`, `<pre>`, `<blockquote>`, `<hr>`, `<img>`, `<mark>`). Agents are instructed to convert Markdown to this HTML before writing.
 

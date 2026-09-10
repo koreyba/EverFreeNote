@@ -10,6 +10,7 @@ import {
   toNoteDetail,
   toNoteSummary,
 } from '@core/mcp/notebookServer'
+import type { SemanticSearch } from '@core/mcp/semanticSearch'
 import type { NotebookRepository, NoteRecord } from '@core/mcp/types'
 
 const NOTE_A: NoteRecord = {
@@ -38,11 +39,13 @@ function createRepositoryMock(): jest.Mocked<NotebookRepository> {
     getNote: jest.fn(),
     createNote: jest.fn(),
     updateNote: jest.fn(),
+    listTags: jest.fn(),
+    editNoteTags: jest.fn(),
   }
 }
 
-async function connect(repository: NotebookRepository) {
-  const server = createNotebookMcpServer(repository)
+async function connect(repository: NotebookRepository, semanticSearch?: SemanticSearch) {
+  const server = createNotebookMcpServer(repository, semanticSearch)
   const client = new Client({ name: 'test-client', version: '0.0.0' })
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
 
@@ -110,7 +113,7 @@ describe('core/mcp/notebookServer', () => {
       await session.close()
     })
 
-    it('advertises the server info and the four notebook tools', async () => {
+    it('advertises the server info and the notebook tools', async () => {
       expect(session.client.getServerVersion()).toMatchObject({
         name: NOTEBOOK_MCP_SERVER_INFO.name,
         version: NOTEBOOK_MCP_SERVER_INFO.version,
@@ -119,7 +122,7 @@ describe('core/mcp/notebookServer', () => {
 
       const { tools } = await session.client.listTools()
       const names = tools.map((tool) => tool.name).sort()
-      expect(names).toEqual(['create_note', 'get_note', 'list_notes', 'update_note'])
+      expect(names).toEqual(['create_note', 'edit_note_tags', 'get_note', 'list_notes', 'list_tags', 'update_note'])
 
       const listTool = tools.find((tool) => tool.name === 'list_notes')
       expect(listTool?.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false })
@@ -135,7 +138,7 @@ describe('core/mcp/notebookServer', () => {
 
         const result = await session.client.callTool({ name: 'list_notes', arguments: {} })
 
-        expect(repository.listNotes).toHaveBeenCalledWith({ query: null, tag: null, limit: DEFAULT_LIST_LIMIT, offset: 0 })
+        expect(repository.listNotes).toHaveBeenCalledWith({ query: null, tags: [], tagMatch: 'all', limit: DEFAULT_LIST_LIMIT, offset: 0 })
         expect(result.isError).toBeFalsy()
         expect(result.structuredContent).toEqual({
           notes: [toNoteSummary(NOTE_A), toNoteSummary(NOTE_B)],
@@ -150,10 +153,10 @@ describe('core/mcp/notebookServer', () => {
 
         const result = await session.client.callTool({
           name: 'list_notes',
-          arguments: { query: '  milk ', tag: 'home', limit: 2, offset: 2 },
+          arguments: { query: '  milk ', tags: ['home'], limit: 2, offset: 2 },
         })
 
-        expect(repository.listNotes).toHaveBeenCalledWith({ query: 'milk', tag: 'home', limit: 2, offset: 2 })
+        expect(repository.listNotes).toHaveBeenCalledWith({ query: 'milk', tags: ['home'], tagMatch: 'all', limit: 2, offset: 2 })
         expect(result.structuredContent).toMatchObject({ total: 3, has_more: false })
       })
 
@@ -346,6 +349,226 @@ describe('core/mcp/notebookServer', () => {
         expect(result.isError).toBe(true)
         expect(textOf(result)).toBe('Failed to update note: conflict')
       })
+    })
+
+    describe('list_tags', () => {
+      it('returns the vocabulary ordered by usage', async () => {
+        repository.listTags.mockResolvedValue({
+          tags: [
+            { name: 'work', count: 4 },
+            { name: 'home', count: 1 },
+          ],
+          total: 5,
+          truncated: false,
+        })
+
+        const result = await session.client.callTool({ name: 'list_tags', arguments: {} })
+
+        expect(result.isError).toBeFalsy()
+        expect(result.structuredContent).toEqual({
+          tags: [
+            { name: 'work', count: 4 },
+            { name: 'home', count: 1 },
+          ],
+          total: 2,
+          truncated: false,
+        })
+      })
+
+      it('filters by substring and applies the limit', async () => {
+        repository.listTags.mockResolvedValue({
+          tags: [
+            { name: 'work', count: 4 },
+            { name: 'homework', count: 2 },
+            { name: 'home', count: 1 },
+          ],
+          total: 7,
+          truncated: false,
+        })
+
+        const result = await session.client.callTool({ name: 'list_tags', arguments: { query: 'work', limit: 1 } })
+
+        expect(result.structuredContent).toMatchObject({ tags: [{ name: 'work', count: 4 }], total: 2 })
+      })
+
+      it('passes the truncated flag through', async () => {
+        repository.listTags.mockResolvedValue({ tags: [{ name: 'a', count: 1 }], total: 1, truncated: true })
+
+        const result = await session.client.callTool({ name: 'list_tags', arguments: {} })
+
+        expect(result.structuredContent).toMatchObject({ truncated: true })
+      })
+
+      it('returns a tool error when the repository fails', async () => {
+        repository.listTags.mockRejectedValue(new Error('db down'))
+
+        const result = await session.client.callTool({ name: 'list_tags', arguments: {} })
+
+        expect(result.isError).toBe(true)
+        expect(textOf(result)).toBe('Failed to list tags: db down')
+      })
+    })
+
+    describe('edit_note_tags', () => {
+      it('forwards normalised add and remove lists', async () => {
+        repository.editNoteTags.mockResolvedValue({ ...NOTE_A, tags: ['home', 'urgent'] })
+
+        const result = await session.client.callTool({
+          name: 'edit_note_tags',
+          arguments: { id: NOTE_A.id, add: [' urgent ', 'urgent'], remove: ['old', ''] },
+        })
+
+        expect(repository.editNoteTags).toHaveBeenCalledWith(NOTE_A.id, { add: ['urgent'], remove: ['old'] })
+        expect(result.isError).toBeFalsy()
+        expect(result.structuredContent).toMatchObject({ tags: ['home', 'urgent'] })
+      })
+
+      it('accepts a removal on its own', async () => {
+        repository.editNoteTags.mockResolvedValue({ ...NOTE_A, tags: [] })
+
+        await session.client.callTool({ name: 'edit_note_tags', arguments: { id: NOTE_A.id, remove: ['home'] } })
+
+        expect(repository.editNoteTags).toHaveBeenCalledWith(NOTE_A.id, { add: [], remove: ['home'] })
+      })
+
+      it('requires at least one tag to add or remove', async () => {
+        const result = await session.client.callTool({ name: 'edit_note_tags', arguments: { id: NOTE_A.id } })
+
+        expect(result.isError).toBe(true)
+        expect(textOf(result)).toBe('Provide at least one tag to add or remove')
+        expect(repository.editNoteTags).not.toHaveBeenCalled()
+      })
+
+      it('treats blank-only lists as nothing to do', async () => {
+        const result = await session.client.callTool({
+          name: 'edit_note_tags',
+          arguments: { id: NOTE_A.id, add: ['  '], remove: [''] },
+        })
+
+        expect(result.isError).toBe(true)
+        expect(repository.editNoteTags).not.toHaveBeenCalled()
+      })
+
+      it('reports a missing note and repository failures', async () => {
+        repository.editNoteTags.mockResolvedValue(null)
+        const missing = await session.client.callTool({
+          name: 'edit_note_tags',
+          arguments: { id: NOTE_B.id, add: ['x'] },
+        })
+        expect(missing.isError).toBe(true)
+        expect(textOf(missing)).toBe('Note not found')
+
+        repository.editNoteTags.mockRejectedValue(new Error('conflict'))
+        const failed = await session.client.callTool({
+          name: 'edit_note_tags',
+          arguments: { id: NOTE_A.id, add: ['x'] },
+        })
+        expect(failed.isError).toBe(true)
+        expect(textOf(failed)).toBe('Failed to edit tags: conflict')
+      })
+    })
+  })
+
+  describe('semantic search', () => {
+    let repository: jest.Mocked<NotebookRepository>
+    let semanticSearch: { search: jest.Mock }
+    let session: Awaited<ReturnType<typeof connect>>
+
+    beforeEach(async () => {
+      repository = createRepositoryMock()
+      semanticSearch = { search: jest.fn() }
+      session = await connect(repository, semanticSearch as unknown as SemanticSearch)
+    })
+
+    afterEach(async () => {
+      await session.close()
+    })
+
+    it('is only registered when a search port is supplied', async () => {
+      const { tools } = await session.client.listTools()
+      expect(tools.map((tool) => tool.name)).toContain('search_notes_semantic')
+
+      const withoutPort = await connect(createRepositoryMock())
+      try {
+        const listed = await withoutPort.client.listTools()
+        expect(listed.tools.map((tool) => tool.name)).not.toContain('search_notes_semantic')
+      } finally {
+        await withoutPort.close()
+      }
+    })
+
+    it('returns the matching notes with defaults applied', async () => {
+      semanticSearch.search.mockResolvedValue({
+        status: 'ok',
+        notes: [{ id: NOTE_A.id, title: 'Groceries', tags: ['home'], similarity: 0.83, excerpts: ['milk'] }],
+      })
+
+      const result = await session.client.callTool({
+        name: 'search_notes_semantic',
+        arguments: { query: '  what to buy  ' },
+      })
+
+      expect(semanticSearch.search).toHaveBeenCalledWith({
+        query: 'what to buy',
+        limit: 10,
+        minSimilarity: null,
+        tag: null,
+      })
+      expect(result.isError).toBeFalsy()
+      expect(result.structuredContent).toMatchObject({ total: 1 })
+    })
+
+    it('forwards the limit, threshold and tag', async () => {
+      semanticSearch.search.mockResolvedValue({ status: 'ok', notes: [] })
+
+      await session.client.callTool({
+        name: 'search_notes_semantic',
+        arguments: { query: 'x', limit: 3, min_similarity: 0.9, tag: 'home' },
+      })
+
+      expect(semanticSearch.search).toHaveBeenCalledWith({
+        query: 'x',
+        limit: 3,
+        minSimilarity: 0.9,
+        tag: 'home',
+      })
+    })
+
+    it('explains an empty result without failing', async () => {
+      semanticSearch.search.mockResolvedValue({ status: 'ok', notes: [] })
+
+      const result = await session.client.callTool({
+        name: 'search_notes_semantic',
+        arguments: { query: 'x', min_similarity: 0.95 },
+      })
+
+      expect(result.isError).toBeFalsy()
+      expect(result.structuredContent).toEqual({ notes: [], total: 0 })
+      expect(textOf(result)).toContain('0.95')
+    })
+
+    it('relays a setup gap as an actionable message', async () => {
+      semanticSearch.search.mockResolvedValue({
+        status: 'unavailable',
+        reason: 'missing_api_key',
+        message: 'Semantic search needs a Gemini API key.',
+      })
+
+      const result = await session.client.callTool({ name: 'search_notes_semantic', arguments: { query: 'x' } })
+
+      expect(result.isError).toBe(true)
+      expect(textOf(result)).toBe('Semantic search needs a Gemini API key.')
+    })
+
+    it('rejects an empty query and reports upstream failures', async () => {
+      const invalid = await session.client.callTool({ name: 'search_notes_semantic', arguments: { query: '   ' } })
+      expect(invalid.isError).toBe(true)
+      expect(semanticSearch.search).not.toHaveBeenCalled()
+
+      semanticSearch.search.mockRejectedValue(new Error('rag-search returned 500'))
+      const failed = await session.client.callTool({ name: 'search_notes_semantic', arguments: { query: 'x' } })
+      expect(failed.isError).toBe(true)
+      expect(textOf(failed)).toBe('Semantic search failed: rag-search returned 500')
     })
   })
 })
