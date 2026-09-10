@@ -14,16 +14,20 @@ Emulator numbers only; a confirmation run on a physical device is still outstand
 
 ## What was built
 
-`poc/capacitor/` — a Capacitor 8.5.1 shell whose web root is the **unmodified**
-production static export from `npm run build`. No web source changes were needed
-to make the app boot and render inside the WebView.
+A Capacitor 8.5.1 shell whose web root is the **unmodified** production static export
+from `npm run build`. No web source changes were needed to make the app boot and render
+inside the WebView.
+
+The POC has since been promoted to `ui/shell` — see
+[feature-capacitor-android-shell](../design/feature-capacitor-android-shell.md). Paths
+below refer to that package.
 
 ```mermaid
 graph LR
     subgraph "existing, unchanged"
         Next[Next.js app<br/>output: 'export'] -->|npm run build| Out[out/]
     end
-    subgraph "poc/capacitor"
+    subgraph "ui/shell"
         Out -->|scripts/build-web.js| WWW[www/]
         WWW -->|cap sync| Assets[android assets/public]
         Assets --> APK[release APK 6.3 MB]
@@ -123,7 +127,11 @@ before anyone tries to debug a release build through logcat.
 - Android Studio is **not** required; command line tools are sufficient, which keeps
   CI identical to the existing `android-build.yml` approach.
 
-### 4. OAuth leaves the app correctly, but has no way back
+### 4. OAuth leaves the app correctly, but had no way back
+
+**Resolved in `ui/shell`** — the finding as originally measured is kept below because it
+is what drove the design.
+
 
 Measured with a stage-keyed build on the emulator: tapping "Continue with Google"
 makes Capacitor hand the URL to the system browser, which opens
@@ -138,10 +146,19 @@ missing is the **return leg**: Google redirects to `https://localhost/auth/callb
 which the external browser cannot hand back to the app. The WebView stays on
 `https://localhost/` and the user lands back on the login screen.
 
-Closing this needs shell wiring only, no web code changes: `@capacitor/browser` to
-open the flow, a custom scheme (e.g. `com.everfreenote.poc://auth/callback`) declared
-in the manifest, an `appUrlOpen` listener from `@capacitor/app`, and that redirect URL
-registered in Supabase Auth.
+Closed by shell wiring, with no change to how the web app authenticates:
+`@capacitor/browser` opens the flow, the variant's custom scheme is declared in the
+manifest by `scripts/add-android.js`, and an `appUrlOpen` listener exchanges the code.
+The redirect URLs were already registered in Supabase Auth for `ui/mobile`.
+
+Verified on device by firing a synthetic callback, which needs no credentials:
+
+```bash
+adb shell am start -a android.intent.action.VIEW \
+  -d "everfreenote-stage://auth/callback?code=<code>"
+```
+
+Android delivered the intent, the listener ran, and the exchange reached Supabase.
 
 ## Ecosystem risk: Ionic's commercial wind-down
 
@@ -171,15 +188,5 @@ to avoid Capacitor.
 
 ## Reproducing
 
-```bash
-cd poc/capacitor
-npm install
-node scripts/build-web.js          # builds out/ and stages www/
-node scripts/make-harness-www.js   # optional: boot straight into the perf harness
-npx cap sync android
-cd android && ./gradlew assembleRelease
-cd .. && ./scripts/measure.sh android/app/build/outputs/apk/release/app-release.apk "label" 5
-```
-
-`measure.sh` works against any connected device, so the same numbers can be taken on
-a physical phone via `adb connect`.
+See [`ui/shell/README.md`](../../../ui/shell/README.md). `measure.sh` works against any
+connected device, so the same numbers can be taken on a physical phone via `adb connect`.

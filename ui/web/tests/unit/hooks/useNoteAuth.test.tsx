@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { User } from '@supabase/supabase-js'
 import React from 'react'
 import { toast } from 'sonner'
+import { resolveOAuthAdapter } from '@ui/web/adapters/oauth'
 import { webStorageAdapter } from '@ui/web/adapters/storage'
 
 import { useNoteAuth, type NoteAuthConfig } from '@ui/web/hooks/useNoteAuth'
@@ -33,6 +34,10 @@ jest.mock('@ui/web/adapters/storage', () => ({
   webStorageAdapter: { removeItem: jest.fn().mockResolvedValue(undefined) },
 }))
 jest.mock('@ui/web/config', () => ({ webOAuthRedirectUri: 'https://app.example/auth/callback' }))
+jest.mock('@ui/web/adapters/oauth', () => ({
+  resolveOAuthRedirectUri: jest.fn(() => 'https://app.example/auth/callback'),
+  resolveOAuthAdapter: jest.fn(),
+}))
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() } }))
 
 const config = (overrides: Partial<NoteAuthConfig> = {}): NoteAuthConfig => ({
@@ -60,7 +65,7 @@ describe('useNoteAuth', () => {
     jest.mocked(webStorageAdapter.removeItem).mockResolvedValue(undefined)
     mockSupabase.auth.getSession.mockResolvedValue({ data: { session: null } })
     mockOnAuthStateChange.mockReturnValue({ data: { subscription: mockSubscription } })
-    mockAuthService.signInWithGoogle.mockResolvedValue({ error: null })
+    mockAuthService.signInWithGoogle.mockResolvedValue({ data: { url: 'https://provider.example/auth' }, error: null })
     mockAuthService.signInWithPassword.mockResolvedValue({ data: { user }, error: null })
     mockAuthService.signOut.mockResolvedValue({ error: null })
     mockAuthService.deleteAccount.mockResolvedValue({ deleted: true })
@@ -87,14 +92,41 @@ describe('useNoteAuth', () => {
     expect(mockSubscription.unsubscribe).toHaveBeenCalledTimes(1)
   })
 
-  it('handles Google sign-in success and rejected service calls', async () => {
+  it('hands the provider URL to the platform OAuth adapter', async () => {
+    const startOAuth = jest.fn().mockResolvedValue(undefined)
+    jest.mocked(resolveOAuthAdapter).mockResolvedValue({ startOAuth })
+    mockAuthService.signInWithGoogle.mockResolvedValue({ data: { url: 'https://provider.example/auth' }, error: null })
+
     const { result } = renderAuthHook()
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     await act(async () => result.current.handleSignInWithGoogle())
-    expect(mockAuthService.signInWithGoogle).toHaveBeenCalledWith('https://app.example/auth/callback')
 
+    // skipBrowserRedirect keeps Supabase from navigating: the adapter decides how the
+    // URL is opened, which is what lets the Android shell use a Custom Tab.
+    expect(mockAuthService.signInWithGoogle).toHaveBeenCalledWith('https://app.example/auth/callback', {
+      skipBrowserRedirect: true,
+    })
+    expect(startOAuth).toHaveBeenCalledWith('https://provider.example/auth')
+  })
+
+  it('reports sign-in failures without opening the provider', async () => {
+    const startOAuth = jest.fn().mockResolvedValue(undefined)
+    jest.mocked(resolveOAuthAdapter).mockResolvedValue({ startOAuth })
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const { result } = renderAuthHook()
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    mockAuthService.signInWithGoogle.mockResolvedValueOnce({ data: null, error: new Error('denied') })
+    await act(async () => result.current.handleSignInWithGoogle())
+    expect(startOAuth).not.toHaveBeenCalled()
+
+    // A missing URL is a distinct failure: Supabase answered, but with nothing to open.
+    mockAuthService.signInWithGoogle.mockResolvedValueOnce({ data: { url: null }, error: null })
+    await act(async () => result.current.handleSignInWithGoogle())
+    expect(consoleError).toHaveBeenCalledWith('Error signing in: provider returned no authorization URL')
+
     mockAuthService.signInWithGoogle.mockRejectedValueOnce(new Error('oauth unavailable'))
     await act(async () => result.current.handleSignInWithGoogle())
     expect(consoleError).toHaveBeenCalledWith('Error signing in:', expect.any(Error))

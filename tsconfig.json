@@ -39,6 +39,9 @@
       ],
       "@ui/mobile/*": [
         "./ui/mobile/*"
+      ],
+      "@ui/shell/*": [
+        "./ui/shell/*"
       ]
     }
   },
@@ -52,9 +55,12 @@
   "exclude": [
     "node_modules",
     "ui/mobile",
-    "poc",
+    "ui/shell/android",
+    "ui/shell/www",
+    "ui/shell/capacitor.config.ts",
     "core/tests",
     "ui/web/tests",
+    "ui/shell/tests",
     "supabase/functions",
     "**/web-editor/**"
   ]

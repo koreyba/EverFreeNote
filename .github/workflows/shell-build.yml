@@ -1,0 +1,100 @@
+name: Shell Build
+
+# Builds the Capacitor shell (ui/shell): the web build wrapped as an Android app.
+# Separate from Android Build, which builds the React Native app in ui/mobile.
+#
+# Produces a debug APK — installable for testing without any signing secrets. Add a
+# release job mirroring android-build.yml once a shell keystore secret exists.
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: 'Shell variant to build'
+        required: true
+        default: 'stage'
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+  pull_request:
+    # Deliberately narrow: an Android build is slow, and web/core changes are already
+    # covered by Build. Use the manual dispatch to check the shell against those.
+    paths:
+      - 'ui/shell/**'
+      - '.github/workflows/shell-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build shell APK (${{ inputs.variant || 'stage' }})
+    runs-on: ubuntu-latest
+    env:
+      APP_VARIANT: ${{ inputs.variant || 'stage' }}
+      # Placeholders keep the build self-contained; a build meant for sign-in needs the
+      # real values, which is what the local ui/shell README documents.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder' }}
+      GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            ui/shell/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install shell dependencies
+        run: npm --prefix ui/shell ci --ignore-scripts
+
+      - name: Setup Java Development Kit (JDK)
+        uses: actions/setup-java@v4
+        with:
+          # Capacitor 8 requires JDK 21; 17 fails with "invalid source release: 21".
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+
+      - name: Stage web build
+        run: npm --prefix ui/shell run build:web
+
+      - name: Generate native project
+        run: npm --prefix ui/shell run add:android
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+        working-directory: ui/shell
+
+      - name: Build debug APK
+        run: |
+          cd ui/shell/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Prepare APK artifact
+        run: |
+          mkdir -p build-apks
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          cp ui/shell/android/app/build/outputs/apk/debug/app-debug.apk \
+            "build-apks/everfreenote-shell-${APP_VARIANT}-debug-${SHORT_SHA}.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4
+        with:
+          name: everfreenote-shell-${{ inputs.variant || 'stage' }}-apk
+          path: build-apks/
+          retention-days: 30

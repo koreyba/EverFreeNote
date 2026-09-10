@@ -1,0 +1,26 @@
+{
+  "name": "everfreenote-shell",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Android shell: runs the EverFreeNote web build as a native app via Capacitor",
+  "scripts": {
+    "build:web": "node scripts/build-web.js",
+    "add:android": "node scripts/add-android.js",
+    "sync": "node scripts/build-web.js && npx cap sync android",
+    "apk:debug": "cd android && ./gradlew assembleDebug",
+    "apk:release": "cd android && ./gradlew assembleRelease",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.1",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/browser": "8.0.4",
+    "@capacitor/core": "8.5.1",
+    "@capacitor/keyboard": "8.0.5",
+    "@capacitor/status-bar": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.1",
+    "typescript": "~5.9.2"
+  }
+}

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Measure the Capacitor POC on a connected device or emulator.
+# Measure the Capacitor shell on a connected device or emulator.
+#
+# Override the package with SHELL_PKG when measuring a non-stage variant.
 #
 #   ./scripts/measure.sh <path-to.apk> <label> [runs]
 #
@@ -12,7 +14,7 @@ set -euo pipefail
 APK="${1:?usage: measure.sh <apk> <label> [runs]}"
 LABEL="${2:?}"
 RUNS="${3:-5}"
-PKG="com.everfreenote.poc"
+PKG="${SHELL_PKG:-com.everfreenote.shell.stage}"
 ACTIVITY="$PKG/.MainActivity"
 ADB="${ANDROID_HOME:-/opt/homebrew/share/android-commandlinetools}/platform-tools/adb"
 HERE="$(cd "$(dirname "$0")" && pwd)"

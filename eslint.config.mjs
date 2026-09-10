@@ -32,6 +32,8 @@ export default defineConfig([
       'out/**',
       'next-env.d.ts',
       'ui/mobile/**', // Ignore mobile project
+      'ui/shell/www/**', // Generated: staged copy of the web build
+      'ui/shell/android/**', // Generated: native project from `cap add android`
       'supabase/functions/**', // Deno runtime — not compatible with Node.js TypeScript rules
       '.scannerwork/**',
       '.sonarlint/**',
@@ -85,7 +87,7 @@ export default defineConfig([
   
   // Override for Node.js scripts (CommonJS)
   {
-    files: ['scripts/*.js', 'build/*.js'],
+    files: ['scripts/*.js', 'build/*.js', 'ui/shell/scripts/*.js'],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/no-var-requires': 'off',

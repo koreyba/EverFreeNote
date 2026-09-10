@@ -3,10 +3,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 export class AuthService {
   constructor(private supabase: SupabaseClient) { }
 
-  async signInWithGoogle(redirectTo: string) {
+  /**
+   * `skipBrowserRedirect` returns the provider URL instead of navigating to it, which
+   * is what the Android shell needs so it can open the URL in a Custom Tab.
+   */
+  async signInWithGoogle(redirectTo: string, options?: { skipBrowserRedirect?: boolean }) {
     return this.supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo },
+      options: { redirectTo, skipBrowserRedirect: options?.skipBrowserRedirect },
     })
   }
 

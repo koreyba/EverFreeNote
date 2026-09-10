@@ -10,5 +10,6 @@ bootstrap: |+
   set -eu
   npm ci --include=dev
   npm --prefix ui/mobile ci --include=dev
+  npm --prefix ui/shell ci --include=dev
 include:
   - name: CheckDependencyLicenses
