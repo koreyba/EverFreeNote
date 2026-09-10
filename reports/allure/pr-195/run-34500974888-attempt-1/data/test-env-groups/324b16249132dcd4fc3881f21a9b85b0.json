@@ -1,0 +1,1 @@
+{"id":"324b16249132dcd4fc3881f21a9b85b0","fullName":"everfreenote:core/tests/unit/core-mcp-noteHtml.test.ts#core/mcp/noteHtml - sanitizeNoteHtml removes script elements together with their content","name":"removes script elements together with their content","status":"passed","testResultsByEnv":{"default":"8b86c8e06ea5002ac746ac7b1d8c251d"}}
