@@ -359,4 +359,50 @@ describe('Mobile Layout Adaptation', () => {
     // Back button should have md:hidden class
     cy.get('[data-cy="note-back-button"]').should('have.class', 'md:hidden')
   })
+
+  it('confirms a discarded failed save in the app dialog instead of a native confirm', () => {
+    const confirmCloseTab = cy.stub().as('confirmCloseTab')
+    confirmCloseTab.resolves()
+    const cancelCloseTab = cy.stub().as('cancelCloseTab')
+    const controller = createMockController({
+      tabPendingClose: { tabId: 'test-tab', label: 'Unsent note' },
+      confirmCloseTab,
+      cancelCloseTab,
+    })
+
+    cy.mount(
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
+    )
+
+    cy.contains('Discard unsaved changes?').should('be.visible')
+    cy.contains('Unsent note').should('be.visible')
+
+    cy.get('[data-cy="discard-failed-save-cancel"]').click()
+    cy.get('@cancelCloseTab').should('have.been.called')
+    cy.get('@confirmCloseTab').should('not.have.been.called')
+  })
+
+  it('closes the tab when the discard dialog is confirmed', () => {
+    const confirmCloseTab = cy.stub().as('confirmCloseTab')
+    confirmCloseTab.resolves()
+    const controller = createMockController({
+      tabPendingClose: { tabId: 'test-tab', label: 'Unsent note' },
+      confirmCloseTab,
+    })
+
+    cy.mount(
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
+    )
+
+    cy.get('[data-cy="discard-failed-save-confirm"]').click()
+    cy.get('@confirmCloseTab').should('have.been.calledOnce')
+  })
 })
