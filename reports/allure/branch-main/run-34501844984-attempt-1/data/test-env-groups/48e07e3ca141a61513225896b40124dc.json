@@ -1,1 +1,0 @@
-{"id":"48e07e3ca141a61513225896b40124dc","fullName":"everfreenote-mobile:tests/component/editorToolbar.test.tsx#EditorToolbar closes link menu on cancel without calling onCommand","name":"closes link menu on cancel without calling onCommand","status":"passed","testResultsByEnv":{"default":"7c8a71a50551b9c2cb0d2a2bd6a9f472"}}
