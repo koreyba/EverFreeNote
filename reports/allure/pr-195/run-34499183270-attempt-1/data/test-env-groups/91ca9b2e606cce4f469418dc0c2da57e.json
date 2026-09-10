@@ -1,0 +1,1 @@
+{"id":"91ca9b2e606cce4f469418dc0c2da57e","fullName":"everfreenote:core/tests/unit/core-mcp-oauthResource.test.ts#core/mcp/oauthResource extractBearerToken returns null for missing or malformed headers","name":"returns null for missing or malformed headers","status":"passed","testResultsByEnv":{"default":"4305d4acd6f48b8952be4cfaedadc9d3"}}

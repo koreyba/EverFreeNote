@@ -1,1 +1,0 @@
-{"id":"99da1f01ee0410d5968231770078dbfe","fullName":"everfreenote:core/tests/unit/core-mcp-noteHtml.test.ts#core/mcp/noteHtml - sanitizeNoteHtml returns an empty string for empty input","name":"returns an empty string for empty input","status":"passed","testResultsByEnv":{"default":"89a3c1604cfa4a0077f448326af22d69"}}
