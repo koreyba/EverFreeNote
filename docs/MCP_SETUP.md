@@ -10,6 +10,48 @@ https://<project-ref>.supabase.co/functions/v1/mcp
 
 ---
 
+## 0. Where this lives
+
+The MCP server is **not** a separate service. It is the Supabase Edge Function `mcp`, one per Supabase project, and it authenticates against that same project's Supabase Auth.
+
+| | Production | Stage |
+|---|---|---|
+| Supabase project | **EverFreeNote** — `pmlloiywmuglbjkhrggo` | **EverFreeNoteStage** — `yabcuywqxgjlruuyhwin` |
+| **Connector URL** (paste this into the AI client) | `https://pmlloiywmuglbjkhrggo.supabase.co/functions/v1/mcp` | `https://yabcuywqxgjlruuyhwin.supabase.co/functions/v1/mcp` |
+| Authorization server | `https://pmlloiywmuglbjkhrggo.supabase.co/auth/v1` | `https://yabcuywqxgjlruuyhwin.supabase.co/auth/v1` |
+| Consent page (Site URL + `/oauth/consent`) | `https://everfreenote.pages.dev/oauth/consent` | `https://stage.everfreenote.pages.dev/oauth/consent` |
+| Web app branch on Cloudflare Pages | `main` | `stage` |
+| JWT signing key | ECC P-256 (ES256) | ECC P-256 (ES256) |
+
+Source code:
+
+| What | Where |
+|---|---|
+| HTTP handler (CORS, routing, token validation, transport) | `supabase/functions/mcp/index.ts` |
+| Tools `list_notes` / `get_note` / `create_note` / `update_note` | `core/mcp/notebookServer.ts` |
+| Database access under RLS | `core/mcp/supabaseNotebookRepository.ts` |
+| Write-side HTML sanitizer | `core/mcp/noteHtml.ts` |
+| OAuth resource-server helpers | `core/mcp/oauthResource.ts` |
+| Consent page | `app/oauth/consent/`, `ui/web/components/features/oauth/` |
+
+Where to look in the Supabase dashboard (replace `<ref>` with the project ref above):
+
+| Task | Path |
+|---|---|
+| Function logs and invocations | Edge Functions → `mcp` → Logs / Invocations |
+| OAuth server settings | Authentication → OAuth Server |
+| Registered AI clients and their grants | Authentication → OAuth Apps |
+| Token-exchange errors | Logs → Auth Logs (filter `/oauth/token`) |
+| JWT signing keys | Settings → JWT Keys |
+
+Redeploying the server:
+
+```bash
+npx supabase functions deploy mcp --no-verify-jwt --project-ref <ref>
+```
+
+---
+
 ## 1. One-time setup (project owner)
 
 ### 1.1 Enable the OAuth server in Supabase
