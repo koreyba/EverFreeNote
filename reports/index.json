@@ -3,6 +3,42 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "mobile-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Mobile Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/pr-196/run-34524650043-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-196/run-34524650043-attempt-1/",
+    "runId": "34524650043",
+    "runAttempt": "1",
+    "prNumber": "196",
+    "ref": "claude/mobile-wrapper-web-app-1d666e",
+    "sha": "b613e4353f67e834a5044687f8a512646655b451",
+    "outcome": "failure",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #196",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-09-10T20:19:19.683Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "e2e"
     ],
     "suiteLabels": [
@@ -627,42 +663,6 @@
     "scopeLabel": "main",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-09-10T13:45:46.635Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component"
-    ],
-    "path": "reports/allure/pr-192/run-34482756197-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-192/run-34482756197-attempt-1/",
-    "runId": "34482756197",
-    "runAttempt": "1",
-    "prNumber": "192",
-    "ref": "mcp-post-merge",
-    "sha": "267addc16918f26597276ffb89bb3876c0b255bd",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #192",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-09-10T13:38:47.959Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
