@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Database, Download, Globe, KeyRound, Upload, UserRound, X } from "lucide-react"
+import { ArrowLeft, Database, DownloadSimple as Download, Globe, Key as KeyRound, UploadSimple as Upload, User as UserRound, X } from "@phosphor-icons/react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -80,7 +80,7 @@ export function SettingsPage() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, loading, deleteAccountLoading, handleDeleteAccount } = useNoteAuth()
+  const { user, loading, deleteAccountLoading, handleDeleteAccount, handleSignOut } = useNoteAuth()
   const mobileTabsRef = React.useRef<HTMLDivElement | null>(null)
   const scrollTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mobileTabsScrollable, setMobileTabsScrollable] = React.useState(false)
@@ -367,6 +367,10 @@ export function SettingsPage() {
                         router.push("/")
                       })}
                       loading={deleteAccountLoading}
+                      onSignOut={() => handleSignOut(() => {
+                        clearSettingsReturnState()
+                        router.push("/")
+                      })}
                     />
                   ) : null}
                 </div>

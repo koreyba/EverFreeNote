@@ -28,6 +28,38 @@ describe("DeleteAccountPanel", () => {
     ).toBeTruthy()
   })
 
+  it("omits the sign out control when no session handler is provided", () => {
+    render(<DeleteAccountPanel {...defaultProps} />)
+
+    expect(screen.queryByRole("button", { name: /sign out/i })).toBeNull()
+  })
+
+  it("renders a sign out control and reports the click", async () => {
+    const onSignOut = jest.fn().mockResolvedValue(undefined)
+    render(<DeleteAccountPanel {...defaultProps} onSignOut={onSignOut} />)
+
+    const button = screen.getByRole("button", { name: "Sign out" })
+    fireEvent.click(button)
+
+    await waitFor(() => expect(onSignOut).toHaveBeenCalledTimes(1))
+  })
+
+  it("blocks a second sign out while the first is still running", async () => {
+    let release: (() => void) | undefined
+    const onSignOut = jest.fn().mockImplementation(() => new Promise<void>((resolve) => { release = resolve }))
+    render(<DeleteAccountPanel {...defaultProps} onSignOut={onSignOut} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }))
+
+    const pending = await screen.findByRole("button", { name: "Signing out..." })
+    expect(pending.hasAttribute("disabled")).toBe(true)
+    fireEvent.click(pending)
+    expect(onSignOut).toHaveBeenCalledTimes(1)
+
+    release?.()
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy())
+  })
+
   it("renders fallback text when email is missing or null", () => {
     render(<DeleteAccountPanel {...defaultProps} email={null} />)
 
