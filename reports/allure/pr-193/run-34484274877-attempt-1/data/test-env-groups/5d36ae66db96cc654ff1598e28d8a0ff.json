@@ -1,0 +1,1 @@
+{"id":"5d36ae66db96cc654ff1598e28d8a0ff","fullName":"everfreenote:core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste downgrades unsupported markdown to plain text with line breaks","name":"downgrades unsupported markdown to plain text with line breaks","status":"passed","testResultsByEnv":{"default":"98b1fbd03c5de39b7f0ee03d4999b411"}}
