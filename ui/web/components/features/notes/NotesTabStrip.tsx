@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react"
-import { AlertCircle, Loader2, Plus, Circle, X } from "lucide-react"
+import { useEffect, useRef, useState, type KeyboardEvent, type WheelEvent } from "react"
+import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Plus, Circle, X } from "lucide-react"
 import { MAX_NOTE_WORKSPACE_TABS, type NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
@@ -22,11 +22,18 @@ type ReadonlyNotesTabStripProps = Readonly<NotesTabStripProps>
 /**
  * Keep the close affordance and a useful part of the title visible at the
  * narrowest desktop size. The CSS min-width below and this value are kept in
- * sync so add capacity reflects the actual layout constraint.
+ * sync, so the measured capacity matches the actual layout constraint.
  */
 export const MIN_TAB_WIDTH_PX = 120
 const TAB_GAP_PX = 4
+/** Ignore sub-pixel scroll rounding when deciding whether an arrow is usable. */
+const SCROLL_EPSILON_PX = 1
 
+/**
+ * How many tabs fit at their minimum width. Tabs beyond that stay reachable
+ * through the scroller, so this only drives the scroll affordances — it is
+ * never a cap on how many tabs the workspace may hold.
+ */
 export function getTabCapacity(availableWidth: number): number {
   if (!Number.isFinite(availableWidth) || availableWidth <= 0) return 1
   return Math.max(1, Math.floor((availableWidth + TAB_GAP_PX) / (MIN_TAB_WIDTH_PX + TAB_GAP_PX)))
@@ -39,9 +46,12 @@ function getTabLabel(tab: NoteWorkspaceTab): string {
 }
 
 function scrollTabIntoView(button: HTMLButtonElement) {
+  // Align the whole tab (title button plus its close control), otherwise the
+  // close affordance of the active tab can still sit outside the viewport.
+  const tab = button.closest<HTMLElement>("[data-tab-id]") ?? button
   // jsdom does not implement scrollIntoView, so guard explicitly.
-  if (typeof button.scrollIntoView === "function") {
-    button.scrollIntoView({ block: "nearest", inline: "nearest" })
+  if (typeof tab.scrollIntoView === "function") {
+    tab.scrollIntoView({ block: "nearest", inline: "nearest" })
   }
 }
 
@@ -125,40 +135,16 @@ export function NotesTabStrip({
 }: ReadonlyNotesTabStripProps) {
   const tabViewportRef = useRef<HTMLDivElement | null>(null)
   const tabButtonRefs = useRef(new Map<string, HTMLButtonElement>())
-  const [tabViewportWidth, setTabViewportWidth] = useState<number | null>(null)
+  const [overflow, setOverflow] = useState({ left: false, right: false })
 
-  useEffect(() => {
+  const syncOverflow = () => {
     const viewport = tabViewportRef.current
     if (!viewport) return
-
-    const measure = () => {
-      const width = viewport.clientWidth || viewport.getBoundingClientRect().width
-      setTabViewportWidth(width > 0 ? width : null)
-    }
-
-    measure()
-    if (typeof ResizeObserver === "undefined") return
-
-    const observer = new ResizeObserver(measure)
-    observer.observe(viewport)
-    return () => observer.disconnect()
-  }, [])
-
-  const measuredCapacity = tabViewportWidth === null ? null : getTabCapacity(tabViewportWidth)
-  const tabCapacity = measuredCapacity === null
-    ? null
-    : Math.min(measuredCapacity, maximumTabCount)
-  const isCapacityPending = addTabCapacityPending || tabViewportWidth === null
-  const isAddDisabled = addTabDisabled || isCapacityPending || (tabCapacity !== null && tabs.length >= tabCapacity)
-  let addTabLabel = "Add note tab"
-  if (addTabCapacityPending) {
-    addTabLabel = "Add note tab (checking workspace capacity)"
-  } else if (addTabDisabled) {
-    addTabLabel = `Add note tab (limit reached: ${maximumTabCount} tabs)`
-  } else if (isCapacityPending) {
-    addTabLabel = "Add note tab (checking capacity)"
-  } else if (isAddDisabled) {
-    addTabLabel = `Add note tab (limit reached: ${tabCapacity} tabs)`
+    const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth
+    setOverflow({
+      left: viewport.scrollLeft > SCROLL_EPSILON_PX,
+      right: viewport.scrollLeft < maxScrollLeft - SCROLL_EPSILON_PX,
+    })
   }
 
   const focusTab = (tabId: string) => {
@@ -168,10 +154,87 @@ export function NotesTabStrip({
     scrollTabIntoView(button)
   }
 
+  // The active tab must stay reachable after anything that changes the strip
+  // geometry: activating a tab, opening or closing one, and resizing the
+  // window — a narrower strip otherwise leaves the active tab off-screen.
   useEffect(() => {
-    const button = tabButtonRefs.current.get(activeTabId)
-    if (button) scrollTabIntoView(button)
-  }, [activeTabId])
+    const viewport = tabViewportRef.current
+    if (!viewport) return
+
+    const reveal = () => {
+      const button = tabButtonRefs.current.get(activeTabId)
+      if (button) scrollTabIntoView(button)
+      const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth
+      setOverflow({
+        left: viewport.scrollLeft > SCROLL_EPSILON_PX,
+        right: viewport.scrollLeft < maxScrollLeft - SCROLL_EPSILON_PX,
+      })
+    }
+
+    reveal()
+    if (typeof ResizeObserver === "undefined") return
+
+    const observer = new ResizeObserver(reveal)
+    observer.observe(viewport)
+    return () => observer.disconnect()
+  }, [activeTabId, tabs.length])
+
+  const scrollByTabs = (direction: -1 | 1) => {
+    const viewport = tabViewportRef.current
+    if (!viewport) return
+    const step = Math.max(MIN_TAB_WIDTH_PX + TAB_GAP_PX, viewport.clientWidth - MIN_TAB_WIDTH_PX)
+    // Instant, not smooth: mandatory scroll snapping re-snaps the strip on the
+    // next layout, which aborts an in-flight smooth animation and leaves the
+    // arrow looking dead. Snapping still aligns the result to a tab edge.
+    if (typeof viewport.scrollBy === "function") {
+      viewport.scrollBy({ left: direction * step, behavior: "auto" })
+    } else {
+      viewport.scrollLeft += direction * step
+    }
+    syncOverflow()
+  }
+
+  // A vertical wheel over the strip should move it sideways: trackpads and
+  // mice without a horizontal axis otherwise cannot reach the hidden tabs.
+  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
+    const viewport = tabViewportRef.current
+    if (!viewport) return
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return
+    if (viewport.scrollWidth <= viewport.clientWidth) return
+    viewport.scrollLeft += event.deltaY
+    syncOverflow()
+  }
+
+  const isAtTabLimit = tabs.length >= maximumTabCount
+  const isAddDisabled = addTabDisabled || addTabCapacityPending || isAtTabLimit
+  let addTabLabel = "Add note tab"
+  if (addTabCapacityPending) {
+    addTabLabel = "Add note tab (checking workspace capacity)"
+  } else if (isAddDisabled) {
+    addTabLabel = `Add note tab (limit reached: ${maximumTabCount} tabs)`
+  }
+
+  const renderScrollButton = (direction: -1 | 1) => {
+    const enabled = direction === -1 ? overflow.left : overflow.right
+    if (!overflow.left && !overflow.right) return null
+    const Icon = direction === -1 ? ChevronLeft : ChevronRight
+
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-6 shrink-0"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => scrollByTabs(direction)}
+        disabled={!enabled}
+        aria-label={direction === -1 ? "Scroll tabs left" : "Scroll tabs right"}
+        title={direction === -1 ? "Scroll tabs left" : "Scroll tabs right"}
+      >
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </Button>
+    )
+  }
 
   return (
     <div className="hidden min-w-0 items-center gap-1 border-b border-border/60 bg-background/80 px-2 py-1 backdrop-blur md:flex">
@@ -188,7 +251,20 @@ export function NotesTabStrip({
       >
         <Plus className="h-4 w-4" aria-hidden="true" />
       </Button>
-      <div ref={tabViewportRef} className="min-w-0 flex-1 overflow-x-auto" aria-label="Open notes">
+      {renderScrollButton(-1)}
+      <div
+        ref={tabViewportRef}
+        // The native scrollbar is hidden on purpose: it would change the strip
+        // height when it appears, and the arrow buttons above cover the same
+        // job on every platform (macOS hides overlay scrollbars until used).
+        // Snapping keeps whole tabs at the left edge. Without it a tab can be
+        // clipped down to just its close button, which is far too easy to hit
+        // by accident for a tab the user cannot even read.
+        className="scrollbar-none min-w-0 flex-1 snap-x snap-mandatory overflow-x-auto"
+        aria-label="Open notes"
+        onScroll={syncOverflow}
+        onWheel={handleWheel}
+      >
         <div className="flex min-w-full items-center gap-1">
           {tabs.map((tab, index) => {
             const label = getTabLabel(tab)
@@ -198,7 +274,7 @@ export function NotesTabStrip({
               <div
                 key={tab.id}
                 className={cn(
-                  "group flex min-w-[120px] max-w-56 flex-1 items-center rounded-md border border-transparent",
+                  "group flex min-w-[120px] max-w-56 flex-1 snap-start items-center rounded-md border border-transparent",
                   isActive && "border-border bg-muted/60",
                 )}
                 data-tab-id={tab.id}
@@ -242,6 +318,7 @@ export function NotesTabStrip({
           })}
         </div>
       </div>
+      {renderScrollButton(1)}
     </div>
   )
 }

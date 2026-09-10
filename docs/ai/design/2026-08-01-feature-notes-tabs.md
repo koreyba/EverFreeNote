@@ -128,15 +128,38 @@ list state so an empty tab never traps the user in a blank editor screen.
 
 The desktop tab strip keeps Add as the first, non-scrolling control. The tab
 viewport uses a browser-like flex layout: tabs grow while there is room, stop
-at a 120px minimum, and horizontally scroll when a restored workspace is
-larger than the viewport. A `ResizeObserver` measures the tab viewport and
-disables Add when another tab would require shrinking below that minimum.
-The shared core model/controller also enforces a 32-tab ceiling, so direct
-calls cannot bypass the UI guard. The disabled button exposes the applicable
-limit in its accessible name so the constraint is understandable without
-relying on the visual layout. The mobile menu receives the controller's
-disabled state explicitly and keeps its tab rows in a scrollable region while
-leaving Add available as the fixed menu footer.
+at a 120px minimum, and horizontally scroll once they no longer fit.
+
+Running out of horizontal room is a scrolling concern, not a capacity limit.
+Add stays enabled until the shared 32-tab ceiling enforced by the core model
+and controller, and its accessible name only reports that one number — an
+earlier revision derived a second, width-based limit, which made Add dead at
+four tabs on a 1024px window and announced "limit reached: 4 tabs" while eight
+tabs were open. The screen width now decides how the strip scrolls, never how
+many notes the user may keep open.
+
+Because the strip scrolls, it also owns the affordances that make the hidden
+tabs reachable:
+
+- Chevron buttons appear on either side while the strip overflows and are
+  disabled at each end. They are the primary control, since macOS hides
+  overlay scrollbars until a scroll is already in progress.
+- A vertical wheel over the strip scrolls it horizontally, for pointers with
+  no horizontal axis.
+- The native scrollbar is hidden (`.scrollbar-none`). It would otherwise add
+  ~11px to the strip and make its height jump as tabs are opened and closed.
+- Scroll snapping aligns tabs to the left edge, so the strip never leaves a
+  sliver of a tab whose only visible part is its close button.
+- A `ResizeObserver` on the tab viewport re-reveals the active tab. Without it,
+  narrowing the window leaves the active tab scrolled out of sight while its
+  note is the one on screen.
+
+The mobile menu receives the controller's disabled state explicitly and keeps
+its tab rows in a scrollable region while leaving Add available as the fixed
+menu footer. The menu is an absolutely positioned popover: in flow it pushed
+the note down by its own height (over 500px with a full tab list), leaving a
+sliver of the note visible. It scrolls its active row into view on open and
+dismisses on outside pointer-down and on Escape.
 
 ### Active-slot replacement is the default
 
@@ -203,8 +226,11 @@ The workspace is modeled as a list of independent tab sessions, while the contro
 - Storage writes are best-effort and serialized from a small, bounded state snapshot; storage failures never block editing.
 - Tab buttons are keyboard reachable, have accessible names, and expose active/dirty/error state.
 - Long titles are ellipsized; desktop tabs grow/shrink within the 120px
-  minimum and overflow horizontally when needed, with Add fixed on the left;
-  mobile uses a compact list.
+  minimum and overflow horizontally when needed, with Add fixed on the left
+  and chevron controls for the overflow; mobile uses a compact list.
+- The strip height does not change as tabs are added, removed, or overflow.
+- The active tab stays scrolled into view across activation, tab open/close,
+  and window resize.
 - No secrets or auth tokens are added to workspace storage.
 
 ## Design Review Resolution (2026-08-01)

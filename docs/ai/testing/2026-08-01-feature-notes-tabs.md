@@ -103,6 +103,49 @@ Recorded Evidence).
 - Manual verification against the PR preview deployment (test-auth user): desktop tab add/replace/dedupe/switch/close, draft/mode restore across switches, reload restore, mobile compact menu.
 - The manual preview pass caught an autosave-killing draft-echo defect that the suites missed (fake controllers used a no-op `handleDraftChange`): typing produced zero Supabase writes and the dirty marker never cleared. Fixed in `NotesShell` (frozen session draft) and regression-guarded by `NotesShellAutoSaveEcho.cy.tsx`, verified to fail without the fix.
 
+### Responsive/browser pass (2026-09-10)
+
+Run against a local Supabase stack and the Next dev server, driven through the
+in-app browser at 320, 360, 375, 390, 768, 900, 1024, 1280 and 1440 CSS px,
+with workspaces of 1, 2, 8 and 24 tabs (including titles long enough to be
+ellipsized, Cyrillic titles, and notes long enough to scroll).
+
+Verified working:
+
+- Open note into the active tab, Add tab, fill the new blank tab from the list,
+  close tab, and duplicate-note deduplication (re-selecting an open note
+  activates its existing tab instead of adding one).
+- Reading and editing scroll positions survive tab switches and a page reload,
+  and carry over from reading into editing for the same note. (Note when
+  re-testing: the restore runs inside `requestAnimationFrame`, which is
+  suspended while the browser pane is hidden — measure with the page visible
+  or the restore appears to be lost.)
+- Autosave from the tab-aware controller reaches the database; the tab label
+  follows the edited title.
+- Long titles ellipsize in the desktop tab, the mobile header, and the mobile
+  menu rows.
+- No horizontal page overflow at any tested width.
+
+Defects found and fixed in this pass:
+
+| Defect | Where | Fix |
+|---|---|---|
+| Add disabled by measured width: 8 tabs max at 1440px, 4 at 1024px, never the documented 32; the label announced a limit lower than the number of open tabs | `NotesTabStrip` | Add is gated on `MAX_NOTE_WORKSPACE_TABS` only |
+| Overflowing tabs unreachable — no arrows, and macOS overlay scrollbars stay invisible until scrolling | `NotesTabStrip` | Chevron controls plus wheel-to-horizontal scrolling |
+| Strip grew 43px → 54px when the horizontal scrollbar appeared | `NotesTabStrip` | `.scrollbar-none` on the viewport |
+| Active tab scrolled out of view after a window resize, and clipped on load with 24 tabs | `NotesTabStrip` | `ResizeObserver` re-reveals it; `scrollIntoView` targets the whole tab, not just its title button |
+| A clipped tab could show only its close button, inviting a click that closes an unreadable tab | `NotesTabStrip` | `snap-x snap-mandatory` with `snap-start` tabs |
+| Mobile tab menu sat in flow and pushed the note down 545px | `MobileNotesTabMenu` | Absolutely positioned popover |
+| Mobile menu had no outside-click or Escape dismissal | `MobileNotesTabMenu` | Pointer-down and Escape handlers |
+| Mobile menu opened at the top of a 24-row list, hiding the active tab | `MobileNotesTabMenu` | Active row scrolled into view on open |
+| Close-tab confirmation said "this tab" for an unsaved new note | `useNoteAppController` | Falls back to the live draft title |
+
+Known, not fixed here (pre-existing, outside this feature):
+
+- At 320px the `NoteView`/`NoteEditor` action bar overflows its header by
+  ~12px, clipping the "more actions" button. Unchanged by this PR and fine
+  from 360px up.
+
 ## Performance Testing
 
 - Verify switching does not mount more than one editor or trigger duplicate fetches.

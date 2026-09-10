@@ -34,9 +34,14 @@ describe('Desktop notes tab strip', () => {
       />
     )
 
-    cy.get('button[aria-label^="Add note tab (limit reached:"]')
+    // Overflowing the strip must not block opening more notes: the excess
+    // scrolls and Add stays available until the shared 32-tab maximum.
+    // (The scroll arrows depend on measured overflow, which this component
+    // harness does not reproduce faithfully — they are covered in the jsdom
+    // unit test where the viewport size is controlled directly.)
+    cy.get('button[aria-label="Add note tab"]')
       .should('be.visible')
-      .and('be.disabled')
+      .and('not.be.disabled')
       .parent()
       .children()
       .first()

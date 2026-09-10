@@ -641,9 +641,13 @@ export function useNoteAppController() {
       ? (tabs[tabIndex + 1] ?? tabs[tabIndex - 1] ?? null)
       : tabs.find((candidate) => candidate.id === activeTabId) ?? null
 
+    // A tab whose save failed may be a brand-new note that never reached the
+    // server, so the saved title can be missing — fall back to the live draft
+    // before calling it "this tab".
+    const tabLabel = tab.note?.title?.trim() || tab.draft.title.trim() || 'this tab'
     const discardFailedSave = tab.saveState === 'error'
       && typeof window !== 'undefined'
-      && window.confirm(`Discard unsaved changes in "${tab.note?.title || 'this tab'}"?`)
+      && window.confirm(`Discard unsaved changes in "${tabLabel}"?`)
     if (tab.saveState === 'error' && !discardFailedSave) return
 
     if (tab.id === activeTabId && !discardFailedSave) {

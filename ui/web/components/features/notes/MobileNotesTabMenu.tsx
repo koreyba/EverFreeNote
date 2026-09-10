@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { List, Plus, X } from "lucide-react"
 import type { NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 import { Button } from "@/components/ui/button"
@@ -20,8 +20,42 @@ export function MobileNotesTabMenu({
   maximumTabCount,
 }: MobileNotesTabMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const activeRowRef = useRef<HTMLDivElement | null>(null)
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]
   const activeLabel = activeTab ? getTabLabel(activeTab) : "No open notes"
+
+  // With many tabs the active one can sit far down the scrollable list; bring
+  // it into view so opening the menu always shows where you currently are.
+  useEffect(() => {
+    if (!isOpen) return
+    const row = activeRowRef.current
+    if (row && typeof row.scrollIntoView === "function") {
+      row.scrollIntoView({ block: "nearest" })
+    }
+  }, [isOpen])
+
+  // The panel floats over the note, so it needs the dismissal affordances a
+  // popover is expected to have: tapping outside it and pressing Escape.
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handlePointerDown = (event: PointerEvent | MouseEvent) => {
+      const target = event.target
+      if (target instanceof Node && containerRef.current?.contains(target)) return
+      setIsOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false)
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [isOpen])
 
   const handleActivate = (tabId: string) => {
     void onActivateTab(tabId)
@@ -46,7 +80,10 @@ export function MobileNotesTabMenu({
   }
 
   return (
-    <div className="relative min-w-0 border-b border-border/60 bg-background/80 px-3 py-2 backdrop-blur md:hidden">
+    <div
+      ref={containerRef}
+      className="relative z-40 min-w-0 border-b border-border/60 bg-background/80 px-3 py-2 backdrop-blur md:hidden"
+    >
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium" title={activeLabel}>{activeLabel}</p>
@@ -70,14 +107,24 @@ export function MobileNotesTabMenu({
       </div>
 
       {isOpen && (
-        <div id="mobile-notes-tab-list" className="mt-2 rounded-xl border border-border bg-card p-1 shadow-lg" aria-label="Open notes">
+        <div
+          id="mobile-notes-tab-list"
+          // Absolutely positioned so opening the list overlays the note
+          // instead of pushing the editor down the page.
+          className="absolute left-3 right-3 top-full z-50 mt-1 rounded-xl border border-border bg-popover p-1 shadow-lg"
+          aria-label="Open notes"
+        >
           <div className="max-h-[60vh] overflow-y-auto overscroll-contain">
             {tabs.map((tab) => {
               const label = getTabLabel(tab)
               const isActive = tab.id === activeTabId
 
               return (
-                <div key={tab.id} className="flex items-center gap-1 rounded-lg">
+                <div
+                  key={tab.id}
+                  ref={isActive ? activeRowRef : undefined}
+                  className="flex items-center gap-1 rounded-lg"
+                >
                   <Button
                     type="button"
                     aria-pressed={isActive}

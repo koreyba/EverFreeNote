@@ -44,11 +44,18 @@ ui/web/components/features/notes/NoteView.tsx
 - After a successful delete, call `resetTabsForNotes` with the deleted IDs so no tab keeps a deleted note; bulk delete reports the actually-deleted IDs through `onNotesDeleted`.
 - Use the active tab's draft as editor initial content; never use a server refresh to overwrite a dirty local field without existing reconciliation rules.
 - Keep tab indicators derived from explicit per-tab save state rather than global UI assumptions.
-- Keep the desktop Add control outside the scrolling tab viewport. `NotesTabStrip`
-  measures that viewport, uses the same 120px minimum as its CSS `min-width`,
-  and disables Add when the next tab would violate the minimum. Existing tabs
-  can still be inspected by horizontal scrolling, including after restoring a
-  wider workspace into a narrow viewport.
+- Keep the desktop Add control outside the scrolling tab viewport, and keep it
+  enabled until the shared 32-tab ceiling. Screen width decides how the strip
+  scrolls, not how many notes may be open: `NotesTabStrip` measures the
+  viewport only to drive the chevron controls and to keep the active tab
+  revealed. Existing tabs can still be inspected by horizontal scrolling,
+  including after restoring a wider workspace into a narrow viewport.
+- Scroll the tab strip with instant (`behavior: "auto"`) scrolling. Mandatory
+  scroll snapping re-snaps the strip on the next layout, which aborts an
+  in-flight smooth animation and makes the chevrons look dead.
+- Reveal the active tab from a single effect keyed on the active tab id and
+  the tab count, and re-run it from a `ResizeObserver`. Reading `.current` of
+  a ref inside a `useCallback` trips `react-hooks/preserve-manual-memoization`.
 
 ### Patterns & Best Practices
 
@@ -57,12 +64,17 @@ ui/web/components/features/notes/NoteView.tsx
 - Do not add direct Supabase calls to tab UI or storage.
 - Use `sessionStorage` only through the adapter and never read/write it during server rendering.
 - Keep accessibility labels stable so component tests can target behavior rather than CSS.
-- When desktop capacity is reached, retain a real disabled button and expose
-  the measured limit in its accessible name; do not hide Add or rely on a
-  tooltip-only explanation.
+- When the tab ceiling is reached, retain a real disabled button and expose
+  that one limit in its accessible name; do not hide Add or rely on a
+  tooltip-only explanation. Never announce a limit smaller than the number of
+  tabs already open — an accessible name has to describe the same rule the
+  user can see.
 - The core reducer and controller enforce the shared 32-tab ceiling before
   flushing editor work. `MobileNotesTabMenu` receives that explicit state and
   renders a scrollable tab-list body with Add as a non-scrolling footer.
+- Render the mobile tab list as an absolutely positioned popover, and give it
+  the dismissals a popover is expected to have (outside pointer-down, Escape).
+  In normal flow it displaces the note it is meant to float over.
 
 ## Integration Points
 

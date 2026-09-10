@@ -85,7 +85,7 @@ describe('Notes workspace tab controls', () => {
     expect(onAddTab).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps Add tab first and disables it when the measured minimum-width capacity is reached', () => {
+  it('keeps Add tab first and usable when more tabs are open than fit on screen', () => {
     const restoreClientWidth = mockClientWidth(MIN_TAB_WIDTH_PX * 2 + 4)
 
     try {
@@ -94,21 +94,84 @@ describe('Notes workspace tab controls', () => {
         makeTab('tab-2', 'Second note'),
         makeTab('tab-3', 'Third note'),
       ]
+      const onAddTab = jest.fn()
       render(
         <NotesTabStrip
           tabs={manyTabs}
           activeTabId="tab-1"
+          onAddTab={onAddTab}
+          onActivateTab={jest.fn()}
+          onCloseTab={jest.fn()}
+        />,
+      )
+
+      // Running out of horizontal room scrolls the strip; it must never stop
+      // the user from opening another note.
+      const addButton = screen.getByRole('button', { name: 'Add note tab' })
+      expect(addButton.hasAttribute('disabled')).toBe(false)
+      expect(addButton.parentElement?.firstElementChild).toBe(addButton)
+      fireEvent.click(addButton)
+      expect(onAddTab).toHaveBeenCalledTimes(1)
+      expect(screen.getByLabelText('Open notes').className).toContain('overflow-x-auto')
+    } finally {
+      restoreClientWidth()
+    }
+  })
+
+  it('disables Add only at the shared workspace tab maximum', () => {
+    const manyTabs = Array.from({ length: 32 }, (_, index) => makeTab(`tab-${index}`, `Note ${index}`))
+
+    render(
+      <NotesTabStrip
+        tabs={manyTabs}
+        activeTabId="tab-0"
+        onAddTab={jest.fn()}
+        onActivateTab={jest.fn()}
+        onCloseTab={jest.fn()}
+        maximumTabCount={32}
+      />,
+    )
+
+    const addButton = screen.getByRole('button', { name: 'Add note tab (limit reached: 32 tabs)' })
+    expect(addButton.hasAttribute('disabled')).toBe(true)
+  })
+
+  it('offers scroll controls once the strip overflows and moves the viewport', () => {
+    const restoreClientWidth = mockClientWidth(MIN_TAB_WIDTH_PX)
+    const scrollBy = jest.fn()
+    const scrollWidthDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth')
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
+      configurable: true,
+      get: () => MIN_TAB_WIDTH_PX * 6,
+    })
+    HTMLElement.prototype.scrollBy = scrollBy
+
+    try {
+      render(
+        <NotesTabStrip
+          tabs={Array.from({ length: 6 }, (_, index) => makeTab(`tab-${index}`, `Note ${index}`))}
+          activeTabId="tab-0"
           onAddTab={jest.fn()}
           onActivateTab={jest.fn()}
           onCloseTab={jest.fn()}
         />,
       )
 
-      const addButton = screen.getByRole('button', { name: 'Add note tab (limit reached: 2 tabs)' })
-      expect(addButton.hasAttribute('disabled')).toBe(true)
-      expect(addButton.parentElement?.firstElementChild).toBe(addButton)
-      expect(screen.getByLabelText('Open notes').className).toContain('overflow-x-auto')
+      const scrollRight = screen.getByRole('button', { name: 'Scroll tabs right' })
+      expect(scrollRight.hasAttribute('disabled')).toBe(false)
+      // At scrollLeft 0 there is nothing to the left yet.
+      expect(screen.getByRole('button', { name: 'Scroll tabs left' }).hasAttribute('disabled')).toBe(true)
+
+      fireEvent.click(scrollRight)
+      expect(scrollBy).toHaveBeenCalledTimes(1)
+      expect(scrollBy.mock.calls[0][0].left).toBeGreaterThan(0)
     } finally {
+      delete (HTMLElement.prototype as unknown as { scrollBy?: unknown }).scrollBy
+      if (scrollWidthDescriptor) {
+        Object.defineProperty(HTMLElement.prototype, 'scrollWidth', scrollWidthDescriptor)
+      } else {
+        delete (HTMLElement.prototype as unknown as { scrollWidth?: number }).scrollWidth
+      }
       restoreClientWidth()
     }
   })
@@ -261,5 +324,88 @@ describe('Notes workspace tab controls', () => {
     expect(onCloseTab).toHaveBeenCalledWith('tab-1')
     expect(menuButton.getAttribute('aria-expanded')).toBe('false')
     expect(screen.getByText('1 tab')).toBeTruthy()
+  })
+
+  it('floats the mobile tab list over the note instead of pushing it down', () => {
+    render(
+      <MobileNotesTabMenu
+        tabs={tabs}
+        activeTabId="tab-1"
+        onAddTab={jest.fn()}
+        onActivateTab={jest.fn()}
+        onCloseTab={jest.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open note tabs (2)' }))
+    const panel = document.getElementById('mobile-notes-tab-list')
+
+    expect(panel?.className).toContain('absolute')
+    expect(panel?.className).toContain('top-full')
+  })
+
+  it('dismisses the mobile tab list on outside pointer down and on Escape', () => {
+    render(
+      <MobileNotesTabMenu
+        tabs={tabs}
+        activeTabId="tab-1"
+        onAddTab={jest.fn()}
+        onActivateTab={jest.fn()}
+        onCloseTab={jest.fn()}
+      />,
+    )
+
+    const menuButton = screen.getByRole('button', { name: 'Open note tabs (2)' })
+
+    fireEvent.click(menuButton)
+    expect(menuButton.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.pointerDown(document.body)
+    expect(menuButton.getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(menuButton)
+    expect(menuButton.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(menuButton.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('brings the active row into view when the mobile tab list opens', () => {
+    const scrollIntoView = jest.fn()
+    const original = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+
+    try {
+      render(
+        <MobileNotesTabMenu
+          tabs={Array.from({ length: 30 }, (_, index) => makeTab(`tab-${index}`, `Note ${index}`))}
+          activeTabId="tab-27"
+          onAddTab={jest.fn()}
+          onActivateTab={jest.fn()}
+          onCloseTab={jest.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Open note tabs (30)' }))
+      expect(scrollIntoView).toHaveBeenCalled()
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original
+    }
+  })
+
+  it('keeps a pointer down inside the mobile tab list from closing it', () => {
+    render(
+      <MobileNotesTabMenu
+        tabs={tabs}
+        activeTabId="tab-1"
+        onAddTab={jest.fn()}
+        onActivateTab={jest.fn()}
+        onCloseTab={jest.fn()}
+      />,
+    )
+
+    const menuButton = screen.getByRole('button', { name: 'Open note tabs (2)' })
+    fireEvent.click(menuButton)
+    fireEvent.pointerDown(document.getElementById('mobile-notes-tab-list')!)
+
+    expect(menuButton.getAttribute('aria-expanded')).toBe('true')
   })
 })
