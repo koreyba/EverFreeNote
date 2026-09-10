@@ -30,6 +30,11 @@ button,
 /* Color scheme meta for browser optimization */
 :root {
   color-scheme: light;
+
+  /* Height of the note action bar. NoteEditor overwrites this on its own root
+     from the measured bar, so the sticky formatting toolbar parks flush
+     underneath it; this default covers every other RichTextEditor host. */
+  --note-editor-header-h: 69px;
 }
 
 .dark {

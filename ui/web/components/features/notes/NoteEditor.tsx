@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, Copy, Check, Eye } from "lucide-react"
+import { ChevronLeft, Copy, Check, Eye, Save as SaveIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
@@ -94,6 +94,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
+  const editorRootRef = React.useRef<HTMLDivElement | null>(null)
+  const headerRef = React.useRef<HTMLDivElement | null>(null)
   const initialSessionRef = React.useRef(initialSession)
   const previousNoteIdRef = React.useRef(noteId)
 
@@ -134,6 +136,27 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const notifyDraftChange = React.useCallback(() => {
     debouncedDraftNotify.schedule(getFormData())
   }, [debouncedDraftNotify, getFormData])
+
+  // Publish the action bar's height so the sticky formatting toolbar can park
+  // flush beneath it. The bar is absolutely positioned over the scroll area,
+  // so any mismatch shows as a strip of scrolling text between the two.
+  React.useEffect(() => {
+    const header = headerRef.current
+    const root = editorRootRef.current
+    if (!header || !root) return
+
+    const publishHeight = () => {
+      root.style.setProperty('--note-editor-header-h', `${Math.round(header.getBoundingClientRect().height)}px`)
+    }
+
+    publishHeight()
+    if (typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver(publishHeight)
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [])
+
 
   const applyExternalSnapshot = React.useCallback((
     snapshot: { title: string; description: string; tags: string },
@@ -331,29 +354,52 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   // Show the "..." menu for existing notes (RAG + delete)
   const showMoreMenu = !!noteId
 
+  // min-w-0: without it this flex item cannot shrink below the intrinsic
+  // width of the formatting toolbar, so the whole editor column — and the
+  // header absolutely positioned across it — grows wider than a phone screen
+  // and pushes the trailing action off the edge.
   return (
-    <div className="flex-1 flex min-h-0 flex-col relative bg-card">
+    <div ref={editorRootRef} className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-card">
       {/* Editor Header */}
-      <div className="absolute top-0 left-0 right-0 z-30 p-4 border-b border-border/40 bg-card/75 backdrop-blur-md flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* gap-2 + a shrinkable mode label + a non-shrinking action group: the
+          actions keep their full width and the label gives way, so the row
+          can never push a control past the right edge. */}
+      <div
+        ref={headerRef}
+        className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between gap-2 border-b border-border/40 bg-card/75 p-3 backdrop-blur-md md:p-4"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           {onBack && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="md:hidden -ml-2 rounded-full h-9 w-9"
+              className="h-9 w-9 shrink-0 rounded-full shadow-sm md:hidden"
               onClick={onBack}
               aria-label="Back"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Editing</h2>
+          {/* The tab bar directly above already names the note, and the eye +
+              save actions say which mode this is, so the label is visual
+              noise on a phone. It stays for screen readers. */}
+          <h2 className="sr-only truncate text-xs font-bold uppercase tracking-wider text-muted-foreground md:not-sr-only">Editing</h2>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="flex gap-1.5 items-center">
-            <Button onClick={handleRead} variant="outline" size="sm" disabled={isSaving} className="rounded-full shadow-sm">
-              <Eye className="w-3.5 h-3.5 mr-1.5" />
-              Read
+            {/* Labels collapse to icons below md: the editing header carries
+                four controls and the row overflowed its own width on a phone,
+                clipping the "more actions" button off the screen edge. */}
+            <Button
+              onClick={handleRead}
+              variant="outline"
+              size="sm"
+              aria-label="Read"
+              disabled={isSaving}
+              className="rounded-full shadow-sm"
+            >
+              <Eye className="w-3.5 h-3.5 md:mr-1.5" />
+              <span className="hidden md:inline">Read</span>
             </Button>
             <Button
               variant="outline"
@@ -370,8 +416,15 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               )}
               <span className="hidden md:inline">{copied ? "Copied" : "Copy"}</span>
             </Button>
-            <Button onClick={handleSave} size="sm" disabled={isSaving} className="rounded-full shadow-sm">
-              Save
+            <Button
+              onClick={handleSave}
+              size="sm"
+              aria-label="Save"
+              disabled={isSaving}
+              className="rounded-full shadow-sm"
+            >
+              <SaveIcon className="w-3.5 h-3.5 md:hidden" />
+              <span className="hidden md:inline">Save</span>
             </Button>
             {/* More actions menu -- RAG controls, delete note, WordPress export */}
             {showMoreMenu && (
@@ -396,7 +449,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       {/* Editor Form */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto bg-card"
+        // scrollbar-none: kept in sync with NoteView so the reading and
+        // editing surfaces scroll identically — see the note there.
+        className="scrollbar-none flex-1 overflow-y-auto bg-card"
         onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
       >
         <div className="max-w-4xl mx-auto px-6 pt-24 space-y-5">

@@ -76,7 +76,12 @@ export const EditorMenuBar = ({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="sticky top-[69px] z-20 flex flex-wrap items-center gap-1.5 border-b border-border/40 bg-background/85 backdrop-blur-md p-2 shadow-sm rounded-t-xl">
+      {/* The offset follows the real height of the note action bar, which
+          NoteEditor publishes as --note-editor-header-h (globals.css holds the
+          fallback). A hardcoded value drifts whenever that bar changes
+          (responsive padding, the "Saving…" caption) and leaves a strip of
+          scrolling text between the two. */}
+      <div className="sticky top-[var(--note-editor-header-h)] z-20 flex flex-wrap items-center gap-1.5 border-b border-border/40 bg-background/85 backdrop-blur-md p-2 shadow-sm rounded-t-xl">
 
         {/* History */}
         <EditorToolbarButton dataCy="undo-button" label="Undo (Ctrl+Z)" onClick={onUndo} disabled={!historyState.canUndo} ariaLabel="Undo">

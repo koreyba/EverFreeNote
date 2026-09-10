@@ -61,7 +61,7 @@ describe('NoteEditor Component', () => {
     cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('New Tag{enter}')
 
-    cy.contains('Save').click()
+    cy.get('button[aria-label="Save"]').click()
 
     cy.get('@onSave').should('have.been.calledWith', Cypress.sinon.match({
       title: 'New Title',
@@ -72,10 +72,10 @@ describe('NoteEditor Component', () => {
   it('handles save and read actions', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
-    cy.contains('Save').click()
+    cy.get('button[aria-label="Save"]').click()
     cy.get('@onSave').should('have.been.called')
 
-    cy.contains('Read').click()
+    cy.get('button[aria-label="Read"]').click()
     cy.get('@onRead').should('have.been.called')
   })
 
@@ -86,7 +86,7 @@ describe('NoteEditor Component', () => {
     // "Saving..." text is now in a separate div, not in the button
     cy.contains('Saving...').should('be.visible')
     // Button should be disabled during manual save, but text remains "Save"
-    cy.get('button').contains('Save').should('be.disabled')
+    cy.get('button[aria-label="Save"]').should('be.disabled')
   })
 
   it('shows auto-saving state without disabling button', () => {
@@ -95,7 +95,7 @@ describe('NoteEditor Component', () => {
 
     cy.contains('Saving...').should('be.visible')
     // Button should NOT be disabled during auto-save
-    cy.get('button').contains('Save').should('not.be.disabled')
+    cy.get('button[aria-label="Save"]').should('not.be.disabled')
   })
 
   it('shows last saved timestamp', () => {

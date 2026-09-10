@@ -88,31 +88,40 @@ export const NoteView = React.memo(function NoteView({
   }), [note.content, note.description, note.id, note.tags, note.title])
 
   return (
-    <div className="flex-1 flex min-h-0 flex-col relative bg-card">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-card">
       {/* Note View Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 p-4 border-b border-border/40 bg-card/75 backdrop-blur-md flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* gap-2 + a shrinkable mode label + a non-shrinking action group: the
+          actions keep their full width and the label gives way, so the row
+          can never push a control past the right edge. */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between gap-2 border-b border-border/40 bg-card/75 p-3 backdrop-blur-md md:p-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           {onBack && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="md:hidden -ml-2 rounded-full h-9 w-9"
+              className="h-9 w-9 shrink-0 rounded-full shadow-sm md:hidden"
               onClick={onBack}
+              aria-label="Back"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reading</h2>
+          {/* Hidden on phones for the same reason as the editing header: the
+              tab bar names the note and the actions name the mode. */}
+          <h2 className="sr-only truncate text-xs font-bold uppercase tracking-wider text-muted-foreground md:not-sr-only">Reading</h2>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
+          {/* Icon-only below md, matching the editing header: the label row
+              otherwise overflows the header on a phone. */}
           <Button
             onClick={onEdit}
             variant="outline"
             size="sm"
+            aria-label="Edit"
             className="rounded-full shadow-sm"
           >
-            <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-            Edit
+            <Edit2 className="w-3.5 h-3.5 md:mr-1.5" />
+            <span className="hidden md:inline">Edit</span>
           </Button>
           <Button
             variant="outline"
@@ -137,8 +146,8 @@ export const NoteView = React.memo(function NoteView({
             aria-label="Delete note"
             className="rounded-full text-destructive dark:text-red-400 hover:text-destructive dark:hover:text-red-300 hover:bg-destructive/10 dark:hover:bg-red-950/30 border-destructive/25 dark:border-red-900/50 hover:border-destructive/30 shadow-sm"
           >
-            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-            <span className="hidden sm:inline" aria-hidden="true">Delete</span>
+            <Trash2 className="w-3.5 h-3.5 md:mr-1.5" />
+            <span className="hidden md:inline" aria-hidden="true">Delete</span>
           </Button>
           {/* More actions menu -- always visible, contains RAG index controls + optional WP export */}
           <MoreActionsMenu
@@ -152,7 +161,11 @@ export const NoteView = React.memo(function NoteView({
       {/* Note Content */}
       <div
         ref={contentRef}
-        className="flex-1 overflow-y-auto px-6 pt-24 pb-10 bg-card"
+        // scrollbar-none: the note surface scrolls under a translucent action
+        // bar, and a native scrollbar runs the full height of the pane, so it
+        // shows up alongside that bar. Reading and editing hide it the same
+        // way, otherwise only one of the two modes has a stray edge line.
+        className="scrollbar-none flex-1 overflow-y-auto px-6 pt-24 pb-10 bg-card"
         onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
       >
         <div className="max-w-4xl mx-auto">
