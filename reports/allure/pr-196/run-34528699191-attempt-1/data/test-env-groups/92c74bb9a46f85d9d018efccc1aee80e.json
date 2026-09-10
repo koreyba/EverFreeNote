@@ -1,0 +1,1 @@
+{"id":"92c74bb9a46f85d9d018efccc1aee80e","fullName":"everfreenote:ui/shell/tests/unit/supabaseEnv.test.ts#resolveSupabaseEnv falls back to placeholders when nothing supplies credentials","name":"falls back to placeholders when nothing supplies credentials","status":"passed","testResultsByEnv":{"default":"a3d0f8349f4e3c06d2139c5a3fbf0426"}}
