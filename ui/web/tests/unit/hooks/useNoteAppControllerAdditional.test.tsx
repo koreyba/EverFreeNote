@@ -323,6 +323,62 @@ describe('useNoteAppController additional observable behavior', () => {
     expect(result.current.notePaneVisible).toBe(false)
   })
 
+  it('asks before discarding a tab whose save failed, and only closes on confirm', async () => {
+    const { result } = setup()
+    const tabId = result.current.activeTabId
+
+    // Reach the error state the way the app does: an autosave that rejects.
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Network unavailable'))
+    await act(async () => {
+      await expect(
+        result.current.handleAutoSave({ title: '', description: '<p>x</p>', tags: '' }),
+      ).rejects.toThrow('Network unavailable')
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+
+    await act(async () => {
+      await result.current.closeTab(tabId)
+    })
+
+    // Still open, and the shell now has something to render a dialog from.
+    expect(result.current.tabPendingClose).toEqual({ tabId, label: 'this tab' })
+    expect(result.current.tabs.map((tab) => tab.id)).toContain(tabId)
+
+    act(() => {
+      result.current.cancelCloseTab()
+    })
+    expect(result.current.tabPendingClose).toBeNull()
+    expect(result.current.tabs.map((tab) => tab.id)).toContain(tabId)
+
+    await act(async () => {
+      await result.current.closeTab(tabId)
+    })
+    await act(async () => {
+      await result.current.confirmCloseTab()
+    })
+
+    expect(result.current.tabPendingClose).toBeNull()
+    expect(result.current.tabs.map((tab) => tab.id)).not.toContain(tabId)
+  })
+
+  it('names the failed tab from its draft when the note never reached the server', async () => {
+    const { result } = setup()
+    const tabId = result.current.activeTabId
+
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Network unavailable'))
+    await act(async () => {
+      await expect(
+        result.current.handleAutoSave({ title: 'Unsent note', description: '<p>x</p>', tags: '' }),
+      ).rejects.toThrow('Network unavailable')
+    })
+
+    await act(async () => {
+      await result.current.closeTab(tabId)
+    })
+
+    expect(result.current.tabPendingClose?.label).toBe('Unsent note')
+  })
+
   it('blocks controller Add tab before flushing when the shared workspace limit is reached', async () => {
     let nextId = 0
     // Stamped with the signed-in account: workspace state from anyone else is

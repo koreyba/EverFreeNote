@@ -315,6 +315,7 @@ export function NotesShell({ controller }: NotesShellProps) {
       )}
 
       <DeleteNoteDialog controller={controller} />
+      <DiscardFailedSaveDialog controller={controller} />
     </div>
   )
 }
@@ -476,6 +477,42 @@ function EditorPane({
     <div className="flex-1 flex items-center justify-center">
       <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
     </div>
+  )
+}
+
+/**
+ * Closing a tab whose save failed throws those edits away, so it confirms
+ * first — in the app's own dialog, matching every other destructive action.
+ */
+function DiscardFailedSaveDialog({ controller }: { controller: NoteAppController }) {
+  const { tabPendingClose, confirmCloseTab, cancelCloseTab } = controller
+
+  return (
+    <AlertDialog
+      open={Boolean(tabPendingClose)}
+      onOpenChange={(open) => {
+        if (!open) cancelCloseTab?.()
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+          <AlertDialogDescription>
+            &quot;{tabPendingClose?.label}&quot; could not be saved. Closing this tab discards those changes.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel data-cy="discard-failed-save-cancel">Keep editing</AlertDialogCancel>
+          <AlertDialogAction
+            data-cy="discard-failed-save-confirm"
+            onClick={() => void confirmCloseTab?.()}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Discard and close
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 

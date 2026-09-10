@@ -102,6 +102,7 @@ export function useNoteAppController() {
   const selectedNote = activeTab.note
   const isEditing = activeTab.mode === 'editing'
   const [notePaneVisible, setNotePaneVisible] = useState(false)
+  const [tabPendingClose, setTabPendingClose] = useState<{ tabId: string; label: string } | null>(null)
   const legacyBridgeAppliedRef = useRef(false)
 
   const setSelectedNote = useCallback((value: NoteViewModel | null | ((previous: NoteViewModel | null) => NoteViewModel | null)) => {
@@ -632,23 +633,17 @@ export function useNoteAppController() {
     setLastSavedAt(null)
   }, [activateTab, activeTabId, flushAndCaptureActiveTab, setLastSavedAt, tabs])
 
-  const handleCloseTab = useCallback(async (tabId: string) => {
-    const tab = tabs.find((candidate) => candidate.id === tabId)
-    if (!tab) return
-
+  /**
+   * Closes a tab, skipping the autosave flush when the caller has already
+   * agreed to discard a failed save (flushing would only fail again).
+   */
+  const closeTabNow = useCallback(async (tabId: string, discardFailedSave: boolean) => {
     const tabIndex = tabs.findIndex((candidate) => candidate.id === tabId)
+    if (tabIndex < 0) return
+    const tab = tabs[tabIndex]
     const nextVisibleTab = tab.id === activeTabId
       ? (tabs[tabIndex + 1] ?? tabs[tabIndex - 1] ?? null)
       : tabs.find((candidate) => candidate.id === activeTabId) ?? null
-
-    // A tab whose save failed may be a brand-new note that never reached the
-    // server, so the saved title can be missing — fall back to the live draft
-    // before calling it "this tab".
-    const tabLabel = tab.note?.title?.trim() || tab.draft.title.trim() || 'this tab'
-    const discardFailedSave = tab.saveState === 'error'
-      && typeof window !== 'undefined'
-      && window.confirm(`Discard unsaved changes in "${tabLabel}"?`)
-    if (tab.saveState === 'error' && !discardFailedSave) return
 
     if (tab.id === activeTabId && !discardFailedSave) {
       if (!(await flushAndCaptureActiveTab())) return
@@ -658,6 +653,33 @@ export function useNoteAppController() {
     setNotePaneVisible(Boolean(nextVisibleTab?.note || nextVisibleTab?.mode === 'editing'))
     setLastSavedAt(null)
   }, [activeTabId, closeTab, flushAndCaptureActiveTab, setLastSavedAt, tabs])
+
+  const handleCloseTab = useCallback(async (tabId: string) => {
+    const tab = tabs.find((candidate) => candidate.id === tabId)
+    if (!tab) return
+
+    // Closing a tab whose save failed throws the edits away, so it asks first
+    // — through the app's own dialog, not a blocking native confirm().
+    if (tab.saveState === 'error') {
+      // A failed save may be a brand-new note that never reached the server,
+      // so the saved title can be missing — fall back to the live draft.
+      setTabPendingClose({
+        tabId,
+        label: tab.note?.title?.trim() || tab.draft.title.trim() || 'this tab',
+      })
+      return
+    }
+
+    await closeTabNow(tabId, false)
+  }, [closeTabNow, tabs])
+
+  const confirmCloseTab = useCallback(async () => {
+    const pending = tabPendingClose
+    setTabPendingClose(null)
+    if (pending) await closeTabNow(pending.tabId, true)
+  }, [closeTabNow, tabPendingClose])
+
+  const cancelCloseTab = useCallback(() => setTabPendingClose(null), [])
 
   const workspaceHydrationAppliedRef = useRef(false)
   useEffect(() => {
@@ -989,6 +1011,9 @@ export function useNoteAppController() {
     addTab: handleAddTab,
     activateTab: handleActivateTab,
     closeTab: handleCloseTab,
+    tabPendingClose,
+    confirmCloseTab,
+    cancelCloseTab,
     canAddTab,
     workspaceHydrated,
     enterSelectionMode,
