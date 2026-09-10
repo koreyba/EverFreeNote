@@ -1,0 +1,1 @@
+{"id":"ce63fefd290565baefc5bf8637856b36","fullName":"everfreenote:ui/web/tests/unit/hooks/useAIIndexNotes.test.tsx#useAIIndexNotes surfaces actionable migration guidance when PostgREST schema cache is stale","name":"surfaces actionable migration guidance when PostgREST schema cache is stale","status":"passed","testResultsByEnv":{"default":"39de8aab1485c74c7a9c19ec5c0269fc"}}
