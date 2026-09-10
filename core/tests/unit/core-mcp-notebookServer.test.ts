@@ -15,7 +15,7 @@ import type { NotebookRepository, NoteRecord } from '@core/mcp/types'
 const NOTE_A: NoteRecord = {
   id: '11111111-1111-4111-8111-111111111111',
   title: 'Groceries',
-  description: '<p>Milk &amp; eggs</p><ul><li>Bread</li></ul>',
+  contentHtml: '<p>Milk &amp; eggs</p><ul><li>Bread</li></ul>',
   tags: ['home'],
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-03T00:00:00Z',
@@ -24,7 +24,7 @@ const NOTE_A: NoteRecord = {
 const NOTE_B: NoteRecord = {
   id: '22222222-2222-4222-8222-222222222222',
   title: 'Ideas',
-  description: '',
+  contentHtml: '',
   tags: [],
   created_at: null,
   updated_at: null,
@@ -83,7 +83,7 @@ describe('core/mcp/notebookServer', () => {
     it('maps a note to a detail with html and text bodies', () => {
       expect(toNoteDetail(NOTE_A)).toMatchObject({
         id: NOTE_A.id,
-        content_html: NOTE_A.description,
+        content_html: NOTE_A.contentHtml,
         content_text: 'Milk & eggs\n• Bread',
       })
     })
@@ -223,7 +223,7 @@ describe('core/mcp/notebookServer', () => {
           arguments: { title: '  Ideas ', tags: [' x ', 'x', ''] },
         })
 
-        expect(repository.createNote).toHaveBeenCalledWith({ title: 'Ideas', description: '', tags: ['x'] })
+        expect(repository.createNote).toHaveBeenCalledWith({ title: 'Ideas', contentHtml: '', tags: ['x'] })
         expect(result.isError).toBeFalsy()
         expect(result.structuredContent).toEqual(toNoteDetail(NOTE_B))
       })
@@ -233,13 +233,31 @@ describe('core/mcp/notebookServer', () => {
 
         await session.client.callTool({
           name: 'create_note',
-          arguments: { title: 'Groceries', content_html: NOTE_A.description, tags: ['home'] },
+          arguments: { title: 'Groceries', content_html: NOTE_A.contentHtml, tags: ['home'] },
         })
 
         expect(repository.createNote).toHaveBeenCalledWith({
           title: 'Groceries',
-          description: NOTE_A.description,
+          contentHtml: NOTE_A.contentHtml,
           tags: ['home'],
+        })
+      })
+
+      it('sanitizes agent-supplied markup before storing it', async () => {
+        repository.createNote.mockResolvedValue(NOTE_A)
+
+        await session.client.callTool({
+          name: 'create_note',
+          arguments: {
+            title: 'Hostile',
+            content_html: '<p onclick="steal()">text</p><script>alert(1)</script><a href="javascript:alert(2)">l</a>',
+          },
+        })
+
+        expect(repository.createNote).toHaveBeenCalledWith({
+          title: 'Hostile',
+          contentHtml: '<p>text</p><a>l</a>',
+          tags: [],
         })
       })
 
@@ -283,7 +301,18 @@ describe('core/mcp/notebookServer', () => {
           arguments: { id: NOTE_A.id, content_html: '<p>new</p>' },
         })
 
-        expect(repository.updateNote).toHaveBeenCalledWith(NOTE_A.id, { description: '<p>new</p>' })
+        expect(repository.updateNote).toHaveBeenCalledWith(NOTE_A.id, { contentHtml: '<p>new</p>' })
+      })
+
+      it('sanitizes agent-supplied markup on update', async () => {
+        repository.updateNote.mockResolvedValue(NOTE_A)
+
+        await session.client.callTool({
+          name: 'update_note',
+          arguments: { id: NOTE_A.id, content_html: '<iframe src="https://evil.example"></iframe><p>ok</p>' },
+        })
+
+        expect(repository.updateNote).toHaveBeenCalledWith(NOTE_A.id, { contentHtml: '<p>ok</p>' })
       })
 
       it('requires at least one field', async () => {

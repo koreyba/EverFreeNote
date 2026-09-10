@@ -3,6 +3,7 @@
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.4",
     "@modelcontextprotocol/sdk/": "npm:/@modelcontextprotocol/sdk@1.30.0/",
     "zod": "npm:zod@4.1.12",
-    "@core/": "../../../core/"
+    "@core/": "../../../core/",
+    "sanitize-html": "npm:sanitize-html@2.17.0"
   }
 }

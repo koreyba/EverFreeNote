@@ -4,11 +4,11 @@
 // Function `mcp`). Keep imports relative with explicit `.ts` extensions and do
 // not use `@/` path aliases, otherwise Deno cannot resolve them.
 
-/** A note row as exposed to MCP tools. `description` holds the editor's HTML. */
+/** A note row as exposed to MCP tools. `contentHtml` is the editor's HTML (DB column `description`). */
 export type NoteRecord = {
   id: string
   title: string
-  description: string
+  contentHtml: string
   tags: string[]
   created_at: string | null
   updated_at: string | null
@@ -33,7 +33,7 @@ export type ListNotesResult = {
 
 export type CreateNoteInput = {
   title: string
-  description: string
+  contentHtml: string
   tags: string[]
 }
 

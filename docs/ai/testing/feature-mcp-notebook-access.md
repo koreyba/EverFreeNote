@@ -19,6 +19,11 @@ description: Unit, protocol-level and component coverage for the MCP server, OAu
 - [x] Script/style removal, named/decimal/hex entity decoding, out-of-range code points kept
 - [x] Whitespace collapsing; excerpt truncation with ellipsis, limit of one
 
+### `core/tests/unit/core-mcp-noteHtml.test.ts`
+- [x] Empty input; editor markup preserved; script/style removed with their content
+- [x] Event handlers stripped; `javascript:` URLs dropped, http/https/mailto kept; `data:` allowed for images only
+- [x] `iframe`/`form`/`input`/`object`/`embed` discarded; checkbox and formatting attributes kept; CSS whitespace normalised
+
 ### `core/tests/unit/core-mcp-oauthResource.test.ts`
 - [x] `classifyMcpRoute` with/without `/functions/v1`, trailing slashes, unknown paths
 - [x] `resolvePublicOrigin` precedence: override → forwarded headers (first value, https default) → `SUPABASE_URL` → request URL → empty
@@ -35,8 +40,8 @@ description: Unit, protocol-level and component coverage for the MCP server, OAu
 - [x] Server info, instructions, four tools with annotations and output schemas
 - [x] `list_notes`: defaults, filters, `has_more`, validation errors (`limit` 0/101, negative offset), repository failure
 - [x] `get_note`: success, not found, invalid UUID, repository failure
-- [x] `create_note`: defaults + tag normalisation, HTML pass-through, empty title, repository failure
-- [x] `update_note`: partial update, `content_html` → `description`, no fields, not found, repository failure
+- [x] `create_note`: defaults + tag normalisation, HTML pass-through, sanitization of hostile markup, empty title, repository failure
+- [x] `update_note`: partial update, `content_html` → `contentHtml`, sanitization of hostile markup, no fields, not found, repository failure
 - [x] Pure helpers: `normalizeTags`, `toNoteSummary`, `toNoteDetail`, `describeToolError`
 
 ### `ui/web/tests/unit/lib/oauthConsentNavigationState.test.ts`

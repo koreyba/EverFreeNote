@@ -47,28 +47,28 @@ function readTagName(tagBody: string): { name: string; closing: boolean } {
  * Walks the markup once, dropping every tag, skipping script/style content and
  * emitting line breaks for block boundaries (list items get a bullet).
  */
-function stripMarkup(source: string): string {
-  const lower = source.toLowerCase()
+function stripMarkup(html: string): string {
+  const lower = html.toLowerCase()
   let output = ''
   let index = 0
 
-  while (index < source.length) {
-    const char = source[index]
+  while (index < html.length) {
+    const char = html[index]
     if (char !== '<') {
       output += char
       index += 1
       continue
     }
 
-    const tagEnd = source.indexOf('>', index + 1)
+    const tagEnd = html.indexOf('>', index + 1)
     if (tagEnd === -1) break // unterminated tag: drop the rest
 
-    const { name, closing } = readTagName(source.slice(index + 1, tagEnd))
+    const { name, closing } = readTagName(html.slice(index + 1, tagEnd))
 
     if (!closing && SKIPPED_ELEMENTS.has(name)) {
       const closeStart = lower.indexOf(`</${name}`, tagEnd + 1)
       if (closeStart === -1) break
-      const closeEnd = source.indexOf('>', closeStart)
+      const closeEnd = html.indexOf('>', closeStart)
       if (closeEnd === -1) break
       index = closeEnd + 1
       continue
@@ -91,18 +91,18 @@ function stripMarkup(source: string): string {
  * line breaks, list items get a bullet, tags and scripts are removed,
  * entities are decoded and whitespace is collapsed.
  */
-export function htmlToPlainText(source: string | null | undefined): string {
-  if (!source) return ''
+export function htmlToPlainText(html: string | null | undefined): string {
+  if (!html) return ''
 
-  return decodeEntities(stripMarkup(source))
+  return decodeEntities(stripMarkup(html))
     .replace(/[ \t\f\v\u00a0]+/g, ' ')
     .replace(/\s*\n\s*/g, '\n')
     .trim()
 }
 
 /** Single-line excerpt of a note body, truncated with an ellipsis. */
-export function buildExcerpt(source: string | null | undefined, maxLength = 200): string {
-  const singleLine = htmlToPlainText(source).replace(/\s*\n\s*/g, ' ').trim()
+export function buildExcerpt(html: string | null | undefined, maxLength = 200): string {
+  const singleLine = htmlToPlainText(html).replace(/\s*\n\s*/g, ' ').trim()
   if (singleLine.length <= maxLength) return singleLine
 
   const cut = Math.max(1, maxLength - 1)

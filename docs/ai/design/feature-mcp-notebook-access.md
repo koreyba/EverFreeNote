@@ -47,7 +47,8 @@ graph TD
 | Tool logic | `core/mcp/notebookServer.ts` | Builds an `McpServer` with `list_notes`, `get_note`, `create_note`, `update_note`. Runtime-agnostic, depends only on a `NotebookRepository`. |
 | Data access | `core/mcp/supabaseNotebookRepository.ts` | Implements `NotebookRepository` on a Supabase client that carries the user's token, so RLS applies. |
 | OAuth resource helpers | `core/mcp/oauthResource.ts` | Pure functions: protected-resource metadata, `WWW-Authenticate` header, bearer extraction, route classification, public origin resolution. |
-| Content helpers | `core/mcp/noteContent.ts` | HTML → plain text and excerpts for list results. |
+| Content helpers | `core/mcp/noteContent.ts` | Markup → plain text and excerpts for list results. |
+| Write sanitization | `core/mcp/noteHtml.ts` | Allowlist sanitizer (`sanitize-html`) applied to every body an agent sends. |
 | HTTP adapter | `supabase/functions/mcp/index.ts` | CORS, routing, token validation, wiring repository + server + `WebStandardStreamableHTTPServerTransport` (stateless, JSON responses). |
 | Consent page | `app/oauth/consent/page.tsx`, `ui/web/components/features/oauth/*` | Shows the requesting client, approves or denies via `supabase.auth.oauth.*`, redirects back. Handles the signed-out case inline. |
 | Consent return bridge | `ui/web/lib/oauthConsentNavigationState.ts`, `app/auth/callback/page.tsx` | Remembers the pending `authorization_id` across the Google sign-in redirect. |
@@ -66,7 +67,7 @@ No schema changes. The server reads and writes `public.notes` (`id`, `user_id`, 
 Tool-facing shapes (`core/mcp/types.ts`):
 
 ```ts
-type NoteRecord = { id; title; description /* HTML */; tags; created_at; updated_at }
+type NoteRecord = { id; title; contentHtml; tags; created_at; updated_at }  // DB column: description
 type NoteSummary = { id; title; tags; created_at; updated_at; excerpt }          // list_notes
 type NoteDetail  = { id; title; tags; created_at; updated_at; content_html; content_text } // get_note, create_note, update_note
 ```
@@ -97,7 +98,9 @@ Token validation: `supabase.auth.getUser(token)` on a client created with the an
 
 Every tool returns both `content: [{ type: "text", text: JSON }]` and `structuredContent`. Expected failures (`not found`, no fields to update, database errors) are returned as `isError: true` results with a short message; existence of other users' notes is never revealed (RLS yields "not found").
 
-Body format: `content_html` is the editor's HTML (paragraphs, headings, lists, emphasis, links, code, blockquotes, images, marks). The tool description tells agents to convert Markdown to this HTML. Stored HTML is sanitized at every render path already (`SanitizationService`, TipTap schema), matching the contract of the existing `create-note` REST function.
+Body format: `content_html` is the editor's HTML (paragraphs, headings, lists, emphasis, links, code, blockquotes, images, marks). The tool description tells agents to convert Markdown to this HTML.
+
+**Write-side sanitization.** Agents are untrusted input, so `create_note` and `update_note` run every body through `sanitizeNoteHtml()` before it reaches the database: unknown elements, event handlers and script-bearing URLs are discarded, using an allowlist that mirrors the render-side DOMPurify profile in `core/services/sanitizer.ts`. Render paths keep sanitizing as before; this is the second layer, and it matters because notes are also served to third parties through public share links.
 
 ### OAuth flow (sequence)
 

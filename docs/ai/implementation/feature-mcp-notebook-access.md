@@ -15,8 +15,10 @@ description: How the remote MCP server, OAuth resource helpers and consent page 
 Useful commands:
 
 ```bash
-npx --yes deno@2 check --config supabase/functions/mcp/deno.json supabase/functions/mcp/index.ts
+npm run deno-check
 ```
+
+That runs `scripts/deno-check-functions.mjs`, which type-checks each function with its own `deno.json`. A single `deno check supabase/functions/**/*.ts` cannot work here: it ignores the per-function import maps, so every `@core/…`, `npm:` and `esm.sh` specifier fails to resolve.
 
 ```bash
 SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_ANON_KEY=<anon> npx --yes deno@2 run -A --config supabase/functions/mcp/deno.json supabase/functions/mcp/index.ts
@@ -32,6 +34,7 @@ npx jest --config jest.config.cjs --selectProjects unit-core --testPathPatterns 
 core/mcp/
   types.ts                       NoteRecord, NotebookRepository, list/create/update contracts
   noteContent.ts                 htmlToPlainText(), buildExcerpt()
+  noteHtml.ts                    sanitizeNoteHtml() — allowlist sanitizer for agent-supplied bodies
   oauthResource.ts               RFC 9728 metadata, WWW-Authenticate, bearer extraction, routing, public origin
   supabaseNotebookRepository.ts  RLS-scoped repository on a user-token Supabase client
   notebookServer.ts              createNotebookMcpServer(repository) — the four tools
@@ -54,6 +57,11 @@ Naming: tools are snake_case (`list_notes`, `get_note`, `create_note`, `update_n
 
 ### Tool callbacks are typed explicitly
 The SDK infers callback argument types from the zod shape under Node's TypeScript but not under Deno's (TS 6). Each callback therefore annotates its argument with the exported `z.infer` type (`ListNotesInput`, `GetNoteInput`, `CreateNoteToolInput`, `UpdateNoteToolInput`). Input/output schemas are passed as raw shapes (`{ field: zodType }`), the most widely supported form.
+
+### Sanitizing agent-supplied bodies
+`create_note` and `update_note` pass `content_html` through `sanitizeNoteHtml()` (package `sanitize-html`, which runs unchanged in Node and Deno) before handing it to the repository. The allowlist mirrors the DEFAULT profile of `core/services/sanitizer.ts`; `href` accepts http/https/mailto, `img src` additionally accepts `data:`. Note that the sanitizer normalises CSS whitespace inside `style` attributes, so bodies are not always byte-identical to what the agent sent.
+
+The domain type calls the body `contentHtml`; the Postgres column is still `description`, and the mapping happens only inside `supabaseNotebookRepository.ts`.
 
 ### Validation and error semantics
 - Argument validation is done by the SDK from the zod shapes; invalid arguments come back as `isError: true` results with an "Input validation error" message (not as JSON-RPC protocol errors).

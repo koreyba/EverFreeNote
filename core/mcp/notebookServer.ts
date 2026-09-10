@@ -9,6 +9,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 
 import { buildExcerpt, htmlToPlainText } from './noteContent.ts'
+import { sanitizeNoteHtml } from './noteHtml.ts'
 import type { NotebookRepository, NoteRecord } from './types.ts'
 
 export const NOTEBOOK_MCP_SERVER_INFO = {
@@ -31,7 +32,7 @@ export const MAX_TITLE_LENGTH = 1000
 export const MAX_TAGS = 50
 export const MAX_TAG_LENGTH = 100
 
-const CONTENT_HTML_DESCRIPTION =
+const NOTE_BODY_FORMAT_HINT =
   'Note body as HTML understood by the EverFreeNote editor: <p>, <h1>-<h3>, <ul>/<ol>/<li>, <strong>, <em>, <u>, <s>, ' +
   '<a href>, <code>, <pre>, <blockquote>, <hr>, <img src>, <mark>. Convert Markdown to this HTML before sending; ' +
   'wrap plain paragraphs in <p> elements.'
@@ -68,7 +69,7 @@ const tagFilterSchema = z.string().trim().min(1).max(MAX_TAG_LENGTH)
 // Individual tags may be blank: normalizeTags() drops them instead of failing the whole call.
 const tagItemSchema = z.string().trim().max(MAX_TAG_LENGTH)
 const tagsSchema = z.array(tagItemSchema).max(MAX_TAGS).describe('Tags; blanks and duplicates are dropped')
-const contentHtmlSchema = z.string().describe(CONTENT_HTML_DESCRIPTION)
+const contentHtmlSchema = z.string().describe(NOTE_BODY_FORMAT_HINT)
 
 const listNotesInputShape = {
   query: z
@@ -147,7 +148,7 @@ export function toNoteSummary(note: NoteRecord): NoteSummary {
     tags: note.tags,
     created_at: note.created_at,
     updated_at: note.updated_at,
-    excerpt: buildExcerpt(note.description),
+    excerpt: buildExcerpt(note.contentHtml),
   }
 }
 
@@ -158,8 +159,8 @@ export function toNoteDetail(note: NoteRecord): NoteDetail {
     tags: note.tags,
     created_at: note.created_at,
     updated_at: note.updated_at,
-    content_html: note.description,
-    content_text: htmlToPlainText(note.description),
+    content_html: note.contentHtml,
+    content_text: htmlToPlainText(note.contentHtml),
   }
 }
 
@@ -261,7 +262,7 @@ export function createNotebookMcpServer(repository: NotebookRepository): McpServ
       try {
         const note = await repository.createNote({
           title,
-          description: content_html,
+          contentHtml: sanitizeNoteHtml(content_html),
           tags: normalizeTags(tags),
         })
         return successResult(toNoteDetail(note))
@@ -290,7 +291,7 @@ export function createNotebookMcpServer(repository: NotebookRepository): McpServ
       try {
         const note = await repository.updateNote(id, {
           ...(title === undefined ? {} : { title }),
-          ...(content_html === undefined ? {} : { description: content_html }),
+          ...(content_html === undefined ? {} : { contentHtml: sanitizeNoteHtml(content_html) }),
           ...(tags === undefined ? {} : { tags: normalizeTags(tags) }),
         })
         if (!note) return errorResult('Note not found')

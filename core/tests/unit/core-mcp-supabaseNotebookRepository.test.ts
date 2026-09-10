@@ -50,6 +50,16 @@ const row = {
   updated_at: '2026-01-02T00:00:00Z',
 }
 
+/** What toNoteRecord() should produce for `row`. */
+const record = {
+  id: row.id,
+  title: row.title,
+  contentHtml: row.description,
+  tags: row.tags,
+  created_at: row.created_at,
+  updated_at: row.updated_at,
+}
+
 describe('core/mcp/supabaseNotebookRepository', () => {
   describe('helpers', () => {
     it('escapes characters that break PostgREST quoted values', () => {
@@ -59,7 +69,7 @@ describe('core/mcp/supabaseNotebookRepository', () => {
     it('normalises nullable columns into a NoteRecord', () => {
       expect(
         toNoteRecord({ id: 'x', title: null, description: null, tags: ['t', 3, null], created_at: null, updated_at: null }),
-      ).toEqual({ id: 'x', title: '', description: '', tags: ['t'], created_at: null, updated_at: null })
+      ).toEqual({ id: 'x', title: '', contentHtml: '', tags: ['t'], created_at: null, updated_at: null })
       expect(toNoteRecord({ ...row, tags: 'not-an-array' }).tags).toEqual([])
     })
   })
@@ -78,7 +88,7 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       expect(builder.range).toHaveBeenCalledWith(40, 59)
       expect(builder.contains).not.toHaveBeenCalled()
       expect(builder.or).not.toHaveBeenCalled()
-      expect(result).toEqual({ notes: [row], total: 42 })
+      expect(result).toEqual({ notes: [record], total: 42 })
     })
 
     it('applies tag and text filters', async () => {
@@ -133,7 +143,7 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       const { supabase, builder } = createClient({ data: row })
       const repository = createSupabaseNotebookRepository(supabase, userId)
 
-      await expect(repository.getNote(row.id)).resolves.toEqual(row)
+      await expect(repository.getNote(row.id)).resolves.toEqual(record)
       expect(builder.select).toHaveBeenCalledWith(NOTE_COLUMNS)
       expect(builder.eq).toHaveBeenCalledWith('id', row.id)
       expect(builder.eq).toHaveBeenCalledWith('user_id', userId)
@@ -160,21 +170,21 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       const { supabase, builder } = createClient({ data: row })
       const repository = createSupabaseNotebookRepository(supabase, userId)
 
-      const created = await repository.createNote({ title: 'Hello', description: '<p>Body</p>', tags: ['a', 'b'] })
+      const created = await repository.createNote({ title: 'Hello', contentHtml: '<p>Body</p>', tags: ['a', 'b'] })
 
       expect(builder.insert).toHaveBeenCalledWith([
         { title: 'Hello', description: '<p>Body</p>', tags: ['a', 'b'], user_id: userId },
       ])
       expect(builder.select).toHaveBeenCalledWith(NOTE_COLUMNS)
       expect(builder.single).toHaveBeenCalled()
-      expect(created).toEqual(row)
+      expect(created).toEqual(record)
     })
 
     it('rethrows database errors', async () => {
       const { supabase } = createClient({ error: { message: 'insert failed' } })
       const repository = createSupabaseNotebookRepository(supabase, userId)
 
-      await expect(repository.createNote({ title: 't', description: '', tags: [] })).rejects.toEqual({
+      await expect(repository.createNote({ title: 't', contentHtml: '', tags: [] })).rejects.toEqual({
         message: 'insert failed',
       })
     })
@@ -191,14 +201,14 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       expect(builder.eq).toHaveBeenCalledWith('id', row.id)
       expect(builder.eq).toHaveBeenCalledWith('user_id', userId)
       expect(builder.maybeSingle).toHaveBeenCalled()
-      expect(updated).toEqual(row)
+      expect(updated).toEqual(record)
     })
 
     it('passes the description through', async () => {
       const { supabase, builder } = createClient({ data: row })
       const repository = createSupabaseNotebookRepository(supabase, userId)
 
-      await repository.updateNote(row.id, { description: '<p>x</p>' })
+      await repository.updateNote(row.id, { contentHtml: '<p>x</p>' })
 
       expect(builder.update).toHaveBeenCalledWith({ description: '<p>x</p>' })
     })
@@ -214,7 +224,7 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       const { supabase, builder } = createClient({ data: row })
       const repository = createSupabaseNotebookRepository(supabase, userId)
 
-      await expect(repository.updateNote(row.id, {})).resolves.toEqual(row)
+      await expect(repository.updateNote(row.id, {})).resolves.toEqual(record)
       expect(builder.update).not.toHaveBeenCalled()
       expect(builder.select).toHaveBeenCalledWith(NOTE_COLUMNS)
     })

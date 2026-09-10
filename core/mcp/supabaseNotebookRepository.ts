@@ -17,6 +17,13 @@ import type {
 
 export const NOTE_COLUMNS = 'id, title, description, tags, created_at, updated_at'
 
+/** Writable columns of `public.notes`. The note body lives in `description`. */
+type NoteColumns = {
+  title: string
+  description: string
+  tags: string[]
+}
+
 type NoteRow = {
   id: string
   title: string | null
@@ -35,7 +42,7 @@ export function toNoteRecord(row: NoteRow): NoteRecord {
   return {
     id: row.id,
     title: row.title ?? '',
-    description: row.description ?? '',
+    contentHtml: row.description ?? '',
     tags: Array.isArray(row.tags) ? row.tags.filter((tag): tag is string => typeof tag === 'string') : [],
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
@@ -86,7 +93,7 @@ export function createSupabaseNotebookRepository(supabase: SupabaseClient, userI
         .insert([
           {
             title: input.title,
-            description: input.description,
+            description: input.contentHtml,
             tags: input.tags,
             user_id: userId,
           },
@@ -99,9 +106,9 @@ export function createSupabaseNotebookRepository(supabase: SupabaseClient, userI
     },
 
     async updateNote(id: string, patch: UpdateNotePatch): Promise<NoteRecord | null> {
-      const changes: Partial<CreateNoteInput> = {}
+      const changes: Partial<NoteColumns> = {}
       if (patch.title !== undefined) changes.title = patch.title
-      if (patch.description !== undefined) changes.description = patch.description
+      if (patch.contentHtml !== undefined) changes.description = patch.contentHtml
       if (patch.tags !== undefined) changes.tags = patch.tags
 
       if (Object.keys(changes).length === 0) {

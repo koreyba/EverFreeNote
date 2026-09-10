@@ -102,6 +102,8 @@ Any client that implements the MCP authorization spec (Streamable HTTP + OAuth 2
 
 Note bodies are the editor's HTML (`<p>`, `<h1>`–`<h3>`, lists, `<strong>`, `<em>`, links, `<code>`, `<pre>`, `<blockquote>`, `<hr>`, `<img>`, `<mark>`). Agents are instructed to convert Markdown to this HTML before writing.
 
+Everything an agent writes is sanitized on the server before it is stored: scripts, event handlers, `javascript:` URLs and elements outside the editor allowlist are removed. An agent cannot plant active content in your notebook.
+
 ---
 
 ## 4. Revoking access
