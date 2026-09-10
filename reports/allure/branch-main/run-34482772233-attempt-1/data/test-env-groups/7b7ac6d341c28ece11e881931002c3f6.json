@@ -1,0 +1,1 @@
+{"id":"7b7ac6d341c28ece11e881931002c3f6","fullName":"everfreenote:core/tests/unit/core-mcp-noteContent.test.ts#core/mcp/noteContent htmlToPlainText keeps out-of-range numeric entities untouched","name":"keeps out-of-range numeric entities untouched","status":"passed","testResultsByEnv":{"default":"febe341ca6eb6a38a0ac56f701205500"}}
