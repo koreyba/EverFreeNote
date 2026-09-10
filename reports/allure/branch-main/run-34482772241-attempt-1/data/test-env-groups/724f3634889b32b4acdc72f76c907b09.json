@@ -1,1 +1,0 @@
-{"id":"724f3634889b32b4acdc72f76c907b09","fullName":"everfreenote:cypress/component/editor/RichTextEditor.rendering.cy.tsx#RichTextEditor Component moves caret to end when clicking below the last block (bottom tail)","name":"moves caret to end when clicking below the last block (bottom tail)","status":"passed","testResultsByEnv":{"default":"6171a518dd466eaaa64eae3e4f1c9b08"}}
