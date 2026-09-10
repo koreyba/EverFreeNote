@@ -1,1 +1,0 @@
-{"id":"bfce44102cc5534815b1d60fae652332","fullName":"everfreenote:ui/web/tests/unit/components/authCallbackConsentReturn.test.tsx#AuthCallback — return to pending OAuth consent falls back to the home page when nothing is pending","name":"falls back to the home page when nothing is pending","status":"passed","testResultsByEnv":{"default":"f221dc380546bf5ca4a409182b0ef784"}}
