@@ -1,0 +1,1 @@
+{"id":"226d9cf4297b4d70a362138bdf327a71","fullName":"everfreenote:core/tests/unit/core-mcp-oauthResource.test.ts#core/mcp/oauthResource buildProtectedResourceMetadata produces an RFC 9728 document with header bearer tokens","name":"produces an RFC 9728 document with header bearer tokens","status":"passed","testResultsByEnv":{"default":"5164fc6819427b4d7d25c038416277f4"}}

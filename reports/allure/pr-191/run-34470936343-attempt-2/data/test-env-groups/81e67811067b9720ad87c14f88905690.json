@@ -1,0 +1,1 @@
+{"id":"81e67811067b9720ad87c14f88905690","fullName":"everfreenote-mobile:tests/integration/noteSaveExit.test.tsx#NoteEditorScreen - save on exit recreates the note after a remote deletion when mobile saves last","name":"recreates the note after a remote deletion when mobile saves last","status":"passed","testResultsByEnv":{"default":"cf5291982d238d1a3ba5a070ecb503df"}}
