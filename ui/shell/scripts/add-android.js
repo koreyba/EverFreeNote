@@ -127,14 +127,22 @@ if (gradle.includes('signingConfigs')) {
   console.log('✅ added release signing config')
 }
 
-// Launcher icon and splash, from assets/. Regenerated every time because android/ is a
-// working directory: without this the app would fall back to the stock Capacitor icon
-// after any rebuild that recreates the project.
-console.log('🎨 Generating launcher icon and splash')
-execSync('npx @capacitor/assets generate --android --assetPath assets', {
-  cwd: SHELL_DIR,
-  stdio: ['ignore', 'ignore', 'inherit'],
-})
+// Launcher icon, copied over the generated project every time because android/ is a
+// working directory and would otherwise fall back to the stock Capacitor icon.
+//
+// Copied rather than generated: @capacitor/assets pulls in sharp, a native module whose
+// binaries need install scripts, and CI installs with --ignore-scripts. Regenerate with
+// `npm run assets:generate` when the artwork changes — that is a developer's machine,
+// where install scripts do run.
+const ICON_SOURCE = path.join(SHELL_DIR, 'assets', 'android-res')
+const RES_DIR = path.join(ANDROID_DIR, 'app', 'src', 'main', 'res')
+
+if (!fs.existsSync(ICON_SOURCE)) {
+  throw new Error(`Launcher icon resources are missing: ${ICON_SOURCE}. Run npm run assets:generate.`)
+}
+
+console.log('🎨 Applying launcher icon')
+fs.cpSync(ICON_SOURCE, RES_DIR, { recursive: true })
 
 console.log(`
 Redirect URL this build expects in Supabase Auth -> URL Configuration:
