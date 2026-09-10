@@ -1,1 +1,0 @@
-{"id":"ff71e85e216dc1e26a72c7f9b666b400","fullName":"everfreenote-mobile:tests/unit/storageAdapter.test.ts#storage adapters asyncStorageAdapter getItem returns null when item is not found","name":"returns null when item is not found","status":"passed","testResultsByEnv":{"default":"62a92e398e37e7a81d60469e709b8c36"}}
