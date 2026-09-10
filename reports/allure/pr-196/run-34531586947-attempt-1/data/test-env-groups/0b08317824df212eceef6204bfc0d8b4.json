@@ -1,0 +1,1 @@
+{"id":"0b08317824df212eceef6204bfc0d8b4","fullName":"everfreenote:ui/web/tests/unit/adapters/publicWebOrigin.test.ts#resolvePublicWebOrigin uses the deployed origin inside the shell, not the WebView origin","name":"uses the deployed origin inside the shell, not the WebView origin","status":"passed","testResultsByEnv":{"default":"7989456241184986c1ddb9edc7d3bdcd"}}
