@@ -8,6 +8,34 @@
     "suiteLabels": [
       "Web E2E"
     ],
+    "path": "reports/allure/pr-187/run-34527871857-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-187/run-34527871857-attempt-1/",
+    "runId": "34527871857",
+    "runAttempt": "1",
+    "prNumber": "187",
+    "ref": "codex/notes-tabs",
+    "sha": "b9aaa351d67bb3d1dde050389354573335affffa",
+    "outcome": "success",
+    "previewUrl": "https://f08183ea.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #187",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-09-10T20:49:27.671Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web E2E"
+    ],
     "path": "reports/allure/pr-187/run-34526959921-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-187/run-34526959921-attempt-1/",
     "runId": "34526959921",
@@ -627,34 +655,6 @@
     "scopeLabel": "PR #194",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-09-10T15:15:15.169Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-194/run-34492726169-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-194/run-34492726169-attempt-1/",
-    "runId": "34492726169",
-    "runAttempt": "1",
-    "prNumber": "194",
-    "ref": "fix/static-analysis-findings",
-    "sha": "c4c3dd437095d514783736a72fb884ca03f70299",
-    "outcome": "success",
-    "previewUrl": "https://1a93a49b.everfreenote.pages.dev",
-    "e2eRef": "master",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #194",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-09-10T15:08:15.664Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
