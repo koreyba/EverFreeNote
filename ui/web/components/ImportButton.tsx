@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Upload } from "lucide-react"
+import { UploadSimple as Upload } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"

@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 
 import { NotesShell } from '@/components/features/notes/NotesShell'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
+import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 
 const mockRouterPush = jest.fn()
 const mockWordPressGetStatus = jest.fn()
 const mockApiKeysGetStatus = jest.fn()
 const mockSearchFocusInput = jest.fn()
 const mockMaybeSingle = jest.fn()
+const originalClientWidthDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')
 
 const note = {
   id: 'note-1',
@@ -74,6 +76,23 @@ type MockAlertDialogProps = MockDialogProps & { open: boolean }
 type MockAlertDialogActionProps = MockDialogProps & { onClick: () => void }
 
 type NoteEditorRef = { flushPendingSave: () => Promise<void> }
+
+function makeWorkspaceTab(selectedNote: typeof note | null, isEditing: boolean): NoteWorkspaceTab {
+  return {
+    id: 'tab-1',
+    noteId: selectedNote?.id ?? null,
+    note: selectedNote,
+    mode: isEditing ? 'editing' : 'reading',
+    draft: {
+      title: selectedNote?.title ?? '',
+      description: selectedNote?.description ?? '',
+      tags: selectedNote?.tags.join(', ') ?? '',
+    },
+    view: { scrollTop: 0 },
+    saveState: 'saved',
+    saveError: null,
+  }
+}
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
@@ -215,6 +234,10 @@ jest.mock('@/components/ui/alert-dialog', () => ({
 }))
 
 function makeController(overrides: Record<string, unknown> = {}) {
+  const selectedNote = (overrides.selectedNote as typeof note | null | undefined) ?? null
+  const isEditing = (overrides.isEditing as boolean | undefined) ?? false
+  const activeTab = makeWorkspaceTab(selectedNote, isEditing)
+
   return {
     user: { id: 'user-1', email: 'user@example.com' },
     notes: [note],
@@ -233,8 +256,14 @@ function makeController(overrides: Record<string, unknown> = {}) {
     pendingCount: 0,
     failedCount: 0,
     isOffline: false,
-    selectedNote: null,
-    isEditing: false,
+    selectedNote,
+    isEditing,
+    tabs: [activeTab],
+    activeTabId: activeTab.id,
+    activeTab,
+    addTab: jest.fn(),
+    activateTab: jest.fn(),
+    closeTab: jest.fn(),
     saving: false,
     autoSaving: false,
     lastSavedAt: null,
@@ -292,6 +321,18 @@ describe('NotesShell', () => {
     jest.mocked(useQuery).mockReturnValue({ data: { gemini: { configured: true } } } as never)
     mockConsumeReturnPath.mockReturnValue(null)
     mockMaybeSingle.mockResolvedValue({ data: fetchedNote })
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get: () => 800,
+    })
+  })
+
+  afterEach(() => {
+    if (originalClientWidthDescriptor) {
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', originalClientWidthDescriptor)
+    } else {
+      delete (HTMLElement.prototype as unknown as { clientWidth?: number }).clientWidth
+    }
   })
 
   it('renders the empty editor, registers the editor ref, and wires list actions', async () => {
@@ -315,6 +356,13 @@ describe('NotesShell', () => {
     expect(controller.notesQuery.fetchNextPage).toHaveBeenCalled()
     expect(controller.handleCreateNote).toHaveBeenCalled()
     expect(controller.handleSignOut).toHaveBeenCalled()
+  })
+
+  it('keeps the mobile workspace tab switcher available while the note list is visible', () => {
+    renderShell(makeController())
+
+    expect(screen.getByRole('button', { name: 'Open note tabs (1)' })).toBeTruthy()
+    expect(screen.getByTestId('mock-note-list')).toBeTruthy()
   })
 
   it('renders a selected note and routes its callbacks, back action, and delete confirmation', async () => {
@@ -341,6 +389,19 @@ describe('NotesShell', () => {
     expect(controller.handleSelectNote).toHaveBeenCalledWith(null)
     expect(controller.confirmDeleteNote).toHaveBeenCalled()
     await waitFor(() => expect(mockWordPressGetStatus).toHaveBeenCalled())
+  })
+
+  it('routes workspace tab controls through the notes controller', () => {
+    const controller = makeController({ selectedNote: note })
+    renderShell(controller)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Travel note', pressed: true }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add note tab' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close Travel note' }))
+
+    expect(controller.activateTab).toHaveBeenCalledWith('tab-1')
+    expect(controller.addTab).toHaveBeenCalledTimes(1)
+    expect(controller.closeTab).toHaveBeenCalledWith('tab-1')
   })
 
   it('passes editing state and pending chunk focus through the editor', async () => {

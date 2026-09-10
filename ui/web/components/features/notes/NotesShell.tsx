@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2 } from "lucide-react"
+import { CircleNotch as Loader2 } from "@phosphor-icons/react"
 import { useQuery } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import {
@@ -32,9 +32,12 @@ import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 import { saveSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
 import { consumeActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
+import { NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
+import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMenu"
 
 import { NavRail } from "@/components/features/navigation/NavRail"
 import { TagsPage } from "@/components/features/tags/TagsPage"
+import { MAX_NOTE_WORKSPACE_TABS } from "@core/services/noteWorkspaceTabs"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -89,6 +92,14 @@ export function NotesShell({ controller }: NotesShellProps) {
     isOffline,
     selectedNote,
     isEditing,
+    notePaneVisible,
+    tabs = [],
+    activeTabId = '',
+    addTab,
+    activateTab,
+    closeTab,
+    canAddTab = true,
+    workspaceHydrated = true,
     handleSelectNote,
     isSearchPanelOpen,
     setIsSearchPanelOpen,
@@ -147,7 +158,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     await controller.handleEditNote(note)
   }, [controller, supabase])
 
-  const showEditor = !!(selectedNote || isEditing)
+  const showEditor = notePaneVisible ?? !!(selectedNote || isEditing)
   const handleOpenSearchPanel = React.useCallback(() => {
     if (activeMainView !== "notes") {
       setActiveMainView("notes")
@@ -223,63 +234,88 @@ export function NotesShell({ controller }: NotesShellProps) {
           />
         </main>
       ) : (
-        <>
-          <Sidebar
-            user={user!}
-            filterByTag={filterByTag}
-            notesDisplayed={notesDisplayed}
-            notesTotal={notesTotal}
-            pendingCount={pendingCount}
-            failedCount={failedCount}
-            isOffline={isOffline}
-            selectionMode={selectionMode}
-            selectedCount={selectedCount}
-            bulkDeleting={bulkDeleting}
-            onExitSelectionMode={exitSelectionMode}
-            onSelectAll={selectAllVisible}
-            onBulkDelete={deleteSelectedNotes}
-            onClearTagFilter={handleClearTagFilter}
-            onOpenSettings={() => void handleOpenSettings()}
-            onCreateNote={handleCreateNote}
-            onSignOut={handleSignOut}
-            onOpenSearch={handleOpenSearchPanel}
-            className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
-            data-testid="sidebar-container"
-          >
-            <ListPane controller={controller} />
-          </Sidebar>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <MobileNotesTabMenu
+            tabs={tabs}
+            activeTabId={activeTabId}
+            addTabDisabled={!workspaceHydrated || !canAddTab}
+            addTabCapacityPending={!workspaceHydrated}
+            maximumTabCount={MAX_NOTE_WORKSPACE_TABS}
+            onAddTab={() => void addTab?.()}
+            onActivateTab={(tabId) => void activateTab?.(tabId)}
+            onCloseTab={(tabId) => void closeTab?.(tabId)}
+          />
+          <div className="flex min-h-0 min-w-0 flex-1">
+            <Sidebar
+              user={user!}
+              filterByTag={filterByTag}
+              notesDisplayed={notesDisplayed}
+              notesTotal={notesTotal}
+              pendingCount={pendingCount}
+              failedCount={failedCount}
+              isOffline={isOffline}
+              selectionMode={selectionMode}
+              selectedCount={selectedCount}
+              bulkDeleting={bulkDeleting}
+              onExitSelectionMode={exitSelectionMode}
+              onSelectAll={selectAllVisible}
+              onBulkDelete={deleteSelectedNotes}
+              onClearTagFilter={handleClearTagFilter}
+              onOpenSettings={() => void handleOpenSettings()}
+              onCreateNote={handleCreateNote}
+              onSignOut={handleSignOut}
+              onOpenSearch={handleOpenSearchPanel}
+              className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
+              data-testid="sidebar-container"
+            >
+              <ListPane controller={controller} />
+            </Sidebar>
 
-          {isSearchPanelOpen && (
-            <SearchResultsPanel
-              ref={searchPanelRef}
-              controller={controller}
-              hasGeminiApiKey={hasGeminiApiKey}
-              onOpenInContext={handleOpenInContext}
-              onClose={() => setIsSearchPanelOpen(false)}
-              className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
-            />
-          )}
-
-          <main
-            className={cn(
-              "flex-1 flex min-h-0 flex-col h-full overflow-hidden",
-              !showEditor ? "hidden md:flex" : "w-full"
+            {isSearchPanelOpen && (
+              <SearchResultsPanel
+                ref={searchPanelRef}
+                controller={controller}
+                hasGeminiApiKey={hasGeminiApiKey}
+                onOpenInContext={handleOpenInContext}
+                onClose={() => setIsSearchPanelOpen(false)}
+                className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
+              />
             )}
-            data-testid="editor-container"
-          >
-            <EditorPane
-              controller={controller}
-              onBack={handleBackFromNote}
-              noteEditorRef={noteEditorRef}
-              wordpressConfigured={wordpressConfigured}
-              pendingChunkFocus={pendingChunkFocus}
-              onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
-            />
-          </main>
-        </>
+
+            <main
+              className={cn(
+                "flex-1 flex min-h-0 min-w-0 flex-col h-full overflow-hidden",
+                !showEditor ? "hidden md:flex" : "w-full"
+              )}
+              data-testid="editor-container"
+            >
+              <NotesTabStrip
+                tabs={tabs}
+                activeTabId={activeTabId}
+                addTabDisabled={!workspaceHydrated || !canAddTab}
+                addTabCapacityPending={!workspaceHydrated}
+                maximumTabCount={MAX_NOTE_WORKSPACE_TABS}
+                onAddTab={() => void addTab?.()}
+                onActivateTab={(tabId) => void activateTab?.(tabId)}
+                onCloseTab={(tabId) => void closeTab?.(tabId)}
+              />
+              <div className="flex-1 min-h-0 min-w-0 flex">
+                <EditorPane
+                  controller={controller}
+                  onBack={handleBackFromNote}
+                  noteEditorRef={noteEditorRef}
+                  wordpressConfigured={wordpressConfigured}
+                  pendingChunkFocus={pendingChunkFocus}
+                  onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
+                />
+              </div>
+            </main>
+          </div>
+        </div>
       )}
 
       <DeleteNoteDialog controller={controller} />
+      <DiscardFailedSaveDialog controller={controller} />
     </div>
   )
 }
@@ -331,6 +367,8 @@ function EditorPane({
 }) {
   const {
     selectedNote,
+    activeTab,
+    activeTabId,
     isEditing,
     saving,
     autoSaving,
@@ -374,6 +412,17 @@ function EditorPane({
     return counts
   }, [allTagsQuery.data, notes])
 
+  // The editor treats its initial* props as an external snapshot and
+  // reconciles them against local typing. The live tab draft echoes every
+  // keystroke back through the controller, so it must be frozen per editor
+  // session (tab + note + mode) — otherwise the echo is acknowledged as an
+  // external refresh and the pending autosave is cancelled before it runs.
+  const sessionDraft = React.useMemo(
+    () => activeTab.draft,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- session identity only; the live draft must not retrigger
+    [activeTabId, activeTab.noteId, activeTab.mode],
+  )
+
   if (!selectedNote && !isEditing) {
     return <EmptyState />
   }
@@ -382,10 +431,14 @@ function EditorPane({
     return (
       <NoteEditor
         ref={noteEditorRef}
+        key={`workspace-tab-${activeTabId}`}
         noteId={selectedNote?.id}
-        initialTitle={selectedNote?.title ?? ""}
-        initialDescription={selectedNote?.description ?? selectedNote?.content ?? ""}
-        initialTags={selectedNote?.tags?.join(", ") ?? ""}
+        initialTitle={sessionDraft.title}
+        initialDescription={sessionDraft.description}
+        initialTags={sessionDraft.tags}
+        initialSession={{ draft: sessionDraft, view: activeTab.view }}
+        onDraftChange={controller.handleDraftChange}
+        onViewSessionChange={controller.handleViewSessionChange}
         availableTags={availableTags}
         tagCounts={tagCounts}
         isSaving={saving}
@@ -406,6 +459,7 @@ function EditorPane({
   if (selectedNote) {
     return (
       <NoteView
+        key={`workspace-tab-${activeTabId}-note-${selectedNote.id}`}
         note={selectedNote}
         onEdit={() => handleEditNote(selectedNote)}
         onDelete={() => handleDeleteNote(selectedNote)}
@@ -413,6 +467,8 @@ function EditorPane({
         onRemoveTag={(tag) => handleRemoveTagFromNote(selectedNote.id, tag)}
         onBack={onBack}
         wordpressConfigured={wordpressConfigured}
+        initialScrollTop={activeTab.view.scrollTop}
+        onViewSessionChange={controller.handleViewSessionChange}
       />
     )
   }
@@ -421,6 +477,42 @@ function EditorPane({
     <div className="flex-1 flex items-center justify-center">
       <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
     </div>
+  )
+}
+
+/**
+ * Closing a tab whose save failed throws those edits away, so it confirms
+ * first — in the app's own dialog, matching every other destructive action.
+ */
+function DiscardFailedSaveDialog({ controller }: { controller: NoteAppController }) {
+  const { tabPendingClose, confirmCloseTab, cancelCloseTab } = controller
+
+  return (
+    <AlertDialog
+      open={Boolean(tabPendingClose)}
+      onOpenChange={(open) => {
+        if (!open) cancelCloseTab?.()
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+          <AlertDialogDescription>
+            &quot;{tabPendingClose?.label}&quot; could not be saved. Closing this tab discards those changes.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel data-cy="discard-failed-save-cancel">Keep editing</AlertDialogCancel>
+          <AlertDialogAction
+            data-cy="discard-failed-save-confirm"
+            onClick={() => void confirmCloseTab?.()}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Discard and close
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 

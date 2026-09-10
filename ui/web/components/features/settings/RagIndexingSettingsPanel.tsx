@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { WarningCircle as AlertCircle, CheckCircle as CheckCircle2 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,7 +24,7 @@ import {
   validateRagIndexingEditableSettings,
 } from "@core/rag/indexingSettings"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
-import { Info } from "lucide-react"
+import { Info } from "@phosphor-icons/react"
 import {
   settingsActionButtonClassName,
   settingsActionRowClassName,

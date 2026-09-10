@@ -221,6 +221,7 @@ function createWrapper() {
 
 describe('useNoteAppController — remote delete consistency', () => {
   beforeEach(() => {
+    window.sessionStorage.clear()
     mockIsOffline = false
     mockOfflineOverlay = []
     mockGetNoteStatus.mockReset()

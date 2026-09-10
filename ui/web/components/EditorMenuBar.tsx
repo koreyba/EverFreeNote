@@ -3,34 +3,7 @@
 import * as React from "react"
 import type { Editor } from "@tiptap/react"
 import { Button } from "@ui/web/components/ui/button"
-import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  Bold,
-  Undo,
-  Redo,
-  CheckSquare,
-  Heading1,
-  Heading2,
-  Heading3,
-  Highlighter,
-  ImageIcon,
-  Indent,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Minus,
-  Outdent,
-  Palette,
-  RemoveFormatting,
-  SpellCheck,
-  Strikethrough,
-  Subscript as SubscriptIcon,
-  Superscript as SuperscriptIcon,
-  Underline as UnderlineIcon,
-} from "lucide-react"
+import { TextAlignCenter as AlignCenter, TextAlignLeft as AlignLeft, TextAlignRight as AlignRight, TextB as Bold, ArrowUUpLeft as Undo, ArrowUUpRight as Redo, CheckSquare, TextHOne as Heading1, TextHTwo as Heading2, TextHThree as Heading3, Highlighter, Image as ImageIcon, TextIndent as Indent, TextItalic as Italic, LinkSimple as Link2, List, ListNumbers as ListOrdered, Minus, TextOutdent as Outdent, Palette, TextTSlash as RemoveFormatting, TextAa as SpellCheck, TextStrikethrough as Strikethrough, TextSubscript as SubscriptIcon, TextSuperscript as SuperscriptIcon, TextUnderline as UnderlineIcon } from "@phosphor-icons/react"
 import { Popover, PopoverContent, PopoverTrigger } from "@ui/web/components/ui/popover"
 import { TwitterPicker, type ColorResult } from "react-color"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/web/components/ui/select"
@@ -76,7 +49,12 @@ export const EditorMenuBar = ({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="sticky top-[69px] z-20 flex flex-wrap items-center gap-1.5 border-b border-border/40 bg-background/85 backdrop-blur-md p-2 shadow-sm rounded-t-xl">
+      {/* The offset follows the real height of the note action bar, which
+          NoteEditor publishes as --note-editor-header-h (globals.css holds the
+          fallback). A hardcoded value drifts whenever that bar changes
+          (responsive padding, the "Saving…" caption) and leaves a strip of
+          scrolling text between the two. */}
+      <div className="sticky top-[var(--note-editor-header-h)] z-20 flex flex-wrap items-center gap-1.5 border-b border-border/40 bg-background/85 backdrop-blur-md p-2 shadow-sm rounded-t-xl">
 
         {/* History */}
         <EditorToolbarButton dataCy="undo-button" label="Undo (Ctrl+Z)" onClick={onUndo} disabled={!historyState.canUndo} ariaLabel="Undo">

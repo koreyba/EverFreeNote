@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, Copy, Check, Eye } from "lucide-react"
+import { CaretLeft as ChevronLeft, Copy, Check, Eye, FloppyDisk as SaveIcon } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
@@ -12,13 +12,24 @@ import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
+import { useDebouncedSessionCallback } from "@ui/web/hooks/useDebouncedSessionCallback"
+import type { NoteDraftSnapshot, NoteViewSession } from "@core/services/noteWorkspaceTabs"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
+// Below the autosave delay so a pending draft notification always lands before
+// the autosave completion marks the tab as saved.
+const SESSION_SYNC_DELAY_MS = 250
 const NOOP_CANCEL = () => {}
 
 export interface NoteEditorHandle {
   flushPendingSave: () => Promise<void>
+  captureSession?: () => NoteEditorSession
   scrollToChunk: (charOffset: number, chunkLength: number) => void
+}
+
+export type NoteEditorSession = {
+  draft: NoteDraftSnapshot
+  view: NoteViewSession
 }
 
 export type PendingChunkFocus = {
@@ -47,6 +58,9 @@ interface NoteEditorProps {
   onBack?: () => void
   pendingChunkFocus?: PendingChunkFocus | null
   onPendingChunkFocusApplied?: (requestId: string) => void
+  initialSession?: NoteEditorSession
+  onDraftChange?: (draft: NoteDraftSnapshot) => void
+  onViewSessionChange?: (view: Partial<NoteViewSession>) => void
 }
 
 export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor({
@@ -68,6 +82,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   onBack,
   pendingChunkFocus = null,
   onPendingChunkFocusApplied,
+  initialSession,
+  onDraftChange,
+  onViewSessionChange,
 }: NoteEditorProps, ref) {
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
@@ -76,6 +93,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [isBodyEmpty, setIsBodyEmpty] = React.useState(() => NoteClipboardService.isBodyEmpty(initialDescription))
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
+  const editorRootRef = React.useRef<HTMLDivElement | null>(null)
+  const headerRef = React.useRef<HTMLDivElement | null>(null)
+  const initialSessionRef = React.useRef(initialSession)
   const previousNoteIdRef = React.useRef(noteId)
 
   const selectedTagsRef = React.useRef<string[]>(selectedTags)
@@ -92,6 +113,50 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     description: editorRef.current?.getHTML() ?? initialDescription,
     tags: buildTagString(selectedTagsRef.current),
   }), [initialTitle, initialDescription])
+
+  React.useEffect(() => {
+    initialSessionRef.current = initialSession
+  }, [initialSession])
+
+  // Typing fires per keystroke and scrolling per frame; debounce both before
+  // they reach workspace-tab state. Draft updates are cancelled on unmount
+  // because tab transitions capture the live editor synchronously, while the
+  // latest scroll position is flushed so it is never lost.
+  const debouncedDraftNotify = useDebouncedSessionCallback<NoteDraftSnapshot>(
+    onDraftChange,
+    SESSION_SYNC_DELAY_MS,
+    'cancel',
+  )
+  const debouncedViewNotify = useDebouncedSessionCallback<Partial<NoteViewSession>>(
+    onViewSessionChange,
+    SESSION_SYNC_DELAY_MS,
+    'flush',
+  )
+
+  const notifyDraftChange = React.useCallback(() => {
+    debouncedDraftNotify.schedule(getFormData())
+  }, [debouncedDraftNotify, getFormData])
+
+  // Publish the action bar's height so the sticky formatting toolbar can park
+  // flush beneath it. The bar is absolutely positioned over the scroll area,
+  // so any mismatch shows as a strip of scrolling text between the two.
+  React.useEffect(() => {
+    const header = headerRef.current
+    const root = editorRootRef.current
+    if (!header || !root) return
+
+    const publishHeight = () => {
+      root.style.setProperty('--note-editor-header-h', `${Math.round(header.getBoundingClientRect().height)}px`)
+    }
+
+    publishHeight()
+    if (typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver(publishHeight)
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [])
+
 
   const applyExternalSnapshot = React.useCallback((
     snapshot: { title: string; description: string; tags: string },
@@ -152,7 +217,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const handleEditorContentChange = React.useCallback(() => {
     handleContentChange()
     setIsBodyEmpty(NoteClipboardService.isBodyEmpty(editorRef.current?.getHTML() ?? ""))
-  }, [handleContentChange])
+    notifyDraftChange()
+  }, [handleContentChange, notifyDraftChange])
 
   const handleCopy = React.useCallback(() => {
     void copyNote(editorRef.current?.getHTML() ?? initialDescription)
@@ -160,11 +226,15 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
   const handleSave = () => {
     cancelAutoSave()
+    // The manual save records the draft itself; a late debounced notification
+    // would re-mark the saved tab as dirty.
+    debouncedDraftNotify.cancel()
     onSave(getFormData())
   }
 
   const handleRead = () => {
     cancelAutoSave()
+    debouncedDraftNotify.cancel()
     onRead(getFormData())
   }
 
@@ -199,21 +269,63 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     selectedTagsRef.current = merged
     setSelectedTags(merged)
     setTagQuery("")
-  }, [])
+    notifyDraftChange()
+  }, [notifyDraftChange])
 
   const removeTag = React.useCallback((tagToRemove: string) => {
     const next = selectedTagsRef.current.filter((tag) => tag !== tagToRemove)
     selectedTagsRef.current = next
     setSelectedTags(next)
     setTagQuery("")
-  }, [])
+    notifyDraftChange()
+  }, [notifyDraftChange])
 
   React.useImperativeHandle(ref, () => ({
     flushPendingSave,
+    captureSession: () => {
+      const titleInput = titleInputRef.current
+      const titleSelection = titleInput && titleInput.selectionStart !== null && titleInput.selectionEnd !== null
+        ? { start: titleInput.selectionStart, end: titleInput.selectionEnd }
+        : undefined
+      const editorSelection = editorRef.current?.getSelection?.()
+
+      // The capture reads the live editor, so a pending debounced draft
+      // notification is stale and must not fire after the transition.
+      debouncedDraftNotify.cancel()
+      debouncedViewNotify.cancel()
+
+      return {
+        draft: getFormData(),
+        view: {
+          scrollTop: scrollContainerRef.current?.scrollTop ?? 0,
+          ...(titleSelection ? { titleSelection } : {}),
+          ...(editorSelection ? { editorSelection } : {}),
+        },
+      }
+    },
     scrollToChunk: (charOffset: number, chunkLength: number) => {
       editorRef.current?.scrollToChunk(charOffset, chunkLength)
     },
-  }), [flushPendingSave])
+  }), [debouncedDraftNotify, debouncedViewNotify, flushPendingSave, getFormData])
+
+  React.useEffect(() => {
+    const session = initialSessionRef.current
+    if (!session) return
+
+    const frame = window.requestAnimationFrame(() => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = session.view.scrollTop
+      }
+      if (titleInputRef.current && session.view.titleSelection) {
+        titleInputRef.current.setSelectionRange(session.view.titleSelection.start, session.view.titleSelection.end)
+      }
+      if (session.view.editorSelection) {
+        editorRef.current?.setSelection?.(session.view.editorSelection)
+      }
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [editorSessionKey])
 
   const effectivePendingChunkFocus = React.useMemo(() => {
     if (!pendingChunkFocus || !noteId) return null
@@ -242,34 +354,60 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   // Show the "..." menu for existing notes (RAG + delete)
   const showMoreMenu = !!noteId
 
+  // min-w-0: without it this flex item cannot shrink below the intrinsic
+  // width of the formatting toolbar, so the whole editor column — and the
+  // header absolutely positioned across it — grows wider than a phone screen
+  // and pushes the trailing action off the edge.
   return (
-    <div className="flex-1 flex min-h-0 flex-col relative bg-card">
+    <div ref={editorRootRef} className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-card">
       {/* Editor Header */}
-      <div className="absolute top-0 left-0 right-0 z-30 p-4 border-b border-border/40 bg-card/75 backdrop-blur-md flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* gap-2 + a shrinkable mode label + a non-shrinking action group: the
+          actions keep their full width and the label gives way, so the row
+          can never push a control past the right edge. */}
+      <div
+        ref={headerRef}
+        className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between gap-2 border-b border-border/40 bg-card/75 p-3 backdrop-blur-md md:p-4"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           {onBack && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="md:hidden -ml-2 rounded-full h-9 w-9"
+              className="h-9 w-9 shrink-0 rounded-full shadow-sm md:hidden"
               onClick={onBack}
+              data-cy="note-back-button"
               aria-label="Back"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Editing</h2>
+          {/* The tab bar directly above already names the note, and the eye +
+              save actions say which mode this is, so the label is visual
+              noise on a phone. It stays for screen readers. */}
+          <h2 className="sr-only truncate text-xs font-bold uppercase tracking-wider text-muted-foreground md:not-sr-only">Editing</h2>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="flex gap-1.5 items-center">
-            <Button onClick={handleRead} variant="outline" size="sm" disabled={isSaving} className="rounded-full shadow-sm">
-              <Eye className="w-3.5 h-3.5 mr-1.5" />
-              Read
+            {/* Labels collapse to icons below md: the editing header carries
+                four controls and the row overflowed its own width on a phone,
+                clipping the "more actions" button off the screen edge. */}
+            <Button
+              onClick={handleRead}
+              variant="outline"
+              size="sm"
+              data-cy="note-read-button"
+              aria-label="Read"
+              disabled={isSaving}
+              className="rounded-full shadow-sm"
+            >
+              <Eye className="w-3.5 h-3.5 md:mr-1.5" />
+              <span className="hidden md:inline">Read</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               disabled={isSaving || isBodyEmpty}
+              data-cy="note-copy-button"
               aria-label="Copy note"
               onClick={handleCopy}
               className="rounded-full shadow-sm"
@@ -281,8 +419,16 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               )}
               <span className="hidden md:inline">{copied ? "Copied" : "Copy"}</span>
             </Button>
-            <Button onClick={handleSave} size="sm" disabled={isSaving} className="rounded-full shadow-sm">
-              Save
+            <Button
+              onClick={handleSave}
+              size="sm"
+              data-cy="note-save-button"
+              aria-label="Save"
+              disabled={isSaving}
+              className="rounded-full shadow-sm"
+            >
+              <SaveIcon className="w-3.5 h-3.5 md:hidden" />
+              <span className="hidden md:inline">Save</span>
             </Button>
             {/* More actions menu -- RAG controls, delete note, WordPress export */}
             {showMoreMenu && (
@@ -305,7 +451,13 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       </div>
 
       {/* Editor Form */}
-      <div className="flex-1 overflow-y-auto bg-card">
+      <div
+        ref={scrollContainerRef}
+        // scrollbar-none: kept in sync with NoteView so the reading and
+        // editing surfaces scroll identically — see the note there.
+        className="scrollbar-none flex-1 overflow-y-auto bg-card"
+        onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
+      >
         <div className="max-w-4xl mx-auto px-6 pt-24 space-y-5">
           <div>
             <Input
@@ -314,7 +466,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               type="text"
               placeholder="Note title"
               defaultValue={initialTitle}
-              onChange={handleContentChange}
+              onChange={() => {
+                handleContentChange()
+                notifyDraftChange()
+              }}
               className="w-full h-auto border-0 bg-transparent px-0 py-1 text-4xl font-extrabold tracking-tight placeholder:text-muted-foreground/30 focus-visible:ring-0 shadow-none"
             />
           </div>

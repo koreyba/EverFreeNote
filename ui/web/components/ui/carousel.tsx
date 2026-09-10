@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { CaretLeft as ChevronLeft, CaretRight as ChevronRight } from "@phosphor-icons/react"
 
 import { cn } from "@ui/web/lib/utils"
 import { Button } from "@/components/ui/button"

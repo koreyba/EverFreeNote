@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
-import { Search } from "lucide-react"
+import { MagnifyingGlass as Search } from "@phosphor-icons/react"
 
 import { cn } from "@ui/web/lib/utils"
 import { Dialog, DialogContent } from "@/components/ui/dialog"

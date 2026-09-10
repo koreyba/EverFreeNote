@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react"
+import { CircleNotch as Loader2 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 

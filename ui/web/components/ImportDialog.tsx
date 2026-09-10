@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { FileText, Upload } from "lucide-react"
+import { FileText, UploadSimple as Upload } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"

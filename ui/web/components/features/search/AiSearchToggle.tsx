@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Info, Sparkles } from 'lucide-react'
+import { Info, Sparkle as Sparkles } from "@phosphor-icons/react"
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import {

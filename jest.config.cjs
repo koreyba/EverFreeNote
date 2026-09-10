@@ -71,6 +71,7 @@ module.exports = {
       transform,
       moduleNameMapper,
       clearMocks: true,
+      testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/'],
     },
     {
       displayName: 'integration-core',
@@ -82,6 +83,7 @@ module.exports = {
       transform,
       moduleNameMapper,
       clearMocks: true,
+      testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/'],
     },
     {
       displayName: 'unit-web',
@@ -95,6 +97,7 @@ module.exports = {
       transform,
       moduleNameMapper,
       clearMocks: true,
+      testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/'],
     },
   ],
 }

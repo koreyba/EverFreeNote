@@ -8,6 +8,7 @@ import { AuthService } from '@core/services/auth'
 import { webStorageAdapter } from '@ui/web/adapters/storage'
 import { resolveOAuthAdapter, resolveOAuthRedirectUri } from '@ui/web/adapters/oauth'
 import { featureFlags } from '@ui/web/featureFlags'
+import { clearNoteWorkspaceState } from '@ui/web/lib/noteWorkspaceStorage'
 
 const testAuthEmail = process.env.NEXT_PUBLIC_TEST_AUTH_EMAIL ?? ''
 const testAuthPassword = process.env.NEXT_PUBLIC_TEST_AUTH_PASSWORD ?? ''
@@ -163,6 +164,10 @@ export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
         try {
             await authService.signOut()
             await webStorageAdapter.removeItem('testUser')
+            // Workspace tabs cache the notes they show, in storage that
+            // outlives the session. Drop them here so nothing is left behind
+            // for the next account signing in on this browser tab.
+            clearNoteWorkspaceState()
             setUser(null)
             queryClient.removeQueries({ queryKey: ['notes'] })
             if (typeof callback === 'function') callback()

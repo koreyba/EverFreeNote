@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Database, Loader2, Search, X } from "lucide-react"
+import { Database, CircleNotch as Loader2, MagnifyingGlass as Search, X } from "@phosphor-icons/react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 

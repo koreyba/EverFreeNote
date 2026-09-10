@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreVertical, Edit2, Trash2, Tag as TagIcon } from "lucide-react"
+import { DotsThreeVertical as MoreVertical, PencilSimple as Edit2, Trash as Trash2, Tag as TagIcon } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,

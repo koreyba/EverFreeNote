@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Loader2, ShieldCheck } from "lucide-react"
+import { CircleNotch as Loader2, ShieldCheck } from "@phosphor-icons/react"
 import type { OAuthAuthorizationDetails } from "@supabase/supabase-js"
 
 import AuthForm from "@/components/AuthForm"

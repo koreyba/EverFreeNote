@@ -13,8 +13,8 @@ const mockListRef = {
   },
 }
 
-jest.mock("lucide-react", () => ({
-  Loader2: ({ className }: { className?: string }) => (
+jest.mock("@phosphor-icons/react", () => ({
+  CircleNotch: ({ className }: { className?: string }) => (
     <svg data-testid="loader-icon" className={className} />
   ),
 }))
