@@ -1,0 +1,1 @@
+{"id":"1077b2b2ede16927c362f2f6943ebb85","fullName":"everfreenote:cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager should unsubscribe from network status on dispose","name":"should unsubscribe from network status on dispose","status":"passed","testResultsByEnv":{"default":"0a8b9b51bccc6bc82b7296d410e70f57"}}
