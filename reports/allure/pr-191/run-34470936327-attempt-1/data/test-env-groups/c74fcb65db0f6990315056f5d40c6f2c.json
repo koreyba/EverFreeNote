@@ -1,0 +1,1 @@
+{"id":"c74fcb65db0f6990315056f5d40c6f2c","fullName":"everfreenote:core/tests/unit/core-mcp-notebookServer.test.ts#core/mcp/notebookServer protocol get_note rejects a non-UUID id before touching the repository","name":"rejects a non-UUID id before touching the repository","status":"passed","testResultsByEnv":{"default":"e2066afca594ab3c3ee9e0b7addd4915"}}

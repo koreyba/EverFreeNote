@@ -1,0 +1,1 @@
+{"id":"f329abb0348b09f06456c9f436e4e3bb","fullName":"everfreenote-mobile:tests/unit/searchHistory.test.ts#searchHistory service getSearchHistory filters out empty or whitespace-only items","name":"filters out empty or whitespace-only items","status":"passed","testResultsByEnv":{"default":"44ae2e1d2e4ef282c8a06ffbc2d93781"}}
