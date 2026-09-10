@@ -6352,9 +6352,6 @@
           "patternId": "ESLint8_security-node_detect-improper-exception-handling"
         },
         {
-          "patternId": "ESLint8_xss_no-mixed-html"
-        },
-        {
           "patternId": "ESLint8_xss_no-location-href-assign"
         },
         {

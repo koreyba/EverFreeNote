@@ -161,6 +161,7 @@ sequenceDiagram
 
 ## Non-Functional Requirements
 
+- **Static analysis note**: the Codacy pattern `ESLint8_xss_no-mixed-html` was removed from `.codacy/codacy.config.json`. It infers "this value is HTML" from identifier names, so in this module it fired on every wire-format ↔ column mapping and even on `const char = html[index]`, and it cannot be suppressed per file: `eslint-plugin-xss` is ESLint 8-only and crashes under the project's ESLint 9. XSS coverage stays with CodeQL, Semgrep, SonarQube, DOMPurify on render and `sanitizeNoteHtml()` on write.
 - **Security**: OAuth 2.1 + PKCE; tokens validated on every request; RLS-scoped data access; no service-role key; CORS exposes only MCP headers; `WWW-Authenticate` never echoes the token.
 - **Performance**: one Supabase round-trip for auth plus one for data per tool call; `list_notes` bounded to 100 rows and uses the existing `notes_user_id_idx` / `notes_updated_at_idx`.
 - **Reliability**: no in-memory state, safe under cold starts and multiple instances; expected errors are surfaced as MCP tool errors, never as 500s.
