@@ -54,6 +54,24 @@ function toExcerpt(content: string): string {
   return `${text.slice(0, MAX_EXCERPT_LENGTH - 1).trimEnd()}…`
 }
 
+function createHit(chunk: RagSearchChunk, excerpt: string): SemanticNoteHit {
+  return {
+    id: chunk.noteId,
+    title: chunk.noteTitle ?? '',
+    tags: Array.isArray(chunk.noteTags) ? chunk.noteTags : [],
+    similarity: chunk.similarity,
+    excerpts: excerpt ? [excerpt] : [],
+  }
+}
+
+/** Folds another chunk of the same note in: best similarity wins, excerpts accumulate up to the cap. */
+function mergeHit(hit: SemanticNoteHit, chunk: RagSearchChunk, excerpt: string): void {
+  hit.similarity = Math.max(hit.similarity, chunk.similarity)
+
+  const canTakeExcerpt = excerpt && hit.excerpts.length < MAX_EXCERPTS_PER_NOTE && !hit.excerpts.includes(excerpt)
+  if (canTakeExcerpt) hit.excerpts.push(excerpt)
+}
+
 /**
  * Collapses chunk hits into one entry per note, ordered by the best matching
  * chunk. Agents get a shortlist to open with get_note rather than a wall of
@@ -68,21 +86,8 @@ export function groupChunksByNote(chunks: readonly RagSearchChunk[], limit: numb
     const excerpt = chunk.content ? toExcerpt(chunk.content) : ''
     const existing = byNote.get(chunk.noteId)
 
-    if (!existing) {
-      byNote.set(chunk.noteId, {
-        id: chunk.noteId,
-        title: chunk.noteTitle ?? '',
-        tags: Array.isArray(chunk.noteTags) ? chunk.noteTags : [],
-        similarity: chunk.similarity,
-        excerpts: excerpt ? [excerpt] : [],
-      })
-      continue
-    }
-
-    existing.similarity = Math.max(existing.similarity, chunk.similarity)
-    if (excerpt && existing.excerpts.length < MAX_EXCERPTS_PER_NOTE && !existing.excerpts.includes(excerpt)) {
-      existing.excerpts.push(excerpt)
-    }
+    if (existing) mergeHit(existing, chunk, excerpt)
+    else byNote.set(chunk.noteId, createHit(chunk, excerpt))
   }
 
   return [...byNote.values()].sort((left, right) => right.similarity - left.similarity).slice(0, limit)
