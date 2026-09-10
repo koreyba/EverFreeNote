@@ -1,14 +1,26 @@
+import variantTable from './variants.data'
+
 /**
  * Android shell variants.
  *
- * Mirrors the dev/stage/prod split that ui/mobile/app.config.ts already uses, so the
- * two Android apps can be installed side by side while the shell is proven out.
+ * The table itself lives in variants.data.js, which the build scripts and the Capacitor
+ * config also read — see that file for why it is CommonJS. Adding a variant there is
+ * enough for them; TypeScript will then point at whatever else needs updating here.
  *
- * The ids are deliberately distinct from ui/mobile's (`com.everfreenote.app*`). When
- * the shell replaces the React Native app, rename them to those ids so existing
- * installs upgrade in place rather than appearing as a second app.
+ * Mirrors the dev/stage/prod split ui/mobile/app.config.ts already uses, so the two
+ * Android apps can be installed side by side while the shell is proven out. The ids are
+ * deliberately distinct from ui/mobile's (`com.everfreenote.app*`); when the shell
+ * replaces the React Native app, rename them to those ids so existing installs upgrade
+ * in place rather than appearing as a second app.
+ *
+ * The schemes intentionally match ui/mobile's, because those redirect URLs are already
+ * registered in Supabase Auth — reusing them means the shell authenticates without any
+ * dashboard change. The cost while both apps exist: Android shows an app chooser on the
+ * OAuth callback if both are installed. Uninstall the ui/mobile build of the same
+ * variant, or set NEXT_PUBLIC_SHELL_SCHEME / SHELL_SCHEME to a dedicated scheme and
+ * register it in Supabase Auth -> URL Configuration.
  */
-export type AppVariant = 'dev' | 'stage' | 'prod'
+export type AppVariant = keyof typeof variantTable
 
 export type ShellVariant = {
   appName: string
@@ -17,34 +29,7 @@ export type ShellVariant = {
   scheme: string
 }
 
-/**
- * The schemes intentionally match ui/mobile's, because those redirect URLs are already
- * registered in Supabase Auth — reusing them means the shell can authenticate without
- * any dashboard change, and it is where this ends up anyway once the shell replaces
- * the React Native app.
- *
- * The cost while both apps exist: Android shows an app chooser on the OAuth callback
- * if both are installed. Uninstall the ui/mobile build of the same variant, or set
- * NEXT_PUBLIC_SHELL_SCHEME / SHELL_SCHEME to a dedicated scheme and register it in
- * Supabase Auth -> URL Configuration.
- */
-export const SHELL_VARIANTS: Record<AppVariant, ShellVariant> = {
-  dev: {
-    appName: 'EverFreeNote Shell Dev',
-    appId: 'com.everfreenote.shell.dev',
-    scheme: 'everfreenote-dev',
-  },
-  stage: {
-    appName: 'EverFreeNote Shell Stage',
-    appId: 'com.everfreenote.shell.stage',
-    scheme: 'everfreenote-stage',
-  },
-  prod: {
-    appName: 'EverFreeNote Shell',
-    appId: 'com.everfreenote.shell',
-    scheme: 'everfreenote',
-  },
-}
+export const SHELL_VARIANTS: Record<AppVariant, ShellVariant> = variantTable
 
 /** Env override, so a dedicated scheme can be used once it is registered in Supabase. */
 function schemeOverride(): string | undefined {
@@ -71,16 +56,17 @@ export function schemeFor(variant: AppVariant): string {
  * https://localhost origin, which nobody else can reach.
  */
 export function publicWebOriginFor(variant: AppVariant): string {
-  // Written out one name at a time on purpose: Next.js inlines NEXT_PUBLIC_* only for
-  // static property accesses, so a computed key would be undefined in the browser
-  // bundle while still passing in Jest, where process.env is real.
-  const perVariant = {
+  // Typed as a complete Record, so adding a variant to variants.data.js fails to compile
+  // until its variable is added here — which matters because Next.js inlines
+  // NEXT_PUBLIC_* only for static property accesses, and a computed key would silently
+  // be undefined in the browser bundle while still passing in Jest.
+  const perVariant: Record<AppVariant, string | undefined> = {
     dev: process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_DEV,
     stage: process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_STAGE,
     prod: process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_PROD,
-  }[variant]
+  }
 
-  for (const candidate of [perVariant, process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN]) {
+  for (const candidate of [perVariant[variant], process.env.NEXT_PUBLIC_PUBLIC_WEB_ORIGIN]) {
     const trimmed = candidate?.trim()
     if (trimmed) return trimmed
   }
@@ -89,8 +75,7 @@ export function publicWebOriginFor(variant: AppVariant): string {
 }
 
 export function resolveVariant(value: string | undefined): AppVariant {
-  if (value === 'dev' || value === 'stage' || value === 'prod') return value
-  return 'dev'
+  return value && value in SHELL_VARIANTS ? (value as AppVariant) : 'dev'
 }
 
 /** The OAuth callback the shell registers with Android and hands to Supabase. */

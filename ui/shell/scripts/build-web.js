@@ -16,6 +16,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const { projectRef, resolveSupabaseEnv } = require('./supabaseEnv')
+const VARIANTS = require('../variants.data')
 
 const SHELL_DIR = path.join(__dirname, '..')
 const REPO_ROOT = path.join(SHELL_DIR, '..', '..')
@@ -24,7 +25,7 @@ const WWW_DIR = path.join(SHELL_DIR, 'www')
 
 // Capacitor serves from https://localhost, so absolute asset paths are correct here.
 // (NEXT_PUBLIC_ASSET_PREFIX is only needed for the file:// editor bundle in ui/mobile.)
-const variant = ['dev', 'stage', 'prod'].includes(process.env.APP_VARIANT) ? process.env.APP_VARIANT : 'dev'
+const variant = process.env.APP_VARIANT in VARIANTS ? process.env.APP_VARIANT : 'dev'
 
 /**
  * Read a variable out of the root env files, in the order Next.js itself prefers.

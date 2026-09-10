@@ -3,8 +3,17 @@ import type { CapacitorConfig } from '@capacitor/cli'
 import { SHELL_VARIANTS, resolveVariant, schemeFor } from './variants'
 
 const variant = resolveVariant(process.env.APP_VARIANT)
-const { appId, appName } = SHELL_VARIANTS[variant]
 const scheme = schemeFor(variant)
+
+/**
+ * A build for one deployment among many — a branch preview, say — is the stage variant
+ * with a different app id, so it can sit on a device next to the stage build instead of
+ * replacing it. The OAuth scheme stays the variant's, because that is what is registered
+ * in Supabase; Android will offer a choice of app on the callback when several are
+ * installed.
+ */
+const appId = process.env.SHELL_APP_ID?.trim() || SHELL_VARIANTS[variant].appId
+const appName = process.env.SHELL_APP_NAME?.trim() || SHELL_VARIANTS[variant].appName
 
 /**
  * Capacitor shell around the Next.js static export produced by the repo root build.

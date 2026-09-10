@@ -13,22 +13,19 @@ const { execSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
 
+const VARIANTS = require('../variants.data')
+
 const SHELL_DIR = path.join(__dirname, '..')
 const ANDROID_DIR = path.join(SHELL_DIR, 'android')
 const MANIFEST = path.join(ANDROID_DIR, 'app', 'src', 'main', 'AndroidManifest.xml')
 
-const variant = ['dev', 'stage', 'prod'].includes(process.env.APP_VARIANT) ? process.env.APP_VARIANT : 'dev'
-// Kept in sync with ui/shell/variants.ts (this script runs before TS compilation).
+const variant = process.env.APP_VARIANT in VARIANTS ? process.env.APP_VARIANT : 'dev'
 const scheme =
-  (process.env.SHELL_SCHEME ?? process.env.NEXT_PUBLIC_SHELL_SCHEME ?? '').trim() ||
-  { dev: 'everfreenote-dev', stage: 'everfreenote-stage', prod: 'everfreenote' }[variant]
+  (process.env.SHELL_SCHEME ?? process.env.NEXT_PUBLIC_SHELL_SCHEME ?? '').trim() || VARIANTS[variant].scheme
 
-const APP_IDS = {
-  dev: 'com.everfreenote.shell.dev',
-  stage: 'com.everfreenote.shell.stage',
-  prod: 'com.everfreenote.shell',
-}
-const expectedAppId = APP_IDS[variant]
+// Mirrors capacitor.config.ts: a per-deployment build overrides the id so it can be
+// installed next to the variant's own build.
+const expectedAppId = (process.env.SHELL_APP_ID || '').trim() || VARIANTS[variant].appId
 
 /**
  * The applicationId and the MainActivity package are baked in when the project is

@@ -78,6 +78,33 @@ CI runs the same scripts — see `.github/workflows/shell-build.yml`, which take
 variant and a build type. A release build there needs `SHELL_KEYSTORE_BASE64` and its
 password secrets.
 
+## Building for one deployment among many
+
+`stage` and `prod` are two Supabase projects. Everything that is not production — every
+branch preview included — talks to the stage project, so a build for a branch is a
+**stage build**, not a new variant: same database, same OAuth scheme (that scheme is
+what Supabase has registered). Only two things differ, and both are env overrides:
+
+```bash
+APP_VARIANT=stage \
+  SHELL_APP_ID=com.everfreenote.shell.branch.my-feature \
+  SHELL_APP_NAME="EFN my-feature" \
+  NEXT_PUBLIC_PUBLIC_WEB_ORIGIN=https://my-feature.everfreenote.pages.dev \
+  npm --prefix ui/shell run android:stage
+```
+
+`SHELL_APP_ID` lets it sit on a device next to the stage build instead of replacing it;
+`NEXT_PUBLIC_PUBLIC_WEB_ORIGIN` points its share links at that branch's deployment.
+
+Worth knowing: the APK **embeds** the web build, it does not load the deployment. So a
+branch app is built from that branch's code; the branch URL only matters for share
+links. And because every such app registers the same `everfreenote-stage://` scheme,
+Android asks which app should take the OAuth callback when more than one is installed.
+
+Adding a whole new variant — a fourth Supabase project, say — is a different job: add it
+to `variants.data.js`, then follow the type errors in `variants.ts`, add its
+`android:<name>` scripts, and register `<scheme>://auth/callback` in that project.
+
 ## Web-facing URLs
 
 The WebView origin is `https://localhost`, which is meaningless outside the app, so
