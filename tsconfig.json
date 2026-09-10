@@ -52,6 +52,7 @@
   "exclude": [
     "node_modules",
     "ui/mobile",
+    "poc",
     "core/tests",
     "ui/web/tests",
     "supabase/functions",
