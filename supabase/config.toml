@@ -381,6 +381,54 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
+# These functions validate the caller themselves (supabase.auth.getUser on the bearer
+# token), so the gateway's verify_jwt is redundant. It is also tied to the legacy HS256
+# secret and rejects tokens signed with the project's asymmetric signing key, so it must
+# stay off for the JWT signing-key migration.
+[functions.api-keys-status]
+enabled = true
+verify_jwt = false
+
+[functions.api-keys-upsert]
+enabled = true
+verify_jwt = false
+
+[functions.create-note]
+enabled = true
+verify_jwt = false
+
+[functions.delete-account]
+enabled = true
+verify_jwt = false
+
+[functions.delete-note]
+enabled = true
+verify_jwt = false
+
+[functions.get-notes]
+enabled = true
+verify_jwt = false
+
+[functions.rag-index]
+enabled = true
+verify_jwt = false
+
+[functions.rag-search]
+enabled = true
+verify_jwt = false
+
+[functions.wordpress-bridge]
+enabled = true
+verify_jwt = false
+
+[functions.wordpress-settings-status]
+enabled = true
+verify_jwt = false
+
+[functions.wordpress-settings-upsert]
+enabled = true
+verify_jwt = false
+
 # Remote MCP server for AI agents (see docs/ai/design/feature-mcp-notebook-access.md).
 # Gateway JWT verification must be off: the OAuth discovery document and the initial
 # 401 challenge are served without a token; the function validates tokens itself.
