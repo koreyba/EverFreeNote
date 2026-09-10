@@ -48,11 +48,21 @@ if (manifest.includes(`android:scheme="${scheme}"`)) {
                 <data android:scheme="${scheme}" />
             </intent-filter>
 `
-  // Append inside the MainActivity element, after the launcher intent-filter.
+  // Anchor to the launcher intent-filter inside MainActivity. Asserting the ordering
+  // rather than trusting it means a changed Capacitor template fails loudly here,
+  // instead of producing an APK that silently cannot receive the OAuth callback.
+  const activityAt = manifest.indexOf('MainActivity')
   const anchor = '</intent-filter>'
-  const index = manifest.indexOf(anchor)
-  if (index === -1) throw new Error('Could not find an intent-filter to anchor to in AndroidManifest.xml')
-  const insertAt = index + anchor.length
+  const closeAt = manifest.indexOf(anchor, activityAt)
+  const activityEndAt = manifest.indexOf('</activity>', activityAt)
+
+  if (activityAt === -1 || closeAt === -1 || activityEndAt === -1 || closeAt > activityEndAt) {
+    throw new Error(
+      'Could not find MainActivity\'s intent-filter in AndroidManifest.xml; the Capacitor template changed.'
+    )
+  }
+
+  const insertAt = closeAt + anchor.length
   manifest = manifest.slice(0, insertAt) + intentFilter + manifest.slice(insertAt)
   fs.writeFileSync(MANIFEST, manifest)
   console.log(`✅ added intent-filter for ${scheme}://`)
@@ -75,11 +85,15 @@ if (gradle.includes('signingConfigs')) {
         }
     }
 `
+  const proguardLine = "            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'"
+
+  if (!gradle.includes('    buildTypes {') || !gradle.includes(proguardLine)) {
+    // Failing here beats shipping an unsigned release APK that will not install.
+    throw new Error('Could not attach the signing config: app/build.gradle does not match the expected template.')
+  }
+
   gradle = gradle.replace('    buildTypes {', `${signing}    buildTypes {`)
-  gradle = gradle.replace(
-    "            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'",
-    "            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'\n            signingConfig signingConfigs.shellRelease"
-  )
+  gradle = gradle.replace(proguardLine, `${proguardLine}\n            signingConfig signingConfigs.shellRelease`)
   fs.writeFileSync(APP_GRADLE, gradle)
   console.log('✅ added release signing config')
 }

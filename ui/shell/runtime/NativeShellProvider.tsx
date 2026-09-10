@@ -39,7 +39,14 @@ export function NativeShellProvider({ children }: { children: React.ReactNode })
         // Already closed by the user; nothing to do.
       })
 
-      const url = new URL(rawUrl)
+      // Anything can be sent to a registered scheme, not just our provider redirect.
+      let url: URL
+      try {
+        url = new URL(rawUrl)
+      } catch {
+        return
+      }
+
       const code = url.searchParams.get("code")
       const errorDescription = url.searchParams.get("error_description")
 
@@ -61,17 +68,32 @@ export function NativeShellProvider({ children }: { children: React.ReactNode })
       router.replace("/")
     }
 
-    void App.addListener("appUrlOpen", (event) => {
-      void handleCallback(event.url)
-    }).then((listener) => listeners.push(listener))
+    // addListener resolves asynchronously, so a listener can arrive after cleanup has
+    // already run; without this it would stay registered for the life of the process.
+    const track = (pending: Promise<{ remove: () => Promise<void> }>) => {
+      void pending.then((listener) => {
+        if (disposed) void listener.remove()
+        else listeners.push(listener)
+      })
+    }
 
-    void App.addListener("backButton", ({ canGoBack }) => {
-      if (canGoBack) {
-        globalThis.history.back()
-      } else {
-        void App.exitApp()
-      }
-    }).then((listener) => listeners.push(listener))
+    track(
+      App.addListener("appUrlOpen", (event) => {
+        handleCallback(event.url).catch((error: unknown) => {
+          console.error("[shell] failed to handle deep link", error)
+        })
+      })
+    )
+
+    track(
+      App.addListener("backButton", ({ canGoBack }) => {
+        if (canGoBack) {
+          globalThis.history.back()
+        } else {
+          void App.exitApp()
+        }
+      })
+    )
 
     return () => {
       disposed = true

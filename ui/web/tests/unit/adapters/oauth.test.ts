@@ -11,13 +11,12 @@ jest.mock('@ui/shell/runtime/platform', () => ({
 jest.mock('@ui/shell/runtime/oauth', () => ({ nativeOAuthAdapter: { startOAuth: jest.fn() } }))
 
 describe('web OAuth adapter', () => {
-  it('navigates the page to the provider, replacing history', async () => {
+  it('navigates the page to the provider the same way supabase-js would', async () => {
     await webOAuthAdapter.startOAuth('https://provider.example/authorize')
 
-    // replace, so the back button does not land the user on the provider again.
-    expect(webNavigationAdapter.navigate).toHaveBeenCalledWith('https://provider.example/authorize', {
-      replace: true,
-    })
+    // assign, matching GoTrueClient's own redirect, so history is unchanged by
+    // moving this navigation into the adapter.
+    expect(webNavigationAdapter.navigate).toHaveBeenCalledWith('https://provider.example/authorize')
   })
 })
 
