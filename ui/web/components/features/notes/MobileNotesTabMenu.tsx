@@ -6,6 +6,7 @@ import type { NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 import { getTabLabel, SaveStateIndicator, type NotesTabStripProps } from "./NotesTabStrip"
+import { useAnimatedTabList, TAB_TRANSITION_MS } from "@ui/web/hooks/useAnimatedTabList"
 
 export type MobileNotesTabMenuProps = Readonly<NotesTabStripProps>
 
@@ -22,6 +23,8 @@ export function MobileNotesTabMenu({
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const activeRowRef = useRef<HTMLDivElement | null>(null)
+  // Same motion as the desktop strip, collapsing vertically instead.
+  const renderedTabs = useAnimatedTabList(tabs)
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]
   const activeLabel = activeTab ? getTabLabel(activeTab) : "No open notes"
 
@@ -116,15 +119,25 @@ export function MobileNotesTabMenu({
           aria-label="Open notes"
         >
           <div className="max-h-[60vh] overflow-y-auto overscroll-contain">
-            {tabs.map((tab) => {
+            {renderedTabs.map(({ tab, closing }) => {
               const label = getTabLabel(tab)
-              const isActive = tab.id === activeTabId
+              const isActive = !closing && tab.id === activeTabId
 
               return (
                 <div
                   key={tab.id}
                   ref={isActive ? activeRowRef : undefined}
-                  className="flex items-center gap-1 rounded-lg"
+                  className={cn(
+                    "flex items-center gap-1 rounded-lg",
+                    closing ? "note-tab-row-closing" : "animate-in fade-in slide-in-from-top-1",
+                  )}
+                  style={{
+                    ["--note-tab-motion" as string]: `${TAB_TRANSITION_MS}ms`,
+                    animationDuration: `${TAB_TRANSITION_MS}ms`,
+                  }}
+                  aria-hidden={closing || undefined}
+                  inert={closing}
+                  data-closing={closing || undefined}
                 >
                   <Button
                     type="button"

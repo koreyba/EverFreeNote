@@ -204,6 +204,28 @@ Dropping tabs is reported once per session rather than per write, since
 persistence runs on every workspace change. Nothing is written only when a
 single note is too large for the budget on its own.
 
+### Closing a tab is animated; opening one is acknowledged
+
+A tab vanishing makes the whole strip jump, so a closed tab collapses out of
+the way over 150ms while the rest slide into place. The tab is dropped from
+workspace state the moment it is closed — the animation never delays that.
+`useAnimatedTabList` only keeps a non-interactive copy (`aria-hidden`, `inert`)
+rendered in the same slot until the exit finishes, shared by the desktop strip
+and the mobile list so both behave the same way.
+
+The exit is a CSS keyframe animation rather than a transition: the copy is
+created already in its end state, and a transition has nothing to run from.
+Desktop collapses horizontally, mobile vertically; same duration, same easing.
+
+Opening does not mirror the collapse. The gap has to close when a tab leaves —
+that is layout, not decoration — but a new tab arrives in space that already
+exists, and growing it while the strip may also be scrolling to reveal it
+reads as busy. A new tab fades and scales in over the same 150ms instead.
+
+`prefers-reduced-motion` removes all of it: the hook skips the copy entirely,
+and a global rule in `globals.css` neutralises animation and transition
+durations app-wide.
+
 ### Active-slot replacement is the default
 
 `openNoteInWorkspace` updates the active tab. `addWorkspaceTab` is the only operation that increases tab count. This encodes the product's key rule in one reducer function instead of relying on individual click handlers.

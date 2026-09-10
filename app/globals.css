@@ -41,6 +41,46 @@ button,
   color-scheme: dark;
 }
 
+/* Workspace tabs: a closed tab plays this out while it is still mounted, so
+   the strip closes the gap instead of snapping. A keyframe animation is used
+   rather than a transition because the element is created already in its end
+   state — a transition would have nothing to run from. */
+@keyframes note-tab-collapse-x {
+  from { max-width: 14rem; min-width: 7.5rem; opacity: 1; margin-right: 0; }
+  to { max-width: 0; min-width: 0; opacity: 0; margin-right: -0.25rem; }
+}
+
+/* 3rem sits just above a single-line row (~2.25rem) so the collapse starts
+   almost at once; rows always truncate to one line. */
+@keyframes note-tab-collapse-y {
+  from { max-height: 3rem; opacity: 1; }
+  to { max-height: 0; opacity: 0; }
+}
+
+.note-tab-closing {
+  animation: note-tab-collapse-x var(--note-tab-motion, 150ms) ease-out forwards;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.note-tab-row-closing {
+  animation: note-tab-collapse-y var(--note-tab-motion, 150ms) ease-out forwards;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Honour the OS-level request for less motion across the whole app. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Hide scrollbar utility */
 .scrollbar-none {
   -ms-overflow-style: none !important;

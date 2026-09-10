@@ -5,6 +5,7 @@ import { WarningCircle as AlertCircle, CaretLeft as ChevronLeft, CaretRight as C
 import { MAX_NOTE_WORKSPACE_TABS, type NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
+import { useAnimatedTabList, TAB_TRANSITION_MS } from "@ui/web/hooks/useAnimatedTabList"
 
 export type NotesTabStripProps = {
   tabs: NoteWorkspaceTab[]
@@ -136,6 +137,9 @@ export function NotesTabStrip({
   const tabViewportRef = useRef<HTMLDivElement | null>(null)
   const tabButtonRefs = useRef(new Map<string, HTMLButtonElement>())
   const [overflow, setOverflow] = useState({ left: false, right: false })
+  // A closed tab stays on screen just long enough to collapse, so the strip
+  // closes the gap instead of snapping. It is already gone from state.
+  const renderedTabs = useAnimatedTabList(tabs)
 
   const syncOverflow = () => {
     const viewport = tabViewportRef.current
@@ -268,9 +272,9 @@ export function NotesTabStrip({
         onWheel={handleWheel}
       >
         <div className="flex min-w-full items-center gap-1">
-          {tabs.map((tab, index) => {
+          {renderedTabs.map(({ tab, closing }, index) => {
             const label = getTabLabel(tab)
-            const isActive = tab.id === activeTabId
+            const isActive = !closing && tab.id === activeTabId
 
             return (
               <div
@@ -278,8 +282,16 @@ export function NotesTabStrip({
                 className={cn(
                   "group flex min-w-[120px] max-w-56 flex-1 snap-start items-center rounded-md border border-transparent",
                   isActive && "border-border bg-muted/60",
+                  closing ? "note-tab-closing" : "animate-in fade-in zoom-in-95",
                 )}
-                data-tab-id={tab.id}
+                style={{
+                  ["--note-tab-motion" as string]: `${TAB_TRANSITION_MS}ms`,
+                  animationDuration: `${TAB_TRANSITION_MS}ms`,
+                }}
+                aria-hidden={closing || undefined}
+                inert={closing}
+                data-tab-id={closing ? undefined : tab.id}
+                data-closing={closing || undefined}
               >
                 <Button
                   type="button"
