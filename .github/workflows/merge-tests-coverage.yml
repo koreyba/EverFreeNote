@@ -116,60 +116,10 @@ jobs:
         if: always() && (steps.run-cypress-coverage.outcome != 'success' || steps.verify-cypress-lcov.outcome != 'success')
         run: exit 1
 
-  mobile-coverage:
-    name: Mobile Jest coverage
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            ui/mobile/package-lock.json
-
-      - name: Install root dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Install mobile dependencies
-        run: npm --prefix ui/mobile ci --ignore-scripts
-
-      - name: Run mobile Jest coverage
-        id: run-mobile-coverage
-        continue-on-error: true
-        run: npm --prefix ui/mobile run test:coverage -- --ci
-
-      - name: Verify mobile Jest LCOV
-        id: verify-mobile-lcov
-        if: always()
-        run: test -s ui/mobile/coverage/lcov.info
-
-      - name: Upload mobile Jest coverage report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: mobile-coverage-${{ github.run_id }}
-          path: ui/mobile/coverage
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Fail mobile coverage job when tests or report failed
-        if: always() && (steps.run-mobile-coverage.outcome != 'success' || steps.verify-mobile-lcov.outcome != 'success')
-        run: exit 1
-
   sonarqube-main:
     name: SonarQube main analysis
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [unit-coverage, component-coverage, mobile-coverage]
+    needs: [unit-coverage, component-coverage]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -187,12 +137,10 @@ jobs:
           cache: npm
           cache-dependency-path: |
             package-lock.json
-            ui/mobile/package-lock.json
 
       - name: Install dependencies
         run: |
           npm ci --ignore-scripts
-          npm --prefix ui/mobile ci --ignore-scripts
 
       - name: Download Jest coverage report
         if: always()
@@ -210,21 +158,12 @@ jobs:
           name: component-coverage-${{ github.run_id }}
           path: coverage/component
 
-      - name: Download mobile Jest coverage report
-        if: always()
-        continue-on-error: true
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: mobile-coverage-${{ github.run_id }}
-          path: ui/mobile/coverage
-
       - name: Verify imported LCOV reports
         if: always()
         continue-on-error: true
         run: |
           test -s coverage/jest/lcov.info
           test -s coverage/component/lcov.info
-          test -s ui/mobile/coverage/lcov.info
 
       - name: Detect available LCOV reports
         id: detect-lcov
@@ -233,7 +172,7 @@ jobs:
           set -euo pipefail
 
           reports=()
-          for report in coverage/jest/lcov.info coverage/component/lcov.info ui/mobile/coverage/lcov.info; do
+          for report in coverage/jest/lcov.info coverage/component/lcov.info; do
             if [ -s "$report" ]; then
               reports+=("$report")
             fi
@@ -259,7 +198,7 @@ jobs:
   qodana-main:
     name: Qodana main coverage
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [unit-coverage, component-coverage, mobile-coverage]
+    needs: [unit-coverage, component-coverage]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -297,20 +236,11 @@ jobs:
           name: component-coverage-raw-${{ github.run_id }}
           path: .nyc_output
 
-      - name: Download mobile Jest coverage report
-        if: always()
-        continue-on-error: true
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: mobile-coverage-${{ github.run_id }}
-          path: ui/mobile/coverage
-
       - name: Verify imported coverage inputs
         if: always()
         run: |
           test -s coverage/jest/coverage-final.json
           test -s .nyc_output/out.json
-          test -s ui/mobile/coverage/coverage-final.json
 
       - name: Merge coverage for Qodana
         run: |
@@ -318,7 +248,6 @@ jobs:
             --output .qodana/code-coverage/lcov.info \
             coverage/jest/coverage-final.json \
             .nyc_output/out.json \
-            ui/mobile/coverage/coverage-final.json
           test -s .qodana/code-coverage/lcov.info
 
       - name: Qodana Scan with coverage
@@ -336,11 +265,10 @@ jobs:
 
   codacy-main:
     name: Codacy main coverage
-    needs: [unit-coverage, component-coverage, mobile-coverage]
+    needs: [unit-coverage, component-coverage]
     if: >-
       needs.unit-coverage.result == 'success' &&
       needs.component-coverage.result == 'success' &&
-      needs.mobile-coverage.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -358,18 +286,11 @@ jobs:
           name: component-coverage-${{ github.run_id }}
           path: coverage/component
 
-      - name: Download mobile Jest coverage report
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: mobile-coverage-${{ github.run_id }}
-          path: ui/mobile/coverage
-
       - name: Verify Codacy LCOV inputs
         run: |
           set -euo pipefail
           test -s coverage/jest/lcov.info
           test -s coverage/component/lcov.info
-          test -s ui/mobile/coverage/lcov.info
 
       - name: Download and verify Codacy reporter
         env:
@@ -401,5 +322,5 @@ jobs:
             --commit-uuid "${GITHUB_SHA}" \
             -r coverage/jest/lcov.info \
             -r coverage/component/lcov.info \
-            -r ui/mobile/coverage/lcov.info
+           
 

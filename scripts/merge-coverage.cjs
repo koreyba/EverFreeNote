@@ -8,7 +8,7 @@ const libReport = require('istanbul-lib-report')
 const reports = require('istanbul-reports')
 
 const projectRoot = process.cwd()
-const coverageRoots = ['app/', 'core/', 'ui/web/', 'ui/mobile/']
+const coverageRoots = ['app/', 'core/', 'ui/web/', 'ui/shell/']
 const excludedPathPatterns = [
   /(^|\/)cypress\//,
   /(^|\/)tests\//,

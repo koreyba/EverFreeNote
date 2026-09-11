@@ -58,14 +58,6 @@ jobs:
           name: pr-coverage-web-${{ github.run_id }}
           path: coverage/raw/web
 
-      - name: Download mobile Jest coverage
-        if: always()
-        continue-on-error: true
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: pr-coverage-mobile-${{ github.run_id }}
-          path: coverage/raw/mobile
-
       - name: Download Cypress raw coverage
         if: always()
         continue-on-error: true
@@ -83,7 +75,7 @@ jobs:
           echo "qodana_args=" >> "$GITHUB_OUTPUT"
 
           inputs=()
-          for report in coverage/raw/core/coverage-final.json coverage/raw/web/coverage-final.json coverage/raw/mobile/coverage-final.json coverage/raw/component/out.json; do
+          for report in coverage/raw/core/coverage-final.json coverage/raw/web/coverage-final.json coverage/raw/component/out.json; do
             if [ -s "$report" ]; then
               inputs+=("$report")
             fi

@@ -6,8 +6,8 @@ import { Share } from '@capacitor/share'
  *
  * An `<a download>` click — how the web app saves an export — does nothing in an
  * Android WebView: no file, no error, no prompt. The file is written to the app's
- * cache instead and offered through the system share sheet, which is what
- * ui/mobile does with expo-file-system + expo-sharing.
+ * cache instead and offered through the system share sheet, which is what the retired
+ * React Native app did with expo-file-system + expo-sharing.
  */
 export async function saveAndShareFile(blob: Blob, fileName: string, title: string): Promise<void> {
   const data = await toBase64(blob)

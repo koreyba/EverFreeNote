@@ -17,7 +17,7 @@ import { FontSize } from "@/extensions/FontSize"
 import { ChunkFocusExtension } from "@/extensions/ChunkFocus"
 
 /**
- * Shared TipTap extension configuration used by both RichTextEditor and RichTextEditorWebView.
+ * Shared TipTap extension configuration used by RichTextEditor.
  * Defined at module level — extension instances are stateless config objects, safe to share.
  */
 export const editorExtensions: Extensions = [

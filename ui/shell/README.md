@@ -8,8 +8,7 @@ same code.
 Design and rationale: [`docs/ai/design/feature-capacitor-android-shell.md`](../../docs/ai/design/feature-capacitor-android-shell.md).
 Measurements that motivated it: [`docs/ai/analysis/capacitor-shell-poc.md`](../../docs/ai/analysis/capacitor-shell-poc.md).
 
-This does **not** replace `ui/mobile` yet — both Android apps can be installed side by
-side while the shell is proven out.
+This replaced `ui/mobile`, the React Native app, which has been removed.
 
 ## Layout
 
@@ -34,7 +33,7 @@ reviewed script rather than from a large vendored directory.
 
 ## Build
 
-One script per build, mirroring `ui/mobile`'s `android:*` naming. Each runs the web
+One script per build, keeping the `android:*` naming the retired React Native app used. Each runs the web
 build, regenerates the native project, syncs and calls Gradle, then prints the APK path
 and the `adb install` line:
 
@@ -62,9 +61,9 @@ without extra setup. Prod is the exception: it requires `NEXT_PUBLIC_SUPABASE_UR
 and `NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD` explicitly, because inheriting the root env
 files would ship a prod-branded app talking to stage. Every build prints the project it
 resolved — read that line, because the labels cannot be trusted on their own: a local
-`ui/mobile/.env` was found with stage and prod pointing at each other's projects (see
-the warning in `ui/mobile/.env.example`). Production is `pmlloiywmuglbjkhrggo`, whose
-Supabase project is named "EverFreeNote" and whose Site URL is `everfreenote.pages.dev`.
+env file was found with stage and prod pointing at each other's projects (see the
+warning in `.env.example`). Production is `pmlloiywmuglbjkhrggo`, whose Supabase project
+is named "EverFreeNote" and whose Site URL is `everfreenote.pages.dev`.
 
 Release builds need a keystore; the script refuses to run without one rather than
 producing an APK that cannot be installed:
@@ -112,7 +111,7 @@ to `variants.data.js`, then follow the type errors in `variants.ts`, add its
 
 The WebView origin is `https://localhost`, which is meaningless outside the app, so
 anything a recipient will open must use the deployment origin instead. That origin is
-configuration, never code — same as `ui/mobile`'s `EXPO_PUBLIC_PUBLIC_WEB_ORIGIN`:
+configuration, never code — as `EXPO_PUBLIC_PUBLIC_WEB_ORIGIN` was before it:
 
 ```
 NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_DEV / _STAGE / _PROD
@@ -127,7 +126,7 @@ out a `https://localhost` link nobody can open.
 
 An `<a download>` click does nothing in an Android WebView — no file, no prompt, no
 error. `ui/web/adapters/fileDownload.ts` routes exports through the share sheet in the
-shell (`@capacitor/filesystem` + `@capacitor/share`), matching what ui/mobile does.
+shell (`@capacitor/filesystem` + `@capacitor/share`), as the React Native app did.
 
 ## OAuth
 
@@ -144,11 +143,10 @@ Each variant's redirect URL must exist in Supabase Auth → URL Configuration:
 | stage | `everfreenote-stage://auth/callback` |
 | prod | `everfreenote://auth/callback` |
 
-These are the same schemes `ui/mobile` uses, so they are already registered — no
-dashboard change was needed. The cost while both apps exist: if both are installed,
-Android asks which app should handle the callback. Set `SHELL_SCHEME` (build) and
-`NEXT_PUBLIC_SHELL_SCHEME` (runtime) to a dedicated scheme to avoid that, and register
-it in Supabase first.
+These are the schemes the retired React Native app registered, so they already exist in
+Supabase — no dashboard change was needed. Set `SHELL_SCHEME` (build) and
+`NEXT_PUBLIC_SHELL_SCHEME` (runtime) to use a dedicated scheme instead, registering it
+in Supabase first.
 
 ## Developing against a local backend
 

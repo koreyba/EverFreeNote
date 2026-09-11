@@ -11,7 +11,6 @@ const moduleNameMapper = {
   '^@/(.*)$': '<rootDir>/$1',
   '^@core/(.*)$': '<rootDir>/core/$1',
   '^@ui/web/(.*)$': '<rootDir>/ui/web/$1',
-  '^@ui/mobile/(.*)$': '<rootDir>/ui/mobile/$1',
   '^@ui/shell/(.*)$': '<rootDir>/ui/shell/$1',
 }
 
