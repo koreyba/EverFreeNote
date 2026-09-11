@@ -11,10 +11,11 @@
  *   NEXT_PUBLIC_ENABLE_PERF_HARNESS=true                      - enables /perf-harness/.
  *   APP_VARIANT=dev|stage|prod                                - selects the shell variant.
  */
-const { execSync } = require('node:child_process')
+const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
 
+const { npmCommand } = require('./localBin')
 const { projectRef, resolveSupabaseEnv } = require('./supabaseEnv')
 const VARIANTS = require('../variants.data')
 
@@ -90,7 +91,9 @@ if (publicWebOrigin) {
 if (supabase.usingPlaceholders) {
   console.log('⚠️  No Supabase credentials found — building with placeholders. Sign-in will not work.')
 }
-execSync('npm run build', { cwd: REPO_ROOT, stdio: 'inherit', env })
+// The npm that invoked us, by absolute path, rather than a PATH lookup.
+const npm = npmCommand()
+execFileSync(npm.command, [...npm.prefixArgs, 'run', 'build'], { cwd: REPO_ROOT, stdio: 'inherit', env })
 
 if (!fs.existsSync(path.join(OUT_DIR, 'index.html'))) {
   throw new Error(`Static export missing: ${path.join(OUT_DIR, 'index.html')}`)

@@ -55,6 +55,12 @@ module.exports = {
     'ui/web/**/*.{js,jsx,ts,tsx}',
     'ui/shell/runtime/**/*.{js,jsx,ts,tsx}',
     'ui/shell/variants.ts',
+    // Build helpers with real logic and real tests. The rest of ui/shell/scripts is
+    // process orchestration, excluded from coverage in sonar-project.properties the way
+    // the root scripts/ directory already is.
+    'ui/shell/scripts/nativeProject.js',
+    'ui/shell/scripts/supabaseEnv.js',
+    'ui/shell/variants.data.js',
     '!**/*.d.ts',
     '!**/tests/**',
   ],

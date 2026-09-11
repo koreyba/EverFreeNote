@@ -7,9 +7,11 @@
  *
  *   APP_VARIANT=stage node scripts/build-apk.js [debug|release]
  */
-const { execFileSync, execSync } = require('node:child_process')
+const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
+
+const { localBin } = require('./localBin')
 
 const buildType = process.argv[2] ?? 'release'
 const variant = process.env.APP_VARIANT ?? 'dev'
@@ -31,13 +33,14 @@ if (buildType === 'release' && !process.env.SHELL_KEYSTORE) {
   )
 }
 
-run('node', [path.join(__dirname, 'build-web.js')])
-run('node', [path.join(__dirname, 'add-android.js')])
-run(npmCommand('npx'), ['cap', 'sync', 'android'])
+// process.execPath and the locally installed CLI, rather than PATH lookups.
+run(process.execPath, [path.join(__dirname, 'build-web.js')])
+run(process.execPath, [path.join(__dirname, 'add-android.js')])
+run(localBin('cap'), ['sync', 'android'])
 
-const gradlew = process.platform === 'win32' ? 'gradlew.bat' : './gradlew'
+const gradlew = path.join(ANDROID_DIR, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew')
 const task = buildType === 'release' ? 'assembleRelease' : 'assembleDebug'
-execSync(`${gradlew} ${task}`, { cwd: ANDROID_DIR, stdio: 'inherit' })
+execFileSync(gradlew, [task], { cwd: ANDROID_DIR, stdio: 'inherit' })
 
 const apk = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', buildType, `app-${buildType}.apk`)
 if (!fs.existsSync(apk)) fail(`Gradle finished but ${apk} is missing.`)
@@ -47,10 +50,6 @@ console.log(`   install with: adb install -r ${apk}`)
 
 function run(command, args) {
   execFileSync(command, args, { cwd: SHELL_DIR, stdio: 'inherit' })
-}
-
-function npmCommand(name) {
-  return process.platform === 'win32' ? `${name}.cmd` : name
 }
 
 function fail(message) {

@@ -11,9 +11,11 @@
  * density and orientation, which added 4.4 MB to the repo and 3 MB to every APK; the
  * stock Capacitor splash is used instead.
  */
-const { execSync } = require('node:child_process')
+const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
+
+const { localBin } = require('./localBin')
 
 const SHELL_DIR = path.join(__dirname, '..')
 const ANDROID_DIR = path.join(SHELL_DIR, 'android')
@@ -26,7 +28,7 @@ if (!fs.existsSync(ANDROID_DIR)) {
 }
 
 console.log('🎨 Generating icons with @capacitor/assets')
-execSync('npx @capacitor/assets generate --android --assetPath assets', {
+execFileSync(localBin('capacitor-assets'), ['generate', '--android', '--assetPath', 'assets'], {
   cwd: SHELL_DIR,
   stdio: 'inherit',
 })
