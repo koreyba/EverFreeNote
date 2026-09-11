@@ -1,0 +1,1 @@
+{"id":"7e504b80813d75e1e5d379ab7c5cb558","fullName":"everfreenote:ui/shell/tests/unit/platform.test.ts#shell platform detection falls back to dev when the build did not set a variant","name":"falls back to dev when the build did not set a variant","status":"passed","testResultsByEnv":{"default":"8bc9f94c1affd8755e820508e02939ed"}}

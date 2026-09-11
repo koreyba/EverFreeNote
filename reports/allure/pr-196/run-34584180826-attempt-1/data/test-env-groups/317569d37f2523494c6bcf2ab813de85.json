@@ -1,0 +1,1 @@
+{"id":"317569d37f2523494c6bcf2ab813de85","fullName":"everfreenote:ui/web/tests/unit/hooks/useAnimatedTabList.test.tsx#useAnimatedTabList keeps a removed tab in its slot until the exit has played","name":"keeps a removed tab in its slot until the exit has played","status":"passed","testResultsByEnv":{"default":"ecfb38a22d29abc9ad7f357734e8c647"}}

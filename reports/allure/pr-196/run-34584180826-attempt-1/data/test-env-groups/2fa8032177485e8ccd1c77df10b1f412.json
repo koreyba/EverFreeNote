@@ -1,0 +1,1 @@
+{"id":"2fa8032177485e8ccd1c77df10b1f412","fullName":"everfreenote-mobile:tests/component/useDeleteNote.test.tsx#useDeleteNote Optimistic updates removes deleted note from AI search cache without refetching","name":"removes deleted note from AI search cache without refetching","status":"passed","testResultsByEnv":{"default":"2f56f7e6963b2369ac57a606c1705d4f"}}
