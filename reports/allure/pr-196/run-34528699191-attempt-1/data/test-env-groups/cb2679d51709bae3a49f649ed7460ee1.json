@@ -1,1 +1,0 @@
-{"id":"cb2679d51709bae3a49f649ed7460ee1","fullName":"everfreenote:core/tests/unit/core-mcp-notebookServer.test.ts#core/mcp/notebookServer semantic search rejects an empty query and reports upstream failures","name":"rejects an empty query and reports upstream failures","status":"passed","testResultsByEnv":{"default":"67a1fb61644ea7d697e3a9df7c5967fe"}}
