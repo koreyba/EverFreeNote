@@ -1,0 +1,1 @@
+{"id":"a1c641a66446fb1276ca7d50b54da745","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteAppControllerAdditional.test.tsx#useNoteAppController additional observable behavior keeps workspace tabs untouched when the delete fails","name":"keeps workspace tabs untouched when the delete fails","status":"passed","testResultsByEnv":{"default":"4956615741793f3d4f84104b65b347f1"}}

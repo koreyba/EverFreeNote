@@ -1,1 +1,0 @@
-{"id":"73b6a96bb0631dee06efee71c72cd497","fullName":"everfreenote-mobile:tests/component/swipeProvider.test.tsx#useSwipeContext onSwipeStart does nothing to activeId if the same id is swiped again","name":"does nothing to activeId if the same id is swiped again","status":"passed","testResultsByEnv":{"default":"734d86b22e8e5107cfa7cad4fec7537e"}}
