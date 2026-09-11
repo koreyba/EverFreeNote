@@ -1,1 +1,0 @@
-{"id":"08f9f7afe562e1572cd55ea5cd9c7500","fullName":"everfreenote:core/tests/unit/core-mcp-noteHtml.test.ts#core/mcp/noteHtml - sanitizeNoteHtml exposes the allowlist used by the render-side sanitizer","name":"exposes the allowlist used by the render-side sanitizer","status":"passed","testResultsByEnv":{"default":"e8d38a469608321ad362bfb5c364db17"}}
