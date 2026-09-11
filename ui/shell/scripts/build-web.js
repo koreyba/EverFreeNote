@@ -45,10 +45,19 @@ function readFromEnvFiles(name) {
     }
 
     for (const line of contents.split('\n')) {
-      const match = new RegExp(`^\\s*(?:export\\s+)?${name}\\s*=\\s*(.*)$`).exec(line)
-      if (!match) continue
+      // Split on the first '=' rather than building a regex per key per line: the file
+      // is a flat KEY=VALUE list, and a value may itself contain '='.
+      const separator = line.indexOf('=')
+      if (separator === -1) continue
 
-      const value = match[1].trim().replace(/^(['"])(.*)\1$/, '$2').trim()
+      const key = line.slice(0, separator).trim().replace(/^export\s+/, '')
+      if (key !== name) continue
+
+      const value = line
+        .slice(separator + 1)
+        .trim()
+        .replace(/^(['"])(.*)\1$/, '$2')
+        .trim()
       if (value) return value
     }
   }
