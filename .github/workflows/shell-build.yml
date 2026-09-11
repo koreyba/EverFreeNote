@@ -7,6 +7,12 @@ name: Shell Build
 # Debug needs no secrets. Release needs a real keystore in secrets; unlike ui/mobile,
 # whose release block signs with the checked-in debug key, this refuses to produce an
 # APK signed with a key that is not a release key.
+#
+# checkov:skip=CKV_GHA_7: the two dispatch inputs are the point of this workflow — a
+# build is meaningless without saying which variant and build type it is for, exactly as
+# Android Build already takes an environment input. Both are `type: choice`, so the
+# values are a closed set GitHub validates rather than free text, and neither reaches a
+# shell as data: the build step branches on them and calls a fixed npm script per case.
 
 on:
   workflow_dispatch:

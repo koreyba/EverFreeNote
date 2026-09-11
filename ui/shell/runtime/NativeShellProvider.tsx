@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, type ReactNode } from "react"
 import { App } from "@capacitor/app"
 import { Browser } from "@capacitor/browser"
 import { useRouter } from "next/navigation"
@@ -20,7 +20,7 @@ import { isNativeShell, shellScheme } from "@ui/shell/runtime/platform"
  *    PKCE verifier when the flow started.
  *  - Hardware back. Without this the button closes the app from any screen.
  */
-export function NativeShellProvider({ children }: { children: React.ReactNode }) {
+export function NativeShellProvider({ children }: { children: ReactNode }) {
   const { supabase } = useSupabase()
   const router = useRouter()
 
