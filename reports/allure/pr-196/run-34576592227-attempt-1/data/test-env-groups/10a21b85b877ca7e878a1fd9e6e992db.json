@@ -1,0 +1,1 @@
+{"id":"10a21b85b877ca7e878a1fd9e6e992db","fullName":"everfreenote:ui/web/tests/unit/components/oauthConsentPageClient.test.tsx#OAuthConsentPageClient falls back to generic labels when client data is sparse","name":"falls back to generic labels when client data is sparse","status":"passed","testResultsByEnv":{"default":"aad0ae051c513536a13290a6d1311309"}}
