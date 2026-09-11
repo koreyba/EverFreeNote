@@ -1,0 +1,1 @@
+{"id":"e95046dc4ca762679cfed4ff6da6bfbe","fullName":"everfreenote:core/tests/unit/core-mcp-supabaseNotebookRepository.test.ts#core/mcp/supabaseNotebookRepository createNote inserts with the user id and returns the created row","name":"inserts with the user id and returns the created row","status":"passed","testResultsByEnv":{"default":"5326c900df6294bb23196d93d70e3152"}}

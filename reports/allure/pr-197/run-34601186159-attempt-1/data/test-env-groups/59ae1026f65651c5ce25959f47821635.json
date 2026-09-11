@@ -1,0 +1,1 @@
+{"id":"59ae1026f65651c5ce25959f47821635","fullName":"everfreenote:cypress/component/editor/RichTextEditor.history.cy.tsx#RichTextEditor Component Undo/Redo buttons keyboard undo reverts formatting; keyboard redo restores it","name":"keyboard undo reverts formatting; keyboard redo restores it","status":"passed","testResultsByEnv":{"default":"d5e6b4d7bd5bcab870ed0a978f0c8272"}}
