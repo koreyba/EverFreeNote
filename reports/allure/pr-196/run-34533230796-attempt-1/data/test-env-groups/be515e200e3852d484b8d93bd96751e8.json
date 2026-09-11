@@ -1,1 +1,0 @@
-{"id":"be515e200e3852d484b8d93bd96751e8","fullName":"everfreenote:core/tests/unit/core-mcp-noteHtml.test.ts#core/mcp/noteHtml - sanitizeNoteHtml allows data URIs for images only","name":"allows data URIs for images only","status":"passed","testResultsByEnv":{"default":"dbb7073ca444f7d6ca2b47c19b338a36"}}

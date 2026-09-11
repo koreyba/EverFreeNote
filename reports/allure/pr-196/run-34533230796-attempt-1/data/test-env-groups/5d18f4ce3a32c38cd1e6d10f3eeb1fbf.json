@@ -1,1 +1,0 @@
-{"id":"5d18f4ce3a32c38cd1e6d10f3eeb1fbf","fullName":"everfreenote:ui/web/tests/unit/lib/oauthConsentNavigationState.test.ts#oauthConsentNavigationState degrades gracefully when sessionStorage throws","name":"degrades gracefully when sessionStorage throws","status":"passed","testResultsByEnv":{"default":"082a2d65527a6e16bda3afca74a4b21c"}}
