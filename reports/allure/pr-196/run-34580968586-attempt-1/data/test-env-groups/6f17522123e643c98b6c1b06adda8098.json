@@ -1,0 +1,1 @@
+{"id":"6f17522123e643c98b6c1b06adda8098","fullName":"everfreenote-mobile:tests/unit/useNotesMutations-uuid.test.ts#generateUuidV4 uses the platform crypto implementation for offline note IDs","name":"uses the platform crypto implementation for offline note IDs","status":"passed","testResultsByEnv":{"default":"7f548f9ca75df8ec9f65a1eb76fad741"}}

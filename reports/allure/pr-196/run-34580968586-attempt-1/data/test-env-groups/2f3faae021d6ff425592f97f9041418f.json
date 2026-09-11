@@ -1,0 +1,1 @@
+{"id":"2f3faae021d6ff425592f97f9041418f","fullName":"everfreenote:core/tests/unit/core-mcp-noteHtml.test.ts#core/mcp/noteHtml - sanitizeNoteHtml discards elements the editor cannot render","name":"discards elements the editor cannot render","status":"passed","testResultsByEnv":{"default":"99b002b1ccc62619011ab365d9b82214"}}
