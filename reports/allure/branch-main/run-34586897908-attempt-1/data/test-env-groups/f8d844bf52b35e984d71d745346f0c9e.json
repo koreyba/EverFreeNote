@@ -1,0 +1,1 @@
+{"id":"f8d844bf52b35e984d71d745346f0c9e","fullName":"everfreenote:core/tests/unit/core-services-noteWorkspaceTabs.test.ts#note workspace tab state returns the same state when no tab shows a deleted note","name":"returns the same state when no tab shows a deleted note","status":"passed","testResultsByEnv":{"default":"693d150ed929b4b965adafe655a7f06b"}}

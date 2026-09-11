@@ -1,0 +1,1 @@
+{"id":"c19290ba60391550ab94b86b4b40accb","fullName":"everfreenote:ui/web/tests/unit/components/features/settings/DeleteAccountPanel.test.tsx#DeleteAccountPanel omits the sign out control when no session handler is provided","name":"omits the sign out control when no session handler is provided","status":"passed","testResultsByEnv":{"default":"888a5bad874f3c591c8885c37b298c1e"}}
