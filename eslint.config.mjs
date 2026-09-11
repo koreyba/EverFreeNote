@@ -106,7 +106,7 @@ export default defineConfig([
         {
           selector: "AssignmentExpression[left.property.name='download']",
           message:
-            'An <a download> click does nothing in an Android WebView — no file, no prompt, no error. Use downloadGeneratedFile() from @ui/web/adapters/fileDownload.',
+            'A download-attribute anchor click does nothing in an Android WebView — no file, no prompt, no error. Use downloadGeneratedFile() from @ui/web/adapters/fileDownload.',
         },
       ],
     },
