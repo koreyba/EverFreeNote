@@ -1,1 +1,0 @@
-{"id":"d74e5bc5ccd7419b14501ae73d1bfabd","fullName":"everfreenote:ui/shell/tests/unit/variants.test.ts#shell variants publicWebOriginFor treats \" \" as unset rather than as an origin","name":"treats \" \" as unset rather than as an origin","status":"passed","testResultsByEnv":{"default":"4f0256f9e34eeeeedbf6b3135abb289b"}}
