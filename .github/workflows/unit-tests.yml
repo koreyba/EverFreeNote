@@ -21,201 +21,6 @@ permissions:
   contents: read
 
 jobs:
-  unit-tests-mobile:
-    runs-on: ubuntu-latest
-    outputs:
-      has_allure_results: ${{ steps.mobile-allure-check.outputs.has_allure_results }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: |
-            package-lock.json
-            ui/mobile/package-lock.json
-
-      - name: Install root dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Install mobile dependencies
-        run: npm --prefix ui/mobile ci --ignore-scripts
-
-      - name: Run mobile Jest tests
-        id: run-mobile-unit-tests
-        continue-on-error: true
-        env:
-          COVERAGE_ENABLED: ${{ inputs.coverage }}
-        run: |
-          coverage_args=()
-          if [ "${COVERAGE_ENABLED}" = "true" ]; then
-            coverage_args+=(--coverage)
-          fi
-          npm --prefix ui/mobile test -- --verbose --ci --json --outputFile=results.json "${coverage_args[@]}"
-
-      - name: Generate mobile summary
-        if: always()
-        env:
-          SUMMARY_TITLE: Mobile Unit Tests
-          REPORT_PATHS: ui/mobile/results.json
-          PRIMARY_OUTCOME: ${{ steps.run-mobile-unit-tests.outcome }}
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const path = require('path');
-
-          const summaryFile = process.env.GITHUB_STEP_SUMMARY;
-          const reportPaths = (process.env.REPORT_PATHS || '')
-            .split(',')
-            .map((value) => value.trim())
-            .filter(Boolean);
-          const title = process.env.SUMMARY_TITLE || 'Unit Tests';
-          const primaryOutcome = process.env.PRIMARY_OUTCOME || 'unknown';
-
-          const counts = {
-            suitesTotal: 0,
-            suitesPassed: 0,
-            suitesFailed: 0,
-            testsTotal: 0,
-            testsPassed: 0,
-            testsFailed: 0,
-            testsPending: 0,
-            testsTodo: 0,
-          };
-          const failedTests = [];
-
-          const stripAnsi = (value = '') => value.replace(/\u001b\[[0-9;]*m/g, '');
-
-          for (const relativeReportPath of reportPaths) {
-            const reportPath = path.resolve(relativeReportPath);
-            if (!fs.existsSync(reportPath)) {
-              continue;
-            }
-
-            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-            counts.suitesTotal += report.numTotalTestSuites ?? 0;
-            counts.suitesPassed += report.numPassedTestSuites ?? 0;
-            counts.suitesFailed += report.numFailedTestSuites ?? 0;
-            counts.testsTotal += report.numTotalTests ?? 0;
-            counts.testsPassed += report.numPassedTests ?? 0;
-            counts.testsFailed += report.numFailedTests ?? 0;
-            counts.testsPending += report.numPendingTests ?? 0;
-            counts.testsTodo += report.numTodoTests ?? 0;
-
-            for (const suite of report.testResults ?? []) {
-              for (const assertion of suite.assertionResults ?? []) {
-                if (assertion.status !== 'failed') continue;
-                const firstMessage = assertion.failureMessages?.[0] || 'No failure message available';
-                const firstLine = stripAnsi(firstMessage).split('\n').find(Boolean) || 'No failure message available';
-                failedTests.push({
-                  file: suite.name || relativeReportPath,
-                  fullName: assertion.fullName || assertion.title || 'unknown test',
-                  message: firstLine,
-                });
-              }
-            }
-          }
-
-          const missingReports = reportPaths.filter((relativeReportPath) => !fs.existsSync(path.resolve(relativeReportPath)));
-          const headline = primaryOutcome === 'success' ? `${title} Passed` : `${title} Failed`;
-
-          let md = '';
-          md += `## ${headline}\n\n`;
-          md += '| Metric | Count |\n';
-          md += '|---|---:|\n';
-          md += `| Test Suites (total) | ${counts.suitesTotal} |\n`;
-          md += `| Test Suites (passed) | ${counts.suitesPassed} |\n`;
-          md += `| Test Suites (failed) | ${counts.suitesFailed} |\n`;
-          md += `| Tests (total) | ${counts.testsTotal} |\n`;
-          md += `| Tests (passed) | ${counts.testsPassed} |\n`;
-          md += `| Tests (failed) | ${counts.testsFailed} |\n`;
-          md += `| Tests (skipped) | ${counts.testsPending} |\n`;
-          md += `| Tests (todo) | ${counts.testsTodo} |\n\n`;
-
-          if (missingReports.length > 0) {
-            md += 'Missing Jest JSON reports:\n';
-            for (const reportPath of missingReports) {
-              md += `- \`${reportPath}\`\n`;
-            }
-            md += '\n';
-          }
-
-          if (failedTests.length > 0) {
-            md += '<details>\n';
-            md += `<summary>Failed tests (${failedTests.length})</summary>\n\n`;
-            for (const test of failedTests.slice(0, 30)) {
-              md += `- **${test.fullName}**  \n`;
-              md += `  \`${test.file}\`  \n`;
-              md += `  ${test.message}\n`;
-            }
-            if (failedTests.length > 30) {
-              md += `\n- ... and ${failedTests.length - 30} more\n`;
-            }
-            md += '\n</details>\n';
-          }
-
-          fs.appendFileSync(summaryFile, md);
-          NODE
-
-      - name: Generate mobile unit Allure report
-        if: always()
-        continue-on-error: true
-        run: |
-          if [ -d ui/mobile/allure-results/mobile-unit ] && [ "$(find ui/mobile/allure-results/mobile-unit -type f | wc -l)" -gt 0 ]; then
-            npm --prefix ui/mobile run allure:generate
-          else
-            echo "No mobile unit Allure results found; skipping report generation."
-          fi
-
-      - name: Check mobile unit Allure artifacts
-        id: mobile-allure-check
-        if: always()
-        run: |
-          set -euo pipefail
-
-          if [ -d ui/mobile/allure-results/mobile-unit ] && [ "$(find ui/mobile/allure-results/mobile-unit -type f | wc -l)" -gt 0 ]; then
-            echo "has_allure_results=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_allure_results=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Upload mobile unit test report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: unit-test-report-mobile-${{ github.run_id }}
-          path: ui/mobile/results.json
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Upload mobile unit Allure artifacts
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: unit-test-report-mobile-allure-${{ github.run_id }}
-          path: |
-            ui/mobile/allure-results/mobile-unit
-            ui/mobile/allure-report/mobile-unit
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Upload mobile Jest coverage
-        if: always() && inputs.coverage == true
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: pr-coverage-mobile-${{ github.run_id }}
-          path: ui/mobile/coverage
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Mark job as failed when mobile unit tests failed
-        if: steps.run-mobile-unit-tests.outcome != 'success'
-        run: exit 1
-
   unit-tests-core:
     runs-on: ubuntu-latest
     outputs:
@@ -652,11 +457,10 @@ jobs:
 
   publish-unit-report:
     name: Publish Unit Allure report
-    needs: [unit-tests-mobile, unit-tests-core, unit-tests-web]
+    needs: [unit-tests-core, unit-tests-web]
     if: |
       always() &&
       (
-        needs.unit-tests-mobile.outputs.has_allure_results == 'true' ||
         needs.unit-tests-core.outputs.has_allure_results == 'true' ||
         needs.unit-tests-web.outputs.has_allure_results == 'true'
       ) &&
@@ -686,7 +490,7 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       REF_NAME: ${{ github.head_ref || github.ref_name }}
       COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      FAMILY_OUTCOME: ${{ needs.unit-tests-mobile.result == 'success' && needs.unit-tests-core.result == 'success' && needs.unit-tests-web.result == 'success' && 'success' || 'failure' }}
+      FAMILY_OUTCOME: ${{ needs.unit-tests-core.result == 'success' && needs.unit-tests-web.result == 'success' && 'success' || 'failure' }}
       WORKFLOW_NAME: Unit Tests
 
     steps:
@@ -716,13 +520,6 @@ jobs:
         with:
           name: unit-test-report-web-allure-${{ github.run_id }}
           path: .artifacts/web
-
-      - name: Download mobile Allure artifact
-        continue-on-error: true
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: unit-test-report-mobile-allure-${{ github.run_id }}
-          path: .artifacts/mobile
 
       - name: Prepare gh-pages branch
         env:
@@ -771,7 +568,6 @@ jobs:
             --input core-unit=.artifacts/core/allure-results/core-unit \
             --input core-integration=.artifacts/core/allure-results/core-integration \
             --input web-unit=.artifacts/web/allure-results/web-unit \
-            --input mobile-unit=.artifacts/mobile/allure-results/mobile-unit \
             --input component=.artifacts/component/allure-results/component \
             --input e2e=.artifacts/e2e/allure-results/e2e \
             --github-output "$GITHUB_OUTPUT"

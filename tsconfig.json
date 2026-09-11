@@ -37,9 +37,6 @@
       "@ui/web/*": [
         "./ui/web/*"
       ],
-      "@ui/mobile/*": [
-        "./ui/mobile/*"
-      ],
       "@ui/shell/*": [
         "./ui/shell/*"
       ]
@@ -54,7 +51,6 @@
   ],
   "exclude": [
     "node_modules",
-    "ui/mobile",
     "ui/shell/android",
     "ui/shell/www",
     "ui/shell/capacitor.config.ts",

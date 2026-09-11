@@ -1,12 +1,11 @@
 name: Shell Build
 
-# Builds the Capacitor shell (ui/shell): the web build wrapped as an Android app.
-# Separate from Android Build, which builds the React Native app in ui/mobile — they
-# are two different apps, and they can be installed side by side.
+# Builds the Capacitor shell (ui/shell): the web build wrapped as an Android app. This
+# is the Android app, since the React Native package it replaced has been removed.
 #
-# Debug needs no secrets. Release needs a real keystore in secrets; unlike ui/mobile,
-# whose release block signs with the checked-in debug key, this refuses to produce an
-# APK signed with a key that is not a release key.
+# Debug needs no secrets. Release needs a real keystore in secrets — unlike the retired
+# React Native build, whose release block signed with a checked-in debug key, this
+# refuses to produce an APK signed with anything but a release key.
 #
 # checkov:skip=CKV_GHA_7: the two dispatch inputs are the point of this workflow — a
 # build is meaningless without saying which variant and build type it is for, exactly as

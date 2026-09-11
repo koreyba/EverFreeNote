@@ -40,14 +40,6 @@ jobs:
           name: pr-coverage-web-${{ github.run_id }}
           path: coverage/jest/web
 
-      - name: Download mobile Jest coverage
-        if: always()
-        continue-on-error: true
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: pr-coverage-mobile-${{ github.run_id }}
-          path: coverage/jest/mobile
-
       - name: Download Cypress coverage
         if: always()
         continue-on-error: true
@@ -63,7 +55,7 @@ jobs:
           set -euo pipefail
 
           reports=()
-          for report in coverage/jest/core/lcov.info coverage/jest/web/lcov.info coverage/jest/mobile/lcov.info coverage/component/lcov.info; do
+          for report in coverage/jest/core/lcov.info coverage/jest/web/lcov.info coverage/component/lcov.info; do
             if [ -s "$report" ]; then
               reports+=("$report")
             fi

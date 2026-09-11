@@ -178,12 +178,22 @@ is just `android:stage` under another name, which is why there is no second dev 
 Only stage and prod are built by CI or handed to anyone, matching what
 `android-build.yml` already offers for the React Native app.
 
-## What this does not decide
+## Retiring ui/mobile
 
-Retiring `ui/mobile`. That needs the shell used in earnest first — editor typing
-latency at full scope, offline behaviour over days rather than minutes, keyboard and
-safe-area handling across screens, and a Play Store review under the "minimum
-functionality" policy.
+Done, once the shell had been used for real on a device: sign-in, notes, search, the
+editor, ENEX import and export end to end. `ui/mobile` is gone, along with the code that
+existed only to serve it — the `editor-webview` route and `RichTextEditorWebView`, which
+bridged the web build into the React Native WebView, and the script that copied the web
+bundle into the native assets.
+
+What went with it: 34.8k lines and 64 npm dependencies, an Android Build workflow, a
+mobile coverage job, and a second implementation of every feature. Its phase
+documentation stays as history.
+
+Still unproven at the time of retirement, and worth watching rather than assuming:
+offline behaviour over days rather than minutes, and a Play Store review under the
+"minimum functionality" policy. Both are recoverable — the package is one `git revert`
+away for as long as the history exists.
 
 ## Ecosystem note
 

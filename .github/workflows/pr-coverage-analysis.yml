@@ -160,12 +160,6 @@ jobs:
           name: pr-coverage-web-${{ github.run_id }}
           path: coverage/jest/web
 
-      - name: Download mobile Jest coverage
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: pr-coverage-mobile-${{ github.run_id }}
-          path: coverage/jest/mobile
-
       - name: Download Cypress coverage
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
@@ -177,7 +171,6 @@ jobs:
           set -euo pipefail
           test -s coverage/jest/core/lcov.info
           test -s coverage/jest/web/lcov.info
-          test -s coverage/jest/mobile/lcov.info
           test -s coverage/component/lcov.info
 
       - name: Download and verify Codacy reporter
@@ -210,7 +203,6 @@ jobs:
             --commit-uuid "${{ github.event.pull_request.head.sha }}" \
             -r coverage/jest/core/lcov.info \
             -r coverage/jest/web/lcov.info \
-            -r coverage/jest/mobile/lcov.info \
             -r coverage/component/lcov.info
 
   component-status-comment:

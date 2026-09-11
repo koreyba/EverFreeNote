@@ -23,8 +23,9 @@ describe('shell variants', () => {
     expect(resolveVariant(value)).toBe('dev')
   })
 
-  it('uses the schemes already registered in Supabase for ui/mobile', () => {
-    // Reusing these is what lets the shell authenticate without a dashboard change.
+  it('uses the schemes already registered in Supabase', () => {
+    // Inherited from the retired React Native app, which is what lets the shell
+    // authenticate without a dashboard change.
     expect(schemeFor('dev')).toBe('everfreenote-dev')
     expect(schemeFor('stage')).toBe('everfreenote-stage')
     expect(schemeFor('prod')).toBe('everfreenote')

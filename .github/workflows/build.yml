@@ -39,7 +39,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: |
             package-lock.json
-            ui/mobile/package-lock.json
             ui/shell/package-lock.json
       
       - name: Install root dependencies
@@ -47,9 +46,6 @@ jobs:
 
       - name: Test CI support scripts
         run: node --test scripts/*.test.js
-
-      - name: Install mobile dependencies
-        run: npm --prefix ui/mobile ci --ignore-scripts
 
       - name: Install shell dependencies
         run: npm --prefix ui/shell ci --ignore-scripts
@@ -63,11 +59,6 @@ jobs:
         id: validate_main
         continue-on-error: true
         run: npm run validate
-
-      - name: Validate mobile package
-        id: validate_mobile
-        continue-on-error: true
-        run: npm --prefix ui/mobile run validate
 
       - name: Run gitleaks scan
         if: always()
@@ -101,11 +92,6 @@ jobs:
 
           if [ "${{ steps.validate_main.outcome }}" != "success" ]; then
             echo "Main project validation failed."
-            failed=1
-          fi
-
-          if [ "${{ steps.validate_mobile.outcome }}" != "success" ]; then
-            echo "Mobile package validation failed."
             failed=1
           fi
 

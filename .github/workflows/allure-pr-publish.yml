@@ -79,13 +79,6 @@ jobs:
           name: unit-test-report-web-allure-${{ github.run_id }}
           path: .artifacts/web
 
-      - name: Download mobile unit Allure artifact
-        continue-on-error: true
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: unit-test-report-mobile-allure-${{ github.run_id }}
-          path: .artifacts/mobile
-
       - name: Download component Allure artifact
         continue-on-error: true
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -140,7 +133,6 @@ jobs:
             --input core-unit=.artifacts/core/allure-results/core-unit \
             --input core-integration=.artifacts/core/allure-results/core-integration \
             --input web-unit=.artifacts/web/allure-results/web-unit \
-            --input mobile-unit=.artifacts/mobile/allure-results/mobile-unit \
             --input component=.artifacts/component/allure-results/component \
             --input e2e=.artifacts/e2e/allure-results/e2e \
             --github-output "$GITHUB_OUTPUT"

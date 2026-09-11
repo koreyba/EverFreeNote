@@ -15,8 +15,8 @@
     "test:integration:core:allure": "allure agent --goal \"Core Integration Tests\" -- npm run test:integration:core",
     "test:unit:web": "jest --config jest.config.cjs --selectProjects unit-web",
     "test:unit:web:allure": "allure agent --goal \"Web Unit Tests\" -- npm run test:unit:web",
-    "type-check": "tsc --noEmit && tsc -p core/tsconfig.json --noEmit && tsc -p core/tests/tsconfig.json --noEmit && tsc -p ui/web/tests/tsconfig.json --noEmit && tsc -p ui/shell/tests/tsconfig.json --noEmit && npm --prefix ui/mobile run type-check && npm --prefix ui/shell run type-check",
-    "type-check:tests": "tsc -p core/tests/tsconfig.json --noEmit && tsc -p ui/web/tests/tsconfig.json --noEmit && tsc -p ui/shell/tests/tsconfig.json --noEmit && tsc -p ui/mobile/tests/tsconfig.json --noEmit",
+    "type-check": "tsc --noEmit && tsc -p core/tsconfig.json --noEmit && tsc -p core/tests/tsconfig.json --noEmit && tsc -p ui/web/tests/tsconfig.json --noEmit && tsc -p ui/shell/tests/tsconfig.json --noEmit && npm --prefix ui/shell run type-check",
+    "type-check:tests": "tsc -p core/tests/tsconfig.json --noEmit && tsc -p ui/web/tests/tsconfig.json --noEmit && tsc -p ui/shell/tests/tsconfig.json --noEmit",
     "eslint": "eslint . --max-warnings=0",
     "deno-check": "node scripts/deno-check-functions.mjs",
     "validate": "npm run type-check && npm run eslint && npm run deno-check",
@@ -170,8 +170,7 @@
     "exclude": [
       "**/*.d.ts",
       "**/tests/**",
-      "cypress/**",
-      "ui/mobile/**"
+      "cypress/**"
     ],
     "extension": [
       ".js",

@@ -7,18 +7,15 @@ import variantTable from './variants.data'
  * config also read — see that file for why it is CommonJS. Adding a variant there is
  * enough for them; TypeScript will then point at whatever else needs updating here.
  *
- * Mirrors the dev/stage/prod split ui/mobile/app.config.ts already uses, so the two
- * Android apps can be installed side by side while the shell is proven out. The ids are
- * deliberately distinct from ui/mobile's (`com.everfreenote.app*`); when the shell
- * replaces the React Native app, rename them to those ids so existing installs upgrade
- * in place rather than appearing as a second app.
+ * Keeps the dev/stage/prod split the retired React Native app used. The ids stayed
+ * distinct from its `com.everfreenote.app*` so the two could be installed side by side
+ * while the shell was proven out; now that it is gone, renaming them to those ids would
+ * let any remaining install upgrade in place rather than appear as a second app.
  *
- * The schemes intentionally match ui/mobile's, because those redirect URLs are already
- * registered in Supabase Auth — reusing them means the shell authenticates without any
- * dashboard change. The cost while both apps exist: Android shows an app chooser on the
- * OAuth callback if both are installed. Uninstall the ui/mobile build of the same
- * variant, or set NEXT_PUBLIC_SHELL_SCHEME / SHELL_SCHEME to a dedicated scheme and
- * register it in Supabase Auth -> URL Configuration.
+ * The schemes match the ones that app registered, because those redirect URLs already
+ * exist in Supabase Auth — reusing them means the shell authenticates without a
+ * dashboard change. Set NEXT_PUBLIC_SHELL_SCHEME / SHELL_SCHEME to use a dedicated
+ * scheme instead, and register it in Supabase Auth -> URL Configuration first.
  */
 export type AppVariant = keyof typeof variantTable
 
@@ -49,8 +46,8 @@ export function schemeFor(variant: AppVariant): string {
 /**
  * Where this build's app is deployed on the web.
  *
- * Deliberately not hardcoded: a deployment hostname is configuration, and ui/mobile
- * already takes it from EXPO_PUBLIC_PUBLIC_WEB_ORIGIN rather than from code. The
+ * Deliberately not hardcoded: a deployment hostname is configuration, as the retired
+ * React Native app also treated it. The
  * variant-suffixed name wins, so one env file can describe every variant:
  *
  *   NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_DEV / _STAGE / _PROD
