@@ -1,0 +1,1 @@
+{"id":"11d4be45e8e28a6dac4b07087017d561","fullName":"everfreenote:core/tests/unit/core-services-noteWorkspaceTabs.test.ts#note workspace tab state omits a draft that is only a copy of the note it shows","name":"omits a draft that is only a copy of the note it shows","status":"passed","testResultsByEnv":{"default":"f6a03c3f5b49a4f42e6f96b9cb4b611a"}}
