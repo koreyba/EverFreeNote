@@ -10,7 +10,14 @@ export class AuthService {
   async signInWithGoogle(redirectTo: string, options?: { skipBrowserRedirect?: boolean }) {
     return this.supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo, skipBrowserRedirect: options?.skipBrowserRedirect },
+      options: {
+        redirectTo,
+        // Left out entirely unless asked for, so callers that do not use it send the
+        // same request they always did rather than one carrying an undefined key.
+        ...(options?.skipBrowserRedirect === undefined
+          ? {}
+          : { skipBrowserRedirect: options.skipBrowserRedirect }),
+      },
     })
   }
 
