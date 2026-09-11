@@ -55,6 +55,7 @@ jobs:
           set -euo pipefail
 
           reports=()
+          for report in coverage/jest/core/lcov.info coverage/jest/web/lcov.info coverage/component/lcov.info; do
             if [ -s "$report" ]; then
               reports+=("$report")
             fi
