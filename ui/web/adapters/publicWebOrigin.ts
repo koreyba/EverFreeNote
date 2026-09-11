@@ -12,5 +12,9 @@ import { isNativeShell, shellPublicWebOrigin } from '@ui/shell/runtime/platform'
  */
 export function resolvePublicWebOrigin(): string {
   if (isNativeShell()) return shellPublicWebOrigin()
-  return globalThis.location?.origin ?? ''
+
+  // TypeScript types `location` as always present, but the static export prerenders
+  // without one; a `?.` here reads as dead code rather than as the real case it covers.
+  if (typeof globalThis.location === 'undefined') return ''
+  return globalThis.location.origin
 }
