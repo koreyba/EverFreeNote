@@ -1,1 +1,0 @@
-{"id":"618a4b7834aefa1fd106d104cb4e218b","fullName":"everfreenote:core/tests/unit/core-mcp-oauthResource.test.ts#core/mcp/oauthResource extractBearerToken extracts the token case-insensitively and trims whitespace","name":"extracts the token case-insensitively and trims whitespace","status":"passed","testResultsByEnv":{"default":"b597e5e5c964e23377dde34e3011f6ce"}}

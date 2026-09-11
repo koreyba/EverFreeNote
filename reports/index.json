@@ -3,6 +3,34 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-198/run-34605242314-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-198/run-34605242314-attempt-1/",
+    "runId": "34605242314",
+    "runAttempt": "1",
+    "prNumber": "198",
+    "ref": "claude/remove-stray-icon-copy",
+    "sha": "10a763cf7c08c50606c6f0a2075c73097ef02f86",
+    "outcome": "success",
+    "previewUrl": "https://d7fd98a7.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #198",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-09-11T13:44:41.986Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "core-unit",
       "core-integration",
       "web-unit"
@@ -611,44 +639,6 @@
     "scopeLabel": "PR #196",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-09-11T08:00:52.840Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-196/run-34567979834-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-196/run-34567979834-attempt-1/",
-    "runId": "34567979834",
-    "runAttempt": "1",
-    "prNumber": "196",
-    "ref": "claude/mobile-wrapper-web-app-1d666e",
-    "sha": "67242accdedb2edd4b914f91d3e9744a2ce027ca",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #196",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-09-11T06:12:06.838Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"

@@ -1,1 +1,0 @@
-{"id":"1c41098eecc206cff9865f040ffa7bea","fullName":"everfreenote:core/tests/unit/core-mcp-supabaseNotebookRepository.test.ts#core/mcp/supabaseNotebookRepository getNote returns the note scoped to the user","name":"returns the note scoped to the user","status":"passed","testResultsByEnv":{"default":"ec5376490294d5832402f749a56a80d5"}}
