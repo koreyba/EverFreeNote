@@ -23,11 +23,24 @@ const MANIFEST = path.join(ANDROID_DIR, 'app', 'src', 'main', 'AndroidManifest.x
 
 const { variant, scheme, appId: expectedAppId } = resolveTarget(process.env, VARIANTS)
 
+/** Contents of a file, or '' when it does not exist — no separate existence check. */
+function readTextOrEmpty(file) {
+  try {
+    return fs.readFileSync(file, 'utf-8')
+  } catch (error) {
+    if (error.code === 'ENOENT') return ''
+    throw error
+  }
+}
+
 const GRADLE_PATH = path.join(ANDROID_DIR, 'app', 'build.gradle')
 
 // android/ is a working directory: a project generated for another variant is discarded
 // rather than reused, because reusing it produces an APK for that other variant silently.
-if (fs.existsSync(GRADLE_PATH) && needsRegeneration(fs.readFileSync(GRADLE_PATH, 'utf-8'), expectedAppId)) {
+//
+// Read and handle the absence, rather than asking whether the file exists and then
+// reading it — between those two steps the answer can change.
+if (needsRegeneration(readTextOrEmpty(GRADLE_PATH), expectedAppId)) {
   console.log(`♻️  android/ was generated for another variant; regenerating for ${expectedAppId}`)
   fs.rmSync(ANDROID_DIR, { recursive: true, force: true })
 }
@@ -70,12 +83,13 @@ if (gradle.changed) {
 const ICON_SOURCE = path.join(SHELL_DIR, 'assets', 'android-res')
 const RES_DIR = path.join(ANDROID_DIR, 'app', 'src', 'main', 'res')
 
-if (!fs.existsSync(ICON_SOURCE)) {
+console.log('🎨 Applying launcher icon')
+try {
+  fs.cpSync(ICON_SOURCE, RES_DIR, { recursive: true })
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error
   throw new Error(`Launcher icon resources are missing: ${ICON_SOURCE}. Run npm run assets:generate.`)
 }
-
-console.log('🎨 Applying launcher icon')
-fs.cpSync(ICON_SOURCE, RES_DIR, { recursive: true })
 
 console.log(`
 Redirect URL this build expects in Supabase Auth -> URL Configuration:

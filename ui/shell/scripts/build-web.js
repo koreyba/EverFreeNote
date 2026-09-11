@@ -34,10 +34,17 @@ const variant = process.env.APP_VARIANT in VARIANTS ? process.env.APP_VARIANT : 
  */
 function readFromEnvFiles(name) {
   for (const file of ['.env.local', '.env']) {
-    const filePath = path.join(REPO_ROOT, file)
-    if (!fs.existsSync(filePath)) continue
+    // Read and handle absence rather than checking first: the answer can change in
+    // between, and the check buys nothing here.
+    let contents
+    try {
+      contents = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8')
+    } catch (error) {
+      if (error.code === 'ENOENT') continue
+      throw error
+    }
 
-    for (const line of fs.readFileSync(filePath, 'utf-8').split('\n')) {
+    for (const line of contents.split('\n')) {
       const match = new RegExp(`^\\s*(?:export\\s+)?${name}\\s*=\\s*(.*)$`).exec(line)
       if (!match) continue
 
@@ -95,13 +102,14 @@ if (supabase.usingPlaceholders) {
 const npm = npmCommand()
 execFileSync(npm.command, [...npm.prefixArgs, 'run', 'build'], { cwd: REPO_ROOT, stdio: 'inherit', env })
 
-if (!fs.existsSync(path.join(OUT_DIR, 'index.html'))) {
-  throw new Error(`Static export missing: ${path.join(OUT_DIR, 'index.html')}`)
-}
-
 console.log('📂 Staging out/ -> ui/shell/www/')
 fs.rmSync(WWW_DIR, { recursive: true, force: true })
-fs.cpSync(OUT_DIR, WWW_DIR, { recursive: true })
+try {
+  fs.cpSync(OUT_DIR, WWW_DIR, { recursive: true })
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error
+  throw new Error(`Static export missing: ${OUT_DIR}. Did the Next.js build fail?`)
+}
 
 const size = dirSize(WWW_DIR)
 console.log(`✅ Web root ready: ${(size / 1024 / 1024).toFixed(2)} MB`)
