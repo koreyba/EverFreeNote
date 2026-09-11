@@ -17,7 +17,14 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from "react"
 import { NoteList } from "@/components/features/notes/NoteList"
 import type { Note } from "@core/types/domain"
 
-const HARNESS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PERF_HARNESS === "true"
+/**
+ * Read per render rather than at module scope: Next.js inlines NEXT_PUBLIC_* wherever it
+ * appears, so this is still a constant in a real build, and it keeps the module free of
+ * load-order coupling.
+ */
+function harnessEnabled() {
+  return process.env.NEXT_PUBLIC_ENABLE_PERF_HARNESS === "true"
+}
 
 const TAG_POOL = ["work", "ideas", "personal", "reading", "todo", "archive", "draft", "meeting"]
 
@@ -93,7 +100,12 @@ export default function PerfHarnessPage() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const paint = performance.now()
-        const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined
+        // Navigation Timing is not universally present (jsdom, older WebViews); the
+        // paint number is the one that matters, so missing timings must not break it.
+        const nav =
+          typeof performance.getEntriesByType === "function"
+            ? (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)
+            : undefined
         // Also exposed on window so the measure script can read it over CDP,
         // which is more reliable than scraping logcat on release builds.
         const globalWithPerf = globalThis as unknown as { __perf?: Record<string, unknown> }
@@ -116,7 +128,7 @@ export default function PerfHarnessPage() {
 
   // Rolling FPS/long-frame counter, reported every 2s while scrolling.
   useEffect(() => {
-    if (!HARNESS_ENABLED) return
+    if (!harnessEnabled()) return
     let frames = 0
     let longFrames = 0
     let last = performance.now()
@@ -153,7 +165,7 @@ export default function PerfHarnessPage() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  if (!HARNESS_ENABLED) return null
+  if (!harnessEnabled()) return null
 
   // NoteList mounts AutoSizer, which needs ResizeObserver — render it only once the
   // client effect has supplied a count, so the static export can still prerender.
