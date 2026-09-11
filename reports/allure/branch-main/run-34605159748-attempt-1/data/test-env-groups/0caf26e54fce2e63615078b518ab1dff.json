@@ -1,0 +1,1 @@
+{"id":"0caf26e54fce2e63615078b518ab1dff","fullName":"everfreenote:ui/shell/tests/unit/supabaseEnv.test.ts#resolveSupabaseEnv leaves values defined in a root env file to Next.js, but still reports them","name":"leaves values defined in a root env file to Next.js, but still reports them","status":"passed","testResultsByEnv":{"default":"170e926e5fbd2815d996aaee755c64d3"}}
