@@ -1,1 +1,0 @@
-{"id":"16b611cbea549dc033848b6169a11874","fullName":"everfreenote:core/tests/unit/core-mcp-noteContent.test.ts#core/mcp/noteContent htmlToPlainText returns an empty string for empty input","name":"returns an empty string for empty input","status":"passed","testResultsByEnv":{"default":"d9cc30ddba92b70564a8e8ea0ec6c3f0"}}

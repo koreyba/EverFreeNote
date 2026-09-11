@@ -1,1 +1,0 @@
-{"id":"f7d818c4582a612b4e4194acf9a3efd7","fullName":"everfreenote:ui/shell/tests/unit/platform.test.ts#shell platform detection reads the public web origin from the environment, never from code","name":"reads the public web origin from the environment, never from code","status":"passed","testResultsByEnv":{"default":"d9558f1042655916f325ef21684242a3"}}
