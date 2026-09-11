@@ -1,0 +1,1 @@
+{"id":"4af5a9b2c875c279c2387ea1dcb220c5","fullName":"everfreenote:ui/web/tests/unit/hooks/useAIPaginatedSearch.test.tsx#useAIPaginatedSearch returns raw chunk hits in chunk mode without note-level collapsing","name":"returns raw chunk hits in chunk mode without note-level collapsing","status":"passed","testResultsByEnv":{"default":"04dd3139b5034da8d4d1b9892e802332"}}

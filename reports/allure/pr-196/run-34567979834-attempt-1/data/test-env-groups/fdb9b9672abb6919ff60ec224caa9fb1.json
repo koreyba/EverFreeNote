@@ -1,0 +1,1 @@
+{"id":"fdb9b9672abb6919ff60ec224caa9fb1","fullName":"everfreenote:core/tests/unit/core-mcp-oauthResource.test.ts#core/mcp/oauthResource resolvePublicOrigin falls back to SUPABASE_URL and then to the request URL","name":"falls back to SUPABASE_URL and then to the request URL","status":"passed","testResultsByEnv":{"default":"94901e9d72d74b1d299c6e738620c737"}}

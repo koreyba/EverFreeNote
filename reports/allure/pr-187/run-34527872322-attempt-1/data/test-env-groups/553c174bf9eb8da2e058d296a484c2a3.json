@@ -1,1 +1,0 @@
-{"id":"553c174bf9eb8da2e058d296a484c2a3","fullName":"everfreenote:ui/web/tests/unit/components/noteView.test.tsx#NoteView copy action flushes the latest scroll position when the reading view unmounts","name":"flushes the latest scroll position when the reading view unmounts","status":"passed","testResultsByEnv":{"default":"c11749f9092b2c020f5fd29a890365e2"}}

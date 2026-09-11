@@ -1,1 +1,0 @@
-{"id":"eecaa4669ff6615e930c715d913b1c96","fullName":"everfreenote:core/tests/unit/core-services-noteCopy.test.ts#core/services/noteCopy sanitizes fallback-unwrapped HTML before returning it","name":"sanitizes fallback-unwrapped HTML before returning it","status":"passed","testResultsByEnv":{"default":"382a6bf06828cc3cd5d90255e93681bb"}}
