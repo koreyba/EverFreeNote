@@ -1,6 +1,6 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
-import { SHELL_VARIANTS, resolveVariant, schemeFor } from './variants'
+import { SHELL_VARIANTS, nonEmpty, resolveVariant, schemeFor } from './variants'
 
 const variant = resolveVariant(process.env.APP_VARIANT)
 const scheme = schemeFor(variant)
@@ -12,8 +12,8 @@ const scheme = schemeFor(variant)
  * in Supabase; Android will offer a choice of app on the callback when several are
  * installed.
  */
-const appId = process.env.SHELL_APP_ID?.trim() || SHELL_VARIANTS[variant].appId
-const appName = process.env.SHELL_APP_NAME?.trim() || SHELL_VARIANTS[variant].appName
+const appId = nonEmpty(process.env.SHELL_APP_ID) ?? SHELL_VARIANTS[variant].appId
+const appName = nonEmpty(process.env.SHELL_APP_NAME) ?? SHELL_VARIANTS[variant].appName
 
 /**
  * Capacitor shell around the Next.js static export produced by the repo root build.

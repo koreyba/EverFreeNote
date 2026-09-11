@@ -31,11 +31,15 @@ export type ShellVariant = {
 
 export const SHELL_VARIANTS: Record<AppVariant, ShellVariant> = variantTable
 
+/** A trimmed value, or undefined when it is absent or blank — so `??` can do the rest. */
+export function nonEmpty(value: string | undefined): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed && trimmed.length > 0 ? trimmed : undefined
+}
+
 /** Env override, so a dedicated scheme can be used once it is registered in Supabase. */
 function schemeOverride(): string | undefined {
-  const raw = process.env.NEXT_PUBLIC_SHELL_SCHEME ?? process.env.SHELL_SCHEME
-  const trimmed = raw?.trim()
-  return trimmed && trimmed.length > 0 ? trimmed : undefined
+  return nonEmpty(process.env.NEXT_PUBLIC_SHELL_SCHEME ?? process.env.SHELL_SCHEME)
 }
 
 export function schemeFor(variant: AppVariant): string {
