@@ -12,6 +12,7 @@ const moduleNameMapper = {
   '^@core/(.*)$': '<rootDir>/core/$1',
   '^@ui/web/(.*)$': '<rootDir>/ui/web/$1',
   '^@ui/mobile/(.*)$': '<rootDir>/ui/mobile/$1',
+  '^@ui/shell/(.*)$': '<rootDir>/ui/shell/$1',
 }
 
 const coreUnitAllureOptions = {
@@ -52,6 +53,14 @@ module.exports = {
     'app/**/*.{js,jsx,ts,tsx}',
     'core/**/*.{js,jsx,ts,tsx}',
     'ui/web/**/*.{js,jsx,ts,tsx}',
+    'ui/shell/runtime/**/*.{js,jsx,ts,tsx}',
+    'ui/shell/variants.ts',
+    // Build helpers with real logic and real tests. The rest of ui/shell/scripts is
+    // process orchestration, excluded from coverage in sonar-project.properties the way
+    // the root scripts/ directory already is.
+    'ui/shell/scripts/nativeProject.js',
+    'ui/shell/scripts/supabaseEnv.js',
+    'ui/shell/variants.data.js',
     '!**/*.d.ts',
     '!**/tests/**',
   ],
@@ -87,7 +96,9 @@ module.exports = {
       rootDir: __dirname,
       testEnvironment: 'allure-jest/jsdom',
       testEnvironmentOptions: webUnitAllureOptions,
-      testRegex: ['ui/web/tests/unit/.*\\.test\\.(ts|tsx)$'],
+      // The shell runtime is part of the web bundle and runs in the same jsdom
+      // environment, so it is covered by this project rather than a separate one.
+      testRegex: ['ui/web/tests/unit/.*\\.test\\.(ts|tsx)$', 'ui/shell/tests/unit/.*\\.test\\.(ts|tsx)$'],
       setupFilesAfterEnv: ['<rootDir>/tests/jest/web.setup.cjs'],
       transform,
       moduleNameMapper,

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { ExportService } from "@core/enex/export-service"
 import { ImageDownloader } from "@core/enex/image-downloader"
 import { EnexBuilder } from "@core/enex/enex-builder"
+import { downloadGeneratedFile } from "@ui/web/adapters/fileDownload"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { NoteService } from "@core/services/notes"
 import type { ExportProgress } from "@core/enex/export-types"
@@ -104,7 +105,10 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
       // Запускаем скачивание и закрытие диалога асинхронно, чтобы не блокировать UI
       // ExportSelectionDialog содержит много элементов, его закрытие занимает время
       setTimeout(() => {
-        downloadBlob(blob, fileName)
+        downloadGeneratedFile(blob, fileName, "EverFreeNote export").catch((downloadError: unknown) => {
+          console.error("Export download failed:", downloadError)
+          toast.error("Export was generated but could not be saved")
+        })
         setDialogOpen(false)
       }, 0)
 
@@ -138,14 +142,3 @@ export function ExportButton({ onExportComplete }: ExportButtonProps) {
   )
 }
 
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement("a")
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  // Откладываем освобождение URL, чтобы дать браузеру время на скачивание
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}

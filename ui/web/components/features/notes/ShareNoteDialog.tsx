@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PublicNoteShareService, buildPublicNoteUrl } from "@core/services/publicNoteShare"
+import { resolvePublicWebOrigin } from "@ui/web/adapters/publicWebOrigin"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 
 type ShareNoteDialogProps = Readonly<{
@@ -42,13 +43,20 @@ export function ShareNoteDialog({ noteId, open, onOpenChange }: ShareNoteDialogP
       return
     }
 
+    // In the Android shell this is the deployed site, not the WebView's own
+    // https://localhost origin, which a recipient could not open.
+    const origin = resolvePublicWebOrigin()
+    if (!origin) {
+      setError("Public web origin is not configured for this build.")
+      return
+    }
+
     setIsLoading(true)
     setError(null)
     setCopied(false)
 
     try {
       const link = await service.getOrCreateViewLink(noteId, user.id)
-      const origin = globalThis.location?.origin ?? ""
       setShareUrl(buildPublicNoteUrl(origin, link.token))
     } catch (nextError) {
       const message = nextError instanceof Error ? nextError.message : "Could not create share link."

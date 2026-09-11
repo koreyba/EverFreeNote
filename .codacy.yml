@@ -1,0 +1,27 @@
+---
+# Codacy Cloud reads this file when "Codacy configuration file" is enabled in the
+# repository settings (Settings -> General). It mirrors the coverage exclusions in
+# sonar-project.properties, so the two analysers judge the same code.
+#
+# Everything below is build tooling or measurement tooling, not product code:
+#
+#   ui/shell/scripts   build orchestration, the way the root scripts/ directory already
+#                      is — except nativeProject.js and supabaseEnv.js, which carry real
+#                      logic, are unit tested, and are deliberately left in.
+#   app/perf-harness   on-device measurement, compiled out of normal builds by
+#                      NEXT_PUBLIC_ENABLE_PERF_HARNESS.
+#   *.d.ts             type declarations; "unused" is what a declaration file is.
+#
+# Without these, Codacy reports the repo's own ESLint config as violations: the CJS build
+# scripts are judged by a TypeScript profile that bans require(), which eslint.config.mjs
+# switches off for exactly these files.
+exclude_paths:
+  - 'ui/shell/scripts/add-android.js'
+  - 'ui/shell/scripts/build-apk.js'
+  - 'ui/shell/scripts/build-web.js'
+  - 'ui/shell/scripts/cdp.js'
+  - 'ui/shell/scripts/generate-assets.js'
+  - 'ui/shell/scripts/localBin.js'
+  - 'ui/shell/scripts/make-harness-www.js'
+  - 'app/perf-harness/**'
+  - '**/*.d.ts'

@@ -6,7 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { AuthService } from '@core/services/auth'
 import { webStorageAdapter } from '@ui/web/adapters/storage'
-import { webOAuthRedirectUri } from '@ui/web/config'
+import { resolveOAuthAdapter, resolveOAuthRedirectUri } from '@ui/web/adapters/oauth'
 import { featureFlags } from '@ui/web/featureFlags'
 import { clearNoteWorkspaceState } from '@ui/web/lib/noteWorkspaceStorage'
 
@@ -67,8 +67,24 @@ export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
 
     const handleSignInWithGoogle = async () => {
         try {
-            const { error } = await authService.signInWithGoogle(webOAuthRedirectUri)
-            if (error) console.error('Error signing in:', error)
+            // The provider URL is opened by the platform adapter rather than by Supabase:
+            // the browser navigates to it, the Android shell hands it to a Custom Tab.
+            const { data, error } = await authService.signInWithGoogle(resolveOAuthRedirectUri(), {
+                skipBrowserRedirect: true,
+            })
+
+            if (error) {
+                console.error('Error signing in:', error)
+                return
+            }
+
+            if (!data?.url) {
+                console.error('Error signing in: provider returned no authorization URL')
+                return
+            }
+
+            const oauthAdapter = await resolveOAuthAdapter()
+            await oauthAdapter.startOAuth(data.url)
         } catch (error) {
             console.error('Error signing in:', error)
         }

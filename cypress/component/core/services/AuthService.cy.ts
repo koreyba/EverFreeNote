@@ -26,6 +26,15 @@ describe('core/services/AuthService', () => {
     })
   })
 
+  it('signInWithGoogle returns the provider URL instead of navigating when asked', async () => {
+    // What the Android shell needs: it opens the URL in a Custom Tab itself.
+    await service.signInWithGoogle('everfreenote://auth/callback', { skipBrowserRedirect: true })
+    expect(mockSupabase.auth.signInWithOAuth).to.have.been.calledWith({
+      provider: 'google',
+      options: { redirectTo: 'everfreenote://auth/callback', skipBrowserRedirect: true }
+    })
+  })
+
   it('signInWithPassword', async () => {
     await service.signInWithPassword('test@example.com', 'password')
     expect(mockSupabase.auth.signInWithPassword).to.have.been.calledWith({

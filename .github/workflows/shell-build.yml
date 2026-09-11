@@ -1,0 +1,136 @@
+name: Shell Build
+
+# Builds the Capacitor shell (ui/shell): the web build wrapped as an Android app.
+# Separate from Android Build, which builds the React Native app in ui/mobile — they
+# are two different apps, and they can be installed side by side.
+#
+# Debug needs no secrets. Release needs a real keystore in secrets; unlike ui/mobile,
+# whose release block signs with the checked-in debug key, this refuses to produce an
+# APK signed with a key that is not a release key.
+#
+# checkov:skip=CKV_GHA_7: the two dispatch inputs are the point of this workflow — a
+# build is meaningless without saying which variant and build type it is for, exactly as
+# Android Build already takes an environment input. Both are `type: choice`, so the
+# values are a closed set GitHub validates rather than free text, and neither reaches a
+# shell as data: the build step branches on them and calls a fixed npm script per case.
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: 'Shell variant to build'
+        required: true
+        default: 'stage'
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+      build_type:
+        description: 'Build type (release requires the shell keystore secrets)'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+  pull_request:
+    # Deliberately narrow: an Android build is slow, and web/core changes are already
+    # covered by Build. Use the manual dispatch to check the shell against those.
+    paths:
+      - 'ui/shell/**'
+      - '.github/workflows/shell-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build shell APK (${{ inputs.variant || 'stage' }} ${{ inputs.build_type || 'debug' }})
+    runs-on: ubuntu-latest
+    env:
+      APP_VARIANT: ${{ inputs.variant || 'stage' }}
+      BUILD_TYPE: ${{ inputs.build_type || 'debug' }}
+      # Where each variant is deployed; share links use these rather than the shell's
+      # own https://localhost origin.
+      NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_STAGE: ${{ vars.PUBLIC_WEB_ORIGIN_STAGE }}
+      NEXT_PUBLIC_PUBLIC_WEB_ORIGIN_PROD: ${{ vars.PUBLIC_WEB_ORIGIN_PROD }}
+      NEXT_PUBLIC_SUPABASE_URL_PROD: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_PROD }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD }}
+      # Placeholders keep the build self-contained; a build meant for sign-in needs the
+      # real values, which is what the local ui/shell README documents.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder' }}
+      GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            ui/shell/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install shell dependencies
+        run: npm --prefix ui/shell ci --ignore-scripts
+
+      - name: Setup Java Development Kit (JDK)
+        uses: actions/setup-java@v4
+        with:
+          # Capacitor 8 requires JDK 21; 17 fails with "invalid source release: 21".
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+
+      - name: Decode signing keystore
+        if: ${{ inputs.build_type == 'release' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SHELL_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::A release build needs SHELL_KEYSTORE_BASE64 (plus SHELL_KEYSTORE_PASSWORD, SHELL_KEY_ALIAS, SHELL_KEY_PASSWORD)."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/shell.keystore"
+          echo "SHELL_KEYSTORE=$RUNNER_TEMP/shell.keystore" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        # The same entry point used locally, so CI cannot drift from it.
+        env:
+          SHELL_KEYSTORE_PASSWORD: ${{ secrets.SHELL_KEYSTORE_PASSWORD }}
+          SHELL_KEY_ALIAS: ${{ secrets.SHELL_KEY_ALIAS }}
+          SHELL_KEY_PASSWORD: ${{ secrets.SHELL_KEY_PASSWORD }}
+        run: |
+          if [ "$BUILD_TYPE" = "release" ]; then
+            if [ "$APP_VARIANT" = "dev" ]; then
+              echo "::error::The dev variant is a local tool against a local backend; it is not released."
+              exit 1
+            fi
+            npm --prefix ui/shell run "android:${APP_VARIANT}:release"
+          else
+            npm --prefix ui/shell run "android:${APP_VARIANT}"
+          fi
+
+      - name: Prepare APK artifact
+        run: |
+          mkdir -p build-apks
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          cp "ui/shell/android/app/build/outputs/apk/${BUILD_TYPE}/app-${BUILD_TYPE}.apk" \
+            "build-apks/everfreenote-shell-${APP_VARIANT}-${BUILD_TYPE}-${SHORT_SHA}.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4
+        with:
+          name: everfreenote-shell-${{ inputs.variant || 'stage' }}-${{ inputs.build_type || 'debug' }}-apk
+          path: build-apks/
+          retention-days: 30

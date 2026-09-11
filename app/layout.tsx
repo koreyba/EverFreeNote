@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { QueryProvider } from "@/components/providers/QueryProvider"
+import { NativeShellProvider } from "@ui/shell/runtime/NativeShellProvider"
 import { SupabaseProvider } from "@ui/web/providers/SupabaseProvider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
@@ -30,18 +31,20 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <ErrorBoundary>
           <SupabaseProvider>
-            <QueryProvider>
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="light"
-                enableSystem={false}
-                storageKey="everfreenote-theme"
-                disableTransitionOnChange={true}
-              >
-                {children}
-                <Toaster />
-              </ThemeProvider>
-            </QueryProvider>
+            <NativeShellProvider>
+              <QueryProvider>
+                <ThemeProvider
+                  attribute="class"
+                  defaultTheme="light"
+                  enableSystem={false}
+                  storageKey="everfreenote-theme"
+                  disableTransitionOnChange={true}
+                >
+                  {children}
+                  <Toaster />
+                </ThemeProvider>
+              </QueryProvider>
+            </NativeShellProvider>
           </SupabaseProvider>
         </ErrorBoundary>
       </body>

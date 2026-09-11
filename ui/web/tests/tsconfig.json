@@ -10,6 +10,7 @@
     "paths": {
       "@/*": ["../../../*"],
       "@ui/web/*": ["../*"],
+      "@ui/shell/*": ["../../shell/*"],
       "@core/*": ["../../../core/*"],
       "@/supabase/*": ["../../../supabase/*"],
       "@/components/*": ["../components/*"],

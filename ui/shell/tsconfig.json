@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "baseUrl": ".",
+    "types": ["node"],
+    "paths": {
+      "@core/*": ["../../core/*"],
+      "@ui/web/*": ["../../ui/web/*"],
+      "@ui/shell/*": ["./*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "android", "www", "tests"]
+}

@@ -135,6 +135,9 @@ export default function EditorWebViewPage() {
 
     const isTrustedOrigin = (origin: string) => {
       if (!origin || origin === 'null' || origin === 'file://') return true
+      // Comparing an incoming message's origin against our own is exactly what the
+      // serving origin is for; nothing here is handed to anyone outside the app.
+      // eslint-disable-next-line no-restricted-syntax -- internal origin comparison
       if (origin === globalThis.location.origin) return true
       return false
     }
