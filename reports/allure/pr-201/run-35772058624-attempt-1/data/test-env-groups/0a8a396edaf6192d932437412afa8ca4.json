@@ -1,0 +1,1 @@
+{"id":"0a8a396edaf6192d932437412afa8ca4","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteRefresh.test.tsx#keeps the reading snapshot when the server returns a transient error","name":"keeps the reading snapshot when the server returns a transient error","status":"passed","testResultsByEnv":{"default":"6cdd166ddbb1ff753ae624608bf29d08"}}

@@ -1,0 +1,1 @@
+{"id":"c6090b9d018874a7537b9358c5354a5b","fullName":"everfreenote:ui/web/tests/unit/components/pullToRefresh.test.tsx#cancels multi-touch and text selection gestures without refreshing","name":"cancels multi-touch and text selection gestures without refreshing","status":"passed","testResultsByEnv":{"default":"5178c3956ba02f0465007c1824a16903"}}
