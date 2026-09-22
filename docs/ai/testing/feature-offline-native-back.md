@@ -36,6 +36,8 @@ Green checkpoints: `offline-green` 28/28; `back-green` 14/14; `mobile-component-
 Jest file coverage (statement/function/branch): `appBack.ts` 100/100/100%; `offlineQueue.ts` 100/100/100%; `NativeShellProvider.tsx` 89.7/84.6/85.7%; `useNoteSaveHandlers.ts` 83.5/74.2/68.9%; `useNoteSync.ts` 67.5/50/52.6%. These are whole-file figures, not changed-line coverage. DOM/storage/network integration callbacks are also exercised by Cypress and the Android smoke; their runtime proof is not counted as Jest coverage. The 100% whole-file goal is not met for those existing hooks.
 Initial full Jest regression found only changed-contract expectations; these were updated to await local flush and include owner metadata, preserving behavior assertions.
 
+After the clean CI failure exposed the missing root keyboard dependency, targeted native-provider/storage tests passed 19/19 and the offline IndexedDB component passed 1/1 (`ci-fix-unit`, `offline-final`). The unit invocation mistakenly expected 21 tests: source and parameterized-case inventory confirms 12 provider plus 7 storage cases, with none missing; the sole Allure finding is this expectation metadata error. Final type checks and ESLint also passed. Initial cloud static analysis reported a complexity increase of 144 against a limit of 100; the check is retained for owner review, not waived by local test success.
+
 ## Manual Testing
 Android emulator smoke passed as described above. Physical-phone validation was not performed. Production APK receipt is generated with the artifact.
 

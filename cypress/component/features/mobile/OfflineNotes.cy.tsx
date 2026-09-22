@@ -26,7 +26,7 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     })
     cy.stub(client.auth, 'getSession').resolves({ data: { session: { user } }, error: null })
-    cy.stub(client.auth, 'onAuthStateChange').returns({ data: { subscription: { unsubscribe: () => {} } } })
+    cy.stub(client.auth, 'onAuthStateChange').returns({ data: { subscription: { unsubscribe: cy.stub() } } })
     cy.intercept('https://offline-test.invalid/**', (req) => {
       if (!online) { req.destroy(); return }
       if (req.url.includes('/rest/v1/notes')) {

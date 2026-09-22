@@ -305,7 +305,7 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
         await withStore(NOTES_STORE, 'readwrite', (store) => {
           const request = store.get(noteId)
           request.onsuccess = () => {
-            const note = request.result as CachedNote | undefined
+            const note = request.result as CachedNote
             if (note && (expectedUpdatedAt === undefined || note.updatedAt === expectedUpdatedAt)) {
               store.put({ ...note, status: 'synced', updatedAt, pendingOps: [] })
             }
