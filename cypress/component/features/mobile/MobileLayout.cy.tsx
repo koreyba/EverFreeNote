@@ -8,6 +8,19 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
 
+
+function requireElement(root: ParentNode, selector: string) {
+  const element = root.querySelector(selector)
+  if (!element) throw new Error(`Missing test element: ${selector}`)
+  return element
+}
+
+function selectionFrom(doc: Document) {
+  const selection = doc.getSelection()
+  if (!selection) throw new Error('Document selection is unavailable')
+  return selection
+}
+
 describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mockUser = { id: 'test-user', email: 'test@example.com' } as any
@@ -319,7 +332,11 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     controller.activeTab.mode = 'editing'
     controller.activeTab.draft = {
       title: 'Long mobile note',
-      description: Array.from({ length: 60 }, (_, index) => `<p>Paragraph ${index}</p>`).join(''),
+      description: Array.from({ length: 60 }, (_, index) => {
+        const paragraph = document.createElement('p')
+        paragraph.textContent = `Paragraph ${index}`
+        return paragraph.outerHTML
+      }).join(''),
       tags: 'work, personal, ideas',
     }
     cy.mount(
@@ -348,7 +365,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       expect($scroll[0].getBoundingClientRect().top, 'text uses top of viewport').to.equal(0)
     }).scrollTo('bottom')
     cy.get('.tiptap p').last().should(($paragraph) => {
-      const toolbar = $paragraph[0].ownerDocument.querySelector('[data-editor-toolbar]')!
+      const toolbar = requireElement($paragraph[0].ownerDocument, '[data-editor-toolbar]')
       expect($paragraph[0].getBoundingClientRect().bottom).to.be.at.most(toolbar.getBoundingClientRect().top)
     })
     cy.get('[data-editor-toolbar]').scrollTo('right')
@@ -366,14 +383,48 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('[aria-label="Expand editor"]').should('be.visible')
   })
 
+  it('stays expanded when the first autosave assigns a new note id', () => {
+    cy.viewport(390, 844)
+    const controller = createMockController({ isEditing: true })
+    controller.activeTab.mode = 'editing'
+    controller.activeTab.draft = { title: 'New draft', description: '<p>Draft text</p>', tags: '' }
+    function PersistingEditor() {
+      const [note, setNote] = React.useState<NoteAppController['selectedNote']>(null)
+      return <NotesShell controller={{
+        ...controller,
+        selectedNote: note,
+        activeTab: {
+          ...controller.activeTab,
+          note,
+          noteId: note?.id ?? null,
+          draft: note ? { title: note.title, description: note.description, tags: '' } : controller.activeTab.draft,
+        },
+        handleAutoSave: async (data) => {
+          setNote({ id: 'saved-note', title: data.title, description: data.description, tags: [],
+            user_id: 'test-user', created_at: '2026-09-22', updated_at: '2026-09-22' })
+          return { noteId: 'saved-note' }
+        },
+      }} />
+    }
+    cy.mount(<ThemeProvider attribute="class" defaultTheme="light">
+      <SupabaseTestProvider supabase={mockSupabase}><PersistingEditor /></SupabaseTestProvider>
+    </ThemeProvider>)
+    cy.get('[aria-label="Expand editor"]').click()
+    cy.get('.tiptap p').first().click().type(' appended')
+    cy.get('[aria-label="More actions"]').should('exist')
+    cy.get('[aria-label="Collapse editor"]').should('be.visible')
+    cy.get('.tiptap').should('contain.text', ' appended')
+    cy.get('[data-cy="note-save-button"]').should('not.be.visible')
+  })
+
   it('keeps the final edited paragraph above bottom navigation', () => {
     cy.viewport(390, 844)
     mountLongEditor()
     cy.get('@noteScroll').scrollTo('bottom')
     cy.get('.tiptap p').last().should(($paragraph) => {
       const paragraph = $paragraph[0].getBoundingClientRect()
-      const nav = $paragraph[0].ownerDocument.querySelector('[aria-label="Mobile Navigation"]')!
-      const toolbar = $paragraph[0].ownerDocument.querySelector('[data-editor-toolbar]')!
+      const nav = requireElement($paragraph[0].ownerDocument, '[aria-label="Mobile Navigation"]')
+      const toolbar = requireElement($paragraph[0].ownerDocument, '[data-editor-toolbar]')
       expect(paragraph.bottom, 'last paragraph above navigation').to.be.at.most(nav.getBoundingClientRect().top)
       expect(paragraph.bottom, 'last paragraph above formatting').to.be.at.most(toolbar.getBoundingClientRect().top)
     })
@@ -385,7 +436,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     mountLongEditor()
     cy.get('[data-testid="tag-input-container"]').then(($tags) => {
       const doc = $tags[0].ownerDocument
-      const header = doc.querySelector('[data-cy="note-save-button"]')!.getBoundingClientRect()
+      const header = requireElement(doc, '[data-cy="note-save-button"]').getBoundingClientRect()
       const tagRect = $tags[0].getBoundingClientRect()
       cy.get('@noteScroll').scrollTo(0, tagRect.top - header.top)
     })
@@ -405,8 +456,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('@noteScroll').scrollTo(0, 180)
     cy.get('[aria-label="Mobile Navigation"]').should('be.visible')
     cy.get('[data-testid="notes-shell"]').then(($shell) => {
-      const nav = $shell[0].querySelector('[aria-label="Mobile Navigation"]')!
-      const editor = $shell[0].querySelector('[data-testid="editor-container"]')!
+      const nav = requireElement($shell[0], '[aria-label="Mobile Navigation"]')
+      const editor = requireElement($shell[0], '[data-testid="editor-container"]')
       expect(editor.getBoundingClientRect().bottom, 'editor reserves navigation space').to.be.at.most(nav.getBoundingClientRect().top)
     })
   })
@@ -416,9 +467,9 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     mountLongEditor()
     cy.get('[aria-label="Text formatting"]').should(($formatting) => {
       const doc = $formatting[0].ownerDocument
-      const undo = doc.querySelector('[data-cy="undo-button"]')!.getBoundingClientRect()
-      const last = doc.querySelector('[data-cy="toggle-spellcheck-button"]')!.getBoundingClientRect()
-      const nav = doc.querySelector('[aria-label="Mobile Navigation"]')!.getBoundingClientRect()
+      const undo = requireElement(doc, '[data-cy="undo-button"]').getBoundingClientRect()
+      const last = requireElement(doc, '[data-cy="toggle-spellcheck-button"]').getBoundingClientRect()
+      const nav = requireElement(doc, '[aria-label="Mobile Navigation"]').getBoundingClientRect()
       expect(last.y, 'commands share one row').to.equal(undo.y)
       expect(undo.bottom, 'toolbar directly above bottom navigation').to.be.within(nav.top - 10, nav.top)
       expect(undo.height, 'touch target').to.be.at.least(44)
@@ -468,7 +519,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     })
     cy.get('@noteScroll').scrollTo('bottom')
     cy.get('.tiptap p').last().should(($paragraph) => {
-      const toolbar = $paragraph[0].ownerDocument.querySelector('[data-editor-toolbar]')!
+      const toolbar = requireElement($paragraph[0].ownerDocument, '[data-editor-toolbar]')
       expect($paragraph[0].getBoundingClientRect().bottom).to.be.at.most(toolbar.getBoundingClientRect().top)
     })
     cy.then(() => {
@@ -486,10 +537,12 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('.tiptap p').first().click({ scrollBehavior: 'center' }).then(($paragraph) => {
       const doc = $paragraph[0].ownerDocument
       const range = doc.createRange()
-      range.setStart($paragraph[0].firstChild!, 0)
-      range.setEnd($paragraph[0].firstChild!, 9)
-      doc.getSelection()!.removeAllRanges()
-      doc.getSelection()!.addRange(range)
+      const text = $paragraph[0].firstChild
+      if (!text) throw new Error('Paragraph has no text node')
+      range.setStart(text, 0)
+      range.setEnd(text, 9)
+      selectionFrom(doc).removeAllRanges()
+      selectionFrom(doc).addRange(range)
       doc.dispatchEvent(new Event('selectionchange'))
     })
     cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
@@ -508,8 +561,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       const doc = $paragraph[0].ownerDocument
       const range = doc.createRange()
       range.selectNodeContents($paragraph[0])
-      doc.getSelection()!.removeAllRanges()
-      doc.getSelection()!.addRange(range)
+      selectionFrom(doc).removeAllRanges()
+      selectionFrom(doc).addRange(range)
       doc.dispatchEvent(new Event('selectionchange'))
     })
     cy.get('[aria-label="Text formatting"]').click()
@@ -533,7 +586,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('.tiptap p').first().find('u').should('have.text', 'Paragraph 0')
     cy.get('[data-cy="bold-button"]').should('not.exist')
     cy.get('[aria-label="Text alignment"]').should(($alignment) => {
-      const toolbar = $alignment[0].closest('[data-editor-toolbar]')!
+      const toolbar = requireElement($alignment[0].ownerDocument, '[data-editor-toolbar]')
       expect($alignment[0].getBoundingClientRect().right, 'primary groups visible without scrolling')
         .to.be.at.most(toolbar.getBoundingClientRect().right)
     })
@@ -546,8 +599,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       const doc = $paragraph[0].ownerDocument
       const range = doc.createRange()
       range.selectNodeContents($paragraph[0])
-      doc.getSelection()!.removeAllRanges()
-      doc.getSelection()!.addRange(range)
+      selectionFrom(doc).removeAllRanges()
+      selectionFrom(doc).addRange(range)
       doc.dispatchEvent(new Event('selectionchange'))
     })
     cy.get('[aria-label="Font family"]').scrollIntoView().should(($font) => {
@@ -641,7 +694,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('html').invoke('addClass', 'dark')
     cy.get('[aria-label="Text style"]').click()
     cy.get('[role="menu"]').should(($menu) => {
-      const toolbar = $menu[0].ownerDocument.querySelector('[data-editor-toolbar]')!
+      const toolbar = requireElement($menu[0].ownerDocument, '[data-editor-toolbar]')
       expect($menu[0].getBoundingClientRect().bottom).to.be.at.most(toolbar.getBoundingClientRect().top)
     })
     cy.screenshot('mobile-formatting-dark')

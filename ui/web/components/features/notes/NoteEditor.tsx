@@ -195,6 +195,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       applyExternalSnapshot,
       cancelDebouncedTagQuery: NOOP_CANCEL,
       onNoteSwitch: () => {
+        setExpanded(false)
         const parsed = parseTagString(initialTags)
         setSelectedTags(parsed)
         selectedTagsRef.current = parsed

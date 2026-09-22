@@ -17,7 +17,7 @@ Prove all four requested behaviors using rendered application CSS and the real T
 - The existing EditorMenuBar unit cases still verify desktop formatting commands after adding the formatting-state subscription.
 
 ## Browser Integration Tests
-25/25 Cypress cases passed with the actual application stylesheet, exit 0, no retries or skips in the final run.
+26/26 Cypress cases passed with the actual application stylesheet, exit 0, no retries or skips in the final run.
 - [x] The final paragraph of a long edited note scrolls above both navigation and formatting controls.
 - [x] Save remains the hit-test target while tags scroll under the action header.
 - [x] Downward scrolling hides navigation, upward scrolling restores it, and visible navigation reserves layout space.
@@ -42,8 +42,8 @@ Local preview smoke check: the development server at http://localhost:3147 uses 
 
 ## Execution Receipts
 Final isolated Allure runs have matched expected scope, complete runtime modeling and zero findings:
-- [Browser report](../../../.tmp-artifacts/mobile-editor-final-browser/awesome/index.html), [agent overview](../../../.tmp-artifacts/mobile-editor-final-browser/index.md).
-- [Unit report](../../../.tmp-artifacts/mobile-editor-final-unit/awesome/index.html), [agent overview](../../../.tmp-artifacts/mobile-editor-final-unit/index.md).
+- [Browser report](../../../.tmp-artifacts/mobile-editor-autosave-green/awesome/index.html), [agent overview](../../../.tmp-artifacts/mobile-editor-autosave-green/index.md).
+- [Unit report](../../../.tmp-artifacts/mobile-editor-reviewed-unit/awesome/index.html), [agent overview](../../../.tmp-artifacts/mobile-editor-reviewed-unit/index.md).
 These are local artifacts in this worktree, not committed report files.
 
 Commands: `npx jest --config jest.config.cjs --selectProjects unit-web --runInBand`; `npx cypress run --component --browser electron --spec cypress/component/features/mobile/MobileLayout.cy.tsx`, both executed via Allure agent with explicit expected counts.
@@ -64,7 +64,11 @@ On 2026-09-22, built and installed the final dev APK on the Pixel 7 Android 36 e
 - The WebView visible height changed from 839.24px to 527.24px. Android reported the IME visible at physical y=1517..2400.
 - Expanded editor scroller began at y=0; toolbar occupied y=475.24..527.24 and collapse control y=479.24..523.24. The final paragraph ended at y=434.05, above the toolbar.
 - A real ADB touchscreen swipe beginning on a compound control moved scrollLeft to 45.33px with zero open menus; the collapse control stayed fixed.
-- Tapping collapse with the keyboard still open restored the action header, retained the 527.24px viewport and kept formatting above the keyboard.
+- Tapping collapse with the keyboard still open restored the action header, retained the 527.24px viewport and kept formatting above the keyboard. Hiding the IME restored the full 839.24px viewport.
 - Screenshots were inspected: `.tmp-artifacts/android-expanded-keyboard-final.png`. The dev APK and screenshots are local ignored artifacts, not release assets.
 Android resizes both layout and visual viewports; the occlusion-derived keyboard flag can remain false in that configuration, while actual visible geometry remains correct. The floating stylus handwriting palette was excluded from docked-keyboard claims because it intentionally overlays content rather than reserving a keyboard viewport.
 Physical Android hardware and iOS Safari were not available; browser viewport tests plus Android emulator IME evidence do not establish those platforms.
+
+## Final review follow-up
+A new red/green browser regression covers first autosave assigning an ID to a new expanded note. Expansion now follows the editing session instead of the workspace view key, so autosave does not collapse it. Test fixture DOM access uses explicit failures instead of non-null assertions; deterministic paragraph HTML is built with textContent.
+Codacy Cloud CLI had no configured API token, so remote findings were retrieved through the GitHub check annotations. Local Codacy analysis was partial: Stylelint passed; the bundled ESLint adapter lacked TypeScript parser services and reported HTML-flow noise on existing editor/test code, while four additional tool binaries were unavailable. These are not claimed as passing scans. Repository ESLint and the CI quality checks remain separate receipts.

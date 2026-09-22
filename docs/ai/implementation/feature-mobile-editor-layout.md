@@ -23,7 +23,7 @@ The baseline reproduced end-of-note occlusion (803.44px paragraph bottom versus 
 
 useToolbarDrag adds mouse dragging while retaining native touch panning. Movement beyond 8px suppresses the compatibility click; compound triggers open on click rather than pointerdown, retaining keyboard activation.
 
-MobileWorkspace shares transient editor expansion state with NoteEditor. Mobile note tabs, header and metadata become display:none; navigation is hidden and inert. The same editor remains mounted. A fixed 44px expand/collapse button stays outside the horizontally scrolling tools; Escape collapses. View changes and editor unmount reset expansion.
+MobileWorkspace shares transient editor expansion state with NoteEditor. Mobile note tabs, header and metadata become display:none; navigation is hidden and inert. The same editor remains mounted. A fixed 44px expand/collapse button stays outside the horizontally scrolling tools; Escape collapses. Real note switches and editor unmount reset expansion; the existing autosave-session resolver distinguishes first-save ID assignment and preserves expansion.
 
 ## Integration Points
 The shared web bundle is also the Capacitor shell UI. No note schema, persistence, autosave, backend or native packaging changes. Mobile note-tab menus opt out of navigation scroll detection.

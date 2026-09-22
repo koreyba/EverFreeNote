@@ -26,7 +26,7 @@ NoteEditor isolates its scroll layer below the action header. A mobile-only foot
 EditorMenuBar preserves desktop controls; mobile groups paragraph/headings, inline formats, lists and alignment using existing Radix menus. Inline formats use checkbox items so marks remain independently combinable; exclusive choices use radio items. The mobile order is text style, inline formats, lists, alignment, history, then secondary tools. Font family uses an Aa icon and keeps the current choice visible inside its menu; font size stays numeric. Buttons remain horizontally scrollable with 44px touch targets. Menus open upward and commands keep the Tiptap selection. A formatting-only useEditorState subscription keeps labels and checked states current without rerendering the whole note on each transaction.
 
 ## Data Models
-Transient UI state only: scroll direction anchor per scroller, navigation hidden state, visible viewport geometry, footer DOM target. Mobile editor expansion is scoped to the current workspace view and cleared on editor unmount. No saved-note or workspace-tab schema changes.
+Transient UI state only: scroll direction anchor per scroller, navigation hidden state, visible viewport geometry, footer DOM target. Mobile editor expansion is cleared on real note switches and editor unmount, while first-save note ID assignment preserves it. No saved-note or workspace-tab schema changes.
 
 ## API Design
 Internal React props/context and a toolbar portal target only. Existing editor commands and autosave contracts remain unchanged.
@@ -43,4 +43,4 @@ No new dependencies or backend requests. Scroll processing updates React only at
 Each of the six acceptance criteria maps to a component responsibility and browser regression. Implementation order: reproduce, workspace/footer geometry, groups, regression/viewport checks, final review.
 
 ## Fullscreen editing
-MobileWorkspace exposes transient expansion state to NoteEditor, scoped to the current view. Expanded mobile chrome is hidden with display:none while the existing editor and metadata stay mounted. The footer reserves a fixed 44px toggle beside its independently scrollable formatting area. Expansion changes layout only; it does not invoke the browser Fullscreen API or recreate Tiptap.
+MobileWorkspace exposes transient expansion state to NoteEditor, owned by the editing session. Expanded mobile chrome is hidden with display:none while the existing editor and metadata stay mounted. The footer reserves a fixed 44px toggle beside its independently scrollable formatting area. Expansion changes layout only; it does not invoke the browser Fullscreen API or recreate Tiptap.

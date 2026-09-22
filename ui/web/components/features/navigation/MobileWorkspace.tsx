@@ -6,8 +6,8 @@ import { useMobileViewport } from "@ui/web/hooks/useMobileViewport"
 import { cn } from "@ui/web/lib/utils"
 
 const MobileNavigationContext = React.createContext(false)
-const MobileEditorContext = React.createContext<{ expanded: boolean; setExpanded: (expanded: boolean) => void }>({
-  expanded: false, setExpanded: () => {},
+const MobileEditorContext = React.createContext<{ expanded: boolean; setExpanded: React.Dispatch<React.SetStateAction<boolean>> }>({
+  expanded: false, setExpanded: () => undefined,
 })
 
 export const useMobileNavigationHidden = () => React.useContext(MobileNavigationContext)
@@ -21,11 +21,8 @@ export function MobileWorkspace({ viewKey, className, children, style, ...props 
   const isMobile = useIsMobile()
   const viewport = useMobileViewport(isMobile)
   const [navigation, setNavigation] = React.useState({ view: viewKey, hidden: false })
-  const [editor, setEditor] = React.useState({ view: viewKey, expanded: false })
-  const expanded = isMobile && editor.view === viewKey && editor.expanded
-  const setExpanded = React.useCallback((value: boolean) => {
-    setEditor({ view: viewKey, expanded: value })
-  }, [viewKey])
+  const [editorExpanded, setExpanded] = React.useState(false)
+  const expanded = isMobile && editorExpanded
   const editorContext = React.useMemo(() => ({ expanded, setExpanded }), [expanded, setExpanded])
   const positions = React.useRef(new WeakMap<HTMLElement, ScrollPosition>())
   const hidden = isMobile && (expanded || viewport?.keyboardOpen || (navigation.view === viewKey && navigation.hidden))

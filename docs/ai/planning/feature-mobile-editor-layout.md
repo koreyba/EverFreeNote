@@ -33,7 +33,7 @@ One integrated change; browser checks are the main execution cost.
 Keyboard viewport panning, nested/horizontal scroll events, bottom overscroll, Radix focus restoration, desktop sticky layout. Cover with targeted behavioral checks; report native-device gaps honestly.
 
 ## Progress
-All 25 browser acceptance cases pass, including compact font/inline formats, drag suppression and expanded editing with a keyboard viewport. Final Android APK passed the docked Gboard keyboard and native swipe smoke checks; physical Android and iOS remain unverified. Source review, types and lint passed. Publication and exact-head merge checks follow validation.
+All 26 browser acceptance cases pass, including compact font/inline formats, drag suppression and expanded editing with a keyboard viewport. Final Android APK passed the docked Gboard keyboard and native swipe smoke checks; physical Android and iOS remain unverified. Source review, types and lint passed. PR #200 is open. The first-save fullscreen regression and Codacy test-fixture findings were corrected; final exact-head CI/quality checks precede merge.
 
 ## Requested follow-up
 - [x] 9. Add mobile editor expansion/collapse and preserve draft/selection/history.
