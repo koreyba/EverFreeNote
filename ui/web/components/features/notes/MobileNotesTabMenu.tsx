@@ -86,6 +86,7 @@ export function MobileNotesTabMenu({
     <div
       ref={containerRef}
       className="relative z-40 min-w-0 border-b border-border/60 bg-background/80 px-3 py-2 backdrop-blur md:hidden"
+      data-mobile-editor-chrome
     >
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
@@ -113,6 +114,7 @@ export function MobileNotesTabMenu({
       {isOpen && (
         <div
           id="mobile-notes-tab-list"
+          data-mobile-scroll-ignore
           // Absolutely positioned so opening the list overlays the note
           // instead of pushing the editor down the page.
           className="absolute left-3 right-3 top-full z-50 mt-1 rounded-xl border border-border bg-popover p-1 shadow-lg"

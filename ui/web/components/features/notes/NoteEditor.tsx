@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CaretLeft as ChevronLeft, Copy, Check, Eye, FloppyDisk as SaveIcon } from "@phosphor-icons/react"
+import { ArrowsIn, ArrowsOut, CaretLeft as ChevronLeft, Copy, Check, Eye, FloppyDisk as SaveIcon } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
@@ -14,6 +14,7 @@ import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
 import { useDebouncedSessionCallback } from "@ui/web/hooks/useDebouncedSessionCallback"
 import type { NoteDraftSnapshot, NoteViewSession } from "@core/services/noteWorkspaceTabs"
+import { useMobileEditorExpansion } from "@/components/features/navigation/MobileWorkspace"
 
 const DEFAULT_AUTOSAVE_DELAY_MS = 500
 // Below the autosave delay so a pending draft notification always lands before
@@ -86,6 +87,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   onDraftChange,
   onViewSessionChange,
 }: NoteEditorProps, ref) {
+  const { expanded, setExpanded } = useMobileEditorExpansion()
+  React.useEffect(() => () => setExpanded(false), [setExpanded])
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
@@ -95,6 +98,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
   const editorRootRef = React.useRef<HTMLDivElement | null>(null)
+  const [mobileToolbarContainer, setMobileToolbarContainer] = React.useState<HTMLDivElement | null>(null)
   const headerRef = React.useRef<HTMLDivElement | null>(null)
   const initialSessionRef = React.useRef(initialSession)
   const previousNoteIdRef = React.useRef(noteId)
@@ -359,14 +363,24 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   // header absolutely positioned across it — grows wider than a phone screen
   // and pushes the trailing action off the edge.
   return (
-    <div ref={editorRootRef} className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-card">
+    <div
+      ref={editorRootRef}
+      className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-card"
+      onKeyDown={(event) => {
+        if (expanded && event.key === "Escape" && !event.defaultPrevented) {
+          event.preventDefault()
+          setExpanded(false)
+        }
+      }}
+    >
       {/* Editor Header */}
       {/* gap-2 + a shrinkable mode label + a non-shrinking action group: the
           actions keep their full width and the label gives way, so the row
           can never push a control past the right edge. */}
       <div
         ref={headerRef}
-        className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between gap-2 border-b border-border/40 bg-card/75 p-3 backdrop-blur-md md:p-4"
+        data-mobile-editor-chrome
+        className="relative shrink-0 md:absolute top-0 left-0 right-0 z-30 flex items-center justify-between gap-2 border-b border-border/40 bg-card/75 p-3 backdrop-blur-md md:p-4"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {onBack && (
@@ -455,10 +469,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         ref={scrollContainerRef}
         // scrollbar-none: kept in sync with NoteView so the reading and
         // editing surfaces scroll identically — see the note there.
-        className="scrollbar-none flex-1 overflow-y-auto bg-card"
+        className="scrollbar-none relative z-0 min-h-0 flex-1 overflow-y-auto bg-card"
         onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
       >
-        <div className="max-w-4xl mx-auto px-6 pt-24 space-y-5">
+        <div data-mobile-editor-chrome className="max-w-4xl mx-auto px-4 pt-6 md:px-6 md:pt-24 space-y-5">
           <div>
             <Input
               key={`title-${editorSessionKey}`}
@@ -483,10 +497,11 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             placeholder="work, personal, ideas"
           />
         </div>
-        <div className="max-w-4xl mx-auto px-6 pb-6 mt-4">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 pb-6 mt-4">
           <RichTextEditor
             key={`editor-${editorSessionKey}`}
             ref={editorRef}
+            mobileToolbarContainer={mobileToolbarContainer}
             initialContent={initialDescription}
             onContentChange={handleEditorContentChange}
             chunkFocusRequest={
@@ -502,7 +517,22 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
           />
         </div>
       </div>
+      <div className="mobile-editor-toolbar flex shrink-0 min-w-0 items-center border-t border-border/40 bg-background md:hidden">
+        <div ref={setMobileToolbarContainer} className="min-w-0 flex-1" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-11 w-11 shrink-0 rounded-none border-l border-border/40"
+          aria-label={expanded ? "Collapse editor" : "Expand editor"}
+          aria-pressed={expanded}
+          title={expanded ? "Collapse editor" : "Expand editor"}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? <ArrowsIn className="h-5 w-5" /> : <ArrowsOut className="h-5 w-5" />}
+        </Button>
+      </div>
     </div>
   )
 }))
-

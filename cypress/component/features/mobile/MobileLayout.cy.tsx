@@ -1,4 +1,5 @@
 import React from 'react'
+import '../../../../app/globals.css'
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
 import { MobileNotesTabMenu } from '@ui/web/components/features/notes/MobileNotesTabMenu'
 import type { NoteAppController } from '../../../../ui/web/hooks/useNoteAppController'
@@ -7,12 +8,18 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
 
-describe('Mobile Layout Adaptation', () => {
+describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mockUser = { id: 'test-user', email: 'test@example.com' } as any
 
   let createMockController: (overrides?: Partial<NoteAppController>) => NoteAppController
   let mockSupabase: SupabaseClient
+  let restoreViewport: (() => void) | undefined
+
+  afterEach(() => {
+    restoreViewport?.()
+    restoreViewport = undefined
+  })
 
   beforeEach(() => {
     createMockController = (overrides: Partial<NoteAppController> = {}): NoteAppController => {
@@ -287,6 +294,7 @@ describe('Mobile Layout Adaptation', () => {
 
     cy.contains('Test Note').should('exist') // Content title
     cy.contains('Reading').should('exist') // Header status
+    cy.get('[aria-label="Expand editor"]').should('not.exist')
   })
 
   it('shows Editing status in editor', () => {
@@ -304,6 +312,342 @@ describe('Mobile Layout Adaptation', () => {
     )
 
     cy.contains('Editing').should('exist')
+  })
+
+  function mountLongEditor() {
+    const controller = createMockController({ isEditing: true })
+    controller.activeTab.mode = 'editing'
+    controller.activeTab.draft = {
+      title: 'Long mobile note',
+      description: Array.from({ length: 60 }, (_, index) => `<p>Paragraph ${index}</p>`).join(''),
+      tags: 'work, personal, ideas',
+    }
+    cy.mount(
+      <ThemeProvider attribute="class" defaultTheme="light">
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
+    )
+    cy.get('.tiptap').should('contain.text', 'Paragraph 59')
+    cy.get('.tiptap').closest('.overflow-y-auto').as('noteScroll')
+  }
+
+  it('expands only the editing surface and restores chrome without remounting the draft', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('.tiptap').as('editorBefore')
+    cy.get('.tiptap p').first().click().type(' added')
+    cy.get('[aria-label="Expand editor"]').click({ scrollBehavior: false })
+    cy.get('[data-cy="note-save-button"]').should('not.be.visible')
+    cy.get('[placeholder="Note title"]').should('not.be.visible')
+    cy.get('[data-testid="tag-input-container"]').should('not.be.visible')
+    cy.get('[aria-label="Open note tabs (1)"]').should('not.be.visible')
+    cy.get('[aria-label="Mobile Navigation"]').should('have.attr', 'inert')
+    cy.get('@noteScroll').should(($scroll) => {
+      expect($scroll[0].getBoundingClientRect().top, 'text uses top of viewport').to.equal(0)
+    }).scrollTo('bottom')
+    cy.get('.tiptap p').last().should(($paragraph) => {
+      const toolbar = $paragraph[0].ownerDocument.querySelector('[data-editor-toolbar]')!
+      expect($paragraph[0].getBoundingClientRect().bottom).to.be.at.most(toolbar.getBoundingClientRect().top)
+    })
+    cy.get('[data-editor-toolbar]').scrollTo('right')
+    cy.get('[aria-label="Collapse editor"]').should('be.visible').click({ scrollBehavior: false })
+    cy.get('[data-cy="note-save-button"]').should('be.visible')
+    cy.get('[aria-label="Open note tabs (1)"]').should('be.visible')
+    cy.get('@noteScroll').scrollTo('top')
+    cy.get('[placeholder="Note title"]').should('have.value', 'Long mobile note').and('be.visible')
+    cy.get('@editorBefore').then(($before) => {
+      cy.get('.tiptap').should(($after) => expect($after[0]).to.equal($before[0]))
+    })
+    cy.get('.tiptap').should('contain.text', ' added')
+    cy.get('[aria-label="Expand editor"]').click({ scrollBehavior: false })
+    cy.get('.tiptap p').first().trigger('keydown', { key: 'Escape' })
+    cy.get('[aria-label="Expand editor"]').should('be.visible')
+  })
+
+  it('keeps the final edited paragraph above bottom navigation', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('@noteScroll').scrollTo('bottom')
+    cy.get('.tiptap p').last().should(($paragraph) => {
+      const paragraph = $paragraph[0].getBoundingClientRect()
+      const nav = $paragraph[0].ownerDocument.querySelector('[aria-label="Mobile Navigation"]')!
+      const toolbar = $paragraph[0].ownerDocument.querySelector('[data-editor-toolbar]')!
+      expect(paragraph.bottom, 'last paragraph above navigation').to.be.at.most(nav.getBoundingClientRect().top)
+      expect(paragraph.bottom, 'last paragraph above formatting').to.be.at.most(toolbar.getBoundingClientRect().top)
+    })
+    cy.screenshot('mobile-note-final-paragraph')
+  })
+
+  it('keeps header buttons above tags that scroll underneath them', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('[data-testid="tag-input-container"]').then(($tags) => {
+      const doc = $tags[0].ownerDocument
+      const header = doc.querySelector('[data-cy="note-save-button"]')!.getBoundingClientRect()
+      const tagRect = $tags[0].getBoundingClientRect()
+      cy.get('@noteScroll').scrollTo(0, tagRect.top - header.top)
+    })
+    cy.get('[data-cy="note-save-button"]').should(($button) => {
+      const button = $button[0]
+      const rect = button.getBoundingClientRect()
+      const hit = button.ownerDocument.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+      expect(button.contains(hit), 'Save receives the tap over scrolling tags').to.equal(true)
+    })
+  })
+
+  it('hides navigation scrolling down and restores it on upward scroll', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('@noteScroll').scrollTo(0, 240)
+    cy.get('[aria-label="Mobile Navigation"]').should('not.be.visible')
+    cy.get('@noteScroll').scrollTo(0, 180)
+    cy.get('[aria-label="Mobile Navigation"]').should('be.visible')
+    cy.get('[data-testid="notes-shell"]').then(($shell) => {
+      const nav = $shell[0].querySelector('[aria-label="Mobile Navigation"]')!
+      const editor = $shell[0].querySelector('[data-testid="editor-container"]')!
+      expect(editor.getBoundingClientRect().bottom, 'editor reserves navigation space').to.be.at.most(nav.getBoundingClientRect().top)
+    })
+  })
+
+  it('docks one horizontally scrollable formatting row above navigation', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    cy.get('[aria-label="Text formatting"]').should(($formatting) => {
+      const doc = $formatting[0].ownerDocument
+      const undo = doc.querySelector('[data-cy="undo-button"]')!.getBoundingClientRect()
+      const last = doc.querySelector('[data-cy="toggle-spellcheck-button"]')!.getBoundingClientRect()
+      const nav = doc.querySelector('[aria-label="Mobile Navigation"]')!.getBoundingClientRect()
+      expect(last.y, 'commands share one row').to.equal(undo.y)
+      expect(undo.bottom, 'toolbar directly above bottom navigation').to.be.within(nav.top - 10, nav.top)
+      expect(undo.height, 'touch target').to.be.at.least(44)
+    })
+    cy.get('[data-cy="toggle-spellcheck-button"]').scrollIntoView().click()
+    cy.get('[aria-label="Mobile Navigation"]').should('be.visible')
+  })
+
+  it('applies grouped heading and alignment commands to the selected paragraph', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('.tiptap p').first().click({ scrollBehavior: 'center' })
+    cy.get('[aria-label="Text style"]').click()
+    cy.contains('[role="menuitemradio"]', 'Heading 2').click()
+    cy.get('.tiptap h2').should('have.text', 'Paragraph 0')
+    cy.get('[aria-label="Text style"]').should('contain.text', 'H2')
+    cy.get('[aria-label="Text alignment"]').scrollIntoView().click()
+    cy.contains('[role="menuitemradio"]', 'Align center').click()
+    cy.get('.tiptap h2').should('have.css', 'text-align', 'center')
+    cy.get('[aria-label="Text alignment"]').click({ scrollBehavior: false })
+    cy.contains('[role="menuitemradio"]', 'Align center').should('have.attr', 'aria-checked', 'true')
+  })
+
+  it('keeps formatting and the final line above a resized keyboard viewport', () => {
+    cy.viewport(390, 844)
+    const viewport = new EventTarget()
+    Object.assign(viewport, { height: 844, offsetTop: 0, scale: 1 })
+    cy.window().then(win => {
+      const original = Object.getOwnPropertyDescriptor(win, 'visualViewport')
+      restoreViewport = () => {
+        if (original) Object.defineProperty(win, 'visualViewport', original)
+        else Reflect.deleteProperty(win, 'visualViewport')
+      }
+      Object.defineProperty(win, 'visualViewport', { configurable: true, value: viewport })
+    })
+    mountLongEditor()
+    cy.then(() => {
+      Object.assign(viewport, { height: 480, offsetTop: 24 })
+      viewport.dispatchEvent(new Event('resize'))
+    })
+    cy.get('[aria-label="Expand editor"]').click({ scrollBehavior: false })
+    cy.get('[aria-label="Collapse editor"]').should(($button) => {
+      expect($button[0].getBoundingClientRect().bottom).to.be.at.most(504)
+    })
+    cy.get('[data-editor-toolbar]').should(($toolbar) => {
+      expect($toolbar[0].getBoundingClientRect().bottom, 'toolbar above keyboard').to.be.at.most(504)
+    })
+    cy.get('@noteScroll').scrollTo('bottom')
+    cy.get('.tiptap p').last().should(($paragraph) => {
+      const toolbar = $paragraph[0].ownerDocument.querySelector('[data-editor-toolbar]')!
+      expect($paragraph[0].getBoundingClientRect().bottom).to.be.at.most(toolbar.getBoundingClientRect().top)
+    })
+    cy.then(() => {
+      Object.assign(viewport, { height: 844, offsetTop: 0 })
+      viewport.dispatchEvent(new Event('resize'))
+    })
+    cy.get('[data-testid="notes-shell"]').should(($shell) => {
+      expect($shell[0].getBoundingClientRect().height).to.equal(844)
+    })
+  })
+
+  it('preserves a text selection through formatting and undo/redo', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('.tiptap p').first().click({ scrollBehavior: 'center' }).then(($paragraph) => {
+      const doc = $paragraph[0].ownerDocument
+      const range = doc.createRange()
+      range.setStart($paragraph[0].firstChild!, 0)
+      range.setEnd($paragraph[0].firstChild!, 9)
+      doc.getSelection()!.removeAllRanges()
+      doc.getSelection()!.addRange(range)
+      doc.dispatchEvent(new Event('selectionchange'))
+    })
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    cy.contains('[role="menuitemcheckbox"]', 'Bold').click()
+    cy.get('.tiptap p').first().find('strong').should('have.text', 'Paragraph')
+    cy.get('[data-cy="undo-button"]').click({ scrollBehavior: false })
+    cy.get('.tiptap p').first().find('strong').should('not.exist')
+    cy.get('[data-cy="redo-button"]').click({ scrollBehavior: false })
+    cy.get('.tiptap p').first().find('strong').should('have.text', 'Paragraph')
+  })
+
+  it('combines inline formats independently in one compact menu', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    cy.get('.tiptap p').first().click().then(($paragraph) => {
+      const doc = $paragraph[0].ownerDocument
+      const range = doc.createRange()
+      range.selectNodeContents($paragraph[0])
+      doc.getSelection()!.removeAllRanges()
+      doc.getSelection()!.addRange(range)
+      doc.dispatchEvent(new Event('selectionchange'))
+    })
+    cy.get('[aria-label="Text formatting"]').click()
+    cy.contains('[role="menuitemcheckbox"]', 'Bold').click()
+    cy.get('[aria-label="Text formatting"]').click()
+    cy.contains('[role="menuitemcheckbox"]', 'Bold').should('have.attr', 'aria-checked', 'true')
+    cy.contains('[role="menuitemcheckbox"]', 'Italic').click()
+    cy.get('[aria-label="Text formatting"]').click()
+    cy.contains('[role="menuitemcheckbox"]', 'Underline').click()
+    cy.get('[aria-label="Text formatting"]').click()
+    cy.contains('[role="menuitemcheckbox"]', 'Strikethrough').click()
+    cy.get('.tiptap p').first().find('strong').should('have.text', 'Paragraph 0')
+    cy.get('.tiptap p').first().find('em').should('have.text', 'Paragraph 0')
+    cy.get('.tiptap p').first().find('s').should('have.text', 'Paragraph 0')
+    cy.get('.tiptap p').first().find('u').should('have.text', 'Paragraph 0')
+    cy.get('[aria-label="Text formatting"]').click()
+    cy.contains('[role="menuitemcheckbox"]', 'Italic').should('have.attr', 'aria-checked', 'true').click()
+    cy.get('.tiptap p').first().find('em').should('not.exist')
+    cy.get('.tiptap p').first().find('strong').should('have.text', 'Paragraph 0')
+    cy.get('.tiptap p').first().find('s').should('have.text', 'Paragraph 0')
+    cy.get('.tiptap p').first().find('u').should('have.text', 'Paragraph 0')
+    cy.get('[data-cy="bold-button"]').should('not.exist')
+    cy.get('[aria-label="Text alignment"]').should(($alignment) => {
+      const toolbar = $alignment[0].closest('[data-editor-toolbar]')!
+      expect($alignment[0].getBoundingClientRect().right, 'primary groups visible without scrolling')
+        .to.be.at.most(toolbar.getBoundingClientRect().right)
+    })
+  })
+
+  it('uses a compact font icon while retaining the selected font in its menu', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('.tiptap p').first().click().then(($paragraph) => {
+      const doc = $paragraph[0].ownerDocument
+      const range = doc.createRange()
+      range.selectNodeContents($paragraph[0])
+      doc.getSelection()!.removeAllRanges()
+      doc.getSelection()!.addRange(range)
+      doc.dispatchEvent(new Event('selectionchange'))
+    })
+    cy.get('[aria-label="Font family"]').scrollIntoView().should(($font) => {
+      expect($font[0].getBoundingClientRect().width).to.be.within(44, 60)
+    }).click()
+    cy.get('[role="option"]').contains(/^Serif$/).click()
+    cy.get('.tiptap p').first().find('span').invoke('css', 'font-family').should('match', /^serif$/i)
+    cy.get('[aria-label="Font family"]').click()
+    cy.get('[role="option"]').contains(/^Serif$/).closest('[role="option"]').should('have.attr', 'data-state', 'checked')
+    cy.get('[role="listbox"]').type('{esc}')
+  })
+
+  it('waits for a click and suppresses dropdown opening after a touch drag', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('[aria-label="Text style"]').as('trigger')
+      .trigger('pointerdown', { eventConstructor: 'PointerEvent', scrollBehavior: false, pointerType: 'touch', pointerId: 1, isPrimary: true, button: 0, clientX: 180, clientY: 700 })
+    cy.get('[role="menu"]').should('not.exist')
+    cy.get('@trigger').trigger('pointermove', { eventConstructor: 'PointerEvent', scrollBehavior: false, pointerType: 'touch', pointerId: 1, clientX: 100, clientY: 700 })
+      .trigger('pointerup', { eventConstructor: 'PointerEvent', scrollBehavior: false, pointerType: 'touch', pointerId: 1, clientX: 100, clientY: 700 })
+      .trigger('click', { eventConstructor: 'MouseEvent', scrollBehavior: false, detail: 1 })
+    cy.get('[role="menu"]').should('not.exist')
+    cy.get('@trigger').click()
+    cy.get('[role="menu"]').should('be.visible')
+    cy.get('[role="menu"]').type('{esc}')
+    cy.get('@trigger').should('have.focus').type('{enter}')
+    cy.get('[role="menu"]').should('be.visible')
+  })
+
+  it('drags the toolbar from a font selector without opening it or changing the note', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('[aria-label="Font family"]').scrollIntoView().as('font')
+    cy.get('[data-editor-toolbar]').invoke('prop', 'scrollLeft').then((before) => {
+      cy.get('@font').trigger('pointerdown', { eventConstructor: 'PointerEvent', scrollBehavior: false, pointerType: 'mouse', pointerId: 1, isPrimary: true, button: 0, clientX: 200, clientY: 700 })
+      cy.get('[role="listbox"]').should('not.exist')
+      cy.get('[data-editor-toolbar]').trigger('pointermove', { eventConstructor: 'PointerEvent', scrollBehavior: false, pointerType: 'mouse', pointerId: 1, clientX: 110, clientY: 700 })
+        .trigger('pointerup', { eventConstructor: 'PointerEvent', scrollBehavior: false, pointerType: 'mouse', pointerId: 1, clientX: 110, clientY: 700 })
+        .trigger('click', { eventConstructor: 'MouseEvent', scrollBehavior: false, detail: 1 })
+      cy.get('[data-editor-toolbar]').invoke('prop', 'scrollLeft').should('be.greaterThan', before)
+    })
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[data-cy="undo-button"]').should('be.disabled')
+    cy.get('@font').scrollIntoView().click()
+    cy.get('[role="listbox"]').should('be.visible')
+  })
+
+  it('preserves desktop heading buttons and a sticky top toolbar', () => {
+    cy.viewport(1280, 900)
+    mountLongEditor()
+    cy.get('@noteScroll').scrollTo(0, 500)
+    cy.get('[data-editor-toolbar]').should(($toolbar) => {
+      expect(getComputedStyle($toolbar[0]).position).to.equal('sticky')
+      expect($toolbar[0].getBoundingClientRect().bottom).to.be.lessThan(400)
+    })
+    cy.get('[aria-label="Expand editor"]').should('not.be.visible')
+    cy.get('[data-cy="h2-button"]').should('be.visible')
+    cy.get('[aria-label="Text style"]').should('not.exist')
+  })
+
+  it('leaves an existing heading intact when choosing No list outside a list', () => {
+    cy.viewport(390, 720)
+    mountLongEditor()
+    cy.get('.tiptap p').first().click({ scrollBehavior: 'center' })
+    cy.get('[aria-label="Text style"]').click()
+    cy.contains('[role="menuitemradio"]', 'Heading 2').click()
+    cy.get('[aria-label="Lists"]').scrollIntoView().click()
+    cy.contains('[role="menuitemradio"]', 'No list').click()
+    cy.get('.tiptap h2').should('have.text', 'Paragraph 0')
+  })
+
+  it('changes list types and removes the list without losing text', () => {
+    cy.viewport(390, 720)
+    mountLongEditor()
+    cy.get('.tiptap p').first().click({ scrollBehavior: 'center' })
+    cy.get('[aria-label="Lists"]').scrollIntoView().click()
+    cy.contains('[role="menuitemradio"]', 'Bullet list').click()
+    cy.get('.tiptap ul li').first().should('have.text', 'Paragraph 0')
+    cy.get('[aria-label="Lists"]').click({ scrollBehavior: false })
+    cy.contains('[role="menuitemradio"]', 'Numbered list').click()
+    cy.get('.tiptap ol li').first().should('have.text', 'Paragraph 0')
+    cy.get('[aria-label="Lists"]').click({ scrollBehavior: false })
+    cy.contains('[role="menuitemradio"]', 'No list').click()
+    cy.get('.tiptap ol, .tiptap ul').should('not.exist')
+    cy.get('.tiptap > p').first().should('have.text', 'Paragraph 0')
+  })
+
+  it('returns focus when a formatting menu is dismissed and fits a dark mobile viewport', () => {
+    cy.viewport(430, 720)
+    mountLongEditor()
+    cy.get('html').invoke('addClass', 'dark')
+    cy.get('[aria-label="Text style"]').click()
+    cy.get('[role="menu"]').should(($menu) => {
+      const toolbar = $menu[0].ownerDocument.querySelector('[data-editor-toolbar]')!
+      expect($menu[0].getBoundingClientRect().bottom).to.be.at.most(toolbar.getBoundingClientRect().top)
+    })
+    cy.screenshot('mobile-formatting-dark')
+    cy.get('[role="menu"]').type('{esc}')
+    cy.get('[aria-label="Text style"]').should('have.focus')
+    cy.get('html').invoke('removeClass', 'dark')
   })
 
   it('shows back button in NoteView on mobile', () => {

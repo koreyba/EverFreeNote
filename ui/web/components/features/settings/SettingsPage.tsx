@@ -22,6 +22,7 @@ import {
   sanitizeSettingsReturnPath,
 } from "@ui/web/lib/settingsNavigationState"
 
+import { MobileWorkspace } from "@/components/features/navigation/MobileWorkspace"
 import { NavRail, MainNavView } from "@/components/features/navigation/NavRail"
 
 type SettingsTabId = "wordpress" | "api-keys" | "ai-index" | "import" | "export" | "account"
@@ -188,7 +189,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <MobileWorkspace viewKey={`settings:${activeDefinition.id}`} className="flex h-screen overflow-hidden bg-background">
       <NavRail
         activeView="settings"
         onSelectView={handleNavSelectView}
@@ -380,7 +381,7 @@ export function SettingsPage() {
         </div>
       </div>
     </main>
-  </div>
+  </MobileWorkspace>
   )
 }
 
