@@ -3,6 +3,40 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/pr-201/run-35744170066-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-201/run-35744170066-attempt-1/",
+    "runId": "35744170066",
+    "runAttempt": "1",
+    "prNumber": "201",
+    "ref": "codex/offline-native-back",
+    "sha": "23b7d051f2ca7efde867ed0bc08c9245720d3128",
+    "outcome": "failure",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #201",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-09-22T15:17:00.776Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "e2e"
     ],
     "suiteLabels": [
@@ -611,44 +645,6 @@
     "scopeLabel": "PR #196",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-09-11T09:32:30.053Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "mobile-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Mobile Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-196/run-34580968586-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-196/run-34580968586-attempt-1/",
-    "runId": "34580968586",
-    "runAttempt": "1",
-    "prNumber": "196",
-    "ref": "claude/mobile-wrapper-web-app-1d666e",
-    "sha": "3c868b72c9e48ecd9082da1f7de2c02ab8d0b231",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #196",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-09-11T09:06:06.137Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
