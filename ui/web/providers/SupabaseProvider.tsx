@@ -6,6 +6,7 @@ import { webSupabaseClientFactory } from "@ui/web/adapters/supabaseClient"
 import { webStorageAdapter } from "@ui/web/adapters/storage"
 import { supabaseConfig } from "@ui/web/config"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
+import { readOfflineSessionUser, sessionUserForProject } from "@ui/web/lib/offlineAuthSession"
 
 type SupabaseContextType = {
   supabase: SupabaseClient
@@ -14,22 +15,6 @@ type SupabaseContextType = {
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
-
-function readTokenIssuer(accessToken: string | null | undefined) {
-  if (!accessToken) return null
-
-  const [, payload] = accessToken.split(".")
-  if (!payload) return null
-
-  try {
-    const normalizedPayload = payload.replaceAll("-", "+").replaceAll("_", "/")
-    const paddedPayload = normalizedPayload.padEnd(normalizedPayload.length + ((4 - normalizedPayload.length % 4) % 4), "=")
-    const decodedPayload = JSON.parse(globalThis.atob(paddedPayload)) as { iss?: unknown }
-    return typeof decodedPayload.iss === "string" ? decodedPayload.iss : null
-  } catch {
-    return null
-  }
-}
 
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const [supabase] = useState(() => {
@@ -42,6 +27,8 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let disposed = false
+    let authRevision = 0
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       const reason = typeof event.reason === "string" ? event.reason : (event.reason?.message as string | undefined)
       if (reason?.includes("Navigator LockManager lock")) {
@@ -53,34 +40,37 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
 
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const expectedIssuer = `${supabaseConfig.url}/auth/v1`
-        const tokenIssuer = readTokenIssuer(session?.access_token)
+        const savedUser = await readOfflineSessionUser(supabaseConfig.url)
+        if (disposed || authRevision !== 0) return
+        setUser(savedUser)
+        setLoading(false)
 
-        if (session?.access_token && tokenIssuer && tokenIssuer !== expectedIssuer) {
-          await supabase.auth.signOut()
-          setUser(null)
-          return
-        }
-
-        setUser(session?.user || null)
+        // Refresh can wait on an unreachable server; it must never gate local access.
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (disposed || authRevision !== 0 || error) return
+        const sessionUser = sessionUserForProject(session, supabaseConfig.url)
+        setUser(sessionUser)
+        if (session?.access_token && !sessionUser) void supabase.auth.signOut({ scope: "local" })
       } catch (error) {
         console.error("Error checking auth session:", error)
       } finally {
-        setLoading(false)
+        if (!disposed) setLoading(false)
       }
     }
 
-    checkAuth()
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setUser(session?.user || null)
+      (event, session) => {
+        if (disposed || (event === "INITIAL_SESSION" && !session)) return
+        authRevision += 1
+        setUser(sessionUserForProject(session, supabaseConfig.url))
         setLoading(false)
       }
     )
 
+    void checkAuth()
+
     return () => {
+      disposed = true
       subscription.unsubscribe()
       globalThis.removeEventListener("unhandledrejection", handleUnhandledRejection)
     }

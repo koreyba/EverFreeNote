@@ -26,7 +26,7 @@ const makeParams = (overrides: Partial<BulkActionParams> = {}) => {
     selectedNoteIds: new Set<string>(),
     isOffline: false,
     enqueueBatchAndDrainIfOnline: jest.fn().mockResolvedValue(undefined),
-    offlineCache: { saveNote: jest.fn().mockResolvedValue(undefined) },
+    offlineCache: { saveNote: jest.fn().mockResolvedValue(undefined), deleteNote: jest.fn().mockResolvedValue(undefined) },
     setOfflineOverlay: jest.fn(),
     setPendingCount: jest.fn(),
     deleteNoteMutation: { mutateAsync: jest.fn().mockResolvedValue(undefined) },
@@ -99,6 +99,8 @@ describe('useNoteBulkActions', () => {
     expect(toast.error).toHaveBeenCalledWith('Failed to delete 1 notes')
     expect(invalidate).toHaveBeenCalledTimes(2)
     expect(params.onNotesDeleted).toHaveBeenCalledWith(['good'])
+    expect(params.offlineCache.deleteNote).toHaveBeenCalledWith('good')
+    expect(params.offlineCache.deleteNote).not.toHaveBeenCalledWith('bad')
   })
 
   it('queues offline deletions, persists optimistic tombstones, and updates overlay state', async () => {
@@ -109,7 +111,7 @@ describe('useNoteBulkActions', () => {
     const { params } = makeParams({
       isOffline: true,
       enqueueBatchAndDrainIfOnline: enqueue,
-      offlineCache: { saveNote },
+      offlineCache: { saveNote, deleteNote: jest.fn().mockResolvedValue(undefined) },
       setOfflineOverlay,
       setPendingCount,
     })

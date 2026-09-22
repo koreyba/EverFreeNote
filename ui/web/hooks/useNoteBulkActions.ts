@@ -12,7 +12,7 @@ type UseNoteBulkActionsParams = {
   selectedNoteIds: Set<string>
   isOffline: boolean
   enqueueBatchAndDrainIfOnline: ReturnType<typeof useNoteSync>['enqueueBatchAndDrainIfOnline']
-  offlineCache: Pick<ReturnType<typeof useNoteSync>['offlineCache'], 'saveNote'>
+  offlineCache: Pick<ReturnType<typeof useNoteSync>['offlineCache'], 'saveNote' | 'deleteNote'>
   setOfflineOverlay: ReturnType<typeof useNoteSync>['setOfflineOverlay']
   setPendingCount: ReturnType<typeof useNoteSync>['setPendingCount']
   deleteNoteMutation: Pick<ReturnType<typeof useDeleteNote>, 'mutateAsync'>
@@ -96,6 +96,8 @@ export function useNoteBulkActions({
         )
         failed = results.filter((r) => r.status === 'rejected').length
         deletedIds = ids.filter((_, index) => results[index].status === 'fulfilled')
+        for (const id of deletedIds) await offlineCache.deleteNote(id)
+        setOfflineOverlay((prev) => prev.filter((note) => !deletedIds.includes(note.id)))
         if (failed > 0) {
           toast.error(`Failed to delete ${failed} notes`)
         } else {

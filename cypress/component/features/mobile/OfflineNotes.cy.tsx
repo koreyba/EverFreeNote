@@ -38,6 +38,10 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
           const id = new URL(req.url).searchParams.get('id')?.replace('eq.', '') ?? ''
           remoteNotes.set(id, { ...remoteNotes.get(id), ...req.body, id })
           req.reply({ body: remoteNotes.get(id) })
+        } else if (req.method === 'DELETE') {
+          const id = new URL(req.url).searchParams.get('id')?.replace('eq.', '') ?? ''
+          remoteNotes.delete(id)
+          req.reply({ statusCode: 204, body: '' })
         } else req.reply({ body: [...remoteNotes.values()], headers: { 'content-range': `0-0/${remoteNotes.size}` } })
       } else req.reply({ body: [] })
     })
@@ -74,5 +78,13 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
     cy.get('[data-cy="queue-state"]').should('have.text', '0')
     cy.then(() => webOfflineStorageAdapter.getQueue()).should('have.length', 0)
     cy.get('[data-sonner-toast][data-type="error"]').should('not.exist')
+    cy.get('[data-cy="note-read-button"]').click()
+    cy.get('[data-cy="queue-state"]').should('have.text', '0')
+    cy.get('[data-cy="note-delete-button"]').click()
+    cy.get('[role="alertdialog"]').contains('button', 'Delete').click()
+    cy.get('[data-testid="note-card"]').should('not.exist')
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should('have.length', 0)
+    mountApp()
+    cy.contains('Saved without internet').should('not.exist')
   })
 })

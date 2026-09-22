@@ -76,20 +76,21 @@ describe('useNoteAuth', () => {
     jest.restoreAllMocks()
   })
 
-  it('loads the current session, tracks auth changes, and unsubscribes on cleanup', async () => {
-    const { result, unmount } = renderAuthHook()
+  it('uses the provider session without starting a second blocking auth lookup', async () => {
+    const { result, rerender } = renderAuthHook()
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(webStorageAdapter.removeItem).toHaveBeenCalledWith('testUser')
-    expect(mockSupabase.auth.getSession).toHaveBeenCalledTimes(1)
+    expect(mockSupabase.auth.getSession).not.toHaveBeenCalled()
     expect(result.current.user).toBeNull()
 
-    const callback = mockOnAuthStateChange.mock.calls[0][0] as (_event: string, session: { user: User } | null) => void
-    await act(async () => { await callback('SIGNED_IN', { user }) })
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user, loading: false })
+    rerender()
     expect(result.current.user).toBe(user)
 
-    unmount()
-    expect(mockSubscription.unsubscribe).toHaveBeenCalledTimes(1)
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user: null, loading: false })
+    rerender()
+    expect(result.current.user).toBeNull()
   })
 
   it('hands the provider URL to the platform OAuth adapter', async () => {
@@ -190,16 +191,14 @@ describe('useNoteAuth', () => {
 
   it('reports sign-out and account deletion failures without leaving loading flags set', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined)
-    const { result } = renderAuthHook()
+    const { result, rerender } = renderAuthHook()
     await waitFor(() => expect(result.current.loading).toBe(false))
     mockAuthService.signOut.mockRejectedValueOnce(new Error('sign-out failed'))
     await act(async () => result.current.handleSignOut())
     expect(consoleError).toHaveBeenCalledWith('Error signing out:', expect.any(Error))
 
-    await act(async () => {
-      const callback = mockOnAuthStateChange.mock.calls[0][0] as (_event: string, session: { user: User } | null) => void
-      await callback('SIGNED_IN', { user })
-    })
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user, loading: false })
+    rerender()
     mockAuthService.deleteAccount.mockRejectedValueOnce(new Error('delete failed'))
     await act(async () => result.current.handleDeleteAccount())
     expect(toast.error).toHaveBeenCalledWith('delete failed')
@@ -217,12 +216,10 @@ describe('useNoteAuth', () => {
   })
 
   it('deletes the account, signs out, and calls the supplied callback', async () => {
-    const { result } = renderAuthHook()
+    const { result, rerender } = renderAuthHook()
     await waitFor(() => expect(result.current.loading).toBe(false))
-    await act(async () => {
-      const callback = mockOnAuthStateChange.mock.calls[0][0] as (_event: string, session: { user: User } | null) => void
-      await callback('SIGNED_IN', { user })
-    })
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user, loading: false })
+    rerender()
     const callback = jest.fn()
 
     await act(async () => result.current.handleDeleteAccount(callback))

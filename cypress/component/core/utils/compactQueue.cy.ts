@@ -46,16 +46,15 @@ describe('compactQueue', () => {
 
   it('should compact create + updates to single create with final payload', () => {
     const items = [
-      createItem('1', 'create', '2023-01-01T10:00:00Z', { title: 'Initial' }),
+      createItem('1', 'create', '2023-01-01T10:00:00Z', { title: 'Initial', user_id: 'owner' }),
       createItem('2', 'update', '2023-01-01T10:05:00Z', { title: 'Updated' }),
-      createItem('3', 'update', '2023-01-01T10:10:00Z', { content: 'New Content' }),
+      createItem('3', 'update', '2023-01-01T10:10:00Z', { title: 'Updated', content: 'New Content' }),
     ]
     const result = compactQueue(items)
     expect(result).to.have.length(1)
     expect(result[0].operation).to.equal('create')
-    // Note: The current implementation takes the payload from the LAST item. 
-    // It does NOT merge payloads. This is consistent with the requirement "create с payload из последнего элемента".
-    expect(result[0].payload).to.deep.equal({ content: 'New Content' })
+    // Editor updates carry the latest draft; create-only ownership must survive compaction.
+    expect(result[0].payload).to.deep.equal({ title: 'Updated', content: 'New Content', user_id: 'owner' })
     expect(result[0].clientUpdatedAt).to.equal('2023-01-01T10:10:00Z')
     expect(result[0].status).to.equal('pending')
   })

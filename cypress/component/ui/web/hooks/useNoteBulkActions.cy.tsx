@@ -2,7 +2,7 @@ import React from 'react'
 import { useNoteAppController } from '../../../../../ui/web/hooks/useNoteAppController'
 import { QueryProvider } from '../../../../../ui/web/components/providers/QueryProvider'
 import { SupabaseTestProvider } from '../../../../../ui/web/providers/SupabaseProvider'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { NoteViewModel } from '../../../../../core/types/domain'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,7 +83,7 @@ describe('useNoteBulkActions', () => {
 
   it('toggleNoteSelection adds and removes note ids from selection', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -103,7 +103,7 @@ describe('useNoteBulkActions', () => {
 
   it('deleteSelectedNotes does nothing when selection is empty', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -116,7 +116,7 @@ describe('useNoteBulkActions', () => {
 
   it('deleteSelectedNotes calls delete for each selected note (online)', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -136,7 +136,7 @@ describe('useNoteBulkActions', () => {
 
   it('deleteSelectedNotes exits selection mode after completion', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -155,7 +155,7 @@ describe('useNoteBulkActions', () => {
 
   it('deleteSelectedNotes clears selectedNote after bulk delete', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -175,7 +175,7 @@ describe('useNoteBulkActions', () => {
 
   it('exitSelectionMode clears selection state', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>

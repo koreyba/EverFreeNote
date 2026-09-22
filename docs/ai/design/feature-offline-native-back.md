@@ -9,6 +9,11 @@ description: Define the technical architecture, components, and data models
 ## Architecture Overview
 ```mermaid
 flowchart TD
+  Start[Cold startup] --> Cookie[Existing project-scoped auth cookie]
+  Cookie --> Identity[Local UI identity]
+  Identity --> Editor
+  Cookie --> Refresh[Background session refresh]
+  Refresh --> Auth[Supabase auth events]
   Editor[Editor save] --> Local[Local cache and durable queue]
   Local --> Ack[Return stable note ID to editor]
   Local --> Sync[Background sync]
@@ -27,6 +32,8 @@ Native Back dispatch consumes one handler by priority; existing Radix Escape dis
 
 ## Decisions & Trade-offs
 Connectivity is a hint for synchronization, never permission to persist a local edit. Visible clients retry queued synchronization every 15 seconds and on foreground restoration, because restoring transport access need not emit a WebView online event. Retain current online deletion semantics. Preserve remote-deletion recovery in the sync layer. The native callback must await editor persistence and consume a failed navigation rather than exit. No blanket Escape dispatch to a text editor when no overlay is open.
+
+The provider reads the existing Supabase SSR cookie using its public chunk/base64 helpers before waiting on getSession. Project issuer and token subject must match the stored user. This restores only local UI identity; remote authorization and RLS remain with Supabase. No token copy or new session format is introduced. Explicit sign-out wins over late bootstrap results. A failed transport refresh or empty initial event does not discard the local session. useNoteAuth consumes provider readiness instead of performing a duplicate blocking lookup. Successful online single/bulk deletion removes the retained offline copy and overlay, while failed deletions retain their cache.
 
 ## Review
 Requirements and current save/navigation paths reviewed. Test backend failures even with navigator.onLine=true. Validate installed Android separately from component/native-boundary mocks.

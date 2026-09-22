@@ -11,7 +11,7 @@ import type { useNoteSelection } from './useNoteSelection'
 type UseNoteSaveHandlersParams = {
   user: { id: string } | null
   isOffline: boolean
-  offlineCache: Pick<ReturnType<typeof useNoteSync>['offlineCache'], 'saveNote'>
+  offlineCache: Pick<ReturnType<typeof useNoteSync>['offlineCache'], 'saveNote' | 'deleteNote'>
   enqueueMutation: ReturnType<typeof useNoteSync>['enqueueMutation']
   offlineQueueRef: {
     current: Pick<ReturnType<typeof useNoteSync>['offlineQueueRef']['current'], 'getQueue'>
@@ -377,6 +377,8 @@ export function useNoteSaveHandlers({
         toast.success('Deletion queued offline')
       } else {
         await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
+        await offlineCache.deleteNote(noteToDelete.id)
+        setOfflineOverlay((prev) => prev.filter((note) => note.id !== noteToDelete.id))
       }
 
       if (selectedNote?.id === noteToDelete.id) {

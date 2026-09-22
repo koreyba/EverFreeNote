@@ -120,11 +120,12 @@ describe('OfflineSyncManager', () => {
 
       await manager.drainQueue()
 
-      // Should have called upsertQueue with compacted items (1 item)
-      expect(mockStorage.upsertQueue).to.have.been.called
-      const upsertArgs = (mockStorage.upsertQueue as unknown as sinon.SinonStub).firstCall.args[0]
-      expect(upsertArgs).to.have.length(1)
-      expect(upsertArgs[0].operation).to.equal('create')
+      expect(mockStorage.upsertQueueItem).to.have.been.calledOnce
+      const compacted = (mockStorage.upsertQueueItem as unknown as sinon.SinonStub).firstCall.args[0]
+      expect(compacted.operation).to.equal('create')
+      expect(compacted.id).to.equal('2')
+      expect(mockStorage.removeQueueItems).to.have.been.calledWith(['1'])
+      expect(mockStorage.upsertQueue).to.not.have.been.called
     })
 
     it('should persist compacted queue even if length is unchanged (to reset failed status)', async () => {
@@ -138,10 +139,11 @@ describe('OfflineSyncManager', () => {
 
       // compactQueue resets status to 'pending'.
       // Even though length is still 1, we MUST save it to persist the 'pending' status.
-      expect(mockStorage.upsertQueue).to.have.been.called
-      const upsertArgs = (mockStorage.upsertQueue as unknown as sinon.SinonStub).firstCall.args[0]
-      expect(upsertArgs).to.have.length(1)
-      expect(upsertArgs[0].status).to.equal('pending')
+      expect(mockStorage.upsertQueueItem).to.have.been.calledOnce
+      const compacted = (mockStorage.upsertQueueItem as unknown as sinon.SinonStub).firstCall.args[0]
+      expect(compacted.id).to.equal('1')
+      expect(compacted.status).to.equal('pending')
+      expect(mockStorage.removeQueueItems).to.not.have.been.called
     })
 
     it('should process pending batch and remove successful items', async () => {

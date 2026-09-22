@@ -39,10 +39,23 @@ Initial full Jest regression found only changed-contract expectations; these wer
 After the clean CI failure exposed the missing root keyboard dependency, targeted native-provider/storage tests passed 19/19 and the offline IndexedDB component passed 1/1 (`ci-fix-unit`, `offline-final`). The unit invocation mistakenly expected 21 tests: source and parameterized-case inventory confirms 12 provider plus 7 storage cases, with none missing; the sole Allure finding is this expectation metadata error. Final type checks and ESLint also passed. Initial cloud static analysis reported a complexity increase of 144 against a limit of 100; the check is retained for owner review, not waived by local test success.
 
 ## Manual Testing
-Android emulator smoke passed as described above. Physical-phone validation was not performed. Production APK receipt is generated with the artifact.
+Android emulator smoke passed as described above. The user installed production APK 23b7d05 on a physical phone and confirmed offline creation and cached-note loading. The subsequent expired-session cold-start fix was validated on the emulator; physical-phone confirmation of that follow-up remains pending. Production APK receipt is generated with the artifact.
 
 ## Performance Testing
 No new network call is awaited by editor save. Saves complete after local cache and queue persistence. Back serializes navigation while a local save is active. While visible, sync retries every 15 seconds and on focus/visibility restoration, covering transport recovery without online events.
 
 ## Bug Tracking
 Track remaining evidence in the feature planning document. No database migration or storage version change. Local pending data remains available on transient transport failures.
+
+## Offline cold-start follow-up (2026-09-22)
+The user reported an endless startup spinner without internet. Reproduced on Android 36 with a real saved Supabase session whose `expires_at` was set in the past and backend access removed: the old APK still displayed the spinner after 74 seconds. Updating the same development package with preserved app data opened the cached notes while the session remained expired and the backend remained unreachable.
+
+Created note `cb891db9-6e1f-4b4a-aca5-69a4d39603ce` in that state, force-stopped and relaunched the app, then restored the backend connection. IndexedDB retained the text, the SDK refreshed the token, the queue emptied, and a real local Supabase SELECT found the same ID/title/body. No save-error toast appeared. Receipt: `.tmp-artifacts/cold-start-native.jsonl`; development package `com.everfreenote.shell.offlineback`, not the production backend.
+
+Regression tests cover plain/chunked session cookies, an unreachable refresh, absent/foreign-project sessions, an empty initial auth event and sign-out racing a late session response. `cold-start-red` reproduced the loading failures; `cold-start-green2` passed all six auth cases. The final coverage run `cold-start-unit-final` passed 1666 logical cases, matched the expected count, and reported no findings. Type checks and zero-warning ESLint passed.
+
+Online deletion now removes successful deletions from the persisted cache and overlay; failed bulk deletions remain available. Two regression assertions failed before this fix (`delete-cache-red`), then the focused auth/delete run passed 25 cases (`delete-auth-green`). The extended IndexedDB create/reconnect/delete/remount flow, controller and search tests passed 25/25 without retries (`cold-start-components-final`). The other auth/save/bulk/provider component cases passed in `cold-start-components2`; its two failures were the subsequently corrected old auth-owner expectation and a test attempting the read-only delete button while still editing.
+
+Cloud E2E on 23b7d05 exposed the stale deleted-note cache, now covered by the new regression. Cloud component results also exposed three stale queue-contract assertions, updated to preserve per-item compaction and create ownership. Qodana did not analyze code because its cloud token/license was declined. Cloud receipts for the updated head must be reviewed separately from local success.
+
+`ci-regression-local` passed all 54 component cases with coverage enabled: 16 sync-manager, 10 compaction and 28 mobile-layout. The invocation incorrectly expected 55; source inventory confirms 54 with none excluded. Its only finding is that count metadata error. Two Linux CI toolbar interaction failures did not reproduce locally, so their cloud result remains a separate unresolved signal until the updated head runs.

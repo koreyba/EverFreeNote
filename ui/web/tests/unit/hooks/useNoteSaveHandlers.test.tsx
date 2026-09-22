@@ -90,6 +90,14 @@ describe('durable save failures and concurrent creation', () => {
 })
 
 describe('durable local saves', () => {
+  it('removes an online-deleted note from persistent cache and the offline list', async () => {
+    const { result, params } = setup({ noteToDelete: makeNote() })
+    await act(async () => { await result.current.confirmDeleteNote() })
+    expect(params.offlineCache.deleteNote).toHaveBeenCalledWith('note-1')
+    const update = params.setOfflineOverlay.mock.calls.at(-1)?.[0]
+    expect(update([{ id: 'note-1' }, { id: 'keep' }])).toEqual([{ id: 'keep' }])
+  })
+
   it('creates locally even when online is reported but the backend is unreachable', async () => {
     const { result, params } = setup({
       selectedNote: null,

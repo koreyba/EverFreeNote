@@ -20,3 +20,11 @@ Use a sibling worktree already bootstrapped at /Users/denys.koreiba/Documents/Ev
 
 ## Current evidence
 1659 Jest/core integration cases passed; 59 component cases passed. Android emulator confirmed offline durability through restart/update, one same-ID row after reconnection, Gboard dismissal and semantic Back ordering. A native-discovered missing-online-event case is covered by quiet periodic foreground retry. PR #201 contains the cloud check history; the delivered APK has a sidecar receipt recording its exact source commit, hash, signature and validation limits. Merge is separate from APK delivery and requires reviewing any remaining quality gates.
+
+## User follow-up
+- [x] Reproduce offline cold-start hang with an expired persisted session on Android.
+- [x] Restore local identity without waiting on token refresh; remove duplicate auth ownership.
+- [x] Verify cold launch, offline create, process restart, token refresh and same-ID reconnect.
+- [x] Fix online deletion retaining the newly persistent cache and add regression coverage.
+- [x] Full Jest regression: 1666/1666, plus focused component regressions and static checks.
+- [ ] Deliver a new production APK and review updated cloud checks; merge remains separate.

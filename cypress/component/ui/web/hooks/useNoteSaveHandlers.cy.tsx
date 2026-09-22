@@ -2,7 +2,7 @@ import React from 'react'
 import { useNoteAppController } from '../../../../../ui/web/hooks/useNoteAppController'
 import { QueryProvider } from '../../../../../ui/web/components/providers/QueryProvider'
 import { SupabaseTestProvider } from '../../../../../ui/web/providers/SupabaseProvider'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { NoteViewModel } from '../../../../../core/types/domain'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,7 +105,7 @@ describe('useNoteSaveHandlers', () => {
 
   it('handleSaveNote calls insert for new note (online)', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -121,7 +121,7 @@ describe('useNoteSaveHandlers', () => {
 
   it('handleSaveNote calls update for existing selected note (online)', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -137,7 +137,7 @@ describe('useNoteSaveHandlers', () => {
 
   it('handleSaveNote uses "Untitled" when title is empty', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -153,7 +153,7 @@ describe('useNoteSaveHandlers', () => {
 
   it('handleReadNote exits editing mode after save', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -171,7 +171,7 @@ describe('useNoteSaveHandlers', () => {
 
   it('confirmDeleteNote closes dialog and clears noteToDelete', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -187,7 +187,7 @@ describe('useNoteSaveHandlers', () => {
 
   it('confirmDeleteNote clears selectedNote when deleted note was selected', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -232,7 +232,7 @@ describe('useNoteSaveHandlers', () => {
 
   it('handleAutoSave skips new note creation when all fields are empty', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -248,7 +248,7 @@ describe('useNoteSaveHandlers', () => {
 
   it('executeOfflineWrite: handleSaveNote offline create does not call insert and sets selectedNote', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -271,7 +271,7 @@ describe('useNoteSaveHandlers', () => {
 
   it('executeOfflineWrite: handleSaveNote offline update does not call update mutation', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -294,7 +294,7 @@ describe('useNoteSaveHandlers', () => {
 
   it('executeOfflineWrite: handleSaveNote offline save updates lastSavedAt', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>

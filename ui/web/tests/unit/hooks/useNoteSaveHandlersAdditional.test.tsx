@@ -36,6 +36,7 @@ function setup(overrides: SaveHandlersOverrides = {}) {
     isOffline: false,
     offlineCache: {
       saveNote: jest.fn().mockResolvedValue(undefined),
+      deleteNote: jest.fn().mockResolvedValue(undefined),
     },
     enqueueMutation: jest.fn().mockResolvedValue(undefined),
     offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } },
@@ -173,7 +174,7 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     const failure = setup({
       selectedNote: null,
       selectedNoteRef: { current: null },
-      offlineCache: { saveNote: jest.fn().mockRejectedValue(new Error('storage failure')) },
+      offlineCache: { saveNote: jest.fn().mockRejectedValue(new Error('storage failure')), deleteNote: jest.fn() },
     })
     await act(async () => {
       await expect(failure.result.current.handleAutoSave({ title: 'Will fail' })).rejects.toThrow('storage failure')
@@ -275,4 +276,3 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     consoleSpy.mockRestore()
   })
 })
-
