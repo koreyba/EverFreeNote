@@ -1,0 +1,1 @@
+{"id":"d5ac1c7f305f3fe8b8e2d9e86422a341","fullName":"everfreenote:ui/web/tests/unit/components/pullToRefresh.test.tsx#aborts a stalled refresh and stops the indicator after ten seconds","name":"aborts a stalled refresh and stops the indicator after ten seconds","status":"passed","testResultsByEnv":{"default":"e57415e098b99215d064c754819ff4cf"}}

@@ -1,0 +1,1 @@
+{"id":"d27c92621673056eeb2b1e779294f22a","fullName":"everfreenote:cypress/component/core/services/OfflineSyncManager.cy.ts#OfflineSyncManager drainQueue should not drain if offline","name":"should not drain if offline","status":"passed","testResultsByEnv":{"default":"864172751ae5a2a4e9e6dfed413b1ca2"}}

@@ -1,0 +1,1 @@
+{"id":"96ba5edb83bd04f9cf29a0d7b776911a","fullName":"everfreenote:ui/web/tests/unit/providers/offlineAuth.test.tsx#keeps local access when refresh returns a transport error and an empty initial event","name":"keeps local access when refresh returns a transport error and an empty initial event","status":"passed","testResultsByEnv":{"default":"fb686595831cee735da5077e0f543436"}}
