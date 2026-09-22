@@ -295,7 +295,10 @@ export function useNoteAppController() {
     noteService,
     queryClient,
     offlineCache,
-    hasPendingChanges: id => hasPendingLocalWrites(id) || tabs.some(tab => tab.noteId === id && tab.mode === 'editing'),
+    hasPendingChanges: id => hasPendingLocalWrites(id) || tabs.some(tab => (
+      tab.noteId === id && (tab.saveState !== 'saved' ||
+        (tab.mode === 'editing' && tab.id === activeTabId && notePaneVisible))
+    )),
     onCachedNotesRemoved: removed => {
       const revisions = new Map(removed.map(note => [note.id, note.updatedAt]))
       setOfflineOverlay(current => current.filter(note => (

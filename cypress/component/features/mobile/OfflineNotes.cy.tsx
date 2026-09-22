@@ -170,3 +170,77 @@ describe('Refresh reconciles persisted cache before reopening notes', { retries:
     cy.then(() => webOfflineStorageAdapter.clearAll())
   })
 })
+
+
+describe('Remote deletion after a real local save', { retries: 0 }, () => {
+  function verifyDeletionAfterCreate(initiallyOnline: boolean) {
+    cy.viewport(390, 844)
+    cy.stub(Capacitor, 'isNativePlatform').returns(true)
+    cy.stub(Capacitor, 'getPlatform').returns('android')
+    let online = initiallyOnline
+    const remote = new Map<string, Record<string, unknown>>()
+    let localId: string
+    const client = createClient('https://created-refresh.invalid', 'test-public-key', {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    })
+    cy.intercept('https://created-refresh.invalid/rest/v1/**', req => {
+      if (!online) { req.destroy(); return }
+      const url = new URL(req.url)
+      if (!url.pathname.endsWith('/notes')) { req.reply({ body: [] }); return }
+      if (req.method === 'POST') {
+        const row = req.body[0]
+        remote.set(row.id, { ...row, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        req.reply({ statusCode: 201, body: remote.get(row.id) })
+      } else if (req.method === 'PATCH') {
+        const id = url.searchParams.get('id')?.replace('eq.', '') ?? ''
+        remote.set(id, { ...remote.get(id), ...req.body, id })
+        req.reply({ body: remote.get(id) })
+      } else {
+        const rows = [...remote.values()]
+        req.reply({ body: url.searchParams.get('select') === 'id' ? rows.map(row => ({ id: row.id })) : rows,
+          headers: { 'content-range': `0-0/${rows.length}`, 'access-control-expose-headers': 'content-range' } })
+      }
+    })
+    cy.clearLocalStorage()
+    cy.window().then(win => win.sessionStorage.clear())
+    cy.then(() => webOfflineStorageAdapter.clearAll())
+    const mountApp = () => cy.mount(<SupabaseTestProvider supabase={client} user={user}><AppUnderTest /></SupabaseTestProvider>)
+    mountApp()
+    cy.contains('button', 'New Note').click()
+    cy.get('[placeholder="Note title"]').type('Created here, deleted elsewhere')
+    cy.get('.tiptap').type('Saved content')
+    cy.get('[data-cy="note-save-button"]').click()
+    cy.then(() => dispatchAppBack())
+    cy.contains('[data-testid="note-card"]', 'Created here, deleted elsewhere').should('be.visible')
+    cy.then(() => {
+      online = true
+      window.dispatchEvent(new Event('online'))
+    })
+    cy.wrap(remote, { timeout: 20000 }).should(rows => {
+      expect(rows.size).to.equal(1)
+      localId = [...rows.keys()][0]
+    })
+    cy.get('[data-cy="queue-state"]').should('have.text', '0')
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(notes => {
+      expect(notes).to.have.length(1)
+      expect(notes[0].status).to.equal('synced')
+    })
+    cy.then(() => remote.delete(localId))
+    cy.get('[data-cy="pull-to-refresh"]').filter(':visible')
+      .trigger('touchstart', { touches: [{ clientX: 80, clientY: 200 }] })
+      .trigger('touchmove', { touches: [{ clientX: 80, clientY: 350 }] })
+      .trigger('touchend', { touches: [] })
+    cy.contains('[data-testid="note-card"]', 'Created here, deleted elsewhere').should('not.exist')
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should('have.length', 0)
+    mountApp()
+    cy.contains('[data-testid="note-card"]', 'Created here, deleted elsewhere').should('not.exist')
+  }
+
+  it('removes an online-created saved note when its editor tab remains open', () => {
+    verifyDeletionAfterCreate(true)
+  })
+
+  it('removes an offline-created note after synchronization when its editor tab remains open', () => {
+    verifyDeletionAfterCreate(false)
+  })
+})

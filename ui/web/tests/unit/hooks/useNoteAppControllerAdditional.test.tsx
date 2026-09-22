@@ -8,6 +8,7 @@ import {
   createNoteWorkspaceState,
   MAX_NOTE_WORKSPACE_TABS,
   serializeNoteWorkspaceState,
+  updateWorkspaceTab,
 } from '@core/services/noteWorkspaceTabs'
 import { NOTE_WORKSPACE_STORAGE_KEY } from '@ui/web/lib/noteWorkspaceStorage'
 import { toast } from 'sonner'
@@ -20,6 +21,10 @@ let mockNotes: NoteViewModel[] = []
 let mockResolvedSearchResult: NoteViewModel | null = null
 let mockNoteToDelete: NoteViewModel | null = null
 
+const mockGetNotes = jest.fn()
+const mockGetExistingNoteIds = jest.fn()
+const mockLoadCachedNotes = jest.fn()
+const mockRemoveSyncedNotes = jest.fn()
 const mockGetNoteStatus = jest.fn()
 const mockGetNote = jest.fn()
 const mockHandleSelectNote = jest.fn()
@@ -49,6 +54,8 @@ jest.mock('@ui/web/providers/SupabaseProvider', () => ({
 jest.mock('@core/services/notes', () => ({
   NoteService: jest.fn().mockImplementation(() => ({
     getNoteStatus: mockGetNoteStatus,
+    getNotes: mockGetNotes,
+    getExistingNoteIds: mockGetExistingNoteIds,
     getNote: mockGetNote,
   })),
 }))
@@ -112,7 +119,7 @@ jest.mock('@ui/web/hooks/useNoteSync', () => ({
     isOffline: mockIsOffline,
     lastSavedAt: null,
     setLastSavedAt: mockSetLastSavedAt,
-    offlineCache: { deleteNote: jest.fn(), loadNotes: jest.fn(), saveNote: jest.fn() },
+    offlineCache: { deleteNote: jest.fn(), loadNotes: mockLoadCachedNotes, removeSyncedNotes: mockRemoveSyncedNotes, saveNote: jest.fn() },
     enqueueMutation: jest.fn(),
     enqueueBatchAndDrainIfOnline: jest.fn(),
     offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } },
@@ -758,3 +765,36 @@ describe('useNoteAppController additional observable behavior', () => {
   })
 })
 
+describe('Refresh preserves workspace drafts while removing saved hidden notes', () => {
+  it.each(['dirty', 'saving', 'error', 'saved'] as const)(
+    'reconciles a hidden tab with save state %s', async saveState => {
+      window.sessionStorage.clear()
+      mockSelectedNote = null
+      mockIsEditing = false
+      mockOfflineOverlay = []
+      const note = makeNote()
+      const state = createNoteWorkspaceState(() => 'editor-tab', 'user-1')
+      const withNote = updateWorkspaceTab(state, state.activeTabId, {
+        note, noteId: note.id, mode: 'editing', saveState,
+        draft: { title: 'My local draft', description: '<p>Keep this text</p>', tags: '' },
+      })
+      const hiddenEditor = addWorkspaceTab(withNote, () => 'list-tab')
+      window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(hiddenEditor))
+      mockGetNotes.mockResolvedValue({ notes: [], total: 0, hasMore: false })
+      mockGetExistingNoteIds.mockResolvedValue([])
+      mockLoadCachedNotes.mockResolvedValue([{ ...note, updatedAt: note.updated_at, status: 'synced' }])
+      mockRemoveSyncedNotes.mockImplementation(async notes => notes.map((entry: { id: string }) => entry.id))
+      const { result } = setup()
+      await act(async () => result.current.refreshNotes(new AbortController().signal))
+      const editor = result.current.tabs.find(tab => tab.id === 'editor-tab')
+      if (saveState === 'saved') {
+        expect(editor?.noteId).toBeNull()
+        expect(editor?.draft.title).toBe('')
+      } else {
+        expect(editor?.noteId).toBe(note.id)
+        expect(editor?.draft.description).toBe('<p>Keep this text</p>')
+        expect(editor?.saveState).toBe(saveState)
+      }
+    },
+  )
+})

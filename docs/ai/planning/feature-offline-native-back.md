@@ -46,3 +46,9 @@ Use a sibling worktree already bootstrapped at /Users/denys.koreiba/Documents/Ev
 - [x] Add red regression tests, implement reconciliation and immediate local rendering.
 - [x] Verify IndexedDB and complete UI behavior with blocked transport.
 - [ ] Review, publish PR update and produce production APK.
+
+## Remote deletion after actual creation
+- [x] Reproduce with UI-created online and offline notes, synchronized queue, Back and remote deletion. Both remain after refresh on d16f42c.
+- [x] Distinguish saved hidden tabs from unsaved drafts and visible editing panes.
+- [x] Validate regression and preservation tests and both creation paths on Android with a real local backend.
+- [ ] Publish production APK and current-head PR receipts.
