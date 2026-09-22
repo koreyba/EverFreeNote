@@ -1,0 +1,1 @@
+{"id":"86243caf8fd84d497b8e49598afde450","fullName":"everfreenote:ui/web/tests/unit/components/tagInput.test.tsx#TagInput handles mouseDown events on tag badges and suggestions without losing focus","name":"handles mouseDown events on tag badges and suggestions without losing focus","status":"passed","testResultsByEnv":{"default":"c4bcbed61e714a43c6c5e652f7c5ee88"}}
