@@ -43,7 +43,7 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
         } else if (req.method === 'DELETE') {
           const id = new URL(req.url).searchParams.get('id')?.replace('eq.', '') ?? ''
           remoteNotes.delete(id)
-          req.reply({ statusCode: 204, body: '' })
+          req.reply({ statusCode: 204, body: '', delay: 500 })
         } else req.reply({ body: [...remoteNotes.values()], headers: { 'content-range': `0-0/${remoteNotes.size}` } })
       } else req.reply({ body: [] })
     })
@@ -86,6 +86,8 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
     cy.get('[data-cy="note-delete-button"]').click()
     cy.get('[role="alertdialog"]').contains('button', 'Delete').click()
     cy.get('[role="alertdialog"]').should('not.exist')
+    // The dialog closes on click; the reading pane clears only after durable deletion.
+    cy.contains('No Note Selected').should('be.visible')
     cy.get('[data-testid="note-card"]').should('not.exist')
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should('have.length', 0)
     mountApp()
