@@ -20,6 +20,7 @@ export class NoteService {
       pageSize?: number
       tag?: string | null
       searchQuery?: string
+      signal?: AbortSignal
     } = {}
   ) {
     const { page = 0, pageSize = 50, tag, searchQuery } = options
@@ -43,6 +44,7 @@ export class NoteService {
       query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`)
     }
 
+    if (options.signal) query = query.abortSignal(options.signal)
     const { data, error, count } = await query
     if (error) throw error
 
@@ -105,12 +107,13 @@ export class NoteService {
     return data as Note
   }
 
-  async getNoteStatus(id: string): Promise<NoteLookupResult> {
-    const { data, error } = await this.supabase
+  async getNoteStatus(id: string, signal?: AbortSignal): Promise<NoteLookupResult> {
+    let query = this.supabase
       .from('notes')
       .select('id, title, description, tags, created_at, updated_at, user_id')
       .eq('id', id)
-      .maybeSingle()
+    if (signal) query = query.abortSignal(signal)
+    const { data, error } = await query.maybeSingle()
 
     if (error) {
       return {

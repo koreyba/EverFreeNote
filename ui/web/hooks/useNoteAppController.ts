@@ -11,6 +11,7 @@ import { useNoteSearch } from './useNoteSearch'
 import { useNoteSelection } from './useNoteSelection'
 import { useNoteSync } from './useNoteSync'
 import { useNoteData } from './useNoteData'
+import { useNoteRefresh } from './useNoteRefresh'
 import { useNoteSaveHandlers } from './useNoteSaveHandlers'
 import { useNoteBulkActions } from './useNoteBulkActions'
 import { useNoteWorkspaceTabs } from './useNoteWorkspaceTabs'
@@ -285,6 +286,28 @@ export function useNoteAppController() {
       )
     ))
   ), [offlineOverlay])
+
+  const { refreshList: refreshNotes, refreshNote: refreshSelectedNote } = useNoteRefresh({
+    userId: user?.id,
+    tabId: activeTabId,
+    note: selectedNote,
+    isEditing,
+    noteService,
+    queryClient,
+    hasPendingChanges: hasPendingLocalWrites,
+    onNoteRefreshed: (note) => updateTab(activeTabId, {
+      note,
+      draft: { title: note.title, description: note.description ?? '', tags: (note.tags ?? []).join(', ') },
+    }),
+    onNoteDeleted: async (id) => {
+      resetTabsForNotes([id])
+      setNotePaneVisible(false)
+      await offlineCache.deleteNote(id)
+      setOfflineOverlay((current) => current.filter((note) => note.id !== id))
+      await queryClient.invalidateQueries({ queryKey: ['notes', user?.id] })
+      toast.info('This note was deleted on another device.')
+    },
+  })
 
   const resolveOpenableNote = useCallback(async <T extends NoteViewModel | SearchResult>(note: T): Promise<T | null> => {
     if (isOffline || hasPendingLocalWrites(note.id)) {
@@ -929,6 +952,8 @@ export function useNoteAppController() {
 
   return {
     registerNoteEditorRef,
+    refreshNotes,
+    refreshSelectedNote,
     // State
     user,
     loading: authLoadingState,
@@ -1038,4 +1063,3 @@ export function useNoteAppController() {
 }
 
 export type NoteAppController = ReturnType<typeof useNoteAppController>
-

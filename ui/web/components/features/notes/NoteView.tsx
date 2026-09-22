@@ -5,6 +5,7 @@ import { PencilSimple as Edit2, Trash as Trash2, CaretLeft as ChevronLeft, Copy,
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
+import { PullToRefresh } from "@/components/PullToRefresh"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { SanitizationService } from "@core/services/sanitizer"
 import { NoteClipboardService } from "@core/services/noteClipboard"
@@ -33,6 +34,7 @@ interface NoteViewProps {
   onBack?: () => void
   wordpressConfigured?: boolean
   initialScrollTop?: number
+  onRefresh?: (signal: AbortSignal) => Promise<void>
   onViewSessionChange?: (view: Partial<NoteViewSession>) => void
 }
 
@@ -45,6 +47,7 @@ export const NoteView = React.memo(function NoteView({
   onBack,
   wordpressConfigured = false,
   initialScrollTop = 0,
+  onRefresh,
   onViewSessionChange,
 }: NoteViewProps) {
   const bodyHtml = note.description || note.content || ''
@@ -162,48 +165,49 @@ export const NoteView = React.memo(function NoteView({
       </div>
 
       {/* Note Content */}
-      <div
-        ref={contentRef}
-        // scrollbar-none: the note surface scrolls under a translucent action
-        // bar, and a native scrollbar runs the full height of the pane, so it
-        // shows up alongside that bar. Reading and editing hide it the same
-        // way, otherwise only one of the two modes has a stray edge line.
-        className="scrollbar-none flex-1 overflow-y-auto px-6 pt-24 pb-10 bg-card"
-        onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
-      >
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-6 leading-tight">
-            {note.title}
-          </h1>
+      <PullToRefresh onRefresh={onRefresh} indicatorClassName="top-16">
+        <div
+          ref={contentRef}
+          // scrollbar-none: the note surface scrolls under a translucent action
+          // bar, and a native scrollbar runs the full height of the pane, so it
+          // shows up alongside that bar. Reading and editing hide it the same
+          // way, otherwise only one of the two modes has a stray edge line.
+          className="scrollbar-none min-h-0 flex-1 overflow-y-auto px-6 pt-24 pb-10 bg-card"
+          onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
+        >
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-6 leading-tight">
+              {note.title}
+            </h1>
 
-          {note.tags && note.tags.length > 0 && (
-            <div className="mb-8 overflow-hidden">
-              <HorizontalTagScroll className="pb-1">
-                {note.tags.map((tag) => (
-                  <InteractiveTag
-                    key={tag}
-                    tag={tag}
-                    onClick={onTagClick}
-                    onRemove={onRemoveTag}
-                    className="shrink-0 rounded-full text-[11px] px-2 py-0.5"
-                  />
-                ))}
-              </HorizontalTagScroll>
+            {note.tags && note.tags.length > 0 && (
+              <div className="mb-8 overflow-hidden">
+                <HorizontalTagScroll className="pb-1">
+                  {note.tags.map((tag) => (
+                    <InteractiveTag
+                      key={tag}
+                      tag={tag}
+                      onClick={onTagClick}
+                      onRemove={onRemoveTag}
+                      className="shrink-0 rounded-full text-[11px] px-2 py-0.5"
+                    />
+                  ))}
+                </HorizontalTagScroll>
+              </div>
+            )}
+
+            <div
+              className={NOTE_CONTENT_CLASS}
+              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+            />
+
+            <div className="mt-12 pt-6 border-t border-border/40 text-[11px] text-foreground/70 flex flex-wrap gap-x-6 gap-y-2">
+              <span>Created: {formattedDates.created}</span>
+              <span>Updated: {formattedDates.updated}</span>
             </div>
-          )}
-
-          <div
-            className={NOTE_CONTENT_CLASS}
-            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-          />
-
-          <div className="mt-12 pt-6 border-t border-border/40 text-[11px] text-foreground/70 flex flex-wrap gap-x-6 gap-y-2">
-            <span>Created: {formattedDates.created}</span>
-            <span>Updated: {formattedDates.updated}</span>
           </div>
         </div>
-      </div>
+      </PullToRefresh>
     </div>
   )
 })
-

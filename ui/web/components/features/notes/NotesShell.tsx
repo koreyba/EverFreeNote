@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { cn } from "@ui/web/lib/utils"
+import { PullToRefresh } from "@/components/PullToRefresh"
 import { Sidebar } from "@/components/features/notes/Sidebar"
 import { NoteList } from "@/components/features/notes/NoteList"
 import { NoteEditor, type NoteEditorHandle, type PendingChunkFocus } from "@/components/features/notes/NoteEditor"
@@ -344,19 +345,21 @@ function ListPane({ controller }: { controller: NoteAppController }) {
   } = controller
 
   return (
-    <NoteList
-      notes={notes as NoteRecord[]}
-      isLoading={notesQuery.isLoading}
-      selectedNoteId={selectedNote?.id}
-      selectionMode={selectionMode}
-      selectedIds={selectedNoteIds}
-      onToggleSelect={(note) => toggleNoteSelection(note.id)}
-      onSelectNote={(note) => handleSelectNote(note)}
-      onTagClick={handleTagClick}
-      onLoadMore={() => notesQuery.fetchNextPage()}
-      hasMore={notesQuery.hasNextPage}
-      isFetchingNextPage={notesQuery.isFetchingNextPage}
-    />
+    <PullToRefresh onRefresh={controller.refreshNotes}>
+      <NoteList
+        notes={notes as NoteRecord[]}
+        isLoading={notesQuery.isLoading}
+        selectedNoteId={selectedNote?.id}
+        selectionMode={selectionMode}
+        selectedIds={selectedNoteIds}
+        onToggleSelect={(note) => toggleNoteSelection(note.id)}
+        onSelectNote={(note) => handleSelectNote(note)}
+        onTagClick={handleTagClick}
+        onLoadMore={() => notesQuery.fetchNextPage()}
+        hasMore={notesQuery.hasNextPage}
+        isFetchingNextPage={notesQuery.isFetchingNextPage}
+      />
+    </PullToRefresh>
   )
 }
 
@@ -478,6 +481,7 @@ function EditorPane({
         onBack={onBack}
         wordpressConfigured={wordpressConfigured}
         initialScrollTop={activeTab.view.scrollTop}
+        onRefresh={controller.refreshSelectedNote}
         onViewSessionChange={controller.handleViewSessionChange}
       />
     )

@@ -29,4 +29,12 @@ Use a sibling worktree already bootstrapped at /Users/denys.koreiba/Documents/Ev
 - [x] Full Jest regression: 1666/1666, plus focused component regressions and static checks.
 - [x] Deliver production APK a35c992 with matching signature and inspect its terminal cloud checks.
 - [x] Correct three component-test fixture/timing failures and four Codacy annotations; 55 targeted cases pass.
-- [ ] Read the final follow-up cloud results; merge and external quality-gate decisions remain separate.
+- [x] Read bccf7c8 terminal cloud results: all tests passed; Qodana license rejected and Codacy complexity remains above threshold. Merge remains separate.
+
+## Pull-to-refresh tasks
+- [x] Add failing gesture and refresh-data regression tests.
+- [x] Implement Android-only list/reading refresh with bounded network wait and draft guards.
+- [x] Verify actual nested list scrolling, reading refresh and editor exclusion in browser components.
+- [x] Verify installed Android swipe behavior.
+- [ ] Build and verify the production update.
+- [ ] Review, update PR scope/evidence and inspect final CI.

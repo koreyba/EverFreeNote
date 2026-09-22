@@ -37,3 +37,16 @@ The provider reads the existing Supabase SSR cookie using its public chunk/base6
 
 ## Review
 Requirements and current save/navigation paths reviewed. Test backend failures even with navigator.onLine=true. Validate installed Android separately from component/native-boundary mocks.
+
+## Pull-to-refresh design
+```mermaid
+flowchart LR
+  Touch[Downward touch at scroll top] --> Gesture[Android-only gesture and indicator]
+  Gesture -->|release past threshold| Request[Abortable bounded refresh]
+  Request --> List[Replace first notes page]
+  Request --> Note[Refresh clean reading snapshot]
+  Pending[Local pending writes] --> Guard[Preserve local version]
+  Note --> Guard
+  Request -->|failure| Retain[Keep current content]
+```
+A reusable UI wrapper owns gesture recognition, cancellation, feedback and in-flight exclusion. A notes refresh hook owns server reads, query-cache replacement and safe snapshot application; the controller wires reading snapshots to existing workspace tabs. Use AbortSignal plus identity/edit-state guards so late responses cannot replace another account/tab or a new draft. Existing Supabase service methods accept an optional signal. No native plugin or storage migration is needed.

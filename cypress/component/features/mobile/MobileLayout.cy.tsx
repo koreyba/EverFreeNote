@@ -1,4 +1,5 @@
 import React from 'react'
+import { Capacitor } from '@capacitor/core'
 import { dispatchAppBack } from '@ui/web/lib/appBack'
 import '../../../../app/globals.css'
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
@@ -58,6 +59,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       handleCleanTags: cy.stub().resolves(),
       user: mockUser,
       loading: false,
+      refreshNotes: cy.stub().resolves(),
+      refreshSelectedNote: cy.stub().resolves(),
       notes: [],
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,6 +186,48 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
         }),
       },
     } as unknown as SupabaseClient
+  })
+
+  it('refreshes an empty Android list by pulling its content', () => {
+    cy.viewport('iphone-se2')
+    cy.stub(Capacitor, 'isNativePlatform').returns(true)
+    cy.stub(Capacitor, 'getPlatform').returns('android')
+    const refreshNotes = cy.stub().as('refreshNotes'); refreshNotes.resolves()
+    const controller = createMockController({ refreshNotes })
+    cy.mount(<SupabaseTestProvider supabase={mockSupabase}><NotesShell controller={controller} /></SupabaseTestProvider>)
+    cy.get('[data-cy="pull-to-refresh"]').filter(':visible')
+      .trigger('touchstart', { touches: [{ clientX: 80, clientY: 200 }] })
+      .trigger('touchmove', { touches: [{ clientX: 80, clientY: 350 }] })
+    cy.contains('[role="status"]', 'Release to refresh').should(($status) => {
+      const indicator = $status[0]
+      const rect = indicator.getBoundingClientRect()
+      const viewport = indicator.ownerDocument.defaultView!
+      expect(rect.width, 'visible indicator width').to.be.greaterThan(0)
+      expect(rect.top, 'indicator starts inside viewport').to.be.at.least(0)
+      expect(rect.bottom, 'indicator ends inside viewport').to.be.at.most(viewport.innerHeight)
+      expect(viewport.getComputedStyle(indicator).visibility).to.equal('visible')
+    })
+    cy.get('[data-cy="pull-to-refresh"]').filter(':visible').trigger('touchend', { touches: [] })
+    cy.get('@refreshNotes').should('have.been.calledOnce')
+    cy.get('[data-cy="pull-to-refresh"] [role="status"]').should('not.exist')
+  })
+
+  it('refreshes an Android reading pane while excluding the editor', () => {
+    cy.viewport('iphone-se2')
+    cy.stub(Capacitor, 'isNativePlatform').returns(true)
+    cy.stub(Capacitor, 'getPlatform').returns('android')
+    const note = { id: 'refresh-note', title: 'Reading refresh', description: '<p>Pull this text</p>', tags: [], user_id: 'test-user', created_at: '2026-09-22', updated_at: '2026-09-22' }
+    const refreshSelectedNote = cy.stub().as('refreshSelectedNote'); refreshSelectedNote.resolves()
+    const controller = createMockController({ selectedNote: note, refreshSelectedNote })
+    cy.mount(<SupabaseTestProvider supabase={mockSupabase}><NotesShell controller={controller} /></SupabaseTestProvider>)
+    cy.contains('p', 'Pull this text')
+      .trigger('touchstart', { touches: [{ clientX: 80, clientY: 200 }] })
+      .trigger('touchmove', { touches: [{ clientX: 80, clientY: 350 }] })
+      .trigger('touchend', { touches: [] })
+    cy.get('@refreshSelectedNote').should('have.been.calledOnce')
+    cy.mount(<SupabaseTestProvider supabase={mockSupabase}><NotesShell controller={{ ...controller, isEditing: true }} /></SupabaseTestProvider>)
+    cy.get('[data-testid="editor-container"] [data-cy="pull-to-refresh"]').should('not.exist')
+    cy.get('@refreshSelectedNote').should('have.been.calledOnce')
   })
 
   it('shows sidebar and hides editor on mobile by default', () => {
