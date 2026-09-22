@@ -1,0 +1,1 @@
+{"id":"8a4ce4c3bce36e1b1e06d2189a2e14df","fullName":"everfreenote:ui/web/tests/unit/providers/offlineAuth.test.tsx#clears local access on sign-out and ignores an older session request finishing later","name":"clears local access on sign-out and ignores an older session request finishing later","status":"passed","testResultsByEnv":{"default":"83b29076718f0582241923ce0c3434c2"}}
