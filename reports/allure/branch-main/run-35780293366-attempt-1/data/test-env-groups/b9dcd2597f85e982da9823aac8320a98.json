@@ -1,0 +1,1 @@
+{"id":"b9dcd2597f85e982da9823aac8320a98","fullName":"everfreenote:cypress/component/features/notes/SelectionModeActions.cy.tsx#SelectionModeActions respects disabled states and shows spinner while deleting","name":"respects disabled states and shows spinner while deleting","status":"passed","testResultsByEnv":{"default":"900c65fe4c583c335fb5cc1141f33b6c"}}
