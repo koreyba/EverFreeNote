@@ -75,7 +75,7 @@ const withStore = async <T>(
   })
 }
 
-const matchesSyncedSnapshot = (current: CachedNote | undefined, expected: CachedNote) => (
+const matchesSyncedSnapshot = (expected: CachedNote, current?: CachedNote) => (
   current?.status === 'synced' && !current.deleted && !current.pendingOps?.length &&
   current.user_id === expected.user_id && current.updatedAt === expected.updatedAt
 )
@@ -126,7 +126,7 @@ const localFallback = (() => {
       const snapshots = new Map(expected.map(note => [note.id, note]))
       const removed = notes.filter(note => {
         const snapshot = snapshots.get(note.id)
-        return snapshot && !queued.has(note.id) && matchesSyncedSnapshot(note, snapshot)
+        return snapshot && !queued.has(note.id) && matchesSyncedSnapshot(snapshot, note)
       }).map(note => note.id)
       const removedIds = new Set(removed)
       writeJson(NOTES_KEY, notes.filter(note => !removedIds.has(note.id)))
@@ -263,7 +263,7 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
               if (queued.has(note.id)) continue
               const request = store.get(note.id)
               request.onsuccess = () => {
-                if (matchesSyncedSnapshot(request.result as CachedNote | undefined, note)) {
+                if (matchesSyncedSnapshot(note, request.result)) {
                   store.delete(note.id)
                   removed.push(note.id)
                 }

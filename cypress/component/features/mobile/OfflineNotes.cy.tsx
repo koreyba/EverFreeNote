@@ -162,7 +162,7 @@ describe('Refresh reconciles persisted cache before reopening notes', { retries:
     cy.then(() => webOfflineStorageAdapter.saveNote(cached('newer', { updatedAt: '2026-09-22T11:00:00Z' })))
     cy.then(() => webOfflineStorageAdapter.saveNote(cached('other-owner', { user_id: 'another-user' })))
     cy.then(() => webOfflineStorageAdapter.upsertQueueItem({ id: 'queued-op', noteId: 'queued', operation: 'update', payload: { user_id: user.id }, clientUpdatedAt: snapshots[0].updatedAt, status: 'pending' }))
-    cy.then(() => webOfflineStorageAdapter.removeSyncedNotes!(snapshots)).should('deep.equal', ['gone'])
+    cy.then(() => webOfflineStorageAdapter.removeSyncedNotes?.(snapshots)).should('deep.equal', ['gone'])
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(notes => {
       expect(notes.map(note => note.id).sort()).to.deep.equal(['edited', 'newer', 'other-owner', 'queued'])
     })

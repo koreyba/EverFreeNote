@@ -1,3 +1,4 @@
+/* eslint no-unused-vars: "off", "@typescript-eslint/no-unused-vars": "error" -- Use the TypeScript-aware rule for interface method declarations. */
 import type { Note } from './domain'
 
 export type NoteSyncStatus = 'synced' | 'pending' | 'failed'
