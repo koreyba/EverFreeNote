@@ -1,5 +1,6 @@
 "use client"
 
+import { useAppBackHandler, APP_BACK_PRIORITY } from "@ui/web/lib/appBack"
 import { useEffect, useRef, useState } from "react"
 import { List, Plus, X } from "@phosphor-icons/react"
 import type { NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
@@ -21,6 +22,11 @@ export function MobileNotesTabMenu({
   maximumTabCount,
 }: MobileNotesTabMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
+  useAppBackHandler(APP_BACK_PRIORITY.menu, () => {
+    if (!isOpen) return false
+    setIsOpen(false)
+    return true
+  })
   const containerRef = useRef<HTMLDivElement | null>(null)
   const activeRowRef = useRef<HTMLDivElement | null>(null)
   // Same motion as the desktop strip, collapsing vertically instead.

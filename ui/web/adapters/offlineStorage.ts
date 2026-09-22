@@ -138,10 +138,10 @@ const localFallback = (() => {
       const queue = readJson<MutationQueueItem>(QUEUE_KEY).filter((q) => !idSet.has(q.id))
       writeJson(QUEUE_KEY, queue)
     },
-    markSynced: (id: string, updatedAt: string) => {
+    markSynced: (id: string, updatedAt: string, expectedUpdatedAt?: string) => {
       const notes = readJson<CachedNote>(NOTES_KEY)
       const idx = notes.findIndex((n) => n.id === id)
-      if (idx >= 0) {
+      if (idx >= 0 && (expectedUpdatedAt === undefined || notes[idx].updatedAt === expectedUpdatedAt)) {
         notes[idx].status = 'synced'
         notes[idx].updatedAt = updatedAt
         notes[idx].pendingOps = []
@@ -300,18 +300,17 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
         })
       },
 
-      async markSynced(noteId, updatedAt) {
-        const notes = await readAll<CachedNote>(NOTES_STORE)
-        const idx = notes.findIndex((n) => n.id === noteId)
-        if (idx >= 0) {
-          notes[idx].status = 'synced'
-          notes[idx].updatedAt = updatedAt
-          notes[idx].pendingOps = []
-          await withStore(NOTES_STORE, 'readwrite', (store) => {
-            store.put(notes[idx])
-            return
-          })
-        }
+      async markSynced(noteId, updatedAt, expectedUpdatedAt) {
+        // Read and conditionally acknowledge in one transaction to preserve concurrent edits.
+        await withStore(NOTES_STORE, 'readwrite', (store) => {
+          const request = store.get(noteId)
+          request.onsuccess = () => {
+            const note = request.result as CachedNote | undefined
+            if (note && (expectedUpdatedAt === undefined || note.updatedAt === expectedUpdatedAt)) {
+              store.put({ ...note, status: 'synced', updatedAt, pendingOps: [] })
+            }
+          }
+        })
       },
 
       async markQueueItemStatus(id, status, lastError) {
@@ -388,8 +387,8 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
       async removeQueueItems(ids) {
         localFallback.removeQueueItems(ids)
       },
-      async markSynced(noteId, updatedAt) {
-        localFallback.markSynced(noteId, updatedAt)
+      async markSynced(noteId, updatedAt, expectedUpdatedAt) {
+        localFallback.markSynced(noteId, updatedAt, expectedUpdatedAt)
       },
       async markQueueItemStatus(id, status, lastError) {
         localFallback.markQueueItemStatus(id, status, lastError)

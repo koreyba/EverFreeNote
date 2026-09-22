@@ -50,7 +50,7 @@ export interface OfflineStorageAdapter {
   getPendingBatch(batchSize: number): Promise<MutationQueueItem[]>
   /** Remove items from queue after successful sync */
   removeQueueItems(ids: string[]): Promise<void>
-  markSynced(noteId: string, updatedAt: string): Promise<void>
+  markSynced(noteId: string, updatedAt: string, expectedUpdatedAt?: string): Promise<void>
   markQueueItemStatus(id: string, status: MutationStatus, lastError?: string): Promise<void>
   enforceLimit(): Promise<void>
   clearAll(): Promise<void>

@@ -57,19 +57,30 @@ export function useNoteSync({
             if (!currentUser) {
                 throw new Error('User not authenticated - sync skipped')
             }
+            const ownerId = item.payload.user_id ?? (item.payload as { userId?: string }).userId
+            if (ownerId && ownerId !== currentUser.id) throw new Error('Queued note belongs to another account')
             if (item.operation === 'create') {
                 const payload = item.payload as Partial<NoteInsert> & { userId?: string }
-                await createMutationRef.current.mutateAsync({
+                const data = {
+                    id: item.noteId,
                     title: payload.title ?? 'Untitled',
                     description: payload.description ?? '',
                     tags: payload.tags ?? [],
-                    userId: payload.userId ?? currentUser.id,
-                })
+                    silent: true,
+                }
+                try {
+                    await createMutationRef.current.mutateAsync({ ...data, userId: payload.userId ?? currentUser.id })
+                } catch (error) {
+                    // The insert may have succeeded before its response was lost.
+                    if (!error || typeof error !== 'object' || !('code' in error) || error.code !== '23505') throw error
+                    await updateMutationRef.current.mutateAsync(data)
+                }
             } else if (item.operation === 'update') {
                 const payload = item.payload as Partial<NoteUpdate>
                 try {
                     await updateMutationRef.current.mutateAsync({
                         id: item.noteId,
+                        silent: true,
                         title: payload.title ?? 'Untitled',
                         description: payload.description ?? '',
                         tags: payload.tags ?? [],
@@ -79,6 +90,7 @@ export function useNoteSync({
                     // Re-create with the same ID so the user's queued edits are preserved
                     await createMutationRef.current.mutateAsync({
                         id: item.noteId,
+                        silent: true,
                         title: payload.title ?? 'Untitled',
                         description: payload.description ?? '',
                         tags: payload.tags ?? [],
@@ -90,10 +102,13 @@ export function useNoteSync({
             }
         },
         onSuccess: async (item: MutationQueueItemInput) => {
-            await offlineCacheRef.current.deleteNote(item.noteId)
-            const cached = await offlineCacheRef.current.loadNotes()
-            setOfflineOverlay(cached)
+            // A completed request must not delete a newer draft saved during it.
             const queue = await offlineQueueRef.current.getQueue()
+            if (!queue.some((queued) => queued.noteId === item.noteId)) {
+                await offlineCacheRef.current.markSynced(item.noteId, item.clientUpdatedAt, item.clientUpdatedAt)
+            }
+            const cached = await offlineCacheRef.current.loadNotes()
+            setOfflineOverlay(cached.filter((note) => !note.user_id || note.user_id === userRef.current?.id))
             setPendingCount(queue.filter((q) => q.status === 'pending').length)
             setFailedCount(queue.filter((q) => q.status === 'failed').length)
         },
@@ -102,16 +117,21 @@ export function useNoteSync({
     // Create syncManager effect to avoid reading refs during render
     const syncManagerRef = useRef<OfflineSyncManager | null>(null)
 
+    const userId = user?.id
     useEffect(() => {
-        if (!syncManagerRef.current) {
-            syncManagerRef.current = new OfflineSyncManager(
-                webOfflineStorageAdapter,
-                (item) => syncCallbacksRef.current.performSync(item),
-                webNetworkStatus,
-                (item) => syncCallbacksRef.current.onSuccess(item)
-            )
+        if (!userId) return
+        const manager = new OfflineSyncManager(
+            webOfflineStorageAdapter,
+            (item) => syncCallbacksRef.current.performSync(item),
+            webNetworkStatus,
+            (item) => syncCallbacksRef.current.onSuccess(item)
+        )
+        syncManagerRef.current = manager
+        return () => {
+            manager.dispose()
+            syncManagerRef.current = null
         }
-    }, [])
+    }, [userId])
 
     const enqueueMutation = useCallback(
         async (item: MutationQueueItemInput) => {
@@ -138,7 +158,7 @@ export function useNoteSync({
         const queue = await offlineQueue.getQueue()
         let cached = await offlineCache.loadNotes()
         if (!queue.length && cached.length) {
-            const idsToRemove = cached.filter((c) => c.status !== 'synced' || c.deleted).map((c) => c.id)
+            const idsToRemove = cached.filter((c) => c.status === 'synced' && c.deleted).map((c) => c.id)
             if (idsToRemove.length) {
                 for (const id of idsToRemove) {
                     await offlineCache.deleteNote(id)
@@ -146,7 +166,7 @@ export function useNoteSync({
                 cached = await offlineCache.loadNotes()
             }
         }
-        setOfflineOverlay(cached)
+        setOfflineOverlay(cached.filter((note) => !note.user_id || note.user_id === userRef.current?.id))
         const pending = queue.filter((q) => q.status === 'pending').length
         const failed = queue.filter((q) => q.status === 'failed').length
         setPendingCount(pending)
@@ -155,15 +175,32 @@ export function useNoteSync({
     }, [offlineQueue, offlineCache])
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- setState calls inside refreshQueueState are async (after awaited I/O), not synchronous
-        void refreshQueueState()
-    }, [refreshQueueState])
+        if (!userId) return
+        const retrySync = async () => {
+            if (document.visibilityState === 'hidden') return
+            try {
+                // Reachability can change without navigator.onLine or an online event.
+                await syncManagerRef.current?.drainQueue()
+                await refreshQueueState()
+            } catch (error) {
+                console.warn('Background note sync will retry:', error)
+            }
+        }
+        const timer = setInterval(() => { void retrySync() }, 15000)
+        const resume = () => { void retrySync() }
+        window.addEventListener('focus', resume)
+        document.addEventListener('visibilitychange', resume)
+        return () => {
+            clearInterval(timer)
+            window.removeEventListener('focus', resume)
+            document.removeEventListener('visibilitychange', resume)
+        }
+    }, [refreshQueueState, userId])
 
     useEffect(() => {
-        return () => {
-            syncManagerRef.current?.dispose()
-        }
-    }, [])
+        void refreshQueueState()
+    }, [refreshQueueState, userId])
+
 
     useEffect(() => {
         let updateInterval: ReturnType<typeof setInterval> | null = null
@@ -206,7 +243,7 @@ export function useNoteSync({
             clearUpdateInterval()
             clearDelayedRefresh()
         }
-    }, [refreshQueueState])
+    }, [refreshQueueState, userId])
 
     return {
         offlineOverlay,

@@ -22,8 +22,8 @@ export class OfflineCacheService {
     await this.storage.deleteNote(noteId)
   }
 
-  async markSynced(noteId: string, updatedAt: string): Promise<void> {
-    await this.storage.markSynced(noteId, updatedAt)
+  async markSynced(noteId: string, updatedAt: string, expectedUpdatedAt?: string): Promise<void> {
+    await this.storage.markSynced(noteId, updatedAt, expectedUpdatedAt)
   }
 
   async enforceLimit(): Promise<void> {

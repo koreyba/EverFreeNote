@@ -1,5 +1,6 @@
 "use client"
 
+import { useAppBackHandler, APP_BACK_PRIORITY } from "@ui/web/lib/appBack"
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Database, DownloadSimple as Download, Globe, Key as KeyRound, UploadSimple as Upload, User as UserRound, X } from "@phosphor-icons/react"
@@ -104,6 +105,11 @@ export function SettingsPage() {
     const safeReturnPath = sanitizeSettingsReturnPath(returnState?.returnPath) ?? "/"
     router.push(safeReturnPath)
   }, [router])
+
+  useAppBackHandler(APP_BACK_PRIORITY.navigation, () => {
+    handleExit()
+    return true
+  })
 
   const handleImportComplete = React.useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["notes"] })

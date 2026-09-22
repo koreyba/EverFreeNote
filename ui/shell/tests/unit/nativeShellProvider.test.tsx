@@ -1,5 +1,7 @@
-import { render, waitFor } from '@testing-library/react'
+import { useAppBackHandler } from '@ui/web/lib/appBack'
+import { render, waitFor, act } from '@testing-library/react'
 import { App } from '@capacitor/app'
+import { Keyboard } from '@capacitor/keyboard'
 import { Browser } from '@capacitor/browser'
 import { useRouter } from 'next/navigation'
 
@@ -7,6 +9,7 @@ import { NativeShellProvider } from '@ui/shell/runtime/NativeShellProvider'
 import { isNativeShell, shellScheme } from '@ui/shell/runtime/platform'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 
+jest.mock('@capacitor/keyboard', () => ({ Keyboard: { addListener: jest.fn(), hide: jest.fn().mockResolvedValue(undefined) } }))
 jest.mock('@capacitor/app', () => ({ App: { addListener: jest.fn(), exitApp: jest.fn() } }))
 jest.mock('@capacitor/browser', () => ({ Browser: { close: jest.fn() } }))
 jest.mock('next/navigation', () => ({ useRouter: jest.fn() }))
@@ -25,6 +28,10 @@ const removeListener = jest.fn().mockResolvedValue(undefined)
 /** Captures the handlers registered with App.addListener, keyed by event name. */
 function registeredHandlers() {
   const handlers: Record<string, Handler> = {}
+  jest.mocked(Keyboard.addListener).mockImplementation(((event: string, handler: Handler) => {
+    handlers[event] = handler
+    return Promise.resolve({ remove: jest.fn() })
+  }) as never)
   jest.mocked(App.addListener).mockImplementation(((event: string, handler: Handler) => {
     handlers[event] = handler
     return Promise.resolve({ remove: removeListener })
@@ -134,12 +141,14 @@ describe('NativeShellProvider', () => {
     renderProvider()
     await waitFor(() => expect(handlers.backButton).toBeDefined())
 
+    globalThis.history.replaceState({}, '', '/other-screen')
     handlers.backButton({ canGoBack: true } as never)
-    expect(back).toHaveBeenCalled()
+    await waitFor(() => expect(back).toHaveBeenCalled())
     expect(App.exitApp).not.toHaveBeenCalled()
 
     handlers.backButton({ canGoBack: false } as never)
-    expect(App.exitApp).toHaveBeenCalled()
+    await waitFor(() => expect(App.exitApp).toHaveBeenCalled())
+    globalThis.history.replaceState({}, '', '/')
     back.mockRestore()
   })
 
@@ -152,4 +161,50 @@ describe('NativeShellProvider', () => {
 
     await waitFor(() => expect(removeListener).toHaveBeenCalledTimes(2))
   })
+})
+
+it('hides the keyboard before navigating or exiting', async () => {
+  const back = jest.spyOn(globalThis.history, 'back').mockImplementation()
+  const handlers = registeredHandlers()
+  renderProvider()
+  await waitFor(() => expect(handlers.keyboardDidShow).toBeDefined())
+  handlers.keyboardDidShow({ keyboardHeight: 280 } as never)
+  handlers.backButton({ canGoBack: true } as never)
+  await waitFor(() => expect(Keyboard.hide).toHaveBeenCalledTimes(1))
+  expect(back).not.toHaveBeenCalled()
+  expect(App.exitApp).not.toHaveBeenCalled()
+  back.mockRestore()
+})
+
+function SavingScreen({ save }: { save: () => Promise<boolean> }) {
+  useAppBackHandler(10, save)
+  return null
+}
+
+it('ignores repeated Back presses during a save and never exits after a failed save', async () => {
+  let failSave: (error: Error) => void = () => {}
+  const saving = new Promise<boolean>((_resolve, reject) => { failSave = reject })
+  const save = jest.fn(() => saving)
+  const log = jest.spyOn(console, 'error').mockImplementation()
+  const handlers = registeredHandlers()
+  render(<NativeShellProvider><SavingScreen save={save} /></NativeShellProvider>)
+  handlers.backButton({ canGoBack: false } as never)
+  handlers.backButton({ canGoBack: false } as never)
+  expect(save).toHaveBeenCalledTimes(1)
+  expect(App.exitApp).not.toHaveBeenCalled()
+  await act(async () => { failSave(new Error('Storage full')) })
+  expect(log).toHaveBeenCalledWith('[shell] failed to handle Back', expect.any(Error))
+  expect(App.exitApp).not.toHaveBeenCalled()
+  log.mockRestore()
+})
+
+it('exits from the notes root even if Settings added browser history', async () => {
+  const handlers = registeredHandlers()
+  const back = jest.spyOn(globalThis.history, 'back').mockImplementation()
+  globalThis.history.replaceState({}, '', '/')
+  renderProvider()
+  handlers.backButton({ canGoBack: true } as never)
+  await waitFor(() => expect(App.exitApp).toHaveBeenCalledTimes(1))
+  expect(back).not.toHaveBeenCalled()
+  back.mockRestore()
 })

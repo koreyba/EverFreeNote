@@ -15,8 +15,8 @@ import type { Tables } from '@/supabase/types'
  */
 type Note = Tables<'notes'>
 
-type CreateNoteParams = Pick<Note, 'title' | 'description' | 'tags'> & { userId: string; id?: string }
-type UpdateNoteParams = Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'description' | 'tags'>>
+type CreateNoteParams = Pick<Note, 'title' | 'description' | 'tags'> & { userId: string; id?: string; silent?: boolean }
+type UpdateNoteParams = Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'description' | 'tags'>> & { silent?: boolean }
 type DeleteNoteParams = { id: string; silent?: boolean }
 
 type NotesPage = {
@@ -71,6 +71,7 @@ export function useCreateNote(callbacks: MutationCallbacks = defaultCreateCallba
 
     // Optimistic update: Add note immediately to UI
     onMutate: async (newNote) => {
+      if (newNote.silent) return
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['notes'] })
 
@@ -120,14 +121,14 @@ export function useCreateNote(callbacks: MutationCallbacks = defaultCreateCallba
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes'], context.previousNotes)
       }
-      callbacks.onError?.(err)
+      if (!_newNote.silent) callbacks.onError?.(err)
     },
 
     // Refetch on success
-    onSuccess: () => {
+    onSuccess: (_data, params) => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
       queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
-      callbacks.onSuccess?.()
+      if (!params.silent) callbacks.onSuccess?.()
     },
   })
 }
@@ -180,13 +181,13 @@ export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallba
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes'], context.previousNotes)
       }
-      callbacks.onError?.(err)
+      if (!_updatedNote.silent) callbacks.onError?.(err)
     },
 
-    onSuccess: () => {
+    onSuccess: (_data, params) => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
       queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
-      callbacks.onSuccess?.()
+      if (!params.silent) callbacks.onSuccess?.()
     },
   })
 }

@@ -386,7 +386,7 @@ describe('NotesShell', () => {
     expect(controller.handleDeleteNote).toHaveBeenCalledWith(note)
     expect(controller.handleTagClick).toHaveBeenCalledWith('travel')
     expect(controller.handleRemoveTagFromNote).toHaveBeenCalledWith('note-1', 'travel')
-    expect(controller.handleSelectNote).toHaveBeenCalledWith(null)
+    await waitFor(() => expect(controller.handleSelectNote).toHaveBeenCalledWith(null))
     expect(controller.confirmDeleteNote).toHaveBeenCalled()
     await waitFor(() => expect(mockWordPressGetStatus).toHaveBeenCalled())
   })
@@ -419,7 +419,7 @@ describe('NotesShell', () => {
 
     expect(controller.handleSaveNote).toHaveBeenCalled()
     expect(controller.handleAutoSave).toHaveBeenCalledWith({ title: 'Autosaved' })
-    expect(controller.handleSelectNote).toHaveBeenCalledWith(null)
+    await waitFor(() => expect(controller.handleSelectNote).toHaveBeenCalledWith(null))
   })
 
   it('opens search, focuses an already open panel, and handles settings navigation', async () => {
@@ -479,7 +479,7 @@ describe('NotesShell', () => {
     mockConsumeReturnPath.mockReturnValueOnce('/settings?tab=ai-index')
     const settingsView = renderShell(settingsController)
     fireEvent.click(screen.getByRole('button', { name: 'Back from note' }))
-    expect(mockRouterPush).toHaveBeenCalledWith('/settings?tab=ai-index')
+    await waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith('/settings?tab=ai-index'))
     settingsView.unmount()
 
     const failedBack = jest.fn().mockRejectedValue(new Error('selection failed'))

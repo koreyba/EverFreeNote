@@ -1,4 +1,5 @@
 import React from 'react'
+import { dispatchAppBack } from '@ui/web/lib/appBack'
 import '../../../../app/globals.css'
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
 import { MobileNotesTabMenu } from '@ui/web/components/features/notes/MobileNotesTabMenu'
@@ -349,6 +350,33 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('.tiptap').should('contain.text', 'Paragraph 59')
     cy.get('.tiptap').closest('.overflow-y-auto').as('noteScroll')
   }
+
+  it('handles Back one layer at a time: formatting menu, fullscreen, then note', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('[aria-label="Expand editor"]').click()
+    cy.get('[aria-label="Text style"]').click()
+    cy.get('[role="menu"]').should('be.visible')
+    cy.then(() => dispatchAppBack())
+    cy.get('[role="menu"]').should('not.exist')
+    cy.get('[aria-label="Collapse editor"]').should('be.visible')
+    cy.get('@handleSelectNote').should('not.have.been.called')
+    cy.then(() => dispatchAppBack())
+    cy.get('[aria-label="Expand editor"]').should('be.visible')
+    cy.get('@handleSelectNote').should('not.have.been.called')
+    cy.then(() => dispatchAppBack())
+    cy.get('@handleSelectNote').should('have.been.calledOnceWith', null)
+  })
+
+  it('closes the tabs menu without leaving the note', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('[data-cy="mobile-tabs-toggle"]').click()
+    cy.get('#mobile-notes-tab-list').should('be.visible')
+    cy.then(() => dispatchAppBack())
+    cy.get('#mobile-notes-tab-list').should('not.exist')
+    cy.get('@handleSelectNote').should('not.have.been.called')
+  })
 
   it('expands only the editing surface and restores chrome without remounting the draft', () => {
     cy.viewport(390, 844)

@@ -99,7 +99,7 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
       noteId: 'generated-note-id',
       operation: 'create',
-      payload: { title: 'New note', description: 'Body', tags: ['alpha', 'beta'], userId: 'user-1' },
+      payload: { title: 'New note', description: 'Body', tags: ['alpha', 'beta'], userId: 'user-1', user_id: 'user-1' },
     }))
     expect(params.setOfflineOverlay).toHaveBeenCalledWith(expect.any(Function))
     expect(params.setPendingCount).toHaveBeenCalledWith(expect.any(Function))
@@ -156,7 +156,7 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
       operation: 'update',
       noteId: note.id,
-      payload: { title: 'Updated', description: 'Original body', tags: ['one', 'two'] },
+      payload: { title: 'Updated', description: 'Original body', tags: ['one', 'two'], user_id: 'user-1' },
     }))
     expect(params.setOfflineOverlay).toHaveBeenCalledWith(expect.any(Function))
   })
@@ -173,10 +173,10 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     const failure = setup({
       selectedNote: null,
       selectedNoteRef: { current: null },
-      createNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(new Error('offline server')) },
+      offlineCache: { saveNote: jest.fn().mockRejectedValue(new Error('storage failure')) },
     })
     await act(async () => {
-      await expect(failure.result.current.handleAutoSave({ title: 'Will fail' })).rejects.toThrow('offline server')
+      await expect(failure.result.current.handleAutoSave({ title: 'Will fail' })).rejects.toThrow('storage failure')
     })
     jest.runOnlyPendingTimers()
     expect(failure.result.current.autoSaving).toBe(false)

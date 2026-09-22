@@ -1,5 +1,6 @@
 "use client"
 
+import { useAppBackHandler, APP_BACK_PRIORITY } from "@ui/web/lib/appBack"
 import * as React from "react"
 import { ArrowsIn, ArrowsOut, CaretLeft as ChevronLeft, Copy, Check, Eye, FloppyDisk as SaveIcon } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
@@ -88,6 +89,11 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   onViewSessionChange,
 }: NoteEditorProps, ref) {
   const { expanded, setExpanded } = useMobileEditorExpansion()
+  useAppBackHandler(APP_BACK_PRIORITY.editor, async () => {
+    if (!expanded) return false
+    setExpanded(false)
+    return true
+  })
   React.useEffect(() => () => setExpanded(false), [setExpanded])
   const [showSaving, setShowSaving] = React.useState(false)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))

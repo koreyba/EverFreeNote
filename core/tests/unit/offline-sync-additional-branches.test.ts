@@ -25,7 +25,7 @@ class DeterministicStorage implements OfflineStorageAdapter {
     this.queue = [...items]
   })
   readonly upsertQueueItem = jest.fn(async (item: MutationQueueItem) => {
-    this.queue.push(item)
+    this.queue = [...this.queue.filter((entry) => entry.id !== item.id), item]
   })
   readonly getPendingBatch = jest.fn(async (batchSize: number) => (
     this.queue.filter((item) => item.status === "pending").slice(0, batchSize)
@@ -133,9 +133,9 @@ describe("OfflineSyncManager additional branches", () => {
 
     await manager.handleOnline()
 
-    expect(storage.upsertQueue).toHaveBeenCalledWith([
+    expect(storage.upsertQueueItem).toHaveBeenCalledWith(
       expect.objectContaining({ id: "final-delete", operation: "delete", status: "pending" }),
-    ])
+    )
     expect(performSync).toHaveBeenCalledTimes(1)
     expect(performSync).toHaveBeenCalledWith(expect.objectContaining({ id: "final-delete", operation: "delete" }))
     expect(storage.queue).toEqual([])
@@ -144,13 +144,12 @@ describe("OfflineSyncManager additional branches", () => {
   it("recovers after compaction storage failure because draining is reset", async () => {
     const storage = new DeterministicStorage()
     storage.queue = [makeItem("1")]
-    storage.upsertQueue.mockRejectedValueOnce(new Error("storage unavailable"))
+    storage.upsertQueueItem.mockRejectedValueOnce(new Error("storage unavailable"))
     const manager = new OfflineSyncManager(storage, jest.fn().mockResolvedValue(undefined), makeNetwork(false))
 
     await expect(manager.handleOnline()).rejects.toThrow("storage unavailable")
     expect(storage.getPendingBatch).not.toHaveBeenCalled()
 
-    storage.upsertQueue.mockImplementationOnce(async (items) => { storage.queue = [...items] })
     await expect(manager.drainQueue()).resolves.toBeUndefined()
     expect(storage.getPendingBatch).toHaveBeenCalled()
   })

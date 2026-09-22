@@ -52,7 +52,7 @@ export function compactQueue(items: MutationQueueItem[]): MutationQueueItem[] {
         withPendingStatus({
           ...first,
           operation: 'create',
-          payload: last.payload,
+          payload: { ...first.payload, ...last.payload },
           clientUpdatedAt: last.clientUpdatedAt,
           id: last.id,
         })

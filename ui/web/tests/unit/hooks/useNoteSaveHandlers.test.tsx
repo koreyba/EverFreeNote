@@ -55,156 +55,70 @@ function setup(overrides: Record<string, unknown> = {}) {
   return { params, ...renderHook(() => useNoteSaveHandlers(params)) }
 }
 
-// ---------------------------------------------------------------------------
-// Tests — only the online upsert path of handleSaveNote.
-// Offline path, resolveOpenableNote, and performSync are tested elsewhere.
-// ---------------------------------------------------------------------------
-
-describe('useNoteSaveHandlers — handleSaveNote upsert', () => {
-  it('updates existing note when server still has it', async () => {
-    const updatedData = { id: 'note-1', title: 'Saved', description: '', tags: [] }
-    const { result, params } = setup({
-      updateNoteMutation: { mutateAsync: jest.fn().mockResolvedValue(updatedData) },
-    })
-
+describe('durable save failures and concurrent creation', () => {
+  it.each(['cache', 'queue'])('does not acknowledge a failed %s write', async (target) => {
+    const error = new Error('Storage unavailable')
+    const log = jest.spyOn(console, 'error').mockImplementation()
+    const { result, params } = setup(target === 'cache'
+      ? { offlineCache: { saveNote: jest.fn().mockRejectedValue(error) } }
+      : { enqueueMutation: jest.fn().mockRejectedValue(error) })
     await act(async () => {
-      await result.current.handleSaveNote({ title: 'Saved', description: '', tags: '' })
+      await expect(result.current.handleSaveNote({ title: 'Keep me', description: '', tags: '' })).rejects.toThrow(error)
     })
-
-    expect(params.updateNoteMutation.mutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'note-1', title: 'Saved' }),
-    )
-    expect(params.createNoteMutation.mutateAsync).not.toHaveBeenCalled()
-    expect(params.setLastSavedAt).toHaveBeenCalled()
-  })
-
-  it('re-creates note with same ID when update fails with PGRST116 (remote deletion)', async () => {
-    const recreated = makeNote({ title: 'Recreated' })
-    const pgrst116 = Object.assign(new Error('PGRST116'), { code: 'PGRST116' })
-    const { result, params } = setup({
-      updateNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(pgrst116) },
-      createNoteMutation: { mutateAsync: jest.fn().mockResolvedValue(recreated) },
-    })
-
-    await act(async () => {
-      await result.current.handleSaveNote({ title: 'Recreated', description: 'Body', tags: '' })
-    })
-
-    expect(params.updateNoteMutation.mutateAsync).toHaveBeenCalled()
-    expect(params.createNoteMutation.mutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'note-1', userId: 'user-1', title: 'Recreated' }),
-    )
-    expect(params.setLastSavedAt).toHaveBeenCalled()
-  })
-
-  it('re-throws non-PGRST116 update errors without attempting create', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
-
-    const { result, params } = setup({
-      updateNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(new Error('network failure')) },
-      createNoteMutation: { mutateAsync: jest.fn() },
-    })
-
-    await act(async () => {
-      await expect(result.current.handleSaveNote({ title: 'X', description: '', tags: '' })).rejects.toThrow(
-        'network failure',
-      )
-    })
-
-    expect(consoleSpy).toHaveBeenCalledWith('Error saving note:', expect.any(Error))
-    expect(params.createNoteMutation.mutateAsync).not.toHaveBeenCalled()
     expect(params.setLastSavedAt).not.toHaveBeenCalled()
-
-    consoleSpy.mockRestore()
+    expect(result.current.saving).toBe(false)
+    log.mockRestore()
   })
 
-  it('rethrows when PGRST116 update → create fallback also fails', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
-    const pgrst116 = Object.assign(new Error('PGRST116'), { code: 'PGRST116' })
-
-    const { result, params } = setup({
-      updateNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(pgrst116) },
-      createNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(new Error('create fail')) },
+  it('queues one create followed by the latest update when manual save overlaps autosave', async () => {
+    let finishWrite = () => {}
+    const writing = new Promise<void>(resolve => { finishWrite = resolve })
+    const saveNote = jest.fn().mockReturnValueOnce(writing).mockResolvedValue(undefined)
+    const { result, params } = setup({ selectedNote: null, selectedNoteRef: { current: null }, offlineCache: { saveNote } })
+    let autoSave: ReturnType<typeof result.current.handleAutoSave>
+    let manualSave: ReturnType<typeof result.current.handleSaveNote>
+    act(() => {
+      autoSave = result.current.handleAutoSave({ title: 'First', description: '', tags: '' })
+      manualSave = result.current.handleSaveNote({ title: 'Latest', description: 'Body', tags: '' })
     })
-
-    await act(async () => {
-      await expect(result.current.handleSaveNote({ title: 'X', description: '', tags: '' })).rejects.toThrow(
-        'create fail',
-      )
-    })
-
-    expect(consoleSpy).toHaveBeenCalledWith('Error saving note:', expect.any(Error))
-    expect(params.createNoteMutation.mutateAsync).toHaveBeenCalled()
-    expect(params.setLastSavedAt).not.toHaveBeenCalled()
-
-    consoleSpy.mockRestore()
+    expect(saveNote).toHaveBeenCalledTimes(1)
+    await act(async () => { finishWrite(); await autoSave; await manualSave })
+    expect(params.enqueueMutation.mock.calls.map(([item]: [{ operation: string; noteId: string }]) => [item.operation, item.noteId]))
+      .toEqual([['create', 'mock-uuid'], ['update', 'mock-uuid']])
+    expect(saveNote).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Latest', description: 'Body' }))
   })
 })
 
-describe('useNoteSaveHandlers — concurrent note creation', () => {
-  it('prevents duplicate creation when manual save overlaps with autosave creation', async () => {
-    let resolveCreate: (val: NoteViewModel) => void = () => {}
-    const createPromise = new Promise<NoteViewModel>(resolve => {
-      resolveCreate = resolve
-    })
-
-    const mutateAsyncCreate = jest.fn().mockReturnValue(createPromise)
-    const mutateAsyncUpdate = jest.fn().mockResolvedValue({})
-
-    // We need selectedNoteRef to actually update when syncSelectedNote is called
-    const selectedNoteRef = { current: null as NoteViewModel | null }
-    const syncSelectedNote = jest.fn((updater) => {
-      if (typeof updater === 'function') {
-        const next = updater(selectedNoteRef.current)
-        selectedNoteRef.current = next
-      } else {
-        selectedNoteRef.current = updater
-      }
-    })
-
-    const { result } = setup({
+describe('durable local saves', () => {
+  it('creates locally even when online is reported but the backend is unreachable', async () => {
+    const { result, params } = setup({
       selectedNote: null,
-      selectedNoteRef,
-      createNoteMutation: { mutateAsync: mutateAsyncCreate },
-      updateNoteMutation: { mutateAsync: mutateAsyncUpdate },
-      setSelectedNote: syncSelectedNote,
+      selectedNoteRef: { current: null },
+      createNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(new TypeError('Failed to fetch')) },
     })
-
-    // 1. Trigger autosave (starts creation)
-    let autoSavePromise: ReturnType<typeof result.current.handleAutoSave>
-    act(() => {
-      autoSavePromise = result.current.handleAutoSave({ title: 'Auto', description: 'desc', tags: '' })
-    })
-
-    // Assert create was called once
-    expect(mutateAsyncCreate).toHaveBeenCalledTimes(1)
-
-    // 2. Trigger manual save concurrently
-    let saveNotePromise: ReturnType<typeof result.current.handleSaveNote>
-    act(() => {
-      saveNotePromise = result.current.handleSaveNote({ title: 'Manual', description: 'desc2', tags: '' })
-    })
-
-    // Assert create was NOT called again (prevent duplicate)
-    expect(mutateAsyncCreate).toHaveBeenCalledTimes(1)
-    expect(mutateAsyncUpdate).not.toHaveBeenCalled()
-
-    // 3. Resolve the creation promise (simulating server response)
-    const createdNote = makeNote({ id: 'new-id', title: 'Auto' })
-
-    act(() => {
-      resolveCreate(createdNote)
-    })
-
     await act(async () => {
-      await autoSavePromise
-      await saveNotePromise
+      await expect(result.current.handleAutoSave({ title: 'Offline draft', description: 'Body', tags: '' }))
+        .resolves.toEqual({ noteId: 'mock-uuid' })
     })
+    expect(params.offlineCache.saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'mock-uuid', title: 'Offline draft' }))
+    expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({ operation: 'create', noteId: 'mock-uuid' }))
+    expect(params.createNoteMutation.mutateAsync).not.toHaveBeenCalled()
+  })
 
-    // Assert that the manual save fell back to an UPDATE using the newly created ID
-    expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1)
-    expect(mutateAsyncUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'new-id', title: 'Manual' })
-    )
+  it('acknowledges manual creation after durable local persistence without contacting the backend', async () => {
+    const { result, params } = setup({ selectedNote: null, selectedNoteRef: { current: null },
+      createNoteMutation: { mutateAsync: jest.fn().mockRejectedValue(new TypeError('Failed to fetch')) } })
+    await act(async () => {
+      await expect(result.current.handleSaveNote({ title: 'Manual offline', description: '', tags: '' })).resolves.toBeUndefined()
+    })
+    expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({ operation: 'create', payload: expect.objectContaining({ title: 'Manual offline' }) }))
+    expect(params.createNoteMutation.mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('queues an explicit update even when connectivity is reported as online', async () => {
+    const { result, params } = setup()
+    await act(async () => { await result.current.handleSaveNote({ title: 'Locally saved', description: 'New body', tags: '' }) })
+    expect(params.offlineCache.saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-1', description: 'New body' }))
+    expect(params.updateNoteMutation.mutateAsync).not.toHaveBeenCalled()
   })
 })

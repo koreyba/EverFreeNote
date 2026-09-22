@@ -1,3 +1,4 @@
+import { compactQueue } from '../utils/compactQueue'
 import type {
   MutationQueueItem,
   MutationQueueItemInput,
@@ -57,6 +58,16 @@ export class OfflineQueueService {
 
   async upsertQueue(items: MutationQueueItem[]): Promise<void> {
     await this.storage.upsertQueue(items)
+  }
+
+  async compact(): Promise<void> {
+    const snapshot = await this.storage.getQueue()
+    const compacted = compactQueue(snapshot)
+    // Never replace the entire queue: a newer edit may arrive after the read.
+    for (const item of compacted) await this.storage.upsertQueueItem(item)
+    const retainedIds = new Set(compacted.map((item) => item.id))
+    const obsoleteIds = snapshot.filter((item) => !retainedIds.has(item.id)).map((item) => item.id)
+    if (obsoleteIds.length) await this.storage.removeQueueItems(obsoleteIds)
   }
 
   /** @deprecated Use getPendingBatch + removeItems instead */

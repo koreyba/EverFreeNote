@@ -27,6 +27,7 @@ export function applyNoteOverlay(serverNotes: Note[], offlineNotes: CachedNote[]
   offlineNotes.forEach((c) => {
     if (c.deleted) return
     const existing = map.get(c.id)
+    if (existing && c.status === 'synced') return
     map.set(c.id, {
       ...(existing ?? ({} as Note)),
       id: c.id,
