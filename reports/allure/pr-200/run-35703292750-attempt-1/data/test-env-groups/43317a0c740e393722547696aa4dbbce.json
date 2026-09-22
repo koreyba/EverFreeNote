@@ -1,0 +1,1 @@
+{"id":"43317a0c740e393722547696aa4dbbce","fullName":"everfreenote:core/tests/unit/core-services-sanitizer.test.ts#core/services/sanitizer sanitize removes javascript: protocol from links","name":"removes javascript: protocol from links","status":"passed","testResultsByEnv":{"default":"a4c2eb6847e2544df7d5227c5d20e7bb"}}
