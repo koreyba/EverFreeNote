@@ -4,6 +4,7 @@ import * as React from "react"
 import { FileText, Tag, MagnifyingGlass as Search, Gear as Settings, Sidebar as PanelLeftClose, SidebarSimple as PanelLeft } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
+import { useMobileNavigationHidden } from "./MobileWorkspace"
 
 export type MainNavView = "notes" | "tags" | "settings"
 
@@ -26,6 +27,8 @@ export function NavRail({
   className,
   "data-testid": dataTestId,
 }: NavRailProps) {
+  const mobileNavigationHidden = useMobileNavigationHidden()
+
   // Read the persisted state during the first render so navigation opens without a collapsed flash.
   const [isExpanded, setIsExpanded] = React.useState<boolean>(() => {
     try {
@@ -172,8 +175,10 @@ export function NavRail({
       {/* Mobile Bottom Navigation Bar (Visible on small screens) */}
       <nav
         aria-label="Mobile Navigation"
+        aria-hidden={mobileNavigationHidden}
+        inert={mobileNavigationHidden}
         data-testid={dataTestId ? `${dataTestId}-mobile` : "mobile-bottom-nav"}
-        className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/95 backdrop-blur-md border-t border-border flex items-center justify-around z-40 px-2"
+        className="mobile-bottom-nav md:hidden absolute bottom-0 left-0 right-0 h-16 bg-background/95 backdrop-blur-md border-t border-border flex items-center justify-around z-40 px-2"
       >
         {navItems.map((item) => {
           const Icon = item.icon

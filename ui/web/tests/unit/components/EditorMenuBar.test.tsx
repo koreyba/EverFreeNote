@@ -99,6 +99,8 @@ function createMockEditor(options: MockEditorOptions = {}) {
   })
 
   const editor = {
+    on: jest.fn(),
+    off: jest.fn(),
     chain: jest.fn().mockReturnValue(chainObj),
     isActive: isActiveMock,
     getAttributes: getAttributesMock,

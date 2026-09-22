@@ -35,6 +35,7 @@ import { consumeActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigati
 import { NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
 import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMenu"
 
+import { MobileWorkspace } from "@/components/features/navigation/MobileWorkspace"
 import { NavRail } from "@/components/features/navigation/NavRail"
 import { TagsPage } from "@/components/features/tags/TagsPage"
 import { MAX_NOTE_WORKSPACE_TABS } from "@core/services/noteWorkspaceTabs"
@@ -206,7 +207,8 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [controller, setActiveMainView])
 
   return (
-    <div
+    <MobileWorkspace
+      viewKey={`${activeMainView}:${activeTabId}:${selectedNote?.id ?? "list"}:${isEditing}:${isSearchPanelOpen}`}
       className="flex h-[100dvh] max-h-[100dvh] min-h-[100svh] bg-muted/20 overflow-hidden relative"
       data-testid="notes-shell"
     >
@@ -316,7 +318,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
       <DeleteNoteDialog controller={controller} />
       <DiscardFailedSaveDialog controller={controller} />
-    </div>
+    </MobileWorkspace>
   )
 }
 

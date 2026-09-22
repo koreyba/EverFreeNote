@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
+import { useIsMobile } from "@ui/web/hooks/use-mobile"
 import {
   useEditor,
   EditorContent,
@@ -34,6 +36,7 @@ type RichTextEditorProps = {
   initialContent: string
   onContentChange?: () => void // Called when content changes (for triggering autosave)
   hideToolbar?: boolean
+  mobileToolbarContainer?: HTMLElement | null
   chunkFocusRequest?: ChunkScrollTarget | null
   onChunkFocusApplied?: (requestId: string) => void
 }
@@ -55,7 +58,8 @@ export type ChunkScrollTarget = {
 }
 
 const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProps>(
-  ({ initialContent, onContentChange, hideToolbar = false, chunkFocusRequest = null, onChunkFocusApplied }, ref) => {
+  ({ initialContent, onContentChange, hideToolbar = false, mobileToolbarContainer = null, chunkFocusRequest = null, onChunkFocusApplied }, ref) => {
+    const isMobile = useIsMobile()
     const editorRef = React.useRef<Editor | null>(null)
     const suppressNextUpdateRef = React.useRef(false)
     // Queues a scroll request when scrollToChunk is called before the editor is ready.
@@ -306,25 +310,28 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       },
     }), [editor, handleApplySelectionAsMarkdown])
 
+    const toolbar = !hideToolbar && (
+      <EditorMenuBar
+        compact={isMobile && !!mobileToolbarContainer}
+        editor={editor}
+        historyState={historyState}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        hasSelection={hasSelection}
+        onApplyMarkdown={handleApplySelectionAsMarkdown}
+        spellcheckEnabled={spellcheckEnabled}
+        onToggleSpellcheck={handleToggleSpellcheck}
+      />
+    )
+
     return (
       <div className={`bg-background transition-all duration-200 ${hideToolbar ? '' : 'border border-border/40 rounded-xl shadow-sm'}`}>
-        {!hideToolbar && (
-          <EditorMenuBar
-            editor={editor}
-            historyState={historyState}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            hasSelection={hasSelection}
-            onApplyMarkdown={handleApplySelectionAsMarkdown}
-            spellcheckEnabled={spellcheckEnabled}
-            onToggleSpellcheck={handleToggleSpellcheck}
-          />
-        )}
+        {isMobile && mobileToolbarContainer ? createPortal(toolbar, mobileToolbarContainer) : toolbar}
         <div role="presentation" onMouseDown={handleEditorContainerMouseDown}>
           <EditorContent
             data-cy="editor-content"
             editor={editor}
-            className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-6 py-4`}
+            className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-4 md:px-6 py-4`}
           />
         </div>
       </div>

@@ -41,6 +41,49 @@ button,
   color-scheme: dark;
 }
 
+@media (max-width: 767px) {
+  .mobile-workspace {
+    position: fixed;
+    top: var(--mobile-viewport-top, 0px);
+    left: 0;
+    right: 0;
+    height: var(--mobile-viewport-height, 100dvh);
+    max-height: var(--mobile-viewport-height, 100dvh);
+    min-height: 0;
+    --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-nav-height: calc(4rem + var(--mobile-safe-bottom));
+    padding-bottom: var(--mobile-nav-height);
+  }
+
+  .mobile-workspace[data-navigation-hidden="true"] {
+    --mobile-nav-height: 0px;
+    padding-bottom: var(--mobile-safe-bottom);
+  }
+
+  .mobile-workspace[data-keyboard-open="true"] {
+    --mobile-safe-bottom: 0px;
+  }
+
+  .mobile-workspace[data-editor-expanded="true"] [data-mobile-editor-chrome] {
+    display: none;
+  }
+
+  .mobile-bottom-nav {
+    height: calc(4rem + var(--mobile-safe-bottom, env(safe-area-inset-bottom, 0px)));
+    padding-bottom: var(--mobile-safe-bottom, env(safe-area-inset-bottom, 0px));
+    transition: transform 180ms ease, visibility 180ms;
+  }
+
+  .mobile-bottom-nav[aria-hidden="true"] {
+    transform: translateY(100%);
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-bottom-nav { transition: none; }
+}
+
 /* Workspace tabs: a closed tab plays this out while it is still mounted, so
    the strip closes the gap instead of snapping. A keyframe animation is used
    rather than a transition because the element is created already in its end
@@ -573,5 +616,3 @@ mark {
 html:not(.dark) {
   --color-primary-foreground: oklch(100% 0 0);
 }
-
-
