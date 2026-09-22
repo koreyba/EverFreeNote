@@ -1,0 +1,1 @@
+{"id":"5d3bb98b3fe5c2af5e9184e4117f0d7c","fullName":"everfreenote:ui/shell/tests/unit/platform.test.ts#shell platform detection reports an unconfigured deployment as empty rather than guessing","name":"reports an unconfigured deployment as empty rather than guessing","status":"passed","testResultsByEnv":{"default":"b19f5a5e865a8ec7d569475071f104a2"}}
