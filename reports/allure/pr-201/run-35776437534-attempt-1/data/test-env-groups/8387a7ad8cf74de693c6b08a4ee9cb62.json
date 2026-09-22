@@ -1,0 +1,1 @@
+{"id":"8387a7ad8cf74de693c6b08a4ee9cb62","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSync.test.tsx#useNoteSync — performSync upsert does not start sync while authentication is being restored","name":"does not start sync while authentication is being restored","status":"passed","testResultsByEnv":{"default":"f85a28d9152b605512bf951c2e123c3c"}}
