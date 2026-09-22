@@ -1,0 +1,1 @@
+{"id":"06971d20ce357cc755b83549d6ffddda","fullName":"everfreenote:core/tests/unit/core-mcp-notebookServer.test.ts#core/mcp/notebookServer protocol create_note sanitizes agent-supplied markup before storing it","name":"sanitizes agent-supplied markup before storing it","status":"passed","testResultsByEnv":{"default":"b5c5b9a934daafef671ac6cee0a1f78f"}}

@@ -1,0 +1,1 @@
+{"id":"2d472a19cc4e3d743d5bcd5873c0d748","fullName":"everfreenote:ui/web/tests/unit/providers/offlineAuth.test.tsx#shows sign-in instead of an endless spinner when no local session exists","name":"shows sign-in instead of an endless spinner when no local session exists","status":"passed","testResultsByEnv":{"default":"a2945782a343f7e77ace33164018e8d4"}}
