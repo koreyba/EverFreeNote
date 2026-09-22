@@ -27,4 +27,6 @@ Use a sibling worktree already bootstrapped at /Users/denys.koreiba/Documents/Ev
 - [x] Verify cold launch, offline create, process restart, token refresh and same-ID reconnect.
 - [x] Fix online deletion retaining the newly persistent cache and add regression coverage.
 - [x] Full Jest regression: 1666/1666, plus focused component regressions and static checks.
-- [ ] Deliver a new production APK and review updated cloud checks; merge remains separate.
+- [x] Deliver production APK a35c992 with matching signature and inspect its terminal cloud checks.
+- [x] Correct three component-test fixture/timing failures and four Codacy annotations; 55 targeted cases pass.
+- [ ] Read the final follow-up cloud results; merge and external quality-gate decisions remain separate.

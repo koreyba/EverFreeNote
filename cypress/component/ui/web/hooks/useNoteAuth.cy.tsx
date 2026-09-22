@@ -50,7 +50,7 @@ const TestComponent = ({ config = testAuthConfig }: { config?: NoteAuthConfig })
   )
 }
 
-const mountAuth = (supabase: AuthTestClient, config?: NoteAuthConfig, user: User | null = null) => {
+const mountAuth = (supabase: AuthTestClient, config?: NoteAuthConfig, user?: User) => {
   cy.mount(
     <SupabaseTestProvider supabase={supabase} user={user}>
       <QueryProvider>

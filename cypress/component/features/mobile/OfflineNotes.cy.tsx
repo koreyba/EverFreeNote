@@ -82,6 +82,7 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
     cy.get('[data-cy="queue-state"]').should('have.text', '0')
     cy.get('[data-cy="note-delete-button"]').click()
     cy.get('[role="alertdialog"]').contains('button', 'Delete').click()
+    cy.get('[role="alertdialog"]').should('not.exist')
     cy.get('[data-testid="note-card"]').should('not.exist')
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should('have.length', 0)
     mountApp()
