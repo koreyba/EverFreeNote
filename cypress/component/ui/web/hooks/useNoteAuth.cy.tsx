@@ -1,5 +1,5 @@
 import React from 'react'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 import { useNoteAuth, type NoteAuthConfig } from '../../../../../ui/web/hooks/useNoteAuth'
 import { QueryProvider } from '../../../../../ui/web/components/providers/QueryProvider'
@@ -50,9 +50,9 @@ const TestComponent = ({ config = testAuthConfig }: { config?: NoteAuthConfig })
   )
 }
 
-const mountAuth = (supabase: AuthTestClient, config?: NoteAuthConfig) => {
+const mountAuth = (supabase: AuthTestClient, config?: NoteAuthConfig, user?: User) => {
   cy.mount(
-    <SupabaseTestProvider supabase={supabase}>
+    <SupabaseTestProvider supabase={supabase} user={user}>
       <QueryProvider>
         <TestComponent config={config} />
       </QueryProvider>
@@ -61,14 +61,14 @@ const mountAuth = (supabase: AuthTestClient, config?: NoteAuthConfig) => {
 }
 
 describe('useNoteAuth', () => {
-  it('checks the current session on mount', () => {
+  it('uses provider readiness without a second session lookup', () => {
     const supabase = createMockSupabase()
 
     mountAuth(supabase)
 
     cy.get('[data-cy="loading"]').should('contain', 'false')
     cy.get('[data-cy="user"]').should('contain', 'no-user')
-    cy.wrap(supabase.auth.getSession).should('have.been.calledOnce')
+    cy.wrap(supabase.auth.getSession).should('not.have.been.called')
   })
 
   it('handles test login with explicit test configuration', () => {
@@ -119,9 +119,7 @@ describe('useNoteAuth', () => {
 
   it('handles sign out', () => {
     const supabase = createMockSupabase()
-    supabase.auth.getSession.resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
-
-    mountAuth(supabase)
+    mountAuth(supabase, undefined, { id: 'test-user' } as User)
 
     cy.get('[data-cy="user"]').should('contain', 'test-user')
     cy.get('[data-cy="sign-out-btn"]').click()

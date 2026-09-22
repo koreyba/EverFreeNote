@@ -1,4 +1,6 @@
 import React from 'react'
+import { Capacitor } from '@capacitor/core'
+import { dispatchAppBack } from '@ui/web/lib/appBack'
 import '../../../../app/globals.css'
 import { NotesShell } from '../../../../ui/web/components/features/notes/NotesShell'
 import { MobileNotesTabMenu } from '@ui/web/components/features/notes/MobileNotesTabMenu'
@@ -57,6 +59,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       handleCleanTags: cy.stub().resolves(),
       user: mockUser,
       loading: false,
+      refreshNotes: cy.stub().resolves(),
+      refreshSelectedNote: cy.stub().resolves(),
       notes: [],
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -182,6 +186,49 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
         }),
       },
     } as unknown as SupabaseClient
+  })
+
+  it('refreshes an empty Android list by pulling its content', () => {
+    cy.viewport('iphone-se2')
+    cy.stub(Capacitor, 'isNativePlatform').returns(true)
+    cy.stub(Capacitor, 'getPlatform').returns('android')
+    const refreshNotes = cy.stub().as('refreshNotes'); refreshNotes.resolves()
+    const controller = createMockController({ refreshNotes })
+    cy.mount(<SupabaseTestProvider supabase={mockSupabase}><NotesShell controller={controller} /></SupabaseTestProvider>)
+    cy.get('[data-cy="pull-to-refresh"]').filter(':visible')
+      .trigger('touchstart', { touches: [{ clientX: 80, clientY: 200 }] })
+      .trigger('touchmove', { touches: [{ clientX: 80, clientY: 350 }] })
+    cy.contains('[role="status"]', 'Release to refresh').should(($status) => {
+      const indicator = $status[0]
+      const rect = indicator.getBoundingClientRect()
+      const viewport = indicator.ownerDocument.defaultView
+      if (!viewport) throw new Error('Missing indicator viewport')
+      expect(rect.width, 'visible indicator width').to.be.greaterThan(0)
+      expect(rect.top, 'indicator starts inside viewport').to.be.at.least(0)
+      expect(rect.bottom, 'indicator ends inside viewport').to.be.at.most(viewport.innerHeight)
+      expect(viewport.getComputedStyle(indicator).visibility).to.equal('visible')
+    })
+    cy.get('[data-cy="pull-to-refresh"]').filter(':visible').trigger('touchend', { touches: [] })
+    cy.get('@refreshNotes').should('have.been.calledOnce')
+    cy.get('[data-cy="pull-to-refresh"] [role="status"]').should('not.exist')
+  })
+
+  it('refreshes an Android reading pane while excluding the editor', () => {
+    cy.viewport('iphone-se2')
+    cy.stub(Capacitor, 'isNativePlatform').returns(true)
+    cy.stub(Capacitor, 'getPlatform').returns('android')
+    const note = { id: 'refresh-note', title: 'Reading refresh', description: '<p>Pull this text</p>', tags: [], user_id: 'test-user', created_at: '2026-09-22', updated_at: '2026-09-22' }
+    const refreshSelectedNote = cy.stub().as('refreshSelectedNote'); refreshSelectedNote.resolves()
+    const controller = createMockController({ selectedNote: note, refreshSelectedNote })
+    cy.mount(<SupabaseTestProvider supabase={mockSupabase}><NotesShell controller={controller} /></SupabaseTestProvider>)
+    cy.contains('p', 'Pull this text')
+      .trigger('touchstart', { touches: [{ clientX: 80, clientY: 200 }] })
+      .trigger('touchmove', { touches: [{ clientX: 80, clientY: 350 }] })
+      .trigger('touchend', { touches: [] })
+    cy.get('@refreshSelectedNote').should('have.been.calledOnce')
+    cy.mount(<SupabaseTestProvider supabase={mockSupabase}><NotesShell controller={{ ...controller, isEditing: true }} /></SupabaseTestProvider>)
+    cy.get('[data-testid="editor-container"] [data-cy="pull-to-refresh"]').should('not.exist')
+    cy.get('@refreshSelectedNote').should('have.been.calledOnce')
   })
 
   it('shows sidebar and hides editor on mobile by default', () => {
@@ -349,6 +396,33 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('.tiptap').should('contain.text', 'Paragraph 59')
     cy.get('.tiptap').closest('.overflow-y-auto').as('noteScroll')
   }
+
+  it('handles Back one layer at a time: formatting menu, fullscreen, then note', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('[aria-label="Expand editor"]').click()
+    cy.get('[aria-label="Text style"]').click()
+    cy.get('[role="menu"]').should('be.visible')
+    cy.then(() => dispatchAppBack())
+    cy.get('[role="menu"]').should('not.exist')
+    cy.get('[aria-label="Collapse editor"]').should('be.visible')
+    cy.get('@handleSelectNote').should('not.have.been.called')
+    cy.then(() => dispatchAppBack())
+    cy.get('[aria-label="Expand editor"]').should('be.visible')
+    cy.get('@handleSelectNote').should('not.have.been.called')
+    cy.then(() => dispatchAppBack())
+    cy.get('@handleSelectNote').should('have.been.calledOnceWith', null)
+  })
+
+  it('closes the tabs menu without leaving the note', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('[data-cy="mobile-tabs-toggle"]').click()
+    cy.get('#mobile-notes-tab-list').should('be.visible')
+    cy.then(() => dispatchAppBack())
+    cy.get('#mobile-notes-tab-list').should('not.exist')
+    cy.get('@handleSelectNote').should('not.have.been.called')
+  })
 
   it('expands only the editing surface and restores chrome without remounting the draft', () => {
     cy.viewport(390, 844)
@@ -565,20 +639,25 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       selectionFrom(doc).addRange(range)
       doc.dispatchEvent(new Event('selectionchange'))
     })
-    cy.get('[aria-label="Text formatting"]').click()
+    cy.get('[role="menu"]').should('not.exist')
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
     cy.contains('[role="menuitemcheckbox"]', 'Bold').click()
-    cy.get('[aria-label="Text formatting"]').click()
+    cy.get('[role="menu"]').should('not.exist')
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
     cy.contains('[role="menuitemcheckbox"]', 'Bold').should('have.attr', 'aria-checked', 'true')
     cy.contains('[role="menuitemcheckbox"]', 'Italic').click()
-    cy.get('[aria-label="Text formatting"]').click()
+    cy.get('[role="menu"]').should('not.exist')
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
     cy.contains('[role="menuitemcheckbox"]', 'Underline').click()
-    cy.get('[aria-label="Text formatting"]').click()
+    cy.get('[role="menu"]').should('not.exist')
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
     cy.contains('[role="menuitemcheckbox"]', 'Strikethrough').click()
     cy.get('.tiptap p').first().find('strong').should('have.text', 'Paragraph 0')
     cy.get('.tiptap p').first().find('em').should('have.text', 'Paragraph 0')
     cy.get('.tiptap p').first().find('s').should('have.text', 'Paragraph 0')
     cy.get('.tiptap p').first().find('u').should('have.text', 'Paragraph 0')
-    cy.get('[aria-label="Text formatting"]').click()
+    cy.get('[role="menu"]').should('not.exist')
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
     cy.contains('[role="menuitemcheckbox"]', 'Italic').should('have.attr', 'aria-checked', 'true').click()
     cy.get('.tiptap p').first().find('em').should('not.exist')
     cy.get('.tiptap p').first().find('strong').should('have.text', 'Paragraph 0')
@@ -608,7 +687,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     }).click()
     cy.get('[role="option"]').contains(/^Serif$/).click()
     cy.get('.tiptap p').first().find('span').invoke('css', 'font-family').should('match', /^serif$/i)
-    cy.get('[aria-label="Font family"]').click()
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[aria-label="Font family"]').click({ scrollBehavior: false })
     cy.get('[role="option"]').contains(/^Serif$/).closest('[role="option"]').should('have.attr', 'data-state', 'checked')
     cy.get('[role="listbox"]').type('{esc}')
   })
@@ -644,7 +724,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     })
     cy.get('[role="listbox"]').should('not.exist')
     cy.get('[data-cy="undo-button"]').should('be.disabled')
-    cy.get('@font').scrollIntoView().click()
+    cy.get('@font').scrollIntoView().click({ scrollBehavior: false })
     cy.get('[role="listbox"]').should('be.visible')
   })
 
@@ -679,9 +759,11 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('[aria-label="Lists"]').scrollIntoView().click()
     cy.contains('[role="menuitemradio"]', 'Bullet list').click()
     cy.get('.tiptap ul li').first().should('have.text', 'Paragraph 0')
+    cy.get('[role="menu"]').should('not.exist')
     cy.get('[aria-label="Lists"]').click({ scrollBehavior: false })
     cy.contains('[role="menuitemradio"]', 'Numbered list').click()
     cy.get('.tiptap ol li').first().should('have.text', 'Paragraph 0')
+    cy.get('[role="menu"]').should('not.exist')
     cy.get('[aria-label="Lists"]').click({ scrollBehavior: false })
     cy.contains('[role="menuitemradio"]', 'No list').click()
     cy.get('.tiptap ol, .tiptap ul').should('not.exist')

@@ -160,3 +160,11 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
   })
 })
 
+
+it('does not mark newer local text synced when an older write completes', async () => {
+  localStorage.clear()
+  const latest = makeNote('note-1', '2026-09-22T10:00:02Z', { status: 'pending', description: 'latest offline text' })
+  await webOfflineStorageAdapter.saveNote(latest)
+  await webOfflineStorageAdapter.markSynced(latest.id, '2026-09-22T10:00:01Z', '2026-09-22T10:00:01Z')
+  expect(await webOfflineStorageAdapter.loadNotes()).toEqual([latest])
+})

@@ -225,7 +225,7 @@ describe('core/services/offlineCache', () => {
 
       await service.markSynced('note-1', '2024-01-01T12:00:00Z')
 
-      expect(mockStorage.markSynced).toHaveBeenCalledWith('note-1', '2024-01-01T12:00:00Z')
+      expect(mockStorage.markSynced).toHaveBeenCalledWith('note-1', '2024-01-01T12:00:00Z', undefined)
     })
 
     it('propagates mark synced errors', async () => {

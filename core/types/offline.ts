@@ -1,3 +1,4 @@
+/* eslint no-unused-vars: "off", "@typescript-eslint/no-unused-vars": "error" -- Use the TypeScript-aware rule for interface method declarations. */
 import type { Note } from './domain'
 
 export type NoteSyncStatus = 'synced' | 'pending' | 'failed'
@@ -41,6 +42,8 @@ export interface OfflineStorageAdapter {
   saveNote(note: CachedNote): Promise<void>
   saveNotes(notes: CachedNote[]): Promise<void>
   deleteNote(noteId: string): Promise<void>
+  /** Atomically remove unchanged synced snapshots with no queued writes. */
+  removeSyncedNotes?(notes: CachedNote[], signal?: AbortSignal): Promise<string[]>
   getQueue(): Promise<MutationQueueItem[]>
   upsertQueueItem(item: MutationQueueItem): Promise<void>
   upsertQueue(items: MutationQueueItem[]): Promise<void>
@@ -50,7 +53,7 @@ export interface OfflineStorageAdapter {
   getPendingBatch(batchSize: number): Promise<MutationQueueItem[]>
   /** Remove items from queue after successful sync */
   removeQueueItems(ids: string[]): Promise<void>
-  markSynced(noteId: string, updatedAt: string): Promise<void>
+  markSynced(noteId: string, updatedAt: string, expectedUpdatedAt?: string): Promise<void>
   markQueueItemStatus(id: string, status: MutationStatus, lastError?: string): Promise<void>
   enforceLimit(): Promise<void>
   clearAll(): Promise<void>

@@ -70,7 +70,7 @@ const DropdownMenuContent = React.forwardRef<
   DropdownMenuContentProps
 >(({ className, sideOffset = 4, portalled = true, container, ...props }, ref) => {
   const content = (
-    <DropdownMenuPrimitive.Content
+    <DropdownMenuPrimitive.Content data-native-back-layer
       ref={ref}
       sideOffset={sideOffset}
       className={cn(

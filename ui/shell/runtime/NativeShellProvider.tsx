@@ -2,6 +2,8 @@
 
 import { useEffect, type ReactNode } from "react"
 import { App } from "@capacitor/app"
+import { Keyboard } from "@capacitor/keyboard"
+import { dispatchAppBack } from "@ui/web/lib/appBack"
 import { Browser } from "@capacitor/browser"
 import { useRouter } from "next/navigation"
 
@@ -29,6 +31,8 @@ export function NativeShellProvider({ children }: { children: ReactNode }) {
 
     const scheme = shellScheme()
     let disposed = false
+    let keyboardVisible = false
+    let handlingBack = false
     const listeners: Array<{ remove: () => Promise<void> }> = []
 
     const handleCallback = async (rawUrl: string) => {
@@ -85,15 +89,32 @@ export function NativeShellProvider({ children }: { children: ReactNode }) {
       })
     )
 
-    track(
-      App.addListener("backButton", ({ canGoBack }) => {
-        if (canGoBack) {
-          globalThis.history.back()
-        } else {
-          void App.exitApp()
+    track(Keyboard.addListener("keyboardDidShow", () => { keyboardVisible = true }))
+    track(Keyboard.addListener("keyboardDidHide", () => { keyboardVisible = false }))
+
+    const handleBack = async (canGoBack: boolean) => {
+      if (disposed || handlingBack) return
+      handlingBack = true
+      try {
+        if (keyboardVisible) {
+          await Keyboard.hide()
+          keyboardVisible = false
+          return
         }
-      })
-    )
+        if (await dispatchAppBack()) return
+        if (disposed) return
+        // The notes list is our root even after returning from Settings.
+        if (canGoBack && globalThis.location.pathname !== "/") globalThis.history.back()
+        else await App.exitApp()
+      } catch (error) {
+        // In particular, a failed local save must never fall through to app exit.
+        console.error("[shell] failed to handle Back", error)
+      } finally {
+        handlingBack = false
+      }
+    }
+
+    track(App.addListener("backButton", ({ canGoBack }) => { void handleBack(canGoBack) }))
 
     return () => {
       disposed = true

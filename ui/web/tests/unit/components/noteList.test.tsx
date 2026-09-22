@@ -125,6 +125,12 @@ function renderList(overrides: Partial<React.ComponentProps<typeof NoteList>> = 
 describe('NoteList', () => {
   beforeEach(() => jest.clearAllMocks())
 
+  it('shows cached notes immediately while the network request is still loading', () => {
+    renderList({ isLoading: true })
+    expect(screen.queryByTestId('skeleton')).toBeNull()
+    expect(screen.getByRole('button', { name: 'First' })).toBeTruthy()
+  })
+
   it('renders regular virtualized rows and forwards select, selection, and tag actions', () => {
     const { onSelectNote, onToggleSelect, onTagClick } = renderList({
       selectedNoteId: 'note-1',

@@ -32,12 +32,11 @@ const runtimeNoteAuthConfig: NoteAuthConfig = {
 }
 
 export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
-    const { supabase, loading: providerLoading } = useSupabase()
+    const { supabase, user: providerUser, loading: providerLoading } = useSupabase()
     const queryClient = useQueryClient()
 
     // -- State --
-    const [user, setUser] = useState<User | null>(null)
-    const [loading, setLoading] = useState(true)
+    const [user, setUser] = useState<User | null>(providerUser)
     const [authLoading, setAuthLoading] = useState(false)
     const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
 
@@ -45,23 +44,14 @@ export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
 
     // -- Effects --
     useEffect(() => {
-        const checkAuth = async () => {
-            await webStorageAdapter.removeItem('testUser')
-            const { data: { session } } = await supabase.auth.getSession()
-            setUser(session?.user || null)
-            setLoading(false)
-        }
+        setUser(providerUser)
+    }, [providerUser])
 
-        checkAuth()
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
-                setUser(session?.user || null)
-            }
-        )
-
-        return () => subscription.unsubscribe()
-    }, [supabase])
+    useEffect(() => {
+        void webStorageAdapter.removeItem('testUser').catch((error) => {
+            console.error('Error clearing legacy test session:', error)
+        })
+    }, [])
 
     // -- Handlers --
 
@@ -192,7 +182,7 @@ export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
         }
     }
 
-    const combinedLoading = loading || providerLoading || authLoading
+    const combinedLoading = providerLoading || authLoading
 
     return {
         user,

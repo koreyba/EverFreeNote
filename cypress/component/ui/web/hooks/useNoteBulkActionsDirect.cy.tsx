@@ -62,6 +62,7 @@ const Harness = ({ selectedIds, isOffline = false, deleteShouldRejectIds = [] }:
   const offlineCache = React.useMemo(
     () => ({
       saveNote: cy.stub().as('offlineSaveNote').resolves(),
+      deleteNote: cy.stub().as('offlineDeleteNote').resolves(),
     }),
     []
   )
@@ -76,7 +77,7 @@ const Harness = ({ selectedIds, isOffline = false, deleteShouldRejectIds = [] }:
     selectedNoteIds: selectedSet,
     isOffline,
     enqueueBatchAndDrainIfOnline,
-    offlineCache: offlineCache as never,
+    offlineCache,
     setOfflineOverlay: setOfflineOverlay as never,
     setPendingCount: setPendingCount as never,
     deleteNoteMutation: deleteNoteMutation as never,
@@ -146,6 +147,7 @@ describe('useNoteBulkActions direct', () => {
     cy.get('@invalidateQueries').should('have.been.calledWithMatch', { queryKey: ['notes'] })
     cy.get('@invalidateQueries').should('have.been.calledWithMatch', { queryKey: ['aiSearch'] })
     cy.get('@onNotesDeleted').should('have.been.calledWith', ['note-1'])
+    cy.get('@offlineDeleteNote').should('have.been.calledOnceWith', 'note-1')
   })
 
   it('queues offline delete path and marks pending count', () => {

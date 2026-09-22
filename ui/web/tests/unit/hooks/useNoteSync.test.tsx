@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useNoteSync } from '@ui/web/hooks/useNoteSync'
 import type { MutationQueueItem } from '@core/types/offline'
 
@@ -32,6 +32,7 @@ jest.mock('@core/services/offlineQueue', () => ({
 
 jest.mock('@core/services/offlineCache', () => ({
   OfflineCacheService: jest.fn().mockImplementation(() => ({
+    markSynced: jest.fn(),
     saveNote: jest.fn(),
     loadNotes: jest.fn().mockResolvedValue([]),
     deleteNote: jest.fn(),
@@ -82,6 +83,8 @@ function renderSyncHook(mutations: {
 // handleSaveNote upsert and resolveOpenableNote are tested elsewhere.
 // ---------------------------------------------------------------------------
 
+afterEach(async () => { await act(async () => {}) })
+
 describe('useNoteSync — performSync upsert', () => {
   beforeEach(() => {
     capturedPerformSync = null
@@ -128,7 +131,7 @@ describe('useNoteSync — performSync upsert', () => {
     expect(create).not.toHaveBeenCalled()
   })
 
-  it('throws when user is not authenticated', async () => {
+  it('does not start sync while authentication is being restored', async () => {
     renderHook(() =>
       useNoteSync({
         user: null,
@@ -138,8 +141,65 @@ describe('useNoteSync — performSync upsert', () => {
       }),
     )
 
-    await expect(
-      capturedPerformSync!(makeQueueItem()),
-    ).rejects.toThrow('User not authenticated')
+    expect(capturedPerformSync).toBeNull()
   })
+})
+
+describe('durable create synchronization', () => {
+  it('uses the local ID and suppresses background notifications', async () => {
+    const create = jest.fn().mockResolvedValue({})
+    renderSyncHook({ create })
+    await capturedPerformSync!(makeQueueItem({ operation: 'create' }))
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-1', silent: true }))
+  })
+
+  it('retries an acknowledged-on-server create by updating the same ID', async () => {
+    const create = jest.fn().mockRejectedValue({ code: '23505' })
+    const update = jest.fn().mockResolvedValue({})
+    renderSyncHook({ create, update })
+    await capturedPerformSync!(makeQueueItem({ operation: 'create' }))
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-1', title: 'Title', silent: true }))
+  })
+
+  it('keeps a failed recreate queued by propagating its error', async () => {
+    renderSyncHook({ update: jest.fn().mockRejectedValue({ code: 'PGRST116' }), create: jest.fn().mockRejectedValue(new Error('network unavailable')) })
+    await expect(capturedPerformSync!(makeQueueItem())).rejects.toThrow('network unavailable')
+  })
+})
+
+it('starts draining only after authentication is restored, including remount effects', async () => {
+  const { OfflineSyncManager } = await import('@core/services/offlineSyncManager')
+  jest.mocked(OfflineSyncManager).mockClear()
+  const props = { user: null as { id: string } | null }
+  const { rerender } = renderHook(({ user }) => useNoteSync({
+    user: user as never,
+    createNoteMutation: { mutateAsync: jest.fn() },
+    updateNoteMutation: { mutateAsync: jest.fn() },
+    deleteNoteMutation: { mutateAsync: jest.fn() },
+  }), { initialProps: props })
+  expect(OfflineSyncManager).not.toHaveBeenCalled()
+  rerender({ user: { id: 'user-1' } })
+  expect(OfflineSyncManager).toHaveBeenCalledTimes(1)
+})
+
+it('does not upload another account\'s queued draft under the current account', async () => {
+  const create = jest.fn()
+  renderSyncHook({ create })
+  await expect(capturedPerformSync!(makeQueueItem({ operation: 'create', payload: { title: 'Private', user_id: 'other-user' } })))
+    .rejects.toThrow('another account')
+  expect(create).not.toHaveBeenCalled()
+})
+
+it('retries quietly when backend access returns without a browser online event', async () => {
+  jest.useFakeTimers()
+  try {
+    const { OfflineSyncManager } = await import('@core/services/offlineSyncManager')
+    const hook = renderSyncHook()
+    const manager = jest.mocked(OfflineSyncManager).mock.results.at(-1)?.value
+    await act(async () => { jest.advanceTimersByTime(15000) })
+    expect(manager.drainQueue).toHaveBeenCalledTimes(1)
+    hook.unmount()
+    await act(async () => { jest.advanceTimersByTime(15000) })
+    expect(manager.drainQueue).toHaveBeenCalledTimes(1)
+  } finally { jest.useRealTimers() }
 })

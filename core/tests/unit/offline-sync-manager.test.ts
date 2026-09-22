@@ -12,10 +12,10 @@ class MemoryStorage implements OfflineStorageAdapter {
   async saveNotes() {}
   async deleteNote() {}
   async getQueue() { return this.queue }
-  async upsertQueueItem(value: MutationQueueItem) { this.queue.push(value) }
+  async upsertQueueItem(value: MutationQueueItem) { this.queue = [...this.queue.filter((entry) => entry.id !== value.id), value] }
   async upsertQueue(values: MutationQueueItem[]) { this.queue = values }
   async popQueueBatch(size: number) { return this.queue.slice(0, size) }
-  async getPendingBatch(size: number) { return this.queue.filter((value) => value.status === 'pending').slice(0, size) }
+  async getPendingBatch(size: number) { return this.queue.filter((value) => value.status === 'pending').sort((a, b) => a.clientUpdatedAt.localeCompare(b.clientUpdatedAt)).slice(0, size) }
   async removeQueueItems(ids: string[]) { this.queue = this.queue.filter((value) => !ids.includes(value.id)) }
   async markSynced() {}
   async markQueueItemStatus(id: string, status: 'pending' | 'failed', lastError?: string) {
@@ -73,4 +73,23 @@ describe('OfflineSyncManager', () => {
     expect((await manager.getState()).isOnline).toBe(false)
     manager.dispose()
   })
+})
+
+it('preserves an edit enqueued after the drain takes its compaction snapshot', async () => {
+  const storage = new MemoryStorage()
+  const initial = item('1')
+  const latest = { ...item('2'), noteId: initial.noteId, payload: { title: 'Latest text' } }
+  storage.queue = [initial]
+  const originalRead = storage.getQueue.bind(storage)
+  jest.spyOn(storage, 'getQueue').mockImplementationOnce(async () => {
+    const snapshot = [...await originalRead()]
+    await storage.upsertQueueItem(latest)
+    return snapshot
+  })
+  const performSync = jest.fn().mockResolvedValue(undefined)
+  const manager = new OfflineSyncManager(storage, performSync, { isOnline: () => false, subscribe: () => () => {} })
+  await manager.handleOnline()
+  expect(performSync).toHaveBeenLastCalledWith(expect.objectContaining({ payload: { title: 'Latest text' } }))
+  expect(storage.queue).toEqual([])
+  manager.dispose()
 })

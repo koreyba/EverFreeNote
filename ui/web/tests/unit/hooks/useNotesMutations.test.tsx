@@ -178,4 +178,22 @@ describe('useNotesMutations', () => {
     expect(failed.queryClient.getQueryData(['notes'])).toEqual(previous)
     expect(onError).toHaveBeenCalledWith(expect.any(Error))
   })
+  it('keeps failed background writes quiet without acknowledging them as successful', async () => {
+    const onError = jest.fn()
+    const onSuccess = jest.fn()
+    mockNoteService.createNote.mockRejectedValue(new Error('network down'))
+    const create = renderMutation(() => useCreateNote({ onError, onSuccess }))
+    await act(async () => {
+      await expect(create.result.current.mutateAsync({ title: 'Local', description: '', tags: [], userId: 'user-1', silent: true })).rejects.toThrow('network down')
+    })
+    expect(create.queryClient.getQueryData(['notes'])).toBeUndefined()
+    mockNoteService.updateNote.mockRejectedValue(new Error('network down'))
+    const update = renderMutation(() => useUpdateNote({ onError, onSuccess }))
+    await act(async () => {
+      await expect(update.result.current.mutateAsync({ id: 'note-1', title: 'Local', silent: true })).rejects.toThrow('network down')
+    })
+    expect(onError).not.toHaveBeenCalled()
+    expect(onSuccess).not.toHaveBeenCalled()
+  })
+
 })

@@ -3,7 +3,7 @@ import { useNoteAppController } from '../../../../../ui/web/hooks/useNoteAppCont
 import { QueryProvider } from '../../../../../ui/web/components/providers/QueryProvider'
 import { SupabaseTestProvider } from '../../../../../ui/web/providers/SupabaseProvider'
 import { NoteViewModel } from '../../../../../core/types/domain'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { NoteEditorHandle } from '../../../../../ui/web/components/features/notes/NoteEditor'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -291,7 +291,7 @@ describe('useNoteAppController', () => {
     cy.get('[data-cy="loading"]').should('contain', 'false')
     cy.get('[data-cy="user"]').should('contain', 'no-user')
 
-    cy.wrap(mockSupabase.auth.getSession).should('have.been.called')
+    cy.wrap(mockSupabase.auth.getSession).should('not.have.been.called')
   })
 
   it('handles create note state', () => {
@@ -351,10 +351,9 @@ describe('useNoteAppController', () => {
 
   it('handles save note (create)', () => {
     // We need user to be logged in for save to work
-    ; (mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
 
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -436,7 +435,6 @@ describe('useNoteAppController', () => {
 
   it('handles remove tag from note', () => {
     // Ensure user is logged in
-    ; (mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
 
     // Mock supabase response for notes query
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -447,7 +445,7 @@ describe('useNoteAppController', () => {
     })
 
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -472,7 +470,6 @@ describe('useNoteAppController', () => {
   })
 
   it('handles remove tag error', () => {
-    ; (mockSupabase.auth.getSession as unknown as SinonStub).resolves({ data: { session: { user: { id: 'test-user' } } }, error: null })
 
     // Mock notes query success
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -493,7 +490,7 @@ describe('useNoteAppController', () => {
     mockQueryBuilder.update = updateStub
 
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>

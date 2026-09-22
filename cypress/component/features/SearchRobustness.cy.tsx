@@ -2,7 +2,7 @@ import React from 'react'
 import { useNoteAppController } from '../../../ui/web/hooks/useNoteAppController'
 import { QueryProvider } from '../../../ui/web/components/providers/QueryProvider'
 import { SupabaseTestProvider } from '../../../ui/web/providers/SupabaseProvider'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 const TestComponent = () => {
   const controller = useNoteAppController()
@@ -44,7 +44,7 @@ describe('Search Robustness', () => {
 
   it('should handle simple text queries', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -58,7 +58,7 @@ describe('Search Robustness', () => {
 
   it('should handle special characters without crashing', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -73,7 +73,7 @@ describe('Search Robustness', () => {
 
   it('should handle code snippets', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -87,7 +87,7 @@ describe('Search Robustness', () => {
 
   it('should handle queries that become empty after sanitization', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
@@ -102,7 +102,7 @@ describe('Search Robustness', () => {
 
   it('should handle comma in search query correctly', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>

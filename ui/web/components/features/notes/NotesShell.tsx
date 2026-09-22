@@ -1,5 +1,6 @@
 "use client"
 
+import { useAppBackHandler, APP_BACK_PRIORITY } from "@ui/web/lib/appBack"
 import * as React from "react"
 import { CircleNotch as Loader2 } from "@phosphor-icons/react"
 import { useQuery } from "@tanstack/react-query"
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { cn } from "@ui/web/lib/utils"
+import { PullToRefresh } from "@/components/PullToRefresh"
 import { Sidebar } from "@/components/features/notes/Sidebar"
 import { NoteList } from "@/components/features/notes/NoteList"
 import { NoteEditor, type NoteEditorHandle, type PendingChunkFocus } from "@/components/features/notes/NoteEditor"
@@ -189,17 +191,24 @@ export function NotesShell({ controller }: NotesShellProps) {
     router.push("/settings")
   }, [controller, router])
 
-  const handleBackFromNote = React.useCallback(() => {
+  const handleBackFromNote = React.useCallback(async () => {
+    await noteEditorRef.current?.flushPendingSave()
     const settingsReturnPath = consumeActiveSettingsNoteReturnPath()
     if (settingsReturnPath) {
       router.push(settingsReturnPath)
       return
     }
-
-    handleSelectNote(null).catch(() => {
-      // Fire-and-forget: wrappedHandleSelectNote already owns error handling.
-    })
+    await handleSelectNote(null)
   }, [handleSelectNote, router])
+
+  useAppBackHandler(APP_BACK_PRIORITY.navigation, async () => {
+    if (isSearchPanelOpen) setIsSearchPanelOpen(false)
+    else if (selectionMode) exitSelectionMode()
+    else if (showEditor) await handleBackFromNote()
+    else if (activeMainView !== "notes") setActiveMainView("notes")
+    else return false
+    return true
+  })
 
   const handleSelectTagFromTagsPage = React.useCallback((tag: string) => {
     controller.handleTagClick(tag).catch(() => undefined)
@@ -304,7 +313,7 @@ export function NotesShell({ controller }: NotesShellProps) {
               <div className="flex-1 min-h-0 min-w-0 flex">
                 <EditorPane
                   controller={controller}
-                  onBack={handleBackFromNote}
+                  onBack={() => { void handleBackFromNote().catch(() => undefined) }}
                   noteEditorRef={noteEditorRef}
                   wordpressConfigured={wordpressConfigured}
                   pendingChunkFocus={pendingChunkFocus}
@@ -336,19 +345,21 @@ function ListPane({ controller }: { controller: NoteAppController }) {
   } = controller
 
   return (
-    <NoteList
-      notes={notes as NoteRecord[]}
-      isLoading={notesQuery.isLoading}
-      selectedNoteId={selectedNote?.id}
-      selectionMode={selectionMode}
-      selectedIds={selectedNoteIds}
-      onToggleSelect={(note) => toggleNoteSelection(note.id)}
-      onSelectNote={(note) => handleSelectNote(note)}
-      onTagClick={handleTagClick}
-      onLoadMore={() => notesQuery.fetchNextPage()}
-      hasMore={notesQuery.hasNextPage}
-      isFetchingNextPage={notesQuery.isFetchingNextPage}
-    />
+    <PullToRefresh onRefresh={controller.refreshNotes}>
+      <NoteList
+        notes={notes as NoteRecord[]}
+        isLoading={notesQuery.isLoading}
+        selectedNoteId={selectedNote?.id}
+        selectionMode={selectionMode}
+        selectedIds={selectedNoteIds}
+        onToggleSelect={(note) => toggleNoteSelection(note.id)}
+        onSelectNote={(note) => handleSelectNote(note)}
+        onTagClick={handleTagClick}
+        onLoadMore={() => notesQuery.fetchNextPage()}
+        hasMore={notesQuery.hasNextPage}
+        isFetchingNextPage={notesQuery.isFetchingNextPage}
+      />
+    </PullToRefresh>
   )
 }
 
@@ -470,6 +481,7 @@ function EditorPane({
         onBack={onBack}
         wordpressConfigured={wordpressConfigured}
         initialScrollTop={activeTab.view.scrollTop}
+        onRefresh={controller.refreshSelectedNote}
         onViewSessionChange={controller.handleViewSessionChange}
       />
     )

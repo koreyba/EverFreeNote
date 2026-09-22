@@ -7,6 +7,9 @@ describe('OfflineSyncManager', () => {
   let mockNetwork: NetworkStatusProvider
   let performSyncStub: sinon.SinonStub
   let onSuccessStub: sinon.SinonStub
+  let upsertQueueItemStub: sinon.SinonStub
+  let removeQueueItemsStub: sinon.SinonStub
+  let upsertQueueStub: sinon.SinonStub
 
   const createItem = (id: string, noteId: string, operation: MutationQueueItem['operation'] = 'update'): MutationQueueItem => ({
     id,
@@ -19,17 +22,20 @@ describe('OfflineSyncManager', () => {
   })
 
   beforeEach(() => {
+    upsertQueueItemStub = cy.stub().resolves()
+    removeQueueItemsStub = cy.stub().resolves()
+    upsertQueueStub = cy.stub().resolves()
     mockStorage = {
       loadNotes: cy.stub().resolves([]),
       saveNote: cy.stub().resolves(),
       saveNotes: cy.stub().resolves(),
       deleteNote: cy.stub().resolves(),
       getQueue: cy.stub().resolves([]),
-      upsertQueueItem: cy.stub().resolves(),
-      upsertQueue: cy.stub().resolves(),
+      upsertQueueItem: upsertQueueItemStub,
+      upsertQueue: upsertQueueStub,
       popQueueBatch: cy.stub().resolves([]),
       getPendingBatch: cy.stub().resolves([]),
-      removeQueueItems: cy.stub().resolves(),
+      removeQueueItems: removeQueueItemsStub,
       markSynced: cy.stub().resolves(),
       markQueueItemStatus: cy.stub().resolves(),
       enforceLimit: cy.stub().resolves(),
@@ -120,11 +126,12 @@ describe('OfflineSyncManager', () => {
 
       await manager.drainQueue()
 
-      // Should have called upsertQueue with compacted items (1 item)
-      expect(mockStorage.upsertQueue).to.have.been.called
-      const upsertArgs = (mockStorage.upsertQueue as unknown as sinon.SinonStub).firstCall.args[0]
-      expect(upsertArgs).to.have.length(1)
-      expect(upsertArgs[0].operation).to.equal('create')
+      expect(upsertQueueItemStub).to.have.been.calledOnce
+      const compacted = upsertQueueItemStub.firstCall.args[0]
+      expect(compacted.operation).to.equal('create')
+      expect(compacted.id).to.equal('2')
+      expect(removeQueueItemsStub).to.have.been.calledWith(['1'])
+      expect(upsertQueueStub).to.not.have.been.called
     })
 
     it('should persist compacted queue even if length is unchanged (to reset failed status)', async () => {
@@ -138,10 +145,11 @@ describe('OfflineSyncManager', () => {
 
       // compactQueue resets status to 'pending'.
       // Even though length is still 1, we MUST save it to persist the 'pending' status.
-      expect(mockStorage.upsertQueue).to.have.been.called
-      const upsertArgs = (mockStorage.upsertQueue as unknown as sinon.SinonStub).firstCall.args[0]
-      expect(upsertArgs).to.have.length(1)
-      expect(upsertArgs[0].status).to.equal('pending')
+      expect(upsertQueueItemStub).to.have.been.calledOnce
+      const compacted = upsertQueueItemStub.firstCall.args[0]
+      expect(compacted.id).to.equal('1')
+      expect(compacted.status).to.equal('pending')
+      expect(removeQueueItemsStub).to.not.have.been.called
     })
 
     it('should process pending batch and remove successful items', async () => {
