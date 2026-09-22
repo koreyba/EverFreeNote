@@ -34,3 +34,8 @@ Retaining synced cached notes also requires successful online single/bulk deleti
 `useNoteRefresh` replaces the main query with the newest first page or refreshes the current reading snapshot. Local pending writes take priority. Responses are ignored after cancellation, account/tab/note changes or entry into editing. Requests receive an AbortSignal through NoteService and the real Supabase transport. The surface aborts on unmount or after ten seconds; even an SDK auth wait cannot keep the indicator spinning. Failure leaves existing content visible and emits one toast. Remote deletion uses existing tab/cache cleanup.
 
 Review found no schema/auth/storage changes or expansion to full-library offline caching. Native validation used the existing separate development application and local Supabase. Production uses the same source with production endpoint and test login disabled.
+
+## Follow-up diagnosis
+The refresh hook replaces React Query pages but applyNoteOverlay intentionally retains synced cached rows absent from those pages. Opening a note separately detects deletion. The list also returns a skeleton unconditionally for isLoading, hiding cached notes already merged by useNoteData while Supabase waits/retries. Fix both at their respective boundaries; do not infer deletion from pagination.
+
+Implemented account-scoped, abortable, bounded ID verification with exact count validation; atomic conditional cache removal checks the queue and saved revision. Controller removes only the matching overlay revisions and protects editing tabs, including an editor opened during the transaction. NoteList renders existing local rows during network loading. No database migration or additional native plugin is needed.

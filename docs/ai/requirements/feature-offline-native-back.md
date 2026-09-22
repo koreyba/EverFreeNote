@@ -24,3 +24,6 @@ Use existing IndexedDB, queue, persisted Supabase session cookies and Capacitor 
 
 ## Android pull-to-refresh extension
 The user requests downward-swipe refresh in the Android shell. Enable it at the top of the main notes list (including an empty list) and an opened note in reading mode. Preserve ordinary scrolling while editing and below the top; ignore horizontal drags, controls and text selection. A threshold/release indicator and one active refresh make the gesture predictable. Network failure/timeout retains current content and pending local changes. List refresh starts at the newest first page; reading refresh updates that note or handles a remote deletion. This does not add full-library offline download.
+
+## Refresh reconciliation and immediate offline display
+A successful list refresh must remove cached notes confirmed deleted by the server, without opening each note. Missing from the first page alone is not deletion. Preserve pending/failed writes, open editors, other accounts, changed cache revisions and aborted/failed requests. Cached notes must render while initial network loading remains unresolved. No server response is required to display existing local data.

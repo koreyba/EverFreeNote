@@ -294,7 +294,16 @@ export function useNoteAppController() {
     isEditing,
     noteService,
     queryClient,
-    hasPendingChanges: hasPendingLocalWrites,
+    offlineCache,
+    hasPendingChanges: id => hasPendingLocalWrites(id) || tabs.some(tab => tab.noteId === id && tab.mode === 'editing'),
+    onCachedNotesRemoved: removed => {
+      const revisions = new Map(removed.map(note => [note.id, note.updatedAt]))
+      setOfflineOverlay(current => current.filter(note => (
+        revisions.get(note.id) !== note.updatedAt || note.status !== 'synced' || Boolean(note.pendingOps?.length)
+      )))
+      resetTabsForNotes(removed.map(note => note.id))
+      if (selectedNote && revisions.has(selectedNote.id)) setNotePaneVisible(false)
+    },
     onNoteRefreshed: (note) => updateTab(activeTabId, {
       note,
       draft: { title: note.title, description: note.description ?? '', tags: (note.tags ?? []).join(', ') },

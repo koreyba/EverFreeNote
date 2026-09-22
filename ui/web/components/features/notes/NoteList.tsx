@@ -392,7 +392,7 @@ export const NoteList = memo(function NoteList({
   }
 
   // Loading Skeleton
-  if (isLoading) {
+  if (isLoading && notes.length === 0) {
     return <NoteListSkeleton count={5} />
   }
 

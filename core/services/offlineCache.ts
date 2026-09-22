@@ -22,6 +22,11 @@ export class OfflineCacheService {
     await this.storage.deleteNote(noteId)
   }
 
+  async removeSyncedNotes(notes: CachedNote[], signal?: AbortSignal): Promise<string[]> {
+    // Adapters without conditional deletion retain their cache rather than risking edits.
+    return this.storage.removeSyncedNotes?.(notes, signal) ?? []
+  }
+
   async markSynced(noteId: string, updatedAt: string, expectedUpdatedAt?: string): Promise<void> {
     await this.storage.markSynced(noteId, updatedAt, expectedUpdatedAt)
   }

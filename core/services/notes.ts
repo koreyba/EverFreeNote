@@ -134,6 +134,21 @@ export class NoteService {
     }
   }
 
+  async getExistingNoteIds(noteIds: string[], userId: string, signal?: AbortSignal): Promise<string[]> {
+    const existing: string[] = []
+    for (let offset = 0; offset < noteIds.length; offset += 100) {
+      let query = this.supabase.from('notes').select('id', { count: 'exact' })
+        .eq('user_id', userId).in('id', noteIds.slice(offset, offset + 100))
+      if (signal) query = query.abortSignal(signal)
+      const { data, error, count } = await query
+      if (error) throw error
+      // A server row limit must never turn a truncated result into false deletions.
+      if (!data || count !== data.length) throw new Error('Incomplete note existence response')
+      existing.push(...data.map(note => note.id))
+    }
+    return existing
+  }
+
   async getNotesByIds(noteIds: string[], userId: string) {
     if (!noteIds.length) return []
 

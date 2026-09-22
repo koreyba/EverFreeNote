@@ -39,3 +39,10 @@ Use a sibling worktree already bootstrapped at /Users/denys.koreiba/Documents/Ev
 - [x] Build and verify the production update (3b38040; final review rebuild receipt accompanies its APK).
 - [x] Review and update PR scope/evidence; fix the first static-analysis annotations.
 - [ ] Inspect terminal checks after the final review commit; record results on PR #201 and the APK receipt.
+
+## Follow-up: deletion reconciliation and slow offline list
+- [x] Diagnose: first-page replacement leaves retained synced overlay; loading skeleton hides hydrated cache.
+- [x] Review requirements/design: authoritative scoped existence check; protect local revisions and queued edits.
+- [x] Add red regression tests, implement reconciliation and immediate local rendering.
+- [x] Verify IndexedDB and complete UI behavior with blocked transport.
+- [ ] Review, publish PR update and produce production APK.

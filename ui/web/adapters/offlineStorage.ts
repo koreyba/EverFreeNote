@@ -75,6 +75,11 @@ const withStore = async <T>(
   })
 }
 
+const matchesSyncedSnapshot = (current: CachedNote | undefined, expected: CachedNote) => (
+  current?.status === 'synced' && !current.deleted && !current.pendingOps?.length &&
+  current.user_id === expected.user_id && current.updatedAt === expected.updatedAt
+)
+
 // Fallback на localStorage, если IndexedDB недоступен
 const localFallback = (() => {
   const NOTES_KEY = 'offline_notes'
@@ -113,6 +118,19 @@ const localFallback = (() => {
     deleteNote: (id: string) => {
       const notes = readJson<CachedNote>(NOTES_KEY).filter((n) => n.id !== id)
       writeJson(NOTES_KEY, notes)
+    },
+    removeSyncedNotes: (expected: CachedNote[], signal?: AbortSignal) => {
+      if (signal?.aborted) return []
+      const notes = readJson<CachedNote>(NOTES_KEY)
+      const queued = new Set(readJson<MutationQueueItem>(QUEUE_KEY).map(item => item.noteId))
+      const snapshots = new Map(expected.map(note => [note.id, note]))
+      const removed = notes.filter(note => {
+        const snapshot = snapshots.get(note.id)
+        return snapshot && !queued.has(note.id) && matchesSyncedSnapshot(note, snapshot)
+      }).map(note => note.id)
+      const removedIds = new Set(removed)
+      writeJson(NOTES_KEY, notes.filter(note => !removedIds.has(note.id)))
+      return removed
     },
     getQueue: () => readJson<MutationQueueItem>(QUEUE_KEY),
     upsertQueueItem: (item: MutationQueueItem) => {
@@ -223,6 +241,36 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
 
       async deleteNote(noteId) {
         await deleteItem(NOTES_STORE, noteId)
+      },
+
+      async removeSyncedNotes(notes, signal) {
+        if (!notes.length || signal?.aborted) return []
+        const db = await getDB()
+        if (signal?.aborted) { db.close(); return [] }
+        return new Promise<string[]>((resolve, reject) => {
+          const tx = db.transaction([NOTES_STORE, QUEUE_STORE], 'readwrite')
+          const store = tx.objectStore(NOTES_STORE)
+          const removed: string[] = []
+          const abort = () => tx.abort()
+          const cleanup = () => { signal?.removeEventListener('abort', abort); db.close() }
+          signal?.addEventListener('abort', abort, { once: true })
+          tx.oncomplete = () => { cleanup(); resolve(removed) }
+          tx.onerror = tx.onabort = () => { cleanup(); reject(tx.error ?? new Error('Cache reconciliation cancelled')) }
+          const queue = tx.objectStore(QUEUE_STORE).getAll()
+          queue.onsuccess = () => {
+            const queued = new Set((queue.result as MutationQueueItem[]).map(item => item.noteId))
+            for (const note of notes) {
+              if (queued.has(note.id)) continue
+              const request = store.get(note.id)
+              request.onsuccess = () => {
+                if (matchesSyncedSnapshot(request.result as CachedNote | undefined, note)) {
+                  store.delete(note.id)
+                  removed.push(note.id)
+                }
+              }
+            }
+          }
+        })
       },
 
       async getQueue() {
@@ -368,6 +416,9 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
       },
       async deleteNote(noteId) {
         localFallback.deleteNote(noteId)
+      },
+      async removeSyncedNotes(notes, signal) {
+        return localFallback.removeSyncedNotes(notes, signal)
       },
       async getQueue() {
         return localFallback.getQueue()
