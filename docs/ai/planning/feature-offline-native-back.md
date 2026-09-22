@@ -36,5 +36,6 @@ Use a sibling worktree already bootstrapped at /Users/denys.koreiba/Documents/Ev
 - [x] Implement Android-only list/reading refresh with bounded network wait and draft guards.
 - [x] Verify actual nested list scrolling, reading refresh and editor exclusion in browser components.
 - [x] Verify installed Android swipe behavior.
-- [ ] Build and verify the production update.
-- [ ] Review, update PR scope/evidence and inspect final CI.
+- [x] Build and verify the production update (3b38040; final review rebuild receipt accompanies its APK).
+- [x] Review and update PR scope/evidence; fix the first static-analysis annotations.
+- [ ] Inspect terminal checks after the final review commit; record results on PR #201 and the APK receipt.

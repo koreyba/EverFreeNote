@@ -1,4 +1,5 @@
 "use client"
+/* eslint no-unused-vars: "off", "@typescript-eslint/no-unused-vars": "error" -- Use the TypeScript-aware rule for callback declarations. */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Capacitor } from '@capacitor/core'
@@ -66,14 +67,14 @@ export function PullToRefresh({ children, onRefresh, className, indicatorClassNa
     const onStart = (event: TouchEvent) => {
       reset()
       const target = event.target
-      if (request || event.touches.length !== 1 || !(target instanceof Element)) return
-      if (target.closest(CONTROL_SELECTOR) || window.getSelection()?.toString() || !isAtTop(target)) return
+      if (request !== null || event.touches.length !== 1 || !(target instanceof Element)) return
+      if (target.closest(CONTROL_SELECTOR) !== null || Boolean(window.getSelection()?.toString()) || !isAtTop(target)) return
       const touch = event.touches[0]
       start = { x: touch.clientX, y: touch.clientY, target }
     }
     const onMove = (event: TouchEvent) => {
       if (!start) return
-      if (event.touches.length !== 1 || window.getSelection()?.toString() || !isAtTop(start.target)) { reset(); return }
+      if (event.touches.length !== 1 || Boolean(window.getSelection()?.toString()) || !isAtTop(start.target)) { reset(); return }
       const touch = event.touches[0]
       const dy = touch.clientY - start.y
       const dx = Math.abs(touch.clientX - start.x)

@@ -290,7 +290,7 @@ export function useNoteAppController() {
   const { refreshList: refreshNotes, refreshNote: refreshSelectedNote } = useNoteRefresh({
     userId: user?.id,
     tabId: activeTabId,
-    note: selectedNote,
+    note: selectedNote ?? undefined,
     isEditing,
     noteService,
     queryClient,

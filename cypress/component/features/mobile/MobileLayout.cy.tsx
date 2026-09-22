@@ -201,7 +201,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.contains('[role="status"]', 'Release to refresh').should(($status) => {
       const indicator = $status[0]
       const rect = indicator.getBoundingClientRect()
-      const viewport = indicator.ownerDocument.defaultView!
+      const viewport = indicator.ownerDocument.defaultView
+      if (!viewport) throw new Error('Missing indicator viewport')
       expect(rect.width, 'visible indicator width').to.be.greaterThan(0)
       expect(rect.top, 'indicator starts inside viewport').to.be.at.least(0)
       expect(rect.bottom, 'indicator ends inside viewport').to.be.at.most(viewport.innerHeight)

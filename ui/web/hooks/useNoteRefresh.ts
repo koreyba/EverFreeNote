@@ -1,3 +1,4 @@
+/* eslint no-unused-vars: "off", "@typescript-eslint/no-unused-vars": "error" -- Use the TypeScript-aware rule for callback declarations. */
 import type { QueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
@@ -7,7 +8,7 @@ import { SEARCH_CONFIG } from '@core/constants/search'
 export type NoteRefreshOptions = {
   userId?: string
   tabId: string
-  note: NoteViewModel | null
+  note?: NoteViewModel
   isEditing: boolean
   noteService: Pick<NoteService, 'getNotes' | 'getNoteStatus'>
   queryClient: QueryClient

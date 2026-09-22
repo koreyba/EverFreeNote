@@ -1,4 +1,5 @@
 "use client"
+/* eslint no-unused-vars: "off", "@typescript-eslint/no-unused-vars": "error" -- Use the TypeScript-aware rule for callback declarations. */
 
 import * as React from "react"
 import { PencilSimple as Edit2, Trash as Trash2, CaretLeft as ChevronLeft, Copy, Check } from "@phosphor-icons/react"
