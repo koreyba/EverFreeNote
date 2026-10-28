@@ -4,7 +4,7 @@ import * as React from "react"
 import { useEditorState, type Editor } from "@tiptap/react"
 import { Button } from "@ui/web/components/ui/button"
 import { TextAlignCenter as AlignCenter, TextAlignLeft as AlignLeft, TextAlignRight as AlignRight, TextB as Bold, ArrowUUpLeft as Undo, ArrowUUpRight as Redo, CheckSquare, TextHOne as Heading1, TextHTwo as Heading2, TextHThree as Heading3, Highlighter, Image as ImageIcon, TextIndent as Indent, TextItalic as Italic, LinkSimple as Link2, List, ListNumbers as ListOrdered, Minus, TextOutdent as Outdent, Palette, TextTSlash as RemoveFormatting, TextAa as SpellCheck, TextStrikethrough as Strikethrough, TextSubscript as SubscriptIcon, TextSuperscript as SuperscriptIcon, TextUnderline as UnderlineIcon } from "@phosphor-icons/react"
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@ui/web/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@ui/web/components/ui/popover"
 import { TwitterPicker, type ColorResult } from "react-color"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/web/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@ui/web/components/ui/tooltip"
@@ -53,6 +53,7 @@ export const EditorMenuBar = ({
   const [sizeMenuOpen, setSizeMenuOpen] = React.useState(false)
   const [imageMenuOpen, setImageMenuOpen] = React.useState(false)
   const imageInputRef = React.useRef<HTMLInputElement>(null)
+  const imageCommandAppliedRef = React.useRef(false)
 
   // Tiptap 3 does not rerender useEditor on transactions by default. Subscribe
   // only to formatting state so menus follow the caret without rerendering the
@@ -74,7 +75,10 @@ export const EditorMenuBar = ({
   const addImage = () => {
     setImageMenuOpen(false)
     const url = browser.prompt("Image URL:")
-    if (url) editor.chain().focus().setImage({ src: url }).run()
+    if (url) {
+      imageCommandAppliedRef.current = true
+      editor.chain().focus().setImage({ src: url }).run()
+    }
   }
 
   const addImageFromFile = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -337,15 +341,30 @@ export const EditorMenuBar = ({
           <Link2 className="w-4 h-4" />
         </EditorToolbarButton>
         <Popover open={imageMenuOpen} onOpenChange={setImageMenuOpen}>
-          <PopoverAnchor asChild>
-            <div className={cn("shrink-0", compact && "[&>button]:h-11 [&>button]:min-w-11")}>
-              <EditorToolbarButton dataCy="image-button" label="Insert image" active={editor.isActive("image")} ariaExpanded={imageMenuOpen} ariaHasPopup="dialog" onClick={() => setImageMenuOpen(open => !open)}>
-                <ImageIcon className="w-4 h-4" />
-              </EditorToolbarButton>
-              <input ref={imageInputRef} data-cy="image-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={addImageFromFile} />
-            </div>
-          </PopoverAnchor>
-          <PopoverContent side={compact ? "top" : "bottom"} align="start" className="w-52 p-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  data-cy="image-button"
+                  variant={editor.isActive("image") ? "secondary" : "ghost"}
+                  aria-label="Insert image"
+                  onMouseDown={event => event.preventDefault()}
+                  className="h-8 w-8 p-0 rounded-lg active:scale-90 hover:bg-muted transition-all duration-100 ease-out shrink-0"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Insert image</TooltipContent>
+          </Tooltip>
+          <input ref={imageInputRef} data-cy="image-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={addImageFromFile} />
+          <PopoverContent side={compact ? "top" : "bottom"} align="start" className="w-52 p-1" onCloseAutoFocus={event => {
+            if (imageCommandAppliedRef.current) {
+              event.preventDefault()
+              imageCommandAppliedRef.current = false
+            }
+          }}>
             <Button type="button" variant="ghost" className="h-11 w-full justify-start" onClick={() => { setImageMenuOpen(false); imageInputRef.current?.click() }}>
               Choose from device
             </Button>

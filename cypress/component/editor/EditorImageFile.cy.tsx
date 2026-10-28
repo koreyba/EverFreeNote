@@ -6,6 +6,14 @@ import { toast } from 'sonner'
 const tinyPng = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII='
 
 describe('Insert an image from a device', { retries: 0 }, () => {
+  it('returns keyboard focus to the image control when the menu is dismissed', () => {
+    cy.mount(<RichTextEditor initialContent="<p>Photo:</p>" />)
+    cy.get('[data-cy="image-button"]').focus().click()
+    cy.contains('button', 'Choose from device').should('be.visible')
+    cy.get('body').type('{esc}')
+    cy.get('[data-cy="image-button"]').should('have.focus')
+  })
+
   it('inserts a selected file into the note and reports the edit', () => {
     const onChange = cy.spy().as('onChange')
     cy.viewport(390, 844)

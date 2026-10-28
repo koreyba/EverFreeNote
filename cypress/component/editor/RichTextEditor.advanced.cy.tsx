@@ -91,6 +91,7 @@ describe('RichTextEditor Component', () => {
     cy.get('@onContentChangeSpy').should('have.been.called')
     cy.get('[data-cy="editor-content"]').find('img').should('exist')
     cy.get('[data-cy="editor-content"]').find('img').should('have.attr', 'src', 'https://example.com/test.jpg')
+    cy.get('[data-cy="editor-content"] [contenteditable="true"]').should('have.focus')
   })
 
   it('does not insert image when prompt is cancelled', () => {
