@@ -112,5 +112,5 @@ The consent page surfaces Supabase error messages verbatim in a message card and
 - `WWW-Authenticate` values are quoted and stripped of quotes/newlines; tokens are never echoed.
 - CORS allows any origin (the endpoint is meant for server-side AI hosts) but exposes only MCP-related headers.
 - The consent page shows the client name and host as text only (no external logo or link rendering), and validates `authorization_id` against a strict character class before using it in storage or URLs.
-- Note HTML from agents is stored as received, mirroring the existing `create-note` REST function; all render paths sanitize (`SanitizationService`, TipTap schema).
+- Agent-supplied note HTML is sanitized before storage and again on render. The write-side allowlist preserves the editor's superscript and subscript elements while removing scripts, event handlers, and unsafe URLs.
 - Known limitation: RFC 8707 `resource` binding is not enforced (Supabase tokens carry `aud: "authenticated"`).

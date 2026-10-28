@@ -14,6 +14,11 @@ describe('core/mcp/noteHtml - sanitizeNoteHtml', () => {
     expect(sanitizeNoteHtml(html)).toBe(html)
   })
 
+  it('preserves superscript and subscript while stripping unsafe attributes', () => {
+    expect(sanitizeNoteHtml('<p>x<sup onclick="steal()">2</sup> + H<sub>2</sub>O</p><script>bad()</script>'))
+      .toBe('<p>x<sup>2</sup> + H<sub>2</sub>O</p>')
+  })
+
   it('removes script elements together with their content', () => {
     expect(sanitizeNoteHtml('<p>safe</p><script>alert(1)</script>')).toBe('<p>safe</p>')
     expect(sanitizeNoteHtml('<style>p{color:red}</style><p>safe</p>')).toBe('<p>safe</p>')

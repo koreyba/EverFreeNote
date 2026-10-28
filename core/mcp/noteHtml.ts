@@ -13,7 +13,7 @@ import sanitizeHtml from 'sanitize-html'
 export const NOTE_ALLOWED_TAGS = [
   'b', 'i', 'em', 'strong', 'a', 'p', 'br', 'hr', 'ul', 'ol', 'li',
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre',
-  'span', 'div', 'img', 'mark', 'u', 's', 'strike',
+  'span', 'div', 'img', 'mark', 'u', 's', 'strike', 'sup', 'sub',
 ]
 
 export const NOTE_ALLOWED_ATTRIBUTES = [

@@ -218,6 +218,17 @@ describe('core/mcp/notebookServer', () => {
     })
 
     describe('create_note', () => {
+      it('preserves editor superscript and subscript in a created note', async () => {
+        repository.createNote.mockResolvedValue(NOTE_A)
+        await session.client.callTool({
+          name: 'create_note',
+          arguments: { title: 'Formula', content_html: '<p>x<sup>2</sup> + H<sub>2</sub>O</p>' },
+        })
+        expect(repository.createNote).toHaveBeenCalledWith({
+          title: 'Formula', contentHtml: '<p>x<sup>2</sup> + H<sub>2</sub>O</p>', tags: [],
+        })
+      })
+
       it('creates a note with defaults and normalized tags', async () => {
         repository.createNote.mockResolvedValue(NOTE_B)
 
@@ -283,6 +294,16 @@ describe('core/mcp/notebookServer', () => {
     })
 
     describe('update_note', () => {
+      it('keeps superscript and subscript when updating a previously read note', async () => {
+        const contentHtml = '<p>x<sup>2</sup> + H<sub>2</sub>O</p>'
+        repository.getNote.mockResolvedValue({ ...NOTE_A, contentHtml })
+        repository.updateNote.mockResolvedValue({ ...NOTE_A, contentHtml })
+        const read = await session.client.callTool({ name: 'get_note', arguments: { id: NOTE_A.id } })
+        const returnedHtml = (read.structuredContent as { content_html: string }).content_html
+        await session.client.callTool({ name: 'update_note', arguments: { id: NOTE_A.id, content_html: returnedHtml } })
+        expect(repository.updateNote).toHaveBeenCalledWith(NOTE_A.id, { contentHtml })
+      })
+
       it('updates the provided fields only', async () => {
         repository.updateNote.mockResolvedValue({ ...NOTE_A, title: 'Shopping' })
 

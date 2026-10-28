@@ -93,6 +93,8 @@ npx jest --config jest.config.cjs --selectProjects unit-web --testPathPatterns '
 
 Results (2026-09-10): unit-core 68/68 passed (4 suites); unit-web 26/26 passed (3 suites) plus the existing `authCallbackPage` suite still green; `npm run type-check` projects (root, core, core tests, web tests) clean; `eslint --max-warnings=0` clean on all touched files; `deno check` clean.
 
+Follow-up (2026-10-28): protocol and sanitizer unit tests cover superscript/subscript preservation on create and read-update, alongside script, handler and unsafe URL removal (52/52 focused tests).
+
 Known gaps:
 - The Edge Function handler itself (`index.ts`) has no automated test beyond `deno check` and the smoke run; its logic is intentionally thin and delegates to tested helpers.
 - No Cypress component test yet for the consent card (Jest covers the behaviour; a Cypress spec can be added to the `features/auth` group for the visual regression suite).
