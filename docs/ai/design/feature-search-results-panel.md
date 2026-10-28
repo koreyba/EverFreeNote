@@ -14,7 +14,7 @@ We will introduce a new discrete view component, `SearchResultsPanel`, injected 
 ```mermaid
 graph TD
     NotesShell[NotesShell Layout]
-    NotesShell --> Sidebar[Sidebar <br> fixed width md:w-80]
+    NotesShell --> Sidebar[Sidebar <br> resizable on desktop]
     NotesShell --> SearchResultsPanel[SearchResultsPanel <br> Resizable width, min 300px]
     NotesShell --> EditorContainer[Editor Container <br> flex-1]
     
@@ -46,6 +46,7 @@ We need to add UI interaction state. No database schema changes are required.
 **How do components communicate?**
 
 - `Sidebar` will receive `onOpenSearch` from the `controller`.
+- The desktop notes sidebar keeps a separate `notes-sidebar-width` preference. Its right-edge separator supports pointer and keyboard input; its effective width is limited to 280–600 px, at most half the workspace, and reserves 280 px for the editor when space permits. The mobile sidebar remains full-width.
 - `SearchResultsPanel` will receive: 
   - `searchQuery`, `onSearch`
   - `ftsData`, `ftsLoading`, `ftsHasMore`, `onLoadMoreFts` 
@@ -75,7 +76,7 @@ We need to add UI interaction state. No database schema changes are required.
 ## Design Decisions
 **Why did we choose this approach?**
 
-- **Custom Resizer vs `<ResizablePanelGroup>`:** The existing app layout utilizes strict utility classes (e.g. fixed `w-80` for the Sidebar and `flex-1` for the editor). Shadcn's layout based on `react-resizable-panels` uses percentages which would require refactoring the entire `NotesShell` shell sizing. Using a custom drag handle right inside `SearchResultsPanel` allows for a pixel-perfect `min-width/max-width` constraint while leaving `Sidebar` and `Editor` unaffected.
+- **Custom Resizer vs `<ResizablePanelGroup>`:** The workspace uses CSS widths for sidebars and `flex-1` for the editor. A custom handle allows pixel-based bounds without refactoring the entire `NotesShell` layout; the notes and search sidebars retain independent width preferences.
 - **Extending the Controller:** Hooking `isSearchPanelOpen` into the existing `useNoteSearch` hook ensures that when other components (like global keyboard shortcuts) trigger a search, the panel knows to open seamlessly.
 - **Search clear behavior:** Clearing the query resets search state but keeps the panel open; closing remains explicit via Close/Back controls.
 

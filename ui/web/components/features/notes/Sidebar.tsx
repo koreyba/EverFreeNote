@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/BrandLogo"
 import { BulkDeleteDialog } from "@/components/features/notes/BulkDeleteDialog"
 import { SelectionModeActions } from "@/components/features/notes/SelectionModeActions"
 import { User } from "@supabase/supabase-js"
+import { useResizableNotesSidebar } from "@ui/web/hooks/useResizableNotesSidebar"
 import { cn } from "@ui/web/lib/utils"
 import { useBulkDeleteConfirm } from "@ui/web/hooks/useBulkDeleteConfirm"
 
@@ -58,6 +59,8 @@ export function Sidebar({
   className,
   "data-testid": dataTestId
 }: SidebarProps) {
+  const sidebarRef = React.useRef<HTMLElement>(null)
+  const resizer = useResizableNotesSidebar(sidebarRef)
   const hasVisibleNotes = typeof notesDisplayed === "number" ? notesDisplayed > 0 : true
   const allVisibleSelected = typeof notesDisplayed === "number"
     ? notesDisplayed > 0 && selectedCount >= notesDisplayed
@@ -105,13 +108,29 @@ export function Sidebar({
 
   return (
     <aside
+      ref={sidebarRef}
       className={cn(
-        "w-80 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full md:sticky md:top-0 md:h-screen md:overflow-hidden",
+        "relative w-80 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full md:w-[var(--notes-sidebar-width)] md:flex-none md:sticky md:top-0 md:h-screen md:overflow-hidden",
         className
       )}
+      style={{ "--notes-sidebar-width": `${resizer.width}px` } as React.CSSProperties}
+      id="notes-sidebar"
       data-testid={dataTestId}
       aria-label="Sidebar"
     >
+      <div
+        role="separator"
+        aria-label="Resize notes sidebar"
+        aria-controls="notes-sidebar"
+        aria-orientation="vertical"
+        aria-valuemin={resizer.minWidth}
+        aria-valuemax={resizer.maxWidth}
+        aria-valuenow={resizer.width}
+        tabIndex={0}
+        onPointerDown={resizer.onPointerDown}
+        onKeyDown={resizer.onKeyDown}
+        className={cn("absolute inset-y-0 right-0 z-20 hidden w-2 cursor-col-resize touch-none hover:bg-primary/50 focus-visible:bg-primary focus-visible:outline-none md:block", resizer.dragging && "bg-primary")}
+      />
       {/* Header */}
       <div className="hidden p-4 border-b md:block">
         <div className="flex items-center justify-between mb-4">

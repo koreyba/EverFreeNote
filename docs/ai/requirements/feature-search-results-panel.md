@@ -34,6 +34,7 @@ description: Clarify the problem space, gather requirements, and define success 
 - **As a user doing research**, I type my query. The search executes (auto-search for regular, manual for AI), and the results are shown in the new panel.
 - **As a user reading context**, I click on a search result to open the note. The search results panel *remains open* so I can easily jump to the next result.
 - **As a user organizing my workspace**, I can drag the border of the search results panel to resize it, with sensible constraints (e.g., min 300px, max ~40-50% of screen) so the note editor remains usable.
+- **As a desktop user**, I can also resize the notes sidebar by dragging its right border or using the keyboard; its preferred width is remembered and constrained to leave room for the other panes when possible.
 - **As a user reading notes**, I can close the search panel using an explicitly placed "✖" (Close) button to regain horizontal space for the note editor.
 - **As a user on a mobile device**, I want the search panel to take up the full screen when active, and I want clear back arrows to navigate back to the original left panel view.
 

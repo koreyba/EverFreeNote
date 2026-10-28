@@ -76,6 +76,7 @@ Pressing Enter cancels any pending debounce and fires the search immediately. If
 **How do pieces connect?**
 
 - `NotesShell` passes `controller` into `Sidebar` and `SearchResultsPanel`.
+- `useResizableNotesSidebar` sizes the desktop notes sidebar, observes the search panel and workspace, and persists the preferred width independently of the search panel width.
 - `SearchResultsPanel` delegates result click through controller handlers (`handleSearchResultClick`, `handleSelectNote`).
 - RAG "open in context" remains connected through `onOpenInContext` callback from `NotesShell`.
 

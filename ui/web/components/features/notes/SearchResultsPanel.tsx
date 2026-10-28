@@ -557,6 +557,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             className={cn("relative flex flex-col h-full w-full md:w-[var(--search-panel-width)] shrink-0 bg-card border-r z-10 motion-safe:animate-in motion-safe:slide-in-from-left-2 motion-safe:duration-200", className)}
             style={{ "--search-panel-width": `${panelWidth}px` } as React.CSSProperties}
             data-testid="search-results-panel"
+            data-notes-search-pane
             aria-label="Search Results Panel"
         >
             <div className="px-3 pt-3 pb-2 border-b shrink-0 space-y-2">

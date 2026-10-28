@@ -298,7 +298,7 @@ export function NotesShell({ controller }: NotesShellProps) {
               onCreateNote={handleCreateNote}
               onSignOut={handleSignOut}
               onOpenSearch={() => void handleOpenSearchPanel()}
-              className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
+              className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full")}
               data-testid="sidebar-container"
             >
               <ListPane controller={controller} />
