@@ -52,3 +52,9 @@ description: Define testing approach, test cases, and quality assurance for mobi
 - Returning from a note shows a neutral mobile tab heading; reopening the saved tab restores the note and its title. Verified in Cypress and in the local Docker app at 390×844.
 - The user confirmed the swipe works in a browser.
 - Outstanding: validate swipe and the on-screen keyboard on physical iOS and Android browsers; browser touch emulation could not complete a native drag in the in-app browser.
+
+## Continuous note editing canvas — 2026-10-28
+
+- Mobile and desktop component checks cover short and long notes, the editable canvas, save, toolbar position, caret placement, theme and focus. A simulated safe-area inset and resized visual viewport cover the mobile navigation and keyboard layout; an additional scenario checks an image in the canvas.
+- The focused mobile layout and rich-text rendering run passed 45 tests. In a broader 142-test editor run, 137 passed and five keyboard undo/redo scenarios failed or broke on macOS; one of those failures was also reproduced using the original editor files from `origin/main`.
+- Type-check, ESLint, and a production build in an isolated Docker container passed. Physical iOS and Android keyboard/safe-area behavior remains to be checked on devices.

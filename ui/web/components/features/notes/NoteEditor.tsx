@@ -490,10 +490,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         ref={scrollContainerRef}
         // scrollbar-none: kept in sync with NoteView so the reading and
         // editing surfaces scroll identically — see the note there.
-        className="scrollbar-none relative z-0 min-h-0 flex-1 overflow-y-auto bg-card"
+        className="scrollbar-none relative z-0 flex min-h-0 flex-1 flex-col overflow-y-auto bg-card"
         onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
       >
-        <div data-mobile-editor-chrome className="max-w-4xl mx-auto px-4 pt-6 md:px-6 md:pt-24 space-y-5">
+        <div data-mobile-editor-chrome className="mx-auto w-full max-w-4xl shrink-0 space-y-5 px-4 pt-6 md:px-6 md:pt-24">
           <div>
             <Input
               key={`title-${editorSessionKey}`}
@@ -518,7 +518,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             placeholder="work, personal, ideas"
           />
         </div>
-        <div ref={bodyRef} className="max-w-4xl mx-auto px-4 md:px-6 pb-6 mt-4">
+        <div ref={bodyRef} className="mx-auto mt-4 flex w-full max-w-4xl flex-1 flex-col px-4 md:px-6">
           <RichTextEditor
             key={`editor-${editorSessionKey}`}
             ref={editorRef}

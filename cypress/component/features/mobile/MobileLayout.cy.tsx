@@ -398,6 +398,142 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('.tiptap').closest('.overflow-y-auto').as('noteScroll')
   }
 
+  function mountShortEditor(description = '<p>Short text</p>') {
+    const handleSaveNote = cy.stub().as('saveNote').resolves()
+    const controller = createMockController({ isEditing: true, handleSaveNote })
+    controller.activeTab.mode = 'editing'
+    controller.activeTab.draft = { title: 'Short note', description, tags: '' }
+    cy.mount(
+      <ThemeProvider attribute="class" defaultTheme="light">
+        <SupabaseTestProvider supabase={mockSupabase}>
+          <NotesShell controller={controller} />
+        </SupabaseTestProvider>
+      </ThemeProvider>
+    )
+    cy.get('.tiptap').should('contain.text', 'Short text')
+    cy.get('.tiptap').closest('.overflow-y-auto').as('noteScroll')
+  }
+
+  it('fills the available mobile editing space without scrolling a short note', () => {
+    cy.viewport(390, 844)
+    mountShortEditor()
+    cy.get('.tiptap').should(($editor) => {
+      const scroll = $editor[0].closest('.overflow-y-auto') as HTMLElement
+      const remaining = scroll.getBoundingClientRect().bottom - $editor[0].getBoundingClientRect().bottom
+      expect(remaining, 'editable canvas reaches the bottom of the viewport').to.be.within(0, 32)
+      expect(scroll.scrollHeight, 'short note has no unnecessary scroll').to.equal(scroll.clientHeight)
+    })
+    cy.screenshot('editor-canvas-mobile-light')
+    cy.get('.tiptap').click('bottomLeft').type(' added')
+    cy.get('.tiptap').should('contain.text', 'Short text added')
+    cy.get('[data-cy="note-save-button"]').click()
+    cy.get('@saveNote').should('have.been.calledOnce').and('have.been.calledWithMatch', { title: 'Short note', description: '<p>Short text added</p>' })
+  })
+
+  it('keeps the canvas usable on a narrow phone', () => {
+    cy.viewport(320, 667)
+    mountShortEditor()
+    cy.get('.tiptap').should(($editor) => {
+      const scroll = $editor[0].closest('.overflow-y-auto') as HTMLElement
+      const remaining = scroll.getBoundingClientRect().bottom - $editor[0].getBoundingClientRect().bottom
+      expect(remaining).to.be.within(0, 32)
+      expect(scroll.scrollHeight).to.equal(scroll.clientHeight)
+    })
+    cy.get('.tiptap').click('bottomLeft').type(' added')
+    cy.get('.tiptap').should('contain.text', 'Short text added')
+  })
+
+  it('keeps an image and following text within the mobile editing canvas', () => {
+    cy.viewport(390, 844)
+    mountShortEditor('<p><img src="/icons/icon-512.png" alt="Example image"></p><p>Short text</p>')
+    cy.get('.tiptap img').should(($image) => {
+      const image = $image[0] as HTMLImageElement
+      expect(image.naturalWidth, 'image loaded').to.be.greaterThan(0)
+      expect(image.getBoundingClientRect().width, 'image fits the canvas')
+        .to.be.at.most(requireElement(image.ownerDocument, '.tiptap').getBoundingClientRect().width)
+    })
+    cy.get('@noteScroll').scrollTo('bottom')
+    cy.get('.tiptap p').last().should('be.visible').and('contain.text', 'Short text')
+    cy.screenshot('editor-canvas-mobile-image')
+  })
+
+  it('fills the available desktop editing space without scrolling a short note', () => {
+    cy.viewport(1280, 900)
+    mountShortEditor()
+    cy.get('.tiptap').should(($editor) => {
+      const scroll = $editor[0].closest('.overflow-y-auto') as HTMLElement
+      const remaining = scroll.getBoundingClientRect().bottom - $editor[0].getBoundingClientRect().bottom
+      expect(remaining, 'editable canvas reaches the bottom of the viewport').to.be.within(0, 32)
+      expect(scroll.scrollHeight, 'short note has no unnecessary scroll').to.equal(scroll.clientHeight)
+    })
+    cy.screenshot('editor-canvas-desktop-light')
+    cy.get('html').invoke('addClass', 'dark')
+    cy.get('.tiptap').focus().should(($editor) => {
+      expect(getComputedStyle($editor[0]).boxShadow, 'desktop keyboard focus is visible').not.to.equal('none')
+    })
+    cy.screenshot('editor-canvas-desktop-dark')
+    cy.get('html').invoke('removeClass', 'dark')
+  })
+
+  it('keeps formatting above the mobile safe area when navigation is visible or hidden', () => {
+    cy.viewport(390, 844)
+    mountShortEditor()
+    cy.get('.mobile-workspace').then(($workspace) => {
+      $workspace[0].style.setProperty('--mobile-safe-bottom', '24px')
+    })
+    cy.get('[aria-label="Mobile Navigation"]').should(($navigation) => {
+      const nav = $navigation[0].getBoundingClientRect()
+      const toolbar = requireElement($navigation[0].ownerDocument, '[data-editor-toolbar]').getBoundingClientRect()
+      expect(getComputedStyle($navigation[0]).paddingBottom).to.equal('24px')
+      expect(toolbar.bottom, 'formatting stays above navigation').to.be.at.most(nav.top)
+    })
+    cy.get('[aria-label="Expand editor"]').click()
+    cy.get('[data-editor-toolbar]').should(($toolbar) => {
+      expect($toolbar[0].getBoundingClientRect().bottom, 'formatting stays above the safe area').to.be.at.most(820)
+    })
+  })
+
+  it('keeps the editable canvas and formatting accessible when the keyboard resizes the viewport', () => {
+    cy.viewport(390, 844)
+    const viewport = new EventTarget()
+    Object.assign(viewport, { height: 844, offsetTop: 0, scale: 1 })
+    cy.window().then((win) => {
+      const original = Object.getOwnPropertyDescriptor(win, 'visualViewport')
+      restoreViewport = () => {
+        if (original) Object.defineProperty(win, 'visualViewport', original)
+        else Reflect.deleteProperty(win, 'visualViewport')
+      }
+      Object.defineProperty(win, 'visualViewport', { configurable: true, value: viewport })
+    })
+    mountShortEditor()
+    cy.then(() => {
+      Object.assign(viewport, { height: 480, offsetTop: 24 })
+      viewport.dispatchEvent(new Event('resize'))
+    })
+    cy.get('[aria-label="Mobile Navigation"]').should('not.be.visible')
+    cy.get('[data-editor-toolbar]').should(($toolbar) => {
+      expect($toolbar[0].getBoundingClientRect().bottom, 'formatting stays above keyboard').to.be.at.most(504)
+    })
+    cy.get('.tiptap').click().type(' changed')
+    cy.get('.tiptap').should('contain.text', 'changed')
+  })
+
+  it('keeps a visible keyboard focus indicator on the canvas in light and dark themes', () => {
+    cy.viewport(390, 844)
+    mountShortEditor()
+    cy.get('.tiptap').focus().should(($editor) => {
+      const style = getComputedStyle($editor[0])
+      expect(style.outlineStyle, 'focus does not frame the canvas').to.equal('none')
+      expect(style.boxShadow, 'focus stays visible').not.to.equal('none')
+    })
+    cy.get('html').invoke('addClass', 'dark')
+    cy.get('.tiptap').should(($editor) => {
+      expect(getComputedStyle($editor[0]).boxShadow, 'focus stays visible in dark mode').not.to.equal('none')
+    })
+    cy.screenshot('editor-canvas-mobile-dark-focus')
+    cy.get('html').invoke('removeClass', 'dark')
+  })
+
   it('allows searching while the mobile editor is expanded', () => {
     cy.viewport(390, 844)
     mountLongEditor()

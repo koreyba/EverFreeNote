@@ -396,6 +396,10 @@ mark {
   white-space: pre-wrap;
 }
 
+.note-content .ProseMirror:focus-visible {
+  box-shadow: -4px 0 0 -2px var(--color-primary);
+}
+
 
 .note-content .ProseMirror>*:first-child {
   margin-top: 0 !important;

@@ -107,10 +107,10 @@ export const EditorMenuBar = ({
         role="toolbar"
         aria-label="Note formatting"
         className={cn(
-          "flex items-center bg-background/95",
+          "flex items-center bg-card/95",
           compact
             ? "h-[52px] flex-nowrap gap-0.5 overflow-x-auto overscroll-x-contain touch-pan-x select-none scrollbar-none px-1 [&>button]:h-11 [&>button]:min-w-11 [&>button]:shrink-0"
-            : "sticky top-[var(--note-editor-header-h)] z-20 flex-wrap gap-1.5 border-b border-border/40 backdrop-blur-md p-2 shadow-sm rounded-t-xl"
+            : "sticky top-[var(--note-editor-header-h)] z-20 flex-wrap gap-1.5 border-b border-border/40 backdrop-blur-md p-2"
         )}
       >
 

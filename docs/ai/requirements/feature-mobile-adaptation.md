@@ -68,3 +68,9 @@ description: Clarify the problem space, gather requirements, and define success 
 - A left swipe on a note in the mobile list or regular search exposes Delete; deletion uses the existing confirmation. Vertical scrolling and long-press selection must remain usable.
 - Reading and editing expose an in-note search across the title and body, with match counts, highlighting and previous/next navigation. Expanded editing searches the visible body. Searching must not change the draft.
 - Maintain the established desktop layout and functionality. Native apps are outside this change.
+
+## Note editing canvas — 2026-10-28
+
+- On mobile and desktop, a short note's editable canvas fills the space available in the note pane without introducing unnecessary vertical scrolling.
+- The note body is a continuous surface rather than a nested card. Keyboard focus remains visible in light and dark themes.
+- Long notes remain scrollable. Mobile formatting controls stay above navigation and the safe area, including when the visual viewport shrinks for the keyboard.

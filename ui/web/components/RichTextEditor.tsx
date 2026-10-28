@@ -165,7 +165,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
 
     const editorProps = React.useMemo(() => ({
       attributes: {
-        class: "focus:outline-none",
         spellcheck: spellcheckEnabled ? "true" : "false",
       },
       handlePaste,
@@ -325,13 +324,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     )
 
     return (
-      <div className={`bg-background transition-all duration-200 ${hideToolbar ? '' : 'border border-border/40 rounded-xl shadow-sm'}`}>
+      <div className="flex flex-1 flex-col">
         {isMobile && mobileToolbarContainer ? createPortal(toolbar, mobileToolbarContainer) : toolbar}
-        <div role="presentation" onMouseDown={handleEditorContainerMouseDown}>
+        <div role="presentation" className="flex flex-1 flex-col" onMouseDown={handleEditorContainerMouseDown}>
           <EditorContent
             data-cy="editor-content"
             editor={editor}
-            className={`${NOTE_CONTENT_CLASS} min-h-[400px] px-4 md:px-6 py-4`}
+            className={`${NOTE_CONTENT_CLASS} flex min-h-16 flex-1 py-4 [&_.ProseMirror]:min-w-0 [&_.ProseMirror]:flex-1`}
           />
         </div>
       </div>
