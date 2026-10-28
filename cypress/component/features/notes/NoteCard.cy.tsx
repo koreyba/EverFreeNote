@@ -114,5 +114,25 @@ describe('NoteCard Component', () => {
     cy.get('[role="checkbox"]').click({ force: true })
     cy.get('@onToggleSelect').should('have.been.calledOnce')
   })
+
+  it('keeps a long-pressed title selected after the touch ends', () => {
+    cy.clock()
+    function SelectableCard() {
+      const [selected, setSelected] = React.useState(false)
+      const [opened, setOpened] = React.useState(false)
+      return <>
+        <NoteCard note={baseNote} variant='compact' selectionMode={selected} isSelected={selected}
+          onToggleSelect={() => setSelected((value) => !value)}
+          onClick={() => selected ? setSelected(false) : setOpened(true)} />
+        <output data-cy='opened'>{String(opened)}</output>
+      </>
+    }
+    cy.mount(<SelectableCard />)
+    cy.contains('button', 'My note').trigger('pointerdown', { pointerType: 'touch', clientX: 20, clientY: 20 })
+    cy.tick(550)
+    cy.contains('button', 'My note').trigger('pointerup', { pointerType: 'touch' }).trigger('click')
+    cy.get('[role="checkbox"]').should('have.attr', 'data-state', 'checked')
+    cy.get('[data-cy="opened"]').should('have.text', 'false')
+  })
 })
 

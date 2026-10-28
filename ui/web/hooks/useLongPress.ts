@@ -31,10 +31,11 @@ export function useLongPress(
   }, [clearTimer])
 
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    // A new gesture supersedes any long press whose browser click never arrived.
+    longPressTriggeredRef.current = false
     if (!enabled) return
     if (event.pointerType === 'mouse') return
 
-    longPressTriggeredRef.current = false
     startPointRef.current = { x: event.clientX, y: event.clientY }
     clearTimer()
 
@@ -63,12 +64,16 @@ export function useLongPress(
   }, [])
 
   useEffect(() => {
+    if (!enabled) cancelLongPress()
+  }, [cancelLongPress, enabled])
+
+  useEffect(() => {
     return () => {
       clearTimer()
       startPointRef.current = null
       longPressTriggeredRef.current = false
     }
-  }, [clearTimer, enabled, delayMs, moveThresholdPx])
+  }, [clearTimer])
 
   return {
     longPressHandlers: {

@@ -268,7 +268,7 @@ jobs:
     needs: [unit-coverage, component-coverage]
     if: >-
       needs.unit-coverage.result == 'success' &&
-      needs.component-coverage.result == 'success' &&
+      needs.component-coverage.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       actions: read

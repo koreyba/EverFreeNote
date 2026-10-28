@@ -43,7 +43,7 @@ export function SelectionModeActions({
           data-testid="selection-mode-select-all"
           variant="ghost"
           size="sm"
-          className="rounded-full h-7 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
+          className="rounded-full h-11 px-2.5 text-xs md:h-7 md:text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
           onClick={onSelectAll}
           disabled={selectingAllDisabled}
         >
@@ -53,7 +53,7 @@ export function SelectionModeActions({
           data-testid="selection-mode-delete"
           variant="outline"
           size="sm"
-          className="rounded-full h-7 px-3 text-[11px] font-medium text-destructive dark:text-red-400 hover:text-destructive dark:hover:text-red-300 hover:bg-destructive/10 dark:hover:bg-red-950/30 border-destructive/25 dark:border-red-900/50 hover:border-destructive/30 shadow-sm transition-all"
+          className="rounded-full h-11 px-3 text-xs md:h-7 md:text-[11px] font-medium text-destructive dark:text-red-400 hover:text-destructive dark:hover:text-red-300 hover:bg-destructive/10 dark:hover:bg-red-950/30 border-destructive/25 dark:border-red-900/50 hover:border-destructive/30 shadow-sm transition-all"
           onClick={onDelete}
           disabled={deleting || deletingDisabled}
         >
@@ -70,7 +70,7 @@ export function SelectionModeActions({
           data-testid="selection-mode-cancel"
           variant="ghost"
           size="sm"
-          className="rounded-full h-7 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
+          className="rounded-full h-11 px-2.5 text-xs md:h-7 md:text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
           onClick={onCancel}
           disabled={deleting}
         >

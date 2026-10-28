@@ -63,7 +63,6 @@ function CompactNoteCard({
   note,
   isSelected,
   selectionMode,
-  onClick,
   onToggleSelect,
   onTagClick,
   checkboxChecked,
@@ -95,7 +94,7 @@ function CompactNoteCard({
               "mt-1 shrink-0 transition-opacity",
               selectionMode
                 ? "opacity-100"
-                : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                : "hidden opacity-0 pointer-events-none md:inline-flex md:group-hover:opacity-100 md:group-hover:pointer-events-auto"
             )}
           />
         )}
@@ -106,7 +105,7 @@ function CompactNoteCard({
               tabIndex={selectionMode ? -1 : 0}
               onClick={(e) => {
                 e.stopPropagation();
-                onClick();
+                handleCardClick(e);
               }}
               className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer"
             >
@@ -140,7 +139,6 @@ function CompactNoteCard({
 function SearchNoteCard({
   note,
   selectionMode,
-  onClick,
   onToggleSelect,
   onTagClick,
   highlightQuery = '',
@@ -186,7 +184,7 @@ function SearchNoteCard({
             "absolute left-2 top-2 z-10 bg-background/90 transition-opacity",
             selectionMode
               ? "opacity-100"
-              : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+              : "hidden opacity-0 pointer-events-none md:inline-flex md:group-hover:opacity-100 md:group-hover:pointer-events-auto"
           )}
         />
       )}
@@ -198,11 +196,11 @@ function SearchNoteCard({
               tabIndex={selectionMode ? -1 : 0}
               onClick={(e) => {
                 e.stopPropagation();
-                onClick();
+                handleCardClick(e);
               }}
               className={cn(
                 "text-[14px] font-semibold leading-snug text-foreground flex-1 line-clamp-2 outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer",
-                onToggleSelect && "pl-6"
+                onToggleSelect && (selectionMode ? "pl-6" : "md:pl-6")
               )}
             >
               {note.title || 'Untitled'}

@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@ui/web/lib/utils"
 import { selectableSurfaceIconClasses, selectableSurfaceStateClasses } from "@ui/web/lib/selectableSurfaceStyles"
 import { useNoteAuth } from "@ui/web/hooks/useNoteAuth"
+import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
 import { ApiKeysSettingsPanel } from "@/components/features/settings/ApiKeysSettingsPanel"
@@ -83,7 +84,9 @@ export function SettingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading, deleteAccountLoading, handleDeleteAccount, handleSignOut } = useNoteAuth()
+  const { user: sessionUser, loading: sessionLoading } = useSupabase()
   const mobileTabsRef = React.useRef<HTMLDivElement | null>(null)
+  const activeMobileTabRef = React.useRef<HTMLButtonElement | null>(null)
   const scrollTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mobileTabsScrollable, setMobileTabsScrollable] = React.useState(false)
   const [mobileTabsIndicator, setMobileTabsIndicator] = React.useState({ width: 0, left: 0, visible: false })
@@ -92,9 +95,11 @@ export function SettingsPage() {
   const activeTab = isSettingsTabId(activeTabParam) ? activeTabParam : "account"
 
   React.useEffect(() => {
-    if (loading || user) return
+    // useNoteAuth mirrors the provider user in an effect. During hydration it
+    // can briefly lag behind an already authenticated provider session.
+    if (loading || sessionLoading || user || sessionUser) return
     router.replace("/")
-  }, [loading, router, user])
+  }, [loading, router, sessionLoading, sessionUser, user])
 
   const handleSelectTab = React.useCallback((tabId: SettingsTabId) => {
     router.replace(`/settings?tab=${tabId}`, { scroll: false })
@@ -156,6 +161,22 @@ export function SettingsPage() {
     updateMobileTabsIndicator(false)
   }, [activeTab, updateMobileTabsIndicator])
 
+  React.useEffect(() => {
+    if (loading || !user) return
+    const revealActiveTab = () => {
+      const container = mobileTabsRef.current
+      const active = activeMobileTabRef.current
+      if (!container || !active) return
+      const visible = container.getBoundingClientRect()
+      const selected = active.getBoundingClientRect()
+      if (selected.left < visible.left) container.scrollLeft += selected.left - visible.left
+      else if (selected.right > visible.right) container.scrollLeft += selected.right - visible.right
+    }
+    revealActiveTab()
+    window.addEventListener("resize", revealActiveTab)
+    return () => window.removeEventListener("resize", revealActiveTab)
+  }, [activeTab, loading, user])
+
   React.useEffect(() => () => {
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current)
@@ -176,13 +197,16 @@ export function SettingsPage() {
 
   const handleNavSelectView = React.useCallback((view: MainNavView) => {
     if (view === "notes") {
+      clearSettingsReturnState()
       router.push("/?view=notes")
     } else if (view === "tags") {
+      clearSettingsReturnState()
       router.push("/?view=tags")
     }
   }, [router])
 
   const handleNavOpenSearch = React.useCallback(() => {
+    clearSettingsReturnState()
     router.push("/?search=open")
   }, [router])
 
@@ -228,7 +252,7 @@ export function SettingsPage() {
                   size="icon"
                   onClick={handleExit}
                   aria-label="Close settings"
-                  className="rounded-full shadow-sm hover:bg-muted/50 transition-all"
+                  className="hidden rounded-full shadow-sm hover:bg-muted/50 transition-all md:inline-flex"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -295,7 +319,9 @@ export function SettingsPage() {
                       return (
                         <button
                           key={tab.id}
+                          ref={isActive ? activeMobileTabRef : undefined}
                           type="button"
+                          aria-current={isActive ? "page" : undefined}
                           onClick={() => handleSelectTab(tab.id)}
                           className={cn(
                             "shrink-0 rounded-xl border px-4 py-2 text-sm font-medium transition-colors",

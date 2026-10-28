@@ -1,6 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+input[data-note-find-current] {
+  outline: 2px solid #f59e0b;
+  outline-offset: 3px;
+}
+
 /* stylelint-disable-next-line scss/at-rule-no-unknown, at-rule-no-unknown */
 @custom-variant dark (&:where(.dark, .dark *));
 

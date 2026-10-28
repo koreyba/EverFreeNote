@@ -15,6 +15,7 @@ import { useNoteRefresh } from './useNoteRefresh'
 import { useNoteSaveHandlers } from './useNoteSaveHandlers'
 import { useNoteBulkActions } from './useNoteBulkActions'
 import { useNoteWorkspaceTabs } from './useNoteWorkspaceTabs'
+import { MOBILE_BREAKPOINT } from './use-mobile'
 import type { NoteDraftSnapshot, NoteViewSession } from '@core/services/noteWorkspaceTabs'
 import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
@@ -502,18 +503,27 @@ export function useNoteAppController() {
   })
 
   // -- Nav wrappers: flush pending editor save before any navigation --
+  const hideNotePane = useCallback(async (): Promise<boolean> => {
+    const requestId = ++latestSelectRequestRef.current
+    const flushed = await flushAndCaptureActiveTab()
+    if (!flushed || requestId !== latestSelectRequestRef.current) return false
+    clearActiveSettingsNoteReturnPath()
+    // Hiding the pane retains the tab and its draft for later use.
+    handleSelectNoteLegacy(null)
+    setNotePaneVisible(false)
+    setLastSavedAt(null)
+    return true
+  }, [flushAndCaptureActiveTab, handleSelectNoteLegacy, setLastSavedAt])
+
   const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null) => {
+    if (!note) {
+      await hideNotePane()
+      return
+    }
     const requestId = ++latestSelectRequestRef.current
     const flushed = await flushAndCaptureActiveTab()
     if (!flushed || requestId !== latestSelectRequestRef.current) return
     clearActiveSettingsNoteReturnPath()
-    if (!note) {
-      // Mobile back/search navigation hides the pane without closing the tab.
-      handleSelectNoteLegacy(null)
-      setNotePaneVisible(false)
-      setLastSavedAt(null)
-      return
-    }
 
     const existingTab = findTabByNoteId(note.id)
     if (existingTab) {
@@ -545,6 +555,7 @@ export function useNoteAppController() {
     openNote,
     handleSelectNoteLegacy,
     setLegacyIsEditing,
+    hideNotePane,
   ])
 
   const wrappedHandleCreateNote = useCallback(async () => {
@@ -720,8 +731,11 @@ export function useNoteAppController() {
   useEffect(() => {
     if (!workspaceHydrated || workspaceHydrationAppliedRef.current) return
     workspaceHydrationAppliedRef.current = true
+    const params = new URLSearchParams(window.location.search)
+    const mobileDestination = window.innerWidth < MOBILE_BREAKPOINT &&
+      (params.get('view') === 'notes' || params.get('search') === 'open')
     // eslint-disable-next-line react-hooks/set-state-in-effect -- restore pane visibility from sessionStorage
-    setNotePaneVisible(Boolean(activeTab.note || activeTab.mode === 'editing'))
+    setNotePaneVisible(!mobileDestination && Boolean(activeTab.note || activeTab.mode === 'editing'))
   }, [activeTab, workspaceHydrated])
 
   const aiPaginationControlsRef = useRef<AIPaginationControls>({
@@ -1044,6 +1058,7 @@ export function useNoteAppController() {
     confirmDeleteNote: confirmDeleteNoteWithWorkspace,
     handleRemoveTagFromNote,
     handleSelectNote: wrappedHandleSelectNote,
+    hideNotePane,
     handleSearchResultClick: wrappedHandleSearchResultClick,
     addTab: handleAddTab,
     activateTab: handleActivateTab,

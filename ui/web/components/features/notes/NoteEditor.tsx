@@ -2,7 +2,7 @@
 
 import { useAppBackHandler, APP_BACK_PRIORITY } from "@ui/web/lib/appBack"
 import * as React from "react"
-import { ArrowsIn, ArrowsOut, CaretLeft as ChevronLeft, Copy, Check, Eye, FloppyDisk as SaveIcon } from "@phosphor-icons/react"
+import { ArrowsIn, ArrowsOut, CaretLeft as ChevronLeft, Copy, Check, Eye, FloppyDisk as SaveIcon, MagnifyingGlass } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
@@ -10,6 +10,7 @@ import { NoteClipboardService } from "@core/services/noteClipboard"
 import { useCopyNote } from "@ui/web/hooks/useCopyNote"
 import { TagInput } from "@/components/TagInput"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
+import { NoteFindBar } from "@/components/features/notes/NoteFindBar"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
 import { useNoteEditorAutoSave } from "@ui/web/hooks/useNoteEditorAutoSave"
@@ -100,10 +101,12 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [tagQuery, setTagQuery] = React.useState("")
   const [readyChunkFocus, setReadyChunkFocus] = React.useState<PendingChunkFocus | null>(null)
   const [isBodyEmpty, setIsBodyEmpty] = React.useState(() => NoteClipboardService.isBodyEmpty(initialDescription))
+  const [findOpen, setFindOpen] = React.useState(false)
   const titleInputRef = React.useRef<HTMLInputElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
   const editorRootRef = React.useRef<HTMLDivElement | null>(null)
+  const bodyRef = React.useRef<HTMLDivElement | null>(null)
   const [mobileToolbarContainer, setMobileToolbarContainer] = React.useState<HTMLDivElement | null>(null)
   const headerRef = React.useRef<HTMLDivElement | null>(null)
   const initialSessionRef = React.useRef(initialSession)
@@ -394,7 +397,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9 shrink-0 rounded-full shadow-sm md:hidden"
+              className="h-11 w-11 shrink-0 rounded-full shadow-sm md:hidden"
               onClick={onBack}
               data-cy="note-back-button"
               aria-label="Back"
@@ -409,6 +412,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="flex gap-1.5 items-center">
+            <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0 rounded-full shadow-sm md:hidden"
+              data-cy="note-find-button" aria-label="Find in note" aria-expanded={findOpen} onClick={() => setFindOpen((open) => !open)}>
+              <MagnifyingGlass className="h-4 w-4" />
+            </Button>
             {/* Labels collapse to icons below md: the editing header carries
                 four controls and the row overflowed its own width on a phone,
                 clipping the "more actions" button off the screen edge. */}
@@ -419,7 +426,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               data-cy="note-read-button"
               aria-label="Read"
               disabled={isSaving}
-              className="rounded-full shadow-sm"
+              className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
             >
               <Eye className="w-3.5 h-3.5 md:mr-1.5" />
               <span className="hidden md:inline">Read</span>
@@ -431,7 +438,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               data-cy="note-copy-button"
               aria-label="Copy note"
               onClick={handleCopy}
-              className="rounded-full shadow-sm"
+              className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
             >
               {copied ? (
                 <Check className="w-3.5 h-3.5 md:mr-1.5 text-emerald-600" />
@@ -446,7 +453,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               data-cy="note-save-button"
               aria-label="Save"
               disabled={isSaving}
-              className="rounded-full shadow-sm"
+              className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
             >
               <SaveIcon className="w-3.5 h-3.5 md:hidden" />
               <span className="hidden md:inline">Save</span>
@@ -470,6 +477,13 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
           ) : null}
         </div>
       </div>
+
+      {findOpen && (
+        <div className="relative z-20 shrink-0">
+          <NoteFindBar key={noteId ?? "new"} scrollRef={scrollContainerRef} titleRef={titleInputRef} bodyRef={bodyRef}
+            bodySelector=".ProseMirror" includeTitle={!expanded} onClose={() => setFindOpen(false)} />
+        </div>
+      )}
 
       {/* Editor Form */}
       <div
@@ -504,7 +518,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             placeholder="work, personal, ideas"
           />
         </div>
-        <div className="max-w-4xl mx-auto px-4 md:px-6 pb-6 mt-4">
+        <div ref={bodyRef} className="max-w-4xl mx-auto px-4 md:px-6 pb-6 mt-4">
           <RichTextEditor
             key={`editor-${editorSessionKey}`}
             ref={editorRef}
@@ -526,6 +540,21 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       </div>
       <div className="mobile-editor-toolbar flex shrink-0 min-w-0 items-center border-t border-border/40 bg-background md:hidden">
         <div ref={setMobileToolbarContainer} className="min-w-0 flex-1" />
+        {expanded && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 shrink-0 rounded-none border-l border-border/40"
+            data-cy="expanded-note-find-button"
+            aria-label="Find in note"
+            aria-expanded={findOpen}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => setFindOpen((open) => !open)}
+          >
+            <MagnifyingGlass className="h-4 w-4" />
+          </Button>
+        )}
         <Button
           type="button"
           variant="ghost"
@@ -535,7 +564,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
           aria-pressed={expanded}
           title={expanded ? "Collapse editor" : "Expand editor"}
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => { setFindOpen(false); setExpanded(!expanded) }}
         >
           {expanded ? <ArrowsIn className="h-5 w-5" /> : <ArrowsOut className="h-5 w-5" />}
         </Button>

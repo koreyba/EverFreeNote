@@ -77,3 +77,27 @@ graph TD
 
 - **Performance**: The mobile menu should open smoothly (animation).
 - **Accessibility**: The mobile menu button must have an `aria-label`. The Sheet must trap focus when open.
+
+## Mobile web navigation — 2026-10-28
+
+```mermaid
+stateDiagram-v2
+    List --> Note: Open note
+    Note --> List: Notes / Back from list
+    Note --> Search: Search or Back to results
+    List --> Search: Search
+    Search --> List: Notes
+    List --> Tags: Tags
+    Tags --> Search: Select tag
+    Settings --> List: Notes
+    Settings --> Search: Search
+    List --> DeleteAction: Swipe left
+    DeleteAction --> DeleteConfirmation: Delete
+    DeleteConfirmation --> List: Cancel or confirm
+    Note --> FindInNote: Find
+    FindInNote --> Note: Close
+```
+
+The controller retains the workspace tab while hiding its pane. The mobile tab switcher uses a neutral heading on the list or search screen, and shows the active note title only when its pane is visible. Mobile navigation waits for the editor flush and aborts if it fails. Explicit navigation from Settings clears its return snapshot; Back still restores that snapshot. The mobile tag browser clears an unrelated prior search before opening the tag.
+
+The swipe action is separate from vertical scrolling and long-press selection, and it reuses single-note confirmation and deletion. Find-in-note scans title and text ranges, paints transient highlights without editing the document, and scrolls to the selected match. Browsers without custom highlights use a visual overlay; the editor title uses an outline when it is the selected match.

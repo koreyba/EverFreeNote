@@ -40,3 +40,15 @@ description: Define testing approach, test cases, and quality assurance for mobi
 
 - Check touch targets on actual mobile device or simulator.
 - Verify "Clear Search" button inside the Sidebar (in Sheet) works on mobile.
+
+## Mobile web usability validation — 2026-10-28
+
+- Local Docker web app and Supabase: manually exercised note creation and save, Notes/Search/Tags/Settings transitions, tag results, selection, and the delete confirmation. Checked 320×667 and 390×844 layouts, the 1280×900 desktop layout, Settings reload, and desktop-to-mobile resizing. Long press was exercised with browser touch emulation.
+- Cypress component regression: 132 passed, 0 failed across mobile layout and navigation, offline notes, note controls, search, selection, and long press. The 320 px test checks 44×44 px reading and editing action targets.
+- Jest core and web unit suites: 212 suites, 1,766 tests passed. The Allure agent output recorded 1,692 logical results for the same run; Jest's full runner count is reported separately.
+- `npm run type-check`, `npx eslint . --max-warnings=0`, and a clean Docker production build passed.
+- Follow-up: 141 mobile and note component tests passed for swipe-to-reveal deletion, confirmation, search in read/edit modes, fallback highlighting, mobile navigation, and 320 px action targets. After adding Find to the expanded editor, 35 related component tests passed. Manually checked in-note search and highlighting in the local Docker app at 320 and 390 px, including expanded editing.
+- PR review: verified that Enter in the find field advances matches while keyboard activation of the Previous and Close buttons remains available.
+- Returning from a note shows a neutral mobile tab heading; reopening the saved tab restores the note and its title. Verified in Cypress and in the local Docker app at 390×844.
+- The user confirmed the swipe works in a browser.
+- Outstanding: validate swipe and the on-screen keyboard on physical iOS and Android browsers; browser touch emulation could not complete a native drag in the in-app browser.

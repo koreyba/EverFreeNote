@@ -881,6 +881,7 @@ function SearchResultsContent(props: Readonly<SearchResultsContentProps>) {
                 selectedIds={panelSelectedIds}
                 onToggleSelect={(note) => togglePanelSelection(note.id)}
                 onSelectNote={(note) => controller.handleSelectNote(note)}
+                onDeleteNote={controller.handleDeleteNote}
                 onTagClick={handleTagClick}
                 onLoadMore={() => { }}
                 hasMore={false}
@@ -916,6 +917,7 @@ function SearchResultsContent(props: Readonly<SearchResultsContentProps>) {
                 selectedIds={panelSelectedIds}
                 onToggleSelect={(note) => togglePanelSelection(note.id)}
                 onSelectNote={(note) => controller.handleSelectNote(note)}
+                onDeleteNote={controller.handleDeleteNote}
                 onTagClick={handleTagClick}
                 onLoadMore={loadMoreTagOnly}
                 hasMore={tagOnlyHasMore}

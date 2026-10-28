@@ -13,6 +13,7 @@ interface NavRailProps {
   readonly onSelectView: (view: MainNavView) => void
   readonly onOpenSearch: () => void
   readonly onOpenSettings: () => void
+  readonly searchActive?: boolean
   readonly className?: string
   readonly "data-testid"?: string
 }
@@ -24,6 +25,7 @@ export function NavRail({
   onSelectView,
   onOpenSearch,
   onOpenSettings,
+  searchActive = false,
   className,
   "data-testid": dataTestId,
 }: NavRailProps) {
@@ -64,7 +66,7 @@ export function NavRail({
       label: "Notes",
       icon: FileText,
       onClick: () => onSelectView("notes"),
-      active: activeView === "notes",
+      active: activeView === "notes" && !searchActive,
     },
     {
       id: "tags" as MainNavView,
@@ -81,7 +83,7 @@ export function NavRail({
       label: "Search",
       icon: Search,
       onClick: onOpenSearch,
-      active: false,
+      active: searchActive,
     },
     {
       id: "settings",

@@ -21,6 +21,7 @@ interface SidebarProps {
   selectionMode: boolean
   selectedCount: number
   bulkDeleting: boolean
+  onEnterSelectionMode?: () => void
   onExitSelectionMode: () => void
   onSelectAll: () => void
   onBulkDelete: () => void
@@ -45,6 +46,7 @@ export function Sidebar({
   selectionMode,
   selectedCount,
   bulkDeleting,
+  onEnterSelectionMode,
   onExitSelectionMode,
   onSelectAll,
   onBulkDelete,
@@ -111,7 +113,7 @@ export function Sidebar({
       aria-label="Sidebar"
     >
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="hidden p-4 border-b md:block">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="relative">
@@ -148,14 +150,25 @@ export function Sidebar({
 
       {/* New Note Button */}
       <div className="p-4 border-b space-y-3 bg-muted/5">
-        <Button
-          onClick={onCreateNote}
-          className="w-full rounded-full shadow-sm hover:shadow transition-all duration-200 hover:-translate-y-[0.5px] active:translate-y-0"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Note
-        </Button>
-        <p className="text-[11px] text-muted-foreground text-center tracking-wide uppercase font-semibold">
+        <div className="flex items-center gap-2 md:block">
+          <div className="flex min-w-0 flex-1 items-center gap-2 md:hidden">
+            <h1 className="text-xl font-bold tracking-tight">Notes</h1>
+            <output className={cn("h-2.5 w-2.5 rounded-full", syncStatus.className)} title={syncStatus.label} aria-label={syncStatus.label} />
+          </div>
+          {!selectionMode && hasVisibleNotes && onEnterSelectionMode && (
+            <Button type="button" variant="ghost" onClick={onEnterSelectionMode} className="h-11 px-3 md:hidden">
+              Select
+            </Button>
+          )}
+          <Button
+            onClick={onCreateNote}
+            className={cn("h-11 rounded-full px-4 shadow-sm hover:shadow transition-all duration-200 active:translate-y-0 md:h-9 md:w-full md:hover:-translate-y-[0.5px]", selectionMode && "hidden md:inline-flex")}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Note
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground md:text-center tracking-wide uppercase font-semibold">
           {notesCountText}
         </p>
         {selectionMode && (
@@ -177,7 +190,7 @@ export function Sidebar({
       </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t bg-muted/5">
+      <div className="hidden p-4 border-t bg-muted/5 md:block">
         <div className="flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-xs border border-primary/20 shrink-0 shadow-sm">
