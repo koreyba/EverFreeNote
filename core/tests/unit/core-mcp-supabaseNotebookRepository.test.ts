@@ -16,6 +16,7 @@ function createBuilder(result: QueryResult) {
     insert: jest.fn(),
     update: jest.fn(),
     eq: jest.fn(),
+    is: jest.fn(),
     order: jest.fn(),
     range: jest.fn(),
     contains: jest.fn(),
@@ -26,7 +27,7 @@ function createBuilder(result: QueryResult) {
     maybeSingle: jest.fn(),
     single: jest.fn(),
   }
-  for (const key of ['select', 'insert', 'update', 'eq', 'order', 'range', 'contains', 'overlaps', 'not', 'or', 'limit']) {
+  for (const key of ['select', 'insert', 'update', 'eq', 'is', 'order', 'range', 'contains', 'overlaps', 'not', 'or', 'limit']) {
     builder[key].mockReturnValue(builder)
   }
   builder.maybeSingle.mockResolvedValue({ data: result.data ?? null, error: result.error ?? null })
@@ -327,6 +328,47 @@ describe('core/mcp/supabaseNotebookRepository', () => {
   })
 
   describe('editNoteTags', () => {
+    it('retries on a competing tag change without dropping the other writer’s addition', async () => {
+      const { supabase, builder } = createClient({ data: row })
+      builder.maybeSingle
+        .mockResolvedValueOnce({ data: row, error: null })
+        .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce({ data: { ...row, tags: ['a', 'b', 'other'] }, error: null })
+        .mockResolvedValueOnce({ data: { ...row, tags: ['a', 'b', 'other', 'mine'] }, error: null })
+      const result = await createSupabaseNotebookRepository(supabase, userId)
+        .editNoteTags(row.id, { add: ['mine'], remove: [] })
+
+      expect(builder.eq).toHaveBeenCalledWith('tags', '{"a","b"}')
+      expect(builder.eq).toHaveBeenCalledWith('tags', '{"a","b","other"}')
+      expect(builder.update).toHaveBeenNthCalledWith(2, { tags: ['a', 'b', 'other', 'mine'] })
+      expect(result?.tags).toEqual(['a', 'b', 'other', 'mine'])
+    })
+
+    it('matches a legacy null tags value and safely quotes array values in the update guard', async () => {
+      const legacy = createClient({ data: { ...row, tags: null } })
+      legacy.builder.maybeSingle.mockResolvedValueOnce({ data: { ...row, tags: null }, error: null })
+        .mockResolvedValueOnce({ data: { ...row, tags: ['new'] }, error: null })
+      await createSupabaseNotebookRepository(legacy.supabase, userId).editNoteTags(row.id, { add: ['new'], remove: [] })
+      expect(legacy.builder.is).toHaveBeenCalledWith('tags', null)
+
+      const unusual = createClient({ data: row })
+      unusual.builder.maybeSingle.mockResolvedValueOnce({ data: { ...row, tags: ['x,"y', 'back\\slash', null] }, error: null })
+        .mockResolvedValueOnce({ data: { ...row, tags: ['x,"y', 'back\\slash', 'new'] }, error: null })
+      await createSupabaseNotebookRepository(unusual.supabase, userId).editNoteTags(row.id, { add: ['new'], remove: [] })
+      expect(unusual.builder.eq).toHaveBeenCalledWith('tags', '{"x,\\"y","back\\\\slash",NULL}')
+    })
+
+    it('returns a conflict error after bounded retries instead of reporting success', async () => {
+      const { supabase, builder } = createClient({ data: row })
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        builder.maybeSingle.mockResolvedValueOnce({ data: row, error: null })
+          .mockResolvedValueOnce({ data: null, error: null })
+      }
+      await expect(createSupabaseNotebookRepository(supabase, userId)
+        .editNoteTags(row.id, { add: ['mine'], remove: [] })).rejects.toThrow('Concurrent tag updates')
+      expect(builder.update).toHaveBeenCalledTimes(5)
+    })
+
     it('adds a tag without disturbing the others', async () => {
       const { supabase, builder } = createClient({ data: row })
       builder.maybeSingle

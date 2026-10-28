@@ -62,11 +62,11 @@ Read-modify-write inside the repository, on the user-scoped client:
 1. Read the note's current tags (returns "not found" when RLS yields nothing).
 2. Remove every tag whose lowercase form appears in `remove`.
 3. Append every tag in `add` whose lowercase form is not already present, preserving the caller's spelling for genuinely new tags.
-4. Write the result back and return the note.
+4. Update only if the stored tag array is still identical to the array read; on conflict, re-read and retry up to five times.
 
 Adding a tag that already exists, or removing an absent one, is a no-op that still succeeds — agents retry, and a retry must not be an error. At least one of `add`/`remove` must be non-empty.
 
-This is not atomic against a concurrent writer, but it is strictly better than `update_note`'s blind replacement: the window is one round trip instead of the agent's entire reasoning turn.
+The conditional update is atomic in PostgreSQL and continues to use the caller's RLS-scoped client. Exhausted retries return a conflict error rather than silently losing another edit. A separate full replacement through `update_note` remains an intentional overwrite.
 
 ### `search_notes_semantic`
 

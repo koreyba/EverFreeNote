@@ -59,14 +59,25 @@ export function toNoteRecord(row: NoteRow): NoteRecord {
   }
 }
 
+// PostgREST accepts PostgreSQL array literals as equality operands. Quote every
+// string so commas, quotes, backslashes and the string "NULL" stay literal.
+function pgTextArrayLiteral(values: unknown[]): string {
+  return `{${values.map((value) => value === null ? 'NULL' : `"${String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`).join(',')}}`
+}
+
 export function createSupabaseNotebookRepository(supabase: SupabaseClient, userId: string): NotebookRepository {
   const notes = () => supabase.from('notes')
 
-  const getNote = async (id: string): Promise<NoteRecord | null> => {
+  const getNoteRow = async (id: string): Promise<NoteRow | null> => {
     const { data, error } = await notes().select(NOTE_COLUMNS).eq('id', id).eq('user_id', userId).maybeSingle()
 
     if (error) throw error
-    return data ? toNoteRecord(data as NoteRow) : null
+    return data as NoteRow | null
+  }
+
+  const getNote = async (id: string): Promise<NoteRecord | null> => {
+    const row = await getNoteRow(id)
+    return row ? toNoteRecord(row) : null
   }
 
   return {
@@ -158,23 +169,24 @@ export function createSupabaseNotebookRepository(supabase: SupabaseClient, userI
     },
 
     async editNoteTags(id: string, edit: EditNoteTagsInput): Promise<NoteRecord | null> {
-      const note = await getNote(id)
-      if (!note) return null
+      // Compare the raw array in the UPDATE predicate. A concurrent change
+      // makes the update affect no rows; re-read and apply the edit again.
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const row = await getNoteRow(id)
+        if (!row) return null
+        const note = toNoteRecord(row)
+        const nextTags = applyTagEdit(note.tags, edit)
+        if (tagsUnchanged(note.tags, nextTags)) return note
 
-      const nextTags = applyTagEdit(note.tags, edit)
-      // Nothing to write: adding a tag that is already there, or removing one
-      // that is not, must still succeed so a retried call is harmless.
-      if (tagsUnchanged(note.tags, nextTags)) return note
-
-      const { data, error } = await notes()
-        .update({ tags: nextTags })
-        .eq('id', id)
-        .eq('user_id', userId)
-        .select(NOTE_COLUMNS)
-        .maybeSingle()
-
-      if (error) throw error
-      return data ? toNoteRecord(data as NoteRow) : null
+        let request = notes().update({ tags: nextTags }).eq('id', id).eq('user_id', userId)
+        request = row.tags === null
+          ? request.is('tags', null)
+          : request.eq('tags', pgTextArrayLiteral(row.tags as unknown[]))
+        const { data, error } = await request.select(NOTE_COLUMNS).maybeSingle()
+        if (error) throw error
+        if (data) return toNoteRecord(data as NoteRow)
+      }
+      throw new Error('Concurrent tag updates prevented applying changes; retry the operation')
     },
   }
 }

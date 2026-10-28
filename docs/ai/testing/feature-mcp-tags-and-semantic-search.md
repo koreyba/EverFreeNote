@@ -59,4 +59,4 @@ Results (2026-09-10): 136 MCP tests pass across 7 suites, up from 80. Full suite
 
 Known gaps:
 - The `createRagSemanticSearch` adapter (fetch plus header wiring) has no automated test; its logic is a thin shell over `mapUnavailableResponse` and `groupChunksByNote`, both covered.
-- Concurrent tag edits are not tested; the read-modify-write window is documented rather than eliminated.
+- Local integration: `core/tests/integration/mcp-supabase-local.test.ts` forces two independent tag edits to read the same original array before writing and checks the final result, literal array escaping, legacy null arrays and RLS for a second user. Run with `MCP_TEST_SUPABASE_URL` and `MCP_TEST_SUPABASE_ANON_KEY` pointing to a disposable local stack. The fresh local migrations used for verification needed a test-only `GRANT SELECT, INSERT, UPDATE, DELETE ON public.notes TO authenticated`; no RLS policies were changed. This observation does not establish the privileges of any deployed instance.
