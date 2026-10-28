@@ -41,10 +41,19 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
   // Persistence runs on every workspace change, so the warning is raised once
   // per session — the alternative is a toast on each keystroke.
   const warnedAboutDroppedTabsRef = useRef(false)
+  const warnedAboutUnavailableWorkspaceRef = useRef(false)
 
   useEffect(() => {
     if (!hydrated) return
-    const { droppedTabIds } = writeNoteWorkspaceState(state)
+    const { persisted, droppedTabIds } = writeNoteWorkspaceState(state)
+    if (!persisted && !warnedAboutUnavailableWorkspaceRef.current && state.tabs.some(tab => (
+      tab.noteId || tab.draft.title || tab.draft.description || tab.draft.tags
+    ))) {
+      warnedAboutUnavailableWorkspaceRef.current = true
+      toast.warning('Open tabs could not be remembered', {
+        description: 'Save your changes before reloading; notes may need to be reopened.',
+      })
+    }
     if (droppedTabIds.length === 0 || warnedAboutDroppedTabsRef.current) return
 
     warnedAboutDroppedTabsRef.current = true

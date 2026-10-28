@@ -50,3 +50,8 @@ Additionally, the TipTap extension configuration array is **copy-pasted verbatim
 - `HistoryState` type is defined in `EditorMenuBar.tsx` and imported by `RichTextEditor.tsx`
 - `editorExtensions` is a module-level `const` (not `useMemo`) — TipTap extension instances are safe to share
 - `EMPTY_HISTORY_STATE`, `areHistoryStatesEqual`, `getHistoryState` stay in `RichTextEditor.tsx`
+
+## Image insertion follow-up
+
+- Insert an image from a desktop or mobile file picker, while keeping URL insertion and clipboard paste available.
+- Keep the image in the note using the editor's existing inline-image format; reject unsupported or oversized files with feedback.

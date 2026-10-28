@@ -11,6 +11,8 @@ export type EditorToolbarButtonProps = {
   active?: boolean
   disabled?: boolean
   ariaLabel?: string
+  ariaExpanded?: boolean
+  ariaHasPopup?: "dialog"
   children: React.ReactNode
 }
 
@@ -21,6 +23,8 @@ export const EditorToolbarButton = ({
   active,
   disabled = false,
   ariaLabel,
+  ariaExpanded,
+  ariaHasPopup,
   children,
 }: EditorToolbarButtonProps) => (
   <Tooltip>
@@ -31,7 +35,9 @@ export const EditorToolbarButton = ({
         onClick={onClick}
         disabled={disabled}
         aria-label={ariaLabel || label}
-        aria-pressed={active}
+        aria-pressed={ariaHasPopup ? undefined : active}
+        aria-expanded={ariaExpanded}
+        aria-haspopup={ariaHasPopup}
         onMouseDown={event => event.preventDefault()}
         className="h-8 w-8 p-0 rounded-lg active:scale-90 hover:bg-muted transition-all duration-100 ease-out shrink-0"
       >

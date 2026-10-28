@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, fireEvent, waitFor } from "@testing-library/react"
+import { render, fireEvent, screen, waitFor } from "@testing-library/react"
 import type { Editor } from "@tiptap/react"
 import { EditorMenuBar } from "@ui/web/components/EditorMenuBar"
 import { browser } from "@ui/web/adapters/browser"
@@ -409,6 +409,7 @@ describe("EditorMenuBar", () => {
       )
       const btn = container.querySelector('[data-cy="image-button"]') as HTMLButtonElement
       fireEvent.click(btn)
+      fireEvent.click(screen.getByRole('button', { name: 'Insert from URL' }))
       expect(browser.prompt).toHaveBeenCalledWith("Image URL:")
       expect(chainObj.setImage).toHaveBeenCalledWith({ src: "https://example.com/test.png" })
       expect(runMock).toHaveBeenCalled()
@@ -422,6 +423,7 @@ describe("EditorMenuBar", () => {
       )
       const btn = container.querySelector('[data-cy="image-button"]') as HTMLButtonElement
       fireEvent.click(btn)
+      fireEvent.click(screen.getByRole('button', { name: 'Insert from URL' }))
       expect(browser.prompt).toHaveBeenCalledWith("Image URL:")
       expect(chainObj.setImage).not.toHaveBeenCalled()
       expect(runMock).not.toHaveBeenCalled()

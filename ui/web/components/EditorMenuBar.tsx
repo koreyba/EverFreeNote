@@ -4,7 +4,7 @@ import * as React from "react"
 import { useEditorState, type Editor } from "@tiptap/react"
 import { Button } from "@ui/web/components/ui/button"
 import { TextAlignCenter as AlignCenter, TextAlignLeft as AlignLeft, TextAlignRight as AlignRight, TextB as Bold, ArrowUUpLeft as Undo, ArrowUUpRight as Redo, CheckSquare, TextHOne as Heading1, TextHTwo as Heading2, TextHThree as Heading3, Highlighter, Image as ImageIcon, TextIndent as Indent, TextItalic as Italic, LinkSimple as Link2, List, ListNumbers as ListOrdered, Minus, TextOutdent as Outdent, Palette, TextTSlash as RemoveFormatting, TextAa as SpellCheck, TextStrikethrough as Strikethrough, TextSubscript as SubscriptIcon, TextSuperscript as SuperscriptIcon, TextUnderline as UnderlineIcon } from "@phosphor-icons/react"
-import { Popover, PopoverContent, PopoverTrigger } from "@ui/web/components/ui/popover"
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@ui/web/components/ui/popover"
 import { TwitterPicker, type ColorResult } from "react-color"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui/web/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@ui/web/components/ui/tooltip"
@@ -13,6 +13,7 @@ import { EditorToolbarButton } from "./EditorToolbarButton"
 import { EditorToolbarMenu } from "./EditorToolbarMenu"
 import { cn } from "@ui/web/lib/utils"
 import { useToolbarDrag } from "@ui/web/hooks/useToolbarDrag"
+import { toast } from "sonner"
 
 export type HistoryState = {
   canUndo: boolean
@@ -33,6 +34,8 @@ export type EditorMenuBarProps = {
 
 const fontFamilies = ["Sans Serif", "Serif", "Monospace", "Cursive"]
 const fontSizes = ["10", "11", "12", "13", "14", "15", "18", "24", "30", "36"]
+const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"])
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 export const EditorMenuBar = ({
   compact = false,
@@ -48,6 +51,8 @@ export const EditorMenuBar = ({
   const toolbarDrag = useToolbarDrag(compact)
   const [fontMenuOpen, setFontMenuOpen] = React.useState(false)
   const [sizeMenuOpen, setSizeMenuOpen] = React.useState(false)
+  const [imageMenuOpen, setImageMenuOpen] = React.useState(false)
+  const imageInputRef = React.useRef<HTMLInputElement>(null)
 
   // Tiptap 3 does not rerender useEditor on transactions by default. Subscribe
   // only to formatting state so menus follow the caret without rerendering the
@@ -67,8 +72,38 @@ export const EditorMenuBar = ({
   if (!editor) return null
 
   const addImage = () => {
+    setImageMenuOpen(false)
     const url = browser.prompt("Image URL:")
     if (url) editor.chain().focus().setImage({ src: url }).run()
+  }
+
+  const addImageFromFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ""
+    if (!file) return
+    if (!IMAGE_TYPES.has(file.type)) {
+      toast.error("Unsupported image type", { description: "Choose a PNG, JPEG, GIF, or WebP image." })
+      return
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error("Image is too large", { description: "Choose an image up to 10 MB." })
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (editor.isDestroyed || typeof reader.result !== "string") return
+      const source = reader.result
+      const image = new Image()
+      image.onload = () => {
+        if (!editor.isDestroyed) editor.chain().focus().setImage({ src: source }).run()
+      }
+      image.onerror = () => {
+        if (!editor.isDestroyed) toast.error("Could not read the image", { description: "Try choosing the file again." })
+      }
+      image.src = source
+    }
+    reader.onerror = () => toast.error("Could not read the image", { description: "Try choosing the file again." })
+    reader.readAsDataURL(file)
   }
 
   const heading = [1, 2, 3].find(level => editor.isActive("heading", { level }))
@@ -301,9 +336,24 @@ export const EditorMenuBar = ({
         >
           <Link2 className="w-4 h-4" />
         </EditorToolbarButton>
-        <EditorToolbarButton dataCy="image-button" label="Insert image" active={editor.isActive("image")} onClick={addImage}>
-          <ImageIcon className="w-4 h-4" />
-        </EditorToolbarButton>
+        <Popover open={imageMenuOpen} onOpenChange={setImageMenuOpen}>
+          <PopoverAnchor asChild>
+            <div className={cn("shrink-0", compact && "[&>button]:h-11 [&>button]:min-w-11")}>
+              <EditorToolbarButton dataCy="image-button" label="Insert image" active={editor.isActive("image")} ariaExpanded={imageMenuOpen} ariaHasPopup="dialog" onClick={() => setImageMenuOpen(open => !open)}>
+                <ImageIcon className="w-4 h-4" />
+              </EditorToolbarButton>
+              <input ref={imageInputRef} data-cy="image-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={addImageFromFile} />
+            </div>
+          </PopoverAnchor>
+          <PopoverContent side={compact ? "top" : "bottom"} align="start" className="w-52 p-1">
+            <Button type="button" variant="ghost" className="h-11 w-full justify-start" onClick={() => { setImageMenuOpen(false); imageInputRef.current?.click() }}>
+              Choose from device
+            </Button>
+            <Button type="button" variant="ghost" className="h-11 w-full justify-start" onClick={addImage}>
+              Insert from URL
+            </Button>
+          </PopoverContent>
+        </Popover>
 
         {!compact && (<>
           {/* Alignment */}

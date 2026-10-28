@@ -43,6 +43,20 @@ describe('useNoteWorkspaceTabs persistence warning', () => {
     expect(toast.warning).toHaveBeenCalledTimes(1)
   })
 
+  it('warns when even the active note cannot be remembered', () => {
+    mockWrite.mockReturnValue({ persisted: false, droppedTabIds: [] })
+    const { result } = renderHook(() => useNoteWorkspaceTabs('user-1'))
+    expect(toast.warning).not.toHaveBeenCalled()
+
+    act(() => { result.current.updateTab(result.current.activeTabId, { draft: { title: 'Unsaved note' } }) })
+    act(() => { result.current.updateTab(result.current.activeTabId, { draft: { title: 'Still editing' } }) })
+
+    expect(toast.warning).toHaveBeenCalledTimes(1)
+    expect(toast.warning).toHaveBeenCalledWith('Open tabs could not be remembered', expect.objectContaining({
+      description: expect.stringContaining('Save your changes'),
+    }))
+  })
+
   it('restores for the signed-in account and re-reads when the account changes', () => {
     const { rerender } = renderHook(({ userId }) => useNoteWorkspaceTabs(userId), {
       initialProps: { userId: 'user-1' },

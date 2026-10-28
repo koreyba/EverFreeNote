@@ -70,3 +70,7 @@ Adds:
 - [x] Implementation complete
 - [x] TypeScript compiles (npx tsc --noEmit: no errors)
 - [ ] Tests pass (requires Cypress run)
+
+## Image insertion follow-up
+
+- `EditorMenuBar` exposes device and URL choices, checks file type and size, verifies the image decodes, and inserts it into the active editor. `useNoteWorkspaceTabs` warns if the active workspace cannot be remembered.
