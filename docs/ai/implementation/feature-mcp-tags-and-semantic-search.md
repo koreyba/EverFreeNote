@@ -37,6 +37,8 @@ Read the note through the user-scoped client (RLS gives "not found" for a foreig
 
 Request body: `{ query, topK, threshold, filterTag? }`, with `topK` bounded by the tool's `limit`. An explicit threshold overrides the user's saved setting; the shared 0.55 default applies only when no setting exists.
 
+Deploy database migration `20261028230000_mcp_rag_settings_select.sql` before the MCP Edge Function. It grants `authenticated` SELECT on `user_id` and `similarity_threshold` only; the existing RLS policy still restricts rows. It does not revoke any pre-existing privileges. No migration is deployed by local testing.
+
 Response handling:
 
 | From `rag-search` | Tool result |

@@ -91,6 +91,8 @@ The Edge Function implementation POSTs to `/functions/v1/rag-search` with the ca
 
 An explicit `min_similarity` wins. Otherwise the adapter reads the authenticated user's saved `similarity_threshold` under RLS and uses the shared default (0.55) only when no setting exists. A settings read error is surfaced rather than silently changing the threshold. The requested limit is bounded by the RAG service's maximum.
 
+The `20261028230000_mcp_rag_settings_select.sql` migration grants the authenticated role SELECT on the user-id and threshold columns needed for this read, without changing RLS or pre-existing grants. Apply the migration before deploying the dependent MCP function.
+
 Grouping by note is deliberate: the agent gets a shortlist to open with `get_note`, matching how the rest of the toolset works, and avoids flooding the context with chunk text.
 
 ## Component Breakdown

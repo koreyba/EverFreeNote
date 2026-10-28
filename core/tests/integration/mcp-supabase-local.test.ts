@@ -7,6 +7,7 @@ import { createRagSemanticSearch } from '@core/mcp/ragSemanticSearch'
 const url = process.env.MCP_TEST_SUPABASE_URL
 const anonKey = process.env.MCP_TEST_SUPABASE_ANON_KEY
 const runLocal = url && anonKey ? describe : describe.skip
+const runWithColumnGrantFixture = process.env.MCP_TEST_COLUMN_GRANTS === '1' ? it : it.skip
 
 runLocal('MCP repository against local PostgREST and RLS', () => {
   let client: SupabaseClient
@@ -144,10 +145,34 @@ runLocal('MCP repository against local PostgREST and RLS', () => {
       await createRagSemanticSearch(url!, 'token', client, userId).search(request)
       // A different JWT cannot read this row even when a user id is forged.
       await createRagSemanticSearch(url!, 'token', other, userId).search(request)
-      await createRagSemanticSearch(url!, 'token', client, userId).search({ ...request, minSimilarity: 0.3 })
-      expect(sent).toEqual([0.8, 0.55, 0.3])
+      await createRagSemanticSearch(url!, 'token', other, otherId).search(request)
+      await createRagSemanticSearch(url!, 'token', client, userId).search({ ...request, minSimilarity: 0 })
+      expect(sent).toEqual([0.8, 0.55, 0.55, 0])
     } finally {
       spy.mockRestore()
+    }
+  }, 30000)
+
+  runWithColumnGrantFixture('limits semantic settings SELECT to needed columns and preserves RLS', async () => {
+    // The disposable fixture must not grant table-level SELECT to authenticated.
+    const extraColumn = await client.from('user_rag_search_settings').select('user_id,top_k').eq('user_id', userId)
+    expect(extraColumn.error?.code).toBe('42501')
+    const foreign = await other.from('user_rag_search_settings').select('user_id,similarity_threshold').eq('user_id', userId)
+    expect(foreign.error).toBeNull()
+    expect(foreign.data).toEqual([])
+
+    const anonymous = createClient(url!, anonKey!, { auth: { persistSession: false } })
+    const denied = await anonymous.from('user_rag_search_settings')
+      .select('user_id,similarity_threshold').eq('user_id', userId)
+    expect(denied.error?.code).toBe('42501')
+    const fetchSpy = jest.spyOn(globalThis, 'fetch')
+    try {
+      await expect(createRagSemanticSearch(url!, 'token', anonymous, userId).search({
+        query: 'test', limit: 5, minSimilarity: null, tag: null,
+      })).rejects.toMatchObject({ code: '42501' })
+      expect(fetchSpy.mock.calls.some(([input]) => String(input).endsWith('/functions/v1/rag-search'))).toBe(false)
+    } finally {
+      fetchSpy.mockRestore()
     }
   }, 30000)
 })
