@@ -84,4 +84,19 @@ describe('NoteList Virtualization', () => {
     // And the first note should be gone (virtualized out)
     cy.contains('Note 0').should('not.exist')
   })
+
+  it('virtualizes two-column tiles and loads more near the end', () => {
+    cy.viewport(390, 844)
+    const props = getBaseProps()
+    cy.wrap(props.onLoadMore).as('loadMore')
+    cy.mount(<NoteList {...props} notes={generateNotes(101)} layout="grid" hasMore height={500} width={390} />)
+
+    cy.contains('Note 0').should('be.visible')
+    cy.contains('Note 100').should('not.exist')
+    cy.get('[data-testid="note-card"]').should('have.length.lt', 30)
+    cy.get('div[style*="overflow"]').scrollTo('bottom', { ensureScrollable: false, duration: 100 })
+    cy.contains('Note 100').should('be.visible')
+    cy.contains('Note 0').should('not.exist')
+    cy.get('@loadMore').should('have.been.called')
+  })
 })
