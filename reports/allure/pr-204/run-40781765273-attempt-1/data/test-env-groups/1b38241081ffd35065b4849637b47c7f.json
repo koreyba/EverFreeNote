@@ -1,0 +1,1 @@
+{"id":"1b38241081ffd35065b4849637b47c7f","fullName":"everfreenote:ui/web/tests/unit/lib/noteFind.test.ts#findInNote finds literal punctuation rather than interpreting it as a pattern","name":"finds literal punctuation rather than interpreting it as a pattern","status":"passed","testResultsByEnv":{"default":"15903485675950d98f8512c2ea758880"}}
