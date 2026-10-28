@@ -20,6 +20,7 @@ type UseNoteBulkActionsParams = {
   setBulkDeleting: ReturnType<typeof useNoteSelection>['setBulkDeleting']
   /** Receives the IDs that were actually deleted (or queued for deletion offline). */
   onNotesDeleted: NotesDeletedHandler
+  beforeDelete?: (noteIds: readonly string[]) => Promise<void>
   queryClient: QueryClient
   notes: NoteViewModel[]
   selectAllVisibleCallback: (source: NoteViewModel[]) => void
@@ -45,6 +46,7 @@ export function useNoteBulkActions({
   exitSelectionMode,
   setBulkDeleting,
   onNotesDeleted,
+  beforeDelete,
   queryClient,
   notes,
   selectAllVisibleCallback,
@@ -57,6 +59,10 @@ export function useNoteBulkActions({
     if (!ids.length) {
       return { total: 0, failed: 0, queuedOffline: false }
     }
+
+    // If any target still has an in-flight save, keep the entire selection
+    // intact until it is safe to enqueue or send the deletes.
+    await beforeDelete?.(ids)
 
     try {
       let failed = 0

@@ -42,6 +42,12 @@ ui/web/components/features/notes/NoteView.tsx
 - Capture the current editor before unmount, flush autosave first, and then apply tab transitions. `flushAndCaptureActiveTab` returns a success flag instead of rejecting; transitions abort when it reports failure.
 - Debounce per-keystroke draft and per-frame scroll notifications with `useDebouncedSessionCallback` (250 ms) so workspace state and `sessionStorage` are not written on every event. Draft updates cancel on unmount/manual save (the capture path reads the live editor); reading scroll flushes on unmount.
 - After a successful delete, call `resetTabsForNotes` with the deleted IDs so no tab keeps a deleted note; bulk delete reports the actually-deleted IDs through `onNotesDeleted`.
+- Before deleting, flush the active editor when its note is targeted, then wait
+  for outstanding local writes to every target (including an unchanged manual
+  save). A save failure cancels the whole operation; an unrelated active note
+  does not block deletion. Single-note confirmation stays modal while waiting.
+  This ordering applies within one running controller; cross-window writes and
+  durable queue compaction require separate safeguards.
 - Use the active tab's draft as editor initial content; never use a server refresh to overwrite a dirty local field without existing reconciliation rules.
 - Keep tab indicators derived from explicit per-tab save state rather than global UI assumptions.
 - Keep the desktop Add control outside the scrolling tab viewport, and keep it

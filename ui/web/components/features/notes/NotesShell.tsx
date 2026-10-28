@@ -745,9 +745,25 @@ function DeleteNoteDialog({ controller }: { controller: NoteAppController }) {
     confirmDeleteNote,
     noteToDelete,
   } = controller
+  const [deleting, setDeleting] = React.useState(false)
+  const deletingRef = React.useRef(false)
+
+  const handleConfirm = async () => {
+    if (deletingRef.current) return
+    deletingRef.current = true
+    setDeleting(true)
+    try {
+      await confirmDeleteNote()
+    } finally {
+      deletingRef.current = false
+      setDeleting(false)
+    }
+  }
 
   return (
-    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+    <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+      if (!deletingRef.current) setDeleteDialogOpen(open)
+    }}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Note</AlertDialogTitle>
@@ -756,9 +772,12 @@ function DeleteNoteDialog({ controller }: { controller: NoteAppController }) {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDeleteNote} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Delete
+          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={(event) => {
+            event.preventDefault()
+            void handleConfirm()
+          }} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {deleting ? 'Deleting...' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

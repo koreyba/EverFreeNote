@@ -227,3 +227,14 @@ equal timestamps, different notes, and reopening with a pending queue.
 
 These tests exercise local persistence and mocked or local services. They do
 not establish cross-window/device ordering or real-device/remote sync behavior.
+
+### Deletion while saving (2026-10-29)
+
+`DeletePendingSave.cy.tsx` holds a split editor's queue write while deleting
+one note or a selection. It verifies the delete waits for autosave and an
+unchanged manual save, that failed saves cancel single and bulk deletion,
+that retry succeeds, and that deleting an unrelated note does not wait for
+the active editor. `useNoteBulkActions.test.tsx` also verifies a failed guard
+prevents online deletes. These tests use mocked network and controlled local
+storage writes; they do not prove ordering across browser windows or devices.
+Offline queue compaction and bulk queue persistence are tested separately.

@@ -162,6 +162,7 @@ jest.mock('@ui/web/hooks/useNoteSaveHandlers', () => ({
     handleSaveNote: mockHandleSaveNote,
     handleReadNote: mockHandleReadNote,
     confirmDeleteNote: mockConfirmDeleteNote,
+    waitForPendingNoteWrites: jest.fn().mockResolvedValue(undefined),
     handleRemoveTagFromNote: jest.fn(),
     persistOfflineNoteUpdates: mockPersistOfflineNoteUpdates,
   }),

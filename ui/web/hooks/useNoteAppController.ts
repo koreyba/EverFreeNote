@@ -371,6 +371,7 @@ export function useNoteAppController() {
     handleSaveNote,
     handleReadNote,
     confirmDeleteNote,
+    waitForPendingNoteWrites,
     handleRemoveTagFromNote,
     persistOfflineNoteUpdates,
   } = useNoteSaveHandlers({
@@ -398,8 +399,32 @@ export function useNoteAppController() {
     selectedNoteRef,
   })
 
+  const prepareNotesForDeletion = useCallback(async (noteIds: readonly string[]) => {
+    // The only mounted editor belongs to the active tab, even in split view.
+    // Keep its live draft and finish autosave before touching its delete.
+    if (activeTab.noteId && noteIds.includes(activeTab.noteId)) {
+      if (!(await flushAndCaptureActiveTab())) {
+        throw new Error('Could not save the open note. Retry before deleting.')
+      }
+    }
+    try {
+      await waitForPendingNoteWrites(noteIds)
+    } catch {
+      throw new Error('Could not save the selected note. Retry before deleting.')
+    }
+  }, [activeTab.noteId, flushAndCaptureActiveTab, waitForPendingNoteWrites])
+
   const confirmDeleteNoteWithWorkspace = useCallback(async () => {
     const deletedNoteId = noteToDelete?.id ?? null
+    if (!deletedNoteId) return
+    try {
+      await prepareNotesForDeletion([deletedNoteId])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save the note before deleting.')
+      setDeleteDialogOpen(false)
+      setNoteToDelete(null)
+      return
+    }
     // The save handler clears the active tab's noteId before we run, so the
     // tab that shows the note must be resolved before the delete.
     const tabHoldingNote = deletedNoteId ? findTabByNoteId(deletedNoteId) : null
@@ -421,7 +446,7 @@ export function useNoteAppController() {
         })
       }
     }
-  }, [confirmDeleteNote, findTabByNoteId, noteToDelete, resetTabsForNotes, updateTab])
+  }, [confirmDeleteNote, findTabByNoteId, noteToDelete, prepareNotesForDeletion, resetTabsForNotes, setDeleteDialogOpen, setNoteToDelete, updateTab])
 
   const handleDraftChange = useCallback((draft: NoteDraftSnapshot) => {
     updateTab(activeTabId, {
@@ -511,6 +536,7 @@ export function useNoteAppController() {
     exitSelectionMode,
     setBulkDeleting,
     onNotesDeleted: resetTabsForNotes,
+    beforeDelete: prepareNotesForDeletion,
     queryClient,
     notes,
     selectAllVisibleCallback,

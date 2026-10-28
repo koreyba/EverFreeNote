@@ -60,6 +60,19 @@ describe('useNoteBulkActions', () => {
     expect(invalidate).not.toHaveBeenCalled()
   })
 
+  it('does not send any online deletes when preparation fails', async () => {
+    const beforeDelete = jest.fn().mockRejectedValue(new Error('Save failed'))
+    const { params, queryClient } = makeParams({ beforeDelete })
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useNoteBulkActions(params))
+
+    await expect(result.current.deleteNotesByIds(['one', 'two'])).rejects.toThrow('Save failed')
+    expect(beforeDelete).toHaveBeenCalledWith(['one', 'two'])
+    expect(params.deleteNoteMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(params.onNotesDeleted).not.toHaveBeenCalled()
+    expect(invalidate).not.toHaveBeenCalled()
+  })
+
   it('deletes online ids independently and invalidates note and AI caches', async () => {
     const mutateAsync = jest.fn().mockResolvedValue(undefined)
     const { params, queryClient } = makeParams({

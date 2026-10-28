@@ -80,6 +80,8 @@ export function useNoteSaveHandlers({
   // so that concurrent saves don't result in duplicate notes.
   const pendingCreatePromiseRef = useRef<Promise<NoteViewModel> | null>(null)
   const pendingWritesByNoteRef = useRef(new Map<string, Promise<void>>())
+  const pendingWriteResultsRef = useRef(new Map<string, Promise<CachedNote>>())
+  const failedWritesRef = useRef(new Map<string, unknown>())
   const latestWriteTimeByNoteRef = useRef(new Map<string, number>())
 
   const syncSelectedNote = useCallback((note: NoteViewModel | null | ((prev: NoteViewModel | null) => NoteViewModel | null)) => {
@@ -141,11 +143,32 @@ export function useNoteSaveHandlers({
     const current = previous ? previous.then(write) : write()
     const settled = current.then(() => undefined, () => undefined)
     pendingWritesByNoteRef.current.set(noteId, settled)
+    pendingWriteResultsRef.current.set(noteId, current)
+    void current.then(
+      () => { failedWritesRef.current.delete(noteId) },
+      (error: unknown) => { failedWritesRef.current.set(noteId, error) },
+    )
     void settled.then(() => {
       if (pendingWritesByNoteRef.current.get(noteId) === settled) pendingWritesByNoteRef.current.delete(noteId)
+      if (pendingWriteResultsRef.current.get(noteId) === current) pendingWriteResultsRef.current.delete(noteId)
     })
     return current
   }, [offlineCache, offlineQueueRef, setOfflineOverlay, enqueueMutation, setPendingCount, user?.id])
+
+  // A manual save can be in flight even when the editor has no pending
+  // autosave. Deletion must wait for every write affecting its target notes.
+  const waitForPendingNoteWrites = useCallback(async (noteIds: readonly string[]) => {
+    await Promise.all(noteIds.map(async (noteId) => {
+      let pending = pendingWriteResultsRef.current.get(noteId)
+      while (pending) {
+        await pending
+        const latest = pendingWriteResultsRef.current.get(noteId)
+        if (latest === pending) break
+        pending = latest
+      }
+      if (failedWritesRef.current.has(noteId)) throw failedWritesRef.current.get(noteId)
+    }))
+  }, [])
 
   const executeAutoSaveUpdateNote = useCallback(async (
     targetId: string,
@@ -444,6 +467,7 @@ export function useNoteSaveHandlers({
     handleSaveNote,
     handleReadNote,
     confirmDeleteNote,
+    waitForPendingNoteWrites,
     handleRemoveTagFromNote,
     persistOfflineNoteUpdates,
   }
