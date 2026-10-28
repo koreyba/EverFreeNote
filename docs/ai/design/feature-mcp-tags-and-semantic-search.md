@@ -89,7 +89,7 @@ The Edge Function implementation POSTs to `/functions/v1/rag-search` with the ca
 | 409 embedding-model mismatch | `unavailable` / `model_mismatch` — tells the user to re-index |
 | anything else | tool error with the upstream message |
 
-Defaults come from the shared RAG settings so MCP behaves like the app: `topK` 15 capped to the requested `limit`, `threshold` 0.55 unless `min_similarity` is given.
+An explicit `min_similarity` wins. Otherwise the adapter reads the authenticated user's saved `similarity_threshold` under RLS and uses the shared default (0.55) only when no setting exists. A settings read error is surfaced rather than silently changing the threshold. The requested limit is bounded by the RAG service's maximum.
 
 Grouping by note is deliberate: the agent gets a shortlist to open with `get_note`, matching how the rest of the toolset works, and avoids flooding the context with chunk text.
 

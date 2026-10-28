@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseNotebookRepository } from '@core/mcp/supabaseNotebookRepository'
+import { createRagSemanticSearch } from '@core/mcp/ragSemanticSearch'
 
 // These tests create disposable accounts and notes, so they only run when an
 // explicitly configured local Supabase instance is provided.
@@ -123,6 +124,30 @@ runLocal('MCP repository against local PostgREST and RLS', () => {
       expect(found.notes.map((note) => note.title)).toContain(entry.match)
       expect(found.notes.map((note) => note.title)).not.toContain(entry.decoy)
       expect(found.total).toBe(1)
+    }
+  }, 30000)
+
+  it('loads only the authenticated user’s saved semantic threshold', async () => {
+    const inserted = await client.from('user_rag_search_settings').insert({ user_id: userId, similarity_threshold: 0.8 })
+    if (inserted.error) throw inserted.error
+    const originalFetch = globalThis.fetch
+    const sent: number[] = []
+    const spy = jest.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (String(input).endsWith('/functions/v1/rag-search')) {
+        sent.push(JSON.parse(init!.body as string).threshold)
+        return new Response('{"chunks":[]}', { status: 200 })
+      }
+      return originalFetch(input, init)
+    })
+    try {
+      const request = { query: 'test', limit: 5, minSimilarity: null, tag: null }
+      await createRagSemanticSearch(url!, 'token', client, userId).search(request)
+      // A different JWT cannot read this row even when a user id is forged.
+      await createRagSemanticSearch(url!, 'token', other, userId).search(request)
+      await createRagSemanticSearch(url!, 'token', client, userId).search({ ...request, minSimilarity: 0.3 })
+      expect(sent).toEqual([0.8, 0.55, 0.3])
+    } finally {
+      spy.mockRestore()
     }
   }, 30000)
 })
