@@ -126,6 +126,7 @@ const mountPanel = (
             controller={controller}
             hasGeminiApiKey={options.hasGeminiApiKey ?? false}
             onOpenInContext={() => undefined}
+            onOpenAIIndex={() => undefined}
             onClose={() => undefined}
           />
         </div>
@@ -785,6 +786,7 @@ describe('SearchResultsPanel', () => {
                 controller={controller}
                 hasGeminiApiKey={hasGeminiApiKey}
                 onOpenInContext={() => undefined}
+                onOpenAIIndex={() => undefined}
                 onClose={() => undefined}
               />
             </div>

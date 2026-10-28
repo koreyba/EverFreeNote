@@ -249,3 +249,29 @@ hook has not caught up. `WorkspaceAuthHydration.cy.tsx` mounts the real app
 and controller with a delayed mocked provider and checks both restored tabs
 and the active note. A real Supabase session and browser reload require an
 independent runtime check; the component test does not model Google OAuth.
+
+### Safe sign-out (2026-10-29)
+
+`SignOutDraftSafety.cy.tsx` covers immediate save before logout, failed and
+restored dirty drafts, multiple tabs, deliberate discard, retry, cancellation
+during a slow write, account changes, offline writes and sign-out failure.
+`SettingsSignOutSafety.cy.tsx` exercises the mobile dialog and its initial
+focus; settings and auth unit tests cover unreadable storage and error return
+values. These tests use a mocked identity provider and controlled local I/O;
+they do not establish cross-window ordering or real Google OAuth behavior.
+
+Controller tests cover the 2 MB workspace limit evicting an unfinished tab,
+an older or unreadable snapshot, a recoverable snapshot, typing while another
+write is pending, and an account switch during navigation. A component test simulates a
+quota failure after eviction and checks that Settings stays closed and that
+discarding the tab requires confirmation. Shell tests exercise ordinary
+Settings, the AI Search reindex action and the AI Index return path. A real
+browser smoke on the earlier authentication candidate exercised Back, Forward
+and reload for a saved note; browser history and reload with an unrecoverable
+draft are not protected by the app-controlled route guard and still require
+independent validation.
+
+The final local run passed 1022 web unit tests and 101 component tests;
+type-check and ESLint passed. Allure reports are
+`/tmp/everfreenote-signout-final-web-unit-2/index.md` and
+`/tmp/everfreenote-signout-final-components-3/index.md`.

@@ -189,6 +189,23 @@ describe('useNoteAuth', () => {
     expect(callback).toHaveBeenCalled()
   })
 
+  it('keeps the workspace and session when sign-out returns an error', async () => {
+    window.sessionStorage.setItem('everfreenote:notes-workspace:v1', 'preserve-draft')
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user, loading: false })
+    mockAuthService.signOut.mockResolvedValueOnce({ error: new Error('Auth unavailable') })
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { result } = renderAuthHook()
+    const callback = jest.fn()
+
+    await act(async () => result.current.handleSignOut(callback))
+
+    expect(result.current.user).toBe(user)
+    expect(window.sessionStorage.getItem('everfreenote:notes-workspace:v1')).toBe('preserve-draft')
+    expect(callback).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('sign out'))
+    consoleError.mockRestore()
+  })
+
   it('reports sign-out and account deletion failures without leaving loading flags set', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined)
     const { result, rerender } = renderAuthHook()

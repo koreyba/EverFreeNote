@@ -53,6 +53,12 @@ ui/web/components/features/notes/NoteView.tsx
   does not block deletion. Single-note confirmation stays modal while waiting.
   This ordering applies within one running controller; cross-window writes and
   durable queue compaction require separate safeguards.
+- Sign-out from Notes and Settings uses `useGuardedSignOut` and the same
+  accessible confirmation dialog. Notes flushes the live editor and waits for
+  local writes, while Settings inspects the account-scoped workspace snapshot.
+  Failed, dirty, saving, or unreadable drafts require an explicit discard; a
+  pending check can be cancelled, and a session change cancels the old request.
+  A sign-out error returned by the auth provider must not clear the workspace.
 - Use the active tab's draft as editor initial content; never use a server refresh to overwrite a dirty local field without existing reconciliation rules.
 - Keep tab indicators derived from explicit per-tab save state rather than global UI assumptions.
 - Keep the desktop Add control outside the scrolling tab viewport, and keep it
@@ -100,6 +106,9 @@ ui/web/components/features/notes/NoteView.tsx
 - Autosave errors set the active tab to `error`, retain the draft, and keep the existing toast/retry behavior.
 - Manual save errors are propagated from the save handler to the controller wrapper so the active tab remains in `error` instead of being reported as saved.
 - Failed-tab close requires explicit confirmation; canceling leaves the tab and draft intact.
+- Settings and AI Index navigation wait for local writes and read back each
+  unfinished tab; a missing, stale or unreadable snapshot blocks the route.
+  Closing an inactive dirty or saving tab also requires explicit discard.
 - Invalid note snapshots are ignored or revalidated through existing note status logic.
 
 ## Performance Considerations

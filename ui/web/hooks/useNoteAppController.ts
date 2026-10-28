@@ -16,6 +16,7 @@ import { useNoteRefresh } from './useNoteRefresh'
 import { useNoteSaveHandlers } from './useNoteSaveHandlers'
 import { useNoteBulkActions } from './useNoteBulkActions'
 import { useNoteWorkspaceTabs } from './useNoteWorkspaceTabs'
+import { useGuardedSignOut } from './useGuardedSignOut'
 import { MOBILE_BREAKPOINT } from './use-mobile'
 import type { NoteDraftSnapshot, NoteViewSession } from '@core/services/noteWorkspaceTabs'
 import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
@@ -27,6 +28,7 @@ import {
   cleanUnusedOrEmptyTagsInNotes,
 } from '@core/services/tags'
 import { type NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
+import { readNoteWorkspaceState } from '@ui/web/lib/noteWorkspaceStorage'
 import { clearActiveSettingsNoteReturnPath } from '@ui/web/lib/aiIndexNavigationState'
 import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
 
@@ -68,7 +70,7 @@ export function useNoteAppController() {
     handleSignInWithGoogle,
     handleTestLogin,
     handleSkipAuth,
-    handleSignOut,
+    handleSignOut: performSignOut,
     handleDeleteAccount,
     deleteAccountLoading
   } = useNoteAuth()
@@ -111,6 +113,7 @@ export function useNoteAppController() {
   const {
     activeTab,
     hydrated: workspaceHydrated,
+    storageReadable: workspaceStorageReadable,
     tabs,
     activeTabId,
     addTab,
@@ -124,6 +127,13 @@ export function useNoteAppController() {
     findTabByNoteId,
     canAddTab,
   } = workspace
+  const workspaceContextRef = useRef({ userId: workspaceUserId, tabId: activeTabId, mode: activeTab.mode, revision: 0 })
+  useEffect(() => {
+    const previous = workspaceContextRef.current
+    if (previous.userId !== workspaceUserId || previous.tabId !== activeTabId || previous.mode !== activeTab.mode) {
+      workspaceContextRef.current = { userId: workspaceUserId, tabId: activeTabId, mode: activeTab.mode, revision: previous.revision + 1 }
+    }
+  }, [activeTab.mode, activeTabId, workspaceUserId])
   const selectedNote = activeTab.note
   const isEditing = activeTab.mode === 'editing'
   const [notePaneVisible, setNotePaneVisible] = useState(false)
@@ -487,6 +497,11 @@ export function useNoteAppController() {
     updateTabForNote(tabId, noteId, { view })
   }, [updateTabForNote])
 
+  const savedTabRevisionRef = useRef(new Map<string, number>())
+  const markTabSaved = useCallback((tabId: string) => {
+    savedTabRevisionRef.current.set(tabId, (savedTabRevisionRef.current.get(tabId) ?? 0) + 1)
+  }, [])
+
   const handleAutoSaveWithWorkspace = useCallback(async (data: {
     noteId?: string
     title: string
@@ -501,6 +516,7 @@ export function useNoteAppController() {
     try {
       if (tagMutationInProgressRef.current) throw new Error('Wait for the tag update to finish, then retry saving.')
       const result = await handleAutoSave(data)
+      markTabSaved(activeTabId)
       updateTab(activeTabId, { saveState: 'saved', saveError: null })
       return result
     } catch (error) {
@@ -508,7 +524,7 @@ export function useNoteAppController() {
       updateTab(activeTabId, { saveState: 'error', saveError: message })
       throw error
     }
-  }, [activeTabId, handleAutoSave, updateTab])
+  }, [activeTabId, handleAutoSave, markTabSaved, updateTab])
 
   const handleSaveNoteWithWorkspace = useCallback(async (data: {
     title: string
@@ -523,12 +539,13 @@ export function useNoteAppController() {
     try {
       if (tagMutationInProgressRef.current) throw new Error('Wait for the tag update to finish, then retry saving.')
       await handleSaveNote(data)
+      markTabSaved(activeTabId)
       updateTab(activeTabId, { saveState: 'saved', saveError: null })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       updateTab(activeTabId, { saveState: 'error', saveError: message })
     }
-  }, [activeTabId, handleSaveNote, updateTab])
+  }, [activeTabId, handleSaveNote, markTabSaved, updateTab])
 
   const handleReadNoteWithWorkspace = useCallback(async (data: {
     title: string
@@ -543,12 +560,27 @@ export function useNoteAppController() {
     try {
       if (tagMutationInProgressRef.current) throw new Error('Wait for the tag update to finish, then retry saving.')
       await handleReadNote(data)
+      markTabSaved(activeTabId)
       updateTab(activeTabId, { saveState: 'saved', saveError: null })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       updateTab(activeTabId, { saveState: 'error', saveError: message })
     }
-  }, [activeTabId, handleReadNote, updateTab])
+  }, [activeTabId, handleReadNote, markTabSaved, updateTab])
+
+  const prepareSignOut = useCallback(async () => {
+    if (!workspaceHydrated) return false
+    const revision = savedTabRevisionRef.current.get(activeTabId) ?? 0
+    if (!(await flushAndCaptureActiveTab())) return false
+    try {
+      await waitForPendingNoteWrites(tabs.flatMap(tab => tab.noteId ? [tab.noteId] : []))
+    } catch {
+      return false
+    }
+    const activeSavedDuringCheck = (savedTabRevisionRef.current.get(activeTabId) ?? 0) > revision
+    return workspaceStorageReadable && tabs.every(tab => tab.saveState === 'saved' || (tab.id === activeTabId && activeSavedDuringCheck))
+  }, [activeTabId, flushAndCaptureActiveTab, tabs, waitForPendingNoteWrites, workspaceHydrated, workspaceStorageReadable])
+  const signOutGuard = useGuardedSignOut(workspaceUserId, prepareSignOut, performSignOut)
 
   // -- Bulk actions --
   const { selectAllVisible, deleteSelectedNotes, deleteNotesByIds } = useNoteBulkActions({
@@ -779,9 +811,9 @@ export function useNoteAppController() {
     const tab = tabs.find((candidate) => candidate.id === tabId)
     if (!tab) return
 
-    // Closing a tab whose save failed throws the edits away, so it asks first
-    // — through the app's own dialog, not a blocking native confirm().
-    if (tab.saveState === 'error') {
+    // An inactive tab has no mounted editor to flush. Ask before losing any
+    // unfinished draft, even if it was restored as dirty or saving.
+    if (tab.saveState === 'error' || (tab.id !== activeTabId && tab.saveState !== 'saved')) {
       // A failed save may be a brand-new note that never reached the server,
       // so the saved title can be missing — fall back to the live draft.
       setTabPendingClose({
@@ -792,7 +824,7 @@ export function useNoteAppController() {
     }
 
     await closeTabNow(tabId, false)
-  }, [closeTabNow, tabs])
+  }, [activeTabId, closeTabNow, tabs])
 
   const confirmCloseTab = useCallback(async () => {
     const pending = tabPendingClose
@@ -834,7 +866,44 @@ export function useNoteAppController() {
   }, [])
 
   const captureSettingsReturnState = useCallback(async (): Promise<NotesUiStateSnapshot | null> => {
+    if (!workspaceHydrated || !workspaceUserId) return null
+    const contextRevision = workspaceContextRef.current.revision
+    const contextIsCurrent = () => workspaceContextRef.current.revision === contextRevision
+    const revision = savedTabRevisionRef.current.get(activeTabId) ?? 0
     if (!(await flushAndCaptureActiveTab())) return null
+    if (!contextIsCurrent()) return null
+    try {
+      await waitForPendingNoteWrites(tabs.flatMap(tab => tab.noteId ? [tab.noteId] : []))
+    } catch {
+      toast.error('Could not finish saving. Retry before opening settings.')
+      return null
+    }
+    if (!contextIsCurrent()) return null
+    // The user may have typed while another tab's local write was in flight.
+    // Drain the active editor once more immediately before leaving.
+    if (!(await flushAndCaptureActiveTab()) || !contextIsCurrent()) return null
+
+    // A tab can be evicted from sessionStorage when the workspace exceeds
+    // its budget, or a write can fail while an older snapshot remains readable.
+    // Only navigate if each unfinished draft survives an actual read-back.
+    const activeSavedDuringCheck = (savedTabRevisionRef.current.get(activeTabId) ?? 0) > revision
+    const unsavedTabs = tabs.filter(tab => tab.saveState !== 'saved' && !(tab.id === activeTabId && activeSavedDuringCheck))
+    if (unsavedTabs.length > 0) {
+      let storageReadable = true
+      const restored = readNoteWorkspaceState({ userId: workspaceUserId, onStorageFailure: () => { storageReadable = false } })
+      const draftsAreRecoverable = storageReadable && unsavedTabs.every(tab => {
+        const stored = restored.tabs.find(candidate => candidate.id === tab.id)
+        return stored && stored.noteId === tab.noteId && stored.mode === tab.mode
+          && stored.saveState !== 'saved'
+          && stored.draft.title === tab.draft.title
+          && stored.draft.description === tab.draft.description
+          && stored.draft.tags === tab.draft.tags
+      })
+      if (!draftsAreRecoverable) {
+        toast.error('Some unsaved changes cannot be kept while opening settings. Save them or close their tabs first.')
+        return null
+      }
+    }
     const selectedNoteForSnapshot = selectedNoteRef.current
 
     return {
@@ -845,7 +914,7 @@ export function useNoteAppController() {
       searchQuery,
       filterByTag,
     }
-  }, [filterByTag, flushAndCaptureActiveTab, isEditing, isSearchPanelOpen, searchQuery, selectedNoteRef])
+  }, [activeTabId, filterByTag, flushAndCaptureActiveTab, isEditing, isSearchPanelOpen, searchQuery, selectedNoteRef, tabs, waitForPendingNoteWrites, workspaceHydrated, workspaceUserId])
 
   const resolveSettingsReturnNote = useCallback(async (snapshot: NotesUiStateSnapshot) => {
     if (!snapshot.selectedNoteId) return null
@@ -1319,7 +1388,10 @@ export function useNoteAppController() {
     handleSignInWithGoogle,
     handleTestLogin,
     handleSkipAuth,
-    handleSignOut,
+    handleSignOut: signOutGuard.request,
+    signOutPhase: signOutGuard.phase,
+    cancelSignOut: signOutGuard.cancel,
+    discardAndSignOut: signOutGuard.discardAndSignOut,
     handleDeleteAccount,
     handleCreateNote: wrappedHandleCreateNote,
     handleEditNote: wrappedHandleEditNote,

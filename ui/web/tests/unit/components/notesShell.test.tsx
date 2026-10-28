@@ -65,6 +65,7 @@ type MockNoteEditorProps = {
 
 type MockSearchResultsPanelProps = {
   onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+  onOpenAIIndex: () => void
   onClose: () => void
 }
 
@@ -120,10 +121,12 @@ jest.mock('@ui/web/lib/settingsNavigationState', () => ({
 
 jest.mock('@ui/web/lib/aiIndexNavigationState', () => ({
   consumeActiveSettingsNoteReturnPath: jest.fn(),
+  readActiveSettingsNoteReturnPath: jest.fn(),
 }))
 
 const mockSaveSettingsReturnState = jest.requireMock<typeof import('@ui/web/lib/settingsNavigationState')>('@ui/web/lib/settingsNavigationState').saveSettingsReturnState as jest.Mock
 const mockConsumeReturnPath = jest.requireMock<typeof import('@ui/web/lib/aiIndexNavigationState')>('@ui/web/lib/aiIndexNavigationState').consumeActiveSettingsNoteReturnPath as jest.Mock
+const mockReadReturnPath = jest.requireMock<typeof import('@ui/web/lib/aiIndexNavigationState')>('@ui/web/lib/aiIndexNavigationState').readActiveSettingsNoteReturnPath as jest.Mock
 
 jest.mock('@/components/features/notes/Sidebar', () => ({
   Sidebar: ({ children, onCreateNote, onOpenSearch, onOpenSettings, onSignOut }: MockSidebarProps) => (
@@ -214,6 +217,7 @@ jest.mock('@/components/features/notes/SearchResultsPanel', () => {
         <button type="button" onClick={() => props.onOpenInContext('note-1', 4, 8)}>Open existing context</button>
         <button type="button" onClick={() => props.onOpenInContext('note-remote', 2, 3)}>Open remote context</button>
         <button type="button" onClick={() => props.onOpenInContext('note-missing', 1, 1)}>Open missing context</button>
+        <button type="button" onClick={props.onOpenAIIndex}>Open AI index</button>
         <button type="button" onClick={props.onClose}>Close search</button>
       </div>
     )
@@ -320,6 +324,7 @@ describe('NotesShell', () => {
     mockApiKeysGetStatus.mockResolvedValue({ gemini: { configured: true } })
     jest.mocked(useQuery).mockReturnValue({ data: { gemini: { configured: true } } } as never)
     mockConsumeReturnPath.mockReturnValue(null)
+    mockReadReturnPath.mockReturnValue(null)
     mockMaybeSingle.mockResolvedValue({ data: fetchedNote })
     Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
       configurable: true,
@@ -511,7 +516,7 @@ describe('NotesShell', () => {
 
   it('routes back to a saved settings path and swallows a failed normal back action', async () => {
     const settingsController = makeController({ selectedNote: note })
-    mockConsumeReturnPath.mockReturnValueOnce('/settings?tab=ai-index')
+    mockReadReturnPath.mockReturnValueOnce('/settings?tab=ai-index')
     const settingsView = renderShell(settingsController)
     fireEvent.click(screen.getByRole('button', { name: 'Back from note' }))
     await waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith('/settings?tab=ai-index'))
@@ -522,5 +527,31 @@ describe('NotesShell', () => {
     renderShell(failedController)
     fireEvent.click(screen.getByRole('button', { name: 'Back from note' }))
     await waitFor(() => expect(failedBack).toHaveBeenCalledWith(null))
+  })
+
+  it('keeps the search open when AI index navigation cannot preserve the workspace', async () => {
+    const capture = jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ selectedNoteId: 'note-1' })
+    const controller = makeController({ isSearchPanelOpen: true, captureSettingsReturnState: capture })
+    renderShell(controller)
+    fireEvent.click(screen.getByRole('button', { name: 'Open AI index' }))
+    await waitFor(() => expect(capture).toHaveBeenCalledTimes(1))
+    expect(mockRouterPush).not.toHaveBeenCalled()
+    expect(controller.setIsSearchPanelOpen).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Open AI index' }))
+    await waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith('/settings?tab=ai-index'))
+  })
+
+  it('does not consume the AI index return path until the workspace can be preserved', async () => {
+    mockReadReturnPath.mockReturnValue('/settings?tab=ai-index')
+    const capture = jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ selectedNoteId: 'note-1' })
+    const controller = makeController({ selectedNote: note, captureSettingsReturnState: capture })
+    renderShell(controller)
+    fireEvent.click(screen.getByRole('button', { name: 'Back from note' }))
+    await waitFor(() => expect(capture).toHaveBeenCalledTimes(1))
+    expect(mockConsumeReturnPath).not.toHaveBeenCalled()
+    expect(mockRouterPush).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Back from note' }))
+    await waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith('/settings?tab=ai-index'))
+    expect(mockConsumeReturnPath).toHaveBeenCalledTimes(1)
   })
 })

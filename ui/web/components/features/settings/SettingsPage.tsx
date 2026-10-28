@@ -11,7 +11,10 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@ui/web/lib/utils"
 import { selectableSurfaceIconClasses, selectableSurfaceStateClasses } from "@ui/web/lib/selectableSurfaceStyles"
 import { useNoteAuth } from "@ui/web/hooks/useNoteAuth"
+import { useGuardedSignOut } from "@ui/web/hooks/useGuardedSignOut"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
+import { readNoteWorkspaceState } from "@ui/web/lib/noteWorkspaceStorage"
+import { SignOutGuardDialog } from "@/components/features/auth/SignOutGuardDialog"
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
 import { ApiKeysSettingsPanel } from "@/components/features/settings/ApiKeysSettingsPanel"
@@ -85,6 +88,19 @@ export function SettingsPage() {
   const searchParams = useSearchParams()
   const { user, loading, deleteAccountLoading, handleDeleteAccount, handleSignOut } = useNoteAuth()
   const { user: sessionUser, loading: sessionLoading } = useSupabase()
+  const userId = user?.id
+  const sessionUserId = sessionUser?.id
+  const prepareSignOut = React.useCallback(async () => {
+    if (!userId || sessionUserId !== userId) return false
+    let readable = true
+    const workspace = readNoteWorkspaceState({ userId, onStorageFailure: () => { readable = false } })
+    return readable && workspace.tabs.every(tab => tab.saveState === 'saved')
+  }, [sessionUserId, userId])
+  const performSignOut = React.useCallback(() => handleSignOut(() => {
+    clearSettingsReturnState()
+    router.push("/")
+  }), [handleSignOut, router])
+  const signOutGuard = useGuardedSignOut(userId && userId === sessionUserId ? userId : null, prepareSignOut, performSignOut)
   const mobileTabsRef = React.useRef<HTMLDivElement | null>(null)
   const activeMobileTabRef = React.useRef<HTMLButtonElement | null>(null)
   const scrollTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -400,10 +416,7 @@ export function SettingsPage() {
                         router.push("/")
                       })}
                       loading={deleteAccountLoading}
-                      onSignOut={() => handleSignOut(() => {
-                        clearSettingsReturnState()
-                        router.push("/")
-                      })}
+                      onSignOut={signOutGuard.request}
                     />
                   ) : null}
                 </div>
@@ -412,6 +425,8 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
+      <SignOutGuardDialog phase={signOutGuard.phase} onCancel={signOutGuard.cancel}
+        onDiscard={() => void signOutGuard.discardAndSignOut()} />
     </main>
   </MobileWorkspace>
   )

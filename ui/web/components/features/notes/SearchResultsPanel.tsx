@@ -3,7 +3,6 @@
 import * as React from "react"
 import { useEffect, useState, useRef } from "react"
 import { CaretLeft as ChevronLeft, MagnifyingGlass as Search, X } from "@phosphor-icons/react"
-import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
@@ -44,6 +43,7 @@ interface SearchResultsPanelProps {
     controller: NoteAppController
     hasGeminiApiKey?: boolean
     onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+    onOpenAIIndex: () => void
     onClose: () => void
     className?: string
 }
@@ -56,10 +56,10 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     controller,
     hasGeminiApiKey = true,
     onOpenInContext,
+    onOpenAIIndex,
     onClose,
     className
 }: SearchResultsPanelProps, ref) {
-    const router = useRouter()
     const { supabase } = useSupabase()
     const ragSearchSettingsService = React.useMemo(() => new RagSearchSettingsService(supabase), [supabase])
     const {
@@ -263,11 +263,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 )
             })
     }, [ragSearchSettings, ragSearchSettingsService])
-
-    const handleOpenAIIndex = React.useCallback(() => {
-        onClose()
-        router.push("/settings?tab=ai-index")
-    }, [onClose, router])
 
     const selectedCount = panelSelectedIds.size
     const allVisibleSelected =
@@ -679,7 +674,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                     aiHasMore={aiHasMore}
                     aiLoadingMore={aiLoadingMore}
                     loadMoreAI={loadMoreAI}
-                    handleOpenAIIndex={handleOpenAIIndex}
+                    handleOpenAIIndex={onOpenAIIndex}
                     aiRefetch={aiRefetch}
                     handleTagClick={handleTagClick}
                     panelSelectionMode={panelSelectionMode}

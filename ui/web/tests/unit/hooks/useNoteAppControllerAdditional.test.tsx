@@ -6,6 +6,7 @@ import type { NoteViewModel, SearchResult } from '@core/types/domain'
 import {
   addWorkspaceTab,
   createNoteWorkspaceState,
+  MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH,
   MAX_NOTE_WORKSPACE_TABS,
   serializeNoteWorkspaceState,
   updateWorkspaceTab,
@@ -47,13 +48,14 @@ const mockResetFtsResults = jest.fn()
 const mockHandleAutoSave = jest.fn()
 const mockHandleSaveNote = jest.fn()
 const mockHandleReadNote = jest.fn()
+const mockWaitForPendingNoteWrites = jest.fn()
 const mockClearActiveSettingsNoteReturnPath = jest.fn()
 const mockResolveSearchResult = jest.fn(() => mockResolvedSearchResult)
 const mockUpdateNoteMutation = jest.fn()
 const mockPersistOfflineNoteUpdates = jest.fn().mockResolvedValue(undefined)
 const mockConfirmDeleteNote = jest.fn()
 
-jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn() } }))
+jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn(), warning: jest.fn() } }))
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
   useSupabase: () => ({ supabase: {
     key: 'supabase',
@@ -173,7 +175,7 @@ jest.mock('@ui/web/hooks/useNoteSaveHandlers', () => ({
     handleSaveNote: mockHandleSaveNote,
     handleReadNote: mockHandleReadNote,
     confirmDeleteNote: mockConfirmDeleteNote,
-    waitForPendingNoteWrites: jest.fn().mockResolvedValue(undefined),
+    waitForPendingNoteWrites: mockWaitForPendingNoteWrites,
     handleRemoveTagFromNote: jest.fn(),
     persistOfflineNoteUpdates: mockPersistOfflineNoteUpdates,
   }),
@@ -268,6 +270,7 @@ describe('useNoteAppController additional observable behavior', () => {
     mockHandleAutoSave.mockReset().mockResolvedValue(undefined)
     mockHandleSaveNote.mockReset().mockResolvedValue(undefined)
     mockHandleReadNote.mockReset().mockResolvedValue(undefined)
+    mockWaitForPendingNoteWrites.mockReset().mockResolvedValue(undefined)
     mockConfirmDeleteNote.mockReset().mockResolvedValue(true)
     mockUpdateNoteMutation.mockReset()
     mockUpdateNoteMutation.mockResolvedValue(undefined)
@@ -290,6 +293,136 @@ describe('useNoteAppController additional observable behavior', () => {
     rerender()
     await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
     expect(result.current.activeTab.note).toBeNull()
+  })
+
+  it('does not enter settings when an unsaved inactive tab was dropped from the storage budget', async () => {
+    const first = makeNote({ id: 'first', title: 'First', description: 'x'.repeat(5000) })
+    const second = makeNote({ id: 'second', title: 'Second' })
+    mockNotes = [first, second]
+    mockGetNoteStatus.mockImplementation((id: string) => Promise.resolve({
+      status: 'found', note: id === 'first' ? first : second,
+    }))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleSelectNote(first) })
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Storage unavailable'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ noteId: 'first', title: 'First unsaved', description: 'x'.repeat(5000), tags: '' })).rejects.toThrow('Storage unavailable')
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    await act(async () => { await result.current.addTab() })
+    await act(async () => { await result.current.handleSelectNote(second) })
+    await act(async () => {
+      await result.current.handleAutoSave({
+        noteId: 'second', title: 'Second', description: 'x'.repeat(MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH - 1500), tags: '',
+      })
+    })
+
+    const snapshot = JSON.parse(window.sessionStorage.getItem(NOTE_WORKSPACE_STORAGE_KEY)!) as { tabs: Array<{ noteId: string | null }> }
+    expect(result.current.tabs.some(tab => tab.noteId === 'first' && tab.saveState === 'error')).toBe(true)
+    expect(snapshot.tabs.some(tab => tab.noteId === 'first')).toBe(false)
+    let navigation: unknown
+    await act(async () => { navigation = await result.current.captureSettingsReturnState() })
+    expect(navigation).toBeNull()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('unsaved'))
+  })
+
+  it('allows settings when every unfinished draft was actually persisted', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Write failed'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ title: 'Unsent', description: 'Draft', tags: '' })).rejects.toThrow('Write failed')
+    })
+    await act(async () => { await result.current.addTab() })
+    expect(result.current.tabs[0].saveState).toBe('error')
+    const snapshot = await act(async () => result.current.captureSettingsReturnState())
+    expect(snapshot).not.toBeNull()
+  })
+
+  it('blocks settings if the available workspace snapshot contains an older draft', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Write failed'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ title: 'Newest', description: 'Draft', tags: '' })).rejects.toThrow('Write failed')
+    })
+    await act(async () => { await result.current.addTab() })
+    const raw = JSON.parse(window.sessionStorage.getItem(NOTE_WORKSPACE_STORAGE_KEY)!)
+    raw.tabs[0].draft.title = 'Older'
+    window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, JSON.stringify(raw))
+    const snapshot = await act(async () => result.current.captureSettingsReturnState())
+    expect(snapshot).toBeNull()
+    expect(result.current.tabs[0].draft.title).toBe('Newest')
+  })
+
+  it('blocks settings when the workspace cannot be read back', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Write failed'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ title: 'Unsent', description: 'Draft', tags: '' })).rejects.toThrow('Write failed')
+    })
+    await act(async () => { await result.current.addTab() })
+    const original = Storage.prototype.getItem
+    const read = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) {
+      if (key === NOTE_WORKSPACE_STORAGE_KEY) throw new Error('Storage unavailable')
+      return original.call(this, key)
+    })
+    const snapshot = await act(async () => result.current.captureSettingsReturnState())
+    expect(snapshot).toBeNull()
+    read.mockRestore()
+  })
+
+  it('flushes input made while another pending write is finishing before settings navigation', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    let release!: () => void
+    mockWaitForPendingNoteWrites.mockReturnValueOnce(new Promise<void>(resolve => { release = resolve }))
+    let currentDraft = 'First'
+    const savedDrafts: string[] = []
+    const editorRef = { current: { flushPendingSave: jest.fn(async () => { savedDrafts.push(currentDraft) }) } }
+    act(() => result.current.registerNoteEditorRef(editorRef as never))
+    let transition!: Promise<unknown>
+    await act(async () => {
+      transition = result.current.captureSettingsReturnState()
+      await Promise.resolve()
+    })
+    expect(savedDrafts).toEqual(['First'])
+    currentDraft = 'Last'
+    await act(async () => { release(); await transition })
+    expect(savedDrafts).toEqual(['First', 'Last'])
+  })
+
+  it('cancels settings navigation if the signed-in account changes while waiting', async () => {
+    const { result, rerender } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    let release!: () => void
+    mockWaitForPendingNoteWrites.mockReturnValueOnce(new Promise<void>(resolve => { release = resolve }))
+    let transition!: Promise<unknown>
+    await act(async () => { transition = result.current.captureSettingsReturnState(); await Promise.resolve() })
+    mockProviderUser = { id: 'user-2' }
+    rerender()
+    let snapshot: unknown
+    await act(async () => { release(); snapshot = await transition })
+    expect(snapshot).toBeNull()
+  })
+
+  it('requires confirmation before discarding an inactive dirty tab', async () => {
+    let state = createNoteWorkspaceState(() => 'dirty', 'user-1')
+    state = updateWorkspaceTab(state, 'dirty', { draft: { title: 'Unsent' }, saveState: 'dirty', mode: 'editing' })
+    state = addWorkspaceTab(state, () => 'other')
+    window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(state))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.closeTab('dirty') })
+    expect(result.current.tabs.some(tab => tab.id === 'dirty')).toBe(true)
+    expect(result.current.tabPendingClose).toEqual({ tabId: 'dirty', label: 'Unsent' })
+    act(() => result.current.cancelCloseTab())
+    expect(result.current.tabs.some(tab => tab.id === 'dirty')).toBe(true)
+    await act(async () => { await result.current.closeTab('dirty') })
+    await act(async () => { await result.current.confirmCloseTab() })
+    expect(result.current.tabs.some(tab => tab.id === 'dirty')).toBe(false)
   })
 
   it('flushes pending editor work before creating a note and captures the current UI state', async () => {
@@ -320,7 +453,7 @@ describe('useNoteAppController additional observable behavior', () => {
       searchQuery: 'initial search',
       filterByTag: 'initial-tag',
     })
-    expect(flushPendingSave).toHaveBeenCalledTimes(2)
+    expect(flushPendingSave).toHaveBeenCalledTimes(3)
     window.history.pushState({}, '', '/')
   })
 

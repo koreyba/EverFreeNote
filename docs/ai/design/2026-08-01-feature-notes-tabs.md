@@ -314,6 +314,30 @@ flowchart LR
   preview -->|Activate| boundary
 ```
 
+## Sign-out with local drafts
+
+```mermaid
+flowchart LR
+  request[Sign out] --> check[Check account and local drafts]
+  check -->|safe| logout[Sign out and clear workspace]
+  check -->|unsaved or unknown| choice[Keep editing or discard]
+  choice -->|keep| editor[Return to app]
+  choice -->|discard| logout
+```
+
+Notes flushes the mounted editor and waits for its local writes before checking
+all tabs. Settings checks the stored, account-scoped tab states because no
+editor is mounted there. A change of account cancels an outstanding decision;
+an auth sign-out error leaves the workspace intact. The guard does not lock
+other browser windows or guarantee server sync.
+
+Before an app-controlled transition from Notes to Settings or AI Index, the
+controller also reads the account-scoped snapshot back. Any unfinished tab
+must match its saved identity, mode and draft; an evicted or stale tab blocks
+the transition. Closing an inactive unfinished tab requires confirmation.
+Browser-controlled history navigation and reload are separate boundaries and
+are not intercepted by this guard.
+
 ## Non-Functional Requirements
 
 - Switching tabs performs no new network request unless existing note revalidation is required; reducer transitions are synchronous after the current save flush.

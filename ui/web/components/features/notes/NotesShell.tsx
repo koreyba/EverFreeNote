@@ -34,12 +34,13 @@ import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 import { saveSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
-import { consumeActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
+import { consumeActiveSettingsNoteReturnPath, readActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
 import { getTabLabel, NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
 import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMenu"
 import { SplitEmptyPane, SplitNotePreview } from "@/components/features/notes/SplitNotePreview"
 import { DeviceSyncStatus } from "@/components/features/notes/DeviceSyncStatus"
 import { Button } from "@/components/ui/button"
+import { SignOutGuardDialog } from "@/components/features/auth/SignOutGuardDialog"
 
 import { MobileWorkspace } from "@/components/features/navigation/MobileWorkspace"
 import { NavRail } from "@/components/features/navigation/NavRail"
@@ -332,7 +333,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     setPendingChunkFocus((current) => (current?.requestId === requestId ? null : current))
   }, [])
 
-  const handleOpenSettings = React.useCallback(async () => {
+  const handleOpenSettings = React.useCallback(async (destination = "/settings") => {
     if (tagMutationInProgress) return
     const notesUiState = await controller.captureSettingsReturnState()
     if (!notesUiState) return
@@ -344,18 +345,19 @@ export function NotesShell({ controller }: NotesShellProps) {
       })
     }
 
-    router.push("/settings")
+    router.push(destination)
   }, [controller, router, tagMutationInProgress])
 
   const handleBackFromNote = React.useCallback(async () => {
-    await noteEditorRef.current?.flushPendingSave()
-    const settingsReturnPath = consumeActiveSettingsNoteReturnPath()
+    const settingsReturnPath = readActiveSettingsNoteReturnPath()
     if (settingsReturnPath) {
+      if (!(await controller.captureSettingsReturnState())) return
+      consumeActiveSettingsNoteReturnPath()
       router.push(settingsReturnPath)
       return
     }
     await handleSelectNote(null)
-  }, [handleSelectNote, router])
+  }, [controller, handleSelectNote, router])
 
   useAppBackHandler(APP_BACK_PRIORITY.navigation, async () => {
     if (tagMutationInProgress) return true
@@ -475,6 +477,7 @@ export function NotesShell({ controller }: NotesShellProps) {
                 controller={controller}
                 hasGeminiApiKey={hasGeminiApiKey}
                 onOpenInContext={handleOpenInContext}
+                onOpenAIIndex={() => void handleOpenSettings("/settings?tab=ai-index")}
                 onClose={() => setIsSearchPanelOpen(false)}
                 className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
               />
@@ -559,6 +562,9 @@ export function NotesShell({ controller }: NotesShellProps) {
 
       <DeleteNoteDialog controller={controller} />
       <DiscardFailedSaveDialog controller={controller} />
+      <SignOutGuardDialog phase={controller.signOutPhase ?? 'idle'}
+        onCancel={controller.cancelSignOut ?? (() => {})}
+        onDiscard={() => void controller.discardAndSignOut?.()} />
     </MobileWorkspace>
   )
 }
@@ -731,8 +737,7 @@ function EditorPane({
 }
 
 /**
- * Closing a tab whose save failed throws those edits away, so it confirms
- * first — in the app's own dialog, matching every other destructive action.
+ * Closing a tab with unsaved edits confirms before discarding them.
  */
 function DiscardFailedSaveDialog({ controller }: { controller: NoteAppController }) {
   const { tabPendingClose, confirmCloseTab, cancelCloseTab } = controller
@@ -748,7 +753,7 @@ function DiscardFailedSaveDialog({ controller }: { controller: NoteAppController
         <AlertDialogHeader>
           <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
           <AlertDialogDescription>
-            &quot;{tabPendingClose?.label}&quot; could not be saved. Closing this tab discards those changes.
+            &quot;{tabPendingClose?.label}&quot; has unsaved changes. Closing this tab discards them.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

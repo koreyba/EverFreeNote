@@ -42,6 +42,9 @@ The feature serves authenticated EverFreeNote users who work with several notes 
 - As a note author, I see a subtle dirty/saving/error marker and receive confirmation before closing a tab whose save failed.
 - As a note author, note selection from the list, search results, tag results, and internal note-opening flows follows the same active-tab rule.
 - As a note author, navigating to Tags, Search, or Settings does not destroy the Notes workspace; returning restores it.
+- As a note author, signing out first saves pending work when possible. If any
+  open draft remains unsaved or its state cannot be checked, I can keep editing
+  or explicitly discard the unsaved changes and sign out.
 - As a mobile user, I can see the active note and open-tab count and use a compact tab list to switch or close tabs.
 
 ## Success Criteria
@@ -83,6 +86,10 @@ The following review decisions resolve the v1 ambiguities without changing the r
 - Caret/text-selection restoration is best effort and may be skipped after remote content reconciliation; draft and scroll restoration remain mandatory.
 - The repository's current AI/search “open note in context” callbacks are the internal-open integration point. Any future note-link handler must call the same controller open-note function.
 - Conflict-resolution UI is deferred; existing last-write-wins/autosave reconciliation remains authoritative.
+- When opening Settings or AI Index, each unfinished tab must either be saved
+  locally or have a matching recoverable workspace snapshot. If an unsaved tab
+  was evicted by the storage budget or the stored draft is stale, keep the
+  workspace open so the user can save it or explicitly discard the tab.
 
 ## Requirements Review Resolution (2026-08-01)
 

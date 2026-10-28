@@ -146,6 +146,7 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
     ...visibleState,
     activeTab,
     hydrated,
+    storageReadable: hydrated && readableUserId === userId,
     addTab,
     activateTab,
     openNote,

@@ -152,8 +152,13 @@ export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
 
     const handleSignOut = async (callback?: () => void) => {
         try {
-            await authService.signOut()
-            await webStorageAdapter.removeItem('testUser')
+            const { error } = await authService.signOut()
+            if (error) throw error
+            try {
+                await webStorageAdapter.removeItem('testUser')
+            } catch (error) {
+                console.error('Error clearing legacy test session:', error)
+            }
             // Workspace tabs cache the notes they show, in storage that
             // outlives the session. Drop them here so nothing is left behind
             // for the next account signing in on this browser tab.
@@ -163,6 +168,7 @@ export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
             if (typeof callback === 'function') callback()
         } catch (error) {
             console.error('Error signing out:', error)
+            toast.error('Could not sign out. Please try again.')
         }
     }
 
