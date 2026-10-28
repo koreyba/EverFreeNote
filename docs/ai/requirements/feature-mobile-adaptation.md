@@ -61,6 +61,7 @@ description: Clarify the problem space, gather requirements, and define success 
 
 - Give the note list more space by hiding the account footer and duplicated search controls on phones; account actions remain in Settings.
 - Notes, Search, Tags, and Settings must open their requested mobile destination, including after returning from Settings. Preserve open tabs and drafts, and do not leave an editor if its pending save fails.
+- On the note list and search screens, label the mobile tab switcher neutrally instead of displaying the title of a hidden note; the note stays available in its tab.
 - Make note selection discoverable with a Select action and support long-press selection without also opening the note.
 - Selecting a tag from the mobile tag browser shows all notes for that tag, independent of an earlier search.
 - Settings must survive a browser reload for an authenticated user and keep the selected mobile tab visible after navigation or resizing.

@@ -50,6 +50,19 @@ describe('Mobile web navigation', { retries: 0 }, () => {
     cy.contains('[data-testid="note-card"]', 'Navigation note').should('be.visible')
   })
 
+  it('shows a neutral tab heading in the list while keeping the note available', () => {
+    cy.contains('[data-testid="note-card"] button', 'Navigation note').click()
+    cy.get('[data-cy="mobile-tabs-toggle"]').parent().should('contain.text', 'Navigation note')
+    cy.get('[data-cy="note-back-button"]').click()
+    cy.get('[data-testid="sidebar-container"]').should('be.visible')
+    cy.get('[data-cy="mobile-tabs-toggle"]').parent()
+      .should('contain.text', 'Open tabs').and('not.contain.text', 'Navigation note')
+    cy.get('[data-cy="mobile-tabs-toggle"]').click()
+    cy.get('#mobile-notes-tab-list').contains('button', 'Navigation note').click()
+    cy.contains('Mobile navigation content').should('be.visible')
+    cy.get('[data-cy="mobile-tabs-toggle"]').parent().should('contain.text', 'Navigation note')
+  })
+
   it('keeps the account email out of the mobile note list', () => {
     cy.get('[data-testid="sidebar-container"]').contains(userEmail).should('not.be.visible')
     cy.contains('[data-testid="note-card"]', 'Navigation note').should('be.visible')

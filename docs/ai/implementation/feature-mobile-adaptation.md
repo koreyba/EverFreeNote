@@ -58,6 +58,7 @@ description: Technical implementation notes, patterns, and code guidelines for m
 
 - `Sidebar` uses a compact phone header, exposes Select, and keeps the desktop search and account footer at desktop widths. Sign-out remains in Settings.
 - `NotesShell` hides the note pane through `hideNotePane` before mobile navigation, retaining its tab and stopping on a failed save. The mobile navigation highlights Search when its panel is visible.
+- The mobile tab switcher displays the active note title only while its pane is visible; elsewhere it shows a compact neutral label while keeping saved tabs accessible.
 - Explicit Settings navigation discards the Settings return snapshot; mobile workspace hydration respects a requested Notes or Search destination. The Settings Back action still restores the saved context.
 - Settings waits for both authentication sources before redirecting and scrolls the selected mobile tab into view on load and resize.
 - A tag chosen from the mobile tag browser clears the old query and explicitly opens its results, including when the same tag is selected again.

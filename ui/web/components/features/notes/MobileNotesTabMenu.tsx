@@ -9,7 +9,7 @@ import { cn } from "@ui/web/lib/utils"
 import { getTabLabel, SaveStateIndicator, type NotesTabStripProps } from "./NotesTabStrip"
 import { useAnimatedTabList, TAB_TRANSITION_MS } from "@ui/web/hooks/useAnimatedTabList"
 
-export type MobileNotesTabMenuProps = Readonly<NotesTabStripProps>
+export type MobileNotesTabMenuProps = Readonly<NotesTabStripProps & { showActiveTabTitle?: boolean }>
 
 export function MobileNotesTabMenu({
   tabs,
@@ -20,6 +20,7 @@ export function MobileNotesTabMenu({
   addTabDisabled = false,
   addTabCapacityPending = false,
   maximumTabCount,
+  showActiveTabTitle = true,
 }: MobileNotesTabMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   useAppBackHandler(APP_BACK_PRIORITY.menu, () => {
@@ -33,6 +34,7 @@ export function MobileNotesTabMenu({
   const renderedTabs = useAnimatedTabList(tabs)
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]
   const activeLabel = activeTab ? getTabLabel(activeTab) : "No open notes"
+  const heading = showActiveTabTitle ? activeLabel : "Open tabs"
 
   // With many tabs the active one can sit far down the scrollable list; bring
   // it into view so opening the menu always shows where you currently are.
@@ -96,8 +98,8 @@ export function MobileNotesTabMenu({
     >
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium" title={activeLabel}>{activeLabel}</p>
-          <p className="text-xs text-muted-foreground">{tabs.length} {tabs.length === 1 ? "tab" : "tabs"}</p>
+          <p className="truncate text-sm font-medium" title={heading}>{heading}</p>
+          {showActiveTabTitle && <p className="text-xs text-muted-foreground">{tabs.length} {tabs.length === 1 ? "tab" : "tabs"}</p>}
         </div>
         {activeTab && <SaveStateIndicator tab={activeTab} />}
         <Button

@@ -269,6 +269,7 @@ export function NotesShell({ controller }: NotesShellProps) {
           <MobileNotesTabMenu
             tabs={tabs}
             activeTabId={activeTabId}
+            showActiveTabTitle={showEditor}
             addTabDisabled={!workspaceHydrated || !canAddTab}
             addTabCapacityPending={!workspaceHydrated}
             maximumTabCount={MAX_NOTE_WORKSPACE_TABS}
