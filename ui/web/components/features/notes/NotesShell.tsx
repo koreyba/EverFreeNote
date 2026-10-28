@@ -29,6 +29,7 @@ import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
 import { normalizeTag, normalizeTagList } from "@ui/web/lib/tags"
 import { useAllTagsQuery } from "@ui/web/hooks/useNotesQuery"
+import { useIsMobile } from "@ui/web/hooks/use-mobile"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
@@ -55,6 +56,7 @@ type NotesShellProps = {
 export function NotesShell({ controller }: NotesShellProps) {
 
   const router = useRouter()
+  const isMobile = useIsMobile()
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
   const searchPanelRef = React.useRef<SearchResultsPanelHandle | null>(null)
   const { supabase } = useSupabase()
@@ -83,6 +85,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     selectionMode,
     selectedCount,
     bulkDeleting,
+    enterSelectionMode,
     exitSelectionMode,
     selectAllVisible,
     deleteSelectedNotes,
@@ -104,6 +107,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     canAddTab = true,
     workspaceHydrated = true,
     handleSelectNote,
+    hideNotePane,
     isSearchPanelOpen,
     setIsSearchPanelOpen,
     activeMainView,
@@ -162,7 +166,8 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [controller, supabase])
 
   const showEditor = notePaneVisible ?? !!(selectedNote || isEditing)
-  const handleOpenSearchPanel = React.useCallback(() => {
+  const handleOpenSearchPanel = React.useCallback(async () => {
+    if (isMobile && showEditor && !(await hideNotePane())) return
     if (activeMainView !== "notes") {
       setActiveMainView("notes")
     }
@@ -171,7 +176,16 @@ export function NotesShell({ controller }: NotesShellProps) {
       return
     }
     setIsSearchPanelOpen(true)
-  }, [activeMainView, isSearchPanelOpen, setActiveMainView, setIsSearchPanelOpen])
+  }, [activeMainView, hideNotePane, isMobile, isSearchPanelOpen, setActiveMainView, setIsSearchPanelOpen, showEditor])
+
+  const handleSelectMainView = React.useCallback(async (view: "notes" | "tags") => {
+    if (isMobile && showEditor && !(await hideNotePane())) return
+    if (isMobile && view === "notes") {
+      setIsSearchPanelOpen(false)
+      if (selectionMode) exitSelectionMode()
+    }
+    setActiveMainView(view)
+  }, [exitSelectionMode, hideNotePane, isMobile, selectionMode, setActiveMainView, setIsSearchPanelOpen, showEditor])
 
 
   const handlePendingChunkFocusApplied = React.useCallback((requestId: string) => {
@@ -202,7 +216,8 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [handleSelectNote, router])
 
   useAppBackHandler(APP_BACK_PRIORITY.navigation, async () => {
-    if (isSearchPanelOpen) setIsSearchPanelOpen(false)
+    if (isMobile && showEditor) await handleBackFromNote()
+    else if (isSearchPanelOpen) setIsSearchPanelOpen(false)
     else if (selectionMode) exitSelectionMode()
     else if (showEditor) await handleBackFromNote()
     else if (activeMainView !== "notes") setActiveMainView("notes")
@@ -211,9 +226,13 @@ export function NotesShell({ controller }: NotesShellProps) {
   })
 
   const handleSelectTagFromTagsPage = React.useCallback((tag: string) => {
+    // A tag chosen from the tag browser represents all notes with that tag,
+    // rather than the intersection with an earlier unrelated search.
+    if (isMobile) controller.handleSearch("")
     controller.handleTagClick(tag).catch(() => undefined)
+    setIsSearchPanelOpen(true)
     setActiveMainView("notes")
-  }, [controller, setActiveMainView])
+  }, [controller, isMobile, setActiveMainView, setIsSearchPanelOpen])
 
   return (
     <MobileWorkspace
@@ -224,14 +243,15 @@ export function NotesShell({ controller }: NotesShellProps) {
       {/* Main Navigation Rail (Desktop Dock & Mobile Bottom Bar) */}
       <NavRail
         activeView={activeMainView}
+        searchActive={isMobile && isSearchPanelOpen && activeMainView === "notes" && !showEditor}
         onSelectView={(view) => {
           if (view === "settings") {
             void handleOpenSettings()
           } else {
-            setActiveMainView(view)
+            void handleSelectMainView(view)
           }
         }}
-        onOpenSearch={handleOpenSearchPanel}
+        onOpenSearch={() => void handleOpenSearchPanel()}
         onOpenSettings={() => void handleOpenSettings()}
       />
 
@@ -268,6 +288,7 @@ export function NotesShell({ controller }: NotesShellProps) {
               selectionMode={selectionMode}
               selectedCount={selectedCount}
               bulkDeleting={bulkDeleting}
+              onEnterSelectionMode={enterSelectionMode}
               onExitSelectionMode={exitSelectionMode}
               onSelectAll={selectAllVisible}
               onBulkDelete={deleteSelectedNotes}
@@ -275,7 +296,7 @@ export function NotesShell({ controller }: NotesShellProps) {
               onOpenSettings={() => void handleOpenSettings()}
               onCreateNote={handleCreateNote}
               onSignOut={handleSignOut}
-              onOpenSearch={handleOpenSearchPanel}
+              onOpenSearch={() => void handleOpenSearchPanel()}
               className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
               data-testid="sidebar-container"
             >
@@ -354,6 +375,7 @@ function ListPane({ controller }: { controller: NoteAppController }) {
         selectedIds={selectedNoteIds}
         onToggleSelect={(note) => toggleNoteSelection(note.id)}
         onSelectNote={(note) => handleSelectNote(note)}
+        onDeleteNote={controller.handleDeleteNote}
         onTagClick={handleTagClick}
         onLoadMore={() => notesQuery.fetchNextPage()}
         hasMore={notesQuery.hasNextPage}

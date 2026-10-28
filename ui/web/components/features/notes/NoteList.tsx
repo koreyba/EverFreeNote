@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useMemo } from "react"
+import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import type { CSSProperties } from "react"
 import type { ReactNode } from "react"
 import { CircleNotch as Loader2, Lightning as Zap } from "@phosphor-icons/react"
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { NoteListSkeleton } from "@/components/NoteListSkeleton"
 import { NoteCard } from "./NoteCard"
+import { SwipeableNoteRow } from "./SwipeableNoteRow"
+import { useIsMobile } from "@ui/web/hooks/use-mobile"
 import type { Note, SearchResult } from "@core/types/domain"
 import AutoSizer from "react-virtualized-auto-sizer"
 import * as ReactWindow from "react-window"
@@ -47,6 +49,7 @@ interface NoteListProps {
   selectedIds?: Set<string>
   onToggleSelect?: (note: NoteRecord) => void
   onSelectNote: (note: NoteRecord) => void
+  onDeleteNote?: (note: NoteRecord) => void
   onTagClick: (tag: string) => void
   onLoadMore: () => void
   hasMore: boolean
@@ -79,6 +82,10 @@ interface ItemData {
   selectedIds: Set<string>
   onToggleSelect?: (note: NoteRecord) => void
   onSelectNote: (note: NoteRecord) => void
+  onDeleteNote?: (note: NoteRecord) => void
+  isMobile: boolean
+  openSwipeId: string | null
+  setOpenSwipeId: (id: string | null) => void
   onTagClick: (tag: string) => void
   hasMore: boolean
   isLoadingMore: boolean
@@ -91,6 +98,10 @@ interface SearchItemData {
   selectedIds: Set<string>
   onToggleSelect?: (note: NoteRecord) => void
   onSearchResultClick: (note: SearchResult) => void
+  onDeleteNote?: (note: NoteRecord) => void
+  isMobile: boolean
+  openSwipeId: string | null
+  setOpenSwipeId: (id: string | null) => void
   onTagClick: (tag: string) => void
   hasMore: boolean
   isLoadingMore: boolean
@@ -107,6 +118,10 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
     selectedIds,
     onToggleSelect,
     onSelectNote,
+    onDeleteNote,
+    isMobile,
+    openSwipeId,
+    setOpenSwipeId,
     onTagClick,
     hasMore,
     isLoadingMore,
@@ -138,19 +153,27 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
 
   return (
     <div style={style} className="px-2 py-1" {...ariaAttributes}>
-      <NoteCard
-        note={note}
-        variant="compact"
-        isSelected={selectionMode ? selectedIds.has(note.id) : selectedNoteId === note.id}
-        selectionMode={selectionMode}
-        onToggleSelect={() => onToggleSelect?.(note)}
-        onClick={() =>
-          selectionMode
-            ? onToggleSelect?.(note)
-            : onSelectNote(note)
-        }
-        onTagClick={onTagClick}
-      />
+      <SwipeableNoteRow
+        title={note.title}
+        enabled={isMobile && !selectionMode && !!onDeleteNote}
+        open={openSwipeId === note.id}
+        onOpenChange={(open) => setOpenSwipeId(open ? note.id : null)}
+        onDelete={() => onDeleteNote?.(note)}
+      >
+        <NoteCard
+          note={note}
+          variant="compact"
+          isSelected={selectionMode ? selectedIds.has(note.id) : selectedNoteId === note.id}
+          selectionMode={selectionMode}
+          onToggleSelect={() => onToggleSelect?.(note)}
+          onClick={() =>
+            selectionMode
+              ? onToggleSelect?.(note)
+              : onSelectNote(note)
+          }
+          onTagClick={onTagClick}
+        />
+      </SwipeableNoteRow>
     </div>
   )
 })
@@ -164,6 +187,10 @@ const SearchRow = memo(({ index, style, ariaAttributes, ...props }: RowComponent
     selectedIds,
     onToggleSelect,
     onSearchResultClick,
+    onDeleteNote,
+    isMobile,
+    openSwipeId,
+    setOpenSwipeId,
     onTagClick,
     hasMore,
     isLoadingMore,
@@ -196,20 +223,28 @@ const SearchRow = memo(({ index, style, ariaAttributes, ...props }: RowComponent
 
   return (
     <div style={style} className="px-3 py-1" {...ariaAttributes}>
-      <NoteCard
-        note={note}
-        variant="search"
-        selectionMode={selectionMode}
-        isSelected={selectionMode ? selectedIds.has(note.id) : false}
-        onToggleSelect={() => onToggleSelect?.(note as unknown as NoteRecord)}
-        onClick={() =>
-          selectionMode
-            ? onToggleSelect?.(note as unknown as NoteRecord)
-            : onSearchResultClick(note)
-        }
-        onTagClick={onTagClick}
-        highlightQuery={ftsQuery}
-      />
+      <SwipeableNoteRow
+        title={note.title}
+        enabled={isMobile && !selectionMode && !!onDeleteNote}
+        open={openSwipeId === note.id}
+        onOpenChange={(open) => setOpenSwipeId(open ? note.id : null)}
+        onDelete={() => onDeleteNote?.(note)}
+      >
+        <NoteCard
+          note={note}
+          variant="search"
+          selectionMode={selectionMode}
+          isSelected={selectionMode ? selectedIds.has(note.id) : false}
+          onToggleSelect={() => onToggleSelect?.(note as unknown as NoteRecord)}
+          onClick={() =>
+            selectionMode
+              ? onToggleSelect?.(note as unknown as NoteRecord)
+              : onSearchResultClick(note)
+          }
+          onTagClick={onTagClick}
+          highlightQuery={ftsQuery}
+        />
+      </SwipeableNoteRow>
     </div>
   )
 })
@@ -243,6 +278,7 @@ export const NoteList = memo(function NoteList({
   selectedIds = new Set(),
   onToggleSelect,
   onSelectNote,
+  onDeleteNote,
   onTagClick,
   onLoadMore,
   hasMore,
@@ -259,8 +295,21 @@ export const NoteList = memo(function NoteList({
   height: fixedHeight,
   width: fixedWidth,
 }: NoteListProps) {
+  const isMobile = useIsMobile()
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
+  useEffect(() => {
+    if (isMobile && !selectionMode) return
+    setOpenSwipeId(null)
+  }, [isMobile, selectionMode])
   const isInitialFtsLoading = ftsQuery.length >= 3 && ftsLoading && !ftsData
   const isSearch = showFTSResults && !!ftsData
+  const searchResultCount = ftsData?.results.length ?? 0
+  const handleNoteRowsRendered = useCallback(({ stopIndex }: { stopIndex: number }) => {
+    if (hasMore && !isFetchingNextPage && stopIndex >= notes.length - 5) onLoadMore()
+  }, [hasMore, isFetchingNextPage, notes.length, onLoadMore])
+  const handleSearchRowsRendered = useCallback(({ stopIndex }: { stopIndex: number }) => {
+    if (ftsHasMore && !ftsLoadingMore && stopIndex >= searchResultCount - 3) onLoadMoreFts?.()
+  }, [ftsHasMore, ftsLoadingMore, onLoadMoreFts, searchResultCount])
 
   // Dynamic row height for virtualized lists - measures actual content height
   const dynamicRowHeight = useDynamicRowHeight({ defaultRowHeight: 140 })
@@ -274,6 +323,10 @@ export const NoteList = memo(function NoteList({
     selectedIds,
     onToggleSelect,
     onSelectNote,
+    onDeleteNote,
+    isMobile,
+    openSwipeId,
+    setOpenSwipeId,
     onTagClick,
     hasMore,
     isLoadingMore: isFetchingNextPage,
@@ -285,6 +338,9 @@ export const NoteList = memo(function NoteList({
     selectedIds,
     onToggleSelect,
     onSelectNote,
+    onDeleteNote,
+    isMobile,
+    openSwipeId,
     onTagClick,
     hasMore,
     isFetchingNextPage,
@@ -298,6 +354,10 @@ export const NoteList = memo(function NoteList({
     selectedIds,
     onToggleSelect,
     onSearchResultClick,
+    onDeleteNote,
+    isMobile,
+    openSwipeId,
+    setOpenSwipeId,
     onTagClick,
     hasMore: ftsHasMore ?? false,
     isLoadingMore: ftsLoadingMore ?? false,
@@ -309,6 +369,9 @@ export const NoteList = memo(function NoteList({
     selectedIds,
     onToggleSelect,
     onSearchResultClick,
+    onDeleteNote,
+    isMobile,
+    openSwipeId,
     onTagClick,
     ftsHasMore,
     ftsLoadingMore,
@@ -376,12 +439,7 @@ export const NoteList = memo(function NoteList({
                 rowHeight={dynamicSearchRowHeight}
                 rowProps={searchItemData}
                 overscanCount={3}
-                onRowsRendered={({ stopIndex }: { stopIndex: number }) => {
-                  // Trigger load more when we're 3 items from the end
-                  if (ftsHasMore && !ftsLoadingMore && stopIndex >= ftsData.results.length - 3) {
-                    onLoadMoreFts?.()
-                  }
-                }}
+                onRowsRendered={handleSearchRowsRendered}
                 rowComponent={SearchRow}
               />
             )}
@@ -420,12 +478,7 @@ export const NoteList = memo(function NoteList({
               rowHeight={dynamicRowHeight}
               rowProps={itemData}
               overscanCount={5}
-              onRowsRendered={({ stopIndex }: { stopIndex: number }) => {
-                // Trigger load more when we're 5 items from the end
-                if (hasMore && !isFetchingNextPage && stopIndex >= notes.length - 5) {
-                  onLoadMore()
-                }
-              }}
+              onRowsRendered={handleNoteRowsRendered}
               rowComponent={NoteRow}
             />
           )}

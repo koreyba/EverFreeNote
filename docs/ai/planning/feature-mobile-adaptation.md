@@ -47,3 +47,12 @@ description: Break down work into actionable tasks and estimate timeline for mob
 
 - **Risk**: Sidebar state (filters) might reset when switching views if components are unmounted.
 - **Mitigation**: The state is lifted to the parent controller (`useNoteAppController`), so it should persist.
+
+## Mobile web usability pass — 2026-10-28
+
+- [x] Compact the phone note list and expose selection.
+- [x] Repair mobile destination, tag, and long-press transitions while preserving drafts.
+- [x] Repair Settings session restoration and selected-tab visibility after a resize.
+- [x] Add mobile swipe-to-reveal deletion and in-note search for reading and editing.
+- [x] Verify local Docker flows and focused regression tests.
+- [ ] Validate touch gestures and the on-screen keyboard on physical iOS and Android browsers.

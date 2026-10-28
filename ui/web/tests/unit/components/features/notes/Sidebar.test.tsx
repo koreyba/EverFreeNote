@@ -53,7 +53,7 @@ describe("Sidebar", () => {
     it("renders EverFreeNote title and theme toggle", () => {
       render(<Sidebar {...defaultProps} />)
 
-      const titleHeading = screen.getByRole("heading", { level: 1 })
+      const titleHeading = screen.getByRole("heading", { level: 1, name: "EverFreeNote" })
       expect(titleHeading.textContent).toBe("EverFreeNote")
       expect(screen.getByRole("button", { name: "Toggle theme" })).toBeTruthy()
     })

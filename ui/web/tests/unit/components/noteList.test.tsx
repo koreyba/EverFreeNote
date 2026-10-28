@@ -7,6 +7,7 @@ import type { Note, SearchResult } from '@core/types/domain'
 jest.mock('@phosphor-icons/react', () => ({
   CircleNotch: ({ className }: { className?: string }) => <span data-testid="loader" className={className} />,
   Lightning: () => <span data-testid="zap" />,
+  Trash: () => <span data-testid="trash" />,
 }))
 
 jest.mock('@/components/NoteListSkeleton', () => ({

@@ -110,6 +110,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       deleteAccountLoading: false,
 
       handleSelectNote,
+      hideNotePane: cy.stub().resolves(true),
       handleCreateNote: cy.stub(),
       handleEditNote: cy.stub().resolves(),
       handleSaveNote: cy.stub().resolves(),
@@ -396,6 +397,18 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('.tiptap').should('contain.text', 'Paragraph 59')
     cy.get('.tiptap').closest('.overflow-y-auto').as('noteScroll')
   }
+
+  it('allows searching while the mobile editor is expanded', () => {
+    cy.viewport(390, 844)
+    mountLongEditor()
+    cy.get('[aria-label="Expand editor"]').click()
+    cy.get('[data-cy="expanded-note-find-button"]').click()
+    cy.get('[data-cy="note-find-input"]').type('Paragraph 59')
+    cy.get('[data-cy="note-find-count"]').should('contain.text', '1 / 1')
+    cy.then(() => dispatchAppBack())
+    cy.get('[data-cy="note-find-input"]').should('not.exist')
+    cy.get('[aria-label="Collapse editor"]').should('be.visible')
+  })
 
   it('handles Back one layer at a time: formatting menu, fullscreen, then note', () => {
     cy.viewport(390, 844)
@@ -783,6 +796,31 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('[role="menu"]').type('{esc}')
     cy.get('[aria-label="Text style"]').should('have.focus')
     cy.get('html').invoke('removeClass', 'dark')
+  })
+
+  it('keeps reading and editing actions large enough to tap on a narrow phone', () => {
+    cy.viewport(320, 700)
+    const note = {
+      id: 'touch-target-note', title: 'Touch target note', description: '<p>Content</p>', tags: [],
+      created_at: '2026-10-28T00:00:00Z', updated_at: '2026-10-28T00:00:00Z', user_id: 'test-user',
+    }
+    const controller = createMockController({ selectedNote: note })
+    cy.mount(<SupabaseTestProvider supabase={mockSupabase}><NotesShell controller={controller} /></SupabaseTestProvider>)
+    cy.get('[data-cy="note-back-button"], [data-cy="note-find-button"], [data-cy="note-edit-button"], [data-cy="note-copy-button"], [data-cy="note-delete-button"], [data-cy="note-more-button"]')
+      .should('have.length', 6).each(($button) => {
+        const rect = $button[0].getBoundingClientRect()
+        expect(rect.width, 'reading action width').to.be.at.least(44)
+        expect(rect.height, 'reading action height').to.be.at.least(44)
+        expect(rect.right, 'reading action is within viewport').to.be.at.most(320)
+      })
+    mountLongEditor()
+    cy.get('[data-cy="note-back-button"], [data-cy="note-find-button"], [data-cy="note-read-button"], [data-cy="note-copy-button"], [data-cy="note-save-button"], [data-cy="note-more-button"]')
+      .should('have.length', 5).each(($button) => {
+        const rect = $button[0].getBoundingClientRect()
+        expect(rect.width, 'editing action width').to.be.at.least(44)
+        expect(rect.height, 'editing action height').to.be.at.least(44)
+        expect(rect.right, 'editing action is within viewport').to.be.at.most(320)
+      })
   })
 
   it('shows back button in NoteView on mobile', () => {

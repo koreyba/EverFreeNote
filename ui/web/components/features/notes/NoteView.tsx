@@ -2,12 +2,13 @@
 /* eslint no-unused-vars: "off", "@typescript-eslint/no-unused-vars": "error" -- Use the TypeScript-aware rule for callback declarations. */
 
 import * as React from "react"
-import { PencilSimple as Edit2, Trash as Trash2, CaretLeft as ChevronLeft, Copy, Check } from "@phosphor-icons/react"
+import { PencilSimple as Edit2, Trash as Trash2, CaretLeft as ChevronLeft, Copy, Check, MagnifyingGlass } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
 import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
 import { PullToRefresh } from "@/components/PullToRefresh"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
+import { NoteFindBar } from "@/components/features/notes/NoteFindBar"
 import { SanitizationService } from "@core/services/sanitizer"
 import { NoteClipboardService } from "@core/services/noteClipboard"
 import { useCopyNote } from "@ui/web/hooks/useCopyNote"
@@ -62,6 +63,9 @@ export const NoteView = React.memo(function NoteView({
   const { copied, copyNote } = useCopyNote()
   const isBodyEmpty = React.useMemo(() => NoteClipboardService.isBodyEmpty(bodyHtml), [bodyHtml])
   const contentRef = React.useRef<HTMLDivElement | null>(null)
+  const titleRef = React.useRef<HTMLHeadingElement | null>(null)
+  const bodyRef = React.useRef<HTMLDivElement | null>(null)
+  const [findOpen, setFindOpen] = React.useState(false)
   const initialScrollTopRef = React.useRef(initialScrollTop)
   // Reading mode has no synchronous capture path, so the latest scroll position
   // is flushed when this view unmounts (tab switch, edit, close).
@@ -103,7 +107,7 @@ export const NoteView = React.memo(function NoteView({
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9 shrink-0 rounded-full shadow-sm md:hidden"
+              className="h-11 w-11 shrink-0 rounded-full shadow-sm md:hidden"
               onClick={onBack}
               data-cy="note-back-button"
               aria-label="Back"
@@ -116,6 +120,10 @@ export const NoteView = React.memo(function NoteView({
           <h2 className="sr-only truncate text-xs font-bold uppercase tracking-wider text-muted-foreground md:not-sr-only">Reading</h2>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0 rounded-full shadow-sm md:hidden"
+            data-cy="note-find-button" aria-label="Find in note" aria-expanded={findOpen} onClick={() => setFindOpen((open) => !open)}>
+            <MagnifyingGlass className="h-4 w-4" />
+          </Button>
           {/* Icon-only below md, matching the editing header: the label row
               otherwise overflows the header on a phone. */}
           <Button
@@ -124,7 +132,7 @@ export const NoteView = React.memo(function NoteView({
             size="sm"
             data-cy="note-edit-button"
             aria-label="Edit"
-            className="rounded-full shadow-sm"
+            className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
           >
             <Edit2 className="w-3.5 h-3.5 md:mr-1.5" />
             <span className="hidden md:inline">Edit</span>
@@ -136,7 +144,7 @@ export const NoteView = React.memo(function NoteView({
             aria-label="Copy note"
             disabled={isBodyEmpty}
             onClick={() => copyNote(bodyHtml)}
-            className="rounded-full shadow-sm"
+            className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
           >
             {copied ? (
               <Check className="w-3.5 h-3.5 md:mr-1.5 text-emerald-600" />
@@ -151,7 +159,7 @@ export const NoteView = React.memo(function NoteView({
             size="sm"
             data-cy="note-delete-button"
             aria-label="Delete note"
-            className="rounded-full text-destructive dark:text-red-400 hover:text-destructive dark:hover:text-red-300 hover:bg-destructive/10 dark:hover:bg-red-950/30 border-destructive/25 dark:border-red-900/50 hover:border-destructive/30 shadow-sm"
+            className="h-11 min-w-11 rounded-full px-0 text-destructive dark:text-red-400 hover:text-destructive dark:hover:text-red-300 hover:bg-destructive/10 dark:hover:bg-red-950/30 border-destructive/25 dark:border-red-900/50 hover:border-destructive/30 shadow-sm md:h-8 md:min-w-0 md:px-3"
           >
             <Trash2 className="w-3.5 h-3.5 md:mr-1.5" />
             <span className="hidden md:inline" aria-hidden="true">Delete</span>
@@ -165,6 +173,12 @@ export const NoteView = React.memo(function NoteView({
         </div>
       </div>
 
+      {findOpen && (
+        <div className="absolute inset-x-0 top-[68px] z-20">
+          <NoteFindBar key={note.id} scrollRef={contentRef} titleRef={titleRef} bodyRef={bodyRef} onClose={() => setFindOpen(false)} />
+        </div>
+      )}
+
       {/* Note Content */}
       <PullToRefresh onRefresh={onRefresh} indicatorClassName="top-16">
         <div
@@ -173,11 +187,11 @@ export const NoteView = React.memo(function NoteView({
           // bar, and a native scrollbar runs the full height of the pane, so it
           // shows up alongside that bar. Reading and editing hide it the same
           // way, otherwise only one of the two modes has a stray edge line.
-          className="scrollbar-none min-h-0 flex-1 overflow-y-auto px-6 pt-24 pb-10 bg-card"
+          className={`scrollbar-none relative min-h-0 flex-1 overflow-y-auto px-6 pb-10 bg-card ${findOpen ? "pt-36" : "pt-24"}`}
           onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
         >
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-6 leading-tight">
+            <h1 ref={titleRef} className="text-4xl font-extrabold tracking-tight text-foreground mb-6 leading-tight">
               {note.title}
             </h1>
 
@@ -198,6 +212,7 @@ export const NoteView = React.memo(function NoteView({
             )}
 
             <div
+              ref={bodyRef}
               className={NOTE_CONTENT_CLASS}
               dangerouslySetInnerHTML={{ __html: sanitizedContent }}
             />

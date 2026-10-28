@@ -410,6 +410,31 @@ describe('useNoteAppController additional observable behavior', () => {
     expect(result.current.tabs).toHaveLength(MAX_NOTE_WORKSPACE_TABS)
   })
 
+  it.each(['/?view=notes', '/?search=open'])(
+    'opens the requested mobile destination while preserving a restored draft: %s', async (url) => {
+      const previousWidth = window.innerWidth
+      const previousUrl = `${window.location.pathname}${window.location.search}`
+      try {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
+        window.history.replaceState({}, '', url)
+        const note = makeNote()
+        const state = createNoteWorkspaceState(() => 'draft-tab', 'user-1')
+        const draft = updateWorkspaceTab(state, state.activeTabId, {
+          note, noteId: note.id, mode: 'editing', saveState: 'dirty',
+          draft: { title: 'Unfinished draft', description: '<p>Keep this text</p>', tags: '' },
+        })
+        window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(draft))
+        const { result } = setup()
+        await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+        expect(result.current.notePaneVisible).toBe(false)
+        expect(result.current.activeTab.draft.description).toBe('<p>Keep this text</p>')
+      } finally {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth })
+        window.history.replaceState({}, '', previousUrl)
+      }
+    },
+  )
+
   it('selects the remote note after flushing, but exits editing when selecting the already selected note', async () => {
     const current = makeNote({ id: 'current' })
     const remote = makeNote({ id: 'remote', title: 'Remote' })
@@ -546,6 +571,21 @@ describe('useNoteAppController additional observable behavior', () => {
     expect(mockGetNoteStatus).not.toHaveBeenCalled()
     expect(mockHandleSelectNote).not.toHaveBeenCalled()
     expect(result.current.activeTab.noteId).toBeNull()
+  })
+
+  it('keeps the editor visible when saving fails during a mobile navigation', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => result.current.handleCreateNote())
+    const flushPendingSave = jest.fn().mockRejectedValue(new Error('autosave failed'))
+    act(() => result.current.registerNoteEditorRef({ current: { flushPendingSave } } as never))
+
+    let hidden = true
+    await act(async () => { hidden = await result.current.hideNotePane() })
+
+    expect(hidden).toBe(false)
+    expect(result.current.notePaneVisible).toBe(true)
+    expect(result.current.isEditing).toBe(true)
   })
 
   it('resets every workspace tab that shows a deleted note', async () => {

@@ -53,3 +53,15 @@ description: Technical implementation notes, patterns, and code guidelines for m
 - Font size uses a compact size picker with the same point sizes as the web editor.
 - Link editing and image insertion are handled through inline URL forms in the toolbar overlay.
 - The React Native toolbar uses explicit bridge commands for `toggleHeadingLevel`, `clearFormatting`, `setLinkUrl`, and `insertImageUrl`; other actions still fall through the generic TipTap chain command lookup in the WebView editor.
+
+## Mobile web usability — 2026-10-28
+
+- `Sidebar` uses a compact phone header, exposes Select, and keeps the desktop search and account footer at desktop widths. Sign-out remains in Settings.
+- `NotesShell` hides the note pane through `hideNotePane` before mobile navigation, retaining its tab and stopping on a failed save. The mobile navigation highlights Search when its panel is visible.
+- Explicit Settings navigation discards the Settings return snapshot; mobile workspace hydration respects a requested Notes or Search destination. The Settings Back action still restores the saved context.
+- Settings waits for both authentication sources before redirecting and scrolls the selected mobile tab into view on load and resize.
+- A tag chosen from the mobile tag browser clears the old query and explicitly opens its results, including when the same tag is selected again.
+- `NoteCard` consumes the compatibility click after a long press, including on the title. `useLongPress` preserves that signal through the selection-mode rerender and resets it on the next gesture.
+- Phone note actions use 44×44 px targets; desktop action sizes remain unchanged.
+- `SwipeableNoteRow` reveals the existing single-note delete confirmation after a left swipe. A list allows one open swipe action; vertical gestures and selection mode do not reveal it.
+- `NoteFindBar` searches title and body in reading and editing views, including matches across inline formatting. The expanded editor exposes Find in its toolbar and searches the visible body. It uses browser text highlights with a non-mutating overlay fallback, and refreshes matches when the draft changes.
