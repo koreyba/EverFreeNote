@@ -44,9 +44,9 @@ type NoteRow = {
   updated_at: string | null
 }
 
-/** Removes characters that would break PostgREST's quoted `or()` filter values. */
-export function escapeIlikeValue(value: string): string {
-  return value.replaceAll('"', '').replaceAll('\\', '').trim()
+/** Escape regex metacharacters, then quote the result for PostgREST's or() parser. */
+export function escapeSearchValue(value: string): string {
+  return value.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replaceAll('\\', '\\\\').replaceAll('"', '\\"')
 }
 
 export function toNoteRecord(row: NoteRow): NoteRecord {
@@ -95,9 +95,10 @@ export function createSupabaseNotebookRepository(supabase: SupabaseClient, userI
         request = tagMatch === 'any' ? request.overlaps('tags', tagFilter) : request.contains('tags', tagFilter)
       }
 
-      const needle = query ? escapeIlikeValue(query) : ''
+      const needle = query ? escapeSearchValue(query) : ''
       if (needle) {
-        request = request.or(`title.ilike."%${needle}%",description.ilike."%${needle}%"`)
+        // imatch supports literal `*`, which PostgREST treats as a wildcard in ilike.
+        request = request.or(`title.imatch."${needle}",description.imatch."${needle}"`)
       }
 
       const { data, error, count } = await request

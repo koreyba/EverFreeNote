@@ -103,7 +103,7 @@ The consent page surfaces Supabase error messages verbatim in a message card and
 ## Performance Considerations
 
 - Two Supabase round-trips per tool call (token check + query). `auth.getUser` could later be replaced by local JWT verification against the project's JWKS to save one call.
-- `list_notes` is capped at 100 rows and uses `notes_user_id_idx` / `notes_updated_at_idx`; the ILIKE filter on `description` is a sequential scan within the user's rows, acceptable for personal notebooks.
+- `list_notes` is capped at 100 rows and uses `notes_user_id_idx` / `notes_updated_at_idx`; literal case-insensitive substring matching on `description` scans the user's rows, acceptable for personal notebooks. PostgREST's regex operator is used with all regex metacharacters escaped, including `*`, which PostgREST treats as a wildcard in ILIKE filters.
 - Metadata responses carry `Cache-Control: public, max-age=300`.
 
 ## Security Notes

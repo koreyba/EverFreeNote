@@ -4,7 +4,7 @@ import {
   NOTE_COLUMNS,
   TAG_SCAN_NOTE_LIMIT,
   createSupabaseNotebookRepository,
-  escapeIlikeValue,
+  escapeSearchValue,
   toNoteRecord,
 } from '@core/mcp/supabaseNotebookRepository'
 
@@ -67,8 +67,8 @@ const record = {
 
 describe('core/mcp/supabaseNotebookRepository', () => {
   describe('helpers', () => {
-    it('escapes characters that break PostgREST quoted values', () => {
-      expect(escapeIlikeValue(' a"b\\c ')).toBe('abc')
+    it('preserves literal text through regex and PostgREST quoting', () => {
+      expect(escapeSearchValue(String.raw` a"b\c%_.* `)).toBe(String.raw`a\"b\\\\c%_\\.\\*`)
     })
 
     it('normalises nullable columns into a NoteRecord', () => {
@@ -103,16 +103,16 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       await repository.listNotes({ query: ' foo"bar ', tags: ['work'], tagMatch: 'all', limit: 5, offset: 0 })
 
       expect(builder.contains).toHaveBeenCalledWith('tags', ['work'])
-      expect(builder.or).toHaveBeenCalledWith('title.ilike."%foobar%",description.ilike."%foobar%"')
+      expect(builder.or).toHaveBeenCalledWith(String.raw`title.imatch."foo\"bar",description.imatch."foo\"bar"`)
     })
 
-    it('skips the text filter when the query is blank after escaping', async () => {
+    it('keeps a text filter consisting only of a quote', async () => {
       const { supabase, builder } = createClient({ data: [], count: 0 })
       const repository = createSupabaseNotebookRepository(supabase, userId)
 
       await repository.listNotes({ query: '"', tags: [], tagMatch: 'all', limit: 5, offset: 0 })
 
-      expect(builder.or).not.toHaveBeenCalled()
+      expect(builder.or).toHaveBeenCalledWith(String.raw`title.imatch."\"",description.imatch."\""`)
     })
 
     it('falls back to offset + rows when the count is missing', async () => {

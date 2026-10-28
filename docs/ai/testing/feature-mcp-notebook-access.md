@@ -34,7 +34,7 @@ description: Unit, protocol-level and component coverage for the MCP server, OAu
 - [x] `getNote`: user-scoped lookup, null, errors
 - [x] `createNote`: insert payload with `user_id`, errors
 - [x] `updateNote`: partial patch, description mapping, zero rows → null, empty patch → read, errors
-- [x] Helpers: `escapeIlikeValue`, `toNoteRecord` normalisation of nullable columns
+- [x] Helpers: `escapeSearchValue`, `toNoteRecord` normalisation of nullable columns; local PostgREST coverage verifies literal `%`, `_`, `*`, quotes, backslashes and filter/regex syntax.
 
 ### `core/tests/unit/core-mcp-notebookServer.test.ts` (protocol-level)
 - [x] Server info, instructions, four tools with annotations and output schemas

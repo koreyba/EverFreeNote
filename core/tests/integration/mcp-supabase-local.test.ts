@@ -102,4 +102,27 @@ runLocal('MCP repository against local PostgREST and RLS', () => {
       expect(vocabulary.truncated).toBe(inserted > 5000)
     }
   }, 60000)
+
+  it('searches wildcard and filter syntax as literal text without broadening the query', async () => {
+    const repo = createSupabaseNotebookRepository(client, userId)
+    const cases = [
+      { query: '100%', match: '100% guaranteed', decoy: '100x guaranteed' },
+      { query: 'under_score', match: 'under_score here', decoy: 'underXscore here' },
+      { query: 'star*token', match: 'star*token here', decoy: 'starXtoken here' },
+      { query: '[a-z]?(x)+', match: '[a-z]?(x)+ here', decoy: 'aax here' },
+      { query: 'a"b', match: 'a"b quoted', decoy: 'ab quoted' },
+      { query: 'back\\slash', match: 'back\\slash here', decoy: 'backslash here' },
+      { query: '"),title.ilike.*', match: '"),title.ilike.* literal', decoy: 'unrelated title' },
+    ]
+    for (const entry of cases) {
+      await repo.createNote({ title: entry.match, contentHtml: '', tags: [] })
+      await repo.createNote({ title: entry.decoy, contentHtml: '', tags: [] })
+    }
+    for (const entry of cases) {
+      const found = await repo.listNotes({ query: entry.query, tags: [], tagMatch: 'all', limit: 100, offset: 0 })
+      expect(found.notes.map((note) => note.title)).toContain(entry.match)
+      expect(found.notes.map((note) => note.title)).not.toContain(entry.decoy)
+      expect(found.total).toBe(1)
+    }
+  }, 30000)
 })

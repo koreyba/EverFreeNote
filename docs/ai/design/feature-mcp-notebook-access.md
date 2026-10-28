@@ -91,7 +91,7 @@ Token validation: `supabase.auth.getUser(token)` on a client created with the an
 
 | Tool | Input | Output (`structuredContent`) | Annotations |
 |------|-------|------------------------------|-------------|
-| `list_notes` | `query?` (substring match on title/body, ILIKE), `tag?`, `limit` 1–100 (default 20), `offset` ≥ 0 | `{ notes: NoteSummary[], total, has_more }` | read-only, idempotent |
+| `list_notes` | `query?` (literal case-insensitive substring match on title/body), `tag?`, `limit` 1–100 (default 20), `offset` ≥ 0 | `{ notes: NoteSummary[], total, has_more }` | read-only, idempotent |
 | `get_note` | `id` (UUID) | `NoteDetail` | read-only, idempotent |
 | `create_note` | `title` (1–1000 chars), `content_html?` (default `""`), `tags?` (≤ 50, trimmed, de-duplicated) | `NoteDetail` | non-destructive |
 | `update_note` | `id`, at least one of `title`, `content_html`, `tags` | `NoteDetail` | destructive (replaces fields), idempotent |
