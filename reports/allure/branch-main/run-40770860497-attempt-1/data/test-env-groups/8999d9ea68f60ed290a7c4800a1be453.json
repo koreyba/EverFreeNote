@@ -1,0 +1,1 @@
+{"id":"8999d9ea68f60ed290a7c4800a1be453","fullName":"everfreenote:cypress/component/ui/web/hooks/useBulkDeleteConfirm.cy.tsx#useBulkDeleteConfirm always closes dialog after confirm callback resolves","name":"always closes dialog after confirm callback resolves","status":"passed","testResultsByEnv":{"default":"0c1381f6c4b46d75e47218318c8c0f8d"}}
