@@ -26,6 +26,7 @@ export const NOTE_COLUMNS = 'id, title, description, tags, created_at, updated_a
  * notebook from turning a tool call into a full table read.
  */
 export const TAG_SCAN_NOTE_LIMIT = 5000
+const TAG_SCAN_PAGE_SIZE = 1000
 
 /** Writable columns of `public.notes`. The note body lives in `description`. */
 type NoteColumns = {
@@ -150,21 +151,39 @@ export function createSupabaseNotebookRepository(supabase: SupabaseClient, userI
     },
 
     async listTags(): Promise<TagVocabulary> {
-      const { data, error } = await notes()
-        .select('tags')
-        .eq('user_id', userId)
-        .not('tags', 'eq', '{}')
-        .limit(TAG_SCAN_NOTE_LIMIT)
+      const rows: { tags: unknown }[] = []
+      let count: number | null = null
+      while (rows.length < TAG_SCAN_NOTE_LIMIT) {
+        const start = rows.length
+        const size = Math.min(TAG_SCAN_PAGE_SIZE, TAG_SCAN_NOTE_LIMIT - start)
+        const result = await notes()
+          .select('tags', { count: 'exact' })
+          .eq('user_id', userId)
+          .not('tags', 'eq', '{}')
+          .order('id', { ascending: true })
+          .range(start, start + size - 1)
+        if (result.error) throw result.error
+        const page = (result.data ?? []) as { tags: unknown }[]
+        rows.push(...page)
+        count = result.count
+        if (page.length === 0 || (count !== null && rows.length >= count) || (count === null && page.length < size)) break
+      }
 
-      if (error) throw error
-
-      const rows = (data ?? []) as { tags: unknown }[]
+      let truncated = count !== null && count > rows.length
+      // A missing count requires a one-row probe to distinguish exactly 5000
+      // from a truncated scan. Real PostgREST normally supplies the count.
+      if (count === null && rows.length === TAG_SCAN_NOTE_LIMIT) {
+        const probe = await notes().select('tags').eq('user_id', userId).not('tags', 'eq', '{}')
+          .order('id', { ascending: true }).range(TAG_SCAN_NOTE_LIMIT, TAG_SCAN_NOTE_LIMIT)
+        if (probe.error) throw probe.error
+        truncated = (probe.data?.length ?? 0) > 0
+      }
       const tagLists = rows.map((row) => (Array.isArray(row.tags) ? row.tags.filter((tag): tag is string => typeof tag === 'string') : []))
 
       return {
         tags: aggregateTags(tagLists),
         total: rows.length,
-        truncated: rows.length >= TAG_SCAN_NOTE_LIMIT,
+        truncated,
       }
     },
 

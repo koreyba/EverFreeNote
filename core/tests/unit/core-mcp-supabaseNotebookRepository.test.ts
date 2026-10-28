@@ -275,6 +275,19 @@ describe('core/mcp/supabaseNotebookRepository', () => {
   })
 
   describe('listTags', () => {
+    it.each([999, 1000, 1001, 5000, 5001])('scans %i tagged notes through the server row limit', async (total) => {
+      const rows = Array.from({ length: total }, () => ({ tags: ['x'] }))
+      const { supabase, builder } = createClient({ data: rows })
+      builder.then = (resolve: (value: QueryResult) => unknown) => {
+        const [start = 0, requestedEnd = 999] = builder.range.mock.lastCall ?? []
+        const page = rows.slice(start, Math.min(requestedEnd + 1, start + 1000))
+        return Promise.resolve({ data: page, error: null, count: rows.length }).then(resolve)
+      }
+      const result = await createSupabaseNotebookRepository(supabase, userId).listTags()
+      const scanned = Math.min(total, TAG_SCAN_NOTE_LIMIT)
+      expect(result).toEqual({ tags: [{ name: 'x', count: scanned }], total: scanned, truncated: total > TAG_SCAN_NOTE_LIMIT })
+    })
+
     it('reads only the tags column for the user and aggregates it', async () => {
       const { supabase, from, builder } = createClient({
         data: [{ tags: ['work', 'home'] }, { tags: ['work'] }, { tags: [] }],
@@ -284,9 +297,10 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       const result = await repository.listTags()
 
       expect(from).toHaveBeenCalledWith('notes')
-      expect(builder.select).toHaveBeenCalledWith('tags')
+      expect(builder.select).toHaveBeenCalledWith('tags', { count: 'exact' })
       expect(builder.eq).toHaveBeenCalledWith('user_id', userId)
-      expect(builder.limit).toHaveBeenCalledWith(TAG_SCAN_NOTE_LIMIT)
+      expect(builder.range).toHaveBeenCalledWith(0, 999)
+      expect(builder.order).toHaveBeenCalledWith('id', { ascending: true })
       expect(result).toEqual({
         tags: [
           { name: 'work', count: 2 },
@@ -302,14 +316,6 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       const repository = createSupabaseNotebookRepository(supabase, userId)
 
       await expect(repository.listTags()).resolves.toMatchObject({ tags: [{ name: 'ok', count: 1 }] })
-    })
-
-    it('flags a truncated scan when the cap is reached', async () => {
-      const rows = Array.from({ length: TAG_SCAN_NOTE_LIMIT }, () => ({ tags: ['x'] }))
-      const { supabase } = createClient({ data: rows })
-      const repository = createSupabaseNotebookRepository(supabase, userId)
-
-      await expect(repository.listTags()).resolves.toMatchObject({ truncated: true })
     })
 
     it('handles a null payload and rethrows database errors', async () => {

@@ -40,7 +40,7 @@ The `SemanticSearch` port mirrors the existing `NotebookRepository` pattern: `co
 
 ### `list_tags`
 
-There is no RPC for the tag vocabulary, so the repository selects only the `tags` column for the user's notes (capped at `TAG_SCAN_NOTE_LIMIT = 5000`) and aggregates in memory. Counting is case-insensitive; the spelling reported is the first one seen, which matches `getTagsWithCounts` in the web app. Sorted by count descending, then by name. `truncated` tells the agent the cap was hit so it does not present the list as exhaustive.
+There is no RPC for the tag vocabulary, so the repository pages over the `tags` column ordered by note id and aggregates up to `TAG_SCAN_NOTE_LIMIT = 5000` notes in memory. An exact count distinguishes the cap from a genuinely truncated result. Counting is case-insensitive; the spelling reported is the first one seen. Results are sorted by count descending, then by name. Paging does not provide a snapshot if the notebook changes during the scan.
 
 ### `list_notes` tag filter
 

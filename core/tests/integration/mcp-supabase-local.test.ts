@@ -83,4 +83,23 @@ runLocal('MCP repository against local PostgREST and RLS', () => {
     const empty = await repo.createNote({ title: 'empty tags', contentHtml: '', tags: [] })
     expect((await repo.editNoteTags(empty.id, { add: ['added'], remove: [] }))?.tags).toEqual(['added'])
   }, 30000)
+
+  it('scans all pages under the 1000-row server limit and reports the 5000-note boundary accurately', async () => {
+    const repo = createSupabaseNotebookRepository(other, otherId)
+    let inserted = 0
+    for (const size of [999, 1, 1, 3999, 1]) {
+      const rows = Array.from({ length: size }, (_, index) => ({
+        user_id: otherId,
+        title: `pagination ${inserted + index}`,
+        tags: ['pagination'],
+      }))
+      const result = await other.from('notes').insert(rows)
+      if (result.error) throw result.error
+      inserted += size
+      const vocabulary = await repo.listTags()
+      expect(vocabulary.total).toBe(Math.min(inserted, 5000))
+      expect(vocabulary.tags).toEqual([{ name: 'pagination', count: Math.min(inserted, 5000) }])
+      expect(vocabulary.truncated).toBe(inserted > 5000)
+    }
+  }, 60000)
 })

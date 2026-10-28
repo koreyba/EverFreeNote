@@ -48,7 +48,7 @@ export type TagVocabulary = {
   tags: { name: string; count: number }[]
   /** Notes carrying at least one tag that were scanned. */
   total: number
-  /** True when the scan hit its cap, so the vocabulary may be incomplete. */
+  /** True when some tagged notes were not scanned, so the vocabulary may be incomplete. */
   truncated: boolean
 }
 
