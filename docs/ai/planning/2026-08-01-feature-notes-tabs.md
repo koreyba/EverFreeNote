@@ -100,3 +100,12 @@ These are engineering estimates only; autosave/editor lifecycle and native navig
   Codacy findings (optional chains, `void` operator) resolved; Jest/ESLint configs now ignore in-repo agent worktrees under `.claude/worktrees/`.
 - Manual preview verification (2026-08-20) found a release blocker the suites missed: wiring the live tab draft into the editor's `initial*` props made autosave reconciliation treat local typing as an external refresh and cancel every debounced autosave (new and existing notes; zero Supabase writes until manual Save). Fixed by freezing the editor's session draft in `NotesShell` per tab/note/mode; regression-guarded by `NotesShellAutoSaveEcho.cy.tsx`, which fails without the fix. Existing exit-save specs passed because their fake controller used a no-op `handleDraftChange` and never echoed drafts.
 - Native mobile (M4) remains a separately scoped follow-up: expose the shared reducer through the native store/adapter, route `useOpenNote` and note routes through it, and add a native session UI. Desktop Playwright E2E flows are a follow-up in the `koreyba/EverFreeNote-e2e` repository.
+
+### Desktop split view follow-up (2026-10-28)
+
+- Reuse tab identities and the existing flush boundary; expose two panes with a
+  single active editor and a read-only secondary note.
+- Preserve both tabs on exit and on desktop/mobile resizing; block navigation
+  when the active draft cannot be saved.
+- Verify separate writes, duplicate selection, error and recovery, resizing,
+  accessible controls, and a local visual preview before integration.

@@ -96,6 +96,7 @@ export function useNoteAppController() {
     activateTab,
     openNote,
     updateTab,
+    updateTabForNote,
     closeTab,
     resetTabsForNotes,
     findTabByNoteId,
@@ -140,9 +141,15 @@ export function useNoteAppController() {
 
   // -- Editor ref (cross-cutting: bridges UI editor with save/navigation logic) --
   const noteEditorRef = useRef<React.RefObject<NoteEditorHandle | null> | null>(null)
+  const workspaceViewCaptureRef = useRef<(() => void) | null>(null)
+  const addingTabRef = useRef(false)
 
   const registerNoteEditorRef = useCallback((ref: React.RefObject<NoteEditorHandle | null>) => {
     noteEditorRef.current = ref
+  }, [])
+
+  const registerWorkspaceViewCapture = useCallback((capture: (() => void) | null) => {
+    workspaceViewCaptureRef.current = capture
   }, [])
 
   const flushPendingEditorSave = useCallback(async () => {
@@ -153,6 +160,9 @@ export function useNoteAppController() {
   }, [isEditing])
 
   const captureActiveTabSession = useCallback(() => {
+    // Reading panes debounce their scroll persistence. Capture their latest
+    // positions before a transition mounts a different presenter for a tab.
+    workspaceViewCaptureRef.current?.()
     const session = noteEditorRef.current?.current?.captureSession?.()
     if (!session) return
 
@@ -425,6 +435,10 @@ export function useNoteAppController() {
     updateTab(activeTabId, { view })
   }, [activeTabId, updateTab])
 
+  const handleTabViewSessionChange = useCallback((tabId: string, noteId: string | null, view: Partial<NoteViewSession>) => {
+    updateTabForNote(tabId, noteId, { view })
+  }, [updateTabForNote])
+
   const handleAutoSaveWithWorkspace = useCallback(async (data: {
     noteId?: string
     title: string
@@ -657,26 +671,33 @@ export function useNoteAppController() {
   ])
 
   const handleAddTab = useCallback(async () => {
-    if (!workspaceHydrated || !canAddTab) return
-    if (!(await flushAndCaptureActiveTab())) return
-    addTab()
-    // On mobile, an empty tab must return to the note list so the user can
-    // choose which note fills the new active slot. Desktop keeps its editor
-    // pane visible through the responsive `md:flex` layout rule.
-    setNotePaneVisible(false)
+    if (!workspaceHydrated || !canAddTab || addingTabRef.current) return null
+    addingTabRef.current = true
+    try {
+      if (!(await flushAndCaptureActiveTab())) return null
+      const tabId = addTab()
+      // On mobile, an empty tab must return to the note list so the user can
+      // choose which note fills the new active slot. Desktop keeps its editor
+      // pane visible through the responsive `md:flex` layout rule.
+      setNotePaneVisible(false)
+      return tabId
+    } finally {
+      addingTabRef.current = false
+    }
   }, [addTab, canAddTab, flushAndCaptureActiveTab, workspaceHydrated])
 
   const handleActivateTab = useCallback(async (tabId: string) => {
     const targetTab = tabs.find((tab) => tab.id === tabId)
-    if (!targetTab) return
+    if (!targetTab) return false
     if (tabId === activeTabId) {
       setNotePaneVisible(Boolean(targetTab.note || targetTab.mode === 'editing'))
-      return
+      return true
     }
-    if (!(await flushAndCaptureActiveTab())) return
+    if (!(await flushAndCaptureActiveTab())) return false
     activateTab(tabId)
     setNotePaneVisible(Boolean(targetTab.note || targetTab.mode === 'editing'))
     setLastSavedAt(null)
+    return true
   }, [activateTab, activeTabId, flushAndCaptureActiveTab, setLastSavedAt, tabs])
 
   /**
@@ -734,7 +755,6 @@ export function useNoteAppController() {
     const params = new URLSearchParams(window.location.search)
     const mobileDestination = window.innerWidth < MOBILE_BREAKPOINT &&
       (params.get('view') === 'notes' || params.get('search') === 'open')
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- restore pane visibility from sessionStorage
     setNotePaneVisible(!mobileDestination && Boolean(activeTab.note || activeTab.mode === 'editing'))
   }, [activeTab, workspaceHydrated])
 
@@ -755,8 +775,8 @@ export function useNoteAppController() {
     aiPaginationControlsRef.current.loadMoreAI()
   }, [])
 
-  const captureSettingsReturnState = useCallback(async (): Promise<NotesUiStateSnapshot> => {
-    await flushAndCaptureActiveTab()
+  const captureSettingsReturnState = useCallback(async (): Promise<NotesUiStateSnapshot | null> => {
+    if (!(await flushAndCaptureActiveTab())) return null
     const selectedNoteForSnapshot = selectedNoteRef.current
 
     return {
@@ -879,7 +899,6 @@ export function useNoteAppController() {
   useEffect(() => {
     // Reconcile the server-rendered notes fallback with the browser URL on mount.
     // This state update is intentional: the route may already be /?view=tags after hydration.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- required for SSR URL reconciliation
     syncNavigationFromUrl()
     window.addEventListener('popstate', syncNavigationFromUrl)
     return () => window.removeEventListener('popstate', syncNavigationFromUrl)
@@ -978,6 +997,7 @@ export function useNoteAppController() {
 
   return {
     registerNoteEditorRef,
+    registerWorkspaceViewCapture,
     refreshNotes,
     refreshSelectedNote,
     // State
@@ -1054,6 +1074,7 @@ export function useNoteAppController() {
     handleAutoSave: handleAutoSaveWithWorkspace,
     handleDraftChange,
     handleViewSessionChange,
+    handleTabViewSessionChange,
     handleDeleteNote,
     confirmDeleteNote: confirmDeleteNoteWithWorkspace,
     handleRemoveTagFromNote,

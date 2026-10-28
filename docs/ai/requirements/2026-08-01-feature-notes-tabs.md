@@ -87,3 +87,15 @@ The following review decisions resolve the v1 ambiguities without changing the r
 ## Requirements Review Resolution (2026-08-01)
 
 All template sections are complete. The supplied concept provides the problem, target users, workflows, edge cases, mobile behavior, reload boundary, and explicit non-goals. The five decisions above are implementation defaults for unspecified details; none require additional backend or product clarification before Phase 4.
+
+## Desktop split view follow-up (2026-10-28)
+
+The earlier split-view non-goal applied to the first tab release. Desktop users
+can now display two different open notes side by side. A split starts with the
+active tab on the left and another open tab on the right, or creates an empty
+right tab for choosing a note. One pane is active for editing and the other is
+independently scrollable for reading. Switching or creating a tab must first
+save the current editor; on failure, the current draft remains visible and the
+transition is blocked. Selecting an already-open note activates its existing
+tab. Exiting split does not close either tab. On mobile or when the available
+workspace is too narrow, only the active pane is shown until space returns.

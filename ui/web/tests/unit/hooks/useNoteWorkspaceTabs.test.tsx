@@ -68,4 +68,16 @@ describe('useNoteWorkspaceTabs persistence warning', () => {
 
     expect(mockRead).toHaveBeenLastCalledWith({ userId: 'user-2' })
   })
+
+  it('rejects a stale view update after the tab changes note identity', () => {
+    const { result } = renderHook(() => useNoteWorkspaceTabs('user-1'))
+    const tabId = result.current.activeTabId
+    act(() => { result.current.updateTabForNote(tabId, null, { view: { scrollTop: 250 } }) })
+    expect(result.current.activeTab.view.scrollTop).toBe(250)
+    act(() => { result.current.updateTab(tabId, { noteId: 'new-note' }) })
+    act(() => { result.current.updateTabForNote(tabId, null, { view: { scrollTop: 800 } }) })
+    expect(result.current.activeTab.view.scrollTop).toBe(250)
+    act(() => { result.current.updateTabForNote(tabId, 'new-note', { view: { scrollTop: 420 } }) })
+    expect(result.current.activeTab.view.scrollTop).toBe(420)
+  })
 })

@@ -63,7 +63,11 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
   }, [hydrated, state])
 
   const addTab = useCallback(() => {
-    setState((current) => addWorkspaceTab(current))
+    // Allocate before the state update so callers can identify this exact tab
+    // even when other workspace actions are queued at the same time.
+    const tabId = createNoteWorkspaceState().activeTabId
+    setState((current) => addWorkspaceTab(current, () => tabId))
+    return tabId
   }, [])
 
   const activateTab = useCallback((tabId: string) => {
@@ -76,6 +80,13 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
 
   const updateTab = useCallback((tabId: string, patch: NoteWorkspaceTabPatch) => {
     setState((current) => updateWorkspaceTab(current, tabId, patch))
+  }, [])
+
+  const updateTabForNote = useCallback((tabId: string, noteId: string | null, patch: NoteWorkspaceTabPatch) => {
+    setState((current) => {
+      const tab = current.tabs.find((candidate) => candidate.id === tabId)
+      return tab && tab.noteId === noteId ? updateWorkspaceTab(current, tabId, patch) : current
+    })
   }, [])
 
   const closeTab = useCallback((tabId: string) => {
@@ -100,6 +111,7 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
     activateTab,
     openNote,
     updateTab,
+    updateTabForNote,
     closeTab,
     resetTabsForNotes,
     findTabByNoteId,

@@ -37,6 +37,7 @@ interface NoteViewProps {
   initialScrollTop?: number
   onRefresh?: (signal: AbortSignal) => Promise<void>
   onViewSessionChange?: (view: Partial<NoteViewSession>) => void
+  onViewScrollCapture?: (scrollTop: number) => void
 }
 
 export const NoteView = React.memo(function NoteView({
@@ -50,6 +51,7 @@ export const NoteView = React.memo(function NoteView({
   initialScrollTop = 0,
   onRefresh,
   onViewSessionChange,
+  onViewScrollCapture,
 }: NoteViewProps) {
   const bodyHtml = note.description || note.content || ''
 
@@ -190,7 +192,11 @@ export const NoteView = React.memo(function NoteView({
           // shows up alongside that bar. Reading and editing hide it the same
           // way, otherwise only one of the two modes has a stray edge line.
           className={`scrollbar-none relative min-h-0 flex-1 overflow-y-auto pb-10 pt-6 bg-card ${findOpen ? "md:pt-36" : "md:pt-24"}`}
-          onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
+          onScroll={(event) => {
+            const scrollTop = event.currentTarget.scrollTop
+            onViewScrollCapture?.(scrollTop)
+            debouncedViewNotify.schedule({ scrollTop })
+          }}
         >
           <div className="note-document-width">
             <h1 ref={titleRef} className="note-document-title mb-3">

@@ -281,9 +281,38 @@ transition captures the live editor synchronously first — a late flush would
 re-mark a saved tab as dirty. Reading scroll has no synchronous capture path,
 so its latest value is flushed on unmount instead.
 
-### Split View remains possible
+### Desktop split view (2026-10-28)
 
-The workspace is modeled as a list of independent tab sessions, while the controller exposes one active session today. A future split view can mount two active-session presenters without changing tab identity or persistence semantics.
+`NotesShell` presents two existing workspace tab IDs side by side. The active
+tab owns the sole editor/controller session; the other tab uses a sanitized,
+read-only, scrollable preview. Activating another pane goes through the same
+controller flush and capture boundary as the normal tab strip. This avoids two
+editor references and competing writes to the same note. Selecting an already
+open note retains the existing deduplication rule. A third selected tab
+replaces the currently active pane; closing either displayed tab leaves split.
+Exit keeps all tabs, and temporarily hiding a pane below 680px of workspace
+width does not change either tab. Split layout is transient and is not
+persisted across reload; the existing tab sessions still are.
+After keyboard or pointer activation, focus moves to the newly active pane;
+if saving fails, focus stays on the activation button.
+
+Reading scroll notifications remain debounced, but each visible reader also
+keeps its latest position in memory. The controller captures these positions
+before any tab transition; split exit and resize capture them as well. A
+delayed reading update is accepted only if both tab ID and note ID still
+match, so a previous note's scroll cannot overwrite a replacement note. New
+unsaved editors still use their existing synchronous editor session capture,
+including when their first save assigns an ID.
+
+```mermaid
+flowchart LR
+  list[Note list or tab strip] --> boundary[Capture and flush active editor]
+  boundary -->|success| tabs[Workspace tab sessions]
+  boundary -->|failure| active[Keep active draft and report error]
+  tabs --> active
+  tabs --> preview[Read-only pane]
+  preview -->|Activate| boundary
+```
 
 ## Non-Functional Requirements
 
@@ -312,6 +341,6 @@ The design covers every requirements goal and transition:
 | Reload and browser-tab isolation | versioned `sessionStorage` adapter with in-memory fallback |
 | Tags/Search/Settings/internal opens | one controller boundary and a mounted workspace hook |
 | Desktop/mobile views | separate presentation components consuming the same hook/model |
-| Future Split View | independent tab sessions with one active presenter today |
+| Split View follow-up | independent tab sessions, one active editor and one read-only presenter |
 
 The only intentionally deferred behavior is native-mobile persistence policy; native UI can reuse the model without changing web `sessionStorage` semantics. No design gap blocks implementation.

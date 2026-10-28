@@ -194,3 +194,23 @@ re-reads the workspace.
 - Verify switching does not mount more than one editor or trigger duplicate fetches.
 - Verify rapid scroll/input changes do not write storage on every event without throttling.
 - Verify long drafts remain responsive and storage failure does not block typing.
+
+### Desktop split view follow-up (2026-10-28)
+
+`DesktopSplitView.cy.tsx` uses synthetic notes and a mocked backend while
+mounting the real controller, editor, and offline storage. It exercises two
+side-by-side panes, deduplication, exit/close/third-tab behavior, separate
+writes, failed save and recovery, navigation blocking, desktop/mobile resize,
+editor instance continuity, long-note scrolling in both directions, note-ID
+replacement, and the first save of an initially unsaved note. The focused
+Allure run passed 13/13: `/tmp/everfreenote-split-browser-final-2/index.md`.
+The focused workspace/controller/reader unit run passed 64/64 at
+`/tmp/everfreenote-split-unit-focus/index.md`; the existing mobile layout
+component suite passed 39/39 at `/tmp/everfreenote-split-mobile-focus/index.md`.
+`npm run type-check` and `npm run eslint` passed as well.
+
+An isolated Docker preview on port 3106 connected to the local synthetic
+editor-preview database. Manual browser checks opened two sample notes,
+activated a pane using Enter, and preserved a long note's 1266px scroll when
+switching it from preview to reading. Final integration and independent QA
+must also validate the combined editor design; no production data is used.

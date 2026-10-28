@@ -310,12 +310,74 @@ describe('useNoteAppController additional observable behavior', () => {
   it('returns to the note list after creating a blank tab so the active slot can receive a note', async () => {
     const { result } = setup()
 
+    let createdId: string | null = null
     await act(async () => {
-      await result.current.addTab()
+      createdId = await result.current.addTab()
     })
 
+    expect(createdId).toBe(result.current.activeTabId)
     expect(result.current.activeTab.note).toBeNull()
     expect(result.current.notePaneVisible).toBe(false)
+  })
+
+  it('does not create or activate another tab when flushing the current editor fails', async () => {
+    const first = makeNote({ id: 'first', title: 'First' })
+    const second = makeNote({ id: 'second', title: 'Second' })
+    mockGetNoteStatus.mockImplementation((id: string) => Promise.resolve({
+      status: 'found', note: id === 'first' ? first : second,
+    }))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleSelectNote(first) })
+    const firstTabId = result.current.activeTabId
+    await act(async () => { await result.current.addTab() })
+    await act(async () => { await result.current.handleSelectNote(second) })
+    await act(async () => { await result.current.handleEditNote(second) })
+    const secondTabId = result.current.activeTabId
+    const draft = { title: 'Unsaved second', description: '<p>Keep this</p>', tags: '' }
+    const flushPendingSave = jest.fn().mockRejectedValue(new Error('Storage unavailable'))
+    const captureSession = jest.fn(() => ({ draft, view: { scrollTop: 15 } }))
+    act(() => result.current.registerNoteEditorRef({ current: { flushPendingSave, captureSession } } as never))
+
+    let addedId: string | null = 'not attempted'
+    await act(async () => { addedId = await result.current.addTab() })
+    expect(addedId).toBeNull()
+    let activated = true
+    await act(async () => { activated = await result.current.activateTab(firstTabId) })
+    expect(activated).toBe(false)
+    await act(async () => { await result.current.closeTab(secondTabId) })
+    const settingsSnapshot = await act(async () => result.current.captureSettingsReturnState())
+
+    expect(settingsSnapshot).toBeNull()
+    expect(result.current.activeTabId).toBe(secondTabId)
+    expect(result.current.tabs).toHaveLength(2)
+    expect(result.current.activeTab.draft).toEqual(draft)
+    expect(result.current.activeTab.view.scrollTop).toBe(15)
+    expect(flushPendingSave).toHaveBeenCalledTimes(4)
+  })
+
+  it('creates only one tab when add is requested twice during a pending save', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleCreateNote() })
+    let finishSave: () => void = () => undefined
+    const pendingSave = new Promise<void>((resolve) => { finishSave = resolve })
+    const flushPendingSave = jest.fn(() => pendingSave)
+    act(() => result.current.registerNoteEditorRef({ current: { flushPendingSave } } as never))
+
+    let firstId: string | null = null
+    let secondId: string | null = 'not attempted'
+    await act(async () => {
+      const first = result.current.addTab()
+      secondId = await result.current.addTab()
+      finishSave()
+      firstId = await first
+    })
+
+    expect(firstId).toBe(result.current.activeTabId)
+    expect(secondId).toBeNull()
+    expect(result.current.tabs).toHaveLength(2)
+    expect(flushPendingSave).toHaveBeenCalledTimes(1)
   })
 
   it('returns to the note list when closing the final blank tab replacement', async () => {

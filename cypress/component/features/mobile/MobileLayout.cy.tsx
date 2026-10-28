@@ -80,6 +80,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       cancelCloseTab: cy.stub(),
       handleDraftChange: cy.stub(),
       handleViewSessionChange: cy.stub(),
+      handleTabViewSessionChange: cy.stub(),
+      registerWorkspaceViewCapture: cy.stub(),
       setIsEditing: cy.stub(),
       isSearchPanelOpen: false,
       setIsSearchPanelOpen: cy.stub(),

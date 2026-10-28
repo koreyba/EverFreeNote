@@ -35,8 +35,10 @@ import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 import { saveSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
 import { consumeActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
-import { NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
+import { getTabLabel, NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
 import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMenu"
+import { SplitEmptyPane, SplitNotePreview } from "@/components/features/notes/SplitNotePreview"
+import { Button } from "@/components/ui/button"
 
 import { MobileWorkspace } from "@/components/features/navigation/MobileWorkspace"
 import { NavRail } from "@/components/features/navigation/NavRail"
@@ -53,6 +55,15 @@ type NotesShellProps = {
   controller: NoteAppController
 }
 
+type SplitViewState = {
+  leftTabId: string
+  rightTabId: string
+  focusedTabId: string
+}
+
+// Below this width there is not enough room for two useful note surfaces.
+const MIN_SPLIT_WORKSPACE_WIDTH = 680
+
 export function NotesShell({ controller }: NotesShellProps) {
 
   const router = useRouter()
@@ -65,6 +76,14 @@ export function NotesShell({ controller }: NotesShellProps) {
   const [wordpressConfigured, setWordpressConfigured] = React.useState(false)
 
   const [pendingChunkFocus, setPendingChunkFocus] = React.useState<PendingChunkFocus | null>(null)
+  const workspaceRef = React.useRef<HTMLDivElement | null>(null)
+  const [workspaceWidth, setWorkspaceWidth] = React.useState(0)
+  const [split, setSplit] = React.useState<SplitViewState | null>(null)
+  const [splitOpening, setSplitOpening] = React.useState(false)
+  const [pendingSplit, setPendingSplit] = React.useState<{ leftTabId: string, rightTabId: string } | null>(null)
+  const splitOpeningRef = React.useRef(false)
+  const paneFocusTargetRef = React.useRef<string | null>(null)
+  const viewScrollsRef = React.useRef(new Map<string, { noteId: string | null, scrollTop: number }>())
 
   React.useEffect(() => {
     controller.registerNoteEditorRef(noteEditorRef)
@@ -104,6 +123,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     addTab,
     activateTab,
     closeTab,
+    handleTabViewSessionChange,
+    registerWorkspaceViewCapture,
     canAddTab = true,
     workspaceHydrated = true,
     handleSelectNote,
@@ -116,6 +137,108 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleDeleteTag,
     notes,
   } = controller
+
+  const tabsRef = React.useRef(tabs)
+  const activeTabIdRef = React.useRef(activeTabId)
+  React.useLayoutEffect(() => { tabsRef.current = tabs }, [tabs])
+  React.useLayoutEffect(() => { activeTabIdRef.current = activeTabId }, [activeTabId])
+  const recordViewScroll = React.useCallback((tabId: string, noteId: string | null, scrollTop: number) => {
+    viewScrollsRef.current.set(tabId, { noteId, scrollTop })
+  }, [])
+  const captureViewScrolls = React.useCallback(() => {
+    for (const tab of tabsRef.current) {
+      const view = viewScrollsRef.current.get(tab.id)
+      // A tab may have been reused for a different note since its last scroll.
+      // The active editor captures its own (potentially newer) position.
+      if (view && view.noteId === tab.noteId && !(tab.id === activeTabIdRef.current && tab.mode === "editing") && view.scrollTop !== tab.view.scrollTop) {
+        handleTabViewSessionChange?.(tab.id, tab.noteId, { scrollTop: view.scrollTop })
+      }
+    }
+  }, [handleTabViewSessionChange])
+
+  React.useEffect(() => {
+    registerWorkspaceViewCapture?.(captureViewScrolls)
+    return () => registerWorkspaceViewCapture?.(null)
+  }, [captureViewScrolls, registerWorkspaceViewCapture])
+
+  React.useEffect(() => {
+    const workspace = workspaceRef.current
+    if (!workspace) return
+    const measure = () => {
+      captureViewScrolls()
+      setWorkspaceWidth(workspace.getBoundingClientRect().width)
+    }
+    measure()
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure)
+      return () => window.removeEventListener("resize", measure)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(workspace)
+    return () => observer.disconnect()
+  }, [activeMainView, captureViewScrolls])
+
+  // Creating an empty tab is asynchronous because it first flushes the old
+  // editor. Resolve its identity only after the workspace state has committed.
+  React.useEffect(() => {
+    if (!pendingSplit) return
+    if (!tabs.some((tab) => tab.id === pendingSplit.leftTabId)) {
+      setPendingSplit(null)
+      return
+    }
+    if (!tabs.some((tab) => tab.id === pendingSplit.rightTabId)) return
+    setSplit({ ...pendingSplit, focusedTabId: pendingSplit.rightTabId })
+    setPendingSplit(null)
+  }, [pendingSplit, tabs])
+
+  // Selecting a third tab replaces the last active pane; selecting either
+  // visible tab just transfers focus. Closing a pane returns to one view.
+  React.useEffect(() => {
+    setSplit((current) => {
+      if (!current) return current
+      if (!tabs.some((tab) => tab.id === current.leftTabId) || !tabs.some((tab) => tab.id === current.rightTabId)) return null
+      if (activeTabId === current.leftTabId || activeTabId === current.rightTabId) {
+        return current.focusedTabId === activeTabId ? current : { ...current, focusedTabId: activeTabId }
+      }
+      return current.focusedTabId === current.leftTabId
+        ? { ...current, leftTabId: activeTabId, focusedTabId: activeTabId }
+        : { ...current, rightTabId: activeTabId, focusedTabId: activeTabId }
+    })
+  }, [activeTabId, tabs])
+
+  React.useEffect(() => {
+    if (paneFocusTargetRef.current !== activeTabId) return
+    paneFocusTargetRef.current = null
+    workspaceRef.current?.querySelector<HTMLElement>('[data-active-pane="true"]')?.focus()
+  }, [activeTabId])
+
+  const handleActivatePane = React.useCallback(async (tabId: string) => {
+    paneFocusTargetRef.current = tabId
+    if (!(await activateTab(tabId))) paneFocusTargetRef.current = null
+  }, [activateTab])
+
+  const handleToggleSplit = React.useCallback(async () => {
+    if (split) {
+      captureViewScrolls()
+      setSplit(null)
+      return
+    }
+    if (splitOpeningRef.current || pendingSplit || !activeTabId) return
+    const other = tabs.find((tab) => tab.id !== activeTabId && tab.note) ?? tabs.find((tab) => tab.id !== activeTabId)
+    if (other) {
+      setSplit({ leftTabId: activeTabId, rightTabId: other.id, focusedTabId: activeTabId })
+      return
+    }
+    splitOpeningRef.current = true
+    setSplitOpening(true)
+    try {
+      const rightTabId = await addTab()
+      if (rightTabId) setPendingSplit({ leftTabId: activeTabId, rightTabId })
+    } finally {
+      splitOpeningRef.current = false
+      setSplitOpening(false)
+    }
+  }, [activeTabId, addTab, captureViewScrolls, pendingSplit, split, tabs])
 
   const refreshWordPressStatus = React.useCallback(async () => {
     try {
@@ -179,13 +302,13 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [activeMainView, hideNotePane, isMobile, isSearchPanelOpen, setActiveMainView, setIsSearchPanelOpen, showEditor])
 
   const handleSelectMainView = React.useCallback(async (view: "notes" | "tags") => {
-    if (isMobile && showEditor && !(await hideNotePane())) return
+    if (showEditor && (isMobile || view !== activeMainView) && !(await hideNotePane())) return
     if (isMobile && view === "notes") {
       setIsSearchPanelOpen(false)
       if (selectionMode) exitSelectionMode()
     }
     setActiveMainView(view)
-  }, [exitSelectionMode, hideNotePane, isMobile, selectionMode, setActiveMainView, setIsSearchPanelOpen, showEditor])
+  }, [activeMainView, exitSelectionMode, hideNotePane, isMobile, selectionMode, setActiveMainView, setIsSearchPanelOpen, showEditor])
 
 
   const handlePendingChunkFocusApplied = React.useCallback((requestId: string) => {
@@ -194,6 +317,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
   const handleOpenSettings = React.useCallback(async () => {
     const notesUiState = await controller.captureSettingsReturnState()
+    if (!notesUiState) return
 
     if (typeof globalThis.location !== "undefined") {
       saveSettingsReturnState({
@@ -234,6 +358,19 @@ export function NotesShell({ controller }: NotesShellProps) {
     setActiveMainView("notes")
   }, [controller, isMobile, setActiveMainView, setIsSearchPanelOpen])
 
+  // Derive the next pair during the same render as a tab switch, so the
+  // editor never disappears while the reconciliation effect catches up.
+  let displayedSplit = split
+  if (displayedSplit && (!tabs.some((tab) => tab.id === displayedSplit!.leftTabId) || !tabs.some((tab) => tab.id === displayedSplit!.rightTabId))) {
+    displayedSplit = null
+  } else if (displayedSplit && activeTabId !== displayedSplit.leftTabId && activeTabId !== displayedSplit.rightTabId) {
+    displayedSplit = displayedSplit.focusedTabId === displayedSplit.leftTabId
+      ? { ...displayedSplit, leftTabId: activeTabId, focusedTabId: activeTabId }
+      : { ...displayedSplit, rightTabId: activeTabId, focusedTabId: activeTabId }
+  }
+  const showBothPanes = Boolean(displayedSplit && !isMobile && workspaceWidth >= MIN_SPLIT_WORKSPACE_WIDTH)
+  const paneIds = displayedSplit ? [displayedSplit.leftTabId, displayedSplit.rightTabId] : [activeTabId]
+
   return (
     <MobileWorkspace
       viewKey={`${activeMainView}:${activeTabId}:${selectedNote?.id ?? "list"}:${isEditing}:${isSearchPanelOpen}`}
@@ -270,7 +407,7 @@ export function NotesShell({ controller }: NotesShellProps) {
             tabs={tabs}
             activeTabId={activeTabId}
             showActiveTabTitle={showEditor}
-            addTabDisabled={!workspaceHydrated || !canAddTab}
+            addTabDisabled={!workspaceHydrated || !canAddTab || splitOpening || Boolean(pendingSplit)}
             addTabCapacityPending={!workspaceHydrated}
             maximumTabCount={MAX_NOTE_WORKSPACE_TABS}
             onAddTab={() => void addTab?.()}
@@ -325,22 +462,67 @@ export function NotesShell({ controller }: NotesShellProps) {
               <NotesTabStrip
                 tabs={tabs}
                 activeTabId={activeTabId}
-                addTabDisabled={!workspaceHydrated || !canAddTab}
+                addTabDisabled={!workspaceHydrated || !canAddTab || splitOpening || Boolean(pendingSplit)}
                 addTabCapacityPending={!workspaceHydrated}
                 maximumTabCount={MAX_NOTE_WORKSPACE_TABS}
                 onAddTab={() => void addTab?.()}
                 onActivateTab={(tabId) => void activateTab?.(tabId)}
                 onCloseTab={(tabId) => void closeTab?.(tabId)}
+                onToggleSplit={() => void handleToggleSplit()}
+                splitView={Boolean(split)}
+                splitDisabled={splitOpening || Boolean(pendingSplit) || (!split && (!workspaceHydrated || (!canAddTab && tabs.length < 2)))}
               />
-              <div className="flex-1 min-h-0 min-w-0 flex">
-                <EditorPane
-                  controller={controller}
-                  onBack={() => { void handleBackFromNote().catch(() => undefined) }}
-                  noteEditorRef={noteEditorRef}
-                  wordpressConfigured={wordpressConfigured}
-                  pendingChunkFocus={pendingChunkFocus}
-                  onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
-                />
+              {displayedSplit && !showBothPanes && !isMobile && (
+                <div className="border-b border-border/50 bg-muted/20 px-4 py-2 text-xs text-muted-foreground" role="status">
+                  Enlarge the workspace to show both notes.
+                </div>
+              )}
+              <div ref={workspaceRef} className="flex-1 min-h-0 min-w-0 flex">
+                {paneIds.map((tabId, index) => {
+                  const tab = tabs.find((item) => item.id === tabId)
+                  const active = tabId === activeTabId
+                  const label = index === 0 ? "left" : "right"
+                  return (
+                    <section
+                      key={tabId}
+                      aria-label={displayedSplit ? `${label === "left" ? "Left" : "Right"} note pane` : undefined}
+                      data-testid={displayedSplit ? `split-pane-${label}` : undefined}
+                      data-active-pane={active ? "true" : undefined}
+                      tabIndex={-1}
+                      className={cn("flex min-h-0 min-w-0 flex-1 flex-col", displayedSplit && index === 1 && showBothPanes && "border-l border-border", displayedSplit && !showBothPanes && !active && "hidden")}
+                    >
+                      {displayedSplit && showBothPanes && (
+                        <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-border/50 bg-muted/20 px-4">
+                          <span className="min-w-0 truncate text-xs font-medium text-muted-foreground">
+                            {label === "left" ? "Left" : "Right"} · {tab ? getTabLabel(tab) : "Note"}
+                          </span>
+                          {active ? (
+                            <span className="shrink-0 text-xs font-medium text-primary">Active</span>
+                          ) : (
+                            <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 text-xs" aria-label={`Activate ${tab ? getTabLabel(tab) : "note"}`} onClick={() => void handleActivatePane(tabId)}>
+                              Activate
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      {active ? (
+                        displayedSplit && tab && !tab.note && tab.mode !== "editing" ? <SplitEmptyPane /> : (
+                          <EditorPane
+                            controller={controller}
+                            onBack={() => { void handleBackFromNote().catch(() => undefined) }}
+                            noteEditorRef={noteEditorRef}
+                            wordpressConfigured={wordpressConfigured}
+                            pendingChunkFocus={pendingChunkFocus}
+                            onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
+                            onReaderScroll={(scrollTop) => recordViewScroll(tabId, tab?.noteId ?? null, scrollTop)}
+                          />
+                        )
+                      ) : tab && (
+                        <SplitNotePreview tab={tab} onViewSessionChange={(view) => handleTabViewSessionChange?.(tabId, tab.noteId, view)} onViewScrollCapture={(scrollTop) => recordViewScroll(tabId, tab.noteId, scrollTop)} />
+                      )}
+                    </section>
+                  )
+                })}
               </div>
             </main>
           </div>
@@ -393,6 +575,7 @@ function EditorPane({
   wordpressConfigured,
   pendingChunkFocus,
   onPendingChunkFocusApplied,
+  onReaderScroll,
 }: {
   controller: NoteAppController
   onBack: () => void
@@ -400,6 +583,7 @@ function EditorPane({
   wordpressConfigured: boolean
   pendingChunkFocus: PendingChunkFocus | null
   onPendingChunkFocusApplied: (requestId: string) => void
+  onReaderScroll: (scrollTop: number) => void
 }) {
   const {
     selectedNote,
@@ -505,7 +689,8 @@ function EditorPane({
         wordpressConfigured={wordpressConfigured}
         initialScrollTop={activeTab.view.scrollTop}
         onRefresh={controller.refreshSelectedNote}
-        onViewSessionChange={controller.handleViewSessionChange}
+        onViewSessionChange={(view) => controller.handleTabViewSessionChange(activeTabId, activeTab.noteId, view)}
+        onViewScrollCapture={onReaderScroll}
       />
     )
   }

@@ -103,3 +103,16 @@ ui/web/components/features/notes/NoteView.tsx
 - Workspace state contains note content in browser session storage, protected by the same-origin browser boundary; no auth/session tokens are stored.
 - Validate all hydrated values and discard unknown versions/shapes.
 - Existing HTML sanitization and editor input handling remain unchanged.
+
+## Desktop split view follow-up (2026-10-28)
+
+`NotesShell` owns the transient left/right pairing and uses the current tab
+controller for selection, editing, and flushes. `SplitNotePreview` renders the
+inactive tab's sanitized snapshot and records its scroll position separately.
+The tab-creation call returns the new tab ID so a pending split cannot attach
+to a different concurrently created tab. Resizing hides, rather than closes,
+the inactive pane; entering Tags or Settings is blocked if the editor flush
+fails. Closing split does not remount the active editor or close either tab.
+Reader positions are captured before navigation and guarded by tab and note ID
+when deferred updates arrive; editor capture remains the path for unsaved new
+notes and their initial ID assignment.
