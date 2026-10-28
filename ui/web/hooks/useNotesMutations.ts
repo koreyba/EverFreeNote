@@ -31,6 +31,21 @@ type NotesData = {
   pageParams: number[]
 }
 
+/** Update only the initiating user's paginated note lists after server confirmation. */
+function removeConfirmedNoteFromLists(queryClient: ReturnType<typeof useQueryClient>, userId: string, id: string) {
+  queryClient.setQueriesData<NotesData>({ queryKey: ['notes', userId] }, (data) => {
+    if (!data?.pages?.some((page) => page.notes?.some((note) => note.id === id))) return data
+    return {
+      ...data,
+      pages: data.pages.map((page) => ({
+        ...page,
+        notes: page.notes.filter((note) => note.id !== id),
+        totalCount: Math.max(0, page.totalCount - 1),
+      })),
+    }
+  })
+}
+
 /**
  * Callbacks for mutation results - allows platform-specific UI feedback
  */
@@ -203,7 +218,7 @@ type DeleteNoteCallbacks = MutationCallbacks & {
 
 export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCallbacks) {
   const queryClient = useQueryClient()
-  const { supabase } = useSupabase()
+  const { supabase, user } = useSupabase()
   const noteService = useMemo(() => new NoteService(supabase), [supabase])
 
   return useMutation({
@@ -228,7 +243,7 @@ export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCall
         return { ...old, pages: newPages }
       })
 
-      return { previousNotes }
+      return { previousNotes, userId: user?.id }
     },
 
     onError: (err, _vars, context) => {
@@ -238,9 +253,18 @@ export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCall
       callbacks.onError?.(err)
     },
 
-    onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] })
-      queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+    onSuccess: async (_data, vars, context) => {
+      if (context?.userId) {
+        // A GET started before DELETE can otherwise restore an old list after success.
+        await queryClient.cancelQueries({ queryKey: ['notes', context.userId] })
+        removeConfirmedNoteFromLists(queryClient, context.userId, vars.id)
+      }
+      void queryClient.invalidateQueries({ queryKey: ['notes'] }, { throwOnError: true }).catch((error) => {
+        console.warn('Failed to refresh notes after deletion:', error)
+      })
+      void queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] }).catch((error) => {
+        console.warn('Failed to refresh tags after deletion:', error)
+      })
       if (!vars?.silent && !callbacks.silent) {
         callbacks.onSuccess?.()
       }

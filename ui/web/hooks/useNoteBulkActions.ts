@@ -141,11 +141,15 @@ export function useNoteBulkActions({
         toast.success(`Deleted ${ids.length} notes`)
       }
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['notes'] }),
-        queryClient.invalidateQueries({ queryKey: ['aiSearch'] }),
-      ])
       onNotesDeleted(deletedIds)
+      // Refreshing the lists can involve slow or unavailable network requests;
+      // local deletion and workspace cleanup must not wait for them.
+      void Promise.resolve().then(() => Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['notes'] }, { throwOnError: true }),
+        queryClient.invalidateQueries({ queryKey: ['aiSearch'] }, { throwOnError: true }),
+      ])).catch((error) => {
+        console.warn('Failed to refresh notes after deletion:', error)
+      })
 
       return { total: ids.length, failed, queuedOffline: isOffline }
     } catch (error) {

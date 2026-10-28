@@ -106,6 +106,19 @@ describe('useNoteData', () => {
     expect(result.current.notesDisplayed).toBe(2)
   })
 
+  it('subtracts locally hidden server notes from the total without double-counting a refreshed list', () => {
+    const deleted = makeCachedNote('2', { deleted: true })
+    const { result, rerender } = renderHook((notesQuery) => useNoteData({
+      notesQuery,
+      offlineOverlay: [deleted],
+      aggregatedFtsData: undefined,
+      selectedNoteIds: new Set(),
+    }), { initialProps: createMockNotesQuery([makeNote('1'), makeNote('2')], 20) })
+    expect(result.current.notesTotal).toBe(19)
+    rerender(createMockNotesQuery([makeNote('1')], 19))
+    expect(result.current.notesTotal).toBe(19)
+  })
+
   it('falls back to notes.length for totalNotes when totalCount is missing or pages are empty', () => {
     const note1 = makeNote('1')
     const queryWithoutTotalCount = {

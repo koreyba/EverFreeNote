@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useNoteBulkActions } from '@ui/web/hooks/useNoteBulkActions'
@@ -93,8 +93,8 @@ describe('useNoteBulkActions', () => {
     expect(mutateAsync).toHaveBeenNthCalledWith(1, { id: 'one', silent: true })
     expect(mutateAsync).toHaveBeenNthCalledWith(2, { id: 'two', silent: true })
     expect(toast.success).toHaveBeenCalledWith('Deleted 2 notes')
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['notes'] })
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['aiSearch'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['notes'] }, { throwOnError: true })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['aiSearch'] }, { throwOnError: true })
     expect(params.onNotesDeleted).toHaveBeenCalledWith(['one', 'two'])
   })
 
@@ -163,6 +163,24 @@ describe('useNoteBulkActions', () => {
     expect(params.setBulkDeleting).toHaveBeenNthCalledWith(1, true)
     expect(params.setBulkDeleting).toHaveBeenLastCalledWith(false)
     expect(params.exitSelectionMode).toHaveBeenCalledTimes(1)
+  })
+
+  it('completes deletion and selection cleanup when a background refresh rejects', async () => {
+    const { params, queryClient } = makeParams({ selectedNoteIds: new Set(['one']) })
+    const error = new Error('refresh unavailable')
+    jest.spyOn(queryClient, 'invalidateQueries').mockRejectedValue(error)
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const { result } = renderHook(() => useNoteBulkActions(params))
+      await act(async () => { await expect(result.current.deleteSelectedNotes()).resolves.toBeUndefined() })
+      expect(params.onNotesDeleted).toHaveBeenCalledWith(['one'])
+      expect(params.exitSelectionMode).toHaveBeenCalled()
+      expect(params.setBulkDeleting).toHaveBeenLastCalledWith(false)
+      await waitFor(() => expect(warn).toHaveBeenCalledWith('Failed to refresh notes after deletion:', error))
+      expect(toast.error).not.toHaveBeenCalled()
+    } finally {
+      warn.mockRestore()
+    }
   })
 
   it('does nothing when selection mode has no selected ids', async () => {

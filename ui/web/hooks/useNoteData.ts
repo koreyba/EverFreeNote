@@ -53,8 +53,10 @@ export function useNoteData({
   }, [aggregatedFtsData, resolveSearchResult])
 
   const pages = notesQuery.data?.pages
+  const locallyDeletedIds = new Set(offlineOverlay.filter((note) => note.deleted).map((note) => note.id))
+  const hiddenServerIds = new Set(baseNotes.filter((note) => locallyDeletedIds.has(note.id)).map((note) => note.id))
   const totalNotes = (pages?.length && typeof pages[0]?.totalCount === 'number')
-    ? pages[0].totalCount
+    ? Math.max(0, pages[0].totalCount - hiddenServerIds.size)
     : notes.length
 
   // Sidebar list is now decoupled from search panel and always shows the regular notes list.

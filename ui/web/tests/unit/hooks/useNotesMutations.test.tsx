@@ -189,6 +189,29 @@ describe('useNotesMutations', () => {
     expect(onError).toHaveBeenCalledWith(expect.any(Error))
   })
 
+  it('removes a confirmed delete only from the initiating account cache after account switch', async () => {
+    let finishDelete: (id: string) => void = () => {}
+    mockNoteService.deleteNote.mockReturnValue(new Promise<string>(resolve => { finishDelete = resolve }))
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user: { id: 'owner-a' } as never, loading: false })
+    const { result, queryClient, rerender } = renderMutation(() => useDeleteNote())
+    const ownerData = pageData([makeNote({ user_id: 'owner-a' }), makeNote({ id: 'keep', user_id: 'owner-a' })])
+    const otherData = pageData([makeNote({ user_id: 'owner-b' })])
+    queryClient.setQueryData(['notes', 'owner-a', '', null], ownerData)
+    queryClient.setQueryData(['notes', 'owner-b', '', null], otherData)
+
+    let deletion: Promise<string>
+    act(() => { deletion = result.current.mutateAsync({ id: 'note-1', silent: true }) })
+    await waitFor(() => expect(mockNoteService.deleteNote).toHaveBeenCalled())
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user: { id: 'owner-b' } as never, loading: false })
+    rerender()
+    await act(async () => { finishDelete('note-1'); await deletion })
+
+    expect(queryClient.getQueryData(['notes', 'owner-a', '', null])).toEqual({
+      ...ownerData, pages: [expect.objectContaining({ notes: [expect.objectContaining({ id: 'keep' })], totalCount: 1 })],
+    })
+    expect(queryClient.getQueryData(['notes', 'owner-b', '', null])).toEqual(otherData)
+  })
+
   it('removes tags optimistically and restores them on failure', async () => {
     const onSuccess = jest.fn()
     const { result, queryClient } = renderMutation(() => useRemoveTag({ onSuccess }), pageData())
