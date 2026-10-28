@@ -214,3 +214,16 @@ editor-preview database. Manual browser checks opened two sample notes,
 activated a pane using Enter, and preserved a long note's 1266px scroll when
 switching it from preview to reading. Final integration and independent QA
 must also validate the combined editor design; no production data is used.
+
+### In-flight saves (2026-10-28)
+
+Independent QA reproduced on main and the split branch: an explicit flush
+could return after an older in-flight save while a newer draft remained only in
+memory. Regression cases hold local queue writes and check continued typing,
+split and ordinary tab transitions, closing a tab, failure/retry, and the first
+save of a new note. Core tests also cover reverting to the baseline, partial
+failure, and session reset; web unit tests cover concurrent manual saves,
+equal timestamps, different notes, and reopening with a pending queue.
+
+These tests exercise local persistence and mocked or local services. They do
+not establish cross-window/device ordering or real-device/remote sync behavior.

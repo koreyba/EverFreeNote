@@ -77,15 +77,138 @@ describe('durable save failures and concurrent creation', () => {
     const { result, params } = setup({ selectedNote: null, selectedNoteRef: { current: null }, offlineCache: { saveNote } })
     let autoSave: ReturnType<typeof result.current.handleAutoSave>
     let manualSave: ReturnType<typeof result.current.handleSaveNote>
-    act(() => {
+    await act(async () => {
       autoSave = result.current.handleAutoSave({ title: 'First', description: '', tags: '' })
       manualSave = result.current.handleSaveNote({ title: 'Latest', description: 'Body', tags: '' })
+      await Promise.resolve()
     })
     expect(saveNote).toHaveBeenCalledTimes(1)
     await act(async () => { finishWrite(); await autoSave; await manualSave })
     expect(params.enqueueMutation.mock.calls.map(([item]: [{ operation: string; noteId: string }]) => [item.operation, item.noteId]))
       .toEqual([['create', 'mock-uuid'], ['update', 'mock-uuid']])
     expect(saveNote).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Latest', description: 'Body' }))
+  })
+
+  it('does not enqueue a newer manual save before an older autosave completes', async () => {
+    let finishQueue = () => {}
+    const firstQueueWrite = new Promise<void>(resolve => { finishQueue = resolve })
+    const enqueueMutation = jest.fn().mockReturnValueOnce(firstQueueWrite).mockResolvedValue(undefined)
+    const { result, params } = setup({ enqueueMutation })
+    let autoSave!: ReturnType<typeof result.current.handleAutoSave>
+    let manualSave!: ReturnType<typeof result.current.handleSaveNote>
+
+    await act(async () => {
+      autoSave = result.current.handleAutoSave({ noteId: 'note-1', title: 'Earlier', description: '', tags: '' })
+      await Promise.resolve()
+    })
+    expect(enqueueMutation).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      manualSave = result.current.handleSaveNote({ title: 'Latest', description: '', tags: '' })
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(enqueueMutation).toHaveBeenCalledTimes(1)
+
+    await act(async () => { finishQueue(); await autoSave; await manualSave })
+    expect(enqueueMutation.mock.calls.map(([item]) => item.payload.title)).toEqual(['Earlier', 'Latest'])
+    expect(params.offlineCache.saveNote).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'note-1', title: 'Latest' }))
+  })
+
+  it('lets a newer save run after an older write fails while reporting the failure', async () => {
+    let failQueue!: (error: Error) => void
+    const firstQueueWrite = new Promise<void>((_, reject) => { failQueue = reject })
+    const enqueueMutation = jest.fn().mockReturnValueOnce(firstQueueWrite).mockResolvedValue(undefined)
+    const { result, params } = setup({ enqueueMutation })
+    let autoSave!: ReturnType<typeof result.current.handleAutoSave>
+    let manualSave!: ReturnType<typeof result.current.handleSaveNote>
+    await act(async () => {
+      autoSave = result.current.handleAutoSave({ noteId: 'note-1', title: 'Earlier', description: '', tags: '' })
+      await Promise.resolve()
+    })
+    const failed = expect(autoSave).rejects.toThrow('Queue unavailable')
+    await act(async () => {
+      manualSave = result.current.handleSaveNote({ title: 'Latest', description: '', tags: '' })
+      await Promise.resolve()
+    })
+    expect(enqueueMutation).toHaveBeenCalledTimes(1)
+    await act(async () => { failQueue(new Error('Queue unavailable')); await failed; await manualSave })
+    expect(enqueueMutation.mock.calls.map(([item]) => item.payload.title)).toEqual(['Earlier', 'Latest'])
+    expect(params.offlineCache.saveNote).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'note-1', title: 'Latest' }))
+  })
+
+  it('does not delay another note while one note is waiting for storage', async () => {
+    let finishQueue = () => {}
+    const firstQueueWrite = new Promise<void>(resolve => { finishQueue = resolve })
+    const enqueueMutation = jest.fn().mockReturnValueOnce(firstQueueWrite).mockResolvedValue(undefined)
+    const { result } = setup({ enqueueMutation })
+    let firstSave!: ReturnType<typeof result.current.handleAutoSave>
+    await act(async () => {
+      firstSave = result.current.handleAutoSave({ noteId: 'note-1', title: 'First', description: '', tags: '' })
+      await Promise.resolve()
+    })
+    await act(async () => {
+      await result.current.handleAutoSave({ noteId: 'note-2', title: 'Other note', description: '', tags: '' })
+    })
+    expect(enqueueMutation.mock.calls.map(([item]) => item.noteId)).toEqual(['note-1', 'note-2'])
+    await act(async () => { finishQueue(); await firstSave })
+  })
+
+  it('gives consecutive writes distinct timestamps when the clock has not advanced', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date('2026-10-28T12:00:00.000Z'))
+    try {
+      const { result, params } = setup()
+      await act(async () => {
+        await result.current.handleAutoSave({ noteId: 'note-1', title: 'Earlier', description: '', tags: '' })
+        await result.current.handleSaveNote({ title: 'Latest', description: '', tags: '' })
+      })
+      const writes = params.enqueueMutation.mock.calls.map(([item]: [{ clientUpdatedAt: string }]) => item.clientUpdatedAt)
+      expect(Date.parse(writes[0])).toBeLessThan(Date.parse(writes[1]))
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it('continues after a queued timestamp for the same note when the app session restarts', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date('2026-10-28T12:00:00.000Z'))
+    try {
+      const queue: Array<{ noteId: string; clientUpdatedAt: string; status: string }> = []
+      const offlineQueueRef = { current: { getQueue: jest.fn(async () => [...queue]) } }
+      const enqueueMutation = jest.fn(async (item: { noteId: string; clientUpdatedAt: string }) => {
+        queue.push({ ...item, status: 'pending' })
+      })
+      const first = setup({ offlineQueueRef, enqueueMutation })
+      await act(async () => {
+        await first.result.current.handleAutoSave({ noteId: 'note-1', title: 'Earlier', description: '', tags: '' })
+      })
+      first.unmount()
+      const reopened = setup({ offlineQueueRef, enqueueMutation })
+      await act(async () => {
+        await reopened.result.current.handleSaveNote({ title: 'Latest', description: '', tags: '' })
+      })
+      expect(queue).toHaveLength(2)
+      expect(Date.parse(queue[0].clientUpdatedAt)).toBeLessThan(Date.parse(queue[1].clientUpdatedAt))
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it('does not change a note timestamp because another note has a newer queued write', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date('2026-10-28T12:00:00.000Z'))
+    try {
+      const offlineQueueRef = { current: { getQueue: jest.fn().mockResolvedValue([
+        { noteId: 'note-2', clientUpdatedAt: '2026-10-29T12:00:00.000Z', status: 'pending' },
+      ]) } }
+      const { result, params } = setup({ offlineQueueRef })
+      await act(async () => {
+        await result.current.handleAutoSave({ noteId: 'note-1', title: 'First', description: '', tags: '' })
+      })
+      expect(params.enqueueMutation.mock.calls[0][0].clientUpdatedAt).toBe('2026-10-28T12:00:00.000Z')
+    } finally {
+      jest.useRealTimers()
+    }
   })
 })
 

@@ -181,4 +181,108 @@ describe('createDebouncedLatest', () => {
     expect(debounced.getBaseline()).toEqual({ title: 'Remote' })
     expect(debounced.getPending()).toBeNull()
   })
+
+  it('waits for newer edits made while a previous write is in flight', async () => {
+    let finishFirst!: () => void
+    let finishLatest!: () => void
+    const onFlush = jest.fn()
+      .mockImplementationOnce(() => new Promise<void>(resolve => { finishFirst = resolve }))
+      .mockImplementationOnce(() => new Promise<void>(resolve => { finishLatest = resolve }))
+    const debounced = createDebouncedLatest<string>({ delayMs: 100, onFlush })
+
+    debounced.schedule('first')
+    const firstWrite = debounced.flush()
+    debounced.schedule('latest')
+    let transitionFinished = false
+    const transition = debounced.flush().then(() => { transitionFinished = true })
+
+    finishFirst()
+    await jest.advanceTimersByTimeAsync(0)
+    expect(onFlush).toHaveBeenCalledTimes(2)
+    expect(onFlush).toHaveBeenLastCalledWith('latest')
+    expect(transitionFinished).toBe(false)
+
+    finishLatest()
+    await Promise.all([firstWrite, transition])
+    expect(transitionFinished).toBe(true)
+    expect(debounced.getBaseline()).toBe('latest')
+    expect(debounced.getPending()).toBeNull()
+  })
+
+  it('persists a return to the previous baseline while another value is saving', async () => {
+    let finishFirst!: () => void
+    const onFlush = jest.fn()
+      .mockImplementationOnce(() => new Promise<void>(resolve => { finishFirst = resolve }))
+      .mockResolvedValueOnce(undefined)
+    const debounced = createDebouncedLatest<string>({ delayMs: 100, onFlush })
+
+    debounced.reset('original')
+    debounced.schedule('changed')
+    const firstWrite = debounced.flush()
+    debounced.schedule('original')
+    const transition = debounced.flush()
+    finishFirst()
+    await Promise.all([firstWrite, transition])
+
+    expect(onFlush.mock.calls.map(([value]) => value)).toEqual(['changed', 'original'])
+    expect(debounced.getBaseline()).toBe('original')
+  })
+
+  it('rejects a transition if the newer queued write fails', async () => {
+    let finishFirst!: () => void
+    const onFlush = jest.fn()
+      .mockImplementationOnce(() => new Promise<void>(resolve => { finishFirst = resolve }))
+      .mockRejectedValueOnce(new Error('Latest save failed'))
+    const debounced = createDebouncedLatest<string>({ delayMs: 100, onFlush })
+
+    debounced.schedule('first')
+    const firstWrite = debounced.flush()
+    const firstResult = firstWrite.catch(() => undefined)
+    debounced.schedule('latest')
+    const transition = debounced.flush()
+    finishFirst()
+
+    await expect(transition).rejects.toThrow('Latest save failed')
+    await firstResult
+    expect(debounced.getPending()).toBe('latest')
+  })
+
+  it('retries a return to the baseline after an earlier write partially fails', async () => {
+    let failFirst!: (error: Error) => void
+    const onFlush = jest.fn()
+      .mockImplementationOnce(() => new Promise<void>((_, reject) => { failFirst = reject }))
+      .mockResolvedValueOnce(undefined)
+    const debounced = createDebouncedLatest<string>({ delayMs: 100, onFlush })
+
+    debounced.reset('original')
+    debounced.schedule('changed')
+    const firstWrite = debounced.flush()
+    const firstResult = firstWrite.catch(() => undefined)
+    debounced.schedule('original')
+    const transition = debounced.flush()
+    failFirst(new Error('Queue unavailable'))
+    await expect(transition).rejects.toThrow('Queue unavailable')
+    await firstResult
+    await debounced.flush()
+
+    expect(onFlush.mock.calls.map(([value]) => value)).toEqual(['changed', 'original'])
+    expect(debounced.getPending()).toBeNull()
+  })
+
+  it('does not retry a failed write from a session that has been reset', async () => {
+    let failFirst!: (error: Error) => void
+    const onFlush = jest.fn().mockImplementation(() => new Promise<void>((_, reject) => { failFirst = reject }))
+    const debounced = createDebouncedLatest<string>({ delayMs: 100, onFlush })
+
+    debounced.schedule('old note')
+    const write = debounced.flush()
+    debounced.reset('new note')
+    failFirst(new Error('Old write failed'))
+
+    await expect(write).rejects.toThrow('Old write failed')
+    await jest.advanceTimersByTimeAsync(100)
+    expect(onFlush).toHaveBeenCalledTimes(1)
+    expect(debounced.getPending()).toBeNull()
+    expect(debounced.getBaseline()).toBe('new note')
+  })
 })

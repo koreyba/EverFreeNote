@@ -283,4 +283,195 @@ describe('Desktop split view', { retries: 0 }, () => {
       expect(writes.some(note => note.id === 'second' && note.title === 'First changed')).to.equal(false)
     })
   })
+
+  it('persists edits made during a slow save before activating another pane', () => {
+    openTwoNotes()
+    cy.window().then(win => {
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false })
+      win.dispatchEvent(new Event('offline'))
+    })
+    cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+
+    const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
+    const releases: Array<() => Promise<unknown>> = []
+    cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
+      if (item.payload?.title !== 'First version' && item.payload?.title !== 'Latest version') return original(item)
+      return new Cypress.Promise<void>(resolve => {
+        releases.push(() => original(item).then(() => resolve()))
+      })
+    })
+    cy.spy(webOfflineStorageAdapter, 'saveNote').as('saved')
+
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('First version')
+    cy.tick(4000)
+    cy.wrap(null).should(() => expect(releases).to.have.length(1))
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Second version')
+    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    // Typing remains possible while the transition is waiting for storage.
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Latest version')
+    cy.then(() => releases[0]())
+
+    cy.wrap(null).should(() => expect(releases).to.have.length(2))
+    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.then(() => releases[1]())
+    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('contain', 'Latest version')
+    cy.get('@saved').should(spy => {
+      const writes = (spy as unknown as { getCalls: () => Array<{ args: Array<{ id: string, title: string }> }> }).getCalls().map(call => call.args[0])
+      expect(writes.some(note => note.id === 'second' && note.title === 'Latest version')).to.equal(true)
+      expect(writes.some(note => note.id === 'first' && note.title === 'Latest version')).to.equal(false)
+    })
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
+      expect(queue.some(item => item.noteId === 'second' && item.payload?.title === 'Latest version')).to.equal(true)
+    })
+    cy.window().then(win => {
+      Reflect.deleteProperty(win.navigator, 'onLine')
+      win.dispatchEvent(new Event('online'))
+    })
+  })
+
+  it('persists the latest edit before switching and closing ordinary tabs', () => {
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'First note').click()
+    cy.get('[data-cy="add-tab-button"]').click()
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Second note').click()
+    cy.get('[data-cy="note-edit-button"]').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    let release: (() => Promise<unknown>) | undefined
+    const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
+    cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
+      if (item.payload?.title !== 'Earlier tab edit') return original(item)
+      return new Cypress.Promise<void>(resolve => { release = () => original(item).then(() => resolve()) })
+    })
+    cy.get('[aria-label="Note title"]').clear().type('Earlier tab edit')
+    cy.tick(4000)
+    cy.wrap(null).should(() => expect(release).to.be.a('function'))
+    cy.get('[aria-label="Note title"]').clear().type('Latest tab edit')
+    cy.contains('[data-cy="workspace-tab"]', 'First note').click()
+    cy.get('[aria-label="Note title"]').should('have.value', 'Latest tab edit')
+    cy.then(() => release!())
+    cy.get('[data-testid="editor-container"]').should('contain', 'First note body')
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
+      expect(cached.find(note => note.id === 'second')?.title).to.equal('Latest tab edit')
+    })
+    cy.get('[data-cy="workspace-tab-close"]').last().click()
+    cy.get('[data-tab-id] [data-cy="workspace-tab"]').should('have.length', 1)
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
+      expect(cached.find(note => note.id === 'second')?.title).to.equal('Latest tab edit')
+    })
+  })
+
+  it('blocks pane activation when the latest queued write fails and allows retry', () => {
+    openTwoNotes()
+    cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    let release: (() => Promise<unknown>) | undefined
+    const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
+    const write = cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
+      if (item.payload?.title === 'Earlier successful edit') {
+        return new Cypress.Promise<void>(resolve => { release = () => original(item).then(() => resolve()) })
+      }
+      if (item.payload?.title === 'Latest failed edit') return Promise.reject(new Error('Storage unavailable'))
+      return original(item)
+    }).as('write')
+    cy.get('[aria-label="Note title"]').clear().type('Earlier successful edit')
+    cy.tick(4000)
+    cy.wrap(null).should(() => expect(release).to.be.a('function'))
+    cy.get('[aria-label="Note title"]').clear().type('Latest failed edit')
+    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.then(() => release!())
+    cy.get('@write').should(spy => {
+      const calls = (spy as unknown as { getCalls: () => Array<{ args: Array<{ payload?: { title?: string } }> }> }).getCalls()
+      expect(calls.some(call => call.args[0].payload?.title === 'Latest failed edit')).to.equal(true)
+    })
+    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[aria-label="Note title"]').should('have.value', 'Latest failed edit')
+    cy.then(() => write.restore())
+    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
+      expect(cached.find(note => note.id === 'second')?.title).to.equal('Latest failed edit')
+    })
+  })
+
+  it('waits for a manual save that overlaps autosave before changing panes', () => {
+    openTwoNotes()
+    cy.window().then(win => {
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false })
+      win.dispatchEvent(new Event('offline'))
+    })
+    cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    const releases: Array<() => Promise<unknown>> = []
+    const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
+    cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
+      if (item.payload?.title !== 'Earlier automatic save' && item.payload?.title !== 'Latest manual save') return original(item)
+      if (item.payload?.title === 'Latest manual save' && releases.length > 1) return original(item)
+      return new Cypress.Promise<void>(resolve => {
+        releases.push(() => original(item).then(() => resolve()))
+      })
+    })
+    cy.get('[aria-label="Note title"]').clear().type('Earlier automatic save')
+    cy.tick(4000)
+    cy.wrap(null).should(() => expect(releases).to.have.length(1))
+    cy.get('[aria-label="Note title"]').clear().type('Latest manual save')
+    cy.get('[data-cy="note-save-button"]').click()
+    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.then(() => releases[0]())
+    cy.wrap(null).should(() => expect(releases).to.have.length(2))
+    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.then(() => releases[1]())
+    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
+      expect(cached.find(note => note.id === 'second')?.title).to.equal('Latest manual save')
+    })
+    cy.window().then(win => {
+      Reflect.deleteProperty(win.navigator, 'onLine')
+      win.dispatchEvent(new Event('online'))
+    })
+  })
+
+  it('updates the same newly created note when a newer edit waits for its first save', () => {
+    cy.window().then(win => {
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false })
+      win.dispatchEvent(new Event('offline'))
+    })
+    cy.get('[data-testid="sidebar-container"] button').contains('New Note').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    let release: (() => Promise<unknown>) | undefined
+    const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
+    cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
+      if (item.operation !== 'create') return original(item)
+      return new Cypress.Promise<void>(resolve => { release = () => original(item).then(() => resolve()) })
+    })
+    cy.spy(webOfflineStorageAdapter, 'saveNote').as('saved')
+    cy.get('[aria-label="Note title"]').type('New first version')
+    cy.tick(4000)
+    cy.wrap(null).should(() => expect(release).to.be.a('function'))
+    cy.get('[aria-label="Note title"]').clear().type('New latest version')
+    cy.get('[data-cy="add-tab-button"]').click()
+    cy.get('[aria-label="Note title"]').should('have.value', 'New latest version')
+    cy.then(() => release!())
+    cy.get('[data-tab-id] [data-cy="workspace-tab"]').should('have.length', 2)
+    cy.get('@saved').should(spy => {
+      const writes = (spy as unknown as { getCalls: () => Array<{ args: Array<{ id: string, title: string }> }> }).getCalls().map(call => call.args[0])
+      const first = writes.find(note => note.title === 'New first version')
+      const latest = writes.find(note => note.title === 'New latest version')
+      expect(first?.id).to.be.a('string')
+      expect(latest?.id).to.equal(first?.id)
+    })
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
+      const created = queue.filter(item => item.operation === 'create' && item.payload?.title === 'New first version')
+      const updated = queue.filter(item => item.operation === 'update' && item.payload?.title === 'New latest version')
+      expect(created).to.have.length(1)
+      expect(updated).to.have.length(1)
+      expect(updated[0].noteId).to.equal(created[0].noteId)
+    })
+    cy.window().then(win => {
+      Reflect.deleteProperty(win.navigator, 'onLine')
+      win.dispatchEvent(new Event('online'))
+    })
+  })
 })

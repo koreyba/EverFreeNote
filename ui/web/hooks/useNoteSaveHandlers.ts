@@ -79,6 +79,8 @@ export function useNoteSaveHandlers({
   // Tracks an in-flight note creation (from either auto-save or manual save)
   // so that concurrent saves don't result in duplicate notes.
   const pendingCreatePromiseRef = useRef<Promise<NoteViewModel> | null>(null)
+  const pendingWritesByNoteRef = useRef(new Map<string, Promise<void>>())
+  const latestWriteTimeByNoteRef = useRef(new Map<string, number>())
 
   const syncSelectedNote = useCallback((note: NoteViewModel | null | ((prev: NoteViewModel | null) => NoteViewModel | null)) => {
     setSelectedNote((prev) => {
@@ -95,35 +97,55 @@ export function useNoteSaveHandlers({
    * enqueues the mutation for sync, and increments the pending count.
    * Returns the CachedNote that was saved so callers can update selectedNote.
    */
-  const executeOfflineWrite = useCallback(async ({
-    operation,
-    noteId,
-    payload,
-    clientUpdatedAt,
-  }: OfflineWriteInput): Promise<CachedNote> => {
-    const cached: CachedNote = {
-      id: noteId,
-      user_id: user?.id,
-      title: payload.title ?? 'Untitled',
-      description: payload.description,
-      tags: payload.tags,
-      updatedAt: clientUpdatedAt,
-      status: 'pending',
-    }
-    await offlineCache.saveNote(cached)
-    setOfflineOverlay((prev) => {
-      const idx = prev.findIndex((n) => n.id === noteId)
-      if (idx >= 0) {
-        const next = [...prev]
-        next[idx] = { ...next[idx], ...cached }
-        return next
+  const executeOfflineWrite = useCallback(({ operation, noteId, payload, clientUpdatedAt }: OfflineWriteInput): Promise<CachedNote> => {
+    const write = async (): Promise<CachedNote> => {
+      let previousTime = latestWriteTimeByNoteRef.current.get(noteId)
+      if (previousTime === undefined) {
+        // On a new app session, include pending writes left in durable storage.
+        const queue = await offlineQueueRef.current.getQueue()
+        previousTime = queue.reduce((latest, item) => {
+          const time = Date.parse(item.clientUpdatedAt)
+          return item.noteId === noteId && Number.isFinite(time) ? Math.max(latest, time) : latest
+        }, 0)
       }
-      return [...prev, cached]
+      const writeTime = Math.max(Date.parse(clientUpdatedAt), previousTime + 1)
+      latestWriteTimeByNoteRef.current.set(noteId, writeTime)
+      const durableUpdatedAt = new Date(writeTime).toISOString()
+      const cached: CachedNote = {
+        id: noteId,
+        user_id: user?.id,
+        title: payload.title ?? 'Untitled',
+        description: payload.description,
+        tags: payload.tags,
+        updatedAt: durableUpdatedAt,
+        status: 'pending',
+      }
+      await offlineCache.saveNote(cached)
+      setOfflineOverlay((prev) => {
+        const idx = prev.findIndex((n) => n.id === noteId)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = { ...next[idx], ...cached }
+          return next
+        }
+        return [...prev, cached]
+      })
+      await enqueueMutation({ noteId, operation, payload: { ...payload, user_id: user?.id }, clientUpdatedAt: durableUpdatedAt })
+      setPendingCount((prev) => prev + 1)
+      return cached
+    }
+
+    // A manual save and an autosave can overlap. Preserve their order for the
+    // same note through both cache and queue writes; unrelated notes remain independent.
+    const previous = pendingWritesByNoteRef.current.get(noteId)
+    const current = previous ? previous.then(write) : write()
+    const settled = current.then(() => undefined, () => undefined)
+    pendingWritesByNoteRef.current.set(noteId, settled)
+    void settled.then(() => {
+      if (pendingWritesByNoteRef.current.get(noteId) === settled) pendingWritesByNoteRef.current.delete(noteId)
     })
-    await enqueueMutation({ noteId, operation, payload: { ...payload, user_id: user?.id }, clientUpdatedAt })
-    setPendingCount((prev) => prev + 1)
-    return cached
-  }, [offlineCache, setOfflineOverlay, enqueueMutation, setPendingCount, user?.id])
+    return current
+  }, [offlineCache, offlineQueueRef, setOfflineOverlay, enqueueMutation, setPendingCount, user?.id])
 
   const executeAutoSaveUpdateNote = useCallback(async (
     targetId: string,

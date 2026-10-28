@@ -103,6 +103,8 @@ export function useNoteEditorAutoSave({
   // parent updates `noteId`, so the next refresh can be reconciled as an
   // assigned-id bridge for this editing session instead of a real note switch.
   const [pendingCreateAssignedNoteId, setPendingCreateAssignedNoteId] = useState<string | null>(null)
+  const [createInFlight, setCreateInFlight] = useState(false)
+  const assignedCreateNoteIdRef = useRef<string | null>(null)
   const lastAcceptedRef = useRef<NoteEditorSnapshot>(getIncomingSnapshot())
 
   const getDraftSnapshot = useCallback((overrides: Partial<NoteEditorSnapshot> = {}): NoteEditorSnapshot => ({
@@ -118,19 +120,28 @@ export function useNoteEditorAutoSave({
 
   const flushAutoSave = useCallback(async (payload: NoteAutoSavePayload) => {
     if (!onAutoSaveRef.current) return
+    // A pending edit can have been captured before a new note received its ID.
+    // The first completed create establishes the identity for subsequent writes.
+    const resolvedPayload = payload.noteId || !assignedCreateNoteIdRef.current
+      ? payload
+      : { ...payload, noteId: assignedCreateNoteIdRef.current }
+    const creating = !resolvedPayload.noteId
+    if (creating) setCreateInFlight(true)
     try {
-      const result = await onAutoSaveRef.current(payload)
+      const result = await onAutoSaveRef.current(resolvedPayload)
       toast.dismiss('note-autosave-failed')
-      if (!payload.noteId) {
-        setPendingCreateAssignedNoteId(result?.noteId ?? null)
+      if (creating) {
+        assignedCreateNoteIdRef.current = result?.noteId ?? null
+        setPendingCreateAssignedNoteId(assignedCreateNoteIdRef.current)
       }
     } catch (error) {
       toast.error('Auto-save failed. Your changes will retry.', { id: 'note-autosave-failed' })
       throw error
+    } finally {
+      if (creating) setCreateInFlight(false)
     }
   }, [])
 
-  // eslint-disable-next-line react-hooks/refs -- the debouncer stores the callback for later flushes; the ref is read only when onFlush runs outside render
   const debouncedAutoSave = useMemo(() => createDebouncedLatest<NoteAutoSavePayload>({
     delayMs: autosaveDelayMs,
     isEqual: (a, b) =>
@@ -179,6 +190,10 @@ export function useNoteEditorAutoSave({
       pendingCreateAssignedNoteId,
     })
 
+    // The parent may publish the new note before the create promise returns
+    // its ID. Wait for that result before deciding whether this is a switch.
+    if (sessionChange === 'switched' && !prevNoteId && nextNoteId && createInFlight && !pendingCreateAssignedNoteId) return
+
     if (sessionChange === 'unchanged') {
       const reconcileResult = reconcileExternalNoteSnapshot({
         currentNoteId: prevNoteId,
@@ -215,6 +230,7 @@ export function useNoteEditorAutoSave({
     }
 
     // Real note switch: reset session key (remounts editor + title input) and notify caller.
+    assignedCreateNoteIdRef.current = null
     setEditorSessionKey((k) => k + 1)
     cancelDebouncedTagQuery()
     onNoteSwitch?.()
@@ -231,6 +247,7 @@ export function useNoteEditorAutoSave({
     getIncomingSnapshot,
     applyExternalSnapshot,
     pendingCreateAssignedNoteId,
+    createInFlight,
   ])
 
   const handleContentChange = useCallback(() => {
