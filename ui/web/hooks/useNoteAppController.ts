@@ -552,9 +552,11 @@ export function useNoteAppController() {
 
   // -- Bulk actions --
   const { selectAllVisible, deleteSelectedNotes, deleteNotesByIds } = useNoteBulkActions({
+    userId: user?.id,
     selectedNoteIds,
     isOffline,
     enqueueBatchAndDrainIfOnline,
+    offlineQueueRef,
     offlineCache,
     setOfflineOverlay,
     setPendingCount,

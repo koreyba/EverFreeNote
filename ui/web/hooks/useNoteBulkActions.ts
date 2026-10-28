@@ -1,6 +1,7 @@
 import { toast } from 'sonner'
 import type { NoteViewModel } from '@core/types/domain'
 import type { CachedNote } from '@core/types/offline'
+import { nextMutationTimestamp } from '@core/utils/nextMutationTimestamp'
 import type { useNoteSync } from './useNoteSync'
 import type { useNoteSelection } from './useNoteSelection'
 import type { useDeleteNote } from './useNotesMutations'
@@ -9,9 +10,11 @@ import type { QueryClient } from '@tanstack/react-query'
 export type NotesDeletedHandler = (noteIds: string[]) => void
 
 type UseNoteBulkActionsParams = {
+  userId: string | undefined
   selectedNoteIds: Set<string>
   isOffline: boolean
   enqueueBatchAndDrainIfOnline: ReturnType<typeof useNoteSync>['enqueueBatchAndDrainIfOnline']
+  offlineQueueRef: ReturnType<typeof useNoteSync>['offlineQueueRef']
   offlineCache: Pick<ReturnType<typeof useNoteSync>['offlineCache'], 'saveNote' | 'deleteNote'>
   setOfflineOverlay: ReturnType<typeof useNoteSync>['setOfflineOverlay']
   setPendingCount: ReturnType<typeof useNoteSync>['setPendingCount']
@@ -36,9 +39,11 @@ export type DeleteNotesByIdsResult = {
  * Owns bulk operations: bulk delete and select-all-visible.
  */
 export function useNoteBulkActions({
+  userId,
   selectedNoteIds,
   isOffline,
   enqueueBatchAndDrainIfOnline,
+  offlineQueueRef,
   offlineCache,
   setOfflineOverlay,
   setPendingCount,
@@ -65,50 +70,73 @@ export function useNoteBulkActions({
     await beforeDelete?.(ids)
 
     try {
+      const queue = await offlineQueueRef.current.getQueue()
+      const pendingIds = new Set(queue.map((item) => item.noteId))
+      const queuedIds = isOffline ? ids : ids.filter((id) => pendingIds.has(id))
+      const immediateIds = isOffline ? [] : ids.filter((id) => !pendingIds.has(id))
+      const deleted = new Set<string>()
       let failed = 0
-      let deletedIds = ids
-      if (isOffline) {
-        await enqueueBatchAndDrainIfOnline(
-          ids.map((id) => ({
-            noteId: id,
-            operation: 'delete' as const,
-            payload: {},
-            clientUpdatedAt: new Date().toISOString(),
-          }))
-        )
-        const now = new Date().toISOString()
-        const updates: CachedNote[] = ids.map((id) => ({
+
+      if (queuedIds.length) {
+        if (!userId) throw new Error('User not authenticated - deletion skipped')
+        const now = nextMutationTimestamp(queue, new Set(queuedIds))
+        const updates: CachedNote[] = queuedIds.map((id) => ({
           id,
+          user_id: userId,
           status: 'pending' as const,
           deleted: true,
           updatedAt: now,
         }))
+        await enqueueBatchAndDrainIfOnline(
+          queuedIds.map((id) => ({
+            noteId: id,
+            operation: 'delete' as const,
+            payload: { user_id: userId },
+            clientUpdatedAt: now,
+          }))
+        )
         for (const update of updates) await offlineCache.saveNote(update)
-
+        const queueAfterSave = isOffline ? null : await offlineQueueRef.current.getQueue()
+        const pendingAfterSave = new Set(queueAfterSave?.map((item) => item.noteId))
+        const alreadySyncedIds = queueAfterSave ? queuedIds.filter((id) => !pendingAfterSave.has(id)) : []
+        for (const id of alreadySyncedIds) await offlineCache.deleteNote(id)
         setOfflineOverlay((prev) => {
-          const next = [...prev]
+          const next = prev.filter((item) => !alreadySyncedIds.includes(item.id))
           updates.forEach((update) => {
+            if (alreadySyncedIds.includes(update.id)) return
             const idx = next.findIndex((n) => n.id === update.id)
             if (idx >= 0) next[idx] = update
             else next.push(update)
           })
           return next
         })
-        setPendingCount((prev) => prev + ids.length)
-        toast.success(`Queued deletion of ${ids.length} notes (offline)`)
-      } else {
+        queuedIds.forEach((id) => deleted.add(id))
+        if (queueAfterSave) setPendingCount(queueAfterSave.filter((item) => item.status === 'pending').length)
+        else setPendingCount((prev) => prev + queuedIds.length)
+      }
+
+      if (immediateIds.length) {
         const results = await Promise.allSettled(
-          ids.map((id) => deleteNoteMutation.mutateAsync({ id, silent: true }))
+          immediateIds.map((id) => deleteNoteMutation.mutateAsync({ id, silent: true }))
         )
-        failed = results.filter((r) => r.status === 'rejected').length
-        deletedIds = ids.filter((_, index) => results[index].status === 'fulfilled')
-        for (const id of deletedIds) await offlineCache.deleteNote(id)
-        setOfflineOverlay((prev) => prev.filter((note) => !deletedIds.includes(note.id)))
-        if (failed > 0) {
-          toast.error(`Failed to delete ${failed} notes`)
-        } else {
-          toast.success(`Deleted ${ids.length} notes`)
+        failed = results.filter((result) => result.status === 'rejected').length
+        const immediateDeleted = immediateIds.filter((_, index) => results[index].status === 'fulfilled')
+        for (const id of immediateDeleted) {
+          await offlineCache.deleteNote(id)
+          deleted.add(id)
         }
+        setOfflineOverlay((prev) => prev.filter((note) => !immediateDeleted.includes(note.id)))
+      }
+
+      const deletedIds = ids.filter((id) => deleted.has(id))
+      if (failed > 0) {
+        toast.error(`Failed to delete ${failed} notes`)
+      } else if (isOffline) {
+        toast.success(`Queued deletion of ${queuedIds.length} notes (offline)`)
+      } else if (queuedIds.length) {
+        toast.success(`Deletion of ${queuedIds.length} notes queued for sync`)
+      } else {
+        toast.success(`Deleted ${ids.length} notes`)
       }
 
       await Promise.all([

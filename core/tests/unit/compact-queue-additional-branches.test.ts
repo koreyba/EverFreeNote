@@ -32,7 +32,7 @@ describe('compactQueue additional branch behavior', () => {
     ])
   })
 
-  it('collapses create-update-delete chains to a real no-op', () => {
+  it('retains the final delete after create and updates', () => {
     const result = compactQueue([
       item('create', 'temporary-note', 'create', '2026-01-01T00:00:01Z', { title: 'initial' }),
       item('update-one', 'temporary-note', 'update', '2026-01-01T00:00:02Z', { title: 'edited' }),
@@ -40,7 +40,9 @@ describe('compactQueue additional branch behavior', () => {
       item('delete', 'temporary-note', 'delete', '2026-01-01T00:00:04Z'),
     ])
 
-    expect(result).toEqual([])
+    expect(result).toEqual([
+      item('delete', 'temporary-note', 'delete', '2026-01-01T00:00:04Z', {}, { status: 'pending' }),
+    ])
   })
 
   it('keeps the final operation for update/delete chains', () => {

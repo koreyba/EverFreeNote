@@ -23,9 +23,11 @@ type BulkActionParams = Parameters<typeof useNoteBulkActions>[0]
 const makeParams = (overrides: Partial<BulkActionParams> = {}) => {
   const queryClient = new QueryClient()
   const params: BulkActionParams = {
+    userId: 'user-1',
     selectedNoteIds: new Set<string>(),
     isOffline: false,
     enqueueBatchAndDrainIfOnline: jest.fn().mockResolvedValue(undefined),
+    offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } } as never,
     offlineCache: { saveNote: jest.fn().mockResolvedValue(undefined), deleteNote: jest.fn().mockResolvedValue(undefined) },
     setOfflineOverlay: jest.fn(),
     setPendingCount: jest.fn(),
@@ -137,8 +139,8 @@ describe('useNoteBulkActions', () => {
     })
 
     expect(enqueue).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ noteId: 'one', operation: 'delete', payload: {} }),
-      expect.objectContaining({ noteId: 'two', operation: 'delete', payload: {} }),
+      expect.objectContaining({ noteId: 'one', operation: 'delete', payload: { user_id: 'user-1' } }),
+      expect.objectContaining({ noteId: 'two', operation: 'delete', payload: { user_id: 'user-1' } }),
     ]))
     expect(saveNote).toHaveBeenCalledTimes(2)
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'one', deleted: true, status: 'pending' }))

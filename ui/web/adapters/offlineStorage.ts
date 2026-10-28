@@ -157,6 +157,11 @@ const localFallback = (() => {
       writeJson(QUEUE_KEY, queue)
     },
     upsertQueue: (items: MutationQueueItem[]) => writeJson(QUEUE_KEY, items),
+    appendQueueItems: (items: MutationQueueItem[]) => {
+      const queue = new Map(readJson<MutationQueueItem>(QUEUE_KEY).map(item => [item.id, item]))
+      items.forEach(item => queue.set(item.id, item))
+      writeJson(QUEUE_KEY, Array.from(queue.values()))
+    },
     popQueueBatch: (size: number) => {
       const queue = readJson<MutationQueueItem>(QUEUE_KEY)
       const batch = queue.slice(0, size)
@@ -331,6 +336,13 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
         })
       },
 
+      async appendQueueItems(items) {
+        if (!items.length) return
+        await withStore(QUEUE_STORE, 'readwrite', (store) => {
+          items.forEach((item) => store.put(item))
+        })
+      },
+
       async popQueueBatch(batchSize) {
         const queue = await readAll<MutationQueueItem>(QUEUE_STORE)
         // сортируем по clientUpdatedAt, чтобы сохранять последовательность
@@ -473,6 +485,9 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
       },
       async upsertQueue(items) {
         localFallback.upsertQueue(items)
+      },
+      async appendQueueItems(items) {
+        localFallback.appendQueueItems(items)
       },
       async popQueueBatch(batchSize) {
         return localFallback.popQueueBatch(batchSize)

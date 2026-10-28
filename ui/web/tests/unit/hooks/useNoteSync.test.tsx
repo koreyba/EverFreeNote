@@ -13,7 +13,7 @@ jest.mock('@core/services/offlineSyncManager', () => ({
   OfflineSyncManager: jest.fn().mockImplementation(
     (_storage: unknown, performSync: (item: MutationQueueItem) => Promise<void>) => {
       capturedPerformSync = performSync
-      return { enqueue: jest.fn(), drainQueue: jest.fn(), dispose: jest.fn() }
+      return { enqueue: jest.fn(), drainQueue: jest.fn(), requestDrain: jest.fn(), dispose: jest.fn() }
     },
   ),
 }))
@@ -188,6 +188,26 @@ it('does not upload another account\'s queued draft under the current account', 
   await expect(capturedPerformSync!(makeQueueItem({ operation: 'create', payload: { title: 'Private', user_id: 'other-user' } })))
     .rejects.toThrow('another account')
   expect(create).not.toHaveBeenCalled()
+})
+
+it('keeps another account\'s queued deletion from reaching the API', async () => {
+  const remove = jest.fn()
+  renderSyncHook({ delete: remove })
+  await expect(capturedPerformSync!(makeQueueItem({ operation: 'delete', payload: { user_id: 'other-user' } })))
+    .rejects.toThrow('another account')
+  expect(remove).not.toHaveBeenCalled()
+})
+
+it('requests another drain after enqueueing an online batch', async () => {
+  const { OfflineSyncManager } = await import('@core/services/offlineSyncManager')
+  const hook = renderSyncHook()
+  const manager = jest.mocked(OfflineSyncManager).mock.results.at(-1)?.value
+  const item = makeQueueItem({ operation: 'delete', payload: { user_id: 'user-1' } })
+
+  await act(async () => { await hook.result.current.enqueueBatchAndDrainIfOnline([item]) })
+
+  expect(hook.result.current.offlineQueue.enqueueMany).toHaveBeenCalledWith([item])
+  expect(manager.requestDrain).toHaveBeenCalledTimes(1)
 })
 
 it('retries quietly when backend access returns without a browser online event', async () => {

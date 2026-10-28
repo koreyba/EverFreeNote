@@ -148,7 +148,7 @@ export function useNoteSync({
         async (items: MutationQueueItemInput[]) => {
             await offlineQueue.enqueueMany(items)
             if (syncManagerRef.current && !isOffline) {
-                await syncManagerRef.current.drainQueue()
+                await syncManagerRef.current.requestDrain()
             }
         },
         [offlineQueue, isOffline]

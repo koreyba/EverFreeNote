@@ -90,7 +90,16 @@ describe('OfflineSyncManager', () => {
     // Since it calls getQueue immediately, we can check that.
     cy.wrap(localStorage.getQueue).should('have.been.called')
     
+    cy.then(() => localManager.dispose())
+  })
+
+  it('does not start its scheduled initial drain after disposal', () => {
+    const getQueue = cy.stub().resolves([])
+    const localStorage = { ...mockStorage, getQueue }
+    const localNetwork = { ...mockNetwork, isOnline: cy.stub().returns(true) }
+    const localManager = new OfflineSyncManager(localStorage, performSyncStub, localNetwork, onSuccessStub)
     localManager.dispose()
+    cy.then(() => expect(getQueue).not.to.have.been.called)
   })
 
   it('should drain queue when coming online', async () => {

@@ -199,7 +199,7 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
       noteId: note.id,
       operation: 'delete',
-      payload: {},
+      payload: { user_id: 'user-1' },
     }))
     expect(params.offlineCache.saveNote).toHaveBeenCalledWith(expect.objectContaining({
       id: note.id,

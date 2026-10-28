@@ -139,6 +139,27 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
     expect(await webOfflineStorageAdapter.getQueue()).toEqual([])
   })
 
+  it('appends a batch without replacing pending or failed queue items', async () => {
+    const pending = makeQueueItem('q-1')
+    const failed = makeQueueItem('q-2', 'failed')
+    const added = makeQueueItem('q-3')
+    await webOfflineStorageAdapter.upsertQueueItem(pending)
+    await webOfflineStorageAdapter.upsertQueueItem(failed)
+
+    await webOfflineStorageAdapter.appendQueueItems([added])
+
+    expect(await webOfflineStorageAdapter.getQueue()).toEqual([pending, failed, added])
+  })
+
+  it('leaves the existing queue intact if the fallback batch write fails', async () => {
+    const pending = makeQueueItem('q-1')
+    await webOfflineStorageAdapter.upsertQueueItem(pending)
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => { throw new Error('quota exceeded') })
+
+    await expect(webOfflineStorageAdapter.appendQueueItems([makeQueueItem('q-2')])).rejects.toThrow('quota exceeded')
+    expect(await webOfflineStorageAdapter.getQueue()).toEqual([pending])
+  })
+
   it('marks an existing note as synced and clears its pending operations', async () => {
     await webOfflineStorageAdapter.saveNote(makeNote('note-1', '2026-01-01T00:00:00Z', {
       status: 'pending',

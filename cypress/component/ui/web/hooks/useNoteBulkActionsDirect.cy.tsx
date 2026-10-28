@@ -74,9 +74,11 @@ const Harness = ({ selectedIds, isOffline = false, deleteShouldRejectIds = [] }:
   const selectAllVisibleCallback = React.useMemo(() => cy.stub().as('selectAllVisibleCallback'), [])
 
   const actions = useNoteBulkActions({
+    userId: 'user-1',
     selectedNoteIds: selectedSet,
     isOffline,
     enqueueBatchAndDrainIfOnline,
+    offlineQueueRef: { current: { getQueue: () => Promise.resolve([]) } } as never,
     offlineCache,
     setOfflineOverlay: setOfflineOverlay as never,
     setPendingCount: setPendingCount as never,

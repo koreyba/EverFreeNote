@@ -67,3 +67,11 @@ flowchart LR
 The loading skeleton is used only when the list has no notes. Existing auth bootstrap and local hydration stay independent from network requests.
 
 Hidden editor tabs are protected by save state (dirty, saving, error), plus the durable cache/queue guards. A saved hidden tab can be reset after confirmed deletion. Keep the visible active editor protected even before its debounced draft notification arrives.
+
+## Deferred deletions and queue ownership
+
+A queued create can already exist on the server after its response is lost. When the last queued operation is a deletion, retain an idempotent DELETE with the same client-generated note ID instead of compacting the pair to nothing. Carry the known owner into the delete; operations explicitly owned by different accounts are not compacted together. New offline deletion records and tombstones include the account ID. Equal timestamps favor deletion, while newly queued deletions are timestamped after the note's known pending writes.
+
+When an online deletion targets a note with queued writes, it joins the queue so the single sync manager finishes an in-flight request and reconciles that note's pending operations before sending DELETE. Unrelated online deletes keep their direct path. Batch enqueue adds items in one IndexedDB transaction instead of clearing the previous queue; the localStorage fallback merges them in one synchronous write within the current window.
+
+The queue is not a cross-window or cross-device lock. A server request that completes after the client observes a timeout and later DELETE can still recreate the note; preventing that ordering requires a server-side tombstone or serialized mutation protocol. Legacy standalone delete records that do not carry an owner also cannot be reliably attributed after an account switch. The localStorage fallback cannot guarantee atomic read/modify/write across different browser windows.

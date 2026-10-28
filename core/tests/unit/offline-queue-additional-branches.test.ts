@@ -81,6 +81,7 @@ describe('offline queue additional branches', () => {
     const storage = {
       upsertQueueItem: jest.fn().mockResolvedValue(undefined),
       upsertQueue: jest.fn().mockResolvedValue(undefined),
+      appendQueueItems: jest.fn().mockResolvedValue(undefined),
     }
     const service = new OfflineQueueService(storage as never)
     const failed = input('retry-1', 'note-1', 'update', '2026-01-01T00:00:00Z', {
@@ -103,7 +104,7 @@ describe('offline queue additional branches', () => {
     ]
     await service.enqueueMany(batch)
 
-    expect(storage.upsertQueue).toHaveBeenCalledWith([
+    expect(storage.appendQueueItems).toHaveBeenCalledWith([
       { ...batch[0], status: 'failed', attempts: 1, lastError: '503' },
       { ...batch[1], status: 'pending', attempts: 0, lastError: undefined },
     ])
@@ -148,7 +149,7 @@ describe('offline queue additional branches', () => {
     expect(storage.queue).toEqual([])
   })
 
-  it('compacts create-update-delete to a noop and keeps the final operation for existing notes', () => {
+  it('retains the final deletion for new and existing notes', () => {
     const result = compactQueue([
       item('create-1', 'new-note', 'create', '2026-01-01T00:00:00Z', { title: 'initial' }),
       item('update-1', 'new-note', 'update', '2026-01-01T00:00:01Z', { title: 'edited' }),
@@ -158,6 +159,12 @@ describe('offline queue additional branches', () => {
     ])
 
     expect(result).toEqual([
+      expect.objectContaining({
+        id: 'delete-1',
+        noteId: 'new-note',
+        operation: 'delete',
+        status: 'pending',
+      }),
       expect.objectContaining({
         id: 'delete-2',
         noteId: 'existing-delete',

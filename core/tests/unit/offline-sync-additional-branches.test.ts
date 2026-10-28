@@ -103,7 +103,7 @@ describe("OfflineSyncManager additional branches", () => {
     expect(performSync).toHaveBeenCalledTimes(1)
   })
 
-  it("compacts create-delete to a noop and keeps a standalone delete pending", async () => {
+  it("sends both deletions, including one whose create may have reached the server", async () => {
     const storage = new DeterministicStorage()
     storage.queue = [
       makeItem("create", {
@@ -136,7 +136,8 @@ describe("OfflineSyncManager additional branches", () => {
     expect(storage.upsertQueueItem).toHaveBeenCalledWith(
       expect.objectContaining({ id: "final-delete", operation: "delete", status: "pending" }),
     )
-    expect(performSync).toHaveBeenCalledTimes(1)
+    expect(performSync).toHaveBeenCalledTimes(2)
+    expect(performSync).toHaveBeenCalledWith(expect.objectContaining({ id: "delete", operation: "delete" }))
     expect(performSync).toHaveBeenCalledWith(expect.objectContaining({ id: "final-delete", operation: "delete" }))
     expect(storage.queue).toEqual([])
   })

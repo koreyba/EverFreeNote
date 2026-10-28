@@ -6,10 +6,10 @@ const item = (id: string, noteId: string, operation: 'create' | 'update' | 'dele
 })
 
 describe('compactQueue state transitions', () => {
-  it('removes create/delete pairs and keeps a standalone delete pending', () => {
+  it('retains deletion after an uncertain create and keeps a standalone delete pending', () => {
     expect(compactQueue([
       item('1', 'n1', 'create', '2026-01-01T00:00:00Z'), item('2', 'n1', 'delete', '2026-01-01T00:00:01Z'),
-    ])).toEqual([])
+    ])).toEqual([expect.objectContaining({ id: '2', operation: 'delete', status: 'pending' })])
     const result = compactQueue([item('3', 'n2', 'delete', '2026-01-01T00:00:00Z')])
     expect(result).toHaveLength(1)
     expect(result[0]).toMatchObject({ operation: 'delete', status: 'pending' })

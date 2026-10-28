@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
+import { nextMutationTimestamp } from '@core/utils/nextMutationTimestamp'
 import type { NoteViewModel, NoteUpdate } from '@core/types/domain'
 import type { CachedNote } from '@core/types/offline'
 import { parseTagString } from '@ui/web/lib/tags'
@@ -395,21 +396,30 @@ export function useNoteSaveHandlers({
     if (!noteToDelete) return false
 
     try {
-      if (isOffline) {
+      const queue = await offlineQueueRef.current.getQueue()
+      const hasQueuedWrites = queue.some((item) => item.noteId === noteToDelete.id)
+      if (isOffline || hasQueuedWrites) {
+        if (!user?.id) throw new Error('User not authenticated - deletion skipped')
+        const deletedAt = nextMutationTimestamp(queue, new Set([noteToDelete.id]))
+        const cachedDelete: CachedNote = {
+          id: noteToDelete.id,
+          user_id: user.id,
+          status: 'pending',
+          deleted: true,
+          updatedAt: deletedAt,
+        }
         await enqueueMutation({
           noteId: noteToDelete.id,
           operation: 'delete',
-          payload: {},
-          clientUpdatedAt: new Date().toISOString(),
+          payload: { user_id: user.id },
+          clientUpdatedAt: deletedAt,
         })
-        const cachedDelete: CachedNote = {
-          id: noteToDelete.id,
-          status: 'pending',
-          deleted: true,
-          updatedAt: new Date().toISOString(),
-        }
         await offlineCache.saveNote(cachedDelete)
+        const queueAfterSave = isOffline ? null : await offlineQueueRef.current.getQueue()
+        const alreadySynced = queueAfterSave !== null && !queueAfterSave.some((item) => item.noteId === noteToDelete.id)
+        if (alreadySynced) await offlineCache.deleteNote(noteToDelete.id)
         setOfflineOverlay((prev) => {
+          if (alreadySynced) return prev.filter((note) => note.id !== noteToDelete.id)
           const idx = prev.findIndex((n) => n.id === noteToDelete.id)
           if (idx >= 0) {
             const next = [...prev]
@@ -418,8 +428,9 @@ export function useNoteSaveHandlers({
           }
           return [...prev, cachedDelete]
         })
-        setPendingCount((prev) => prev + 1)
-        toast.success('Deletion queued offline')
+        if (queueAfterSave) setPendingCount(queueAfterSave.filter((item) => item.status === 'pending').length)
+        else setPendingCount((prev) => prev + 1)
+        toast.success(isOffline ? 'Deletion queued offline' : 'Deletion queued for sync')
       } else {
         await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
         await offlineCache.deleteNote(noteToDelete.id)

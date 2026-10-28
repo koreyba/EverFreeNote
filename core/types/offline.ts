@@ -49,6 +49,8 @@ export interface OfflineStorageAdapter {
   getQueue(): Promise<MutationQueueItem[]>
   upsertQueueItem(item: MutationQueueItem): Promise<void>
   upsertQueue(items: MutationQueueItem[]): Promise<void>
+  /** Add or replace these items without clearing other queue entries. */
+  appendQueueItems?(items: MutationQueueItem[]): Promise<void>
   /** @deprecated Use getPendingBatch + removeQueueItems instead */
   popQueueBatch(batchSize: number): Promise<MutationQueueItem[]>
   /** Get pending items without removing them from queue */
