@@ -6,6 +6,7 @@ import { useNotesQuery } from './useNotesQuery'
 import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import { useInfiniteScroll } from './useInfiniteScroll'
 import type { NoteViewModel, SearchResult } from '@core/types/domain'
+import type { CachedNote } from '@core/types/offline'
 import { useNoteAuth } from './useNoteAuth'
 import { useNoteSearch } from './useNoteSearch'
 import { useNoteSelection } from './useNoteSelection'
@@ -39,6 +40,22 @@ export type EditFormState = {
 type AIPaginationControls = {
   resetAIResults: () => void
   loadMoreAI: () => void
+}
+
+type TagChange = <T extends { tags?: string[] }>(notes: T[]) => T[]
+
+const ownerlessNotice = 'Some cached notes have an unknown account and could not be reconciled. They are kept locally; changes affecting them are blocked.'
+const ownerlessBlock = 'Some cached notes with an unknown account would be changed. They were kept for safety.'
+
+function changeTouchesCachedNotes(change: TagChange, notes: CachedNote[]): boolean {
+  return change(notes).some((note, index) => note !== notes[index])
+}
+
+function hasUnsyncedCachedNotes(notes: CachedNote[], userId: string): boolean {
+  return notes.some((note) => (
+    (!note.user_id || note.user_id === userId) &&
+    (note.status !== 'synced' || Boolean(note.pendingOps?.length))
+  ))
 }
 
 export function useNoteAppController() {
@@ -953,10 +970,11 @@ export function useNoteAppController() {
   // snapshot across pages or a replacement for cross-device conflict control.
   const [tagCoveragePages, setTagCoveragePages] = useState<unknown>(null)
   const [tagCoverageMessage, setTagCoverageMessage] = useState<string | null>(null)
+  const [tagCoverageNotice, setTagCoverageNotice] = useState<string | null>(null)
   const [checkingTagCoverage, setCheckingTagCoverage] = useState(false)
   const [tagMutationInProgress, setTagMutationInProgress] = useState(false)
   const tagMutationQueueRef = useRef<Promise<void>>(Promise.resolve())
-  const tagRecoveryPendingRef = useRef(false)
+  const tagRecoveryPendingRef = useRef<TagChange | null>(null)
 
   const localTagBlockReason = !workspaceHydrated
     ? 'Restoring open notes. Please wait before managing tags.'
@@ -974,7 +992,7 @@ export function useNoteAppController() {
       : null
   )
 
-  const verifyTagSnapshot = useCallback(async (): Promise<NoteViewModel[]> => {
+  const verifyTagSnapshot = useCallback(async (): Promise<{ notes: NoteViewModel[]; ownerless: CachedNote[] }> => {
     if (!user) throw new Error('Sign in to manage tags.')
     if (!workspaceHydrated) throw new Error('Restoring open notes. Please wait before managing tags.')
     if (isOffline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
@@ -985,10 +1003,9 @@ export function useNoteAppController() {
     }
     const queue = await offlineQueueRef.current.getQueue()
     const cached = await offlineCache.loadNotes()
-    if (queue.length || cached.some((note) => (
-      (!note.user_id || note.user_id === user.id) &&
-      (note.status !== 'synced' || Boolean(note.pendingOps?.length))
-    ))) throw new Error('Finish syncing your notes before managing tags.')
+    if (queue.length || hasUnsyncedCachedNotes(cached, user.id)) {
+      throw new Error('Finish syncing your notes before managing tags.')
+    }
 
     const refreshed = await notesQuery.refetch({ throwOnError: true })
     const pages = refreshed.data?.pages
@@ -1012,13 +1029,21 @@ export function useNoteAppController() {
     }
     const existingIds = await noteService.getExistingNoteIds(ids, user.id)
     if (existingIds.length !== count) throw new Error('Notes changed while checking. Refresh and check again.')
-    // A queued write could have arrived while the server requests were running.
-    if ((await offlineQueueRef.current.getQueue()).length) {
+    const verifiedIds = new Set(existingIds)
+    if (tabs.some((tab) => tab.noteId && !verifiedIds.has(tab.noteId))) {
+      throw new Error('An open note is no longer available. Close its tab and check again.')
+    }
+    // A draft or ownerless cache entry could have arrived during the server reads.
+    const latestCached = await offlineCache.loadNotes()
+    const latestQueue = await offlineQueueRef.current.getQueue()
+    if (latestQueue.length || hasUnsyncedCachedNotes(latestCached, user.id)) {
       throw new Error('Finish syncing your notes before managing tags.')
     }
+    const ownerless = latestCached.filter((note) => !note.user_id && !note.deleted && !verifiedIds.has(note.id))
+    setTagCoverageNotice(ownerless.length ? ownerlessNotice : null)
     setTagCoveragePages(pages)
     setTagCoverageMessage(null)
-    return loadedNotes as NoteViewModel[]
+    return { notes: loadedNotes as NoteViewModel[], ownerless }
   }, [user, workspaceHydrated, isOffline, saving, autoSaving, tabs, offlineQueueRef, offlineCache, notesQuery, supabase, noteService])
 
   const loadMoreTagNotes = useCallback(async () => {
@@ -1046,7 +1071,7 @@ export function useNoteAppController() {
     }
   }, [updateNoteMutation])
 
-  const refreshTagMutationState = useCallback(async () => {
+  const refreshTagMutationState = useCallback(async (change: TagChange) => {
     if (!user) throw new Error('Sign in to refresh notes.')
     const open = tabs.filter((tab) => tab.noteId && tab.note && tab.saveState === 'saved')
     const openIds = open.map((tab) => tab.noteId!)
@@ -1060,6 +1085,10 @@ export function useNoteAppController() {
       throw new Error('An open note is no longer available. Close its tab and check again.')
     }
     const cached = await offlineCache.loadNotes()
+    const queue = await offlineQueueRef.current.getQueue()
+    if (queue.length || hasUnsyncedCachedNotes(cached, user.id)) {
+      throw new Error('Finish syncing your notes before managing tags.')
+    }
     const candidates = cached.filter((note) => (
       (!note.user_id || note.user_id === user.id) && note.status === 'synced' && !note.deleted && !note.pendingOps?.length
     ))
@@ -1075,17 +1104,17 @@ export function useNoteAppController() {
       // also prevents a server row limit or temporary error from removing data.
       const existing = await noteService.getExistingNoteIds(missing.map((note) => note.id), user.id)
       if (existing.length) throw new Error('Some cached notes could not be refreshed. Try again.')
-      if (missing.some((note) => note.user_id !== user.id)) {
-        throw new Error('Some cached notes have an unknown account. They were kept for safety.')
-      }
     }
+    const ownerless = missing.filter((note) => !note.user_id)
+    if (changeTouchesCachedNotes(change, ownerless)) throw new Error(ownerlessBlock)
+    const missingOwned = missing.filter((note) => note.user_id === user.id)
     const patches = candidates.filter((note) => remoteTags.has(note.id))
       .map((expected) => ({ expected, tags: remoteTags.get(expected.id)! }))
     const updated = await offlineCache.patchSyncedTags(patches)
     if (updated.length !== patches.length) throw new Error('Some cached notes could not be refreshed safely.')
     // This conditional transaction checks the cache snapshot and queue again,
     // protecting a draft or queued write that arrived during the server reads.
-    const removed = missing.length ? await offlineCache.removeSyncedNotes(missing) : []
+    const removed = missingOwned.length ? await offlineCache.removeSyncedNotes(missingOwned) : []
     const updatedSet = new Set(updated)
     const removedSet = new Set(removed)
     const snapshots = new Map(candidates.map((note) => [note.id, note]))
@@ -1095,20 +1124,31 @@ export function useNoteAppController() {
       if (removedSet.has(note.id)) return []
       return updatedSet.has(note.id) ? [{ ...note, tags: remoteTags.get(note.id)! }] : [note]
     }))
-    if (removed.length !== missing.length) throw new Error('Some cached notes changed while refreshing. Try again.')
+    if (removed.length !== missingOwned.length) throw new Error('Some cached notes changed while refreshing. Try again.')
     updateSavedTags(refreshedOpen.map((note) => ({ id: note.id, tags: note.tags ?? [] })))
     await notesQuery.refetch({ throwOnError: true })
     await queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
-  }, [user, tabs, noteService, offlineCache, setOfflineOverlay, updateSavedTags, notesQuery, queryClient])
+    // The cache and queue can change during those reads. Do not claim success
+    // if a new draft arrived or an unverified ownerless note now matches.
+    const finalCached = await offlineCache.loadNotes()
+    const finalQueue = await offlineQueueRef.current.getQueue()
+    if (finalQueue.length || hasUnsyncedCachedNotes(finalCached, user.id)) {
+      throw new Error('Finish syncing your notes before managing tags.')
+    }
+    const unverifiedOwnerless = finalCached.filter((note) => !note.user_id && !note.deleted && !remoteTags.has(note.id))
+    if (changeTouchesCachedNotes(change, unverifiedOwnerless)) throw new Error(ownerlessBlock)
+    setTagCoverageNotice(unverifiedOwnerless.length ? ownerlessNotice : null)
+  }, [user, tabs, noteService, offlineCache, offlineQueueRef, setOfflineOverlay, updateSavedTags, notesQuery, queryClient])
 
   const checkTagCoverage = useCallback(async () => {
     setCheckingTagCoverage(true)
     setTagCoveragePages(null)
     try {
       await verifyTagSnapshot()
-      if (tagRecoveryPendingRef.current) {
-        await refreshTagMutationState()
-        tagRecoveryPendingRef.current = false
+      const pendingChange = tagRecoveryPendingRef.current
+      if (pendingChange) {
+        await refreshTagMutationState(pendingChange)
+        tagRecoveryPendingRef.current = null
         await verifyTagSnapshot()
       }
     } catch (error) {
@@ -1119,27 +1159,34 @@ export function useNoteAppController() {
     }
   }, [verifyTagSnapshot, refreshTagMutationState])
 
-  const runTagMutation = useCallback((change: (notes: NoteViewModel[]) => NoteViewModel[], success: string) => {
-    const run = async (): Promise<boolean> => {
+  const runTagMutation = useCallback((change: TagChange, success: string) => {
+    const run = async (): Promise<boolean | string> => {
       tagMutationInProgressRef.current = true
       setTagMutationInProgress(true)
       setTagCoveragePages(null)
       let writeStarted = false
       try {
-        let current = await verifyTagSnapshot()
-        if (tagRecoveryPendingRef.current) {
-          await refreshTagMutationState()
-          tagRecoveryPendingRef.current = false
-          current = await verifyTagSnapshot()
+        let snapshot = await verifyTagSnapshot()
+        let recoveredPending = false
+        const pendingChange = tagRecoveryPendingRef.current
+        if (pendingChange) {
+          await refreshTagMutationState(pendingChange)
+          tagRecoveryPendingRef.current = null
+          snapshot = await verifyTagSnapshot()
+          recoveredPending = true
         }
+        if (changeTouchesCachedNotes(change, snapshot.ownerless)) throw new Error(ownerlessBlock)
+        const current = snapshot.notes
         const updated = change(current)
         if (updated.every((note, index) => note === current[index])) {
-          toast.info('No matching tags found in the loaded notes.')
-          return false
+          const message = 'No matching tags found in the loaded notes.'
+          toast.info(message)
+          const previous = recoveredPending ? ' Review the refreshed notes to confirm the previous change.' : ''
+          return `No tag changes were sent by this attempt. ${message}${previous}`
         }
         writeStarted = true
         await persistTagChanges(updated, current)
-        await refreshTagMutationState()
+        await refreshTagMutationState(change)
         setTagCoveragePages(null)
         toast.success(success)
         return true
@@ -1149,13 +1196,14 @@ export function useNoteAppController() {
           const message = error instanceof Error ? error.message : 'Could not verify the loaded notes.'
           setTagCoverageMessage(message)
           toast.error(message)
+          return `No tag changes were sent by this attempt. ${message}`
         } else {
           try {
-            await refreshTagMutationState()
-            tagRecoveryPendingRef.current = false
+            await refreshTagMutationState(change)
+            tagRecoveryPendingRef.current = null
             toast.error('The tag change may be incomplete. Notes were refreshed; review them before retrying.')
           } catch {
-            tagRecoveryPendingRef.current = true
+            tagRecoveryPendingRef.current = change
             // Even when a tab or cached snapshot cannot be reconciled, refresh
             // the list independently if the server is reachable. This is not
             // enough to clear recovery or claim the batch succeeded.
@@ -1226,6 +1274,7 @@ export function useNoteAppController() {
     handleRenameTag,
     handleDeleteTag,
     handleCleanTags,
+    tagCoverageNotice,
     prepareTagManagement: flushAndCaptureActiveTab,
     tagManagementBlockReason,
     checkTagCoverage,

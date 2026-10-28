@@ -19,9 +19,10 @@ interface NoteLike {
 interface TagsPageProps {
   readonly notes: NoteLike[]
   readonly onSelectTag: (tagName: string) => void
-  readonly onRenameTag: (oldTag: string, newTag: string) => boolean | void | Promise<boolean | void>
-  readonly onDeleteTag: (tagName: string) => boolean | void | Promise<boolean | void>
+  readonly onRenameTag: (oldTag: string, newTag: string) => boolean | string | void | Promise<boolean | string | void>
+  readonly onDeleteTag: (tagName: string) => boolean | string | void | Promise<boolean | string | void>
   readonly managementBlockReason?: string | null
+  readonly managementNotice?: string | null
   readonly onLoadMoreNotes?: () => void
   readonly onCheckNotes?: () => void
   readonly checkingNotes?: boolean
@@ -35,6 +36,7 @@ export function TagsPage({
   onRenameTag,
   onDeleteTag,
   managementBlockReason,
+  managementNotice,
   onLoadMoreNotes,
   onCheckNotes,
   checkingNotes = false,
@@ -111,7 +113,8 @@ export function TagsPage({
   }, [scrollToTarget])
 
   const handleConfirmRename = React.useCallback(async (oldTag: string, newTag: string) => {
-    if ((await onRenameTag(oldTag, newTag)) === false) return false
+    const result = await onRenameTag(oldTag, newTag)
+    if (result === false || typeof result === 'string') return result
     setRenameTarget(null)
 
     // Clear letter filter to ensure target letter section is rendered
@@ -136,7 +139,8 @@ export function TagsPage({
   }, [onRenameTag, scrollToTarget])
 
   const handleConfirmDelete = React.useCallback(async (tag: string) => {
-    if ((await onDeleteTag(tag)) === false) return false
+    const result = await onDeleteTag(tag)
+    if (result === false || typeof result === 'string') return result
     setDeleteTarget(null)
     return true
   }, [onDeleteTag])
@@ -199,6 +203,7 @@ export function TagsPage({
       <div className="mb-6 space-y-2 text-sm text-muted-foreground" data-testid="tag-coverage-status">
         <p>Counts are based on loaded and cached notes and may be incomplete.</p>
         {managementBlockReason && <p role="status">{managementBlockReason}</p>}
+        {managementNotice && <p>{managementNotice}</p>}
         {(onLoadMoreNotes || onCheckNotes) && (
           <div className="flex flex-wrap gap-3">
             {onLoadMoreNotes && <button type="button" className="underline" onClick={onLoadMoreNotes} disabled={loadingMoreNotes}>

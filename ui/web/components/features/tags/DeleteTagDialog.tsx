@@ -17,7 +17,7 @@ interface DeleteTagDialogProps {
   readonly tagName: string | null
   readonly noteCount?: number
   readonly onOpenChange: (open: boolean) => void
-  readonly onConfirmDelete: (tagName: string) => Promise<boolean>
+  readonly onConfirmDelete: (tagName: string) => Promise<boolean | string>
 }
 
 export function DeleteTagDialog({
@@ -37,9 +37,9 @@ export function DeleteTagDialog({
     setBusy(true)
     setError(null)
     try {
-      if (!(await onConfirmDelete(tagName))) {
-        setError("The result couldn't be confirmed. Refresh notes before trying again.")
-      }
+      const result = await onConfirmDelete(tagName)
+      if (typeof result === 'string') setError(result)
+      else if (!result) setError("The result couldn't be confirmed. Refresh notes before trying again.")
     } catch {
       setError("The result couldn't be confirmed. Refresh notes before trying again.")
     } finally {

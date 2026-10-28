@@ -59,6 +59,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       handleCleanTags: cy.stub().resolves(),
       prepareTagManagement: cy.stub().resolves(true),
       tagManagementBlockReason: null,
+      tagCoverageNotice: null,
       checkTagCoverage: cy.stub().resolves(),
       loadMoreTagNotes: cy.stub().resolves(),
       checkingTagCoverage: false,

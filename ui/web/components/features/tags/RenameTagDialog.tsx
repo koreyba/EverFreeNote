@@ -17,7 +17,7 @@ interface RenameTagDialogProps {
   readonly tagName: string | null
   readonly existingTagNames: string[]
   readonly onOpenChange: (open: boolean) => void
-  readonly onConfirmRename: (oldTag: string, newTag: string) => Promise<boolean>
+  readonly onConfirmRename: (oldTag: string, newTag: string) => Promise<boolean | string>
 }
 
 export function RenameTagDialog({
@@ -57,9 +57,9 @@ export function RenameTagDialog({
       setBusy(true)
       setError(null)
       try {
-        if (!(await onConfirmRename(tagName, trimmedNewTagName))) {
-          setError("The result couldn't be confirmed. Refresh notes before trying again.")
-        }
+        const result = await onConfirmRename(tagName, trimmedNewTagName)
+        if (typeof result === 'string') setError(result)
+        else if (!result) setError("The result couldn't be confirmed. Refresh notes before trying again.")
       } catch {
         setError("The result couldn't be confirmed. Refresh notes before trying again.")
       } finally {

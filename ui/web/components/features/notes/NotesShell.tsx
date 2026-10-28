@@ -142,6 +142,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     loadMoreTagNotes,
     checkingTagCoverage,
     tagMutationInProgress,
+    tagCoverageNotice,
   } = controller
 
   const tabsRef = React.useRef(tabs)
@@ -418,6 +419,7 @@ export function NotesShell({ controller }: NotesShellProps) {
             onRenameTag={handleRenameTag}
             onDeleteTag={handleDeleteTag}
             managementBlockReason={tagManagementBlockReason}
+            managementNotice={tagCoverageNotice}
             checkingNotes={checkingTagCoverage}
             loadingMoreNotes={notesQuery.isFetchingNextPage}
             onCheckNotes={!isOffline && checkTagCoverage ? () => void checkTagCoverage() : undefined}

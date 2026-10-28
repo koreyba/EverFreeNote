@@ -191,7 +191,7 @@ describe('Tag coverage and recovery on isolated local Supabase', { retries: 0 },
     cy.get('[data-testid="confirm-rename-tag-button"]').click()
     cy.get('@notesReread.all').should((requests) => expect(requests.length).to.be.greaterThan(readsBeforeRetry))
     cy.get('[data-testid="confirm-rename-tag-button"]', { timeout: 15000 }).should('not.be.disabled')
-    cy.get('[role="alert"]').should('contain.text', "couldn't be confirmed")
+    cy.get('[role="alert"]').should('contain.text', "No tag changes were sent by this attempt. No matching tags found in the loaded notes. Review the refreshed notes to confirm the previous change.")
     cy.get('@lostPatchResponse.all').should((requests) => expect(requests.length).to.equal(writesBeforeRetry))
     cy.contains('Tag "shared" renamed to "renamed"').should('not.exist')
     cy.screenshot('tag-coverage-lost-response')
@@ -206,8 +206,13 @@ describe('Tag coverage and recovery on isolated local Supabase', { retries: 0 },
     })
     cy.contains('button', 'Check loaded notes').click()
     cy.contains('Loaded 50 of 1001 notes. Load more notes and check again.').should('be.visible')
-    for (let i = 0; i < 20; i += 1) {
+    cy.intercept({ method: 'GET', pathname: '/rest/v1/notes' }, req => {
+      const offset = new URL(req.url).searchParams.get('offset')
+      if (offset) req.alias = `loadedPage${offset}`
+    })
+    for (let offset = 50; offset <= 1000; offset += 50) {
       cy.contains('button', 'Load more notes', { timeout: 10000 }).should('be.enabled').click()
+      cy.wait(`@loadedPage${offset}`, { timeout: 15000 }).its('response.statusCode').should('be.oneOf', [200, 206])
     }
     cy.contains('button', 'Load more notes', { timeout: 10000 }).should('not.exist')
     cy.contains('button', 'Check loaded notes').click()

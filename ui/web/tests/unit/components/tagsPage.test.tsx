@@ -234,6 +234,21 @@ describe('TagsPage Component', () => {
     expect(loadMore).toHaveBeenCalledTimes(1)
   })
 
+  it('shows the ownerless-cache notice without disabling unrelated tag actions', () => {
+    const notice = 'Some cached notes have an unknown account and are kept locally.'
+    render(
+      <TagsPage
+        notes={[{ tags: ['react'] }]}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={mockOnRenameTag}
+        onDeleteTag={mockOnDeleteTag}
+        managementNotice={notice}
+      />
+    )
+    expect(screen.getByText(notice)).toBeTruthy()
+    expect((screen.getByTestId('tag-menu-trigger-react') as HTMLButtonElement).disabled).toBe(false)
+  })
+
   it('keeps the rename dialog open and shows no success highlight after an unconfirmed mutation', async () => {
     const failedRename = jest.fn().mockResolvedValue(false)
     render(
@@ -252,6 +267,43 @@ describe('TagsPage Component', () => {
     expect(failedRename).toHaveBeenCalledWith('react', 'new')
     expect(screen.getByTestId('rename-tag-input')).toBeTruthy()
     expect(screen.queryByText('Updated')).toBeNull()
+  })
+
+  it('explains a preflight block in the rename dialog without suggesting an uncertain write', async () => {
+    const message = 'No tag changes were sent by this attempt. Close the unavailable note tab and try again.'
+    render(
+      <TagsPage
+        notes={[{ tags: ['react'] }]}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={jest.fn().mockResolvedValue(message)}
+        onDeleteTag={mockOnDeleteTag}
+      />
+    )
+    fireEvent.keyDown(screen.getByTestId('tag-menu-trigger-react'), { key: 'Enter' })
+    fireEvent.click(await screen.findByTestId('rename-action-react'))
+    fireEvent.change(await screen.findByTestId('rename-tag-input'), { target: { value: 'new' } })
+    fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
+    expect((await screen.findByRole('alert')).textContent).toBe(message)
+    expect(screen.queryByText(/couldn't be confirmed/i)).toBeNull()
+    expect(screen.getByTestId('rename-tag-input')).toBeTruthy()
+  })
+
+  it('explains a preflight block in the delete dialog without suggesting an uncertain write', async () => {
+    const message = 'No tag changes were sent by this attempt. Close the unavailable note tab and try again.'
+    render(
+      <TagsPage
+        notes={[{ tags: ['react'] }]}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={mockOnRenameTag}
+        onDeleteTag={jest.fn().mockResolvedValue(message)}
+      />
+    )
+    fireEvent.keyDown(screen.getByTestId('tag-menu-trigger-react'), { key: 'Enter' })
+    fireEvent.click(await screen.findByTestId('delete-action-react'))
+    fireEvent.click(await screen.findByTestId('confirm-delete-tag-button'))
+    expect((await screen.findByRole('alert')).textContent).toBe(message)
+    expect(screen.queryByText(/couldn't be confirmed/i)).toBeNull()
+    expect(screen.getByTestId('confirm-delete-tag-button')).toBeTruthy()
   })
 
   it('keeps the delete confirmation open when the outcome is uncertain', async () => {

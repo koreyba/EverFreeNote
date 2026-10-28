@@ -23,9 +23,13 @@ an uncertain response the client attempts to reread notes, reports that the
 change may be incomplete, and does not announce success. It does not claim a
 rollback. A remotely missing cached note is removed only after an exact-count
 existence check and a conditional check that the cached snapshot and queue have
-not changed. Unavailable open notes stay in their tabs and must be closed before
-retrying; unsaved drafts are never silently closed. Browser navigation requested
-while a change is in progress is applied after reconciliation. Batch writes
+not changed. An unavailable open note blocks a batch before the first write and
+stays in its tab; unsaved drafts are never silently closed. Missing cached notes
+without an account are kept and displayed with a notice. A batch can proceed
+only when the same tag transformation would leave those notes unchanged; that
+condition and the queue are checked again after writes and during recovery.
+Browser navigation requested while a change is in progress is applied after
+reconciliation. Batch writes
 defer their individual list refreshes; a successful or uncertain batch triggers
 a reconciliation instead, without changing ordinary note-save invalidation.
 Reliable cross-window/device mutation requires a separate design for

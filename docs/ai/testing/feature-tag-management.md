@@ -16,8 +16,11 @@ verified. Partial failures/timeouts must not produce a success message; verify
 the actual persisted state after rereading and retain any local drafts. Test
 single-note editing independently while offline. Also test a synced cache entry
 or open saved tab whose server note was deleted elsewhere, a failed absence
-check, a newly queued draft during reconciliation, browser Back during both a
-successful and a failed batch, and unchanged invalidation for unrelated saves.
+check, and ownerless snapshots with matching and unrelated tags. Verify that a
+matching tag blocks before PATCH, while an unrelated snapshot remains unchanged;
+recheck an ownerless tag or queued draft changed during the batch. Test browser
+Back during both successful and failed batches and unchanged invalidation for
+unrelated saves.
 This interim check does not prove atomicity or protection against concurrent
 writes from other clients.
 
