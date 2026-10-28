@@ -28,7 +28,8 @@ export class OfflineSyncManager {
     storage: OfflineStorageAdapter,
     private readonly performSync: PerformSync,
     networkStatus?: NetworkStatusProvider,
-    defaultOnSuccess?: (item: MutationQueueItem) => Promise<void> | void
+    defaultOnSuccess?: (item: MutationQueueItem) => Promise<void> | void,
+    private readonly onFailure?: (item: MutationQueueItem) => Promise<void> | void
   ) {
     this.queue = new OfflineQueueService(storage)
     this.online = networkStatus ? networkStatus.isOnline() : true
@@ -90,6 +91,11 @@ export class OfflineSyncManager {
         await this.queue.markStatus(item.id, 'failed', message)
       } catch (markError) {
         console.warn('Failed to mark item status as failed:', markError)
+      }
+      try {
+        await this.onFailure?.(item)
+      } catch (callbackError) {
+        console.warn('onFailure callback error:', callbackError)
       }
       return false
     }

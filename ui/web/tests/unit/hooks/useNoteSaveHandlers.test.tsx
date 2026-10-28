@@ -26,7 +26,7 @@ function setup(overrides: Record<string, unknown> = {}) {
     user: { id: 'user-1' },
     isOffline: false,
     offlineCache: { saveNote: jest.fn(), loadNotes: jest.fn(), deleteNote: jest.fn() },
-    enqueueMutation: jest.fn(),
+    enqueueMutation: jest.fn(async (_item, applyLocal) => { await applyLocal?.() }),
     offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } },
     setOfflineOverlay: jest.fn(),
     setPendingCount: jest.fn(),

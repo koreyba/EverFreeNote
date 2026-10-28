@@ -26,7 +26,7 @@ const makeParams = (overrides: Partial<BulkActionParams> = {}) => {
     userId: 'user-1',
     selectedNoteIds: new Set<string>(),
     isOffline: false,
-    enqueueBatchAndDrainIfOnline: jest.fn().mockResolvedValue(undefined),
+    enqueueBatchAndDrainIfOnline: jest.fn(async (_items, applyLocal) => { await applyLocal?.() }),
     offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } } as never,
     offlineCache: { saveNote: jest.fn().mockResolvedValue(undefined), deleteNote: jest.fn().mockResolvedValue(undefined) },
     setOfflineOverlay: jest.fn(),
@@ -122,7 +122,7 @@ describe('useNoteBulkActions', () => {
     const setOfflineOverlay = jest.fn()
     const setPendingCount = jest.fn()
     const saveNote = jest.fn().mockResolvedValue(undefined)
-    const enqueue = jest.fn().mockResolvedValue(undefined)
+    const enqueue = jest.fn(async (_items, applyLocal) => { await applyLocal?.() })
     const { params } = makeParams({
       isOffline: true,
       enqueueBatchAndDrainIfOnline: enqueue,
@@ -141,7 +141,7 @@ describe('useNoteBulkActions', () => {
     expect(enqueue).toHaveBeenCalledWith(expect.arrayContaining([
       expect.objectContaining({ noteId: 'one', operation: 'delete', payload: { user_id: 'user-1' } }),
       expect.objectContaining({ noteId: 'two', operation: 'delete', payload: { user_id: 'user-1' } }),
-    ]))
+    ]), expect.any(Function))
     expect(saveNote).toHaveBeenCalledTimes(2)
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'one', deleted: true, status: 'pending' }))
     expect(setOfflineOverlay).toHaveBeenCalledWith(expect.any(Function))

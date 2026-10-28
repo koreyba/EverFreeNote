@@ -413,23 +413,24 @@ export function useNoteSaveHandlers({
           operation: 'delete',
           payload: { user_id: user.id },
           clientUpdatedAt: deletedAt,
+        }, async () => {
+          await offlineCache.saveNote(cachedDelete)
+          const queueAfterSave = isOffline ? null : await offlineQueueRef.current.getQueue()
+          const alreadySynced = queueAfterSave !== null && !queueAfterSave.some((item) => item.noteId === noteToDelete.id)
+          if (alreadySynced) await offlineCache.deleteNote(noteToDelete.id)
+          setOfflineOverlay((prev) => {
+            if (alreadySynced) return prev.filter((note) => note.id !== noteToDelete.id)
+            const idx = prev.findIndex((n) => n.id === noteToDelete.id)
+            if (idx >= 0) {
+              const next = [...prev]
+              next[idx] = cachedDelete
+              return next
+            }
+            return [...prev, cachedDelete]
+          })
+          if (queueAfterSave) setPendingCount(queueAfterSave.filter((item) => item.status === 'pending').length)
+          else setPendingCount((prev) => prev + 1)
         })
-        await offlineCache.saveNote(cachedDelete)
-        const queueAfterSave = isOffline ? null : await offlineQueueRef.current.getQueue()
-        const alreadySynced = queueAfterSave !== null && !queueAfterSave.some((item) => item.noteId === noteToDelete.id)
-        if (alreadySynced) await offlineCache.deleteNote(noteToDelete.id)
-        setOfflineOverlay((prev) => {
-          if (alreadySynced) return prev.filter((note) => note.id !== noteToDelete.id)
-          const idx = prev.findIndex((n) => n.id === noteToDelete.id)
-          if (idx >= 0) {
-            const next = [...prev]
-            next[idx] = cachedDelete
-            return next
-          }
-          return [...prev, cachedDelete]
-        })
-        if (queueAfterSave) setPendingCount(queueAfterSave.filter((item) => item.status === 'pending').length)
-        else setPendingCount((prev) => prev + 1)
         toast.success(isOffline ? 'Deletion queued offline' : 'Deletion queued for sync')
       } else {
         await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })

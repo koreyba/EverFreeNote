@@ -38,7 +38,7 @@ function setup(overrides: SaveHandlersOverrides = {}) {
       saveNote: jest.fn().mockResolvedValue(undefined),
       deleteNote: jest.fn().mockResolvedValue(undefined),
     },
-    enqueueMutation: jest.fn().mockResolvedValue(undefined),
+    enqueueMutation: jest.fn(async (_item, applyLocal) => { await applyLocal?.() }),
     offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } },
     setOfflineOverlay: jest.fn(),
     setPendingCount: jest.fn(),
@@ -200,7 +200,7 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
       noteId: note.id,
       operation: 'delete',
       payload: { user_id: 'user-1' },
-    }))
+    }), expect.any(Function))
     expect(params.offlineCache.saveNote).toHaveBeenCalledWith(expect.objectContaining({
       id: note.id,
       deleted: true,

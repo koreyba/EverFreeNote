@@ -13,7 +13,7 @@ jest.mock('@core/services/offlineSyncManager', () => ({
   OfflineSyncManager: jest.fn().mockImplementation(
     (_storage: unknown, performSync: (item: MutationQueueItem) => Promise<void>) => {
       capturedPerformSync = performSync
-      return { enqueue: jest.fn(), drainQueue: jest.fn(), requestDrain: jest.fn(), dispose: jest.fn() }
+      return { enqueue: jest.fn(), drainQueue: jest.fn(), requestDrain: jest.fn().mockResolvedValue(undefined), dispose: jest.fn() }
     },
   ),
 }))
@@ -208,6 +208,24 @@ it('requests another drain after enqueueing an online batch', async () => {
 
   expect(hook.result.current.offlineQueue.enqueueMany).toHaveBeenCalledWith([item])
   expect(manager.requestDrain).toHaveBeenCalledTimes(1)
+})
+
+it('logs a background drain failure without rejecting the durable enqueue', async () => {
+  const { OfflineSyncManager } = await import('@core/services/offlineSyncManager')
+  const hook = renderSyncHook()
+  const manager = jest.mocked(OfflineSyncManager).mock.results.at(-1)?.value
+  const error = new Error('queue read failed')
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+  manager.requestDrain.mockRejectedValueOnce(error)
+  try {
+    await act(async () => {
+      await expect(hook.result.current.enqueueBatchAndDrainIfOnline([makeQueueItem()])).resolves.toBeUndefined()
+    })
+    expect(hook.result.current.offlineQueue.enqueueMany).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith('Background note sync will retry:', error)
+  } finally {
+    warn.mockRestore()
+  }
 })
 
 it('retries quietly when backend access returns without a browser online event', async () => {

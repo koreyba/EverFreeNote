@@ -56,7 +56,7 @@ const Harness = ({ selectedIds, isOffline = false, deleteShouldRejectIds = [] }:
   )
 
   const enqueueBatchAndDrainIfOnline = React.useMemo(
-    () => cy.stub().as('enqueueBatchAndDrainIfOnline').resolves(),
+    () => cy.stub().as('enqueueBatchAndDrainIfOnline').callsFake(async (_items, applyLocal) => { await applyLocal?.() }),
     []
   )
   const offlineCache = React.useMemo(

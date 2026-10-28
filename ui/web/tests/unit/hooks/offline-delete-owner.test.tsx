@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { QueryClient } from '@tanstack/react-query'
 import { useNoteSaveHandlers } from '@ui/web/hooks/useNoteSaveHandlers'
 import { useNoteBulkActions } from '@ui/web/hooks/useNoteBulkActions'
+import type { MutationQueueItemInput } from '@core/types/offline'
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 jest.mock('uuid', () => ({ v4: () => 'mock-uuid' }))
@@ -10,7 +11,7 @@ const note = { id: 'note-1', user_id: 'owner-a', title: 'Note', description: '',
 
 describe('owner-scoped offline deletion', () => {
   it('stores the owner and the same revision in the queued delete and tombstone', async () => {
-    const enqueueMutation = jest.fn()
+    const enqueueMutation = jest.fn(async (_item: MutationQueueItemInput, applyLocal?: () => Promise<void>) => { await applyLocal?.() })
     const saveNote = jest.fn()
     const props = {
       user: { id: 'owner-a' }, isOffline: true, offlineCache: { saveNote }, enqueueMutation,
@@ -24,13 +25,13 @@ describe('owner-scoped offline deletion', () => {
     const { result } = renderHook(() => useNoteSaveHandlers(props as never))
     await act(async () => { expect(await result.current.confirmDeleteNote()).toBe(true) })
 
-    expect(enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({ noteId: note.id, operation: 'delete', payload: { user_id: 'owner-a' } }))
+    expect(enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({ noteId: note.id, operation: 'delete', payload: { user_id: 'owner-a' } }), expect.any(Function))
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: note.id, deleted: true, user_id: 'owner-a', updatedAt: enqueueMutation.mock.calls[0][0].clientUpdatedAt }))
   })
 
   it('does not enqueue an unowned deletion when authentication is unavailable', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {})
-    const enqueueMutation = jest.fn()
+    const enqueueMutation = jest.fn(async (_item: MutationQueueItemInput, applyLocal?: () => Promise<void>) => { await applyLocal?.() })
     const saveNote = jest.fn()
     const props = {
       user: null, isOffline: true, offlineCache: { saveNote }, enqueueMutation,
@@ -49,7 +50,7 @@ describe('owner-scoped offline deletion', () => {
   })
 
   it('scopes every bulk deletion and tombstone to the signed-in account', async () => {
-    const enqueueBatchAndDrainIfOnline = jest.fn()
+    const enqueueBatchAndDrainIfOnline = jest.fn(async (_items: MutationQueueItemInput[], applyLocal: () => Promise<void>) => { await applyLocal() })
     const saveNote = jest.fn()
     const props = {
       userId: 'owner-a', selectedNoteIds: new Set<string>(), isOffline: true, enqueueBatchAndDrainIfOnline,
@@ -69,7 +70,7 @@ describe('owner-scoped offline deletion', () => {
   })
 
   it('queues online deletion behind unsynced writes instead of deleting directly', async () => {
-    const enqueueMutation = jest.fn()
+    const enqueueMutation = jest.fn(async (_item: MutationQueueItemInput, applyLocal?: () => Promise<void>) => { await applyLocal?.() })
     const saveNote = jest.fn()
     const deleteNote = jest.fn()
     const queuedAt = new Date(Date.now() + 500).toISOString()
@@ -87,7 +88,7 @@ describe('owner-scoped offline deletion', () => {
     await act(async () => { expect(await result.current.confirmDeleteNote()).toBe(true) })
 
     expect(deleteNote).not.toHaveBeenCalled()
-    expect(enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({ noteId: note.id, operation: 'delete', payload: { user_id: 'owner-a' } }))
+    expect(enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({ noteId: note.id, operation: 'delete', payload: { user_id: 'owner-a' } }), expect.any(Function))
     const deletion = enqueueMutation.mock.calls[0][0]
     expect(Date.parse(deletion.clientUpdatedAt)).toBeGreaterThan(Date.parse(queuedAt))
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: note.id, deleted: true, user_id: 'owner-a', updatedAt: deletion.clientUpdatedAt }))
@@ -95,7 +96,7 @@ describe('owner-scoped offline deletion', () => {
 
 
   it('queues only the online bulk deletion with pending writes and deletes unrelated notes directly', async () => {
-    const enqueueBatchAndDrainIfOnline = jest.fn()
+    const enqueueBatchAndDrainIfOnline = jest.fn(async (_items: MutationQueueItemInput[], applyLocal: () => Promise<void>) => { await applyLocal() })
     const saveNote = jest.fn()
     const directDelete = jest.fn()
     const queuedAt = new Date(Date.now() + 500).toISOString()
@@ -122,7 +123,7 @@ describe('owner-scoped offline deletion', () => {
 
   it('does not hide an online note locally if queueing its deletion fails', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {})
-    const enqueueMutation = jest.fn().mockRejectedValue(new Error('storage unavailable'))
+    const enqueueMutation = jest.fn(async (_item: MutationQueueItemInput, applyLocal?: () => Promise<void>) => { await applyLocal?.() }).mockRejectedValue(new Error('storage unavailable'))
     const saveNote = jest.fn()
     const props = {
       user: { id: 'owner-a' }, isOffline: false, offlineCache: { saveNote, deleteNote: jest.fn() }, enqueueMutation,
@@ -148,7 +149,7 @@ describe('owner-scoped offline deletion', () => {
       .mockResolvedValueOnce([{ id: 'old', noteId: note.id, operation: 'create', payload: { user_id: 'owner-a' }, status: 'failed', clientUpdatedAt: '2026-01-01T00:00:00.000Z' }])
       .mockResolvedValueOnce([])
     const props = {
-      user: { id: 'owner-a' }, isOffline: false, offlineCache: { saveNote, deleteNote: deleteCache }, enqueueMutation: jest.fn(),
+      user: { id: 'owner-a' }, isOffline: false, offlineCache: { saveNote, deleteNote: deleteCache }, enqueueMutation: jest.fn(async (_item: MutationQueueItemInput, applyLocal?: () => Promise<void>) => { await applyLocal?.() }),
       offlineQueueRef: { current: { getQueue } }, setOfflineOverlay: jest.fn(), setPendingCount: jest.fn(),
       setFailedCount: jest.fn(), setLastSavedAt: jest.fn(), createNoteMutation: { mutateAsync: jest.fn() },
       updateNoteMutation: { mutateAsync: jest.fn() }, deleteNoteMutation: { mutateAsync: jest.fn() },

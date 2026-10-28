@@ -93,26 +93,28 @@ export function useNoteBulkActions({
             operation: 'delete' as const,
             payload: { user_id: userId },
             clientUpdatedAt: now,
-          }))
+          })),
+          async () => {
+            for (const update of updates) await offlineCache.saveNote(update)
+            const queueAfterSave = isOffline ? null : await offlineQueueRef.current.getQueue()
+            const pendingAfterSave = new Set(queueAfterSave?.map((item) => item.noteId))
+            const alreadySyncedIds = queueAfterSave ? queuedIds.filter((id) => !pendingAfterSave.has(id)) : []
+            for (const id of alreadySyncedIds) await offlineCache.deleteNote(id)
+            setOfflineOverlay((prev) => {
+              const next = prev.filter((item) => !alreadySyncedIds.includes(item.id))
+              updates.forEach((update) => {
+                if (alreadySyncedIds.includes(update.id)) return
+                const idx = next.findIndex((n) => n.id === update.id)
+                if (idx >= 0) next[idx] = update
+                else next.push(update)
+              })
+              return next
+            })
+            queuedIds.forEach((id) => deleted.add(id))
+            if (queueAfterSave) setPendingCount(queueAfterSave.filter((item) => item.status === 'pending').length)
+            else setPendingCount((prev) => prev + queuedIds.length)
+          }
         )
-        for (const update of updates) await offlineCache.saveNote(update)
-        const queueAfterSave = isOffline ? null : await offlineQueueRef.current.getQueue()
-        const pendingAfterSave = new Set(queueAfterSave?.map((item) => item.noteId))
-        const alreadySyncedIds = queueAfterSave ? queuedIds.filter((id) => !pendingAfterSave.has(id)) : []
-        for (const id of alreadySyncedIds) await offlineCache.deleteNote(id)
-        setOfflineOverlay((prev) => {
-          const next = prev.filter((item) => !alreadySyncedIds.includes(item.id))
-          updates.forEach((update) => {
-            if (alreadySyncedIds.includes(update.id)) return
-            const idx = next.findIndex((n) => n.id === update.id)
-            if (idx >= 0) next[idx] = update
-            else next.push(update)
-          })
-          return next
-        })
-        queuedIds.forEach((id) => deleted.add(id))
-        if (queueAfterSave) setPendingCount(queueAfterSave.filter((item) => item.status === 'pending').length)
-        else setPendingCount((prev) => prev + queuedIds.length)
       }
 
       if (immediateIds.length) {
