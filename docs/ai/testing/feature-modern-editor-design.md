@@ -66,3 +66,20 @@ Verify the following features in **both Light and Dark modes**:
   - `npm run test:unit:web`
   - `npm run type-check`
   - `npm run eslint`
+
+
+## October 2026 continuous-document validation
+
+Fresh local evidence:
+- 89 Cypress component tests passed across NoteDocumentDesign, NoteEditor, NoteView, NoteEditorSaveExit and MobileLayout; no failures/skips/retries.
+- 39 targeted Jest tests passed for noteFind, TagInput, NoteEditor and NoteView.
+- Full `npm run type-check`, `npx eslint . --max-warnings=0` and `git diff --check` passed.
+- New regressions first failed for clipped titles, absent tag disclosure and textarea-title search, then passed. A separate paste regression first failed without the normalization handler, then passed with exact save/autosave and native undo checks.
+
+The report at `/tmp/editor-design-final-components/awesome/index.html` contains 128 tests: 89 Cypress tests plus the 39 Jest tests discovered from the concurrent unit run. Its manifest was checked by framework; this is not 128 component tests. Unit overview: `/tmp/editor-design-final-unit/index.md`. The final focused design rerun is `/tmp/editor-design-final-design/index.md` (includes the selector correction required by Cypress's TypeScript configuration).
+
+Covered states: light/dark editing and reading; 1280px desktop, 390px phone and 320px narrow phone; the full Russian title from the user's example and 12 tags; disclosure/add/remove/filter operations; complete title without horizontal or vertical clipping; matching reader/editor body geometry; paste CR/LF normalization without rewriting an existing newline-containing title; native undo; autosave; search in changed wrapping title; empty-canvas click/typing; long content and images; simulated VisualViewport keyboard and safe-area changes.
+
+Read-only app smoke: local demo preview at `http://127.0.0.1:3104` against the local 54321 backend, opening the existing long-title/12-tag note in reading and editing at 390px and 320px. No demo-note content was changed. Real Android/iOS keyboard and IME behavior and exact integrated-head CI remain separate checks.
+
+Screenshots are attached to the Cypress report and stored under `cypress/screenshots/NoteDocumentDesign.cy.tsx/` (document-mobile, document-reader-mobile, document-desktop, document-reader-desktop and document-mobile-320-full-title variants). Generated reports/screenshots and local dependency links are not committed.

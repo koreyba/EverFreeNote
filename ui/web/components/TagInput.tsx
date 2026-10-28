@@ -1,9 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Plus, X, Tag } from "@phosphor-icons/react"
-import { Badge } from "@/components/ui/badge"
-import { HorizontalTagScroll } from "@/components/HorizontalTagScroll"
+import { Plus, Tag } from "@phosphor-icons/react"
+import { NoteTag } from "@/components/NoteTag"
 import { cn } from "@ui/web/lib/utils"
 
 type TagInputProps = Readonly<{
@@ -34,8 +33,10 @@ export function TagInput({
   const [inputValue, setInputValue] = React.useState("")
   const [backspaceArmed, setBackspaceArmed] = React.useState(false)
   const [highlightedIndex, setHighlightedIndex] = React.useState<number>(-1)
+  const [expanded, setExpanded] = React.useState(false)
+  const collectionId = React.useId()
+  const showAll = expanded || tags.length <= 3
   const inputRef = React.useRef<HTMLInputElement>(null)
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null)
 
   // Reset highlighted suggestion index when suggestions list changes
   React.useEffect(() => {
@@ -44,11 +45,9 @@ export function TagInput({
 
   const focusInput = () => {
     if (disabled) return
+    setExpanded(true)
     setTimeout(() => {
       inputRef.current?.focus()
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth
-      }
     }, 0)
   }
 
@@ -170,19 +169,10 @@ export function TagInput({
     }
   }
 
-  const handleTagClick = (tag: string) => {
-    onTagClick?.(tag)
-  }
-
-  const handleRemoveClick = (event: React.MouseEvent, tag: string) => {
-    event.stopPropagation()
-    onRemoveTag(tag)
-  }
-
-  const isExpanded = !disabled && suggestions.length > 0
+  const isExpanded = !disabled && showAll && suggestions.length > 0
 
   return (
-    <div className={cn("relative z-30 group", className)}>
+    <div className={cn("relative z-30", className)}>
       <div
         data-testid="tag-input-container"
         onClick={() => focusInput()}
@@ -194,58 +184,42 @@ export function TagInput({
           }
         }}
         className={cn(
-          "flex items-center min-h-[44px] px-3 bg-muted/30 border border-transparent rounded-2xl transition-all duration-200 cursor-text bg-background border-primary/30 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] ring-4 ring-primary/5"
+          "flex min-h-11 min-w-0 items-start gap-2 cursor-text"
         )}
       >
-        <div data-cy="tag-input-label" className="flex items-center gap-1.5 text-xs font-bold text-foreground/70 uppercase tracking-wider shrink-0 mr-2 select-none">
+        <div data-cy="tag-input-label" className="sr-only">
           <Tag className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Tags</span>
+          <span>Tags</span>
         </div>
 
-        <HorizontalTagScroll
-          ref={scrollContainerRef}
-          className="flex-1 min-w-0 py-1.5 flex items-center cursor-text"
-        >
-          {tags.map((tag) => (
-            <Badge
+        <div id={collectionId} className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          {(showAll ? tags : tags.slice(0, 3)).map((tag) => (
+            <NoteTag
               key={tag}
-              variant="secondary"
-              data-cy="interactive-tag"
-              className={cn(
-                "shrink-0 cursor-pointer transition-all duration-200 hover:bg-accent hover:text-accent-foreground group relative rounded-full px-2.5 py-1 text-[11px] bg-background border shadow-sm",
-                backspaceArmed && tag === tags.at(-1) && "ring-2 ring-destructive"
-              )}
-              onMouseDown={(e) => {
-                // Prevent focus loss from input when clicking tags/remove buttons
-                e.preventDefault()
-              }}
-              onClick={(e) => {
-                e.stopPropagation()
-                handleTagClick(tag)
-              }}
-            >
-              <Tag className="w-3 h-3 mr-1 opacity-70" />
-              {tag}
-              <button
-                type="button"
-                className={cn(
-                  "ml-1.5 p-0.5 rounded-full transition-opacity duration-200 hover:bg-destructive/20 hover:text-destructive",
-                  "opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                )}
-                onClick={(e) => handleRemoveClick(e, tag)}
-                title={`Remove tag "${tag}"`}
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </Badge>
+              tag={tag}
+              onClick={onTagClick}
+              onRemove={showAll && !disabled ? onRemoveTag : undefined}
+              armed={backspaceArmed && tag === tags.at(-1)}
+            />
           ))}
+
+          {tags.length > 3 && (
+            <button type="button" className="min-h-11 min-w-11 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              aria-label={expanded ? "Show fewer tags" : `Show all ${tags.length} tags`}
+              aria-expanded={expanded} aria-controls={collectionId}
+              onClick={(event) => { event.stopPropagation(); setExpanded(!expanded) }}>
+              {expanded ? "Show less" : <>+{tags.length - 3}<span className="hidden min-[360px]:inline"> more</span></>}
+            </button>
+          )}
 
           {!disabled && (
             <input
               ref={inputRef}
+              hidden={!showAll}
               type="text"
               role="combobox"
               aria-autocomplete="list"
+              aria-label="Add tags"
               aria-expanded={isExpanded}
               aria-haspopup="listbox"
               aria-controls="tag-suggestions-listbox"
@@ -255,11 +229,11 @@ export function TagInput({
               onKeyDown={handleInputKeyDown}
               onBlur={handleInputBlur}
               placeholder={placeholder}
-              className="shrink-0 min-w-[120px] max-w-[200px] bg-transparent text-sm outline-none placeholder:text-muted-foreground/50 ml-2"
+              className="h-11 min-w-24 flex-1 max-w-48 rounded-md bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground focus-visible:shadow-[inset_0_-2px_0_var(--color-primary)]"
               disabled={disabled}
             />
           )}
-        </HorizontalTagScroll>
+        </div>
 
         <button
           type="button"
@@ -269,9 +243,9 @@ export function TagInput({
             focusInput()
           }}
           className={cn(
-            "shrink-0 flex items-center justify-center w-7 h-7 rounded-full",
-            "bg-background/50 hover:bg-accent transition-colors duration-200 shadow-sm border",
-            "text-muted-foreground hover:text-accent-foreground ml-2",
+            "shrink-0 flex items-center justify-center w-11 h-11 rounded-lg",
+            "hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            "text-muted-foreground hover:text-accent-foreground",
             disabled && "opacity-50 cursor-not-allowed"
           )}
           title="Add tag"

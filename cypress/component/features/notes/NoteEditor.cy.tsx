@@ -48,7 +48,7 @@ describe('NoteEditor Component', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
     cy.contains('Editing').should('be.visible')
-    cy.get('input[placeholder="Note title"]').should('have.value', 'Test Title')
+    cy.get('[placeholder="Note title"]').should('have.value', 'Test Title')
     cy.get('button[title="Add tag"]').should('be.visible')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 2)
     cy.get('.ProseMirror').should('contain.text', 'Test Description')
@@ -57,7 +57,7 @@ describe('NoteEditor Component', () => {
   it('handles input changes and save', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
-    cy.get('input[placeholder="Note title"]').clear().type('New Title')
+    cy.get('[placeholder="Note title"]').clear().type('New Title')
     cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('New Tag{enter}')
 
@@ -122,7 +122,7 @@ describe('NoteEditor Component', () => {
 
     cy.mount(<NoteEditor {...props} />)
 
-    cy.get('input[placeholder="Note title"]').clear().type('New Title')
+    cy.get('[placeholder="Note title"]').clear().type('New Title')
 
     // INPUT_DEBOUNCE_MS (250) + autosaveDelayMs (200) = 450ms
 
@@ -201,7 +201,7 @@ describe('NoteEditor Component', () => {
     cy.get('input[placeholder="work, personal, ideas"]').type('space ')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 2)
 
-    cy.get('input[placeholder="Note title"]').click()
+    cy.get('[placeholder="Note title"]').click()
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
     cy.contains('[data-cy="interactive-tag"]', 'space').should('be.visible')
   })
@@ -223,7 +223,7 @@ describe('NoteEditor Component', () => {
 
     cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('Pending Tag')
-    cy.get('input[placeholder="Note title"]').type(' updated')
+    cy.get('[placeholder="Note title"]').type(' updated')
 
     cy.get('@onAutoSave', { timeout: 1500 }).should('have.been.calledOnce')
     cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
@@ -248,7 +248,7 @@ describe('NoteEditor Component', () => {
     cy.mount(<NoteEditor {...props} />)
 
     // Type to schedule a pending autosave
-    cy.get('input[placeholder="Note title"]').clear().type('Changed Title')
+    cy.get('[placeholder="Note title"]').clear().type('Changed Title')
 
     // Click Save before the debounce fires — this should cancel the pending autosave
     cy.contains('button', 'Save').click()
@@ -392,7 +392,7 @@ describe('NoteEditor Component', () => {
 
     // Switch to note B and verify new editor session starts with clean history.
     cy.get('[data-cy="switch-note"]').click()
-    cy.get('input[placeholder="Note title"]').should('have.value', 'Note B')
+    cy.get('[placeholder="Note title"]').should('have.value', 'Note B')
     cy.get('[data-cy="editor-content"]').should('contain.text', 'Beta body')
     cy.get('[data-cy="editor-content"]').should('not.contain.text', 'edited')
     cy.get('[data-cy="undo-button"]').should('be.disabled')
@@ -522,13 +522,13 @@ describe('NoteEditor Component', () => {
     cy.get('[data-cy="bold-button"]').should('be.visible')
   })
 
-  it('allows entering tag edit mode by clicking the tag icon and deleting tags while scrolled', () => {
+  it('opens the full tag collection from Add tag and deletes the last tag', () => {
     const manyTags = Array.from({ length: 20 }, (_, i) => `tag-${i}`).join(', ')
     const props = { ...getDefaultProps(), initialTags: manyTags }
     cy.mount(<NoteEditor {...props} />)
 
-    cy.get('.overflow-x-auto').scrollTo('right', { duration: 100, ensureScrollable: false })
-    cy.get('[data-testid="tag-input-container"]').find('[data-cy="tag-input-label"]').first().click()
+    cy.get('[aria-label="Show all 20 tags"]').should('be.visible')
+    cy.get('[aria-label="Add tag"]').click()
     
     cy.get('input[placeholder="work, personal, ideas"]')
       .should('be.visible')
@@ -638,7 +638,7 @@ describe('NoteEditor – autosave race condition on new note create', () => {
     cy.mount(<Wrapper />)
 
     // Type title → triggers debounced autosave that captures {title, description: ""}
-    cy.get('input[placeholder="Note title"]').type('My Title')
+    cy.get('[placeholder="Note title"]').type('My Title')
 
     // Wait for autosave to fire and hit the "network"
     cy.get('[data-cy="inflight"]').should('have.text', 'true')
@@ -655,7 +655,7 @@ describe('NoteEditor – autosave race condition on new note create', () => {
 
     // Body text typed during in-flight MUST be preserved
     cy.get('[data-cy="editor-content"]').should('contain.text', 'Body during flight')
-    cy.get('input[placeholder="Note title"]').should('have.value', 'My Title')
+    cy.get('[placeholder="Note title"]').should('have.value', 'My Title')
   })
 
   it('preserves body continuation typed during in-flight create', () => {
@@ -668,7 +668,7 @@ describe('NoteEditor – autosave race condition on new note create', () => {
     cy.get('[data-cy="editor-content"]').should('contain.text', 'Initial body')
 
     // Type title → autosave captures {title, description: "Initial body "}
-    cy.get('input[placeholder="Note title"]').type('Title')
+    cy.get('[placeholder="Note title"]').type('Title')
     cy.get('[data-cy="inflight"]').should('have.text', 'true')
 
     // While in-flight, append more body text
@@ -688,18 +688,18 @@ describe('NoteEditor – autosave race condition on new note create', () => {
     cy.mount(<Wrapper />)
 
     // Type title → autosave captures {title: "Hello"}
-    cy.get('input[placeholder="Note title"]').type('Hello')
+    cy.get('[placeholder="Note title"]').type('Hello')
     cy.get('[data-cy="inflight"]').should('have.text', 'true')
 
     // While in-flight, append to title
-    cy.get('input[placeholder="Note title"]').type(' World')
+    cy.get('[placeholder="Note title"]').type(' World')
 
     // Server responds with stale snapshot (title: "Hello")
     cy.then(() => resolveCreate())
     cy.get('[data-cy="note-id"]').should('have.text', 'server-uuid-1')
 
     // Full title "Hello World" MUST be preserved
-    cy.get('input[placeholder="Note title"]').should('have.value', 'Hello World')
+    cy.get('[placeholder="Note title"]').should('have.value', 'Hello World')
   })
 
   it('highlights the AI chunk block range', () => {

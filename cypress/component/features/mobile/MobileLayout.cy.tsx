@@ -444,7 +444,9 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('keeps an image and following text within the mobile editing canvas', () => {
-    cy.viewport(390, 844)
+    // The compact document fits this image at 844px; use a shorter phone to
+    // retain the original regression's real scrolling scenario.
+    cy.viewport(390, 667)
     mountShortEditor('<p><img src="/icons/icon-512.png" alt="Example image"></p><p>Short text</p>')
     cy.get('.tiptap img').should(($image) => {
       const image = $image[0] as HTMLImageElement

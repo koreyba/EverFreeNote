@@ -72,3 +72,10 @@ We will refine our color palette to use premium oklch coordinates:
 ## Responsive Adaptation
 - **Mobile Touch Targets**: Make sure all buttons, toggles, and note card clickable surfaces have a minimum size of 44x44px.
 - **Layout Toggling**: Use Tailwind classes (`hidden md:flex`) to show/hide the sidebar and editor panels contextually depending on whether a note is being viewed or edited.
+
+## October 2026: continuous note document
+The editor and reader share a centered 52rem document, 20px phone / 32px desktop gutters, a wrapping 28px / 36px title (24px below 360px), and the existing shared body typography. The document has no nested field card. Action buttons are flat with a single primary Save/Edit action; touch targets stay 44px. Formatting remains docked to the bottom on phones and sticky above the body on desktop.
+
+A native textarea grows to show the complete title. Its value and selection remain the source for save, autosave and workspace sessions; search accepts both text input types. Enter does not insert a newline, matching the previous title field. Existing title text is never trimmed or rewritten by layout. Multi-line clipboard inserts lose only their CR/LF characters, matching the former text input. Native insertText preserves undo; setRangeText is a fallback when that editing command is unavailable.
+
+Tag collections initially show three tags plus an explicit remaining count. Expanding reveals every tag with wrapping, removal and addition; collapsing affects presentation only. Reader and editor use matching metadata styling. This supersedes the earlier floating-card/horizontal-only tag treatment. Keyboard focus is visible and disclosure controls announce expanded state.

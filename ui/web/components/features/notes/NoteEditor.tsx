@@ -4,7 +4,6 @@ import { useAppBackHandler, APP_BACK_PRIORITY } from "@ui/web/lib/appBack"
 import * as React from "react"
 import { ArrowsIn, ArrowsOut, CaretLeft as ChevronLeft, Copy, Check, Eye, FloppyDisk as SaveIcon, MagnifyingGlass } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { NoteClipboardService } from "@core/services/noteClipboard"
 import { useCopyNote } from "@ui/web/hooks/useCopyNote"
@@ -102,7 +101,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const [readyChunkFocus, setReadyChunkFocus] = React.useState<PendingChunkFocus | null>(null)
   const [isBodyEmpty, setIsBodyEmpty] = React.useState(() => NoteClipboardService.isBodyEmpty(initialDescription))
   const [findOpen, setFindOpen] = React.useState(false)
-  const titleInputRef = React.useRef<HTMLInputElement | null>(null)
+  const titleInputRef = React.useRef<HTMLTextAreaElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
   const editorRootRef = React.useRef<HTMLDivElement | null>(null)
@@ -111,6 +110,13 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const headerRef = React.useRef<HTMLDivElement | null>(null)
   const initialSessionRef = React.useRef(initialSession)
   const previousNoteIdRef = React.useRef(noteId)
+
+  const resizeTitle = React.useCallback(() => {
+    const title = titleInputRef.current
+    if (!title) return
+    title.style.height = "0px"
+    title.style.height = `${title.scrollHeight}px`
+  }, [])
 
   const selectedTagsRef = React.useRef<string[]>(selectedTags)
   React.useEffect(() => {
@@ -177,6 +183,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   ) => {
     if (fieldDecisions.title === 'accept-external' && titleInputRef.current && titleInputRef.current.value !== snapshot.title) {
       titleInputRef.current.value = snapshot.title
+      resizeTitle()
     }
 
     if (fieldDecisions.description === 'accept-external' && editorRef.current?.getHTML() !== snapshot.description) {
@@ -190,7 +197,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       setSelectedTags(parsed)
       setTagQuery("")
     }
-  }, [])
+  }, [resizeTitle])
 
   const { editorSessionKey, handleContentChange, cancelAutoSave, flushPendingSave } =
     useNoteEditorAutoSave({
@@ -211,6 +218,21 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         setTagQuery("")
       },
     })
+
+  React.useLayoutEffect(() => {
+    resizeTitle()
+    void document.fonts?.ready.then(resizeTitle)
+    const title = titleInputRef.current
+    if (!title || typeof ResizeObserver === "undefined") return
+    let previousWidth = title.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (title.clientWidth === previousWidth) return
+      previousWidth = title.clientWidth
+      resizeTitle()
+    })
+    observer.observe(title)
+    return () => observer.disconnect()
+  }, [editorSessionKey, resizeTitle])
 
   // Sync external auto-saving flag into local display state
   React.useEffect(() => {
@@ -390,14 +412,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       <div
         ref={headerRef}
         data-mobile-editor-chrome
-        className="relative shrink-0 md:absolute top-0 left-0 right-0 z-30 flex items-center justify-between gap-2 border-b border-border/40 bg-card/75 p-3 backdrop-blur-md md:p-4"
+        className="relative shrink-0 md:absolute top-0 left-0 right-0 z-30 flex items-center justify-between gap-2 border-b border-border/40 bg-card/95 px-3 py-2 backdrop-blur-md md:px-5 md:py-3"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {onBack && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
-              className="h-11 w-11 shrink-0 rounded-full shadow-sm md:hidden"
+              className="h-11 w-11 shrink-0 rounded-xl shadow-none md:hidden"
               onClick={onBack}
               data-cy="note-back-button"
               aria-label="Back"
@@ -412,7 +434,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="flex gap-1.5 items-center">
-            <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0 rounded-full shadow-sm md:hidden"
+            <Button type="button" variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-xl shadow-none md:hidden"
               data-cy="note-find-button" aria-label="Find in note" aria-expanded={findOpen} onClick={() => setFindOpen((open) => !open)}>
               <MagnifyingGlass className="h-4 w-4" />
             </Button>
@@ -421,24 +443,24 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
                 clipping the "more actions" button off the screen edge. */}
             <Button
               onClick={handleRead}
-              variant="outline"
+              variant="ghost"
               size="sm"
               data-cy="note-read-button"
               aria-label="Read"
               disabled={isSaving}
-              className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
+              className="h-11 min-w-11 rounded-xl px-0 shadow-none md:h-9 md:min-w-0 md:px-3"
             >
               <Eye className="w-3.5 h-3.5 md:mr-1.5" />
               <span className="hidden md:inline">Read</span>
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               disabled={isSaving || isBodyEmpty}
               data-cy="note-copy-button"
               aria-label="Copy note"
               onClick={handleCopy}
-              className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
+              className="h-11 min-w-11 rounded-xl px-0 shadow-none md:h-9 md:min-w-0 md:px-3"
             >
               {copied ? (
                 <Check className="w-3.5 h-3.5 md:mr-1.5 text-emerald-600" />
@@ -453,7 +475,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               data-cy="note-save-button"
               aria-label="Save"
               disabled={isSaving}
-              className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
+              className="h-11 min-w-11 rounded-xl px-0 shadow-none md:h-9 md:min-w-0 md:px-3"
             >
               <SaveIcon className="w-3.5 h-3.5 md:hidden" />
               <span className="hidden md:inline">Save</span>
@@ -493,22 +515,42 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         className="scrollbar-none relative z-0 flex min-h-0 flex-1 flex-col overflow-y-auto bg-card"
         onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
       >
-        <div data-mobile-editor-chrome className="mx-auto w-full max-w-4xl shrink-0 space-y-5 px-4 pt-6 md:px-6 md:pt-24">
+        <div data-mobile-editor-chrome className="note-document-width shrink-0 space-y-3 pt-6 md:pt-24">
           <div>
-            <Input
+            <textarea
               key={`title-${editorSessionKey}`}
               ref={titleInputRef}
-              type="text"
+              rows={1}
+              aria-label="Note title"
               placeholder="Note title"
               defaultValue={initialTitle}
-              onChange={() => {
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.nativeEvent.isComposing) event.preventDefault()
+              }}
+              onPaste={(event) => {
+                const pastedText = event.clipboardData.getData("text/plain")
+                if (!/[\r\n]/.test(pastedText)) return
+                event.preventDefault()
+                const title = event.currentTarget
+                const singleLineText = pastedText.replace(/[\r\n]/g, "")
+                // Native insertion preserves textarea undo. Only the new
+                // clipboard text is flattened; existing titles stay intact.
+                if (title.ownerDocument.execCommand?.("insertText", false, singleLineText)) return
+                title.setRangeText(singleLineText, title.selectionStart, title.selectionEnd, "end")
+                resizeTitle()
                 handleContentChange()
                 notifyDraftChange()
               }}
-              className="w-full h-auto border-0 bg-transparent px-0 py-1 text-4xl font-extrabold tracking-tight placeholder:text-muted-foreground/30 focus-visible:ring-0 shadow-none"
+              onChange={() => {
+                resizeTitle()
+                handleContentChange()
+                notifyDraftChange()
+              }}
+              className="note-document-title block w-full resize-none overflow-hidden border-0 bg-transparent p-0 placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:shadow-[inset_0_-2px_0_var(--color-primary)]"
             />
           </div>
           <TagInput
+            key={`tags-${editorSessionKey}`}
             tags={selectedTags}
             onAddTags={addTags}
             onRemoveTag={removeTag}
@@ -518,7 +560,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             placeholder="work, personal, ideas"
           />
         </div>
-        <div ref={bodyRef} className="mx-auto mt-4 flex w-full max-w-4xl flex-1 flex-col px-4 md:px-6">
+        <div ref={bodyRef} className="note-document-width mt-4 flex flex-1 flex-col">
           <RichTextEditor
             key={`editor-${editorSessionKey}`}
             ref={editorRef}
@@ -538,7 +580,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
           />
         </div>
       </div>
-      <div className="mobile-editor-toolbar flex shrink-0 min-w-0 items-center border-t border-border/40 bg-background md:hidden">
+      <div className="mobile-editor-toolbar flex shrink-0 min-w-0 items-center border-t border-border/60 bg-card md:hidden">
         <div ref={setMobileToolbarContainer} className="min-w-0 flex-1" />
         {expanded && (
           <Button

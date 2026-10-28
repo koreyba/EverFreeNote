@@ -1,6 +1,6 @@
 export type NoteFindMatch =
   | { kind: "text"; range: Range }
-  | { kind: "title"; input: HTMLInputElement; start: number; end: number }
+  | { kind: "title"; input: HTMLInputElement | HTMLTextAreaElement; start: number; end: number }
 
 type TextPart = { node: Text; start: number; end: number }
 
@@ -75,7 +75,7 @@ function findTextRanges(root: HTMLElement, query: string): NoteFindMatch[] {
 
 export function findInNote(title: HTMLElement | null, body: HTMLElement | null, query: string): NoteFindMatch[] {
   if (!query) return []
-  const titleMatches: NoteFindMatch[] = title instanceof HTMLInputElement
+  const titleMatches: NoteFindMatch[] = (title instanceof HTMLInputElement || title instanceof HTMLTextAreaElement)
     ? matchOffsets(title.value, query).map(({ start, end }) => ({ kind: "title", input: title, start, end }))
     : title ? findTextRanges(title, query) : []
   return [...titleMatches, ...(body ? findTextRanges(body, query) : [])]

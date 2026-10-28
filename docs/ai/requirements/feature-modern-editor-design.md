@@ -51,3 +51,9 @@ Specifically, we want to address:
 ## Questions & Open Items
 - **Q**: Are there specific icon changes or design kits requested?
   - *Decision*: We will update `lucide-react` to its latest version and leverage the latest modern icon pack, using clean, thin-stroke variants if available.
+
+## October 2026 follow-up acceptance
+- Show the complete long title on phone and desktop without horizontal clipping.
+- Keep a note with twelve tags visually compact; expose every tag and all existing operations through an accessible disclosure.
+- Make editing and reading look like the same document, with flat action chrome and a continuous editable canvas.
+- Preserve saving, autosave, tab selection/session restoration, find, mobile keyboard and safe-area behavior.

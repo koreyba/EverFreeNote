@@ -1,6 +1,14 @@
 import { findInNote } from '@ui/web/lib/noteFind'
 
 describe('findInNote', () => {
+  it('finds the exact text in a wrapping editable title', () => {
+    const title = document.createElement('textarea')
+    title.value = '😀 A long title with Needle at the end'
+    const matches = findInNote(title, null, 'needle')
+    expect(matches).toHaveLength(1)
+    expect(matches[0]).toMatchObject({ kind: 'title', input: title, start: 21, end: 27 })
+  })
+
   it('finds literal punctuation rather than interpreting it as a pattern', () => {
     const body = document.createElement('div')
     body.innerHTML = '<p>a+a and aaaa</p>'

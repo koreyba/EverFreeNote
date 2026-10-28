@@ -4,6 +4,21 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { TagInput } from '@/components/TagInput'
 
 describe('TagInput', () => {
+  it('reveals every tag in a long collection without losing remove or add actions', () => {
+    const tags = ['work', 'ideas', 'plans', 'home', 'travel', 'reading', 'design', 'web', 'mobile', 'notes', 'draft', 'later']
+    const onRemoveTag = jest.fn()
+    renderTagInput({ tags, onRemoveTag })
+    expect(screen.queryByText('later')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 12 tags' }))
+    expect(screen.getByText('later')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove tag "later"' }))
+    expect(onRemoveTag).toHaveBeenCalledWith('later')
+    fireEvent.click(screen.getByRole('button', { name: 'Show fewer tags' }))
+    expect(screen.queryByText('later')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
+    expect(screen.getByText('later')).toBeTruthy()
+  })
+
   const renderTagInput = (overrides: Partial<React.ComponentProps<typeof TagInput>> = {}) => {
     const onAddTags = jest.fn()
     const onRemoveTag = jest.fn()

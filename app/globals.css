@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
-input[data-note-find-current] {
+[data-note-find-current] {
   outline: 2px solid #f59e0b;
   outline-offset: 3px;
 }
@@ -624,4 +624,28 @@ mark {
 
 html:not(.dark) {
   --color-primary-foreground: oklch(100% 0 0);
+}
+
+/* The same document geometry is used while reading and writing. */
+.note-document-width {
+  width: 100%;
+  max-width: 52rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+.note-document-title {
+  font-size: 1.75rem;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+  color: var(--color-foreground);
+}
+@media (min-width: 768px) {
+  .note-document-width { padding-inline: 2rem; }
+  .note-document-title { font-size: 2.25rem; }
+}
+
+@media (max-width: 359px) {
+  .note-document-title { font-size: 1.5rem; }
 }

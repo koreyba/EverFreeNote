@@ -44,3 +44,17 @@ We will use modern oklch curves:
 - Ensure that updating `lucide-react` does not break any existing icons in settings or elsewhere.
 - Run type-checks: `npm run type-check` and `npm run type-check:tests`.
 - Run tests: `npm run test:unit:web` to verify layout components don't crash under standard test cases.
+
+## October 2026 follow-up
+Starting from the separate canvas-fill fix a75c218. Scope: NoteEditor, NoteView, TagInput and shared document styles. Search title guards must accept textarea; existing title-specific test selectors migrate without changing behavior assertions. No persistence schema, native keyboard, navigation or backend contract changes.
+
+
+Implemented:
+- Shared document width/gutters/title CSS in globals.css; 24px narrow-phone, 28px phone and 36px desktop titles.
+- NoteEditor uses an uncontrolled autosizing textarea, retaining the existing save/autosave/session source of truth. Resizes on input, external accepted snapshots, width changes and font readiness. Existing text is preserved; Enter is blocked and newly pasted CR/LF characters are stripped with native undo support.
+- NoteFindBar and findInNote recognize textarea titles alongside input titles.
+- NoteTag supplies accessible filter/remove buttons; TagInput and NoteView share its appearance. Long collections show three tags plus a disclosure, with all tags accessible when expanded. Add tag expands and focuses its input. Reader disclosure resets when opening another note; editor disclosure follows its editing-session key.
+- Flat action buttons and a single primary Save/Edit button. Existing mobile toolbar, full-height canvas, safe-area and keyboard geometry are retained.
+- Title selectors in existing tests now target the field independently of the input/textarea element type. The old horizontal-tag-scroll scenario now verifies the replacement disclosure workflow. The image scrolling fixture uses 667px height because the compact document already fits its image at 844px.
+
+No changes to persistence schemas, backend requests, EditorMenuBar or EditorToolbarButton. No production deployment or native device verification in this change.
