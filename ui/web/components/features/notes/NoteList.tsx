@@ -1,4 +1,5 @@
 "use client"
+/* eslint no-unused-vars: "off", "@typescript-eslint/no-unused-vars": "error" -- Use the TypeScript-aware rule for callback declarations. */
 
 import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import type { CSSProperties } from "react"

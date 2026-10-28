@@ -4,11 +4,42 @@ export type NoteFindMatch =
 
 type TextPart = { node: Text; start: number; end: number }
 
+function foldCase(character: string): string {
+  // Unicode simple case folding keeps dotless i separate and does not expand
+  // a single character into several characters (for example, ß or İ).
+  if (character === "ı") return character
+  const upper = character.toUpperCase()
+  const folded = Array.from(upper).length === 1 ? upper.toLowerCase() : character.toLowerCase()
+  return Array.from(folded).length === 1 ? folded : character
+}
+
 function matchOffsets(text: string, query: string): Array<{ start: number; end: number }> {
   if (!query) return []
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const pattern = new RegExp(escaped, "giu")
-  return Array.from(text.matchAll(pattern), (match) => ({ start: match.index ?? 0, end: (match.index ?? 0) + match[0].length }))
+  let foldedText = ""
+  let originalOffset = 0
+  const boundaries: Array<number | undefined> = [0]
+  for (const character of text) {
+    foldedText += foldCase(character)
+    originalOffset += character.length
+    boundaries[foldedText.length] = originalOffset
+  }
+  const foldedQuery = Array.from(query, foldCase).join("")
+  const matches: Array<{ start: number; end: number }> = []
+  let next = 0
+  while (next <= foldedText.length - foldedQuery.length) {
+    const start = foldedText.indexOf(foldedQuery, next)
+    if (start < 0) break
+    const end = start + foldedQuery.length
+    const originalStart = boundaries[start]
+    const originalEnd = boundaries[end]
+    if (originalStart !== undefined && originalEnd !== undefined) {
+      matches.push({ start: originalStart, end: originalEnd })
+      next = end
+    } else {
+      next = start + 1
+    }
+  }
+  return matches
 }
 
 function findTextRanges(root: HTMLElement, query: string): NoteFindMatch[] {

@@ -1,4 +1,5 @@
 "use client"
+/* eslint no-unused-vars: "off", "@typescript-eslint/no-unused-vars": "error" -- Use the TypeScript-aware rule for callback declarations. */
 
 import * as React from "react"
 import { Trash } from "@phosphor-icons/react"
@@ -34,7 +35,7 @@ export function SwipeableNoteRow({ children, title, enabled, open, onOpenChange,
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     suppressClickRef.current = false
-    if (!enabled || event.pointerType === "mouse" || event.isPrimary === false) return
+    if (!enabled || event.pointerType === "mouse" || !event.isPrimary) return
     gestureRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
