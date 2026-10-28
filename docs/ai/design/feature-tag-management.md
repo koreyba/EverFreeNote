@@ -21,7 +21,14 @@ snapshot: pages and existence checks are separate requests, another device or
 window may write concurrently, and per-note updates can partially succeed. On
 an uncertain response the client attempts to reread notes, reports that the
 change may be incomplete, and does not announce success. It does not claim a
-rollback. Reliable cross-window/device mutation requires a separate design for
+rollback. A remotely missing cached note is removed only after an exact-count
+existence check and a conditional check that the cached snapshot and queue have
+not changed. Unavailable open notes stay in their tabs and must be closed before
+retrying; unsaved drafts are never silently closed. Browser navigation requested
+while a change is in progress is applied after reconciliation. Batch writes
+defer their individual list refreshes; a successful or uncertain batch triggers
+a reconciliation instead, without changing ordinary note-save invalidation.
+Reliable cross-window/device mutation requires a separate design for
 atomic server-side changes, durable operation recovery and versioned writes.
 Tag counts and filters also currently have different case/whitespace semantics;
 do not replace the browser count with a normalized server aggregate until those

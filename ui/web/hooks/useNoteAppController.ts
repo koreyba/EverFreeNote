@@ -149,6 +149,7 @@ export function useNoteAppController() {
   const workspaceViewCaptureRef = useRef<(() => void) | null>(null)
   const addingTabRef = useRef(false)
   const tagMutationInProgressRef = useRef(false)
+  const deferredTagNavigationRef = useRef(false)
 
   const registerNoteEditorRef = useCallback((ref: React.RefObject<NoteEditorHandle | null>) => {
     noteEditorRef.current = ref
@@ -928,7 +929,10 @@ export function useNoteAppController() {
 
   const syncNavigationFromUrl = useCallback(() => {
     if (typeof window === 'undefined') return
-    if (tagMutationInProgressRef.current) return
+    if (tagMutationInProgressRef.current) {
+      deferredTagNavigationRef.current = true
+      return
+    }
 
     const params = new URLSearchParams(window.location.search)
     setActiveMainView(params.get('view') === 'tags' ? 'tags' : 'notes')
@@ -1032,7 +1036,7 @@ export function useNoteAppController() {
     // Limit simultaneous requests and stop issuing more after a failure.
     for (let offset = 0; offset < changed.length; offset += 8) {
       const results = await Promise.allSettled(changed.slice(offset, offset + 8).map((note) => (
-        updateNoteMutation.mutateAsync({ id: note.id, tags: note.tags, silent: true })
+        updateNoteMutation.mutateAsync({ id: note.id, tags: note.tags, silent: true, deferCacheRefresh: true })
       )))
       if (results.some((result) => result.status === 'rejected')) {
         // A response may be lost after the server applied it. A compensating
@@ -1047,7 +1051,14 @@ export function useNoteAppController() {
     const open = tabs.filter((tab) => tab.noteId && tab.note && tab.saveState === 'saved')
     const openIds = open.map((tab) => tab.noteId!)
     const refreshedOpen = await noteService.getNotesByIds(openIds, user.id)
-    if (refreshedOpen.length !== openIds.length) throw new Error('Some open notes could not be refreshed.')
+    const refreshedOpenIds = new Set(refreshedOpen.map((note) => note.id))
+    const missingOpenIds = openIds.filter((id) => !refreshedOpenIds.has(id))
+    if (missingOpenIds.length) {
+      const existing = await noteService.getExistingNoteIds(missingOpenIds, user.id)
+      if (existing.length) throw new Error('Some open notes could not be refreshed. Try again.')
+      // Keep even saved tabs: a late editor update may contain a local draft.
+      throw new Error('An open note is no longer available. Close its tab and check again.')
+    }
     const cached = await offlineCache.loadNotes()
     const candidates = cached.filter((note) => (
       (!note.user_id || note.user_id === user.id) && note.status === 'synced' && !note.deleted && !note.pendingOps?.length
@@ -1057,19 +1068,34 @@ export function useNoteAppController() {
     for (let offset = 0; offset < cachedIds.length; offset += 100) {
       remoteCached.push(...await noteService.getNotesByIds(cachedIds.slice(offset, offset + 100), user.id))
     }
-    if (remoteCached.length !== cachedIds.length) throw new Error('Some cached notes could not be refreshed.')
     const remoteTags = new Map(remoteCached.map((note) => [note.id, note.tags ?? []]))
-    const patches = candidates.map((expected) => ({ expected, tags: remoteTags.get(expected.id)! }))
+    const missing = candidates.filter((note) => !remoteTags.has(note.id))
+    if (missing.length) {
+      // An incomplete response is not evidence of deletion. The exact count
+      // also prevents a server row limit or temporary error from removing data.
+      const existing = await noteService.getExistingNoteIds(missing.map((note) => note.id), user.id)
+      if (existing.length) throw new Error('Some cached notes could not be refreshed. Try again.')
+      if (missing.some((note) => note.user_id !== user.id)) {
+        throw new Error('Some cached notes have an unknown account. They were kept for safety.')
+      }
+    }
+    const patches = candidates.filter((note) => remoteTags.has(note.id))
+      .map((expected) => ({ expected, tags: remoteTags.get(expected.id)! }))
     const updated = await offlineCache.patchSyncedTags(patches)
-    if (updated.length !== candidates.length) throw new Error('Some cached notes could not be refreshed safely.')
+    if (updated.length !== patches.length) throw new Error('Some cached notes could not be refreshed safely.')
+    // This conditional transaction checks the cache snapshot and queue again,
+    // protecting a draft or queued write that arrived during the server reads.
+    const removed = missing.length ? await offlineCache.removeSyncedNotes(missing) : []
     const updatedSet = new Set(updated)
-    const revisions = new Map(candidates.map((note) => [note.id, note.updatedAt]))
-    setOfflineOverlay((previous) => previous.map((note) => (
-      updatedSet.has(note.id) && note.status === 'synced' && !note.pendingOps?.length &&
-      revisions.get(note.id) === note.updatedAt
-        ? { ...note, tags: remoteTags.get(note.id)! }
-        : note
-    )))
+    const removedSet = new Set(removed)
+    const snapshots = new Map(candidates.map((note) => [note.id, note]))
+    setOfflineOverlay((previous) => previous.flatMap((note) => {
+      const expected = snapshots.get(note.id)
+      if (!expected || JSON.stringify(note) !== JSON.stringify(expected)) return [note]
+      if (removedSet.has(note.id)) return []
+      return updatedSet.has(note.id) ? [{ ...note, tags: remoteTags.get(note.id)! }] : [note]
+    }))
+    if (removed.length !== missing.length) throw new Error('Some cached notes changed while refreshing. Try again.')
     updateSavedTags(refreshedOpen.map((note) => ({ id: note.id, tags: note.tags ?? [] })))
     await notesQuery.refetch({ throwOnError: true })
     await queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
@@ -1130,6 +1156,13 @@ export function useNoteAppController() {
             toast.error('The tag change may be incomplete. Notes were refreshed; review them before retrying.')
           } catch {
             tagRecoveryPendingRef.current = true
+            // Even when a tab or cached snapshot cannot be reconciled, refresh
+            // the list independently if the server is reachable. This is not
+            // enough to clear recovery or claim the batch succeeded.
+            await Promise.allSettled([
+              notesQuery.refetch({ throwOnError: true }),
+              queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] }),
+            ])
             toast.error('The tag change could not be confirmed. Reconnect and refresh your notes before retrying.')
           }
           setTagCoverageMessage('Refresh and check the notes before managing tags again.')
@@ -1138,12 +1171,16 @@ export function useNoteAppController() {
       } finally {
         tagMutationInProgressRef.current = false
         setTagMutationInProgress(false)
+        if (deferredTagNavigationRef.current) {
+          deferredTagNavigationRef.current = false
+          syncNavigationFromUrl()
+        }
       }
     }
     const queued = tagMutationQueueRef.current.then(run, run)
     tagMutationQueueRef.current = queued.then(() => undefined, () => undefined)
     return queued
-  }, [verifyTagSnapshot, persistTagChanges, refreshTagMutationState])
+  }, [verifyTagSnapshot, persistTagChanges, refreshTagMutationState, syncNavigationFromUrl, notesQuery, queryClient])
 
   const handleRenameTag = useCallback((oldTag: string, newTag: string) => (
     runTagMutation((current) => renameTagInNotes(current, oldTag, newTag), `Tag "${oldTag}" renamed to "${newTag}"`)

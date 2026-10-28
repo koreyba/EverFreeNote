@@ -77,7 +77,9 @@ const withStore = async <T>(
 
 const matchesSyncedSnapshot = (expected: CachedNote, current?: CachedNote) => (
   current?.status === 'synced' && !current.deleted && !current.pendingOps?.length &&
-  current.user_id === expected.user_id && current.updatedAt === expected.updatedAt
+  // A matching timestamp is insufficient if another writer reused it. A false
+  // mismatch only retains the snapshot for a later reconciliation.
+  JSON.stringify(current) === JSON.stringify(expected)
 )
 
 // Fallback на localStorage, если IndexedDB недоступен

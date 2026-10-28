@@ -84,9 +84,27 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
     expect(await webOfflineStorageAdapter.patchSyncedTags([{ expected, tags: ['renamed'] }])).toEqual([])
     expect(await webOfflineStorageAdapter.loadNotes()).toEqual([newer])
 
+    const sameRevision = { ...expected, description: 'Newer text with the same revision' }
+    await webOfflineStorageAdapter.saveNote(sameRevision)
+    expect(await webOfflineStorageAdapter.patchSyncedTags([{ expected, tags: ['renamed'] }])).toEqual([])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([sameRevision])
+
     await webOfflineStorageAdapter.saveNote(expected)
     await webOfflineStorageAdapter.upsertQueueItem({ ...makeQueueItem('q-1'), noteId: expected.id })
     expect(await webOfflineStorageAdapter.patchSyncedTags([{ expected, tags: ['renamed'] }])).toEqual([])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([expected])
+  })
+
+  it('retains a changed or queued synced snapshot when removing remotely missing notes', async () => {
+    const expected = makeNote('note-1', '2026-01-01T00:00:00Z', { user_id: 'user-1' })
+    const changed = { ...expected, description: 'New local content with the same revision' }
+    await webOfflineStorageAdapter.saveNote(changed)
+    expect(await webOfflineStorageAdapter.removeSyncedNotes([expected])).toEqual([])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([changed])
+
+    await webOfflineStorageAdapter.saveNote(expected)
+    await webOfflineStorageAdapter.upsertQueueItem({ ...makeQueueItem('q-1'), noteId: expected.id })
+    expect(await webOfflineStorageAdapter.removeSyncedNotes([expected])).toEqual([])
     expect(await webOfflineStorageAdapter.loadNotes()).toEqual([expected])
   })
 

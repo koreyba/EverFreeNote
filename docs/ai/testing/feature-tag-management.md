@@ -14,11 +14,15 @@ or a dirty workspace tab must prevent bulk updates. Loading another page and
 rechecking must allow the existing online path when all loaded IDs can be
 verified. Partial failures/timeouts must not produce a success message; verify
 the actual persisted state after rereading and retain any local drafts. Test
-single-note editing independently while offline. This interim check does not
-prove atomicity or protection against concurrent writes from other clients.
+single-note editing independently while offline. Also test a synced cache entry
+or open saved tab whose server note was deleted elsewhere, a failed absence
+check, a newly queued draft during reconciliation, browser Back during both a
+successful and a failed batch, and unchanged invalidation for unrelated saves.
+This interim check does not prove atomicity or protection against concurrent
+writes from other clients.
 
 `npm run test:tags:qa` runs the separate real-browser suite in `cypress/qa/`.
-It requires a disposable Supabase stack at `127.0.0.1:58421` and its local
+It requires a disposable Supabase stack at `127.0.0.1:58421` (or a URL supplied with `CYPRESS_AUDIT_SUPABASE_URL`) and its local
 `CYPRESS_AUDIT_ANON_KEY` and `CYPRESS_AUDIT_SERVICE_KEY`. It creates temporary
 users and notes, deletes the users afterwards, and must never target a shared or
 remote database. Some local CLI setups lack table grants; when required, grant

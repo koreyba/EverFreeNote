@@ -7,7 +7,10 @@ import { NotesShell } from '@ui/web/components/features/notes/NotesShell'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 
-const url = 'http://127.0.0.1:58421'
+const url = Cypress.env('AUDIT_SUPABASE_URL') ?? 'http://127.0.0.1:58421'
+if (!['127.0.0.1', 'localhost', '[::1]'].includes(new URL(url).hostname)) {
+  throw new Error('Tag QA requires a disposable local Supabase stack.')
+}
 const password = `Local-fixture-${Date.now()}!`
 let admin: SupabaseClient
 let client: SupabaseClient

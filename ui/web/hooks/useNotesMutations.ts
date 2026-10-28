@@ -16,7 +16,7 @@ import type { Tables } from '@/supabase/types'
 type Note = Tables<'notes'>
 
 type CreateNoteParams = Pick<Note, 'title' | 'description' | 'tags'> & { userId: string; id?: string; silent?: boolean }
-type UpdateNoteParams = Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'description' | 'tags'>> & { silent?: boolean }
+type UpdateNoteParams = Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'description' | 'tags'>> & { silent?: boolean; deferCacheRefresh?: boolean }
 type DeleteNoteParams = { id: string; silent?: boolean }
 
 type NotesPage = {
@@ -149,6 +149,8 @@ export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallba
 
     // Optimistic update
     onMutate: async (updatedNote) => {
+      // A batch reconciles the whole collection once, including on failure.
+      if (updatedNote.deferCacheRefresh) return
       await queryClient.cancelQueries({ queryKey: ['notes'] })
       const previousNotes = queryClient.getQueryData<NotesData>(['notes'])
 
@@ -185,8 +187,10 @@ export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallba
     },
 
     onSuccess: (_data, params) => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] })
-      queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+      if (!params.deferCacheRefresh) {
+        queryClient.invalidateQueries({ queryKey: ['notes'] })
+        queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+      }
       if (!params.silent) callbacks.onSuccess?.()
     },
   })

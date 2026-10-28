@@ -127,6 +127,37 @@ describe('useNotesMutations', () => {
     expect(empty.queryClient.getQueryData(['notes'])).toBeUndefined()
   })
 
+  it('defers query changes during a batched tag write until its caller reconciles', async () => {
+    const previous = pageData()
+    const { result, queryClient } = renderMutation(() => useUpdateNote(), previous)
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+    const cancel = jest.spyOn(queryClient, 'cancelQueries')
+    await act(async () => {
+      await result.current.mutateAsync({ id: 'note-1', tags: ['renamed'], silent: true, deferCacheRefresh: true })
+    })
+    expect(mockNoteService.updateNote).toHaveBeenCalledWith('note-1', { tags: ['renamed'] })
+    expect(queryClient.getQueryData(['notes'])).toEqual(previous)
+    expect(invalidate).not.toHaveBeenCalled()
+    expect(cancel).not.toHaveBeenCalled()
+  })
+
+  it('still invalidates an unrelated ordinary save while a batch write is in flight', async () => {
+    let finishBatch!: (note: Note) => void
+    mockNoteService.updateNote.mockImplementation((id: string) => id === 'note-1'
+      ? new Promise<Note>(resolve => { finishBatch = resolve })
+      : Promise.resolve(makeNote({ id, title: 'Separate save' })))
+    const { result, queryClient } = renderMutation(() => useUpdateNote(), pageData())
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+    let batch!: Promise<Note>
+    act(() => { batch = result.current.mutateAsync({ id: 'note-1', tags: ['new'], silent: true, deferCacheRefresh: true }) })
+    await waitFor(() => expect(mockNoteService.updateNote).toHaveBeenCalledWith('note-1', { tags: ['new'] }))
+    await act(async () => { await result.current.mutateAsync({ id: 'other', title: 'Separate save' }) })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['notes'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['tags', 'all-with-counts'] })
+    await act(async () => { finishBatch(makeNote({ tags: ['new'] })); await batch })
+    expect(invalidate).toHaveBeenCalledTimes(2)
+  })
+
   it('rolls back a failed update', async () => {
     const previous = pageData()
     mockNoteService.updateNote.mockRejectedValue(new Error('update failed'))

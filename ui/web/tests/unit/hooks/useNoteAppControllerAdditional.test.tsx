@@ -793,6 +793,29 @@ describe('useNoteAppController additional observable behavior', () => {
     window.history.pushState({}, '', '/')
   })
 
+  it('applies the latest browser navigation after an in-flight tag update finishes', async () => {
+    window.history.replaceState({}, '', '/?view=tags')
+    mockNotes = [makeNote({ tags: ['old'] })]
+    let resolveWrite!: () => void
+    mockUpdateNoteMutation.mockImplementation(() => new Promise<void>((resolve) => { resolveWrite = resolve }))
+    const { result, unmount } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    let operation!: Promise<boolean>
+    act(() => { operation = result.current.handleRenameTag('old', 'new') })
+    await waitFor(() => expect(mockUpdateNoteMutation).toHaveBeenCalled())
+    act(() => {
+      window.history.pushState({}, '', '/?view=notes&search=open')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+    expect(result.current.activeMainView).toBe('tags')
+    await act(async () => { resolveWrite(); await operation })
+    expect(result.current.activeMainView).toBe('notes')
+    expect(result.current.isSearchPanelOpen).toBe(true)
+    unmount()
+    window.history.replaceState({}, '', '/')
+  })
+
   it('opens the tags view when the app mounts after navigating from settings', () => {
     window.history.pushState({}, '', '/settings')
 
@@ -974,6 +997,39 @@ describe('useNoteAppController additional observable behavior', () => {
     expect(mockPatchSyncedTags).toHaveBeenCalledWith([{ expected: cached, tags: ['new'] }])
     expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('removes an unchanged synced cache entry confirmed absent on the server', async () => {
+    const note = makeNote({ id: 'present', tags: ['old'] })
+    const cached = { ...makeNote({ id: 'deleted' }), status: 'synced' as const, updatedAt: '2024-01-01T00:00:00Z' }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValue([cached])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => ids.filter((id: string) => id === note.id))
+    const { result } = setup()
+
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+
+    expect(mockGetExistingNoteIds).toHaveBeenCalledWith([cached.id], 'user-1')
+    expect(mockRemoveSyncedNotes).toHaveBeenCalledWith([cached])
+    expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('retains cached content and reports an unconfirmed change when absence cannot be verified', async () => {
+    const note = makeNote({ id: 'present', tags: ['old'] })
+    const cached = { ...makeNote({ id: 'deleted' }), status: 'synced' as const, updatedAt: '2024-01-01T00:00:00Z' }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValue([cached])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => {
+      if (ids.includes(cached.id)) throw new Error('network failure')
+      return ids
+    })
+    const { result } = setup()
+
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('The tag change could not be confirmed. Reconnect and refresh your notes before retrying.')
   })
 
   it('requires a successful reread before retrying an uncertain tag change', async () => {
