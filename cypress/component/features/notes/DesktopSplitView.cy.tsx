@@ -115,23 +115,23 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
     const failedWrite = cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').as('failedWrite')
     failedWrite.rejects(new Error('Storage unavailable'))
-    cy.get('[data-testid="split-pane-right"] input[placeholder="Note title"]').clear().type('Second changed')
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Second changed')
     cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
     cy.get('@failedWrite').should('have.been.called')
-    cy.get('[data-testid="split-pane-right"] input[placeholder="Note title"]').should('have.value', 'Second changed')
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'Second changed')
     cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
     cy.get('[data-testid="split-pane-left"]').contains('Activate').should('be.visible')
     cy.focused().should('have.attr', 'aria-label', 'Activate First note')
     cy.get('[data-tab-id] [data-cy="workspace-tab"]').should('have.length', 2)
     cy.get('[data-testid="nav-item-tags"]').click()
-    cy.get('[data-testid="split-pane-right"] input[placeholder="Note title"]').should('have.value', 'Second changed')
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'Second changed')
     cy.get('[data-testid="nav-action-settings"]').click()
-    cy.get('[data-testid="split-pane-right"] input[placeholder="Note title"]').should('have.value', 'Second changed')
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'Second changed')
     cy.get('[data-cy="workspace-split-button"]').click()
-    cy.get('input[placeholder="Note title"]').should('have.value', 'Second changed')
+    cy.get('[aria-label="Note title"]').should('have.value', 'Second changed')
     cy.get('[data-tab-id] [data-cy="workspace-tab"]').should('have.length', 2)
     cy.get('[data-cy="workspace-split-button"]').click()
-    cy.get('input[placeholder="Note title"]').should('have.value', 'Second changed')
+    cy.get('[aria-label="Note title"]').should('have.value', 'Second changed')
     cy.then(() => failedWrite.restore())
     cy.contains('button', 'Activate').click()
     cy.contains('[data-testid^="split-pane-"]', 'Second changed').should('be.visible')
@@ -142,10 +142,10 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-cy="note-edit-button"]').click()
     const failedWrite = cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').as('failedWrite')
     failedWrite.rejects(new Error('Storage unavailable'))
-    cy.get('input[placeholder="Note title"]').clear().type('First unsaved')
+    cy.get('[aria-label="Note title"]').clear().type('First unsaved')
     cy.get('[data-cy="workspace-split-button"]').click()
     cy.get('@failedWrite').should('have.been.called')
-    cy.get('input[placeholder="Note title"]').should('have.value', 'First unsaved')
+    cy.get('[aria-label="Note title"]').should('have.value', 'First unsaved')
     cy.get('[data-testid="split-pane-left"]').should('not.exist')
     cy.get('[data-tab-id] [data-cy="workspace-tab"]').should('have.length', 1)
   })
@@ -154,16 +154,16 @@ describe('Desktop split view', { retries: 0 }, () => {
     openTwoNotes()
     cy.get('[data-cy="workspace-split-button"]').click()
     cy.get('[data-cy="note-edit-button"]').click()
-    cy.get('input[placeholder="Note title"]').clear().type('Unfinished draft')
-    cy.get('input[placeholder="Note title"]').then(($input) => {
+    cy.get('[aria-label="Note title"]').clear().type('Unfinished draft')
+    cy.get('[aria-label="Note title"]').then(($input) => {
       const original = $input[0]
       cy.get('[data-cy="workspace-split-button"]').click()
-      cy.get('input[placeholder="Note title"]').should(($current) => {
+      cy.get('[aria-label="Note title"]').should(($current) => {
         expect($current[0]).to.equal(original)
         expect($current.val()).to.equal('Unfinished draft')
       })
       cy.get('[data-cy="workspace-split-button"]').click()
-      cy.get('input[placeholder="Note title"]').should(($current) => {
+      cy.get('[aria-label="Note title"]').should(($current) => {
         expect($current[0]).to.equal(original)
         expect($current.val()).to.equal('Unfinished draft')
       })
@@ -213,7 +213,7 @@ describe('Desktop split view', { retries: 0 }, () => {
   it('keeps a new note scroll position when its first save assigns an ID', () => {
     cy.get('[data-testid="sidebar-container"] button').contains('New Note').click()
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
-    cy.get('input[placeholder="Note title"]').type('New scrolling draft')
+    cy.get('[aria-label="Note title"]').type('New scrolling draft')
     const paragraphs = Array.from({ length: 35 }, (_, index) => `Draft paragraph ${index + 1}{enter}`).join('')
     cy.get('[data-cy="editor-content"] .ProseMirror').type(paragraphs, { delay: 0 })
     cy.get('[data-cy="editor-content"]').parents('.overflow-y-auto').first().scrollTo(0, 600)
@@ -227,16 +227,16 @@ describe('Desktop split view', { retries: 0 }, () => {
   it('preserves an unfinished editor through mobile and back to desktop', () => {
     openTwoNotes()
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
-    cy.get('input[placeholder="Note title"]').clear().type('Draft through resize')
-    cy.get('input[placeholder="Note title"]').then(($input) => {
+    cy.get('[aria-label="Note title"]').clear().type('Draft through resize')
+    cy.get('[aria-label="Note title"]').then(($input) => {
       const original = $input[0]
       cy.viewport(390, 844)
-      cy.get('input[placeholder="Note title"]').should(($current) => {
+      cy.get('[aria-label="Note title"]').should(($current) => {
         expect($current[0]).to.equal(original)
         expect($current.val()).to.equal('Draft through resize')
       })
       cy.viewport(1440, 900)
-      cy.get('input[placeholder="Note title"]').should(($current) => {
+      cy.get('[aria-label="Note title"]').should(($current) => {
         expect($current[0]).to.equal(original)
         expect($current.val()).to.equal('Draft through resize')
       })
@@ -265,14 +265,14 @@ describe('Desktop split view', { retries: 0 }, () => {
     openTwoNotes()
     cy.spy(webOfflineStorageAdapter, 'saveNote').as('noteWrites')
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
-    cy.get('[data-testid="split-pane-right"] input[placeholder="Note title"]').clear().type('Second changed')
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Second changed')
     cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
     cy.focused().should('have.attr', 'data-testid', 'split-pane-left')
     cy.get('[data-testid="split-pane-right"]').should('contain', 'Second changed')
     cy.get('[data-testid="split-pane-left"] [data-cy="note-edit-button"]').click()
-    cy.get('[data-testid="split-pane-left"] input[placeholder="Note title"]').clear().type('First changed')
+    cy.get('[data-testid="split-pane-left"] [aria-label="Note title"]').clear().type('First changed')
     cy.get('[data-testid="split-pane-right"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-right"] input[placeholder="Note title"]').should('have.value', 'Second changed')
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'Second changed')
     cy.get('[data-testid="split-pane-left"]').should('contain', 'First changed')
     cy.get('@noteWrites').should((spy) => {
       const calls = (spy as unknown as { getCalls: () => Array<{ args: Array<{ id: string, title: string }> }> }).getCalls()
