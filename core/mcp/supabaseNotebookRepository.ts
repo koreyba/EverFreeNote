@@ -44,9 +44,14 @@ type NoteRow = {
   updated_at: string | null
 }
 
-/** Escape regex metacharacters, then quote the result for PostgREST's or() parser. */
+/** Encode literal search text for a regex inside PostgREST's quoted or() filter. */
 export function escapeSearchValue(value: string): string {
-  return value.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replaceAll('\\', '\\\\').replaceAll('"', '\\"')
+  // Regex backslashes must themselves be escaped for PostgREST's filter parser.
+  return value.trim().replace(/[.*+?^${}()|[\]\\"]/g, (character) => {
+    if (character === '\\') return '\\\\\\\\'
+    if (character === '"') return '\\"'
+    return `\\\\${character}`
+  })
 }
 
 export function toNoteRecord(row: NoteRow): NoteRecord {
