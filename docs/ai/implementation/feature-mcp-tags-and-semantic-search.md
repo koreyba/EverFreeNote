@@ -27,15 +27,15 @@ Tags are compared case-insensitively and stored with their original spelling, ma
 `tag_match: 'all'` becomes PostgREST `.contains()` (`tags @> ARRAY[...]`), `'any'` becomes `.overlaps()` (`tags && ARRAY[...]`). Both use `idx_notes_tags`. The default is `all`: with several tags, "notes tagged X and Y" is the ordinary reading, and with one tag the two are identical.
 
 ### The tag vocabulary is computed, not stored
-No RPC exists for it, so `listTags` selects only the `tags` column for the user's notes, skips notes with no tags (`.not('tags', 'eq', '{}')`) and aggregates in memory, capped at `TAG_SCAN_NOTE_LIMIT` (5000). The result carries `truncated` so an agent does not present a partial list as complete. If a notebook ever reaches the cap, the fix is an `unnest` + `group by` RPC, which needs a migration on both projects.
+No RPC exists for it, so `listTags` pages over the `tags` column in stable id order and aggregates at most `TAG_SCAN_NOTE_LIMIT` (5000) tagged notes. An exact count makes `truncated` true only when tagged notes remain beyond the cap.
 
 ### `edit_note_tags` is read-modify-write
-Read the note through the user-scoped client (RLS gives "not found" for a foreign note), compute the next list, and write only when it actually differs. A no-op edit returns the note unchanged with a success result, so a retried call is harmless. This is not atomic against a concurrent writer, but the window is one round trip rather than the agent's whole turn — which is what `update_note`'s blind replacement costs.
+Read the note through the user-scoped client (RLS gives "not found" for a foreign note), compute the next list, and update only if the stored tag array still matches what was read. Retry concurrent changes up to five times, then return an explicit conflict error. A no-op edit returns the note unchanged.
 
 ### Semantic search delegates rather than duplicates
 `core/mcp` never talks to Gemini or pgvector. It depends on the `SemanticSearch` port; the Edge Function implements it by POSTing to `/functions/v1/rag-search` with the caller's bearer token. That function already loads the user's encrypted Gemini key, decrypts it with the server-side secret, embeds the query and runs `match_notes` under RLS. Reimplementing any of that in `core/mcp` would put the decryption secret in a second place and duplicate the RAG settings logic.
 
-Request body: `{ query, topK, threshold, filterTag? }`, with `topK` bounded by the tool's `limit` and `threshold` defaulting to 0.55 (the value in `core/rag/searchSettings.ts`).
+Request body: `{ query, topK, threshold, filterTag? }`, with `topK` bounded by the tool's `limit`. An explicit threshold overrides the user's saved setting; the shared 0.55 default applies only when no setting exists.
 
 Response handling:
 
