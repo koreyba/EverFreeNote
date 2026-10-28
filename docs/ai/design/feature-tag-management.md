@@ -6,6 +6,27 @@ description: System design, component architecture, data models, and navigation 
 
 # System Design & Architecture
 
+## Paginated collection safety (interim)
+
+The tag browser derives counts from notes currently loaded in memory and the
+offline cache. It labels these counts as potentially incomplete. Before a bulk
+rename, deletion or cleanup, the client refreshes the loaded pages, checks a
+fresh exact server count and verifies that each loaded note ID still exists.
+Duplicate IDs, a missing page, an unavailable count, offline mode, queued writes,
+or unsaved workspace tabs prevent the operation. The user can load another page
+and check the collection again; individual note editing remains available.
+
+This is a mitigation for a known partial-collection bug, not a transactional
+snapshot: pages and existence checks are separate requests, another device or
+window may write concurrently, and per-note updates can partially succeed. On
+an uncertain response the client attempts to reread notes, reports that the
+change may be incomplete, and does not announce success. It does not claim a
+rollback. Reliable cross-window/device mutation requires a separate design for
+atomic server-side changes, durable operation recovery and versioned writes.
+Tag counts and filters also currently have different case/whitespace semantics;
+do not replace the browser count with a normalized server aggregate until those
+semantics and their indexing/performance implications are resolved together.
+
 ## Architecture Overview
 
 The Tag Management feature spans the core logic layer (`@core`) and the web presentation layer (`ui/web`). The core service handles all tag aggregation, initial sorting, grouping, renaming, and deletion. The web UI renders a responsive Tag Management view with alphabetical jump navigation, count badges, and action menus.

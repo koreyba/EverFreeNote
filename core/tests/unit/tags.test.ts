@@ -90,6 +90,16 @@ describe('core/services/tags', () => {
       expect(updated[0].tags).toEqual(['javascript'])
     })
 
+    it('does not clean unrelated duplicate tags during a rename', () => {
+      const notes = [
+        { id: '1', tags: ['old', 'other', 'OTHER'] },
+        { id: '2', tags: ['other', 'OTHER'] },
+      ]
+      const updated = renameTagInNotes(notes, 'old', 'new')
+      expect(updated[0].tags).toEqual(['new', 'other', 'OTHER'])
+      expect(updated[1]).toBe(notes[1])
+    })
+
     it('returns original notes array if oldTag or newTag is empty', () => {
       expect(renameTagInNotes(sampleNotes, '', 'React')).toBe(sampleNotes)
       expect(renameTagInNotes(sampleNotes, 'React', '   ')).toBe(sampleNotes)

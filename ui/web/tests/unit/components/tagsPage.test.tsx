@@ -165,6 +165,7 @@ describe('TagsPage Component', () => {
       fireEvent.click(await screen.findByTestId('rename-action-alpha'))
       fireEvent.change(await screen.findByTestId('rename-tag-input'), { target: { value: 'beta' } })
       fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
+      await act(async () => {})
 
       rerender(
         <TagsPage
@@ -186,6 +187,7 @@ describe('TagsPage Component', () => {
       fireEvent.click(await screen.findByTestId('rename-action-beta'))
       fireEvent.change(await screen.findByTestId('rename-tag-input'), { target: { value: 'gamma' } })
       fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
+      await act(async () => {})
       unmount()
 
       act(() => {
@@ -209,6 +211,66 @@ describe('TagsPage Component', () => {
     )
 
     expect(screen.getByText('No tags found')).toBeTruthy()
+  })
+
+  it('identifies incomplete counts, blocks global actions, and can load more without blocking tag selection', () => {
+    const loadMore = jest.fn()
+    render(
+      <TagsPage
+        notes={[{ tags: ['react'] }]}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={mockOnRenameTag}
+        onDeleteTag={mockOnDeleteTag}
+        managementBlockReason="Load all notes before managing tags."
+        onLoadMoreNotes={loadMore}
+      />
+    )
+    expect(screen.getByText(/counts are based on loaded and cached notes/i)).toBeTruthy()
+    expect(screen.getByText('Load all notes before managing tags.')).toBeTruthy()
+    expect((screen.getByTestId('tag-menu-trigger-react') as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByTestId('select-tag-react'))
+    expect(mockOnSelectTag).toHaveBeenCalledWith('react')
+    fireEvent.click(screen.getByRole('button', { name: /load more notes/i }))
+    expect(loadMore).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the rename dialog open and shows no success highlight after an unconfirmed mutation', async () => {
+    const failedRename = jest.fn().mockResolvedValue(false)
+    render(
+      <TagsPage
+        notes={[{ tags: ['react'] }]}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={failedRename}
+        onDeleteTag={mockOnDeleteTag}
+      />
+    )
+    fireEvent.keyDown(screen.getByTestId('tag-menu-trigger-react'), { key: 'Enter' })
+    fireEvent.click(await screen.findByTestId('rename-action-react'))
+    fireEvent.change(await screen.findByTestId('rename-tag-input'), { target: { value: 'new' } })
+    fireEvent.click(screen.getByTestId('confirm-rename-tag-button'))
+    await act(async () => {})
+    expect(failedRename).toHaveBeenCalledWith('react', 'new')
+    expect(screen.getByTestId('rename-tag-input')).toBeTruthy()
+    expect(screen.queryByText('Updated')).toBeNull()
+  })
+
+  it('keeps the delete confirmation open when the outcome is uncertain', async () => {
+    const failedDelete = jest.fn().mockResolvedValue(false)
+    render(
+      <TagsPage
+        notes={[{ tags: ['react'] }]}
+        onSelectTag={mockOnSelectTag}
+        onRenameTag={mockOnRenameTag}
+        onDeleteTag={failedDelete}
+      />
+    )
+    fireEvent.keyDown(screen.getByTestId('tag-menu-trigger-react'), { key: 'Enter' })
+    fireEvent.click(await screen.findByTestId('delete-action-react'))
+    fireEvent.click(await screen.findByTestId('confirm-delete-tag-button'))
+    await act(async () => {})
+    expect(failedDelete).toHaveBeenCalledWith('react')
+    expect(screen.getByRole('alert').textContent).toContain("couldn't be confirmed")
+    expect(screen.getByTestId('confirm-delete-tag-button')).toBeTruthy()
   })
 })
 

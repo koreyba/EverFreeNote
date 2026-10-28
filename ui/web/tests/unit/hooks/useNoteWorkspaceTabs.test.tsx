@@ -80,4 +80,19 @@ describe('useNoteWorkspaceTabs persistence warning', () => {
     act(() => { result.current.updateTabForNote(tabId, 'new-note', { view: { scrollTop: 420 } }) })
     expect(result.current.activeTab.view.scrollTop).toBe(420)
   })
+
+  it('refreshes saved tags without overwriting a draft that became dirty', () => {
+    const note = { id: 'note-1', title: 'Title', description: 'Body', tags: ['old'], user_id: 'user-1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const { result } = renderHook(() => useNoteWorkspaceTabs('user-1'))
+    act(() => { result.current.openNote(note) })
+    act(() => { result.current.updateTab(result.current.activeTabId, { saveState: 'dirty', draft: { tags: 'my draft' } }) })
+    act(() => { result.current.updateSavedTags([{ id: note.id, tags: ['new'] }]) })
+    expect(result.current.activeTab.draft.tags).toBe('my draft')
+    expect(result.current.activeTab.note?.tags).toEqual(['old'])
+
+    act(() => { result.current.updateTab(result.current.activeTabId, { saveState: 'saved' }) })
+    act(() => { result.current.updateSavedTags([{ id: note.id, tags: ['new'] }]) })
+    expect(result.current.activeTab.draft.tags).toBe('new')
+    expect(result.current.activeTab.note?.tags).toEqual(['new'])
+  })
 })

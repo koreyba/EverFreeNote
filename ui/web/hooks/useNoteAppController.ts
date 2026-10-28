@@ -101,6 +101,7 @@ export function useNoteAppController() {
     openNote,
     updateTab,
     updateTabForNote,
+    updateSavedTags,
     closeTab,
     resetTabsForNotes,
     findTabByNoteId,
@@ -147,6 +148,7 @@ export function useNoteAppController() {
   const noteEditorRef = useRef<React.RefObject<NoteEditorHandle | null> | null>(null)
   const workspaceViewCaptureRef = useRef<(() => void) | null>(null)
   const addingTabRef = useRef(false)
+  const tagMutationInProgressRef = useRef(false)
 
   const registerNoteEditorRef = useCallback((ref: React.RefObject<NoteEditorHandle | null>) => {
     noteEditorRef.current = ref
@@ -377,7 +379,6 @@ export function useNoteAppController() {
     confirmDeleteNote,
     waitForPendingNoteWrites,
     handleRemoveTagFromNote,
-    persistOfflineNoteUpdates,
   } = useNoteSaveHandlers({
     user,
     isOffline,
@@ -480,6 +481,7 @@ export function useNoteAppController() {
       saveError: null,
     })
     try {
+      if (tagMutationInProgressRef.current) throw new Error('Wait for the tag update to finish, then retry saving.')
       const result = await handleAutoSave(data)
       updateTab(activeTabId, { saveState: 'saved', saveError: null })
       return result
@@ -501,6 +503,7 @@ export function useNoteAppController() {
       saveError: null,
     })
     try {
+      if (tagMutationInProgressRef.current) throw new Error('Wait for the tag update to finish, then retry saving.')
       await handleSaveNote(data)
       updateTab(activeTabId, { saveState: 'saved', saveError: null })
     } catch (error) {
@@ -520,6 +523,7 @@ export function useNoteAppController() {
       saveError: null,
     })
     try {
+      if (tagMutationInProgressRef.current) throw new Error('Wait for the tag update to finish, then retry saving.')
       await handleReadNote(data)
       updateTab(activeTabId, { saveState: 'saved', saveError: null })
     } catch (error) {
@@ -924,6 +928,7 @@ export function useNoteAppController() {
 
   const syncNavigationFromUrl = useCallback(() => {
     if (typeof window === 'undefined') return
+    if (tagMutationInProgressRef.current) return
 
     const params = new URLSearchParams(window.location.search)
     setActiveMainView(params.get('view') === 'tags' ? 'tags' : 'notes')
@@ -938,96 +943,217 @@ export function useNoteAppController() {
     return () => window.removeEventListener('popstate', syncNavigationFromUrl)
   }, [syncNavigationFromUrl])
 
-  // -- Batch Tag Mutations --
+  // -- Batch tag mutations --
+  // A current count and a refresh of every loaded page are required before
+  // mutating. This mitigates pagination truncation; it is not an atomic
+  // snapshot across pages or a replacement for cross-device conflict control.
+  const [tagCoveragePages, setTagCoveragePages] = useState<unknown>(null)
+  const [tagCoverageMessage, setTagCoverageMessage] = useState<string | null>(null)
+  const [checkingTagCoverage, setCheckingTagCoverage] = useState(false)
+  const [tagMutationInProgress, setTagMutationInProgress] = useState(false)
   const tagMutationQueueRef = useRef<Promise<void>>(Promise.resolve())
-  const persistTagChanges = useCallback((updatedNotes: NoteViewModel[], originalNotes: NoteViewModel[]) => {
-    const runMutation = async () => {
-      const changedNotes = updatedNotes.filter((note, index) => note !== originalNotes[index])
-      if (isOffline) {
-        await persistOfflineNoteUpdates(changedNotes)
-        return
+  const tagRecoveryPendingRef = useRef(false)
+
+  const localTagBlockReason = !workspaceHydrated
+    ? 'Restoring open notes. Please wait before managing tags.'
+    : isOffline
+    ? 'Connect to the internet to manage tags across notes.'
+    : pendingCount || failedCount
+      ? 'Finish syncing your notes before managing tags.'
+      : saving || autoSaving || tabs.some((tab) => tab.saveState !== 'saved')
+        ? 'Save changes in open notes before managing tags.'
+        : null
+
+  const tagManagementBlockReason = localTagBlockReason ?? tagCoverageMessage ?? (
+    !tagCoveragePages || tagCoveragePages !== notesQuery.data?.pages
+      ? 'Check the loaded notes before managing tags.'
+      : null
+  )
+
+  const verifyTagSnapshot = useCallback(async (): Promise<NoteViewModel[]> => {
+    if (!user) throw new Error('Sign in to manage tags.')
+    if (!workspaceHydrated) throw new Error('Restoring open notes. Please wait before managing tags.')
+    if (isOffline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+      throw new Error('Connect to the internet to manage tags across notes.')
+    }
+    if (saving || autoSaving || tabs.some((tab) => tab.saveState !== 'saved')) {
+      throw new Error('Save changes in open notes before managing tags.')
+    }
+    const queue = await offlineQueueRef.current.getQueue()
+    const cached = await offlineCache.loadNotes()
+    if (queue.length || cached.some((note) => (
+      (!note.user_id || note.user_id === user.id) &&
+      (note.status !== 'synced' || Boolean(note.pendingOps?.length))
+    ))) throw new Error('Finish syncing your notes before managing tags.')
+
+    const refreshed = await notesQuery.refetch({ throwOnError: true })
+    const pages = refreshed.data?.pages
+    if (!pages?.length || pages.some((page) => !Number.isInteger(page.totalCount))) {
+      throw new Error('Could not verify the loaded notes. Try again.')
+    }
+    const loadedNotes = pages.flatMap((page) => page.notes)
+    const ids = loadedNotes.map((note) => note.id)
+    const loadedCount = new Set(ids).size
+    const { count, error } = await supabase.from('notes')
+      .select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+    if (error || count === null) throw new Error('Could not verify the total number of notes. Try again.')
+    if (loadedCount !== ids.length) {
+      throw new Error('Some notes appeared more than once. Refresh and check again.')
+    }
+    if (loadedCount < count) {
+      throw new Error(`Loaded ${loadedCount} of ${count} notes. Load more notes and check again.`)
+    }
+    if (loadedCount > count || pages.some((page) => page.totalCount !== count)) {
+      throw new Error('Notes changed while loading. Refresh and check again.')
+    }
+    const existingIds = await noteService.getExistingNoteIds(ids, user.id)
+    if (existingIds.length !== count) throw new Error('Notes changed while checking. Refresh and check again.')
+    // A queued write could have arrived while the server requests were running.
+    if ((await offlineQueueRef.current.getQueue()).length) {
+      throw new Error('Finish syncing your notes before managing tags.')
+    }
+    setTagCoveragePages(pages)
+    setTagCoverageMessage(null)
+    return loadedNotes as NoteViewModel[]
+  }, [user, workspaceHydrated, isOffline, saving, autoSaving, tabs, offlineQueueRef, offlineCache, notesQuery, supabase, noteService])
+
+  const loadMoreTagNotes = useCallback(async () => {
+    setTagCoveragePages(null)
+    setTagCoverageMessage(null)
+    try {
+      await notesQuery.fetchNextPage({ throwOnError: true })
+    } catch {
+      setTagCoverageMessage('Could not load more notes. Check your connection and try again.')
+    }
+  }, [notesQuery])
+
+  const persistTagChanges = useCallback(async (updated: NoteViewModel[], original: NoteViewModel[]) => {
+    const changed = updated.filter((note, index) => note !== original[index])
+    // Limit simultaneous requests and stop issuing more after a failure.
+    for (let offset = 0; offset < changed.length; offset += 8) {
+      const results = await Promise.allSettled(changed.slice(offset, offset + 8).map((note) => (
+        updateNoteMutation.mutateAsync({ id: note.id, tags: note.tags, silent: true })
+      )))
+      if (results.some((result) => result.status === 'rejected')) {
+        // A response may be lost after the server applied it. A compensating
+        // update cannot safely undo an unknown outcome or a concurrent edit.
+        throw new Error('The tag change may be incomplete.')
       }
+    }
+  }, [updateNoteMutation])
 
-      const results = await Promise.allSettled(
-        changedNotes.map((note) =>
-          updateNoteMutation.mutateAsync({
-            id: note.id,
-            tags: note.tags,
-          })
-        )
-      )
-      const failedResult = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')
+  const refreshTagMutationState = useCallback(async () => {
+    if (!user) throw new Error('Sign in to refresh notes.')
+    const open = tabs.filter((tab) => tab.noteId && tab.note && tab.saveState === 'saved')
+    const openIds = open.map((tab) => tab.noteId!)
+    const refreshedOpen = await noteService.getNotesByIds(openIds, user.id)
+    if (refreshedOpen.length !== openIds.length) throw new Error('Some open notes could not be refreshed.')
+    const cached = await offlineCache.loadNotes()
+    const candidates = cached.filter((note) => (
+      (!note.user_id || note.user_id === user.id) && note.status === 'synced' && !note.deleted && !note.pendingOps?.length
+    ))
+    const cachedIds = candidates.map((note) => note.id)
+    const remoteCached = []
+    for (let offset = 0; offset < cachedIds.length; offset += 100) {
+      remoteCached.push(...await noteService.getNotesByIds(cachedIds.slice(offset, offset + 100), user.id))
+    }
+    if (remoteCached.length !== cachedIds.length) throw new Error('Some cached notes could not be refreshed.')
+    const remoteTags = new Map(remoteCached.map((note) => [note.id, note.tags ?? []]))
+    const patches = candidates.map((expected) => ({ expected, tags: remoteTags.get(expected.id)! }))
+    const updated = await offlineCache.patchSyncedTags(patches)
+    if (updated.length !== candidates.length) throw new Error('Some cached notes could not be refreshed safely.')
+    const updatedSet = new Set(updated)
+    const revisions = new Map(candidates.map((note) => [note.id, note.updatedAt]))
+    setOfflineOverlay((previous) => previous.map((note) => (
+      updatedSet.has(note.id) && note.status === 'synced' && !note.pendingOps?.length &&
+      revisions.get(note.id) === note.updatedAt
+        ? { ...note, tags: remoteTags.get(note.id)! }
+        : note
+    )))
+    updateSavedTags(refreshedOpen.map((note) => ({ id: note.id, tags: note.tags ?? [] })))
+    await notesQuery.refetch({ throwOnError: true })
+    await queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+  }, [user, tabs, noteService, offlineCache, setOfflineOverlay, updateSavedTags, notesQuery, queryClient])
 
-      if (!failedResult) return
-
-      const rollbackResults = await Promise.allSettled(
-        changedNotes.flatMap((updatedNote, index) => {
-          if (results[index].status !== 'fulfilled') return []
-          const originalNote = originalNotes.find((note) => note.id === updatedNote.id)
-          if (!originalNote) return []
-          return updateNoteMutation.mutateAsync({
-            id: originalNote.id,
-            tags: originalNote.tags,
-          })
-        })
-      )
-      const rollbackFailure = rollbackResults.find((result): result is PromiseRejectedResult => result.status === 'rejected')
-      if (rollbackFailure) {
-        throw new Error(`Tag changes failed and rollback was incomplete: ${rollbackFailure.reason instanceof Error ? rollbackFailure.reason.message : String(rollbackFailure.reason)}`)
+  const checkTagCoverage = useCallback(async () => {
+    setCheckingTagCoverage(true)
+    setTagCoveragePages(null)
+    try {
+      await verifyTagSnapshot()
+      if (tagRecoveryPendingRef.current) {
+        await refreshTagMutationState()
+        tagRecoveryPendingRef.current = false
+        await verifyTagSnapshot()
       }
-
-      throw failedResult.reason instanceof Error ? failedResult.reason : new Error(String(failedResult.reason))
-    }
-
-    const queuedMutation = tagMutationQueueRef.current.then(runMutation, runMutation)
-    tagMutationQueueRef.current = queuedMutation.then(() => undefined, () => undefined)
-    return queuedMutation
-  }, [isOffline, persistOfflineNoteUpdates, updateNoteMutation])
-
-  const handleRenameTag = useCallback(async (oldTag: string, newTag: string) => {
-    const updatedNotes = renameTagInNotes(notes, oldTag, newTag)
-    const changedNotes = updatedNotes.filter((note, i) => note !== notes[i])
-
-    if (changedNotes.length === 0) return
-
-    try {
-      await persistTagChanges(updatedNotes, notes)
-      toast.success(`Tag "${oldTag}" renamed to "${newTag}"`)
     } catch (error) {
-      toast.error(`Failed to rename tag: ${(error as Error).message}`)
+      setTagCoveragePages(null)
+      setTagCoverageMessage(error instanceof Error ? error.message : 'Could not verify the loaded notes. Try again.')
+    } finally {
+      setCheckingTagCoverage(false)
     }
-  }, [notes, persistTagChanges])
+  }, [verifyTagSnapshot, refreshTagMutationState])
 
-  const handleDeleteTag = useCallback(async (targetTag: string) => {
-    const updatedNotes = deleteTagFromNotes(notes, targetTag)
-    const changedNotes = updatedNotes.filter((note, i) => note !== notes[i])
-
-    if (changedNotes.length === 0) return
-
-    try {
-      await persistTagChanges(updatedNotes, notes)
-      toast.success(`Tag "${targetTag}" deleted`)
-    } catch (error) {
-      toast.error(`Failed to delete tag: ${(error as Error).message}`)
+  const runTagMutation = useCallback((change: (notes: NoteViewModel[]) => NoteViewModel[], success: string) => {
+    const run = async (): Promise<boolean> => {
+      tagMutationInProgressRef.current = true
+      setTagMutationInProgress(true)
+      setTagCoveragePages(null)
+      let writeStarted = false
+      try {
+        let current = await verifyTagSnapshot()
+        if (tagRecoveryPendingRef.current) {
+          await refreshTagMutationState()
+          tagRecoveryPendingRef.current = false
+          current = await verifyTagSnapshot()
+        }
+        const updated = change(current)
+        if (updated.every((note, index) => note === current[index])) {
+          toast.info('No matching tags found in the loaded notes.')
+          return false
+        }
+        writeStarted = true
+        await persistTagChanges(updated, current)
+        await refreshTagMutationState()
+        setTagCoveragePages(null)
+        toast.success(success)
+        return true
+      } catch (error) {
+        setTagCoveragePages(null)
+        if (!writeStarted) {
+          const message = error instanceof Error ? error.message : 'Could not verify the loaded notes.'
+          setTagCoverageMessage(message)
+          toast.error(message)
+        } else {
+          try {
+            await refreshTagMutationState()
+            tagRecoveryPendingRef.current = false
+            toast.error('The tag change may be incomplete. Notes were refreshed; review them before retrying.')
+          } catch {
+            tagRecoveryPendingRef.current = true
+            toast.error('The tag change could not be confirmed. Reconnect and refresh your notes before retrying.')
+          }
+          setTagCoverageMessage('Refresh and check the notes before managing tags again.')
+        }
+        return false
+      } finally {
+        tagMutationInProgressRef.current = false
+        setTagMutationInProgress(false)
+      }
     }
-  }, [notes, persistTagChanges])
+    const queued = tagMutationQueueRef.current.then(run, run)
+    tagMutationQueueRef.current = queued.then(() => undefined, () => undefined)
+    return queued
+  }, [verifyTagSnapshot, persistTagChanges, refreshTagMutationState])
 
-  const handleCleanTags = useCallback(async () => {
-    const updatedNotes = cleanUnusedOrEmptyTagsInNotes(notes)
-    const changedNotes = updatedNotes.filter((note, i) => note !== notes[i])
-
-    if (changedNotes.length === 0) {
-      toast.info("No empty or duplicate tags found to clean")
-      return
-    }
-
-    try {
-      await persistTagChanges(updatedNotes, notes)
-      toast.success("Cleaned up empty and duplicate tags")
-    } catch (error) {
-      toast.error(`Failed to clean tags: ${(error as Error).message}`)
-    }
-  }, [notes, persistTagChanges])
+  const handleRenameTag = useCallback((oldTag: string, newTag: string) => (
+    runTagMutation((current) => renameTagInNotes(current, oldTag, newTag), `Tag "${oldTag}" renamed to "${newTag}"`)
+  ), [runTagMutation])
+  const handleDeleteTag = useCallback((tag: string) => (
+    runTagMutation((current) => deleteTagFromNotes(current, tag), `Tag "${tag}" deleted`)
+  ), [runTagMutation])
+  const handleCleanTags = useCallback(() => (
+    runTagMutation(cleanUnusedOrEmptyTagsInNotes, 'Cleaned up empty and duplicate tags')
+  ), [runTagMutation])
 
   return {
     registerNoteEditorRef,
@@ -1063,6 +1189,12 @@ export function useNoteAppController() {
     handleRenameTag,
     handleDeleteTag,
     handleCleanTags,
+    prepareTagManagement: flushAndCaptureActiveTab,
+    tagManagementBlockReason,
+    checkTagCoverage,
+    loadMoreTagNotes,
+    checkingTagCoverage: checkingTagCoverage || tagMutationInProgress,
+    tagMutationInProgress,
 
 
 

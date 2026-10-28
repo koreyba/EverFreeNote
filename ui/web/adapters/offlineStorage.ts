@@ -132,6 +132,20 @@ const localFallback = (() => {
       writeJson(NOTES_KEY, notes.filter(note => !removedIds.has(note.id)))
       return removed
     },
+    patchSyncedTags: (patches: Array<{ expected: CachedNote; tags: string[] }>) => {
+      const notes = readJson<CachedNote>(NOTES_KEY)
+      const queued = new Set(readJson<MutationQueueItem>(QUEUE_KEY).map(item => item.noteId))
+      const byId = new Map(patches.map(patch => [patch.expected.id, patch]))
+      const updated: string[] = []
+      const next = notes.map(note => {
+        const patch = byId.get(note.id)
+        if (!patch || queued.has(note.id) || !matchesSyncedSnapshot(patch.expected, note)) return note
+        updated.push(note.id)
+        return { ...note, tags: patch.tags }
+      })
+      writeJson(NOTES_KEY, next)
+      return updated
+    },
     getQueue: () => readJson<MutationQueueItem>(QUEUE_KEY),
     upsertQueueItem: (item: MutationQueueItem) => {
       const queue = readJson<MutationQueueItem>(QUEUE_KEY)
@@ -266,6 +280,32 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
                 if (matchesSyncedSnapshot(note, request.result)) {
                   store.delete(note.id)
                   removed.push(note.id)
+                }
+              }
+            }
+          }
+        })
+      },
+
+      async patchSyncedTags(patches) {
+        if (!patches.length) return []
+        const db = await getDB()
+        return new Promise<string[]>((resolve, reject) => {
+          const tx = db.transaction([NOTES_STORE, QUEUE_STORE], 'readwrite')
+          const store = tx.objectStore(NOTES_STORE)
+          const updated: string[] = []
+          tx.oncomplete = () => { db.close(); resolve(updated) }
+          tx.onerror = tx.onabort = () => { db.close(); reject(tx.error ?? new Error('Cache reconciliation failed')) }
+          const queue = tx.objectStore(QUEUE_STORE).getAll()
+          queue.onsuccess = () => {
+            const queued = new Set((queue.result as MutationQueueItem[]).map(item => item.noteId))
+            for (const patch of patches) {
+              if (queued.has(patch.expected.id)) continue
+              const request = store.get(patch.expected.id)
+              request.onsuccess = () => {
+                if (matchesSyncedSnapshot(patch.expected, request.result)) {
+                  store.put({ ...request.result, tags: patch.tags })
+                  updated.push(patch.expected.id)
                 }
               }
             }
@@ -419,6 +459,9 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
       },
       async removeSyncedNotes(notes, signal) {
         return localFallback.removeSyncedNotes(notes, signal)
+      },
+      async patchSyncedTags(patches) {
+        return localFallback.patchSyncedTags(patches)
       },
       async getQueue() {
         return localFallback.getQueue()

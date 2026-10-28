@@ -27,6 +27,10 @@ export class OfflineCacheService {
     return this.storage.removeSyncedNotes?.(notes, signal) ?? []
   }
 
+  async patchSyncedTags(patches: Array<{ expected: CachedNote; tags: string[] }>): Promise<string[]> {
+    return this.storage.patchSyncedTags?.(patches) ?? []
+  }
+
   async markSynced(noteId: string, updatedAt: string, expectedUpdatedAt?: string): Promise<void> {
     await this.storage.markSynced(noteId, updatedAt, expectedUpdatedAt)
   }

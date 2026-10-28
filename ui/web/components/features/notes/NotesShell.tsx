@@ -136,6 +136,12 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleRenameTag,
     handleDeleteTag,
     notes,
+    notesQuery,
+    tagManagementBlockReason,
+    checkTagCoverage,
+    loadMoreTagNotes,
+    checkingTagCoverage,
+    tagMutationInProgress,
   } = controller
 
   const tabsRef = React.useRef(tabs)
@@ -240,6 +246,12 @@ export function NotesShell({ controller }: NotesShellProps) {
     }
   }, [activeTabId, addTab, captureViewScrolls, pendingSplit, split, tabs])
 
+  const checkTagCoverageRef = React.useRef(checkTagCoverage)
+  React.useEffect(() => { checkTagCoverageRef.current = checkTagCoverage }, [checkTagCoverage])
+  React.useEffect(() => {
+    if (activeMainView === 'tags' && user?.id && workspaceHydrated) void checkTagCoverageRef.current?.()
+  }, [activeMainView, user?.id, workspaceHydrated])
+
   const refreshWordPressStatus = React.useCallback(async () => {
     try {
       const status = await wordpressSettingsService.getStatus()
@@ -290,6 +302,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
   const showEditor = notePaneVisible ?? !!(selectedNote || isEditing)
   const handleOpenSearchPanel = React.useCallback(async () => {
+    if (tagMutationInProgress) return
     if (isMobile && showEditor && !(await hideNotePane())) return
     if (activeMainView !== "notes") {
       setActiveMainView("notes")
@@ -299,16 +312,18 @@ export function NotesShell({ controller }: NotesShellProps) {
       return
     }
     setIsSearchPanelOpen(true)
-  }, [activeMainView, hideNotePane, isMobile, isSearchPanelOpen, setActiveMainView, setIsSearchPanelOpen, showEditor])
+  }, [activeMainView, hideNotePane, isMobile, isSearchPanelOpen, setActiveMainView, setIsSearchPanelOpen, showEditor, tagMutationInProgress])
 
   const handleSelectMainView = React.useCallback(async (view: "notes" | "tags") => {
+    if (tagMutationInProgress) return
+    if (view === "tags" && controller.prepareTagManagement && !(await controller.prepareTagManagement())) return
     if (showEditor && (isMobile || view !== activeMainView) && !(await hideNotePane())) return
     if (isMobile && view === "notes") {
       setIsSearchPanelOpen(false)
       if (selectionMode) exitSelectionMode()
     }
     setActiveMainView(view)
-  }, [activeMainView, exitSelectionMode, hideNotePane, isMobile, selectionMode, setActiveMainView, setIsSearchPanelOpen, showEditor])
+  }, [activeMainView, controller, exitSelectionMode, hideNotePane, isMobile, selectionMode, setActiveMainView, setIsSearchPanelOpen, showEditor, tagMutationInProgress])
 
 
   const handlePendingChunkFocusApplied = React.useCallback((requestId: string) => {
@@ -316,6 +331,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [])
 
   const handleOpenSettings = React.useCallback(async () => {
+    if (tagMutationInProgress) return
     const notesUiState = await controller.captureSettingsReturnState()
     if (!notesUiState) return
 
@@ -327,7 +343,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     }
 
     router.push("/settings")
-  }, [controller, router])
+  }, [controller, router, tagMutationInProgress])
 
   const handleBackFromNote = React.useCallback(async () => {
     await noteEditorRef.current?.flushPendingSave()
@@ -340,6 +356,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [handleSelectNote, router])
 
   useAppBackHandler(APP_BACK_PRIORITY.navigation, async () => {
+    if (tagMutationInProgress) return true
     if (isMobile && showEditor) await handleBackFromNote()
     else if (isSearchPanelOpen) setIsSearchPanelOpen(false)
     else if (selectionMode) exitSelectionMode()
@@ -350,13 +367,14 @@ export function NotesShell({ controller }: NotesShellProps) {
   })
 
   const handleSelectTagFromTagsPage = React.useCallback((tag: string) => {
+    if (tagMutationInProgress) return
     // A tag chosen from the tag browser represents all notes with that tag,
     // rather than the intersection with an earlier unrelated search.
     if (isMobile) controller.handleSearch("")
     controller.handleTagClick(tag).catch(() => undefined)
     setIsSearchPanelOpen(true)
     setActiveMainView("notes")
-  }, [controller, isMobile, setActiveMainView, setIsSearchPanelOpen])
+  }, [controller, isMobile, setActiveMainView, setIsSearchPanelOpen, tagMutationInProgress])
 
   // Derive the next pair during the same render as a tab switch, so the
   // editor never disappears while the reconciliation effect catches up.
@@ -399,6 +417,11 @@ export function NotesShell({ controller }: NotesShellProps) {
             onSelectTag={handleSelectTagFromTagsPage}
             onRenameTag={handleRenameTag}
             onDeleteTag={handleDeleteTag}
+            managementBlockReason={tagManagementBlockReason}
+            checkingNotes={checkingTagCoverage}
+            loadingMoreNotes={notesQuery.isFetchingNextPage}
+            onCheckNotes={!isOffline && checkTagCoverage ? () => void checkTagCoverage() : undefined}
+            onLoadMoreNotes={!isOffline && notesQuery.hasNextPage && loadMoreTagNotes ? () => void loadMoreTagNotes() : undefined}
           />
         </main>
       ) : (

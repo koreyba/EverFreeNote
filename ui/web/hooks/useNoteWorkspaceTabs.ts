@@ -112,6 +112,22 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
     })
   }, [])
 
+  const updateSavedTags = useCallback((snapshots: Array<{ id: string; tags: string[] }>) => {
+    const tagsById = new Map(snapshots.map((note) => [note.id, note.tags]))
+    setState((current) => {
+      let next = current
+      for (const tab of current.tabs) {
+        const tags = tab.noteId ? tagsById.get(tab.noteId) : undefined
+        if (!tab.note || tab.saveState !== 'saved' || !tags) continue
+        next = updateWorkspaceTab(next, tab.id, {
+          note: { ...tab.note, tags },
+          draft: { tags: tags.join(', ') },
+        })
+      }
+      return next
+    })
+  }, [])
+
   const closeTab = useCallback((tabId: string) => {
     setState((current) => closeWorkspaceTab(current, tabId))
   }, [])
@@ -135,6 +151,7 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
     openNote,
     updateTab,
     updateTabForNote,
+    updateSavedTags,
     closeTab,
     resetTabsForNotes,
     findTabByNoteId,

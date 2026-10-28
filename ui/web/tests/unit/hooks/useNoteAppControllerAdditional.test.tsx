@@ -18,6 +18,8 @@ let mockIsEditing = true
 let mockIsOffline = false
 let mockOfflineOverlay: Array<{ id: string; status: string }> = []
 let mockNotes: NoteViewModel[] = []
+let mockTagServerCount: number | null = null
+let mockTagQueue: Array<{ id: string }> = []
 let mockResolvedSearchResult: NoteViewModel | null = null
 let mockNoteToDelete: NoteViewModel | null = null
 let mockAuthUser: { id: string } | null = { id: 'user-1' }
@@ -27,8 +29,10 @@ const mockGetNotes = jest.fn()
 const mockGetExistingNoteIds = jest.fn()
 const mockLoadCachedNotes = jest.fn()
 const mockRemoveSyncedNotes = jest.fn()
+const mockPatchSyncedTags = jest.fn()
 const mockGetNoteStatus = jest.fn()
 const mockGetNote = jest.fn()
+const mockGetNotesByIds = jest.fn()
 const mockHandleSelectNote = jest.fn()
 const mockHandleSearchResultClick = jest.fn()
 const mockHandleEditNoteRaw = jest.fn()
@@ -51,7 +55,10 @@ const mockConfirmDeleteNote = jest.fn()
 
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn() } }))
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
-  useSupabase: () => ({ supabase: { key: 'supabase' }, user: mockProviderUser }),
+  useSupabase: () => ({ supabase: {
+    key: 'supabase',
+    from: () => ({ select: () => ({ eq: async () => ({ count: mockTagServerCount ?? mockNotes.length, error: null }) }) }),
+  }, user: mockProviderUser }),
 }))
 jest.mock('@core/services/notes', () => ({
   NoteService: jest.fn().mockImplementation(() => ({
@@ -59,6 +66,7 @@ jest.mock('@core/services/notes', () => ({
     getNotes: mockGetNotes,
     getExistingNoteIds: mockGetExistingNoteIds,
     getNote: mockGetNote,
+    getNotesByIds: mockGetNotesByIds,
   })),
 }))
 jest.mock('@core/utils/noteSnapshot', () => ({
@@ -121,10 +129,10 @@ jest.mock('@ui/web/hooks/useNoteSync', () => ({
     isOffline: mockIsOffline,
     lastSavedAt: null,
     setLastSavedAt: mockSetLastSavedAt,
-    offlineCache: { deleteNote: jest.fn(), loadNotes: mockLoadCachedNotes, removeSyncedNotes: mockRemoveSyncedNotes, saveNote: jest.fn() },
+    offlineCache: { deleteNote: jest.fn(), loadNotes: mockLoadCachedNotes, removeSyncedNotes: mockRemoveSyncedNotes, patchSyncedTags: mockPatchSyncedTags, saveNote: jest.fn() },
     enqueueMutation: jest.fn(),
     enqueueBatchAndDrainIfOnline: jest.fn(),
-    offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } },
+    offlineQueueRef: { current: { getQueue: async () => mockTagQueue } },
   }),
 }))
 jest.mock('@ui/web/hooks/useNotesMutations', () => ({
@@ -135,7 +143,8 @@ jest.mock('@ui/web/hooks/useNotesMutations', () => ({
 }))
 jest.mock('@ui/web/hooks/useNotesQuery', () => ({
   useNotesQuery: () => ({
-    data: { pages: [] },
+    data: { pages: [{ notes: mockNotes, totalCount: mockTagServerCount ?? mockNotes.length }] },
+    refetch: async () => ({ data: { pages: [{ notes: mockNotes, totalCount: mockTagServerCount ?? mockNotes.length }] } }),
     fetchNextPage: jest.fn(),
     hasNextPage: false,
     isFetchingNextPage: false,
@@ -245,6 +254,13 @@ describe('useNoteAppController additional observable behavior', () => {
     mockIsOffline = false
     mockOfflineOverlay = []
     mockNotes = []
+    mockTagServerCount = null
+    mockTagQueue = []
+    mockLoadCachedNotes.mockResolvedValue([])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => ids)
+    mockGetNotesByIds.mockImplementation(async (ids) => mockNotes.filter(note => ids.includes(note.id)))
+    mockRemoveSyncedNotes.mockImplementation(async (cached) => cached.map((note: { id: string }) => note.id))
+    mockPatchSyncedTags.mockImplementation(async (patches) => patches.map((patch: { expected: { id: string } }) => patch.expected.id))
     mockResolvedSearchResult = null
     mockNoteToDelete = null
     mockAuthUser = { id: 'user-1' }
@@ -849,31 +865,26 @@ describe('useNoteAppController additional observable behavior', () => {
       await result.current.handleDeleteTag('missing')
       await result.current.handleCleanTags()
     })
-    expect(toast.info).toHaveBeenCalledWith('No empty or duplicate tags found to clean')
+    expect(toast.info).toHaveBeenCalledWith('No matching tags found in the loaded notes.')
     expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
     unmount()
 
     const firstNote = makeNote({ id: 'first', tags: ['old'] })
     const secondNote = makeNote({ id: 'second', tags: ['old'] })
     mockNotes = [firstNote, secondNote]
-    mockUpdateNoteMutation
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new Error('write failed'))
-      .mockResolvedValueOnce(undefined)
+    mockUpdateNoteMutation.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('write failed'))
 
     const rerendered = setup()
     await act(async () => {
       await rerendered.result.current.handleRenameTag('old', 'new')
     })
 
-    expect(toast.error).toHaveBeenCalledWith('Failed to rename tag: write failed')
-    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'first',
-      tags: ['old'],
-    }))
+    expect(toast.error).toHaveBeenCalledWith('The tag change may be incomplete. Notes were refreshed; review them before retrying.')
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(2)
+    expect(toast.success).not.toHaveBeenCalledWith('Tag "old" renamed to "new"')
   })
 
-  it('routes tag changes through the offline queue when offline', async () => {
+  it('blocks global tag changes offline without adding anything to the queue', async () => {
     mockIsOffline = true
     const firstNote = makeNote({ id: 'first', tags: ['old'] })
     mockNotes = [firstNote]
@@ -883,11 +894,129 @@ describe('useNoteAppController additional observable behavior', () => {
       await result.current.handleRenameTag('old', 'new')
     })
 
-    expect(mockPersistOfflineNoteUpdates).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'first', tags: ['new'] }),
-    ])
+    expect(mockPersistOfflineNoteUpdates).not.toHaveBeenCalled()
     expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Connect to the internet to manage tags across notes.')
+  })
+
+  it('blocks a global change when a fresh total exceeds the loaded collection', async () => {
+    mockNotes = Array.from({ length: 50 }, (_, i) => makeNote({ id: `note-${i}`, tags: ['old'] }))
+    mockTagServerCount = 51
+    const { result } = setup()
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Loaded 50 of 51 notes. Load more notes and check again.')
+  })
+
+  it('rejects duplicate rows instead of treating them as complete coverage', async () => {
+    mockNotes = [makeNote({ id: 'same', tags: ['old'] }), makeNote({ id: 'same', tags: ['old'] })]
+    mockTagServerCount = 2
+    const { result } = setup()
+    await act(async () => { await result.current.handleDeleteTag('old') })
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Some notes appeared more than once. Refresh and check again.')
+  })
+
+  it('blocks a global change while a note mutation remains queued', async () => {
+    mockNotes = [makeNote({ tags: ['old'] })]
+    mockTagQueue = [{ id: 'pending-change' }]
+    const { result } = setup()
+    await act(async () => { await result.current.handleDeleteTag('old') })
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Finish syncing your notes before managing tags.')
+  })
+
+  it.each([0, 1, 50, 51, 101, 1001])('checks the complete loaded collection of %i notes', async (count) => {
+    mockNotes = Array.from({ length: count }, (_, i) => makeNote({ id: `note-${i}` }))
+    mockTagServerCount = count
+    const { result } = setup()
+    await act(async () => { await result.current.checkTagCoverage() })
+    expect(mockGetExistingNoteIds).toHaveBeenCalledWith(mockNotes.map((note) => note.id), 'user-1')
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('preserves a dirty open draft and refuses a global deletion', async () => {
+    mockIsEditing = false
+    const note = makeNote({ tags: ['old'] })
+    mockNotes = [note]
+    const state = createNoteWorkspaceState(() => 'dirty-tab', 'user-1')
+    const dirty = updateWorkspaceTab(state, state.activeTabId, {
+      note, noteId: note.id, mode: 'editing', saveState: 'dirty',
+      draft: { title: 'Keep this draft', description: 'Unsaved body', tags: 'old' },
+    })
+    window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(dirty))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleDeleteTag('old') })
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(result.current.tabs[0].draft.description).toBe('Unsaved body')
+    expect(toast.error).toHaveBeenCalledWith('Save changes in open notes before managing tags.')
+  })
+
+  it('keeps an uncertain result visible if the reread also fails after a timeout', async () => {
+    mockNotes = [makeNote({ tags: ['old'] })]
+    mockUpdateNoteMutation.mockRejectedValueOnce(new Error('request timed out'))
+    mockGetNotesByIds.mockRejectedValue(new Error('offline'))
+    const { result } = setup()
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('The tag change could not be confirmed. Reconnect and refresh your notes before retrying.')
+  })
+
+  it('updates only tags in a synced cached note instead of discarding offline content', async () => {
+    const note = makeNote({ id: 'cached', tags: ['old'], description: 'Keep this offline content' })
+    mockNotes = [note]
+    const cached = { ...note, status: 'synced', updatedAt: note.updated_at }
+    mockLoadCachedNotes.mockResolvedValue([cached])
+    mockGetNotesByIds.mockImplementation(async (ids) => ids.includes(note.id) ? [{ ...note, tags: ['new'] }] : [])
+    const { result } = setup()
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([{ expected: cached, tags: ['new'] }])
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('requires a successful reread before retrying an uncertain tag change', async () => {
+    mockNotes = [makeNote({ tags: ['old'] })]
+    mockUpdateNoteMutation.mockRejectedValueOnce(new Error('request timed out'))
+    mockGetNotesByIds.mockRejectedValue(new Error('offline'))
+    const { result } = setup()
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(toast.success).not.toHaveBeenCalled()
+
+    mockGetNotesByIds.mockResolvedValue([])
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(2)
+    expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('waits for the pending editor save before entering tag management', async () => {
+    const note = makeNote({ tags: ['old'] })
+    mockSelectedNote = note
+    mockNotes = [note]
+    mockIsEditing = true
+    let resolveSave!: () => void
+    const flush = jest.fn(() => new Promise<void>((resolve) => { resolveSave = resolve }))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    act(() => result.current.registerNoteEditorRef({ current: {
+      flushPendingSave: flush,
+      captureSession: () => ({
+        draft: { title: 'Pending draft', description: 'Pending text', tags: 'old' },
+        view: { scrollTop: 0 },
+      }),
+      scrollToChunk: jest.fn(),
+    } }))
+    let finished = false
+    let transition!: Promise<boolean>
+    act(() => { transition = result.current.prepareTagManagement().then((value) => { finished = true; return value }) })
+    expect(flush).toHaveBeenCalledTimes(1)
+    expect(finished).toBe(false)
+    expect(result.current.tabs[0].draft.title).toBe('Pending draft')
+    await act(async () => { resolveSave(); await transition })
+    expect(finished).toBe(true)
   })
 })
 

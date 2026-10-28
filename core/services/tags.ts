@@ -108,22 +108,24 @@ export function renameTagInNotes<T extends NoteWithTags>(
 
   return notes.map(note => {
     if (!note.tags || !Array.isArray(note.tags)) return note
-    
+    if (!note.tags.some(tag => typeof tag === 'string' && tag.trim().toLowerCase() === targetLower)) return note
+
     const newTags: string[] = []
-    const seen = new Set<string>()
+    const replacementLower = replacementClean.toLowerCase()
+    let replacementSeen = false
 
     for (const tag of note.tags) {
-      const lower = tag.trim().toLowerCase()
-      if (lower === targetLower) {
-        const repLower = replacementClean.toLowerCase()
-        if (!seen.has(repLower)) {
-          seen.add(repLower)
-          newTags.push(replacementClean)
-        }
-      } else if (!seen.has(lower)) {
-        seen.add(lower)
+      if (typeof tag !== 'string') {
         newTags.push(tag)
+        continue
       }
+      const lower = tag.trim().toLowerCase()
+      const nextTag = lower === targetLower ? replacementClean : tag
+      if (lower === targetLower || lower === replacementLower) {
+        if (replacementSeen) continue
+        replacementSeen = true
+      }
+      newTags.push(nextTag)
     }
 
     if (tagsAreEqual(note.tags, newTags)) return note
@@ -145,6 +147,7 @@ export function deleteTagFromNotes<T extends NoteWithTags>(
     if (!note.tags || !Array.isArray(note.tags)) return note
 
     const newTags = note.tags.filter(tag => {
+      if (typeof tag !== 'string') return true
       const lower = tag.trim().toLowerCase()
       return lower !== targetLower
     })

@@ -44,6 +44,8 @@ export interface OfflineStorageAdapter {
   deleteNote(noteId: string): Promise<void>
   /** Atomically remove unchanged synced snapshots with no queued writes. */
   removeSyncedNotes?(notes: CachedNote[], signal?: AbortSignal): Promise<string[]>
+  /** Atomically update tags only when each cached snapshot is still synced and unqueued. */
+  patchSyncedTags?(patches: Array<{ expected: CachedNote; tags: string[] }>): Promise<string[]>
   getQueue(): Promise<MutationQueueItem[]>
   upsertQueueItem(item: MutationQueueItem): Promise<void>
   upsertQueue(items: MutationQueueItem[]): Promise<void>

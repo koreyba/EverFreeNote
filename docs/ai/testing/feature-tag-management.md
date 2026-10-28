@@ -6,6 +6,25 @@ description: Test cases and verification steps for core tag services and web UI 
 
 # Testing Strategy
 
+### Paginated and offline guard
+
+Check 0, 1, 50, 51, 101, and more than 1000 loaded notes. A fresh count larger
+than the loaded collection, duplicate IDs, offline status, an unsynced queue,
+or a dirty workspace tab must prevent bulk updates. Loading another page and
+rechecking must allow the existing online path when all loaded IDs can be
+verified. Partial failures/timeouts must not produce a success message; verify
+the actual persisted state after rereading and retain any local drafts. Test
+single-note editing independently while offline. This interim check does not
+prove atomicity or protection against concurrent writes from other clients.
+
+`npm run test:tags:qa` runs the separate real-browser suite in `cypress/qa/`.
+It requires a disposable Supabase stack at `127.0.0.1:58421` and its local
+`CYPRESS_AUDIT_ANON_KEY` and `CYPRESS_AUDIT_SERVICE_KEY`. It creates temporary
+users and notes, deletes the users afterwards, and must never target a shared or
+remote database. Some local CLI setups lack table grants; when required, grant
+the authenticated and service roles access to `public.notes` only in that
+disposable database. The regular component suite does not require this stack.
+
 ## Test Coverage Goals
 - 100% unit test coverage for `core/services/tags.ts`.
 - Component unit tests for `TagsPage`, `AlphabeticalGrid`, `TagCard`, `RenameTagDialog`, and `DeleteTagDialog`.

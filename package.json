@@ -39,6 +39,7 @@
     "test:component": "cypress run --component --browser electron --spec 'cypress/component/**/*.cy.{js,jsx,ts,tsx}'",
     "test:component:ci": "cypress run --component --browser electron --spec 'cypress/component/**/*.cy.{js,jsx,ts,tsx}'",
     "test:component:allure": "allure agent --goal \"Web Component Tests\" -- npm run test:component",
+    "test:tags:qa": "cypress run --component --browser electron --config-file cypress.tag-qa.config.ts --spec 'cypress/qa/**/*.cy.tsx'",
     "test:component:coverage": "cypress run --component --browser electron --spec 'cypress/component/**/*.cy.{js,jsx,ts,tsx}' --env codeCoverage=true",
     "test:component:watch": "cypress open --component --browser electron",
     "coverage:component": "nyc report --temp-dir=.nyc_output --reporter=html --reporter=text --reporter=lcov --report-dir=coverage/component",
