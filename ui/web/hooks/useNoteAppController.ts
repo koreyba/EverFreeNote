@@ -42,7 +42,7 @@ type AIPaginationControls = {
 }
 
 export function useNoteAppController() {
-  const { supabase } = useSupabase()
+  const { supabase, user: providerUser } = useSupabase()
 
   // -- Auth --
   const {
@@ -86,7 +86,11 @@ export function useNoteAppController() {
   // The existing selection hook still owns bulk-selection/dialog state. The
   // selected note and editor mode are now derived from the active workspace tab
   // so every save/navigation consumer observes the same session.
-  const workspace = useNoteWorkspaceTabs(user?.id ?? null)
+  // The auth hook mirrors provider state in an effect. During an account
+  // transition those values can disagree for one render; do not expose or
+  // persist either workspace until they identify the same account.
+  const workspaceUserId = user && providerUser?.id === user.id ? user.id : null
+  const workspace = useNoteWorkspaceTabs(workspaceUserId)
   const {
     activeTab,
     hydrated: workspaceHydrated,
@@ -774,15 +778,19 @@ export function useNoteAppController() {
 
   const cancelCloseTab = useCallback(() => setTabPendingClose(null), [])
 
-  const workspaceHydrationAppliedRef = useRef(false)
+  const workspaceHydrationAppliedUserRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!workspaceHydrated || workspaceHydrationAppliedRef.current) return
-    workspaceHydrationAppliedRef.current = true
+    if (!user?.id) {
+      workspaceHydrationAppliedUserRef.current = null
+      return
+    }
+    if (!workspaceHydrated || workspaceHydrationAppliedUserRef.current === user.id) return
+    workspaceHydrationAppliedUserRef.current = user.id
     const params = new URLSearchParams(window.location.search)
     const mobileDestination = window.innerWidth < MOBILE_BREAKPOINT &&
       (params.get('view') === 'notes' || params.get('search') === 'open')
     setNotePaneVisible(!mobileDestination && Boolean(activeTab.note || activeTab.mode === 'editing'))
-  }, [activeTab, workspaceHydrated])
+  }, [activeTab, user?.id, workspaceHydrated])
 
   const aiPaginationControlsRef = useRef<AIPaginationControls>({
     resetAIResults: () => {},

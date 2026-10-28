@@ -238,3 +238,14 @@ the active editor. `useNoteBulkActions.test.tsx` also verifies a failed guard
 prevents online deletes. These tests use mocked network and controlled local
 storage writes; they do not prove ordering across browser windows or devices.
 Offline queue compaction and bulk queue persistence are tested separately.
+
+### Authentication and reload (2026-10-29)
+
+`useNoteWorkspaceHydration.test.tsx` covers a null-to-user transition with
+open, closed, dirty and failed tabs; account changes; sign-out and re-entry;
+and unavailable or unreadable storage. A controller regression checks the
+intermediate render where the provider has switched accounts but the auth
+hook has not caught up. `WorkspaceAuthHydration.cy.tsx` mounts the real app
+and controller with a delayed mocked provider and checks both restored tabs
+and the active note. A real Supabase session and browser reload require an
+independent runtime check; the component test does not model Google OAuth.

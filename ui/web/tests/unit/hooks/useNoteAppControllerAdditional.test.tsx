@@ -20,6 +20,8 @@ let mockOfflineOverlay: Array<{ id: string; status: string }> = []
 let mockNotes: NoteViewModel[] = []
 let mockResolvedSearchResult: NoteViewModel | null = null
 let mockNoteToDelete: NoteViewModel | null = null
+let mockAuthUser: { id: string } | null = { id: 'user-1' }
+let mockProviderUser: { id: string } | null = { id: 'user-1' }
 
 const mockGetNotes = jest.fn()
 const mockGetExistingNoteIds = jest.fn()
@@ -49,7 +51,7 @@ const mockConfirmDeleteNote = jest.fn()
 
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn() } }))
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
-  useSupabase: () => ({ supabase: { key: 'supabase' } }),
+  useSupabase: () => ({ supabase: { key: 'supabase' }, user: mockProviderUser }),
 }))
 jest.mock('@core/services/notes', () => ({
   NoteService: jest.fn().mockImplementation(() => ({
@@ -72,7 +74,7 @@ jest.mock('@ui/web/lib/aiIndexNavigationState', () => ({
 
 jest.mock('@ui/web/hooks/useNoteAuth', () => ({
   useNoteAuth: () => ({
-    user: { id: 'user-1' },
+    user: mockAuthUser,
     loading: false,
     handleSignInWithGoogle: jest.fn(),
     handleTestLogin: jest.fn(),
@@ -245,12 +247,33 @@ describe('useNoteAppController additional observable behavior', () => {
     mockNotes = []
     mockResolvedSearchResult = null
     mockNoteToDelete = null
+    mockAuthUser = { id: 'user-1' }
+    mockProviderUser = { id: 'user-1' }
     mockHandleAutoSave.mockReset().mockResolvedValue(undefined)
     mockHandleSaveNote.mockReset().mockResolvedValue(undefined)
     mockHandleReadNote.mockReset().mockResolvedValue(undefined)
     mockConfirmDeleteNote.mockReset().mockResolvedValue(true)
     mockUpdateNoteMutation.mockReset()
     mockUpdateNoteMutation.mockResolvedValue(undefined)
+  })
+
+  it('hides the old workspace immediately when the provider changes users before the auth hook catches up', async () => {
+    const first = makeNote({ id: 'first', title: 'Private first note' })
+    mockGetNoteStatus.mockResolvedValue({ status: 'found', note: first })
+    const { result, rerender } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleSelectNote(first) })
+    expect(result.current.activeTab.note?.title).toBe('Private first note')
+
+    mockProviderUser = { id: 'user-2' }
+    rerender()
+    expect(result.current.workspaceHydrated).toBe(false)
+    expect(result.current.activeTab.note).toBeNull()
+
+    mockAuthUser = { id: 'user-2' }
+    rerender()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    expect(result.current.activeTab.note).toBeNull()
   })
 
   it('flushes pending editor work before creating a note and captures the current UI state', async () => {

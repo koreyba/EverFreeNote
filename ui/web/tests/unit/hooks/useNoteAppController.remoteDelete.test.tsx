@@ -38,7 +38,7 @@ jest.mock('@core/services/notes', () => ({
 }))
 
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
-  useSupabase: () => ({ supabase: {} }),
+  useSupabase: () => ({ supabase: {}, user: { id: 'user-1' } }),
 }))
 
 // --- Sub-hooks ---

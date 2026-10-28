@@ -39,6 +39,11 @@ ui/web/components/features/notes/NoteView.tsx
 - Use a deterministic initial tab ID for the server/client first render, then replace it with the hydrated session workspace.
 - Bound serialized workspace state and fall back to a blank tab when a persisted snapshot is malformed or exceeds the storage limit.
 - Hydrate once, then persist state changes through a guarded storage adapter.
+- Wait until the provider and auth hook agree on an account before reading or
+  writing that account's workspace. No user means an unhydrated, blank in-memory
+  view, not a new snapshot. A failed storage read disables workspace writes for
+  that session so a temporarily unreadable snapshot is not replaced; editors
+  remain usable in memory and show the existing persistence warning.
 - Capture the current editor before unmount, flush autosave first, and then apply tab transitions. `flushAndCaptureActiveTab` returns a success flag instead of rejecting; transitions abort when it reports failure.
 - Debounce per-keystroke draft and per-frame scroll notifications with `useDebouncedSessionCallback` (250 ms) so workspace state and `sessionStorage` are not written on every event. Draft updates cancel on unmount/manual save (the capture path reads the live editor); reading scroll flushes on unmount.
 - After a successful delete, call `resetTabsForNotes` with the deleted IDs so no tab keeps a deleted note; bulk delete reports the actually-deleted IDs through `onNotesDeleted`.

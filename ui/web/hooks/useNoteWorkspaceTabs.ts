@@ -23,20 +23,35 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
   // tab ID is loaded from sessionStorage immediately after hydration.
   const [state, setState] = useState(() => createNoteWorkspaceState(() => INITIAL_TAB_ID))
   const [hydratedUserId, setHydratedUserId] = useState<string | null | undefined>(undefined)
+  const [readableUserId, setReadableUserId] = useState<string | null>(null)
+  const emptyState = useMemo(() => createNoteWorkspaceState(() => INITIAL_TAB_ID, userId), [userId])
 
   useEffect(() => {
     // The first render must be identical on server and client. sessionStorage is
     // loaded after hydration, then the controller applies the restored active tab.
     // Re-running on a userId change is what keeps one account's cached notes
     // from being restored for the next account to sign in here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage is a browser-only hydration source
-    setState(readNoteWorkspaceState({ userId }))
+    if (userId === null) {
+      // No account is known yet. In particular, do not overwrite a saved
+      // workspace while Supabase is still restoring its session.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear the outgoing account's in-memory state
+      setState(emptyState)
+      setHydratedUserId(undefined)
+      setReadableUserId(null)
+      return
+    }
+    let storageReadable = true
+    const restored = readNoteWorkspaceState({ userId, onStorageFailure: () => { storageReadable = false } })
+    setState(restored)
     setHydratedUserId(userId)
-  }, [userId])
+    setReadableUserId(storageReadable ? userId : null)
+  }, [emptyState, userId])
 
   // Only persist once the state belongs to the account currently signed in,
   // otherwise the outgoing account's tabs get rewritten under the new user.
-  const hydrated = hydratedUserId === userId
+  const hydrated = userId !== null && hydratedUserId === userId && state.userId === userId
+  // Never expose the outgoing account while the next account is hydrating.
+  const visibleState = hydrated ? state : emptyState
 
   // Persistence runs on every workspace change, so the warning is raised once
   // per session — the alternative is a toast on each keystroke.
@@ -45,13 +60,21 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
 
   useEffect(() => {
     if (!hydrated) return
-    const { persisted, droppedTabIds } = writeNoteWorkspaceState(state)
-    if (!persisted && !warnedAboutUnavailableWorkspaceRef.current && state.tabs.some(tab => (
+    // If the read failed, a previous workspace may still exist. Keep the new
+    // state in memory instead of replacing an unknown snapshot with a blank.
+    const { persisted, droppedTabIds } = readableUserId === userId
+      ? writeNoteWorkspaceState(state)
+      : { persisted: false, droppedTabIds: [] }
+    const readFailed = readableUserId !== userId
+    const hasWork = state.tabs.some(tab => (
       tab.noteId || tab.draft.title || tab.draft.description || tab.draft.tags
-    ))) {
+    ))
+    if (!persisted && !warnedAboutUnavailableWorkspaceRef.current && (readFailed || hasWork)) {
       warnedAboutUnavailableWorkspaceRef.current = true
       toast.warning('Open tabs could not be remembered', {
-        description: 'Save your changes before reloading; notes may need to be reopened.',
+        description: readFailed
+          ? 'Open tabs could not be restored. Save your changes before reloading.'
+          : 'Save your changes before reloading; notes may need to be reopened.',
       })
     }
     if (droppedTabIds.length === 0 || warnedAboutDroppedTabsRef.current) return
@@ -60,7 +83,7 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
     toast.warning('Too many long notes are open to remember them all', {
       description: 'Some tabs will not come back after a reload. Close a few to keep the rest.',
     })
-  }, [hydrated, state])
+  }, [hydrated, readableUserId, state, userId])
 
   const addTab = useCallback(() => {
     // Allocate before the state update so callers can identify this exact tab
@@ -97,14 +120,14 @@ export function useNoteWorkspaceTabs(userId: string | null = null) {
     setState((current) => resetWorkspaceTabsForNotes(current, noteIds))
   }, [])
 
-  const activeTab = useMemo(() => getActiveWorkspaceTab(state), [state])
+  const activeTab = useMemo(() => getActiveWorkspaceTab(visibleState), [visibleState])
   const findTabByNoteId = useCallback((noteId: string | null | undefined) => (
-    findWorkspaceTabByNoteId(state, noteId)
-  ), [state])
-  const canAddTab = canAddWorkspaceTab(state)
+    findWorkspaceTabByNoteId(visibleState, noteId)
+  ), [visibleState])
+  const canAddTab = canAddWorkspaceTab(visibleState)
 
   return {
-    ...state,
+    ...visibleState,
     activeTab,
     hydrated,
     addTab,

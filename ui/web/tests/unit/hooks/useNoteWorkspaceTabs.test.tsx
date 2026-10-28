@@ -62,11 +62,11 @@ describe('useNoteWorkspaceTabs persistence warning', () => {
       initialProps: { userId: 'user-1' },
     })
 
-    expect(mockRead).toHaveBeenLastCalledWith({ userId: 'user-1' })
+    expect(mockRead).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'user-1' }))
 
     rerender({ userId: 'user-2' })
 
-    expect(mockRead).toHaveBeenLastCalledWith({ userId: 'user-2' })
+    expect(mockRead).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'user-2' }))
   })
 
   it('rejects a stale view update after the tab changes note identity', () => {
