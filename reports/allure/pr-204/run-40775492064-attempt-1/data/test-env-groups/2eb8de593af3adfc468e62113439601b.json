@@ -1,0 +1,1 @@
+{"id":"2eb8de593af3adfc468e62113439601b","fullName":"everfreenote:cypress/component/editor/InteractiveTag.cy.tsx#InteractiveTag Component prevents event bubbling when clicking remove button","name":"prevents event bubbling when clicking remove button","status":"passed","testResultsByEnv":{"default":"64c70f42f442c6b5de4b5061114a2f52"}}
