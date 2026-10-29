@@ -53,6 +53,8 @@ jobs:
               'dismisses the desktop font size menu after a hover with one Escape',
               'exposes the font size tooltip to keyboard users and dismisses its menu',
               'returns focus to the font size trigger when dismissed without a choice',
+              'dismisses the font size menu when Escape follows a delayed tooltip',
+              'uses a compact font icon while retaining the selected font in its menu',
           }
           observed = set()
           skipped = set()
@@ -73,6 +75,12 @@ jobs:
           missing = expected - observed
           if missing or skipped:
               raise SystemExit(f'Missing expected font tests: {sorted(missing)}; skipped: {sorted(skipped)}')
+          trace_names = {'compact-family', 'compact-size', 'desktop-size', 'keyboard-size', 'focus-size'}
+          for name in sorted(trace_names):
+              path = Path('cypress/results') / f'lifecycle-{name}.json'
+              if not path.exists():
+                  raise SystemExit(f'Missing viewport trace: {name}')
+              print(f'Viewport trace {name}: {path.read_text()}', flush=True)
           PY
 
       - name: Preserve the component test result

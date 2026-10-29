@@ -33,6 +33,37 @@ type EscapeTrace = {
 
 type FontOpenTrace = Array<Record<string, unknown>>
 
+type ViewportLifecycleEvent = Record<string, unknown>
+let viewportLifecycle: ViewportLifecycleEvent[] = []
+let viewportLifecycleLabel = ''
+let stopViewportLifecycle: (() => void) | undefined
+
+// Install before cy.viewport so its real window resize cannot be missed.
+function watchViewportLifecycle(label: string) {
+  cy.window().then(win => {
+    viewportLifecycle = []
+    viewportLifecycleLabel = label
+    const sample = (type: string, data?: unknown) => {
+      viewportLifecycle.push({
+        type, data, at: Math.round(win.performance.now()),
+        inner: [win.innerWidth, win.innerHeight], outer: [win.outerWidth, win.outerHeight],
+        client: [win.document.documentElement.clientWidth, win.document.documentElement.clientHeight],
+        visual: [win.visualViewport?.width, win.visualViewport?.height],
+        menu: win.document.querySelector('[role="listbox"]')?.getAttribute('data-state') ?? null,
+      })
+    }
+    const resize = (event: Event) => sample('window:resize', { trusted: event.isTrusted })
+    const viewport = (value: unknown) => sample('cypress:viewport:changed', value)
+    win.addEventListener('resize', resize, { passive: true })
+    Cypress.on('viewport:changed', viewport)
+    stopViewportLifecycle = () => {
+      win.removeEventListener('resize', resize)
+      Cypress.off('viewport:changed', viewport)
+    }
+    sample('installed')
+  })
+}
+
 // Diagnostic-only observer: it does not change events or the editor state.
 function watchFontOpening(trace: FontOpenTrace, setCleanup: (cleanup: () => void) => void) {
   cy.document().then(doc => {
@@ -242,6 +273,12 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   let stopFontOpenTrace: (() => void) | undefined
 
   afterEach(() => {
+    stopViewportLifecycle?.()
+    stopViewportLifecycle = undefined
+    if (viewportLifecycleLabel) {
+      cy.writeFile(`cypress/results/lifecycle-${viewportLifecycleLabel}.json`, viewportLifecycle, { log: false })
+      viewportLifecycleLabel = ''
+    }
     try { stopFontOpenTrace?.() } finally {
       stopFontOpenTrace = undefined
       try { stopEscapeTrace?.() } finally {
@@ -1101,6 +1138,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('uses a compact font icon while retaining the selected font in its menu', () => {
+    watchViewportLifecycle('compact-family')
     cy.viewport(390, 844)
     mountLongEditor()
     cy.get('.tiptap p').first().click().then(($paragraph) => {
@@ -1767,6 +1805,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('dismisses the font size menu when Escape follows a delayed tooltip', () => {
+    watchViewportLifecycle('compact-size')
     cy.viewport(320, 740)
     mountLongEditor()
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
@@ -1798,6 +1837,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('dismisses the desktop font size menu after a hover with one Escape', () => {
+    watchViewportLifecycle('desktop-size')
     cy.viewport(1440, 900)
     mountLongEditor()
     const trace: FontOpenTrace = []
@@ -1815,6 +1855,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('exposes the font size tooltip to keyboard users and dismisses its menu', () => {
+    watchViewportLifecycle('keyboard-size')
     cy.viewport(320, 740)
     mountLongEditor()
     const trace: FontOpenTrace = []
@@ -1834,6 +1875,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('returns focus to the font size trigger when dismissed without a choice', () => {
+    watchViewportLifecycle('focus-size')
     const escapeTrace: EscapeTrace = { event: null, menu: null, capture: null, transitions: [] }
     cy.viewport(320, 740)
     mountLongEditor()
