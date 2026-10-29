@@ -1,0 +1,1 @@
+{"id":"afe56fa1872655ee046ac5ffc8ac7b2a","fullName":"everfreenote:ui/web/tests/unit/components/noteCard.test.tsx#NoteCard decodes encoded nonbreaking spaces and preserves line boundaries","name":"decodes encoded nonbreaking spaces and preserves line boundaries","status":"passed","testResultsByEnv":{"default":"19edac92fb32a82542960068b66f8ff3"}}

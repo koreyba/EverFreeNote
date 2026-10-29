@@ -1,0 +1,1 @@
+{"id":"69a599187e1f03300e3d365f98e5ce40","fullName":"everfreenote:ui/web/tests/unit/adapters/offlineStorage.test.ts#webOfflineStorageAdapter localStorage fallback refreshes only tags in an unchanged synced cache entry","name":"refreshes only tags in an unchanged synced cache entry","status":"passed","testResultsByEnv":{"default":"393459ccb0cd20eaeb85a075714d5582"}}

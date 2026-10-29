@@ -1,0 +1,1 @@
+{"id":"c03dda42ba98256df4db52880b675e16","fullName":"everfreenote:cypress/component/features/mobile/MobileLayout.cy.tsx#Mobile Layout Adaptation observes a viewport resize that arrives before the promise is awaited","name":"observes a viewport resize that arrives before the promise is awaited","status":"passed","testResultsByEnv":{"default":"366b6700709cc7e88ec3d396f6ab3c37"}}

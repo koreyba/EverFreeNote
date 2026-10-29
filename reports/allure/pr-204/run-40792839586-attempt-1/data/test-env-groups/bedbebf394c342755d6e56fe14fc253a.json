@@ -1,1 +1,0 @@
-{"id":"bedbebf394c342755d6e56fe14fc253a","fullName":"everfreenote:ui/web/tests/unit/adapters/fileDownload.test.ts#downloadGeneratedFile propagates a failure to save so the caller can report it","name":"propagates a failure to save so the caller can report it","status":"passed","testResultsByEnv":{"default":"e397c1c59a3f4b0662e8df0bf6b655fb"}}

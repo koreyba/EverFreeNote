@@ -1,0 +1,1 @@
+{"id":"43507b51c16ddc76f17e676bd759b011","fullName":"everfreenote:cypress/component/features/notes/SignOutDraftSafety.cy.tsx#Safe sign out with local drafts warns and keeps the live editor when local saving fails","name":"warns and keeps the live editor when local saving fails","status":"passed","testResultsByEnv":{"default":"bd8b57f5ff910a9d47f90cd903f9a85b"}}

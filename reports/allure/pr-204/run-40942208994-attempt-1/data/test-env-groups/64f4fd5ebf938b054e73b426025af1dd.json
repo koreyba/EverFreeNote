@@ -1,0 +1,1 @@
+{"id":"64f4fd5ebf938b054e73b426025af1dd","fullName":"everfreenote:ui/web/tests/unit/lib/imageDimensionSanitization.test.ts#image dimensions in sanitized note HTML keeps valid dimensions only on images in default","name":"keeps valid dimensions only on images in default","status":"passed","testResultsByEnv":{"default":"2684e2f202f53fc4bf3cbf7f19ad6586"}}

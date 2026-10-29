@@ -1,0 +1,1 @@
+{"id":"ef0218555b6c9cfb0762ac4798c5a1ba","fullName":"everfreenote:ui/web/tests/unit/lib/imageDimensionSanitization.test.ts#image dimensions in sanitized note HTML removes its sanitizer hook if sanitization throws","name":"removes its sanitizer hook if sanitization throws","status":"passed","testResultsByEnv":{"default":"f2aaf33d3260af666e8d95fce11b8a8a"}}

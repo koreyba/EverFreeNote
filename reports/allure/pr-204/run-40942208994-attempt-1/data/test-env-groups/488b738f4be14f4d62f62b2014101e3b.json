@@ -1,0 +1,1 @@
+{"id":"488b738f4be14f4d62f62b2014101e3b","fullName":"everfreenote:ui/web/tests/unit/lib/imageDimensionSanitization.test.ts#image dimensions in sanitized note HTML does not keep injected attributes, scripts or unsafe URLs","name":"does not keep injected attributes, scripts or unsafe URLs","status":"passed","testResultsByEnv":{"default":"c5fe5fd1973f48900dc66dcab0c5cba6"}}

@@ -14,6 +14,40 @@
       "Web Unit",
       "Web Component"
     ],
+    "path": "reports/allure/pr-204/run-40942208994-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-204/run-40942208994-attempt-1/",
+    "runId": "40942208994",
+    "runAttempt": "1",
+    "prNumber": "204",
+    "ref": "codex/resizable-notes-sidebar",
+    "sha": "4187d84efa7ece65179b77395c2fbede5884dbbc",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #204",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-10-29T20:13:15.262Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Web Component"
+    ],
     "path": "reports/allure/pr-204/run-40934805131-attempt-1",
     "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-204/run-40934805131-attempt-1/",
     "runId": "40934805131",
@@ -639,40 +673,6 @@
     "scopeLabel": "PR #204",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-10-29T01:21:54.614Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "component"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Web Component"
-    ],
-    "path": "reports/allure/pr-204/run-40792839586-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-204/run-40792839586-attempt-1/",
-    "runId": "40792839586",
-    "runAttempt": "1",
-    "prNumber": "204",
-    "ref": "codex/resizable-notes-sidebar",
-    "sha": "e02f67212e5c9ab9f015651d5357206fdf6142f8",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #204",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-10-29T00:44:05.584Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
