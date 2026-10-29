@@ -34,6 +34,35 @@ describe('Initial reader scroll when layout changes before next frame', { retrie
     })
   })
 
+  it('retries a partly clamped offset after its own initial scroll event', () => {
+    const frames: FrameRequestCallback[] = []
+    cy.window().then(win => {
+      const originalFrame = win.requestAnimationFrame
+      restoreFrame = () => { win.requestAnimationFrame = originalFrame }
+      win.requestAnimationFrame = callback => { frames.push(callback); return 2147483647 }
+    })
+    const note = {
+      id: 'partial-layout', title: 'Loading content', description: '<div style="height: 600px">Loading image</div>',
+      tags: [], created_at: '2026-10-28T10:00:00Z', updated_at: '2026-10-28T10:00:00Z', user_id: 'synthetic-user',
+    }
+    cy.mount(<div style={{ height: 500, display: 'flex', flexDirection: 'column' }}><NoteView note={note} initialScrollTop={600} onEdit={cy.stub()} onDelete={cy.stub()} onTagClick={cy.stub()} onRemoveTag={cy.stub()} /></div>)
+    cy.get('[data-cy="pull-to-refresh"] > div').then(($reader) => {
+      const reader = $reader[0]
+      expect(reader.scrollTop, 'partly clamped position').to.be.greaterThan(0).and.lessThan(600)
+      reader.dispatchEvent(new Event('scroll'))
+      const content = reader.querySelector<HTMLElement>('.note-content')
+      if (!content) throw new Error('Missing content')
+      content.style.height = '2400px'
+      const now = reader.ownerDocument.defaultView?.performance.now() ?? 0
+      restoreFrame?.()
+      restoreFrame = undefined
+      frames.forEach(callback => callback(now))
+    })
+    cy.get('[data-cy="pull-to-refresh"] > div').should(($reader) => {
+      expect($reader[0].scrollTop, 'saved position after its own scroll event').to.be.greaterThan(500)
+    })
+  })
+
   it('does not overwrite a newer scroll before its retry', () => {
     const frames: FrameRequestCallback[] = []
     cy.window().then(win => {
@@ -61,6 +90,79 @@ describe('Initial reader scroll when layout changes before next frame', { retrie
     })
     cy.get('[data-cy="pull-to-refresh"] > div').should(($reader) => {
       expect($reader[0].scrollTop, 'newer position after retry').to.equal(300)
+    })
+  })
+
+  it('preserves a wheel interaction when scroll moves away and back before its retry', () => {
+    const frames: FrameRequestCallback[] = []
+    cy.window().then(win => {
+      const originalFrame = win.requestAnimationFrame
+      restoreFrame = () => { win.requestAnimationFrame = originalFrame }
+      win.requestAnimationFrame = callback => { frames.push(callback); return 2147483647 }
+    })
+    const note = {
+      id: 'layout-change', title: 'Loading content', description: '<p>Image placeholder</p>',
+      tags: [], created_at: '2026-10-28T10:00:00Z', updated_at: '2026-10-28T10:00:00Z', user_id: 'synthetic-user',
+    }
+    cy.mount(<div style={{ height: 500, display: 'flex', flexDirection: 'column' }}><NoteView note={note} initialScrollTop={600} onEdit={cy.stub()} onDelete={cy.stub()} onTagClick={cy.stub()} onRemoveTag={cy.stub()} /></div>)
+    cy.get('[data-cy="pull-to-refresh"] > div').then(($reader) => {
+      const content = $reader[0].querySelector<HTMLElement>('.note-content')
+      if (!content) throw new Error('Missing content')
+      content.style.height = '2400px'
+      $reader[0].dispatchEvent(new WheelEvent('wheel', { deltaY: 300, bubbles: true }))
+    }).scrollTo(0, 300)
+    cy.get('[data-cy="pull-to-refresh"] > div').should(($reader) => {
+      expect($reader[0].scrollTop, 'new position before retry').to.equal(300)
+    }).then(($reader) => {
+      const reader = $reader[0]
+      reader.scrollTop = 0
+      reader.dispatchEvent(new Event('scroll'))
+      const now = reader.ownerDocument.defaultView?.performance.now() ?? 0
+      restoreFrame?.()
+      restoreFrame = undefined
+      frames.forEach(callback => callback(now))
+    })
+    cy.get('[data-cy="pull-to-refresh"] > div').should(($reader) => {
+      expect($reader[0].scrollTop, 'position after scrolling back and retry').to.equal(0)
+    })
+  })
+
+  it('does not overwrite scroll after a native navigation key', () => {
+    const frames: FrameRequestCallback[] = []
+    const keys: Array<{ key: string; trusted: boolean }> = []
+    cy.window().then(win => {
+      const originalFrame = win.requestAnimationFrame
+      const captureKey = (event: KeyboardEvent) => { keys.push({ key: event.key, trusted: event.isTrusted }) }
+      win.document.addEventListener('keydown', captureKey)
+      restoreFrame = () => { win.requestAnimationFrame = originalFrame; win.document.removeEventListener('keydown', captureKey) }
+      win.requestAnimationFrame = callback => { frames.push(callback); return 2147483647 }
+    })
+    const note = {
+      id: 'keyboard-scroll', title: 'Loading content', description: '<p>Image placeholder</p>',
+      tags: [], created_at: '2026-10-28T10:00:00Z', updated_at: '2026-10-28T10:00:00Z', user_id: 'synthetic-user',
+    }
+    cy.mount(<div style={{ height: 500, display: 'flex', flexDirection: 'column' }}><NoteView note={note} initialScrollTop={600} onEdit={cy.stub()} onDelete={cy.stub()} onTagClick={cy.stub()} onRemoveTag={cy.stub()} /></div>)
+    cy.get('[data-cy="pull-to-refresh"] > div').then(($reader) => {
+      const reader = $reader[0]
+      const content = reader.querySelector<HTMLElement>('.note-content')
+      if (!content) throw new Error('Missing content')
+      content.style.height = '2400px'
+      reader.tabIndex = 0
+      reader.focus({ preventScroll: true })
+    }).should('have.focus')
+    cy.press(Cypress.Keyboard.Keys.END)
+    cy.then(() => { expect(keys, 'trusted native End key').to.deep.include({ key: 'End', trusted: true }) })
+    cy.get('[data-cy="pull-to-refresh"] > div').then(($reader) => {
+      const reader = $reader[0]
+      reader.scrollTop = 300
+      reader.scrollTop = 0
+      const now = reader.ownerDocument.defaultView?.performance.now() ?? 0
+      restoreFrame?.()
+      restoreFrame = undefined
+      frames.forEach(callback => callback(now))
+    })
+    cy.get('[data-cy="pull-to-refresh"] > div').should(($reader) => {
+      expect($reader[0].scrollTop, 'position after native key and retry').to.equal(0)
     })
   })
 

@@ -47,8 +47,10 @@ export function SplitNotePreview({
     if (!visible || restored.current || !contentRef.current) return
     const node = contentRef.current
     restored.current = true
-    const cancel = restoreViewScroll(node, initialScrollTop.current)
-    const pending = cancel ? { applied: node.scrollTop, changed: false } : null
+    const state = { applied: 0, changed: false }
+    const cancel = restoreViewScroll(node, initialScrollTop.current, () => { state.changed = true })
+    state.applied = node.scrollTop
+    const pending = cancel ? state : null
     pendingRestore.current = pending
     return () => {
       cancel?.()
