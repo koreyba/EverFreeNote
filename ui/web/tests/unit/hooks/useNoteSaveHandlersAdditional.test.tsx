@@ -226,8 +226,12 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
       await result.current.confirmDeleteNote()
     })
 
-    expect(params.deleteNoteMutation.mutateAsync).toHaveBeenCalledWith({ id: 'deleting' })
+    expect(params.deleteNoteMutation.mutateAsync).toHaveBeenCalledWith({ id: 'deleting', silent: true })
+    expect(params.offlineCache.deleteNote).toHaveBeenCalledWith('deleting')
     expect(params.setSelectedNote).not.toHaveBeenCalledWith(null)
+    expect(params.selectedNoteRef.current).toBe(selected)
+    expect(params.setIsEditing).not.toHaveBeenCalledWith(false)
+    expect(toast.success).toHaveBeenCalledWith('Note deleted successfully')
     expect(params.setDeleteDialogOpen).toHaveBeenCalledWith(false)
     expect(params.setNoteToDelete).toHaveBeenCalledWith(null)
   })
