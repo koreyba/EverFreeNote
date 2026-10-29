@@ -12,7 +12,7 @@ const scriptPath = path.join(
 
 const createFixture = (t) => {
   const tempDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), "everfreenote-cypress-backfill-"),
+    path.join(fs.realpathSync.native(os.tmpdir()), "everfreenote-cypress-backfill-"),
   );
   t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
 
