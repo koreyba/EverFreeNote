@@ -96,6 +96,10 @@ export function useNoteEditorAutoSave({
   useEffect(() => { shouldFlushOnUnmountRef.current = shouldFlushOnUnmount }, [shouldFlushOnUnmount])
 
   const [editorSessionKey, setEditorSessionKey] = useState(0)
+  // An awaited flush may finish after the editor unmounts or switches notes.
+  // Never enqueue its old form data into a different editing session.
+  const flushSessionRevisionRef = useRef(0)
+  useEffect(() => () => { flushSessionRevisionRef.current += 1 }, [])
   const getIncomingSnapshot = useCallback((): NoteEditorSnapshot => ({
     title: initialTitle,
     description: initialDescription,
@@ -270,6 +274,7 @@ export function useNoteEditorAutoSave({
     }
 
     // Real note switch: reset session key (remounts editor + title input) and notify caller.
+    flushSessionRevisionRef.current += 1
     assignedCreateNoteIdRef.current = null
     if (manualCreate) setManualCreate(null)
     setEditorSessionKey((k) => k + 1)
@@ -309,21 +314,22 @@ export function useNoteEditorAutoSave({
 
   const flushPendingSave = useCallback(async () => {
     if (!onAutoSave) return
-    const currentDraft = getDraftSnapshot()
-    const debouncerBaseline = debouncedAutoSave.getBaseline()
-    if (
-      debouncedAutoSave.getPending() === null &&
-      !areSnapshotsEqual(currentDraft, lastAcceptedRef.current) &&
-      // Edge case: same-note reconcile can leave the editor dirty without an active timer,
-      // so blur/unmount must re-enqueue the latest draft before flushing.
-      (!debouncerBaseline || currentDraft.title !== debouncerBaseline.title || currentDraft.description !== debouncerBaseline.description || currentDraft.tags !== debouncerBaseline.tags)
-    ) {
-      debouncedAutoSave.schedule({
-        noteId: noteIdRef.current,
-        ...currentDraft,
-      })
+    const sessionRevision = flushSessionRevisionRef.current
+    while (true) {
+      const currentDraft = getDraftSnapshot()
+      const baseline = debouncedAutoSave.getBaseline() ?? lastAcceptedRef.current
+      if (debouncedAutoSave.getPending() === null && !areSnapshotsEqual(currentDraft, baseline)) {
+        debouncedAutoSave.schedule({ noteId: noteIdRef.current, ...currentDraft })
+      }
+
+      await debouncedAutoSave.flush()
+      if (sessionRevision !== flushSessionRevisionRef.current || shouldFlushOnUnmountRef.current?.()) return
+
+      // Tag changes do not schedule autosave. Re-read after the awaited write so
+      // a tag edited during a slow transition cannot be lost on navigation.
+      const latestBaseline = debouncedAutoSave.getBaseline() ?? lastAcceptedRef.current
+      if (debouncedAutoSave.getPending() === null && areSnapshotsEqual(getDraftSnapshot(), latestBaseline)) return
     }
-    await debouncedAutoSave.flush()
   }, [debouncedAutoSave, getDraftSnapshot, onAutoSave])
 
   const hasUnconfirmedChanges = useCallback(() => {

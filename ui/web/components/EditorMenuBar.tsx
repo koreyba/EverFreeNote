@@ -32,6 +32,7 @@ export type EditorMenuBarProps = {
   onApplyMarkdown: () => void
   spellcheckEnabled: boolean
   onToggleSpellcheck: () => void
+  onImageProcessingStart?: (cancel: () => void) => (succeeded: boolean) => void
 }
 
 const fontFamilies = ["Sans Serif", "Serif", "Monospace", "Cursive"]
@@ -76,6 +77,7 @@ export const EditorMenuBar = ({
   onApplyMarkdown,
   spellcheckEnabled,
   onToggleSpellcheck,
+  onImageProcessingStart,
 }: EditorMenuBarProps) => {
   const toolbarDrag = useToolbarDrag(compact)
   const { cancelPendingFocus, focusFromToolbar } = useToolbarFocus(editor, true)
@@ -157,21 +159,49 @@ export const EditorMenuBar = ({
       toast.error("Image is too large", { description: "Choose an image up to 10 MB." })
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (editor.isDestroyed || typeof reader.result !== "string") return
-      const source = reader.result
-      const image = new Image()
-      image.onload = () => {
-        if (!editor.isDestroyed) editor.chain().focus().setImage({ src: source }).run()
-      }
-      image.onerror = () => {
-        if (!editor.isDestroyed) toast.error("Could not read the image", { description: "Try choosing the file again." })
-      }
-      image.src = source
+    let reader: FileReader
+    try { reader = new FileReader() } catch {
+      toast.error("Could not read the image", { description: "Try choosing the file again." })
+      return
     }
-    reader.onerror = () => toast.error("Could not read the image", { description: "Try choosing the file again." })
-    reader.readAsDataURL(file)
+    let image: HTMLImageElement | undefined
+    let finished = false
+    const clearHandlers = () => {
+      reader.onload = reader.onerror = reader.onabort = null
+      if (image) image.onload = image.onerror = null
+    }
+    const notifyFinished = onImageProcessingStart?.(() => {
+      clearHandlers()
+      if (reader.readyState === FileReader.LOADING) reader.abort()
+    })
+    const finish = (succeeded: boolean) => {
+      if (finished) return
+      finished = true
+      clearHandlers()
+      notifyFinished?.(succeeded)
+    }
+    const fail = () => {
+      if (!editor.isDestroyed) toast.error("Could not read the image", { description: "Try choosing the file again." })
+      finish(false)
+    }
+    reader.onload = () => {
+      if (editor.isDestroyed || typeof reader.result !== "string") return fail()
+      const source = reader.result
+      try {
+        image = new Image()
+        image.onload = () => {
+          try {
+            if (editor.isDestroyed || !editor.chain().focus().setImage({ src: source }).run()) return fail()
+            finish(true)
+          } catch { fail() }
+        }
+        image.onerror = fail
+        image.src = source
+      } catch { fail() }
+    }
+    reader.onerror = fail
+    reader.onabort = fail
+    try { reader.readAsDataURL(file) } catch { fail() }
   }
 
   const heading = [1, 2, 3].find(level => editor.isActive("heading", { level }))

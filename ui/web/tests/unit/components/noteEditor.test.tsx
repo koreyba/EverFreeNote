@@ -2,6 +2,7 @@ import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NoteEditor, type NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 import { copyNotePayloadToClipboard } from '@ui/web/lib/noteClipboard'
+import { toast } from 'sonner'
 
 const mockSetEditorContent = jest.fn()
 let mockEditorHtml = '<p>Body A</p>'
@@ -545,7 +546,7 @@ describe('NoteEditor tag handlers & save/read actions', () => {
     return { ...view, onSave, onRead }
   }
 
-  it('triggers onSave and onRead callbacks with form data', () => {
+  it('triggers onSave and onRead callbacks with form data', async () => {
     const { onSave, onRead } = renderEditor()
 
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
@@ -556,11 +557,65 @@ describe('NoteEditor tag handlers & save/read actions', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /^read$/i }))
-    expect(onRead).toHaveBeenCalledWith({
+    await waitFor(() => expect(onRead).toHaveBeenCalledWith({
       title: 'Test Note',
       description: '<p>Test Content</p>',
       tags: 'work, urgent',
-    })
+    }))
+  })
+
+  it('does not finish Read for an account that changed during the pending save', async () => {
+    let resolve!: () => void
+    const held = new Promise<void>(done => { resolve = done })
+    let epoch = 1
+    const onAutoSave = jest.fn().mockReturnValueOnce(held)
+    const { onRead } = renderEditor({ onAutoSave, getSessionSnapshot: () => ({ userId: 'account', epoch }) })
+    fireEvent.click(screen.getByText('Add local tag'))
+    fireEvent.click(screen.getByRole('button', { name: /^read$/i }))
+    await waitFor(() => expect(onAutoSave).toHaveBeenCalledTimes(1))
+    expect((screen.getByRole('button', { name: /^read$/i }) as HTMLButtonElement).disabled).toBe(true)
+    epoch = 2
+    await act(async () => { resolve(); await held })
+    expect(onRead).not.toHaveBeenCalled()
+    await waitFor(() => expect((screen.getByRole('button', { name: /^read$/i }) as HTMLButtonElement).disabled).toBe(false))
+  })
+
+  it('does not finish Read after the editor unmounts during the pending save', async () => {
+    let resolve!: () => void
+    const held = new Promise<void>(done => { resolve = done })
+    const onAutoSave = jest.fn().mockReturnValueOnce(held)
+    const { onRead, unmount } = renderEditor({ onAutoSave })
+    fireEvent.click(screen.getByText('Add local tag'))
+    fireEvent.click(screen.getByRole('button', { name: /^read$/i }))
+    await waitFor(() => expect(onAutoSave).toHaveBeenCalledTimes(1))
+    unmount()
+    await act(async () => { resolve(); await held })
+    expect(onRead).not.toHaveBeenCalled()
+  })
+
+  it('does not finish an old Read after switching notes and enables Read for the new note', async () => {
+    let resolve!: () => void
+    const held = new Promise<void>(done => { resolve = done })
+    const onAutoSave = jest.fn().mockReturnValueOnce(held).mockResolvedValue(undefined)
+    const { onSave, onRead, rerender } = renderEditor({ onAutoSave })
+    fireEvent.click(screen.getByText('Add local tag'))
+    fireEvent.click(screen.getByRole('button', { name: /^read$/i }))
+    await waitFor(() => expect(onAutoSave).toHaveBeenCalledTimes(1))
+    rerender(<NoteEditor noteId="note-2" initialTitle="Second" initialDescription="<p>Second</p>" initialTags="" isSaving={false} onSave={onSave} onRead={onRead} onAutoSave={onAutoSave} />)
+    await waitFor(() => expect((screen.getByRole('button', { name: /^read$/i }) as HTMLButtonElement).disabled).toBe(false))
+    await act(async () => { resolve(); await held })
+    expect(onRead).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /^read$/i }))
+    await waitFor(() => expect(onRead).toHaveBeenCalledTimes(1))
+    expect(onRead.mock.calls[0][0].title).toBe('Second')
+  })
+
+  it('reports a rejected Read callback and keeps the editor available', async () => {
+    const onRead = jest.fn().mockRejectedValue(new Error('Read failed'))
+    renderEditor({ onRead })
+    fireEvent.click(screen.getByRole('button', { name: /^read$/i }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Could not switch to reading. Your changes are still available.'))
+    expect((screen.getByRole('button', { name: /^read$/i }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('adds and removes tags properly in NoteEditor', () => {

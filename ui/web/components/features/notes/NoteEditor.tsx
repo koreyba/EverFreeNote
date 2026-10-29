@@ -2,6 +2,7 @@
 
 import { useAppBackHandler, APP_BACK_PRIORITY } from "@ui/web/lib/appBack"
 import * as React from "react"
+import { toast } from "sonner"
 import { ArrowsIn, ArrowsOut, CaretLeft as ChevronLeft, Copy, Check, Eye, FloppyDisk as SaveIcon, MagnifyingGlass } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
@@ -52,7 +53,7 @@ interface NoteEditorProps {
   tagCounts?: Record<string, number>
   isSaving: boolean
   onSave: (data: { title: string; description: string; tags: string }) => void | boolean | { noteId?: string } | Promise<void | boolean | { noteId?: string }>
-  onRead: (data: { title: string; description: string; tags: string }) => void
+  onRead: (data: { title: string; description: string; tags: string }) => void | Promise<void>
   onAutoSave?: (data: { noteId?: string; title: string; description: string; tags: string }) => Promise<{ noteId?: string } | void> | { noteId?: string } | void
   isAutoSaving?: boolean
   autosaveDelayMs?: number
@@ -108,6 +109,11 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   })
   React.useEffect(() => () => setExpanded(false), [setExpanded])
   const [showSaving, setShowSaving] = React.useState(false)
+  const [imageProcessing, setImageProcessing] = React.useState(false)
+  const [readPendingSession, setReadPendingSession] = React.useState<number | null>(null)
+  const readPendingRef = React.useRef<number | null>(null)
+  const readRevisionRef = React.useRef(0)
+  const editorLifetimeRef = React.useRef(0)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
   const [readyChunkFocus, setReadyChunkFocus] = React.useState<PendingChunkFocus | null>(null)
@@ -213,7 +219,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     }
   }, [resizeTitle])
 
-  const { editorSessionKey, handleContentChange, cancelAutoSave, flushPendingSave, hasUnconfirmedChanges, getSaveRevision, finishManualCreate, acknowledgeManualSave } =
+  const { editorSessionKey, handleContentChange, cancelAutoSave, flushPendingSave: flushNoteSave, hasUnconfirmedChanges, getSaveRevision, finishManualCreate, acknowledgeManualSave } =
     useNoteEditorAutoSave({
       noteId,
       initialTitle,
@@ -234,6 +240,18 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         setTagQuery("")
       },
     })
+  const readPending = readPendingSession === editorSessionKey
+  const flushPendingSave = React.useCallback(async () => {
+    const revision = editorLifetimeRef.current
+    // A file chosen before a transition must be inserted before its final
+    // snapshot. Another file can start while the durable save is in flight.
+    do {
+      await editorRef.current?.waitForPendingImageOperations?.()
+      if (revision !== editorLifetimeRef.current || shouldFlushOnUnmount()) throw new Error("Editor changed before save completed")
+      await flushNoteSave()
+      if (revision !== editorLifetimeRef.current || shouldFlushOnUnmount()) throw new Error("Editor changed before save completed")
+    } while (editorRef.current?.hasPendingImageOperations?.())
+  }, [flushNoteSave, shouldFlushOnUnmount])
 
   React.useLayoutEffect(() => {
     resizeTitle()
@@ -280,6 +298,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const currentNoteIdRef = React.useRef(noteId)
   React.useLayoutEffect(() => { currentNoteIdRef.current = noteId }, [noteId])
   React.useLayoutEffect(() => () => { manualSaveRevisionRef.current += 1 }, [editorSessionKey])
+  React.useLayoutEffect(() => () => {
+    readRevisionRef.current += 1
+    editorLifetimeRef.current += 1
+  }, [editorSessionKey])
 
   const handleSave = () => {
     cancelAutoSave()
@@ -305,9 +327,40 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   }
 
   const handleRead = () => {
-    cancelAutoSave()
-    debouncedDraftNotify.cancel()
-    onRead(getFormData())
+    if (readPendingRef.current === editorSessionKey) return
+    readPendingRef.current = editorSessionKey
+    setReadPendingSession(editorSessionKey)
+    const revision = ++readRevisionRef.current
+    const startedSession = getSessionSnapshot?.()
+    // Keep any scheduled body autosave alive if a pending image fails before
+    // the transition can flush, and publish the current draft as dirty.
+    debouncedDraftNotify.flush()
+    void (async () => {
+      let readStarted = false
+      try {
+        // Keep editing locked through the transition and read the newest draft.
+        await flushPendingSave()
+        const currentSession = getSessionSnapshot?.()
+        const sameAccount = !startedSession || Boolean(currentSession && startedSession.userId === currentSession.userId && startedSession.epoch === currentSession.epoch)
+        if (!sameAccount || revision !== readRevisionRef.current || (noteId && currentNoteIdRef.current !== noteId)) return
+        debouncedDraftNotify.cancel()
+        readStarted = true
+        await onRead(getFormData())
+      } catch {
+        // The autosave hook reports flush errors. A rejected Read callback also
+        // needs feedback, provided this editor still belongs to the same owner.
+        const currentSession = getSessionSnapshot?.()
+        const sameAccount = !startedSession || Boolean(currentSession && startedSession.userId === currentSession.userId && startedSession.epoch === currentSession.epoch)
+        if (readStarted && sameAccount && revision === readRevisionRef.current) {
+          toast.error('Could not switch to reading. Your changes are still available.')
+        }
+      } finally {
+        if (revision === readRevisionRef.current) {
+          readPendingRef.current = null
+          setReadPendingSession(null)
+        }
+      }
+    })()
   }
 
   const getExportNote = React.useCallback(() => {
@@ -357,7 +410,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   React.useImperativeHandle(ref, () => ({
     flushPendingSave,
     cancelPendingSave: cancelAutoSave,
-    hasUnconfirmedChanges: () => hasLocalInputRef.current && hasUnconfirmedChanges(),
+    hasUnconfirmedChanges: () => Boolean(editorRef.current?.hasPendingImageOperations?.()) || (hasLocalInputRef.current && hasUnconfirmedChanges()),
     captureSession: () => {
       const titleInput = titleInputRef.current
       const titleSelection = titleInput && titleInput.selectionStart !== null && titleInput.selectionEnd !== null
@@ -365,9 +418,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         : undefined
       const editorSelection = editorRef.current?.getSelection?.()
 
-      // The capture reads the live editor, so a pending debounced draft
-      // notification is stale and must not fire after the transition.
-      debouncedDraftNotify.cancel()
+      // Publish a pending draft before navigation waits. It cannot fire late
+      // and mark a successfully saved tab dirty after the transition.
+      debouncedDraftNotify.flush()
       debouncedViewNotify.cancel()
 
       return {
@@ -487,7 +540,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               size="sm"
               data-cy="note-read-button"
               aria-label="Read"
-              disabled={isSaving}
+              disabled={isSaving || readPending}
               className="h-11 min-w-11 rounded-xl px-0 shadow-none md:h-9 md:min-w-0 md:px-3"
             >
               <Eye className="w-3.5 h-3.5 md:mr-1.5" />
@@ -514,7 +567,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               size="sm"
               data-cy="note-save-button"
               aria-label="Save"
-              disabled={isSaving}
+              disabled={isSaving || readPending || imageProcessing}
               className="h-11 min-w-11 rounded-xl px-0 shadow-none md:h-9 md:min-w-0 md:px-3"
             >
               <SaveIcon className="w-3.5 h-3.5 md:hidden" />
@@ -530,8 +583,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               />
             )}
           </div>
-          {(showSaving || isSaving) ? (
-            <div className="text-[10px] text-muted-foreground font-medium">Saving...</div>
+          {imageProcessing ? (
+            <div role="status" aria-live="polite" className="text-[10px] text-muted-foreground font-medium">Adding image...</div>
+          ) : (showSaving || isSaving || readPending) ? (
+            <div role="status" aria-live="polite" className="text-[10px] text-muted-foreground font-medium">Saving...</div>
           ) : lastSavedAt ? (
             <div className="text-[10px] text-muted-foreground font-medium">
               Last local save (any note): {new Date(lastSavedAt).toLocaleTimeString()}
@@ -550,6 +605,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       {/* Editor Form */}
       <div
         ref={scrollContainerRef}
+        inert={readPending}
+        aria-busy={readPending || undefined}
         // scrollbar-none: kept in sync with NoteView so the reading and
         // editing surfaces scroll identically — see the note there.
         className="scrollbar-none relative z-0 flex min-h-0 flex-1 flex-col overflow-y-auto bg-card"
@@ -607,6 +664,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             mobileToolbarContainer={mobileToolbarContainer}
             initialContent={initialDescription}
             onContentChange={handleEditorContentChange}
+            onImageProcessingChange={setImageProcessing}
             chunkFocusRequest={
               readyChunkFocus
                 ? {
@@ -620,7 +678,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
           />
         </div>
       </div>
-      <div className="mobile-editor-toolbar flex shrink-0 min-w-0 items-center border-t border-border/60 bg-card md:hidden">
+      <div inert={readPending} className="mobile-editor-toolbar flex shrink-0 min-w-0 items-center border-t border-border/60 bg-card md:hidden">
         <div ref={setMobileToolbarContainer} className="min-w-0 flex-1" />
         {expanded && (
           <Button

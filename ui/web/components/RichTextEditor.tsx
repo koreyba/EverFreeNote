@@ -31,6 +31,8 @@ export type RichTextEditorHandle = {
   setSelection?: (selection: { from: number; to: number }) => void
   setContent: (html: string) => void
   runCommand: (command: string, ...args: unknown[]) => void
+  hasPendingImageOperations?: () => boolean
+  waitForPendingImageOperations?: () => Promise<void>
   /** Scroll to and highlight the given plain-text chunk range.
    *  charOffset must be relative to the note body (not including title prefix). */
   scrollToChunk: (charOffset: number, chunkLength: number) => void
@@ -39,6 +41,7 @@ export type RichTextEditorHandle = {
 type RichTextEditorProps = {
   initialContent: string
   onContentChange?: () => void // Called when content changes (for triggering autosave)
+  onImageProcessingChange?: (pending: boolean) => void
   hideToolbar?: boolean
   mobileToolbarContainer?: HTMLElement | null
   chunkFocusRequest?: ChunkScrollTarget | null
@@ -69,9 +72,36 @@ export type ChunkScrollTarget = {
 }
 
 const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProps>(
-  ({ initialContent, onContentChange, hideToolbar = false, mobileToolbarContainer = null, chunkFocusRequest = null, onChunkFocusApplied }, ref) => {
+  ({ initialContent, onContentChange, onImageProcessingChange, hideToolbar = false, mobileToolbarContainer = null, chunkFocusRequest = null, onChunkFocusApplied }, ref) => {
     const isMobile = useIsMobile()
     const editorRef = React.useRef<Editor | null>(null)
+    const pendingImagesRef = React.useRef(new Set<{ promise: Promise<boolean | null>; cancel: () => void }>())
+    const onImageProcessingChangeRef = React.useRef(onImageProcessingChange)
+    onImageProcessingChangeRef.current = onImageProcessingChange
+    const startImageProcessing = React.useCallback((cancel: () => void) => {
+      let resolve!: (result: boolean | null) => void
+      const promise = new Promise<boolean | null>(done => { resolve = done })
+      let settled = false
+      const finish = (result: boolean | null) => {
+        if (settled) return
+        settled = true
+        pendingImagesRef.current.delete(operation)
+        if (pendingImagesRef.current.size === 0) onImageProcessingChangeRef.current?.(false)
+        resolve(result)
+      }
+      const operation = {
+        promise,
+        cancel: () => {
+          try { cancel() } finally { finish(null) }
+        },
+      }
+      pendingImagesRef.current.add(operation)
+      onImageProcessingChangeRef.current?.(true)
+      return (succeeded: boolean) => finish(succeeded)
+    }, [])
+    React.useLayoutEffect(() => () => {
+      for (const operation of pendingImagesRef.current) operation.cancel()
+    }, [])
     const sourceContentRef = React.useRef<{ raw: string; document: ProseMirrorNode | null }>({
       raw: initialContent,
       document: null,
@@ -289,6 +319,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     // Expose methods via ref
     React.useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() ?? "",
+      hasPendingImageOperations: () => pendingImagesRef.current.size > 0,
+      waitForPendingImageOperations: async () => {
+        while (pendingImagesRef.current.size > 0) {
+          const results = await Promise.all([...pendingImagesRef.current].map(operation => operation.promise))
+          if (results.includes(false)) throw new Error("Could not read the image")
+        }
+      },
       getContentForSave: () => {
         if (!editor) return sourceContentRef.current.raw
         const source = sourceContentRef.current
@@ -351,6 +388,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
         onApplyMarkdown={handleApplySelectionAsMarkdown}
         spellcheckEnabled={spellcheckEnabled}
         onToggleSpellcheck={handleToggleSpellcheck}
+        onImageProcessingStart={startImageProcessing}
       />
     )
 
