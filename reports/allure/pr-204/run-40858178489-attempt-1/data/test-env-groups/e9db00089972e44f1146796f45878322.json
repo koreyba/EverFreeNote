@@ -1,0 +1,1 @@
+{"id":"e9db00089972e44f1146796f45878322","fullName":"everfreenote:core/tests/unit/core-mcp-noteHtml.test.ts#core/mcp/noteHtml - sanitizeNoteHtml removes invalid image dimension: above limit","name":"removes invalid image dimension: above limit","status":"passed","testResultsByEnv":{"default":"e2e7aed8a5a5ba44c7c4b80fd956eb9f"}}

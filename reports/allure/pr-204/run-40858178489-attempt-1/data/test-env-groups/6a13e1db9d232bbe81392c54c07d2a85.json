@@ -1,0 +1,1 @@
+{"id":"6a13e1db9d232bbe81392c54c07d2a85","fullName":"everfreenote:core/tests/unit/enex-image-services.test.ts#ENEX image services uses proxy only when enabled and returns null for failed downloads","name":"uses proxy only when enabled and returns null for failed downloads","status":"passed","testResultsByEnv":{"default":"029fa3f2e112d5657b90b40c126e0e20"}}
