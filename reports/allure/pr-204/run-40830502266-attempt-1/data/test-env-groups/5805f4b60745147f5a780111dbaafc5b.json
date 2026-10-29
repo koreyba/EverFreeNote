@@ -1,1 +1,0 @@
-{"id":"5805f4b60745147f5a780111dbaafc5b","fullName":"everfreenote:ui/web/tests/unit/components/noteCard.test.tsx#NoteCard decodes entities inside inline-only HTML without splitting the text","name":"decodes entities inside inline-only HTML without splitting the text","status":"passed","testResultsByEnv":{"default":"96d680fd22557c0a4140b0d8fe689e31"}}

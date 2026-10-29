@@ -1,0 +1,1 @@
+{"id":"697178304b9edf582c97716540207a38","fullName":"everfreenote:cypress/component/features/notes/DesktopSplitView.cy.tsx#Desktop split view warns before unload for an in-flight image and cancels it on unmount","name":"warns before unload for an in-flight image and cancels it on unmount","status":"passed","testResultsByEnv":{"default":"ccb7db75fb47f73f5df9629a7c29fa5f"}}

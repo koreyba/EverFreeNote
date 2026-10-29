@@ -1,0 +1,1 @@
+{"id":"00a094d7e48994e45bb55541b377ab79","fullName":"everfreenote:cypress/component/ui/web/hooks/useNoteAuth.cy.tsx#useNoteAuth does not attempt test login when test auth is disabled","name":"does not attempt test login when test auth is disabled","status":"passed","testResultsByEnv":{"default":"db34e00eda5126078406752f7b3b2d9a"}}
