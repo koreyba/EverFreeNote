@@ -1,1 +1,0 @@
-{"id":"61bb784abb691293c04c0d2f20651fdc","fullName":"everfreenote:core/tests/unit/core-mcp-noteContent.test.ts#core/mcp/noteContent htmlToPlainText turns block boundaries into line breaks and strips tags","name":"turns block boundaries into line breaks and strips tags","status":"passed","testResultsByEnv":{"default":"bd19a9e905a0a091285d4c2784ba1eaa"}}

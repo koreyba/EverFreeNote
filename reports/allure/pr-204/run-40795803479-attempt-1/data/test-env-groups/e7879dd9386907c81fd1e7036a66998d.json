@@ -1,1 +1,0 @@
-{"id":"e7879dd9386907c81fd1e7036a66998d","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSync.test.tsx#durable create synchronization uses the local ID and suppresses background notifications","name":"uses the local ID and suppresses background notifications","status":"passed","testResultsByEnv":{"default":"6d1af0d90ab7ed749a135ded3b7645c3"}}
