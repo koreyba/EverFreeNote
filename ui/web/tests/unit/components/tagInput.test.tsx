@@ -60,6 +60,20 @@ describe('TagInput', () => {
     expect(document.activeElement).toBe(input)
   })
 
+  it('starts closed and opens on keyboard activation when the note has no tags', () => {
+    jest.useFakeTimers()
+    renderTagInput({ tags: [] })
+    const addButton = screen.getByRole('button', { name: 'Add tag' })
+    const input = screen.getByPlaceholderText('Add tag...') as HTMLInputElement
+    expect(input.hidden).toBe(true)
+    expect(addButton.getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(addButton, { detail: 0 })
+    act(() => jest.runOnlyPendingTimers())
+    expect(input.hidden).toBe(false)
+    expect(document.activeElement).toBe(input)
+  })
+
   it('normalizes comma-separated tags on Enter and clears the query', () => {
     const { onAddTags, onQueryChange } = renderTagInput()
     fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))

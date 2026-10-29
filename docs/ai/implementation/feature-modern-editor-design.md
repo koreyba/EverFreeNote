@@ -73,3 +73,5 @@ Removed only the `.ProseMirror:focus-visible` left box-shadow. Original styles w
 `NoteTagList` measures the actual item widths and disclosure label, observes container/item resizing and font readiness, and makes overflow items invisible/inert while retaining measurable geometry. The editor's Add button occupies its own fixed column. All tags remain available through disclosure; the input is a separate row with independent state. Escape cancels pending entry and returns focus to Add; toggling Add closed keeps the existing blur-commit behavior. Backspace confirmation names the last tag even if it is collapsed.
 
 Confirmed entry closes the input; Escape discards only uncommitted text. Comma keeps the input open, allowing additional tags in the same entry session. Each confirmation puts newly added tags first; multiple tags submitted together keep their input order, and duplicates stay in place. The existing ordered tag array is saved without a schema change.
+
+The input starts closed irrespective of tag count, so the first Add activation opens and focuses it instead of closing an unfocused field on an empty note.

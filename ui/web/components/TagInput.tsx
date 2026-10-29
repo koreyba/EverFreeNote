@@ -34,7 +34,7 @@ export function TagInput({
   const [backspaceArmed, setBackspaceArmed] = React.useState(false)
   const [highlightedIndex, setHighlightedIndex] = React.useState<number>(-1)
   const [expanded, setExpanded] = React.useState(false)
-  const [inputOpen, setInputOpen] = React.useState(tags.length === 0)
+  const [inputOpen, setInputOpen] = React.useState(false)
   const inputId = React.useId()
   const discardBlurRef = React.useRef(false)
   const inputOpenOnPointerDown = React.useRef(false)
