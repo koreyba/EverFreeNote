@@ -338,3 +338,21 @@ and verifies that A sees the new error. This does not cover cross-window UI.
 ## Manual save and creation acknowledgement
 
 Component tests cover manual alt/title saves, unchanged HTML and clipboard, pending input, failed writes, account/note changes, older/newer autosave ordering, and a new note receiving an ID during typing. A local-API browser run with an isolated synthetic account also delays the local write with an IndexedDB lock, verifies the newest text reaches one created note, and checks saved/unsaved warnings and split-pane transitions. The synthetic account is removed after the test. Integrated-head CI and physical-device verification are separate.
+### Split layout restoration (2026-10-29)
+
+`noteWorkspaceSplitLayout.test.ts` covers old snapshots, owner stamps,
+malformed or missing panes, duplicate note IDs, an empty pane and tab eviction.
+`workspaceSplitMemory.test.tsx` covers A→B→A and a failed storage write after
+closing split. `SplitLayoutPersistence.cy.tsx` exercises the real shell and
+Settings page with synthetic notes and a mocked backend, including restored
+editing/saving, in-flight save across an account change, storage read/write
+failures, tab close and mobile→desktop. `WorkspaceAuthHydration.cy.tsx`
+checks that no split is shown before matching account hydration.
+
+The focused Allure run passed 162 unit and 70 component tests, including the
+existing desktop split and mobile suites. A separate Electron browser test
+against a production static export and synthetic intercepted backend passed
+one end-to-end scenario: actual reload, Settings→Close, mobile reload and
+desktop return, then explicit split close and another reload. A screenshot and
+the browser test are retained with the local QA evidence. These checks do not
+prove recovery after a reload when browser storage itself is unavailable.

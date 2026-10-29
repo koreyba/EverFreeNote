@@ -106,6 +106,9 @@ save the current editor; on failure, the current draft remains visible and the
 transition is blocked. Selecting an already-open note activates its existing
 tab. Exiting split does not close either tab. On mobile or when the available
 workspace is too narrow, only the active pane is shown until space returns.
+The split layout should return after Settings or a browser reload when its
+owner's workspace can be restored. Closing the split or either displayed tab
+must prevent it from reopening. Other accounts must not see the layout.
 
 ### Account-session isolation (2026-10-29)
 

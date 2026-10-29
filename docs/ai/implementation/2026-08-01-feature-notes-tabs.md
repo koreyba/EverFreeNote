@@ -126,8 +126,8 @@ ui/web/components/features/notes/NoteView.tsx
 
 ## Desktop split view follow-up (2026-10-28)
 
-`NotesShell` owns the transient left/right pairing and uses the current tab
-controller for selection, editing, and flushes. `SplitNotePreview` renders the
+`NotesShell` uses the workspace controller's left/right pairing for selection,
+editing, and flushes. `SplitNotePreview` renders the
 inactive tab's sanitized snapshot and records its scroll position separately.
 The tab-creation call returns the new tab ID so a pending split cannot attach
 to a different concurrently created tab. Resizing hides, rather than closes,
@@ -136,6 +136,15 @@ fails. Closing split does not remount the active editor or close either tab.
 Reader positions are captured before navigation and guarded by tab and note ID
 when deferred updates arrive; editor capture remains the path for unsaved new
 notes and their initial ID assignment.
+
+The workspace controller serializes the optional split pairing in the same
+owner-stamped snapshot as the tabs. Hydration validates both IDs and the note
+identities; closing either pane clears the pairing in the same state change.
+Pending split creation and tab creation check their initiating auth epoch
+after an asynchronous flush. The existing workspace memory also retains split
+state across same-document routes and account switches, including a close
+that could not be written to sessionStorage. Memory is discarded with its
+owner and cannot provide durability after a reload when storage is blocked.
 
 ## Account-session isolation follow-up (2026-10-29)
 

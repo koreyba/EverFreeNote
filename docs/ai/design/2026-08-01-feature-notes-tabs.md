@@ -291,10 +291,21 @@ editor references and competing writes to the same note. Selecting an already
 open note retains the existing deduplication rule. A third selected tab
 replaces the currently active pane; closing either displayed tab leaves split.
 Exit keeps all tabs, and temporarily hiding a pane below 680px of workspace
-width does not change either tab. Split layout is transient and is not
-persisted across reload; the existing tab sessions still are.
+width does not change either tab. The owner-stamped workspace snapshot stores
+the optional left, right, and focused tab IDs together with the tabs. Older
+snapshots without this field retain their original behavior. Hydration accepts
+the layout only when both distinct tab IDs still exist, they do not refer to
+the same note, and the focused ID belongs to the pair. A missing second note
+is permitted so the empty pane can still be used to choose one.
 After keyboard or pointer activation, focus moves to the newly active pane;
 if saving fails, focus stays on the activation button.
+
+For same-document navigation and account switching, the existing owner- and
+epoch-scoped workspace memory retains active split sessions. If persisting an
+explicit split close fails, its closed state is retained in memory so a stale
+stored layout does not reappear when returning from Settings. No additional
+note content is stored. If browser storage is unavailable, this memory cannot
+survive a full reload or document termination.
 
 Reading scroll notifications remain debounced, but each visible reader also
 keeps its latest position in memory. The controller captures these positions

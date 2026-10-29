@@ -109,7 +109,7 @@ These are engineering estimates only; autosave/editor lifecycle and native navig
   when the active draft cannot be saved.
 - Verify separate writes, duplicate selection, error and recovery, resizing,
   accessible controls, and a local visual preview before integration.
-- Follow-up: restore the split layout after Settings or reload. Persist only
-  the two pane tab IDs and account identity, then validate them after workspace
-  hydration. Cover account changes, unavailable storage, and tabs dropped by
-  the storage budget before enabling restoration. Until then split is transient.
+- Restore the split layout after Settings or reload using optional pane/focus
+  IDs in the existing owner-stamped workspace snapshot. Validate the pairing
+  after hydration and cover account changes, unavailable storage, explicit
+  close, mobile sizing, and tabs dropped by the storage budget.

@@ -59,4 +59,35 @@ describe('Restoring workspace after asynchronous authentication', { retries: 0 }
     cy.contains('[data-cy="workspace-tab"]', 'Restored first').click()
     cy.get('[data-testid="editor-container"]').should('contain', 'First restored body')
   })
+
+  it('restores split only after the matching account and workspace hydrate', () => {
+    cy.viewport(1440, 900)
+    const client = createClient('https://workspace-auth.invalid', 'test-public-key', {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    })
+    cy.intercept('https://workspace-auth.invalid/**', req => {
+      if (!req.url.includes('/rest/v1/notes')) return req.reply({ body: [] })
+      const single = String(req.headers.accept).includes('application/vnd.pgrst.object')
+      const noteId = new URL(req.url).searchParams.get('id')
+      const selected = notes.find(item => noteId === `eq.${item.id}`) ?? notes[0]
+      req.reply({ body: single ? selected : notes, headers: { 'content-range': '0-1/2', 'access-control-expose-headers': 'content-range' } })
+    })
+    let workspace = openNoteInWorkspace(createNoteWorkspaceState(() => 'first-tab', user.id), notes[0])
+    workspace = addWorkspaceTab(workspace, () => 'second-tab')
+    workspace = openNoteInWorkspace(workspace, notes[1])
+    const persisted = serializeNoteWorkspaceState({ ...workspace, split: { leftTabId: 'first-tab', rightTabId: 'second-tab', focusedTabId: 'second-tab' } })
+    cy.window().then(win => {
+      win.sessionStorage.clear()
+      win.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, persisted)
+    })
+    cy.then(() => webOfflineStorageAdapter.clearAll())
+    cy.mount(<DelayedSession client={client} />)
+    cy.contains('Loading EverFreeNote').should('exist')
+    cy.contains('button', 'Resolve empty cached user').click()
+    cy.get('[data-testid="split-pane-left"]').should('not.exist')
+    cy.window().then(win => expect(win.sessionStorage.getItem(NOTE_WORKSPACE_STORAGE_KEY)).to.equal(persisted))
+    cy.contains('button', 'Resolve authenticated user').click()
+    cy.get('[data-testid="split-pane-left"]').should('contain', 'First restored body')
+    cy.get('[data-testid="split-pane-right"]').should('contain', 'Second restored body')
+  })
 })

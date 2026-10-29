@@ -77,6 +77,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       tabs: [activeTab],
       activeTabId: activeTab.id,
       activeTab,
+      split: null,
+      setSplit: cy.stub(),
       canAddTab: true,
       workspaceHydrated: true,
       preserveWorkspaceForNavigation: cy.stub(),

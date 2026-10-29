@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type SetStateAction } from 'react'
 import { toast } from 'sonner'
 import {
   activateWorkspaceTab,
@@ -10,7 +10,9 @@ import {
   getActiveWorkspaceTab,
   openNoteInWorkspace,
   resetWorkspaceTabsForNotes,
+  setWorkspaceSplit,
   updateWorkspaceTab,
+  type NoteWorkspaceSplit,
   type NoteWorkspaceTabPatch,
 } from '@core/services/noteWorkspaceTabs'
 import type { NoteViewModel } from '@core/types/domain'
@@ -26,6 +28,9 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
   const [state, setState] = useState(() => createNoteWorkspaceState(() => INITIAL_TAB_ID))
   const [hydratedUserId, setHydratedUserId] = useState<string | null | undefined>(undefined)
   const [readableUserId, setReadableUserId] = useState<string | null>(null)
+  const persistedRef = useRef(false)
+  const sessionRef = useRef({ userId, epoch })
+  useLayoutEffect(() => { sessionRef.current = { userId, epoch } }, [userId, epoch])
   const emptyState = useMemo(() => createNoteWorkspaceState(() => INITIAL_TAB_ID, userId), [userId])
 
   useEffect(() => {
@@ -64,17 +69,24 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
   const warnedAboutUnavailableWorkspaceRef = useRef(false)
 
   useEffect(() => {
-    if (!hydrated) return
-    // Keep the volatile copy current after returning from another route. This
-    // also prevents a stale draft from resurfacing after it has been saved or
-    // discarded and the account is later selected again in this document.
-    if (state.tabs.some(tab => tab.saveState !== 'saved')) memory.remember(state, epoch)
-    else if (userId) memory.clear(userId, epoch)
+    if (!hydrated) {
+      persistedRef.current = false
+      return
+    }
     // If the read failed, a previous workspace may still exist. Keep the new
     // state in memory instead of replacing an unknown snapshot with a blank.
     const { persisted, droppedTabIds } = readableUserId === userId
       ? writeNoteWorkspaceState(state)
       : { persisted: false, droppedTabIds: [] }
+    persistedRef.current = persisted && droppedTabIds.length === 0
+    // Keep the existing workspace snapshot while split is active. If a close
+    // cannot be persisted, retain that closed state across route changes too,
+    // so an older stored split does not reappear in the same document.
+    if (state.split && userId) memory.retainSplitSession(userId, epoch)
+    const retainClosedSplit = Boolean(userId && !persistedRef.current && memory.hasRetainedSplitSession(userId))
+    if (state.split || retainClosedSplit || state.tabs.some(tab => tab.saveState !== 'saved')) memory.remember(state, epoch)
+    else if (userId) memory.clear(userId, epoch)
+    if (!state.split && persistedRef.current && userId) memory.releaseSplitSession(userId, epoch)
     const readFailed = readableUserId !== userId
     const hasWork = state.tabs.some(tab => (
       tab.noteId || tab.draft.title || tab.draft.description || tab.draft.tags
@@ -102,6 +114,19 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
     setState((current) => addWorkspaceTab(current, () => tabId))
     return tabId
   }, [])
+
+  const setSplit = useCallback((action: SetStateAction<NoteWorkspaceSplit | null>) => {
+    if (!userId || sessionRef.current.userId !== userId || sessionRef.current.epoch !== epoch) return
+    if (action && typeof action !== 'function') memory.retainSplitSession(userId, epoch)
+    persistedRef.current = false
+    setState((current) => {
+      if (current.userId !== userId || sessionRef.current.userId !== userId || sessionRef.current.epoch !== epoch) return current
+      const next = typeof action === 'function' ? action(current.split ?? null) : action
+      return setWorkspaceSplit(current, next)
+    })
+  }, [epoch, memory, userId])
+
+  const isWorkspacePersisted = useCallback(() => persistedRef.current, [])
 
   const activateTab = useCallback((tabId: string) => {
     setState((current) => activateWorkspaceTab(current, tabId))
@@ -168,6 +193,8 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
     hydrated,
     storageReadable: hydrated && readableUserId === userId,
     addTab,
+    setSplit,
+    isWorkspacePersisted,
     activateTab,
     openNote,
     updateTab,

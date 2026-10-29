@@ -122,7 +122,10 @@ export function useNoteAppController() {
     storageReadable: workspaceStorageReadable,
     tabs,
     activeTabId,
+    split,
     addTab,
+    setSplit,
+    isWorkspacePersisted,
     activateTab,
     openNote,
     updateTab,
@@ -211,6 +214,7 @@ export function useNoteAppController() {
       userId: workspaceUserId,
       activeTabId,
       tabs: tabs.map(tab => tab.saveState === 'saving' ? { ...tab, saveState: 'dirty' } : tab),
+      ...(split ? { split } : {}),
     }
     const active = snapshot.tabs.find(tab => tab.id === activeTabId)
     const session = isEditing ? noteEditorRef.current?.current?.captureSession?.() : undefined
@@ -223,9 +227,9 @@ export function useNoteAppController() {
         ...(changed && active.saveState !== 'error' ? { saveState: 'dirty' as const } : {}),
       })
     }
-    if (snapshot.tabs.some(tab => tab.saveState !== 'saved')) workspaceMemory.remember(snapshot, workspaceEpoch)
+    if (snapshot.split || (!isWorkspacePersisted() && workspaceMemory.hasRetainedSplitSession(workspaceUserId)) || snapshot.tabs.some(tab => tab.saveState !== 'saved')) workspaceMemory.remember(snapshot, workspaceEpoch)
     else workspaceMemory.clear(workspaceUserId, workspaceEpoch)
-  }, [activeTabId, isEditing, tabs, workspaceEpoch, workspaceHydrated, workspaceMemory, workspaceUserId])
+  }, [activeTabId, isEditing, isWorkspacePersisted, split, tabs, workspaceEpoch, workspaceHydrated, workspaceMemory, workspaceUserId])
 
   const flushPendingEditorSave = useCallback(async () => {
     if (!isEditing) return
@@ -874,9 +878,11 @@ export function useNoteAppController() {
 
   const handleAddTab = useCallback(async () => {
     if (!workspaceHydrated || !canAddTab || addingTabRef.current) return null
+    const started = getSessionSnapshot?.()
+    if (!isCurrentSession(started)) return null
     addingTabRef.current = true
     try {
-      if (!(await flushAndCaptureActiveTab())) return null
+      if (!(await flushAndCaptureActiveTab()) || !isCurrentSession(started)) return null
       const tabId = addTab()
       // On mobile, an empty tab must return to the note list so the user can
       // choose which note fills the new active slot. Desktop keeps its editor
@@ -886,7 +892,7 @@ export function useNoteAppController() {
     } finally {
       addingTabRef.current = false
     }
-  }, [addTab, canAddTab, flushAndCaptureActiveTab, workspaceHydrated])
+  }, [addTab, canAddTab, flushAndCaptureActiveTab, getSessionSnapshot, isCurrentSession, workspaceHydrated])
 
   const handleActivateTab = useCallback(async (tabId: string) => {
     const targetTab = tabs.find((tab) => tab.id === tabId)
@@ -1519,6 +1525,8 @@ export function useNoteAppController() {
     tabs,
     activeTabId,
     activeTab,
+    split: split ?? null,
+    setSplit,
     setIsEditing,
     isSearchPanelOpen,
     setIsSearchPanelOpen,

@@ -14,6 +14,9 @@ type WorkspaceMemory = {
   forgetCreate: (userId: string, tabId: string, epoch?: number) => void
   discardOwner: (userId: string, epoch?: number) => void
   activateOwner: (userId: string, epoch?: number) => void
+  retainSplitSession: (userId: string, epoch?: number) => void
+  releaseSplitSession: (userId: string, epoch?: number) => void
+  hasRetainedSplitSession: (userId: string) => boolean
   beginWrite: (userId: string, tabId: string, epoch?: number) => WorkspaceWriteLease | undefined
   cancelTabWrites: (userId: string, tabId: string, epoch?: number) => void
   cancelOwnerWrites: (userId: string, epoch?: number) => void
@@ -28,6 +31,9 @@ const NO_MEMORY: WorkspaceMemory = {
   forgetCreate: () => {},
   discardOwner: () => {},
   activateOwner: () => {},
+  retainSplitSession: () => {},
+  releaseSplitSession: () => {},
+  hasRetainedSplitSession: () => false,
   beginWrite: () => undefined,
   cancelTabWrites: () => {},
   cancelOwnerWrites: () => {},
@@ -42,6 +48,7 @@ export function WorkspaceMemoryProvider({ children }: { children: ReactNode }) {
   const creates = useRef(new Map<string, Map<string, NoteViewModel>>())
   const discardedEpochs = useRef(new Map<string, number>())
   const activeEpochs = useRef(new Map<string, number>())
+  const retainedSplitSessions = useRef(new Set<string>())
   const writes = useRef(new Map<string, Map<string, Set<AbortController>>>())
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -97,10 +104,18 @@ export function WorkspaceMemoryProvider({ children }: { children: ReactNode }) {
         if (epoch !== undefined) discardedEpochs.current.set(userId, Math.max(epoch, discardedEpochs.current.get(userId) ?? -1))
         snapshots.current.delete(userId)
         creates.current.delete(userId)
+        retainedSplitSessions.current.delete(userId)
       },
       activateOwner: (userId, epoch) => {
         if (epoch !== undefined && !isStale(userId, epoch)) activeEpochs.current.set(userId, epoch)
       },
+      retainSplitSession: (userId, epoch) => {
+        if (!isStale(userId, epoch)) retainedSplitSessions.current.add(userId)
+      },
+      releaseSplitSession: (userId, epoch) => {
+        if (!isStale(userId, epoch)) retainedSplitSessions.current.delete(userId)
+      },
+      hasRetainedSplitSession: (userId) => retainedSplitSessions.current.has(userId),
       beginWrite: (userId, tabId, epoch) => {
         const controller = new AbortController()
         if (isStale(userId, epoch)) {

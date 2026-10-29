@@ -57,12 +57,6 @@ type NotesShellProps = {
   controller: NoteAppController
 }
 
-type SplitViewState = {
-  leftTabId: string
-  rightTabId: string
-  focusedTabId: string
-}
-
 // Below this width there is not enough room for two useful note surfaces.
 const MIN_SPLIT_WORKSPACE_WIDTH = 680
 
@@ -99,9 +93,8 @@ export function NotesShell({ controller }: NotesShellProps) {
   const [pendingChunkFocus, setPendingChunkFocus] = React.useState<PendingChunkFocus | null>(null)
   const workspaceRef = React.useRef<HTMLDivElement | null>(null)
   const [workspaceWidth, setWorkspaceWidth] = React.useState(0)
-  const [split, setSplit] = React.useState<SplitViewState | null>(null)
   const [splitOpening, setSplitOpening] = React.useState(false)
-  const [pendingSplit, setPendingSplit] = React.useState<{ leftTabId: string, rightTabId: string } | null>(null)
+  const [pendingSplit, setPendingSplit] = React.useState<{ leftTabId: string, rightTabId: string, session?: { userId: string | null, epoch: number } } | null>(null)
   const splitOpeningRef = React.useRef(false)
   const paneFocusTargetRef = React.useRef<string | null>(null)
   const viewScrollsRef = React.useRef(new Map<string, { noteId: string | null, scrollTop: number }>())
@@ -148,6 +141,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     notePaneVisible,
     tabs = [],
     activeTabId = '',
+    split = null,
+    setSplit,
     addTab,
     activateTab,
     closeTab,
@@ -226,19 +221,23 @@ export function NotesShell({ controller }: NotesShellProps) {
   // editor. Resolve its identity only after the workspace state has committed.
   React.useEffect(() => {
     if (!pendingSplit) return
+    if (!workspaceHydrated || !isCurrentSession(pendingSplit.session)) {
+      setPendingSplit(null)
+      return
+    }
     if (!tabs.some((tab) => tab.id === pendingSplit.leftTabId)) {
       setPendingSplit(null)
       return
     }
     if (!tabs.some((tab) => tab.id === pendingSplit.rightTabId)) return
-    setSplit({ ...pendingSplit, focusedTabId: pendingSplit.rightTabId })
+    setSplit?.({ leftTabId: pendingSplit.leftTabId, rightTabId: pendingSplit.rightTabId, focusedTabId: pendingSplit.rightTabId })
     setPendingSplit(null)
-  }, [pendingSplit, tabs])
+  }, [isCurrentSession, pendingSplit, setSplit, tabs, workspaceHydrated])
 
   // Selecting a third tab replaces the last active pane; selecting either
   // visible tab just transfers focus. Closing a pane returns to one view.
   React.useEffect(() => {
-    setSplit((current) => {
+    setSplit?.((current) => {
       if (!current) return current
       if (!tabs.some((tab) => tab.id === current.leftTabId) || !tabs.some((tab) => tab.id === current.rightTabId)) return null
       if (activeTabId === current.leftTabId || activeTabId === current.rightTabId) {
@@ -248,7 +247,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         ? { ...current, leftTabId: activeTabId, focusedTabId: activeTabId }
         : { ...current, rightTabId: activeTabId, focusedTabId: activeTabId }
     })
-  }, [activeTabId, tabs])
+  }, [activeTabId, setSplit, tabs])
 
   React.useEffect(() => {
     if (paneFocusTargetRef.current !== activeTabId) return
@@ -264,25 +263,27 @@ export function NotesShell({ controller }: NotesShellProps) {
   const handleToggleSplit = React.useCallback(async () => {
     if (split) {
       captureViewScrolls()
-      setSplit(null)
+      setSplit?.(null)
       return
     }
     if (splitOpeningRef.current || pendingSplit || !activeTabId) return
+    const started = getSessionSnapshot?.()
+    if (!isCurrentSession(started)) return
     const other = tabs.find((tab) => tab.id !== activeTabId && tab.note) ?? tabs.find((tab) => tab.id !== activeTabId)
     if (other) {
-      setSplit({ leftTabId: activeTabId, rightTabId: other.id, focusedTabId: activeTabId })
+      setSplit?.({ leftTabId: activeTabId, rightTabId: other.id, focusedTabId: activeTabId })
       return
     }
     splitOpeningRef.current = true
     setSplitOpening(true)
     try {
       const rightTabId = await addTab()
-      if (rightTabId) setPendingSplit({ leftTabId: activeTabId, rightTabId })
+      if (rightTabId && isCurrentSession(started)) setPendingSplit({ leftTabId: activeTabId, rightTabId, session: started })
     } finally {
       splitOpeningRef.current = false
       setSplitOpening(false)
     }
-  }, [activeTabId, addTab, captureViewScrolls, pendingSplit, split, tabs])
+  }, [activeTabId, addTab, captureViewScrolls, getSessionSnapshot, isCurrentSession, pendingSplit, setSplit, split, tabs])
 
   const checkTagCoverageRef = React.useRef(checkTagCoverage)
   React.useEffect(() => { checkTagCoverageRef.current = checkTagCoverage }, [checkTagCoverage])
