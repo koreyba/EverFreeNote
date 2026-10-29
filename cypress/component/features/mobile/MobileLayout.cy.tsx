@@ -157,6 +157,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   let restoreNavigator: (() => void) | undefined
   let stopEscapeTrace: (() => void) | undefined
   let cancelViewportResize: (() => void) | undefined
+  let stopResizeControl: (() => void) | undefined
 
   function observeViewportResize(win: Window, width: number, height: number) {
     let cancel = () => {}
@@ -172,10 +173,9 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     return { promise, cancel }
   }
 
-  function viewportAfterResize(width: number, height: number) {
+  function changeViewportAndWait(width: number, height: number) {
     let resized: PromiseLike<void> = Promise.resolve()
     cy.window().then(win => {
-      if (win.innerWidth === width && win.innerHeight === height) return
       // cy.viewport can finish before the browser delivers its resize event.
       // Subscribe first, so an early event is retained by the promise as well.
       const observation = observeViewportResize(win, width, height)
@@ -186,15 +186,27 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.then(() => resized)
   }
 
+  function viewportAfterResize(width: number, height: number) {
+    cy.window().then(win => {
+      // Ensure there is an actual change to observe even if a prior viewport
+      // is already the requested size.
+      if (win.innerWidth === width && win.innerHeight === height) changeViewportAndWait(width + 1, height)
+    })
+    changeViewportAndWait(width, height)
+  }
+
   afterEach(() => {
-    try { cancelViewportResize?.() } finally {
-      cancelViewportResize = undefined
-      try { stopEscapeTrace?.() } finally {
-        stopEscapeTrace = undefined
-        restoreViewport?.()
-        restoreViewport = undefined
-        restoreNavigator?.()
-        restoreNavigator = undefined
+    try { stopResizeControl?.() } finally {
+      stopResizeControl = undefined
+      try { cancelViewportResize?.() } finally {
+        cancelViewportResize = undefined
+        try { stopEscapeTrace?.() } finally {
+          stopEscapeTrace = undefined
+          restoreViewport?.()
+          restoreViewport = undefined
+          restoreNavigator?.()
+          restoreNavigator = undefined
+        }
       }
     }
   })
@@ -1087,7 +1099,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('drags the toolbar from a font selector without opening it or changing the note', () => {
-    cy.viewport(390, 844)
+    viewportAfterResize(390, 844)
     mountLongEditor()
     cy.get('[aria-label="Font family"]').scrollIntoView().as('font')
     cy.get('[data-editor-toolbar]').invoke('prop', 'scrollLeft').then((before) => {
@@ -1719,6 +1731,25 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
         expect(win.innerWidth).to.be.greaterThan(0)
       }).finally(observation.cancel)
     })
+  })
+
+  it('waits for viewport setup even when the requested size is already active', () => {
+    viewportAfterResize(320, 740)
+    const widths: number[] = []
+    cy.window().then(win => {
+      const onResize = () => widths.push(win.innerWidth)
+      win.addEventListener('resize', onResize, { passive: true })
+      stopResizeControl = () => win.removeEventListener('resize', onResize)
+    })
+    viewportAfterResize(320, 740)
+    cy.then(() => {
+      const intermediate = widths.indexOf(321)
+      expect(intermediate, 'intermediate viewport resize observed').to.be.at.least(0)
+      expect(widths.indexOf(320, intermediate + 1), 'requested viewport resize observed').to.be.greaterThan(intermediate)
+    })
+    mountLongEditor()
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    cy.get('[role="listbox"]').should('be.visible')
   })
 
   it('closes the font size menu when the viewport really changes', () => {

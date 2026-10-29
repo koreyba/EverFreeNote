@@ -56,6 +56,7 @@ jobs:
               'dismisses the font size menu when Escape follows a delayed tooltip',
               'uses a compact font icon while retaining the selected font in its menu',
               'observes a viewport resize that arrives before the promise is awaited',
+              'waits for viewport setup even when the requested size is already active',
               'closes the font size menu when the viewport really changes',
           }
           observed = set()
