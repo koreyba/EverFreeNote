@@ -668,7 +668,7 @@ export function NotesShell({ controller }: NotesShellProps) {
                           />
                         )
                       ) : tab && (
-                        <SplitNotePreview tab={tab} onViewSessionChange={(view) => handleTabViewSessionChange?.(tabId, tab.noteId, view)} onViewScrollCapture={(scrollTop, node) => recordViewScroll(tabId, tab.noteId, scrollTop, node)} registerViewScrollSurface={registerViewScrollSurface} />
+                        <SplitNotePreview key={tab.noteId === null ? "empty" : `note:${tab.noteId}`} tab={tab} visible={showBothPanes} onViewSessionChange={(view) => handleTabViewSessionChange?.(tabId, tab.noteId, view)} onViewScrollCapture={(scrollTop, node) => recordViewScroll(tabId, tab.noteId, scrollTop, node)} registerViewScrollSurface={registerViewScrollSurface} />
                       )}
                     </section>
                   )

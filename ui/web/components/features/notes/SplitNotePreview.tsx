@@ -7,7 +7,7 @@ import type { NoteViewSession, NoteWorkspaceTab } from "@core/services/noteWorks
 import { useDebouncedSessionCallback } from "@ui/web/hooks/useDebouncedSessionCallback"
 import { parseTagString } from "@ui/web/lib/tags"
 import { RenderedNoteContent } from "@/components/RenderedNoteContent"
-import type { RegisterViewScrollSurface } from "./viewScrollSurface"
+import { restoreViewScroll, type RegisterViewScrollSurface } from "./viewScrollSurface"
 
 /** The inactive pane is read-only; only the active tab owns an editor. */
 export function SplitNotePreview({
@@ -15,11 +15,13 @@ export function SplitNotePreview({
   onViewSessionChange,
   onViewScrollCapture,
   registerViewScrollSurface,
+  visible = true,
 }: {
   tab: NoteWorkspaceTab
   onViewSessionChange: (view: Partial<NoteViewSession>) => void
   onViewScrollCapture: (scrollTop: number, node: HTMLElement) => boolean | void
   registerViewScrollSurface?: RegisterViewScrollSurface
+  visible?: boolean
 }) {
   const useDraft = tab.mode === "editing" || tab.saveState !== "saved"
   const title = useDraft ? tab.draft.title : tab.note?.title ?? ""
@@ -28,20 +30,40 @@ export function SplitNotePreview({
   const content = React.useMemo(() => SanitizationService.sanitizeForReading(body), [body])
   const contentRef = React.useRef<HTMLDivElement | null>(null)
   const initialScrollTop = React.useRef(tab.view.scrollTop)
+  const restored = React.useRef(false)
+  const pendingRestore = React.useRef<{ applied: number; changed: boolean } | null>(null)
+  const hasContent = Boolean(tab.note || tab.mode === "editing")
   const scrollNotify = useDebouncedSessionCallback(onViewSessionChange, 250, registerViewScrollSurface ? "cancel" : "flush")
+
+  React.useLayoutEffect(() => { initialScrollTop.current = tab.view.scrollTop }, [tab.view.scrollTop])
+
+  // Restore before the workspace can capture the new surface. A pane mounted
+  // while hidden has no scrollable layout, so wait until it becomes visible.
+  React.useLayoutEffect(() => {
+    if (!hasContent) {
+      restored.current = false
+      return
+    }
+    if (!visible || restored.current || !contentRef.current) return
+    const node = contentRef.current
+    restored.current = true
+    const cancel = restoreViewScroll(node, initialScrollTop.current)
+    const pending = cancel ? { applied: node.scrollTop, changed: false } : null
+    pendingRestore.current = pending
+    return () => {
+      cancel?.()
+      // If a clamped restoration was cancelled before a newer scroll arrived,
+      // allow the next visible layout (or StrictMode effect replay) to retry.
+      if (pending && !pending.changed) restored.current = false
+      if (pendingRestore.current === pending) pendingRestore.current = null
+    }
+  }, [hasContent, tab.id, visible])
 
   React.useLayoutEffect(() => {
     const node = contentRef.current
-    if (!node || !registerViewScrollSurface) return
+    if (!hasContent || !node || !registerViewScrollSurface) return
     return registerViewScrollSurface(tab.id, tab.noteId, node, scrollNotify.cancel)
-  }, [registerViewScrollSurface, scrollNotify.cancel, tab.id, tab.noteId])
-
-  React.useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      if (contentRef.current) contentRef.current.scrollTop = initialScrollTop.current
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [tab.id])
+  }, [hasContent, registerViewScrollSurface, scrollNotify.cancel, tab.id, tab.noteId])
 
   if (!tab.note && tab.mode !== "editing") {
     return <SplitEmptyPane />
@@ -57,6 +79,8 @@ export function SplitNotePreview({
         className="scrollbar-none min-h-0 flex-1 overflow-y-auto pb-10 pt-24"
         onScroll={(event) => {
           const scrollTop = event.currentTarget.scrollTop
+          const pending = pendingRestore.current
+          if (pending && scrollTop !== pending.applied) pending.changed = true
           if (onViewScrollCapture(scrollTop, event.currentTarget) !== false) scrollNotify.schedule({ scrollTop })
         }}
         data-cy="split-note-preview"

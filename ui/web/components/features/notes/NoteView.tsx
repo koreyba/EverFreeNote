@@ -16,7 +16,7 @@ import { useDebouncedSessionCallback } from "@ui/web/hooks/useDebouncedSessionCa
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import type { Note } from "@core/types/domain"
 import type { NoteViewSession } from "@core/services/noteWorkspaceTabs"
-import type { RegisterViewScrollSurface } from "./viewScrollSurface"
+import { restoreViewScroll, type RegisterViewScrollSurface } from "./viewScrollSurface"
 
 // Reading scroll fires per frame; batch updates before they hit workspace state.
 const SCROLL_SYNC_DELAY_MS = 250
@@ -84,18 +84,17 @@ export const NoteView = React.memo(function NoteView({
     registerViewScrollSurface ? 'cancel' : 'flush',
   )
 
+  // Restore before exposing this surface to workspace capture. A delayed
+  // animation frame otherwise lets a quick pane switch save its initial zero.
+  React.useLayoutEffect(() => {
+    if (contentRef.current) return restoreViewScroll(contentRef.current, initialScrollTopRef.current)
+  }, [note.id])
+
   React.useLayoutEffect(() => {
     const node = contentRef.current
     if (!node || !viewTabId || !registerViewScrollSurface) return
     return registerViewScrollSurface(viewTabId, note.id, node, debouncedViewNotify.cancel)
   }, [debouncedViewNotify.cancel, note.id, registerViewScrollSurface, viewTabId])
-
-  React.useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      if (contentRef.current) contentRef.current.scrollTop = initialScrollTopRef.current
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [note.id])
 
   // Форматирование дат для предотвращения повторных вычислений
   const formattedDates = React.useMemo(() => ({

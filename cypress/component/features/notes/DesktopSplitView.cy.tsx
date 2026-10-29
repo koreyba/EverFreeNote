@@ -67,6 +67,7 @@ describe('Desktop split view', { retries: 0 }, () => {
   let heldWrites: Array<{ noteId: string; release: () => Promise<void> }>
   let expectedWriteErrors: Set<unknown>
   let stopScrollTrace: (() => void) | undefined
+  let restoreAnimationFrame: (() => void) | undefined
 
   const holdQueueWrite = (noteId: string, write: () => Promise<void>, register: (release: () => Promise<void>) => void) => {
     if (releasingWrites) return write()
@@ -127,6 +128,8 @@ describe('Desktop split view', { retries: 0 }, () => {
   })
 
   afterEach(function () {
+    restoreAnimationFrame?.()
+    restoreAnimationFrame = undefined
     // Failed tests may leave a controlled write in flight. Finish it before
     // clearing the shared cache, otherwise it can leak into the next mount.
     const testFailed = this.currentTest?.state === 'failed'
@@ -285,6 +288,50 @@ describe('Desktop split view', { retries: 0 }, () => {
         expect($current[0]).to.equal(original)
         expect($current.val()).to.equal('Unfinished draft')
       })
+    })
+  })
+
+  it('preserves a pane position when switching again before its first animation frame', () => {
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.get('[data-cy="workspace-split-button"]').click()
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Second note').click()
+    cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').then(($preview) => {
+      const preview = $preview[0]
+      const win = preview.ownerDocument.defaultView
+      if (!win) throw new Error('Missing preview window')
+      preview.scrollTop = 600
+      expect(preview.scrollTop, 'live position before first activation').to.be.greaterThan(500)
+
+      // A busy browser can delay the newly activated reader's first paint.
+      // Hold its callbacks while we immediately activate the other pane.
+      const originalFrame = win.requestAnimationFrame
+      win.requestAnimationFrame = () => 2147483647
+      restoreAnimationFrame = () => { win.requestAnimationFrame = originalFrame }
+      const activate = preview.closest('[data-testid="split-pane-left"]')?.querySelector<HTMLButtonElement>('button[aria-label^="Activate"]')
+      if (!activate) throw new Error('Missing activation button')
+      activate.click()
+    })
+    cy.get('[data-testid="split-pane-left"] [data-cy="pull-to-refresh"] > div').should('exist')
+    cy.then(() => { restoreAnimationFrame?.(); restoreAnimationFrame = undefined })
+    cy.get('[data-testid="split-pane-right"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').should(($preview) => {
+      expect($preview[0].scrollTop, 'the original pane restores its live position').to.be.greaterThan(500)
+    })
+  })
+
+  it('retains a scrolled pane mounted while the workspace is narrow', () => {
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.get('[data-cy="workspace-split-button"]').click()
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Second note').click()
+    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"] [data-cy="pull-to-refresh"] > div').scrollTo(0, 600)
+    cy.viewport(1000, 900)
+    cy.contains('Enlarge the workspace to show both notes.').should('be.visible')
+    cy.contains('[data-cy="workspace-tab"]', 'Second note').click()
+    cy.get('[data-testid="split-pane-left"]').should('not.be.visible')
+    cy.viewport(1440, 900)
+    cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').should(($preview) => {
+      expect($preview[0].scrollTop, 'inactive pane restores its position after widening').to.be.greaterThan(500)
     })
   })
 
