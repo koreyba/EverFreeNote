@@ -31,6 +31,76 @@ type EscapeTrace = {
   transitions: Array<{ at: number; target: 'trigger' | 'menu'; attribute: string; previous: string | null; current: string | null }>
 }
 
+type FontOpenTrace = Array<Record<string, unknown>>
+
+// Diagnostic-only observer: it does not change events or the editor state.
+function watchFontOpening(trace: FontOpenTrace, setCleanup: (cleanup: () => void) => void) {
+  cy.document().then(doc => {
+    const win = doc.defaultView
+    const trigger = doc.querySelector('[data-cy="font-size-button"]')
+    if (!win || !trigger) throw new Error('Missing font menu context')
+    const record = (type: string, event?: Event, mutation?: MutationRecord) => {
+      const target = event?.target instanceof win.Element ? event.target : null
+      const active = doc.activeElement
+      trace.push({
+        at: Math.round(win.performance.now()), type,
+        key: event instanceof win.KeyboardEvent ? event.key : null,
+        target: target?.getAttribute('role') ?? target?.tagName ?? null,
+        targetLabel: target?.getAttribute('aria-label') ?? null,
+        trusted: event?.isTrusted ?? null,
+        defaultPrevented: event?.defaultPrevented ?? null,
+        active: active?.getAttribute('role') ?? active?.getAttribute('aria-label') ?? active?.tagName,
+        expanded: trigger.getAttribute('aria-expanded'),
+        triggerState: trigger.getAttribute('data-state'),
+        changed: mutation?.attributeName ?? null,
+        previous: mutation?.oldValue ?? null,
+        menus: Array.from(doc.querySelectorAll('[role="listbox"]'), menu => ({
+          state: menu.getAttribute('data-state'),
+          opacity: win.getComputedStyle(menu).opacity,
+          display: win.getComputedStyle(menu).display,
+        })),
+        tooltipCount: doc.querySelectorAll('[role="tooltip"]').length,
+      })
+      if (trace.length > 50) trace.shift()
+    }
+    const events = ['pointerdown', 'pointerup', 'click', 'keydown', 'keyup', 'focusin', 'focusout']
+    const capture = (event: Event) => record(`capture:${event.type}`, event)
+    const bubble = (event: Event) => record(`bubble:${event.type}`, event)
+    events.forEach(type => {
+      doc.addEventListener(type, capture, { capture: true, passive: true })
+      doc.addEventListener(type, bubble, { passive: true })
+    })
+    const observer = new win.MutationObserver(mutations => {
+      // Values read here are delivery-time snapshots; oldValue preserves the
+      // previous attribute value if multiple mutations were batched.
+      for (const mutation of mutations) {
+        if (mutation.type === 'childList' || mutation.target === trigger) record('mutation', undefined, mutation)
+      }
+    })
+    observer.observe(doc.body, {
+      childList: true, subtree: true, attributes: true,
+      attributeFilter: ['aria-expanded', 'aria-describedby', 'data-state'], attributeOldValue: true,
+    })
+    record('installed')
+    setCleanup(() => {
+      events.forEach(type => {
+        doc.removeEventListener(type, capture, true)
+        doc.removeEventListener(type, bubble)
+      })
+      observer.disconnect()
+    })
+  })
+}
+
+function expectOpenFontMenu(trace: FontOpenTrace) {
+  cy.get('body').should($body => {
+    const menu = $body.find('[role="listbox"]')
+    const diagnostic = `font menu did not open: ${JSON.stringify(trace)}`
+    expect(menu, diagnostic).to.have.length(1)
+    expect(menu, diagnostic).to.be.visible
+  })
+}
+
 function fontMenuDiagnostic(doc: Document, escapeTrace?: EscapeTrace) {
   const view = doc.defaultView
   const active = doc.activeElement
@@ -156,14 +226,18 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   let restoreViewport: (() => void) | undefined
   let restoreNavigator: (() => void) | undefined
   let stopEscapeTrace: (() => void) | undefined
+  let stopFontOpenTrace: (() => void) | undefined
 
   afterEach(() => {
-    try { stopEscapeTrace?.() } finally {
-      stopEscapeTrace = undefined
-      restoreViewport?.()
-      restoreViewport = undefined
-      restoreNavigator?.()
-      restoreNavigator = undefined
+    try { stopFontOpenTrace?.() } finally {
+      stopFontOpenTrace = undefined
+      try { stopEscapeTrace?.() } finally {
+        stopEscapeTrace = undefined
+        restoreViewport?.()
+        restoreViewport = undefined
+        restoreNavigator?.()
+        restoreNavigator = undefined
+      }
     }
   })
 
@@ -1713,11 +1787,13 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   it('dismisses the desktop font size menu after a hover with one Escape', () => {
     cy.viewport(1440, 900)
     mountLongEditor()
+    const trace: FontOpenTrace = []
+    watchFontOpening(trace, cleanup => { stopFontOpenTrace = cleanup })
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     cy.get('[data-cy="font-size-button"]')
       .trigger('pointermove', { eventConstructor: 'PointerEvent', pointerType: 'mouse' })
       .click()
-    cy.get('[role="listbox"]').should('be.visible')
+    expectOpenFontMenu(trace)
     cy.tick(250)
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.tick(1)
@@ -1728,6 +1804,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   it('exposes the font size tooltip to keyboard users and dismisses its menu', () => {
     cy.viewport(320, 740)
     mountLongEditor()
+    const trace: FontOpenTrace = []
+    watchFontOpening(trace, cleanup => { stopFontOpenTrace = cleanup })
     cy.get('[data-cy="font-family-button"]').scrollIntoView().focus()
     cy.press(Cypress.Keyboard.Keys.TAB)
     cy.get('[data-cy="font-size-button"]').should('be.focused').should(($trigger) => {
@@ -1736,7 +1814,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       expect($trigger[0].ownerDocument.getElementById(tooltipId ?? '')?.textContent).to.equal('Font size')
     })
     cy.press(Cypress.Keyboard.Keys.ENTER)
-    cy.get('[role="listbox"]').should('be.visible')
+    expectOpenFontMenu(trace)
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.get('[role="listbox"]').should('not.exist')
     cy.get('[data-cy="font-size-button"]').should('be.focused')
