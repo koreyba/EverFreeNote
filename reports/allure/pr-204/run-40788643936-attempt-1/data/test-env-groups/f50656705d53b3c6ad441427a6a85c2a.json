@@ -1,1 +1,0 @@
-{"id":"f50656705d53b3c6ad441427a6a85c2a","fullName":"everfreenote:ui/web/tests/unit/lib/noteFind.test.ts#findInNote matches Unicode case variants without losing the original text","name":"matches Unicode case variants without losing the original text","status":"passed","testResultsByEnv":{"default":"7c5afee2989acc8c115763c4c5c2bb2e"}}

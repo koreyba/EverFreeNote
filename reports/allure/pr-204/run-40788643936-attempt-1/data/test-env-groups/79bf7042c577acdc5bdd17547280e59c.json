@@ -1,1 +1,0 @@
-{"id":"79bf7042c577acdc5bdd17547280e59c","fullName":"everfreenote:cypress/component/features/notes/DesktopSplitView.cy.tsx#Desktop split view waits for a manual save that overlaps autosave before changing panes","name":"waits for a manual save that overlaps autosave before changing panes","status":"passed","testResultsByEnv":{"default":"bf41faa239976e0958773d7dd4ac04db"}}

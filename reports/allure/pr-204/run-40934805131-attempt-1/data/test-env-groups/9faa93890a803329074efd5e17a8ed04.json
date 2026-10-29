@@ -1,0 +1,1 @@
+{"id":"9faa93890a803329074efd5e17a8ed04","fullName":"everfreenote:ui/web/tests/unit/lib/imageDimensionSanitization.test.ts#image dimensions in sanitized note HTML drops the invalid dimension: percentage","name":"drops the invalid dimension: percentage","status":"passed","testResultsByEnv":{"default":"dcf6fae7c31e25a394067c1e89ea3a15"}}
