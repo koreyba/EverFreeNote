@@ -3,6 +3,7 @@ import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
 import { toast } from 'sonner'
 import { useMemo } from 'react'
+import { advanceNoteListRevision } from '@ui/web/lib/noteListRevision'
 
 import type { Tables } from '@/supabase/types'
 
@@ -255,6 +256,7 @@ export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCall
 
     onSuccess: async (_data, vars, context) => {
       if (context?.userId) {
+        advanceNoteListRevision(queryClient, context.userId)
         // A GET started before DELETE can otherwise restore an old list after success.
         await queryClient.cancelQueries({ queryKey: ['notes', context.userId] })
         removeConfirmedNoteFromLists(queryClient, context.userId, vars.id)

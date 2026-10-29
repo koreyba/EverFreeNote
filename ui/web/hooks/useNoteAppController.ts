@@ -34,6 +34,7 @@ import { readNoteWorkspaceState } from '@ui/web/lib/noteWorkspaceStorage'
 import { clearActiveSettingsNoteReturnPath } from '@ui/web/lib/aiIndexNavigationState'
 import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
 import { assertTagLocalState } from '@ui/web/lib/tagLocalPreflight'
+import { advanceNoteListRevision } from '@ui/web/lib/noteListRevision'
 
 
 export type EditFormState = {
@@ -570,6 +571,7 @@ export function useNoteAppController() {
     // keep rendering it (or its draft as the tab label) and typing there
     // would re-create the note.
     if (deleted && isCurrentSession(started)) {
+      if (workspaceUserId) advanceNoteListRevision(queryClient, workspaceUserId)
       clearLocalUnavailable(deletedNoteId)
       resetTabsForNotes([deletedNoteId])
       if (tabHoldingNote) {
@@ -584,7 +586,7 @@ export function useNoteAppController() {
         })
       }
     }
-  }, [clearLocalUnavailable, confirmDeleteNote, findTabByNoteId, getSessionSnapshot, isCurrentSession, noteToDelete, prepareNotesForDeletion, resetTabsForNotes, setDeleteDialogOpen, setNoteToDelete, updateTab])
+  }, [clearLocalUnavailable, confirmDeleteNote, findTabByNoteId, getSessionSnapshot, isCurrentSession, noteToDelete, prepareNotesForDeletion, queryClient, resetTabsForNotes, setDeleteDialogOpen, setNoteToDelete, updateTab, workspaceUserId])
 
   const handleDraftChange = useCallback((draft: NoteDraftSnapshot) => {
     updateTab(activeTabId, {
@@ -705,9 +707,10 @@ export function useNoteAppController() {
   // -- Bulk actions --
   const handleNotesDeleted = useCallback((noteIds: string[]) => {
     if (!workspaceUserId || !isCurrentSession(sessionSnapshot)) return
+    if (noteIds.length) advanceNoteListRevision(queryClient, workspaceUserId)
     noteIds.forEach(clearLocalUnavailable)
     resetTabsForNotes(noteIds)
-  }, [clearLocalUnavailable, isCurrentSession, resetTabsForNotes, sessionSnapshot, workspaceUserId])
+  }, [clearLocalUnavailable, isCurrentSession, queryClient, resetTabsForNotes, sessionSnapshot, workspaceUserId])
 
   const { selectAllVisible, deleteSelectedNotes, deleteNotesByIds } = useNoteBulkActions({
     userId: user?.id,

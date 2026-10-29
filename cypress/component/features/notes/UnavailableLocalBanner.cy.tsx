@@ -146,6 +146,7 @@ describe('Unavailable local-note warning with multiple notes and sessions', { re
         }
         req.reply(failedDeletes.has(id) ? { statusCode: 500, body: { message: 'Synthetic delete failure' } } : { statusCode: 204, body: '' })
       } else if (req.method === 'GET' && !id && new URL(req.url).pathname.endsWith('/notes') && holdPage) {
+        holdPage = false
         return new Cypress.Promise<void>(resolve => { heldPage = () => {
           req.reply({ body: [{ id: firstId, user_id: user.id, title: 'Old server copy', description: '<p>Old body</p>', tags: [], created_at: '2026-10-01T00:00:00.000Z', updated_at: '2026-10-01T00:00:00.000Z' }], headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' } })
           resolve()
@@ -394,6 +395,28 @@ describe('Unavailable local-note warning with multiple notes and sessions', { re
     cy.then(() => { heldPage!(); heldPage = undefined })
     cy.wrap(null).should(() => expect(refreshDone).to.equal(true))
     cy.get('[data-testid="device-sync-status"]').should('contain.text', 'unavailable on the server')
+  })
+
+  it('ignores a list response started before deletion, but displays a later restoration', () => {
+    let refreshDone = false
+    cy.then(() => webOfflineStorageAdapter.saveNote(localNote(firstId, 'First local copy')))
+    cy.mount(<SupabaseTestProvider supabase={client} user={user}><ControlledApp /></SupabaseTestProvider>)
+    cy.contains('[data-testid="note-card"] button', 'First local copy').should('be.visible')
+    cy.then(() => {
+      holdPage = true
+      void currentController.refreshNotes(new AbortController().signal).then(() => { refreshDone = true })
+    })
+    cy.wrap(null).should(() => expect(heldPage).to.be.a('function'))
+    openMissing('First local copy')
+    confirmSingleDelete()
+    cy.then(() => currentController.hideNotePane())
+    cy.contains('[data-testid="note-card"]', 'First local copy').should('not.exist')
+    cy.then(() => { heldPage!(); heldPage = undefined })
+    cy.wrap(null).should(() => expect(refreshDone).to.equal(true))
+    cy.contains('[data-testid="note-card"]', 'Old server copy').should('not.exist')
+    cy.then(() => { restoredFirst = true })
+    cy.then(() => currentController.refreshNotes(new AbortController().signal))
+    cy.contains('[data-testid="note-card"]', 'Restored on server').should('be.visible')
   })
 
   it('does not clear the new account’s warning when the previous account deletion completes late', () => {

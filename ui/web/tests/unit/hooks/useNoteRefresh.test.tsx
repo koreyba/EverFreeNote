@@ -5,6 +5,7 @@ import { OfflineCacheService } from '@core/services/offlineCache'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import type { CachedNote } from '@core/types/offline'
 import type { NoteViewModel } from '@core/types/domain'
+import { advanceNoteListRevision } from '@ui/web/lib/noteListRevision'
 
 jest.mock('sonner', () => ({ toast: { info: jest.fn() } }))
 const note: NoteViewModel = { id: 'n1', user_id: 'u1', title: 'Remote', description: '<p>Updated</p>', tags: [], created_at: '2026-09-22', updated_at: '2026-09-22' }
@@ -67,6 +68,33 @@ it('does not replace another account list after an in-flight refresh', async () 
   await act(async () => { finish({ notes: [note], totalCount: 1, hasMore: false }); await pending })
   expect(queryClient.getQueryData(['notes', 'u1', '', null])).toBeUndefined()
   expect(queryClient.getQueryData(['notes', 'u2', '', null])).toBeUndefined()
+})
+it('does not replace a newer list with an older in-flight response', async () => {
+  const { result, getNotes, queryClient, signal } = setup()
+  const queryKey = ['notes', 'u1', '', null]
+  const old = { pages: [{ notes: [note], totalCount: 1, hasMore: false }], pageParams: [0] }
+  const afterDelete = { pages: [{ notes: [], totalCount: 0, hasMore: false }], pageParams: [0] }
+  queryClient.setQueryData(queryKey, old)
+  let finish!: (page: unknown) => void
+  getNotes.mockReturnValue(new Promise(resolve => { finish = resolve }))
+  const pending = result.current.refreshList(signal)
+  queryClient.setQueryData(queryKey, afterDelete)
+  await act(async () => { finish(old.pages[0]); await pending })
+  expect(queryClient.getQueryData(queryKey)).toEqual(afterDelete)
+})
+it('ignores a pre-delete response even when the deleted note was not in the loaded page', async () => {
+  const { result, getNotes, queryClient, signal } = setup()
+  const queryKey = ['notes', 'u1', '', null]
+  const empty = { pages: [{ notes: [], totalCount: 0, hasMore: false }], pageParams: [0] }
+  queryClient.setQueryData(queryKey, empty)
+  let finish!: (page: unknown) => void
+  getNotes.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+  const pending = result.current.refreshList(signal)
+  advanceNoteListRevision(queryClient, 'u1')
+  await act(async () => { finish({ notes: [note], totalCount: 1, hasMore: false }); await pending })
+  expect(queryClient.getQueryData(queryKey)).toEqual(empty)
+  await act(async () => result.current.refreshList(signal))
+  expect(queryClient.getQueryData(queryKey)).toEqual({ pages: [{ notes: [note], totalCount: 1, hasMore: false }], pageParams: [0] })
 })
 it.each(['editing', 'tab', 'account', 'pending', 'aborted'])('ignores a late reading response after %s changes', async (change) => {
   const { result, options, getNoteStatus, rerender } = setup()

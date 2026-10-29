@@ -8,6 +8,7 @@ import type { NoteService } from '@core/services/notes'
 import type { NoteViewModel } from '@core/types/domain'
 import { SEARCH_CONFIG } from '@core/constants/search'
 import { snapshotEvidence } from '@ui/web/lib/offlineOwnership'
+import { noteListRevision } from '@ui/web/lib/noteListRevision'
 export type NoteRefreshOptions = {
   userId?: string
   tabId: string
@@ -28,28 +29,34 @@ export function useNoteRefresh(options: NoteRefreshOptions) {
 
   const refreshList = useCallback(async (signal: AbortSignal) => {
     const current = latest.current
-    if (!current.userId || signal.aborted) return
-    const page = await current.noteService.getNotes(current.userId, { page: 0, pageSize: SEARCH_CONFIG.PAGE_SIZE, signal })
-    if (signal.aborted || latest.current.userId !== current.userId) return
+    const ownerId = current.userId
+    if (!ownerId || signal.aborted) return
+    const queryKey = ['notes', ownerId, '', null]
+    const listAtStart = current.queryClient.getQueryData(queryKey)
+    const revision = noteListRevision(current.queryClient, ownerId)
+    const isCurrent = () => !signal.aborted && latest.current.userId === ownerId &&
+      noteListRevision(current.queryClient, ownerId) === revision &&
+      current.queryClient.getQueryData(queryKey) === listAtStart
+    const page = await current.noteService.getNotes(ownerId, { page: 0, pageSize: SEARCH_CONFIG.PAGE_SIZE, signal })
+    if (!isCurrent()) return
     const cached = await current.offlineCache.loadNotes()
     const visibleIds = new Set(page.notes.map(note => note.id))
     const candidates = cached.filter(note => (
-      note.user_id === current.userId && note.status === 'synced' &&
+      note.user_id === ownerId && note.status === 'synced' &&
       !note.deleted && !note.pendingOps?.length && !visibleIds.has(note.id) &&
       !latest.current.hasPendingChanges(note.id)
     ))
-    const existing = new Set(await current.noteService.getExistingNoteIds(candidates.map(note => note.id), current.userId, signal))
-    if (signal.aborted || latest.current.userId !== current.userId) return
+    const existing = new Set(await current.noteService.getExistingNoteIds(candidates.map(note => note.id), ownerId, signal))
+    if (!isCurrent()) return
     const missing = candidates.filter(note => !existing.has(note.id) && !latest.current.hasPendingChanges(note.id))
-    const queryKey = ['notes', current.userId, '', null]
     await current.queryClient.cancelQueries({ queryKey, exact: true })
-    if (signal.aborted || latest.current.userId !== current.userId) return
+    if (!isCurrent()) return
     // The existence request may have been in flight while a copy was deleted
     // or edited. Do not report its old snapshot as an unavailable copy.
     let stillMissing = missing
     if (missing.length) {
       const cachedNow = await current.offlineCache.loadNotes()
-      if (signal.aborted || latest.current.userId !== current.userId) return
+      if (!isCurrent()) return
       const currentById = new Map(cachedNow.map(note => [note.id, note]))
       stillMissing = missing.filter(note => {
         const now = currentById.get(note.id)
