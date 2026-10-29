@@ -19,6 +19,31 @@ function AppUnderTest() {
 }
 
 describe('Durable offline notes in the shared Android UI', { retries: 0 }, () => {
+  it('opens a newly saved offline draft in reading mode without losing its selection', () => {
+    cy.viewport(390, 844)
+    const client = createClient('https://offline-read.invalid', 'test-public-key', {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    })
+    cy.intercept('https://offline-read.invalid/**', req => req.destroy())
+    cy.clearLocalStorage()
+    cy.window().then(win => win.sessionStorage.clear())
+    cy.then(() => webOfflineStorageAdapter.clearAll())
+    cy.mount(<SupabaseTestProvider supabase={client} user={user}><AppUnderTest /></SupabaseTestProvider>)
+    cy.contains('button', 'New Note').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    cy.get('[placeholder="Note title"]').type('Offline read transition')
+    cy.get('.tiptap').type('Keep this saved text')
+    cy.get('[data-cy="note-read-button"]').click()
+    cy.get('[data-cy="note-edit-button"]').should('be.visible')
+    cy.get('[data-cy="note-delete-button"]').should('exist')
+    cy.contains('Keep this saved text').should('be.visible')
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(notes => {
+      expect(notes).to.have.length(1)
+      expect(notes[0].title).to.equal('Offline read transition')
+      expect(notes[0].description).to.contain('Keep this saved text')
+    })
+  })
+
   it('creates with a stale online flag, reopens from IndexedDB, and syncs the same ID after reconnect', () => {
     cy.viewport(390, 844)
     let online = false

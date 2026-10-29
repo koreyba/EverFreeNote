@@ -434,9 +434,6 @@ export function useNoteSaveHandlers({
     } else {
       await handleSaveNote(data)
     }
-    if (!selectedNote) {
-      setSelectedNote(null)
-    }
     setIsEditing(false)
   }
 

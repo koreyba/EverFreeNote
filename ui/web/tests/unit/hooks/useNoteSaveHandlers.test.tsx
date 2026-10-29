@@ -57,6 +57,24 @@ function setup(overrides: Record<string, unknown> = {}) {
 }
 
 describe('reading an unchanged note', () => {
+  it('keeps a newly saved note selected when the reading callback still has the pre-save snapshot', async () => {
+    const selectedNoteRef: { current: NoteViewModel | null } = { current: null }
+    let selectedNote: NoteViewModel | null = null
+    const setSelectedNote = jest.fn((value: NoteViewModel | null | ((previous: NoteViewModel | null) => NoteViewModel | null)) => {
+      selectedNote = typeof value === 'function' ? value(selectedNote) : value
+    })
+    const { result, params } = setup({ selectedNote: null, selectedNoteRef, setSelectedNote })
+
+    await act(async () => {
+      const draft = { title: 'Offline draft', description: 'Saved text', tags: '' }
+      await result.current.handleSaveNote(draft)
+      await result.current.handleReadNote(draft)
+    })
+
+    expect(selectedNote).toEqual(expect.objectContaining({ id: 'mock-uuid', title: 'Offline draft' }))
+    expect(params.setIsEditing).toHaveBeenCalledWith(false)
+  })
+
   it('switches to reading without creating a durable write', async () => {
     const { result, params } = setup()
 
