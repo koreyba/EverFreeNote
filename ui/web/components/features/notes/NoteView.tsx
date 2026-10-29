@@ -16,6 +16,7 @@ import { useDebouncedSessionCallback } from "@ui/web/hooks/useDebouncedSessionCa
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import type { Note } from "@core/types/domain"
 import type { NoteViewSession } from "@core/services/noteWorkspaceTabs"
+import type { RegisterViewScrollSurface } from "./viewScrollSurface"
 
 // Reading scroll fires per frame; batch updates before they hit workspace state.
 const SCROLL_SYNC_DELAY_MS = 250
@@ -38,7 +39,9 @@ interface NoteViewProps {
   initialScrollTop?: number
   onRefresh?: (signal: AbortSignal) => Promise<void>
   onViewSessionChange?: (view: Partial<NoteViewSession>) => void
-  onViewScrollCapture?: (scrollTop: number) => void
+  onViewScrollCapture?: (scrollTop: number, node: HTMLElement) => boolean | void
+  viewTabId?: string
+  registerViewScrollSurface?: RegisterViewScrollSurface
 }
 
 export const NoteView = React.memo(function NoteView({
@@ -53,6 +56,8 @@ export const NoteView = React.memo(function NoteView({
   onRefresh,
   onViewSessionChange,
   onViewScrollCapture,
+  viewTabId,
+  registerViewScrollSurface,
 }: NoteViewProps) {
   const bodyHtml = note.description || note.content || ''
 
@@ -71,13 +76,19 @@ export const NoteView = React.memo(function NoteView({
   const [expandedTagsNoteId, setExpandedTagsNoteId] = React.useState<string | null>(null)
   const tagsExpanded = expandedTagsNoteId === note.id
   const initialScrollTopRef = React.useRef(initialScrollTop)
-  // Reading mode has no synchronous capture path, so the latest scroll position
-  // is flushed when this view unmounts (tab switch, edit, close).
+  // A workspace captures the live node before transitions. Standalone readers
+  // still flush their last reported scroll when they unmount.
   const debouncedViewNotify = useDebouncedSessionCallback<Partial<NoteViewSession>>(
     onViewSessionChange,
     SCROLL_SYNC_DELAY_MS,
-    'flush',
+    registerViewScrollSurface ? 'cancel' : 'flush',
   )
+
+  React.useLayoutEffect(() => {
+    const node = contentRef.current
+    if (!node || !viewTabId || !registerViewScrollSurface) return
+    return registerViewScrollSurface(viewTabId, note.id, node, debouncedViewNotify.cancel)
+  }, [debouncedViewNotify.cancel, note.id, registerViewScrollSurface, viewTabId])
 
   React.useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -194,8 +205,7 @@ export const NoteView = React.memo(function NoteView({
           className={`scrollbar-none relative min-h-0 flex-1 overflow-y-auto pb-10 pt-6 bg-card ${findOpen ? "md:pt-36" : "md:pt-24"}`}
           onScroll={(event) => {
             const scrollTop = event.currentTarget.scrollTop
-            onViewScrollCapture?.(scrollTop)
-            debouncedViewNotify.schedule({ scrollTop })
+            if (onViewScrollCapture?.(scrollTop, event.currentTarget) !== false) debouncedViewNotify.schedule({ scrollTop })
           }}
         >
           <div className="note-document-width">

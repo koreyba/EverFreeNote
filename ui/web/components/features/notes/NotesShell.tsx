@@ -38,6 +38,7 @@ import { consumeActiveSettingsNoteReturnPath, readActiveSettingsNoteReturnPath }
 import { getTabLabel, NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
 import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMenu"
 import { SplitEmptyPane, SplitNotePreview } from "@/components/features/notes/SplitNotePreview"
+import type { RegisterViewScrollSurface } from "@/components/features/notes/viewScrollSurface"
 import { useSplitViewPreference } from "@ui/web/providers/SplitViewPreferenceProvider"
 import { DeviceSyncStatus } from "@/components/features/notes/DeviceSyncStatus"
 import { Button } from "@/components/ui/button"
@@ -56,6 +57,14 @@ type NoteRecord = Note & {
 
 type NotesShellProps = {
   controller: NoteAppController
+}
+
+type ViewScrollSession = { userId: string | null; epoch: number } | undefined
+type ViewScrollSurface = { noteId: string | null; node: HTMLElement; cancelPending: () => void; session: ViewScrollSession }
+type ViewScrollPosition = { noteId: string | null; scrollTop: number; session: ViewScrollSession }
+
+function isVisibleScrollSurface(node: HTMLElement) {
+  return node.isConnected && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== "hidden"
 }
 
 // Below this width there is not enough room for two useful note surfaces.
@@ -100,7 +109,8 @@ export function NotesShell({ controller }: NotesShellProps) {
   const [pendingSplit, setPendingSplit] = React.useState<{ leftTabId: string, rightTabId: string, session?: { userId: string | null, epoch: number } } | null>(null)
   const splitOpeningRef = React.useRef(false)
   const paneFocusTargetRef = React.useRef<string | null>(null)
-  const viewScrollsRef = React.useRef(new Map<string, { noteId: string | null, scrollTop: number }>())
+  const viewScrollsRef = React.useRef(new Map<string, ViewScrollPosition>())
+  const viewScrollSurfacesRef = React.useRef(new Map<string, ViewScrollSurface>())
 
   React.useEffect(() => {
     try {
@@ -202,19 +212,50 @@ export function NotesShell({ controller }: NotesShellProps) {
     window.addEventListener('beforeunload', beforeUnload)
     return () => window.removeEventListener('beforeunload', beforeUnload)
   }, [tabs])
-  const recordViewScroll = React.useCallback((tabId: string, noteId: string | null, scrollTop: number) => {
-    viewScrollsRef.current.set(tabId, { noteId, scrollTop })
-  }, [])
+  const registerViewScrollSurface = React.useCallback<RegisterViewScrollSurface>((tabId, noteId, node, cancelPending) => {
+    const surface = { noteId, node, cancelPending, session: getSessionSnapshot?.() }
+    viewScrollSurfacesRef.current.set(tabId, surface)
+    return () => {
+      cancelPending()
+      if (viewScrollSurfacesRef.current.get(tabId) !== surface) return
+      const tab = tabsRef.current.find(item => item.id === tabId)
+      const editing = tabId === activeTabIdRef.current && tab?.mode === "editing"
+      if (tab && tab.noteId === noteId && !editing && isCurrentSession(surface.session) && isVisibleScrollSurface(node)) {
+        const scrollTop = node.scrollTop
+        viewScrollsRef.current.set(tabId, { noteId, scrollTop, session: surface.session })
+        if (scrollTop !== tab.view.scrollTop) handleTabViewSessionChange?.(tabId, noteId, { scrollTop })
+      }
+      viewScrollSurfacesRef.current.delete(tabId)
+    }
+  }, [getSessionSnapshot, handleTabViewSessionChange, isCurrentSession])
+  const recordViewScroll = React.useCallback((tabId: string, noteId: string | null, scrollTop: number, node: HTMLElement) => {
+    const surface = viewScrollSurfacesRef.current.get(tabId)
+    const tab = tabsRef.current.find(item => item.id === tabId)
+    if (!surface || surface.node !== node || surface.noteId !== noteId || tab?.noteId !== noteId || !isCurrentSession(surface.session) || !isVisibleScrollSurface(node)) return false
+    viewScrollsRef.current.set(tabId, { noteId, scrollTop, session: surface.session })
+    return true
+  }, [isCurrentSession])
   const captureViewScrolls = React.useCallback(() => {
     for (const tab of tabsRef.current) {
+      const editing = tab.id === activeTabIdRef.current && tab.mode === "editing"
+      if (editing) continue
+      const surface = viewScrollSurfacesRef.current.get(tab.id)
+      if (surface?.noteId === tab.noteId && isCurrentSession(surface.session)) {
+        // A browser may deliver its scroll event after the user switches panes.
+        // Cancel older debounced events and read the live, visible surface.
+        surface.cancelPending()
+        if (isVisibleScrollSurface(surface.node)) {
+          viewScrollsRef.current.set(tab.id, { noteId: tab.noteId, scrollTop: surface.node.scrollTop, session: surface.session })
+        }
+      }
       const view = viewScrollsRef.current.get(tab.id)
       // A tab may have been reused for a different note since its last scroll.
       // The active editor captures its own (potentially newer) position.
-      if (view && view.noteId === tab.noteId && !(tab.id === activeTabIdRef.current && tab.mode === "editing") && view.scrollTop !== tab.view.scrollTop) {
+      if (view && view.noteId === tab.noteId && isCurrentSession(view.session) && view.scrollTop !== tab.view.scrollTop) {
         handleTabViewSessionChange?.(tab.id, tab.noteId, { scrollTop: view.scrollTop })
       }
     }
-  }, [handleTabViewSessionChange])
+  }, [handleTabViewSessionChange, isCurrentSession])
 
   React.useEffect(() => {
     registerWorkspaceViewCapture?.(captureViewScrolls)
@@ -622,11 +663,12 @@ export function NotesShell({ controller }: NotesShellProps) {
                             wordpressConfigured={wordpressConfigured}
                             pendingChunkFocus={pendingChunkFocus}
                             onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
-                            onReaderScroll={(scrollTop) => recordViewScroll(tabId, tab?.noteId ?? null, scrollTop)}
+                            onReaderScroll={(scrollTop, node) => recordViewScroll(tabId, tab?.noteId ?? null, scrollTop, node)}
+                            registerViewScrollSurface={registerViewScrollSurface}
                           />
                         )
                       ) : tab && (
-                        <SplitNotePreview tab={tab} onViewSessionChange={(view) => handleTabViewSessionChange?.(tabId, tab.noteId, view)} onViewScrollCapture={(scrollTop) => recordViewScroll(tabId, tab.noteId, scrollTop)} />
+                        <SplitNotePreview tab={tab} onViewSessionChange={(view) => handleTabViewSessionChange?.(tabId, tab.noteId, view)} onViewScrollCapture={(scrollTop, node) => recordViewScroll(tabId, tab.noteId, scrollTop, node)} registerViewScrollSurface={registerViewScrollSurface} />
                       )}
                     </section>
                   )
@@ -689,6 +731,7 @@ function EditorPane({
   pendingChunkFocus,
   onPendingChunkFocusApplied,
   onReaderScroll,
+  registerViewScrollSurface,
 }: {
   controller: NoteAppController
   onBack: () => void
@@ -696,7 +739,8 @@ function EditorPane({
   wordpressConfigured: boolean
   pendingChunkFocus: PendingChunkFocus | null
   onPendingChunkFocusApplied: (requestId: string) => void
-  onReaderScroll: (scrollTop: number) => void
+  onReaderScroll: (scrollTop: number, node: HTMLElement) => boolean | void
+  registerViewScrollSurface: RegisterViewScrollSurface
 }) {
   const {
     selectedNote,
@@ -805,6 +849,8 @@ function EditorPane({
         onRefresh={controller.refreshSelectedNote}
         onViewSessionChange={(view) => controller.handleTabViewSessionChange(activeTabId, activeTab.noteId, view)}
         onViewScrollCapture={onReaderScroll}
+        viewTabId={activeTabId}
+        registerViewScrollSurface={registerViewScrollSurface}
       />
     )
   }

@@ -7,16 +7,19 @@ import type { NoteViewSession, NoteWorkspaceTab } from "@core/services/noteWorks
 import { useDebouncedSessionCallback } from "@ui/web/hooks/useDebouncedSessionCallback"
 import { parseTagString } from "@ui/web/lib/tags"
 import { RenderedNoteContent } from "@/components/RenderedNoteContent"
+import type { RegisterViewScrollSurface } from "./viewScrollSurface"
 
 /** The inactive pane is read-only; only the active tab owns an editor. */
 export function SplitNotePreview({
   tab,
   onViewSessionChange,
   onViewScrollCapture,
+  registerViewScrollSurface,
 }: {
   tab: NoteWorkspaceTab
   onViewSessionChange: (view: Partial<NoteViewSession>) => void
-  onViewScrollCapture: (scrollTop: number) => void
+  onViewScrollCapture: (scrollTop: number, node: HTMLElement) => boolean | void
+  registerViewScrollSurface?: RegisterViewScrollSurface
 }) {
   const useDraft = tab.mode === "editing" || tab.saveState !== "saved"
   const title = useDraft ? tab.draft.title : tab.note?.title ?? ""
@@ -25,7 +28,13 @@ export function SplitNotePreview({
   const content = React.useMemo(() => SanitizationService.sanitizeForReading(body), [body])
   const contentRef = React.useRef<HTMLDivElement | null>(null)
   const initialScrollTop = React.useRef(tab.view.scrollTop)
-  const scrollNotify = useDebouncedSessionCallback(onViewSessionChange, 250, "flush")
+  const scrollNotify = useDebouncedSessionCallback(onViewSessionChange, 250, registerViewScrollSurface ? "cancel" : "flush")
+
+  React.useLayoutEffect(() => {
+    const node = contentRef.current
+    if (!node || !registerViewScrollSurface) return
+    return registerViewScrollSurface(tab.id, tab.noteId, node, scrollNotify.cancel)
+  }, [registerViewScrollSurface, scrollNotify.cancel, tab.id, tab.noteId])
 
   React.useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -48,8 +57,7 @@ export function SplitNotePreview({
         className="scrollbar-none min-h-0 flex-1 overflow-y-auto pb-10 pt-24"
         onScroll={(event) => {
           const scrollTop = event.currentTarget.scrollTop
-          onViewScrollCapture(scrollTop)
-          scrollNotify.schedule({ scrollTop })
+          if (onViewScrollCapture(scrollTop, event.currentTarget) !== false) scrollNotify.schedule({ scrollTop })
         }}
         data-cy="split-note-preview"
       >

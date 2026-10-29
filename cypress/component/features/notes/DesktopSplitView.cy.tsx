@@ -200,6 +200,77 @@ describe('Desktop split view', { retries: 0 }, () => {
     })
   })
 
+  it('captures each live pane position before delayed scroll events on activation', () => {
+    openTwoNotes()
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-right"] [data-cy="split-note-preview"]').then(($preview) => {
+      const preview = $preview[0]
+      preview.scrollTop = 200
+      preview.dispatchEvent(new Event('scroll'))
+      preview.scrollTop = 600
+      expect(preview.scrollTop, 'live preview position before activation').to.be.greaterThan(500)
+      const pane = preview.closest('[data-testid="split-pane-right"]')
+      if (!pane) throw new Error('Missing right pane')
+      const activate = pane.querySelector<HTMLButtonElement>('button[aria-label^="Activate"]')
+      if (!activate) throw new Error('Missing activation button')
+      activate.click()
+    })
+    cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
+      expect($reader[0].scrollTop, 'active reader restores the live preview position').to.be.greaterThan(500)
+    }).then(($reader) => {
+      const reader = $reader[0]
+      reader.scrollTop = 800
+      reader.dispatchEvent(new Event('scroll'))
+      reader.scrollTop = 1200
+      expect(reader.scrollTop, 'live reader position before activation').to.be.greaterThan(1000)
+      const activate = reader.ownerDocument.querySelector<HTMLButtonElement>('[data-testid="split-pane-left"] button[aria-label^="Activate"]')
+      if (!activate) throw new Error('Missing activation button')
+      activate.click()
+    })
+    cy.get('[data-testid="split-pane-right"] [data-cy="split-note-preview"]').should(($preview) => {
+      expect($preview[0].scrollTop, 'inactive preview restores the live reader position').to.be.greaterThan(1000)
+    })
+    cy.get('[data-cy="workspace-split-button"]').click()
+    cy.get('[data-cy="workspace-split-button"]').click()
+    cy.get('[data-testid="split-pane-right"] [data-cy="split-note-preview"]').should(($preview) => {
+      expect($preview[0].scrollTop, 'closing and reopening split preserves the position').to.be.greaterThan(1000)
+    })
+  })
+
+  it('captures the live left pane position before delayed scroll events on activation', () => {
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.get('[data-cy="workspace-split-button"]').click()
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Second note').click()
+    cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').then(($preview) => {
+      const preview = $preview[0]
+      preview.scrollTop = 200
+      preview.dispatchEvent(new Event('scroll'))
+      preview.scrollTop = 600
+      expect(preview.scrollTop, 'live left preview position before activation').to.be.greaterThan(500)
+      const pane = preview.closest('[data-testid="split-pane-left"]')
+      if (!pane) throw new Error('Missing left pane')
+      const activate = pane.querySelector<HTMLButtonElement>('button[aria-label^="Activate"]')
+      if (!activate) throw new Error('Missing activation button')
+      activate.click()
+    })
+    cy.get('[data-testid="split-pane-left"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
+      expect($reader[0].scrollTop, 'left reader restores the live preview position').to.be.greaterThan(500)
+    }).then(($reader) => {
+      const reader = $reader[0]
+      reader.scrollTop = 800
+      reader.dispatchEvent(new Event('scroll'))
+      reader.scrollTop = 1200
+      expect(reader.scrollTop, 'live left reader position before activation').to.be.greaterThan(1000)
+      const activate = reader.ownerDocument.querySelector<HTMLButtonElement>('[data-testid="split-pane-right"] button[aria-label^="Activate"]')
+      if (!activate) throw new Error('Missing activation button')
+      activate.click()
+    })
+    cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').should(($preview) => {
+      expect($preview[0].scrollTop, 'left preview restores the live reader position').to.be.greaterThan(1000)
+    })
+  })
+
   it('does not apply the previous note scroll position to another note in the same tab', () => {
     openTwoNotes()
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
@@ -211,6 +282,31 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
     cy.get('[data-testid="split-pane-right"] [data-cy="split-note-preview"]').should(($surface) => {
       expect($surface[0].scrollTop).to.equal(0)
+    })
+  })
+
+  it('does not apply delayed scroll from the previous note to its replacement', () => {
+    openTwoNotes()
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').then(($reader) => {
+      const reader = $reader[0]
+      reader.scrollTop = 200
+      reader.dispatchEvent(new Event('scroll'))
+      reader.scrollTop = 800
+      expect(reader.scrollTop, 'old note is scrolled').to.be.greaterThan(500)
+      const buttons = reader.ownerDocument.querySelectorAll<HTMLButtonElement>('[data-testid="sidebar-container"] [data-testid="note-card"] button')
+      const replacement = Array.from(buttons).find(button => button.textContent?.includes('Other long note'))
+      if (!replacement) throw new Error('Missing replacement note')
+      replacement.click()
+    })
+    cy.get('[data-testid="split-pane-right"]').should('contain.text', 'Other long note')
+    cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
+      expect($reader[0].scrollTop, 'replacement starts at the top').to.equal(0)
+    })
+    cy.tick(500)
+    cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
+      expect($reader[0].scrollTop, 'delayed old-note event does not change the replacement').to.equal(0)
     })
   })
 
