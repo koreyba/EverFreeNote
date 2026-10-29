@@ -50,6 +50,7 @@ type SessionSnapshot = { userId: string | null; epoch: number } | undefined
 
 const ownerlessNotice = 'Some cached notes have an unknown account and could not be reconciled. They are kept locally; changes affecting them are blocked.'
 const ownerlessBlock = 'Some cached notes with an unknown account would be changed. They were kept for safety.'
+const unavailableOwnedBlock = 'Some local copies are unavailable on the server and would be changed. They were kept for safety.'
 
 function changeTouchesCachedNotes(change: TagChange, notes: CachedNote[]): boolean {
   return change(notes).some((note, index) => note !== notes[index])
@@ -271,6 +272,23 @@ export function useNoteAppController() {
   // -- Infrastructure --
   const queryClient = useQueryClient()
   const noteService = useMemo(() => new NoteService(supabase), [supabase])
+  const verifyLegacyNotes = useCallback((ids: string[], ownerId: string) => noteService.getNotesByIds(ids, ownerId), [noteService])
+  const [unavailableLocal, setUnavailableLocal] = useState<{ userId: string | null; ids: Set<string> }>({ userId: null, ids: new Set() })
+  const markLocalUnavailable = useCallback((ids: string[]) => {
+    if (!workspaceUserId || !ids.length) return
+    setUnavailableLocal(previous => ({
+      userId: workspaceUserId,
+      ids: new Set([...(previous.userId === workspaceUserId ? previous.ids : []), ...ids]),
+    }))
+  }, [workspaceUserId])
+  const clearLocalUnavailable = useCallback((id: string) => {
+    setUnavailableLocal(previous => {
+      if (previous.userId !== workspaceUserId || !previous.ids.has(id)) return previous
+      const ids = new Set(previous.ids)
+      ids.delete(id)
+      return { ...previous, ids }
+    })
+  }, [workspaceUserId])
   const createNoteMutation = useCreateNote()
   const updateNoteMutation = useUpdateNote()
   const deleteNoteMutation = useDeleteNote()
@@ -280,6 +298,13 @@ export function useNoteAppController() {
   const {
     offlineOverlay,
     setOfflineOverlay,
+    syncStateReady,
+    storageReadError,
+    legacyUnverifiedCount,
+    unqueuedLocalCount,
+    unavailableRemoteEdits: queuedRemoteUnavailable,
+    legacyClaimBlocked,
+    retryLocalVerification,
     pendingCount,
     setPendingCount,
     failedCount,
@@ -292,10 +317,12 @@ export function useNoteAppController() {
     enqueueBatchAndDrainIfOnline,
     offlineQueueRef
   } = useNoteSync({
-    user,
+    user: workspaceUserId ? user : null,
     createNoteMutation,
     updateNoteMutation,
-    deleteNoteMutation
+    deleteNoteMutation,
+    verifyLegacyNotes,
+    getSessionSnapshot,
   })
 
   // -- Search --
@@ -323,16 +350,16 @@ export function useNoteAppController() {
     tagOnlyHasMore,
     tagOnlyLoadingMore,
     loadMoreTagOnly,
-  } = useNoteSearch(user?.id)
+  } = useNoteSearch(workspaceUserId ?? undefined)
 
   // -- Notes query --
   const notesQuery = useNotesQuery({
-    userId: user?.id,
+    userId: workspaceUserId ?? undefined,
     // Main notes list must stay stable while search is rendered in SearchResultsPanel.
     searchQuery: '',
     // Tag filtering is now scoped to search panel results only.
     selectedTag: null,
-    enabled: !!user,
+    enabled: !!workspaceUserId,
   })
 
   // -- Computed note data --
@@ -379,33 +406,38 @@ export function useNoteAppController() {
   ), [offlineOverlay])
 
   const { refreshList: refreshNotes, refreshNote: refreshSelectedNote } = useNoteRefresh({
-    userId: user?.id,
+    userId: workspaceUserId ?? undefined,
     tabId: activeTabId,
     note: selectedNote ?? undefined,
     isEditing,
     noteService,
     queryClient,
     offlineCache,
+    onCachedNotesUnavailable: missing => markLocalUnavailable(missing.map(note => note.id)),
     hasPendingChanges: id => hasPendingLocalWrites(id) || tabs.some(tab => (
       tab.noteId === id && (tab.saveState !== 'saved' ||
         (tab.mode === 'editing' && tab.id === activeTabId && notePaneVisible))
     )),
-    onCachedNotesRemoved: removed => {
-      const revisions = new Map(removed.map(note => [note.id, note.updatedAt]))
-      setOfflineOverlay(current => current.filter(note => (
-        revisions.get(note.id) !== note.updatedAt || note.status !== 'synced' || Boolean(note.pendingOps?.length)
-      )))
-      resetTabsForNotes(removed.map(note => note.id))
-      if (selectedNote && revisions.has(selectedNote.id)) setNotePaneVisible(false)
+    onNoteRefreshed: (note) => {
+      clearLocalUnavailable(note.id)
+      updateTab(activeTabId, {
+        note,
+        draft: { title: note.title, description: note.description ?? '', tags: (note.tags ?? []).join(', ') },
+      })
     },
-    onNoteRefreshed: (note) => updateTab(activeTabId, {
-      note,
-      draft: { title: note.title, description: note.description ?? '', tags: (note.tags ?? []).join(', ') },
-    }),
     onNoteDeleted: async (id) => {
+      const started = getSessionSnapshot?.()
+      const cached = (await offlineCache.loadNotes()).find(note => note.id === id && note.user_id === workspaceUserId)
+      if (!isCurrentSession(started)) return
+      if (cached || (selectedNote?.id === id && selectedNote.user_id === workspaceUserId)) {
+        markLocalUnavailable([id])
+        toast.info(cached
+          ? 'This note is unavailable on the server. Its local copy remains on this device.'
+          : 'This note is unavailable on the server. Copy the open contents before closing it.')
+        return
+      }
       resetTabsForNotes([id])
       setNotePaneVisible(false)
-      await offlineCache.deleteNote(id)
       setOfflineOverlay((current) => current.filter((note) => note.id !== id))
       await queryClient.invalidateQueries({ queryKey: ['notes', user?.id] })
       toast.info('This note was deleted on another device.')
@@ -422,6 +454,7 @@ export function useNoteAppController() {
       const remoteResult = await noteService.getNoteStatus(note.id)
       if (!isCurrentSession(started)) return null
       if (remoteResult.status === 'found') {
+        clearLocalUnavailable(note.id)
         return pickLatestNote([
           mergeNoteFields(note, remoteResult.note),
           note,
@@ -429,10 +462,16 @@ export function useNoteAppController() {
       }
 
       if (remoteResult.status === 'not_found') {
-        await offlineCache.deleteNote(note.id)
+        const cached = (await offlineCache.loadNotes()).find(entry => entry.id === note.id && entry.user_id === workspaceUserId)
         if (!isCurrentSession(started)) return null
-        setOfflineOverlay((current) => current.filter((cachedNote) => cachedNote.id !== note.id))
-        toast.error('This note was deleted on another device.')
+        if (cached || note.user_id === workspaceUserId) {
+          markLocalUnavailable([note.id])
+          toast.info(cached
+            ? 'This note is unavailable on the server. Opening the local copy; copy its contents into a new note to restore it.'
+            : 'This note is unavailable on the server. Copy the open contents before closing it.')
+          return note
+        }
+        toast.error('This note is unavailable on the server.')
         queryClient.invalidateQueries({ queryKey: ['notes'] }).catch(() => {})
         queryClient.invalidateQueries({ queryKey: ['aiSearch'] }).catch(() => {})
         return null
@@ -445,7 +484,7 @@ export function useNoteAppController() {
     }
 
     return note
-  }, [getSessionSnapshot, hasPendingLocalWrites, isCurrentSession, isOffline, noteService, offlineCache, setOfflineOverlay, queryClient])
+  }, [getSessionSnapshot, hasPendingLocalWrites, isCurrentSession, isOffline, noteService, offlineCache, queryClient, workspaceUserId, markLocalUnavailable, clearLocalUnavailable])
 
   // -- Save handlers --
   const {
@@ -1159,7 +1198,7 @@ export function useNoteAppController() {
       : null
   )
 
-  const verifyTagSnapshot = useCallback(async (started: SessionSnapshot): Promise<{ notes: NoteViewModel[]; ownerless: CachedNote[] }> => {
+  const verifyTagSnapshot = useCallback(async (started: SessionSnapshot): Promise<{ notes: NoteViewModel[]; ownerless: CachedNote[]; unavailableOwned: CachedNote[] }> => {
     assertTagSession(started)
     if (!user) throw new Error('Sign in to manage tags.')
     if (!workspaceHydrated) throw new Error('Restoring open notes. Please wait before managing tags.')
@@ -1214,11 +1253,12 @@ export function useNoteAppController() {
     if (latestQueue.length || hasUnsyncedCachedNotes(latestCached, user.id)) {
       throw new Error('Finish syncing your notes before managing tags.')
     }
-    const ownerless = latestCached.filter((note) => !note.user_id && !note.deleted && !verifiedIds.has(note.id))
-    setTagCoverageNotice(ownerless.length ? ownerlessNotice : null)
+    const ownerless = latestCached.filter((note) => !note.user_id && !note.deleted)
+    const unavailableOwned = latestCached.filter((note) => note.user_id === user.id && !note.deleted && !verifiedIds.has(note.id))
+    setTagCoverageNotice(ownerless.length ? ownerlessNotice : unavailableOwned.length ? 'Some local copies are unavailable on the server and remain on this device.' : null)
     setTagCoveragePages(pages)
     setTagCoverageMessage(null)
-    return { notes: loadedNotes as NoteViewModel[], ownerless }
+    return { notes: loadedNotes as NoteViewModel[], ownerless, unavailableOwned }
   }, [assertTagSession, user, workspaceHydrated, isOffline, saving, autoSaving, tabs, offlineQueueRef, offlineCache, notesQuery, supabase, noteService])
 
   const loadMoreTagNotes = useCallback(async () => {
@@ -1297,25 +1337,19 @@ export function useNoteAppController() {
     const ownerless = missing.filter((note) => !note.user_id)
     if (changeTouchesCachedNotes(change, ownerless)) throw new Error(ownerlessBlock)
     const missingOwned = missing.filter((note) => note.user_id === user.id)
+    if (changeTouchesCachedNotes(change, missingOwned)) throw new Error(unavailableOwnedBlock)
     const patches = candidates.filter((note) => remoteTags.has(note.id))
       .map((expected) => ({ expected, tags: remoteTags.get(expected.id)! }))
     const updated = await offlineCache.patchSyncedTags(patches)
     assertTagSession(started)
     if (updated.length !== patches.length) throw new Error('Some cached notes could not be refreshed safely.')
-    // This conditional transaction checks the cache snapshot and queue again,
-    // protecting a draft or queued write that arrived during the server reads.
-    const removed = missingOwned.length ? await offlineCache.removeSyncedNotes(missingOwned) : []
-    assertTagSession(started)
     const updatedSet = new Set(updated)
-    const removedSet = new Set(removed)
     const snapshots = new Map(candidates.map((note) => [note.id, note]))
     setOfflineOverlay((previous) => previous.flatMap((note) => {
       const expected = snapshots.get(note.id)
       if (!expected || JSON.stringify(note) !== JSON.stringify(expected)) return [note]
-      if (removedSet.has(note.id)) return []
       return updatedSet.has(note.id) ? [{ ...note, tags: remoteTags.get(note.id)! }] : [note]
     }))
-    if (removed.length !== missingOwned.length) throw new Error('Some cached notes changed while refreshing. Try again.')
     updateSavedTags(refreshedOpen.map((note) => ({ id: note.id, tags: note.tags ?? [] })))
     await notesQuery.refetch({ throwOnError: true })
     assertTagSession(started)
@@ -1330,9 +1364,11 @@ export function useNoteAppController() {
     if (finalQueue.length || hasUnsyncedCachedNotes(finalCached, user.id)) {
       throw new Error('Finish syncing your notes before managing tags.')
     }
-    const unverifiedOwnerless = finalCached.filter((note) => !note.user_id && !note.deleted && !remoteTags.has(note.id))
+    const unverifiedOwnerless = finalCached.filter((note) => !note.user_id && !note.deleted)
+    const finalMissingOwned = finalCached.filter((note) => note.user_id === user.id && !note.deleted && !remoteTags.has(note.id))
     if (changeTouchesCachedNotes(change, unverifiedOwnerless)) throw new Error(ownerlessBlock)
-    setTagCoverageNotice(unverifiedOwnerless.length ? ownerlessNotice : null)
+    if (changeTouchesCachedNotes(change, finalMissingOwned)) throw new Error(unavailableOwnedBlock)
+    setTagCoverageNotice(unverifiedOwnerless.length ? ownerlessNotice : finalMissingOwned.length ? 'Some local copies are unavailable on the server and remain on this device.' : null)
   }, [assertTagSession, user, tabs, noteService, offlineCache, offlineQueueRef, setOfflineOverlay, updateSavedTags, notesQuery, queryClient])
 
   const checkTagCoverage = useCallback(async () => {
@@ -1391,6 +1427,7 @@ export function useNoteAppController() {
           recoveredPending = true
         }
         if (changeTouchesCachedNotes(change, snapshot.ownerless)) throw new Error(ownerlessBlock)
+        if (changeTouchesCachedNotes(change, snapshot.unavailableOwned)) throw new Error(unavailableOwnedBlock)
         const current = snapshot.notes
         const updated = change(current)
         if (updated.every((note, index) => note === current[index])) {
@@ -1538,6 +1575,13 @@ export function useNoteAppController() {
     totalNotes: notesTotal,
     notesDisplayed,
     notesTotal,
+    syncStateReady,
+    storageReadError,
+    legacyUnverifiedCount,
+    unqueuedLocalCount,
+    unavailableRemoteEdits: queuedRemoteUnavailable || Boolean(workspaceUserId && unavailableLocal.userId === workspaceUserId && unavailableLocal.ids.size),
+    legacyClaimBlocked,
+    retryLocalVerification,
     pendingCount,
     failedCount,
     lastSavedAt,

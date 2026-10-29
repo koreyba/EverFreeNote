@@ -28,7 +28,7 @@ const mockSetOfflineOverlay = jest.fn()
 // Module mocks — organised by layer
 // ---------------------------------------------------------------------------
 
-jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() } }))
+jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn() } }))
 
 jest.mock('@core/services/notes', () => ({
   NoteService: jest.fn().mockImplementation(() => ({
@@ -255,29 +255,20 @@ describe('useNoteAppController — remote delete consistency', () => {
       )
     })
 
-    it('online + note not_found → toast, cache cleanup, query invalidation, no selection', async () => {
+    it('online + note not_found → keeps the owned open copy and explains it is not durable', async () => {
       const note = makeNote()
       mockGetNoteStatus.mockResolvedValue({ status: 'not_found' })
 
       const wrapper = createWrapper()
       const { result } = renderHook(() => useNoteAppController(), { wrapper })
 
-      const invalidateSpy = jest
-        .spyOn(testQueryClient, 'invalidateQueries')
-        .mockResolvedValue(undefined)
-
       await act(async () => {
         await result.current.handleSelectNote(note)
       })
 
-      expect(toast.error).toHaveBeenCalledWith(
-        'This note was deleted on another device.',
-      )
-      expect(mockDeleteNoteFromCache).toHaveBeenCalledWith('note-1')
-      expect(mockSetOfflineOverlay).toHaveBeenCalledWith(expect.any(Function))
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notes'] })
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['aiSearch'] })
-      expect(mockHandleSelectNote).not.toHaveBeenCalled()
+      expect(toast.info).toHaveBeenCalledWith(expect.stringContaining('Copy the open contents before closing it'))
+      expect(mockDeleteNoteFromCache).not.toHaveBeenCalled()
+      expect(mockHandleSelectNote).toHaveBeenCalledWith(note)
     })
 
     it('offline → bypasses server check and selects the note', async () => {
@@ -320,10 +311,10 @@ describe('useNoteAppController — remote delete consistency', () => {
   })
 
   // -----------------------------------------------------------------------
-  // wrappedHandleEditNote (the fix: handleSelectNote(null) on deleted note)
+  // wrappedHandleEditNote
   // -----------------------------------------------------------------------
   describe('wrappedHandleEditNote', () => {
-    it('note deleted remotely → clears selection via handleSelectNote(null)', async () => {
+    it('note missing remotely → keeps the owned local copy available for editing', async () => {
       const note = makeNote()
       mockGetNoteStatus.mockResolvedValue({ status: 'not_found' })
 
@@ -335,8 +326,8 @@ describe('useNoteAppController — remote delete consistency', () => {
         await result.current.handleEditNote(note)
       })
 
-      expect(mockHandleSelectNote).toHaveBeenCalledWith(null)
-      expect(mockHandleEditNoteRaw).not.toHaveBeenCalled()
+      expect(mockDeleteNoteFromCache).not.toHaveBeenCalled()
+      expect(mockHandleEditNoteRaw).toHaveBeenCalledWith(note)
     })
 
     it('note found on server → enters edit mode', async () => {

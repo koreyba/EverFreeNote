@@ -13,8 +13,8 @@ export type NoteRefreshOptions = {
   note?: NoteViewModel
   isEditing: boolean
   noteService: Pick<NoteService, 'getNotes' | 'getNoteStatus' | 'getExistingNoteIds'>
-  offlineCache: Pick<OfflineCacheService, 'loadNotes' | 'removeSyncedNotes'>
-  onCachedNotesRemoved: (notes: CachedNote[]) => void
+  offlineCache: Pick<OfflineCacheService, 'loadNotes'>
+  onCachedNotesUnavailable: (notes: CachedNote[]) => void
   queryClient: QueryClient
   hasPendingChanges: (id: string) => boolean
   onNoteRefreshed: (note: NoteViewModel) => void
@@ -32,7 +32,7 @@ export function useNoteRefresh(options: NoteRefreshOptions) {
     const cached = await current.offlineCache.loadNotes()
     const visibleIds = new Set(page.notes.map(note => note.id))
     const candidates = cached.filter(note => (
-      (!note.user_id || note.user_id === current.userId) && note.status === 'synced' &&
+      note.user_id === current.userId && note.status === 'synced' &&
       !note.deleted && !note.pendingOps?.length && !visibleIds.has(note.id) &&
       !latest.current.hasPendingChanges(note.id)
     ))
@@ -42,10 +42,11 @@ export function useNoteRefresh(options: NoteRefreshOptions) {
     const queryKey = ['notes', current.userId, '', null]
     await current.queryClient.cancelQueries({ queryKey, exact: true })
     if (signal.aborted || latest.current.userId !== current.userId) return
-    const removedIds = new Set(await current.offlineCache.removeSyncedNotes(missing, signal))
-    if (signal.aborted || latest.current.userId !== current.userId) return
-    const removed = missing.filter(note => removedIds.has(note.id) && !latest.current.hasPendingChanges(note.id))
-    if (removed.length) latest.current.onCachedNotesRemoved(removed)
+    // A missing response does not establish that this is a disposable copy.
+    if (missing.length) {
+      latest.current.onCachedNotesUnavailable(missing)
+      toast.info('Some local copies are unavailable on the server and remain on this device.')
+    }
     current.queryClient.setQueryData(queryKey, { pages: [page], pageParams: [0] })
   }, [])
 

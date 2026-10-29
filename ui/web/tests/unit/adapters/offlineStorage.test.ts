@@ -45,6 +45,29 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
     localStorage.clear()
   })
 
+  it('keeps unreadable fallback notes and queue intact instead of treating them as empty', async () => {
+    localStorage.setItem('offline_notes', '{broken')
+    localStorage.setItem('offline_queue', '{also-broken')
+    await expect(webOfflineStorageAdapter.loadNotes()).rejects.toThrow('could not be read')
+    await expect(webOfflineStorageAdapter.getQueue()).rejects.toThrow('could not be read')
+    await expect(webOfflineStorageAdapter.saveNotes([])).rejects.toThrow('could not be read')
+    await expect(webOfflineStorageAdapter.upsertQueue([])).rejects.toThrow('could not be read')
+    expect(localStorage.getItem('offline_notes')).toBe('{broken')
+    expect(localStorage.getItem('offline_queue')).toBe('{also-broken')
+  })
+
+  it('only cleans a matching owned synced tombstone with no queued changes', async () => {
+    const removed = makeNote('deleted', '2026-01-01T00:00:00Z', { user_id: 'owner-a', status: 'synced', deleted: true })
+    const changed = { ...removed, id: 'changed', title: 'Newer content' }
+    const queued = { ...removed, id: 'queued' }
+    const unknown = { ...removed, id: 'unknown', user_id: undefined }
+    await webOfflineStorageAdapter.saveNotes([removed, changed, queued, unknown])
+    await webOfflineStorageAdapter.upsertQueueItem({ ...makeQueueItem('queued-op'), noteId: queued.id })
+    const result = await webOfflineStorageAdapter.removeSyncedTombstones!([removed, { ...changed, title: 'Old content' }, queued, unknown])
+    expect(result).toEqual(['deleted'])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([changed, queued, unknown])
+  })
+
   afterEach(() => {
     jest.restoreAllMocks()
   })
@@ -194,12 +217,12 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
     ])
   })
 
-  it('ignores malformed stored JSON and clears both stores', async () => {
+  it('reports malformed stored JSON until an explicit clear', async () => {
     localStorage.setItem('offline_notes', '{not json')
     localStorage.setItem('offline_queue', '{not json')
 
-    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([])
-    expect(await webOfflineStorageAdapter.getQueue()).toEqual([])
+    await expect(webOfflineStorageAdapter.loadNotes()).rejects.toThrow('could not be read')
+    await expect(webOfflineStorageAdapter.getQueue()).rejects.toThrow('could not be read')
 
     await webOfflineStorageAdapter.clearAll()
 

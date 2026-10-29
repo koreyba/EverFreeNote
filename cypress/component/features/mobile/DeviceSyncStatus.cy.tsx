@@ -60,9 +60,9 @@ describe('Device sync status', { retries: 0 }, () => {
     cy.get('.tiptap').type(' Offline draft')
     cy.then(() => waitForQueue(statuses => statuses.includes('pending')))
     cy.get('[data-testid="device-sync-status"]')
-      .should('be.visible').and('have.attr', 'role', 'status')
-      .and('have.attr', 'aria-live', 'polite').and('have.attr', 'aria-atomic', 'true')
+      .should('be.visible')
       .and('contain.text', 'Offline').and('contain.text', 'waiting')
+    cy.get('[data-testid="device-sync-status"] [role="status"]').should('have.attr', 'aria-live', 'polite').and('have.attr', 'aria-atomic', 'true')
     cy.contains('Last local save (any note):', { timeout: 10000 }).should('be.visible')
     cy.screenshot('sync-status-mobile-edit', { capture: 'viewport' })
 
@@ -129,5 +129,46 @@ describe('Device sync status', { retries: 0 }, () => {
     cy.get('[data-testid="device-sync-status"]', { timeout: 10000 }).should('have.class', 'sr-only')
       .and('contain.text', 'No waiting or failed changes reported').and('not.contain.text', 'Synchronized')
     cy.then(() => expect(remote.description).to.contain('Unsynced change'))
+  })
+
+  it('retries an owned offline create after a temporary 503 without changing its ID', () => {
+    cy.viewport(390, 700)
+    const id = crypto.randomUUID()
+    let attempts = 0
+    let failing = true
+    let remote: typeof note | null = null
+    const client = createClient('https://device-create.invalid', 'test-public-key', {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    })
+    cy.intercept('https://device-create.invalid/**', req => {
+      if (!req.url.includes('/rest/v1/notes')) { req.reply({ body: [] }); return }
+      if (req.method === 'POST') {
+        req.alias = 'syncCreate'
+        attempts += 1
+        if (failing) { req.reply({ statusCode: 503, body: { message: 'temporary outage' } }); return }
+        const body = Array.isArray(req.body) ? req.body[0] : req.body
+        remote = { ...note, ...body }
+        req.reply({ statusCode: 201, body: remote })
+        return
+      }
+      const single = String(req.headers.accept).includes('application/vnd.pgrst.object')
+      req.reply({ body: single ? remote : remote ? [remote] : [], headers: { 'content-range': remote ? '0-0/1' : '*/0', 'access-control-expose-headers': 'content-range' } })
+    })
+    cy.clearLocalStorage()
+    cy.window().then(win => { win.sessionStorage.clear(); win.dispatchEvent(new win.Event('online')) })
+    cy.then(async () => {
+      await webOfflineStorageAdapter.clearAll()
+      await webOfflineStorageAdapter.saveNote({ ...note, id, status: 'pending', updatedAt: note.updated_at })
+      await webOfflineStorageAdapter.upsertQueueItem({ id: 'offline-create', noteId: id, operation: 'create', payload: { user_id: user.id, title: note.title, description: note.description, tags: note.tags }, clientUpdatedAt: note.updated_at, status: 'pending' })
+    })
+    cy.mount(<SupabaseTestProvider supabase={client} user={user}><App /></SupabaseTestProvider>)
+    cy.wait('@syncCreate')
+    cy.then(() => waitForQueue(statuses => statuses.includes('failed')))
+    cy.get('[data-testid="device-sync-status"]').should('contain.text', '1 failed')
+    cy.then(() => { failing = false })
+    cy.window().then(win => win.dispatchEvent(new win.Event('focus')))
+    cy.wait('@syncCreate')
+    cy.then(() => waitForQueue(statuses => statuses.length === 0))
+    cy.then(() => { expect(attempts).to.be.at.least(2); expect(remote).to.have.property('id', id) })
   })
 })

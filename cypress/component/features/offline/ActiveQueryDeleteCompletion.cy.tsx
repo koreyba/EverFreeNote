@@ -4,6 +4,7 @@ import { toast, Toaster } from 'sonner'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { NoteViewModel } from '@core/types/domain'
 import { useNoteSync } from '@ui/web/hooks/useNoteSync'
+import { OfflineSyncManager } from '@core/services/offlineSyncManager'
 import { useNoteData } from '@ui/web/hooks/useNoteData'
 import { useDeleteNote } from '@ui/web/hooks/useNotesMutations'
 import { useNoteBulkActions } from '@ui/web/hooks/useNoteBulkActions'
@@ -114,11 +115,10 @@ describe('Deletion completes independently from active list refetch', { retries:
     getGate = new Promise(resolve => { allowGet = resolve })
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } })
     cy.then(() => storage.clearAll())
-    const original = storage.getPendingBatch.bind(storage)
-    cy.stub(storage, 'getPendingBatch').callsFake(async size => {
-      const batch = await original(size)
-      if (!batch.length) idle = true
-      return batch
+    const original = OfflineSyncManager.prototype.drainQueue
+    cy.stub(OfflineSyncManager.prototype, 'drainQueue').callsFake(async function (this: OfflineSyncManager) {
+      await original.call(this)
+      idle = true
     })
     cy.spy(toast, 'success').as('success')
   })

@@ -1221,7 +1221,7 @@ describe('useNoteAppController additional observable behavior', () => {
     expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
   })
 
-  it('removes an unchanged synced cache entry confirmed absent on the server', async () => {
+  it('retains a synced local copy absent on the server during an unrelated tag change', async () => {
     const note = makeNote({ id: 'present', tags: ['old'] })
     const cached = { ...makeNote({ id: 'deleted' }), status: 'synced' as const, updatedAt: '2024-01-01T00:00:00Z' }
     mockNotes = [note]
@@ -1232,8 +1232,23 @@ describe('useNoteAppController additional observable behavior', () => {
     await act(async () => { await result.current.handleRenameTag('old', 'new') })
 
     expect(mockGetExistingNoteIds).toHaveBeenCalledWith([cached.id], 'user-1')
-    expect(mockRemoveSyncedNotes).toHaveBeenCalledWith([cached])
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('blocks a tag change that would affect a missing owned local copy', async () => {
+    const note = makeNote({ id: 'present', tags: ['old'] })
+    const cached = { ...makeNote({ id: 'missing', tags: ['old'] }), status: 'synced' as const, updatedAt: '2024-01-01T00:00:00Z' }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValue([cached])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => ids.filter((id: string) => id === note.id))
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toContain('Some local copies are unavailable on the server')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
   })
 
   it('retains cached content and reports an unconfirmed change when absence cannot be verified', async () => {
@@ -1451,7 +1466,7 @@ describe('useNoteAppController additional observable behavior', () => {
   })
 })
 
-describe('Refresh preserves workspace drafts while removing saved hidden notes', () => {
+describe('Refresh preserves workspace drafts and locally saved hidden notes', () => {
   it.each(['dirty', 'saving', 'error', 'saved'] as const)(
     'reconciles a hidden tab with save state %s', async saveState => {
       window.sessionStorage.clear()
@@ -1473,14 +1488,9 @@ describe('Refresh preserves workspace drafts while removing saved hidden notes',
       const { result } = setup()
       await act(async () => result.current.refreshNotes(new AbortController().signal))
       const editor = result.current.tabs.find(tab => tab.id === 'editor-tab')
-      if (saveState === 'saved') {
-        expect(editor?.noteId).toBeNull()
-        expect(editor?.draft.title).toBe('')
-      } else {
-        expect(editor?.noteId).toBe(note.id)
-        expect(editor?.draft.description).toBe('<p>Keep this text</p>')
-        expect(editor?.saveState).toBe(saveState)
-      }
+      expect(editor?.noteId).toBe(note.id)
+      expect(editor?.draft.description).toBe('<p>Keep this text</p>')
+      expect(editor?.saveState).toBe(saveState)
     },
   )
 })

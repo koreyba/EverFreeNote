@@ -44,6 +44,12 @@ export interface OfflineStorageAdapter {
   deleteNote(noteId: string): Promise<void>
   /** Atomically remove unchanged synced snapshots with no queued writes. */
   removeSyncedNotes?(notes: CachedNote[], signal?: AbortSignal): Promise<string[]>
+  /** Remove unchanged, owned deletion tombstones when no operation remains for them. */
+  removeSyncedTombstones?(notes: CachedNote[], signal?: AbortSignal): Promise<string[]>
+  /** Persist proven ownership of an unchanged legacy snapshot before its operation is acknowledged. */
+  claimLegacySnapshot?(note: CachedNote, item: MutationQueueItem, ownerId: string, signal?: AbortSignal): Promise<boolean>
+  /** Return legacy snapshot IDs with a durable owner claim matching their current contents. */
+  getLegacyClaims?(ownerId: string, notes: CachedNote[]): Promise<string[]>
   /** Atomically update tags only when each cached snapshot is still synced and unqueued. */
   patchSyncedTags?(patches: Array<{ expected: CachedNote; tags: string[] }>): Promise<string[]>
   getQueue(): Promise<MutationQueueItem[]>

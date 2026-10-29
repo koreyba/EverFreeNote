@@ -33,6 +33,9 @@ jest.mock('@core/services/offlineQueue', () => ({
 jest.mock('@core/services/offlineCache', () => ({
   OfflineCacheService: jest.fn().mockImplementation(() => ({
     markSynced: jest.fn(),
+    removeSyncedTombstones: jest.fn().mockResolvedValue([]),
+    getLegacyClaims: jest.fn().mockResolvedValue([]),
+    claimLegacySnapshot: jest.fn().mockResolvedValue(true),
     saveNote: jest.fn(),
     loadNotes: jest.fn().mockResolvedValue([]),
     deleteNote: jest.fn(),
@@ -56,7 +59,7 @@ const makeQueueItem = (overrides?: Partial<MutationQueueItem>): MutationQueueIte
   id: 'q-1',
   noteId: 'note-1',
   operation: 'update',
-  payload: { title: 'Title', description: 'Desc', tags: ['t'] },
+  payload: { user_id: 'user-1', title: 'Title', description: 'Desc', tags: ['t'] },
   clientUpdatedAt: '2024-01-01T00:00:00Z',
   status: 'pending',
   ...overrides,
@@ -104,18 +107,16 @@ describe('useNoteSync — performSync upsert', () => {
     expect(create).not.toHaveBeenCalled()
   })
 
-  it('falls back to create with same ID when update fails with PGRST116 (remote deletion)', async () => {
+  it('keeps a missing remote update for explicit recovery instead of recreating it', async () => {
     const pgrst116 = Object.assign(new Error('PGRST116'), { code: 'PGRST116' })
     const update = jest.fn().mockRejectedValue(pgrst116)
     const create = jest.fn().mockResolvedValue({})
     renderSyncHook({ update, create })
 
-    await capturedPerformSync!(makeQueueItem())
+    await expect(capturedPerformSync!(makeQueueItem())).rejects.toThrow('unavailable on the server')
 
     expect(update).toHaveBeenCalled()
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'note-1', userId: 'user-1', title: 'Title' }),
-    )
+    expect(create).not.toHaveBeenCalled()
   })
 
   it('re-throws non-PGRST116 update errors without attempting create', async () => {
@@ -161,9 +162,9 @@ describe('durable create synchronization', () => {
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-1', title: 'Title', silent: true }))
   })
 
-  it('keeps a failed recreate queued by propagating its error', async () => {
+  it('keeps a missing remote update queued by propagating its error', async () => {
     renderSyncHook({ update: jest.fn().mockRejectedValue({ code: 'PGRST116' }), create: jest.fn().mockRejectedValue(new Error('network unavailable')) })
-    await expect(capturedPerformSync!(makeQueueItem())).rejects.toThrow('network unavailable')
+    await expect(capturedPerformSync!(makeQueueItem())).rejects.toThrow('unavailable on the server')
   })
 })
 
@@ -208,6 +209,19 @@ it('requests another drain after enqueueing an online batch', async () => {
 
   expect(hook.result.current.offlineQueue.enqueueMany).toHaveBeenCalledWith([item])
   expect(manager.requestDrain).toHaveBeenCalledTimes(1)
+})
+
+it('persists and applies a local deletion before asking the scoped manager to drain', async () => {
+  const { OfflineSyncManager } = await import('@core/services/offlineSyncManager')
+  const { result } = renderSyncHook()
+  const manager = jest.mocked(OfflineSyncManager).mock.results.at(-1)!.value
+  const order: string[] = []
+  manager.requestDrain.mockImplementation(async () => { order.push('drain') })
+  jest.mocked(result.current.offlineQueue.enqueue).mockImplementation(async () => { order.push('enqueue') })
+  await act(async () => {
+    await result.current.enqueueMutation(makeQueueItem({ operation: 'delete' }), async () => { order.push('apply local') })
+  })
+  expect(order).toEqual(['enqueue', 'apply local', 'drain'])
 })
 
 it('logs a background drain failure without rejecting the durable enqueue', async () => {

@@ -133,6 +133,13 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleClearTagFilter,
     handleCreateNote,
     handleSignOut,
+    syncStateReady = true,
+    storageReadError = false,
+    legacyUnverifiedCount = 0,
+    unqueuedLocalCount = 0,
+    unavailableRemoteEdits = false,
+    legacyClaimBlocked = false,
+    retryLocalVerification,
     pendingCount,
     failedCount,
     isOffline,
@@ -446,7 +453,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
       {activeMainView === "tags" ? (
         <main className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
-          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} />
+          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} syncStateReady={syncStateReady} storageReadError={storageReadError} legacyUnverifiedCount={legacyUnverifiedCount} unqueuedLocalCount={unqueuedLocalCount} unavailableRemoteEdits={unavailableRemoteEdits} legacyClaimBlocked={legacyClaimBlocked} onRetryLocalVerification={() => void retryLocalVerification?.()} />
           <TagsPage
             notes={notes}
             onSelectTag={handleSelectTagFromTagsPage}
@@ -462,7 +469,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         </main>
       ) : (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} />
+          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} syncStateReady={syncStateReady} storageReadError={storageReadError} legacyUnverifiedCount={legacyUnverifiedCount} unqueuedLocalCount={unqueuedLocalCount} unavailableRemoteEdits={unavailableRemoteEdits} legacyClaimBlocked={legacyClaimBlocked} onRetryLocalVerification={() => void retryLocalVerification?.()} />
           <MobileNotesTabMenu
             tabs={tabs}
             activeTabId={activeTabId}
@@ -482,6 +489,12 @@ export function NotesShell({ controller }: NotesShellProps) {
               notesTotal={notesTotal}
               pendingCount={pendingCount}
               failedCount={failedCount}
+              syncStateReady={syncStateReady}
+              storageReadError={storageReadError}
+              legacyUnverifiedCount={legacyUnverifiedCount}
+              unqueuedLocalCount={unqueuedLocalCount}
+              unavailableRemoteEdits={unavailableRemoteEdits}
+              legacyClaimBlocked={legacyClaimBlocked}
               isOffline={isOffline}
               selectionMode={selectionMode}
               selectedCount={selectedCount}

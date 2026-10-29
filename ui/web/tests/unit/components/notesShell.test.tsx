@@ -344,8 +344,7 @@ describe('NotesShell', () => {
     renderShell(makeController({ selectedNote: note, isEditing: true, isOffline: true, pendingCount: 2, failedCount: 1 }))
 
     const status = screen.getByTestId('device-sync-status')
-    expect(status.getAttribute('role')).toBe('status')
-    expect(status.getAttribute('aria-live')).toBe('polite')
+    expect(status.querySelector('[role="status"]')?.getAttribute('aria-live')).toBe('polite')
     expect(status.textContent).toContain('Offline')
     expect(status.textContent).toContain('2 waiting')
     expect(status.textContent).toContain('1 failed')
@@ -377,6 +376,14 @@ describe('NotesShell', () => {
     renderShell(makeController({ activeMainView: 'tags', failedCount: 2 }))
 
     expect(screen.getByTestId('device-sync-status').textContent).toContain('2 failed')
+  })
+
+  it.each(['reading', 'editing', 'tags'])('shows unverified local data and recovery guidance in %s view', (view) => {
+    renderShell(makeController({ selectedNote: note, isEditing: view === 'editing', activeMainView: view === 'tags' ? 'tags' : 'notes', legacyUnverifiedCount: 1 }))
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).toContain('Some local data needs account verification')
+    expect(status.textContent).toContain('Sign in to the original account while online')
+    expect(status.textContent).toContain('cannot be verified automatically')
   })
 
   it('does not claim synchronization when no queue issues have yet been reported', () => {

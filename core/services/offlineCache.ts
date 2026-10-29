@@ -1,4 +1,4 @@
-import type { OfflineStorageAdapter, CachedNote } from '../types/offline'
+import type { OfflineStorageAdapter, CachedNote, MutationQueueItem } from '../types/offline'
 import { OFFLINE_CACHE_LIMIT_BYTES } from '../constants/offline'
 
 export class OfflineCacheService {
@@ -25,6 +25,18 @@ export class OfflineCacheService {
   async removeSyncedNotes(notes: CachedNote[], signal?: AbortSignal): Promise<string[]> {
     // Adapters without conditional deletion retain their cache rather than risking edits.
     return this.storage.removeSyncedNotes?.(notes, signal) ?? []
+  }
+
+  async removeSyncedTombstones(notes: CachedNote[], signal?: AbortSignal): Promise<string[]> {
+    return this.storage.removeSyncedTombstones?.(notes, signal) ?? []
+  }
+
+  async claimLegacySnapshot(note: CachedNote, item: MutationQueueItem, ownerId: string, signal?: AbortSignal): Promise<boolean> {
+    return this.storage.claimLegacySnapshot?.(note, item, ownerId, signal) ?? false
+  }
+
+  async getLegacyClaims(ownerId: string, notes: CachedNote[]): Promise<string[]> {
+    return this.storage.getLegacyClaims?.(ownerId, notes) ?? []
   }
 
   async patchSyncedTags(patches: Array<{ expected: CachedNote; tags: string[] }>): Promise<string[]> {

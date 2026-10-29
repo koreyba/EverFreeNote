@@ -3,6 +3,7 @@ import { QueryClient } from '@tanstack/react-query'
 import type { MutationQueueItem } from '@core/types/offline'
 import type { NoteViewModel } from '@core/types/domain'
 import { useNoteSync } from '@ui/web/hooks/useNoteSync'
+import { OfflineSyncManager } from '@core/services/offlineSyncManager'
 import { useNoteBulkActions } from '@ui/web/hooks/useNoteBulkActions'
 import { useNoteSaveHandlers } from '@ui/web/hooks/useNoteSaveHandlers'
 import { webOfflineStorageAdapter as storage } from '@ui/web/adapters/offlineStorage'
@@ -92,11 +93,10 @@ describe('Queued deletion does not wait for an unrelated request', { retries: 0 
     events = []
     release = () => {}
     cy.then(async () => { await storage.clearAll() })
-    const original = storage.getPendingBatch.bind(storage)
-    cy.stub(storage, 'getPendingBatch').callsFake(async (size: number) => {
-      const result = await original(size)
-      if (!result.length) idle = true
-      return result
+    const original = OfflineSyncManager.prototype.drainQueue
+    cy.stub(OfflineSyncManager.prototype, 'drainQueue').callsFake(async function (this: OfflineSyncManager) {
+      await original.call(this)
+      idle = true
     })
   })
 
@@ -385,6 +385,16 @@ describe('Queued deletion does not wait for an unrelated request', { retries: 0 
       })
     })
     cy.get('[data-cy="delete"]').trigger('click')
+    cy.then(async () => {
+      for (let attempt = 0; attempt < 100; attempt++) {
+        if ((await storage.getQueue()).some(item => item.noteId === 'target' && item.operation === 'delete')) return
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+      throw new Error('Timed out waiting for the queued deletion')
+    })
+    // The normal drain starts after the local callback. A focus event models
+    // an independent drain that can still race the deliberately delayed save.
+    cy.window().then(win => win.dispatchEvent(new Event('focus')))
     cy.wrap(null).should(() => expect(snapshotHeld).to.equal(true))
     cy.then(() => releaseDelete())
     cy.wrap(null).should(() => expect(deleteRemoved).to.equal(true))

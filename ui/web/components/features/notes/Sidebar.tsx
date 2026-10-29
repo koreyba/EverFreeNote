@@ -19,6 +19,12 @@ interface SidebarProps {
   notesTotal?: number
   pendingCount?: number
   failedCount?: number
+  syncStateReady?: boolean
+  storageReadError?: boolean
+  legacyUnverifiedCount?: number
+  unqueuedLocalCount?: number
+  unavailableRemoteEdits?: boolean
+  legacyClaimBlocked?: boolean
   isOffline: boolean
   selectionMode: boolean
   selectedCount: number
@@ -44,6 +50,12 @@ export function Sidebar({
   notesTotal,
   pendingCount = 0,
   failedCount = 0,
+  syncStateReady = true,
+  storageReadError = false,
+  legacyUnverifiedCount = 0,
+  unqueuedLocalCount = 0,
+  unavailableRemoteEdits = false,
+  legacyClaimBlocked = false,
   isOffline,
   selectionMode,
   selectedCount,
@@ -68,17 +80,16 @@ export function Sidebar({
     : false
 
   const syncStatus = React.useMemo(() => {
-    const status = describeDeviceSyncStatus({ isOffline, failedCount, pendingCount })
+    const status = describeDeviceSyncStatus({ isOffline, failedCount, pendingCount, syncStateReady, storageReadError, legacyUnverifiedCount, unqueuedLocalCount, unavailableRemoteEdits, legacyClaimBlocked })
     return {
       className: status.tone === "error" ? "bg-destructive" : status.tone === "offline" ? "bg-amber-500" : "bg-muted-foreground",
       label: status.text,
     }
-  }, [isOffline, failedCount, pendingCount])
+  }, [isOffline, failedCount, pendingCount, syncStateReady, storageReadError, legacyUnverifiedCount, unqueuedLocalCount, unavailableRemoteEdits, legacyClaimBlocked])
 
   const notesCountText = React.useMemo(() => {
     const displayed = typeof notesDisplayed === "number" ? notesDisplayed : "-"
-    const total = typeof notesTotal === "number" ? notesTotal : "unknown"
-    return `${displayed} of ${total} notes`
+    return typeof notesTotal === "number" ? `${displayed} of ${notesTotal} notes` : `${displayed} notes shown`
   }, [notesDisplayed, notesTotal])
 
   const {
