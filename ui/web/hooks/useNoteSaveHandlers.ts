@@ -5,7 +5,7 @@ import { nextMutationTimestamp } from '@core/utils/nextMutationTimestamp'
 import type { NoteViewModel, NoteUpdate } from '@core/types/domain'
 import type { CachedNote } from '@core/types/offline'
 import type { WorkspaceWriteLease } from '@ui/web/providers/WorkspaceMemoryProvider'
-import { parseTagString } from '@ui/web/lib/tags'
+import { normalizeTagList, parseTagString } from '@ui/web/lib/tags'
 import type { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import type { useNoteSync } from './useNoteSync'
 import type { useNoteSelection } from './useNoteSelection'
@@ -387,6 +387,11 @@ export function useNoteSaveHandlers({
         }
       }
 
+      // Do not normalize the body when the user only changed title or tags.
+      if (currentNote && data.description === (currentNote.description ?? '')) {
+        noteData.description = data.description
+      }
+
       assertWriteNotAborted(signal)
       if (currentNote) {
         savedNote = await saveExistingNote(currentNote, noteData, clientUpdatedAt, signal)
@@ -406,7 +411,21 @@ export function useNoteSaveHandlers({
   })
 
   const handleReadNote = async (data: { title: string; description: string; tags: string }) => {
-    await handleSaveNote(data)
+    const currentNote = selectedNoteRef.current
+    const tags = parseTagString(data.tags)
+    const currentTags = normalizeTagList(currentNote?.tags ?? [])
+    const unchanged = currentNote &&
+      data.title === currentNote.title &&
+      data.description === (currentNote.description ?? '') &&
+      tags.length === currentTags.length &&
+      tags.every((tag, index) => tag === currentTags[index])
+    if (unchanged) {
+      // An equal snapshot can still belong to a write in flight: wait for its
+      // durable result before switching modes, and preserve any save failure.
+      await waitForPendingNoteWrites([currentNote.id])
+    } else {
+      await handleSaveNote(data)
+    }
     if (!selectedNote) {
       setSelectedNote(null)
     }

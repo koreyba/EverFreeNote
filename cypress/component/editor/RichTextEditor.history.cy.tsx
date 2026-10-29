@@ -1,6 +1,9 @@
 import React from 'react'
 import RichTextEditor from '../../../ui/web/components/RichTextEditor'
 
+const undoShortcut = Cypress.platform === 'darwin' ? '{meta}z' : '{ctrl}z'
+const redoShortcut = Cypress.platform === 'darwin' ? '{meta}{shift}z' : '{ctrl}y'
+
 describe('RichTextEditor Component', () => {
   describe('Undo/Redo buttons', () => {
     it('renders undo and redo buttons, positioned before bold in toolbar', () => {
@@ -68,10 +71,10 @@ describe('RichTextEditor Component', () => {
       cy.get('[data-cy="bold-button"]').click()
       cy.get('[data-cy="editor-content"]').find('strong').should('exist')
 
-      cy.get('[data-cy="editor-content"]').type('{ctrl}z')
+      cy.get('[data-cy="editor-content"]').type(undoShortcut)
       cy.get('[data-cy="editor-content"]').find('strong').should('not.exist')
 
-      cy.get('[data-cy="editor-content"]').type('{ctrl}y')
+      cy.get('[data-cy="editor-content"]').type(redoShortcut)
       cy.get('[data-cy="editor-content"]').find('strong').should('exist')
     })
 
@@ -86,7 +89,7 @@ describe('RichTextEditor Component', () => {
       cy.get('[data-cy="bold-button"]').click()
       cy.get('[data-cy="editor-content"]').find('strong').should('exist')
 
-      cy.get('[data-cy="editor-content"]').type('{ctrl}z')
+      cy.get('[data-cy="editor-content"]').type(undoShortcut)
       cy.get('[data-cy="editor-content"]').find('strong').should('not.exist')
 
       cy.get('[data-cy="redo-button"]').should('not.be.disabled')
@@ -103,7 +106,7 @@ describe('RichTextEditor Component', () => {
       cy.get('[data-cy="editor-content"]').type('Hello')
       cy.get('[data-cy="editor-content"]').type('{selectall}')
       cy.get('[data-cy="bold-button"]').click()
-      cy.get('[data-cy="editor-content"]').type('{ctrl}z')
+      cy.get('[data-cy="editor-content"]').type(undoShortcut)
       cy.get('[data-cy="redo-button"]').should('not.be.disabled')
 
       cy.get('[data-cy="redo-button"]').click()
@@ -124,8 +127,8 @@ describe('RichTextEditor Component', () => {
       cy.get('[data-cy="editor-content"]').find('strong').should('exist')
       cy.get('[data-cy="editor-content"]').find('em').should('exist')
 
-      cy.get('[data-cy="editor-content"]').type('{ctrl}z')
-      cy.get('[data-cy="editor-content"]').type('{ctrl}z')
+      cy.get('[data-cy="editor-content"]').type(undoShortcut)
+      cy.get('[data-cy="editor-content"]').type(undoShortcut)
       cy.get('[data-cy="editor-content"]').find('strong').should('not.exist')
       cy.get('[data-cy="editor-content"]').find('em').should('not.exist')
 
@@ -164,7 +167,7 @@ describe('RichTextEditor Component', () => {
       cy.get('[data-cy="editor-content"]').type('Hello')
       cy.get('[data-cy="editor-content"]').type('{selectall}')
       cy.get('[data-cy="bold-button"]').click()
-      cy.get('[data-cy="editor-content"]').type('{ctrl}z')
+      cy.get('[data-cy="editor-content"]').type(undoShortcut)
       cy.get('[data-cy="redo-button"]').should('not.be.disabled')
 
       cy.get('[data-cy="redo-button"]').focus()

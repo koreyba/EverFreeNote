@@ -55,6 +55,94 @@ function setup(overrides: Record<string, unknown> = {}) {
   return { params, ...renderHook(() => useNoteSaveHandlers(params)) }
 }
 
+describe('reading an unchanged note', () => {
+  it('switches to reading without creating a durable write', async () => {
+    const { result, params } = setup()
+
+    await act(async () => {
+      await result.current.handleReadNote({ title: 'Test', description: 'Content', tags: 'tag1' })
+    })
+
+    expect(params.offlineCache.saveNote).not.toHaveBeenCalled()
+    expect(params.enqueueMutation).not.toHaveBeenCalled()
+    expect(params.setLastSavedAt).not.toHaveBeenCalled()
+    expect(params.setIsEditing).toHaveBeenCalledWith(false)
+  })
+
+  it('does not rewrite legacy tag spelling when the displayed tags are unchanged', async () => {
+    const note = makeNote({ tags: ['  Tag1 ', 'TAG1'] })
+    const { result, params } = setup({ selectedNote: note, selectedNoteRef: { current: note } })
+
+    await act(async () => {
+      await result.current.handleReadNote({ title: note.title, description: note.description!, tags: 'tag1' })
+    })
+
+    expect(params.enqueueMutation).not.toHaveBeenCalled()
+    expect(params.setIsEditing).toHaveBeenCalledWith(false)
+  })
+
+  it('waits for a matching in-flight save before switching to reading', async () => {
+    let finish!: () => void
+    const writing = new Promise<void>(resolve => { finish = resolve })
+    const { result, params } = setup({ offlineCache: { saveNote: jest.fn().mockReturnValue(writing) } })
+    let save!: Promise<unknown>
+    let read!: Promise<void>
+
+    await act(async () => {
+      save = result.current.handleAutoSave({ noteId: 'note-1', title: 'Edited', description: 'Content', tags: 'tag1' })
+      await Promise.resolve()
+      read = result.current.handleReadNote({ title: 'Edited', description: 'Content', tags: 'tag1' })
+      await Promise.resolve()
+    })
+    expect(params.setIsEditing).not.toHaveBeenCalled()
+    await act(async () => { finish(); await save; await read })
+    expect(params.offlineCache.saveNote).toHaveBeenCalledTimes(1)
+    expect(params.setIsEditing).toHaveBeenCalledWith(false)
+  })
+
+  it('keeps editing if the matching in-flight save fails', async () => {
+    let fail!: (error: Error) => void
+    const writing = new Promise<void>((_resolve, reject) => { fail = reject })
+    const { result, params } = setup({ offlineCache: { saveNote: jest.fn().mockReturnValue(writing) } })
+    let save!: Promise<unknown>
+    let read!: Promise<void>
+
+    await act(async () => {
+      save = result.current.handleAutoSave({ noteId: 'note-1', title: 'Edited', description: 'Content', tags: 'tag1' })
+      void save.catch(() => {})
+      await Promise.resolve()
+      read = result.current.handleReadNote({ title: 'Edited', description: 'Content', tags: 'tag1' })
+      void read.catch(() => {})
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fail(new Error('Storage unavailable'))
+      await expect(save).rejects.toThrow('Storage unavailable')
+      await expect(read).rejects.toThrow('Storage unavailable')
+    })
+    expect(params.setIsEditing).not.toHaveBeenCalled()
+    expect(params.offlineCache.saveNote).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves unedited body whitespace when manually saving a changed title', async () => {
+    const note = makeNote({ description: '  Original plain body  ' })
+    const { result, params } = setup({
+      selectedNote: note,
+      selectedNoteRef: { current: note },
+      notes: [note],
+      notesRef: { current: [note] },
+    })
+
+    await act(async () => {
+      await result.current.handleSaveNote({ title: 'Changed', description: note.description!, tags: 'tag1' })
+    })
+
+    expect(params.offlineCache.saveNote).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Changed', description: '  Original plain body  ',
+    }))
+  })
+})
+
 describe('durable save failures and concurrent creation', () => {
   it('does not start a local write when its tab is discarded while queue lookup is pending', async () => {
     let finishLookup!: (items: never[]) => void

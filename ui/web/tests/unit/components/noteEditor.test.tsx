@@ -33,6 +33,7 @@ jest.mock('@/components/RichTextEditor', () => {
   const MockRichTextEditor = ReactModule.forwardRef<
     {
       getHTML: () => string
+      getContentForSave: () => string
       getSelection: () => { from: number; to: number }
       setSelection: (selection: { from: number; to: number }) => void
       setContent: (html: string) => void
@@ -49,6 +50,7 @@ jest.mock('@/components/RichTextEditor', () => {
 
     ReactModule.useImperativeHandle(ref, () => ({
       getHTML: () => mockEditorHtml,
+      getContentForSave: () => mockEditorHtml,
       getSelection: () => mockEditorSelection,
       setSelection: mockSetEditorSelection,
       setContent: (html: string) => {

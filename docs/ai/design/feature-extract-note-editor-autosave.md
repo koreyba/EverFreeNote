@@ -62,3 +62,5 @@ type UseNoteEditorAutoSaveResult = {
 | `onNoteSwitch` callback | Hook detects the switch; NoteEditor owns its own tag/query state reset |
 | `scheduleAutoSave` hides `pendingCreateRef` | Callers (addTags, removeTag) don't need to know about the pending-create pattern |
 | `buildTagString(parseTagString(initialTags))` in debouncedAutoSave.reset | Normalizes tags on note switch, same as original behavior |
+| Keep the original body while its parsed editor document is unchanged | Opening or closing an editor must not rewrite plain text or equivalent HTML just because the editor serializes it differently. A real text or formatting change is saved as HTML. |
+| Interpret only unambiguous plain text as literal text | The stored body has no format flag. Text containing HTML-shaped tags or entities keeps its existing HTML interpretation; adding a format flag would be needed to disambiguate it. |

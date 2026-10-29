@@ -9,11 +9,13 @@ import {
   type Editor,
 } from "@tiptap/react"
 import { createDocument } from "@tiptap/core"
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
 import type { EditorView } from "@tiptap/pm/view"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { SPELLCHECK_ENABLED_KEY } from "@core/constants/preferences"
 import { SmartPasteService } from "@core/services/smartPaste"
 import { NoteClipboardService } from "@core/services/noteClipboard"
+import { escapeHtml } from "@core/utils/normalize-html"
 import { placeCaretFromCoords } from "@core/utils/prosemirrorCaret"
 import { applySelectionAsMarkdown } from "@ui/web/lib/editor"
 import { EditorMenuBar, type HistoryState } from "./EditorMenuBar"
@@ -23,6 +25,8 @@ import { scrollEditorToChunk } from "./chunkFocusUtils"
 
 export type RichTextEditorHandle = {
   getHTML: () => string
+  /** Keep the original serialization until the editor document actually changes. */
+  getContentForSave: () => string
   getSelection?: () => { from: number; to: number } | undefined
   setSelection?: (selection: { from: number; to: number }) => void
   setContent: (html: string) => void
@@ -43,6 +47,13 @@ type RichTextEditorProps = {
 
 const EMPTY_HISTORY_STATE: HistoryState = { canUndo: false, canRedo: false }
 
+// Stored bodies have no format discriminator. Only convert text that cannot
+// plausibly be HTML; ambiguous tags/entities retain their existing semantics.
+const POSSIBLE_HTML = /<(?:\/?[a-z]|!|\?)|&(?:#(?:x[0-9a-f]+|\d+)|[a-z][a-z0-9]*);?/i
+const toEditorContent = (content: string) => POSSIBLE_HTML.test(content)
+  ? content
+  : `<p>${escapeHtml(content).replace(/\r\n|\r|\n/g, "<br>")}</p>`
+
 const areHistoryStatesEqual = (left: HistoryState, right: HistoryState) =>
   left.canUndo === right.canUndo && left.canRedo === right.canRedo
 
@@ -61,6 +72,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
   ({ initialContent, onContentChange, hideToolbar = false, mobileToolbarContainer = null, chunkFocusRequest = null, onChunkFocusApplied }, ref) => {
     const isMobile = useIsMobile()
     const editorRef = React.useRef<Editor | null>(null)
+    const sourceContentRef = React.useRef<{ raw: string; document: ProseMirrorNode | null }>({
+      raw: initialContent,
+      document: null,
+    })
     const suppressNextUpdateRef = React.useRef(false)
     // Queues a scroll request when scrollToChunk is called before the editor is ready.
     const pendingChunkScrollRef = React.useRef<ChunkScrollTarget | null>(null)
@@ -69,6 +84,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     const [hasSelection, setHasSelection] = React.useState(false)
     const [historyState, setHistoryState] = React.useState<HistoryState>(EMPTY_HISTORY_STATE)
     const [spellcheckEnabled, setSpellcheckEnabled] = React.useState(true)
+    const initialEditorContent = React.useMemo(() => toEditorContent(initialContent), [initialContent])
 
     React.useEffect(() => {
       try {
@@ -189,8 +205,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     const editor = useEditor({
       immediatelyRender: false,
       extensions: editorExtensions,
-      content: initialContent,
+      content: initialEditorContent,
+      // The reading surface uses pre-wrap. Retain spaces in its HTML when the
+      // same content is opened again in the editor.
+      parseOptions: { preserveWhitespace: "full" },
       onCreate: ({ editor: e }) => {
+        sourceContentRef.current.document = e.state.doc
         updateHistoryState(getHistoryState(e))
         if (pendingChunkFocusRef.current !== null) {
           const request = pendingChunkFocusRef.current
@@ -266,6 +286,11 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     // Expose methods via ref
     React.useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() ?? "",
+      getContentForSave: () => {
+        if (!editor) return sourceContentRef.current.raw
+        const source = sourceContentRef.current
+        return !source.document || source.document.eq(editor.state.doc) ? source.raw : editor.getHTML()
+      },
       getSelection: () => {
         if (!editor) return undefined
         const { from, to } = editor.state.selection
@@ -280,14 +305,17 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
       },
       setContent: (html: string) => {
         if (!editor) return
-        const document = createDocument(html, editor.schema, editor.options.parseOptions, {
+        const document = createDocument(toEditorContent(html), editor.schema, editor.options.parseOptions, {
           errorOnInvalidContent: editor.options.enableContentCheck,
         })
-        const tr = editor.state.tr
-          .replaceWith(0, editor.state.doc.content.size, document)
-          .setMeta("preventUpdate", true)
-          .setMeta("addToHistory", false)
-        editor.view.dispatch(tr)
+        if (!editor.state.doc.eq(document)) {
+          const tr = editor.state.tr
+            .replaceWith(0, editor.state.doc.content.size, document)
+            .setMeta("preventUpdate", true)
+            .setMeta("addToHistory", false)
+          editor.view.dispatch(tr)
+        }
+        sourceContentRef.current = { raw: html, document: editor.state.doc }
       },
       runCommand: (command: string, ...args: unknown[]) => {
         if (!editor) return

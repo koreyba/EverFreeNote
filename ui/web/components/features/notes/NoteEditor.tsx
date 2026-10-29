@@ -142,7 +142,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
   const getFormData = React.useCallback(() => ({
     title: titleInputRef.current?.value ?? initialTitle,
-    description: editorRef.current?.getHTML() ?? initialDescription,
+    description: editorRef.current?.getContentForSave() ?? initialDescription,
     tags: buildTagString(selectedTagsRef.current),
   }), [initialTitle, initialDescription])
 
@@ -200,7 +200,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       resizeTitle()
     }
 
-    if (fieldDecisions.description === 'accept-external' && editorRef.current?.getHTML() !== snapshot.description) {
+    if (fieldDecisions.description === 'accept-external' && editorRef.current?.getContentForSave() !== snapshot.description) {
       editorRef.current?.setContent(snapshot.description)
       setIsBodyEmpty(NoteClipboardService.isBodyEmpty(snapshot.description))
     }
