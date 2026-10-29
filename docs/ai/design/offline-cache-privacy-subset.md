@@ -29,6 +29,10 @@ Before sending an owned create/update that proves an ownerless snapshot, persist
 
 The app displays read errors, unknown ownership, unqueued local changes and unavailable server notes in a common status area, including mobile reading, editing and Tags. Tag reconciliation retains locally saved copies missing from the server, blocks an affected operation before writes when possible, and reports uncertainty if the conflict is found after writes. A combined note count is shown only when inferable; when a local ID might be on an unloaded server page, the UI reports the number shown instead.
 
+For tag preflight, a consistently owned foreign queue or cached draft does not block another account when tag cache patches are atomic IndexedDB transactions. An ownerless snapshot is excluded as foreign only if a related, consistently foreign operation matches its complete contents and timestamp. Conflicting, malformed or ownerless operations block with a generic account-verification message; their contents are never exposed. Pending or dirty work belonging to the current account still blocks until synchronized. The preflight is repeated after server reads and after writes; a conflict discovered after a request is reported as an unconfirmed result, not success.
+
+The localStorage fallback rewrites a shared array rather than one record. It therefore blocks tag changes when foreign or unverified data is present, explains that another account's local data must be reviewed or an IndexedDB-capable browser used, and keeps site data. Even synchronized foreign snapshots can trigger this restriction. An empty tag patch does not rewrite the array. This safeguard is intentionally conservative and does not eliminate the fallback's existing cross-tab read-modify-write races. A new conflicting write can still start after the last check; old clients do not participate in any shared lock.
+
 ## Boundaries
 
 - This is account isolation in the app, not encryption or protection against someone with direct access to the browser profile or site storage.

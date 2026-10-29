@@ -4,6 +4,10 @@ import { OFFLINE_CACHE_LIMIT_BYTES } from '../constants/offline'
 export class OfflineCacheService {
   constructor(private readonly storage: OfflineStorageAdapter) {}
 
+  supportsAtomicTagPatches(): boolean {
+    return this.storage.atomicTagPatches === true
+  }
+
   async loadNotes(limit?: number, offset?: number): Promise<CachedNote[]> {
     return this.storage.loadNotes({ limit, offset })
   }

@@ -33,6 +33,7 @@ import { type NotesUiStateSnapshot } from '@ui/web/lib/settingsNavigationState'
 import { readNoteWorkspaceState } from '@ui/web/lib/noteWorkspaceStorage'
 import { clearActiveSettingsNoteReturnPath } from '@ui/web/lib/aiIndexNavigationState'
 import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
+import { assertTagLocalState } from '@ui/web/lib/tagLocalPreflight'
 
 
 export type EditFormState = {
@@ -54,13 +55,6 @@ const unavailableOwnedBlock = 'Some local copies are unavailable on the server a
 
 function changeTouchesCachedNotes(change: TagChange, notes: CachedNote[]): boolean {
   return change(notes).some((note, index) => note !== notes[index])
-}
-
-function hasUnsyncedCachedNotes(notes: CachedNote[], userId: string): boolean {
-  return notes.some((note) => (
-    (!note.user_id || note.user_id === userId) &&
-    (note.status !== 'synced' || Boolean(note.pendingOps?.length))
-  ))
 }
 
 export function useNoteAppController() {
@@ -1212,9 +1206,7 @@ export function useNoteAppController() {
     assertTagSession(started)
     const cached = await offlineCache.loadNotes()
     assertTagSession(started)
-    if (queue.length || hasUnsyncedCachedNotes(cached, user.id)) {
-      throw new Error('Finish syncing your notes before managing tags.')
-    }
+    assertTagLocalState(cached, queue, user.id, offlineCache.supportsAtomicTagPatches())
 
     const refreshed = await notesQuery.refetch({ throwOnError: true })
     assertTagSession(started)
@@ -1250,11 +1242,9 @@ export function useNoteAppController() {
     assertTagSession(started)
     const latestQueue = await offlineQueueRef.current.getQueue()
     assertTagSession(started)
-    if (latestQueue.length || hasUnsyncedCachedNotes(latestCached, user.id)) {
-      throw new Error('Finish syncing your notes before managing tags.')
-    }
-    const ownerless = latestCached.filter((note) => !note.user_id && !note.deleted)
-    const unavailableOwned = latestCached.filter((note) => note.user_id === user.id && !note.deleted && !verifiedIds.has(note.id))
+    const relevantNotes = assertTagLocalState(latestCached, latestQueue, user.id, offlineCache.supportsAtomicTagPatches())
+    const ownerless = relevantNotes.filter((note) => !note.user_id && !note.deleted)
+    const unavailableOwned = relevantNotes.filter((note) => note.user_id === user.id && !note.deleted && !verifiedIds.has(note.id))
     setTagCoverageNotice(ownerless.length ? ownerlessNotice : unavailableOwned.length ? 'Some local copies are unavailable on the server and remain on this device.' : null)
     setTagCoveragePages(pages)
     setTagCoverageMessage(null)
@@ -1312,11 +1302,13 @@ export function useNoteAppController() {
     assertTagSession(started)
     const queue = await offlineQueueRef.current.getQueue()
     assertTagSession(started)
-    if (queue.length || hasUnsyncedCachedNotes(cached, user.id)) {
-      throw new Error('Finish syncing your notes before managing tags.')
-    }
-    const candidates = cached.filter((note) => (
-      (!note.user_id || note.user_id === user.id) && note.status === 'synced' && !note.deleted && !note.pendingOps?.length
+    const relevantNotes = assertTagLocalState(cached, queue, user.id, offlineCache.supportsAtomicTagPatches())
+    // An ID match alone does not prove that an ownerless snapshot belongs to
+    // this account; never rewrite such a copy from the server response.
+    const ownerless = relevantNotes.filter(note => !note.user_id && !note.deleted)
+    if (changeTouchesCachedNotes(change, ownerless)) throw new Error(ownerlessBlock)
+    const candidates = relevantNotes.filter((note) => (
+      note.user_id === user.id && note.status === 'synced' && !note.deleted && !note.pendingOps?.length
     ))
     const cachedIds = candidates.map((note) => note.id)
     const remoteCached = []
@@ -1334,8 +1326,6 @@ export function useNoteAppController() {
       assertTagSession(started)
       if (existing.length) throw new Error('Some cached notes could not be refreshed. Try again.')
     }
-    const ownerless = missing.filter((note) => !note.user_id)
-    if (changeTouchesCachedNotes(change, ownerless)) throw new Error(ownerlessBlock)
     const missingOwned = missing.filter((note) => note.user_id === user.id)
     if (changeTouchesCachedNotes(change, missingOwned)) throw new Error(unavailableOwnedBlock)
     const patches = candidates.filter((note) => remoteTags.has(note.id))
@@ -1361,11 +1351,9 @@ export function useNoteAppController() {
     assertTagSession(started)
     const finalQueue = await offlineQueueRef.current.getQueue()
     assertTagSession(started)
-    if (finalQueue.length || hasUnsyncedCachedNotes(finalCached, user.id)) {
-      throw new Error('Finish syncing your notes before managing tags.')
-    }
-    const unverifiedOwnerless = finalCached.filter((note) => !note.user_id && !note.deleted)
-    const finalMissingOwned = finalCached.filter((note) => note.user_id === user.id && !note.deleted && !remoteTags.has(note.id))
+    const finalRelevant = assertTagLocalState(finalCached, finalQueue, user.id, offlineCache.supportsAtomicTagPatches())
+    const unverifiedOwnerless = finalRelevant.filter((note) => !note.user_id && !note.deleted)
+    const finalMissingOwned = finalRelevant.filter((note) => note.user_id === user.id && !note.deleted && !remoteTags.has(note.id))
     if (changeTouchesCachedNotes(change, unverifiedOwnerless)) throw new Error(ownerlessBlock)
     if (changeTouchesCachedNotes(change, finalMissingOwned)) throw new Error(unavailableOwnedBlock)
     setTagCoverageNotice(unverifiedOwnerless.length ? ownerlessNotice : finalMissingOwned.length ? 'Some local copies are unavailable on the server and remain on this device.' : null)

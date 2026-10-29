@@ -100,6 +100,13 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
     expect(await webOfflineStorageAdapter.loadNotes()).toEqual([{ ...cached, tags: ['renamed'] }])
   })
 
+  it('does not rewrite shared storage for an empty tag patch', async () => {
+    const setItem = jest.spyOn(Storage.prototype, 'setItem')
+    expect(webOfflineStorageAdapter.atomicTagPatches).toBe(false)
+    expect(await webOfflineStorageAdapter.patchSyncedTags([])).toEqual([])
+    expect(setItem).not.toHaveBeenCalled()
+  })
+
   it('does not overwrite a newer or queued cached draft during tag refresh', async () => {
     const expected = makeNote('note-1', '2026-01-01T00:00:00Z', { user_id: 'user-1' })
     const newer = { ...expected, updatedAt: '2026-01-02T00:00:00Z', description: 'New draft', status: 'pending' as const }

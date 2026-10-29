@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import type { NoteViewModel, SearchResult } from '@core/types/domain'
+import type { MutationQueueItem } from '@core/types/offline'
 import {
   addWorkspaceTab,
   createNoteWorkspaceState,
@@ -21,7 +22,8 @@ let mockIsOffline = false
 let mockOfflineOverlay: Array<{ id: string; status: string }> = []
 let mockNotes: NoteViewModel[] = []
 let mockTagServerCount: number | null = null
-let mockTagQueue: Array<{ id: string }> = []
+let mockTagQueue: Array<Partial<MutationQueueItem> & { id: string }> = []
+let mockAtomicTagPatches = true
 let mockResolvedSearchResult: NoteViewModel | null = null
 let mockNoteToDelete: NoteViewModel | null = null
 let mockAuthUser: { id: string } | null = { id: 'user-1' }
@@ -134,7 +136,7 @@ jest.mock('@ui/web/hooks/useNoteSync', () => ({
     isOffline: mockIsOffline,
     lastSavedAt: null,
     setLastSavedAt: mockSetLastSavedAt,
-    offlineCache: { deleteNote: jest.fn(), loadNotes: mockLoadCachedNotes, removeSyncedNotes: mockRemoveSyncedNotes, patchSyncedTags: mockPatchSyncedTags, saveNote: jest.fn() },
+    offlineCache: { deleteNote: jest.fn(), loadNotes: mockLoadCachedNotes, removeSyncedNotes: mockRemoveSyncedNotes, patchSyncedTags: mockPatchSyncedTags, saveNote: jest.fn(), supportsAtomicTagPatches: () => mockAtomicTagPatches },
     enqueueMutation: jest.fn(),
     enqueueBatchAndDrainIfOnline: jest.fn(),
     offlineQueueRef: { current: { getQueue: async () => mockTagQueue } },
@@ -263,6 +265,7 @@ describe('useNoteAppController additional observable behavior', () => {
     mockNotes = []
     mockTagServerCount = null
     mockTagQueue = []
+    mockAtomicTagPatches = true
     mockLoadCachedNotes.mockResolvedValue([])
     mockGetExistingNoteIds.mockImplementation(async (ids) => ids)
     mockGetNotesByIds.mockImplementation(async (ids) => mockNotes.filter(note => ids.includes(note.id)))
@@ -1164,11 +1167,144 @@ describe('useNoteAppController additional observable behavior', () => {
 
   it('blocks a global change while a note mutation remains queued', async () => {
     mockNotes = [makeNote({ tags: ['old'] })]
-    mockTagQueue = [{ id: 'pending-change' }]
+    mockTagQueue = [{ id: 'pending-change', noteId: 'current', operation: 'update', payload: { user_id: 'user-1' }, clientUpdatedAt: '2024-01-01T00:00:00Z', status: 'pending' }]
     const { result } = setup()
     await act(async () => { await result.current.handleDeleteTag('old') })
     expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
     expect(toast.error).toHaveBeenCalledWith('Finish syncing your notes before managing tags.')
+  })
+
+  it.each(['pending', 'failed'] as const)('does not let another account’s %s queue block a tag change', async (status) => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const foreign = { id: 'foreign', user_id: 'user-a', title: 'Private title', description: 'Private body', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status }
+    mockLoadCachedNotes.mockResolvedValue([foreign])
+    mockTagQueue = [{ id: 'foreign-op', noteId: foreign.id, operation: 'update', payload: { user_id: foreign.user_id, title: foreign.title, description: foreign.description, tags: foreign.tags }, clientUpdatedAt: foreign.updatedAt, status }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({ id: 'current', tags: ['new'] }))
+    expect(mockTagQueue).toHaveLength(1)
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([])
+    expect(JSON.stringify(jest.mocked(toast).error.mock.calls)).not.toContain('Private')
+  })
+
+  it('does not attribute an unrelated ownerless operation to the other account', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    mockTagQueue = [{ id: 'unknown-op', noteId: 'unknown', operation: 'update', payload: { title: 'Private changes', tags: ['old'] }, clientUpdatedAt: '2024-01-01T00:00:00Z', status: 'pending' }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(String(outcome)).toContain('Some local changes need account verification')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockTagQueue).toHaveLength(1)
+    expect(JSON.stringify(jest.mocked(toast).error.mock.calls)).not.toContain('Private')
+  })
+
+  it('allows a foreign ownerless snapshot only when the related operation proves its exact contents', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const foreign = { id: 'foreign-legacy', title: 'Private title', description: 'Private body', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockLoadCachedNotes.mockResolvedValue([foreign])
+    mockTagQueue = [{ id: 'foreign-op', noteId: foreign.id, operation: 'create', payload: { user_id: 'user-a', title: foreign.title, description: foreign.description, tags: foreign.tags }, clientUpdatedAt: foreign.updatedAt, status: 'pending' }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([])
+    expect(mockTagQueue).toHaveLength(1)
+  })
+
+  it('retains a foreign dirty note without making it block another account', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const foreign = { id: 'foreign-dirty', user_id: 'user-a', title: 'Private draft', description: 'Private body', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockLoadCachedNotes.mockResolvedValue([foreign])
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([])
+    expect(foreign.tags).toEqual(['old'])
+  })
+
+  it('does not infer ownership from a related foreign operation with different contents', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const unknown = { id: 'ambiguous', title: 'Private draft', description: 'Newer body', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockLoadCachedNotes.mockResolvedValue([unknown])
+    mockTagQueue = [{ id: 'foreign-op', noteId: unknown.id, operation: 'create', payload: { user_id: 'user-a', title: unknown.title, description: 'Different body', tags: unknown.tags }, clientUpdatedAt: unknown.updatedAt, status: 'pending' }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(String(outcome)).toContain('Some local changes need account verification')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockTagQueue).toHaveLength(1)
+    expect(JSON.stringify(jest.mocked(toast).error.mock.calls)).not.toContain('Private')
+  })
+
+  it('explains why a foreign queue blocks tags in shared-array storage', async () => {
+    mockAtomicTagPatches = false
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const foreign = { id: 'foreign', user_id: 'user-a', title: 'Private title', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockLoadCachedNotes.mockResolvedValue([foreign])
+    mockTagQueue = [{ id: 'foreign-op', noteId: foreign.id, operation: 'update', payload: { user_id: foreign.user_id }, clientUpdatedAt: foreign.updatedAt, status: 'pending' }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(String(outcome)).toContain('another or unverified account')
+    expect(String(outcome)).toContain('IndexedDB')
+    expect(String(outcome)).not.toContain('Finish syncing your notes')
+    expect(String(outcome)).not.toContain('Private title')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockTagQueue).toHaveLength(1)
+  })
+
+  it('blocks foreign saved snapshots in shared-array storage even without a queue', async () => {
+    mockAtomicTagPatches = false
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    mockLoadCachedNotes.mockResolvedValue([{ id: 'foreign', user_id: 'user-a', tags: ['other'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' }])
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(String(outcome)).toContain('another or unverified account')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+  })
+
+  it('permits fallback tag changes when all local data belongs to the current account', async () => {
+    mockAtomicTagPatches = false
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+  })
+
+  it('blocks conflicting owners and leaves both queued operations untouched', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const operation = { noteId: 'conflicting', operation: 'update' as const, clientUpdatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockTagQueue = [{ ...operation, id: 'first', payload: { user_id: 'user-a' } }, { ...operation, id: 'second', payload: { user_id: 'user-1' } }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(String(outcome)).toContain('Some local changes need account verification')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockTagQueue).toHaveLength(2)
+  })
+
+  it('does not report success if another ownerless operation appears during a tag write', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    mockUpdateNoteMutation.mockImplementation(async () => {
+      mockTagQueue = [{ id: 'late-unknown', noteId: 'unknown', operation: 'update', payload: { title: 'Private' }, clientUpdatedAt: '2024-01-01T00:00:00Z', status: 'pending' }]
+    })
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(false)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockTagQueue).toHaveLength(1)
+    expect(toast.success).not.toHaveBeenCalled()
   })
 
   it.each([0, 1, 50, 51, 101, 1001])('checks the complete loaded collection of %i notes', async (count) => {
@@ -1298,6 +1434,20 @@ describe('useNoteAppController additional observable behavior', () => {
     expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
   })
 
+  it('does not patch an unrelated ownerless copy that shares a server note ID', async () => {
+    const note = makeNote({ id: 'shared-id', tags: ['old'] })
+    const unknown = { id: note.id, title: 'Private local copy', description: 'Keep me', tags: ['other'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValue([unknown])
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({ id: note.id, tags: ['new'] }))
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([])
+    expect(unknown.tags).toEqual(['other'])
+  })
+
   it('blocks delete and clean if they would modify tags on a missing ownerless entry', async () => {
     mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
     const ownerless = { id: 'unknown', tags: [' OLD ', 'old'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
@@ -1349,11 +1499,12 @@ describe('useNoteAppController additional observable behavior', () => {
   it('rechecks the queue if a write appears during the post-write server reads', async () => {
     const note = makeNote({ id: 'current', tags: ['old'] })
     const ownerless = { id: 'unknown', tags: ['other'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    const owned = { ...note, updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
     mockNotes = [note]
-    mockLoadCachedNotes.mockResolvedValue([ownerless])
+    mockLoadCachedNotes.mockResolvedValue([ownerless, owned])
     mockGetExistingNoteIds.mockImplementation(async (ids) => ids.filter((id: string) => id === note.id))
     mockGetNotesByIds.mockImplementation(async (ids) => {
-      if (ids.includes(ownerless.id)) mockTagQueue = [{ id: 'late-queued-write' }]
+      if (ids.includes(owned.id)) mockTagQueue = [{ id: 'late-queued-write' }]
       return mockNotes.filter(item => ids.includes(item.id))
     })
     const { result } = setup()

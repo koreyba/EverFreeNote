@@ -1,12 +1,13 @@
 import React from 'react'
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
-import { Toaster } from 'sonner'
+import { toast, Toaster } from 'sonner'
 import '../../../../app/globals.css'
 import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import { NotesShell } from '@ui/web/components/features/notes/NotesShell'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import type { CachedNote, MutationQueueItem } from '@core/types/offline'
+import { OfflineSyncManager } from '@core/services/offlineSyncManager'
 
 const url = Cypress.env('AUDIT_SUPABASE_URL') ?? 'http://127.0.0.1:63421'
 if (!['127.0.0.1', 'localhost', '[::1]'].includes(new URL(url).hostname)) throw new Error('Local test database required')
@@ -166,6 +167,158 @@ describe('Cache privacy subset', { retries: 0 }, () => {
     cy.get('[data-testid="device-sync-status"]', { timeout: 10000 }).should('contain.text', 'needs account verification')
     cy.contains('Unrelated private cache').should('not.exist')
     cy.then(async () => expect((await webOfflineStorageAdapter.loadNotes()).find(note => note.id === id)?.title).to.equal('Unrelated private cache'))
+  })
+
+  it('lets B manage tags while A has pending, failed, dirty and proven legacy local data', () => {
+    const bId = crypto.randomUUID()
+    const foreignIds = Array.from({ length: 4 }, () => crypto.randomUUID())
+    cy.then(async () => {
+      const inserted = await other.from('notes').insert({ id: bId, user_id: userB.id, title: 'B note', description: 'B text', tags: ['old', 'keep'] })
+      if (inserted.error) throw inserted.error
+      const statuses = ['pending', 'failed', 'pending', 'pending'] as const
+      for (let index = 0; index < foreignIds.length; index++) {
+        const note: CachedNote = { id: foreignIds[index], ...(index === 3 ? {} : { user_id: userA.id }), title: `A private ${index}`, description: 'A secret', tags: ['old'], status: statuses[index], updatedAt: '2026-10-01T00:00:00.000Z' }
+        await webOfflineStorageAdapter.saveNote(note)
+        if (index !== 2) await webOfflineStorageAdapter.upsertQueueItem({ id: `foreign-${index}`, noteId: note.id, operation: 'create', payload: { user_id: userA.id, title: note.title, description: note.description, tags: note.tags }, clientUpdatedAt: note.updatedAt, status: statuses[index] })
+      }
+    })
+    cy.intercept({ method: 'PATCH', pathname: '/rest/v1/notes' }).as('patch')
+    cy.window().then(win => { Object.defineProperty(win.navigator, 'onLine', { configurable: true, value: true }); win.dispatchEvent(new win.Event('online')) })
+    cy.mount(<SupabaseTestProvider supabase={other} user={userB}><App /></SupabaseTestProvider>)
+    cy.contains('[data-testid="note-card"]', 'B note', { timeout: 10000 }).should('be.visible')
+    cy.contains('A private').should('not.exist')
+    cy.contains('A secret').should('not.exist')
+    cy.then(async () => {
+      expect(await controller.handleRenameTag('old', 'new')).to.equal(true)
+      const b = await other.from('notes').select('tags').eq('id', bId).single()
+      if (b.error) throw b.error
+      expect(b.data.tags).to.deep.equal(['new', 'keep'])
+      const cache = await webOfflineStorageAdapter.loadNotes()
+      for (const id of foreignIds) expect(cache.find(note => note.id === id)?.tags).to.deep.equal(['old'])
+      expect((await webOfflineStorageAdapter.getQueue()).filter(item => item.id.startsWith('foreign-'))).to.have.length(3)
+    })
+    cy.get('@patch.all').then(requests => {
+      expect(requests).to.have.length(1)
+      expect(new URL(requests[0].request.url).searchParams.get('id')).to.equal(`eq.${bId}`)
+    })
+    cy.screenshot('privacy-tags-foreign-queue', { capture: 'viewport' })
+  })
+
+  it('blocks an unknown queued operation with a specific message and retains it', () => {
+    const bId = crypto.randomUUID()
+    const unknownId = crypto.randomUUID()
+    cy.then(async () => {
+      const inserted = await other.from('notes').insert({ id: bId, user_id: userB.id, title: 'B note', description: 'B text', tags: ['old'] })
+      if (inserted.error) throw inserted.error
+      await webOfflineStorageAdapter.saveNote({ id: unknownId, title: 'Hidden draft', description: 'Hidden text', tags: ['old'], status: 'pending', updatedAt: '2026-10-01T00:00:00.000Z' })
+      await webOfflineStorageAdapter.upsertQueueItem({ id: 'unknown-op', noteId: unknownId, operation: 'update', payload: { title: 'Hidden draft', description: 'Hidden text', tags: ['old'] }, clientUpdatedAt: '2026-10-01T00:00:00.000Z', status: 'pending' })
+    })
+    cy.intercept({ method: 'PATCH', pathname: '/rest/v1/notes' }).as('patch')
+    cy.window().then(win => { Object.defineProperty(win.navigator, 'onLine', { configurable: true, value: true }); win.dispatchEvent(new win.Event('online')) })
+    cy.mount(<SupabaseTestProvider supabase={other} user={userB}><App /></SupabaseTestProvider>)
+    cy.contains('[data-testid="note-card"]', 'B note', { timeout: 10000 }).should('be.visible')
+    cy.contains('Hidden draft').should('not.exist')
+    cy.then(async () => {
+      expect(String(await controller.handleRenameTag('old', 'new'))).to.contain('Some local changes need account verification')
+      expect((await webOfflineStorageAdapter.getQueue()).some(item => item.id === 'unknown-op')).to.equal(true)
+      expect((await webOfflineStorageAdapter.loadNotes()).find(note => note.id === unknownId)?.description).to.equal('Hidden text')
+      const b = await other.from('notes').select('tags').eq('id', bId).single()
+      if (b.error) throw b.error
+      expect(b.data.tags).to.deep.equal(['old'])
+    })
+    cy.get('@patch.all').should('have.length', 0)
+    cy.screenshot('privacy-tags-unknown-queue', { capture: 'viewport' })
+  })
+
+  it('never patches an ownerless cached copy just because its ID matches B’s server note', () => {
+    const id = crypto.randomUUID()
+    const unknown: CachedNote = { id, title: 'Hidden draft', description: 'Hidden text', tags: ['different'], status: 'synced', updatedAt: '2026-10-01T00:00:00.000Z' }
+    cy.then(async () => {
+      const inserted = await other.from('notes').insert({ id, user_id: userB.id, title: 'B note', description: 'B text', tags: ['old'] })
+      if (inserted.error) throw inserted.error
+      await webOfflineStorageAdapter.saveNote(unknown)
+    })
+    cy.window().then(win => { Object.defineProperty(win.navigator, 'onLine', { configurable: true, value: true }); win.dispatchEvent(new win.Event('online')) })
+    cy.mount(<SupabaseTestProvider supabase={other} user={userB}><App /></SupabaseTestProvider>)
+    cy.contains('[data-testid="note-card"]', 'B note', { timeout: 10000 }).should('be.visible')
+    cy.contains('Hidden draft').should('not.exist')
+    cy.then(async () => {
+      expect(await controller.handleRenameTag('old', 'new')).to.equal(true)
+      expect((await webOfflineStorageAdapter.loadNotes()).find(note => note.id === id)).to.deep.equal(unknown)
+      const b = await other.from('notes').select('tags').eq('id', id).single()
+      if (b.error) throw b.error
+      expect(b.data.tags).to.deep.equal(['new'])
+    })
+  })
+
+  it('still blocks B’s own pending, failed and unqueued dirty changes', () => {
+    const bId = crypto.randomUUID()
+    const localIds = Array.from({ length: 3 }, () => crypto.randomUUID())
+    cy.then(async () => {
+      const inserted = await other.from('notes').insert({ id: bId, user_id: userB.id, title: 'B note', description: 'B text', tags: ['old'] })
+      if (inserted.error) throw inserted.error
+      for (let index = 0; index < localIds.length; index++) {
+        const status = index === 1 ? 'failed' : 'pending'
+        const note: CachedNote = { id: localIds[index], user_id: userB.id, title: `B local ${index}`, description: 'Save first', tags: ['old'], status, updatedAt: '2026-10-01T00:00:00.000Z' }
+        await webOfflineStorageAdapter.saveNote(note)
+        if (index !== 2) await webOfflineStorageAdapter.upsertQueueItem({ id: `own-${index}`, noteId: note.id, operation: 'create', payload: { user_id: userB.id, title: note.title, description: note.description, tags: note.tags }, clientUpdatedAt: note.updatedAt, status })
+      }
+    })
+    cy.stub(OfflineSyncManager.prototype, 'drainQueue').resolves()
+    cy.intercept({ method: 'PATCH', pathname: '/rest/v1/notes' }).as('patch')
+    cy.window().then(win => { Object.defineProperty(win.navigator, 'onLine', { configurable: true, value: true }); win.dispatchEvent(new win.Event('online')) })
+    cy.mount(<SupabaseTestProvider supabase={other} user={userB}><App /></SupabaseTestProvider>)
+    cy.contains('[data-testid="note-card"]', 'B note', { timeout: 10000 }).should('be.visible')
+    cy.then(async () => {
+      expect(String(await controller.handleRenameTag('old', 'new'))).to.contain('Finish syncing your notes')
+      expect((await webOfflineStorageAdapter.getQueue()).filter(item => item.id.startsWith('own-'))).to.have.length(2)
+      expect((await webOfflineStorageAdapter.loadNotes()).filter(note => localIds.includes(note.id))).to.have.length(3)
+    })
+    cy.get('@patch.all').should('have.length', 0)
+  })
+
+  it('does not announce success when another same-origin page queues a write during the server PATCH', () => {
+    const bId = crypto.randomUUID()
+    let started = false
+    let release!: () => void
+    let result: Promise<boolean | string>
+    cy.then(async () => {
+      const inserted = await other.from('notes').insert({ id: bId, user_id: userB.id, title: 'B note', description: 'B text', tags: ['old'] })
+      if (inserted.error) throw inserted.error
+    })
+    cy.stub(toast, 'success').as('successToast')
+    cy.intercept({ method: 'PATCH', pathname: '/rest/v1/notes' }, req => new Promise<void>(resolve => {
+      started = true
+      release = () => { req.continue(); resolve() }
+    })).as('heldPatch')
+    cy.window().then(win => { Object.defineProperty(win.navigator, 'onLine', { configurable: true, value: true }); win.dispatchEvent(new win.Event('online')) })
+    cy.mount(<SupabaseTestProvider supabase={other} user={userB}><App /></SupabaseTestProvider>)
+    cy.contains('[data-testid="note-card"]', 'B note', { timeout: 10000 }).should('be.visible')
+    cy.then(() => { result = controller.handleRenameTag('old', 'new') })
+    cy.wrap(null).should(() => expect(started).to.equal(true))
+    cy.window().then(win => new Promise<void>((resolve, reject) => {
+      const frame = win.document.createElement('iframe')
+      frame.style.display = 'none'
+      win.document.body.appendChild(frame)
+      const open = frame.contentWindow!.indexedDB.open('everfreenote-offline', 2)
+      open.onerror = () => reject(open.error)
+      open.onsuccess = () => {
+        const db = open.result
+        const tx = db.transaction('queue', 'readwrite')
+        tx.objectStore('queue').put({ id: 'other-page-write', noteId: bId, operation: 'update', payload: { user_id: userB.id, title: 'Newer draft', description: 'Other page', tags: ['old'] }, clientUpdatedAt: '2026-10-02T00:00:00.000Z', status: 'pending' })
+        tx.oncomplete = () => { db.close(); frame.remove(); resolve() }
+        tx.onerror = () => { db.close(); frame.remove(); reject(tx.error) }
+      }
+    }))
+    cy.then(() => release())
+    cy.then(() => result).should('eq', false)
+    cy.get('@successToast').should('not.have.been.called')
+    cy.then(async () => {
+      expect((await webOfflineStorageAdapter.getQueue()).some(item => item.id === 'other-page-write')).to.equal(true)
+      const b = await other.from('notes').select('tags').eq('id', bId).single()
+      if (b.error) throw b.error
+      expect(b.data.tags).to.deep.equal(['new'])
+    })
   })
 
   it('retains proven IndexedDB ownership after create succeeds and A returns offline', () => {

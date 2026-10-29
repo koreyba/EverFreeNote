@@ -38,6 +38,8 @@ export interface SyncState {
 }
 
 export interface OfflineStorageAdapter {
+  /** True only when tag patches update individual records transactionally. */
+  readonly atomicTagPatches?: boolean
   loadNotes(params?: { limit?: number; offset?: number }): Promise<CachedNote[]>
   saveNote(note: CachedNote): Promise<void>
   saveNotes(notes: CachedNote[]): Promise<void>

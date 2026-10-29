@@ -212,6 +212,7 @@ const localFallback = (() => {
       return ids
     },
     patchSyncedTags: (patches: Array<{ expected: CachedNote; tags: string[] }>) => {
+      if (!patches.length) return []
       const notes = readJson<CachedNote>(NOTES_KEY)
       const queued = new Set(readJson<MutationQueueItem>(QUEUE_KEY).map(item => item.noteId))
       const byId = new Map(patches.map(patch => [patch.expected.id, patch]))
@@ -320,6 +321,7 @@ const deleteItem = async (storeName: string, id: string) => {
 
 export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
   ? {
+      atomicTagPatches: true,
       async loadNotes(params = {}) {
         const notes = await readAll<CachedNote>(NOTES_STORE)
         const start = params.offset ?? 0
@@ -605,6 +607,7 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
       },
     }
   : {
+      atomicTagPatches: false,
       // fallback на localStorage
       async loadNotes(params = {}) {
         return localFallback.loadNotes(params)
