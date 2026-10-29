@@ -113,3 +113,5 @@ Removal buttons now measure 44×44 CSS pixels while retaining compact pill backg
 ## Tag entry completion and order
 
 On macOS ARM64 with Electron, 32 focused Jest tests and 37 focused Cypress cases passed without retries. They cover Enter, comma, suggestions, Tab, Escape, blur, duplicate tags, IME composition and save payload order. The styled 320px editor test checks that the most recently confirmed tag is visible while the longer list remains collapsed; batch submissions keep the submitted order. These component tests use a synthetic note and do not by themselves prove persistence through a real database or behavior on a physical phone.
+
+An independent real-browser check exposed a pointer timing issue when clicking Add again: blur committed and closed the field before click reopened it. A regression test separates pointerdown, focus/blur and click at 320px for mouse and touch. After the fix, all five focused Cypress cases passed without retries; 33 focused Jest cases also passed, including keyboard activation after pointer cancellation. Physical-device behavior remains unverified.

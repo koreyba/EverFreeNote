@@ -107,6 +107,22 @@ describe('TagInput', () => {
     expect(input.hidden).toBe(true)
   })
 
+  it('can reopen from the keyboard after a cancelled pointer action', () => {
+    const { onAddTags } = renderTagInput()
+    const addButton = screen.getByRole('button', { name: 'Add tag' })
+    fireEvent.click(addButton)
+    const input = screen.getByRole('combobox', { name: 'Add tags' }) as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'keyboard draft' } })
+    fireEvent.pointerDown(addButton, { button: 0, isPrimary: true })
+    fireEvent.pointerCancel(addButton)
+    fireEvent.blur(input)
+    expect(onAddTags).toHaveBeenCalledWith(['keyboard draft'])
+    expect(input.hidden).toBe(true)
+
+    fireEvent.click(addButton, { detail: 0 })
+    expect(input.hidden).toBe(false)
+  })
+
   it('commits a non-empty value on blur and ignores whitespace-only values', () => {
     const { onAddTags } = renderTagInput()
     fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))

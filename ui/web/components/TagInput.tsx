@@ -37,6 +37,7 @@ export function TagInput({
   const [inputOpen, setInputOpen] = React.useState(tags.length === 0)
   const inputId = React.useId()
   const discardBlurRef = React.useRef(false)
+  const inputOpenOnPointerDown = React.useRef(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
   const addButtonRef = React.useRef<HTMLButtonElement>(null)
 
@@ -219,9 +220,17 @@ export function TagInput({
           ref={addButtonRef}
           type="button"
           disabled={disabled}
+          onPointerDown={(event) => {
+            // A pointer can blur the input before click is dispatched. Preserve
+            // the intended toggle action across that focus transition.
+            inputOpenOnPointerDown.current = event.isPrimary && event.button === 0 && inputOpen
+          }}
+          onPointerCancel={() => { inputOpenOnPointerDown.current = false }}
           onClick={(e) => {
             e.stopPropagation()
-            if (inputOpen) {
+            const shouldClose = inputOpen || (e.detail > 0 && inputOpenOnPointerDown.current)
+            inputOpenOnPointerDown.current = false
+            if (shouldClose) {
               inputRef.current?.blur()
               setInputOpen(false)
             } else focusInput()
