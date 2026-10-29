@@ -65,7 +65,7 @@ describe('NoteEditor Component', () => {
 
     cy.get('@onSave').should('have.been.calledWith', Cypress.sinon.match({
       title: 'New Title',
-      tags: 'tag1, tag2, new tag'
+      tags: 'new tag, tag1, tag2'
     }))
   })
 
@@ -188,7 +188,9 @@ describe('NoteEditor Component', () => {
 
     cy.get('input[placeholder="work, personal, ideas"]').type('next{enter}')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 4)
+    cy.get('input[placeholder="work, personal, ideas"]').should('not.be.visible')
 
+    cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('{backspace}')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 4)
     cy.get('input[placeholder="work, personal, ideas"]').type('{backspace}')
@@ -229,7 +231,7 @@ describe('NoteEditor Component', () => {
     cy.get('@onAutoSave', { timeout: 1500 }).should('have.been.calledOnce')
     cy.get('@onAutoSave').should('have.been.calledWith', Cypress.sinon.match({
       noteId: 'note-1',
-      tags: 'tag1, tag2, pending tag'
+      tags: 'pending tag, tag1, tag2'
     }))
   })
 

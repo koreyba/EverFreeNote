@@ -13,6 +13,40 @@ function EditableTags() {
 }
 
 describe('Adaptive note tags', { retries: 0 }, () => {
+  it('closes the input when pointer focus happens before the second add click', () => {
+    cy.viewport(320, 667)
+    cy.mount(<EditableTags />)
+    cy.get('[aria-label="Add tag"]').click()
+    cy.get('[aria-label="Add tags"]').should('be.focused').type('pointer draft')
+
+    // Real pointer events and the browser's focus transition arrive separately.
+    cy.get('[aria-label="Add tag"]').trigger('pointerdown', { eventConstructor: 'PointerEvent', button: 0, isPrimary: true, pointerType: 'mouse' })
+    cy.get('[aria-label="Add tag"]').focus()
+    cy.get('[aria-label="Add tag"]').trigger('click', { detail: 1 })
+
+    cy.get('[aria-label="Add tags"]').should('not.be.visible')
+    cy.get('[aria-label="Add tag"]').should('have.attr', 'aria-expanded', 'false')
+    cy.contains('[data-note-tag-item]', 'pointer draft').should('exist')
+
+    cy.get('[aria-label="Add tag"]').click()
+    cy.get('[aria-label="Add tags"]').should('be.focused').type('touch draft')
+    cy.get('[aria-label="Add tag"]').trigger('pointerdown', { eventConstructor: 'PointerEvent', button: 0, isPrimary: true, pointerType: 'touch' })
+    cy.get('[aria-label="Add tag"]').focus()
+    cy.get('[aria-label="Add tag"]').trigger('click', { detail: 1 })
+    cy.get('[aria-label="Add tags"]').should('not.be.visible')
+    cy.contains('[data-note-tag-item]', 'touch draft').should('exist')
+  })
+
+  it('commits and closes the focused input when the add control is clicked again', () => {
+    cy.viewport(390, 844)
+    cy.mount(<EditableTags />)
+    cy.get('[aria-label="Add tag"]').click()
+    cy.get('[aria-label="Add tags"]').should('be.focused').type('draft')
+    cy.get('[aria-label="Add tag"]').click()
+    cy.get('[aria-label="Add tags"]').should('not.be.visible')
+    cy.contains('[data-note-tag-item]', 'draft').should('exist')
+  })
+
   it('fits tags to the available row and keeps input independent from disclosure', () => {
     cy.viewport(320, 700)
     cy.mount(<EditableTags />)
@@ -27,6 +61,7 @@ describe('Adaptive note tags', { retries: 0 }, () => {
     cy.get('[aria-label="Add tag"]').click()
     cy.get('[aria-label="Add tags"]').type('новый{enter}')
     cy.get('[data-note-tag-item]').should('have.length', 13)
+    cy.get('[aria-label="Add tags"]').should('not.be.visible')
     cy.get('[aria-label="Show all 13 tags"]').should('have.attr', 'aria-expanded', 'false').click()
     cy.get(visibleTags).should('have.length', 13)
     cy.get(`${visibleTags} button[aria-label^="Remove tag"]`).each($button => {
@@ -38,6 +73,8 @@ describe('Adaptive note tags', { retries: 0 }, () => {
     })
     cy.get('[aria-label]').filter((_, el) => el.getAttribute('aria-label') === 'Remove tag "новый"').click()
     cy.get('[data-note-tag-item]').should('have.length', 12)
+    cy.get('[aria-label="Add tag"]').click()
+    cy.get('[aria-label="Add tags"]').should('be.visible')
     cy.get('[aria-label="Add tag"]').click()
     cy.get('[aria-label="Add tags"]').should('not.be.visible')
     cy.get(visibleTags).should('have.length', 12)

@@ -109,3 +109,9 @@ Focused Cypress covers 280/320/390/1280/1600 widths, actual overflow, all-fit wi
 
 ### Follow-up: removal hit areas and resize fallback
 Removal buttons now measure 44×44 CSS pixels while retaining compact pill backgrounds and 12px icons. Manual synthetic Chrome checks at 390px and 1280px confirmed all 12 targets, no overlap with adjacent filter controls, working left/right hit edges, add/remove, and no horizontal overflow. `NoteTagList` also listens to window resize when ResizeObserver is unavailable, removing the listener on cleanup. Three focused component cases passed, including fallback resize/cleanup and target measurements; root TypeScript, scoped ESLint and diff checks passed. Report: `/tmp/editor-tag-hit-target/awesome/index.html`; screenshots: `/tmp/editor-focus-evidence/followup-mobile-dark-targets.png` and `/tmp/editor-focus-evidence/followup-desktop-dark-targets.png`.
+
+## Tag entry completion and order
+
+On macOS ARM64 with Electron, 32 focused Jest tests and 37 focused Cypress cases passed without retries. They cover Enter, comma, suggestions, Tab, Escape, blur, duplicate tags, IME composition and save payload order. The styled 320px editor test checks that the most recently confirmed tag is visible while the longer list remains collapsed; batch submissions keep the submitted order. These component tests use a synthetic note and do not by themselves prove persistence through a real database or behavior on a physical phone.
+
+An independent real-browser check exposed a pointer timing issue when clicking Add again: blur committed and closed the field before click reopened it. A regression test separates pointerdown, focus/blur and click at 320px for mouse and touch. After the fix, all five focused Cypress cases passed without retries; 33 focused Jest cases also passed, including keyboard activation after pointer cancellation. Physical-device behavior remains unverified.

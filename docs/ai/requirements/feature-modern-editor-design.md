@@ -68,3 +68,5 @@ Specifically, we want to address:
 
 ## October 29 focus and tag correction
 Remove the decorative green editor focus line; preserve caret, real blockquotes and control focus indicators. Restore the tag appearance from before the document redesign. Show as many complete tags as the available row can hold, reserving space for disclosure and Add. Recalculate on resize and font loading. Add opens/closes only the input; disclosure independently expands/collapses the full collection. Preserve filtering, removal and keyboard entry without horizontal scrolling.
+
+After confirming tag entry, close the input and show new tags at the start of the note's tag list. Comma entry remains available for entering multiple tags; the input remains open until the entry is confirmed or focus leaves it.

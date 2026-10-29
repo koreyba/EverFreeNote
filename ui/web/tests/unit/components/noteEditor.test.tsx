@@ -97,6 +97,12 @@ jest.mock('@/components/TagInput', () => ({
       <button type="button" onClick={() => onAddTags(['local-tag'])}>
         Add local tag
       </button>
+      <button type="button" onClick={() => onAddTags(['second-tag', 'third-tag'])}>
+        Add second tag in batch
+      </button>
+      <button type="button" onClick={() => onAddTags(['work', 'SECOND-TAG'])}>
+        Add duplicate tags
+      </button>
       <button type="button" onClick={() => onRemoveTag(tags[0])}>
         Remove first tag
       </button>
@@ -563,10 +569,16 @@ describe('NoteEditor tag handlers & save/read actions', () => {
     expect(screen.getByTestId('selected-tags').textContent).toBe('work,urgent')
 
     fireEvent.click(screen.getByText('Add local tag'))
-    expect(screen.getByTestId('selected-tags').textContent).toBe('work,urgent,local-tag')
+    expect(screen.getByTestId('selected-tags').textContent).toBe('local-tag,work,urgent')
+
+    fireEvent.click(screen.getByText('Add second tag in batch'))
+    expect(screen.getByTestId('selected-tags').textContent).toBe('second-tag,third-tag,local-tag,work,urgent')
+
+    fireEvent.click(screen.getByText('Add duplicate tags'))
+    expect(screen.getByTestId('selected-tags').textContent).toBe('second-tag,third-tag,local-tag,work,urgent')
 
     fireEvent.click(screen.getByText('Remove first tag'))
-    expect(screen.getByTestId('selected-tags').textContent).toBe('urgent,local-tag')
+    expect(screen.getByTestId('selected-tags').textContent).toBe('third-tag,local-tag,work,urgent')
 
     fireEvent.click(screen.getByText('Change tag query'))
   })

@@ -37,6 +37,7 @@ export function TagInput({
   const [inputOpen, setInputOpen] = React.useState(tags.length === 0)
   const inputId = React.useId()
   const discardBlurRef = React.useRef(false)
+  const inputOpenOnPointerDown = React.useRef(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
   const addButtonRef = React.useRef<HTMLButtonElement>(null)
 
@@ -60,19 +61,26 @@ export function TagInput({
     onQueryChange?.(value)
   }
 
-  const commitTags = (value: string) => {
-    const parts = value
-      .split(",")
-      .map((t) => t.trim().toLowerCase())
-      .filter((t) => t.length > 0)
-
-    if (parts.length > 0) {
-      onAddTags(parts)
-    }
+  const clearInput = () => {
     setInputValue("")
     onQueryChange?.("")
     setBackspaceArmed(false)
     setHighlightedIndex(-1)
+  }
+
+  const commitTags = (value: string) => {
+    const parts = value.split(",").map((tag) => tag.trim().toLowerCase()).filter(Boolean)
+    if (parts.length > 0) onAddTags(parts)
+    clearInput()
+  }
+
+  const closeInput = (restoreFocus: boolean) => {
+    setInputOpen(false)
+    if (restoreFocus) {
+      // Focusing Add synchronously fires blur before React flushes inputValue.
+      discardBlurRef.current = inputRef.current?.ownerDocument.activeElement === inputRef.current
+      addButtonRef.current?.focus()
+    }
   }
 
   const handleInputBlur = () => {
@@ -82,14 +90,13 @@ export function TagInput({
     discardBlurRef.current = false
     setBackspaceArmed(false)
     setHighlightedIndex(-1)
+    closeInput(false)
   }
 
-  const handleSuggestionClick = (suggestion: string) => {
+  const handleSuggestionClick = (suggestion: string, close: boolean) => {
     onAddTags([suggestion])
-    setInputValue("")
-    onQueryChange?.("")
-    setHighlightedIndex(-1)
-    inputRef.current?.focus()
+    clearInput()
+    if (close) closeInput(true)
   }
 
   const getHighlightedSuggestion = () =>
@@ -105,24 +112,27 @@ export function TagInput({
     })
   }
 
-  const handleSelectionKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleSelectionKey = (event: React.KeyboardEvent<HTMLInputElement>, close: boolean) => {
     event.preventDefault()
     const suggestion = getHighlightedSuggestion()
     if (suggestion) {
-      handleSuggestionClick(suggestion)
+      handleSuggestionClick(suggestion, close)
       return
     }
     commitTags(inputValue)
+    if (close) closeInput(true)
   }
 
-  const handleTabKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleTabKey = () => {
     const suggestion = getHighlightedSuggestion()
     if (suggestion) {
-      event.preventDefault()
-      handleSuggestionClick(suggestion)
-      return
+      handleSuggestionClick(suggestion, false)
+      discardBlurRef.current = true
+    } else if (inputValue.trim()) {
+      commitTags(inputValue)
+      discardBlurRef.current = true
     }
-    if (inputValue.trim()) commitTags(inputValue)
+    // Let Tab move to the next control; its normal blur closes the input.
   }
 
   const handleEscapeKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -150,6 +160,8 @@ export function TagInput({
   }
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enter confirms the IME composition first, not the tag.
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
     switch (event.key) {
       case "ArrowDown":
         handleArrowKey(event, 1)
@@ -158,11 +170,13 @@ export function TagInput({
         handleArrowKey(event, -1)
         return
       case "Tab":
-        handleTabKey(event)
+        handleTabKey()
         return
       case "Enter":
+        handleSelectionKey(event, true)
+        return
       case ",":
-        handleSelectionKey(event)
+        handleSelectionKey(event, false)
         return
       case "Escape":
         handleEscapeKey(event)
@@ -206,9 +220,17 @@ export function TagInput({
           ref={addButtonRef}
           type="button"
           disabled={disabled}
+          onPointerDown={(event) => {
+            // A pointer can blur the input before click is dispatched. Preserve
+            // the intended toggle action across that focus transition.
+            inputOpenOnPointerDown.current = event.isPrimary && event.button === 0 && inputOpen
+          }}
+          onPointerCancel={() => { inputOpenOnPointerDown.current = false }}
           onClick={(e) => {
             e.stopPropagation()
-            if (inputOpen) {
+            const shouldClose = inputOpen || (e.detail > 0 && inputOpenOnPointerDown.current)
+            inputOpenOnPointerDown.current = false
+            if (shouldClose) {
               inputRef.current?.blur()
               setInputOpen(false)
             } else focusInput()
@@ -273,7 +295,7 @@ export function TagInput({
                   index === highlightedIndex ? "bg-accent text-accent-foreground font-semibold" : "hover:bg-muted"
                 )}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => handleSuggestionClick(suggestion)}
+                onClick={() => handleSuggestionClick(suggestion, true)}
               >
                 <span>{suggestion}</span>
                 {typeof count === "number" && (
