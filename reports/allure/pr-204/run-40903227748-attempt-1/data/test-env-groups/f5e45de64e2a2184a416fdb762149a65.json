@@ -1,0 +1,1 @@
+{"id":"f5e45de64e2a2184a416fdb762149a65","fullName":"everfreenote:cypress/component/features/notes/NoteTagLayout.cy.tsx#Adaptive note tags closes the input when pointer focus happens before the second add click","name":"closes the input when pointer focus happens before the second add click","status":"passed","testResultsByEnv":{"default":"97881e54734307ab91ac6fd99fc86159"}}

@@ -1,0 +1,1 @@
+{"id":"67c0acc1265a247ec3416d685bc4111b","fullName":"everfreenote:ui/web/tests/unit/lib/imageDimensionSanitization.test.ts#image dimensions in sanitized note HTML accepts the safe integer 16384","name":"accepts the safe integer 16384","status":"passed","testResultsByEnv":{"default":"ae9eb7e8570f29b0921a8322a607ab7b"}}

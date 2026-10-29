@@ -1,0 +1,1 @@
+{"id":"38105cf891ddc49c4506b54d2c0aa0e6","fullName":"everfreenote:cypress/component/editor/EditorColorPicker.cy.tsx#Editor color picker prevents Enter from replacing selected text when choosing a swatch on ios","name":"prevents Enter from replacing selected text when choosing a swatch on ios","status":"passed","testResultsByEnv":{"default":"84815748809a1e67bc5b9dd7cac7d97b"}}

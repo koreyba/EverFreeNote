@@ -1,0 +1,1 @@
+{"id":"35b8098fb9888db6ee359570008e4d0e","fullName":"everfreenote:ui/web/tests/unit/components/notesShell.test.tsx#NotesShell does not consume the AI index return path until the workspace can be preserved","name":"does not consume the AI index return path until the workspace can be preserved","status":"passed","testResultsByEnv":{"default":"03c0916be9c2cb0b7bb3be9255bbb2b5"}}
