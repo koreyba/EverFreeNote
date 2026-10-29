@@ -332,12 +332,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     if (normalized.length === 0) return
     const prev = selectedTagsRef.current
     const existing = new Set(prev)
-    const merged = [...prev]
+    const added: string[] = []
     for (const tag of normalized) {
       if (existing.has(tag)) continue
       existing.add(tag)
-      merged.push(tag)
+      added.push(tag)
     }
+    if (added.length === 0) return
+    const merged = [...added, ...prev]
     selectedTagsRef.current = merged
     setSelectedTags(merged)
     setTagQuery("")

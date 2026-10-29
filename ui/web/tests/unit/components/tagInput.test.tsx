@@ -74,6 +74,39 @@ describe('TagInput', () => {
     expect((input as HTMLInputElement).value).toBe('')
   })
 
+  it('keeps comma entry open and closes after confirming the remaining tags', () => {
+    const { onAddTags } = renderTagInput()
+    const addButton = screen.getByRole('button', { name: 'Add tag' })
+    fireEvent.click(addButton)
+    const input = screen.getByRole('combobox', { name: 'Add tags' }) as HTMLInputElement
+    input.focus()
+
+    fireEvent.change(input, { target: { value: 'alpha' } })
+    fireEvent.keyDown(input, { key: ',' })
+    expect(onAddTags).toHaveBeenLastCalledWith(['alpha'])
+    expect(input.hidden).toBe(false)
+
+    fireEvent.change(input, { target: { value: 'beta' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(input.hidden).toBe(true)
+    expect(onAddTags.mock.calls.at(-1)?.[0]).toEqual(['beta'])
+    expect(addButton.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(addButton)
+  })
+
+  it('does not submit a tag while an IME composition is being confirmed', () => {
+    const { onAddTags } = renderTagInput()
+    fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
+    const input = screen.getByRole('combobox', { name: 'Add tags' }) as HTMLInputElement
+    fireEvent.change(input, { target: { value: '日本語' } })
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
+    expect(onAddTags).not.toHaveBeenCalled()
+    expect(input.hidden).toBe(false)
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: false })
+    expect(onAddTags).toHaveBeenCalledWith(['日本語'])
+    expect(input.hidden).toBe(true)
+  })
+
   it('commits a non-empty value on blur and ignores whitespace-only values', () => {
     const { onAddTags } = renderTagInput()
     fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
@@ -168,6 +201,9 @@ describe('TagInput', () => {
     // Press Enter to select highlighted suggestion ('redux')
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(onAddTags).toHaveBeenLastCalledWith(['redux'])
+    expect((input as HTMLInputElement).hidden).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
 
     // Press ArrowUp to wrap around to last suggestion ('rust')
     fireEvent.keyDown(input, { key: 'ArrowUp' })
@@ -177,16 +213,21 @@ describe('TagInput', () => {
     // Press Tab to select highlighted suggestion ('rust')
     fireEvent.keyDown(input, { key: 'Tab' })
     expect(onAddTags).toHaveBeenLastCalledWith(['rust'])
+    fireEvent.blur(input)
+    expect((input as HTMLInputElement).hidden).toBe(true)
   })
 
   it('commits typed input on Tab when no suggestion is highlighted', () => {
     const { onAddTags } = renderTagInput()
+    fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
     const input = screen.getByPlaceholderText('Add tag...')
 
     fireEvent.change(input, { target: { value: 'custom-tag' } })
     fireEvent.keyDown(input, { key: 'Tab' })
 
     expect(onAddTags).toHaveBeenCalledWith(['custom-tag'])
+    fireEvent.blur(input)
+    expect((input as HTMLInputElement).hidden).toBe(true)
   })
 
   it('disarms backspace removal state when a non-backspace key is pressed', () => {
