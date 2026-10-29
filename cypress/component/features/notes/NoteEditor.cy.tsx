@@ -1,4 +1,5 @@
 import React from 'react'
+import '../../../../app/globals.css'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NoteEditor, type NoteEditorHandle } from '../../../../ui/web/components/features/notes/NoteEditor'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
@@ -184,7 +185,7 @@ describe('NoteEditor Component', () => {
     cy.get('button[title="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('New  Tag,')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
-    cy.contains('[data-cy="interactive-tag"]', 'new tag').should('be.visible')
+    cy.contains('[data-cy="interactive-tag"]', 'new tag').should('not.be.visible')
 
     cy.get('input[placeholder="work, personal, ideas"]').type('next{enter}')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 4)
@@ -526,7 +527,7 @@ describe('NoteEditor Component', () => {
     cy.get('[data-cy="bold-button"]').should('be.visible')
   })
 
-  it('opens tag input separately from the full collection and deletes the last tag', () => {
+  it('restores the full collection after inline entry and deletes the last tag', () => {
     const manyTags = Array.from({ length: 20 }, (_, i) => `tag-${i}`).join(', ')
     const props = { ...getDefaultProps(), initialTags: manyTags }
     cy.mount(<NoteEditor {...props} />)
@@ -538,7 +539,9 @@ describe('NoteEditor Component', () => {
       .should('be.visible')
       .should('have.focus')
 
-    cy.get('[aria-label="Show all 20 tags"]').should('have.attr', 'aria-expanded', 'false').click()
+    cy.get('[aria-label="Show all 20 tags"]').should('have.attr', 'aria-expanded', 'false').and('not.be.visible')
+    cy.get('input[placeholder="work, personal, ideas"]').type('{esc}')
+    cy.get('[aria-label="Show all 20 tags"]').should('be.visible').click()
     cy.contains('[data-cy="interactive-tag"]', 'tag-19').find('button').click()
     cy.get('[data-testid="tag-input-container"]').contains('tag-19').should('not.exist')
   })

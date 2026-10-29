@@ -204,7 +204,7 @@ export function TagInput({
           }
         }}
         className={cn(
-          "flex min-h-11 min-w-0 items-start gap-2 cursor-text"
+          "relative flex min-h-11 min-w-0 items-start gap-2 cursor-text"
         )}
       >
         <div data-cy="tag-input-label" className="sr-only">
@@ -212,9 +212,35 @@ export function TagInput({
           <span>Tags</span>
         </div>
 
-        <NoteTagList tags={tags} expanded={expanded} onExpandedChange={setExpanded}
-          onTagClick={onTagClick} onRemoveTag={disabled ? undefined : onRemoveTag}
-          armedTag={backspaceArmed ? tags.at(-1) : undefined} variant="editor" />
+        {/* Keep the tag layout mounted so opening entry preserves both disclosure
+            state and row height, including an explicitly expanded collection. */}
+        <div className={cn("flex min-w-0 flex-1", inputOpen && "invisible")} inert={inputOpen} aria-hidden={inputOpen || undefined}>
+          <NoteTagList tags={tags} expanded={expanded} onExpandedChange={setExpanded}
+            onTagClick={onTagClick} onRemoveTag={disabled ? undefined : onRemoveTag}
+            armedTag={backspaceArmed ? tags.at(-1) : undefined} variant="editor" />
+        </div>
+        {!disabled && (
+          <input
+            ref={inputRef}
+            id={inputId}
+            hidden={!inputOpen}
+            type="text"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-label="Add tags"
+            aria-expanded={isExpanded}
+            aria-haspopup="listbox"
+            aria-controls="tag-suggestions-listbox"
+            aria-activedescendant={highlightedIndex >= 0 ? `tag-suggestion-option-${highlightedIndex}` : undefined}
+            value={inputValue}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
+            onBlur={handleInputBlur}
+            placeholder={placeholder}
+            className="absolute left-0 right-[3.25rem] top-0 h-11 min-w-0 rounded-lg border border-border bg-muted/30 px-3 text-base md:text-sm outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:shadow-[inset_0_-2px_0_var(--color-primary)]"
+            disabled={disabled}
+          />
+        )}
 
         <button
           ref={addButtonRef}
@@ -250,36 +276,14 @@ export function TagInput({
         </button>
       </div>
 
-      {!disabled && (
-        <input
-          ref={inputRef}
-          id={inputId}
-          hidden={!inputOpen}
-          type="text"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-label="Add tags"
-          aria-expanded={isExpanded}
-          aria-haspopup="listbox"
-          aria-controls="tag-suggestions-listbox"
-          aria-activedescendant={highlightedIndex >= 0 ? `tag-suggestion-option-${highlightedIndex}` : undefined}
-          value={inputValue}
-          onChange={handleInputChange}
-          onKeyDown={handleInputKeyDown}
-          onBlur={handleInputBlur}
-          placeholder={placeholder}
-          className="mt-1 h-11 w-full min-w-0 rounded-md bg-muted/30 px-2 text-base md:max-w-xs md:text-sm outline-none placeholder:text-muted-foreground focus-visible:shadow-[inset_0_-2px_0_var(--color-primary)]"
-          disabled={disabled}
-        />
-      )}
-      {inputOpen && backspaceArmed && <p role="status" className="mt-1 text-xs text-muted-foreground">Press Backspace again to remove “{tags.at(-1)}”.</p>}
+      {inputOpen && backspaceArmed && <p role="status" className="absolute left-0 top-full z-50 mt-1 max-w-full rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground break-words">Press Backspace again to remove “{tags.at(-1)}”.</p>}
 
       {/* Suggestions dropdown */}
       {isExpanded && (
         <div
           id="tag-suggestions-listbox"
           role="listbox"
-          className="absolute z-50 mt-1 w-full max-w-xs rounded-md border border-input bg-popover text-popover-foreground shadow-lg"
+          className="absolute left-0 top-11 z-50 mt-1 w-full max-w-sm max-h-60 overflow-y-auto overscroll-contain rounded-lg border border-input bg-popover text-popover-foreground shadow-lg"
         >
           {suggestions.map((suggestion, index) => {
             const count = tagCounts[suggestion]
@@ -291,15 +295,15 @@ export function TagInput({
                 role="option"
                 aria-selected={index === highlightedIndex}
                 className={cn(
-                  "w-full px-3 py-2 text-left text-sm flex items-center justify-between transition-colors first:rounded-t-md last:rounded-b-md",
+                  "min-h-11 w-full gap-2 px-3 py-2 text-left text-sm flex items-center justify-between transition-colors first:rounded-t-md last:rounded-b-md",
                   index === highlightedIndex ? "bg-accent text-accent-foreground font-semibold" : "hover:bg-muted"
                 )}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleSuggestionClick(suggestion, true)}
               >
-                <span>{suggestion}</span>
+                <span className="min-w-0 break-words">{suggestion}</span>
                 {typeof count === "number" && (
-                  <span className="text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full font-mono font-normal">
+                  <span className="shrink-0 text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full font-mono font-normal">
                     {count}
                   </span>
                 )}

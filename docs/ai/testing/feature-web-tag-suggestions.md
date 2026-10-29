@@ -79,3 +79,23 @@ description: Define testing approach, test cases, and quality assurance
 
 - Track regressions related to tag parsing, autosave, and note updates.
 
+
+## Inline entry validation (2026-10-29)
+
+- 45/45 Cypress component tests passed through Allure agent: `TagEntryBehavior`,
+  `NoteTagLayout`, `NoteEditor`; expected count matched, no findings or retries.
+- New geometry assertions cover 320/1280 px: input and Add share the same top,
+  input stays before Add, body position is unchanged on open/confirm. Expanded
+  long-tag cancellation retains the original document position and disclosure.
+- Existing coverage verifies first click/touch, second Add, comma, Enter,
+  autocomplete, double Backspace, prepend order, save payloads and responsive tags.
+- Existing tests now check chips are hidden during input and restore before
+  disclosure/removal. `NoteEditor` tests import real CSS for visibility checks.
+- Full fast type checks (root/core/core tests/web tests/shell tests/shell) and
+  repository ESLint passed. No dependency or lockfile edits.
+- Runtime used existing macOS dependencies via local symlinks, not a fresh locked
+  install. Native device/virtual keyboard and real backend reload acceptance are
+  outside component scope; independent synthetic browser QA is tracked separately.
+- The expanded collection deliberately retains its space while entry is open.
+  Adding/removing tags can naturally change collection height; opening/cancelling
+  alone does not. No animation was added, so no motion preference override is needed.

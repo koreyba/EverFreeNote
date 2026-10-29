@@ -79,3 +79,22 @@ graph TD
 - Suggestion filtering and sorting must be fast for large tag sets (memoize filtering and sorting).
 - No additional network calls; UI remains responsive while typing.
 - Maintain existing sanitization and save/error handling; no new security surface.
+
+## Inline entry row (2026-10-29)
+
+Opening Add temporarily replaces the tag chips with a full-width input alongside the
+44 px Add button. The chip collection remains mounted, invisible and inert: it
+retains disclosure state and its measured height, so opening/cancelling entry does
+not move the document even when tags were explicitly expanded. Enter, suggestion
+selection and a second Add close entry; comma continues entry. Closing restores
+chips in their existing order. No automatic disclosure or animation is introduced.
+The input has an inset focus underline and border; the body editor is untouched.
+Suggestions overlay the first row, wrap long names and retain 44 px targets.
+
+```mermaid
+stateDiagram-v2
+  Tags --> Entry: Add
+  Entry --> Entry: comma commits
+  Entry --> Tags: Enter / suggestion / second Add / blur commits
+  Entry --> Tags: Escape discards draft
+```

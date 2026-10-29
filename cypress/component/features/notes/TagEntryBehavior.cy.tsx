@@ -54,7 +54,7 @@ describe('Note tag entry', { retries: 0 }, () => {
     cy.get('[aria-label="Add tag"]').click()
     cy.get('[aria-label="Add tags"]').type('alpha,')
     cy.get('[aria-label="Add tags"]').should('be.visible')
-    cy.get('[data-note-tag-item]').first().should('contain.text', 'alpha').and('be.visible')
+    cy.get('[data-note-tag-item]').first().should('contain.text', 'alpha').and('not.be.visible')
     cy.get('[aria-label="Add tags"]').type('beta{enter}')
     cy.get('[aria-label="Add tags"]').should('not.be.visible')
     cy.get('[aria-label="Add tag"]').should('have.attr', 'aria-expanded', 'false').and('be.focused')
@@ -76,5 +76,58 @@ describe('Note tag entry', { retries: 0 }, () => {
     cy.get('[data-note-tag-item]').should('have.length', 15)
     cy.get('[data-note-tag-item]').eq(0).should('contain.text', 'gamma')
     cy.get('[data-note-tag-item]').eq(1).should('contain.text', 'beta')
+  })
+})
+
+// Geometry assertions protect against opening a second row and moving the body.
+describe('Inline tag row geometry', { retries: 0 }, () => {
+  for (const [width, height] of [[320, 667], [1280, 900]]) {
+    it(`replaces the empty row with entry without moving the document at ${width}px`, () => {
+      cy.viewport(width, height)
+      cy.mount(<NoteEditor initialTitle="Inline entry" initialDescription="<p>Body anchor</p>" initialTags=""
+        availableTags={[]} isSaving={false} onSave={cy.stub()} onRead={cy.stub()} />)
+      cy.get('.ProseMirror').then($body => {
+        const bodyTop = $body[0].getBoundingClientRect().top
+        cy.get('[aria-label="Add tag"]').click()
+        cy.get('[aria-label="Add tags"]').should('be.focused').then($input => {
+          cy.get('[aria-label="Add tag"]').then($button => {
+            const input = $input[0].getBoundingClientRect()
+            const button = $button[0].getBoundingClientRect()
+            expect(input.top).to.equal(button.top)
+            expect(input.right).to.be.at.most(button.left)
+            expect(input.width).to.be.greaterThan(150)
+          })
+        })
+        cy.get('.ProseMirror').should($current => {
+          expect($current[0].getBoundingClientRect().top).to.equal(bodyTop)
+        })
+        cy.screenshot(`inline-tag-row-open-${width}`)
+        cy.get('[aria-label="Add tags"]').type('inline{enter}')
+        cy.get('[data-note-tag-item]').first().should('contain.text', 'inline').and('be.visible')
+        cy.get('.ProseMirror').should($current => {
+          expect($current[0].getBoundingClientRect().top).to.equal(bodyTop)
+        })
+      })
+      cy.screenshot(`inline-tag-row-${width}`)
+    })
+  }
+
+  it('preserves expanded long tags and document position through cancellation', () => {
+    cy.viewport(320, 700)
+    cy.mount(<NoteEditor initialTitle="Expanded tags" initialDescription="<p>Body anchor</p>"
+      initialTags="long-tag-with-many-characters-that-must-wrap-safely, second, third, fourth, fifth"
+      availableTags={[]} isSaving={false} onSave={cy.stub()} onRead={cy.stub()} />)
+    cy.get('[aria-label="Show all 5 tags"]').click()
+    cy.get('.ProseMirror').then($body => {
+      const bodyTop = $body[0].getBoundingClientRect().top
+      cy.get('[aria-label="Add tag"]').click()
+      cy.get('[data-note-tag-item]').first().should('not.be.visible')
+      cy.get('[aria-label="Add tags"]').should('be.focused').type('discard me')
+      cy.get('.ProseMirror').should($current => expect($current[0].getBoundingClientRect().top).to.equal(bodyTop))
+      cy.get('[aria-label="Add tags"]').type('{esc}')
+      cy.get('[aria-label="Show fewer tags"]').should('have.attr', 'aria-expanded', 'true')
+      cy.get('[data-note-tag-item]').should('have.length', 5)
+      cy.get('.ProseMirror').should($current => expect($current[0].getBoundingClientRect().top).to.equal(bodyTop))
+    })
   })
 })
