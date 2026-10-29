@@ -1,4 +1,5 @@
 import React from 'react'
+import { flushSync } from 'react-dom'
 import '../../../../app/globals.css'
 import { NoteView } from '@ui/web/components/features/notes/NoteView'
 import { SplitNotePreview } from '@ui/web/components/features/notes/SplitNotePreview'
@@ -303,6 +304,251 @@ describe('Initial reader scroll when layout changes before next frame', { retrie
     cy.contains('Toggle preview').click()
     cy.get('[data-cy="split-note-preview"]').should(($preview) => {
       expect($preview[0].scrollTop, 'new position after showing').to.equal(300)
+    })
+  })
+
+  it('retains a changed preview position when it is hidden before the scroll event', () => {
+    const frames = new Map<number, FrameRequestCallback>()
+    let nextId = 1
+    cy.window().then(win => {
+      const originalFrame = win.requestAnimationFrame
+      const originalCancel = win.cancelAnimationFrame
+      restoreFrame = () => { win.requestAnimationFrame = originalFrame; win.cancelAnimationFrame = originalCancel }
+      win.requestAnimationFrame = callback => { const id = nextId++; frames.set(id, callback); return id }
+      win.cancelAnimationFrame = id => { frames.delete(id) }
+    })
+    const note = {
+      id: 'hidden-note', title: 'Loading content', description: '<p>Image placeholder</p>', tags: [],
+      created_at: '2026-10-28T10:00:00Z', updated_at: '2026-10-28T10:00:00Z', user_id: 'synthetic-user',
+    }
+    const tab = {
+      id: 'hidden-tab', noteId: note.id, note, mode: 'reading' as const,
+      draft: { title: '', description: '', tags: '' }, view: { scrollTop: 600 },
+      saveState: 'saved' as const, saveError: null,
+    }
+    const Preview = () => {
+      const [visible, setVisible] = React.useState(true)
+      return <>
+        <button onClick={() => setVisible(value => !value)}>Toggle preview</button>
+        <div style={{ height: 500, display: visible ? 'flex' : 'none', flexDirection: 'column' }}>
+          <SplitNotePreview tab={tab} visible={visible} onViewSessionChange={cy.stub()} onViewScrollCapture={cy.stub()} />
+        </div>
+      </>
+    }
+    cy.mount(<Preview />)
+    cy.get('[data-cy="split-note-preview"]').then(($preview) => {
+      const preview = $preview[0]
+      const content = preview.querySelector<HTMLElement>('.note-content')
+      const toggle = preview.ownerDocument.querySelector<HTMLButtonElement>('button')
+      if (!content || !toggle) throw new Error('Missing preview content or toggle')
+      expect(frames.size, 'pending restore').to.be.greaterThan(0)
+      content.style.height = '2400px'
+      preview.scrollTop = 300
+      expect(preview.scrollTop, 'before hiding').to.equal(300)
+      flushSync(() => toggle.click())
+      expect(preview.getClientRects().length, 'hidden').to.equal(0)
+      flushSync(() => toggle.click())
+      expect(preview.scrollTop, 'after showing, before any scroll event').to.equal(300)
+    })
+  })
+
+  it('uses an updated session position when a hidden preview is shown', () => {
+    const frames = new Map<number, FrameRequestCallback>()
+    let nextId = 1
+    cy.window().then(win => {
+      const originalFrame = win.requestAnimationFrame
+      const originalCancel = win.cancelAnimationFrame
+      restoreFrame = () => { win.requestAnimationFrame = originalFrame; win.cancelAnimationFrame = originalCancel }
+      win.requestAnimationFrame = callback => { const id = nextId++; frames.set(id, callback); return id }
+      win.cancelAnimationFrame = id => { frames.delete(id) }
+    })
+    const note = {
+      id: 'hidden-session', title: 'Loading content', description: '<p>Image placeholder</p>', tags: [],
+      created_at: '2026-10-28T10:00:00Z', updated_at: '2026-10-28T10:00:00Z', user_id: 'synthetic-user',
+    }
+    const Preview = () => {
+      const [visible, setVisible] = React.useState(true)
+      const [savedScroll, setSavedScroll] = React.useState(600)
+      const tab = {
+        id: 'hidden-tab', noteId: note.id, note, mode: 'reading' as const,
+        draft: { title: '', description: '', tags: '' }, view: { scrollTop: savedScroll },
+        saveState: 'saved' as const, saveError: null,
+      }
+      return <>
+        <button data-cy="toggle-preview" onClick={() => setVisible(value => !value)}>Toggle preview</button>
+        <button data-cy="update-session" onClick={() => setSavedScroll(800)}>Update session</button>
+        <div style={{ height: 500, display: visible ? 'flex' : 'none', flexDirection: 'column' }}>
+          <SplitNotePreview tab={tab} visible={visible} onViewSessionChange={cy.stub()} onViewScrollCapture={cy.stub()} />
+        </div>
+      </>
+    }
+    cy.mount(<Preview />)
+    cy.get('[data-cy="split-note-preview"]').then(($preview) => {
+      const preview = $preview[0]
+      const content = preview.querySelector<HTMLElement>('.note-content')
+      const toggle = preview.ownerDocument.querySelector<HTMLButtonElement>('[data-cy="toggle-preview"]')
+      const update = preview.ownerDocument.querySelector<HTMLButtonElement>('[data-cy="update-session"]')
+      if (!content || !toggle || !update) throw new Error('Missing preview controls')
+      expect(frames.size, 'pending restore').to.be.greaterThan(0)
+      content.style.height = '2400px'
+      preview.scrollTop = 300
+      expect(preview.scrollTop, 'live position before hiding').to.equal(300)
+      flushSync(() => toggle.click())
+      flushSync(() => update.click())
+      flushSync(() => toggle.click())
+      expect(preview.scrollTop, 'new session position takes precedence').to.equal(800)
+    })
+  })
+
+  it('retains a changed draft preview position before its scroll event', () => {
+    const frames = new Map<number, FrameRequestCallback>()
+    let nextId = 1
+    cy.window().then(win => {
+      const originalFrame = win.requestAnimationFrame
+      const originalCancel = win.cancelAnimationFrame
+      restoreFrame = () => { win.requestAnimationFrame = originalFrame; win.cancelAnimationFrame = originalCancel }
+      win.requestAnimationFrame = callback => { const id = nextId++; frames.set(id, callback); return id }
+      win.cancelAnimationFrame = id => { frames.delete(id) }
+    })
+    const tab = {
+      id: 'draft-tab', noteId: null, note: null, mode: 'editing' as const,
+      draft: { title: 'Unsaved draft', description: '<p>Draft text</p>', tags: '' }, view: { scrollTop: 600 },
+      saveState: 'dirty' as const, saveError: null,
+    }
+    const Preview = () => {
+      const [visible, setVisible] = React.useState(true)
+      return <>
+        <button onClick={() => setVisible(value => !value)}>Toggle preview</button>
+        <div style={{ height: 500, display: visible ? 'flex' : 'none', flexDirection: 'column' }}>
+          <SplitNotePreview tab={tab} visible={visible} onViewSessionChange={cy.stub()} onViewScrollCapture={cy.stub()} />
+        </div>
+      </>
+    }
+    cy.mount(<Preview />)
+    cy.get('[data-cy="split-note-preview"]').should('contain', 'Unsaved draft').then(($preview) => {
+      const preview = $preview[0]
+      const content = preview.querySelector<HTMLElement>('.note-content')
+      const toggle = preview.ownerDocument.querySelector<HTMLButtonElement>('button')
+      if (!content || !toggle) throw new Error('Missing draft content or toggle')
+      expect(frames.size, 'pending restore').to.be.greaterThan(0)
+      content.style.height = '2400px'
+      preview.scrollTop = 300
+      expect(preview.scrollTop, 'draft position before hiding').to.equal(300)
+      flushSync(() => toggle.click())
+      flushSync(() => toggle.click())
+      expect(preview.scrollTop, 'draft position after showing').to.equal(300)
+    })
+  })
+
+  it('restores the untouched pane while keeping the other pane’s newer position', () => {
+    const frames = new Map<number, FrameRequestCallback>()
+    let nextId = 1
+    cy.window().then(win => {
+      const originalFrame = win.requestAnimationFrame
+      const originalCancel = win.cancelAnimationFrame
+      restoreFrame = () => { win.requestAnimationFrame = originalFrame; win.cancelAnimationFrame = originalCancel }
+      win.requestAnimationFrame = callback => { const id = nextId++; frames.set(id, callback); return id }
+      win.cancelAnimationFrame = id => { frames.delete(id) }
+    })
+    const note = {
+      id: 'pane-note', title: 'Loading content', description: '<p>Image placeholder</p>', tags: [],
+      created_at: '2026-10-28T10:00:00Z', updated_at: '2026-10-28T10:00:00Z', user_id: 'synthetic-user',
+    }
+    const leftTab = {
+      id: 'left-tab', noteId: note.id, note, mode: 'reading' as const,
+      draft: { title: '', description: '', tags: '' }, view: { scrollTop: 600 },
+      saveState: 'saved' as const, saveError: null,
+    }
+    const rightTab = { ...leftTab, id: 'right-tab', view: { scrollTop: 900 } }
+    const Preview = () => {
+      const [visible, setVisible] = React.useState(true)
+      return <>
+        <button onClick={() => setVisible(value => !value)}>Toggle previews</button>
+        <div style={{ height: 500, display: visible ? 'flex' : 'none' }}>
+          <div data-cy="left-preview" style={{ display: 'flex', width: '50%' }}>
+            <SplitNotePreview tab={leftTab} visible={visible} onViewSessionChange={cy.stub()} onViewScrollCapture={cy.stub()} />
+          </div>
+          <div data-cy="right-preview" style={{ display: 'flex', width: '50%' }}>
+            <SplitNotePreview tab={rightTab} visible={visible} onViewSessionChange={cy.stub()} onViewScrollCapture={cy.stub()} />
+          </div>
+        </div>
+      </>
+    }
+    cy.mount(<Preview />)
+    cy.get('[data-cy="left-preview"] [data-cy="split-note-preview"]').then(($left) => {
+      const left = $left[0]
+      const right = left.ownerDocument.querySelector<HTMLElement>('[data-cy="right-preview"] [data-cy="split-note-preview"]')
+      const toggle = left.ownerDocument.querySelector<HTMLButtonElement>('button')
+      const leftContent = left.querySelector<HTMLElement>('.note-content')
+      const rightContent = right?.querySelector<HTMLElement>('.note-content')
+      if (!right || !toggle || !leftContent || !rightContent) throw new Error('Missing pane content or toggle')
+      expect(frames.size, 'both panes have pending restores').to.be.at.least(2)
+      expect(left.scrollTop, 'left position is initially clamped').to.equal(0)
+      expect(right.scrollTop, 'right position is initially clamped').to.equal(0)
+      leftContent.style.height = '2400px'
+      rightContent.style.height = '2400px'
+      left.scrollTop = 300
+      expect(left.scrollTop, 'left position before hiding').to.equal(300)
+      flushSync(() => toggle.click())
+      flushSync(() => toggle.click())
+      expect(left.scrollTop, 'left keeps its newer position').to.equal(300)
+      expect(right.scrollTop, 'right restores its own position').to.equal(900)
+    })
+  })
+
+  it('preserves a native wheel position when a preview is hidden and shown', () => {
+    const frames = new Map<number, FrameRequestCallback>()
+    const wheels: boolean[] = []
+    let nextId = 1
+    let userPosition = 0
+    cy.window().then(win => {
+      const originalFrame = win.requestAnimationFrame
+      const originalCancel = win.cancelAnimationFrame
+      restoreFrame = () => { win.requestAnimationFrame = originalFrame; win.cancelAnimationFrame = originalCancel }
+      win.requestAnimationFrame = callback => { const id = nextId++; frames.set(id, callback); return id }
+      win.cancelAnimationFrame = id => { frames.delete(id) }
+    })
+    const note = {
+      id: 'native-wheel', title: 'Loading content', description: '<p>Image placeholder</p>', tags: [],
+      created_at: '2026-10-28T10:00:00Z', updated_at: '2026-10-28T10:00:00Z', user_id: 'synthetic-user',
+    }
+    const tab = {
+      id: 'native-wheel-tab', noteId: note.id, note, mode: 'reading' as const,
+      draft: { title: '', description: '', tags: '' }, view: { scrollTop: 600 },
+      saveState: 'saved' as const, saveError: null,
+    }
+    const Preview = () => {
+      const [visible, setVisible] = React.useState(true)
+      return <>
+        <button onClick={() => setVisible(value => !value)}>Toggle preview</button>
+        <div style={{ height: 500, display: visible ? 'flex' : 'none', flexDirection: 'column' }}>
+          <SplitNotePreview tab={tab} visible={visible} onViewSessionChange={cy.stub()} onViewScrollCapture={cy.stub()} />
+        </div>
+      </>
+    }
+    cy.mount(<Preview />)
+    cy.get('[data-cy="split-note-preview"]').then(($preview) => {
+      const preview = $preview[0]
+      const content = preview.querySelector<HTMLElement>('.note-content')
+      if (!content) throw new Error('Missing preview content')
+      content.style.height = '2400px'
+      preview.addEventListener('wheel', event => { wheels.push(event.isTrusted) })
+      expect(frames.size, 'pending restore').to.be.greaterThan(0)
+      const rect = preview.getBoundingClientRect()
+      return Cypress.automation('remote:debugger:protocol', {
+        command: 'Input.dispatchMouseEvent',
+        params: { type: 'mouseWheel', x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, deltaX: 0, deltaY: 300 },
+      })
+    })
+    cy.get('[data-cy="split-note-preview"]').should(($preview) => {
+      expect(wheels, 'trusted wheel input').to.include(true)
+      expect($preview[0].scrollTop, 'wheel moves the preview').to.be.greaterThan(0)
+    }).then(($preview) => { userPosition = $preview[0].scrollTop })
+    cy.contains('Toggle preview').click()
+    cy.get('[data-cy="split-note-preview"]').should('not.be.visible')
+    cy.contains('Toggle preview').click()
+    cy.get('[data-cy="split-note-preview"]').should(($preview) => {
+      expect($preview[0].scrollTop, 'wheel position after showing').to.equal(userPosition)
     })
   })
 

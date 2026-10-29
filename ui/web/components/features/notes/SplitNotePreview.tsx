@@ -31,7 +31,7 @@ export function SplitNotePreview({
   const contentRef = React.useRef<HTMLDivElement | null>(null)
   const initialScrollTop = React.useRef(tab.view.scrollTop)
   const restored = React.useRef(false)
-  const pendingRestore = React.useRef<{ applied: number; changed: boolean } | null>(null)
+  const pendingRestore = React.useRef<{ applied: number; changed: boolean; requested: number; tabId: string } | null>(null)
   const hasContent = Boolean(tab.note || tab.mode === "editing")
   const scrollNotify = useDebouncedSessionCallback(onViewSessionChange, 250, registerViewScrollSurface ? "cancel" : "flush")
 
@@ -42,12 +42,20 @@ export function SplitNotePreview({
   React.useLayoutEffect(() => {
     if (!hasContent) {
       restored.current = false
+      pendingRestore.current = null
       return
     }
     if (!visible || restored.current || !contentRef.current) return
     const node = contentRef.current
     restored.current = true
-    const state = { applied: 0, changed: false }
+    const previous = pendingRestore.current
+    if (previous && previous.tabId === tab.id && previous.requested === initialScrollTop.current && node.scrollTop !== previous.applied) {
+      // The browser can deliver a scroll event after the pane is hidden. On
+      // showing it again, its live offset is newer than the cancelled retry.
+      pendingRestore.current = null
+      return
+    }
+    const state = { applied: 0, changed: false, requested: initialScrollTop.current, tabId: tab.id }
     const cancel = restoreViewScroll(node, initialScrollTop.current, () => { state.changed = true })
     state.applied = node.scrollTop
     const pending = cancel ? state : null
@@ -57,7 +65,7 @@ export function SplitNotePreview({
       // If a clamped restoration was cancelled before a newer scroll arrived,
       // allow the next visible layout (or StrictMode effect replay) to retry.
       if (pending && !pending.changed) restored.current = false
-      if (pendingRestore.current === pending) pendingRestore.current = null
+      else if (pendingRestore.current === pending) pendingRestore.current = null
     }
   }, [hasContent, tab.id, visible])
 
