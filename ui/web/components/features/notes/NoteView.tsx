@@ -4,7 +4,7 @@
 import * as React from "react"
 import { PencilSimple as Edit2, Trash as Trash2, CaretLeft as ChevronLeft, Copy, Check, MagnifyingGlass } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
-import { NoteTag } from "@/components/NoteTag"
+import { NoteTagList } from "@/components/NoteTagList"
 import { PullToRefresh } from "@/components/PullToRefresh"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { NoteFindBar } from "@/components/features/notes/NoteFindBar"
@@ -70,7 +70,6 @@ export const NoteView = React.memo(function NoteView({
   const [findOpen, setFindOpen] = React.useState(false)
   const [expandedTagsNoteId, setExpandedTagsNoteId] = React.useState<string | null>(null)
   const tagsExpanded = expandedTagsNoteId === note.id
-  const tagsId = React.useId()
   const initialScrollTopRef = React.useRef(initialScrollTop)
   // Reading mode has no synchronous capture path, so the latest scroll position
   // is flushed when this view unmounts (tab switch, edit, close).
@@ -205,19 +204,10 @@ export const NoteView = React.memo(function NoteView({
             </h1>
 
             {note.tags && note.tags.length > 0 && (
-              <div id={tagsId} className="mb-8 flex flex-wrap items-center gap-1.5">
-                {(tagsExpanded ? note.tags : note.tags.slice(0, 3)).map((tag) => (
-                  <NoteTag key={tag} tag={tag} onClick={onTagClick}
-                    onRemove={tagsExpanded || note.tags!.length <= 3 ? onRemoveTag : undefined} />
-                ))}
-                {note.tags.length > 3 && (
-                  <button type="button" className="min-h-11 min-w-11 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label={tagsExpanded ? "Show fewer tags" : `Show all ${note.tags.length} tags`}
-                    aria-expanded={tagsExpanded} aria-controls={tagsId}
-                    onClick={() => setExpandedTagsNoteId(tagsExpanded ? null : note.id)}>
-                    {tagsExpanded ? "Show less" : <>+{note.tags.length - 3}<span className="hidden min-[360px]:inline"> more</span></>}
-                  </button>
-                )}
+              <div className="mb-8">
+                <NoteTagList tags={note.tags} expanded={tagsExpanded}
+                  onExpandedChange={expanded => setExpandedTagsNoteId(expanded ? note.id : null)}
+                  onTagClick={onTagClick} onRemoveTag={onRemoveTag} variant="reader" />
               </div>
             )}
 

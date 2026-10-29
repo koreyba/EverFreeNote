@@ -7,16 +7,20 @@ describe('TagInput', () => {
   it('reveals every tag in a long collection without losing remove or add actions', () => {
     const tags = ['work', 'ideas', 'plans', 'home', 'travel', 'reading', 'design', 'web', 'mobile', 'notes', 'draft', 'later']
     const onRemoveTag = jest.fn()
+    jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return { width: this.dataset.cy === 'note-tag-list' ? 250 : 100 } as DOMRect
+    })
     renderTagInput({ tags, onRemoveTag })
-    expect(screen.queryByText('later')).toBeNull()
+    expect(screen.getByText('later').closest('[aria-hidden="true"]')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Show all 12 tags' }))
     expect(screen.getByText('later')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Remove tag "later"' }))
     expect(onRemoveTag).toHaveBeenCalledWith('later')
     fireEvent.click(screen.getByRole('button', { name: 'Show fewer tags' }))
-    expect(screen.queryByText('later')).toBeNull()
+    expect(screen.getByText('later').closest('[aria-hidden="true"]')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
-    expect(screen.getByText('later')).toBeTruthy()
+    expect(screen.getByText('later').closest('[aria-hidden="true"]')).toBeTruthy()
+    expect(screen.getByRole('combobox', { name: 'Add tags' })).toBeTruthy()
   })
 
   const renderTagInput = (overrides: Partial<React.ComponentProps<typeof TagInput>> = {}) => {
@@ -41,6 +45,7 @@ describe('TagInput', () => {
 
   afterEach(() => {
     jest.useRealTimers()
+    jest.restoreAllMocks()
   })
 
   it('opens editing from the add button and focuses the input', () => {
@@ -99,7 +104,7 @@ describe('TagInput', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
     input = screen.getByPlaceholderText('Add tag...') as HTMLInputElement
     fireEvent.keyDown(input, { key: 'Backspace' })
-    expect(screen.getByText('Personal').closest('[data-cy="interactive-tag"]')?.className).toContain('ring-2')
+    expect(screen.getByText('Personal').closest('[data-cy="interactive-tag"]')?.querySelector('.ring-2')).toBeTruthy()
     fireEvent.keyDown(input, { key: 'Backspace' })
     expect(onRemoveTag).toHaveBeenCalledWith('Personal')
 
@@ -114,6 +119,7 @@ describe('TagInput', () => {
       tagCounts: { Travel: 5, Ideas: 12 },
     })
 
+    fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
     expect(screen.getByRole('option', { name: /Travel\s*5/ })).toBeTruthy()
     expect(screen.getByRole('option', { name: /Ideas\s*12/ })).toBeTruthy()
   })
@@ -146,6 +152,7 @@ describe('TagInput', () => {
       tagCounts: { react: 10, redux: 3, rust: 0 },
     })
 
+    fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
     const input = screen.getByPlaceholderText('Add tag...')
 
     // Press ArrowDown to highlight first suggestion ('react')
@@ -188,7 +195,7 @@ describe('TagInput', () => {
 
     // First backspace arms removal
     fireEvent.keyDown(input, { key: 'Backspace' })
-    expect(screen.getByText('Personal').closest('[data-cy="interactive-tag"]')?.className).toContain('ring-2')
+    expect(screen.getByText('Personal').closest('[data-cy="interactive-tag"]')?.querySelector('.ring-2')).toBeTruthy()
 
     // Pressing 'a' disarms backspace removal
     fireEvent.keyDown(input, { key: 'a' })
@@ -224,6 +231,7 @@ describe('TagInput', () => {
       tagCounts: { Travel: 5 },
     })
 
+    fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
     const tagBadge = screen.getByText('Work').closest('[data-cy="interactive-tag"]')!
     const preventDefaultSpy = jest.fn()
     fireEvent.mouseDown(tagBadge, { preventDefault: preventDefaultSpy })

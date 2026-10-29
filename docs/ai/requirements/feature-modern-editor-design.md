@@ -65,3 +65,6 @@ Specifically, we want to address:
 ## Image size consistency
 - Keep safe image width and height across reading, editing, clipboard, MCP and ENEX export/import. Existing note content must not be rewritten by viewing it.
 - Limit images to the available mobile width and preserve their intended aspect ratio when both dimensions are present.
+
+## October 29 focus and tag correction
+Remove the decorative green editor focus line; preserve caret, real blockquotes and control focus indicators. Restore the tag appearance from before the document redesign. Show as many complete tags as the available row can hold, reserving space for disclosure and Add. Recalculate on resize and font loading. Add opens/closes only the input; disclosure independently expands/collapses the full collection. Preserve filtering, removal and keyboard entry without horizontal scrolling.

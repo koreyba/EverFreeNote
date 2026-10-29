@@ -149,6 +149,7 @@ describe('NoteEditor Component', () => {
   it('supports keyboard ArrowDown/ArrowUp navigation to select tag suggestions', () => {
     cy.mount(<NoteEditor {...getDefaultProps()} />)
 
+    cy.get('[aria-label="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('wor')
     cy.contains('button', 'work').should('be.visible')
     cy.contains('button', 'world').should('be.visible')
@@ -273,6 +274,7 @@ describe('NoteEditor Component', () => {
 
     cy.mount(<NoteEditor {...props} />)
 
+    cy.get('[aria-label="Add tag"]').click()
     cy.get('input[placeholder="work, personal, ideas"]').type('onlytag{enter}')
     cy.get('[data-cy="interactive-tag"]').should('have.length', 3)
 
@@ -522,7 +524,7 @@ describe('NoteEditor Component', () => {
     cy.get('[data-cy="bold-button"]').should('be.visible')
   })
 
-  it('opens the full tag collection from Add tag and deletes the last tag', () => {
+  it('opens tag input separately from the full collection and deletes the last tag', () => {
     const manyTags = Array.from({ length: 20 }, (_, i) => `tag-${i}`).join(', ')
     const props = { ...getDefaultProps(), initialTags: manyTags }
     cy.mount(<NoteEditor {...props} />)
@@ -534,6 +536,7 @@ describe('NoteEditor Component', () => {
       .should('be.visible')
       .should('have.focus')
 
+    cy.get('[aria-label="Show all 20 tags"]').should('have.attr', 'aria-expanded', 'false').click()
     cy.contains('[data-cy="interactive-tag"]', 'tag-19').find('button').click()
     cy.get('[data-testid="tag-input-container"]').contains('tag-19').should('not.exist')
   })

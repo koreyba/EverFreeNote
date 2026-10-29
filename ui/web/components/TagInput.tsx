@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Plus, Tag } from "@phosphor-icons/react"
-import { NoteTag } from "@/components/NoteTag"
+import { NoteTagList } from "@/components/NoteTagList"
 import { cn } from "@ui/web/lib/utils"
 
 type TagInputProps = Readonly<{
@@ -34,9 +34,11 @@ export function TagInput({
   const [backspaceArmed, setBackspaceArmed] = React.useState(false)
   const [highlightedIndex, setHighlightedIndex] = React.useState<number>(-1)
   const [expanded, setExpanded] = React.useState(false)
-  const collectionId = React.useId()
-  const showAll = expanded || tags.length <= 3
+  const [inputOpen, setInputOpen] = React.useState(tags.length === 0)
+  const inputId = React.useId()
+  const discardBlurRef = React.useRef(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const addButtonRef = React.useRef<HTMLButtonElement>(null)
 
   // Reset highlighted suggestion index when suggestions list changes
   React.useEffect(() => {
@@ -45,7 +47,7 @@ export function TagInput({
 
   const focusInput = () => {
     if (disabled) return
-    setExpanded(true)
+    setInputOpen(true)
     setTimeout(() => {
       inputRef.current?.focus()
     }, 0)
@@ -74,9 +76,10 @@ export function TagInput({
   }
 
   const handleInputBlur = () => {
-    if (inputValue.trim()) {
+    if (!discardBlurRef.current && inputValue.trim()) {
       commitTags(inputValue)
     }
+    discardBlurRef.current = false
     setBackspaceArmed(false)
     setHighlightedIndex(-1)
   }
@@ -124,10 +127,13 @@ export function TagInput({
 
   const handleEscapeKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
     event.preventDefault()
+    discardBlurRef.current = true
     setInputValue("")
     onQueryChange?.("")
     setBackspaceArmed(false)
     setHighlightedIndex(-1)
+    setInputOpen(false)
+    addButtonRef.current?.focus()
   }
 
   const handleBackspaceKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -169,7 +175,7 @@ export function TagInput({
     }
   }
 
-  const isExpanded = !disabled && showAll && suggestions.length > 0
+  const isExpanded = !disabled && inputOpen && suggestions.length > 0
 
   return (
     <div className={cn("relative z-30", className)}>
@@ -192,55 +198,20 @@ export function TagInput({
           <span>Tags</span>
         </div>
 
-        <div id={collectionId} className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-          {(showAll ? tags : tags.slice(0, 3)).map((tag) => (
-            <NoteTag
-              key={tag}
-              tag={tag}
-              onClick={onTagClick}
-              onRemove={showAll && !disabled ? onRemoveTag : undefined}
-              armed={backspaceArmed && tag === tags.at(-1)}
-            />
-          ))}
-
-          {tags.length > 3 && (
-            <button type="button" className="min-h-11 min-w-11 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              aria-label={expanded ? "Show fewer tags" : `Show all ${tags.length} tags`}
-              aria-expanded={expanded} aria-controls={collectionId}
-              onClick={(event) => { event.stopPropagation(); setExpanded(!expanded) }}>
-              {expanded ? "Show less" : <>+{tags.length - 3}<span className="hidden min-[360px]:inline"> more</span></>}
-            </button>
-          )}
-
-          {!disabled && (
-            <input
-              ref={inputRef}
-              hidden={!showAll}
-              type="text"
-              role="combobox"
-              aria-autocomplete="list"
-              aria-label="Add tags"
-              aria-expanded={isExpanded}
-              aria-haspopup="listbox"
-              aria-controls="tag-suggestions-listbox"
-              aria-activedescendant={highlightedIndex >= 0 ? `tag-suggestion-option-${highlightedIndex}` : undefined}
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleInputKeyDown}
-              onBlur={handleInputBlur}
-              placeholder={placeholder}
-              className="h-11 min-w-24 flex-1 max-w-48 rounded-md bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground focus-visible:shadow-[inset_0_-2px_0_var(--color-primary)]"
-              disabled={disabled}
-            />
-          )}
-        </div>
+        <NoteTagList tags={tags} expanded={expanded} onExpandedChange={setExpanded}
+          onTagClick={onTagClick} onRemoveTag={disabled ? undefined : onRemoveTag}
+          armedTag={backspaceArmed ? tags.at(-1) : undefined} variant="editor" />
 
         <button
+          ref={addButtonRef}
           type="button"
           disabled={disabled}
           onClick={(e) => {
             e.stopPropagation()
-            focusInput()
+            if (inputOpen) {
+              inputRef.current?.blur()
+              setInputOpen(false)
+            } else focusInput()
           }}
           className={cn(
             "shrink-0 flex items-center justify-center w-11 h-11 rounded-lg",
@@ -250,10 +221,36 @@ export function TagInput({
           )}
           title="Add tag"
           aria-label="Add tag"
+          aria-expanded={inputOpen}
+          aria-controls={inputId}
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {!disabled && (
+        <input
+          ref={inputRef}
+          id={inputId}
+          hidden={!inputOpen}
+          type="text"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-label="Add tags"
+          aria-expanded={isExpanded}
+          aria-haspopup="listbox"
+          aria-controls="tag-suggestions-listbox"
+          aria-activedescendant={highlightedIndex >= 0 ? `tag-suggestion-option-${highlightedIndex}` : undefined}
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyDown={handleInputKeyDown}
+          onBlur={handleInputBlur}
+          placeholder={placeholder}
+          className="mt-1 h-11 w-full min-w-0 rounded-md bg-muted/30 px-2 text-base md:max-w-xs md:text-sm outline-none placeholder:text-muted-foreground focus-visible:shadow-[inset_0_-2px_0_var(--color-primary)]"
+          disabled={disabled}
+        />
+      )}
+      {inputOpen && backspaceArmed && <p role="status" className="mt-1 text-xs text-muted-foreground">Press Backspace again to remove “{tags.at(-1)}”.</p>}
 
       {/* Suggestions dropdown */}
       {isExpanded && (
