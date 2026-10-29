@@ -165,7 +165,7 @@ describe('Deleting while an editor save is pending', { retries: 0 }, () => {
       if (item.operation !== 'update' || release) return original(item)
       return new Cypress.Promise<void>(resolve => { release = () => original(item).then(() => resolve()) })
     })
-    cy.spy(webOfflineStorageAdapter, 'upsertQueue').as('bulkQueue')
+    cy.spy(webOfflineStorageAdapter, 'appendQueueItems').as('bulkQueue')
     cy.get('[aria-label="Note title"]').clear().type('Bulk pending edit')
     cy.tick(4000)
     cy.wrap(null).should(() => expect(release).to.be.a('function'))
@@ -179,6 +179,14 @@ describe('Deleting while an editor save is pending', { retries: 0 }, () => {
     cy.then(() => release!())
     cy.get('[data-testid="bulk-delete-dialog"]').should('not.exist')
     cy.get('@bulkQueue').should('have.been.calledOnce')
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
+      const update = queue.find(item => item.noteId === 'second' && item.operation === 'update')
+      const deletions = queue.filter(item => item.operation === 'delete')
+      expect(update?.payload?.title).to.equal('Bulk pending edit')
+      expect(deletions.map(item => item.noteId).sort()).to.deep.equal(['first', 'second'])
+      expect(deletions.every(item => item.payload?.user_id === user.id)).to.equal(true)
+      expect(deletions.every(item => item.clientUpdatedAt > update!.clientUpdatedAt)).to.equal(true)
+    })
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
       expect(cached.find(note => note.id === 'first')?.deleted).to.equal(true)
       expect(cached.find(note => note.id === 'second')?.deleted).to.equal(true)
