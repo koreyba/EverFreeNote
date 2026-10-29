@@ -1,1 +1,0 @@
-{"id":"e85a1a20a5876ccb0e04b0032c00cb61","fullName":"everfreenote:ui/web/tests/unit/hooks/offline-delete-owner.test.tsx#owner-scoped offline deletion scopes every bulk deletion and tombstone to the signed-in account","name":"scopes every bulk deletion and tombstone to the signed-in account","status":"passed","testResultsByEnv":{"default":"422317518b9354efa7d1123db1e4fa67"}}

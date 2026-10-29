@@ -1,1 +1,0 @@
-{"id":"6109e625d863cd66fcdfc3e7e0b02a48","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSyncPrivacy.test.tsx#does not send a legacy create if storing its owner claim fails, and allows retry","name":"does not send a legacy create if storing its owner claim fails, and allows retry","status":"passed","testResultsByEnv":{"default":"1aed17017cef39682cbb9dbb62f4622c"}}

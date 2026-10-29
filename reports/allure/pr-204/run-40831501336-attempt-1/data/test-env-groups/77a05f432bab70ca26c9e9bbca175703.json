@@ -1,1 +1,0 @@
-{"id":"77a05f432bab70ca26c9e9bbca175703","fullName":"everfreenote:core/tests/unit/core-mcp-noteHtml.test.ts#core/mcp/noteHtml - sanitizeNoteHtml continues to reject an injected event handler and script-bearing URL","name":"continues to reject an injected event handler and script-bearing URL","status":"passed","testResultsByEnv":{"default":"bf914f428d44c6e509fc1972a491e284"}}

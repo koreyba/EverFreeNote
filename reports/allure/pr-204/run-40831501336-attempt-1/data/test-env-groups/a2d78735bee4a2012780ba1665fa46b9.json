@@ -1,1 +1,0 @@
-{"id":"a2d78735bee4a2012780ba1665fa46b9","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSaveHandlers.test.tsx#reading an unchanged note waits for a matching in-flight save before switching to reading","name":"waits for a matching in-flight save before switching to reading","status":"passed","testResultsByEnv":{"default":"5d1a9b819448d9454a992699f0417e05"}}

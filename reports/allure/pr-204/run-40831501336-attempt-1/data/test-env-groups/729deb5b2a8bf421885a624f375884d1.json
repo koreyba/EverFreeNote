@@ -1,1 +1,0 @@
-{"id":"729deb5b2a8bf421885a624f375884d1","fullName":"everfreenote:ui/web/tests/unit/adapters/offlineStorage.test.ts#webOfflineStorageAdapter localStorage fallback does not rewrite shared storage for an empty tag patch","name":"does not rewrite shared storage for an empty tag patch","status":"passed","testResultsByEnv":{"default":"951fbd2220eac8ac87dc1cff0c68c8dd"}}

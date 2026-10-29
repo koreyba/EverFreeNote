@@ -1,1 +1,0 @@
-{"id":"f2d4d3bd34d0f01e92a7f35d8008dc1f","fullName":"everfreenote:cypress/component/features/notes/DesktopSplitView.cy.tsx#Desktop split view persists edits made during a slow save before activating another pane","name":"persists edits made during a slow save before activating another pane","status":"passed","testResultsByEnv":{"default":"73b83c7b1cde31cd85725f0a986c81a5"}}

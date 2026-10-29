@@ -1,1 +1,0 @@
-{"id":"d67663ecf66c5b2d0e1feca0a70b95ee","fullName":"everfreenote:cypress/component/features/notes/NotePreview.cy.tsx#note preview text in the browser keeps long inline text intact in the DOM and removes unsafe content","name":"keeps long inline text intact in the DOM and removes unsafe content","status":"passed","testResultsByEnv":{"default":"f8ef3cf6701355b3b53aeedbfed2cc9a"}}

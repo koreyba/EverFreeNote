@@ -1,0 +1,1 @@
+{"id":"49b0c2fa7f03d81edb12e76fec448d9f","fullName":"everfreenote:ui/web/tests/unit/components/viewScrollSurface.test.ts#restoreViewScroll cleanup removes temporary input listeners after unmount","name":"removes temporary input listeners after unmount","status":"passed","testResultsByEnv":{"default":"45b8a201543a24e46c8880c9b3df85f8"}}
