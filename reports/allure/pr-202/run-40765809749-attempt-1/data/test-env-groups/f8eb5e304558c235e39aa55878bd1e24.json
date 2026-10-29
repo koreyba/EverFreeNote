@@ -1,1 +1,0 @@
-{"id":"f8eb5e304558c235e39aa55878bd1e24","fullName":"everfreenote:ui/web/tests/unit/components/pullToRefresh.test.tsx#refreshes only on release past the threshold and shows an in-flight indicator","name":"refreshes only on release past the threshold and shows an in-flight indicator","status":"passed","testResultsByEnv":{"default":"8c08c4bb54bc190847cbf0edd9549b46"}}
