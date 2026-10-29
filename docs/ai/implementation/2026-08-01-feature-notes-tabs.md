@@ -154,3 +154,7 @@ completed local copy before removing that snapshot.
 ### Tag batches across account changes
 
 Bulk tag checks and reconciliation retain the initiating account's session epoch. An account change stops further batches and prevents stale UI updates. An owner-scoped in-memory recovery marker records an in-flight or uncertain batch across workspace remounts; returning to that account blocks new tag changes until the previous work settles and the loaded notes are checked. The other account does not see this marker. This marker does not survive page reload or coordinate other browser contexts.
+
+### Manual save acknowledgements and created IDs
+
+After a successful local write the controller returns the saved note ID. The editor acknowledges only the submitted snapshot and only while its account and editor session still match. Pending input and newer autosaves remain independent. For a manual create, the confirmed ID bridges the null-to-ID transition without resetting the editor; the submitted snapshot remains the baseline even if a newer draft has already reached the workspace. Identical frozen initial props are not treated as a fresh remote update after this acknowledgement.

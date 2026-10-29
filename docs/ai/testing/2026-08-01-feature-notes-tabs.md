@@ -334,3 +334,7 @@ in the current session still reports an error. A Chromium test with synthetic
 accounts switches A→B→A after an offline local-save failure, checks that B
 sees neither A's draft nor its failure toast, then forces another failed write
 and verifies that A sees the new error. This does not cover cross-window UI.
+
+## Manual save and creation acknowledgement
+
+Component tests cover manual alt/title saves, unchanged HTML and clipboard, pending input, failed writes, account/note changes, older/newer autosave ordering, and a new note receiving an ID during typing. A local-API browser run with an isolated synthetic account also delays the local write with an IndexedDB lock, verifies the newest text reaches one created note, and checks saved/unsaved warnings and split-pane transitions. The synthetic account is removed after the test. Integrated-head CI and physical-device verification are separate.

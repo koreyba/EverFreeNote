@@ -619,6 +619,8 @@ export function useNoteAppController() {
     description: string
     tags: string
   }) => {
+    const started = getSessionSnapshot?.()
+    if (!user || !isCurrentSession(started)) return false
     updateTab(activeTabId, {
       draft: data,
       saveState: 'saving',
@@ -627,13 +629,17 @@ export function useNoteAppController() {
     try {
       if (tagMutationInProgressRef.current) throw new Error('Wait for the tag update to finish, then retry saving.')
       await handleSaveNote(data)
+      if (!isCurrentSession(started)) return false
       markTabSaved(activeTabId)
       updateTab(activeTabId, { saveState: 'saved', saveError: null })
+      return { noteId: selectedNoteRef.current?.id }
     } catch (error) {
+      if (!isCurrentSession(started)) return false
       const message = error instanceof Error ? error.message : String(error)
       updateTab(activeTabId, { saveState: 'error', saveError: message })
+      return false
     }
-  }, [activeTabId, handleSaveNote, markTabSaved, updateTab])
+  }, [activeTabId, getSessionSnapshot, handleSaveNote, isCurrentSession, markTabSaved, updateTab, user])
 
   const handleReadNoteWithWorkspace = useCallback(async (data: {
     title: string

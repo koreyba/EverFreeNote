@@ -63,6 +63,10 @@ export type UseNoteEditorAutoSaveResult = {
   flushPendingSave: () => Promise<void>
   /** Reads the live draft without canceling pending save or notification timers. */
   hasUnconfirmedChanges: () => boolean
+  /** Capture a revision before a manual write, then acknowledge its exact payload after success. */
+  getSaveRevision: (snapshot: NoteEditorSnapshot) => number
+  finishManualCreate: (revision: number, assignedNoteId: string | null) => void
+  acknowledgeManualSave: (snapshot: NoteEditorSnapshot, revision: number) => void
 }
 
 /**
@@ -111,8 +115,13 @@ export function useNoteEditorAutoSave({
   // assigned-id bridge for this editing session instead of a real note switch.
   const [pendingCreateAssignedNoteId, setPendingCreateAssignedNoteId] = useState<string | null>(null)
   const [createInFlight, setCreateInFlight] = useState(false)
+  const [manualCreate, setManualCreate] = useState<{ revision: number; pending: boolean; assignedNoteId: string | null; snapshot: NoteEditorSnapshot } | null>(null)
   const assignedCreateNoteIdRef = useRef<string | null>(null)
   const lastAcceptedRef = useRef<NoteEditorSnapshot>(getIncomingSnapshot())
+  const lastIncomingRef = useRef<NoteEditorSnapshot | null>(null)
+  const saveSequenceRef = useRef(0)
+  const lastSuccessfulSaveRef = useRef(0)
+  const autoSaveInFlightRef = useRef<number | null>(null)
 
   const getDraftSnapshot = useCallback((overrides: Partial<NoteEditorSnapshot> = {}): NoteEditorSnapshot => ({
     ...getFormData(),
@@ -127,6 +136,8 @@ export function useNoteEditorAutoSave({
 
   const flushAutoSave = useCallback(async (payload: NoteAutoSavePayload) => {
     if (!onAutoSaveRef.current) return
+    const sequence = ++saveSequenceRef.current
+    autoSaveInFlightRef.current = sequence
     // A pending edit can have been captured before a new note received its ID.
     // The first completed create establishes the identity for subsequent writes.
     const resolvedPayload = payload.noteId || !assignedCreateNoteIdRef.current
@@ -136,6 +147,7 @@ export function useNoteEditorAutoSave({
     if (creating) setCreateInFlight(true)
     try {
       const result = await onAutoSaveRef.current(resolvedPayload)
+      lastSuccessfulSaveRef.current = Math.max(lastSuccessfulSaveRef.current, sequence)
       // The account may have changed while this save was in flight. Its
       // feedback must not create or clear a notification in the new session.
       if (!shouldFlushOnUnmountRef.current?.()) toast.dismiss('note-autosave-failed')
@@ -149,6 +161,7 @@ export function useNoteEditorAutoSave({
       }
       throw error
     } finally {
+      if (autoSaveInFlightRef.current === sequence) autoSaveInFlightRef.current = null
       if (creating) setCreateInFlight(false)
     }
   }, [])
@@ -202,17 +215,22 @@ export function useNoteEditorAutoSave({
     const prevNoteId = lastResetNoteIdRef.current
     const nextNoteId = noteId
     const incomingSnapshot = getIncomingSnapshot()
+    const assignedNoteId = pendingCreateAssignedNoteId ?? manualCreate?.assignedNoteId
     const sessionChange = resolveNoteAutosaveSessionChange({
       previousNoteId: prevNoteId,
       nextNoteId,
-      pendingCreateAssignedNoteId,
+      pendingCreateAssignedNoteId: assignedNoteId,
     })
 
     // The parent may publish the new note before the create promise returns
     // its ID. Wait for that result before deciding whether this is a switch.
-    if (sessionChange === 'switched' && !prevNoteId && nextNoteId && createInFlight && !pendingCreateAssignedNoteId) return
+    if (sessionChange === 'switched' && !prevNoteId && nextNoteId && (createInFlight || manualCreate?.pending) && !assignedNoteId) return
 
     if (sessionChange === 'unchanged') {
+      // NotesShell freezes the session props. Re-rendering must not reinterpret
+      // that same old snapshot as a new external update after a manual save.
+      if (lastIncomingRef.current && areSnapshotsEqual(lastIncomingRef.current, incomingSnapshot)) return
+      lastIncomingRef.current = incomingSnapshot
       const reconcileResult = reconcileExternalNoteSnapshot({
         currentNoteId: prevNoteId,
         incomingNoteId: nextNoteId,
@@ -234,21 +252,26 @@ export function useNoteEditorAutoSave({
     }
 
     lastResetNoteIdRef.current = nextNoteId
-    lastAcceptedRef.current = incomingSnapshot
+    const manualAssignment = sessionChange === 'assigned-id' && manualCreate?.assignedNoteId === nextNoteId ? manualCreate : null
+    const baseline = manualAssignment?.snapshot ?? incomingSnapshot
+    lastAcceptedRef.current = baseline
+    lastIncomingRef.current = incomingSnapshot
 
     if (sessionChange === 'assigned-id') {
       debouncedAutoSave.rebase(
-        { noteId: nextNoteId, ...incomingSnapshot },
+        { noteId: nextNoteId, ...baseline },
         debouncedAutoSave.getPending()
           ? { noteId: nextNoteId, ...getDraftSnapshot() }
           : null
       )
       setPendingCreateAssignedNoteId(null)
+      if (manualAssignment) setManualCreate(null)
       return
     }
 
     // Real note switch: reset session key (remounts editor + title input) and notify caller.
     assignedCreateNoteIdRef.current = null
+    if (manualCreate) setManualCreate(null)
     setEditorSessionKey((k) => k + 1)
     cancelDebouncedTagQuery()
     onNoteSwitch?.()
@@ -266,6 +289,7 @@ export function useNoteEditorAutoSave({
     applyExternalSnapshot,
     pendingCreateAssignedNoteId,
     createInFlight,
+    manualCreate,
   ])
 
   const handleContentChange = useCallback(() => {
@@ -307,6 +331,32 @@ export function useNoteEditorAutoSave({
     return debouncedAutoSave.getPending() !== null || !areSnapshotsEqual(getDraftSnapshot(), baseline)
   }, [debouncedAutoSave, getDraftSnapshot])
 
+  const getSaveRevision = useCallback((snapshot: NoteEditorSnapshot) => {
+    const revision = ++saveSequenceRef.current
+    if (!noteIdRef.current) setManualCreate({ revision, pending: true, assignedNoteId: null, snapshot })
+    return revision
+  }, [])
+
+  const finishManualCreate = useCallback((revision: number, assignedNoteId: string | null) => {
+    setManualCreate((current) => current?.revision === revision
+      ? (assignedNoteId ? { ...current, pending: false, assignedNoteId } : null)
+      : current)
+  }, [])
+
+  const acknowledgeManualSave = useCallback((snapshot: NoteEditorSnapshot, revision: number) => {
+    // A newer autosave already succeeded; an older manual completion cannot
+    // replace it. Keep any newer draft and its pending autosave intact.
+    if (revision < lastSuccessfulSaveRef.current) return
+    lastSuccessfulSaveRef.current = revision
+    lastAcceptedRef.current = snapshot
+    // Let a newer in-flight autosave advance its baseline on completion. An
+    // older one must not overwrite this newer manual acknowledgement instead.
+    const autoSaveSequence = autoSaveInFlightRef.current
+    if (autoSaveSequence === null || autoSaveSequence < revision) {
+      debouncedAutoSave.rebase({ noteId: noteIdRef.current, ...snapshot }, debouncedAutoSave.getPending())
+    }
+  }, [debouncedAutoSave])
+
   return {
     editorSessionKey,
     handleContentChange,
@@ -314,5 +364,8 @@ export function useNoteEditorAutoSave({
     cancelAutoSave,
     flushPendingSave,
     hasUnconfirmedChanges,
+    getSaveRevision,
+    finishManualCreate,
+    acknowledgeManualSave,
   }
 }

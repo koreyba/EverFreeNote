@@ -51,7 +51,7 @@ interface NoteEditorProps {
   availableTags?: string[]
   tagCounts?: Record<string, number>
   isSaving: boolean
-  onSave: (data: { title: string; description: string; tags: string }) => void
+  onSave: (data: { title: string; description: string; tags: string }) => void | boolean | { noteId?: string } | Promise<void | boolean | { noteId?: string }>
   onRead: (data: { title: string; description: string; tags: string }) => void
   onAutoSave?: (data: { noteId?: string; title: string; description: string; tags: string }) => Promise<{ noteId?: string } | void> | { noteId?: string } | void
   isAutoSaving?: boolean
@@ -213,7 +213,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     }
   }, [resizeTitle])
 
-  const { editorSessionKey, handleContentChange, cancelAutoSave, flushPendingSave, hasUnconfirmedChanges } =
+  const { editorSessionKey, handleContentChange, cancelAutoSave, flushPendingSave, hasUnconfirmedChanges, getSaveRevision, finishManualCreate, acknowledgeManualSave } =
     useNoteEditorAutoSave({
       noteId,
       initialTitle,
@@ -276,12 +276,32 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     void copyNote(editorRef.current?.getHTML() ?? initialDescription)
   }, [copyNote, initialDescription])
 
+  const manualSaveRevisionRef = React.useRef(0)
+  const currentNoteIdRef = React.useRef(noteId)
+  React.useLayoutEffect(() => { currentNoteIdRef.current = noteId }, [noteId])
+  React.useLayoutEffect(() => () => { manualSaveRevisionRef.current += 1 }, [editorSessionKey])
+
   const handleSave = () => {
     cancelAutoSave()
     // The manual save records the draft itself; a late debounced notification
     // would re-mark the saved tab as dirty.
     debouncedDraftNotify.cancel()
-    onSave(getFormData())
+    const snapshot = getFormData()
+    const revision = getSaveRevision(snapshot)
+    const manualRevision = ++manualSaveRevisionRef.current
+    const startedSession = getSessionSnapshot?.()
+    void Promise.resolve(onSave(snapshot)).then((saved) => {
+      const currentSession = getSessionSnapshot?.()
+      const sameAccount = !startedSession || Boolean(currentSession && startedSession.userId === currentSession.userId && startedSession.epoch === currentSession.epoch)
+      const savedId = typeof saved === 'object' && saved !== null ? saved.noteId : undefined
+      if (!noteId) finishManualCreate(revision, sameAccount ? savedId ?? null : null)
+      if (!sameAccount || (saved !== true && !savedId) || manualRevision !== manualSaveRevisionRef.current) return
+      if (noteId ? currentNoteIdRef.current !== noteId : currentNoteIdRef.current && currentNoteIdRef.current !== savedId) return
+      acknowledgeManualSave(snapshot, revision)
+    }, () => {
+      if (!noteId) finishManualCreate(revision, null)
+      // The save owner reports the failure and leaves the draft dirty.
+    })
   }
 
   const handleRead = () => {

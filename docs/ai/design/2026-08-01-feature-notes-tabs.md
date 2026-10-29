@@ -441,3 +441,7 @@ does not identify an owner or include note content; the browser chooses whether
 to show it. The volatile copy is lost
 when the document dies. This mechanism does not protect a hard reload, crash,
 another browser window, or a mobile process killed without a warning.
+
+## Confirming manual saves
+
+The editor keeps the exact submitted snapshot separate from later typing. Only a successful durable manual write in the same account and editor session advances its saved baseline; failed or stale completions cannot clear newer drafts. Creation of a new note uses its confirmed ID to connect the existing editor session to the saved note without remounting. Autosave acknowledgements are ordered so an older completion cannot replace a newer confirmed save.
