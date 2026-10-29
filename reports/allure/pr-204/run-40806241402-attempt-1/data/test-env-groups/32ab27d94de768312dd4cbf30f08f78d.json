@@ -1,1 +1,0 @@
-{"id":"32ab27d94de768312dd4cbf30f08f78d","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteBulkActions.test.tsx#useNoteBulkActions completes deletion and selection cleanup when a background refresh rejects","name":"completes deletion and selection cleanup when a background refresh rejects","status":"passed","testResultsByEnv":{"default":"da100e9eb1645ca36db97b3c2ab66c2c"}}
