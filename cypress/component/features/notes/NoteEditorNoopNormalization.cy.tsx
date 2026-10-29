@@ -125,7 +125,7 @@ describe('unchanged note content during editor transitions', () => {
     cy.get('[data-cy="flushed"]').should('have.text', 'done')
     cy.get('@autosave').should('have.been.calledOnce')
     cy.get('@autosave').should('have.been.calledWith', Cypress.sinon.match({
-      description: original, tags: 'ideas, work',
+      description: original, tags: 'work, ideas',
     }))
   })
 

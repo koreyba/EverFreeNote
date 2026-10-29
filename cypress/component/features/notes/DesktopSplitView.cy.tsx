@@ -6,6 +6,7 @@ import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import { SPLIT_VIEW_ENABLED_KEY, SplitViewPreferenceProvider } from '@ui/web/providers/SplitViewPreferenceProvider'
+import { getPendingOwnerNotes, waitForOwnerNoteWrites } from '@ui/web/lib/ownerNoteWrites'
 
 const user = { id: 'split-user', email: 'split@example.invalid' } as User
 const notes = [
@@ -28,7 +29,38 @@ const openTwoNotes = () => {
 }
 
 describe('Desktop split view', { retries: 0 }, () => {
+  let restoreNetwork: (() => void) | undefined
+  let releasingWrites: boolean
+  let heldWrites: Array<{ noteId: string; release: () => Promise<void> }>
+  let expectedWriteErrors: Set<unknown>
+
+  const holdQueueWrite = (noteId: string, write: () => Promise<void>, register: (release: () => Promise<void>) => void) => {
+    if (releasingWrites) return write()
+    return new Cypress.Promise<void>((resolve, reject) => {
+      let started: Promise<void> | undefined
+      const release = () => {
+        if (!started) {
+          try { started = write() } catch (error) { started = Promise.reject(error) }
+          void started.then(resolve, reject)
+        }
+        return started
+      }
+      heldWrites.push({ noteId, release })
+      register(release)
+    })
+  }
+
+  const expectedWriteFailure = () => {
+    const error = new Error('Storage unavailable')
+    expectedWriteErrors.add(error)
+    return error
+  }
+
   beforeEach(() => {
+    restoreNetwork = undefined
+    releasingWrites = false
+    heldWrites = []
+    expectedWriteErrors = new Set()
     cy.viewport(1440, 900)
     const client = createClient('https://split-notes.invalid', 'test-public-key', {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -43,11 +75,54 @@ describe('Desktop split view', { retries: 0 }, () => {
     })
     cy.clearLocalStorage()
     cy.window().then(win => {
+      const originalDescriptor = Object.getOwnPropertyDescriptor(win.navigator, 'onLine')
+      const originallyOnline = win.navigator.onLine
+      restoreNetwork = () => {
+        if (originalDescriptor) Object.defineProperty(win.navigator, 'onLine', originalDescriptor)
+        else Reflect.deleteProperty(win.navigator, 'onLine')
+        expect(win.navigator.onLine, 'restored navigator.onLine').to.equal(originallyOnline)
+        win.dispatchEvent(new Event(originallyOnline ? 'online' : 'offline'))
+      }
       win.sessionStorage.clear()
       win.localStorage.setItem(SPLIT_VIEW_ENABLED_KEY, 'true')
     })
     cy.then(() => webOfflineStorageAdapter.clearAll())
     cy.mount(<SupabaseTestProvider supabase={client} user={user}><TestApp /></SupabaseTestProvider>)
+  })
+
+  afterEach(function () {
+    // Failed tests may leave a controlled write in flight. Finish it before
+    // clearing the shared cache, otherwise it can leak into the next mount.
+    const testFailed = this.currentTest?.state === 'failed'
+    releasingWrites = true
+    // Restore synchronously, even if subsequent asynchronous cleanup fails.
+    const errors = new Set<unknown>()
+    try { restoreNetwork?.() } catch (error) { errors.add(error) }
+    const pendingBeforeUnmount = getPendingOwnerNotes(user.id).map(note => note.id)
+    cy.mount(<></>)
+    cy.then(async () => {
+      try {
+        const releases = await Promise.allSettled(heldWrites.map(({ release }) => release()))
+        releases.forEach(result => { if (result.status === 'rejected') errors.add(result.reason) })
+        const noteIds = new Set([...notes.map(note => note.id), ...heldWrites.map(write => write.noteId), ...pendingBeforeUnmount, ...getPendingOwnerNotes(user.id).map(note => note.id)])
+        const waits = await Promise.allSettled([...noteIds].map(noteId => waitForOwnerNoteWrites(user.id, noteId)))
+        waits.forEach(result => { if (result.status === 'rejected' && !expectedWriteErrors.has(result.reason)) errors.add(result.reason) })
+        if (getPendingOwnerNotes(user.id).length) errors.add(new Error('Owned writes remain after cleanup'))
+      } catch (error) {
+        errors.add(error)
+      }
+      try {
+        await webOfflineStorageAdapter.clearAll()
+        const [cached, queue] = await Promise.all([webOfflineStorageAdapter.loadNotes(), webOfflineStorageAdapter.getQueue()])
+        if (cached.length || queue.length) errors.add(new Error('Test storage is not empty after cleanup'))
+      } catch (error) { errors.add(error) }
+      return [...errors].map(error => error instanceof Error ? error.message : String(error))
+    }).then(errors => {
+      if (!errors.length) return
+      const message = `Fixture cleanup failed: ${errors.join('; ')}`
+      if (testFailed) cy.log(message)
+      else throw new Error(message)
+    })
   })
 
   it('opens a second note alongside the first and keeps both tabs on exit', () => {
@@ -118,7 +193,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     openTwoNotes()
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
     const failedWrite = cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').as('failedWrite')
-    failedWrite.rejects(new Error('Storage unavailable'))
+    failedWrite.rejects(expectedWriteFailure())
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Second changed')
     cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
     cy.get('@failedWrite').should('have.been.called')
@@ -145,7 +220,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'First note').click()
     cy.get('[data-cy="note-edit-button"]').click()
     const failedWrite = cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').as('failedWrite')
-    failedWrite.rejects(new Error('Storage unavailable'))
+    failedWrite.rejects(expectedWriteFailure())
     cy.get('[aria-label="Note title"]').clear().type('First unsaved')
     cy.get('[data-cy="workspace-split-button"]').click()
     cy.get('@failedWrite').should('have.been.called')
@@ -397,9 +472,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     const releases: Array<() => Promise<unknown>> = []
     cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
       if (item.payload?.title !== 'First version' && item.payload?.title !== 'Latest version') return original(item)
-      return new Cypress.Promise<void>(resolve => {
-        releases.push(() => original(item).then(() => resolve()))
-      })
+      return holdQueueWrite(item.noteId, () => original(item), release => releases.push(release))
     })
     cy.spy(webOfflineStorageAdapter, 'saveNote').as('saved')
 
@@ -426,10 +499,6 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
       expect(queue.some(item => item.noteId === 'second' && item.payload?.title === 'Latest version')).to.equal(true)
     })
-    cy.window().then(win => {
-      Reflect.deleteProperty(win.navigator, 'onLine')
-      win.dispatchEvent(new Event('online'))
-    })
   })
 
   it('persists the latest edit before switching and closing ordinary tabs', () => {
@@ -442,7 +511,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
     cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
       if (item.payload?.title !== 'Earlier tab edit') return original(item)
-      return new Cypress.Promise<void>(resolve => { release = () => original(item).then(() => resolve()) })
+      return holdQueueWrite(item.noteId, () => original(item), held => { release = held })
     })
     cy.get('[aria-label="Note title"]').clear().type('Earlier tab edit')
     cy.tick(4000)
@@ -470,9 +539,9 @@ describe('Desktop split view', { retries: 0 }, () => {
     const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
     const write = cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
       if (item.payload?.title === 'Earlier successful edit') {
-        return new Cypress.Promise<void>(resolve => { release = () => original(item).then(() => resolve()) })
+        return holdQueueWrite(item.noteId, () => original(item), held => { release = held })
       }
-      if (item.payload?.title === 'Latest failed edit') return Promise.reject(new Error('Storage unavailable'))
+      if (item.payload?.title === 'Latest failed edit') return Promise.reject(expectedWriteFailure())
       return original(item)
     }).as('write')
     cy.get('[aria-label="Note title"]').clear().type('Earlier successful edit')
@@ -508,9 +577,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
       if (item.payload?.title !== 'Earlier automatic save' && item.payload?.title !== 'Latest manual save') return original(item)
       if (item.payload?.title === 'Latest manual save' && releases.length > 1) return original(item)
-      return new Cypress.Promise<void>(resolve => {
-        releases.push(() => original(item).then(() => resolve()))
-      })
+      return holdQueueWrite(item.noteId, () => original(item), release => releases.push(release))
     })
     cy.get('[aria-label="Note title"]').clear().type('Earlier automatic save')
     cy.tick(4000)
@@ -527,10 +594,6 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
       expect(cached.find(note => note.id === 'second')?.title).to.equal('Latest manual save')
     })
-    cy.window().then(win => {
-      Reflect.deleteProperty(win.navigator, 'onLine')
-      win.dispatchEvent(new Event('online'))
-    })
   })
 
   it('updates the same newly created note when a newer edit waits for its first save', () => {
@@ -544,7 +607,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
     cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
       if (item.operation !== 'create') return original(item)
-      return new Cypress.Promise<void>(resolve => { release = () => original(item).then(() => resolve()) })
+      return holdQueueWrite(item.noteId, () => original(item), held => { release = held })
     })
     cy.spy(webOfflineStorageAdapter, 'saveNote').as('saved')
     cy.get('[aria-label="Note title"]').type('New first version')
@@ -568,10 +631,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       expect(created).to.have.length(1)
       expect(updated).to.have.length(1)
       expect(updated[0].noteId).to.equal(created[0].noteId)
-    })
-    cy.window().then(win => {
-      Reflect.deleteProperty(win.navigator, 'onLine')
-      win.dispatchEvent(new Event('online'))
     })
   })
 })
