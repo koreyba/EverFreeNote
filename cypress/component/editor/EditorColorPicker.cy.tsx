@@ -19,6 +19,30 @@ function EditorFixture({ mobile, dark, editorRef, onChange, initialContent = '<p
 }
 
 describe('Editor color picker', { retries: 0 }, () => {
+  let restoreNavigator = () => {}
+  afterEach(() => {
+    restoreNavigator()
+    restoreNavigator = () => {}
+  })
+
+  function emulatePlatform(platform: 'desktop' | 'android' | 'ios') {
+    cy.window().then(win => {
+      const originalUserAgent = Object.getOwnPropertyDescriptor(win.navigator, 'userAgent')
+      const originalPlatform = Object.getOwnPropertyDescriptor(win.navigator, 'platform')
+      if (platform === 'android') {
+        Object.defineProperty(win.navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (Linux; Android 13) Chrome/120 Mobile Safari/537.36' })
+      } else if (platform === 'ios') {
+        Object.defineProperty(win.navigator, 'platform', { configurable: true, value: 'iPhone' })
+      }
+      restoreNavigator = () => {
+        if (originalUserAgent) Object.defineProperty(win.navigator, 'userAgent', originalUserAgent)
+        else Reflect.deleteProperty(win.navigator, 'userAgent')
+        if (originalPlatform) Object.defineProperty(win.navigator, 'platform', originalPlatform)
+        else Reflect.deleteProperty(win.navigator, 'platform')
+      }
+    })
+  }
+
   function mountEditor(mobile: boolean, dark: boolean, initialContent?: string) {
     cy.viewport(mobile ? 320 : 1400, mobile ? 740 : 900)
     const editorRef = React.createRef<RichTextEditorHandle>()
@@ -214,5 +238,95 @@ describe('Editor color picker', { retries: 0 }, () => {
     cy.get('.tiptap').should('be.focused')
     cy.press('x')
     cy.get('.tiptap p span').should('have.text', 'x').and('have.css', 'color', 'rgb(255, 105, 0)')
+  })
+
+  for (const platform of ['desktop', 'android', 'ios'] as const) {
+    it(`prevents Enter from replacing selected text when choosing a swatch on ${platform}`, () => {
+      emulatePlatform(platform)
+      const { editorRef } = mountEditor(platform !== 'desktop', false, '<p><span style="font-size: 14pt">Ordinary note</span></p>')
+      let beforeSelection: { from: number; to: number } | undefined
+      let enterPrevented = false
+      cy.then(() => { beforeSelection = editorRef.current!.getSelection!() })
+      openColor()
+      cy.get('.twitter-picker [title="#FF6900"]').focus().should('be.focused').then(($swatch) => {
+        const win = $swatch[0].ownerDocument.defaultView!
+        // Cypress cy.press(Enter) emits keyCode 0; react-color uses 13.
+        const enter = new win.KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true })
+        $swatch[0].dispatchEvent(enter)
+        enterPrevented = enter.defaultPrevented
+      })
+      cy.get('.tiptap').should('be.focused')
+      cy.get('.tiptap p span').should('have.text', 'Ordinary note').and('have.css', 'color', 'rgb(255, 105, 0)')
+      cy.get('.tiptap p span').should('have.attr', 'style').and('contain', 'font-size: 14pt')
+      cy.then(() => {
+        expect(editorRef.current!.getSelection!()).to.deep.equal(beforeSelection)
+        expect(editorRef.current!.getContentForSave()).to.contain('Ordinary note')
+        expect(enterPrevented, 'swatch Enter default is cancelled').to.equal(true)
+      })
+    })
+  }
+
+  it('retains a collapsed bold caret when choosing a swatch with Enter', () => {
+    emulatePlatform('android')
+    const { editorRef } = mountEditor(true, false, '<p><strong><span style="font-size: 14pt">Ordinary note</span></strong></p>')
+    cy.get('.tiptap p').then(($paragraph) => {
+      const doc = $paragraph[0].ownerDocument
+      const range = doc.createRange()
+      range.selectNodeContents($paragraph[0])
+      range.collapse(false)
+      const selection = doc.getSelection()!
+      selection.removeAllRanges()
+      selection.addRange(range)
+      doc.dispatchEvent(new Event('selectionchange'))
+    })
+    cy.wrap(null).should(() => {
+      expect(editorRef.current!.getSelection!()).to.deep.equal({ from: 14, to: 14 })
+    })
+    openColor()
+    let enterPrevented = false
+    cy.get('.twitter-picker [title="#FF6900"]').focus().then(($swatch) => {
+      const win = $swatch[0].ownerDocument.defaultView!
+      const enter = new win.KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true })
+      $swatch[0].dispatchEvent(enter)
+      enterPrevented = enter.defaultPrevented
+    })
+    cy.get('.tiptap').should('be.focused')
+    cy.then(() => {
+      expect(enterPrevented, 'swatch Enter default is cancelled').to.equal(true)
+      expect(editorRef.current!.getSelection!()).to.deep.equal({ from: 14, to: 14 })
+    })
+    cy.press('x')
+    cy.get('.tiptap strong').should('have.text', 'Ordinary notex')
+    cy.get('.tiptap strong').last().should('have.text', 'x').and('have.css', 'color', 'rgb(255, 105, 0)')
+    cy.get('.tiptap strong').last().closest('span').should('have.attr', 'style').and('contain', 'font-size: 14pt')
+  })
+
+  it('leaves unhandled swatch Space and arrow keys unchanged', () => {
+    mountEditor(true, false)
+    openColor()
+    cy.get('.twitter-picker [title="#FF6900"]').focus().then(($swatch) => {
+      const win = $swatch[0].ownerDocument.defaultView!
+      for (const [key, keyCode] of [[' ', 32], ['ArrowRight', 39]] as const) {
+        const event = new win.KeyboardEvent('keydown', { key, keyCode, which: keyCode, bubbles: true, cancelable: true })
+        $swatch[0].dispatchEvent(event)
+        expect(event.defaultPrevented, key).to.equal(false)
+      }
+    })
+    cy.get('.twitter-picker [title="#FF6900"]').should('be.focused')
+    cy.get('.tiptap p').should('have.text', 'Ordinary note')
+    cy.get('.tiptap p span').should('not.exist')
+  })
+
+  it('keeps HEX input and editor selection while adjusting the value with an arrow key', () => {
+    const { editorRef } = mountEditor(true, false)
+    let selection: { from: number; to: number } | undefined
+    cy.then(() => { selection = editorRef.current!.getSelection!() })
+    openColor()
+    cy.get('.twitter-picker input').clear().type('112233', { delay: 0 }).should('be.focused')
+      .trigger('keydown', { key: 'ArrowUp', keyCode: 38, which: 38 })
+    cy.get('.twitter-picker input').should('be.focused').and('have.value', '112234')
+    // react-color changes the input on ArrowUp but does not apply its numeric value as a color.
+    cy.get('.tiptap p span').should('have.text', 'Ordinary note').and('have.css', 'color', 'rgb(17, 34, 51)')
+    cy.then(() => expect(editorRef.current!.getSelection!()).to.deep.equal(selection))
   })
 })

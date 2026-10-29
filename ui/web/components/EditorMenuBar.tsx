@@ -317,6 +317,9 @@ export const EditorMenuBar = ({
                 // The hex input emits a valid intermediate color after three
                 // digits. Keep it focused while the user completes the value.
                 const fromHexInput = event?.target instanceof HTMLInputElement && colorContentRef.current?.contains(event.target)
+                // Mobile focus is synchronous: without cancelling this swatch
+                // key, Enter can replace the editor's selection with a newline.
+                if (!fromHexInput && event?.type === "keydown" && (event as React.KeyboardEvent<HTMLElement>).keyCode === 13) event.preventDefault()
                 if (fromHexInput) cancelPendingFocus()
                 const chain = fromHexInput ? editor.chain() : focusFromControl({ trigger: colorButtonRef.current, content: colorContentRef.current })
                 chain.setColor(color.hex).run()
