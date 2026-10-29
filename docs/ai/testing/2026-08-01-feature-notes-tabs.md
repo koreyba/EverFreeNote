@@ -260,6 +260,10 @@ focus; settings and auth unit tests cover unreadable storage and error return
 values. These tests use a mocked identity provider and controlled local I/O;
 they do not establish cross-window ordering or real Google OAuth behavior.
 
+The component suite also checks that a failed save blocks tag filtering and
+keeps the editor visible after a desktop-to-mobile resize; a subsequent
+successful retry saves the draft and applies the tag filter.
+
 Controller tests cover the 2 MB workspace limit evicting an unfinished tab,
 an older or unreadable snapshot, a recoverable snapshot, typing while another
 write is pending, and an account switch during navigation. A component test simulates a

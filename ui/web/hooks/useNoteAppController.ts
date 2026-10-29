@@ -715,7 +715,7 @@ export function useNoteAppController() {
   ])
 
   const handleTagClick = useCallback(async (tag: string) => {
-    await flushAndCaptureActiveTab()
+    if (!(await flushAndCaptureActiveTab())) return
     clearActiveSettingsNoteReturnPath()
     onTagClick(tag)
     setLegacySelectedNote(null)

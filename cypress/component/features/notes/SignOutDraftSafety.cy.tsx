@@ -11,7 +11,7 @@ import { addWorkspaceTab, createNoteWorkspaceState, openNoteInWorkspace, seriali
 const user = { id: 'signout-user', email: 'signout@example.invalid' } as User
 const otherUser = { id: 'other-user', email: 'other@example.invalid' } as User
 const notes = [
-  { id: 'first', title: 'First note', description: '<p>First body</p>', tags: [], user_id: user.id, created_at: '2026-10-28T10:00:00Z', updated_at: '2026-10-28T10:00:00Z' },
+  { id: 'first', title: 'First note', description: '<p>First body</p>', tags: ['qa-tag'], user_id: user.id, created_at: '2026-10-28T10:00:00Z', updated_at: '2026-10-28T10:00:00Z' },
   { id: 'second', title: 'Second note', description: '<p>Second body</p>', tags: [], user_id: user.id, created_at: '2026-10-28T09:00:00Z', updated_at: '2026-10-28T09:00:00Z' },
 ]
 
@@ -156,6 +156,28 @@ describe('Safe sign out with local drafts', { retries: 0 }, () => {
     cy.get('[data-cy="workspace-tab-close"]').first().click()
     cy.get('[role="alertdialog"]').contains('button', 'Discard and close').click()
     cy.get('[data-cy="workspace-tab"]').should('have.length', 1)
+  })
+
+  it('keeps the failed editor visible through tag navigation and a mobile resize, then permits retry', () => {
+    mountApp()
+    cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Second note').click()
+    cy.get('[data-cy="note-edit-button"]').click()
+    const failedSave = cy.stub(webOfflineStorageAdapter, 'saveNote').as('failedTagSave')
+    failedSave.rejects(new Error('Storage unavailable'))
+    cy.get('[aria-label="Note title"]').clear().type('Draft before tag navigation')
+    cy.get('@failedTagSave', { timeout: 12000 }).should('have.been.called')
+    cy.contains('Auto-save failed. Your changes will retry.').should('be.visible')
+    cy.contains('[data-testid="sidebar-container"] [data-cy="interactive-tag"]', 'qa-tag').click()
+    cy.get('[data-testid="search-results-panel"]').should('not.exist')
+    cy.viewport(390, 844)
+    cy.get('[aria-label="Note title"]').should('be.visible').and('have.value', 'Draft before tag navigation')
+    cy.then(() => failedSave.restore())
+    cy.viewport(1440, 900)
+    cy.contains('[data-testid="sidebar-container"] [data-cy="interactive-tag"]', 'qa-tag').click()
+    cy.get('[data-testid="search-results-panel"]').should('be.visible')
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
+      expect(queue.some(item => item.noteId === 'second' && item.payload?.title === 'Draft before tag navigation')).to.equal(true)
+    })
   })
 
   it('keeps the draft if sign out fails after the user chose to discard', () => {
