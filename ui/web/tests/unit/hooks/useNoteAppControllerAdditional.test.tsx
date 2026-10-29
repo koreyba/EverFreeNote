@@ -297,6 +297,13 @@ describe('useNoteAppController additional observable behavior', () => {
 
     mockAuthUser = { id: 'user-2' }
     rerender()
+    expect(result.current.workspaceHydrated).toBe(false)
+    expect(result.current.activeTab.note).toBeNull()
+
+    // The provider's synchronous session snapshot must agree as well; a
+    // stale epoch must never make the new owner's workspace visible.
+    mockSessionSnapshot = { userId: 'user-2', epoch: 1 }
+    rerender()
     await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
     expect(result.current.activeTab.note).toBeNull()
   })
@@ -574,6 +581,8 @@ describe('useNoteAppController additional observable behavior', () => {
   it('asks before discarding a tab whose save failed, and only closes on confirm', async () => {
     const { result } = setup()
     const tabId = result.current.activeTabId
+    const cancelPendingSave = jest.fn()
+    act(() => result.current.registerNoteEditorRef({ current: { cancelPendingSave, flushPendingSave: jest.fn() } } as never))
 
     // Reach the error state the way the app does: an autosave that rejects.
     mockHandleAutoSave.mockRejectedValueOnce(new Error('Network unavailable'))
@@ -597,6 +606,7 @@ describe('useNoteAppController additional observable behavior', () => {
     })
     expect(result.current.tabPendingClose).toBeNull()
     expect(result.current.tabs.map((tab) => tab.id)).toContain(tabId)
+    expect(cancelPendingSave).not.toHaveBeenCalled()
 
     await act(async () => {
       await result.current.closeTab(tabId)
@@ -607,6 +617,7 @@ describe('useNoteAppController additional observable behavior', () => {
 
     expect(result.current.tabPendingClose).toBeNull()
     expect(result.current.tabs.map((tab) => tab.id)).not.toContain(tabId)
+    expect(cancelPendingSave).toHaveBeenCalledTimes(1)
   })
 
   it('names the failed tab from its draft when the note never reached the server', async () => {

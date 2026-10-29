@@ -61,6 +61,8 @@ export type UseNoteEditorAutoSaveResult = {
   cancelAutoSave: () => void
   /** Flush pending autosave immediately; for useImperativeHandle */
   flushPendingSave: () => Promise<void>
+  /** Reads the live draft without canceling pending save or notification timers. */
+  hasUnconfirmedChanges: () => boolean
 }
 
 /**
@@ -138,7 +140,9 @@ export function useNoteEditorAutoSave({
         setPendingCreateAssignedNoteId(assignedCreateNoteIdRef.current)
       }
     } catch (error) {
-      toast.error('Auto-save failed. Your changes will retry.', { id: 'note-autosave-failed' })
+      if (!(error instanceof Error && error.name === 'AbortError')) {
+        toast.error('Auto-save failed. Your changes will retry.', { id: 'note-autosave-failed' })
+      }
       throw error
     } finally {
       if (creating) setCreateInFlight(false)
@@ -296,11 +300,17 @@ export function useNoteEditorAutoSave({
     await debouncedAutoSave.flush()
   }, [debouncedAutoSave, getDraftSnapshot, onAutoSave])
 
+  const hasUnconfirmedChanges = useCallback(() => {
+    const baseline = debouncedAutoSave.getBaseline() ?? lastAcceptedRef.current
+    return debouncedAutoSave.getPending() !== null || !areSnapshotsEqual(getDraftSnapshot(), baseline)
+  }, [debouncedAutoSave, getDraftSnapshot])
+
   return {
     editorSessionKey,
     handleContentChange,
     scheduleAutoSave,
     cancelAutoSave,
     flushPendingSave,
+    hasUnconfirmedChanges,
   }
 }

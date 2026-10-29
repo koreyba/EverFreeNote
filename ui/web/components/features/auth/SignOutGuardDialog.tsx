@@ -7,10 +7,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import type { SignOutPhase } from '@ui/web/hooks/useGuardedSignOut'
 
-export function SignOutGuardDialog({ phase, onCancel, onDiscard }: {
+export function SignOutGuardDialog({ phase, onCancel, onDiscard, pendingSave = false }: {
   phase: SignOutPhase
   onCancel: () => void
   onDiscard: () => void
+  pendingSave?: boolean
 }) {
   const cancelRef = React.useRef<HTMLButtonElement>(null)
   React.useEffect(() => {
@@ -27,8 +28,9 @@ export function SignOutGuardDialog({ phase, onCancel, onDiscard }: {
           <AlertDialogTitle>{confirming ? 'Unsaved changes' : 'Checking your changes'}</AlertDialogTitle>
           <AlertDialogDescription>
             {confirming
-              ? 'Some notes have unsaved changes or their status could not be checked. Signing out will discard unsaved changes in this browser. Keep editing to save them, or discard them and sign out.'
+              ? 'Some notes have unsaved changes or their status could not be checked. Signing out will discard unsaved input in this browser. Keep editing to save it, or discard it and sign out.'
               : 'Waiting for note changes before signing out.'}
+            {confirming && pendingSave && ' A save has already started and may still finish; changes it saves will remain.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

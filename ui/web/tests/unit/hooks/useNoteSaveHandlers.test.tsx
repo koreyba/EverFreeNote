@@ -56,6 +56,49 @@ function setup(overrides: Record<string, unknown> = {}) {
 }
 
 describe('durable save failures and concurrent creation', () => {
+  it('does not start a local write when its tab is discarded while queue lookup is pending', async () => {
+    let finishLookup!: (items: never[]) => void
+    const held = new Promise<never[]>(resolve => { finishLookup = resolve })
+    const controller = new AbortController()
+    const finish = jest.fn()
+    const { result, params } = setup({
+      selectedNote: null,
+      selectedNoteRef: { current: null },
+      offlineQueueRef: { current: { getQueue: jest.fn().mockReturnValueOnce(held).mockResolvedValue([]) } },
+      beginWorkspaceWrite: () => ({ signal: controller.signal, finish }),
+    })
+    let pending!: ReturnType<typeof result.current.handleAutoSave>
+    await act(async () => { pending = result.current.handleAutoSave({ title: 'Uncommitted', description: '', tags: '' }); await Promise.resolve() })
+    controller.abort()
+    await act(async () => {
+      finishLookup([])
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    })
+    expect(params.offlineCache.saveNote).not.toHaveBeenCalled()
+    expect(params.enqueueMutation).not.toHaveBeenCalled()
+    expect(finish).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['auto', 'manual'])('records the new note identity before an in-flight %s create finishes', async (kind) => {
+    let finish!: () => void
+    const held = new Promise<void>(resolve => { finish = resolve })
+    const rememberPendingCreate = jest.fn()
+    const { result } = setup({
+      selectedNote: null,
+      selectedNoteRef: { current: null },
+      offlineCache: { saveNote: jest.fn().mockReturnValue(held) },
+      rememberPendingCreate,
+    })
+    let pending!: Promise<unknown>
+    await act(async () => {
+      const data = { title: 'Draft before save', description: '', tags: '' }
+      pending = kind === 'auto' ? result.current.handleAutoSave(data) : result.current.handleSaveNote(data)
+      await Promise.resolve()
+    })
+    expect(rememberPendingCreate).toHaveBeenCalledWith(expect.objectContaining({ id: 'mock-uuid', user_id: 'user-1', title: 'Draft before save' }))
+    await act(async () => { finish(); await pending })
+  })
+
   it.each(['cache', 'queue'])('does not acknowledge a failed %s write', async (target) => {
     const error = new Error('Storage unavailable')
     const log = jest.spyOn(console, 'error').mockImplementation()

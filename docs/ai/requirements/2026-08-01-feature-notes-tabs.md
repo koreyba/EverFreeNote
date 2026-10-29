@@ -116,3 +116,16 @@ workspace is too narrow, only the active pane is shown until space returns.
   must retain the current workspace.
 - This guarantee is limited to one running browser context. A local storage
   failure, another browser window or a device can prevent durable ordering.
+
+### Same-document history and unavailable storage (2026-10-29)
+
+- If a draft cannot be saved locally and the workspace snapshot also fails,
+  keep the live draft through same-document Back/Forward between Notes and
+  Settings, including text entered immediately before navigation.
+- A new note whose first save is still running must retain its identity after
+  navigation or an account switch; a later save must not create a duplicate.
+- Another account must never see that in-memory draft. Explicit sign-out
+  discards the owner's volatile workspace, and closing one tab keeps the rest.
+- A browser warning is best effort when leaving the document; it cannot make
+  failed local storage durable or guarantee recovery after reload, browser
+  termination or mobile process eviction.

@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { nextMutationTimestamp } from '@core/utils/nextMutationTimestamp'
 import type { NoteViewModel, NoteUpdate } from '@core/types/domain'
 import type { CachedNote } from '@core/types/offline'
+import type { WorkspaceWriteLease } from '@ui/web/providers/WorkspaceMemoryProvider'
 import { parseTagString } from '@ui/web/lib/tags'
 import type { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import type { useNoteSync } from './useNoteSync'
@@ -35,6 +36,8 @@ type UseNoteSaveHandlersParams = {
   notes: NoteViewModel[]
   notesRef: React.MutableRefObject<NoteViewModel[]>
   selectedNoteRef: React.MutableRefObject<NoteViewModel | null>
+  rememberPendingCreate?: (note: NoteViewModel) => void
+  beginWorkspaceWrite?: () => WorkspaceWriteLease | undefined
 }
 
 type OfflineWriteInput = {
@@ -47,6 +50,11 @@ type OfflineWriteInput = {
     userId?: string
   }
   clientUpdatedAt: string
+  signal?: AbortSignal
+}
+
+function assertWriteNotAborted(signal?: AbortSignal) {
+  if (signal?.aborted) throw new DOMException('The pending save was discarded.', 'AbortError')
 }
 
 /**
@@ -74,9 +82,15 @@ export function useNoteSaveHandlers({
   notes,
   notesRef,
   selectedNoteRef,
+  rememberPendingCreate,
+  beginWorkspaceWrite,
 }: UseNoteSaveHandlersParams) {
   const [saving, setSaving] = useState(false)
   const [autoSaving, setAutoSaving] = useState(false)
+  const withWorkspaceWrite = useCallback(async <T,>(work: (signal?: AbortSignal) => Promise<T>): Promise<T> => {
+    const lease = beginWorkspaceWrite?.()
+    try { return await work(lease?.signal) } finally { lease?.finish() }
+  }, [beginWorkspaceWrite])
   
   // Tracks an in-flight note creation (from either auto-save or manual save)
   // so that concurrent saves don't result in duplicate notes.
@@ -99,8 +113,9 @@ export function useNoteSaveHandlers({
    * enqueues the mutation for sync, and increments the pending count.
    * Returns the CachedNote that was saved so callers can update selectedNote.
    */
-  const executeOfflineWrite = useCallback(({ operation, noteId, payload, clientUpdatedAt }: OfflineWriteInput): Promise<CachedNote> => {
+  const executeOfflineWrite = useCallback(({ operation, noteId, payload, clientUpdatedAt, signal }: OfflineWriteInput): Promise<CachedNote> => {
     const write = async (): Promise<CachedNote> => {
+      assertWriteNotAborted(signal)
       let previousTime = latestWriteTimeByNoteRef.current.get(noteId)
       if (previousTime === undefined) {
         // On a new app session, include pending writes left in durable storage.
@@ -110,6 +125,8 @@ export function useNoteSaveHandlers({
           return item.noteId === noteId && Number.isFinite(time) ? Math.max(latest, time) : latest
         }, 0)
       }
+      // Once the local write starts, do not abort between cache and queue writes.
+      assertWriteNotAborted(signal)
       const writeTime = Math.max(Date.parse(clientUpdatedAt), previousTime + 1)
       latestWriteTimeByNoteRef.current.set(noteId, writeTime)
       const durableUpdatedAt = new Date(writeTime).toISOString()
@@ -149,7 +166,7 @@ export function useNoteSaveHandlers({
       updatedAt: clientUpdatedAt,
       status: 'pending',
     }
-    const current = enqueueOwnerNoteWrite(user.id, noteId, snapshot, write)
+    const current = enqueueOwnerNoteWrite(user.id, noteId, snapshot, write, signal)
     void current.then(
       () => { failedWritesRef.current.delete(noteId) },
       (error: unknown) => { failedWritesRef.current.set(noteId, error) },
@@ -171,7 +188,8 @@ export function useNoteSaveHandlers({
     title: string,
     description: string,
     tags: string[],
-    clientUpdatedAt: string
+    clientUpdatedAt: string,
+    signal?: AbortSignal
   ): Promise<void> => {
     const partialPayload: Partial<NoteUpdate> = { title, description, tags }
     syncSelectedNote((prev) => {
@@ -184,7 +202,7 @@ export function useNoteSaveHandlers({
         updated_at: clientUpdatedAt,
       } as NoteViewModel
     })
-    await executeOfflineWrite({ operation: 'update', noteId: targetId, payload: partialPayload, clientUpdatedAt })
+    await executeOfflineWrite({ operation: 'update', noteId: targetId, payload: partialPayload, clientUpdatedAt, signal })
   }, [syncSelectedNote, executeOfflineWrite])
 
   const persistOfflineNoteUpdates = useCallback(async (updatedNotes: NoteViewModel[]) => {
@@ -206,7 +224,7 @@ export function useNoteSaveHandlers({
     setFailedCount(queue.filter((item) => item.status === 'failed').length)
   }, [executeOfflineWrite, offlineQueueRef, setFailedCount, setPendingCount])
 
-  const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => {
+  const handleAutoSave = useCallback(async (data: { noteId?: string; title?: string; description?: string; tags?: string }) => withWorkspaceWrite(async (signal) => {
     if (!user) return
 
     let existingId = data.noteId ?? selectedNoteRef.current?.id
@@ -220,6 +238,7 @@ export function useNoteSaveHandlers({
       }
     }
 
+    assertWriteNotAborted(signal)
     const isNewNote = !existingId
 
     const current = existingId
@@ -247,17 +266,18 @@ export function useNoteSaveHandlers({
           userId: user.id,
         }
 
+        const note = {
+          id: tempId,
+          title: noteData.title,
+          description: noteData.description,
+          tags: noteData.tags,
+          created_at: clientUpdatedAt,
+          updated_at: clientUpdatedAt,
+          user_id: user.id,
+        } as NoteViewModel
+        rememberPendingCreate?.(note)
         const createPromise = (async (): Promise<NoteViewModel> => {
-          await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: noteData, clientUpdatedAt })
-          const note = {
-            id: tempId,
-            title: noteData.title,
-            description: noteData.description,
-            tags: noteData.tags,
-            created_at: clientUpdatedAt,
-            updated_at: clientUpdatedAt,
-            user_id: user.id,
-          } as NoteViewModel
+          await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: noteData, clientUpdatedAt, signal })
           syncSelectedNote(note)
           return note
         })()
@@ -271,7 +291,7 @@ export function useNoteSaveHandlers({
         }
         setLastSavedAt(clientUpdatedAt)
       } else {
-        await executeAutoSaveUpdateNote(existingId!, nextTitle, nextDescription, parsedTags, clientUpdatedAt)
+        await executeAutoSaveUpdateNote(existingId!, nextTitle, nextDescription, parsedTags, clientUpdatedAt, signal)
         setLastSavedAt(clientUpdatedAt)
       }
 
@@ -286,7 +306,8 @@ export function useNoteSaveHandlers({
       clearTimeout(guard)
       setAutoSaving(false)
     }
-  }, [
+  }), [
+    withWorkspaceWrite,
     user,
     executeOfflineWrite,
     syncSelectedNote,
@@ -297,14 +318,16 @@ export function useNoteSaveHandlers({
     setLastSavedAt,
     notesRef,
     selectedNoteRef,
+    rememberPendingCreate,
   ])
 
   const saveExistingNote = useCallback(async (
     currentNote: NoteViewModel,
     noteData: { title: string; description: string; tags: string[] },
-    clientUpdatedAt: string
+    clientUpdatedAt: string,
+    signal?: AbortSignal
   ): Promise<NoteViewModel> => {
-    await executeOfflineWrite({ operation: 'update', noteId: currentNote.id, payload: noteData, clientUpdatedAt })
+    await executeOfflineWrite({ operation: 'update', noteId: currentNote.id, payload: noteData, clientUpdatedAt, signal })
     setLastSavedAt(clientUpdatedAt)
     return { ...currentNote, ...noteData, updated_at: clientUpdatedAt }
   }, [executeOfflineWrite, setLastSavedAt])
@@ -312,18 +335,20 @@ export function useNoteSaveHandlers({
   const saveNewNote = useCallback(async (
     noteData: { title: string; description: string; tags: string[] },
     userId: string,
-    clientUpdatedAt: string
+    clientUpdatedAt: string,
+    signal?: AbortSignal
   ): Promise<NoteViewModel> => {
     const tempId = uuidv4()
+    const note = {
+      id: tempId,
+      ...noteData,
+      created_at: clientUpdatedAt,
+      updated_at: clientUpdatedAt,
+      user_id: userId,
+    } as NoteViewModel
+    rememberPendingCreate?.(note)
     const createPromise = (async (): Promise<NoteViewModel> => {
-      await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: { ...noteData, userId }, clientUpdatedAt })
-      const note = {
-        id: tempId,
-        ...noteData,
-        created_at: clientUpdatedAt,
-        updated_at: clientUpdatedAt,
-        user_id: userId,
-      } as NoteViewModel
+      await executeOfflineWrite({ operation: 'create', noteId: tempId, payload: { ...noteData, userId }, clientUpdatedAt, signal })
       syncSelectedNote(note)
       return note
     })()
@@ -336,9 +361,9 @@ export function useNoteSaveHandlers({
     } finally {
       pendingCreatePromiseRef.current = null
     }
-  }, [executeOfflineWrite, syncSelectedNote, setLastSavedAt])
+  }, [executeOfflineWrite, syncSelectedNote, setLastSavedAt, rememberPendingCreate])
 
-  const handleSaveNote = async (data: { title: string; description: string; tags: string }) => {
+  const handleSaveNote = async (data: { title: string; description: string; tags: string }) => withWorkspaceWrite(async (signal) => {
     if (!user) return
 
     setSaving(true)
@@ -362,22 +387,23 @@ export function useNoteSaveHandlers({
         }
       }
 
+      assertWriteNotAborted(signal)
       if (currentNote) {
-        savedNote = await saveExistingNote(currentNote, noteData, clientUpdatedAt)
+        savedNote = await saveExistingNote(currentNote, noteData, clientUpdatedAt, signal)
       } else {
-        savedNote = await saveNewNote(noteData, user.id, clientUpdatedAt)
+        savedNote = await saveNewNote(noteData, user.id, clientUpdatedAt, signal)
       }
 
       if (savedNote) {
         syncSelectedNote(savedNote)
       }
     } catch (error) {
-      console.error('Error saving note:', error)
+      if (!(error instanceof Error && error.name === 'AbortError')) console.error('Error saving note:', error)
       throw error
     } finally {
       setSaving(false)
     }
-  }
+  })
 
   const handleReadNote = async (data: { title: string; description: string; tags: string }) => {
     await handleSaveNote(data)

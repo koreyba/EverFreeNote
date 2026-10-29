@@ -351,6 +351,19 @@ describe('NotesShell', () => {
     expect(status.textContent).toContain('1 failed')
   })
 
+  it('requests a browser warning before leaving a failed draft and stays silent for saved notes', () => {
+    const dirtyTab = { ...makeWorkspaceTab(note, true), saveState: 'error' as const }
+    const { rerender } = renderShell(makeController({ selectedNote: note, isEditing: true, tabs: [dirtyTab] }))
+    const unsafe = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(unsafe)
+    expect(unsafe.defaultPrevented).toBe(true)
+
+    rerender(<NotesShell controller={makeController({ selectedNote: note, isEditing: false }) as never} />)
+    const safe = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(safe)
+    expect(safe.defaultPrevented).toBe(false)
+  })
+
   it('describes queued changes as waiting in reading mode', () => {
     renderShell(makeController({ selectedNote: note, pendingCount: 3 }))
 
@@ -568,5 +581,27 @@ describe('NotesShell', () => {
     await act(async () => { finish({ selectedNoteId: 'note-1' }); await Promise.resolve() })
     expect(mockSaveSettingsReturnState).not.toHaveBeenCalled()
     expect(mockRouterPush).not.toHaveBeenCalled()
+  })
+
+  it('captures the live editor when the account boundary changes to another owner', () => {
+    let snapshot: { userId: string | null; epoch: number } = { userId: 'user-1', epoch: 1 }
+    const existing = jest.mocked(useSupabase)()
+    jest.mocked(useSupabase).mockReturnValue({ ...existing, getSessionSnapshot: () => snapshot })
+    const preserve = jest.fn()
+    const { unmount } = renderShell(makeController({ preserveWorkspaceForNavigation: preserve }))
+    snapshot = { userId: 'user-2', epoch: 2 }
+    unmount()
+    expect(preserve).toHaveBeenCalledTimes(1)
+  })
+
+  it('captures on sign-out teardown so a session expiry can preserve the live editor', () => {
+    let snapshot: { userId: string | null; epoch: number } = { userId: 'user-1', epoch: 1 }
+    const existing = jest.mocked(useSupabase)()
+    jest.mocked(useSupabase).mockReturnValue({ ...existing, getSessionSnapshot: () => snapshot })
+    const preserve = jest.fn()
+    const { unmount } = renderShell(makeController({ preserveWorkspaceForNavigation: preserve }))
+    snapshot = { userId: null, epoch: 2 }
+    unmount()
+    expect(preserve).toHaveBeenCalledTimes(1)
   })
 })

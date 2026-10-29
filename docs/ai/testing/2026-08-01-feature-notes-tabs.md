@@ -305,3 +305,25 @@ account-isolation suite passed 6. Type-check and ESLint passed. A broader
 ### Combined tag and session boundary
 
 Controller regression tests delay the initial cache read or the first eight tag writes, change the session epoch, and check that no later write or reconciliation starts. An A→B→A test verifies the unfinished/uncertain marker is visible only to A and requests review after reconciliation. These are deterministic mocked boundary tests; independent integrated real-auth and IndexedDB coverage remains required.
+
+### Same-document history fallback
+
+Unit tests cover owner and epoch isolation, synchronous editor capture, the
+first-create identity, preserving the other tab on discard, and best-effort
+`beforeunload` registration for any owner's volatile draft without exposing its
+contents. The isolated local-Supabase browser scenarios
+exercise actual App Router Back/Forward with simulated IndexedDB and
+sessionStorage failures, Settings sign-out, A→B→A, a delayed first create,
+repeat save, continued typing, and a failed first create retried to the test
+server. Additional scenarios cover discarding before a queued write begins,
+signing back in while it remains pending, and warning when a write already
+inside the adapter may still finish. The browser tests use synthetic accounts and an isolated local API;
+they do not prove reload durability, cross-window behavior or mobile native
+dialog availability. Their Cypress runner currently has no Allure E2E adapter;
+use the raw Cypress output and treat the Allure no-tests finding as unresolved.
+
+The focused local run passed 175 unit and 57 component tests through Allure.
+The separate history and first-create browser suites each passed 6/6 in raw
+Cypress. Desktop Chrome also showed its native generic warning after A→B,
+without exposing A's draft, and did not warn for a clean editor. The browser
+checks used an isolated local Supabase instance and synthetic accounts.

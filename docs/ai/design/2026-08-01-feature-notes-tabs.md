@@ -336,7 +336,8 @@ controller also reads the account-scoped snapshot back. Any unfinished tab
 must match its saved identity, mode and draft; an evicted or stale tab blocks
 the transition. Closing an inactive unfinished tab requires confirmation.
 Browser-controlled history navigation and reload are separate boundaries and
-are not intercepted by this guard.
+are not intercepted by this guard. A document-scoped fallback and best-effort
+browser warning are described below.
 
 ## Non-Functional Requirements
 
@@ -397,5 +398,46 @@ flowchart LR
 This is not cross-window or cross-device locking. Storage failure can prevent
 an outstanding draft from being saved. Existing offline sync drains already
 running at sign-out are not cancelled by this boundary and require separate
-owner-scoped queue verification. Browser Back/Forward with both local write and
-workspace snapshot unavailable remains outside the app-controlled guard.
+owner-scoped queue verification.
+
+## Same-document history fallback (2026-10-29)
+
+An in-memory provider outside the account-remount boundary holds unfinished
+workspace snapshots by owner while the document remains alive. On route or
+account teardown, Notes synchronously captures the mounted editor, including
+input still waiting for its debounce. Settings checks this copy before
+sign-out. A successful explicit sign-out deletes that owner's memory and marks
+its old epoch invalid so a late teardown cannot restore discarded data.
+
+The first create allocates its note ID before starting the local write. Its
+owner and tab binding is attached to a recovered draft, without replacing newer
+text. `ownerNoteWrites` serializes subsequent writes to that same ID even if
+the first write resolves after remount. Closing or reusing a tab forgets only
+its binding. The in-memory copy is removed when all tabs are saved.
+
+Each editor save also receives an owner-and-tab cancellation token. Discarding
+a tab cancels its editor debounce and only that tab's pending writes;
+discard-and-sign-out cancels the owner's writes.
+A cancelled pending snapshot is hidden immediately, while its write remains
+in the serializer until settled. A save waiting for its queue is stopped before
+starting the local write. Once a save has entered the current storage adapter,
+it may finish and the discard dialog says so; it is not safe to blindly delete
+a note or overwrite another, later version.
+
+```mermaid
+flowchart LR
+  input[Live editor] --> capture[Capture on route or account teardown]
+  capture --> memory[Owner-scoped volatile workspace]
+  create[First local create] --> bind[Bind owner and tab to note ID]
+  bind --> memory
+  memory --> restore[Restore same-document session]
+  restore --> writes[Serialized owner and note writes]
+  logout[Explicit sign-out] --> clear[Clear owner and invalidate old epoch]
+```
+
+`beforeunload` requests a browser warning for unfinished work on Notes and
+Settings and for any earlier owner's unfinished in-memory draft. The warning
+does not identify an owner or include note content; the browser chooses whether
+to show it. The volatile copy is lost
+when the document dies. This mechanism does not protect a hard reload, crash,
+another browser window, or a mobile process killed without a warning.

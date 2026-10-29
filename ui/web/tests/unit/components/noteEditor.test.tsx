@@ -166,6 +166,19 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     expect(screen.queryByText(/^Saved at /)).toBeNull()
   })
 
+  it('reports typing as unsaved before the debounced workspace update', () => {
+    const { ref } = renderEditor()
+    expect(ref.current?.hasUnconfirmedChanges?.()).toBe(false)
+    fireEvent.change(screen.getByLabelText('Note title'), { target: { value: 'Typed just now' } })
+    expect(ref.current?.hasUnconfirmedChanges?.()).toBe(true)
+  })
+
+  it('does not treat an untouched empty editor as an unsaved change', () => {
+    mockEditorHtml = '<p></p>'
+    const { ref } = renderEditor({ initialTitle: '', initialDescription: '', initialTags: '' })
+    expect(ref.current?.hasUnconfirmedChanges?.()).toBe(false)
+  })
+
   it('preserves a dirty local title when the same note refreshes with stale data', async () => {
     const { rerender, ref, onAutoSave } = renderEditor()
 

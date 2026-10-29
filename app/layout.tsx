@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { QueryProvider } from "@/components/providers/QueryProvider"
 import { NativeShellProvider } from "@ui/shell/runtime/NativeShellProvider"
 import { AccountSessionBoundary, SupabaseProvider } from "@ui/web/providers/SupabaseProvider"
+import { WorkspaceMemoryProvider } from "@ui/web/providers/WorkspaceMemoryProvider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -31,20 +32,24 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <ErrorBoundary>
           <SupabaseProvider>
-            <NativeShellProvider>
-              <AccountSessionBoundary><QueryProvider>
-                <ThemeProvider
-                  attribute="class"
-                  defaultTheme="light"
-                  enableSystem={false}
-                  storageKey="everfreenote-theme"
-                  disableTransitionOnChange={true}
-                >
-                  {children}
-                  <Toaster />
-                </ThemeProvider>
-              </QueryProvider></AccountSessionBoundary>
-            </NativeShellProvider>
+            <WorkspaceMemoryProvider>
+              <NativeShellProvider>
+                <AccountSessionBoundary>
+                  <QueryProvider>
+                    <ThemeProvider
+                      attribute="class"
+                      defaultTheme="light"
+                      enableSystem={false}
+                      storageKey="everfreenote-theme"
+                      disableTransitionOnChange={true}
+                    >
+                      {children}
+                      <Toaster />
+                    </ThemeProvider>
+                  </QueryProvider>
+                </AccountSessionBoundary>
+              </NativeShellProvider>
+            </WorkspaceMemoryProvider>
           </SupabaseProvider>
         </ErrorBoundary>
       </body>

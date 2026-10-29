@@ -13,6 +13,7 @@ import { selectableSurfaceIconClasses, selectableSurfaceStateClasses } from "@ui
 import { useNoteAuth } from "@ui/web/hooks/useNoteAuth"
 import { useGuardedSignOut } from "@ui/web/hooks/useGuardedSignOut"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
+import { useWorkspaceMemory } from "@ui/web/providers/WorkspaceMemoryProvider"
 import { readNoteWorkspaceState } from "@ui/web/lib/noteWorkspaceStorage"
 import { SignOutGuardDialog } from "@/components/features/auth/SignOutGuardDialog"
 import { ImportButton } from "@/components/ImportButton"
@@ -88,19 +89,41 @@ export function SettingsPage() {
   const searchParams = useSearchParams()
   const { user, loading, deleteAccountLoading, handleDeleteAccount, handleSignOut } = useNoteAuth()
   const { user: sessionUser, loading: sessionLoading, getSessionSnapshot } = useSupabase()
+  const workspaceMemory = useWorkspaceMemory()
   const userId = user?.id
   const sessionUserId = sessionUser?.id
+  React.useEffect(() => {
+    if (!userId || userId !== sessionUserId) return
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      const inMemory = workspaceMemory.read(userId)
+      const persisted = readNoteWorkspaceState({ userId })
+      if (inMemory?.tabs.some(tab => tab.saveState !== 'saved') || persisted.tabs.some(tab => tab.saveState !== 'saved')) {
+        event.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', beforeUnload)
+    return () => window.removeEventListener('beforeunload', beforeUnload)
+  }, [sessionUserId, userId, workspaceMemory])
   const prepareSignOut = React.useCallback(async () => {
     if (!userId || sessionUserId !== userId) return false
+    const memoryWorkspace = workspaceMemory.read(userId)
+    if (memoryWorkspace?.tabs.some(tab => tab.saveState !== 'saved')) return false
     let readable = true
     const workspace = readNoteWorkspaceState({ userId, onStorageFailure: () => { readable = false } })
     return readable && workspace.tabs.every(tab => tab.saveState === 'saved')
-  }, [sessionUserId, userId])
+  }, [sessionUserId, userId, workspaceMemory])
   const performSignOut = React.useCallback(() => handleSignOut(() => {
     clearSettingsReturnState()
     router.push("/")
   }), [handleSignOut, router])
   const signOutGuard = useGuardedSignOut(userId && userId === sessionUserId ? userId : null, prepareSignOut, performSignOut, getSessionSnapshot)
+  const discardGuardedSignOut = signOutGuard.discardAndSignOut
+  const discardAndSignOut = React.useCallback(() => {
+    const started = getSessionSnapshot?.()
+    if (!userId || (started && started.userId !== userId)) return
+    workspaceMemory.cancelOwnerWrites(userId, started?.epoch)
+    void discardGuardedSignOut()
+  }, [discardGuardedSignOut, getSessionSnapshot, userId, workspaceMemory])
   const mobileTabsRef = React.useRef<HTMLDivElement | null>(null)
   const activeMobileTabRef = React.useRef<HTMLButtonElement | null>(null)
   const scrollTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -426,7 +449,8 @@ export function SettingsPage() {
         </div>
       </div>
       <SignOutGuardDialog phase={signOutGuard.phase} onCancel={signOutGuard.cancel}
-        onDiscard={() => void signOutGuard.discardAndSignOut()} />
+        pendingSave={Boolean(userId && workspaceMemory.hasPendingWrites(userId))}
+        onDiscard={discardAndSignOut} />
     </main>
   </MobileWorkspace>
   )

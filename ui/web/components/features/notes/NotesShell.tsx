@@ -70,9 +70,22 @@ export function NotesShell({ controller }: NotesShellProps) {
 
   const router = useRouter()
   const isMobile = useIsMobile()
-  const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
-  const searchPanelRef = React.useRef<SearchResultsPanelHandle | null>(null)
   const { supabase, getSessionSnapshot } = useSupabase()
+  const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
+  const preserveWorkspaceRef = React.useRef(controller.preserveWorkspaceForNavigation)
+  React.useLayoutEffect(() => {
+    preserveWorkspaceRef.current = controller.preserveWorkspaceForNavigation
+  }, [controller.preserveWorkspaceForNavigation])
+  React.useLayoutEffect(() => {
+    const mountedPath = globalThis.location.pathname
+    const mountedSession = getSessionSnapshot?.()
+    return () => {
+      const current = getSessionSnapshot?.()
+      const changedSession = Boolean(mountedSession && current && mountedSession.epoch !== current.epoch)
+      if (globalThis.location.pathname !== mountedPath || changedSession) preserveWorkspaceRef.current?.()
+    }
+  }, [getSessionSnapshot])
+  const searchPanelRef = React.useRef<SearchResultsPanelHandle | null>(null)
   const isCurrentSession = React.useCallback((started?: { userId: string | null; epoch: number }) => {
     if (!started || !getSessionSnapshot) return true
     const current = getSessionSnapshot()
@@ -157,6 +170,15 @@ export function NotesShell({ controller }: NotesShellProps) {
   const activeTabIdRef = React.useRef(activeTabId)
   React.useLayoutEffect(() => { tabsRef.current = tabs }, [tabs])
   React.useLayoutEffect(() => { activeTabIdRef.current = activeTabId }, [activeTabId])
+  React.useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (tabs.some(tab => tab.saveState !== 'saved') || noteEditorRef.current?.hasUnconfirmedChanges?.()) {
+        event.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', beforeUnload)
+    return () => window.removeEventListener('beforeunload', beforeUnload)
+  }, [tabs])
   const recordViewScroll = React.useCallback((tabId: string, noteId: string | null, scrollTop: number) => {
     viewScrollsRef.current.set(tabId, { noteId, scrollTop })
   }, [])
@@ -571,6 +593,7 @@ export function NotesShell({ controller }: NotesShellProps) {
       <DeleteNoteDialog controller={controller} />
       <DiscardFailedSaveDialog controller={controller} />
       <SignOutGuardDialog phase={controller.signOutPhase ?? 'idle'}
+        pendingSave={controller.hasPendingWorkspaceWrites}
         onCancel={controller.cancelSignOut ?? (() => {})}
         onDiscard={() => void controller.discardAndSignOut?.()} />
     </MobileWorkspace>
@@ -763,6 +786,7 @@ function DiscardFailedSaveDialog({ controller }: { controller: NoteAppController
           <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
           <AlertDialogDescription>
             &quot;{tabPendingClose?.label}&quot; has unsaved changes. Closing this tab discards them.
+            {tabPendingClose && controller.hasPendingWritesForTab?.(tabPendingClose.tabId) && ' A save has already started and may still finish; changes it saves will remain.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
